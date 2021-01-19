@@ -28,11 +28,33 @@ public extension Value {
 
 public func initializeBlock(_ env: inout Environment) {
     // Block ::= Display
+    // TODO: Implement in Wipple code
     env.addConformance(
         derivedTraitID: .display,
         validation: Trait.validation(for: .block),
         deriveTraitValue: { value, env in
             "<block>"
+        }
+    )
+
+    // Block ::= Evaluate
+    env.addConformance(
+        derivedTraitID: .evaluate,
+        validation: Trait.validation(for: .block),
+        deriveTraitValue: { value, env in
+            let block = value as! Block
+
+            var result = Value()
+            for statement in block.statements {
+                // Evaluate each statement as a list
+
+                let list = Value(location: statement.first?.location)
+                    .trait(.list(statement))
+
+                result = try list.evaluate(&env)
+            }
+
+            return result
         }
     )
 }

@@ -1,8 +1,8 @@
 import Foundation
 import XCTest
-import WippleLib
+@testable import WippleLib
 
-class NameTests: XCTestCase {
+class VariableTests: XCTestCase {
     var env: Environment!
 
     override func setUp() {
@@ -17,4 +17,6 @@ class NameTests: XCTestCase {
 
         XCTAssertNoThrow(try name.evaluate(&self.env))
     }
+
+    // TODO: Test computed variables
 }

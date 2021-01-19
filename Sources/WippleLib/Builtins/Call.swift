@@ -18,4 +18,8 @@ public extension Value {
     func callValue(_ env: inout Environment) throws -> CallFunction {
         try Trait.find(.call, in: self, &env).value(&env) as! CallFunction
     }
+
+    func call(with parameter: Value, _ env: inout Environment) throws -> Value {
+        try self.callValue(&env)(parameter, &env)
+    }
 }
