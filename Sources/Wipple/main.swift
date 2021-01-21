@@ -1,29 +1,40 @@
 import Foundation
 import WippleLib
 
-extension FileHandle: TextOutputStream {
-    public func write(_ string: String) {
-        self.write(string.data(using: .utf8)!)
-    }
+struct Options: Codable {
+    let filePath: String?
+    let code: String
+    let parserPath: String
+    let printResult: Bool
 }
 
 do {
-    WippleLib.initialize(&.global)
+    let options = try JSONDecoder().decode(Options.self, from: CommandLine.arguments[1].data(using: .utf8)!)
 
-    var code = ""
-    while let line = readLine(strippingNewline: false) {
-        code += line
+    initialize(&.global)
+
+    Environment.global.parse = { code, filePath in
+        let output = shell(options.parserPath, filePath ?? "", code)
+        let ast = try JSONDecoder().decode(AST.self, from: output.data(using: .utf8)!)
+        return ast
     }
 
-    let parsedInput = try JSONDecoder().decode(ParsedInput.self, from: code.data(using: .utf8)!)
+    var fileEnv = Environment.global
 
-    let value = parsedInput.convertToValue()
+    let result = try parseAndEvaluate(code: options.code, filePath: options.filePath, &fileEnv)
 
-    let evaluatedValue = try value.evaluate(&.global) // TODO: Files
-
-    print(evaluatedValue)
+    if options.printResult {
+        let display = try result.displayString(&fileEnv)
+        print(display)
+    }
 } catch {
     var s = FileHandle.standardError
     print(error, to: &s)
     exit(1)
+}
+
+extension FileHandle: TextOutputStream {
+    public func write(_ string: String) {
+        self.write(string.data(using: .utf8)!)
+    }
 }

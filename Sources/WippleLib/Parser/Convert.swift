@@ -1,6 +1,6 @@
 import Foundation
 
-public extension ParsedInput {
+public extension AST {
     func convertToValue() -> Value {
         if let block = self.block {
             let statements = block.map { statement in

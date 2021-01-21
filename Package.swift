@@ -10,7 +10,7 @@ let package = Package(
     ],
     products: [
         .executable(
-            name: "wipple",
+            name: "wipple-interpreter",
             targets: ["Wipple"]
         ),
         .library(

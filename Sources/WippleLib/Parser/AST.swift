@@ -16,12 +16,12 @@ public class Box<T: Codable>: Codable {
     }
 }
 
-public struct ParsedInput: Codable {
-    public let block: [[ParsedInput]]?
-    public let list: [ParsedInput]?
+public struct AST: Codable {
+    public let block: [[AST]]?
+    public let list: [AST]?
     public let name: String?
     public let text: String?
     public let number: String?
-    public let quoted: Box<ParsedInput>?
+    public let quoted: Box<AST>?
     public let location: Location
 }

@@ -2,7 +2,7 @@ import Foundation
 import XCTest
 @testable import WippleLib
 
-class OperatorTests: XCTestCase {
+class OperatorTests: WippleTestCase {
     func testOperatorParsing() {
         // TODO: Test the following cases:
         // (setting up test coverage might be a good idea)

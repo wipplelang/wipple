@@ -2,14 +2,7 @@ import Foundation
 import XCTest
 @testable import WippleLib
 
-class VariableTests: XCTestCase {
-    var env: Environment!
-
-    override func setUp() {
-        self.env = Environment()
-        WippleLib.initialize(&self.env)
-    }
-
+class VariableTests: WippleTestCase {
     func testVariableResolution() throws {
         self.env.variables["foo"] = Value()
 

@@ -97,7 +97,9 @@ public extension Trait {
                 return .invalid
             }
 
-            return .valid(newValue: try trait.value(&env))
+            let traitValue = try trait.value(&env)
+
+            return .valid(newValue: traitValue)
         }
     }
 }

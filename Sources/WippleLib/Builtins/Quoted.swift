@@ -8,7 +8,7 @@ extension Trait.ID {
 
 public extension Trait {
     static func quoted(_ quotedValue: Quoted) -> Trait {
-        Trait(id: .name) { _ in
+        Trait(id: .quoted) { _ in
             quotedValue
         }
     }

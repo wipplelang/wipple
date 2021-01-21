@@ -5,6 +5,7 @@ public struct Environment {
     public var variables: [String: Value] = [:]
     public internal(set) var conformances: [Conformance] = []
     public var userDefined: [Environment.Key: Value] = [:]
+    public var parse: ((_ code: String, _ filePath: String?) throws -> AST)!
 
     public init() {}
 }

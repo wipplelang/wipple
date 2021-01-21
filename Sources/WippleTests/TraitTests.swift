@@ -2,14 +2,7 @@ import Foundation
 import XCTest
 @testable import WippleLib
 
-class TraitTests: XCTestCase {
-    var env: Environment!
-
-    override func setUp() {
-        self.env = Environment()
-        WippleLib.initialize(&self.env)
-    }
-
+class TraitTests: WippleTestCase {
     func testDirectlyDefinedTrait() throws {
         let trait = Trait(id: .init()) { _ in Void() }
 
@@ -37,5 +30,15 @@ class TraitTests: XCTestCase {
 
         let derivedTraitValue = try derivedTrait.value(&self.env)
         XCTAssertNotNil(derivedTraitValue as? Void)
+    }
+
+    func testTraitValidation() throws {
+        let n: Decimal = 42
+
+        let value = Value.assoc(.number(n))
+        let validation = Trait.validation(for: .number)
+
+        let result = try validation(value, &self.env)
+        XCTAssert(result.isValid(equalTo: n))
     }
 }
