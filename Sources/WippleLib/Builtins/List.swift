@@ -23,6 +23,20 @@ public extension Value {
 // MARK: - Initialize
 
 public func initializeList(_ env: inout Environment) {
+    // List ::= Evaluate
+    env.addConformance(
+        derivedTraitID: .evaluate,
+        validation: Trait.validation(for: .list),
+        deriveTraitValue: { value, env in
+            let list = value as! List
+
+            let operators = try findOperators(in: list, &env)
+            let parsed = try parseOperators(in: list, using: operators)
+
+            return try parsed.evaluate(&env)
+        }
+    )
+
     // (List and (each Display)) ::= Display
     // TODO: Write this in Wipple code
     env.addConformance(

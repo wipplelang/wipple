@@ -48,13 +48,9 @@ public struct Operator<Precedence: Comparable, Call> {
 
 // MARK: - Operator parsing
 
-public typealias OperatorList<Precedence: Comparable, Call> = [(operator: Operator<Precedence, Call>, index: Int)]
-
 public func findOperators(in list: [Value], _ env: inout Environment) throws -> OperatorList<Decimal, CallFunction> {
-    var operators: OperatorList<Decimal, CallFunction> = []
-
-    for (index, value) in list.enumerated() {
-        var op: Operator<Decimal, CallFunction>!
+    try findOperators(in: list, getOperator: { value in
+        var op: Operator<Decimal, CallFunction>?
 
         @discardableResult
         func getOperator(_ value: Value) throws -> Bool {
@@ -72,20 +68,16 @@ public func findOperators(in list: [Value], _ env: inout Environment) throws -> 
             try getOperator(evaluatedValue)
         }
 
-        if let op = op {
-            operators.append((op, index))
-        }
-    }
-
-    return operators
+        return op
+    })
 }
 
 public func parseOperators(in list: [Value], using operators: OperatorList<Decimal, CallFunction>) throws -> Value {
     let result = parseOperators(
         in: list,
         using: operators,
-        groupItems: { Value.assoc(.list($0)) },
-        groupSingle: { Value.assoc(.call($0)) }
+        groupCall: { Value.assoc(.call($0)) },
+        groupList: { Value.assoc(.list($0)) }
     )
 
     switch result {
@@ -96,23 +88,37 @@ public func parseOperators(in list: [Value], using operators: OperatorList<Decim
     }
 }
 
+public typealias OperatorList<Precedence: Comparable, Call> = [(operator: Operator<Precedence, Call>, index: Int)]
+
 enum ParseOperatorsError: String, Error, Equatable {
     case missingBinaryLeft = "Expected value on left side of binary operator expression"
     case missingBinaryRight = "Expected value on right side of binary operator expression"
-    case missingVariadidLeft = "Expected one or more values on left side of variadic operator expression"
+    case missingVariadicLeft = "Expected one or more values on left side of variadic operator expression"
     case missingVariadicRight = "Expected one or more values on right side of variadic operator expression"
+}
+
+public func findOperators<V, P, C>(in list: [V], getOperator: (V) throws -> Operator<P, C>?) rethrows -> OperatorList<P, C> {
+    var operators: OperatorList<P, C> = []
+
+    for (index, value) in list.enumerated() {
+        if let op = try getOperator(value) {
+            operators.append((op, index))
+        }
+    }
+
+    return operators
 }
 
 func parseOperators<V, P: Comparable, C>(
     in list: [V],
     using operators: OperatorList<P, C>,
-    groupItems: ([V]) -> V, // eg. convert a list of values to a List value
-    groupSingle: (C) -> V // eg. convert a CallFunction to a Call value
+    groupCall: (C) -> V, // eg. convert a CallFunction to a Call value
+    groupList: ([V]) -> V // eg. convert a list of values to a List value
 ) -> Result<V, ParseOperatorsError> {
     // Special case: list with single value isn't parsed
     if list.count == 1 {
-        if let op = operators.first(where: { $0.index == 0 }) {
-            return .success(groupSingle(op.operator.call))
+        if let op = operators.first {
+            return .success(groupCall(op.operator.call))
         } else {
             return .success(list[0])
         }
@@ -150,12 +156,12 @@ func parseOperators<V, P: Comparable, C>(
         func group(_ items: [V]) -> V {
             items.count == 1
                 ? items[0]
-                : groupItems(items)
+                : groupList(items)
         }
 
         let leftItems = Array(list[0..<op.index])
         guard !leftItems.isEmpty else {
-            return .failure(.missingVariadidLeft)
+            return .failure(.missingVariadicLeft)
         }
         let left = group(leftItems)
 
@@ -167,9 +173,9 @@ func parseOperators<V, P: Comparable, C>(
 
         // Transform the expression into prefix notation, substituting the
         // operator with its defined callable value
-        let transformed = [groupSingle(op.operator.call), left, right]
+        let transformed = [groupCall(op.operator.call), left, right]
 
-        return .success(groupItems(transformed))
+        return .success(groupList(transformed))
     } else if !binaryOperators.isEmpty {
         let op = getHighest(binaryOperators)
 
@@ -183,17 +189,17 @@ func parseOperators<V, P: Comparable, C>(
 
         // Transform the expression into prefix notation, substituting the
         // operator with its defined callable value
-        let transformed = groupItems([groupSingle(op.operator.call), left, right])
+        let transformed = groupList([groupCall(op.operator.call), left, right])
 
         // Substitute the binary operator expression with the transformed value
         let before = list[0..<(op.index - 1)]
         let after = list[(op.index + 2)...]
         let result = Array(before + [transformed] + after)
 
-        return .success(groupItems(result))
+        return .success(groupList(result))
     } else {
         // The list contains no operators
-        return .success(groupItems(list))
+        return .success(groupList(list))
     }
 }
 
