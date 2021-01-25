@@ -115,11 +115,9 @@ internal func registerOperator<C>(_ op: Operator<C>, precedence: Operator<C>.Pre
 
 public extension Environment {
     mutating func registerOperator(_ op: Operator<CallFunction>, precedence: Operator<CallFunction>.Precedence) throws {
-        let result = WippleLib.registerOperator(op, precedence: precedence, in: &self.operatorsByPrecedence)
-
-        if case let .failure(error) = result {
-            throw ProgramError(error.rawValue)
-        }
+        try WippleLib.registerOperator(op, precedence: precedence, in: &self.operatorsByPrecedence)
+            .mapError { ProgramError($0.rawValue) }
+            .get()
     }
 }
 
