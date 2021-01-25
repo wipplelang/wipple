@@ -31,7 +31,7 @@ public func initializeList(_ env: inout Environment) {
             let list = value as! List
 
             let operators = try findOperators(in: list, &env)
-            let parsed = try parseOperators(in: list, using: operators)
+            let parsed = try parseOperators(in: list, operators: operators, env)
 
             return try parsed.evaluate(&env)
         }

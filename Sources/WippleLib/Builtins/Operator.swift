@@ -5,31 +5,30 @@ extension Trait.ID {
 }
 
 public extension Trait {
-    static func `operator`(_ op: Operator<Decimal, CallFunction>) -> Trait {
+    static func `operator`(_ op: Operator<CallFunction>) -> Trait {
         Trait(id: .operator) { _ in
             op
         }
     }
 
-    static func `operator`(precedence: Decimal, arity: Operator<Decimal, CallFunction>.Arity, associativity: Operator<Decimal, CallFunction>.Associativity, call: @escaping CallFunction) -> Trait {
-        self.operator(Operator(precedence: precedence, arity: arity, associativity: associativity, call: call))
+    static func `operator`(arity: Operator<CallFunction>.Arity, associativity: Operator<CallFunction>.Associativity, call: @escaping CallFunction) -> Trait {
+        self.operator(Operator(arity: arity, associativity: associativity, call: call))
     }
 }
 
 public extension Value {
-    func operatorValue(_ env: inout Environment) throws -> Operator<Decimal, CallFunction> {
-        try Trait.find(.operator, in: self, &env).value(&env) as! Operator<Decimal, CallFunction>
+    func operatorValue(_ env: inout Environment) throws -> Operator<CallFunction> {
+        try Trait.find(.operator, in: self, &env).value(&env) as! Operator<CallFunction>
     }
 }
 
-public struct Operator<Precedence: Comparable, Call> {
-    public var precedence: Precedence
+public struct Operator<Call>: Identifiable {
+    public var id = UUID()
     public var arity: Arity
     public var associativity: Associativity
     public var call: Call
 
-    public init(precedence: Precedence, arity: Arity, associativity: Associativity, call: Call) {
-        self.precedence = precedence
+    public init(arity: Arity, associativity: Associativity, call: Call) {
         self.arity = arity
         self.associativity = associativity
         self.call = call
@@ -44,18 +43,96 @@ public struct Operator<Precedence: Comparable, Call> {
         case left
         case right
     }
+
+    public enum Precedence {
+        case highest
+        case lowest
+        case sameAs(Operator<Call>)
+        case higherThan(Operator<Call>)
+        case lowerThan(Operator<Call>)
+    }
+}
+
+extension Operator: Hashable {
+    public static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.id == rhs.id
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(self.id)
+    }
+}
+
+public typealias OperatorsByPrecedence<C> = [Set<Operator<C>>]
+
+internal enum RegisterOperatorError: String, Error {
+    case differentArities = "Cannot relate to the precedence of an operator with a different arity"
+}
+
+internal func registerOperator<C>(_ op: Operator<C>, precedence: Operator<C>.Precedence, in operatorsByPrecedence: inout OperatorsByPrecedence<C>) -> Result<(), RegisterOperatorError> {
+    // Ensure the operators are the same arity
+    switch precedence {
+    case let .sameAs(other), let .higherThan(other), let .lowerThan(other):
+        guard op.arity == other.arity else {
+            return .failure(.differentArities)
+        }
+    default:
+        break
+    }
+
+    func prepend() {
+        operatorsByPrecedence.insert([op], at: 0)
+    }
+
+    func append() {
+        operatorsByPrecedence.append([op])
+    }
+
+    func tryInserting(_ other: Operator<C>, at relativeIndex: Int, else prependOrAppend: () -> Void) {
+        let index = operatorsByPrecedence.firstIndex(where: { $0.contains(other) })! + relativeIndex
+        if operatorsByPrecedence.indices.contains(index) {
+            operatorsByPrecedence[index].insert(op)
+        } else {
+            prependOrAppend()
+        }
+    }
+
+    switch precedence {
+    case .highest:
+        prepend()
+    case .lowest:
+        append()
+    case let .sameAs(other):
+        tryInserting(other, at: 0, else: { fatalError("Unreachable") })
+    case let .higherThan(other):
+        tryInserting(other, at: -1, else: prepend)
+    case let .lowerThan(other):
+        tryInserting(other, at: 1, else: append)
+    }
+
+    return .success(())
+}
+
+public extension Environment {
+    mutating func registerOperator(_ op: Operator<CallFunction>, precedence: Operator<CallFunction>.Precedence) throws {
+        let result = WippleLib.registerOperator(op, precedence: precedence, in: &self.operatorsByPrecedence)
+
+        if case let .failure(error) = result {
+            throw ProgramError(error.rawValue)
+        }
+    }
 }
 
 // MARK: - Operator parsing
 
-public func findOperators(in list: [Value], _ env: inout Environment) throws -> OperatorList<Decimal, CallFunction> {
+public func findOperators(in list: [Value], _ env: inout Environment) throws -> OperatorList<CallFunction> {
     try findOperators(in: list, getOperator: { value in
-        var op: Operator<Decimal, CallFunction>?
+        var op: Operator<CallFunction>?
 
         @discardableResult
         func getOperator(_ value: Value) throws -> Bool {
             if let operatorTrait = try Trait.find(.operator, ifPresentIn: value, &env) {
-                let operatorValue = try operatorTrait.value(&env) as! Operator<Decimal, CallFunction>
+                let operatorValue = try operatorTrait.value(&env) as! Operator<CallFunction>
                 op = operatorValue
                 return true
             }
@@ -72,10 +149,11 @@ public func findOperators(in list: [Value], _ env: inout Environment) throws -> 
     })
 }
 
-public func parseOperators(in list: [Value], using operators: OperatorList<Decimal, CallFunction>) throws -> Value {
+public func parseOperators(in list: [Value], operators: OperatorList<CallFunction>, _ env: Environment) throws -> Value {
     let result = parseOperators(
         in: list,
-        using: operators,
+        operatorsInList: operators,
+        operatorsByPrecedence: env.operatorsByPrecedence,
         groupCall: { Value.assoc(.call($0)) },
         groupList: { Value.assoc(.list($0)) }
     )
@@ -88,17 +166,18 @@ public func parseOperators(in list: [Value], using operators: OperatorList<Decim
     }
 }
 
-public typealias OperatorList<Precedence: Comparable, Call> = [(operator: Operator<Precedence, Call>, index: Int)]
+public typealias OperatorList<Call> = [(operator: Operator<Call>, index: Int)]
 
 enum ParseOperatorsError: String, Error, Equatable {
+    case multipleOperatorsWithSamePrecedence = "Found multiple operators with the same precedence; group the expression into lists to disambiguate"
     case missingBinaryLeft = "Expected value on left side of binary operator expression"
     case missingBinaryRight = "Expected value on right side of binary operator expression"
     case missingVariadicLeft = "Expected one or more values on left side of variadic operator expression"
     case missingVariadicRight = "Expected one or more values on right side of variadic operator expression"
 }
 
-public func findOperators<V, P, C>(in list: [V], getOperator: (V) throws -> Operator<P, C>?) rethrows -> OperatorList<P, C> {
-    var operators: OperatorList<P, C> = []
+public func findOperators<V, C>(in list: [V], getOperator: (V) throws -> Operator<C>?) rethrows -> OperatorList<C> {
+    var operators: OperatorList<C> = []
 
     for (index, value) in list.enumerated() {
         if let op = try getOperator(value) {
@@ -109,29 +188,46 @@ public func findOperators<V, P, C>(in list: [V], getOperator: (V) throws -> Oper
     return operators
 }
 
-func parseOperators<V, P: Comparable, C>(
+func parseOperators<V, C>(
     in list: [V],
-    using operators: OperatorList<P, C>,
+    operatorsInList: OperatorList<C>,
+    operatorsByPrecedence: OperatorsByPrecedence<C>,
     groupCall: (C) -> V, // eg. convert a CallFunction to a Call value
     groupList: ([V]) -> V // eg. convert a list of values to a List value
 ) -> Result<V, ParseOperatorsError> {
+    var operatorsInList = operatorsInList
+
     // Special case: list with single value isn't parsed
     if list.count == 1 {
-        if let op = operators.first {
+        if let op = operatorsInList.first {
             return .success(groupCall(op.operator.call))
         } else {
             return .success(list[0])
         }
     }
 
-    var operators = operators
-    let partition = operators.partition(by: { $0.operator.arity == .variadic })
-    let (binaryOperators, variadicOperators) = (Array(operators[..<partition]), Array(operators[partition...]))
+    // Ensure there are no operators with the same precedence (ambiguous)
+    guard operatorsByPrecedence.allSatisfy({ operators in
+        operators.intersection(operatorsInList.map(\.operator)).count <= 1
+    }) else {
+        return .failure(.multipleOperatorsWithSamePrecedence)
+    }
 
-    func getHighest(_ ops: OperatorList<P, C>) -> OperatorList<P, C>.Element {
+    let partition = operatorsInList.partition(by: { $0.operator.arity == .variadic })
+    let (binaryOperators, variadicOperators) = (Array(operatorsInList[..<partition]), Array(operatorsInList[partition...]))
+
+    func getHighest(_ ops: OperatorList<C>) -> OperatorList<C>.Element {
+        func index(of op: Operator<C>) -> Int {
+            guard let precedence = operatorsByPrecedence.firstIndex(where: { $0.contains(op) }) else {
+                fatalError("Operator \(op) is not registered")
+            }
+
+            return precedence
+        }
+
         // Select consecutive instances of the operator with the highest precedence
         let highestPrecedence = ops
-            .sorted(by: { $0.operator.precedence > $1.operator.precedence })
+            .sorted { index(of: $0.operator) < index(of: $1.operator) }
             .take { a, b in
                 guard let b = b else { return true }
 

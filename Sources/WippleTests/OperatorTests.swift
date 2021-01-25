@@ -4,59 +4,103 @@ import XCTest
 
 class OperatorTests: WippleTestCase {
     fileprivate static let operators = [
+        // base operator
         ":": Operator(
-            precedence: 1,
             arity: .variadic,
             associativity: .right,
             call: ":"
         ),
+
+        "->": Operator(
+            arity: .variadic,
+            associativity: .right,
+            call: "->"
+        ),
+
+        "+": Operator(
+            arity: .binary,
+            associativity: .left,
+            call: "+"
+        ),
+
+        "-": Operator(
+            arity: .binary,
+            associativity: .left,
+            call: "-"
+        ),
     ]
 
-    func testOperatorParsing() {
-        // TODO: Test the following cases:
-        // (setting up test coverage might be a good idea)
-        // (instead of writing lots of code for each test case, write a
-        // function that accepts strings like below)
+    fileprivate static let operatorsByPrecedence: [Set<Operator<String>>] = {
+        var p = [Set<Operator<String>>]()
 
-        // INPUT            OUTPUT
+        try! registerOperator(operators[":"]!, precedence: .lowest, in: &p).get()
+        try! registerOperator(operators["->"]!, precedence: .higherThan(operators[":"]!), in: &p).get()
+        try! registerOperator(operators["+"]!, precedence: .highest, in: &p).get()
+        try! registerOperator(operators["-"]!, precedence: .sameAs(operators["+"]!), in: &p).get()
 
-        // +                +
+        return p
+    }()
+
+    func testRegistering() {
+        XCTAssertEqual(Self.operatorsByPrecedence, [
+            [
+                Self.operators["+"]!,
+                Self.operators["-"]!,
+            ],
+            [
+                Self.operators["->"]!,
+            ],
+            [
+                Self.operators[":"]!,
+            ],
+        ])
+    }
+
+    func testParsing() {
+        //                  +
         test("+",           .success(.c("+")))
 
-        // a + b            (+ a b)
-        test("a + b",       .success(.l([.c("+"), .n("a"), .n("b")])))
+        //                  ((+ a b))
+        test("a + b",       .success(.l(.l(.c("+"), .n("a"), .n("b")))))
 
-        // a + b + c        (+ (+ a b) c)
-        test("a + b + c",   .success(.l(.c("+"), .l(.c("+"), .n("a"), .n("b")), .n("c"))))
-
-        // a -> b -> c      (-> a (-> b c))
-        test("a -> b -> c", .success(.l(.c("->"), .n("a"), .l(.c("->"), .n("b"), .n("c")))))
-
-        // a b -> c         (-> (a b) c)
+        //                  (-> (a b) c)
         test("a b -> c",    .success(.l(.c("->"), .l(.n("a"), .n("b")), .n("c"))))
 
-        // a -> b c         (-> a (b c))
+        //                  (-> a (b c))
         test("a -> b c",    .success(.l(.c("->"), .n("a"), .l(.n("b"), .n("c")))))
+    }
 
-        // a -> b + c       (-> a (+ b c))
-        test("a -> b c",    .success(.l(.c("->"), .n("a"), .l(.c("+"), .n("b"), .n("c")))))
+    func testPrecedence() {
+        #warning("TODO: Test Precedence")
+    }
 
-        // a + b -> c       (-> (+ a b) c)
-        test("a + b -> c",  .success(.l(.c("->"), .l(.c("+"), .n("a"), .n("b")), .n("c"))))
+    func testAssociativity() {
+        //                  ((+ a b) + c)
+        test("a + b + c",   .success(.l(.l(.c("+"), .n("a"), .n("b")), .n("+"), .n("c"))))
 
-        // a +              ParseOperatorsError.missingBinaryRight
+        //                  (-> a (b -> c))
+        test("a -> b -> c", .success(.l(.c("->"), .n("a"), .l(.n("b"), .n("->"), .n("c")))))
+
+        //                  (-> a (b + c))
+        test("a -> b + c",  .success(.l(.c("->"), .n("a"), .l(.n("b"), .n("+"), .n("c")))))
+
+        //                  (-> (a + b) c)
+        test("a + b -> c",  .success(.l(.c("->"), .l(.n("a"), .n("+"), .n("b")), .n("c"))))
+    }
+
+    // TODO: In the future, treat these errors as partial application instead
+    func testPartialApplication() {
+        //                  ParseOperatorsError.missingBinaryRight
         test("a +",         .failure(.missingBinaryRight))
 
-        // + a              ParseOperatorsError.missingBinaryLeft
+        //                  ParseOperatorsError.missingBinaryLeft
         test("+ a",         .failure(.missingBinaryLeft))
 
-        // f ->             ParseOperatorsError.missingVariadicRight
+        //                  ParseOperatorsError.missingVariadicRight
         test("f ->",        .failure(.missingVariadicRight))
 
-        // -> f             ParseOperatorsError.missingVariadicLeft
+        //                  ParseOperatorsError.missingVariadicLeft
         test("-> f",        .failure(.missingVariadicLeft))
-
-        // TODO: In the future, treat the four errors above as partial applications instead
     }
 }
 
@@ -72,9 +116,9 @@ private enum TestResult: Equatable, CustomStringConvertible {
     var description: String {
         switch self {
         case let .n(n):
-            return "#\(n)"
+            return "\(n)"
         case let .c(n):
-            return "@\(n)"
+            return "\(n)"
         case let .l(list):
             return "(\(list.map(\.description).joined(separator: " ")))"
         }
@@ -90,7 +134,8 @@ private func test(_ input: String, _ expected: Result<TestResult, ParseOperators
 
     let result = parseOperators(
         in: list.map(TestResult.n),
-        using: operators,
+        operatorsInList: operators,
+        operatorsByPrecedence: OperatorTests.operatorsByPrecedence,
         groupCall: TestResult.c,
         groupList: TestResult.l
     )
