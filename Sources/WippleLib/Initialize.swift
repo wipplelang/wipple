@@ -9,4 +9,5 @@ public func initialize(_ env: inout Environment) {
     initializeName(&env)
     initializeNumber(&env)
     initializeQuoted(&env)
+    initializeTraitConstructor(&env)
 }

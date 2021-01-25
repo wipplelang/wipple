@@ -38,8 +38,12 @@ public func initializeQuoted(_ env: inout Environment) {
     env.addConformance(
         derivedTraitID: .evaluate,
         validation: Trait.validation(for: .quoted),
-        deriveTraitValue: { value, env in
-            value
+        deriveTraitValue: { value, env -> EvaluateFunction in
+            let quotedValue = value as! Value
+
+            return { env in
+                quotedValue
+            }
         }
     )
 }

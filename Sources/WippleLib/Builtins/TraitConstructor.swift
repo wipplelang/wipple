@@ -22,3 +22,16 @@ extension Value {
         try Trait.find(.traitConstructor, in: self, &env).value(&env) as! TraitConstructor
     }
 }
+
+// MARK: - Initialize
+
+func initializeTraitConstructor(_ env: inout Environment) {
+    // Trait ::= Display
+    env.addConformance(
+        derivedTraitID: .display,
+        validation: Trait.validation(for: .traitConstructor),
+        deriveTraitValue: { value, env in
+            "<trait>"
+        }
+    )
+}

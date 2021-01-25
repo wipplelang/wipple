@@ -27,13 +27,15 @@ public func initializeList(_ env: inout Environment) {
     env.addConformance(
         derivedTraitID: .evaluate,
         validation: Trait.validation(for: .list),
-        deriveTraitValue: { value, env in
+        deriveTraitValue: { value, env -> EvaluateFunction in
             let list = value as! List
 
-            let operators = try findOperators(in: list, &env)
-            let parsed = try parseOperators(in: list, operators: operators, env)
+            return { env in
+                let operators = try findOperators(in: list, &env)
+                let parsed = try parseOperators(in: list, operators: operators, env)
 
-            return try parsed.evaluate(&env)
+                return try parsed.evaluate(&env)
+            }
         }
     )
 
