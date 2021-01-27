@@ -16,15 +16,17 @@ public extension Trait {
 
 public extension Value {
     func callValue(_ env: inout Environment) throws -> CallFunction {
-        try Trait.find(.call, in: self, &env).value(&env) as! CallFunction
+        try Trait.value(.call, in: self, &env)
+    }
+
+    func callValueIfPresent(_ env: inout Environment) throws -> CallFunction? {
+        try Trait.value(.call, ifPresentIn: self, &env)
     }
 
     func call(with parameter: Value, _ env: inout Environment) throws -> Value {
-        guard let callTrait = try Trait.find(.call, ifPresentIn: self, &env) else {
+        guard let call = try self.callValueIfPresent(&env) else {
             throw ProgramError("Cannot call this value because it does not have the Call trait")
         }
-
-        let call = try callTrait.value(&env) as! CallFunction
 
         return try call(parameter, &env)
     }

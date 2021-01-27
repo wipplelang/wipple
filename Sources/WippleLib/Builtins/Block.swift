@@ -20,17 +20,21 @@ public extension Trait {
 
 public extension Value {
     func blockValue(_ env: inout Environment) throws -> Block {
-        try Trait.find(.block, in: self, &env).value(&env) as! Block
+        try Trait.value(.block, in: self, &env)
+    }
+
+    func blockValueIfPresent(_ env: inout Environment) throws -> Block? {
+        try Trait.value(.block, ifPresentIn: self, &env)
     }
 }
 
 // MARK: - Initialize
 
 public func initializeBlock(_ env: inout Environment) {
-    // Block ::= Display
+    // Block ::= Text
     // TODO: Implement in Wipple code
     env.addConformance(
-        derivedTraitID: .display,
+        derivedTraitID: .text,
         validation: Trait.validation(for: .block),
         deriveTraitValue: { value, env in
             "<block>"

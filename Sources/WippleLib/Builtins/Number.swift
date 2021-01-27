@@ -14,19 +14,23 @@ public extension Trait {
 
 public extension Value {
     func numberValue(_ env: inout Environment) throws -> Decimal {
-        try Trait.find(.number, in: self, &env).value(&env) as! Decimal
+        try Trait.value(.number, in: self, &env)
+    }
+
+    func numberValueIfPresent(_ env: inout Environment) throws -> Decimal? {
+        try Trait.value(.number, ifPresentIn: self, &env)
     }
 }
 
 // MARK: - Initialize
 
 public func initializeNumber(_ env: inout Environment) {
-    // Number ::= Display
+    // Number ::= Text
     env.addConformance(
-        derivedTraitID: .display,
+        derivedTraitID: .text,
         validation: Trait.validation(for: .number),
         deriveTraitValue: { number, env in
-            return String(describing: number as! Decimal)
+            String(describing: number as! Decimal)
         }
     )
 }

@@ -1,0 +1,34 @@
+import Foundation
+
+func initializeEmpty(_ env: inout Environment) {
+    // _ : <empty value>
+    env.variables["_"] = Value()
+
+    let emptyValidation: Validation = { value, env in
+        let value = value as! Value
+
+        return value.traits.isEmpty
+            ? .valid(newValue: value)
+            : .invalid
+    }
+
+    // Allow use of '_' as a catch-all validation that returns its input
+    env.addConformance(
+        derivedTraitID: .validationContainer,
+        validation: emptyValidation,
+        deriveTraitValue: { value, env -> Validation in
+            return { value, env in
+                .valid(newValue: value)
+            }
+        }
+    )
+
+    // <empty value> ::= Text
+    env.addConformance(
+        derivedTraitID: .text,
+        validation: emptyValidation,
+        deriveTraitValue: { value, env -> Text in
+            "<empty value>"
+        }
+    )
+}

@@ -16,21 +16,25 @@ public extension Trait {
 
 public extension Value {
     func quotedValue(_ env: inout Environment) throws -> Quoted {
-        try Trait.find(.quoted, in: self, &env).value(&env) as! Quoted
+        try Trait.value(.quoted, in: self, &env)
+    }
+
+    func quotedValueIfPresent(_ env: inout Environment) throws -> Quoted? {
+        try Trait.value(.quoted, ifPresentIn: self, &env)
     }
 }
 
 // MARK: - Initialize
 
 public func initializeQuoted(_ env: inout Environment) {
-    // (Quoted and Display) ::= Display
+    // (Quoted and Text) ::= Text
     env.addConformance(
-        derivedTraitID: .display,
-        validation: Trait.validation(for: .quoted) && Trait.validation(for: .display),
+        derivedTraitID: .text,
+        validation: Trait.validation(for: .quoted) && Trait.validation(for: .text),
         deriveTraitValue: { value, env in
-            let display = value as! String
+            let text = value as! Text
 
-            return "'\(display)"
+            return "'\(text)"
         }
     )
 

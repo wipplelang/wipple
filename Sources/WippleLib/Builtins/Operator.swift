@@ -14,7 +14,11 @@ public extension Trait {
 
 public extension Value {
     func operatorValue(_ env: inout Environment) throws -> Operator {
-        try Trait.find(.operator, in: self, &env).value(&env) as! Operator
+        try Trait.value(.operator, in: self, &env)
+    }
+
+    func operatorValueIfPresent(_ env: inout Environment) throws -> Operator? {
+        try Trait.value(.operator, ifPresentIn: self, &env)
     }
 }
 
@@ -166,8 +170,7 @@ func getOperator(_ value: Value, _ env: inout Environment) throws -> Operator? {
 
     @discardableResult
     func getOperator(_ value: Value) throws -> Bool {
-        if let operatorTrait = try Trait.find(.operator, ifPresentIn: value, &env) {
-            let operatorValue = try operatorTrait.value(&env) as! Operator
+        if let operatorValue = try value.operatorValueIfPresent(&env) {
             op = operatorValue
             return true
         }
@@ -175,9 +178,12 @@ func getOperator(_ value: Value, _ env: inout Environment) throws -> Operator? {
         return false
     }
 
-    if !(try getOperator(value)), try Trait.check(.name, isPresentIn: value, &env) {
-        let evaluatedValue = try value.evaluate(&env)
-        try getOperator(evaluatedValue)
+    if
+        !(try getOperator(value)),
+        let name = try value.nameValueIfPresent(&env),
+        let variable = env.variables[name]
+    {
+        try getOperator(variable)
     }
 
     return op

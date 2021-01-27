@@ -14,6 +14,10 @@ public extension Trait {
 
 public extension Value {
     func validationContainerValue(_ env: inout Environment) throws -> Validation {
-        try Trait.find(.validationContainer, in: self, &env).value(&env) as! Validation
+        try Trait.value(.validationContainer, in: self, &env)
+    }
+
+    func validationContainerValueIfPresent(_ env: inout Environment) throws -> Validation? {
+        try Trait.value(.validationContainer, ifPresentIn: self, &env)
     }
 }

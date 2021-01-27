@@ -85,6 +85,15 @@ public extension Trait {
         return trait
     }
 
+    static func value<T>(_ id: Self.ID, in value: Value, _ env: inout Environment) throws -> T {
+        try Trait.find(id, in: value, &env).value(&env) as! T
+    }
+
+    static func value<T>(_ id: Trait.ID, ifPresentIn value: Value, _ env: inout Environment) throws -> T? {
+        try Trait.find(id, ifPresentIn: value, &env)
+            .map { try $0.value(&env) as! T }
+    }
+
     /// Check whether a trait is present in a value or derivable via a
     /// conformance
     static func check(_ id: Self.ID, isPresentIn value: Value, _ env: inout Environment) throws -> Bool {

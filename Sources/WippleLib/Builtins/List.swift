@@ -16,7 +16,11 @@ public extension Trait {
 
 public extension Value {
     func listValue(_ env: inout Environment) throws -> List {
-        try Trait.find(.list, in: self, &env).value(&env) as! List
+        try Trait.value(.list, in: self, &env)
+    }
+
+    func listValueIfPresent(_ env: inout Environment) throws -> List? {
+        try Trait.value(.list, ifPresentIn: self, &env)
     }
 }
 
@@ -50,23 +54,23 @@ public func initializeList(_ env: inout Environment) {
         }
     )
 
-    // (List and (each Display)) ::= Display
+    // (List and (each Text)) ::= Text
     // TODO: Write this in Wipple code
     env.addConformance(
-        derivedTraitID: .display,
+        derivedTraitID: .text,
         validation: Trait.validation(for: .list) && { value, env in
             let list = value as! List
 
-            var displays: [String] = []
+            var texts: [String] = []
             for value in list {
-                guard let display = try Trait.find(.display, ifPresentIn: value, &env) else {
+                guard let text = try value.textValueIfPresent(&env) else {
                     return .invalid
                 }
 
-                displays.append(try display.value(&env) as! String)
+                texts.append(text)
             }
 
-            return .valid(newValue: displays)
+            return .valid(newValue: texts)
         },
         deriveTraitValue: { value, env in
             let displays = value as! [String]

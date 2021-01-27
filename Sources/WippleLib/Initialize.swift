@@ -15,7 +15,19 @@ public func initialize(_ env: inout Environment) throws {
 
     let assignmentOperator = Operator(
         arity: .variadic { left, right, env in
-            fatalError("TODO")
+            func group(_ list: List) -> Value {
+                list.count == 1 ? list[0] : Value.assoc(.list(list))
+            }
+
+            guard let assign = try group(left).assignValueIfPresent(&env) else {
+                throw ProgramError("Cannot assign to this value because it does not have the Assign trait")
+            }
+
+            let right = try group(right).evaluate(&env)
+
+            try assign(right, &env)
+
+            return Value()
         },
         associativity: .right
     )

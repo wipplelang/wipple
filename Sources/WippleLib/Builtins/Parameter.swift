@@ -16,6 +16,10 @@ public extension Trait {
 
 public extension Value {
     func parameterValue(_ env: inout Environment) throws -> DeclareParameterFunction {
-        try Trait.find(.parameter, in: self, &env).value(&env) as! DeclareParameterFunction
+        try Trait.value(.parameter, in: self, &env)
+    }
+
+    func parameterValueIfPresent(_ env: inout Environment) throws -> DeclareParameterFunction? {
+        try Trait.value(.parameter, ifPresentIn: self, &env)
     }
 }

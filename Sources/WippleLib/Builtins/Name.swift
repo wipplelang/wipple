@@ -16,7 +16,37 @@ public extension Trait {
 
 public extension Value {
     func nameValue(_ env: inout Environment) throws -> Name {
-        try Trait.find(.name, in: self, &env).value(&env) as! Name
+        try Trait.value(.name, in: self, &env)
+    }
+
+    func nameValueIfPresent(_ env: inout Environment) throws -> Name? {
+        try Trait.value(.name, ifPresentIn: self, &env)
+    }
+}
+
+// MARK: - Assign
+
+public typealias AssignFunction = (Value, inout Environment) throws -> Void
+
+extension Trait.ID {
+    static let assign = Self(debugLabel: "Assign")
+}
+
+public extension Trait {
+    static func assign(_ assign: @escaping AssignFunction) -> Trait {
+        Trait(id: .assign) { _ in
+            assign
+        }
+    }
+}
+
+public extension Value {
+    func assignValue(_ env: inout Environment) throws -> AssignFunction {
+        try Trait.value(.assign, in: self, &env)
+    }
+
+    func assignValueIfPresent(_ env: inout Environment) throws -> AssignFunction? {
+        try Trait.value(.assign, ifPresentIn: self, &env)
     }
 }
 
@@ -44,9 +74,20 @@ public extension Value {
 
 func initializeName(_ env: inout Environment) {
     // Name : trait
-    env.variables["Name"] = Value.assoc(.traitConstructor(.name) { value, env in
-        throw ProgramError("Cannot explicitly define the Name trait on a value")
-    })
+    env.variables["Name"] = Value.assoc(.traitConstructor(.name, validation: Trait.validation(for: .name)))
+
+    // Name ::= Assign
+    env.addConformance(
+        derivedTraitID: .assign,
+        validation: Trait.validation(for: .name),
+        deriveTraitValue: { value, env -> AssignFunction in
+            let name = value as! Name
+
+            return { value, env in
+                env.variables[name] = value
+            }
+        }
+    )
 
     // Name ::= Evaluate
     env.addConformance(
@@ -71,7 +112,7 @@ func initializeName(_ env: inout Environment) {
 
     // Name ::= Display
     env.addConformance(
-        derivedTraitID: .display,
+        derivedTraitID: .text,
         validation: Trait.validation(for: .name),
         deriveTraitValue: { value, env in
             value as! Name

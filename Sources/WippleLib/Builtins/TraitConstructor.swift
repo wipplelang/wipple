@@ -2,7 +2,7 @@ import Foundation
 
 public struct TraitConstructor {
     public var id: Trait.ID
-    public var check: (Value, inout Environment) throws -> Bool
+    public var validation: Validation
 }
 
 extension Trait.ID {
@@ -10,25 +10,29 @@ extension Trait.ID {
 }
 
 extension Trait {
-    static func traitConstructor(_ id: Trait.ID, check: @escaping (Value, inout Environment) throws -> Bool) -> Trait {
+    static func traitConstructor(_ id: Trait.ID, validation: @escaping Validation) -> Trait {
         Trait(id: .traitConstructor) { _ in
-            TraitConstructor(id: id, check: check)
+            TraitConstructor(id: id, validation: validation)
         }
     }
 }
 
 extension Value {
     func traitConstructorValue(_ env: inout Environment) throws -> TraitConstructor {
-        try Trait.find(.traitConstructor, in: self, &env).value(&env) as! TraitConstructor
+        try Trait.value(.traitConstructor, in: self, &env)
+    }
+
+    func traitConstructorValueIfPresent(_ env: inout Environment) throws -> TraitConstructor? {
+        try Trait.value(.traitConstructor, ifPresentIn: self, &env)
     }
 }
 
 // MARK: - Initialize
 
 func initializeTraitConstructor(_ env: inout Environment) {
-    // Trait ::= Display
+    // Trait ::= Text
     env.addConformance(
-        derivedTraitID: .display,
+        derivedTraitID: .text,
         validation: Trait.validation(for: .traitConstructor),
         deriveTraitValue: { value, env in
             "<trait>"

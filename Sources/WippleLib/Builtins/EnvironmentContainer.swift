@@ -16,7 +16,11 @@ public extension Trait {
 
 public extension Value {
     func environmentContainerValue(_ env: inout Environment) throws -> Environment {
-        try Trait.find(.environmentContainer, in: self, &env).value(&env) as! Environment
+        try Trait.value(.environmentContainer, in: self, &env)
+    }
+
+    func environmentContainerValueIfPresent(_ env: inout Environment) throws -> Environment? {
+        try Trait.value(.environmentContainer, ifPresentIn: self, &env)
     }
 }
 
@@ -29,9 +33,9 @@ func initializeEnvironmentContainer(_ env: inout Environment) {
         })
         .trait(.computed())
 
-    // Environment ::= Display
+    // Environment ::= Text
     env.addConformance(
-        derivedTraitID: .display,
+        derivedTraitID: .text,
         validation: Trait.validation(for: .environmentContainer),
         deriveTraitValue: { value, env in
             "<environment>"

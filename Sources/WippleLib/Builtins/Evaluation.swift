@@ -15,14 +15,20 @@ public extension Trait {
 }
 
 public extension Value {
-    func evaluate(_ env: inout Environment) throws -> Value {
-        guard let evaluateTrait = try Trait.find(.evaluate, ifPresentIn: self, &env) else {
-            return self
-        }
+    func evaluateValue(_ env: inout Environment) throws -> EvaluateFunction {
+        try Trait.value(.evaluate, in: self, &env)
+    }
 
-        let evaluate = try evaluateTrait.value(&env) as! EvaluateFunction
-        
-        return try evaluate(&env)
+    func evaluateValueIfPresent(_ env: inout Environment) throws -> EvaluateFunction? {
+        try Trait.value(.evaluate, ifPresentIn: self, &env)
+    }
+
+    func evaluateValueWithDefault(_ env: inout Environment) throws -> EvaluateFunction {
+        try self.evaluateValueIfPresent(&env) ?? { _ in self }
+    }
+
+    func evaluate(_ env: inout Environment) throws -> Value {
+        try self.evaluateValueWithDefault(&env)(&env)
     }
 }
 
