@@ -2,6 +2,10 @@ import Foundation
 import XCTest
 @testable import WippleLib
 
+#warning("TODO: Reimplement operator tests")
+
+/*
+
 class OperatorTests: WippleTestCase {
     fileprivate static let operators = [
         // base operator
@@ -142,3 +146,5 @@ private func test(_ input: String, _ expected: Result<TestResult, ParseOperators
 
     XCTAssertEqual(result, expected, file: file, line: line)
 }
+
+*/

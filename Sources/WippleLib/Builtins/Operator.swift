@@ -5,38 +5,32 @@ extension Trait.ID {
 }
 
 public extension Trait {
-    static func `operator`(_ op: Operator<CallFunction>) -> Trait {
+    static func `operator`(_ op: Operator) -> Trait {
         Trait(id: .operator) { _ in
             op
         }
     }
-
-    static func `operator`(arity: Operator<CallFunction>.Arity, associativity: Operator<CallFunction>.Associativity, call: @escaping CallFunction) -> Trait {
-        self.operator(Operator(arity: arity, associativity: associativity, call: call))
-    }
 }
 
 public extension Value {
-    func operatorValue(_ env: inout Environment) throws -> Operator<CallFunction> {
-        try Trait.find(.operator, in: self, &env).value(&env) as! Operator<CallFunction>
+    func operatorValue(_ env: inout Environment) throws -> Operator {
+        try Trait.find(.operator, in: self, &env).value(&env) as! Operator
     }
 }
 
-public struct Operator<Call>: Identifiable {
+public struct Operator: Identifiable {
     public var id = UUID()
     public var arity: Arity
     public var associativity: Associativity
-    public var call: Call
 
-    public init(arity: Arity, associativity: Associativity, call: Call) {
+    public init(arity: Arity, associativity: Associativity) {
         self.arity = arity
         self.associativity = associativity
-        self.call = call
     }
 
     public enum Arity {
-        case binary
-        case variadic
+        case binary((_ left: Value, _ right: Value, inout Environment) throws -> Value)
+        case variadic((_ left: [Value], _ right: [Value], inout Environment) throws -> Value)
     }
 
     public enum Associativity {
@@ -47,9 +41,9 @@ public struct Operator<Call>: Identifiable {
     public enum Precedence {
         case highest
         case lowest
-        case sameAs(Operator<Call>)
-        case higherThan(Operator<Call>)
-        case lowerThan(Operator<Call>)
+        case sameAs(Operator)
+        case higherThan(Operator)
+        case lowerThan(Operator)
     }
 }
 
@@ -63,122 +57,82 @@ extension Operator: Hashable {
     }
 }
 
-public typealias OperatorsByPrecedence<C> = [Set<Operator<C>>]
-
-internal enum RegisterOperatorError: String, Error {
-    case differentArities = "Cannot relate to the precedence of an operator with a different arity"
-}
-
-internal func registerOperator<C>(_ op: Operator<C>, precedence: Operator<C>.Precedence, in operatorsByPrecedence: inout OperatorsByPrecedence<C>) -> Result<(), RegisterOperatorError> {
-    // Ensure the operators are the same arity
-    switch precedence {
-    case let .sameAs(other), let .higherThan(other), let .lowerThan(other):
-        guard op.arity == other.arity else {
-            return .failure(.differentArities)
-        }
-    default:
-        break
-    }
-
-    func prepend() {
-        operatorsByPrecedence.insert([op], at: 0)
-    }
-
-    func append() {
-        operatorsByPrecedence.append([op])
-    }
-
-    func tryInserting(_ other: Operator<C>, at relativeIndex: Int, else prependOrAppend: () -> Void) {
-        let index = operatorsByPrecedence.firstIndex(where: { $0.contains(other) })! + relativeIndex
-        if operatorsByPrecedence.indices.contains(index) {
-            operatorsByPrecedence[index].insert(op)
-        } else {
-            prependOrAppend()
+public extension Operator.Arity {
+    static func binary(call: @escaping CallFunction) -> Self {
+        .binary { left, right, env in
+            let nextCall = try call(left, &env).callValue(&env)
+            return try nextCall(right, &env)
         }
     }
 
-    switch precedence {
-    case .highest:
-        prepend()
-    case .lowest:
-        append()
-    case let .sameAs(other):
-        tryInserting(other, at: 0, else: { fatalError("Unreachable") })
-    case let .higherThan(other):
-        tryInserting(other, at: -1, else: prepend)
-    case let .lowerThan(other):
-        tryInserting(other, at: 1, else: append)
-    }
+    static func variadic(call: @escaping CallFunction) -> Self {
+        .variadic { leftItems, rightItems, env in
+            let left = Value.assoc(.list(leftItems))
+            let nextCall = try call(left, &env).callValue(&env)
 
-    return .success(())
+            let right = Value.assoc(.list(rightItems))
+            return try nextCall(right, &env)
+        }
+    }
 }
+
+public typealias OperatorsByPrecedence = [Set<Operator>]
+public typealias OperatorList = [(operator: Operator, index: Int)]
 
 public extension Environment {
-    mutating func registerOperator(_ op: Operator<CallFunction>, precedence: Operator<CallFunction>.Precedence) throws {
-        try WippleLib.registerOperator(op, precedence: precedence, in: &self.operatorsByPrecedence)
-            .mapError { ProgramError($0.rawValue) }
-            .get()
+    mutating func registerOperator(_ op: Operator, precedence: Operator.Precedence) throws {
+        // Ensure the operators are the same arity
+        switch precedence {
+        case let .sameAs(other), let .higherThan(other), let .lowerThan(other):
+            switch (op.arity, other.arity) {
+            case (.binary, .binary), (.variadic, .variadic):
+                break
+            default:
+                throw ProgramError("Cannot relate to the precedence of an operator with a different arity")
+            }
+        default:
+            break
+        }
+
+        func prepend() {
+            self.operatorsByPrecedence.insert([op], at: 0)
+        }
+
+        func append() {
+            self.operatorsByPrecedence.append([op])
+        }
+
+        func tryInserting(_ other: Operator, at relativeIndex: Int, else prependOrAppend: () -> Void) {
+            let index = self.operatorsByPrecedence.firstIndex(where: { $0.contains(other) })! + relativeIndex
+            if self.operatorsByPrecedence.indices.contains(index) {
+                self.operatorsByPrecedence[index].insert(op)
+            } else {
+                prependOrAppend()
+            }
+        }
+
+        switch precedence {
+        case .highest:
+            prepend()
+        case .lowest:
+            append()
+        case let .sameAs(other):
+            tryInserting(other, at: 0, else: { fatalError("Unreachable") })
+        case let .higherThan(other):
+            tryInserting(other, at: -1, else: prepend)
+        case let .lowerThan(other):
+            tryInserting(other, at: 1, else: append)
+        }
     }
 }
 
 // MARK: - Operator parsing
 
-public func findOperators(in list: [Value], _ env: inout Environment) throws -> OperatorList<CallFunction> {
-    try findOperators(in: list, getOperator: { value in
-        var op: Operator<CallFunction>?
-
-        @discardableResult
-        func getOperator(_ value: Value) throws -> Bool {
-            if let operatorTrait = try Trait.find(.operator, ifPresentIn: value, &env) {
-                let operatorValue = try operatorTrait.value(&env) as! Operator<CallFunction>
-                op = operatorValue
-                return true
-            }
-
-            return false
-        }
-
-        if !(try getOperator(value)), try Trait.check(.name, isPresentIn: value, &env) {
-            let evaluatedValue = try value.evaluate(&env)
-            try getOperator(evaluatedValue)
-        }
-
-        return op
-    })
-}
-
-public func parseOperators(in list: [Value], operators: OperatorList<CallFunction>, _ env: Environment) throws -> Value {
-    let result = parseOperators(
-        in: list,
-        operatorsInList: operators,
-        operatorsByPrecedence: env.operatorsByPrecedence,
-        groupCall: { Value.assoc(.call($0)) },
-        groupList: { Value.assoc(.list($0)) }
-    )
-
-    switch result {
-    case let .success(value):
-        return value
-    case let .failure(error):
-        throw ProgramError(error.rawValue)
-    }
-}
-
-public typealias OperatorList<Call> = [(operator: Operator<Call>, index: Int)]
-
-enum ParseOperatorsError: String, Error, Equatable {
-    case multipleOperatorsWithSamePrecedence = "Found multiple operators with the same precedence; group the expression into lists to disambiguate"
-    case missingBinaryLeft = "Expected value on left side of binary operator expression"
-    case missingBinaryRight = "Expected value on right side of binary operator expression"
-    case missingVariadicLeft = "Expected one or more values on left side of variadic operator expression"
-    case missingVariadicRight = "Expected one or more values on right side of variadic operator expression"
-}
-
-public func findOperators<V, C>(in list: [V], getOperator: (V) throws -> Operator<C>?) rethrows -> OperatorList<C> {
-    var operators: OperatorList<C> = []
+public func findOperators(in list: [Value], _ env: inout Environment) throws -> OperatorList {
+    var operators: OperatorList = []
 
     for (index, value) in list.enumerated() {
-        if let op = try getOperator(value) {
+        if let op = try getOperator(value, &env) {
             operators.append((op, index))
         }
     }
@@ -186,37 +140,80 @@ public func findOperators<V, C>(in list: [V], getOperator: (V) throws -> Operato
     return operators
 }
 
-func parseOperators<V, C>(
-    in list: [V],
-    operatorsInList: OperatorList<C>,
-    operatorsByPrecedence: OperatorsByPrecedence<C>,
-    groupCall: (C) -> V, // eg. convert a CallFunction to a Call value
-    groupList: ([V]) -> V // eg. convert a list of values to a List value
-) -> Result<V, ParseOperatorsError> {
+func getOperator(_ value: Value, _ env: inout Environment) throws -> Operator? {
+    var op: Operator?
+
+    @discardableResult
+    func getOperator(_ value: Value) throws -> Bool {
+        if let operatorTrait = try Trait.find(.operator, ifPresentIn: value, &env) {
+            let operatorValue = try operatorTrait.value(&env) as! Operator
+            op = operatorValue
+            return true
+        }
+
+        return false
+    }
+
+    if !(try getOperator(value)), try Trait.check(.name, isPresentIn: value, &env) {
+        let evaluatedValue = try value.evaluate(&env)
+        try getOperator(evaluatedValue)
+    }
+
+    return op
+}
+
+extension Operator.Arity {
+    func asCallFunction() -> CallFunction {
+        fatalError("TODO")
+    }
+}
+
+func parseOperators(
+    evaluating list: List,
+    operatorsInList: OperatorList,
+    _ env: inout Environment
+) throws -> Value? {
     var operatorsInList = operatorsInList
 
-    // Special case: list with single value isn't parsed
-    if list.count == 1 {
+    if operatorsInList.isEmpty {
+        return nil
+    }
+
+    // Special cases: list with 0/1 values isn't parsed
+    switch list.count {
+    case 0:
+        return nil
+    case 1:
         if let op = operatorsInList.first {
-            return .success(groupCall(op.operator.call))
+            return Value.assoc(.call(op.operator.arity.asCallFunction()))
         } else {
-            return .success(list[0])
+            return list[0]
         }
+    default:
+        break
     }
 
     // Ensure there are no operators with the same precedence (ambiguous)
-    guard operatorsByPrecedence.allSatisfy({ operators in
+    guard env.operatorsByPrecedence.allSatisfy({ operators in
         operators.intersection(operatorsInList.map(\.operator)).count <= 1
     }) else {
-        return .failure(.multipleOperatorsWithSamePrecedence)
+        throw ProgramError("Found multiple operators with the same precedence; group the expression into lists to disambiguate")
     }
 
-    let partition = operatorsInList.partition(by: { $0.operator.arity == .variadic })
+    let partition = operatorsInList.partition(by: {
+        switch $0.operator.arity {
+        case .variadic:
+            return true
+        case .binary:
+            return false
+        }
+    })
+
     let (binaryOperators, variadicOperators) = (Array(operatorsInList[..<partition]), Array(operatorsInList[partition...]))
 
-    func getHighest(_ ops: OperatorList<C>) -> OperatorList<C>.Element {
-        func index(of op: Operator<C>) -> Int {
-            guard let precedence = operatorsByPrecedence.firstIndex(where: { $0.contains(op) }) else {
+    func getHighest(_ ops: OperatorList) -> OperatorList.Element {
+        func index(of op: Operator) -> Int {
+            guard let precedence = env.operatorsByPrecedence.firstIndex(where: { $0.contains(op) }) else {
                 fatalError("Operator \(op) is not registered")
             }
 
@@ -245,55 +242,62 @@ func parseOperators<V, C>(
     if !variadicOperators.isEmpty {
         let op = getHighest(variadicOperators)
 
-        // Group the values on each side -- a single value is left as-is and
-        // multiple values are grouped into a list
-        func group(_ items: [V]) -> V {
-            items.count == 1
-                ? items[0]
-                : groupList(items)
+        guard case let .variadic(call) = op.operator.arity else {
+            fatalError("Unreachable")
         }
 
         let leftItems = Array(list[0..<op.index])
-        guard !leftItems.isEmpty else {
-            return .failure(.missingVariadicLeft)
-        }
-        let left = group(leftItems)
-
         let rightItems = Array(list[(op.index + 1)...])
-        guard !rightItems.isEmpty else {
-            return .failure(.missingVariadicRight)
+
+        if leftItems.isEmpty {
+            // Partially apply the left side
+            return Value.assoc(.call { left, env in
+                guard case let .valid(leftItems) = try Trait.validation(for: .list)(left, &env) else {
+                    throw ProgramError("Partial application of variadic operator expects a list")
+                }
+
+                return try call(leftItems as! List, rightItems, &env)
+            })
         }
-        let right = group(rightItems)
 
-        // Transform the expression into prefix notation, substituting the
-        // operator with its defined callable value
-        let transformed = [groupCall(op.operator.call), left, right]
+        if rightItems.isEmpty {
+            // Partially apply the right side
+            return Value.assoc(.call { right, env in
+                guard case let .valid(rightItems) = try Trait.validation(for: .list)(right, &env) else {
+                    throw ProgramError("Partial application of variadic operator expects a list")
+                }
 
-        return .success(groupList(transformed))
-    } else if !binaryOperators.isEmpty {
+                return try call(leftItems, rightItems as! List, &env)
+            })
+        }
+
+        return try call(leftItems, rightItems, &env)
+    } else {
         let op = getHighest(binaryOperators)
 
+        guard case let .binary(call) = op.operator.arity else {
+            fatalError("Unreachable")
+        }
+
         // Take a single value from each side of the operator
-        guard let left = list[try: op.index - 1] else {
-            return .failure(.missingBinaryLeft)
+        let left = list[try: op.index - 1]
+        let right = list[try: op.index + 1]
+
+        if left == nil {
+            // Partially apply the left side
+            return Value.assoc(.call { left, env in
+                return try call(left, right!, &env)
+            })
         }
-        guard let right = list[try: op.index + 1] else {
-            return .failure(.missingBinaryRight)
+
+        if right == nil {
+            // Partially apply the right side
+            return Value.assoc(.call { right, env in
+                return try call(left!, right, &env)
+            })
         }
 
-        // Transform the expression into prefix notation, substituting the
-        // operator with its defined callable value
-        let transformed = groupList([groupCall(op.operator.call), left, right])
-
-        // Substitute the binary operator expression with the transformed value
-        let before = list[0..<(op.index - 1)]
-        let after = list[(op.index + 2)...]
-        let result = Array(before + [transformed] + after)
-
-        return .success(groupList(result))
-    } else {
-        // The list contains no operators
-        return .success(groupList(list))
+        return try call(left!, right!, &env)
     }
 }
 

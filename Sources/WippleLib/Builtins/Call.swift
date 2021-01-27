@@ -20,6 +20,12 @@ public extension Value {
     }
 
     func call(with parameter: Value, _ env: inout Environment) throws -> Value {
-        try self.callValue(&env)(parameter, &env)
+        guard let callTrait = try Trait.find(.call, ifPresentIn: self, &env) else {
+            throw ProgramError("Cannot call this value because it does not have the Call trait")
+        }
+
+        let call = try callTrait.value(&env) as! CallFunction
+
+        return try call(parameter, &env)
     }
 }

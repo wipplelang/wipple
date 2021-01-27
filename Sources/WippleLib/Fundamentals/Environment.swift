@@ -8,7 +8,7 @@ public struct Environment {
 
     public internal(set) var conformances: [Conformance] = []
 
-    public internal(set) var operatorsByPrecedence: OperatorsByPrecedence<CallFunction> = []
+    public internal(set) var operatorsByPrecedence: OperatorsByPrecedence = []
 
     public var userDefined: [Environment.Key: Value] = [:]
 

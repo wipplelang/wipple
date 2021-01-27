@@ -9,6 +9,7 @@ class WippleTestCase: XCTestCase {
         super.setUp()
 
         self.env = Environment()
-        WippleLib.initialize(&self.env)
+
+        XCTAssertNoThrow(try WippleLib.initialize(&self.env))
     }
 }

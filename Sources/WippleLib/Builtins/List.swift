@@ -32,9 +32,20 @@ public func initializeList(_ env: inout Environment) {
 
             return { env in
                 let operators = try findOperators(in: list, &env)
-                let parsed = try parseOperators(in: list, operators: operators, env)
+                if let parsed = try parseOperators(evaluating: list, operatorsInList: operators, &env) {
+                    return parsed
+                }
 
-                return try parsed.evaluate(&env)
+                guard var result = try list.first?.evaluate(&env) else {
+                    // Empty list evaluates to itself
+                    return Value.assoc(.list(list))
+                }
+
+                for value in list[1...] {
+                    result = try result.call(with: value, &env)
+                }
+
+                return result
             }
         }
     )

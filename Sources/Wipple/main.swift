@@ -11,7 +11,7 @@ struct Options: Codable {
 do {
     let options = try JSONDecoder().decode(Options.self, from: CommandLine.arguments[1].data(using: .utf8)!)
 
-    initialize(&.global)
+    try initialize(&.global)
 
     Environment.global.parse = { code, filePath in
         let output = shell(options.parserPath, filePath ?? "", code)
