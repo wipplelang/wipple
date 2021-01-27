@@ -13,10 +13,6 @@ public func initialize(_ env: inout Environment) throws {
 
     // TODO: TEMPORARY!!! (implement these in Wipple code)
 
-//    let assignmentOperator = Operator(arity: .variadic, associativity: .right) { value, env in
-//        fatalError("TODO")
-//    }
-
     let assignmentOperator = Operator(
         arity: .variadic { left, right, env in
             fatalError("TODO")

@@ -29,8 +29,8 @@ public struct Operator: Identifiable {
     }
 
     public enum Arity {
-        case binary((_ left: Value, _ right: Value, inout Environment) throws -> Value)
-        case variadic((_ left: [Value], _ right: [Value], inout Environment) throws -> Value)
+        case binary((_ left: Value, inout Environment) throws -> (_ right: Value, inout Environment) throws -> Value)
+        case variadic((_ left: [Value], inout Environment) throws -> (_ right: [Value], inout Environment) throws -> Value)
     }
 
     public enum Associativity {
@@ -58,21 +58,42 @@ extension Operator: Hashable {
 }
 
 public extension Operator.Arity {
+    static func binary(_ call: @escaping (_ left: Value, _ right: Value, inout Environment) throws -> Value) -> Self {
+        .binary { left, env in
+            return { right, env in
+                try call(left, right, &env)
+            }
+        }
+    }
+
     static func binary(call: @escaping CallFunction) -> Self {
-        .binary { left, right, env in
+        .binary({ left, env in
             let nextCall = try call(left, &env).callValue(&env)
-            return try nextCall(right, &env)
+
+            return { right, env in
+                return try nextCall(right, &env)
+            }
+        })
+    }
+
+    static func variadic(_ call: @escaping (_ left: [Value], _ right: [Value], inout Environment) throws -> Value) -> Self {
+        .variadic { left, env in
+            return { right, env in
+                try call(left, right, &env)
+            }
         }
     }
 
     static func variadic(call: @escaping CallFunction) -> Self {
-        .variadic { leftItems, rightItems, env in
+        .variadic({ leftItems, env in
             let left = Value.assoc(.list(leftItems))
             let nextCall = try call(left, &env).callValue(&env)
 
-            let right = Value.assoc(.list(rightItems))
-            return try nextCall(right, &env)
-        }
+            return { rightItems, env in
+                let right = Value.assoc(.list(rightItems))
+                return try nextCall(right, &env)
+            }
+        })
     }
 }
 
@@ -164,8 +185,31 @@ func getOperator(_ value: Value, _ env: inout Environment) throws -> Operator? {
 
 extension Operator.Arity {
     func asCallFunction() -> CallFunction {
-        fatalError("TODO")
+        switch self {
+        case let .binary(call):
+            return { left, env in
+                let call = try call(left, &env)
+                return Value.assoc(.call(call))
+            }
+        case let .variadic(call):
+            return { left, env in
+                let call = try call(getItems(left, &env), &env)
+
+                return Value.assoc(.call { right, env in
+                    try call(getItems(right, &env), &env)
+                })
+            }
+        }
     }
+}
+
+
+func getItems(_ list: Value, _ env: inout Environment) throws -> List {
+    guard case let .valid(items) = try Trait.validation(for: .list)(list, &env) else {
+        throw ProgramError("Application of variadic operator requires a list")
+    }
+
+    return items as! List
 }
 
 func parseOperators(
@@ -252,26 +296,24 @@ func parseOperators(
         if leftItems.isEmpty {
             // Partially apply the left side
             return Value.assoc(.call { left, env in
-                guard case let .valid(leftItems) = try Trait.validation(for: .list)(left, &env) else {
-                    throw ProgramError("Partial application of variadic operator expects a list")
-                }
+                let call = try call(getItems(left, &env), &env)
 
-                return try call(leftItems as! List, rightItems, &env)
+                return Value.assoc(.call { right, env in
+                    try call(getItems(right, &env), &env)
+                })
             })
         }
 
         if rightItems.isEmpty {
             // Partially apply the right side
             return Value.assoc(.call { right, env in
-                guard case let .valid(rightItems) = try Trait.validation(for: .list)(right, &env) else {
-                    throw ProgramError("Partial application of variadic operator expects a list")
-                }
-
-                return try call(leftItems, rightItems as! List, &env)
+                Value.assoc(.call { left, env in
+                    try call(getItems(left, &env), &env)(getItems(right, &env), &env)
+                })
             })
         }
 
-        return try call(leftItems, rightItems, &env)
+        return try call(leftItems, &env)(rightItems, &env)
     } else {
         let op = getHighest(binaryOperators)
 
@@ -286,18 +328,18 @@ func parseOperators(
         if left == nil {
             // Partially apply the left side
             return Value.assoc(.call { left, env in
-                return try call(left, right!, &env)
+                try call(left, &env)(right!, &env)
             })
         }
 
         if right == nil {
             // Partially apply the right side
             return Value.assoc(.call { right, env in
-                return try call(left!, right, &env)
+                try call(left!, &env)(right, &env)
             })
         }
 
-        return try call(left!, right!, &env)
+        return try call(left!, &env)(right!, &env)
     }
 }
 
