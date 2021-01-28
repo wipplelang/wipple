@@ -24,7 +24,7 @@ do {
     let result = try parseAndEvaluate(code: options.code, filePath: options.filePath, &fileEnv)
 
     if options.printResult {
-        let display = try result.displayString(&fileEnv)
+        let display = try result.textValueWithDefault(&fileEnv)
         print(display)
     }
 } catch {
