@@ -8,28 +8,28 @@ public extension AST {
             }
 
             return Value(location: self.location)
-                .trait(.block(statements))
+                .add(.block(statements))
         } else if let list = self.list {
             let items = list.map { $0.convertToValue() }
 
             return Value(location: self.location)
-                .trait(.list(items))
+                .add(.list(items))
         } else if let name = self.name {
             return Value(location: self.location)
-                .trait(.name(name))
+                .add(.name(name))
         } else if let text = self.text {
             return Value(location: self.location)
-                .trait(.text(text))
+                .add(.text(text))
         } else if let number = self.number {
             let number = Decimal(string: number)!
 
             return Value(location: self.location)
-                .trait(.number(number))
+                .add(.number(number))
         } else if let quoted = self.quoted?.value {
             let quotedValue = quoted.convertToValue()
 
             return Value(location: self.location)
-                .trait(.quoted(quotedValue))
+                .add(.quoted(quotedValue))
         } else {
             fatalError("Invalid input")
         }

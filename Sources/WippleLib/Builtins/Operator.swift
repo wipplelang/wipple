@@ -90,11 +90,11 @@ public extension Operator.Arity {
 
     static func variadic(call: @escaping CallFunction) -> Self {
         .variadic({ leftItems, env in
-            let left = Value.assoc(.list(leftItems))
+            let left = Value.new(.list(leftItems))
             let nextCall = try call(left, &env).callValue(&env)
 
             return { rightItems, env in
-                let right = Value.assoc(.list(rightItems))
+                let right = Value.new(.list(rightItems))
                 return try nextCall(right, &env)
             }
         })
@@ -195,13 +195,13 @@ extension Operator.Arity {
         case let .binary(call):
             return { left, env in
                 let call = try call(left, &env)
-                return Value.assoc(.call(call))
+                return Value.new(.call(call))
             }
         case let .variadic(call):
             return { left, env in
                 let call = try call(getItems(left, &env), &env)
 
-                return Value.assoc(.call { right, env in
+                return Value.new(.call { right, env in
                     try call(getItems(right, &env), &env)
                 })
             }
@@ -235,7 +235,7 @@ func parseOperators(
         return nil
     case 1:
         if let op = operatorsInList.first {
-            return Value.assoc(.call(op.operator.arity.asCallFunction()))
+            return Value.new(.call(op.operator.arity.asCallFunction()))
         } else {
             return list[0]
         }
@@ -301,10 +301,10 @@ func parseOperators(
 
         if leftItems.isEmpty {
             // Partially apply the left side
-            return Value.assoc(.call { left, env in
+            return Value.new(.call { left, env in
                 let call = try call(getItems(left, &env), &env)
 
-                return Value.assoc(.call { right, env in
+                return Value.new(.call { right, env in
                     try call(getItems(right, &env), &env)
                 })
             })
@@ -312,8 +312,8 @@ func parseOperators(
 
         if rightItems.isEmpty {
             // Partially apply the right side
-            return Value.assoc(.call { right, env in
-                Value.assoc(.call { left, env in
+            return Value.new(.call { right, env in
+                Value.new(.call { left, env in
                     try call(getItems(left, &env), &env)(getItems(right, &env), &env)
                 })
             })
@@ -333,14 +333,14 @@ func parseOperators(
 
         if left == nil {
             // Partially apply the left side
-            return Value.assoc(.call { left, env in
+            return Value.new(.call { left, env in
                 try call(left, &env)(right!, &env)
             })
         }
 
         if right == nil {
             // Partially apply the right side
-            return Value.assoc(.call { right, env in
+            return Value.new(.call { right, env in
                 try call(left!, &env)(right, &env)
             })
         }

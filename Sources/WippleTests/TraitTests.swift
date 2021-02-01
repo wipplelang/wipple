@@ -6,7 +6,7 @@ class TraitTests: WippleTestCase {
     func testDirectlyDefinedTrait() throws {
         let trait = Trait(id: .init()) { _ in Void() }
 
-        let value = Value.assoc(trait)
+        let value = Value.new(trait)
 
         XCTAssertEqual(try Trait.find(trait.id, in: value, &self.env), trait)
     }
@@ -16,8 +16,8 @@ class TraitTests: WippleTestCase {
         let B = Trait(id: .init(debugLabel: "B")) { _ in Void() }
 
         let value = Value
-            .assoc(A)
-            .trait(B)
+            .new(A)
+            .add(B)
 
         self.env.addConformance(
             derivedTraitID: B.id,
@@ -35,7 +35,7 @@ class TraitTests: WippleTestCase {
     func testTraitValidation() throws {
         let n: Decimal = 42
 
-        let value = Value.assoc(.number(n))
+        let value = Value.new(.number(n))
         let validation = Trait.validation(for: .number)
 
         let result = try validation(value, &self.env)

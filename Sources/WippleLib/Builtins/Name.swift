@@ -74,7 +74,7 @@ public extension Value {
 
 func initializeName(_ env: inout Environment) {
     // Name : trait
-    env.variables["Name"] = Value.assoc(.traitConstructor(.name, validation: Trait.validation(for: .name)))
+    env.variables["Name"] = Value.new(.traitConstructor(.name, validation: Trait.validation(for: .name)))
 
     // Name ::= Assign
     env.addConformance(

@@ -33,7 +33,7 @@ public extension Value {
 }
 
 func initializeEvaluation(_ env: inout Environment) {
-    env.variables["eval"] = Value.assoc(.call { input, env in
+    env.variables["eval"] = Value.new(.call { input, env in
         try input.evaluate(&env).evaluate(&env)
     })
 }

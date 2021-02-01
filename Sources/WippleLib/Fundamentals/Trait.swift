@@ -40,11 +40,11 @@ public extension Trait {
 // MARK: - Adding trait to value
 
 public extension Value {
-    static func assoc(_ trait: Trait) -> Value {
-        Value().trait(trait)
+    static func new(_ trait: Trait) -> Value {
+        Value().add(trait)
     }
 
-    func trait(_ trait: Trait) -> Value {
+    func add(_ trait: Trait) -> Value {
         var value = self
         value.traits.insert(trait)
         return value

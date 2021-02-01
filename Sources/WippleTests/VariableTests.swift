@@ -6,7 +6,7 @@ class VariableTests: WippleTestCase {
     func testVariableResolution() throws {
         self.env.variables["foo"] = Value()
 
-        let name = Value.assoc(.name("foo"))
+        let name = Value.new(.name("foo"))
 
         XCTAssertNoThrow(try name.evaluate(&self.env))
     }

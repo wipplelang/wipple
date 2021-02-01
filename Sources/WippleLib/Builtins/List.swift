@@ -42,7 +42,7 @@ public func initializeList(_ env: inout Environment) {
 
                 guard var result = try list.first?.evaluate(&env) else {
                     // Empty list evaluates to itself
-                    return Value.assoc(.list(list))
+                    return Value.new(.list(list))
                 }
 
                 for value in list[1...] {

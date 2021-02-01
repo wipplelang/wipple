@@ -54,9 +54,11 @@ public func initializeBlock(_ env: inout Environment) {
                     // Evaluate each statement as a list
 
                     let list = Value(location: statement.first?.location)
-                        .trait(.list(statement))
+                        .add(.list(statement))
 
                     result = try list.evaluate(&env)
+
+                    print(try list.textValueWithDefault(&env), "==>", try result.textValueWithDefault(&env))
                 }
 
                 return result

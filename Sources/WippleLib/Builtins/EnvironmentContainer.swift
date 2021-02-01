@@ -28,10 +28,10 @@ public extension Value {
 
 func initializeEnvironmentContainer(_ env: inout Environment) {
     env.variables["env!"] = Value
-        .assoc(.evaluate { env in
-            Value.assoc(.environmentContainer(&env))
+        .new(.evaluate { env in
+            Value.new(.environmentContainer(&env))
         })
-        .trait(.computed())
+        .add(.computed())
 
     // Environment ::= Text
     env.addConformance(
