@@ -20,7 +20,7 @@ public func initialize(_ env: inout Environment) throws {
     }
 
     func assign(_ left: [Value], _ right: (inout Environment) throws -> Value, _ env: inout Environment) throws -> Value {
-        guard let assign = try group(left).assignValueIfPresent(&env) else {
+        guard let assign = try group(left).traitIfPresent(.assign, &env) else {
             throw ProgramError("Cannot assign to this value because it does not have the Assign trait")
         }
 
@@ -50,7 +50,7 @@ public func initialize(_ env: inout Environment) throws {
                     throw ProgramError("Expected a trait and a value for the trait")
                 }
 
-                let traitConstructor = try right[0].evaluate(&env).traitConstructorValue(&env)
+                let traitConstructor = try right[0].evaluate(&env).trait(.traitConstructor, &env)
                 let value = try new(traitConstructor, right[1].evaluate(&env), &env)
 
                 return value
@@ -64,16 +64,16 @@ public func initialize(_ env: inout Environment) throws {
 
     // MARK: - 'new' Function
 
-    func new(_ traitConstructor: TraitConstructor, _ value: Value, _ env: inout Environment) throws -> Value {
+    func new(_ traitConstructor: AnyTraitConstructor, _ value: Value, _ env: inout Environment) throws -> Value {
         guard case let .valid(value) = try traitConstructor.validation(value, &env) else {
             throw ProgramError("Cannot use this value to represent this trait")
         }
 
-        return Value.new(Trait(id: traitConstructor.id, value: { _ in value }))
+        return Value.new(Trait(id: traitConstructor.id) { _ in value })
     }
 
     env.variables["new"] = Value.new(.call { input, env in
-        let traitConstructor = try input.traitConstructorValue(&env)
+        let traitConstructor = try input.trait(.traitConstructor, &env)
 
         return Value.new(.call { input, env in
             try new(traitConstructor, input, &env)

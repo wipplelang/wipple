@@ -4,10 +4,8 @@ func initializeEmpty(_ env: inout Environment) {
     // _ : <empty value>
     env.variables["_"] = Value()
 
-    let emptyValidation: Validation = { value, env in
-        let value = value as! Value
-
-        return value.traits.isEmpty
+    let emptyValidation: Validation<Value, Value> = { value, env in
+        value.traits.isEmpty
             ? .valid(newValue: value)
             : .invalid
     }

@@ -1,26 +1,16 @@
 import Foundation
 
-extension Trait.ID {
+extension TraitID where T == Environment {
     static let environmentContainer = Self(debugLabel: "Environment")
 }
 
 public extension Trait {
-    static func environmentContainer(_ env: inout Environment) -> Trait {
+    static func environmentContainer(_ env: inout Environment) -> Trait<Environment> {
         let capturedEnv = env
 
-        return Trait(id: .environmentContainer) { _ in
+        return .init(id: .environmentContainer) { _ in
             capturedEnv
         }
-    }
-}
-
-public extension Value {
-    func environmentContainerValue(_ env: inout Environment) throws -> Environment {
-        try Trait.value(.environmentContainer, in: self, &env)
-    }
-
-    func environmentContainerValueIfPresent(_ env: inout Environment) throws -> Environment? {
-        try Trait.value(.environmentContainer, ifPresentIn: self, &env)
     }
 }
 
@@ -36,7 +26,7 @@ func initializeEnvironmentContainer(_ env: inout Environment) {
     // Environment ::= Text
     env.addConformance(
         derivedTraitID: .text,
-        validation: Trait.validation(for: .environmentContainer),
+        validation: TraitID.environmentContainer.validation(),
         deriveTraitValue: { value, env in
             "<environment>"
         }

@@ -1,24 +1,14 @@
 import Foundation
 
-extension Trait.ID {
+extension TraitID where T == Operator {
     static let `operator` = Self(debugLabel: "Operator")
 }
 
 public extension Trait {
-    static func `operator`(_ op: Operator) -> Trait {
-        Trait(id: .operator) { _ in
+    static func `operator`(_ op: Operator) -> Trait<Operator> {
+        .init(id: .operator) { _ in
             op
         }
-    }
-}
-
-public extension Value {
-    func operatorValue(_ env: inout Environment) throws -> Operator {
-        try Trait.value(.operator, in: self, &env)
-    }
-
-    func operatorValueIfPresent(_ env: inout Environment) throws -> Operator? {
-        try Trait.value(.operator, ifPresentIn: self, &env)
     }
 }
 
@@ -72,7 +62,7 @@ public extension Operator.Arity {
 
     static func binary(call: @escaping CallFunction) -> Self {
         .binary({ left, env in
-            let nextCall = try call(left, &env).callValue(&env)
+            let nextCall = try call(left, &env).trait(.call, &env)
 
             return { right, env in
                 return try nextCall(right, &env)
@@ -91,7 +81,7 @@ public extension Operator.Arity {
     static func variadic(call: @escaping CallFunction) -> Self {
         .variadic({ leftItems, env in
             let left = Value.new(.list(leftItems))
-            let nextCall = try call(left, &env).callValue(&env)
+            let nextCall = try call(left, &env).trait(.call, &env)
 
             return { rightItems, env in
                 let right = Value.new(.list(rightItems))
@@ -170,7 +160,7 @@ func getOperator(_ value: Value, _ env: inout Environment) throws -> Operator? {
 
     @discardableResult
     func getOperator(_ value: Value) throws -> Bool {
-        if let operatorValue = try value.operatorValueIfPresent(&env) {
+        if let operatorValue = try value.traitIfPresent(.operator, &env) {
             op = operatorValue
             return true
         }
@@ -180,7 +170,7 @@ func getOperator(_ value: Value, _ env: inout Environment) throws -> Operator? {
 
     if
         !(try getOperator(value)),
-        let name = try value.nameValueIfPresent(&env),
+        let name = try value.traitIfPresent(.name, &env),
         let variable = env.variables[name]
     {
         try getOperator(variable)
@@ -211,11 +201,11 @@ extension Operator.Arity {
 
 
 func getItems(_ list: Value, _ env: inout Environment) throws -> List {
-    guard case let .valid(items) = try Trait.validation(for: .list)(list, &env) else {
+    guard case let .valid(items) = try TraitID.list.validation()(list, &env) else {
         throw ProgramError("Application of variadic operator requires a list")
     }
 
-    return items as! List
+    return items
 }
 
 func parseOperators(

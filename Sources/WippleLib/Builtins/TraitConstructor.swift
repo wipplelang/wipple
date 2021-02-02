@@ -1,29 +1,29 @@
 import Foundation
 
-public struct TraitConstructor {
-    public var id: Trait.ID
-    public var validation: Validation
+public struct TraitConstructor<A, B> {
+    public var id: TraitID<B>
+    public var validation: Validation<A, B>
 }
 
-extension Trait.ID {
+public struct AnyTraitConstructor {
+    public var id: AnyTraitID
+    public var validation: AnyValidation
+    
+    public init<A, B>(_ traitConstructor: TraitConstructor<A, B>) {
+        self.id = .init(erasing: traitConstructor.id)
+        self.validation = any(traitConstructor.validation)
+    }
+}
+
+extension TraitID where T == AnyTraitConstructor {
     static let traitConstructor = Self(debugLabel: "Trait")
 }
 
 extension Trait {
-    static func traitConstructor(_ id: Trait.ID, validation: @escaping Validation) -> Trait {
-        Trait(id: .traitConstructor) { _ in
-            TraitConstructor(id: id, validation: validation)
+    static func traitConstructor<A, B>(_ id: TraitID<B>, validation: @escaping Validation<A, B>) -> Trait<AnyTraitConstructor> {
+        .init(id: .traitConstructor) { _ in
+            AnyTraitConstructor(TraitConstructor(id: id, validation: validation))
         }
-    }
-}
-
-extension Value {
-    func traitConstructorValue(_ env: inout Environment) throws -> TraitConstructor {
-        try Trait.value(.traitConstructor, in: self, &env)
-    }
-
-    func traitConstructorValueIfPresent(_ env: inout Environment) throws -> TraitConstructor? {
-        try Trait.value(.traitConstructor, ifPresentIn: self, &env)
     }
 }
 
@@ -33,7 +33,7 @@ func initializeTraitConstructor(_ env: inout Environment) {
     // Trait ::= Text
     env.addConformance(
         derivedTraitID: .text,
-        validation: Trait.validation(for: .traitConstructor),
+        validation: TraitID.traitConstructor.validation(),
         deriveTraitValue: { value, env in
             "<trait>"
         }

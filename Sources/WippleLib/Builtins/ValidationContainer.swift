@@ -1,23 +1,13 @@
 import Foundation
 
-extension Trait.ID {
+extension TraitID where T == AnyValidation {
     static let validationContainer = Self(debugLabel: "Validation")
 }
 
 public extension Trait {
-    static func validationContainer(_ validation: @escaping Validation) -> Trait {
-        Trait(id: .validationContainer) { _ in
-            validation
+    static func validationContainer<A, B>(_ validation: @escaping Validation<A, B>) -> Trait<AnyValidation> {
+        .init(id: .validationContainer) { _ in
+            any(validation)
         }
-    }
-}
-
-public extension Value {
-    func validationContainerValue(_ env: inout Environment) throws -> Validation {
-        try Trait.value(.validationContainer, in: self, &env)
-    }
-
-    func validationContainerValueIfPresent(_ env: inout Environment) throws -> Validation? {
-        try Trait.value(.validationContainer, ifPresentIn: self, &env)
     }
 }

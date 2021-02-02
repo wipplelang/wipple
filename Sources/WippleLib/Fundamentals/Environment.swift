@@ -6,7 +6,7 @@ public struct Environment {
 
     public var variables: [String: Value] = [:]
 
-    public internal(set) var conformances: [Conformance] = []
+    public internal(set) var conformances: [AnyConformance] = []
 
     public internal(set) var operatorsByPrecedence: OperatorsByPrecedence = []
 

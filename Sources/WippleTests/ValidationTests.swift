@@ -4,7 +4,7 @@ import XCTest
 
 class ValidationTests: WippleTestCase {
     func testValidation() throws {
-        let validation: Validation = { value, env in
+        let validation: Validation<String, Int> = { value, env in
             .valid(newValue: 42)
         }
 

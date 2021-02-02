@@ -7,7 +7,7 @@ class DisplayTests: WippleTestCase {
         // quoted : 'a
         let quoted = Value.new(.quoted(Value.new(.name("a"))))
 
-        let display = try quoted.textValueWithDefault(&self.env)
+        let display = try quoted.trait(.text, &self.env)
         XCTAssertEqual(display, "'a")
     }
 }

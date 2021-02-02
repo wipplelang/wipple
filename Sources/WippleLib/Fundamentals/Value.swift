@@ -2,7 +2,7 @@ import Foundation
 
 /// Values are collections of traits
 public struct Value {
-    public internal(set) var traits: Set<Trait>
+    public internal(set) var traits: Set<AnyTrait>
 
     // TODO: Store value's location in 'Location' trait
     public var location: Location?

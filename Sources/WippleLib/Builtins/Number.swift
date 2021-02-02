@@ -1,24 +1,16 @@
 import Foundation
 
-extension Trait.ID {
+public typealias Number = Decimal
+
+extension TraitID where T == Number {
     static let number = Self(debugLabel: "Number")
 }
 
 public extension Trait {
-    static func number(_ number: Decimal) -> Trait {
-        Trait(id: .number) { _ in
+    static func number(_ number: Number) -> Trait<Number> {
+        .init(id: .number) { _ in
             number
         }
-    }
-}
-
-public extension Value {
-    func numberValue(_ env: inout Environment) throws -> Decimal {
-        try Trait.value(.number, in: self, &env)
-    }
-
-    func numberValueIfPresent(_ env: inout Environment) throws -> Decimal? {
-        try Trait.value(.number, ifPresentIn: self, &env)
     }
 }
 
@@ -28,9 +20,9 @@ public func initializeNumber(_ env: inout Environment) {
     // Number ::= Text
     env.addConformance(
         derivedTraitID: .text,
-        validation: Trait.validation(for: .number),
+        validation: TraitID.number.validation(),
         deriveTraitValue: { number, env in
-            String(describing: number as! Decimal)
+            String(describing: number)
         }
     )
 }

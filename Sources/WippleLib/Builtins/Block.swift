@@ -6,25 +6,15 @@ public struct Block {
     public var statements: [Statement]
 }
 
-extension Trait.ID {
+extension TraitID where T == Block {
     static let block = Self(debugLabel: "Block")
 }
 
 public extension Trait {
-    static func block(_ statements: [Block.Statement]) -> Trait {
-        Trait(id: .block) { _ in
+    static func block(_ statements: [Block.Statement]) -> Trait<Block> {
+        .init(id: .block) { _ in
             Block(statements: statements)
         }
-    }
-}
-
-public extension Value {
-    func blockValue(_ env: inout Environment) throws -> Block {
-        try Trait.value(.block, in: self, &env)
-    }
-
-    func blockValueIfPresent(_ env: inout Environment) throws -> Block? {
-        try Trait.value(.block, ifPresentIn: self, &env)
     }
 }
 
@@ -35,8 +25,8 @@ public func initializeBlock(_ env: inout Environment) {
     // TODO: Implement in Wipple code
     env.addConformance(
         derivedTraitID: .text,
-        validation: Trait.validation(for: .block),
-        deriveTraitValue: { value, env in
+        validation: TraitID.block.validation(),
+        deriveTraitValue: { (value: Block, env) in
             "<block>"
         }
     )
@@ -44,10 +34,8 @@ public func initializeBlock(_ env: inout Environment) {
     // Block ::= Evaluate
     env.addConformance(
         derivedTraitID: .evaluate,
-        validation: Trait.validation(for: .block),
-        deriveTraitValue: { value, env -> EvaluateFunction in
-            let block = value as! Block
-
+        validation: TraitID.block.validation(),
+        deriveTraitValue: { block, env in
             return { env in
                 var result = Value()
                 for statement in block.statements {
@@ -57,8 +45,6 @@ public func initializeBlock(_ env: inout Environment) {
                         .add(.list(statement))
 
                     result = try list.evaluate(&env)
-
-                    print(try list.textValueWithDefault(&env), "==>", try result.textValueWithDefault(&env))
                 }
 
                 return result
