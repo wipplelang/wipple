@@ -79,6 +79,33 @@ func initializeName(_ env: inout Environment) {
             }
         }
     )
+    
+    // Name ::= Macro-Parameter
+    env.addConformance(
+        derivedTraitID: .macroParameter,
+        validation: TraitID.name.validation(),
+        deriveTraitValue: { name, env in
+            return { input, env in
+                return (
+                    name: name,
+                    replacement: try input.evaluate(&env)
+                )
+            }
+        }
+    )
+    
+    // Name ::= Macro-Expand
+    env.addConformance(
+        derivedTraitID: .macroExpand,
+        validation: TraitID.name.validation(),
+        deriveTraitValue: { name, env in
+            return { parameter, replacement, env in
+                name == parameter
+                    ? replacement
+                    : Value.new(.name(name))
+            }
+        }
+    )
 
     // Name ::= Display
     env.addConformance(

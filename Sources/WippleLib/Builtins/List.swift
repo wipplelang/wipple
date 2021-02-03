@@ -41,6 +41,21 @@ public func initializeList(_ env: inout Environment) {
             }
         }
     )
+    
+    // List ::= Macro-Expand
+    env.addConformance(
+        derivedTraitID: .macroExpand,
+        validation: TraitID.list.validation(),
+        deriveTraitValue: { list, env in
+            return { parameter, replacement, env in
+                let newList = try list.map { value in
+                    try value.macroExpand(parameter: parameter, replacement: replacement, &env)
+                }
+                
+                return Value.new(.list(newList))
+            }
+        }
+    )
 
     // (List and (each Text)) ::= Text
     // TODO: Write this in Wipple code

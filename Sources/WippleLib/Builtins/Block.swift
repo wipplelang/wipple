@@ -26,7 +26,7 @@ public func initializeBlock(_ env: inout Environment) {
     env.addConformance(
         derivedTraitID: .text,
         validation: TraitID.block.validation(),
-        deriveTraitValue: { (value: Block, env) in
+        deriveTraitValue: { value, env in
             "<block>"
         }
     )
@@ -48,6 +48,28 @@ public func initializeBlock(_ env: inout Environment) {
                 }
 
                 return result
+            }
+        }
+    )
+    
+    // Block ::= Macro-Expand
+    env.addConformance(
+        derivedTraitID: .macroExpand,
+        validation: TraitID.block.validation(),
+        deriveTraitValue: { block, env in
+            return { parameter, replacement, env in
+                let statements: [Block.Statement] = try block.statements.map { statement in
+                    // Replace each statement as a list
+                    
+                    let list = Value(location: statement.first?.location)
+                        .add(.list(statement))
+                    
+                    return try list
+                        .macroExpand(parameter: parameter, replacement: replacement, &env)
+                        .trait(.list, &env)
+                }
+                
+                return Value.new(.block(statements))
             }
         }
     )

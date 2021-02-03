@@ -36,4 +36,30 @@ public func initializeQuoted(_ env: inout Environment) {
             }
         }
     )
+    
+    // Quoted ::= Macro-Parameter
+    env.addConformance(
+        derivedTraitID: .macroParameter,
+        validation: TraitID.quoted.validation(),
+        deriveTraitValue: { quotedValue, env in
+            return { input, env in
+                let defineParameter = try quotedValue.trait(.macroParameter, &env)
+                
+                return try defineParameter(Value.new(.quoted(input)), &env)
+            }
+        }
+    )
+    
+    // Quoted ::= Macro-Expand
+    env.addConformance(
+        derivedTraitID: .macroExpand,
+        validation: TraitID.quoted.validation(),
+        deriveTraitValue: { quotedValue, env in
+            return { parameter, replacement, env in
+                let newValue = try quotedValue.macroExpand(parameter: parameter, replacement: replacement, &env)
+                
+                return Value.new(.quoted(newValue))
+            }
+        }
+    )
 }

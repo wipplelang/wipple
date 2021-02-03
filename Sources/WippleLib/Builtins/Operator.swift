@@ -52,40 +52,40 @@ extension Operator: Hashable {
 }
 
 public extension Operator.Arity {
-    static func binary(_ call: @escaping (_ left: Value, _ right: Value, inout Environment) throws -> Value) -> Self {
+    static func binary(_ function: @escaping (_ left: Value, _ right: Value, inout Environment) throws -> Value) -> Self {
         .binary { left, env in
             return { right, env in
-                try call(left, right, &env)
+                try function(left, right, &env)
             }
         }
     }
 
-    static func binary(call: @escaping CallFunction) -> Self {
+    static func binary(function: @escaping Function) -> Self {
         .binary({ left, env in
-            let nextCall = try call(left, &env).trait(.call, &env)
+            let nextFunction = try function(left, &env).trait(.function, &env)
 
             return { right, env in
-                return try nextCall(right, &env)
+                return try nextFunction(right, &env)
             }
         })
     }
 
-    static func variadic(_ call: @escaping (_ left: [Value], _ right: [Value], inout Environment) throws -> Value) -> Self {
+    static func variadic(_ function: @escaping (_ left: [Value], _ right: [Value], inout Environment) throws -> Value) -> Self {
         .variadic { left, env in
             return { right, env in
-                try call(left, right, &env)
+                try function(left, right, &env)
             }
         }
     }
 
-    static func variadic(call: @escaping CallFunction) -> Self {
+    static func variadic(function: @escaping Function) -> Self {
         .variadic({ leftItems, env in
             let left = Value.new(.list(leftItems))
-            let nextCall = try call(left, &env).trait(.call, &env)
+            let nextFunction = try function(left, &env).trait(.function, &env)
 
             return { rightItems, env in
                 let right = Value.new(.list(rightItems))
-                return try nextCall(right, &env)
+                return try nextFunction(right, &env)
             }
         })
     }
@@ -180,19 +180,19 @@ func getOperator(_ value: Value, _ env: inout Environment) throws -> Operator? {
 }
 
 extension Operator.Arity {
-    func asCallFunction() -> CallFunction {
+    func asFunction() -> Function {
         switch self {
-        case let .binary(call):
+        case let .binary(function):
             return { left, env in
-                let call = try call(left, &env)
-                return Value.new(.call(call))
+                let function = try function(left, &env)
+                return Value.new(.function(function))
             }
-        case let .variadic(call):
+        case let .variadic(function):
             return { left, env in
-                let call = try call(getItems(left, &env), &env)
+                let function = try function(getItems(left, &env), &env)
 
-                return Value.new(.call { right, env in
-                    try call(getItems(right, &env), &env)
+                return Value.new(.function { right, env in
+                    try function(getItems(right, &env), &env)
                 })
             }
         }
@@ -225,7 +225,7 @@ func parseOperators(
         return nil
     case 1:
         if let op = operatorsInList.first {
-            return Value.new(.call(op.operator.arity.asCallFunction()))
+            return Value.new(.function(op.operator.arity.asFunction()))
         } else {
             return list[0]
         }
@@ -282,7 +282,7 @@ func parseOperators(
     if !variadicOperators.isEmpty {
         let op = getHighest(variadicOperators)
 
-        guard case let .variadic(call) = op.operator.arity else {
+        guard case let .variadic(function) = op.operator.arity else {
             fatalError("Unreachable")
         }
 
@@ -291,29 +291,29 @@ func parseOperators(
 
         if leftItems.isEmpty {
             // Partially apply the left side
-            return Value.new(.call { left, env in
-                let call = try call(getItems(left, &env), &env)
+            return Value.new(.function { left, env in
+                let function = try function(getItems(left, &env), &env)
 
-                return Value.new(.call { right, env in
-                    try call(getItems(right, &env), &env)
+                return Value.new(.function { right, env in
+                    try function(getItems(right, &env), &env)
                 })
             })
         }
 
         if rightItems.isEmpty {
             // Partially apply the right side
-            return Value.new(.call { right, env in
-                Value.new(.call { left, env in
-                    try call(getItems(left, &env), &env)(getItems(right, &env), &env)
+            return Value.new(.function { right, env in
+                Value.new(.function { left, env in
+                    try function(getItems(left, &env), &env)(getItems(right, &env), &env)
                 })
             })
         }
 
-        return try call(leftItems, &env)(rightItems, &env)
+        return try function(leftItems, &env)(rightItems, &env)
     } else {
         let op = getHighest(binaryOperators)
 
-        guard case let .binary(call) = op.operator.arity else {
+        guard case let .binary(function) = op.operator.arity else {
             fatalError("Unreachable")
         }
 
@@ -323,19 +323,19 @@ func parseOperators(
 
         if left == nil {
             // Partially apply the left side
-            return Value.new(.call { left, env in
-                try call(left, &env)(right!, &env)
+            return Value.new(.function { left, env in
+                try function(left, &env)(right!, &env)
             })
         }
 
         if right == nil {
             // Partially apply the right side
-            return Value.new(.call { right, env in
-                try call(left!, &env)(right, &env)
+            return Value.new(.function { right, env in
+                try function(left!, &env)(right, &env)
             })
         }
 
-        return try call(left!, &env)(right!, &env)
+        return try function(left!, &env)(right!, &env)
     }
 }
 

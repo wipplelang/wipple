@@ -6,6 +6,7 @@ public func initialize(_ env: inout Environment) throws {
     initializeEnvironmentContainer(&env)
     initializeEvaluation(&env)
     initializeList(&env)
+    initializeMacro(&env)
     initializeName(&env)
     initializeNumber(&env)
     initializeQuoted(&env)
@@ -61,6 +62,25 @@ public func initialize(_ env: inout Environment) throws {
 
     try env.registerOperator(traitOperator, precedence: .sameAs(assignmentOperator))
     env.variables["::"] = Value.new(.operator(traitOperator))
+    
+    // MARK: - Macro Operator (=>)
+    
+    let macroOperator = Operator(
+        arity: .variadic { left, right, env in
+            guard let defineParameter = try group(left).traitIfPresent(.macroParameter, &env) else {
+                throw ProgramError("Macro parameter must satisfy the Macro-Parameter trait")
+            }
+                        
+            return Value.new(.macro(
+                defineParameter: defineParameter,
+                valueToExpand: group(right)
+            ))
+        },
+        associativity: .right
+    )
+
+    try env.registerOperator(macroOperator, precedence: .lowerThan(assignmentOperator))
+    env.variables["=>"] = Value.new(.operator(macroOperator))
 
     // MARK: - 'new' Function
 
@@ -72,11 +92,92 @@ public func initialize(_ env: inout Environment) throws {
         return Value.new(Trait(id: traitConstructor.id) { _ in value })
     }
 
-    env.variables["new"] = Value.new(.call { input, env in
+    env.variables["new"] = Value.new(.function { input, env in
         let traitConstructor = try input.trait(.traitConstructor, &env)
 
-        return Value.new(.call { input, env in
+        return Value.new(.function { input, env in
             try new(traitConstructor, input, &env)
         })
     })
+    
+    // MARK: - 'do' Function
+    
+    env.variables["do"] = Value.new(.function { input, env in
+        var innerEnv = env
+        return try input.evaluate(&innerEnv)
+    })
+    
+    // MARK: - Closures (TODO: write in Wipple code)
+    
+    typealias DefineClosureParameterFunction = (_ input: Value, inout Environment) throws -> Void
+    let ClosureParameter = TraitID<DefineClosureParameterFunction>(debugLabel: "Closure-Parameter")
+    
+    // Name ::= Closure-Parameter
+    env.addConformance(
+        derivedTraitID: ClosureParameter,
+        validation: TraitID.name.validation(),
+        deriveTraitValue: { name, env in
+            return { input, env in
+                env.variables[name] = try input.evaluate(&env)
+            }
+        }
+    )
+    
+    // TODO: Closure trait
+    
+    let closureOperator = Operator(
+        arity: .variadic { left, right, env in
+            guard let defineParameter = try group(left).traitIfPresent(ClosureParameter, &env) else {
+                throw ProgramError("Closure parameter must satisfy the Closure-Parameter trait")
+            }
+            
+            let returnValue = group(right)
+            
+            var closureEnv = env
+            
+            return Value.new(.function { input, env in
+                try defineParameter(input, &closureEnv)
+                
+                return try returnValue.evaluate(&closureEnv)
+            })
+        },
+        associativity: .right
+    )
+
+    try env.registerOperator(closureOperator, precedence: .sameAs(macroOperator))
+    env.variables["->"] = Value.new(.operator(closureOperator))
+    
+    // MARK: - Math (temporary)
+    
+    // TODO: Implement using traits
+    
+    func math(_ name: Name, _ operation: (Decimal, Decimal) -> Decimal) -> Operator {
+        let op = Operator(
+            arity: .binary { left, right, env in
+                guard let left = try left.traitIfPresent(.number, &env), let right = try right.traitIfPresent(.number, &env) else {
+                    throw ProgramError("Expected numbers")
+                }
+                
+                return Value.new(.number(left + right))
+            },
+            associativity: .left
+        )
+
+        env.variables[name] = Value.new(.operator(op))
+        
+        return op
+    }
+    
+    let additionOperator = math("+", +)
+    try env.registerOperator(additionOperator, precedence: .lowest)
+
+    // TODO: Read left to right or right to left instead of throwing ambiguity error
+    let subtractionOperator = math("-", -)
+    try env.registerOperator(subtractionOperator, precedence: .sameAs(additionOperator))
+    
+    let multiplicationOperator = math("+", +)
+    try env.registerOperator(multiplicationOperator, precedence: .higherThan(additionOperator))
+    
+    let divisionOperator = math("/", /)
+    try env.registerOperator(divisionOperator, precedence: .sameAs(multiplicationOperator))
 }
