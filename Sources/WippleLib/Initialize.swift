@@ -175,7 +175,7 @@ public func initialize(_ env: inout Environment) throws {
     let subtractionOperator = math("-", -)
     try env.registerOperator(subtractionOperator, precedence: .sameAs(additionOperator))
     
-    let multiplicationOperator = math("+", +)
+    let multiplicationOperator = math("*", *)
     try env.registerOperator(multiplicationOperator, precedence: .higherThan(additionOperator))
     
     let divisionOperator = math("/", /)
