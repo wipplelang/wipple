@@ -151,14 +151,14 @@ public func initialize(_ env: inout Environment) throws {
     
     // TODO: Implement using traits
     
-    func math(_ name: Name, _ operation: (Decimal, Decimal) -> Decimal) -> Operator {
+    func math(_ name: Name, _ operation: @escaping (Decimal, Decimal) -> Decimal) -> Operator {
         let op = Operator(
             arity: .binary { left, right, env in
                 guard let left = try left.traitIfPresent(.number, &env), let right = try right.traitIfPresent(.number, &env) else {
                     throw ProgramError("Expected numbers")
                 }
                 
-                return Value.new(.number(left + right))
+                return Value.new(.number(operation(left, right)))
             },
             associativity: .left
         )
