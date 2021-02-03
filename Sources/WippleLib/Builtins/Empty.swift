@@ -14,7 +14,7 @@ func initializeEmpty(_ env: inout Environment) {
     env.addConformance(
         derivedTraitID: .validationContainer,
         validation: emptyValidation,
-        deriveTraitValue: { value, env -> Validation in
+        deriveTraitValue: { value, env in
             return { value, env in
                 .valid(newValue: value)
             }
