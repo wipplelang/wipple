@@ -154,7 +154,10 @@ public func initialize(_ env: inout Environment) throws {
     func math(_ name: Name, _ operation: @escaping (Decimal, Decimal) -> Decimal) -> Operator {
         let op = Operator(
             arity: .binary { left, right, env in
-                guard let left = try left.traitIfPresent(.number, &env), let right = try right.traitIfPresent(.number, &env) else {
+                guard
+                    let left = try left.evaluate(&env).traitIfPresent(.number, &env),
+                    let right = try right.evaluate(&env).traitIfPresent(.number, &env)
+                else {
                     throw ProgramError("Expected numbers")
                 }
                 
