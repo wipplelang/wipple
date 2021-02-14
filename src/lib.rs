@@ -5,7 +5,7 @@ pub mod builtins;
 pub use builtins::*;
 pub use fundamentals::*;
 
-use rug::Rational;
+use num_rational::BigRational;
 use std::rc::Rc;
 
 pub fn init(env: &mut fundamentals::Environment) {
@@ -213,7 +213,9 @@ pub fn init(env: &mut fundamentals::Environment) {
     // Math (temporary)
 
     // TODO: Implement using traits
-    fn math(operation: impl Fn(Rational, Rational) -> Rational + 'static) -> BinaryOperator {
+    fn math(
+        operation: impl Fn(BigRational, BigRational) -> BigRational + 'static,
+    ) -> BinaryOperator {
         BinaryOperator::collect(move |left, right, env| {
             let left = left.evaluate(env)?.get_trait(TraitID::number, env)?;
             let right = right.evaluate(env)?.get_trait(TraitID::number, env)?;

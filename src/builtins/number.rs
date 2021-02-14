@@ -1,9 +1,9 @@
 use crate::builtins::*;
 use crate::fundamentals::*;
-use rug::Rational;
+use num_rational::BigRational;
 
 #[derive(Clone, Eq, PartialEq, Ord, PartialOrd)]
-pub struct Number(pub Rational);
+pub struct Number(pub BigRational);
 
 simple_trait! {
     name: number,
