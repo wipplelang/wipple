@@ -1,10 +1,10 @@
 #[macro_use]
 pub mod fundamentals;
 pub mod builtins;
-pub mod parser_bridge;
 
-use builtins::*;
-use fundamentals::*;
+pub use builtins::*;
+pub use fundamentals::*;
+
 use rug::Rational;
 use std::rc::Rc;
 
