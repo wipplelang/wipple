@@ -6,14 +6,14 @@ use std::rc::Rc;
 pub struct Conformance<A: 'static + Clone, B: 'static + Clone> {
     pub derived_trait_id: TraitID<B>,
     pub validation: Validation<Value, A>,
-    pub derive_trait_value: Rc<dyn Fn(&A, &mut Environment) -> Result<B>>,
+    pub derive_trait_value: Rc<dyn Fn(&A, &mut Environment, &ProgramStack) -> Result<B>>,
 }
 
 impl<A: Clone, B: Clone> Conformance<A, B> {
     pub fn new(
         derived_trait_id: TraitID<B>,
         validation: Validation<Value, A>,
-        derive_trait_value: impl Fn(&A, &mut Environment) -> Result<B> + 'static,
+        derive_trait_value: impl Fn(&A, &mut Environment, &ProgramStack) -> Result<B> + 'static,
     ) -> Conformance<A, B> {
         Conformance {
             derived_trait_id,
@@ -27,7 +27,8 @@ impl<A: Clone, B: Clone> Conformance<A, B> {
 pub struct AnyConformance {
     pub derived_trait_id: AnyTraitID,
     pub validation: Validation<Value, Rc<dyn Any>>,
-    pub derive_trait_value: Rc<dyn Fn(&dyn Any, &mut Environment) -> Result<Option<Rc<dyn Any>>>>,
+    pub derive_trait_value:
+        Rc<dyn Fn(&dyn Any, &mut Environment, &ProgramStack) -> Result<Option<Rc<dyn Any>>>>,
 }
 
 impl AnyConformance {
@@ -37,9 +38,9 @@ impl AnyConformance {
             validation: Validation::new({
                 let conformance = conformance.clone();
 
-                move |value, env| {
+                move |value, env, stack| {
                     let erased_result: ValidationResult<Rc<dyn Any>> =
-                        match conformance.validation.validate(value, env)? {
+                        match conformance.validation.validate(value, env, stack)? {
                             Valid(value) => Valid(Rc::new(value)),
                             Invalid => Invalid,
                         };
@@ -47,7 +48,7 @@ impl AnyConformance {
                     Ok(erased_result)
                 }
             }),
-            derive_trait_value: Rc::new(move |value, env| {
+            derive_trait_value: Rc::new(move |value, env, stack| {
                 println!(
                     "Deriving value {} from value {}",
                     std::any::type_name::<B>(),
@@ -59,7 +60,7 @@ impl AnyConformance {
                     None => return Ok(None),
                 };
 
-                (conformance.derive_trait_value)(&value, env).map(|v| {
+                (conformance.derive_trait_value)(&value, env, stack).map(|v| {
                     Some({
                         let v: Rc<dyn Any> = Rc::new(v);
                         v
@@ -77,8 +78,8 @@ impl<A: Clone, B: Clone> Conformance<A, B> {
             Validation::new({
                 let conformance = conformance.clone();
 
-                move |value, env| {
-                    let value = match conformance.validation.validate(value, env)? {
+                move |value, env, stack| {
+                    let value = match conformance.validation.validate(value, env, stack)? {
                         Valid(erased_value) => {
                             let value = erased_value.downcast_ref::<A>().unwrap().clone();
                             Valid(value)
@@ -89,8 +90,8 @@ impl<A: Clone, B: Clone> Conformance<A, B> {
                     Ok(value)
                 }
             }),
-            move |value, env| {
-                let erased_value = (conformance.derive_trait_value)(value, env)?.unwrap();
+            move |value, env, stack| {
+                let erased_value = (conformance.derive_trait_value)(value, env, stack)?.unwrap();
                 let value = erased_value.downcast_ref::<B>().unwrap().clone();
                 Ok(value)
             },

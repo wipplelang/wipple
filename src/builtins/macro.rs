@@ -7,12 +7,13 @@ pub struct MacroParameter(pub Name);
 
 #[derive(Clone)]
 pub struct DefineMacroParameterFn(
-    pub Rc<dyn Fn(Value, &mut Environment) -> Result<(MacroParameter, Value)>>,
+    pub Rc<dyn Fn(Value, &mut Environment, &ProgramStack) -> Result<(MacroParameter, Value)>>,
 );
 
 impl DefineMacroParameterFn {
     pub fn new(
-        define_parameter: impl Fn(Value, &mut Environment) -> Result<(MacroParameter, Value)> + 'static,
+        define_parameter: impl Fn(Value, &mut Environment, &ProgramStack) -> Result<(MacroParameter, Value)>
+            + 'static,
     ) -> DefineMacroParameterFn {
         DefineMacroParameterFn(Rc::new(define_parameter))
     }
@@ -25,11 +26,13 @@ simple_trait! {
 }
 
 #[derive(Clone)]
-pub struct MacroExpandFn(pub Rc<dyn Fn(MacroParameter, Value, &mut Environment) -> Result>);
+pub struct MacroExpandFn(
+    pub Rc<dyn Fn(MacroParameter, Value, &mut Environment, &ProgramStack) -> Result>,
+);
 
 impl MacroExpandFn {
     pub fn new(
-        expand: impl Fn(MacroParameter, Value, &mut Environment) -> Result + 'static,
+        expand: impl Fn(MacroParameter, Value, &mut Environment, &ProgramStack) -> Result + 'static,
     ) -> MacroExpandFn {
         MacroExpandFn(Rc::new(expand))
     }
@@ -47,9 +50,10 @@ impl Value {
         parameter: MacroParameter,
         replacement: Value,
         env: &mut Environment,
+        stack: &ProgramStack,
     ) -> Result {
-        match self.get_trait_if_present(TraitID::macro_expand, env)? {
-            Some(expand) => expand.0(parameter, replacement, env),
+        match self.get_trait_if_present(TraitID::macro_expand, env, stack)? {
+            Some(expand) => expand.0(parameter, replacement, env, stack),
             None => Ok(self.clone()),
         }
     }
@@ -72,16 +76,16 @@ pub(crate) fn init(env: &mut Environment) {
     env.add_conformance(Conformance::new(
         TraitID::function,
         TraitID::r#macro.validation(),
-        |r#macro, _| {
+        |r#macro, _, _| {
             let r#macro = r#macro.clone();
 
-            Ok(Function::new(move |input, env| {
-                let (parameter, replacement) = r#macro.define_parameter.0(input, env)?;
+            Ok(Function::new(move |input, env, stack| {
+                let (parameter, replacement) = r#macro.define_parameter.0(input, env, stack)?;
 
                 r#macro
                     .value_to_expand
-                    .macro_expand(parameter, replacement, env)?
-                    .evaluate(env)
+                    .macro_expand(parameter, replacement, env, stack)?
+                    .evaluate(env, stack)
             }))
         },
     ));
@@ -90,6 +94,6 @@ pub(crate) fn init(env: &mut Environment) {
     env.add_conformance(Conformance::new(
         TraitID::text,
         TraitID::r#macro.validation(),
-        |_, _| Ok(Text(String::from("<macro>"))),
+        |_, _, _| Ok(Text(String::from("<macro>"))),
     ));
 }

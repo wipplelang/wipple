@@ -2,10 +2,12 @@ use crate::fundamentals::*;
 use std::rc::Rc;
 
 #[derive(Clone)]
-pub struct Function(pub Rc<dyn Fn(Value, &mut Environment) -> Result>);
+pub struct Function(pub Rc<dyn Fn(Value, &mut Environment, &ProgramStack) -> Result>);
 
 impl Function {
-    pub fn new(function: impl Fn(Value, &mut Environment) -> Result + 'static) -> Function {
+    pub fn new(
+        function: impl Fn(Value, &mut Environment, &ProgramStack) -> Result + 'static,
+    ) -> Function {
         Function(Rc::new(function))
     }
 }
@@ -17,8 +19,13 @@ simple_trait! {
 }
 
 impl Value {
-    pub fn call_with(&self, parameter: Value, env: &mut Environment) -> Result {
-        let function = match self.get_trait_if_present(TraitID::function, env)? {
+    pub fn call_with(
+        &self,
+        parameter: Value,
+        env: &mut Environment,
+        stack: &ProgramStack,
+    ) -> Result {
+        let function = match self.get_trait_if_present(TraitID::function, env, stack)? {
             Some(function) => function,
             None => {
                 return Err(ProgramError::new(
@@ -27,6 +34,6 @@ impl Value {
             }
         };
 
-        function.0(parameter, env)
+        function.0(parameter, env, stack)
     }
 }

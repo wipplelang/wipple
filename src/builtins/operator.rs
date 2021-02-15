@@ -8,8 +8,13 @@ use uuid::Uuid;
 #[derive(Clone)]
 pub struct SomeOperator<T> {
     pub id: Uuid,
-    pub function:
-        Rc<dyn Fn(T, &mut Environment) -> Result<Box<dyn Fn(T, &mut Environment) -> Result>>>,
+    pub function: Rc<
+        dyn Fn(
+            T,
+            &mut Environment,
+            &ProgramStack,
+        ) -> Result<Box<dyn Fn(T, &mut Environment, &ProgramStack) -> Result>>,
+    >,
 }
 
 impl<T> PartialEq for SomeOperator<T> {
@@ -30,17 +35,17 @@ pub type BinaryOperator = SomeOperator<Value>;
 
 impl BinaryOperator {
     pub fn collect(
-        function: impl Fn(Value, Value, &mut Environment) -> Result + 'static,
+        function: impl Fn(Value, Value, &mut Environment, &ProgramStack) -> Result + 'static,
     ) -> BinaryOperator {
         let function = Rc::new(function);
 
         BinaryOperator {
             id: Uuid::new_v4(),
-            function: Rc::new(move |left, _| {
+            function: Rc::new(move |left, _, _| {
                 let function = function.clone();
 
-                Ok(Box::new(move |right, env| {
-                    function(left.clone(), right, env).clone()
+                Ok(Box::new(move |right, env, stack| {
+                    function(left.clone(), right, env, stack).clone()
                 }))
             }),
         }
@@ -51,10 +56,13 @@ impl BinaryOperator {
 
         BinaryOperator {
             id: Uuid::new_v4(),
-            function: Rc::new(move |left, env| {
-                let next_function = function.0(left, env)?.get_trait(TraitID::function, env)?;
+            function: Rc::new(move |left, env, stack| {
+                let next_function =
+                    function.0(left, env, stack)?.get_trait(TraitID::function, env, stack)?;
 
-                Ok(Box::new(move |right, env| next_function.0(right, env)))
+                Ok(Box::new(move |right, env, stack| {
+                    next_function.0(right, env, stack)
+                }))
             }),
         }
     }
@@ -64,17 +72,17 @@ pub type VariadicOperator = SomeOperator<Vec<Value>>;
 
 impl VariadicOperator {
     pub fn collect(
-        function: impl Fn(Vec<Value>, Vec<Value>, &mut Environment) -> Result + 'static,
+        function: impl Fn(Vec<Value>, Vec<Value>, &mut Environment, &ProgramStack) -> Result + 'static,
     ) -> VariadicOperator {
         let function = Rc::new(function);
 
         VariadicOperator {
             id: Uuid::new_v4(),
-            function: Rc::new(move |left, _| {
+            function: Rc::new(move |left, _, _| {
                 let function = function.clone();
 
-                Ok(Box::new(move |right, env| {
-                    function(left.clone(), right, env)
+                Ok(Box::new(move |right, env, stack| {
+                    function(left.clone(), right, env, stack)
                 }))
             }),
         }
@@ -85,13 +93,14 @@ impl VariadicOperator {
 
         VariadicOperator {
             id: Uuid::new_v4(),
-            function: Rc::new(move |left, env| {
+            function: Rc::new(move |left, env, stack| {
                 let left = Value::new(Trait::list(List(left)));
-                let next_function = function.0(left, env)?.get_trait(TraitID::function, env)?;
+                let next_function =
+                    function.0(left, env, stack)?.get_trait(TraitID::function, env, stack)?;
 
-                Ok(Box::new(move |right, env| {
+                Ok(Box::new(move |right, env, stack| {
                     let right = Value::new(Trait::list(List(right)));
-                    next_function.0(right, env)
+                    next_function.0(right, env, stack)
                 }))
             }),
         }
@@ -330,11 +339,15 @@ impl Environment {
 
 // Operator parsing
 
-pub fn find_operators(list: &List, env: &mut Environment) -> Result<OperatorList> {
+pub fn find_operators(
+    list: &List,
+    env: &mut Environment,
+    stack: &ProgramStack,
+) -> Result<OperatorList> {
     let mut operators = OperatorList::new();
 
     for (index, value) in list.0.iter().enumerate() {
-        if let Some(operator) = get_operator(value, env)? {
+        if let Some(operator) = get_operator(value, env, stack)? {
             operators.push((operator, index));
         }
     }
@@ -342,15 +355,19 @@ pub fn find_operators(list: &List, env: &mut Environment) -> Result<OperatorList
     Ok(operators)
 }
 
-pub fn get_operator(value: &Value, env: &mut Environment) -> Result<Option<Operator>> {
-    match value.get_trait_if_present(TraitID::operator, env)? {
+pub fn get_operator(
+    value: &Value,
+    env: &mut Environment,
+    stack: &ProgramStack,
+) -> Result<Option<Operator>> {
+    match value.get_trait_if_present(TraitID::operator, env, stack)? {
         Some(operator) => Ok(Some(operator)),
         None => {
-            if let Some(name) = value.get_trait_if_present(TraitID::name, env)? {
+            if let Some(name) = value.get_trait_if_present(TraitID::name, env, stack)? {
                 if let Some(variable) = env.variables.get(&name.0) {
                     variable
                         .clone()
-                        .get_trait_if_present(TraitID::operator, env)
+                        .get_trait_if_present(TraitID::operator, env, stack)
                 } else {
                     Ok(None)
                 }
@@ -363,8 +380,8 @@ pub fn get_operator(value: &Value, env: &mut Environment) -> Result<Option<Opera
 
 impl BinaryOperator {
     pub fn as_function(self) -> Function {
-        Function::new(move |left, env| {
-            let function = (self.function)(left, env)?;
+        Function::new(move |left, env, stack| {
+            let function = (self.function)(left, env, stack)?;
             Ok(Value::new(Trait::function(Function::new(function))))
         })
     }
@@ -372,11 +389,13 @@ impl BinaryOperator {
 
 impl VariadicOperator {
     pub fn as_function(self) -> Function {
-        Function::new(move |left, env| {
-            let function = (self.function)(get_variadic_items(left, env)?, env)?;
+        Function::new(move |left, env, stack| {
+            let function = (self.function)(get_variadic_items(left, env, stack)?, env, stack)?;
 
             Ok(Value::new(Trait::function(Function::new(
-                move |right, env| function(get_variadic_items(right, env)?, env),
+                move |right, env, stack| {
+                    function(get_variadic_items(right, env, stack)?, env, stack)
+                },
             ))))
         })
     }
@@ -393,8 +412,12 @@ impl Operator {
     }
 }
 
-pub fn get_variadic_items(list: Value, env: &mut Environment) -> Result<Vec<Value>> {
-    match list.get_trait_if_present(TraitID::list, env)? {
+pub fn get_variadic_items(
+    list: Value,
+    env: &mut Environment,
+    stack: &ProgramStack,
+) -> Result<Vec<Value>> {
+    match list.get_trait_if_present(TraitID::list, env, stack)? {
         Some(list) => Ok(list.0),
         None => Err(ProgramError::new(
             "Application of variadic operator requires a list",
@@ -406,6 +429,7 @@ pub fn parse_operators(
     list: List,
     operators_in_list: OperatorList,
     env: &mut Environment,
+    stack: &ProgramStack,
 ) -> Result<Option<Value>> {
     // No need to parse a list containing no operators
     if operators_in_list.is_empty() {
@@ -484,14 +508,15 @@ pub fn parse_operators(
             match (left, right) {
                 (Some(left), Some(right)) => {
                     // Convert to a function call
-                    let result = (operator.function)(left.clone(), env)?(right.clone(), env)?;
+                    let result =
+                        (operator.function)(left.clone(), env, stack)?(right.clone(), env, stack)?;
 
                     Ok(Some(result))
                 }
                 (Some(left), None) => {
                     // Partially apply the right side
-                    let partial = Function::new(move |right, env| {
-                        (operator.function)(left.clone(), env)?(right, env)
+                    let partial = Function::new(move |right, env, stack| {
+                        (operator.function)(left.clone(), env, stack)?(right, env, stack)
                     });
 
                     let function = Value::new(Trait::function(partial));
@@ -500,8 +525,8 @@ pub fn parse_operators(
                 }
                 (None, Some(right)) => {
                     // Partially apply the left side
-                    let partial = Function::new(move |left, env| {
-                        (operator.function)(left, env)?(right.clone(), env)
+                    let partial = Function::new(move |left, env, stack| {
+                        (operator.function)(left, env, stack)?(right.clone(), env, stack)
                     });
 
                     let function = Value::new(Trait::function(partial));
@@ -519,16 +544,17 @@ pub fn parse_operators(
             match (left, right) {
                 (Some(left), Some(right)) => {
                     // Convert to a function call
-                    let result = (operator.function)(left, env)?(right, env)?;
+                    let result = (operator.function)(left, env, stack)?(right, env, stack)?;
 
                     Ok(Some(result))
                 }
                 (Some(left), None) => {
                     // Partially apply the right side
-                    let partial = Function::new(move |right, env| {
-                        (operator.function)(left.clone(), env)?(
-                            get_variadic_items(right, env)?,
+                    let partial = Function::new(move |right, env, stack| {
+                        (operator.function)(left.clone(), env, stack)?(
+                            get_variadic_items(right, env, stack)?,
                             env,
+                            stack,
                         )
                     });
 
@@ -538,10 +564,11 @@ pub fn parse_operators(
                 }
                 (None, Some(right)) => {
                     // Partially apply the left side
-                    let partial = Function::new(move |left, env| {
-                        (operator.function)(get_variadic_items(left, env)?, env)?(
+                    let partial = Function::new(move |left, env, stack| {
+                        (operator.function)(get_variadic_items(left, env, stack)?, env, stack)?(
                             right.clone(),
                             env,
+                            stack,
                         )
                     });
 

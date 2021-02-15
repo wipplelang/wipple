@@ -15,12 +15,12 @@ pub(crate) fn init(env: &mut Environment) {
     env.add_conformance(Conformance::new(
         TraitID::evaluate,
         TraitID::list.validation(),
-        |list, _| {
+        |list, _, _| {
             let list = list.clone();
 
-            Ok(EvaluateFn::new(move |env| {
-                let operators = find_operators(&list, env)?;
-                if let Some(parsed) = parse_operators(list.clone(), operators, env)? {
+            Ok(EvaluateFn::new(move |env, stack| {
+                let operators = find_operators(&list, env, stack)?;
+                if let Some(parsed) = parse_operators(list.clone(), operators, env, stack)? {
                     return Ok(parsed);
                 }
 
@@ -33,7 +33,7 @@ pub(crate) fn init(env: &mut Environment) {
                 };
 
                 for value in list.0.iter().skip(1) {
-                    result = result.call_with(value.clone(), env)?;
+                    result = result.call_with(value.clone(), env, stack)?;
                 }
 
                 Ok(result)
@@ -45,21 +45,28 @@ pub(crate) fn init(env: &mut Environment) {
     env.add_conformance(Conformance::new(
         TraitID::macro_expand,
         TraitID::list.validation(),
-        |list, _| {
+        |list, _, _| {
             let list = list.clone();
 
-            Ok(MacroExpandFn::new(move |parameter, replacement, env| {
-                let new_list = List(
-                    list.0
-                        .iter()
-                        .map(|value| {
-                            value.macro_expand(parameter.clone(), replacement.clone(), env)
-                        })
-                        .collect::<Result<_>>()?,
-                );
+            Ok(MacroExpandFn::new(
+                move |parameter, replacement, env, stack| {
+                    let new_list = List(
+                        list.0
+                            .iter()
+                            .map(|value| {
+                                value.macro_expand(
+                                    parameter.clone(),
+                                    replacement.clone(),
+                                    env,
+                                    stack,
+                                )
+                            })
+                            .collect::<Result<_>>()?,
+                    );
 
-                Ok(Value::new(Trait::list(new_list)))
-            }))
+                    Ok(Value::new(Trait::list(new_list)))
+                },
+            ))
         },
     ));
 
@@ -68,11 +75,11 @@ pub(crate) fn init(env: &mut Environment) {
         TraitID::text,
         TraitID::list
             .validation()
-            .and(Validation::new(|list: List, env| {
+            .and(Validation::new(|list: List, env, stack| {
                 let mut texts = Vec::with_capacity(list.0.len());
 
                 for value in list.0 {
-                    match value.get_trait_if_present(TraitID::text, env)? {
+                    match value.get_trait_if_present(TraitID::text, env, stack)? {
                         Some(text) => texts.push(text.0),
                         None => return Ok(Invalid),
                     }
@@ -80,6 +87,6 @@ pub(crate) fn init(env: &mut Environment) {
 
                 Ok(ValidationResult::Valid(texts))
             })),
-        |list, _| Ok(Text(format!("({})", list.join(" ")))),
+        |list, _, _| Ok(Text(format!("({})", list.join(" ")))),
     ));
 }

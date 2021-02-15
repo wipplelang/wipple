@@ -16,6 +16,6 @@ pub(crate) fn init(env: &mut Environment) {
     env.add_conformance(Conformance::new(
         TraitID::text,
         TraitID::number.validation(),
-        |number, _| Ok(Text(number.0.to_string())),
+        |number, _, _| Ok(Text(number.0.to_string())),
     ))
 }

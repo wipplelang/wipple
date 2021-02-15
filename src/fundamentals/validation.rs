@@ -14,59 +14,67 @@ pub type AnyValidationResult = ValidationResult<Rc<dyn Any>>;
 
 #[derive(Clone)]
 pub struct Validation<A: 'static + Clone, B: 'static>(
-    Rc<dyn Fn(A, &mut Environment) -> Result<ValidationResult<B>>>,
+    Rc<dyn Fn(A, &mut Environment, &ProgramStack) -> Result<ValidationResult<B>>>,
 );
 
 impl<A: Clone, B> Validation<A, B> {
     pub fn new(
-        validate: impl Fn(A, &mut Environment) -> Result<ValidationResult<B>> + 'static,
+        validate: impl Fn(A, &mut Environment, &ProgramStack) -> Result<ValidationResult<B>> + 'static,
     ) -> Validation<A, B> {
         Validation(Rc::new(validate))
     }
 
-    pub fn validate(&self, value: A, env: &mut Environment) -> Result<ValidationResult<B>> {
-        (self.0)(value, env)
+    pub fn validate(
+        &self,
+        value: A,
+        env: &mut Environment,
+        stack: &ProgramStack,
+    ) -> Result<ValidationResult<B>> {
+        (self.0)(value, env, stack)
     }
 
     pub fn or(self, other: Validation<A, B>) -> Validation<A, B> {
-        Validation::new(
-            move |input: A, env| match self.validate(input.clone(), env)? {
+        Validation::new(move |input: A, env, stack| {
+            match self.validate(input.clone(), env, stack)? {
                 Valid(new_value) => Ok(Valid(new_value)),
-                Invalid => other.validate(input, env),
-            },
-        )
+                Invalid => other.validate(input, env, stack),
+            }
+        })
     }
 }
 
 impl<A: Clone, B: Clone> Validation<A, B> {
     pub fn and<C>(self, other: Validation<B, C>) -> Validation<A, C> {
-        Validation::new(move |input, env| match self.validate(input, env)? {
-            Valid(new_value) => other.validate(new_value, env),
-            Invalid => Ok(Invalid),
-        })
+        Validation::new(
+            move |input, env, stack| match self.validate(input, env, stack)? {
+                Valid(new_value) => other.validate(new_value, env, stack),
+                Invalid => Ok(Invalid),
+            },
+        )
     }
 }
 
 #[derive(Clone)]
 pub struct AnyValidation(
-    Rc<dyn Fn(&dyn Any, &mut Environment) -> Result<Option<AnyValidationResult>>>,
+    Rc<dyn Fn(&dyn Any, &mut Environment, &ProgramStack) -> Result<Option<AnyValidationResult>>>,
 );
 
 impl AnyValidation {
     pub fn new(
-        validate: impl Fn(&dyn Any, &mut Environment) -> Result<Option<AnyValidationResult>> + 'static,
+        validate: impl Fn(&dyn Any, &mut Environment, &ProgramStack) -> Result<Option<AnyValidationResult>>
+            + 'static,
     ) -> AnyValidation {
         AnyValidation(Rc::new(validate))
     }
 
     pub fn from<A: Clone, B>(validation: Validation<A, B>) -> AnyValidation {
-        AnyValidation::new(move |value, env| {
+        AnyValidation::new(move |value, env, stack| {
             let value = match value.downcast_ref::<A>() {
                 Some(value) => value.clone(),
                 None => return Ok(None),
             };
 
-            let result = validation.validate(value, env)?;
+            let result = validation.validate(value, env, stack)?;
 
             Ok(Some(match result {
                 Valid(v) => Valid(Rc::new(v)),
@@ -79,15 +87,16 @@ impl AnyValidation {
         &self,
         value: &dyn Any,
         env: &mut Environment,
+        stack: &ProgramStack,
     ) -> Result<Option<ValidationResult<Rc<dyn Any>>>> {
-        (self.0)(value, env)
+        (self.0)(value, env, stack)
     }
 }
 
 impl<A: Clone, B: Clone> Validation<A, B> {
     pub fn from_any(validation: AnyValidation) -> Validation<A, B> {
-        Validation::new(move |value, env| {
-            let erased_result = validation.validate(&value, env)?.unwrap();
+        Validation::new(move |value, env, stack| {
+            let erased_result = validation.validate(&value, env, stack)?.unwrap();
 
             let result = match erased_result {
                 Valid(erased_value) => {

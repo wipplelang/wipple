@@ -8,15 +8,24 @@ pub use fundamentals::*;
 use num_rational::BigRational;
 use std::rc::Rc;
 
-pub fn init(env: &mut fundamentals::Environment) {
+pub fn init(env: &mut Environment) {
     builtins::init(env);
 
     // TODO: TEMPORARY (implement in Wipple code)
 
     // 'new' function
 
-    fn new(trait_constructor: TraitConstructor, value: Value, env: &mut Environment) -> Result {
-        let value = match trait_constructor.validation.validate(&value, env)?.unwrap() {
+    fn new(
+        trait_constructor: TraitConstructor,
+        value: Value,
+        env: &mut Environment,
+        stack: &ProgramStack,
+    ) -> Result {
+        let value = match trait_constructor
+            .validation
+            .validate(&value, env, stack)?
+            .unwrap()
+        {
             ValidationResult::Valid(value) => value,
             ValidationResult::Invalid => {
                 return Err(ProgramError::new(
@@ -25,18 +34,18 @@ pub fn init(env: &mut fundamentals::Environment) {
             }
         };
 
-        Ok(Value::new(Trait::new(trait_constructor.id, move |_| {
+        Ok(Value::new(Trait::new(trait_constructor.id, move |_, _| {
             Ok(value.clone())
         })))
     }
 
     env.variables.insert(
         String::from("new"),
-        Value::new(Trait::function(Function::new(|input, env| {
-            let trait_constructor = input.get_trait(TraitID::trait_constructor, env)?;
+        Value::new(Trait::function(Function::new(|input, env, stack| {
+            let trait_constructor = input.get_trait(TraitID::trait_constructor, env, stack)?;
 
             Ok(Value::new(Trait::function(Function::new(
-                move |input, env| new(trait_constructor.clone(), input, env),
+                move |input, env, stack| new(trait_constructor.clone(), input, env, stack),
             ))))
         }))),
     );
@@ -45,10 +54,10 @@ pub fn init(env: &mut fundamentals::Environment) {
 
     env.variables.insert(
         String::from("do"),
-        Value::new(Trait::function(Function::new(|input, env| {
+        Value::new(Trait::function(Function::new(|input, env, stack| {
             let mut inner_env = env.clone();
 
-            input.evaluate(&mut inner_env)
+            input.evaluate(&mut inner_env, stack)
         }))),
     );
 
@@ -64,20 +73,21 @@ pub fn init(env: &mut fundamentals::Environment) {
 
     fn assign(
         left: Vec<Value>,
-        right: impl Fn(&mut Environment) -> Result + 'static,
+        right: impl Fn(&mut Environment, &ProgramStack) -> Result + 'static,
         env: &mut Environment,
+        stack: &ProgramStack,
     ) -> Result {
         let assign = group(left)
-            .get_trait_if_present(TraitID::assign, env)?
+            .get_trait_if_present(TraitID::assign, env, stack)?
             .ok_or_else(|| {
                 ProgramError::new(
                     "Cannot assign to this value because it does not have the Assign trait",
                 )
             })?;
 
-        let right = right(env)?.evaluate(env)?;
+        let right = right(env, stack)?.evaluate(env, stack)?;
 
-        assign.0(right, env)?;
+        assign.0(right, env, stack)?;
 
         Ok(Value::empty())
     };
@@ -87,8 +97,8 @@ pub fn init(env: &mut fundamentals::Environment) {
         PrecedenceGroupComparison::<VariadicPrecedenceGroup>::highest(),
     );
 
-    let assignment_operator = VariadicOperator::collect(|left, right, env| {
-        assign(left, move |_| Ok(group(right.clone())), env)
+    let assignment_operator = VariadicOperator::collect(|left, right, env, stack| {
+        assign(left, move |_, _| Ok(group(right.clone())), env, stack)
     });
 
     env.add_variadic_operator(&assignment_operator, &assignment_precedence_group);
@@ -99,10 +109,10 @@ pub fn init(env: &mut fundamentals::Environment) {
 
     // Trait operator (::)
 
-    let trait_operator = VariadicOperator::collect(|left, right, env| {
+    let trait_operator = VariadicOperator::collect(|left, right, env, stack| {
         assign(
             left,
-            move |env| {
+            move |env, stack| {
                 // TODO: Auto-derive a value for the trait using the conformance
                 // if only the trait is provided
                 if right.len() != 2 {
@@ -111,15 +121,23 @@ pub fn init(env: &mut fundamentals::Environment) {
                     ));
                 }
 
-                let trait_constructor = right[0]
-                    .evaluate(env)?
-                    .get_trait(TraitID::trait_constructor, env)?;
+                let trait_constructor = right[0].evaluate(env, stack)?.get_trait(
+                    TraitID::trait_constructor,
+                    env,
+                    stack,
+                )?;
 
-                let value = new(trait_constructor, right[1].evaluate(env)?, env)?;
+                let value = new(
+                    trait_constructor,
+                    right[1].evaluate(env, stack)?,
+                    env,
+                    stack,
+                )?;
 
                 Ok(value)
             },
             env,
+            stack,
         )
     });
 
@@ -138,9 +156,9 @@ pub fn init(env: &mut fundamentals::Environment) {
         ),
     );
 
-    let macro_operator = VariadicOperator::collect(|left, right, env| {
+    let macro_operator = VariadicOperator::collect(|left, right, env, stack| {
         let define_parameter = group(left)
-            .get_trait_if_present(TraitID::macro_parameter, env)?
+            .get_trait_if_present(TraitID::macro_parameter, env, stack)?
             .ok_or_else(|| {
                 ProgramError::new("Macro parameter must have the Macro-Parameter trait")
             })?;
@@ -160,7 +178,9 @@ pub fn init(env: &mut fundamentals::Environment) {
     // Closures
 
     #[derive(Clone)]
-    struct DefineClosureParameterFn(Rc<dyn Fn(Value, &mut Environment) -> Result<()>>);
+    struct DefineClosureParameterFn(
+        Rc<dyn Fn(Value, &mut Environment, &ProgramStack) -> Result<()>>,
+    );
 
     let closure_parameter_trait_id =
         TraitID::<DefineClosureParameterFn>::builtin("Closure-Parameter");
@@ -169,10 +189,10 @@ pub fn init(env: &mut fundamentals::Environment) {
     env.add_conformance(Conformance::new(
         closure_parameter_trait_id.clone(),
         TraitID::name.validation(),
-        |name, _| {
+        |name, _, _| {
             let name = name.clone();
 
-            Ok(DefineClosureParameterFn(Rc::new(move |input, env| {
+            Ok(DefineClosureParameterFn(Rc::new(move |input, env, _| {
                 env.variables.insert(name.0.clone(), input);
 
                 Ok(())
@@ -182,9 +202,9 @@ pub fn init(env: &mut fundamentals::Environment) {
 
     // TODO: Closure trait
 
-    let closure_operator = VariadicOperator::collect(move |left, right, env| {
+    let closure_operator = VariadicOperator::collect(move |left, right, env, stack| {
         let define_parameter = group(left)
-            .get_trait_if_present(closure_parameter_trait_id.clone(), env)?
+            .get_trait_if_present(closure_parameter_trait_id.clone(), env, stack)?
             .ok_or_else(|| {
                 ProgramError::new("Closure parameter must have the Closure-Parameter trait")
             })?;
@@ -194,12 +214,12 @@ pub fn init(env: &mut fundamentals::Environment) {
         let closure_env = env.clone();
 
         Ok(Value::new(Trait::function(Function::new(
-            move |input, _| {
+            move |input, _, stack| {
                 let mut closure_env = closure_env.clone();
 
-                define_parameter.0(input, &mut closure_env)?;
+                define_parameter.0(input, &mut closure_env, stack)?;
 
-                return_value.evaluate(&mut closure_env)
+                return_value.evaluate(&mut closure_env, stack)
             },
         ))))
     });
@@ -216,9 +236,14 @@ pub fn init(env: &mut fundamentals::Environment) {
     fn math(
         operation: impl Fn(BigRational, BigRational) -> BigRational + 'static,
     ) -> BinaryOperator {
-        BinaryOperator::collect(move |left, right, env| {
-            let left = left.evaluate(env)?.get_trait(TraitID::number, env)?;
-            let right = right.evaluate(env)?.get_trait(TraitID::number, env)?;
+        BinaryOperator::collect(move |left, right, env, stack| {
+            let left = left
+                .evaluate(env, stack)?
+                .get_trait(TraitID::number, env, stack)?;
+
+            let right = right
+                .evaluate(env, stack)?
+                .get_trait(TraitID::number, env, stack)?;
 
             let result = Number(operation(left.0, right.0));
 
@@ -274,13 +299,16 @@ mod test {
         use crate::*;
 
         let mut env = Environment::default();
+        let stack = ProgramStack::new();
+
         init(&mut env);
 
         let block = Value::new(Trait::block(Block(Vec::new())));
 
-        let result = block
-            .evaluate(&mut env)?
-            .get_trait(TraitID::text, &mut env)?;
+        let result =
+            block
+                .evaluate(&mut env, &stack)?
+                .get_trait(TraitID::text, &mut env, &stack)?;
 
         println!("{}", result.0);
 

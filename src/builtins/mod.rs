@@ -24,7 +24,9 @@ pub use text::*;
 pub use trait_constructor::*;
 pub use validation_container::*;
 
-pub(crate) fn init(env: &mut crate::fundamentals::Environment) {
+use crate::Environment;
+
+pub(crate) fn init(env: &mut Environment) {
     block::init(env);
     empty::init(env);
     evaluate::init(env);

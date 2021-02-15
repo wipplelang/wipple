@@ -12,10 +12,10 @@ pub(crate) fn init(env: &mut Environment) {
     env.add_conformance(Conformance::new(
         TraitID::evaluate,
         TraitID::quoted.validation(),
-        move |quoted, _| {
+        move |quoted, _, _| {
             let quoted = quoted.clone();
 
-            Ok(EvaluateFn::new(move |_| Ok(quoted.clone())))
+            Ok(EvaluateFn::new(move |_, _| Ok(quoted.clone())))
         },
     ));
 
@@ -25,11 +25,11 @@ pub(crate) fn init(env: &mut Environment) {
         TraitID::quoted
             .validation()
             .and(TraitID::macro_parameter.validation()),
-        |define_parameter, _| {
+        |define_parameter, _, _| {
             let define_parameter = define_parameter.clone();
 
-            Ok(DefineMacroParameterFn::new(move |input, env| {
-                define_parameter.0(Value::new(Trait::quoted(input)), env)
+            Ok(DefineMacroParameterFn::new(move |input, env, stack| {
+                define_parameter.0(Value::new(Trait::quoted(input)), env, stack)
             }))
         },
     ));
@@ -38,14 +38,16 @@ pub(crate) fn init(env: &mut Environment) {
     env.add_conformance(Conformance::new(
         TraitID::macro_expand,
         TraitID::quoted.validation(),
-        |quoted_value, _| {
+        |quoted_value, _, _| {
             let quoted_value = quoted_value.clone();
 
-            Ok(MacroExpandFn::new(move |parameter, replacement, env| {
-                let value = quoted_value.macro_expand(parameter, replacement, env)?;
+            Ok(MacroExpandFn::new(
+                move |parameter, replacement, env, stack| {
+                    let value = quoted_value.macro_expand(parameter, replacement, env, stack)?;
 
-                Ok(Value::new(Trait::quoted(value)))
-            }))
+                    Ok(Value::new(Trait::quoted(value)))
+                },
+            ))
         },
     ));
 
@@ -53,6 +55,6 @@ pub(crate) fn init(env: &mut Environment) {
     env.add_conformance(Conformance::new(
         TraitID::text,
         TraitID::quoted.validation().and(TraitID::text.validation()),
-        |text, _| Ok(Text(format!("'{}", text.0))),
+        |text, _, _| Ok(Text(format!("'{}", text.0))),
     ));
 }

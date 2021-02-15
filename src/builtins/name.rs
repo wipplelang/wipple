@@ -12,10 +12,12 @@ simple_trait! {
 }
 
 #[derive(Clone)]
-pub struct AssignFn(pub Rc<dyn Fn(Value, &mut Environment) -> Result<()>>);
+pub struct AssignFn(pub Rc<dyn Fn(Value, &mut Environment, &ProgramStack) -> Result<()>>);
 
 impl AssignFn {
-    pub fn new(assign: impl Fn(Value, &mut Environment) -> Result<()> + 'static) -> AssignFn {
+    pub fn new(
+        assign: impl Fn(Value, &mut Environment, &ProgramStack) -> Result<()> + 'static,
+    ) -> AssignFn {
         AssignFn(Rc::new(assign))
     }
 }
@@ -49,11 +51,11 @@ pub(crate) fn init(env: &mut Environment) {
     env.add_conformance(Conformance::new(
         TraitID::assign,
         TraitID::name.validation(),
-        |name, _| {
+        |name, _, _| {
             let name = name.clone();
 
-            Ok(AssignFn::new(move |value, env| {
-                let value = value.evaluate(env)?;
+            Ok(AssignFn::new(move |value, env, stack| {
+                let value = value.evaluate(env, stack)?;
                 env.variables.insert(name.0.clone(), value);
                 Ok(())
             }))
@@ -64,17 +66,17 @@ pub(crate) fn init(env: &mut Environment) {
     env.add_conformance(Conformance::new(
         TraitID::evaluate,
         TraitID::name.validation(),
-        |name, _| {
+        |name, _, _| {
             let name = name.clone();
 
-            Ok(EvaluateFn::new(move |env| {
+            Ok(EvaluateFn::new(move |env, stack| {
                 let variable = match env.variables.get(&name.0) {
                     Some(variable) => variable.clone(),
                     None => return Err(ProgramError::new("Name does not refer to a variable")),
                 };
 
-                if variable.has_trait(TraitID::computed, env)? {
-                    variable.evaluate(env)
+                if variable.has_trait(TraitID::computed, env, stack)? {
+                    variable.evaluate(env, stack)
                 } else {
                     Ok(variable)
                 }
@@ -86,12 +88,12 @@ pub(crate) fn init(env: &mut Environment) {
     env.add_conformance(Conformance::new(
         TraitID::macro_parameter,
         TraitID::name.validation(),
-        |name, _| {
+        |name, _, _| {
             let name = name.clone();
 
-            Ok(DefineMacroParameterFn::new(move |input, env| {
+            Ok(DefineMacroParameterFn::new(move |input, env, stack| {
                 let parameter = MacroParameter(name.clone());
-                let replacement = input.evaluate(env)?;
+                let replacement = input.evaluate(env, stack)?;
 
                 Ok((parameter, replacement))
             }))
@@ -102,10 +104,10 @@ pub(crate) fn init(env: &mut Environment) {
     env.add_conformance(Conformance::new(
         TraitID::macro_expand,
         TraitID::name.validation(),
-        |name, _| {
+        |name, _, _| {
             let name = name.clone();
 
-            Ok(MacroExpandFn::new(move |parameter, replacement, _| {
+            Ok(MacroExpandFn::new(move |parameter, replacement, _, _| {
                 Ok(if name == parameter.0 {
                     replacement
                 } else {
@@ -119,6 +121,6 @@ pub(crate) fn init(env: &mut Environment) {
     env.add_conformance(Conformance::new(
         TraitID::text,
         TraitID::name.validation(),
-        |name, _| Ok(Text(name.0.clone())),
+        |name, _, _| Ok(Text(name.0.clone())),
     ));
 }

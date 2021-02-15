@@ -79,13 +79,13 @@ impl<T> TraitID<T> {
 #[derive(Clone)]
 pub struct Trait<T> {
     pub id: TraitID<T>,
-    pub value: Rc<dyn Fn(&mut Environment) -> Result<T>>,
+    pub value: Rc<dyn Fn(&mut Environment, &ProgramStack) -> Result<T>>,
 }
 
 impl<T> Trait<T> {
     pub fn new(
         id: TraitID<T>,
-        value: impl Fn(&mut Environment) -> Result<T> + 'static,
+        value: impl Fn(&mut Environment, &ProgramStack) -> Result<T> + 'static,
     ) -> Trait<T> {
         Trait {
             id,
@@ -93,8 +93,8 @@ impl<T> Trait<T> {
         }
     }
 
-    pub fn value(&self, env: &mut Environment) -> Result<T> {
-        (self.value)(env)
+    pub fn value(&self, env: &mut Environment, stack: &ProgramStack) -> Result<T> {
+        (self.value)(env, stack)
     }
 
     fn eq_erased<U>(&self, other: &Trait<U>) -> bool {
@@ -122,8 +122,8 @@ impl AnyTrait {
     pub fn from<T: 'static + Clone>(t: Trait<T>) -> AnyTrait {
         AnyTrait {
             id: AnyTraitID::from(t.id.clone()),
-            value: Rc::new(move |env| {
-                let value = (t.value)(env)?;
+            value: Rc::new(move |env, stack| {
+                let value = (t.value)(env, stack)?;
                 Ok(Rc::new(value.clone()))
             }),
         }
@@ -134,8 +134,8 @@ impl<T: 'static + Clone> Trait<T> {
     pub fn from_any(t: AnyTrait) -> Trait<T> {
         Trait {
             id: TraitID::from_any(t.clone().id),
-            value: Rc::new(move |env| {
-                let erased_value = match (t.value)(env) {
+            value: Rc::new(move |env, stack| {
+                let erased_value = match (t.value)(env, stack) {
                     Ok(erased_value) => erased_value,
                     Err(error) => return Err(error),
                 };
@@ -164,8 +164,8 @@ impl<T: Clone> TraitID<T> {
     pub fn validation(self) -> Validation<Value, T> {
         let id = self.clone();
 
-        Validation::new(move |value: Value, env| {
-            let result = match value.get_trait_if_present(id.clone(), env)? {
+        Validation::new(move |value: Value, env, stack| {
+            let result = match value.get_trait_if_present(id.clone(), env, stack)? {
                 Some(t) => Valid(t),
                 None => Invalid,
             };
@@ -180,8 +180,9 @@ impl Value {
         &self,
         id: TraitID<T>,
         env: &mut Environment,
+        stack: &ProgramStack,
     ) -> Result<T> {
-        self.get_trait_if_present(id, env)?
+        self.get_trait_if_present(id, env, stack)?
             .ok_or_else(|| ProgramError::new("Cannot find trait"))
     }
 
@@ -189,9 +190,10 @@ impl Value {
         &self,
         id: TraitID<T>,
         env: &mut Environment,
+        stack: &ProgramStack,
     ) -> Result<Option<T>> {
-        match self.find_trait(id, env)? {
-            Some(t) => t.value(env).map(Some),
+        match self.find_trait(id, env, stack)? {
+            Some(t) => t.value(env, stack).map(Some),
             None => Ok(None),
         }
     }
@@ -200,14 +202,16 @@ impl Value {
         &self,
         id: TraitID<T>,
         env: &mut Environment,
+        stack: &ProgramStack,
     ) -> Result<bool> {
-        self.find_trait(id, env).map(|t| t.is_some())
+        self.find_trait(id, env, stack).map(|t| t.is_some())
     }
 
     fn find_trait<T: 'static + Clone>(
         &self,
         id: TraitID<T>,
         env: &mut Environment,
+        stack: &ProgramStack,
     ) -> Result<Option<Trait<T>>> {
         if let Some(t) = self.traits.iter().find(|t| t.id.eq_erased(&id)) {
             return Ok(Some(Trait::from_any(t.clone())));
@@ -220,7 +224,7 @@ impl Value {
                 continue;
             }
 
-            let erased_result = conformance.validation.validate(self.clone(), env)?;
+            let erased_result = conformance.validation.validate(self.clone(), env, stack)?;
 
             let validated_value = match erased_result {
                 Valid(value) => value.clone(),
@@ -233,7 +237,7 @@ impl Value {
 
             let captured_env = env.clone();
 
-            derived_trait = Some(Trait::new(id.clone(), move |_| {
+            derived_trait = Some(Trait::new(id.clone(), move |_, stack| {
                 let mut captured_env = captured_env.clone();
 
                 println!(
@@ -242,7 +246,7 @@ impl Value {
                 );
 
                 let erased_value =
-                    (conformance.derive_trait_value)(&*validated_value, &mut captured_env)?
+                    (conformance.derive_trait_value)(&*validated_value, &mut captured_env, stack)?
                         .unwrap();
 
                 let value = erased_value.downcast_ref::<T>().unwrap().clone();
@@ -265,7 +269,7 @@ macro_rules! simple_trait {
 
         impl<'a> Trait<$type> {
             pub fn $name(x: $type) -> Trait<$type> {
-                Trait::new(TraitID::$name, move |_| Ok(x.clone()))
+                Trait::new(TraitID::$name, move |_, _| Ok(x.clone()))
             }
         }
     };
