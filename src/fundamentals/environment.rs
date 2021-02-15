@@ -11,7 +11,7 @@ pub struct Environment {
     pub user_defined: HashMap<EnvironmentKey, Value>,
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct EnvironmentKey {
     id: Uuid,
     debug_label: Option<String>,

@@ -2,7 +2,7 @@ use crate::builtins::*;
 use crate::fundamentals::*;
 use std::rc::Rc;
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Name(pub String);
 
 simple_trait! {
@@ -26,7 +26,7 @@ simple_trait! {
     label: "Assign",
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct Computed;
 
 simple_trait! {

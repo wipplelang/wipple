@@ -48,6 +48,12 @@ impl AnyConformance {
                 }
             }),
             derive_trait_value: Rc::new(move |value, env| {
+                println!(
+                    "Deriving value {} from value {}",
+                    std::any::type_name::<B>(),
+                    std::any::type_name::<A>()
+                );
+
                 let value = match value.downcast_ref::<A>() {
                     Some(value) => value,
                     None => return Ok(None),

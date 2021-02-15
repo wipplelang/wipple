@@ -2,7 +2,7 @@ use crate::builtins::*;
 use crate::fundamentals::*;
 use num_rational::BigRational;
 
-#[derive(Clone, Eq, PartialEq, Ord, PartialOrd)]
+#[derive(Debug, Clone, Eq, PartialEq, Ord, PartialOrd)]
 pub struct Number(pub BigRational);
 
 simple_trait! {

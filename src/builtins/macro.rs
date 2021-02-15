@@ -2,7 +2,7 @@ use crate::builtins::*;
 use crate::fundamentals::*;
 use std::rc::Rc;
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct MacroParameter(pub Name);
 
 #[derive(Clone)]

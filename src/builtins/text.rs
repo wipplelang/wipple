@@ -1,6 +1,6 @@
 use crate::fundamentals::*;
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Text(pub String);
 
 simple_trait! {

@@ -5,7 +5,7 @@ use std::marker::PhantomData;
 use std::rc::Rc;
 use uuid::Uuid;
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub enum TraitID<T> {
     Builtin(&'static str, PhantomData<T>),
     Runtime(Uuid, PhantomData<T>),
@@ -220,10 +220,6 @@ impl Value {
                 continue;
             }
 
-            if derived_trait.is_some() {
-                return Err(ProgramError::new("Value satisfies multiple conformances deriving this trait, so the trait to derive is ambiguous"));
-            }
-
             let erased_result = conformance.validation.validate(self.clone(), env)?;
 
             let validated_value = match erased_result {
@@ -231,13 +227,23 @@ impl Value {
                 Invalid => continue,
             };
 
+            if derived_trait.is_some() {
+                return Err(ProgramError::new("Value satisfies multiple conformances deriving this trait, so the trait to derive is ambiguous"));
+            }
+
             let captured_env = env.clone();
 
             derived_trait = Some(Trait::new(id.clone(), move |_| {
                 let mut captured_env = captured_env.clone();
 
+                println!(
+                    "Getting trait value from derived {}",
+                    std::any::type_name::<T>()
+                );
+
                 let erased_value =
-                    (conformance.derive_trait_value)(&validated_value, &mut captured_env)?.unwrap();
+                    (conformance.derive_trait_value)(&*validated_value, &mut captured_env)?
+                        .unwrap();
 
                 let value = erased_value.downcast_ref::<T>().unwrap().clone();
 
