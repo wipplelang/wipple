@@ -88,11 +88,13 @@ pub fn init(env: &mut Environment) {
 
         let right = right(env, stack)?.evaluate(env, stack)?;
 
-        let stack = stack.add(&format!(
-            "Assigning '{}' to '{}'",
-            right.format(env, stack),
-            left.format(env, stack)
-        ));
+        let stack = stack.add(|| {
+            format!(
+                "Assigning '{}' to '{}'",
+                right.format(env, stack),
+                left.format(env, stack)
+            )
+        });
 
         let assign = left
             .get_trait_if_present(TraitID::assign, env, &stack)?
@@ -143,12 +145,14 @@ pub fn init(env: &mut Environment) {
                 let trait_constructor_value = right[0].value.evaluate(env, stack)?;
                 let trait_value = right[1].value.evaluate(env, stack)?;
 
-                let stack = stack.add(&format!(
-                    "Adding trait '{}' with '{}' to '{}'",
-                    trait_constructor_value.format(env, stack),
-                    trait_value.format(env, stack),
-                    value.format(env, stack)
-                ));
+                let stack = stack.add(|| {
+                    format!(
+                        "Adding trait '{}' with '{}' to '{}'",
+                        trait_constructor_value.format(env, stack),
+                        trait_value.format(env, stack),
+                        value.format(env, stack)
+                    )
+                });
 
                 let trait_constructor =
                     trait_constructor_value.get_trait(TraitID::trait_constructor, env, &stack)?;

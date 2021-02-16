@@ -19,7 +19,12 @@ impl ProgramError {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProgramStack {
     pub items: Vec<ProgramStackItem>,
+
+    #[serde(skip)]
     queued_location: Option<SourceLocation>,
+
+    #[serde(skip)]
+    diagnostics_enabled: bool,
 }
 
 impl ProgramStack {
@@ -27,6 +32,7 @@ impl ProgramStack {
         ProgramStack {
             items: Vec::new(),
             queued_location: None,
+            diagnostics_enabled: false,
         }
     }
 
@@ -34,7 +40,17 @@ impl ProgramStack {
         self.queued_location = Some(location.clone());
     }
 
-    pub fn add_item(&self, mut item: ProgramStackItem) -> ProgramStack {
+    pub fn disable_diagnostics(&mut self) {
+        self.diagnostics_enabled = false;
+    }
+
+    pub fn add_item(&self, item: impl FnOnce() -> ProgramStackItem) -> ProgramStack {
+        if !self.diagnostics_enabled {
+            return self.clone();
+        }
+
+        let mut item = item();
+
         if item.location.is_none() {
             if let Some(location) = &self.queued_location {
                 item.location = Some(location.clone())
@@ -48,24 +64,29 @@ impl ProgramStack {
                 items
             },
             queued_location: None,
+            diagnostics_enabled: true,
         }
     }
 
-    pub fn add(&self, label: &str) -> ProgramStack {
-        self.add_item(ProgramStackItem {
-            label: String::from(label),
+    pub fn add(&self, label: impl FnOnce() -> String) -> ProgramStack {
+        self.add_item(|| ProgramStackItem {
+            label: String::from(label()),
             location: None,
         })
     }
 
-    pub fn add_located(&self, label: &str, location: &SourceLocation) -> ProgramStack {
+    pub fn add_located(
+        &self,
+        label: impl FnOnce() -> String,
+        location: &SourceLocation,
+    ) -> ProgramStack {
         let stack = ProgramStack {
             queued_location: None,
             ..self.clone()
         };
 
-        stack.add_item(ProgramStackItem {
-            label: String::from(label),
+        stack.add_item(|| ProgramStackItem {
+            label: String::from(label()),
             location: Some(location.clone()),
         })
     }

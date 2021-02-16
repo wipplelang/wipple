@@ -70,7 +70,7 @@ pub(crate) fn init(env: &mut Environment) {
             let name = name.clone();
 
             Ok(EvaluateFn::new(move |env, stack| {
-                let stack = stack.add(&format!("Resolving variable '{}'", name.0));
+                let stack = stack.add(|| format!("Resolving variable '{}'", name.0));
 
                 let variable = match env.variables.get(&name.0) {
                     Some(variable) => variable.clone(),
