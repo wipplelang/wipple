@@ -31,11 +31,11 @@ impl<T> Hash for SomeOperator<T> {
     }
 }
 
-pub type BinaryOperator = SomeOperator<Value>;
+pub type BinaryOperator = SomeOperator<ListItem>;
 
 impl BinaryOperator {
     pub fn collect(
-        function: impl Fn(Value, Value, &mut Environment, &ProgramStack) -> Result + 'static,
+        function: impl Fn(ListItem, ListItem, &mut Environment, &ProgramStack) -> Result + 'static,
     ) -> BinaryOperator {
         let function = Rc::new(function);
 
@@ -58,21 +58,22 @@ impl BinaryOperator {
             id: Uuid::new_v4(),
             function: Rc::new(move |left, env, stack| {
                 let next_function =
-                    function.0(left, env, stack)?.get_trait(TraitID::function, env, stack)?;
+                    function.0(left.value, env, stack)?.get_trait(TraitID::function, env, stack)?;
 
                 Ok(Box::new(move |right, env, stack| {
-                    next_function.0(right, env, stack)
+                    next_function.0(right.value, env, stack)
                 }))
             }),
         }
     }
 }
 
-pub type VariadicOperator = SomeOperator<Vec<Value>>;
+pub type VariadicOperator = SomeOperator<Vec<ListItem>>;
 
 impl VariadicOperator {
     pub fn collect(
-        function: impl Fn(Vec<Value>, Vec<Value>, &mut Environment, &ProgramStack) -> Result + 'static,
+        function: impl Fn(Vec<ListItem>, Vec<ListItem>, &mut Environment, &ProgramStack) -> Result
+            + 'static,
     ) -> VariadicOperator {
         let function = Rc::new(function);
 
@@ -94,12 +95,20 @@ impl VariadicOperator {
         VariadicOperator {
             id: Uuid::new_v4(),
             function: Rc::new(move |left, env, stack| {
-                let left = Value::new(Trait::list(List(left)));
+                let left = Value::new(Trait::list(List {
+                    items: left,
+                    location: None,
+                }));
+
                 let next_function =
                     function.0(left, env, stack)?.get_trait(TraitID::function, env, stack)?;
 
                 Ok(Box::new(move |right, env, stack| {
-                    let right = Value::new(Trait::list(List(right)));
+                    let right = Value::new(Trait::list(List {
+                        items: right,
+                        location: None,
+                    }));
+
                     next_function.0(right, env, stack)
                 }))
             }),
@@ -167,8 +176,8 @@ pub struct SomePrecedenceGroup<T> {
     pub associativity: Associativity,
 }
 
-pub type BinaryPrecedenceGroup = SomePrecedenceGroup<Value>;
-pub type VariadicPrecedenceGroup = SomePrecedenceGroup<Vec<Value>>;
+pub type BinaryPrecedenceGroup = SomePrecedenceGroup<ListItem>;
+pub type VariadicPrecedenceGroup = SomePrecedenceGroup<Vec<ListItem>>;
 
 impl<O> SomePrecedenceGroup<O> {
     fn new(associativity: Associativity) -> SomePrecedenceGroup<O> {
@@ -346,8 +355,8 @@ pub fn find_operators(
 ) -> Result<OperatorList> {
     let mut operators = OperatorList::new();
 
-    for (index, value) in list.0.iter().enumerate() {
-        if let Some(operator) = get_operator(value, env, stack)? {
+    for (index, item) in list.items.iter().enumerate() {
+        if let Some(operator) = get_operator(&item.value, env, stack)? {
             operators.push((operator, index));
         }
     }
@@ -381,8 +390,26 @@ pub fn get_operator(
 impl BinaryOperator {
     pub fn as_function(self) -> Function {
         Function::new(move |left, env, stack| {
-            let function = (self.function)(left, env, stack)?;
-            Ok(Value::new(Trait::function(Function::new(function))))
+            let function = (self.function)(
+                ListItem {
+                    value: left,
+                    location: None,
+                },
+                env,
+                stack,
+            )?;
+            Ok(Value::new(Trait::function(Function::new(
+                move |right, env, stack| {
+                    function(
+                        ListItem {
+                            value: right,
+                            location: None,
+                        },
+                        env,
+                        stack,
+                    )
+                },
+            ))))
         })
     }
 }
@@ -416,9 +443,9 @@ pub fn get_variadic_items(
     list: Value,
     env: &mut Environment,
     stack: &ProgramStack,
-) -> Result<Vec<Value>> {
+) -> Result<Vec<ListItem>> {
     match list.get_trait_if_present(TraitID::list, env, stack)? {
-        Some(list) => Ok(list.0),
+        Some(list) => Ok(list.items),
         None => Err(ProgramError::new(
             "Application of variadic operator requires a list",
             stack,
@@ -438,14 +465,14 @@ pub fn parse_operators(
     }
 
     // List with 0/1 values isn't parsed
-    match list.0.len() {
+    match list.items.len() {
         0 => return Ok(None),
         1 => {
             return match operators_in_list.first() {
                 Some(operator) => Ok(Some(Value::new(Trait::function(
                     operator.0.clone().as_function(),
                 )))),
-                None => Ok(Some(list.0[0].clone())),
+                None => Ok(Some(list.items[0].value.clone())),
             }
         }
         _ => {}
@@ -503,21 +530,27 @@ pub fn parse_operators(
     match operator {
         Operator::Binary(operator) => {
             // Take a single value from each side of the operator
-            let left = list.0.get(index - 1).cloned();
-            let right = list.0.get(index + 1).cloned();
+            let left = list.items.get(index - 1).cloned();
+            let right = list.items.get(index + 1).cloned();
 
             match (left, right) {
                 (Some(left), Some(right)) => {
                     // Convert to a function call
-                    let result =
-                        (operator.function)(left.clone(), env, stack)?(right.clone(), env, stack)?;
+                    let result = (operator.function)(left, env, stack)?(right, env, stack)?;
 
                     Ok(Some(result))
                 }
                 (Some(left), None) => {
                     // Partially apply the right side
                     let partial = Function::new(move |right, env, stack| {
-                        (operator.function)(left.clone(), env, stack)?(right, env, stack)
+                        (operator.function)(left.clone(), env, stack)?(
+                            ListItem {
+                                value: right,
+                                location: None,
+                            },
+                            env,
+                            stack,
+                        )
                     });
 
                     let function = Value::new(Trait::function(partial));
@@ -527,7 +560,14 @@ pub fn parse_operators(
                 (None, Some(right)) => {
                     // Partially apply the left side
                     let partial = Function::new(move |left, env, stack| {
-                        (operator.function)(left, env, stack)?(right.clone(), env, stack)
+                        (operator.function)(
+                            ListItem {
+                                value: left,
+                                location: None,
+                            },
+                            env,
+                            stack,
+                        )?(right.clone(), env, stack)
                     });
 
                     let function = Value::new(Trait::function(partial));
@@ -539,8 +579,8 @@ pub fn parse_operators(
         }
         Operator::Variadic(operator) => {
             // Take all values from each side of the operator
-            let left = list.0.get(..index).map(|v| v.to_vec());
-            let right = list.0.get(index..).map(|v| v.to_vec());
+            let left = list.items.get(..index).map(|v| v.to_vec());
+            let right = list.items.get(index..).map(|v| v.to_vec());
 
             match (left, right) {
                 (Some(left), Some(right)) => {

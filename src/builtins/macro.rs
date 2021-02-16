@@ -52,8 +52,15 @@ impl Value {
         env: &mut Environment,
         stack: &ProgramStack,
     ) -> Result {
-        match self.get_trait_if_present(TraitID::macro_expand, env, stack)? {
-            Some(expand) => expand.0(parameter, replacement, env, stack),
+        let stack = stack.add(&format!(
+            "Expanding '{}', replacing '{}' with '{}'",
+            self.format(env, stack),
+            parameter.0 .0,
+            replacement.format(env, stack)
+        ));
+
+        match self.get_trait_if_present(TraitID::macro_expand, env, &stack)? {
+            Some(expand) => expand.0(parameter, replacement, env, &stack),
             None => Ok(self.clone()),
         }
     }

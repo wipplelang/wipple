@@ -1,9 +1,15 @@
 use crate::builtins::*;
 use crate::fundamentals::*;
 
+#[derive(Clone)]
+pub struct Quoted {
+    pub value: Value,
+    pub location: Option<SourceLocation>,
+}
+
 simple_trait! {
     name: quoted,
-    type: Value,
+    type: Quoted,
     label: "Quoted",
 }
 
@@ -15,7 +21,7 @@ pub(crate) fn init(env: &mut Environment) {
         move |quoted, _, _| {
             let quoted = quoted.clone();
 
-            Ok(EvaluateFn::new(move |_, _| Ok(quoted.clone())))
+            Ok(EvaluateFn::new(move |_, _| Ok(quoted.value.clone())))
         },
     ));
 
@@ -24,12 +30,29 @@ pub(crate) fn init(env: &mut Environment) {
         TraitID::macro_parameter,
         TraitID::quoted
             .validation()
-            .and(TraitID::macro_parameter.validation()),
-        |define_parameter, _, _| {
+            .join(Validation::new(|quoted: Quoted, env, stack| {
+                TraitID::macro_parameter
+                    .validation()
+                    .validate(quoted.value, env, stack)
+            })),
+        |(quoted, define_parameter), _, _| {
+            let quoted = quoted.clone();
             let define_parameter = define_parameter.clone();
 
             Ok(DefineMacroParameterFn::new(move |input, env, stack| {
-                define_parameter.0(Value::new(Trait::quoted(input)), env, stack)
+                let mut stack = stack.clone();
+                if let Some(location) = &quoted.location {
+                    stack.queue_location(location);
+                }
+
+                define_parameter.0(
+                    Value::new(Trait::quoted(Quoted {
+                        value: input,
+                        location: None,
+                    })),
+                    env,
+                    &stack,
+                )
             }))
         },
     ));
@@ -38,14 +61,24 @@ pub(crate) fn init(env: &mut Environment) {
     env.add_conformance(Conformance::new(
         TraitID::macro_expand,
         TraitID::quoted.validation(),
-        |quoted_value, _, _| {
-            let quoted_value = quoted_value.clone();
+        |quoted, _, _| {
+            let quoted = quoted.clone();
 
             Ok(MacroExpandFn::new(
                 move |parameter, replacement, env, stack| {
-                    let value = quoted_value.macro_expand(parameter, replacement, env, stack)?;
+                    let mut stack = stack.clone();
+                    if let Some(location) = &quoted.location {
+                        stack.queue_location(location);
+                    }
 
-                    Ok(Value::new(Trait::quoted(value)))
+                    let value = quoted
+                        .value
+                        .macro_expand(parameter, replacement, env, &stack)?;
+
+                    Ok(Value::new(Trait::quoted(Quoted {
+                        value,
+                        location: None,
+                    })))
                 },
             ))
         },
@@ -54,7 +87,13 @@ pub(crate) fn init(env: &mut Environment) {
     // (Quoted and Text) ::= Text
     env.add_conformance(Conformance::new(
         TraitID::text,
-        TraitID::quoted.validation().and(TraitID::text.validation()),
+        TraitID::quoted
+            .validation()
+            .and(Validation::new(|quoted: Quoted, env, stack| {
+                TraitID::text
+                    .validation()
+                    .validate(quoted.value, env, stack)
+            })),
         |text, _, _| Ok(Text(format!("'{}", text.0))),
     ));
 }

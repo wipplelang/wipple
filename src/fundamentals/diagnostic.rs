@@ -1,6 +1,7 @@
+use serde::{Deserialize, Serialize};
 use std::fmt::Display;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProgramError {
     pub message: String,
     pub stack: ProgramStack,
@@ -15,64 +16,68 @@ impl ProgramError {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProgramStack {
     pub items: Vec<ProgramStackItem>,
+    queued_location: Option<SourceLocation>,
 }
 
 impl ProgramStack {
     pub fn new() -> ProgramStack {
-        ProgramStack { items: Vec::new() }
+        ProgramStack {
+            items: Vec::new(),
+            queued_location: None,
+        }
     }
 
-    pub fn add_item(&self, item: ProgramStackItem) -> ProgramStack {
+    pub fn queue_location(&mut self, location: &SourceLocation) {
+        self.queued_location = Some(location.clone());
+    }
+
+    pub fn add_item(&self, mut item: ProgramStackItem) -> ProgramStack {
+        if item.location.is_none() {
+            if let Some(location) = &self.queued_location {
+                item.location = Some(location.clone())
+            }
+        }
+
         ProgramStack {
             items: {
                 let mut items = self.items.clone();
                 items.push(item);
                 items
             },
+            queued_location: None,
         }
     }
 
     pub fn add(&self, label: &str) -> ProgramStack {
-        let item = ProgramStackItem {
+        self.add_item(ProgramStackItem {
             label: String::from(label),
             location: None,
-        };
-
-        ProgramStack {
-            items: {
-                let mut items = self.items.clone();
-                items.push(item);
-                items
-            },
-        }
+        })
     }
 
     pub fn add_located(&self, label: &str, location: &SourceLocation) -> ProgramStack {
-        let item = ProgramStackItem {
-            label: String::from(label),
-            location: Some(location.clone()),
+        let stack = ProgramStack {
+            queued_location: None,
+            ..self.clone()
         };
 
-        ProgramStack {
-            items: {
-                let mut items = self.items.clone();
-                items.push(item);
-                items
-            },
-        }
+        stack.add_item(ProgramStackItem {
+            label: String::from(label),
+            location: Some(location.clone()),
+        })
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProgramStackItem {
     pub label: String,
     pub location: Option<SourceLocation>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SourceLocation {
     pub file: Option<String>,
     pub line: usize,

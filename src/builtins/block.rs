@@ -2,7 +2,10 @@ use crate::builtins::*;
 use crate::fundamentals::*;
 
 #[derive(Clone)]
-pub struct Block(pub Vec<Vec<Value>>);
+pub struct Block {
+    pub statements: Vec<List>,
+    pub location: Option<SourceLocation>,
+}
 
 simple_trait! {
     name: block,
@@ -26,13 +29,23 @@ pub(crate) fn init(env: &mut Environment) {
             let block = block.clone();
 
             Ok(EvaluateFn::new(move |env, stack| {
+                let mut stack = stack.clone();
+                if let Some(location) = &block.location {
+                    stack.queue_location(location);
+                }
+
                 block
-                    .0
+                    .statements
                     .iter()
                     .map(|statement| {
+                        let mut stack = stack.clone();
+                        if let Some(location) = &statement.location {
+                            stack.queue_location(location);
+                        }
+
                         // Evaluate each statement as a list
-                        let list = Value::new(Trait::list(List(statement.clone())));
-                        list.evaluate(env, stack)
+                        let list = Value::new(Trait::list(statement.clone()));
+                        list.evaluate(env, &stack)
                     })
                     .last()
                     .unwrap_or_else(|| Ok(Value::empty()))
@@ -49,21 +62,34 @@ pub(crate) fn init(env: &mut Environment) {
 
             Ok(MacroExpandFn::new(
                 move |parameter, replacement, env, stack| {
+                    let mut stack = stack.clone();
+                    if let Some(location) = &block.location {
+                        stack.queue_location(location);
+                    }
+
                     let statements = block
-                        .0
+                        .statements
                         .iter()
                         .map(|statement| {
-                            // Evaluate each statement as a list
-                            let list = Value::new(Trait::list(List(statement.clone())));
-                            let expanded = list
-                                .macro_expand(parameter.clone(), replacement.clone(), env, stack)?
-                                .get_trait(TraitID::list, env, stack)?;
+                            let mut stack = stack.clone();
+                            if let Some(location) = &statement.location {
+                                stack.queue_location(location);
+                            }
 
-                            Ok(expanded.0)
+                            // Expand each statement as a list
+                            let list = Value::new(Trait::list(statement.clone()));
+                            let expanded = list
+                                .macro_expand(parameter.clone(), replacement.clone(), env, &stack)?
+                                .get_trait(TraitID::list, env, &stack)?;
+
+                            Ok(expanded)
                         })
                         .collect::<Result<_>>()?;
 
-                    Ok(Value::new(Trait::block(Block(statements))))
+                    Ok(Value::new(Trait::block(Block {
+                        statements,
+                        location: None,
+                    })))
                 },
             ))
         },

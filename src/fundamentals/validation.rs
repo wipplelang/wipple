@@ -52,6 +52,18 @@ impl<A: Clone, B: Clone> Validation<A, B> {
             },
         )
     }
+
+    pub fn join<C>(self, other: Validation<B, C>) -> Validation<A, (B, C)> {
+        Validation::new(
+            move |input, env, stack| match self.validate(input, env, stack)? {
+                Valid(new_value) => match other.validate(new_value.clone(), env, stack)? {
+                    Valid(result) => Ok(Valid((new_value, result))),
+                    Invalid => Ok(Invalid),
+                },
+                Invalid => Ok(Invalid),
+            },
+        )
+    }
 }
 
 #[derive(Clone)]

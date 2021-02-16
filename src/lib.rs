@@ -67,16 +67,19 @@ pub fn init(env: &mut Environment) {
 
     // Assignment operator (::)
 
-    fn group(list: Vec<Value>) -> Value {
+    fn group(list: Vec<ListItem>) -> Value {
         if list.len() == 1 {
-            list[0].clone()
+            list[0].value.clone()
         } else {
-            Value::new(Trait::list(List(list)))
+            Value::new(Trait::list(List {
+                items: list,
+                location: None,
+            }))
         }
     };
 
     fn assign(
-        left: Vec<Value>,
+        left: Vec<ListItem>,
         right: impl Fn(&mut Environment, &ProgramStack) -> Result + 'static,
         env: &mut Environment,
         stack: &ProgramStack,
@@ -137,8 +140,8 @@ pub fn init(env: &mut Environment) {
                     ));
                 }
 
-                let trait_constructor_value = right[0].evaluate(env, stack)?;
-                let trait_value = right[1].evaluate(env, stack)?;
+                let trait_constructor_value = right[0].value.evaluate(env, stack)?;
+                let trait_value = right[1].value.evaluate(env, stack)?;
 
                 let stack = stack.add(&format!(
                     "Adding trait '{}' with '{}' to '{}'",
@@ -259,10 +262,12 @@ pub fn init(env: &mut Environment) {
     ) -> BinaryOperator {
         BinaryOperator::collect(move |left, right, env, stack| {
             let left = left
+                .value
                 .evaluate(env, stack)?
                 .get_trait(TraitID::number, env, stack)?;
 
             let right = right
+                .value
                 .evaluate(env, stack)?
                 .get_trait(TraitID::number, env, stack)?;
 
@@ -309,30 +314,4 @@ pub fn init(env: &mut Environment) {
         String::from("/"),
         Value::new(Trait::operator(Operator::Binary(division_operator))),
     );
-}
-
-#[cfg(test)]
-mod test {
-    use crate::ProgramError;
-
-    #[test]
-    fn test_env() -> Result<(), ProgramError> {
-        use crate::*;
-
-        let mut env = Environment::default();
-        let stack = ProgramStack::new();
-
-        init(&mut env);
-
-        let block = Value::new(Trait::block(Block(Vec::new())));
-
-        let result =
-            block
-                .evaluate(&mut env, &stack)?
-                .get_trait(TraitID::text, &mut env, &stack)?;
-
-        println!("{}", result.0);
-
-        Ok(())
-    }
 }

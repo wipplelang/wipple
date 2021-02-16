@@ -2,7 +2,16 @@ use crate::builtins::*;
 use crate::fundamentals::*;
 
 #[derive(Clone)]
-pub struct List(pub Vec<Value>);
+pub struct List {
+    pub items: Vec<ListItem>,
+    pub location: Option<SourceLocation>,
+}
+
+#[derive(Clone)]
+pub struct ListItem {
+    pub value: Value,
+    pub location: Option<SourceLocation>,
+}
 
 simple_trait! {
     name: list,
@@ -19,12 +28,17 @@ pub(crate) fn init(env: &mut Environment) {
             let list = list.clone();
 
             Ok(EvaluateFn::new(move |env, stack| {
-                let operators = find_operators(&list, env, stack)?;
-                if let Some(parsed) = parse_operators(list.clone(), operators, env, stack)? {
+                let mut stack = stack.clone();
+                if let Some(location) = &list.location {
+                    stack.queue_location(location);
+                }
+
+                let operators = find_operators(&list, env, &stack)?;
+                if let Some(parsed) = parse_operators(list.clone(), operators, env, &stack)? {
                     return Ok(parsed);
                 }
 
-                let mut result = match list.0.first() {
+                let mut result = match list.items.first() {
                     Some(value) => value.clone(),
                     None => {
                         // Empty list evaluates to itself
@@ -32,11 +46,19 @@ pub(crate) fn init(env: &mut Environment) {
                     }
                 };
 
-                for value in list.0.iter().skip(1) {
-                    result = result.call_with(value.clone(), env, stack)?;
+                for item in list.items.iter().skip(1) {
+                    let mut stack = stack.clone();
+                    if let Some(location) = &result.location {
+                        stack.queue_location(location);
+                    }
+
+                    result = ListItem {
+                        value: result.value.call_with(item.value.clone(), env, &stack)?,
+                        location: item.location.clone(),
+                    };
                 }
 
-                Ok(result)
+                Ok(result.value)
             }))
         },
     ));
@@ -50,19 +72,31 @@ pub(crate) fn init(env: &mut Environment) {
 
             Ok(MacroExpandFn::new(
                 move |parameter, replacement, env, stack| {
-                    let new_list = List(
-                        list.0
+                    let new_list = List {
+                        items: list
+                            .items
                             .iter()
-                            .map(|value| {
-                                value.macro_expand(
+                            .map(|item| {
+                                let mut stack = stack.clone();
+                                if let Some(location) = &item.location {
+                                    stack.queue_location(location);
+                                }
+
+                                let result = item.value.macro_expand(
                                     parameter.clone(),
                                     replacement.clone(),
                                     env,
-                                    stack,
-                                )
+                                    &stack,
+                                )?;
+
+                                Ok(ListItem {
+                                    value: result,
+                                    location: item.location.clone(),
+                                })
                             })
                             .collect::<Result<_>>()?,
-                    );
+                        location: None,
+                    };
 
                     Ok(Value::new(Trait::list(new_list)))
                 },
@@ -76,10 +110,18 @@ pub(crate) fn init(env: &mut Environment) {
         TraitID::list
             .validation()
             .and(Validation::new(|list: List, env, stack| {
-                let mut texts = Vec::with_capacity(list.0.len());
+                let mut texts = Vec::with_capacity(list.items.len());
 
-                for value in list.0 {
-                    match value.get_trait_if_present(TraitID::text, env, stack)? {
+                for item in list.items {
+                    let mut stack = stack.clone();
+                    if let Some(location) = &item.location {
+                        stack.queue_location(location);
+                    }
+
+                    match item
+                        .value
+                        .get_trait_if_present(TraitID::text, env, &stack)?
+                    {
                         Some(text) => texts.push(text.0),
                         None => return Ok(Invalid),
                     }
