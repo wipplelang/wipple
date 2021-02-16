@@ -521,9 +521,11 @@ pub fn parse_operators(
     };
 
     // Choose the left/rightmost operator based on the level's associativity
+    // Left and right are flipped because associativity is for inner grouping,
+    // and the outer grouping is evaluated first
     let (operator, index) = match precedence_group.associativity() {
-        Associativity::Left => sorted_operators.first().unwrap().clone(),
-        Associativity::Right => sorted_operators.last().unwrap().clone(),
+        Associativity::Left => sorted_operators.last().unwrap().clone(),
+        Associativity::Right => sorted_operators.first().unwrap().clone(),
     };
 
     // List with 2 values is partially applied
