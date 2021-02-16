@@ -34,21 +34,20 @@ pub(crate) fn init(env: &mut Environment) {
                     stack.queue_location(location);
                 }
 
-                block
-                    .statements
-                    .iter()
-                    .map(|statement| {
-                        let mut stack = stack.clone();
-                        if let Some(location) = &statement.location {
-                            stack.queue_location(location);
-                        }
+                let mut result = Value::empty();
 
-                        // Evaluate each statement as a list
-                        let list = Value::new(Trait::list(statement.clone()));
-                        list.evaluate(env, &stack)
-                    })
-                    .last()
-                    .unwrap_or_else(|| Ok(Value::empty()))
+                for statement in &block.statements {
+                    let mut stack = stack.clone();
+                    if let Some(location) = &statement.location {
+                        stack.queue_location(location);
+                    }
+
+                    // Evaluate each statement as a list
+                    let list = Value::new(Trait::list(statement.clone()));
+                    result = list.evaluate(env, &stack)?;
+                }
+
+                Ok(result)
             }))
         },
     ));

@@ -38,8 +38,17 @@ pub(crate) fn init(env: &mut Environment) {
                     return Ok(parsed);
                 }
 
-                let mut result = match list.items.first() {
-                    Some(value) => value.clone(),
+                let (mut result, mut callee_location) = match list.items.first() {
+                    Some(item) => {
+                        let mut stack = stack.clone();
+                        if let Some(location) = &item.location {
+                            stack.queue_location(location);
+                        }
+
+                        let result = item.value.evaluate(env, &stack)?;
+
+                        (result, &item.location)
+                    }
                     None => {
                         // Empty list evaluates to itself
                         return Ok(Value::new(Trait::list(list.clone())));
@@ -48,17 +57,15 @@ pub(crate) fn init(env: &mut Environment) {
 
                 for item in list.items.iter().skip(1) {
                     let mut stack = stack.clone();
-                    if let Some(location) = &result.location {
+                    if let Some(location) = callee_location {
                         stack.queue_location(location);
                     }
 
-                    result = ListItem {
-                        value: result.value.call_with(item.value.clone(), env, &stack)?,
-                        location: item.location.clone(),
-                    };
+                    result = result.call_with(item.value.clone(), env, &stack)?;
+                    callee_location = &item.location;
                 }
 
-                Ok(result.value)
+                Ok(result)
             }))
         },
     ));
