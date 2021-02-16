@@ -19,6 +19,7 @@ pub use list::*;
 pub use name::*;
 pub use number::*;
 pub use operator::*;
+pub use quoted::*;
 pub use r#macro::*;
 pub use text::*;
 pub use trait_constructor::*;
