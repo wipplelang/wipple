@@ -18,7 +18,6 @@ impl ProgramError {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProgramStack {
-    #[serde(flatten)]
     pub items: Vec<ProgramStackItem>,
     queued_location: Option<SourceLocation>,
 }
