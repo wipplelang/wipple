@@ -226,6 +226,34 @@ pub fn init(env: &mut Environment) {
         },
     ));
 
+    // Quoted ::= Closure-Parameter
+    env.add_conformance(Conformance::new(
+        closure_parameter_trait_id.clone(),
+        TraitID::quoted
+            .validation()
+            .and(Validation::new(|quoted: Quoted, env, stack| {
+                TraitID::assign
+                    .validation()
+                    .validate(quoted.value, env, stack)
+            })),
+        |assign, _, _| {
+            let assign = assign.clone();
+
+            Ok(DefineClosureParameterFn(Rc::new(
+                move |input, env, stack| {
+                    assign.0(
+                        Value::new(Trait::quoted(Quoted {
+                            value: input,
+                            location: None,
+                        })),
+                        env,
+                        stack,
+                    )
+                },
+            )))
+        },
+    ));
+
     // TODO: Closure trait
 
     let closure_operator = VariadicOperator::collect(move |left, right, env, stack| {
