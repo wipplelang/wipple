@@ -216,11 +216,13 @@ pub fn init(env: &mut Environment) {
         |name, _, _| {
             let name = name.clone();
 
-            Ok(DefineClosureParameterFn(Rc::new(move |input, env, _| {
-                env.variables.insert(name.0.clone(), input);
-
-                Ok(())
-            })))
+            Ok(DefineClosureParameterFn(Rc::new(
+                move |input, env, stack| {
+                    let input = input.evaluate(env, stack)?;
+                    env.variables.insert(name.0.clone(), input);
+                    Ok(())
+                },
+            )))
         },
     ));
 
