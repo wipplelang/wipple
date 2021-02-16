@@ -1,5 +1,4 @@
-use crate::fundamentals::*;
-use std::any::Any;
+use crate::*;
 use std::rc::Rc;
 
 #[derive(Copy, Clone, PartialEq, Eq)]
@@ -10,7 +9,7 @@ pub enum ValidationResult<T> {
 
 pub use ValidationResult::*;
 
-pub type AnyValidationResult = ValidationResult<Rc<dyn Any>>;
+pub type AnyValidationResult = ValidationResult<Any>;
 
 #[derive(Clone)]
 pub struct Validation<A: 'static + Clone, B: 'static>(
@@ -66,53 +65,31 @@ impl<A: Clone, B: Clone> Validation<A, B> {
     }
 }
 
-#[derive(Clone)]
-pub struct AnyValidation(
-    Rc<dyn Fn(&dyn Any, &mut Environment, &ProgramStack) -> Result<Option<AnyValidationResult>>>,
-);
+pub type AnyValidation = Validation<Any, Any>;
 
 impl AnyValidation {
-    pub fn new(
-        validate: impl Fn(&dyn Any, &mut Environment, &ProgramStack) -> Result<Option<AnyValidationResult>>
-            + 'static,
-    ) -> AnyValidation {
-        AnyValidation(Rc::new(validate))
-    }
-
-    pub fn from<A: Clone, B>(validation: Validation<A, B>) -> AnyValidation {
+    pub fn from<A: Clone, B: Clone>(validation: Validation<A, B>) -> AnyValidation {
         AnyValidation::new(move |value, env, stack| {
-            let value = match value.downcast_ref::<A>() {
-                Some(value) => value.clone(),
-                None => return Ok(None),
-            };
+            let value = value.cast::<A>().clone();
 
             let result = validation.validate(value, env, stack)?;
 
-            Ok(Some(match result {
-                Valid(v) => Valid(Rc::new(v)),
+            Ok(match result {
+                Valid(v) => Valid(Any::from(v)),
                 Invalid => Invalid,
-            }))
+            })
         })
-    }
-
-    pub fn validate(
-        &self,
-        value: &dyn Any,
-        env: &mut Environment,
-        stack: &ProgramStack,
-    ) -> Result<Option<ValidationResult<Rc<dyn Any>>>> {
-        (self.0)(value, env, stack)
     }
 }
 
 impl<A: Clone, B: Clone> Validation<A, B> {
     pub fn from_any(validation: AnyValidation) -> Validation<A, B> {
         Validation::new(move |value, env, stack| {
-            let erased_result = validation.validate(&value, env, stack)?.unwrap();
+            let erased_result = validation.validate(Any::from(value), env, stack)?;
 
             let result = match erased_result {
                 Valid(erased_value) => {
-                    let value = erased_value.downcast_ref::<B>().unwrap().clone();
+                    let value = erased_value.cast::<B>().clone();
                     Valid(value)
                 }
                 Invalid => Invalid,

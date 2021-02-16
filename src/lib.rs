@@ -1,7 +1,9 @@
 #[macro_use]
 pub mod fundamentals;
+pub(crate) mod any;
 pub mod builtins;
 
+pub(crate) use any::*;
 pub use builtins::*;
 pub use fundamentals::*;
 
@@ -16,7 +18,7 @@ pub fn init(env: &mut Environment) {
     // 'new' function
 
     fn add(
-        base: Value,
+        base: &Value,
         trait_constructor: TraitConstructor,
         value: Value,
         env: &mut Environment,
@@ -24,8 +26,7 @@ pub fn init(env: &mut Environment) {
     ) -> Result {
         let value = match trait_constructor
             .validation
-            .validate(&value, env, stack)?
-            .unwrap()
+            .validate(Any::from(value), env, stack)?
         {
             ValidationResult::Valid(value) => value,
             ValidationResult::Invalid => {
@@ -44,11 +45,20 @@ pub fn init(env: &mut Environment) {
     env.variables.insert(
         String::from("new"),
         Value::new(Trait::function(Function::new(|input, env, stack| {
-            let trait_constructor = input.get_trait(TraitID::trait_constructor, env, stack)?;
+            let trait_constructor =
+                input
+                    .evaluate(env, stack)?
+                    .get_trait(TraitID::trait_constructor, env, stack)?;
 
             Ok(Value::new(Trait::function(Function::new(
                 move |input, env, stack| {
-                    add(Value::empty(), trait_constructor.clone(), input, env, stack)
+                    add(
+                        &Value::empty(),
+                        trait_constructor.clone(),
+                        input.evaluate(env, stack)?,
+                        env,
+                        stack,
+                    )
                 },
             ))))
         }))),
@@ -78,16 +88,7 @@ pub fn init(env: &mut Environment) {
         }
     };
 
-    fn assign(
-        left: Vec<ListItem>,
-        right: impl Fn(&mut Environment, &ProgramStack) -> Result + 'static,
-        env: &mut Environment,
-        stack: &ProgramStack,
-    ) -> Result {
-        let left = group(left);
-
-        let right = right(env, stack)?.evaluate(env, stack)?;
-
+    fn assign(left: Value, right: Value, env: &mut Environment, stack: &ProgramStack) -> Result {
         let stack = stack.add(|| {
             format!(
                 "Assigning '{}' to '{}'",
@@ -114,7 +115,7 @@ pub fn init(env: &mut Environment) {
     );
 
     let assignment_operator = VariadicOperator::collect(|left, right, env, stack| {
-        assign(left, move |_, _| Ok(group(right.clone())), env, stack)
+        assign(group(left), group(right).evaluate(env, stack)?, env, stack)
     });
 
     env.add_variadic_operator(&assignment_operator, &assignment_precedence_group);
@@ -126,42 +127,35 @@ pub fn init(env: &mut Environment) {
     // Trait operator (::)
 
     let trait_operator = VariadicOperator::collect(|left, right, env, stack| {
-        assign(
-            left.clone(),
-            move |env, stack| {
-                let value = group(left.clone());
+        let value = group(left.clone());
 
-                // TODO: Auto-derive a value for the trait using the conformance
-                // if only the trait is provided
-                if right.len() != 2 {
-                    return Err(ProgramError::new(
-                        "Expected a trait and a value for the trait",
-                        &stack,
-                    ));
-                }
+        // TODO: Auto-derive a value for the trait using the conformance
+        // if only the trait is provided
+        if right.len() != 2 {
+            return Err(ProgramError::new(
+                "Expected a trait and a value for the trait",
+                &stack,
+            ));
+        }
 
-                let trait_constructor_value = right[0].value.evaluate(env, stack)?;
-                let trait_value = right[1].value.evaluate(env, stack)?;
+        let trait_constructor_value = right[0].value.evaluate(env, stack)?;
+        let trait_value = right[1].value.evaluate(env, stack)?;
 
-                let stack = stack.add(|| {
-                    format!(
-                        "Adding trait '{}' with '{}' to '{}'",
-                        trait_constructor_value.format(env, stack),
-                        trait_value.format(env, stack),
-                        value.format(env, stack)
-                    )
-                });
+        let stack = stack.add(|| {
+            format!(
+                "Adding trait '{}' with '{}' to '{}'",
+                trait_constructor_value.format(env, stack),
+                trait_value.format(env, stack),
+                value.format(env, stack)
+            )
+        });
 
-                let trait_constructor =
-                    trait_constructor_value.get_trait(TraitID::trait_constructor, env, &stack)?;
+        let trait_constructor =
+            trait_constructor_value.get_trait(TraitID::trait_constructor, env, &stack)?;
 
-                let value = add(value, trait_constructor, trait_value, env, &stack)?;
+        let new_value = add(&value, trait_constructor, trait_value, env, &stack)?;
 
-                Ok(value)
-            },
-            env,
-            stack,
-        )
+        assign(value, new_value, env, &stack)
     });
 
     env.add_variadic_operator(&trait_operator, &assignment_precedence_group);
@@ -364,7 +358,7 @@ mod test {
             statements: vec![List {
                 items: vec![
                     ListItem {
-                        value: Value::new(Trait::name(Name(String::from("f")))),
+                        value: Value::new(Trait::name(Name(String::from("foo")))),
                         location: None,
                     },
                     ListItem {
@@ -372,7 +366,18 @@ mod test {
                         location: None,
                     },
                     ListItem {
-                        value: Value::new(Trait::name(Name(String::from("f")))),
+                        value: Value::new(Trait::name(Name(String::from("new")))),
+                        location: None,
+                    },
+                    ListItem {
+                        value: Value::new(Trait::name(Name(String::from("Name")))),
+                        location: None,
+                    },
+                    ListItem {
+                        value: Value::new(Trait::quoted(Quoted {
+                            value: Value::new(Trait::name(Name(String::from("f")))),
+                            location: None,
+                        })),
                         location: None,
                     },
                 ],

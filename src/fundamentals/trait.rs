@@ -1,5 +1,4 @@
 use crate::*;
-use std::any::Any;
 use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;
 use std::rc::Rc;
@@ -52,7 +51,7 @@ impl<T> TraitID<T> {
     }
 }
 
-pub type AnyTraitID = TraitID<Rc<dyn Any>>;
+pub type AnyTraitID = TraitID<Any>;
 
 impl AnyTraitID {
     pub fn from<T>(id: TraitID<T>) -> AnyTraitID {
@@ -116,7 +115,7 @@ impl<T> Hash for Trait<T> {
     }
 }
 
-pub type AnyTrait = Trait<Rc<dyn Any>>;
+pub type AnyTrait = Trait<Any>;
 
 impl AnyTrait {
     pub fn from<T: 'static + Clone>(t: Trait<T>) -> AnyTrait {
@@ -124,7 +123,7 @@ impl AnyTrait {
             id: AnyTraitID::from(t.id.clone()),
             value: Rc::new(move |env, stack| {
                 let value = (t.value)(env, stack)?;
-                Ok(Rc::new(value.clone()))
+                Ok(Any::from(value))
             }),
         }
     }
@@ -140,7 +139,7 @@ impl<T: 'static + Clone> Trait<T> {
                     Err(error) => return Err(error),
                 };
 
-                let value = erased_value.downcast_ref::<T>().unwrap().clone();
+                let value = erased_value.cast::<T>().clone();
 
                 Ok(value)
             }),
@@ -153,8 +152,8 @@ impl Value {
         Value::empty().add(t)
     }
 
-    pub fn add<T: 'static + Clone>(self, t: Trait<T>) -> Value {
-        let mut value = self;
+    pub fn add<T: 'static + Clone>(&self, t: Trait<T>) -> Value {
+        let mut value = self.clone();
         value.traits.insert(AnyTrait::from(t));
         value
     }
@@ -266,11 +265,13 @@ impl Value {
             derived_trait = Some(Trait::new(id.clone(), move |_, stack| {
                 let mut captured_env = captured_env.clone();
 
-                let erased_value =
-                    (conformance.derive_trait_value)(&*validated_value, &mut captured_env, stack)?
-                        .unwrap();
+                let erased_value = (conformance.derive_trait_value)(
+                    validated_value.clone(),
+                    &mut captured_env,
+                    stack,
+                )?;
 
-                let value = erased_value.downcast_ref::<T>().unwrap().clone();
+                let value = erased_value.cast::<T>().clone();
 
                 Ok(value)
             }));
