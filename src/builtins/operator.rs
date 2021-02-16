@@ -444,13 +444,13 @@ pub fn get_variadic_items(
     env: &mut Environment,
     stack: &ProgramStack,
 ) -> Result<Vec<ListItem>> {
-    match list.get_trait_if_present(TraitID::list, env, stack)? {
-        Some(list) => Ok(list.items),
-        None => Err(ProgramError::new(
-            "Application of variadic operator requires a list",
-            stack,
-        )),
-    }
+    list.get_trait_or(
+        TraitID::list,
+        "Application of variadic operator requires a list",
+        env,
+        stack,
+    )
+    .map(|list| list.items)
 }
 
 pub fn parse_operators(

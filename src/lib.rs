@@ -96,14 +96,12 @@ pub fn init(env: &mut Environment) {
             )
         });
 
-        let assign = left
-            .get_trait_if_present(TraitID::assign, env, &stack)?
-            .ok_or_else(|| {
-                ProgramError::new(
-                    "Cannot assign to this value because it does not have the Assign trait",
-                    &stack,
-                )
-            })?;
+        let assign = left.get_trait_or(
+            TraitID::assign,
+            "Cannot assign to this value because it does not have the Assign trait",
+            env,
+            &stack,
+        )?;
 
         assign.0(right, env, &stack)?;
 
@@ -182,11 +180,12 @@ pub fn init(env: &mut Environment) {
     );
 
     let macro_operator = VariadicOperator::collect(|left, right, env, stack| {
-        let define_parameter = group(left)
-            .get_trait_if_present(TraitID::macro_parameter, env, stack)?
-            .ok_or_else(|| {
-                ProgramError::new("Macro parameter must have the Macro-Parameter trait", stack)
-            })?;
+        let define_parameter = group(left).get_trait_or(
+            TraitID::macro_parameter,
+            "Macro parameter must have the Macro-Parameter trait",
+            env,
+            stack,
+        )?;
 
         Ok(Value::new(Trait::r#macro(Macro {
             define_parameter,
@@ -228,14 +227,12 @@ pub fn init(env: &mut Environment) {
     // TODO: Closure trait
 
     let closure_operator = VariadicOperator::collect(move |left, right, env, stack| {
-        let define_parameter = group(left)
-            .get_trait_if_present(closure_parameter_trait_id.clone(), env, stack)?
-            .ok_or_else(|| {
-                ProgramError::new(
-                    "Closure parameter must have the Closure-Parameter trait",
-                    stack,
-                )
-            })?;
+        let define_parameter = group(left).get_trait_or(
+            closure_parameter_trait_id.clone(),
+            "Closure parameter must have the Closure-Parameter trait",
+            env,
+            stack,
+        )?;
 
         let return_value = group(right);
 

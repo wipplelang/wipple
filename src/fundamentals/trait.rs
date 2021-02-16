@@ -177,6 +177,12 @@ impl<T: Clone> TraitID<T> {
     }
 }
 
+macro_rules! diagnostic {
+    ($self:ident, $env:ident, $stack:ident) => {
+        let $stack = $stack.add(|| format!("Finding trait for '{}'", $self.format($env, $stack)));
+    };
+}
+
 impl Value {
     pub fn get_trait<T: 'static + Clone>(
         &self,
@@ -184,8 +190,22 @@ impl Value {
         env: &mut Environment,
         stack: &ProgramStack,
     ) -> Result<T> {
-        self.get_trait_if_present(id, env, stack)?
-            .ok_or_else(|| ProgramError::new("Cannot find trait", stack))
+        self.get_trait_or(id, "Cannot find trait", env, stack)
+    }
+
+    pub fn get_trait_or<T: 'static + Clone>(
+        &self,
+        id: TraitID<T>,
+        error_message: &str,
+        env: &mut Environment,
+        stack: &ProgramStack,
+    ) -> Result<T> {
+        diagnostic!(self, env, stack);
+
+        match self.find_trait(id, env, &stack)? {
+            Some(t) => t.value(env, &stack),
+            None => Err(ProgramError::new(error_message, &stack)),
+        }
     }
 
     pub fn get_trait_if_present<T: 'static + Clone>(
@@ -194,8 +214,10 @@ impl Value {
         env: &mut Environment,
         stack: &ProgramStack,
     ) -> Result<Option<T>> {
-        match self.find_trait(id, env, stack)? {
-            Some(t) => t.value(env, stack).map(Some),
+        diagnostic!(self, env, stack);
+
+        match self.find_trait(id, env, &stack)? {
+            Some(t) => t.value(env, &stack).map(Some),
             None => Ok(None),
         }
     }
@@ -206,7 +228,9 @@ impl Value {
         env: &mut Environment,
         stack: &ProgramStack,
     ) -> Result<bool> {
-        self.find_trait(id, env, stack).map(|t| t.is_some())
+        diagnostic!(self, env, stack);
+
+        self.find_trait(id, env, &stack).map(|t| t.is_some())
     }
 
     fn find_trait<T: 'static + Clone>(
@@ -226,7 +250,7 @@ impl Value {
                 continue;
             }
 
-            let erased_result = conformance.validation.validate(self.clone(), env, stack)?;
+            let erased_result = conformance.validation.validate(self.clone(), env, &stack)?;
 
             let validated_value = match erased_result {
                 Valid(value) => value.clone(),
@@ -234,7 +258,7 @@ impl Value {
             };
 
             if derived_trait.is_some() {
-                return Err(ProgramError::new("Value satisfies multiple conformances deriving this trait, so the trait to derive is ambiguous", stack));
+                return Err(ProgramError::new("Value satisfies multiple conformances deriving this trait, so the trait to derive is ambiguous", &stack));
             }
 
             let captured_env = env.clone();
