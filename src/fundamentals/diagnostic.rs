@@ -32,7 +32,7 @@ impl ProgramStack {
         ProgramStack {
             items: Vec::new(),
             queued_location: None,
-            diagnostics_enabled: false,
+            diagnostics_enabled: true,
         }
     }
 
@@ -56,6 +56,9 @@ impl ProgramStack {
                 item.location = Some(location.clone())
             }
         }
+
+        #[cfg(test)]
+        println!("{}{}", "  ".repeat(self.items.len()), item.label);
 
         ProgramStack {
             items: {

@@ -322,10 +322,10 @@ pub fn init(env: &mut Environment) {
 
 #[cfg(test)]
 mod test {
-    use crate::ProgramError;
+    use crate::*;
 
     #[test]
-    fn test_env() -> Result<(), ProgramError> {
+    fn test_env() -> Result<()> {
         use crate::*;
 
         let mut env = Environment::default();
@@ -334,7 +334,23 @@ mod test {
         init(&mut env);
 
         let block = Value::new(Trait::block(Block {
-            statements: Vec::new(),
+            statements: vec![List {
+                items: vec![
+                    ListItem {
+                        value: Value::new(Trait::name(Name(String::from("f")))),
+                        location: None,
+                    },
+                    ListItem {
+                        value: Value::new(Trait::name(Name(String::from(":")))),
+                        location: None,
+                    },
+                    ListItem {
+                        value: Value::new(Trait::name(Name(String::from("f")))),
+                        location: None,
+                    },
+                ],
+                location: None,
+            }],
             location: None,
         }));
 

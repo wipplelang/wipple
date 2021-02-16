@@ -580,7 +580,7 @@ pub fn parse_operators(
         Operator::Variadic(operator) => {
             // Take all values from each side of the operator
             let left = list.items.get(..index).map(|v| v.to_vec());
-            let right = list.items.get(index..).map(|v| v.to_vec());
+            let right = list.items.get((index + 1)..).map(|v| v.to_vec());
 
             match (left, right) {
                 (Some(left), Some(right)) => {
