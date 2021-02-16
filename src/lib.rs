@@ -315,3 +315,32 @@ pub fn init(env: &mut Environment) {
         Value::new(Trait::operator(Operator::Binary(division_operator))),
     );
 }
+
+#[cfg(test)]
+mod test {
+    use crate::ProgramError;
+
+    #[test]
+    fn test_env() -> Result<(), ProgramError> {
+        use crate::*;
+
+        let mut env = Environment::default();
+        let stack = ProgramStack::new();
+
+        init(&mut env);
+
+        let block = Value::new(Trait::block(Block {
+            statements: Vec::new(),
+            location: None,
+        }));
+
+        let result =
+            block
+                .evaluate(&mut env, &stack)?
+                .get_trait(TraitID::text, &mut env, &stack)?;
+
+        println!("{}", result.0);
+
+        Ok(())
+    }
+}

@@ -165,8 +165,6 @@ impl<T: Clone> TraitID<T> {
         let id = self.clone();
 
         Validation::new(move |value: Value, env, stack| {
-            let stack = stack.add(&format!("Validating '{}'", value.format(env, stack)));
-
             let result = match value.get_trait_if_present(id.clone(), env, &stack)? {
                 Some(t) => Valid(t),
                 None => Invalid,
