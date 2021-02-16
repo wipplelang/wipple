@@ -49,18 +49,12 @@ impl AnyConformance {
                 }
             }),
             derive_trait_value: Rc::new(move |value, env, stack| {
-                println!(
-                    "Deriving value {} from value {}",
-                    std::any::type_name::<B>(),
-                    std::any::type_name::<A>()
-                );
-
                 let value = match value.downcast_ref::<A>() {
                     Some(value) => value,
                     None => return Ok(None),
                 };
 
-                (conformance.derive_trait_value)(&value, env, stack).map(|v| {
+                (conformance.derive_trait_value)(&value, env, &stack).map(|v| {
                     Some({
                         let v: Rc<dyn Any> = Rc::new(v);
                         v

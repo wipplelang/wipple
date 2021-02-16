@@ -1,4 +1,4 @@
-use crate::fundamentals::*;
+use crate::*;
 use std::any::Any;
 use std::hash::{Hash, Hasher};
 use std::marker::PhantomData;
@@ -165,7 +165,9 @@ impl<T: Clone> TraitID<T> {
         let id = self.clone();
 
         Validation::new(move |value: Value, env, stack| {
-            let result = match value.get_trait_if_present(id.clone(), env, stack)? {
+            let stack = stack.add(&format!("Validating '{}'", value.format(env, stack)));
+
+            let result = match value.get_trait_if_present(id.clone(), env, &stack)? {
                 Some(t) => Valid(t),
                 None => Invalid,
             };
@@ -183,7 +185,7 @@ impl Value {
         stack: &ProgramStack,
     ) -> Result<T> {
         self.get_trait_if_present(id, env, stack)?
-            .ok_or_else(|| ProgramError::new("Cannot find trait"))
+            .ok_or_else(|| ProgramError::new("Cannot find trait", stack))
     }
 
     pub fn get_trait_if_present<T: 'static + Clone>(
@@ -232,18 +234,13 @@ impl Value {
             };
 
             if derived_trait.is_some() {
-                return Err(ProgramError::new("Value satisfies multiple conformances deriving this trait, so the trait to derive is ambiguous"));
+                return Err(ProgramError::new("Value satisfies multiple conformances deriving this trait, so the trait to derive is ambiguous", stack));
             }
 
             let captured_env = env.clone();
 
             derived_trait = Some(Trait::new(id.clone(), move |_, stack| {
                 let mut captured_env = captured_env.clone();
-
-                println!(
-                    "Getting trait value from derived {}",
-                    std::any::type_name::<T>()
-                );
 
                 let erased_value =
                     (conformance.derive_trait_value)(&*validated_value, &mut captured_env, stack)?

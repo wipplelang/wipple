@@ -15,7 +15,8 @@ pub fn init(env: &mut Environment) {
 
     // 'new' function
 
-    fn new(
+    fn add(
+        base: Value,
         trait_constructor: TraitConstructor,
         value: Value,
         env: &mut Environment,
@@ -30,13 +31,14 @@ pub fn init(env: &mut Environment) {
             ValidationResult::Invalid => {
                 return Err(ProgramError::new(
                     "Cannot use this value to represent this trait",
+                    stack,
                 ))
             }
         };
 
-        Ok(Value::new(Trait::new(trait_constructor.id, move |_, _| {
-            Ok(value.clone())
-        })))
+        let r#trait = Trait::new(trait_constructor.id, move |_, _| Ok(value.clone()));
+
+        Ok(base.add(r#trait))
     }
 
     env.variables.insert(
@@ -45,7 +47,9 @@ pub fn init(env: &mut Environment) {
             let trait_constructor = input.get_trait(TraitID::trait_constructor, env, stack)?;
 
             Ok(Value::new(Trait::function(Function::new(
-                move |input, env, stack| new(trait_constructor.clone(), input, env, stack),
+                move |input, env, stack| {
+                    add(Value::empty(), trait_constructor.clone(), input, env, stack)
+                },
             ))))
         }))),
     );
@@ -77,17 +81,26 @@ pub fn init(env: &mut Environment) {
         env: &mut Environment,
         stack: &ProgramStack,
     ) -> Result {
-        let assign = group(left)
-            .get_trait_if_present(TraitID::assign, env, stack)?
-            .ok_or_else(|| {
-                ProgramError::new(
-                    "Cannot assign to this value because it does not have the Assign trait",
-                )
-            })?;
+        let left = group(left);
 
         let right = right(env, stack)?.evaluate(env, stack)?;
 
-        assign.0(right, env, stack)?;
+        let stack = stack.add(&format!(
+            "Assigning '{}' to '{}'",
+            right.format(env, stack),
+            left.format(env, stack)
+        ));
+
+        let assign = left
+            .get_trait_if_present(TraitID::assign, env, &stack)?
+            .ok_or_else(|| {
+                ProgramError::new(
+                    "Cannot assign to this value because it does not have the Assign trait",
+                    &stack,
+                )
+            })?;
+
+        assign.0(right, env, &stack)?;
 
         Ok(Value::empty())
     };
@@ -111,28 +124,33 @@ pub fn init(env: &mut Environment) {
 
     let trait_operator = VariadicOperator::collect(|left, right, env, stack| {
         assign(
-            left,
+            left.clone(),
             move |env, stack| {
+                let value = group(left.clone());
+
                 // TODO: Auto-derive a value for the trait using the conformance
                 // if only the trait is provided
                 if right.len() != 2 {
                     return Err(ProgramError::new(
                         "Expected a trait and a value for the trait",
+                        &stack,
                     ));
                 }
 
-                let trait_constructor = right[0].evaluate(env, stack)?.get_trait(
-                    TraitID::trait_constructor,
-                    env,
-                    stack,
-                )?;
+                let trait_constructor_value = right[0].evaluate(env, stack)?;
+                let trait_value = right[1].evaluate(env, stack)?;
 
-                let value = new(
-                    trait_constructor,
-                    right[1].evaluate(env, stack)?,
-                    env,
-                    stack,
-                )?;
+                let stack = stack.add(&format!(
+                    "Adding trait '{}' with '{}' to '{}'",
+                    trait_constructor_value.format(env, stack),
+                    trait_value.format(env, stack),
+                    value.format(env, stack)
+                ));
+
+                let trait_constructor =
+                    trait_constructor_value.get_trait(TraitID::trait_constructor, env, &stack)?;
+
+                let value = add(value, trait_constructor, trait_value, env, &stack)?;
 
                 Ok(value)
             },
@@ -160,7 +178,7 @@ pub fn init(env: &mut Environment) {
         let define_parameter = group(left)
             .get_trait_if_present(TraitID::macro_parameter, env, stack)?
             .ok_or_else(|| {
-                ProgramError::new("Macro parameter must have the Macro-Parameter trait")
+                ProgramError::new("Macro parameter must have the Macro-Parameter trait", stack)
             })?;
 
         Ok(Value::new(Trait::r#macro(Macro {
@@ -206,7 +224,10 @@ pub fn init(env: &mut Environment) {
         let define_parameter = group(left)
             .get_trait_if_present(closure_parameter_trait_id.clone(), env, stack)?
             .ok_or_else(|| {
-                ProgramError::new("Closure parameter must have the Closure-Parameter trait")
+                ProgramError::new(
+                    "Closure parameter must have the Closure-Parameter trait",
+                    stack,
+                )
             })?;
 
         let return_value = group(right);

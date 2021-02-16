@@ -8,3 +8,12 @@ simple_trait! {
     type: Text,
     label: "Text",
 }
+
+impl Value {
+    pub fn format(&self, env: &mut Environment, stack: &ProgramStack) -> String {
+        match self.get_trait_if_present(TraitID::text, env, stack) {
+            Ok(text) => text.map_or_else(|| String::from("<value>"), |text| text.0),
+            Err(_) => String::from("<error retrieving text>"),
+        }
+    }
+}

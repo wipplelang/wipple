@@ -21,8 +21,10 @@ simple_trait! {
 
 impl Value {
     pub fn evaluate(&self, env: &mut Environment, stack: &ProgramStack) -> Result {
-        match self.get_trait_if_present(TraitID::evaluate, env, stack)? {
-            Some(evaluate) => evaluate.0(env, stack),
+        let stack = stack.add(&format!("Evaluating '{}'", self.format(env, stack)));
+
+        match self.get_trait_if_present(TraitID::evaluate, env, &stack)? {
+            Some(evaluate) => evaluate.0(env, &stack),
             None => Ok(self.clone()),
         }
     }

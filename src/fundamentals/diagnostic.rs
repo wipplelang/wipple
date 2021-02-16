@@ -3,12 +3,14 @@ use std::fmt::Display;
 #[derive(Debug, Clone)]
 pub struct ProgramError {
     pub message: String,
+    pub stack: ProgramStack,
 }
 
 impl ProgramError {
-    pub fn new(message: &str) -> ProgramError {
+    pub fn new(message: &str, stack: &ProgramStack) -> ProgramError {
         ProgramError {
             message: String::from(message),
+            stack: stack.clone(),
         }
     }
 }
@@ -23,7 +25,37 @@ impl ProgramStack {
         ProgramStack { items: Vec::new() }
     }
 
-    pub fn add(&self, item: ProgramStackItem) -> ProgramStack {
+    pub fn add_item(&self, item: ProgramStackItem) -> ProgramStack {
+        ProgramStack {
+            items: {
+                let mut items = self.items.clone();
+                items.push(item);
+                items
+            },
+        }
+    }
+
+    pub fn add(&self, label: &str) -> ProgramStack {
+        let item = ProgramStackItem {
+            label: String::from(label),
+            location: None,
+        };
+
+        ProgramStack {
+            items: {
+                let mut items = self.items.clone();
+                items.push(item);
+                items
+            },
+        }
+    }
+
+    pub fn add_located(&self, label: &str, location: &SourceLocation) -> ProgramStack {
+        let item = ProgramStackItem {
+            label: String::from(label),
+            location: Some(location.clone()),
+        };
+
         ProgramStack {
             items: {
                 let mut items = self.items.clone();

@@ -421,6 +421,7 @@ pub fn get_variadic_items(
         Some(list) => Ok(list.0),
         None => Err(ProgramError::new(
             "Application of variadic operator requires a list",
+            stack,
         )),
     }
 }

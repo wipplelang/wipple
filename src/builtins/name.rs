@@ -70,13 +70,20 @@ pub(crate) fn init(env: &mut Environment) {
             let name = name.clone();
 
             Ok(EvaluateFn::new(move |env, stack| {
+                let stack = stack.add(&format!("Resolving variable '{}'", name.0));
+
                 let variable = match env.variables.get(&name.0) {
                     Some(variable) => variable.clone(),
-                    None => return Err(ProgramError::new("Name does not refer to a variable")),
+                    None => {
+                        return Err(ProgramError::new(
+                            "Name does not refer to a variable",
+                            &stack,
+                        ))
+                    }
                 };
 
-                if variable.has_trait(TraitID::computed, env, stack)? {
-                    variable.evaluate(env, stack)
+                if variable.has_trait(TraitID::computed, env, &stack)? {
+                    variable.evaluate(env, &stack)
                 } else {
                     Ok(variable)
                 }

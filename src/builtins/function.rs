@@ -25,15 +25,18 @@ impl Value {
         env: &mut Environment,
         stack: &ProgramStack,
     ) -> Result {
-        let function = match self.get_trait_if_present(TraitID::function, env, stack)? {
+        let stack = stack.add(&format!("Calling '{}'", self.format(env, stack)));
+
+        let function = match self.get_trait_if_present(TraitID::function, env, &stack)? {
             Some(function) => function,
             None => {
                 return Err(ProgramError::new(
                     "Cannot call this value because it does not have the Function trait",
+                    &stack,
                 ))
             }
         };
 
-        function.0(parameter, env, stack)
+        function.0(parameter, env, &stack)
     }
 }
