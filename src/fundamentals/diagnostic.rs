@@ -1,7 +1,9 @@
+#[cfg(feature = "use_serde")]
 use serde::{Deserialize, Serialize};
 use std::fmt::Display;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
+#[cfg_attr(feature = "use_serde", derive(Serialize, Deserialize))]
 pub struct ProgramError {
     pub message: String,
     pub stack: ProgramStack,
@@ -16,14 +18,15 @@ impl ProgramError {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
+#[cfg_attr(feature = "use_serde", derive(Serialize, Deserialize))]
 pub struct ProgramStack {
     pub items: Vec<ProgramStackItem>,
 
-    #[serde(skip)]
+    #[cfg_attr(feature = "use_serde", serde(skip))]
     queued_location: Option<SourceLocation>,
 
-    #[serde(skip)]
+    #[cfg_attr(feature = "use_serde", serde(skip))]
     diagnostics_enabled: bool,
 }
 
@@ -95,13 +98,15 @@ impl ProgramStack {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
+#[cfg_attr(feature = "use_serde", derive(Serialize, Deserialize))]
 pub struct ProgramStackItem {
     pub label: String,
     pub location: Option<SourceLocation>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
+#[cfg_attr(feature = "use_serde", derive(Serialize, Deserialize))]
 pub struct SourceLocation {
     pub file: Option<String>,
     pub line: usize,
