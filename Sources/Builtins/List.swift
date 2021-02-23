@@ -78,25 +78,17 @@ internal func setupList(_ env: inout Environment) {
         )
     )
 
-    // (List and (each Text)) ::= Text
+    // List ::= Text
     env.addConformance(
         Conformance(
             derivedTraitID: .text,
-            validation: TraitID.list.validation & Validation<List, [String]> { list, env, stack in
-                var texts: [String] = []
-
-                for item in list.items {
-                    guard let text = try item.traitIfPresent(.text, &env, stack) else {
-                        return .invalid
-                    }
-
-                    texts.append(text.text)
+            validation: TraitID.list.validation,
+            deriveTraitValue: { list, env, stack in
+                let texts = list.items.map { value in
+                    value.format(&env, stack)
                 }
-
-                return .valid(texts)
-            },
-            deriveTraitValue: { texts, _, _ in
-                Text("(\(texts.joined(separator: " ")))")
+                
+                return Text("(\(texts.joined(separator: " ")))")
             }
         )
     )
