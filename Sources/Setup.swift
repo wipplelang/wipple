@@ -7,6 +7,7 @@ public func setup() throws -> Environment {
     setupList(&env)
     setupMacro(&env)
     setupName(&env)
+    setupNumber(&env)
     setupOperator(&env)
     setupQuoted(&env)
     setupTraitConstructor(&env)

@@ -25,7 +25,15 @@ extension Value {
     public func format(_ env: inout Environment, _ stack: ProgramStack) -> String {
         var stack = stack
         stack.disableRecording()
-
-        return (try? self.traitIfPresent(.text, &env, stack))?.text ?? "<value>"
+        
+        do {
+            guard let text = try self.traitIfPresent(.text, &env, stack) else {
+                return "<value>"
+            }
+            
+            return text.text
+        } catch {
+            return "<error retrieving text>"
+        }
     }
 }

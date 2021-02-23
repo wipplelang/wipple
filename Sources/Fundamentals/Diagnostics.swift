@@ -42,8 +42,10 @@ extension ProgramStack {
             item.location = self.queuedLocation
         }
         
+        #if WIPPLE_LOG_DIAGNOSTICS
         print("\(String(repeating: "  ", count: self.items.count))\(item.label)")
-
+        #endif
+        
         var stack = self
         stack.items.append(item)
         stack.queuedLocation = nil
