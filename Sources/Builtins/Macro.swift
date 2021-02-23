@@ -5,9 +5,7 @@ public typealias DefineMacroParameterFunc = (Value, inout Environment, ProgramSt
 )
 
 extension TraitID where T == DefineMacroParameterFunc {
-    public static var macroParameter: Self {
-        .builtin("Macro-Parameter")
-    }
+    public static let macroParameter = TraitID(debugLabel: "Macro-Parameter")
 }
 
 extension Trait where T == DefineMacroParameterFunc {
@@ -20,9 +18,7 @@ public typealias MacroExpandFunc = (MacroParameter, Value, inout Environment, Pr
     -> Value
 
 extension TraitID where T == MacroExpandFunc {
-    public static var macroExpand: Self {
-        .builtin("Macro-Expand")
-    }
+    public static let macroExpand = TraitID(debugLabel: "Macro-Expand")
 }
 
 extension Trait where T == MacroExpandFunc {
@@ -44,7 +40,7 @@ extension Value {
                 "Expanding '\(self.format(&env, stack))', replacing '\(parameter)' with '\(replacement.format(&env, stack))'"
             )
 
-        guard let macroExpand = try self.getTraitIfPresent(.macroExpand, &env, stack) else {
+        guard let macroExpand = try self.traitIfPresent(.macroExpand, &env, stack) else {
             return self
         }
 
@@ -66,9 +62,7 @@ public struct Macro {
 }
 
 extension TraitID where T == Macro {
-    public static var macro: Self {
-        .builtin("Macro")
-    }
+    public static let macro = TraitID(debugLabel: "Macro")
 }
 
 extension Trait where T == Macro {

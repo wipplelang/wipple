@@ -5,7 +5,7 @@ public struct Conformance<A, B> {
 
     public init(
         derivedTraitID: TraitID<B>,
-        validation: @escaping Validation<Value, A>,
+        validation: Validation<Value, A>,
         deriveTraitValue: @escaping (A, inout Environment, ProgramStack) throws -> B
     ) {
         self.derivedTraitID = derivedTraitID
@@ -23,7 +23,14 @@ extension AnyConformance {
         self
             .init(
                 derivedTraitID: AnyTraitID(conformance.derivedTraitID),
-                validation: toAny(conformance.validation),
+                validation: Validation(debugLabel: conformance.validation.debugLabel) { value, env, stack in
+                    switch try conformance.validation(value, &env, stack) {
+                    case .valid(let value):
+                        return .valid(value)
+                    case .invalid:
+                        return .invalid
+                    }
+                },
                 deriveTraitValue: { value, env, stack in
                     try conformance.deriveTraitValue(value as! A, &env, stack)
                 }
@@ -37,7 +44,7 @@ extension Conformance {
     ) {
         self.init(
             derivedTraitID: TraitID(fromAny: conformance.derivedTraitID),
-            validation: { value, env, stack in
+            validation: Validation(debugLabel: conformance.validation.debugLabel) { value, env, stack in
                 switch try conformance.validation(value, &env, stack) {
                 case .valid(let value):
                     return .valid(value as! A)
@@ -55,5 +62,11 @@ extension Conformance {
 extension Environment {
     public mutating func addConformance<A, B>(_ conformance: Conformance<A, B>) {
         self.conformances.append(AnyConformance(conformance))
+    }
+}
+
+extension Conformance: CustomDebugStringConvertible {
+    public var debugDescription: String {
+        "\(self.validation.debugLabel ?? "<validation>") ::= \(self.derivedTraitID.debugLabel ?? "<trait>")"
     }
 }

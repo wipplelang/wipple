@@ -12,9 +12,7 @@ public struct Quoted {
 }
 
 extension TraitID where T == Quoted {
-    public static var quoted: Self {
-        .builtin("Quoted")
-    }
+    public static let quoted = TraitID(debugLabel: "Quoted")
 }
 
 extension Trait where T == Quoted {
@@ -42,7 +40,7 @@ internal func setupQuoted(_ env: inout Environment) {
         Conformance(
             derivedTraitID: .macroParameter,
             validation: TraitID.quoted.validation
-                && { quoted, env, stack in
+                && Validation { quoted, env, stack in
                     try TraitID.macroParameter.validation(quoted.value, &env, stack)
                 },
             deriveTraitValue: { x, _, _ in
@@ -89,7 +87,7 @@ internal func setupQuoted(_ env: inout Environment) {
     env.addConformance(
         Conformance(
             derivedTraitID: .text,
-            validation: TraitID.quoted.validation & { quoted, env, stack in
+            validation: TraitID.quoted.validation & Validation { quoted, env, stack in
                 try TraitID.text.validation(quoted.value, &env, stack)
             },
             deriveTraitValue: { text, _, _ in

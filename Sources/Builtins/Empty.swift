@@ -2,7 +2,7 @@ internal func setupEmpty(_ env: inout Environment) {
     // _ : <empty value>
     env.variables["_"] = Value.empty
 
-    let emptyValidation: Validation<Value, Value> = { value, _, _ in
+    let emptyValidation = Validation<Value, Value>(debugLabel: "empty") { value, _, _ in
         value.traits.isEmpty ? .valid(value) : .invalid
     }
 
@@ -12,7 +12,7 @@ internal func setupEmpty(_ env: inout Environment) {
             derivedTraitID: .validation,
             validation: emptyValidation,
             deriveTraitValue: { _, _, _ in
-                { value, _, _ in
+                Validation(debugLabel: "_") { value, _, _ in
                     .valid(value)
                 }
             }

@@ -48,7 +48,7 @@ extension BinaryOperator {
         _ function: @escaping Function
     ) {
         self.init { left, env, stack in
-            try function(left, &env, stack).getTrait(.function, &env, stack)
+            try function(left, &env, stack).trait(.function, &env, stack)
         }
     }
 }
@@ -64,7 +64,7 @@ extension VariadicOperator {
             env,
             stack -> ([Value], inout Environment, ProgramStack) throws -> Value in
             let nextFunction = try function(Value(.list(List(left))), &env, stack)
-                .getTrait(
+                .trait(
                     .function,
                     &env,
                     stack
@@ -121,9 +121,7 @@ public enum Associativity: Equatable {
 public typealias OperatorList = [(op: Operator, index: Int)]
 
 extension TraitID where T == Operator {
-    public static var `operator`: Self {
-        .builtin("Operator")
-    }
+    public static let `operator` = TraitID(debugLabel: "Operator")
 }
 
 extension Trait where T == Operator {
@@ -347,14 +345,14 @@ public func getOperator(
 ) throws
     -> Operator?
 {
-    if let op = try value.getTraitIfPresent(.operator, &env, stack) {
+    if let op = try value.traitIfPresent(.operator, &env, stack) {
         return op
     }
 
-    if let name = try value.getTraitIfPresent(.name, &env, stack),
+    if let name = try value.traitIfPresent(.name, &env, stack),
         let variable = env.variables[name.name]
     {
-        return try variable.getTraitIfPresent(.operator, &env, stack)
+        return try variable.traitIfPresent(.operator, &env, stack)
     }
 
     return nil
@@ -367,7 +365,7 @@ public func getVariadicItems(
 )
     throws -> [Value]
 {
-    try list.getTrait(
+    try list.trait(
         .list,
         orError: "Application of variadic operator requires a list",
         &env,

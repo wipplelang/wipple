@@ -41,6 +41,8 @@ extension ProgramStack {
         if item.location == nil {
             item.location = self.queuedLocation
         }
+        
+        print("\(String(repeating: "  ", count: self.items.count))\(item.label)")
 
         var stack = self
         stack.items.append(item)

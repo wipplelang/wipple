@@ -1,9 +1,7 @@
 public typealias Function = (Value, inout Environment, ProgramStack) throws -> Value
 
 extension TraitID where T == Function {
-    public static var function: Self {
-        .builtin("Function")
-    }
+    public static let function = TraitID(debugLabel: "Function")
 }
 
 extension Trait where T == Function {
@@ -18,9 +16,9 @@ extension Value {
         _ env: inout Environment,
         _ stack: ProgramStack
     ) throws -> Value {
-        let stack = stack.add("Calling \(self.format(&env, stack))")
+        let stack = stack.add("Calling '\(self.format(&env, stack))'")
 
-        let function = try self.getTrait(
+        let function = try self.trait(
             .function,
             orError: "Cannot call this value because it does not have the Function trait",
             &env,

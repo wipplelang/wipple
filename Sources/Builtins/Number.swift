@@ -13,9 +13,7 @@ public struct Number {
 }
 
 extension TraitID where T == Number {
-    public static var number: Self {
-        .builtin("Number")
-    }
+    public static let number = TraitID(debugLabel: "Number")
 }
 
 extension Trait where T == Number {

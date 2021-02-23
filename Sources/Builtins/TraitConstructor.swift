@@ -4,7 +4,7 @@ public struct TraitConstructor {
 
     public init<T>(
         id: TraitID<T>,
-        validation: @escaping AnyValidation
+        validation: AnyValidation
     ) {
         self.id = AnyTraitID(id)
         self.validation = validation
@@ -12,9 +12,7 @@ public struct TraitConstructor {
 }
 
 extension TraitID where T == TraitConstructor {
-    public static var traitConstructor: Self {
-        .builtin("Trait")
-    }
+    public static let traitConstructor = TraitID(debugLabel: "Trait")
 }
 
 extension Trait where T == TraitConstructor {

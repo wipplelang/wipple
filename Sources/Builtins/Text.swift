@@ -12,9 +12,7 @@ public struct Text {
 }
 
 extension TraitID where T == Text {
-    public static var text: Self {
-        .builtin("Text")
-    }
+    public static let text = TraitID(debugLabel: "Text")
 }
 
 extension Trait where T == Text {
@@ -28,6 +26,6 @@ extension Value {
         var stack = stack
         stack.disableRecording()
 
-        return (try? self.getTraitIfPresent(.text, &env, stack))?.text ?? "<error retrieving text>"
+        return (try? self.traitIfPresent(.text, &env, stack))?.text ?? "<value>"
     }
 }

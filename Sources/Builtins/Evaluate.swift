@@ -1,9 +1,7 @@
 public typealias EvaluateFunc = (inout Environment, ProgramStack) throws -> Value
 
 extension TraitID where T == EvaluateFunc {
-    public static var evaluate: Self {
-        .builtin("Evaluate")
-    }
+    public static let evaluate = TraitID(debugLabel: "Evaluate")
 }
 
 extension Trait where T == EvaluateFunc {
@@ -14,9 +12,9 @@ extension Trait where T == EvaluateFunc {
 
 extension Value {
     public func evaluate(_ env: inout Environment, _ stack: ProgramStack) throws -> Value {
-        let stack = stack.add("Evaluating \(self.format(&env, stack))")
+        let stack = stack.add("Evaluating '\(self.format(&env, stack))'")
 
-        guard let evaluate = try self.getTraitIfPresent(.evaluate, &env, stack) else {
+        guard let evaluate = try self.traitIfPresent(.evaluate, &env, stack) else {
             return self
         }
 

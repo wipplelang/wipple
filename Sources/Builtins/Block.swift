@@ -12,9 +12,7 @@ public struct Block {
 }
 
 extension TraitID where T == Block {
-    public static var block: Self {
-        .builtin("Block")
-    }
+    public static let block = TraitID(debugLabel: "Block")
 }
 
 extension Trait where T == Block {
@@ -91,7 +89,7 @@ internal func setupBlock(_ env: inout Environment) {
                                 &env,
                                 stack
                             )
-                            .getTrait(.list, &env, stack)
+                            .trait(.list, &env, stack)
 
                         return expanded
                     }

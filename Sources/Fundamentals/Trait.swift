@@ -1,48 +1,26 @@
 import Foundation
 
-public enum TraitID<T>: Hashable {
-    case builtin(String)
-    case runtime(UUID)
-}
-
-extension TraitID: Equatable {
-    public static func == <U>(lhs: TraitID<T>, rhs: TraitID<U>) -> Bool {
-        switch (lhs, rhs) {
-        case (.builtin(let a), .builtin(let b)):
-            return a == b
-        case (.runtime(let a), .runtime(let b)):
-            return a == b
-        default:
-            return false
-        }
+public struct TraitID<T>: Equatable, Hashable {
+    public var id: UUID
+    public var debugLabel: String?
+    
+    public init(id: UUID = UUID(), debugLabel: String? = nil) {
+        self.id = id
+        self.debugLabel = debugLabel
     }
 }
 
 public typealias AnyTraitID = TraitID<Any>
 
 extension AnyTraitID {
-    public init<T>(
-        _ id: TraitID<T>
-    ) {
-        switch id {
-        case .builtin(let id):
-            self = .builtin(id)
-        case .runtime(let id):
-            self = .runtime(id)
-        }
+    public init<T>(_ id: TraitID<T>) {
+        self.init(id: id.id, debugLabel: id.debugLabel)
     }
 }
 
 extension TraitID {
-    public init(
-        fromAny id: AnyTraitID
-    ) {
-        switch id {
-        case .builtin(let id):
-            self = .builtin(id)
-        case .runtime(let id):
-            self = .runtime(id)
-        }
+    public init(fromAny id: AnyTraitID) {
+        self.init(id: id.id, debugLabel: id.debugLabel)
     }
 }
 
@@ -61,7 +39,7 @@ public struct Trait<T> {
 
 extension Trait: Equatable {
     public static func == <U>(lhs: Trait<T>, rhs: Trait<U>) -> Bool {
-        lhs.id == rhs.id
+        lhs.id.id == rhs.id.id
     }
 }
 
@@ -107,12 +85,12 @@ extension Value {
 
 extension TraitID {
     public var validation: Validation<Value, T> {
-        { value, env, stack in
+        Validation(debugLabel: self.debugLabel ?? "<trait>") { value, env, stack in
             guard
-                let trait = try value.getTraitIfPresent(
+                let trait = try value.traitIfPresent(
                     self,
                     &env,
-                    stack.add("Validating \(value.format(&env, stack))")
+                    stack.add("Validating '\(value.format(&env, stack))'")
                 )
             else {
                 return .invalid
@@ -124,15 +102,15 @@ extension TraitID {
 }
 
 extension Value {
-    public func getTrait<T>(
+    public func trait<T>(
         _ id: TraitID<T>,
         _ env: inout Environment,
         _ stack: ProgramStack
     ) throws -> T {
-        try self.getTrait(id, orError: "Cannot find trait", &env, stack)
+        try self.trait(id, orError: "Cannot find trait", &env, stack)
     }
 
-    public func getTrait<T>(
+    public func trait<T>(
         _ id: TraitID<T>,
         orError errorMessage: @autoclosure () -> String,
         _ env: inout Environment,
@@ -153,7 +131,7 @@ extension Value {
         return try trait.value(&env, stack)
     }
 
-    public func getTraitIfPresent<T>(
+    public func traitIfPresent<T>(
         _ id: TraitID<T>,
         _ env: inout Environment,
         _ stack: ProgramStack
@@ -178,14 +156,14 @@ extension Value {
         _ env: inout Environment,
         _ stack: ProgramStack
     ) throws -> Trait<T>? {
-        if let trait = self.traits.first(where: { $0.id == id }) {
+        if let trait = self.traits.first(where: { $0.id.id == id.id }) {
             return Trait(fromAny: trait)
         }
 
         var derivedTrait: Trait<T>?
 
         for conformance in env.conformances {
-            guard conformance.derivedTraitID == id else { continue }
+            guard conformance.derivedTraitID.id == id.id else { continue }
 
             guard case .valid(let validatedValue) = try conformance.validation(self, &env, stack)
             else {

@@ -12,9 +12,7 @@ public struct List {
 }
 
 extension TraitID where T == List {
-    public static var list: Self {
-        .builtin("List")
-    }
+    public static let list = TraitID(debugLabel: "List")
 }
 
 extension Trait where T == List {
@@ -84,14 +82,11 @@ internal func setupList(_ env: inout Environment) {
     env.addConformance(
         Conformance(
             derivedTraitID: .text,
-            validation: TraitID.list.validation & {
-                list,
-                env,
-                stack -> ValidationResult<[String]> in
+            validation: TraitID.list.validation & Validation<List, [String]> { list, env, stack in
                 var texts: [String] = []
 
                 for item in list.items {
-                    guard let text = try item.getTraitIfPresent(.text, &env, stack) else {
+                    guard let text = try item.traitIfPresent(.text, &env, stack) else {
                         return .invalid
                     }
 

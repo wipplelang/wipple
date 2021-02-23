@@ -12,9 +12,7 @@ public struct Name {
 }
 
 extension TraitID where T == Name {
-    public static var name: Self {
-        .builtin("Name")
-    }
+    public static let name = TraitID(debugLabel: "Name")
 }
 
 extension Trait where T == Name {
@@ -26,9 +24,7 @@ extension Trait where T == Name {
 public typealias AssignFunc = (Value, inout Environment, ProgramStack) throws -> Void
 
 extension TraitID where T == AssignFunc {
-    public static var assign: Self {
-        .builtin("assign")
-    }
+    public static let assign = TraitID(debugLabel: "assign")
 }
 
 extension Trait where T == AssignFunc {
@@ -38,9 +34,7 @@ extension Trait where T == AssignFunc {
 }
 
 extension TraitID where T == () {
-    public static var computed: Self {
-        .builtin("Computed")
-    }
+    public static let computed = TraitID(debugLabel: "Computed")
 }
 
 extension Trait where T == () {

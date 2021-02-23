@@ -45,7 +45,7 @@ private func temporaryPrelude(_ env: inout Environment) {
     env.variables["new"] = Value(
         .function { value, env, stack in
             let traitConstructor = try value.evaluate(&env, stack)
-                .getTrait(.traitConstructor, &env, stack)
+                .trait(.traitConstructor, &env, stack)
 
             return Value(
                 .function { value, env, stack in
@@ -82,7 +82,7 @@ private func temporaryPrelude(_ env: inout Environment) {
             "Assigning '\(right.format(&env, stack))' to '\(left.format(&env, stack))'"
         )
 
-        let assign = try left.getTrait(
+        let assign = try left.trait(
             .assign,
             orError: "Cannot assign to this value becasue it does not have the Assign trait",
             &env,
@@ -124,7 +124,7 @@ private func temporaryPrelude(_ env: inout Environment) {
             "Adding trait '\(traitConstructorValue.format(&env, stack))' with '\(traitValue.format(&env, stack))' to '\(value.format(&env, stack))'"
         )
 
-        let traitConstructor = try traitConstructorValue.getTrait(.traitConstructor, &env, stack)
+        let traitConstructor = try traitConstructorValue.trait(.traitConstructor, &env, stack)
 
         let newValue = try add(value, traitConstructor, traitValue, &env, stack)
 
@@ -151,7 +151,7 @@ private func temporaryPrelude(_ env: inout Environment) {
 
     let macroOperator = VariadicOperator { left, right, env, stack in
         let defineParameter = try group(left)
-            .getTrait(
+            .trait(
                 .macroParameter,
                 orError: "Macro parameter must have the Macro-Parameter trait",
                 &env,
@@ -175,7 +175,7 @@ private func temporaryPrelude(_ env: inout Environment) {
 
     let closureOperator = VariadicOperator { left, right, env, stack in
         let defineParameter = try group(left)
-            .getTrait(.assign, orError: "Closure parameter must have the Assign trait", &env, stack)
+            .trait(.assign, orError: "Closure parameter must have the Assign trait", &env, stack)
 
         let returnValue = group(right)
 
@@ -201,8 +201,8 @@ private func temporaryPrelude(_ env: inout Environment) {
         in precedenceGroup: BinaryPrecedenceGroup
     ) {
         let op = BinaryOperator { left, right, env, stack in
-            let left = try left.evaluate(&env, stack).getTrait(.number, &env, stack)
-            let right = try right.evaluate(&env, stack).getTrait(.number, &env, stack)
+            let left = try left.evaluate(&env, stack).trait(.number, &env, stack)
+            let right = try right.evaluate(&env, stack).trait(.number, &env, stack)
 
             let result = Number(operation(left.number, right.number))
 
