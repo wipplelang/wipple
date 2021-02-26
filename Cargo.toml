@@ -1,0 +1,10 @@
+[package]
+name = "wipple"
+version = "0.0.0"
+edition = "2018"
+
+[features]
+log_diagnostics = []
+
+[dependencies]
+uuid = { version = "0.8.2", features = ["v4"] }
