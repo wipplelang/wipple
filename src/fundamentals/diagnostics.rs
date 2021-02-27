@@ -88,6 +88,15 @@ pub struct StackItem {
     pub location: Option<SourceLocation>,
 }
 
+impl fmt::Display for StackItem {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match &self.location {
+            Some(location) => write!(f, "{} ({})", self.label, location),
+            None => write!(f, "{}", self.label),
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Error {
     pub message: String,
@@ -102,3 +111,21 @@ impl Error {
         }
     }
 }
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "{}\n{}",
+            self.message,
+            self.stack
+                .items
+                .iter()
+                .map(|item| format!("    {}", item))
+                .collect::<Vec<_>>()
+                .join("\n")
+        )
+    }
+}
+
+impl std::error::Error for Error {}
