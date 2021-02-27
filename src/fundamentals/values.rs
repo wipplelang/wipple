@@ -1,11 +1,14 @@
 use crate::*;
-use std::{any::Any, rc::Rc};
+use std::{
+    any::{Any, TypeId},
+    rc::Rc,
+};
 
 pub trait Primitive: Clone + 'static {}
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub enum Value {
-    Primitive(Rc<dyn Any>),
+    Primitive(TypeId, Rc<dyn Any>),
     Composite(Vec<Trait>),
 }
 
@@ -16,8 +19,8 @@ impl Value {
 
     pub fn traits(&self) -> Vec<Trait> {
         match self {
-            Value::Primitive(ref value) => vec![Trait {
-                id: TraitID::Primitive(value.type_id()),
+            Value::Primitive(type_id, _) => vec![Trait {
+                id: TraitID::Primitive(*type_id),
                 value: self.clone(),
             }],
             Value::Composite(traits) => traits.clone(),
@@ -35,12 +38,12 @@ impl Value {
     }
 
     pub fn of<T: Primitive>(primitive: T) -> Self {
-        Value::Primitive(Rc::new(primitive))
+        Value::Primitive(primitive.type_id(), Rc::new(primitive))
     }
 
     pub fn is_empty(&self) -> bool {
         match self {
-            Value::Primitive(_) => false,
+            Value::Primitive(_, _) => false,
             Value::Composite(traits) => traits.is_empty(),
         }
     }

@@ -2,7 +2,7 @@ use crate::*;
 use std::any::TypeId;
 use uuid::Uuid;
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TraitID {
     Primitive(TypeId),
     Runtime(Uuid),
@@ -18,7 +18,7 @@ impl TraitID {
     }
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct Trait {
     pub id: TraitID,
     pub value: Value,
@@ -99,7 +99,7 @@ impl Value {
         Ok(self
             .get_trait_if_present(TraitID::new_primitive::<T>(), env, stack)?
             .and_then(|r#trait| match r#trait.value {
-                Value::Primitive(value) => value.downcast_ref::<T>().cloned(),
+                Value::Primitive(_, value) => value.downcast_ref::<T>().cloned(),
                 _ => None,
             }))
     }

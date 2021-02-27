@@ -8,15 +8,6 @@ macro_rules! primitive {
                 crate::TraitID::new_primitive::<$Type>()
             }
         }
-
-        impl crate::Trait {
-            pub fn $name(value: $Type) -> Self {
-                crate::Trait {
-                    id: crate::TraitID::$name(),
-                    value: crate::Value::Primitive(std::rc::Rc::new(value)),
-                }
-            }
-        }
     };
 }
 
