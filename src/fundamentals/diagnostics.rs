@@ -1,8 +1,8 @@
-use std::fmt;
+use std::{fmt, path::PathBuf};
 
 #[derive(Debug, Clone)]
 pub struct SourceLocation {
-    pub file: Option<String>,
+    pub file: Option<PathBuf>,
     pub line: usize,
     pub column: usize,
 }
@@ -10,7 +10,13 @@ pub struct SourceLocation {
 impl fmt::Display for SourceLocation {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match &self.file {
-            Some(file) => write!(f, "{}:{}:{}", file, self.line, self.column),
+            Some(file) => write!(
+                f,
+                "{}:{}:{}",
+                file.to_string_lossy(),
+                self.line,
+                self.column
+            ),
             None => write!(f, "{}:{}", self.line, self.column),
         }
     }
