@@ -42,7 +42,7 @@ pub(crate) fn setup(env: &mut Environment) {
         })))
     });
 
-    // Module-Block ::= Text
+    // Module-Block ::= Evaluate
     env.add_conformance_for_primitive(TraitID::evaluate(), |module_block: ModuleBlock, _, _| {
         Ok(Some(Value::of(EvaluateFn::new(move |env, stack| {
             let mut stack = stack.clone();
