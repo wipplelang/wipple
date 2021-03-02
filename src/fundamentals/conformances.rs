@@ -1,6 +1,17 @@
 use crate::*;
 use std::rc::Rc;
 
+pub type Conformances = Vec<Conformance>;
+
+env_key!(conformances for Conformances {
+    EnvironmentKey::new(
+        UseFn::new(|parent: &Conformances, new| {
+            parent.clone().into_iter().chain(new.clone()).collect()
+        }),
+        true,
+    )
+});
+
 #[derive(Clone)]
 pub struct Conformance {
     pub derived_trait_id: TraitID,
@@ -15,7 +26,7 @@ impl Environment {
         derived_trait_id: TraitID,
         derive_trait_value: impl Fn(&Value, &mut Environment, &Stack) -> Result<Option<Value>> + 'static,
     ) {
-        self.conformances.push(Conformance {
+        self.conformances().push(Conformance {
             derived_trait_id,
             derive_trait_value: Rc::new(derive_trait_value),
         })

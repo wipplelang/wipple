@@ -6,6 +6,15 @@ use std::{
 };
 use uuid::Uuid;
 
+pub type OperatorPrecedences = Vec<PrecedenceGroup>;
+
+env_key!(operator_precedences for OperatorPrecedences {
+    EnvironmentKey::new(
+        UseFn::take_parent::<OperatorPrecedences>(),
+        true,
+    )
+});
+
 #[derive(Clone)]
 pub struct SomeOperator<T> {
     pub id: Uuid,
@@ -269,12 +278,12 @@ pub struct PrecedenceGroupComparison<P: 'static>(Rc<dyn Fn(P, &mut Environment)>
 macro_rules! comparison_find {
     ($env:ident, $offset:expr, $target:expr, $insert:expr) => {
         let index = $env
-            .operator_precedences
+            .operator_precedences()
             .iter()
             .position(|o| o.id() == $target.id)
             .unwrap();
 
-        $env.operator_precedences.insert(index + $offset, $insert);
+        $env.operator_precedences().insert(index + $offset, $insert);
     };
 }
 
@@ -283,14 +292,15 @@ macro_rules! comparisons {
         impl PrecedenceGroupComparison<$group> {
             pub fn highest() -> Self {
                 Self(Rc::new(|group, env| {
-                    env.operator_precedences
+                    env.operator_precedences()
                         .insert(0, PrecedenceGroup::$name(group))
                 }))
             }
 
             pub fn lowest() -> Self {
                 Self(Rc::new(|group, env| {
-                    env.operator_precedences.push(PrecedenceGroup::$name(group))
+                    env.operator_precedences()
+                        .push(PrecedenceGroup::$name(group))
                 }))
             }
 
@@ -315,7 +325,7 @@ comparisons!(VariadicPrecedenceGroup, Variadic);
 macro_rules! add_operator {
     ($self:ident, $group:ident, $operator:ident, $name:ident) => {
         let group = $self
-            .operator_precedences
+            .operator_precedences()
             .iter_mut()
             .find_map(|p| match p {
                 PrecedenceGroup::$name(p) => {
@@ -388,7 +398,7 @@ pub fn get_operator(
         Some(operator) => Ok(Some(operator)),
         None => {
             if let Some(name) = value.get_primitive_if_present::<Name>(env, stack)? {
-                if let Some(variable) = env.variables.get(&name.name) {
+                if let Some(variable) = env.variables().get(&name.name) {
                     variable
                         .clone()
                         .get_primitive_if_present::<Operator>(env, stack)
@@ -476,7 +486,7 @@ impl List {
 
             for operator in operators_in_list {
                 let (precedence, group) = env
-                    .operator_precedences
+                    .operator_precedences()
                     .iter()
                     .enumerate()
                     .find(|p| p.1.operators().contains(&operator.0))

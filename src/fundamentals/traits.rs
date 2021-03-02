@@ -62,7 +62,7 @@ impl Value {
         }
 
         // Attempt to derive the trait via a conformance
-        for conformance in env.conformances.clone() {
+        for conformance in env.conformances().clone() {
             if conformance.derived_trait_id != id {
                 continue;
             }
@@ -99,7 +99,7 @@ impl Value {
         Ok(self
             .get_trait_if_present(TraitID::new_primitive::<T>(), env, stack)?
             .and_then(|r#trait| match r#trait.value {
-                Value::Primitive(_, value) => value.downcast_ref::<T>().cloned(),
+                Value::Primitive(value) => value.downcast_ref::<T>().cloned(),
                 _ => None,
             }))
     }

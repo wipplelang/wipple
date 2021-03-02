@@ -1,5 +1,5 @@
 use crate::*;
-use std::rc::Rc;
+use std::{collections::HashMap, rc::Rc};
 
 #[derive(Clone)]
 pub struct Name {
@@ -25,13 +25,24 @@ pub struct Computed;
 
 primitive!(computed for Computed);
 
+pub type Variables = HashMap<String, Value>;
+
+env_key!(variables for Variables {
+    EnvironmentKey::new(
+        UseFn::new(|parent: &Variables, new| {
+            parent.clone().into_iter().chain(new.clone()).collect()
+        }),
+        true,
+    )
+});
+
 impl Environment {
-    pub fn variable(&self, name: &str) -> Option<&Value> {
-        self.variables.get(name)
+    pub fn get_variable(&mut self, name: &str) -> Option<&Value> {
+        self.variables().get(name)
     }
 
     pub fn set_variable(&mut self, name: &str, value: Value) {
-        self.variables.insert(String::from(name), value);
+        self.variables().insert(String::from(name), value);
     }
 }
 
@@ -59,7 +70,7 @@ pub(crate) fn setup(env: &mut Environment) {
         Ok(Some(Value::of(EvaluateFn::new(move |env, stack| {
             let stack = stack.add(|| format!("Resolving variable '{}'", name.name));
 
-            let variable = match env.variable(&name.name) {
+            let variable = match env.get_variable(&name.name) {
                 Some(variable) => variable,
                 None => return Err(Error::new("Name does not refer to a variable", &stack)),
             }
