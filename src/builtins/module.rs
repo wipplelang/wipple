@@ -50,6 +50,9 @@ pub(crate) fn setup(env: &mut Environment) {
                 stack.queue_location(location);
             }
 
+            // Modules capture their environment
+            let mut captured_env = env.clone();
+
             for statement in &module_block.statements {
                 let mut stack = stack.clone();
                 if let Some(location) = &statement.location {
@@ -58,10 +61,10 @@ pub(crate) fn setup(env: &mut Environment) {
 
                 // Evaluate each statement as a list
                 let list = Value::of(statement.clone());
-                list.evaluate(env, &stack)?;
+                list.evaluate(&mut captured_env, &stack)?;
             }
 
-            Ok(Value::of(Module::from(env.clone())))
+            Ok(Value::of(Module::from(captured_env)))
         }))))
     });
 
