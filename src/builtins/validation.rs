@@ -14,6 +14,10 @@ impl Validation {
         Validation(Rc::new(validation))
     }
 
+    pub fn any() -> Self {
+        Validation::new(|value, _, _| Ok(Validated::Valid(value.clone())))
+    }
+
     pub fn for_primitive<T: Primitive>() -> Self {
         Validation::new(move |value, env, stack| {
             Ok(match value.get_primitive_if_present::<T>(env, stack)? {
