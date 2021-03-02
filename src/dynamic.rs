@@ -32,9 +32,11 @@ impl Clone for Dynamic {
     fn clone(&self) -> Self {
         Dynamic {
             type_id: self.type_id,
-            type_name: self.type_name,
             value: (self.clone)(),
             clone: self.clone.clone(),
+
+            #[cfg(debug_assertions)]
+            type_name: self.type_name,
         }
     }
 }
