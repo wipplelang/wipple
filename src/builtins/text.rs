@@ -9,7 +9,7 @@ pub struct Text {
 primitive!(text for Text);
 
 impl Value {
-    pub fn format(&self, env: &mut Environment, stack: &Stack) -> String {
+    pub fn format(&self, env: &EnvironmentRef, stack: &Stack) -> String {
         let mut stack = stack.clone();
         stack.disable_recording();
 

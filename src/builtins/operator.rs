@@ -23,9 +23,9 @@ pub struct SomeOperator<T> {
     pub function: Rc<
         dyn Fn(
             &T,
-            &mut Environment,
+            &EnvironmentRef,
             &Stack,
-        ) -> Result<Box<dyn Fn(&T, &mut Environment, &Stack) -> Result>>,
+        ) -> Result<Box<dyn Fn(&T, &EnvironmentRef, &Stack) -> Result>>,
     >,
 }
 
@@ -33,9 +33,9 @@ impl<T> SomeOperator<T> {
     pub fn new(
         function: impl Fn(
                 &T,
-                &mut Environment,
+                &EnvironmentRef,
                 &Stack,
-            ) -> Result<Box<dyn Fn(&T, &mut Environment, &Stack) -> Result>>
+            ) -> Result<Box<dyn Fn(&T, &EnvironmentRef, &Stack) -> Result>>
             + 'static,
     ) -> Self {
         SomeOperator {
@@ -63,7 +63,7 @@ pub type BinaryOperator = SomeOperator<Value>;
 
 impl BinaryOperator {
     pub fn collect(
-        function: impl Fn(&Value, &Value, &mut Environment, &Stack) -> Result + 'static,
+        function: impl Fn(&Value, &Value, &EnvironmentRef, &Stack) -> Result + 'static,
     ) -> BinaryOperator {
         let function = Rc::new(function);
 
@@ -95,7 +95,7 @@ pub type VariadicOperator = SomeOperator<Vec<Value>>;
 
 impl VariadicOperator {
     pub fn collect(
-        function: impl Fn(&Vec<Value>, &Vec<Value>, &mut Environment, &Stack) -> Result + 'static,
+        function: impl Fn(&Vec<Value>, &Vec<Value>, &EnvironmentRef, &Stack) -> Result + 'static,
     ) -> VariadicOperator {
         let function = Rc::new(function);
 
@@ -376,7 +376,7 @@ impl Environment {
 // Operator parsing
 
 impl List {
-    pub fn find_operators(&self, env: &mut Environment, stack: &Stack) -> Result<OperatorList> {
+    pub fn find_operators(&self, env: &EnvironmentRef, stack: &Stack) -> Result<OperatorList> {
         let mut operators = OperatorList::new();
 
         for (index, item) in self.items.iter().enumerate() {
@@ -391,14 +391,14 @@ impl List {
 
 pub fn get_operator(
     value: &Value,
-    env: &mut Environment,
+    env: &EnvironmentRef,
     stack: &Stack,
 ) -> Result<Option<Operator>> {
     match value.get_primitive_if_present::<Operator>(env, stack)? {
         Some(operator) => Ok(Some(operator)),
         None => {
             if let Some(name) = value.get_primitive_if_present::<Name>(env, stack)? {
-                if let Some(variable) = env.variables().get(&name.name) {
+                if let Some(variable) = env.borrow_mut().variables().get(&name.name) {
                     variable
                         .clone()
                         .get_primitive_if_present::<Operator>(env, stack)
@@ -444,7 +444,7 @@ impl Operator {
     }
 }
 
-fn get_variadic_items(value: &Value, env: &mut Environment, stack: &Stack) -> Result<Vec<Value>> {
+fn get_variadic_items(value: &Value, env: &EnvironmentRef, stack: &Stack) -> Result<Vec<Value>> {
     value
         .get_primitive_or::<List>(
             "Application of variadic operator requires a list",
@@ -458,7 +458,7 @@ impl List {
     pub fn parse_operators(
         &self,
         operators_in_list: OperatorList,
-        env: &mut Environment,
+        env: &EnvironmentRef,
         stack: &Stack,
     ) -> Result<Option<Value>> {
         // No need to parse a list containing no operators
@@ -482,17 +482,18 @@ impl List {
         let sorted_operators_by_precedence = {
             // FIXME: Probably very inefficient
 
-            let mut precedences = HashMap::new();
+            let precedences = env.borrow_mut().operator_precedences().clone();
+
+            let mut precedences_to_sort = HashMap::new();
 
             for operator in operators_in_list {
-                let (precedence, group) = env
-                    .operator_precedences()
+                let (precedence, group) = precedences
                     .iter()
                     .enumerate()
                     .find(|p| p.1.operators().contains(&operator.0))
                     .expect("Operator is not registered");
 
-                precedences
+                precedences_to_sort
                     .entry(precedence)
                     .or_insert((group.clone(), {
                         let mut h = HashSet::new();
@@ -503,7 +504,7 @@ impl List {
                     .insert(operator);
             }
 
-            let mut sorted: Vec<_> = precedences.iter().collect();
+            let mut sorted: Vec<_> = precedences_to_sort.iter().collect();
             sorted.sort_by_key(|o| o.0);
             let sorted: Vec<_> = sorted.iter().map(|o| o.1.clone()).collect();
 

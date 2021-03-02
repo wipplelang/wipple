@@ -2,10 +2,10 @@ use crate::*;
 use std::rc::Rc;
 
 #[derive(Clone)]
-pub struct EvaluateFn(pub Rc<dyn Fn(&mut Environment, &Stack) -> Result>);
+pub struct EvaluateFn(pub Rc<dyn Fn(&EnvironmentRef, &Stack) -> Result>);
 
 impl EvaluateFn {
-    pub fn new(evaluate: impl Fn(&mut Environment, &Stack) -> Result + 'static) -> Self {
+    pub fn new(evaluate: impl Fn(&EnvironmentRef, &Stack) -> Result + 'static) -> Self {
         EvaluateFn(Rc::new(evaluate))
     }
 }
@@ -13,7 +13,7 @@ impl EvaluateFn {
 primitive!(evaluate for EvaluateFn);
 
 impl Value {
-    pub fn evaluate(&self, env: &mut Environment, stack: &Stack) -> Result {
+    pub fn evaluate(&self, env: &EnvironmentRef, stack: &Stack) -> Result {
         match self.get_primitive_if_present::<EvaluateFn>(env, stack)? {
             Some(evaluate) => evaluate.0(env, stack),
             None => Ok(self.clone()),

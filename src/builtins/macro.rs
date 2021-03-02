@@ -6,12 +6,12 @@ pub struct MacroParameter(pub String);
 #[derive(Clone)]
 pub struct DefineMacroParameterFn(
     #[allow(clippy::type_complexity)]
-    pub  Rc<dyn Fn(&Value, &mut Environment, &Stack) -> Result<(MacroParameter, Value)>>,
+    pub  Rc<dyn Fn(&Value, &EnvironmentRef, &Stack) -> Result<(MacroParameter, Value)>>,
 );
 
 impl DefineMacroParameterFn {
     pub fn new(
-        define: impl Fn(&Value, &mut Environment, &Stack) -> Result<(MacroParameter, Value)> + 'static,
+        define: impl Fn(&Value, &EnvironmentRef, &Stack) -> Result<(MacroParameter, Value)> + 'static,
     ) -> Self {
         DefineMacroParameterFn(Rc::new(define))
     }
@@ -21,12 +21,12 @@ primitive!(macro_parameter for DefineMacroParameterFn);
 
 #[derive(Clone)]
 pub struct MacroExpandFn(
-    pub Rc<dyn Fn(&MacroParameter, &Value, &mut Environment, &Stack) -> Result>,
+    pub Rc<dyn Fn(&MacroParameter, &Value, &EnvironmentRef, &Stack) -> Result>,
 );
 
 impl MacroExpandFn {
     pub fn new(
-        define: impl Fn(&MacroParameter, &Value, &mut Environment, &Stack) -> Result + 'static,
+        define: impl Fn(&MacroParameter, &Value, &EnvironmentRef, &Stack) -> Result + 'static,
     ) -> Self {
         MacroExpandFn(Rc::new(define))
     }
@@ -39,7 +39,7 @@ impl Value {
         &self,
         parameter: &MacroParameter,
         replacement: &Value,
-        env: &mut Environment,
+        env: &EnvironmentRef,
         stack: &Stack,
     ) -> Result {
         match self.get_primitive_if_present::<MacroExpandFn>(env, stack)? {

@@ -10,8 +10,8 @@ impl Module {
         Module { values }
     }
 
-    pub fn from(env: Environment) -> Self {
-        Module::new(env.values)
+    pub fn from(env: &EnvironmentRef) -> Self {
+        Module::new(env.borrow().values.clone())
     }
 }
 
@@ -51,7 +51,8 @@ pub(crate) fn setup(env: &mut Environment) {
             }
 
             // Modules capture their environment
-            let mut captured_env = env.clone();
+            // let captured_env = env.child().into_ref();
+            let captured_env = Environment::child_of(env).into_ref();
 
             for statement in &module_block.statements {
                 let mut stack = stack.clone();
@@ -61,10 +62,10 @@ pub(crate) fn setup(env: &mut Environment) {
 
                 // Evaluate each statement as a list
                 let list = Value::of(statement.clone());
-                list.evaluate(&mut captured_env, &stack)?;
+                list.evaluate(&captured_env, &stack)?;
             }
 
-            Ok(Value::of(Module::from(captured_env)))
+            Ok(Value::of(Module::from(&captured_env)))
         }))))
     });
 

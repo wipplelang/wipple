@@ -4,12 +4,12 @@ use std::rc::Rc;
 #[derive(Clone)]
 pub struct Validation(
     #[allow(clippy::type_complexity)]
-    pub  Rc<dyn Fn(&Value, &mut Environment, &Stack) -> Result<Validated<Value>>>,
+    pub  Rc<dyn Fn(&Value, &EnvironmentRef, &Stack) -> Result<Validated<Value>>>,
 );
 
 impl Validation {
     pub fn new(
-        validation: impl Fn(&Value, &mut Environment, &Stack) -> Result<Validated<Value>> + 'static,
+        validation: impl Fn(&Value, &EnvironmentRef, &Stack) -> Result<Validated<Value>> + 'static,
     ) -> Self {
         Validation(Rc::new(validation))
     }
@@ -28,7 +28,7 @@ impl Validation {
     }
 
     pub fn for_primitive_with<T: Primitive>(
-        validation: impl Fn(T, &mut Environment, &Stack) -> Result<Validated<Value>> + 'static,
+        validation: impl Fn(T, &EnvironmentRef, &Stack) -> Result<Validated<Value>> + 'static,
     ) -> Self {
         Validation::new(move |value, env, stack| {
             let primitive = match value.get_primitive_if_present::<T>(env, stack)? {

@@ -1,7 +1,7 @@
 use crate::*;
 
 pub fn prelude() -> Environment {
-    let mut env = Environment::new();
+    let mut env = Environment::blank();
 
     setup(&mut env);
     temporary_prelude(&mut env);
@@ -18,7 +18,7 @@ fn temporary_prelude(env: &mut Environment) {
         base: &Value,
         trait_constructor: &TraitConstructor,
         value: &Value,
-        env: &mut Environment,
+        env: &EnvironmentRef,
         stack: &Stack,
     ) -> Result {
         let validated_value = match trait_constructor.validation.0(value, env, stack)? {
@@ -63,8 +63,8 @@ fn temporary_prelude(env: &mut Environment) {
     env.set_variable(
         "do",
         Value::of(Function::new(|value, env, stack| {
-            let mut inner_env = env.clone();
-            value.evaluate(&mut inner_env, stack)
+            let inner_env = Environment::child_of(env).into_ref();
+            value.evaluate(&inner_env, stack)
         })),
     );
 
@@ -77,7 +77,7 @@ fn temporary_prelude(env: &mut Environment) {
                 .evaluate(env, stack)?
                 .get_primitive::<Module>(env, stack)?;
 
-            env.r#use(&module.values);
+            env.borrow_mut().r#use(&module.values);
 
             Ok(Value::empty())
         })),
@@ -96,7 +96,7 @@ fn temporary_prelude(env: &mut Environment) {
         }
     }
 
-    fn assign(left: &Value, right: &Value, env: &mut Environment, stack: &Stack) -> Result {
+    fn assign(left: &Value, right: &Value, env: &EnvironmentRef, stack: &Stack) -> Result {
         let stack = stack.add(|| {
             format!(
                 "Assigning '{}' to '{}",
@@ -217,13 +217,13 @@ fn temporary_prelude(env: &mut Environment) {
 
         let return_value = group(right);
 
-        let closure_env = env.clone();
+        let outer_env = env.to_owned();
 
         Ok(Value::of(Function::new(move |value, _, stack| {
-            let mut closure_env = closure_env.clone();
+            let inner_env = Environment::child_of(&outer_env).into_ref();
 
-            define_parameter.0(value, &mut closure_env, stack)?;
-            return_value.evaluate(&mut closure_env, stack)
+            define_parameter.0(value, &inner_env, stack)?;
+            return_value.evaluate(&inner_env, stack)
         })))
     });
 

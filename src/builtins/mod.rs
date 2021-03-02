@@ -27,7 +27,7 @@ pub use r#trait::*;
 pub use text::*;
 pub use validation::*;
 
-use crate::Environment;
+use crate::*;
 
 pub(crate) fn setup(env: &mut Environment) {
     block::setup(env);

@@ -1,5 +1,6 @@
 use crate::*;
 use std::{
+    cell::RefCell,
     collections::HashMap,
     hash::{Hash, Hasher},
     rc::Rc,
@@ -7,23 +8,32 @@ use std::{
 use uuid::Uuid;
 
 pub type EnvironmentValues = HashMap<EnvironmentKey, Dynamic>;
+pub type EnvironmentRef = Rc<RefCell<Environment>>;
 
-#[derive(Clone, Default)]
+#[derive(Clone)]
 pub struct Environment {
     pub values: EnvironmentValues,
-    pub parent: Option<Rc<Environment>>,
+    pub parent: Option<EnvironmentRef>,
 }
 
 impl Environment {
-    pub fn new() -> Self {
-        Environment::default()
+    pub fn blank() -> Self {
+        Environment {
+            values: EnvironmentValues::new(),
+            parent: None,
+        }
     }
 
-    pub fn get(&self, key: &EnvironmentKey) -> Option<&Dynamic> {
-        self.values.get(key)
+    pub fn child_of(parent: &EnvironmentRef) -> Environment {
+        Environment {
+            values: EnvironmentValues::new(),
+            parent: Some(parent.clone()),
+        }
     }
+}
 
-    pub fn get_mut(&mut self, key: &EnvironmentKey) -> Option<&mut Dynamic> {
+impl Environment {
+    pub fn get(&mut self, key: &EnvironmentKey) -> Option<&mut Dynamic> {
         self.values.get_mut(key)
     }
 
@@ -33,6 +43,10 @@ impl Environment {
 
     pub fn set(&mut self, key: &EnvironmentKey, value: Dynamic) {
         self.values.insert(key.clone(), value);
+    }
+
+    pub fn into_ref(self) -> EnvironmentRef {
+        Rc::new(RefCell::new(self))
     }
 }
 
@@ -61,9 +75,9 @@ impl UseFn {
 impl Environment {
     pub fn r#use(&mut self, new: &EnvironmentValues) {
         for (key, new_value) in new {
-            match self.get_mut(&key) {
+            match self.get(&key) {
                 Some(parent_value) => {
-                    let used_value = key.r#use.0(parent_value, &new_value);
+                    let used_value = key.r#use.0(parent_value, new_value);
                     *parent_value = used_value;
                 }
                 None => {

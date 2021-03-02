@@ -25,11 +25,11 @@ pub struct Trait {
 }
 
 impl Value {
-    pub fn get_trait(&self, id: TraitID, env: &mut Environment, stack: &Stack) -> Result<Trait> {
+    pub fn get_trait(&self, id: TraitID, env: &EnvironmentRef, stack: &Stack) -> Result<Trait> {
         self.get_trait_or(id, "Cannot find trait", env, stack)
     }
 
-    pub fn has_trait(&self, id: TraitID, env: &mut Environment, stack: &Stack) -> Result<bool> {
+    pub fn has_trait(&self, id: TraitID, env: &EnvironmentRef, stack: &Stack) -> Result<bool> {
         self.get_trait_if_present(id, env, stack)
             .map(|t| t.is_some())
     }
@@ -38,7 +38,7 @@ impl Value {
         &self,
         id: TraitID,
         message: &str,
-        env: &mut Environment,
+        env: &EnvironmentRef,
         stack: &Stack,
     ) -> Result<Trait> {
         self.get_trait_if_present(id, env, stack)?
@@ -48,7 +48,7 @@ impl Value {
     pub fn get_trait_if_present(
         &self,
         id: TraitID,
-        env: &mut Environment,
+        env: &EnvironmentRef,
         stack: &Stack,
     ) -> Result<Option<Trait>> {
         let traits = self.traits();
@@ -62,7 +62,7 @@ impl Value {
         }
 
         // Attempt to derive the trait via a conformance
-        for conformance in env.conformances().clone() {
+        for conformance in env.borrow_mut().conformances().clone() {
             if conformance.derived_trait_id != id {
                 continue;
             }
@@ -77,14 +77,14 @@ impl Value {
 }
 
 impl Value {
-    pub fn get_primitive<T: Primitive>(&self, env: &mut Environment, stack: &Stack) -> Result<T> {
+    pub fn get_primitive<T: Primitive>(&self, env: &EnvironmentRef, stack: &Stack) -> Result<T> {
         self.get_primitive_or("Cannot find trait", env, stack)
     }
 
     pub fn get_primitive_or<T: Primitive>(
         &self,
         message: &str,
-        env: &mut Environment,
+        env: &EnvironmentRef,
         stack: &Stack,
     ) -> Result<T> {
         self.get_primitive_if_present(env, stack)?
@@ -93,7 +93,7 @@ impl Value {
 
     pub fn get_primitive_if_present<T: Primitive>(
         &self,
-        env: &mut Environment,
+        env: &EnvironmentRef,
         stack: &Stack,
     ) -> Result<Option<T>> {
         Ok(self

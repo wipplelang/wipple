@@ -10,10 +10,10 @@ pub struct Name {
 primitive!(name for Name);
 
 #[derive(Clone)]
-pub struct AssignFn(pub Rc<dyn Fn(&Value, &mut Environment, &Stack) -> Result<()>>);
+pub struct AssignFn(pub Rc<dyn Fn(&Value, &EnvironmentRef, &Stack) -> Result<()>>);
 
 impl AssignFn {
-    pub fn new(assign: impl Fn(&Value, &mut Environment, &Stack) -> Result<()> + 'static) -> Self {
+    pub fn new(assign: impl Fn(&Value, &EnvironmentRef, &Stack) -> Result<()> + 'static) -> Self {
         AssignFn(Rc::new(assign))
     }
 }
@@ -60,7 +60,7 @@ pub(crate) fn setup(env: &mut Environment) {
     env.add_conformance_for_primitive(TraitID::assign(), |name: Name, _, _| {
         Ok(Some(Value::of(AssignFn::new(move |value, env, stack| {
             let value = value.evaluate(env, stack)?;
-            env.set_variable(&name.name, value);
+            env.borrow_mut().set_variable(&name.name, value);
             Ok(())
         }))))
     });
@@ -70,7 +70,7 @@ pub(crate) fn setup(env: &mut Environment) {
         Ok(Some(Value::of(EvaluateFn::new(move |env, stack| {
             let stack = stack.add(|| format!("Resolving variable '{}'", name.name));
 
-            let variable = match env.get_variable(&name.name) {
+            let variable = match env.borrow_mut().get_variable(&name.name) {
                 Some(variable) => variable,
                 None => return Err(Error::new("Name does not refer to a variable", &stack)),
             }
