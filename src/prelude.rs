@@ -68,6 +68,21 @@ fn temporary_prelude(env: &mut Environment) {
         })),
     );
 
+    // 'use' function
+
+    env.set_variable(
+        "use",
+        Value::of(Function::new(|value, env, stack| {
+            let module = value
+                .evaluate(env, stack)?
+                .get_primitive::<Module>(env, stack)?;
+
+            env.r#use(&module.values);
+
+            Ok(Value::empty())
+        })),
+    );
+
     // Assignment operator (::)
 
     fn group(list: &[Value]) -> Value {

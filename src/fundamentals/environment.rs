@@ -59,8 +59,8 @@ impl UseFn {
 }
 
 impl Environment {
-    pub fn r#use(&mut self, new: &Environment) {
-        for (key, new_value) in &new.values {
+    pub fn r#use(&mut self, new: &EnvironmentValues) {
+        for (key, new_value) in new {
             match self.get_mut(&key) {
                 Some(parent_value) => {
                     let used_value = key.r#use.0(parent_value, &new_value);
