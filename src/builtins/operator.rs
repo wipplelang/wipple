@@ -398,10 +398,10 @@ pub fn get_operator(
         Some(operator) => Ok(Some(operator)),
         None => {
             if let Some(name) = value.get_primitive_if_present::<Name>(env, stack)? {
-                if let Some(variable) = env.borrow_mut().variables().get(&name.name) {
-                    variable
-                        .clone()
-                        .get_primitive_if_present::<Operator>(env, stack)
+                let variables = env.borrow_mut().variables().get(&name.name).cloned();
+
+                if let Some(variable) = variables {
+                    variable.get_primitive_if_present::<Operator>(env, stack)
                 } else {
                     Ok(None)
                 }
