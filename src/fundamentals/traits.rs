@@ -62,7 +62,10 @@ impl Value {
         }
 
         // Attempt to derive the trait via a conformance
-        for conformance in env.borrow_mut().conformances().clone() {
+
+        let conformances = env.borrow_mut().conformances().clone();
+
+        for conformance in conformances {
             if conformance.derived_trait_id != id {
                 continue;
             }
