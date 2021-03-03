@@ -46,6 +46,28 @@ impl Environment {
     }
 }
 
+impl Name {
+    pub fn resolve(&self, env: &EnvironmentRef, stack: &Stack) -> Result {
+        let variable = self.resolve_without_computing(env, stack)?;
+
+        if variable.has_trait(TraitID::computed(), env, &stack)? {
+            variable.evaluate(env, &stack)
+        } else {
+            Ok(variable)
+        }
+    }
+
+    pub fn resolve_without_computing(&self, env: &EnvironmentRef, stack: &Stack) -> Result {
+        let stack = stack.add(|| format!("Resolving variable '{}'", self.name));
+
+        env.borrow_mut()
+            .variables()
+            .get(&self.name)
+            .cloned()
+            .ok_or_else(|| Error::new("Name does not refer to a variable", &stack))
+    }
+}
+
 pub(crate) fn setup(env: &mut Environment) {
     // Name : trait
     env.set_variable(
@@ -68,19 +90,7 @@ pub(crate) fn setup(env: &mut Environment) {
     // Name ::= Evaluate
     env.add_conformance_for_primitive(TraitID::evaluate(), |name: Name, _, _| {
         Ok(Some(Value::of(EvaluateFn::new(move |env, stack| {
-            let stack = stack.add(|| format!("Resolving variable '{}'", name.name));
-
-            let variable = match env.borrow_mut().get_variable(&name.name) {
-                Some(variable) => variable,
-                None => return Err(Error::new("Name does not refer to a variable", &stack)),
-            }
-            .clone();
-
-            if variable.has_trait(TraitID::computed(), env, &stack)? {
-                variable.evaluate(env, &stack)
-            } else {
-                Ok(variable)
-            }
+            name.resolve(env, stack)
         }))))
     });
 

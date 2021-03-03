@@ -13,6 +13,13 @@ impl Module {
     pub fn from(env: &EnvironmentRef) -> Self {
         Module::new(env.borrow().values.clone())
     }
+
+    pub fn env(&self) -> Environment {
+        Environment {
+            values: self.values.clone(),
+            parent: None,
+        }
+    }
 }
 
 primitive!(module for Module);
@@ -32,6 +39,15 @@ pub(crate) fn setup(env: &mut Environment) {
             text: String::from("<module>"),
             location: None,
         })))
+    });
+
+    // Module ::= Function
+    env.add_conformance_for_primitive(TraitID::function(), |module: Module, _, _| {
+        Ok(Some(Value::of(Function::new(move |value, env, stack| {
+            let name = value.get_primitive_or::<Name>("Expected a name", env, stack)?;
+
+            name.resolve(&module.env().into_ref(), stack)
+        }))))
     });
 
     // Module-Block ::= Text
