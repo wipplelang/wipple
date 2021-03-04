@@ -1,5 +1,11 @@
 on:
-  - workflow_dispatch
+  workflow_dispatch:
+  push:
+    paths:
+      - cli/**
+      - core/**
+      - parser/**
+      - plugin-loader/**
 
 name: Build for all platforms
 
