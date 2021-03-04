@@ -122,12 +122,7 @@ fn temporary_prelude(env: &mut Environment) {
     );
 
     let assignment_operator = VariadicOperator::collect(|left, right, env, stack| {
-        assign(
-            &group(left),
-            &group(right).evaluate(env, stack)?,
-            env,
-            stack,
-        )
+        assign(&group(left), &group(right), env, stack)
     });
 
     env.add_variadic_operator(&assignment_operator, &assignment_precedence_group);
