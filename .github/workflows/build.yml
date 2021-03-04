@@ -1,0 +1,65 @@
+on:
+  - workflow_dispatch
+
+name: Build for all platforms
+
+jobs:
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Build
+        run: ./scripts/build.sh macos
+
+      - name: Transfer binaries to Linux worker
+        uses: actions/upload-artifact@v2
+        with:
+          name: macos-binaries
+          path: bin
+
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      - name: Get current date
+        id: date
+        run: echo "::set-output name=date::$(date -u +'%Y%m%d%H%M%S')"
+
+      - name: Build
+        run: ./scripts/build.sh linux
+
+      - name: Download binaries from macOS worker
+        uses: actions/download-artifact@v2
+        with:
+          name: macos-binaries
+          path: bin
+
+      - name: Upload binaries
+        run: |
+          set -x
+          binaries=()
+          for binary in bin/*; do
+            binaries+=("-a" "$binary")
+          done
+          tag_name="0.0.0-dev-${{ steps.date.outputs.date }}"
+          hub release create "${binaries[@]}" -m "$tag_name" "$tag_name"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -16,9 +16,6 @@ case $1 in
         ;;
 esac
 
-git clone https://github.com/wipplelang/cli.git
-cd cli
-
 mkdir -p bin
 
 cargo install cross

@@ -3,13 +3,14 @@
 set -e
 
 main() {
+    path="/usr/local/bin/wipple"
     arch="$(get_architecture)"
 
-    echo "Downloading Wipple for $arch..."
+    echo "Installing Wipple ($arch) to $path..."
 
-    url="https://github.com/wipplelang/install/releases/latest/download/$arch"
-    curl -fSL "$url" -o /usr/local/bin/wipple
-    chmod +x /usr/local/bin/wipple
+    url="https://github.com/wipplelang/wipple/releases/latest/download/$arch"
+    curl -fSL "$url" -o "$path"
+    chmod +x "$path"
 
     echo "Wipple installed!"
 }
