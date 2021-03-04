@@ -1,0 +1,14 @@
+[package]
+name = "wipple_parser"
+version = "0.0.0"
+edition = "2018"
+
+[features]
+default = ["convert"]
+convert = ["wipple"]
+
+[dependencies]
+line-col = "0.2.1"
+peg = "0.6.3"
+snailquote = "0.3.0"
+wipple = { path = "../core", optional = true }

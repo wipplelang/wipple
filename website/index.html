@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Wipple</title>
+
+    <link rel="shortcut icon" href="assets/favicon.ico" type="image/x-icon" />
+
+    <link rel="stylesheet" href="styles/index.css" />
+
+    <link rel="preconnect" href="https://fonts.gstatic.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@100;400&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+
+  <body>
+    <div id="particles"></div>
+
+    <div class="header">
+      <img src="assets/logo.svg" style="height: 10em" />
+
+      <h1>The Wipple Programming Language</h1>
+
+      <p>
+        Wipple is a programming language for building DSLs that’s natural to
+        read, write and learn.
+      </p>
+    </div>
+
+    <div class="install">
+      <p>Copy and paste into your terminal 👇</p>
+
+      <code>
+        bash -c "$(curl -fsSL https://wipple.gramer.dev/install)"
+      </code>
+    </div>
+
+    <div class="links">
+      <a href="https://playground.wipple.gramer.dev">Playground</a>
+      <a href="https://docs.wipple.gramer.dev">Documentation</a>
+    </div>
+
+    <!-- Scripts -->
+
+    <script src="https://unpkg.com/particles.js@2.0.0/particles.js"></script>
+
+    <script>
+      particlesJS.load("particles", "assets/particles-config.json");
+    </script>
+  </body>
+</html>

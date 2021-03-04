@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Wipple Playground</title>
+
+    <link rel="icon" href="favicon.ico" />
+
+    <link rel="preconnect" href="https://fonts.gstatic.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono&display=swap"
+      rel="stylesheet"
+    />
+
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/pyloncss@latest/css/pylon.css"
+    />
+
+    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="theme.css" />
+  </head>
+
+  <body>
+    <vstack class="playground" spacing="s" stretch>
+      <hstack class="header" spacing="s">
+        <spacer></spacer>
+        <img alt="Wipple Logo" src="logo.svg" />
+        <h3>Wipple Playground</h3>
+        <spacer></spacer>
+      </hstack>
+
+      <hstack class="editors" spacing="s">
+        <div class="editor" stretch>
+          <div id="input"></div>
+        </div>
+
+        <div class="editor" stretch>
+          <div id="output"></div>
+        </div>
+      </hstack>
+
+      <hstack class="footer" spacing="xs">
+        <a href="https://wipple.gramer.dev">Documentation</a>
+        <spacer></spacer>
+        <a href="https://gramer.dev">Created by Wilson Gramer</a>
+      </hstack>
+    </vstack>
+
+    <script src="bootstrap.js"></script>
+  </body>
+</html>

@@ -1,10 +1,11 @@
-[package]
-name = "wipple"
-version = "0.0.0"
-edition = "2018"
+[workspace]
+members = [
+    "cli",
+    "core",
+    "parser",
+    "playground-interpreter",
+    "plugin-loader",
+]
 
-[features]
-log_diagnostics = []
-
-[dependencies]
-uuid = { version = "0.8.2", features = ["v4"] }
+[profile.release.package.wipple_playground_interpreter]
+opt-level = "s"

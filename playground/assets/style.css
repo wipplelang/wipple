@@ -1,0 +1,52 @@
+:root {
+  --background: #111827;
+  --text: #f9fafb;
+  --link: #6b7280;
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--background);
+  color: var(--text);
+  font-family: system-ui, sans-serif;
+}
+
+.playground {
+  padding-left: 12pt;
+  padding-right: 12pt;
+}
+
+.header {
+  padding-top: 12pt;
+}
+
+.header img {
+  height: 28pt;
+}
+
+.footer {
+  padding-bottom: 12pt;
+}
+
+.footer a {
+  text-decoration: none;
+  color: var(--link);
+  font-size: 10pt;
+}
+
+.editors {
+  width: 100%;
+  height: 100%;
+}
+
+.editor {
+  position: relative;
+  width: 100%;
+}

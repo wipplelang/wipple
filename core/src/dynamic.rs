@@ -1,9 +1,12 @@
 use std::{
-    any::{type_name, Any, TypeId},
+    any::{Any, TypeId},
     fmt,
     ops::{Deref, DerefMut},
     rc::Rc,
 };
+
+#[cfg(debug_assertions)]
+use std::any::type_name;
 
 /// Wrapper around `Any` that allows cloning.
 pub struct Dynamic {

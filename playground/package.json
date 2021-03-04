@@ -1,0 +1,17 @@
+{
+  "private": true,
+  "scripts": {
+    "build": "webpack --config webpack.config.js",
+    "start": "webpack-dev-server"
+  },
+  "devDependencies": {
+    "copy-webpack-plugin": "^5.0.0",
+    "webpack": "^4.29.3",
+    "webpack-cli": "^3.1.0",
+    "webpack-dev-server": "^3.1.5"
+  },
+  "dependencies": {
+    "codeflask": "git+https://github.com/WilsonGramer/CodeFlask.git",
+    "wipple-playground-interpreter": "0.0.17"
+  }
+}

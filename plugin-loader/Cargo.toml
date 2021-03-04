@@ -1,0 +1,8 @@
+[package]
+name = "wipple_plugin_loader"
+version = "0.0.0"
+edition = "2018"
+
+[dependencies]
+libloading = "0.7.0"
+wipple = { path = "../core" }
