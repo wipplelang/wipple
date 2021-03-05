@@ -24,8 +24,6 @@ fn main() {
     let mut pass_count = 0;
     let mut fail_count = 0;
 
-    let mut report = Report::new();
-
     for path in fs::read_dir(tests_folder).unwrap() {
         let path = path.unwrap().path();
 
@@ -73,7 +71,13 @@ fn main() {
 
         println_interactive!();
 
-        report = report.add_testsuite(suite);
+        let report = Report::new().add_testsuite(suite);
+
+        if env::var("CI").is_ok() {
+            report
+                .write_xml(&mut File::create(path.with_extension("report.xml")).unwrap())
+                .unwrap();
+        }
     }
 
     println_interactive!(
@@ -91,12 +95,6 @@ fn main() {
             }
         },
     );
-
-    if env::var("CI").is_ok() {
-        report
-            .write_xml(&mut File::create("report.xml").unwrap())
-            .unwrap();
-    }
 
     exit(if fail_count > 0 { 1 } else { 0 });
 }
