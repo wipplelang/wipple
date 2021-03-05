@@ -65,7 +65,8 @@ pub(crate) fn setup(env: &mut Environment) {
 
             r#macro
                 .value_to_expand
-                .macro_expand(&parameter, &replacement, env, stack)
+                .macro_expand(&parameter, &replacement, env, stack)?
+                .evaluate(env, stack)
         }))))
     });
 
