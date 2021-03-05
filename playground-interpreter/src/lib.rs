@@ -60,6 +60,8 @@ fn run_code(code: &str) -> InterpreterResult {
     let env = wipple::prelude().into_ref();
     init_playground(output.clone(), &env);
 
+    let env = Environment::child_of(&env).into_ref();
+
     let stack = Stack::new();
 
     match value.evaluate(&env, &stack) {

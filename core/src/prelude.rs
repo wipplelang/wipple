@@ -186,7 +186,10 @@ fn temporary_prelude(env: &mut Environment) {
     );
 
     let macro_operator = VariadicOperator::collect(|left, right, env, stack| {
-        let define_parameter = group(left).get_primitive_or::<DefineMacroParameterFn>(
+        let parameter = group(left);
+        let value_to_expand = group(right);
+
+        let define_parameter = parameter.get_primitive_or::<DefineMacroParameterFn>(
             "Macro parameter must have the Macro-Parameter trait",
             env,
             stack,
@@ -194,8 +197,16 @@ fn temporary_prelude(env: &mut Environment) {
 
         Ok(Value::of(Macro {
             define_parameter,
-            value_to_expand: group(right),
-        }))
+            value_to_expand: value_to_expand.clone(),
+        })
+        .add(&Trait::of(Text {
+            text: format!(
+                "<macro '{} => {}'>",
+                parameter.format(env, stack),
+                value_to_expand.format(env, stack)
+            ),
+            location: None,
+        })))
     });
 
     add_variadic_operator(&macro_operator, &function_precedence_group);
@@ -204,21 +215,34 @@ fn temporary_prelude(env: &mut Environment) {
     // Closure operator (->)
 
     let closure_operator = VariadicOperator::collect(|left, right, env, stack| {
-        let define_parameter = group(left).get_primitive_or::<AssignFn>(
+        let parameter = group(left);
+        let return_value = group(right);
+
+        let define_parameter = parameter.get_primitive_or::<AssignFn>(
             "Closure parameter must have the Assign trait",
             env,
             stack,
         )?;
 
-        let return_value = group(right);
-
         let outer_env = env.clone();
 
-        Ok(Value::of(Function::new(move |value, _, stack| {
-            let inner_env = Environment::child_of(&outer_env).into_ref();
+        Ok(Value::of(Function::new({
+            let return_value = return_value.clone();
 
-            define_parameter.0(value, &inner_env, stack)?;
-            return_value.evaluate(&inner_env, stack)
+            move |value, _, stack| {
+                let inner_env = Environment::child_of(&outer_env).into_ref();
+
+                define_parameter.0(value, &inner_env, stack)?;
+                return_value.evaluate(&inner_env, stack)
+            }
+        }))
+        .add(&Trait::of(Text {
+            text: format!(
+                "<closure '{} -> {}'>",
+                parameter.format(env, stack),
+                return_value.format(env, stack)
+            ),
+            location: None,
         })))
     });
 

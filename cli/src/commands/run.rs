@@ -21,7 +21,7 @@ pub struct Run {
 
 impl Run {
     pub fn run(&self) -> wipple::Result<()> {
-        let env = prelude().into_ref();
+        let env = Environment::child_of(&prelude().into_ref()).into_ref();
         let stack = Stack::new();
 
         let program = match &self.evaluate_string {

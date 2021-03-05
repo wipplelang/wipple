@@ -156,6 +156,8 @@ fn test(code: &str) -> (String, std::time::Duration) {
     let env = prelude().into_ref();
     setup(output.clone(), &env);
 
+    let env = Environment::child_of(&env).into_ref();
+
     if let Err(error) = program.evaluate(&env, &Stack::new()) {
         output.replace(vec![error.to_string()]);
     }

@@ -1,5 +1,5 @@
 use crate::*;
-use std::any::TypeId;
+use std::any::{Any, TypeId};
 use uuid::Uuid;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -22,6 +22,15 @@ impl TraitID {
 pub struct Trait {
     pub id: TraitID,
     pub value: Value,
+}
+
+impl Trait {
+    pub fn of(value: impl Primitive) -> Trait {
+        Trait {
+            id: TraitID::Primitive(value.type_id()),
+            value: Value::of(value),
+        }
+    }
 }
 
 impl Value {

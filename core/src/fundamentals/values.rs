@@ -33,7 +33,7 @@ impl Value {
         Value::empty().add(r#trait)
     }
 
-    pub fn of<T: Primitive>(primitive: T) -> Self {
+    pub fn of(primitive: impl Primitive) -> Self {
         Value::Primitive(Dynamic::new(primitive))
     }
 
