@@ -60,11 +60,17 @@ impl Name {
     pub fn resolve_without_computing(&self, env: &EnvironmentRef, stack: &Stack) -> Result {
         let stack = stack.add(|| format!("Resolving variable '{}'", self.name));
 
-        env.borrow_mut()
-            .variables()
-            .get(&self.name)
-            .cloned()
-            .ok_or_else(|| Error::new("Name does not refer to a variable", &stack))
+        let variable = env.borrow_mut().variables().get(&self.name).cloned();
+        if let Some(variable) = variable {
+            return Ok(variable);
+        }
+
+        let parent = env.borrow_mut().parent.clone();
+        if let Some(parent) = parent {
+            return self.resolve_without_computing(&parent, &stack);
+        }
+
+        Err(Error::new("Name does not refer to a variable", &stack))
     }
 }
 
