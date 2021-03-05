@@ -21,17 +21,33 @@ macro_rules! println_interactive {
 fn main() {
     let tests_folder = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests");
 
+    let args = std::env::args().collect::<Vec<_>>();
+
+    let single_test = if args.get(1).filter(|&s| s == "--single").is_some() {
+        Some(&args[2])
+    } else {
+        None
+    };
+
     let mut pass_count = 0;
     let mut fail_count = 0;
 
     for path in fs::read_dir(tests_folder).unwrap() {
         let path = path.unwrap().path();
 
-        println_interactive!("{}: {}", "TEST".blue(), path.to_string_lossy());
+        if single_test.is_none() {
+            println_interactive!("{}: {}", "TEST".blue(), path.to_string_lossy());
+        }
 
         let mut suite = TestSuite::new(&path.to_string_lossy());
 
         for test_case in parse_test_file(&path) {
+            if let Some(single_test) = single_test {
+                if &test_case.name != single_test {
+                    continue;
+                }
+            }
+
             let (output, duration) = test(&test_case.code);
 
             let duration = Duration::from_std(duration).unwrap();
