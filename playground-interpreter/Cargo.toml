@@ -1,6 +1,6 @@
 [package]
 name = "wipple_playground_interpreter"
-version = "0.0.17"
+version = "0.0.0"
 edition = "2018"
 
 [lib]
