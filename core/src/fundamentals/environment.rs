@@ -90,6 +90,16 @@ impl Environment {
     }
 }
 
+thread_local! {
+    static GLOBAL_ENV: EnvironmentRef = Environment::blank().into_ref();
+}
+
+impl Environment {
+    pub fn global() -> EnvironmentRef {
+        GLOBAL_ENV.with(|env| env.clone())
+    }
+}
+
 #[derive(Clone)]
 pub struct EnvironmentKey {
     pub id: Uuid,

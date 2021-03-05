@@ -273,17 +273,21 @@ impl Hash for PrecedenceGroup {
 }
 
 #[derive(Clone)]
-pub struct PrecedenceGroupComparison<P: 'static>(Rc<dyn Fn(P, &mut Environment)>);
+pub struct PrecedenceGroupComparison<P: 'static>(Rc<dyn Fn(P)>);
 
 macro_rules! comparison_find {
-    ($env:ident, $offset:expr, $target:expr, $insert:expr) => {
-        let index = $env
+    ($offset:expr, $target:expr, $insert:expr) => {
+        let index = Environment::global()
+            .borrow_mut()
             .operator_precedences()
             .iter()
             .position(|o| o.id() == $target.id)
             .unwrap();
 
-        $env.operator_precedences().insert(index + $offset, $insert);
+        Environment::global()
+            .borrow_mut()
+            .operator_precedences()
+            .insert(index + $offset, $insert);
     };
 }
 
@@ -291,28 +295,32 @@ macro_rules! comparisons {
     ($group:ident, $name:ident) => {
         impl PrecedenceGroupComparison<$group> {
             pub fn highest() -> Self {
-                Self(Rc::new(|group, env| {
-                    env.operator_precedences()
+                Self(Rc::new(|group| {
+                    Environment::global()
+                        .borrow_mut()
+                        .operator_precedences()
                         .insert(0, PrecedenceGroup::$name(group))
                 }))
             }
 
             pub fn lowest() -> Self {
-                Self(Rc::new(|group, env| {
-                    env.operator_precedences()
+                Self(Rc::new(|group| {
+                    Environment::global()
+                        .borrow_mut()
+                        .operator_precedences()
                         .push(PrecedenceGroup::$name(group))
                 }))
             }
 
             pub fn higher_than(other: $group) -> Self {
-                Self(Rc::new(move |group, env| {
-                    comparison_find!(env, 0, other, PrecedenceGroup::$name(group));
+                Self(Rc::new(move |group| {
+                    comparison_find!(0, other, PrecedenceGroup::$name(group));
                 }))
             }
 
             pub fn lower_than(other: $group) -> Self {
-                Self(Rc::new(move |group, env| {
-                    comparison_find!(env, 1, other, PrecedenceGroup::$name(group));
+                Self(Rc::new(move |group| {
+                    comparison_find!(1, other, PrecedenceGroup::$name(group));
                 }))
             }
         }
@@ -323,8 +331,11 @@ comparisons!(BinaryPrecedenceGroup, Binary);
 comparisons!(VariadicPrecedenceGroup, Variadic);
 
 macro_rules! add_operator {
-    ($self:ident, $group:ident, $operator:ident, $name:ident) => {
-        let group = $self
+    ($group:ident, $operator:ident, $name:ident) => {
+        let env = Environment::global();
+        let mut env = env.borrow_mut();
+
+        let group = env
             .operator_precedences()
             .iter_mut()
             .find_map(|p| match p {
@@ -343,34 +354,23 @@ macro_rules! add_operator {
     };
 }
 
-impl Environment {
-    pub fn add_precedence_group<P: Clone>(
-        &mut self,
-        associativity: Associativity,
-        comparison: PrecedenceGroupComparison<SomePrecedenceGroup<P>>,
-    ) -> SomePrecedenceGroup<P> {
-        let group = SomePrecedenceGroup::<P>::new(associativity);
+pub fn add_precedence_group<P: Clone>(
+    associativity: Associativity,
+    comparison: PrecedenceGroupComparison<SomePrecedenceGroup<P>>,
+) -> SomePrecedenceGroup<P> {
+    let group = SomePrecedenceGroup::<P>::new(associativity);
 
-        comparison.0(group.clone(), self);
+    comparison.0(group.clone());
 
-        group
-    }
+    group
+}
 
-    pub fn add_binary_operator(
-        &mut self,
-        operator: &BinaryOperator,
-        group: &BinaryPrecedenceGroup,
-    ) {
-        add_operator!(self, group, operator, Binary);
-    }
+pub fn add_binary_operator(operator: &BinaryOperator, group: &BinaryPrecedenceGroup) {
+    add_operator!(group, operator, Binary);
+}
 
-    pub fn add_variadic_operator(
-        &mut self,
-        operator: &VariadicOperator,
-        group: &VariadicPrecedenceGroup,
-    ) {
-        add_operator!(self, group, operator, Variadic);
-    }
+pub fn add_variadic_operator(operator: &VariadicOperator, group: &VariadicPrecedenceGroup) {
+    add_operator!(group, operator, Variadic);
 }
 
 // Operator parsing
@@ -482,7 +482,10 @@ impl List {
         let sorted_operators_by_precedence = {
             // FIXME: Probably very inefficient
 
-            let precedences = env.borrow_mut().operator_precedences().clone();
+            let precedences = Environment::global()
+                .borrow_mut()
+                .operator_precedences()
+                .clone();
 
             let mut precedences_to_sort = HashMap::new();
 

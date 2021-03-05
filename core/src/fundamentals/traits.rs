@@ -63,19 +63,33 @@ impl Value {
 
         // Attempt to derive the trait via a conformance
 
-        let conformances = env.borrow_mut().conformances().clone();
+        fn get(
+            value: &Value,
+            id: TraitID,
+            env: &EnvironmentRef,
+            stack: &Stack,
+        ) -> Result<Option<Trait>> {
+            let conformances = env.borrow_mut().conformances().clone();
 
-        for conformance in conformances {
-            if conformance.derived_trait_id != id {
-                continue;
+            for conformance in conformances {
+                if conformance.derived_trait_id != id {
+                    continue;
+                }
+
+                if let Some(value) = (conformance.derive_trait_value)(value, env, stack)? {
+                    return Ok(Some(Trait { id, value }));
+                }
             }
 
-            if let Some(value) = (conformance.derive_trait_value)(self, env, stack)? {
-                return Ok(Some(Trait { id, value }));
+            let parent = env.borrow_mut().parent.clone();
+
+            match parent {
+                Some(parent) => get(value, id, &parent, stack),
+                None => Ok(None),
             }
         }
 
-        Ok(None)
+        get(self, id, env, stack)
     }
 }
 

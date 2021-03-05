@@ -1,7 +1,7 @@
 use crate::*;
 
 pub fn prelude() -> Environment {
-    let mut env = Environment::blank();
+    let mut env = Environment::child_of(&Environment::global());
 
     setup(&mut env);
     temporary_prelude(&mut env);
@@ -116,7 +116,7 @@ fn temporary_prelude(env: &mut Environment) {
         Ok(Value::empty())
     }
 
-    let assignment_precedence_group = env.add_precedence_group(
+    let assignment_precedence_group = add_precedence_group(
         Associativity::Right,
         PrecedenceGroupComparison::<VariadicPrecedenceGroup>::highest(),
     );
@@ -125,7 +125,7 @@ fn temporary_prelude(env: &mut Environment) {
         assign(&group(left), &group(right), env, stack)
     });
 
-    env.add_variadic_operator(&assignment_operator, &assignment_precedence_group);
+    add_variadic_operator(&assignment_operator, &assignment_precedence_group);
     env.set_variable(":", Value::of(Operator::Variadic(assignment_operator)));
 
     // Add trait operator (::)
@@ -173,12 +173,12 @@ fn temporary_prelude(env: &mut Environment) {
         )
     });
 
-    env.add_variadic_operator(&add_trait_operator, &assignment_precedence_group);
+    add_variadic_operator(&add_trait_operator, &assignment_precedence_group);
     env.set_variable("::", Value::of(Operator::Variadic(add_trait_operator)));
 
     // Macro operator (=>)
 
-    let function_precedence_group = env.add_precedence_group(
+    let function_precedence_group = add_precedence_group(
         Associativity::Right,
         PrecedenceGroupComparison::<VariadicPrecedenceGroup>::lower_than(
             assignment_precedence_group,
@@ -198,7 +198,7 @@ fn temporary_prelude(env: &mut Environment) {
         }))
     });
 
-    env.add_variadic_operator(&macro_operator, &function_precedence_group);
+    add_variadic_operator(&macro_operator, &function_precedence_group);
     env.set_variable("=>", Value::of(Operator::Variadic(macro_operator)));
 
     // Closure operator (->)
@@ -212,7 +212,7 @@ fn temporary_prelude(env: &mut Environment) {
 
         let return_value = group(right);
 
-        let outer_env = env.to_owned();
+        let outer_env = env.clone();
 
         Ok(Value::of(Function::new(move |value, _, stack| {
             let inner_env = Environment::child_of(&outer_env).into_ref();
@@ -222,7 +222,7 @@ fn temporary_prelude(env: &mut Environment) {
         })))
     });
 
-    env.add_variadic_operator(&closure_operator, &function_precedence_group);
+    add_variadic_operator(&closure_operator, &function_precedence_group);
     env.set_variable("->", Value::of(Operator::Variadic(closure_operator)));
 
     // Math
@@ -246,7 +246,7 @@ fn temporary_prelude(env: &mut Environment) {
                 }))
             });
 
-            env.add_binary_operator(&operator, &$precedence_group);
+            add_binary_operator(&operator, &$precedence_group);
 
             env.set_variable(
                 stringify!($operation),
@@ -255,7 +255,7 @@ fn temporary_prelude(env: &mut Environment) {
         }};
     }
 
-    let addition_precedence_group = env.add_precedence_group(
+    let addition_precedence_group = add_precedence_group(
         Associativity::Left,
         PrecedenceGroupComparison::<BinaryPrecedenceGroup>::lowest(),
     );
@@ -263,7 +263,7 @@ fn temporary_prelude(env: &mut Environment) {
     math!(+, addition_precedence_group);
     math!(-, addition_precedence_group);
 
-    let multiplication_precedence_group = env.add_precedence_group(
+    let multiplication_precedence_group = add_precedence_group(
         Associativity::Left,
         PrecedenceGroupComparison::<BinaryPrecedenceGroup>::higher_than(addition_precedence_group),
     );
