@@ -10,6 +10,15 @@
   Wipple is a programming language for building DSLs that’s natural to read, write and learn.
 </p>
 
+<p align="center">
+  <a href="https://github.com/wipplelang/wipple/actions/workflows/build.yml">
+    <img src="https://github.com/wipplelang/wipple/actions/workflows/build.yml/badge.svg" alt="Build">
+  </a>
+  <a href="https://github.com/wipplelang/wipple/actions/workflows/test.yml">
+    <img src="https://github.com/wipplelang/wipple/actions/workflows/test.yml/badge.svg" alt="Test">
+  </a>
+</p>
+
 ## Install
 
 Run this command in your terminal to install Wipple!

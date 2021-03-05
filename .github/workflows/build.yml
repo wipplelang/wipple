@@ -7,7 +7,7 @@ on:
       - parser/**
       - plugin-loader/**
 
-name: Build for all platforms
+name: Build
 
 jobs:
   build-macos:
