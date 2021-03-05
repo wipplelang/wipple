@@ -21,7 +21,6 @@ mkdir -p bin
 cargo install cross
 
 for target in ${TARGETS[@]}; do
-    rustup target add $target
     cross build --target=$target --release
     cp target/$target/release/cli bin/$target
 done

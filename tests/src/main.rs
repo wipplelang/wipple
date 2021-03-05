@@ -1,5 +1,5 @@
 use colored::Colorize;
-use std::{cell::RefCell, fs, path::PathBuf, rc::Rc};
+use std::{cell::RefCell, fs, path::PathBuf, process::exit, rc::Rc};
 use wipple::*;
 
 fn main() {
@@ -47,6 +47,8 @@ fn main() {
             }
         },
     );
+
+    exit(if fail_count > 0 { 1 } else { 0 });
 }
 
 const INDENT: &str = "  ";
