@@ -26,3 +26,9 @@ jobs:
 
       - name: Test
         run: cargo run --bin wipple_tests
+
+      - name: Publish test results
+        uses: EnricoMi/publish-unit-test-result-action@v1
+        if: always()
+        with:
+          files: report.xml

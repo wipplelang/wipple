@@ -1,6 +1,22 @@
 use colored::Colorize;
-use std::{cell::RefCell, fs, path::PathBuf, process::exit, rc::Rc};
+use junit_report::*;
+use std::{
+    cell::RefCell,
+    fs::{self, File},
+    path::PathBuf,
+    process::exit,
+    rc::Rc,
+};
+use std::{env, time::Instant};
 use wipple::*;
+
+macro_rules! println_interactive {
+    ($($arg:tt)*) => {
+        if env::var("CI").is_err() {
+            println!($($arg)*);
+        }
+    };
+}
 
 fn main() {
     let tests_folder = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests");
@@ -8,31 +24,59 @@ fn main() {
     let mut pass_count = 0;
     let mut fail_count = 0;
 
+    let mut report = Report::new();
+
     for path in fs::read_dir(tests_folder).unwrap() {
         let path = path.unwrap().path();
 
-        println!("{}: {}", "TEST".blue(), path.to_string_lossy());
+        println_interactive!("{}: {}", "TEST".blue(), path.to_string_lossy());
+
+        let mut suite = TestSuite::new(&path.to_string_lossy());
 
         for test_case in parse_test_file(&path) {
-            let output = test(&test_case.code);
+            let (output, duration) = test(&test_case.code);
+
+            let duration = Duration::from_std(duration).unwrap();
 
             if output == test_case.expected_output {
-                print_indent(1, &format!("{}: {}", "PASS".green(), test_case.name));
+                println_interactive!(
+                    "{}",
+                    indent(1, &format!("{}: {}", "PASS".green(), test_case.name))
+                );
+
+                suite = suite.add_testcase(TestCase::success(&test_case.name, duration));
+
                 pass_count += 1;
             } else {
-                print_indent(1, &format!("{}: {}", "FAIL".red(), test_case.name));
-                print_indent(2, "Expected:");
-                print_indent(3, &test_case.expected_output);
-                print_indent(2, "Found:");
-                print_indent(3, &output);
+                let message = format!(
+                    "Expected:\n{}\nFound:\n{}",
+                    indent(1, &test_case.expected_output),
+                    indent(1, &output),
+                );
+
+                println_interactive!(
+                    "{}\n{}",
+                    indent(1, &format!("{}: {}", "FAIL".red(), test_case.name)),
+                    indent(2, &message),
+                );
+
+                suite = suite.add_testcase(TestCase::failure(
+                    &test_case.name,
+                    duration,
+                    "Invalid output",
+                    &message,
+                ));
+
                 fail_count += 1;
             }
         }
 
-        println!();
+        println_interactive!();
+
+        report = report.add_testsuite(suite);
     }
 
-    println!(
+    println_interactive!(
         "{}: {} tests, {}, {}",
         "DONE".blue(),
         pass_count + fail_count,
@@ -48,17 +92,25 @@ fn main() {
         },
     );
 
+    if env::var("CI").is_ok() {
+        report
+            .write_xml(&mut File::create("report.xml").unwrap())
+            .unwrap();
+    }
+
     exit(if fail_count > 0 { 1 } else { 0 });
 }
 
 const INDENT: &str = "  ";
 
-fn print_indent(n: usize, string: &str) {
+fn indent(n: usize, string: &str) -> String {
     let indent = INDENT.repeat(n);
 
-    for line in string.split('\n') {
-        println!("{}{}", indent, line);
-    }
+    string
+        .split('\n')
+        .map(|line| format!("{}{}", indent, line))
+        .collect::<Vec<_>>()
+        .join("\n")
 }
 
 fn filter_lines(string: &str, filter: impl Fn(&&str) -> bool) -> String {
@@ -69,13 +121,13 @@ fn filter_lines(string: &str, filter: impl Fn(&&str) -> bool) -> String {
         .join("\n")
 }
 
-struct TestCase {
+struct Test {
     name: String,
     code: String,
     expected_output: String,
 }
 
-fn parse_test_file(path: &PathBuf) -> Vec<TestCase> {
+fn parse_test_file(path: &PathBuf) -> Vec<Test> {
     let file = fs::read_to_string(path).unwrap();
 
     let file = filter_lines(&file, |line| !line.starts_with('#'));
@@ -86,7 +138,7 @@ fn parse_test_file(path: &PathBuf) -> Vec<TestCase> {
             let parts: Vec<_> = test_code.split("---").map(|x| x.trim()).collect();
             let first_part: Vec<_> = parts[0].splitn(2, '\n').map(|x| x.trim()).collect();
 
-            TestCase {
+            Test {
                 name: String::from(first_part[0]),
                 code: String::from(first_part[1]),
                 expected_output: String::from(parts[1]),
@@ -95,7 +147,9 @@ fn parse_test_file(path: &PathBuf) -> Vec<TestCase> {
         .collect()
 }
 
-fn test(code: &str) -> String {
+fn test(code: &str) -> (String, std::time::Duration) {
+    let start = Instant::now();
+
     let ast = wipple_parser::parse(code).unwrap();
     let program = wipple_parser::convert(&ast, None);
 
@@ -108,8 +162,10 @@ fn test(code: &str) -> String {
         output.replace(vec![error.to_string()]);
     }
 
-    let output = output.borrow();
-    output.join("\n")
+    let output = output.borrow().join("\n");
+    let duration = start.elapsed();
+
+    (output, duration)
 }
 
 fn setup(output: Rc<RefCell<Vec<String>>>, env: &EnvironmentRef) {
