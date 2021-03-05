@@ -1,0 +1,14 @@
+>>> Bank account example
+
+balance : 75
+
+deposit : dollars => balance + dollars
+show (deposit 50)
+
+withdraw : dollars => balance - dollars
+show (withdraw 10)
+
+---
+
+(deposit 50) ==> 125
+(withdraw 10) ==> 65

@@ -5,6 +5,7 @@ members = [
     "parser",
     "playground-interpreter",
     "plugin-loader",
+    "tests",
 ]
 
 [profile.release.package.wipple_playground_interpreter]

@@ -1,0 +1,10 @@
+[package]
+name = "wipple_tests"
+version = "0.0.0"
+edition = "2018"
+
+[dependencies]
+cli = { path = "../cli" }
+colored = "2.0.0"
+wipple = { path = "../core" }
+wipple_parser = { path = "../parser" }

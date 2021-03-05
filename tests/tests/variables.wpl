@@ -1,0 +1,17 @@
+>>> Declaring and resolving variables
+
+a : 42
+show a
+
+---
+
+a ==> 42
+
+>>> Resolving a variable that doesn't exist
+
+a
+
+---
+
+Name does not refer to a variable
+    Resolving variable 'a' (1:1)
