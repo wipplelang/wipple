@@ -18,6 +18,7 @@ pub(crate) fn setup(env: &mut Environment) {
             }
 
             let operators = list.find_operators(env, &stack)?;
+
             if let Some(parsed) = list.parse_operators(operators, env, &stack)? {
                 return Ok(parsed);
             }

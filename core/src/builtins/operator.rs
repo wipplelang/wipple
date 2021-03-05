@@ -394,21 +394,16 @@ pub fn get_operator(
     env: &EnvironmentRef,
     stack: &Stack,
 ) -> Result<Option<Operator>> {
-    match value.get_primitive_if_present::<Operator>(env, stack)? {
-        Some(operator) => Ok(Some(operator)),
-        None => {
-            if let Some(name) = value.get_primitive_if_present::<Name>(env, stack)? {
-                let variables = env.borrow_mut().variables().get(&name.name).cloned();
+    if let Some(name) = value.get_primitive_if_present::<Name>(env, stack)? {
+        let variable = name.resolve_if_present(env);
 
-                if let Some(variable) = variables {
-                    variable.get_primitive_if_present::<Operator>(env, stack)
-                } else {
-                    Ok(None)
-                }
-            } else {
-                Ok(None)
-            }
+        if let Some(variable) = variable {
+            variable.get_primitive_if_present::<Operator>(env, stack)
+        } else {
+            Ok(None)
         }
+    } else {
+        Ok(None)
     }
 }
 

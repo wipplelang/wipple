@@ -233,6 +233,7 @@ fn temporary_prelude(env: &mut Environment) {
                 let inner_env = Environment::child_of(&outer_env).into_ref();
 
                 define_parameter.0(value, &inner_env, stack)?;
+
                 return_value.evaluate(&inner_env, stack)
             }
         }))

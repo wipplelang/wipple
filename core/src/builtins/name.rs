@@ -60,6 +60,11 @@ impl Name {
     pub fn resolve_without_computing(&self, env: &EnvironmentRef, stack: &Stack) -> Result {
         let stack = stack.add(|| format!("Resolving variable '{}'", self.name));
 
+        self.resolve_if_present(env)
+            .ok_or_else(|| Error::new("Name does not refer to a variable", &stack))
+    }
+
+    pub fn resolve_if_present(&self, env: &EnvironmentRef) -> Option<Value> {
         fn get(name: &Name, env: &EnvironmentRef) -> Option<Value> {
             let variable = env.borrow_mut().variables().get(&name.name).cloned();
             if let Some(variable) = variable {
@@ -70,7 +75,7 @@ impl Name {
             parent.and_then(|parent| get(name, &parent))
         }
 
-        get(self, env).ok_or_else(|| Error::new("Name does not refer to a variable", &stack))
+        get(self, env)
     }
 }
 
