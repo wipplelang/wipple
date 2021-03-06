@@ -52,6 +52,14 @@ jobs:
       - name: Build
         run: ./scripts/build.sh linux
 
+      - name: Wait for macOS worker to finish
+        uses: lewagon/wait-on-check-action@v0.2
+        with:
+          ref: ${{ github.sha }}
+          check-name: build-macos
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          wait-interval: 20
+
       - name: Download binaries from macOS worker
         uses: actions/download-artifact@v2
         with:
