@@ -52,7 +52,7 @@ impl Environment {
 }
 
 #[derive(Clone)]
-pub struct UseFn(Rc<dyn Fn(&Dynamic, &Dynamic) -> Dynamic>);
+pub struct UseFn(pub Rc<dyn Fn(&Dynamic, &Dynamic) -> Dynamic>);
 
 impl UseFn {
     pub fn new<T: Clone + 'static>(r#use: impl Fn(&T, &T) -> T + 'static) -> Self {
@@ -74,13 +74,11 @@ impl UseFn {
 }
 
 impl Environment {
-    pub fn r#use(&mut self, new: &EnvironmentRef) {
-        let new_values = new.borrow().values.clone();
-
-        for (key, new_value) in new_values {
+    pub fn r#use(&mut self, new: &Environment) {
+        for (key, new_value) in &new.values {
             match self.get(&key) {
                 Some(parent_value) => {
-                    let used_value = key.r#use.0(parent_value, &new_value);
+                    let used_value = key.r#use.0(parent_value, new_value);
                     *parent_value = used_value;
                 }
                 None => {

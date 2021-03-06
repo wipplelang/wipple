@@ -12,7 +12,7 @@ use std::any::type_name;
 pub struct Dynamic {
     pub type_id: TypeId,
     value: Box<dyn Any>,
-    clone: Rc<dyn Fn() -> Box<dyn Any>>,
+    clone: Rc<dyn Fn(&dyn Any) -> Box<dyn Any>>,
 
     #[cfg(debug_assertions)]
     pub type_name: &'static str,
@@ -22,8 +22,8 @@ impl Dynamic {
     pub fn new<T: Clone + 'static>(value: T) -> Self {
         Dynamic {
             type_id: value.type_id(),
-            value: Box::new(value.clone()),
-            clone: Rc::new(move || Box::new(value.clone())),
+            value: Box::new(value),
+            clone: Rc::new(move |value| Box::new(value.downcast_ref::<T>().unwrap().clone())),
 
             #[cfg(debug_assertions)]
             type_name: type_name::<T>(),
@@ -35,7 +35,7 @@ impl Clone for Dynamic {
     fn clone(&self) -> Self {
         Dynamic {
             type_id: self.type_id,
-            value: (self.clone)(),
+            value: (self.clone)(&*self.value),
             clone: self.clone.clone(),
 
             #[cfg(debug_assertions)]
