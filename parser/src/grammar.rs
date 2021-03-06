@@ -1,3 +1,4 @@
+use bigdecimal::BigDecimal;
 use line_col::LineColLookup;
 use peg::parser;
 use snailquote::unescape;
@@ -15,7 +16,7 @@ pub enum ASTNode {
     List(Vec<AST>),
     Name(String),
     Text(String),
-    Number(f64),
+    Number(BigDecimal),
     Quoted(Box<AST>),
 }
 

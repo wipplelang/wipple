@@ -8,6 +8,7 @@ default = ["convert"]
 convert = ["wipple"]
 
 [dependencies]
+bigdecimal = "0.1.2"
 line-col = "0.2.1"
 peg = "0.6.3"
 snailquote = "0.3.0"

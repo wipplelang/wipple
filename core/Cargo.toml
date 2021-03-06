@@ -7,4 +7,5 @@ edition = "2018"
 log_diagnostics = []
 
 [dependencies]
+bigdecimal = "0.1.2"
 uuid = { version = "0.8.2", features = ["v4"] }

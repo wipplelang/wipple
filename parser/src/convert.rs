@@ -54,7 +54,7 @@ pub fn convert(ast: &AST, file: Option<&PathBuf>) -> Value {
         }),
 
         Number(number) => Value::of(wipple::Number {
-            number: *number,
+            number: number.clone(),
             location: Some(location(&ast.location, file)),
         }),
 
