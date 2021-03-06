@@ -4,7 +4,8 @@ members = [
     "core",
     "parser",
     "playground-interpreter",
-    "plugin-loader",
+    "plugins",
+    "projects",
     "tests",
 ]
 

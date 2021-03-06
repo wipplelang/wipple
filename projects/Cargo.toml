@@ -1,9 +1,8 @@
 [package]
-name = "wipple_cli"
+name = "wipple_projects"
 version = "0.0.0"
 edition = "2018"
 
 [dependencies]
-structopt = "0.3.21"
 wipple = { path = "../core" }
 wipple_parser = { path = "../parser" }

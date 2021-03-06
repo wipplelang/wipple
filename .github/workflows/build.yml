@@ -5,7 +5,8 @@ on:
       - cli/**
       - core/**
       - parser/**
-      - plugin-loader/**
+      - plugins/**
+      - projects/**
 
 name: Build
 

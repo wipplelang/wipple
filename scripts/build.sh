@@ -22,5 +22,5 @@ cargo install cross
 
 for target in ${TARGETS[@]}; do
     cross build --target=$target --release
-    cp target/$target/release/cli bin/$target
+    cp target/$target/release/wipple_cli bin/$target
 done

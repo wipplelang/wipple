@@ -90,15 +90,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "cli"
-version = "0.0.0"
-dependencies = [
- "structopt",
- "wipple",
- "wipple_parser",
-]
-
-[[package]]
 name = "colored"
 version = "2.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -614,6 +605,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "wipple_cli"
+version = "0.0.0"
+dependencies = [
+ "structopt",
+ "wipple",
+ "wipple_parser",
+]
+
+[[package]]
 name = "wipple_parser"
 version = "0.0.0"
 dependencies = [
@@ -637,7 +637,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "wipple_plugin_loader"
+name = "wipple_plugins"
 version = "0.0.0"
 dependencies = [
  "libloading",
@@ -645,13 +645,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "wipple_projects"
+version = "0.0.0"
+dependencies = [
+ "wipple",
+ "wipple_parser",
+]
+
+[[package]]
 name = "wipple_tests"
 version = "0.0.0"
 dependencies = [
- "cli",
  "colored",
  "junit-report",
  "wipple",
+ "wipple_cli",
  "wipple_parser",
 ]
 

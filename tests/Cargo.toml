@@ -4,8 +4,8 @@ version = "0.0.0"
 edition = "2018"
 
 [dependencies]
-cli = { path = "../cli" }
 colored = "2.0.0"
 junit-report = "0.4.1"
 wipple = { path = "../core" }
+wipple_cli = { path = "../cli" }
 wipple_parser = { path = "../parser" }
