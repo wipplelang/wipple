@@ -12,6 +12,6 @@
   },
   "dependencies": {
     "codeflask": "git+https://github.com/WilsonGramer/CodeFlask.git",
-    "wipple-playground-interpreter": "file:../playground-interpreter/pkg"
+    "wipple-playground-interpreter": "file:../interpreter/pkg"
   }
 }
