@@ -3,7 +3,7 @@ members = [
     "cli",
     "core",
     "parser",
-    "playground-interpreter",
+    "playground/interpreter",
     "plugins",
     "projects",
     "tests",
