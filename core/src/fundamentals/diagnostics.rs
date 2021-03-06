@@ -127,6 +127,7 @@ impl fmt::Display for Error {
             self.stack
                 .items
                 .iter()
+                .rev()
                 .map(|item| format!("    {}", item))
                 .collect::<Vec<_>>()
                 .join("\n")
