@@ -2,23 +2,12 @@ use crate::*;
 
 #[derive(Clone)]
 pub struct Module {
-    pub values: EnvironmentValues,
+    pub env: EnvironmentRef,
 }
 
 impl Module {
-    pub fn new(values: EnvironmentValues) -> Self {
-        Module { values }
-    }
-
-    pub fn from(env: &EnvironmentRef) -> Self {
-        Module::new(env.borrow().values.clone())
-    }
-
-    pub fn env(&self) -> Environment {
-        Environment {
-            values: self.values.clone(),
-            parent: None,
-        }
+    pub fn new(env: EnvironmentRef) -> Self {
+        Module { env }
     }
 }
 
@@ -46,7 +35,7 @@ pub(crate) fn setup(env: &mut Environment) {
         Ok(Some(Value::of(Function::new(move |value, env, stack| {
             let name = value.get_primitive_or::<Name>("Expected a name", env, stack)?;
 
-            name.resolve(&module.env().into_ref(), stack)
+            name.resolve(&module.env, stack)
         }))))
     });
 
@@ -67,7 +56,6 @@ pub(crate) fn setup(env: &mut Environment) {
             }
 
             // Modules capture their environment
-            // let captured_env = env.child().into_ref();
             let captured_env = Environment::child_of(env).into_ref();
 
             for statement in &module_block.statements {
@@ -81,7 +69,7 @@ pub(crate) fn setup(env: &mut Environment) {
                 list.evaluate(&captured_env, &stack)?;
             }
 
-            Ok(Value::of(Module::from(&captured_env)))
+            Ok(Value::of(Module::new(captured_env)))
         }))))
     });
 

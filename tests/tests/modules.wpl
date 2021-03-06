@@ -1,0 +1,53 @@
+>>> Modules encapsulate their environment
+
+a : 1
+
+{
+    a : 2
+}
+
+show a
+
+---
+
+a ==> 1
+
+>>> Outside variables are accessible inside a module
+
+a : 1
+
+{
+    a : a + 1
+    show a
+}
+
+show a
+
+---
+
+a ==> 2
+a ==> 1
+
+>>> Accessing variables inside a module
+
+module : {
+    a : 1
+}
+
+show (module a)
+
+---
+
+(module a) ==> 1
+
+>>> 'use' function
+
+use {
+    a : 1
+}
+
+show a
+
+---
+
+a ==> 1

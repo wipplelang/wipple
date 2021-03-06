@@ -2,6 +2,7 @@ use crate::*;
 use std::{
     cell::RefCell,
     collections::HashMap,
+    fmt::Debug,
     hash::{Hash, Hasher},
     rc::Rc,
 };
@@ -10,7 +11,7 @@ use uuid::Uuid;
 pub type EnvironmentValues = HashMap<EnvironmentKey, Dynamic>;
 pub type EnvironmentRef = Rc<RefCell<Environment>>;
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct Environment {
     pub values: EnvironmentValues,
     pub parent: Option<EnvironmentRef>,
@@ -73,11 +74,13 @@ impl UseFn {
 }
 
 impl Environment {
-    pub fn r#use(&mut self, new: &EnvironmentValues) {
-        for (key, new_value) in new {
+    pub fn r#use(&mut self, new: &EnvironmentRef) {
+        let new_values = new.borrow().values.clone();
+
+        for (key, new_value) in new_values {
             match self.get(&key) {
                 Some(parent_value) => {
-                    let used_value = key.r#use.0(parent_value, new_value);
+                    let used_value = key.r#use.0(parent_value, &new_value);
                     *parent_value = used_value;
                 }
                 None => {
@@ -115,6 +118,12 @@ impl EnvironmentKey {
             r#use,
             insert,
         }
+    }
+}
+
+impl Debug for EnvironmentKey {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "(EnvironmentKey {})", self.id)
     }
 }
 

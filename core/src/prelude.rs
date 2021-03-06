@@ -77,7 +77,7 @@ fn temporary_prelude(env: &mut Environment) {
                 .evaluate(env, stack)?
                 .get_primitive::<Module>(env, stack)?;
 
-            env.borrow_mut().r#use(&module.values);
+            env.borrow_mut().r#use(&module.env);
 
             Ok(Value::empty())
         })),
