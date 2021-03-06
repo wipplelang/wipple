@@ -10,7 +10,7 @@ impl EvaluateFn {
     }
 }
 
-primitive!(evaluate for EvaluateFn);
+fundamental_primitive!(evaluate for EvaluateFn);
 
 impl Value {
     pub fn evaluate(&self, env: &EnvironmentRef, stack: &Stack) -> Result {

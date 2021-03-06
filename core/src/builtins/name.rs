@@ -7,7 +7,7 @@ pub struct Name {
     pub location: Option<SourceLocation>,
 }
 
-primitive!(name for Name);
+fundamental_primitive!(name for Name);
 
 #[derive(Clone)]
 pub struct AssignFn(pub Rc<dyn Fn(&Value, &EnvironmentRef, &Stack) -> Result<()>>);
@@ -18,16 +18,16 @@ impl AssignFn {
     }
 }
 
-primitive!(assign for AssignFn);
+fundamental_primitive!(assign for AssignFn);
 
 #[derive(Clone, Copy)]
 pub struct Computed;
 
-primitive!(computed for Computed);
+fundamental_primitive!(computed for Computed);
 
 pub type Variables = HashMap<String, Value>;
 
-env_key!(variables for Variables {
+fundamental_env_key!(variables for Variables {
     EnvironmentKey::new(
         UseFn::new(|parent: &Variables, new| {
             parent.clone().into_iter().chain(new.clone()).collect()
@@ -48,10 +48,19 @@ impl Environment {
 
 impl Name {
     pub fn resolve(&self, env: &EnvironmentRef, stack: &Stack) -> Result {
-        let variable = self.resolve_without_computing(env, stack)?;
+        self.resolve_in(env, env, stack)
+    }
 
-        if variable.has_trait(TraitID::computed(), env, &stack)? {
-            variable.evaluate(env, &stack)
+    pub fn resolve_in(
+        &self,
+        resolve_env: &EnvironmentRef,
+        compute_env: &EnvironmentRef,
+        stack: &Stack,
+    ) -> Result {
+        let variable = self.resolve_without_computing(resolve_env, stack)?;
+
+        if variable.has_trait(TraitID::computed(), compute_env, &stack)? {
+            variable.evaluate(compute_env, &stack)
         } else {
             Ok(variable)
         }
@@ -60,11 +69,11 @@ impl Name {
     pub fn resolve_without_computing(&self, env: &EnvironmentRef, stack: &Stack) -> Result {
         let stack = stack.add(|| format!("Resolving variable '{}'", self.name));
 
-        self.resolve_if_present(env)
+        self.resolve_without_computing_if_present(env)
             .ok_or_else(|| Error::new("Name does not refer to a variable", &stack))
     }
 
-    pub fn resolve_if_present(&self, env: &EnvironmentRef) -> Option<Value> {
+    pub fn resolve_without_computing_if_present(&self, env: &EnvironmentRef) -> Option<Value> {
         fn get(name: &Name, env: &EnvironmentRef) -> Option<Value> {
             let variable = env.borrow_mut().variables().get(&name.name).cloned();
             if let Some(variable) = variable {

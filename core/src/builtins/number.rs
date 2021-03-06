@@ -7,7 +7,7 @@ pub struct Number {
     pub location: Option<SourceLocation>,
 }
 
-primitive!(number for Number);
+fundamental_primitive!(number for Number);
 
 pub(crate) fn setup(env: &mut Environment) {
     // Number ::= Text

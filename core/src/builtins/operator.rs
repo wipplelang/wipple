@@ -8,7 +8,7 @@ use uuid::Uuid;
 
 pub type OperatorPrecedences = Vec<PrecedenceGroup>;
 
-env_key!(operator_precedences for OperatorPrecedences {
+fundamental_env_key!(operator_precedences for OperatorPrecedences {
     EnvironmentKey::new(
         UseFn::take_parent::<OperatorPrecedences>(),
         true,
@@ -167,7 +167,7 @@ impl Hash for Operator {
     }
 }
 
-primitive!(operator for Operator);
+fundamental_primitive!(operator for Operator);
 
 pub(crate) fn setup(env: &mut Environment) {
     // Operator ::= Text
@@ -395,7 +395,7 @@ pub fn get_operator(
     stack: &Stack,
 ) -> Result<Option<Operator>> {
     if let Some(name) = value.get_primitive_if_present::<Name>(env, stack)? {
-        let variable = name.resolve_if_present(env);
+        let variable = name.resolve_without_computing_if_present(env);
 
         if let Some(variable) = variable {
             variable.get_primitive_if_present::<Operator>(env, stack)

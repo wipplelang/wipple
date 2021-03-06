@@ -11,7 +11,7 @@ impl Module {
     }
 }
 
-primitive!(module for Module);
+fundamental_primitive!(module for Module);
 
 #[derive(Clone)]
 pub struct ModuleBlock {
@@ -19,7 +19,7 @@ pub struct ModuleBlock {
     pub location: Option<SourceLocation>,
 }
 
-primitive!(module_block for ModuleBlock);
+fundamental_primitive!(module_block for ModuleBlock);
 
 pub(crate) fn setup(env: &mut Environment) {
     // Module ::= Text
@@ -35,7 +35,7 @@ pub(crate) fn setup(env: &mut Environment) {
         Ok(Some(Value::of(Function::new(move |value, env, stack| {
             let name = value.get_primitive_or::<Name>("Expected a name", env, stack)?;
 
-            name.resolve(&module.env, stack)
+            name.resolve_in(&module.env, env, stack)
         }))))
     });
 

@@ -6,7 +6,7 @@ pub struct List {
     pub location: Option<SourceLocation>,
 }
 
-primitive!(list for List);
+fundamental_primitive!(list for List);
 
 pub(crate) fn setup(env: &mut Environment) {
     // List ::= Evaluate

@@ -6,7 +6,7 @@ pub struct Block {
     pub location: Option<SourceLocation>,
 }
 
-primitive!(block for Block);
+fundamental_primitive!(block for Block);
 
 pub(crate) fn setup(env: &mut Environment) {
     // Block ::= Text

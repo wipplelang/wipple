@@ -17,7 +17,7 @@ impl DefineMacroParameterFn {
     }
 }
 
-primitive!(macro_parameter for DefineMacroParameterFn);
+fundamental_primitive!(macro_parameter for DefineMacroParameterFn);
 
 #[derive(Clone)]
 pub struct MacroExpandFn(
@@ -32,7 +32,7 @@ impl MacroExpandFn {
     }
 }
 
-primitive!(macro_expand for MacroExpandFn);
+fundamental_primitive!(macro_expand for MacroExpandFn);
 
 impl Value {
     pub fn macro_expand(
@@ -55,7 +55,7 @@ pub struct Macro {
     pub value_to_expand: Value,
 }
 
-primitive!(r#macro for Macro);
+fundamental_primitive!(r#macro for Macro);
 
 pub(crate) fn setup(env: &mut Environment) {
     // Macro ::= Function

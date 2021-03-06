@@ -3,7 +3,7 @@ use std::rc::Rc;
 
 pub type Conformances = Vec<Conformance>;
 
-env_key!(conformances for Conformances {
+fundamental_env_key!(conformances for Conformances {
     EnvironmentKey::new(
         UseFn::new(|parent: &Conformances, new| {
             parent.clone().into_iter().chain(new.clone()).collect()

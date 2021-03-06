@@ -6,7 +6,7 @@ pub struct Quoted {
     pub location: Option<SourceLocation>,
 }
 
-primitive!(quoted for Quoted);
+fundamental_primitive!(quoted for Quoted);
 
 pub(crate) fn setup(env: &mut Environment) {
     // Quoted ::= Evaluate
