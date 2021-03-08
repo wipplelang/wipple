@@ -615,6 +615,7 @@ dependencies = [
 name = "wipple_cli"
 version = "0.0.0"
 dependencies = [
+ "colored",
  "structopt",
  "wipple",
  "wipple_parser",

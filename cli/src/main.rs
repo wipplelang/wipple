@@ -1,7 +1,7 @@
 mod commands;
 
+use colored::Colorize;
 use std::process::exit;
-
 use structopt::StructOpt;
 
 #[derive(StructOpt)]
@@ -20,7 +20,10 @@ fn run() -> i32 {
     match args {
         Args::Run(run) => {
             if let Err(state) = run.run() {
-                eprintln!("{}", state.into_error(&wipple::Stack::new()));
+                eprintln!(
+                    "{}",
+                    state.into_error(&wipple::Stack::new()).to_string().red()
+                );
                 return 1;
             }
         }

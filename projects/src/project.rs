@@ -7,7 +7,7 @@ pub fn load_project(path: &Path, stack: &Stack) -> Result<Module> {
     setup_project_file(&mut env);
     let env = env.into_ref();
 
-    let mut stack = stack.clone();
+    let mut stack = stack.add(|| format!("Importing project {}", path.to_string_lossy()));
     stack.project_root = Some(path.parent().unwrap().to_path_buf());
 
     let project_module = load_file_with_parent_env(path, &env, &stack)?;

@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use structopt::StructOpt;
 use wipple::*;
 use wipple_parser::*;
@@ -11,8 +13,7 @@ pub struct Run {
     pub evaluate_string: Option<String>,
 
     /// Path to the program
-    #[structopt(default_value = "./")]
-    pub path: String,
+    pub path: Option<PathBuf>,
 }
 
 impl Run {
@@ -39,10 +40,15 @@ impl Run {
                 println!("{}", result.try_format(&env, &stack));
             }
             None => {
-                let mut stack = stack;
-                stack.project_root = Some(std::env::current_dir().unwrap());
+                let current_dir = self
+                    .path
+                    .clone()
+                    .unwrap_or_else(|| std::env::current_dir().unwrap());
 
-                import(&self.path, &stack)?;
+                match &self.path {
+                    Some(path) if !path.is_dir() => import_path(path, &stack)?,
+                    _ => load_project(&current_dir.join("project.wpl"), &stack)?,
+                };
             }
         }
 

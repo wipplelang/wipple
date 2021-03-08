@@ -4,6 +4,7 @@ version = "0.0.0"
 edition = "2018"
 
 [dependencies]
+colored = "2.0.0"
 structopt = "0.3.21"
 wipple = { path = "../core" }
 wipple_parser = { path = "../parser" }

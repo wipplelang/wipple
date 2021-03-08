@@ -5,20 +5,20 @@ use wipple::*;
 /// Import a file/folder using a module name
 pub fn import(module_name: &str, stack: &Stack) -> Result<Module> {
     let path = resolve(module_name, stack)?;
-    let stack = stack.add(|| format!("Importing {}", path.to_string_lossy()));
     import_path(&path, &stack)
 }
 
 /// Import a file/folder using a module name directly in the current environment
 pub fn include(module_name: &str, env: &EnvironmentRef, stack: &Stack) -> Result<Module> {
     let path = resolve(module_name, stack)?;
-    let stack = stack.add(|| format!("Importing {}", path.to_string_lossy()));
     import_path_with_parent_env(&path, env, &stack)
 }
 
 /// Import a file/folder using a path
 pub fn import_path(path: &Path, stack: &Stack) -> Result<Module> {
-    if let Some(module) = try_import_folder(path, stack)? {
+    let stack = stack.add(|| format!("Importing {}", path.to_string_lossy()));
+
+    if let Some(module) = try_import_folder(path, &stack)? {
         Ok(module)
     } else {
         import_file(path, &stack)
@@ -30,7 +30,9 @@ pub fn import_path_with_parent_env(
     env: &EnvironmentRef,
     stack: &Stack,
 ) -> Result<Module> {
-    if let Some(module) = try_import_folder(path, stack)? {
+    let stack = stack.add(|| format!("Importing {}", path.to_string_lossy()));
+
+    if let Some(module) = try_import_folder(path, &stack)? {
         Ok(module)
     } else {
         load_file_with_parent_env(path, env, &stack)
@@ -45,9 +47,7 @@ fn try_import_folder(path: &Path, stack: &Stack) -> Result<Option<Module>> {
     let project_file = path.join("project.wpl");
 
     if project_file.is_file() {
-        let stack = stack.add(|| format!("Importing project {}", project_file.to_string_lossy()));
-
-        let module = load_project(&project_file, &stack)?;
+        let module = load_project(&project_file, stack)?;
 
         Ok(Some(module))
     } else {
@@ -77,7 +77,13 @@ fn try_import_folder(path: &Path, stack: &Stack) -> Result<Option<Module>> {
                     }
                 };
 
-                if path.file_name().unwrap().to_string_lossy().starts_with('.') {
+                if path.is_dir()
+                    || path.file_name().unwrap().to_string_lossy().starts_with('.')
+                    || path
+                        .extension()
+                        .map(|extension| extension != "wpl")
+                        .unwrap_or(false)
+                {
                     None
                 } else {
                     Some(Ok(path))

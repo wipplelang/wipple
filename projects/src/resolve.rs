@@ -17,5 +17,11 @@ pub fn resolve(module_name: &str, stack: &Stack) -> Result<PathBuf> {
 
     let path = base.join(module_name);
 
+    let path = if path.is_dir() {
+        path
+    } else {
+        path.with_extension("wpl")
+    };
+
     Ok(path)
 }
