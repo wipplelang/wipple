@@ -8,5 +8,6 @@ log_diagnostics = []
 
 [dependencies]
 bigdecimal = "0.1.2"
+debug-cell = "0.1.1"
 paste = "1.0.4"
 uuid = { version = "0.8.2", features = ["v4"] }

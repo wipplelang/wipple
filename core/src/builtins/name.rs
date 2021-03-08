@@ -7,7 +7,7 @@ pub struct Name {
     pub location: Option<SourceLocation>,
 }
 
-fundamental_primitive!(name for Name);
+fundamental_primitive!(pub name for Name);
 
 #[derive(Clone)]
 pub struct AssignFn(pub Rc<dyn Fn(&Value, &EnvironmentRef, &Stack) -> Result<()>>);
@@ -18,12 +18,12 @@ impl AssignFn {
     }
 }
 
-fundamental_primitive!(assign for AssignFn);
+fundamental_primitive!(pub assign for AssignFn);
 
 #[derive(Clone, Copy)]
 pub struct Computed;
 
-fundamental_primitive!(computed for Computed);
+fundamental_primitive!(pub computed for Computed);
 
 pub type Variables = HashMap<String, Value>;
 

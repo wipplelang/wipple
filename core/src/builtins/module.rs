@@ -11,7 +11,7 @@ impl Module {
     }
 }
 
-fundamental_primitive!(module for Module);
+fundamental_primitive!(pub module for Module);
 
 #[derive(Clone)]
 pub struct ModuleBlock {
@@ -19,7 +19,7 @@ pub struct ModuleBlock {
     pub location: Option<SourceLocation>,
 }
 
-fundamental_primitive!(module_block for ModuleBlock);
+fundamental_primitive!(pub module_block for ModuleBlock);
 
 pub(crate) fn setup(env: &mut Environment) {
     env.add_primitive_conformance(|_: Module| Text {

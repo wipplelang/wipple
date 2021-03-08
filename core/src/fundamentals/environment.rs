@@ -1,6 +1,6 @@
 use crate::*;
+use debug_cell::RefCell;
 use std::{
-    cell::RefCell,
     collections::HashMap,
     fmt::Debug,
     hash::{Hash, Hasher},
@@ -11,7 +11,7 @@ use uuid::Uuid;
 pub type EnvironmentValues = HashMap<EnvironmentKey, Dynamic>;
 pub type EnvironmentRef = Rc<RefCell<Environment>>;
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct Environment {
     pub values: EnvironmentValues,
     pub parent: Option<EnvironmentRef>,

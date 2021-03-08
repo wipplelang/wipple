@@ -186,17 +186,14 @@ fn test(code: &str) -> (String, std::time::Duration) {
 }
 
 fn setup(output: Rc<RefCell<Vec<String>>>, env: &EnvironmentRef) {
-    env.borrow_mut().variables().insert(
-        String::from("show"),
-        Value::of(Function::new(move |value, env, stack| {
-            let source_text = value.format(env, stack)?;
-            let output_text = value.evaluate(env, stack)?.format(env, stack)?;
+    *env.borrow_mut().show() = ShowFn::new(move |value, env, stack| {
+        let source_text = value.format(env, stack)?;
+        let output_text = value.evaluate(env, stack)?.format(env, stack)?;
 
-            output
-                .borrow_mut()
-                .push(format!("{} ==> {}", source_text, output_text));
+        output
+            .borrow_mut()
+            .push(format!("{} ==> {}", source_text, output_text));
 
-            Ok(Value::empty())
-        })),
-    );
+        Ok(())
+    })
 }

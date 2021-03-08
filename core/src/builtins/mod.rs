@@ -9,6 +9,7 @@ mod name;
 mod number;
 mod operator;
 mod quoted;
+mod show;
 mod text;
 mod r#trait;
 mod validation;
@@ -24,6 +25,7 @@ pub use operator::*;
 pub use quoted::*;
 pub use r#macro::*;
 pub use r#trait::*;
+pub use show::*;
 pub use text::*;
 pub use validation::*;
 
@@ -42,4 +44,5 @@ pub(crate) fn setup(env: &mut Environment) {
     quoted::setup(env);
     r#trait::setup(env);
     validation::setup(env);
+    show::setup(env);
 }

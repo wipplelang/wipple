@@ -83,29 +83,26 @@ fn setup_playground(output: &Rc<RefCell<Vec<ShownValue>>>) {
 
     let output = output.clone();
 
-    env.variables().insert(
-        String::from("show"),
-        Value::of(Function::new(move |value, env, stack| {
-            macro_rules! text {
-                ($value:expr) => {
-                    $value
-                        .get_primitive_if_present::<Text>(env, stack)
-                        .map(|text| match text {
-                            Some(text) => text.text,
-                            None => String::from("<value>"),
-                        })
-                };
-            }
+    *env.show() = ShowFn::new(move |value, env, stack| {
+        macro_rules! text {
+            ($value:expr) => {
+                $value
+                    .get_primitive_if_present::<Text>(env, stack)
+                    .map(|text| match text {
+                        Some(text) => text.text,
+                        None => String::from("<value>"),
+                    })
+            };
+        }
 
-            let source_text = text!(value)?;
-            let output_text = text!(value.evaluate(env, stack)?)?;
+        let source_text = text!(value)?;
+        let output_text = text!(value.evaluate(env, stack)?)?;
 
-            output.borrow_mut().push(ShownValue {
-                input: source_text,
-                output: output_text,
-            });
+        output.borrow_mut().push(ShownValue {
+            input: source_text,
+            output: output_text,
+        });
 
-            Ok(Value::empty())
-        })),
-    );
+        Ok(())
+    });
 }

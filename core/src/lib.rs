@@ -1,9 +1,9 @@
 macro_rules! fundamental_primitive {
-    ($name:ident for $Type:ty) => {
+    ($vis:vis $name:ident for $Type:ty) => {
         impl $crate::Primitive for $Type {}
 
         impl $crate::TraitID {
-            pub fn $name() -> Self {
+            $vis fn $name() -> Self {
                 $crate::TraitID::new_primitive::<$Type>()
             }
         }

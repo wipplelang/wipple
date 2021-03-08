@@ -20,8 +20,9 @@ impl Run {
     pub fn run(&self) -> wipple::Result<()> {
         wipple::setup();
         wipple_projects::setup();
+        setup();
 
-        let env = Environment::child_of(&Environment::global()).into_ref();
+        let env = Environment::global();
         let stack = Stack::new();
 
         match &self.evaluate_string {
@@ -54,4 +55,12 @@ impl Run {
 
         Ok(())
     }
+}
+
+fn setup() {
+    *Environment::global().borrow_mut().show() = ShowFn::new(move |value, env, stack| {
+        println!("{}", value.evaluate(env, stack)?.format(env, stack)?);
+
+        Ok(())
+    })
 }

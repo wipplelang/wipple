@@ -6,7 +6,7 @@ pub struct TraitConstructor {
     pub validation: Validation,
 }
 
-fundamental_primitive!(trait_constructor for TraitConstructor);
+fundamental_primitive!(pub trait_constructor for TraitConstructor);
 
 pub(crate) fn setup(env: &mut Environment) {
     env.add_primitive_conformance(|_: TraitConstructor| Text {

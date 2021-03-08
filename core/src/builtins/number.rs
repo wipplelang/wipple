@@ -7,7 +7,7 @@ pub struct Number {
     pub location: Option<SourceLocation>,
 }
 
-fundamental_primitive!(number for Number);
+fundamental_primitive!(pub number for Number);
 
 pub(crate) fn setup(env: &mut Environment) {
     env.add_primitive_conformance(|number: Number| Text {

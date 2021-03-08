@@ -6,7 +6,7 @@ pub struct List {
     pub location: Option<SourceLocation>,
 }
 
-fundamental_primitive!(list for List);
+fundamental_primitive!(pub list for List);
 
 pub(crate) fn setup(env: &mut Environment) {
     env.add_primitive_conformance(|list: List| {

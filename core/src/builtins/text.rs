@@ -6,7 +6,7 @@ pub struct Text {
     pub location: Option<SourceLocation>,
 }
 
-fundamental_primitive!(text for Text);
+fundamental_primitive!(pub text for Text);
 
 impl Value {
     pub fn try_format(&self, env: &EnvironmentRef, stack: &Stack) -> String {

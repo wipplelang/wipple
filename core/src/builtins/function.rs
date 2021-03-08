@@ -10,7 +10,7 @@ impl Function {
     }
 }
 
-fundamental_primitive!(function for Function);
+fundamental_primitive!(pub function for Function);
 
 impl Value {
     pub fn call(&self, parameter: &Value, env: &EnvironmentRef, stack: &Stack) -> Result {

@@ -6,7 +6,7 @@ pub struct Block {
     pub location: Option<SourceLocation>,
 }
 
-fundamental_primitive!(block for Block);
+fundamental_primitive!(pub block for Block);
 
 pub(crate) fn setup(env: &mut Environment) {
     env.add_primitive_conformance(|_: Block| Text {
