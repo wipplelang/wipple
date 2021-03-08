@@ -1,7 +1,9 @@
+use std::hash::{Hash, Hasher};
+
 use crate::*;
 use uuid::Uuid;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum TraitID {
     Primitive(TypeInfo),
     Runtime(Uuid),
@@ -29,6 +31,20 @@ impl Trait {
             id: TraitID::Primitive(TypeInfo::of::<T>()),
             value: Value::of(value),
         }
+    }
+}
+
+impl PartialEq for Trait {
+    fn eq(&self, other: &Trait) -> bool {
+        self.id == other.id
+    }
+}
+
+impl Eq for Trait {}
+
+impl Hash for Trait {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.id.hash(state);
     }
 }
 
@@ -68,10 +84,8 @@ impl Value {
     ) -> Result<Option<Trait>> {
         // Always use traits directly defined on the value if they exist instead
         // of deriving them
-        for r#trait in self.traits() {
-            if r#trait.id == id {
-                return Ok(Some(r#trait));
-            }
+        if let Some(r#trait) = self.traits().into_iter().find(|t| t.id == id) {
+            return Ok(Some(r#trait));
         }
 
         // Don't derive traits from conformances if we're already deriving

@@ -7,7 +7,7 @@ use std::{
 #[cfg(debug_assertions)]
 use std::any::type_name;
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct TypeInfo {
     pub id: TypeId,
 
