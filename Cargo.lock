@@ -618,6 +618,7 @@ dependencies = [
  "structopt",
  "wipple",
  "wipple_parser",
+ "wipple_projects",
 ]
 
 [[package]]

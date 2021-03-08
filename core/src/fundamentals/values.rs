@@ -14,9 +14,9 @@ impl Value {
     }
 
     pub fn traits(&self) -> Vec<Trait> {
-        match self {
+        match &self {
             Value::Primitive(value) => vec![Trait {
-                id: TraitID::Primitive(value.type_id),
+                id: TraitID::Primitive(value.type_info),
                 value: self.clone(),
             }],
             Value::Composite(traits) => traits.clone(),
@@ -38,9 +38,16 @@ impl Value {
     }
 
     pub fn is_empty(&self) -> bool {
-        match self {
+        match &self {
             Value::Primitive(_) => false,
             Value::Composite(traits) => traits.is_empty(),
+        }
+    }
+
+    pub fn cast_primitive<T: Primitive>(self) -> T {
+        match self {
+            Value::Primitive(value) => value.cast::<T>().clone(),
+            _ => panic!("Value is not a primitive"),
         }
     }
 }

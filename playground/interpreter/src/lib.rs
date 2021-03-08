@@ -3,7 +3,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use wasm_bindgen::prelude::*;
 use wipple::*;
-use wipple_parser::{convert, parse};
+use wipple_parser::{convert, parse_inline_program};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ShownValue {
@@ -29,7 +29,7 @@ pub fn run(code: &str) -> JsValue {
 }
 
 fn run_code(code: &str) -> InterpreterResult {
-    let ast = match parse(code) {
+    let ast = match parse_inline_program(code) {
         Ok(value) => value,
         Err(error) => {
             return InterpreterResult {
@@ -40,7 +40,7 @@ fn run_code(code: &str) -> InterpreterResult {
                         &error.message,
                         &Stack::new().add_location(
                             || String::from("Parsing input"),
-                            &SourceLocation {
+                            &Location::Source {
                                 file: None,
                                 line: error.line,
                                 column: error.column,
@@ -57,11 +57,10 @@ fn run_code(code: &str) -> InterpreterResult {
 
     let output = Rc::new(RefCell::new(Vec::<ShownValue>::new()));
 
-    let env = wipple::prelude().into_ref();
-    init_playground(output.clone(), &env);
+    wipple::setup();
+    setup_playground(&output);
 
-    let env = Environment::child_of(&env).into_ref();
-
+    let env = Environment::child_of(&Environment::global()).into_ref();
     let stack = Stack::new();
 
     match value.evaluate(&env, &stack) {
@@ -70,16 +69,21 @@ fn run_code(code: &str) -> InterpreterResult {
             output: Some(output.as_ref().clone().get_mut().clone()),
             error: None,
         },
-        Err(error) => InterpreterResult {
+        Err(state) => InterpreterResult {
             success: false,
             output: None,
-            error: Some(error.to_string()),
+            error: Some(state.into_error(&stack).to_string()),
         },
     }
 }
 
-fn init_playground(output: Rc<RefCell<Vec<ShownValue>>>, env: &EnvironmentRef) {
-    env.borrow_mut().variables().insert(
+fn setup_playground(output: &Rc<RefCell<Vec<ShownValue>>>) {
+    let env = Environment::global();
+    let env = &mut env.borrow_mut();
+
+    let output = output.clone();
+
+    env.variables().insert(
         String::from("show"),
         Value::of(Function::new(move |value, env, stack| {
             macro_rules! text {

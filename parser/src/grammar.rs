@@ -4,25 +4,25 @@ use peg::parser;
 use snailquote::unescape;
 
 #[derive(Clone)]
-pub struct AST {
-    pub node: ASTNode,
+pub struct Ast {
+    pub node: AstNode,
     pub location: SourceLocation,
 }
 
 #[derive(Clone)]
-pub enum ASTNode {
-    Block(Vec<ASTNodeStatement>),
-    Module(Vec<ASTNodeStatement>),
-    List(Vec<AST>),
+pub enum AstNode {
+    Block(Vec<AstNodeStatement>),
+    Module(Vec<AstNodeStatement>),
+    List(Vec<Ast>),
     Name(String),
     Text(String),
     Number(BigDecimal),
-    Quoted(Box<AST>),
+    Quoted(Box<Ast>),
 }
 
 #[derive(Clone)]
-pub struct ASTNodeStatement {
-    pub items: Vec<AST>,
+pub struct AstNodeStatement {
+    pub items: Vec<Ast>,
     pub location: SourceLocation,
 }
 
@@ -38,8 +38,8 @@ fn source_location(lc: &LineColLookup, offset: usize) -> SourceLocation {
     SourceLocation { line, column }
 }
 
-fn ast(node: ASTNode, lc: &LineColLookup, offset: usize) -> AST {
-    AST {
+fn ast(node: AstNode, lc: &LineColLookup, offset: usize) -> Ast {
+    Ast {
         node,
         location: source_location(lc, offset),
     }
@@ -47,26 +47,30 @@ fn ast(node: ASTNode, lc: &LineColLookup, offset: usize) -> AST {
 
 parser! {
     pub grammar grammar(lc: &LineColLookup) for str {
-        use ASTNode::*;
+        use AstNode::*;
 
-        pub rule program() -> AST
+        pub rule inline_program() -> Ast
             = p:position!() ws() statements:statements() ws() eof()
             { ast(Block(statements), lc, p) }
 
-        rule value() -> AST
+        pub rule file() -> Ast
+            = p:position!() ws() statements:statements() ws() eof()
+            { ast(Module(statements), lc, p) }
+
+        rule value() -> Ast
             = block() / module() / list() / quoted() / text() / number() / name()
 
-        rule name() -> AST
+        rule name() -> Ast
             = p:position!() name:$(!(" " / "\t" / "\r" / "\n" / "(" / ")" / "[" / "]" / "{" / "}" / "'" / "\"") [_])+
             {
                 ast(Name(name.join("")), lc, p)
             }
 
-        rule number() -> AST
+        rule number() -> Ast
             = p:position!() number:$("-"? ['0'..='9']+ ("." ['0'..='9']+)?)
             { ast(Number(number.parse().unwrap()), lc, p) }
 
-        rule text() -> AST
+        rule text() -> Ast
             = p:position!() "\"" text:$((!"\"" [_])*) "\""
             {?
                 match unescape(text) {
@@ -75,31 +79,31 @@ parser! {
                 }
             }
 
-        rule quoted() -> AST
+        rule quoted() -> Ast
             = p:position!() "'" value:value()
             { ast(Quoted(Box::new(value)), lc, p) }
 
-        rule list() -> AST
+        rule list() -> Ast
             = p:position!() "(" ws() items:list_item()* ws() ")"
             { ast(List(items), lc, p) }
 
-        rule list_item() -> AST
+        rule list_item() -> Ast
             = ws() value:value()
             { value }
 
-        rule block() -> AST
+        rule block() -> Ast
             = p:position!() "[" ws() statements:statements() ws() "]"
             { ast(Block(statements), lc, p) }
 
-        rule module() -> AST
+        rule module() -> Ast
             = p:position!() "{" ws() statements:statements() ws() "}"
             { ast(Module(statements), lc, p) }
 
-        rule statements() -> Vec<ASTNodeStatement>
+        rule statements() -> Vec<AstNodeStatement>
             = statements:statement()*
             { statements.iter().filter(|s| !s.items.is_empty()).cloned().collect() }
 
-        rule statement() -> ASTNodeStatement
+        rule statement() -> AstNodeStatement
             = p:position!() first:value()? rest:statement_item()* sp()* comment()? nl()+
             {
                 let mut items = rest;
@@ -108,13 +112,13 @@ parser! {
                     items.insert(0, first);
                 }
 
-                ASTNodeStatement {
+                AstNodeStatement {
                     items,
                     location: source_location(lc, p)
                 }
             }
 
-        rule statement_item() -> AST
+        rule statement_item() -> Ast
             = sp()* value:value()
             { value }
 

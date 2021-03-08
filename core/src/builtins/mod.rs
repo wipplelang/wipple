@@ -32,7 +32,6 @@ use crate::*;
 pub(crate) fn setup(env: &mut Environment) {
     block::setup(env);
     evaluate::setup(env);
-    function::setup(env);
     empty::setup(env);
     list::setup(env);
     r#macro::setup(env);

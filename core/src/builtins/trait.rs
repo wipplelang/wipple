@@ -9,11 +9,8 @@ pub struct TraitConstructor {
 fundamental_primitive!(trait_constructor for TraitConstructor);
 
 pub(crate) fn setup(env: &mut Environment) {
-    // Trait ::= Text
-    env.add_conformance_for_primitive(TraitID::text(), |_: TraitConstructor, _, _| {
-        Ok(Some(Value::of(Text {
-            text: String::from("<trait>"),
-            location: None,
-        })))
+    env.add_primitive_conformance("builtin 'Trait ::= Text'", |_: TraitConstructor| Text {
+        text: String::from("<trait>"),
+        location: None,
     });
 }

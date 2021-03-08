@@ -22,9 +22,9 @@ macro_rules! primitive {
 }
 
 macro_rules! fundamental_env_key {
-    ($name:ident for $Type:ty { $key:expr }) => {
+    ($vis:vis $name:ident for $Type:ty { $key:expr }) => {
         impl $crate::EnvironmentKey {
-            pub fn $name() -> Self {
+            $vis fn $name() -> Self {
                 thread_local! {
                     static KEY: EnvironmentKey = $key;
                 }
@@ -34,10 +34,9 @@ macro_rules! fundamental_env_key {
         }
 
         impl $crate::Environment {
-            pub fn $name(&mut self) -> &mut $Type {
+            $vis fn $name(&mut self) -> &mut $Type {
                 self.get_or_insert(&EnvironmentKey::$name(), Dynamic::new(<$Type>::default()))
-                    .downcast_mut::<$Type>()
-                    .unwrap()
+                    .cast_mut::<$Type>()
             }
         }
     };
@@ -59,8 +58,7 @@ macro_rules! env_key {
 
             $vis fn [<get_ $name>](env: &mut $crate::Environment) -> &mut $Type {
                 env.get_or_insert(&[<$name _key>](), Dynamic::new(<$Type>::default()))
-                    .downcast_mut::<$Type>()
-                    .unwrap()
+                    .cast_mut::<$Type>()
             }
         }
     };
@@ -74,4 +72,22 @@ mod prelude;
 pub use builtins::*;
 pub use dynamic::*;
 pub use fundamentals::*;
-pub use prelude::*;
+pub use prelude::{setup, *};
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_module_text() {
+        crate::setup();
+
+        let module = Value::of(Module::new(Environment::global()));
+
+        let text = module
+            .get_primitive::<Text>(&Environment::global(), &Stack::new())
+            .unwrap();
+
+        assert_eq!(text.text, "<module>");
+    }
+}

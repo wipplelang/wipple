@@ -14,8 +14,12 @@ macro_rules! wipple_plugin {
 }
 
 pub fn load_plugin(path: PathBuf, env: &EnvironmentRef, stack: &Stack) -> Result {
-    let convert_error =
-        |error| wipple::Error::new(&format!("Error loading plugin: {}", error), stack);
+    let convert_error = |error| {
+        wipple::ReturnState::Error(wipple::Error::new(
+            &format!("Error loading plugin: {}", error),
+            stack,
+        ))
+    };
 
     let lib = unsafe { Library::new(path) }.map_err(convert_error)?;
 

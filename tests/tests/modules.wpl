@@ -51,3 +51,11 @@ show a
 ---
 
 a ==> 1
+
+>>> Module text
+
+show {}
+
+---
+
+<module block> ==> <module>

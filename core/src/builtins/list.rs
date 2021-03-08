@@ -3,15 +3,14 @@ use crate::*;
 #[derive(Clone)]
 pub struct List {
     pub items: Vec<Value>,
-    pub location: Option<SourceLocation>,
+    pub location: Option<Location>,
 }
 
 fundamental_primitive!(list for List);
 
 pub(crate) fn setup(env: &mut Environment) {
-    // List ::= Evaluate
-    env.add_conformance_for_primitive(TraitID::evaluate(), |list: List, _, _| {
-        Ok(Some(Value::of(EvaluateFn::new(move |env, stack| {
+    env.add_primitive_conformance("builtin 'List ::= Evaluate'", |list: List| {
+        EvaluateFn::new(move |env, stack| {
             let mut stack = stack.clone();
             if let Some(location) = &list.location {
                 stack.queue_location(location);
@@ -38,40 +37,46 @@ pub(crate) fn setup(env: &mut Environment) {
             }
 
             Ok(result)
-        }))))
+        })
     });
 
-    // List ::= Macro-Expand
-    env.add_conformance_for_primitive(TraitID::macro_expand(), |list: List, _, _| {
-        Ok(Some(Value::of(MacroExpandFn::new(
-            move |parameter, replacement, env, stack| {
-                let mut expanded_items = vec![];
+    env.add_primitive_conformance("builtin 'List ::= Macro-Expand'", |list: List| {
+        MacroExpandFn::new(move |parameter, replacement, env, stack| {
+            let mut expanded_items = vec![];
 
-                for item in &list.items {
-                    let item = item.macro_expand(parameter, replacement, env, stack)?;
+            for item in &list.items {
+                let item = item.macro_expand(parameter, replacement, env, stack)?;
 
-                    expanded_items.push(item);
-                }
+                expanded_items.push(item);
+            }
 
-                Ok(Value::of(List {
-                    items: expanded_items,
-                    location: None,
-                }))
-            },
-        ))))
+            Ok(Value::of(List {
+                items: expanded_items,
+                location: None,
+            }))
+        })
     });
 
-    // List ::= Text
-    env.add_conformance_for_primitive(TraitID::text(), |list: List, env, stack| {
-        let items: Vec<_> = list
-            .items
-            .iter()
-            .map(|value| value.format(env, stack))
-            .collect();
+    env.add_conformance(
+        Some(Location::Builtin("builtin 'List ::= Text'")),
+        TraitID::text(),
+        |value, env, stack| {
+            let list = match value.get_primitive_if_present::<List>(env, stack)? {
+                Some(list) => list,
+                None => return Ok(None),
+            };
 
-        Ok(Some(Value::of(Text {
-            text: format!("({})", items.join(" ")),
-            location: None,
-        })))
-    });
+            let mut items = Vec::new();
+
+            for item in &list.items {
+                let text = item.format(env, stack)?;
+                items.push(text);
+            }
+
+            Ok(Some(Value::of(Text {
+                text: format!("({})", items.join(" ")),
+                location: None,
+            })))
+        },
+    );
 }

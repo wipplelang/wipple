@@ -8,9 +8,9 @@ use uuid::Uuid;
 
 pub type OperatorPrecedences = Vec<PrecedenceGroup>;
 
-fundamental_env_key!(operator_precedences for OperatorPrecedences {
+fundamental_env_key!(pub operator_precedences for OperatorPrecedences {
     EnvironmentKey::new(
-        UseFn::take_parent::<OperatorPrecedences>(),
+        UseFn::take_parent(),
         true,
     )
 });
@@ -170,12 +170,9 @@ impl Hash for Operator {
 fundamental_primitive!(operator for Operator);
 
 pub(crate) fn setup(env: &mut Environment) {
-    // Operator ::= Text
-    env.add_conformance_for_primitive(TraitID::text(), |_: Operator, _, _| {
-        Ok(Some(Value::of(Text {
-            text: String::from("<operator>"),
-            location: None,
-        })))
+    env.add_primitive_conformance("builtin 'Operator ::= Text'", |_: Operator| Text {
+        text: String::from("<operator>"),
+        location: None,
     });
 }
 

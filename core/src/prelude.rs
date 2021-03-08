@@ -1,18 +1,16 @@
 use crate::*;
 
-pub fn prelude() -> Environment {
-    let mut env = Environment::child_of(&Environment::global());
+pub fn setup() {
+    let env = Environment::global();
 
-    setup(&mut env);
-    temporary_prelude(&mut env);
+    builtins::setup(&mut env.borrow_mut());
+    temporary_prelude(&env);
 
     // TODO: Load bundled prelude files
-
-    env
 }
 
 // FIXME: Temporary
-fn temporary_prelude(env: &mut Environment) {
+fn temporary_prelude(env: &EnvironmentRef) {
     // 'new' function
     fn add(
         base: &Value,
@@ -24,10 +22,10 @@ fn temporary_prelude(env: &mut Environment) {
         let validated_value = match trait_constructor.validation.0(value, env, stack)? {
             Validated::Valid(value) => value,
             Validated::Invalid => {
-                return Err(Error::new(
+                return Err(ReturnState::Error(Error::new(
                     "Cannot use this value to represent this trait",
                     stack,
-                ))
+                )))
             }
         };
 
@@ -39,7 +37,7 @@ fn temporary_prelude(env: &mut Environment) {
         Ok(base.add(&r#trait))
     }
 
-    env.set_variable(
+    env.borrow_mut().set_variable(
         "new",
         Value::of(Function::new(|value, env, stack| {
             let trait_constructor = value
@@ -60,7 +58,7 @@ fn temporary_prelude(env: &mut Environment) {
 
     // 'do' function
 
-    env.set_variable(
+    env.borrow_mut().set_variable(
         "do",
         Value::of(Function::new(|value, env, stack| {
             let inner_env = Environment::child_of(env).into_ref();
@@ -70,12 +68,14 @@ fn temporary_prelude(env: &mut Environment) {
 
     // 'use' function
 
-    env.set_variable(
+    env.borrow_mut().set_variable(
         "use",
         Value::of(Function::new(|value, env, stack| {
-            let module = value
-                .evaluate(env, stack)?
-                .get_primitive::<Module>(env, stack)?;
+            let module = value.evaluate(env, stack)?.get_primitive_or::<Module>(
+                "Expected a module",
+                env,
+                stack,
+            )?;
 
             env.borrow_mut().r#use(&module.env.borrow());
 
@@ -85,7 +85,7 @@ fn temporary_prelude(env: &mut Environment) {
 
     // Assignment operator (::)
 
-    fn group(list: &[Value]) -> Value {
+    fn group(list: &[Value], _: &Stack) -> Value {
         if list.len() == 1 {
             list[0].clone()
         } else {
@@ -99,9 +99,9 @@ fn temporary_prelude(env: &mut Environment) {
     fn assign(left: &Value, right: &Value, env: &EnvironmentRef, stack: &Stack) -> Result {
         let stack = stack.add(|| {
             format!(
-                "Assigning '{}' to '{}",
-                right.format(env, stack),
-                left.format(env, stack)
+                "Assigning '{}' to '{}'",
+                right.try_format(env, stack),
+                left.try_format(env, stack)
             )
         });
 
@@ -122,24 +122,26 @@ fn temporary_prelude(env: &mut Environment) {
     );
 
     let assignment_operator = VariadicOperator::collect(|left, right, env, stack| {
-        assign(&group(left), &group(right), env, stack)
+        assign(&group(left, stack), &group(right, stack), env, stack)
     });
 
     add_variadic_operator(&assignment_operator, &assignment_precedence_group);
-    env.set_variable(":", Value::of(Operator::Variadic(assignment_operator)));
+
+    env.borrow_mut()
+        .set_variable(":", Value::of(Operator::Variadic(assignment_operator)));
 
     // Add trait operator (::)
 
     let add_trait_operator = VariadicOperator::collect(|left, right, env, stack| {
-        let value = group(left);
+        let value = group(left, stack);
 
         // TODO: Auto-derive a value for the trait using the conformance if only
         // the trait is provided
         if right.len() != 2 {
-            return Err(Error::new(
+            return Err(ReturnState::Error(Error::new(
                 "Expected a trait and a value for the trati",
                 stack,
-            ));
+            )));
         }
 
         let trait_constructor_value = right[0].evaluate(env, stack)?;
@@ -148,9 +150,9 @@ fn temporary_prelude(env: &mut Environment) {
         let stack = stack.add(|| {
             format!(
                 "Adding trait '{}' with '{}' to '{}'",
-                trait_constructor_value.format(env, stack),
-                trait_value.format(env, stack),
-                value.format(env, stack)
+                trait_constructor_value.try_format(env, stack),
+                trait_value.try_format(env, stack),
+                value.try_format(env, stack)
             )
         });
 
@@ -174,7 +176,9 @@ fn temporary_prelude(env: &mut Environment) {
     });
 
     add_variadic_operator(&add_trait_operator, &assignment_precedence_group);
-    env.set_variable("::", Value::of(Operator::Variadic(add_trait_operator)));
+
+    env.borrow_mut()
+        .set_variable("::", Value::of(Operator::Variadic(add_trait_operator)));
 
     // Macro operator (=>)
 
@@ -186,8 +190,8 @@ fn temporary_prelude(env: &mut Environment) {
     );
 
     let macro_operator = VariadicOperator::collect(|left, right, env, stack| {
-        let parameter = group(left);
-        let value_to_expand = group(right);
+        let parameter = group(left, stack);
+        let value_to_expand = group(right, stack);
 
         let define_parameter = parameter.get_primitive_or::<DefineMacroParameterFn>(
             "Macro parameter must have the Macro-Parameter trait",
@@ -202,21 +206,23 @@ fn temporary_prelude(env: &mut Environment) {
         .add(&Trait::of(Text {
             text: format!(
                 "<macro '{} => {}'>",
-                parameter.format(env, stack),
-                value_to_expand.format(env, stack)
+                parameter.try_format(env, stack),
+                value_to_expand.try_format(env, stack)
             ),
             location: None,
         })))
     });
 
     add_variadic_operator(&macro_operator, &function_precedence_group);
-    env.set_variable("=>", Value::of(Operator::Variadic(macro_operator)));
+
+    env.borrow_mut()
+        .set_variable("=>", Value::of(Operator::Variadic(macro_operator)));
 
     // Closure operator (->)
 
     let closure_operator = VariadicOperator::collect(|left, right, env, stack| {
-        let parameter = group(left);
-        let return_value = group(right);
+        let parameter = group(left, stack);
+        let return_value = group(right, stack);
 
         let define_parameter = parameter.get_primitive_or::<AssignFn>(
             "Closure parameter must have the Assign trait",
@@ -240,15 +246,17 @@ fn temporary_prelude(env: &mut Environment) {
         .add(&Trait::of(Text {
             text: format!(
                 "<closure '{} -> {}'>",
-                parameter.format(env, stack),
-                return_value.format(env, stack)
+                parameter.try_format(env, stack),
+                return_value.try_format(env, stack)
             ),
             location: None,
         })))
     });
 
     add_variadic_operator(&closure_operator, &function_precedence_group);
-    env.set_variable("->", Value::of(Operator::Variadic(closure_operator)));
+
+    env.borrow_mut()
+        .set_variable("->", Value::of(Operator::Variadic(closure_operator)));
 
     // Math
 
@@ -273,7 +281,7 @@ fn temporary_prelude(env: &mut Environment) {
 
             add_binary_operator(&operator, &$precedence_group);
 
-            env.set_variable(
+            env.borrow_mut().set_variable(
                 stringify!($operation),
                 Value::of(Operator::Binary(operator)),
             );

@@ -3,7 +3,7 @@ use std::rc::Rc;
 
 pub type Conformances = Vec<Conformance>;
 
-fundamental_env_key!(conformances for Conformances {
+fundamental_env_key!(pub conformances for Conformances {
     EnvironmentKey::new(
         UseFn::new(|parent: &Conformances, new| {
             parent.clone().into_iter().chain(new.clone()).collect()
@@ -18,32 +18,42 @@ pub struct Conformance {
 
     #[allow(clippy::type_complexity)]
     pub derive_trait_value: Rc<dyn Fn(&Value, &EnvironmentRef, &Stack) -> Result<Option<Value>>>,
+
+    pub location: Option<Location>,
 }
 
 impl Environment {
     pub fn add_conformance(
         &mut self,
+        location: Option<Location>,
         derived_trait_id: TraitID,
         derive_trait_value: impl Fn(&Value, &EnvironmentRef, &Stack) -> Result<Option<Value>> + 'static,
     ) {
         self.conformances().push(Conformance {
             derived_trait_id,
             derive_trait_value: Rc::new(derive_trait_value),
+            location,
         })
     }
 
-    pub fn add_conformance_for_primitive<T: Primitive>(
+    pub fn add_primitive_conformance<A: Primitive, B: Primitive>(
         &mut self,
-        derived_trait_id: TraitID,
-        derive_trait_value: impl Fn(T, &EnvironmentRef, &Stack) -> Result<Option<Value>> + 'static,
+        name: &'static str,
+        derive_trait_value: impl Fn(A) -> B + 'static,
     ) {
-        self.add_conformance(derived_trait_id, move |value, env, stack| {
-            let primitive = match value.get_primitive_if_present::<T>(env, stack)? {
-                Some(primitive) => primitive,
-                None => return Ok(None),
-            };
+        self.add_conformance(
+            Some(Location::Builtin(name)),
+            TraitID::new_primitive::<B>(),
+            move |value, env, stack| {
+                let a = match value.get_primitive_if_present::<A>(env, stack)? {
+                    Some(primitive) => primitive,
+                    None => return Ok(None),
+                };
 
-            derive_trait_value(primitive, env, stack)
-        })
+                let b = derive_trait_value(a);
+
+                Ok(Some(Value::of(b)))
+            },
+        );
     }
 }

@@ -10,4 +10,4 @@ pub use environment::*;
 pub use traits::*;
 pub use values::*;
 
-pub type Result<T = Value> = std::result::Result<T, Error>;
+pub type Result<T = Value> = std::result::Result<T, ReturnState>;

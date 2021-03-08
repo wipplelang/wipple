@@ -1,11 +1,11 @@
 #![cfg(feature = "convert")]
 
 use crate::*;
-use std::path::PathBuf;
+use std::path::Path;
 use wipple::*;
 
-pub fn convert(ast: &AST, file: Option<&PathBuf>) -> Value {
-    use ASTNode::*;
+pub fn convert(ast: &Ast, file: Option<&Path>) -> Value {
+    use AstNode::*;
 
     match &ast.node {
         Block(statements) => Value::of(wipple::Block {
@@ -65,9 +65,9 @@ pub fn convert(ast: &AST, file: Option<&PathBuf>) -> Value {
     }
 }
 
-fn location(location: &crate::SourceLocation, file: Option<&PathBuf>) -> wipple::SourceLocation {
-    wipple::SourceLocation {
-        file: file.cloned(),
+fn location(location: &crate::SourceLocation, file: Option<&Path>) -> wipple::Location {
+    wipple::Location::Source {
+        file: file.map(|path| path.to_path_buf()),
         line: location.line,
         column: location.column,
     }

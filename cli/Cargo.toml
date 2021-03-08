@@ -7,3 +7,4 @@ edition = "2018"
 structopt = "0.3.21"
 wipple = { path = "../core" }
 wipple_parser = { path = "../parser" }
+wipple_projects = { path = "../projects" }

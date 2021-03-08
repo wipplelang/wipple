@@ -58,23 +58,19 @@ pub struct Macro {
 fundamental_primitive!(r#macro for Macro);
 
 pub(crate) fn setup(env: &mut Environment) {
-    // Macro ::= Function
-    env.add_conformance_for_primitive(TraitID::function(), |r#macro: Macro, _, _| {
-        Ok(Some(Value::of(Function::new(move |value, env, stack| {
+    env.add_primitive_conformance("builtin 'Macro ::= Function'", |r#macro: Macro| {
+        Function::new(move |value, env, stack| {
             let (parameter, replacement) = r#macro.define_parameter.0(value, env, stack)?;
 
             r#macro
                 .value_to_expand
                 .macro_expand(&parameter, &replacement, env, stack)?
                 .evaluate(env, stack)
-        }))))
+        })
     });
 
-    // Macro ::= Text
-    env.add_conformance_for_primitive(TraitID::text(), |_: Macro, _, _| {
-        Ok(Some(Value::of(Text {
-            text: String::from("<macro>"),
-            location: None,
-        })))
+    env.add_primitive_conformance("builtin 'Macro ::= Text'", |_: Macro| Text {
+        text: String::from("<macro>"),
+        location: None,
     })
 }

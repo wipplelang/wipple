@@ -1,10 +1,11 @@
 use crate::*;
-use std::path::PathBuf;
+use std::path::Path;
 use wipple::*;
 
-pub fn load_project(path: &PathBuf, stack: &Stack) -> Result<Module> {
+pub fn load_project(path: &Path, stack: &Stack) -> Result<Module> {
     let mut env = Environment::child_of(&Environment::global());
-    setup_project(&mut env);
+    set_project_root(&mut env, Some(path.parent().unwrap().to_path_buf()));
+    setup_project_file(&mut env);
     let env = env.into_ref();
 
     let project_module = load_file_with_parent_env(path, &env, stack)?;
@@ -17,7 +18,7 @@ pub fn load_project(path: &PathBuf, stack: &Stack) -> Result<Module> {
     Ok(main_module)
 }
 
-fn setup_project(_: &mut Environment) {
+fn setup_project_file(_: &mut Environment) {
     // TODO
 }
 

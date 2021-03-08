@@ -1,55 +1,53 @@
-use std::{fs, path::PathBuf};
 use structopt::StructOpt;
 use wipple::*;
 use wipple_parser::*;
+use wipple_projects::*;
 
 /// Run a Wipple program
 #[derive(StructOpt)]
 pub struct Run {
-    /// Show evaluated output after running program (for debugging)
-    #[structopt(short = "S", long = "show")]
-    pub show_output: bool,
-
     /// Evaluate a string instead of a file as input
     #[structopt(name = "code", short = "e")]
     pub evaluate_string: Option<String>,
 
     /// Path to the program
-    #[structopt(parse(from_os_str), default_value = "./project.wpl")]
-    pub path: PathBuf,
+    #[structopt(default_value = "./")]
+    pub path: String,
 }
 
 impl Run {
     pub fn run(&self) -> wipple::Result<()> {
-        let env = Environment::child_of(&prelude().into_ref()).into_ref();
+        wipple::setup();
+        wipple_projects::setup();
+
+        let env = Environment::child_of(&Environment::global()).into_ref();
         let stack = Stack::new();
 
-        let program = match &self.evaluate_string {
+        match &self.evaluate_string {
             Some(code) => {
-                let ast = parse(code, &stack)?;
-                convert(&ast, None)
-            }
-            None => {
-                let code = fs::read_to_string(&self.path).map_err(|error| {
-                    wipple::Error::new(&format!("Error loading file: {}", error), &stack)
+                let ast = parse_inline_program(&code).map_err(|error| {
+                    wipple::ReturnState::Error(wipple::Error::new(
+                        &format!("Error parsing: {}", error.message),
+                        &stack,
+                    ))
                 })?;
 
-                let ast = parse(&code, &stack)?;
-                convert(&ast, Some(&self.path))
+                let program = convert(&ast, None);
+
+                let result = program.evaluate(&env, &stack)?;
+
+                println!("{}", result.try_format(&env, &stack));
             }
-        };
+            None => {
+                set_project_root(
+                    &mut env.borrow_mut(),
+                    Some(std::env::current_dir().unwrap()),
+                );
 
-        let result = program.evaluate(&env, &stack)?;
-
-        if self.show_output {
-            println!("{}", result.format(&env, &stack));
+                import(&self.path, &env, &stack)?;
+            }
         }
 
         Ok(())
     }
-}
-
-fn parse(code: &str, stack: &Stack) -> wipple::Result<wipple_parser::AST> {
-    wipple_parser::parse(&code)
-        .map_err(|error| wipple::Error::new(&format!("Error parsing: {}", error.message), &stack))
 }

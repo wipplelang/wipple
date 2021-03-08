@@ -1,31 +1,32 @@
 use std::{fmt, path::PathBuf};
 
 #[derive(Debug, Clone)]
-pub struct SourceLocation {
-    pub file: Option<PathBuf>,
-    pub line: usize,
-    pub column: usize,
+pub enum Location {
+    Source {
+        file: Option<PathBuf>,
+        line: usize,
+        column: usize,
+    },
+    Builtin(&'static str),
 }
 
-impl fmt::Display for SourceLocation {
+impl fmt::Display for Location {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match &self.file {
-            Some(file) => write!(
-                f,
-                "{}:{}:{}",
-                file.to_string_lossy(),
-                self.line,
-                self.column
-            ),
-            None => write!(f, "{}:{}", self.line, self.column),
+        match self {
+            Location::Source { file, line, column } => match &file {
+                Some(file) => write!(f, "{}:{}:{}", file.to_string_lossy(), line, column),
+                None => write!(f, "{}:{}", line, column),
+            },
+            Location::Builtin(location) => write!(f, "{}", location),
         }
     }
 }
 
-#[derive(Debug, Clone)]
+// TODO: Use dynamic key-based storage like Environment
+#[derive(Clone)]
 pub struct Stack {
     pub items: Vec<StackItem>,
-    queued_location: Option<SourceLocation>,
+    queued_location: Option<Location>,
     recording_enabled: bool,
 }
 
@@ -38,7 +39,7 @@ impl Stack {
         }
     }
 
-    pub fn queue_location(&mut self, location: &SourceLocation) {
+    pub fn queue_location(&mut self, location: &Location) {
         self.queued_location = Some(location.clone());
     }
 
@@ -74,7 +75,7 @@ impl Stack {
         })
     }
 
-    pub fn add_location(&self, label: impl FnOnce() -> String, location: &SourceLocation) -> Self {
+    pub fn add_location(&self, label: impl FnOnce() -> String, location: &Location) -> Self {
         self.add_item(|| StackItem {
             label: label(),
             location: Some(location.clone()),
@@ -88,10 +89,25 @@ impl Default for Stack {
     }
 }
 
+impl fmt::Debug for Stack {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "{}",
+            self.items
+                .iter()
+                .rev()
+                .map(|item| item.to_string())
+                .collect::<Vec<_>>()
+                .join("\n")
+        )
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct StackItem {
     pub label: String,
-    pub location: Option<SourceLocation>,
+    pub location: Option<Location>,
 }
 
 impl fmt::Display for StackItem {
@@ -99,6 +115,27 @@ impl fmt::Display for StackItem {
         match &self.location {
             Some(location) => write!(f, "{} ({})", self.label, location),
             None => write!(f, "{}", self.label),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum ReturnState {
+    ReturnFromBlock,
+    BreakOutOfLoop,
+    Error(Error),
+}
+
+impl ReturnState {
+    /// Call when all other return states have made it to the top level,
+    /// converting them into errors.
+    pub fn into_error(self, stack: &Stack) -> Error {
+        use ReturnState::*;
+
+        match self {
+            ReturnFromBlock => crate::Error::new("'return' outside block", stack),
+            BreakOutOfLoop => crate::Error::new("'break' outside loop", stack),
+            Error(error) => error,
         }
     }
 }

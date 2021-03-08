@@ -4,7 +4,7 @@ use std::{collections::HashMap, rc::Rc};
 #[derive(Clone)]
 pub struct Name {
     pub name: String,
-    pub location: Option<SourceLocation>,
+    pub location: Option<Location>,
 }
 
 fundamental_primitive!(name for Name);
@@ -27,7 +27,7 @@ fundamental_primitive!(computed for Computed);
 
 pub type Variables = HashMap<String, Value>;
 
-fundamental_env_key!(variables for Variables {
+fundamental_env_key!(pub variables for Variables {
     EnvironmentKey::new(
         UseFn::new(|parent: &Variables, new| {
             parent.clone().into_iter().chain(new.clone()).collect()
@@ -70,7 +70,9 @@ impl Name {
         let stack = stack.add(|| format!("Resolving variable '{}'", self.name));
 
         self.resolve_without_computing_if_present(env)
-            .ok_or_else(|| Error::new("Name does not refer to a variable", &stack))
+            .ok_or_else(|| {
+                ReturnState::Error(Error::new("Name does not refer to a variable", &stack))
+            })
     }
 
     pub fn resolve_without_computing_if_present(&self, env: &EnvironmentRef) -> Option<Value> {
@@ -98,52 +100,39 @@ pub(crate) fn setup(env: &mut Environment) {
         }),
     );
 
-    // Name ::= Assign
-    env.add_conformance_for_primitive(TraitID::assign(), |name: Name, _, _| {
-        Ok(Some(Value::of(AssignFn::new(move |value, env, stack| {
+    env.add_primitive_conformance("builtin 'Name ::= Assign'", |name: Name| {
+        AssignFn::new(move |value, env, stack| {
             let value = value.evaluate(env, stack)?;
             env.borrow_mut().set_variable(&name.name, value);
             Ok(())
-        }))))
+        })
     });
 
-    // Name ::= Evaluate
-    env.add_conformance_for_primitive(TraitID::evaluate(), |name: Name, _, _| {
-        Ok(Some(Value::of(EvaluateFn::new(move |env, stack| {
-            name.resolve(env, stack)
-        }))))
+    env.add_primitive_conformance("builtin 'Name ::= Evaluate'", |name: Name| {
+        EvaluateFn::new(move |env, stack| name.resolve(env, stack))
     });
 
-    // Name ::= Macro-Parameter
-    env.add_conformance_for_primitive(TraitID::macro_parameter(), |name: Name, _, _| {
-        Ok(Some(Value::of(DefineMacroParameterFn::new(
-            move |value, env, stack| {
-                let parameter = MacroParameter(name.name.clone());
-                let replacement = value.evaluate(env, stack)?;
+    env.add_primitive_conformance("builtin 'Name ::= Macro-Parameter'", |name: Name| {
+        DefineMacroParameterFn::new(move |value, env, stack| {
+            let parameter = MacroParameter(name.name.clone());
+            let replacement = value.evaluate(env, stack)?;
 
-                Ok((parameter, replacement))
-            },
-        ))))
+            Ok((parameter, replacement))
+        })
     });
 
-    // Name ::= Macro-Expand
-    env.add_conformance_for_primitive(TraitID::macro_expand(), |name: Name, _, _| {
-        Ok(Some(Value::of(MacroExpandFn::new(
-            move |parameter, replacement, _, _| {
-                Ok(if name.name == parameter.0 {
-                    replacement.clone()
-                } else {
-                    Value::of(name.clone())
-                })
-            },
-        ))))
+    env.add_primitive_conformance("builtin 'Name ::= Macro-Expand'", |name: Name| {
+        MacroExpandFn::new(move |parameter, replacement, _, _| {
+            Ok(if name.name == parameter.0 {
+                replacement.clone()
+            } else {
+                Value::of(name.clone())
+            })
+        })
     });
 
-    // Name ::= Text
-    env.add_conformance_for_primitive(TraitID::text(), |name: Name, _, _| {
-        Ok(Some(Value::of(Text {
-            text: name.name,
-            location: None,
-        })))
+    env.add_primitive_conformance("builtin 'Name ::= Text'", |name: Name| Text {
+        text: name.name,
+        location: None,
     });
 }

@@ -3,7 +3,7 @@ use junit_report::*;
 use std::{
     cell::RefCell,
     fs::{self, File},
-    path::PathBuf,
+    path::{Path, PathBuf},
     process::exit,
     rc::Rc,
 };
@@ -85,8 +85,6 @@ fn main() {
             }
         }
 
-        println_interactive!();
-
         let report = Report::new().add_testsuite(suite);
 
         if env::var("CI").is_ok() {
@@ -141,7 +139,7 @@ struct Test {
     expected_output: String,
 }
 
-fn parse_test_file(path: &PathBuf) -> Vec<Test> {
+fn parse_test_file(path: &Path) -> Vec<Test> {
     let file = fs::read_to_string(path).unwrap();
 
     let file = filter_lines(&file, |line| !line.starts_with('#'));
@@ -164,18 +162,22 @@ fn parse_test_file(path: &PathBuf) -> Vec<Test> {
 fn test(code: &str) -> (String, std::time::Duration) {
     let start = Instant::now();
 
-    let ast = wipple_parser::parse(code).unwrap();
+    let stack = Stack::new();
+
+    let ast = wipple_parser::parse_inline_program(code).unwrap();
     let program = wipple_parser::convert(&ast, None);
 
     let output = Rc::new(RefCell::new(Vec::new()));
 
-    let env = prelude().into_ref();
+    let env = Environment::global();
+    env.replace(Environment::blank());
+    wipple::setup();
     setup(output.clone(), &env);
 
     let env = Environment::child_of(&env).into_ref();
 
-    if let Err(error) = program.evaluate(&env, &Stack::new()) {
-        output.replace(vec![error.to_string()]);
+    if let Err(error) = program.evaluate(&env, &stack) {
+        output.replace(vec![error.into_error(&stack).to_string()]);
     }
 
     let output = output.borrow().join("\n");
@@ -188,8 +190,8 @@ fn setup(output: Rc<RefCell<Vec<String>>>, env: &EnvironmentRef) {
     env.borrow_mut().variables().insert(
         String::from("show"),
         Value::of(Function::new(move |value, env, stack| {
-            let source_text = value.format(env, stack);
-            let output_text = value.evaluate(env, stack)?.format(env, stack);
+            let source_text = value.format(env, stack)?;
+            let output_text = value.evaluate(env, stack)?.format(env, stack)?;
 
             output
                 .borrow_mut()
