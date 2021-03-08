@@ -8,7 +8,7 @@ on:
       - plugin-loader/**
       - tests/**
 
-name: Test
+name: Tests
 
 jobs:
   test:
