@@ -170,7 +170,6 @@ fn test(code: &str) -> (String, std::time::Duration) {
     let output = Rc::new(RefCell::new(Vec::new()));
 
     let env = Environment::global();
-    env.replace(Environment::blank());
     wipple::setup();
     setup(output.clone(), &env);
 

@@ -2,6 +2,7 @@ use crate::*;
 
 pub fn setup() {
     let env = Environment::global();
+    env.replace(Environment::blank());
 
     builtins::setup(&mut env.borrow_mut());
     temporary_prelude(&env);
