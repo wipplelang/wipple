@@ -39,12 +39,10 @@ impl Run {
                 println!("{}", result.try_format(&env, &stack));
             }
             None => {
-                set_project_root(
-                    &mut env.borrow_mut(),
-                    Some(std::env::current_dir().unwrap()),
-                );
+                let mut stack = stack;
+                stack.project_root = Some(std::env::current_dir().unwrap());
 
-                import(&self.path, &env, &stack)?;
+                import(&self.path, &stack)?;
             }
         }
 

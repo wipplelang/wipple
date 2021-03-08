@@ -3,16 +3,16 @@ use std::{fs, path::Path};
 use wipple::*;
 
 /// Import a file/folder using a module name
-pub fn import(module_name: &str, env: &EnvironmentRef, stack: &Stack) -> Result<Module> {
-    let path = resolve(module_name, env, stack)?;
-    let stack = stack.add(|| format!("Importing file {}", path.to_string_lossy()));
+pub fn import(module_name: &str, stack: &Stack) -> Result<Module> {
+    let path = resolve(module_name, stack)?;
+    let stack = stack.add(|| format!("Importing {}", path.to_string_lossy()));
     import_path(&path, &stack)
 }
 
 /// Import a file/folder using a module name directly in the current environment
 pub fn include(module_name: &str, env: &EnvironmentRef, stack: &Stack) -> Result<Module> {
-    let path = resolve(module_name, env, stack)?;
-    let stack = stack.add(|| format!("Importing file {}", path.to_string_lossy()));
+    let path = resolve(module_name, stack)?;
+    let stack = stack.add(|| format!("Importing {}", path.to_string_lossy()));
     import_path_with_parent_env(&path, env, &stack)
 }
 
@@ -109,13 +109,12 @@ pub fn load_file_with_parent_env(
     env: &EnvironmentRef,
     stack: &Stack,
 ) -> Result<Module> {
-    set_current_file(&mut env.borrow_mut(), Some(path.to_path_buf()));
+    let mut stack = stack.clone();
+    stack.current_file = Some(path.to_path_buf());
 
-    let program = load_file(path, stack)?;
-    let result = program.evaluate(env, stack)?;
-    let module = result
-        .get_primitive_or::<Module>("ERROR", env, stack)
-        .unwrap(); // files always evaluate to modules
+    let program = load_file(path, &stack)?;
+    let result = program.evaluate(env, &stack)?;
+    let module = result.get_primitive::<Module>(env, &stack).unwrap(); // files always evaluate to modules
 
     Ok(module)
 }

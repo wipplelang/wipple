@@ -18,7 +18,7 @@ pub fn setup() {
                 .get_primitive_or::<Text>("Expected a path to a file or folder", env, stack)?
                 .text;
 
-            let module = import(&path, env, stack)?;
+            let module = import(&path, stack)?;
 
             Ok(Value::of(module))
         })),
@@ -33,7 +33,7 @@ pub fn setup() {
                 None => return Ok(None),
             };
 
-            let module = import(&text.text, env, stack)?;
+            let module = import(&text.text, stack)?;
             Ok(Some(Value::of(module)))
         },
     );

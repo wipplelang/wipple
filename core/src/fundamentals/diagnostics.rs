@@ -26,6 +26,8 @@ impl fmt::Display for Location {
 #[derive(Clone)]
 pub struct Stack {
     pub items: Vec<StackItem>,
+    pub project_root: Option<PathBuf>,
+    pub current_file: Option<PathBuf>,
     queued_location: Option<Location>,
     recording_enabled: bool,
 }
@@ -34,6 +36,8 @@ impl Stack {
     pub fn new() -> Self {
         Stack {
             items: vec![],
+            project_root: None,
+            current_file: None,
             queued_location: None,
             recording_enabled: true,
         }

@@ -4,16 +4,18 @@ use wipple::*;
 
 pub fn load_project(path: &Path, stack: &Stack) -> Result<Module> {
     let mut env = Environment::child_of(&Environment::global());
-    set_project_root(&mut env, Some(path.parent().unwrap().to_path_buf()));
     setup_project_file(&mut env);
     let env = env.into_ref();
 
-    let project_module = load_file_with_parent_env(path, &env, stack)?;
+    let mut stack = stack.clone();
+    stack.project_root = Some(path.parent().unwrap().to_path_buf());
+
+    let project_module = load_file_with_parent_env(path, &env, &stack)?;
 
     // TODO: Install dependencies
 
-    let main_file = get_main_file(&project_module, &env, stack)?;
-    let main_module = import(&main_file, &env, stack)?;
+    let main_file = get_main_file(&project_module, &env, &stack)?;
+    let main_module = import(&main_file, &stack)?;
 
     Ok(main_module)
 }
