@@ -86,7 +86,7 @@ fn temporary_prelude(env: &EnvironmentRef) {
 
     // Assignment operator (::)
 
-    fn group(list: &[Value], _: &Stack) -> Value {
+    fn group(list: &[Value]) -> Value {
         if list.len() == 1 {
             list[0].clone()
         } else {
@@ -117,24 +117,22 @@ fn temporary_prelude(env: &EnvironmentRef) {
         Ok(Value::empty())
     }
 
-    let assignment_precedence_group = add_precedence_group(
-        Associativity::Right,
-        PrecedenceGroupComparison::<VariadicPrecedenceGroup>::highest(),
-    );
+    let assignment_precedence_group =
+        add_precedence_group(Associativity::Right, PrecedenceGroupComparison::highest());
 
-    let assignment_operator = VariadicOperator::collect(|left, right, env, stack| {
-        assign(&group(left, stack), &group(right, stack), env, stack)
+    let assignment_operator = Operator::collect(|left, right, env, stack| {
+        assign(&group(left), &group(right), env, stack)
     });
 
-    add_variadic_operator(&assignment_operator, &assignment_precedence_group);
+    add_operator(&assignment_operator, &assignment_precedence_group);
 
     env.borrow_mut()
-        .set_variable(":", Value::of(Operator::Variadic(assignment_operator)));
+        .set_variable(":", Value::of(assignment_operator));
 
     // Add trait operator (::)
 
-    let add_trait_operator = VariadicOperator::collect(|left, right, env, stack| {
-        let value = group(left, stack);
+    let add_trait_operator = Operator::collect(|left, right, env, stack| {
+        let value = group(left);
 
         // TODO: Auto-derive a value for the trait using the conformance if only
         // the trait is provided
@@ -176,23 +174,21 @@ fn temporary_prelude(env: &EnvironmentRef) {
         )
     });
 
-    add_variadic_operator(&add_trait_operator, &assignment_precedence_group);
+    add_operator(&add_trait_operator, &assignment_precedence_group);
 
     env.borrow_mut()
-        .set_variable("::", Value::of(Operator::Variadic(add_trait_operator)));
+        .set_variable("::", Value::of(add_trait_operator));
 
     // Macro operator (=>)
 
     let function_precedence_group = add_precedence_group(
         Associativity::Right,
-        PrecedenceGroupComparison::<VariadicPrecedenceGroup>::lower_than(
-            assignment_precedence_group,
-        ),
+        PrecedenceGroupComparison::lower_than(assignment_precedence_group),
     );
 
-    let macro_operator = VariadicOperator::collect(|left, right, env, stack| {
-        let parameter = group(left, stack);
-        let value_to_expand = group(right, stack);
+    let macro_operator = Operator::collect(|left, right, env, stack| {
+        let parameter = group(left);
+        let value_to_expand = group(right);
 
         let define_parameter = parameter.get_primitive_or::<DefineMacroParameterFn>(
             "Macro parameter must have the Macro-Parameter trait",
@@ -214,16 +210,16 @@ fn temporary_prelude(env: &EnvironmentRef) {
         })))
     });
 
-    add_variadic_operator(&macro_operator, &function_precedence_group);
+    add_operator(&macro_operator, &function_precedence_group);
 
     env.borrow_mut()
-        .set_variable("=>", Value::of(Operator::Variadic(macro_operator)));
+        .set_variable("=>", Value::of(macro_operator));
 
     // Closure operator (->)
 
-    let closure_operator = VariadicOperator::collect(|left, right, env, stack| {
-        let parameter = group(left, stack);
-        let return_value = group(right, stack);
+    let closure_operator = Operator::collect(|left, right, env, stack| {
+        let parameter = group(left);
+        let return_value = group(right);
 
         let define_parameter = parameter.get_primitive_or::<AssignFn>(
             "Closure parameter must have the Assign trait",
@@ -254,21 +250,21 @@ fn temporary_prelude(env: &EnvironmentRef) {
         })))
     });
 
-    add_variadic_operator(&closure_operator, &function_precedence_group);
+    add_operator(&closure_operator, &function_precedence_group);
 
     env.borrow_mut()
-        .set_variable("->", Value::of(Operator::Variadic(closure_operator)));
+        .set_variable("->", Value::of(closure_operator));
 
     // Math
 
     macro_rules! math {
         ($operation:tt, $precedence_group:ident) => {{
-            let operator = BinaryOperator::collect(|left, right, env, stack| {
-                let left = left
+            let operator = Operator::collect(|left, right, env, stack| {
+                let left = group(left)
                     .evaluate(env, stack)?
                     .get_primitive::<Number>(env, stack)?;
 
-                let right = right
+                let right = group(right)
                     .evaluate(env, stack)?
                     .get_primitive::<Number>(env, stack)?;
 
@@ -280,26 +276,24 @@ fn temporary_prelude(env: &EnvironmentRef) {
                 }))
             });
 
-            add_binary_operator(&operator, &$precedence_group);
+            add_operator(&operator, &$precedence_group);
 
             env.borrow_mut().set_variable(
                 stringify!($operation),
-                Value::of(Operator::Binary(operator)),
+                Value::of(operator),
             );
         }};
     }
 
-    let addition_precedence_group = add_precedence_group(
-        Associativity::Left,
-        PrecedenceGroupComparison::<BinaryPrecedenceGroup>::lowest(),
-    );
+    let addition_precedence_group =
+        add_precedence_group(Associativity::Left, PrecedenceGroupComparison::lowest());
 
     math!(+, addition_precedence_group);
     math!(-, addition_precedence_group);
 
     let multiplication_precedence_group = add_precedence_group(
         Associativity::Left,
-        PrecedenceGroupComparison::<BinaryPrecedenceGroup>::higher_than(addition_precedence_group),
+        PrecedenceGroupComparison::higher_than(addition_precedence_group),
     );
 
     math!(*, multiplication_precedence_group);
