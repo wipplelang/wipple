@@ -26,7 +26,7 @@ impl TypeInfo {
     }
 }
 
-impl fmt::Display for TypeInfo {
+impl fmt::Debug for TypeInfo {
     #[cfg(debug_assertions)]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.name)
@@ -34,13 +34,7 @@ impl fmt::Display for TypeInfo {
 
     #[cfg(not(debug_assertions))]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.id)
-    }
-}
-
-impl fmt::Debug for TypeInfo {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Display::fmt(self, f)
+        write!(f, "(TypeInfo)")
     }
 }
 
@@ -67,8 +61,13 @@ impl Dynamic {
     pub fn cast<T: Clone + 'static>(&self) -> &T {
         let type_info = self.type_info;
 
-        self.try_cast()
-            .unwrap_or_else(|| panic!("Cannot cast from {} to {}", type_info, TypeInfo::of::<T>()))
+        self.try_cast().unwrap_or_else(|| {
+            panic!(
+                "Cannot cast from {:?} to {:?}",
+                type_info,
+                TypeInfo::of::<T>()
+            )
+        })
     }
 
     pub fn try_cast_mut<T: Clone + 'static>(&mut self) -> Option<&mut T> {
@@ -78,8 +77,13 @@ impl Dynamic {
     pub fn cast_mut<T: Clone + 'static>(&mut self) -> &mut T {
         let type_info = self.type_info;
 
-        self.try_cast_mut()
-            .unwrap_or_else(|| panic!("Cannot cast from {} to {}", type_info, TypeInfo::of::<T>()))
+        self.try_cast_mut().unwrap_or_else(|| {
+            panic!(
+                "Cannot cast from {:?} to {:?}",
+                type_info,
+                TypeInfo::of::<T>()
+            )
+        })
     }
 }
 
@@ -93,20 +97,14 @@ impl Clone for Dynamic {
     }
 }
 
-impl fmt::Display for Dynamic {
+impl fmt::Debug for Dynamic {
     #[cfg(debug_assertions)]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "(Dynamic {})", self.type_info)
+        write!(f, "(Dynamic {:?})", self.type_info)
     }
 
     #[cfg(not(debug_assertions))]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "(Dynamic)")
-    }
-}
-
-impl fmt::Debug for Dynamic {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Display::fmt(self, f)
     }
 }
