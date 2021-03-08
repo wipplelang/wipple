@@ -4,7 +4,7 @@ use std::{collections::HashMap, rc::Rc};
 #[derive(Clone)]
 pub struct Name {
     pub name: String,
-    pub location: Option<Location>,
+    pub location: Option<SourceLocation>,
 }
 
 fundamental_primitive!(name for Name);
@@ -100,7 +100,7 @@ pub(crate) fn setup(env: &mut Environment) {
         }),
     );
 
-    env.add_primitive_conformance("builtin 'Name ::= Assign'", |name: Name| {
+    env.add_primitive_conformance(|name: Name| {
         AssignFn::new(move |value, env, stack| {
             let value = value.evaluate(env, stack)?;
             env.borrow_mut().set_variable(&name.name, value);
@@ -108,11 +108,11 @@ pub(crate) fn setup(env: &mut Environment) {
         })
     });
 
-    env.add_primitive_conformance("builtin 'Name ::= Evaluate'", |name: Name| {
+    env.add_primitive_conformance(|name: Name| {
         EvaluateFn::new(move |env, stack| name.resolve(env, stack))
     });
 
-    env.add_primitive_conformance("builtin 'Name ::= Macro-Parameter'", |name: Name| {
+    env.add_primitive_conformance(|name: Name| {
         DefineMacroParameterFn::new(move |value, env, stack| {
             let parameter = MacroParameter(name.name.clone());
             let replacement = value.evaluate(env, stack)?;
@@ -121,7 +121,7 @@ pub(crate) fn setup(env: &mut Environment) {
         })
     });
 
-    env.add_primitive_conformance("builtin 'Name ::= Macro-Expand'", |name: Name| {
+    env.add_primitive_conformance(|name: Name| {
         MacroExpandFn::new(move |parameter, replacement, _, _| {
             Ok(if name.name == parameter.0 {
                 replacement.clone()
@@ -131,7 +131,7 @@ pub(crate) fn setup(env: &mut Environment) {
         })
     });
 
-    env.add_primitive_conformance("builtin 'Name ::= Text'", |name: Name| Text {
+    env.add_primitive_conformance(|name: Name| Text {
         text: name.name,
         location: None,
     });

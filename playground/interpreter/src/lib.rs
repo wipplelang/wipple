@@ -40,7 +40,7 @@ fn run_code(code: &str) -> InterpreterResult {
                         &error.message,
                         &Stack::new().add_location(
                             || String::from("Parsing input"),
-                            &Location::Source {
+                            &SourceLocation {
                                 file: None,
                                 line: error.line,
                                 column: error.column,

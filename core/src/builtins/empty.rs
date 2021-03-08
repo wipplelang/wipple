@@ -5,19 +5,15 @@ pub(crate) fn setup(env: &mut Environment) {
     env.set_variable("_", Value::empty());
 
     // Allow the use of '_' as a catch-all validation that returns its input
-    env.add_conformance(
-        Some(Location::Builtin("builtin 'empty ::= Validation'")),
-        TraitID::validation(),
-        {
-            move |value, _, _| {
-                if value.is_empty() {
-                    Ok(Some(Value::of(Validation::any())))
-                } else {
-                    Ok(None)
-                }
+    env.add_conformance(TraitID::validation(), {
+        move |value, _, _| {
+            if value.is_empty() {
+                Ok(Some(Value::of(Validation::any())))
+            } else {
+                Ok(None)
             }
-        },
-    );
+        }
+    });
 
     // empty : <validation>
     env.set_variable(
@@ -31,18 +27,14 @@ pub(crate) fn setup(env: &mut Environment) {
         })),
     );
 
-    env.add_conformance(
-        Some(Location::Builtin("builtin 'empty ::= Text'")),
-        TraitID::text(),
-        move |value, _, _| {
-            Ok(if value.is_empty() {
-                Some(Value::of(Text {
-                    text: String::from("<empty value>"),
-                    location: None,
-                }))
-            } else {
-                None
-            })
-        },
-    )
+    env.add_conformance(TraitID::text(), move |value, _, _| {
+        Ok(if value.is_empty() {
+            Some(Value::of(Text {
+                text: String::from("<empty value>"),
+                location: None,
+            }))
+        } else {
+            None
+        })
+    })
 }

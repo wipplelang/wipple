@@ -18,42 +18,34 @@ pub struct Conformance {
 
     #[allow(clippy::type_complexity)]
     pub derive_trait_value: Rc<dyn Fn(&Value, &EnvironmentRef, &Stack) -> Result<Option<Value>>>,
-
-    pub location: Option<Location>,
 }
 
 impl Environment {
     pub fn add_conformance(
         &mut self,
-        location: Option<Location>,
+
         derived_trait_id: TraitID,
         derive_trait_value: impl Fn(&Value, &EnvironmentRef, &Stack) -> Result<Option<Value>> + 'static,
     ) {
         self.conformances().push(Conformance {
             derived_trait_id,
             derive_trait_value: Rc::new(derive_trait_value),
-            location,
         })
     }
 
     pub fn add_primitive_conformance<A: Primitive, B: Primitive>(
         &mut self,
-        name: &'static str,
         derive_trait_value: impl Fn(A) -> B + 'static,
     ) {
-        self.add_conformance(
-            Some(Location::Builtin(name)),
-            TraitID::new_primitive::<B>(),
-            move |value, env, stack| {
-                let a = match value.get_primitive_if_present::<A>(env, stack)? {
-                    Some(primitive) => primitive,
-                    None => return Ok(None),
-                };
+        self.add_conformance(TraitID::new_primitive::<B>(), move |value, env, stack| {
+            let a = match value.get_primitive_if_present::<A>(env, stack)? {
+                Some(primitive) => primitive,
+                None => return Ok(None),
+            };
 
-                let b = derive_trait_value(a);
+            let b = derive_trait_value(a);
 
-                Ok(Some(Value::of(b)))
-            },
-        );
+            Ok(Some(Value::of(b)))
+        });
     }
 }

@@ -1,23 +1,23 @@
 use std::{fmt, path::PathBuf};
 
 #[derive(Debug, Clone)]
-pub enum Location {
-    Source {
-        file: Option<PathBuf>,
-        line: usize,
-        column: usize,
-    },
-    Builtin(&'static str),
+pub struct SourceLocation {
+    pub file: Option<PathBuf>,
+    pub line: usize,
+    pub column: usize,
 }
 
-impl fmt::Display for Location {
+impl fmt::Display for SourceLocation {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            Location::Source { file, line, column } => match &file {
-                Some(file) => write!(f, "{}:{}:{}", file.to_string_lossy(), line, column),
-                None => write!(f, "{}:{}", line, column),
-            },
-            Location::Builtin(location) => write!(f, "{}", location),
+        match &self.file {
+            Some(file) => write!(
+                f,
+                "{}:{}:{}",
+                file.to_string_lossy(),
+                self.line,
+                self.column
+            ),
+            None => write!(f, "{}:{}", self.line, self.column),
         }
     }
 }
@@ -28,7 +28,7 @@ pub struct Stack {
     pub items: Vec<StackItem>,
     pub project_root: Option<PathBuf>,
     pub current_file: Option<PathBuf>,
-    queued_location: Option<Location>,
+    queued_location: Option<SourceLocation>,
     recording_enabled: bool,
 }
 
@@ -43,7 +43,7 @@ impl Stack {
         }
     }
 
-    pub fn queue_location(&mut self, location: &Location) {
+    pub fn queue_location(&mut self, location: &SourceLocation) {
         self.queued_location = Some(location.clone());
     }
 
@@ -79,7 +79,7 @@ impl Stack {
         })
     }
 
-    pub fn add_location(&self, label: impl FnOnce() -> String, location: &Location) -> Self {
+    pub fn add_location(&self, label: impl FnOnce() -> String, location: &SourceLocation) -> Self {
         self.add_item(|| StackItem {
             label: label(),
             location: Some(location.clone()),
@@ -111,7 +111,7 @@ impl fmt::Debug for Stack {
 #[derive(Debug, Clone)]
 pub struct StackItem {
     pub label: String,
-    pub location: Option<Location>,
+    pub location: Option<SourceLocation>,
 }
 
 impl fmt::Display for StackItem {

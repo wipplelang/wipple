@@ -107,7 +107,7 @@ impl Operator {
 fundamental_primitive!(operator for Operator);
 
 pub(crate) fn setup(env: &mut Environment) {
-    env.add_primitive_conformance("builtin 'Operator ::= Text'", |_: Operator| Text {
+    env.add_primitive_conformance(|_: Operator| Text {
         text: String::from("<operator>"),
         location: None,
     });

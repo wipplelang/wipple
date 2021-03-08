@@ -3,7 +3,7 @@ use crate::*;
 #[derive(Clone)]
 pub struct Text {
     pub text: String,
-    pub location: Option<Location>,
+    pub location: Option<SourceLocation>,
 }
 
 fundamental_primitive!(text for Text);

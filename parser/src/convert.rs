@@ -65,8 +65,8 @@ pub fn convert(ast: &Ast, file: Option<&Path>) -> Value {
     }
 }
 
-fn location(location: &crate::SourceLocation, file: Option<&Path>) -> wipple::Location {
-    wipple::Location::Source {
+fn location(location: &crate::SourceLocation, file: Option<&Path>) -> wipple::SourceLocation {
+    wipple::SourceLocation {
         file: file.map(|path| path.to_path_buf()),
         line: location.line,
         column: location.column,

@@ -3,18 +3,18 @@ use crate::*;
 #[derive(Clone)]
 pub struct Block {
     pub statements: Vec<List>,
-    pub location: Option<Location>,
+    pub location: Option<SourceLocation>,
 }
 
 fundamental_primitive!(block for Block);
 
 pub(crate) fn setup(env: &mut Environment) {
-    env.add_primitive_conformance("builtin 'Block ::= Text'", |_: Block| Text {
+    env.add_primitive_conformance(|_: Block| Text {
         text: String::from("<block>"),
         location: None,
     });
 
-    env.add_primitive_conformance("builtin 'Block ::= Evaluate'", |block: Block| {
+    env.add_primitive_conformance(|block: Block| {
         EvaluateFn::new(move |env, stack| {
             let mut stack = stack.clone();
             if let Some(location) = &block.location {
@@ -38,7 +38,7 @@ pub(crate) fn setup(env: &mut Environment) {
         })
     });
 
-    env.add_primitive_conformance("builtin 'Block ::= Macro-Expand'", |block: Block| {
+    env.add_primitive_conformance(|block: Block| {
         MacroExpandFn::new(move |parameter, replacement, env, stack| {
             let mut stack = stack.clone();
             if let Some(location) = &block.location {

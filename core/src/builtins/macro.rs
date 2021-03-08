@@ -58,7 +58,7 @@ pub struct Macro {
 fundamental_primitive!(r#macro for Macro);
 
 pub(crate) fn setup(env: &mut Environment) {
-    env.add_primitive_conformance("builtin 'Macro ::= Function'", |r#macro: Macro| {
+    env.add_primitive_conformance(|r#macro: Macro| {
         Function::new(move |value, env, stack| {
             let (parameter, replacement) = r#macro.define_parameter.0(value, env, stack)?;
 
@@ -69,7 +69,7 @@ pub(crate) fn setup(env: &mut Environment) {
         })
     });
 
-    env.add_primitive_conformance("builtin 'Macro ::= Text'", |_: Macro| Text {
+    env.add_primitive_conformance(|_: Macro| Text {
         text: String::from("<macro>"),
         location: None,
     })

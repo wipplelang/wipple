@@ -24,10 +24,8 @@ pub fn setup() {
         })),
     );
 
-    env.borrow_mut().add_conformance(
-        Some(Location::Builtin("builtin 'Text ::= Module'")),
-        TraitID::module(),
-        |value, env, stack| {
+    env.borrow_mut()
+        .add_conformance(TraitID::module(), |value, env, stack| {
             let text = match value.get_primitive_if_present::<Text>(env, stack)? {
                 Some(text) => text,
                 None => return Ok(None),
@@ -35,6 +33,5 @@ pub fn setup() {
 
             let module = import(&text.text, stack)?;
             Ok(Some(Value::of(module)))
-        },
-    );
+        });
 }

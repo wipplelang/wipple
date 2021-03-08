@@ -3,13 +3,13 @@ use crate::*;
 #[derive(Clone)]
 pub struct List {
     pub items: Vec<Value>,
-    pub location: Option<Location>,
+    pub location: Option<SourceLocation>,
 }
 
 fundamental_primitive!(list for List);
 
 pub(crate) fn setup(env: &mut Environment) {
-    env.add_primitive_conformance("builtin 'List ::= Evaluate'", |list: List| {
+    env.add_primitive_conformance(|list: List| {
         EvaluateFn::new(move |env, stack| {
             let mut stack = stack.clone();
             if let Some(location) = &list.location {
@@ -40,7 +40,7 @@ pub(crate) fn setup(env: &mut Environment) {
         })
     });
 
-    env.add_primitive_conformance("builtin 'List ::= Macro-Expand'", |list: List| {
+    env.add_primitive_conformance(|list: List| {
         MacroExpandFn::new(move |parameter, replacement, env, stack| {
             let mut expanded_items = vec![];
 
@@ -57,26 +57,22 @@ pub(crate) fn setup(env: &mut Environment) {
         })
     });
 
-    env.add_conformance(
-        Some(Location::Builtin("builtin 'List ::= Text'")),
-        TraitID::text(),
-        |value, env, stack| {
-            let list = match value.get_primitive_if_present::<List>(env, stack)? {
-                Some(list) => list,
-                None => return Ok(None),
-            };
+    env.add_conformance(TraitID::text(), |value, env, stack| {
+        let list = match value.get_primitive_if_present::<List>(env, stack)? {
+            Some(list) => list,
+            None => return Ok(None),
+        };
 
-            let mut items = Vec::new();
+        let mut items = Vec::new();
 
-            for item in &list.items {
-                let text = item.format(env, stack)?;
-                items.push(text);
-            }
+        for item in &list.items {
+            let text = item.format(env, stack)?;
+            items.push(text);
+        }
 
-            Ok(Some(Value::of(Text {
-                text: format!("({})", items.join(" ")),
-                location: None,
-            })))
-        },
-    );
+        Ok(Some(Value::of(Text {
+            text: format!("({})", items.join(" ")),
+            location: None,
+        })))
+    });
 }

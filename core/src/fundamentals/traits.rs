@@ -110,7 +110,6 @@ impl Value {
                 .filter(|c| c.derived_trait_id == id);
 
             let mut derived_trait = None;
-            let mut previous_conformance = None;
 
             for conformance in conformances {
                 if conformance.derived_trait_id != id {
@@ -119,18 +118,8 @@ impl Value {
 
                 if let Some(derived_value) = (conformance.derive_trait_value)(self, &env, stack)? {
                     if derived_trait.is_some() {
-                        let format_location = |conformance: Conformance| match conformance.location
-                        {
-                            Some(location) => location.to_string(),
-                            None => String::from("<unknown>"),
-                        };
-
                         return Err(ReturnState::Error(Error::new(
-                            &format!(
-                                "Value satisfies multiple conformances, so the conformance to use is ambiguous\nConflict between conformance at '{}' and conformance at '{}'",
-                                format_location(previous_conformance.unwrap()),
-                                format_location(conformance),
-                            ),
+                            "Value satisfies multiple conformances, so the conformance to use is ambiguous",
                             stack
                         )));
                     }
@@ -139,8 +128,6 @@ impl Value {
                         id,
                         value: derived_value,
                     });
-
-                    previous_conformance = Some(conformance);
                 }
             }
 
