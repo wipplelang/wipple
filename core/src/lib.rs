@@ -73,21 +73,3 @@ pub use builtins::*;
 pub use dynamic::*;
 pub use fundamentals::*;
 pub use prelude::{setup, *};
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_module_text() {
-        crate::setup();
-
-        let module = Value::of(Module::new(Environment::global()));
-
-        let text = module
-            .get_primitive::<Text>(&Environment::global(), &Stack::new())
-            .unwrap();
-
-        assert_eq!(text.text, "<module>");
-    }
-}

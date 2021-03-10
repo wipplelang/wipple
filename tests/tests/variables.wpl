@@ -15,3 +15,12 @@ a
 
 Name does not refer to a variable
     Resolving variable 'a' (1:1)
+
+>>> 'Named' trait
+
+no-op : x -> x
+show (no-op)
+
+---
+
+(no-op) ==> <closure 'no-op'>

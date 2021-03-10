@@ -90,10 +90,7 @@ impl Operator {
 fundamental_primitive!(pub operator for Operator);
 
 pub(crate) fn setup(env: &mut Environment) {
-    env.add_primitive_conformance(|_: Operator| Text {
-        text: String::from("<operator>"),
-        location: None,
-    });
+    env.add_text_conformance(TraitID::operator(), "operator");
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]

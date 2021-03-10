@@ -69,8 +69,5 @@ pub(crate) fn setup(env: &mut Environment) {
         })
     });
 
-    env.add_primitive_conformance(|_: Macro| Text {
-        text: String::from("<macro>"),
-        location: None,
-    })
+    env.add_text_conformance(TraitID::r#macro(), "macro");
 }

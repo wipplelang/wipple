@@ -1,10 +1,9 @@
-use std::collections::HashSet;
-
 use crate::*;
+use std::collections::HashSet;
 
 pub trait Primitive: Clone + 'static {}
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub enum Value {
     Primitive(Dynamic),
     Composite(HashSet<Trait>),
@@ -17,13 +16,15 @@ impl Value {
 
     pub fn traits(&self) -> HashSet<Trait> {
         match &self {
-            Value::Primitive(value) => {
+            Value::Primitive(primitive) => {
                 let mut traits = HashSet::new();
 
-                traits.insert(Trait {
-                    id: TraitID::Primitive(value.type_info),
-                    value: self.clone(),
-                });
+                let value = self.clone();
+
+                traits.insert(Trait::new(
+                    TraitID::Primitive(primitive.type_info),
+                    move |_, _| Ok(value.clone()),
+                ));
 
                 traits
             }
@@ -33,6 +34,7 @@ impl Value {
 
     pub fn add(&self, r#trait: &Trait) -> Self {
         let mut traits = self.traits();
+        traits.remove(r#trait);
         traits.insert(r#trait.clone());
         Value::Composite(traits)
     }

@@ -80,8 +80,5 @@ impl<T> From<Validated<T>> for Option<T> {
 fundamental_primitive!(pub validation for Validation);
 
 pub(crate) fn setup(env: &mut Environment) {
-    env.add_primitive_conformance(|_: Validation| Text {
-        text: String::from("<validation>"),
-        location: None,
-    });
+    env.add_text_conformance(TraitID::validation(), "validation");
 }

@@ -203,8 +203,8 @@ fn test(code: &str) -> (String, std::time::Duration) {
 
 fn setup(output: Rc<RefCell<Vec<String>>>, env: &EnvironmentRef) {
     *env.borrow_mut().show() = ShowFn::new(move |value, env, stack| {
-        let source_text = value.format(env, stack)?;
-        let output_text = value.evaluate(env, stack)?.format(env, stack)?;
+        let source_text = value.try_format(env, stack);
+        let output_text = value.evaluate(env, stack)?.try_format(env, stack);
 
         output
             .borrow_mut()

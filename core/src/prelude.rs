@@ -15,27 +15,24 @@ fn temporary_prelude(env: &EnvironmentRef) {
     // 'new' function
     fn add(
         base: &Value,
-        trait_constructor: &TraitConstructor,
-        value: &Value,
+        trait_constructor: TraitConstructor,
+        value: Value,
         env: &EnvironmentRef,
-        stack: &Stack,
-    ) -> Result {
-        let validated_value = match trait_constructor.validation.0(value, env, stack)? {
-            Validated::Valid(value) => value,
-            Validated::Invalid => {
-                return Err(ReturnState::Error(Error::new(
+    ) -> Value {
+        let captured_env = Environment::child_of(env).into_ref();
+
+        let r#trait = Trait::new(
+            trait_constructor.id,
+            move |_, stack| match trait_constructor.validation.0(&value, &captured_env, stack)? {
+                Validated::Valid(value) => Ok(value),
+                Validated::Invalid => Err(ReturnState::Error(Error::new(
                     "Cannot use this value to represent this trait",
                     stack,
-                )))
-            }
-        };
+                ))),
+            },
+        );
 
-        let r#trait = Trait {
-            id: trait_constructor.id,
-            value: validated_value,
-        };
-
-        Ok(base.add(&r#trait))
+        base.add(&r#trait)
     }
 
     env.borrow_mut().set_variable(
@@ -46,13 +43,12 @@ fn temporary_prelude(env: &EnvironmentRef) {
                 .get_primitive::<TraitConstructor>(env, stack)?;
 
             Ok(Value::of(Function::new(move |value, env, stack| {
-                add(
+                Ok(add(
                     &Value::empty(),
-                    &trait_constructor,
-                    &value.evaluate(env, stack)?,
+                    trait_constructor.clone(),
+                    value.evaluate(env, stack)?,
                     env,
-                    stack,
-                )
+                ))
             })))
         })),
     );
@@ -145,7 +141,7 @@ fn temporary_prelude(env: &EnvironmentRef) {
         let trait_constructor =
             trait_constructor_value.get_primitive::<TraitConstructor>(env, &stack)?;
 
-        let new_value = add(&value, &trait_constructor, &trait_value, env, &stack)?;
+        let new_value = add(&value, trait_constructor, trait_value, env);
 
         assign(
             &value,
@@ -180,15 +176,7 @@ fn temporary_prelude(env: &EnvironmentRef) {
         Ok(Value::of(Macro {
             define_parameter,
             value_to_expand: value_to_expand.clone(),
-        })
-        .add(&Trait::of(Text {
-            text: format!(
-                "<macro '{} => {}'>",
-                parameter.try_format(env, stack),
-                value_to_expand.try_format(env, stack)
-            ),
-            location: None,
-        })))
+        }))
     });
 
     add_operator(&macro_operator, &function_precedence_group);
@@ -205,27 +193,13 @@ fn temporary_prelude(env: &EnvironmentRef) {
             stack,
         )?;
 
-        let outer_env = env.clone();
+        let captured_env = env.clone();
 
-        Ok(Value::of(Function::new({
-            let return_value = return_value.clone();
-
-            move |value, _, stack| {
-                let inner_env = Environment::child_of(&outer_env).into_ref();
-
-                define_parameter.0(value, &inner_env, stack)?;
-
-                return_value.evaluate(&inner_env, stack)
-            }
+        Ok(Value::of(Closure {
+            captured_env,
+            define_parameter,
+            return_value: return_value.clone(),
         }))
-        .add(&Trait::of(Text {
-            text: format!(
-                "<closure '{} -> {}'>",
-                parameter.try_format(env, stack),
-                return_value.try_format(env, stack)
-            ),
-            location: None,
-        })))
     });
 
     add_operator(&closure_operator, &function_precedence_group);

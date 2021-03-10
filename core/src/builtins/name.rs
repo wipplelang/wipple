@@ -38,6 +38,13 @@ pub struct Computed;
 
 fundamental_primitive!(pub computed for Computed);
 
+#[derive(Clone)]
+pub struct Named {
+    pub name: String,
+}
+
+fundamental_primitive!(pub named for Named);
+
 pub type Variables = HashMap<String, Value>;
 
 fundamental_env_key!(pub variables for Variables {
@@ -50,12 +57,32 @@ fundamental_env_key!(pub variables for Variables {
 });
 
 impl Environment {
-    pub fn get_variable(&mut self, name: &str) -> Option<&Value> {
-        self.variables().get(name)
+    pub fn set_variable(&mut self, name: &str, value: Value) {
+        let name = String::from(name);
+
+        // Add a 'Named' trait to the value if it isn't already named
+        let value = if value.has_trait_directly(TraitID::named()) {
+            value
+        } else {
+            value.add(&Trait::of_primitive(Named { name: name.clone() }))
+        };
+
+        self.variables().insert(name, value);
     }
 
-    pub fn set_variable(&mut self, name: &str, value: Value) {
-        self.variables().insert(String::from(name), value);
+    pub fn add_text_conformance(&mut self, id: TraitID, value_name: &'static str) {
+        self.add_conformance(TraitID::text(), move |value, env, stack| {
+            if !value.has_trait(id, env, stack)? {
+                return Ok(None);
+            }
+
+            let named = value.get_primitive_if_present::<Named>(env, stack)?;
+
+            Ok(Some(Value::of(Text::new(&match named {
+                Some(named) => format!("<{} '{}'>", value_name, named.name),
+                None => format!("<{}>", value_name),
+            }))))
+        });
     }
 }
 

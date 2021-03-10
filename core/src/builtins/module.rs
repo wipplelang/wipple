@@ -34,10 +34,7 @@ impl Module {
 fundamental_primitive!(pub module for Module);
 
 pub(crate) fn setup(env: &mut Environment) {
-    env.add_primitive_conformance(|_: Module| Text {
-        text: String::from("<module>"),
-        location: None,
-    });
+    env.add_text_conformance(TraitID::module(), "module");
 
     env.add_primitive_conformance(|module: Module| {
         Function::new(move |value, env, stack| {
@@ -47,10 +44,7 @@ pub(crate) fn setup(env: &mut Environment) {
         })
     });
 
-    env.add_primitive_conformance(|_: ModuleBlock| Text {
-        text: String::from("<module block>"),
-        location: None,
-    });
+    env.add_text_conformance(TraitID::module_block(), "module block");
 
     env.add_primitive_conformance(|module_block: ModuleBlock| {
         EvaluateFn::new(move |env, stack| {

@@ -1,4 +1,5 @@
 mod block;
+mod closure;
 mod empty;
 mod evaluate;
 mod function;
@@ -15,6 +16,7 @@ mod r#trait;
 mod validation;
 
 pub use block::*;
+pub use closure::*;
 pub use evaluate::*;
 pub use function::*;
 pub use list::*;
@@ -33,6 +35,7 @@ use crate::*;
 
 pub(crate) fn setup(env: &mut Environment) {
     block::setup(env);
+    closure::setup(env);
     evaluate::setup(env);
     empty::setup(env);
     list::setup(env);

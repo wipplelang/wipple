@@ -23,7 +23,6 @@ pub struct Conformance {
 impl Environment {
     pub fn add_conformance(
         &mut self,
-
         derived_trait_id: TraitID,
         derive_trait_value: impl Fn(&Value, &EnvironmentRef, &Stack) -> Result<Option<Value>> + 'static,
     ) {

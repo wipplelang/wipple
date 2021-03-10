@@ -22,10 +22,7 @@ impl Block {
 fundamental_primitive!(pub block for Block);
 
 pub(crate) fn setup(env: &mut Environment) {
-    env.add_primitive_conformance(|_: Block| Text {
-        text: String::from("<block>"),
-        location: None,
-    });
+    env.add_text_conformance(TraitID::block(), "block");
 
     env.add_primitive_conformance(|block: Block| {
         EvaluateFn::new(move |env, stack| {
