@@ -50,15 +50,23 @@ fn main() {
 
             let (output, duration) = test(&test_case.code);
 
-            let duration = Duration::from_std(duration).unwrap();
+            let reported_duration = Duration::from_std(duration).unwrap();
 
             if output == test_case.expected_output {
                 println_interactive!(
                     "{}",
-                    indent(1, &format!("{}: {}", "PASS".green(), test_case.name))
+                    indent(
+                        1,
+                        &format!(
+                            "{}: {} {}",
+                            "PASS".green(),
+                            test_case.name,
+                            format!("(took {:.3} sec)", duration.as_secs_f32()).bright_black()
+                        )
+                    )
                 );
 
-                suite = suite.add_testcase(TestCase::success(&test_case.name, duration));
+                suite = suite.add_testcase(TestCase::success(&test_case.name, reported_duration));
 
                 pass_count += 1;
             } else {
@@ -70,13 +78,21 @@ fn main() {
 
                 println_interactive!(
                     "{}\n{}",
-                    indent(1, &format!("{}: {}", "FAIL".red(), test_case.name)),
+                    indent(
+                        1,
+                        &format!(
+                            "{}: {} {}",
+                            "FAIL".red(),
+                            test_case.name,
+                            format!("(took {:.3} sec)", duration.as_secs_f32()).bright_black()
+                        )
+                    ),
                     indent(2, &message),
                 );
 
                 suite = suite.add_testcase(TestCase::failure(
                     &test_case.name,
-                    duration,
+                    reported_duration,
                     "Invalid output",
                     &message,
                 ));

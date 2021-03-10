@@ -86,17 +86,6 @@ fn temporary_prelude(env: &EnvironmentRef) {
 
     // Assignment operator (::)
 
-    fn group(list: &[Value]) -> Value {
-        if list.len() == 1 {
-            list[0].clone()
-        } else {
-            Value::of(List {
-                items: list.to_vec(),
-                location: None,
-            })
-        }
-    }
-
     fn assign(left: &Value, right: &Value, env: &EnvironmentRef, stack: &Stack) -> Result {
         let stack = stack.add(|| {
             format!(
@@ -120,9 +109,7 @@ fn temporary_prelude(env: &EnvironmentRef) {
     let assignment_precedence_group =
         add_precedence_group(Associativity::Right, PrecedenceGroupComparison::highest());
 
-    let assignment_operator = Operator::collect(|left, right, env, stack| {
-        assign(&group(left), &group(right), env, stack)
-    });
+    let assignment_operator = Operator::collect(assign);
 
     add_operator(&assignment_operator, &assignment_precedence_group);
 
@@ -131,20 +118,20 @@ fn temporary_prelude(env: &EnvironmentRef) {
 
     // Add trait operator (::)
 
-    let add_trait_operator = Operator::collect(|left, right, env, stack| {
-        let value = group(left);
-
-        // TODO: Auto-derive a value for the trait using the conformance if only
-        // the trait is provided
-        if right.len() != 2 {
-            return Err(ReturnState::Error(Error::new(
-                "Expected a trait and a value for the trati",
-                stack,
-            )));
-        }
-
-        let trait_constructor_value = right[0].evaluate(env, stack)?;
-        let trait_value = right[1].evaluate(env, stack)?;
+    let add_trait_operator = Operator::collect(|value, right, env, stack| {
+        let (trait_constructor_value, trait_value) =
+            match right.get_primitive_if_present::<List>(env, stack)? {
+                Some(right) if right.items.len() == 2 => (
+                    right.items[0].evaluate(env, stack)?,
+                    right.items[1].evaluate(env, stack)?,
+                ),
+                _ => {
+                    return Err(ReturnState::Error(Error::new(
+                        "Expected a trait and a value for the trati",
+                        stack,
+                    )))
+                }
+            };
 
         let stack = stack.add(|| {
             format!(
@@ -186,10 +173,7 @@ fn temporary_prelude(env: &EnvironmentRef) {
         PrecedenceGroupComparison::lower_than(assignment_precedence_group),
     );
 
-    let macro_operator = Operator::collect(|left, right, env, stack| {
-        let parameter = group(left);
-        let value_to_expand = group(right);
-
+    let macro_operator = Operator::collect(|parameter, value_to_expand, env, stack| {
         let define_parameter = parameter.get_primitive_or::<DefineMacroParameterFn>(
             "Macro parameter must have the Macro-Parameter trait",
             env,
@@ -217,10 +201,7 @@ fn temporary_prelude(env: &EnvironmentRef) {
 
     // Closure operator (->)
 
-    let closure_operator = Operator::collect(|left, right, env, stack| {
-        let parameter = group(left);
-        let return_value = group(right);
-
+    let closure_operator = Operator::collect(|parameter, return_value, env, stack| {
         let define_parameter = parameter.get_primitive_or::<AssignFn>(
             "Closure parameter must have the Assign trait",
             env,
@@ -260,11 +241,11 @@ fn temporary_prelude(env: &EnvironmentRef) {
     macro_rules! math {
         ($operation:tt, $precedence_group:ident) => {{
             let operator = Operator::collect(|left, right, env, stack| {
-                let left = group(left)
+                let left = left
                     .evaluate(env, stack)?
                     .get_primitive::<Number>(env, stack)?;
 
-                let right = group(right)
+                let right = right
                     .evaluate(env, stack)?
                     .get_primitive::<Number>(env, stack)?;
 

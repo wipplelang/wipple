@@ -1,0 +1,8 @@
+>>> Partial application
+
+increment : + 1
+show (increment 42)
+
+---
+
+(increment 42) ==> 43

@@ -6,9 +6,7 @@ use std::{
 };
 use uuid::Uuid;
 
-pub type OperatorPrecedences = Vec<PrecedenceGroup>;
-
-fundamental_env_key!(pub operator_precedences for OperatorPrecedences {
+fundamental_env_key!(pub operator_precedences for Vec<PrecedenceGroup> {
     EnvironmentKey::new(
         UseFn::take_parent(),
         true,
@@ -22,20 +20,20 @@ pub struct Operator {
     #[allow(clippy::type_complexity)]
     pub function: Rc<
         dyn Fn(
-            &[Value],
+            &Value,
             &EnvironmentRef,
             &Stack,
-        ) -> Result<Box<dyn Fn(&[Value], &EnvironmentRef, &Stack) -> Result>>,
+        ) -> Result<Box<dyn Fn(&Value, &EnvironmentRef, &Stack) -> Result>>,
     >,
 }
 
 impl Operator {
     pub fn new(
         function: impl Fn(
-                &[Value],
+                &Value,
                 &EnvironmentRef,
                 &Stack,
-            ) -> Result<Box<dyn Fn(&[Value], &EnvironmentRef, &Stack) -> Result>>
+            ) -> Result<Box<dyn Fn(&Value, &EnvironmentRef, &Stack) -> Result>>
             + 'static,
     ) -> Self {
         Operator {
@@ -61,14 +59,14 @@ impl Hash for Operator {
 
 impl Operator {
     pub fn collect(
-        function: impl Fn(&[Value], &[Value], &EnvironmentRef, &Stack) -> Result + 'static,
+        function: impl Fn(&Value, &Value, &EnvironmentRef, &Stack) -> Result + 'static,
     ) -> Operator {
         let function = Rc::new(function);
 
         Operator {
             id: Uuid::new_v4(),
             function: Rc::new(move |left, _, _| {
-                let left = left.to_vec();
+                let left = left.clone();
                 let function = function.clone();
 
                 Ok(Box::new(move |right, env, stack| {
@@ -80,25 +78,10 @@ impl Operator {
 
     pub fn from_function(function: Function) -> Self {
         Operator::new(move |left, env, stack| {
-            let function = function.0(
-                &Value::of(List {
-                    items: left.to_vec(),
-                    location: None,
-                }),
-                env,
-                stack,
-            )?
-            .get_primitive::<Function>(env, stack)?;
+            let function = function.0(left, env, stack)?.get_primitive::<Function>(env, stack)?;
 
             Ok(Box::new(move |right, env, stack| {
-                function.0(
-                    &Value::of(List {
-                        items: right.to_vec(),
-                        location: None,
-                    }),
-                    env,
-                    stack,
-                )
+                function.0(right, env, stack)
             }))
         })
     }
@@ -270,23 +253,10 @@ pub fn get_operator(
 impl Operator {
     pub fn into_function(self) -> Function {
         Function::new(move |left, env, stack| {
-            let function = (self.function)(&get_variadic_items(left, env, stack)?, env, stack)?;
-
-            Ok(Value::of(Function::new(move |right, env, stack| {
-                function(&get_variadic_items(right, env, stack)?, env, stack)
-            })))
+            let function = (self.function)(left, env, stack)?;
+            Ok(Value::of(Function::new(function)))
         })
     }
-}
-
-fn get_variadic_items(value: &Value, env: &EnvironmentRef, stack: &Stack) -> Result<Vec<Value>> {
-    value
-        .get_primitive_or::<List>(
-            "Application of variadic operator requires a list",
-            env,
-            stack,
-        )
-        .map(|list| list.items)
 }
 
 impl List {
@@ -367,11 +337,35 @@ impl List {
             Associativity::Right => sorted_operators.first().unwrap().clone(),
         };
 
-        // List with 2 values is partially applied
+        fn group(list: &[Value]) -> Value {
+            if list.len() == 1 {
+                list[0].clone()
+            } else {
+                Value::of(List {
+                    items: list.to_vec(),
+                    location: None,
+                })
+            }
+        }
 
-        // Take all values from each side of the operator
-        let left = self.items.get(..index).map(|v| v.to_vec());
-        let right = self.items.get((index + 1)..).map(|v| v.to_vec());
+        // Take all values from each side of the operator -- list with 2 values
+        // is partially applied
+
+        macro_rules! take {
+            ($range:expr) => {{
+                let items = self.items.get($range).unwrap_or_default();
+
+                if items.is_empty() {
+                    None
+                } else {
+                    Some(group(items))
+                }
+            }};
+        }
+
+        let left = take!(..index);
+        let right = take!((index + 1)..);
+
         match (left, right) {
             (Some(left), Some(right)) => {
                 // Convert to a function call
@@ -381,13 +375,7 @@ impl List {
             }
             (Some(left), None) => {
                 // Partially apply the right side
-                let partial = Function::new(move |right, env, stack| {
-                    (operator.function)(&left, env, stack)?(
-                        &get_variadic_items(right, env, stack)?,
-                        env,
-                        stack,
-                    )
-                });
+                let partial = Function::new((operator.function)(&left, env, stack)?);
 
                 let function = Value::of(partial);
 
@@ -396,16 +384,14 @@ impl List {
             (None, Some(right)) => {
                 // Partially apply the left side
                 let partial = Function::new(move |left, env, stack| {
-                    (operator.function)(&get_variadic_items(left, env, stack)?, env, stack)?(
-                        &right, env, stack,
-                    )
+                    (operator.function)(&left, env, stack)?(&right, env, stack)
                 });
 
                 let function = Value::of(partial);
 
                 Ok(Some(function))
             }
-            (None, None) => unreachable!(),
+            (None, None) => unreachable!("Case where no values are on either side of the operator, meaning the operator is the only item in the list and it would have been returned above"),
         }
     }
 }

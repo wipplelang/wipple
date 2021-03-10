@@ -1,6 +1,6 @@
 use crate::*;
-use debug_cell::RefCell;
 use std::{
+    cell::RefCell,
     collections::HashMap,
     fmt::Debug,
     hash::{Hash, Hasher},
