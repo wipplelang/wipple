@@ -341,10 +341,7 @@ impl List {
             if list.len() == 1 {
                 list[0].clone()
             } else {
-                Value::of(List {
-                    items: list.to_vec(),
-                    location: None,
-                })
+                Value::of(List::new(list))
             }
         }
 

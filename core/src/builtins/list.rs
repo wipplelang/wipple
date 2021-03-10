@@ -6,6 +6,19 @@ pub struct List {
     pub location: Option<SourceLocation>,
 }
 
+impl List {
+    pub fn new(items: &[Value]) -> Self {
+        List::new_located(items, None)
+    }
+
+    pub fn new_located(items: &[Value], location: Option<SourceLocation>) -> Self {
+        List {
+            items: items.to_vec(),
+            location,
+        }
+    }
+}
+
 fundamental_primitive!(pub list for List);
 
 pub(crate) fn setup(env: &mut Environment) {
@@ -50,10 +63,7 @@ pub(crate) fn setup(env: &mut Environment) {
                 expanded_items.push(item);
             }
 
-            Ok(Value::of(List {
-                items: expanded_items,
-                location: None,
-            }))
+            Ok(Value::of(List::new(&expanded_items)))
         })
     });
 
@@ -70,9 +80,9 @@ pub(crate) fn setup(env: &mut Environment) {
             items.push(text);
         }
 
-        Ok(Some(Value::of(Text {
-            text: format!("({})", items.join(" ")),
-            location: None,
-        })))
+        Ok(Some(Value::of(Text::new(&format!(
+            "({})",
+            items.join(" ")
+        )))))
     });
 }

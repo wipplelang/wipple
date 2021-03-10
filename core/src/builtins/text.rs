@@ -6,6 +6,19 @@ pub struct Text {
     pub location: Option<SourceLocation>,
 }
 
+impl Text {
+    pub fn new(text: &str) -> Self {
+        Text::new_located(text, None)
+    }
+
+    pub fn new_located(text: &str, location: Option<SourceLocation>) -> Self {
+        Text {
+            text: String::from(text),
+            location,
+        }
+    }
+}
+
 fundamental_primitive!(pub text for Text);
 
 impl Value {

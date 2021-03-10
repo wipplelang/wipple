@@ -6,6 +6,16 @@ pub struct Quoted {
     pub location: Option<SourceLocation>,
 }
 
+impl Quoted {
+    pub fn new(value: Value) -> Self {
+        Quoted::new_located(value, None)
+    }
+
+    pub fn new_located(value: Value, location: Option<SourceLocation>) -> Self {
+        Quoted { value, location }
+    }
+}
+
 fundamental_primitive!(pub quoted for Quoted);
 
 pub(crate) fn setup(env: &mut Environment) {

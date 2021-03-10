@@ -7,6 +7,19 @@ pub struct Name {
     pub location: Option<SourceLocation>,
 }
 
+impl Name {
+    pub fn new(name: &str) -> Self {
+        Name::new_located(name, None)
+    }
+
+    pub fn new_located(name: &str, location: Option<SourceLocation>) -> Self {
+        Name {
+            name: String::from(name),
+            location,
+        }
+    }
+}
+
 fundamental_primitive!(pub name for Name);
 
 #[derive(Clone)]

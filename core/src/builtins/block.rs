@@ -6,6 +6,19 @@ pub struct Block {
     pub location: Option<SourceLocation>,
 }
 
+impl Block {
+    pub fn new(statements: &[List]) -> Self {
+        Block::new_located(statements, None)
+    }
+
+    pub fn new_located(statements: &[List], location: Option<SourceLocation>) -> Self {
+        Block {
+            statements: statements.to_vec(),
+            location,
+        }
+    }
+}
+
 fundamental_primitive!(pub block for Block);
 
 pub(crate) fn setup(env: &mut Environment) {
@@ -62,10 +75,7 @@ pub(crate) fn setup(env: &mut Environment) {
                 statements.push(expanded);
             }
 
-            Ok(Value::of(Block {
-                statements,
-                location: None,
-            }))
+            Ok(Value::of(Block::new(&statements)))
         })
     });
 }

@@ -152,10 +152,7 @@ fn temporary_prelude(env: &EnvironmentRef) {
             // We have to quote the result because we've already evaluated it;
             // in real Wipple code, the result would be assigned to a variable
             // before being passed here and we wouldn't have this problem
-            &Value::of(Quoted {
-                value: new_value,
-                location: None,
-            }),
+            &Value::of(Quoted::new(new_value)),
             env,
             &stack,
         )
@@ -251,10 +248,7 @@ fn temporary_prelude(env: &EnvironmentRef) {
 
                 let result = left.number $operation right.number;
 
-                Ok(Value::of(Number {
-                    number: result,
-                    location: None,
-                }))
+                Ok(Value::of(Number::new(result)))
             });
 
             add_operator(&operator, &$precedence_group);

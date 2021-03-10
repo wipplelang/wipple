@@ -1,6 +1,26 @@
 use crate::*;
 
 #[derive(Clone)]
+pub struct ModuleBlock {
+    pub statements: Vec<List>,
+    pub location: Option<SourceLocation>,
+}
+
+impl ModuleBlock {
+    pub fn new(statements: &[List]) -> Self {
+        ModuleBlock::new_located(statements, None)
+    }
+
+    pub fn new_located(statements: &[List], location: Option<SourceLocation>) -> Self {
+        ModuleBlock {
+            statements: statements.to_vec(),
+            location,
+        }
+    }
+}
+
+fundamental_primitive!(pub module_block for ModuleBlock);
+#[derive(Clone)]
 pub struct Module {
     pub env: EnvironmentRef,
 }
@@ -12,14 +32,6 @@ impl Module {
 }
 
 fundamental_primitive!(pub module for Module);
-
-#[derive(Clone)]
-pub struct ModuleBlock {
-    pub statements: Vec<List>,
-    pub location: Option<SourceLocation>,
-}
-
-fundamental_primitive!(pub module_block for ModuleBlock);
 
 pub(crate) fn setup(env: &mut Environment) {
     env.add_primitive_conformance(|_: Module| Text {
@@ -69,19 +81,19 @@ pub(crate) fn setup(env: &mut Environment) {
         MacroExpandFn::new(move |parameter, replacement, env, stack| {
             // Module blocks expand the same way as blocks
 
-            let block = Value::of(Block {
-                statements: module_block.statements.clone(),
-                location: module_block.location.clone(),
-            });
+            let block = Value::of(Block::new_located(
+                &module_block.statements,
+                module_block.location.clone(),
+            ));
 
             let expanded_block = block
                 .macro_expand(parameter, replacement, env, stack)?
                 .get_primitive::<Block>(env, stack)?;
 
-            Ok(Value::of(ModuleBlock {
-                statements: expanded_block.statements,
-                location: expanded_block.location,
-            }))
+            Ok(Value::of(ModuleBlock::new_located(
+                &expanded_block.statements,
+                expanded_block.location,
+            )))
         })
     });
 }
