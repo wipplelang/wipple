@@ -1,0 +1,143 @@
+mod boolean;
+mod maybe;
+mod result;
+
+use crate::*;
+use std::collections::HashMap;
+
+#[derive(Clone)]
+pub struct Variant {
+    pub variant_id: TraitID,
+    pub name: String,
+    pub associated_values: Vec<Value>,
+}
+
+impl Variant {
+    pub fn new(variant_id: TraitID, name: &str, associated_values: &[Value]) -> Self {
+        Variant {
+            variant_id,
+            name: String::from(name),
+            associated_values: associated_values.to_vec(),
+        }
+    }
+}
+
+impl Primitive for Variant {}
+
+impl Module {
+    pub fn for_variant_of(id: TraitID, items: HashMap<String, Vec<Validation>>) -> Self {
+        let mut env = Environment::blank();
+
+        for (name, validations) in items {
+            fn build_constructor(
+                name: String,
+                id: TraitID,
+                remaining_validations: Vec<Validation>,
+                values: Vec<Value>,
+            ) -> Value {
+                if remaining_validations.is_empty() {
+                    let mut variant_trait = Trait::new(id, move |_, _| {
+                        Ok(Value::of(Variant::new(id, &name, &values)))
+                    });
+
+                    variant_trait.is_variant = true;
+
+                    Value::new(&variant_trait)
+                } else {
+                    Value::of(Function::new(move |value, env, stack| {
+                        let (validation, remaining_validations) =
+                            remaining_validations.split_first().unwrap();
+
+                        let validated_value = match validation.0(value, env, stack)? {
+                            Validated::Valid(value) => value,
+                            Validated::Invalid => {
+                                return Err(ReturnState::Error(Error::new(
+                                    "Cannot use this value to represent this variant",
+                                    stack,
+                                )))
+                            }
+                        };
+
+                        let mut values = values.clone();
+                        values.push(validated_value);
+
+                        Ok(build_constructor(
+                            name.clone(),
+                            id,
+                            remaining_validations.to_vec(),
+                            values,
+                        ))
+                    }))
+                }
+            }
+
+            env.set_variable(
+                &name,
+                build_constructor(name.clone(), id, validations, vec![]),
+            );
+        }
+
+        Module::new(env)
+    }
+
+    pub fn for_variant(items: HashMap<String, Vec<Validation>>) -> Self {
+        Module::for_variant_of(TraitID::new(), items)
+    }
+}
+
+pub(crate) fn setup(env: &mut Environment) {
+    boolean::setup(env);
+    maybe::setup(env);
+    result::setup(env);
+
+    env.set_variable(
+        "match",
+        Value::of(Function::new(|value, env, stack| {
+            // FIXME: Only works with traits directly defined on the value
+            let variant_traits = value
+                .evaluate(env, stack)?
+                .traits()
+                .into_iter()
+                .filter(|t| t.is_variant)
+                .collect::<Vec<_>>();
+
+            let variant =
+                (match variant_traits.len() {
+                    1 => variant_traits[0].clone(),
+                    0 => return Err(ReturnState::Error(Error::new("Expected variant", stack))),
+                    _ => return Err(ReturnState::Error(Error::new(
+                        "Value contains multiple variants, so the variant to match is ambiguous",
+                        stack,
+                    ))),
+                }
+                .value)(env, stack)?
+                .cast_primitive::<Variant>();
+
+            Ok(Value::of(Function::new(move |value, env, stack| {
+                let module = value.evaluate(env, stack)?.get_primitive_or::<Module>(
+                    "Expected module containing matches",
+                    env,
+                    stack,
+                )?;
+
+                let mut r#match = match Name::new(&variant.name)
+                    .resolve_without_computing_if_present(&module.env)
+                {
+                    Some(r#match) => r#match,
+                    None => {
+                        return Err(ReturnState::Error(Error::new(
+                            &format!("No match for variant '{}'", variant.name),
+                            stack,
+                        )))
+                    }
+                };
+
+                for value in &variant.associated_values {
+                    r#match = r#match.call(value, env, stack)?;
+                }
+
+                Ok(r#match)
+            })))
+        })),
+    );
+}

@@ -136,10 +136,11 @@ pub(crate) fn setup(env: &mut Environment) {
         "Name",
         Value::of(TraitConstructor {
             id: TraitID::name(),
-            validation: Validation::for_primitive::<Name>(),
+            validation: Validation::of::<Name>(),
         }),
     );
 
+    // Name ::= Assign
     env.add_primitive_conformance(|name: Name| {
         AssignFn::new(move |value, env, stack| {
             let value = value.evaluate(env, stack)?;
@@ -148,19 +149,20 @@ pub(crate) fn setup(env: &mut Environment) {
         })
     });
 
+    // Name ::= Evaluate
     env.add_primitive_conformance(|name: Name| {
         EvaluateFn::new(move |env, stack| name.resolve(env, stack))
     });
 
+    // Name ::= Macro-Parameter
     env.add_primitive_conformance(|name: Name| {
-        DefineMacroParameterFn::new(move |value, env, stack| {
+        DefineMacroParameterFn::new(move |replacement, _, _| {
             let parameter = MacroParameter(name.name.clone());
-            let replacement = value.evaluate(env, stack)?;
-
-            Ok((parameter, replacement))
+            Ok((parameter, replacement.clone()))
         })
     });
 
+    // Name ::= Macro-Expand
     env.add_primitive_conformance(|name: Name| {
         MacroExpandFn::new(move |parameter, replacement, _, _| {
             Ok(if name.name == parameter.0 {
@@ -171,8 +173,6 @@ pub(crate) fn setup(env: &mut Environment) {
         })
     });
 
-    env.add_primitive_conformance(|name: Name| Text {
-        text: name.name,
-        location: None,
-    });
+    // Name ::= Text
+    env.add_primitive_conformance(|name: Name| Text::new(&name.name));
 }

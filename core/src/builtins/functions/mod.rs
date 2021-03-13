@@ -1,3 +1,9 @@
+mod closure;
+mod r#macro;
+
+pub use closure::*;
+pub use r#macro::*;
+
 use crate::*;
 use std::rc::Rc;
 
@@ -24,4 +30,9 @@ impl Value {
 
         function.0(parameter, env, &stack)
     }
+}
+
+pub(crate) fn setup(env: &mut Environment) {
+    closure::setup(env);
+    r#macro::setup(env);
 }

@@ -36,7 +36,7 @@ impl Environment {
         &mut self,
         derive_trait_value: impl Fn(A) -> B + 'static,
     ) {
-        self.add_conformance(TraitID::new_primitive::<B>(), move |value, env, stack| {
+        self.add_conformance(TraitID::of::<B>(), move |value, env, stack| {
             let a = match value.get_primitive_if_present::<A>(env, stack)? {
                 Some(primitive) => primitive,
                 None => return Ok(None),

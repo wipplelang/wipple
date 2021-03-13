@@ -22,20 +22,27 @@ impl ModuleBlock {
 fundamental_primitive!(pub module_block for ModuleBlock);
 #[derive(Clone)]
 pub struct Module {
+    /// The captured environment will have its parent discarded.
     pub env: EnvironmentRef,
 }
 
 impl Module {
-    pub fn new(env: EnvironmentRef) -> Self {
-        Module { env }
+    pub fn new(mut env: Environment) -> Self {
+        env.parent = None;
+
+        Module {
+            env: env.into_ref(),
+        }
     }
 }
 
 fundamental_primitive!(pub module for Module);
 
 pub(crate) fn setup(env: &mut Environment) {
+    // Module ::= Text
     env.add_text_conformance(TraitID::module(), "module");
 
+    // Module ::= Function
     env.add_primitive_conformance(|module: Module| {
         Function::new(move |value, env, stack| {
             let name = value.get_primitive_or::<Name>("Expected a name", env, stack)?;
@@ -44,8 +51,10 @@ pub(crate) fn setup(env: &mut Environment) {
         })
     });
 
+    // Module-Block ::= Text
     env.add_text_conformance(TraitID::module_block(), "module block");
 
+    // Module-Block ::= Evaluate
     env.add_primitive_conformance(|module_block: ModuleBlock| {
         EvaluateFn::new(move |env, stack| {
             let mut stack = stack.clone();
@@ -67,10 +76,13 @@ pub(crate) fn setup(env: &mut Environment) {
                 list.evaluate(&captured_env, &stack)?;
             }
 
+            let captured_env = captured_env.borrow().clone();
+
             Ok(Value::of(Module::new(captured_env)))
         })
     });
 
+    // Module-Block ::= Macro-Expand
     env.add_primitive_conformance(|module_block: ModuleBlock| {
         MacroExpandFn::new(move |parameter, replacement, env, stack| {
             // Module blocks expand the same way as blocks

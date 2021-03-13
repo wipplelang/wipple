@@ -22,6 +22,7 @@ impl List {
 fundamental_primitive!(pub list for List);
 
 pub(crate) fn setup(env: &mut Environment) {
+    // List ::= Evaluate
     env.add_primitive_conformance(|list: List| {
         EvaluateFn::new(move |env, stack| {
             let mut stack = stack.clone();
@@ -53,6 +54,7 @@ pub(crate) fn setup(env: &mut Environment) {
         })
     });
 
+    // List ::= Macro-Expand
     env.add_primitive_conformance(|list: List| {
         MacroExpandFn::new(move |parameter, replacement, env, stack| {
             let mut expanded_items = vec![];
@@ -67,6 +69,7 @@ pub(crate) fn setup(env: &mut Environment) {
         })
     });
 
+    // List ::= Text
     env.add_conformance(TraitID::text(), |value, env, stack| {
         let list = match value.get_primitive_if_present::<List>(env, stack)? {
             Some(list) => list,

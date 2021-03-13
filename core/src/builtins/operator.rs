@@ -90,6 +90,7 @@ impl Operator {
 fundamental_primitive!(pub operator for Operator);
 
 pub(crate) fn setup(env: &mut Environment) {
+    // Operator ::= Text
     env.add_text_conformance(TraitID::operator(), "operator");
 }
 

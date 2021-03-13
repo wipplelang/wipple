@@ -58,6 +58,7 @@ pub struct Macro {
 fundamental_primitive!(pub r#macro for Macro);
 
 pub(crate) fn setup(env: &mut Environment) {
+    // Macro ::= Function
     env.add_primitive_conformance(|r#macro: Macro| {
         Function::new(move |value, env, stack| {
             let (parameter, replacement) = r#macro.define_parameter.0(value, env, stack)?;
@@ -69,5 +70,6 @@ pub(crate) fn setup(env: &mut Environment) {
         })
     });
 
+    // Macro ::= Text
     env.add_text_conformance(TraitID::r#macro(), "macro");
 }

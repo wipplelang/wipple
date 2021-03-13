@@ -12,11 +12,11 @@ pub enum TraitID {
 }
 
 impl TraitID {
-    pub fn new_primitive<T: Primitive>() -> Self {
+    pub fn of<T: Primitive>() -> Self {
         TraitID::Primitive(TypeInfo::of::<T>())
     }
 
-    pub fn new_runtime() -> Self {
+    pub fn new() -> Self {
         TraitID::Runtime(Uuid::new_v4())
     }
 }
@@ -25,6 +25,7 @@ impl TraitID {
 pub struct Trait {
     pub id: TraitID,
     pub value: Rc<dyn Fn(&EnvironmentRef, &Stack) -> Result>,
+    pub is_variant: bool,
 }
 
 impl Trait {
@@ -32,6 +33,7 @@ impl Trait {
         Trait {
             id,
             value: Rc::new(value),
+            is_variant: false,
         }
     }
 
@@ -189,7 +191,7 @@ impl Value {
         stack: &Stack,
     ) -> Result<Option<T>> {
         Ok(self
-            .get_trait_if_present(TraitID::new_primitive::<T>(), env, stack)?
+            .get_trait_if_present(TraitID::of::<T>(), env, stack)?
             .map(|value| value.cast_primitive::<T>()))
     }
 }

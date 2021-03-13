@@ -4,7 +4,7 @@ macro_rules! fundamental_primitive {
 
         impl $crate::TraitID {
             $vis fn $name() -> Self {
-                $crate::TraitID::new_primitive::<$Type>()
+                $crate::TraitID::of::<$Type>()
             }
         }
     };
@@ -16,7 +16,7 @@ macro_rules! primitive {
         impl $crate::Primitive for $Type {}
 
         $vis fn $name() -> Self {
-            $crate::TraitID::new_primitive::<$Type>()
+            $crate::TraitID::of::<$Type>()
         }
     };
 }

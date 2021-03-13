@@ -24,6 +24,7 @@ pub fn setup() {
         })),
     );
 
+    // Text ::= Module
     env.borrow_mut()
         .add_conformance(TraitID::module(), |value, env, stack| {
             let text = match value.get_primitive_if_present::<Text>(env, stack)? {

@@ -18,25 +18,12 @@ impl Validation {
         Validation::new(|value, _, _| Ok(Validated::Valid(value.clone())))
     }
 
-    pub fn for_primitive<T: Primitive>() -> Self {
+    pub fn of<T: Primitive>() -> Self {
         Validation::new(move |value, env, stack| {
             Ok(match value.get_primitive_if_present::<T>(env, stack)? {
                 Some(primitive) => Validated::Valid(Value::of(primitive)),
                 None => Validated::Invalid,
             })
-        })
-    }
-
-    pub fn for_primitive_with<T: Primitive>(
-        validation: impl Fn(T, &EnvironmentRef, &Stack) -> Result<Validated<Value>> + 'static,
-    ) -> Self {
-        Validation::new(move |value, env, stack| {
-            let primitive = match value.get_primitive_if_present::<T>(env, stack)? {
-                Some(primitive) => primitive,
-                None => return Ok(Validated::Invalid),
-            };
-
-            validation(primitive, env, stack)
         })
     }
 }
@@ -80,5 +67,6 @@ impl<T> From<Validated<T>> for Option<T> {
 fundamental_primitive!(pub validation for Validation);
 
 pub(crate) fn setup(env: &mut Environment) {
+    // Validation ::= Text
     env.add_text_conformance(TraitID::validation(), "validation");
 }

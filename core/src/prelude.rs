@@ -12,7 +12,6 @@ pub fn setup() {
 
 // FIXME: Temporary
 fn temporary_prelude(env: &EnvironmentRef) {
-    // 'new' function
     fn add(
         base: &Value,
         trait_constructor: TraitConstructor,
@@ -35,6 +34,8 @@ fn temporary_prelude(env: &EnvironmentRef) {
         base.add(&r#trait)
     }
 
+    // Trait functions
+
     env.borrow_mut().set_variable(
         "new",
         Value::of(Function::new(|value, env, stack| {
@@ -50,6 +51,22 @@ fn temporary_prelude(env: &EnvironmentRef) {
                     env,
                 ))
             })))
+        })),
+    );
+
+    env.borrow_mut().set_variable(
+        "trait",
+        Value::of(Function::new(|value, env, stack| {
+            let validation = value.evaluate(env, stack)?.get_primitive_or::<Validation>(
+                "Expected validation",
+                env,
+                stack,
+            )?;
+
+            Ok(Value::of(TraitConstructor {
+                id: TraitID::new(),
+                validation,
+            }))
         })),
     );
 
@@ -80,7 +97,7 @@ fn temporary_prelude(env: &EnvironmentRef) {
         })),
     );
 
-    // Assignment operator (::)
+    // Assignment operator (:)
 
     fn assign(left: &Value, right: &Value, env: &EnvironmentRef, stack: &Stack) -> Result {
         let stack = stack.add(|| {
@@ -206,6 +223,33 @@ fn temporary_prelude(env: &EnvironmentRef) {
 
     env.borrow_mut()
         .set_variable("->", Value::of(closure_operator));
+
+    // 'for' operator
+
+    let for_precedence_group = add_precedence_group(
+        Associativity::Right,
+        PrecedenceGroupComparison::lower_than(function_precedence_group),
+    );
+
+    let for_operator = Operator::collect(|trait_constructor, value, env, stack| {
+        let trait_constructor = trait_constructor
+            .evaluate(env, stack)?
+            .get_primitive_or::<TraitConstructor>("Expected trait", env, stack)?;
+
+        let trait_value = value.evaluate(env, stack)?.get_trait_or(
+            trait_constructor.id,
+            "Value does not have trait",
+            env,
+            stack,
+        )?;
+
+        Ok(trait_value)
+    });
+
+    add_operator(&for_operator, &for_precedence_group);
+
+    env.borrow_mut()
+        .set_variable("for", Value::of(for_operator));
 
     // Math
 

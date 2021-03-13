@@ -27,6 +27,7 @@ pub(crate) fn setup(env: &mut Environment) {
         })),
     );
 
+    // empty ::= Text
     env.add_conformance(TraitID::text(), move |value, _, _| {
         Ok(if value.is_empty() {
             Some(Value::of(Text::new("<empty value>")))

@@ -22,8 +22,10 @@ impl Block {
 fundamental_primitive!(pub block for Block);
 
 pub(crate) fn setup(env: &mut Environment) {
+    // Block ::= Text
     env.add_text_conformance(TraitID::block(), "block");
 
+    // Block ::= Evaluate
     env.add_primitive_conformance(|block: Block| {
         EvaluateFn::new(move |env, stack| {
             let mut stack = stack.clone();
@@ -48,6 +50,7 @@ pub(crate) fn setup(env: &mut Environment) {
         })
     });
 
+    // Block ::= Macro-Expand
     env.add_primitive_conformance(|block: Block| {
         MacroExpandFn::new(move |parameter, replacement, env, stack| {
             let mut stack = stack.clone();

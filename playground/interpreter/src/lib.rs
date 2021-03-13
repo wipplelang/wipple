@@ -84,8 +84,8 @@ fn setup_playground(output: &Rc<RefCell<Vec<ShownValue>>>) {
     let output = output.clone();
 
     *env.show() = ShowFn::new(move |value, env, stack| {
-        let source_text = value.try_format(env, stack);
-        let output_text = value.evaluate(env, stack)?.try_format(env, stack);
+        let source_text = value.format(env, stack)?;
+        let output_text = value.evaluate(env, stack)?.format(env, stack)?;
 
         output.borrow_mut().push(ShownValue {
             input: source_text,

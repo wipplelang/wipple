@@ -20,8 +20,6 @@ impl Number {
 fundamental_primitive!(pub number for Number);
 
 pub(crate) fn setup(env: &mut Environment) {
-    env.add_primitive_conformance(|number: Number| Text {
-        text: number.number.to_string(),
-        location: None,
-    });
+    // Number ::= Text
+    env.add_primitive_conformance(|number: Number| Text::new(&number.number.to_string()));
 }

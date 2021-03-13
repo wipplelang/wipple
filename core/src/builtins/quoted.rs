@@ -19,7 +19,21 @@ impl Quoted {
 fundamental_primitive!(pub quoted for Quoted);
 
 pub(crate) fn setup(env: &mut Environment) {
+    // Quoted ::= Evaluate
     env.add_primitive_conformance(|quoted: Quoted| {
         EvaluateFn::new(move |_, _| Ok(quoted.value.clone()))
-    })
+    });
+
+    // Quoted ::= Text
+    env.add_conformance(TraitID::text(), |value, env, stack| {
+        let quoted = match value.get_primitive_if_present::<Quoted>(env, stack)? {
+            Some(quoted) => quoted,
+            None => return Ok(None),
+        };
+
+        Ok(Some(Value::of(Text::new(&format!(
+            "'{}",
+            quoted.value.format(env, stack)?
+        )))))
+    });
 }

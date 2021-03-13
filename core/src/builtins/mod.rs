@@ -1,10 +1,8 @@
 mod block;
-mod closure;
 mod empty;
 mod evaluate;
-mod function;
+mod functions;
 mod list;
-mod r#macro;
 mod module;
 mod name;
 mod number;
@@ -14,38 +12,38 @@ mod show;
 mod text;
 mod r#trait;
 mod validation;
+mod variants;
 
 pub use block::*;
-pub use closure::*;
 pub use evaluate::*;
-pub use function::*;
+pub use functions::*;
 pub use list::*;
 pub use module::*;
 pub use name::*;
 pub use number::*;
 pub use operator::*;
 pub use quoted::*;
-pub use r#macro::*;
 pub use r#trait::*;
 pub use show::*;
 pub use text::*;
 pub use validation::*;
+pub use variants::*;
 
 use crate::*;
 
 pub(crate) fn setup(env: &mut Environment) {
     block::setup(env);
-    closure::setup(env);
-    evaluate::setup(env);
     empty::setup(env);
+    evaluate::setup(env);
+    functions::setup(env);
     list::setup(env);
-    r#macro::setup(env);
     module::setup(env);
     name::setup(env);
     number::setup(env);
     operator::setup(env);
     quoted::setup(env);
+    show::setup(env);
     r#trait::setup(env);
     validation::setup(env);
-    show::setup(env);
+    variants::setup(env);
 }

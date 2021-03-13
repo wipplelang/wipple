@@ -10,12 +10,16 @@ pub struct Closure {
 fundamental_primitive!(pub closure for Closure);
 
 pub(crate) fn setup(env: &mut Environment) {
+    // Closure ::= Function
     env.add_primitive_conformance(|closure: Closure| {
         Function::new(move |value, _, stack| {
-            closure.define_parameter.0(value, &closure.captured_env, stack)?;
-            closure.return_value.evaluate(&closure.captured_env, stack)
+            let inner_env = Environment::child_of(&closure.captured_env).into_ref();
+
+            closure.define_parameter.0(value, &inner_env, stack)?;
+            closure.return_value.evaluate(&inner_env, stack)
         })
     });
 
+    // Closure ::= Text
     env.add_text_conformance(TraitID::closure(), "closure");
 }
