@@ -98,7 +98,7 @@ fn try_import_folder(path: &Path, stack: &Stack) -> Result<Option<Module>> {
             temp_env.borrow_mut().r#use(&module.env.borrow());
         }
 
-        let module = Module::new(temp_env);
+        let module = Module::new(temp_env.borrow().clone());
 
         Ok(Some(module))
     }
