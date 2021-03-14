@@ -1,12 +1,15 @@
 mod load;
+mod new;
 mod project;
 mod resolve;
 
 pub use load::*;
+pub use new::*;
 pub use project::*;
 pub use resolve::*;
 
 use wipple::*;
+use wipple_plugins::*;
 
 pub fn setup() {
     let env = Environment::global();
@@ -21,6 +24,23 @@ pub fn setup() {
             let module = import(&path, stack)?;
 
             Ok(Value::of(module))
+        })),
+    );
+
+    env.borrow_mut().set_variable(
+        "load-plugin!",
+        Value::of(Function::new(|value, env, stack| {
+            let path = value
+                .get_primitive_or::<Text>(
+                    "Expected a path to a folder containing .wplplugin files",
+                    env,
+                    stack,
+                )?
+                .text;
+
+            let path = resolve_plugin(&path, stack)?;
+
+            load_plugin(path, env, stack)
         })),
     );
 

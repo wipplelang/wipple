@@ -1,0 +1,6 @@
+-- Run 'wipple run' in your terminal to run this file.
+main : "src/main.wpl"
+
+dependencies : {
+    -- Add your project dependencies here.
+}

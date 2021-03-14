@@ -4,5 +4,7 @@ version = "0.0.0"
 edition = "2018"
 
 [dependencies]
+rust-embed = "5.9.0"
 wipple = { path = "../core" }
 wipple_parser = { path = "../parser" }
+wipple_plugins = { path = "../plugins" }
