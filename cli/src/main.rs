@@ -31,7 +31,7 @@ fn run() -> i32 {
         }
         Args::New(new) => {
             if let Err(error) = new.run() {
-                eprintln!("{}", error.to_string().red());
+                eprintln!("{}", error.red());
                 return 1;
             }
         }
