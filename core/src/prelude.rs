@@ -291,4 +291,41 @@ fn temporary_prelude(env: &EnvironmentRef) {
 
     math!(*, multiplication_precedence_group);
     math!(/, multiplication_precedence_group);
+
+    macro_rules! boolean_math {
+        ($operator:tt, $precedence_group:ident) => {
+            boolean_math!(stringify!($operation), $operator, $precedence_group)
+        };
+        ($name:expr, $operation:tt, $precedence_group:ident) => {{
+            let operator = Operator::collect(|left, right, env, stack| {
+                let left = left
+                    .evaluate(env, stack)?
+                    .get_primitive::<Number>(env, stack)?;
+
+                let right = right
+                    .evaluate(env, stack)?
+                    .get_primitive::<Number>(env, stack)?;
+
+                let result = left.number $operation right.number;
+
+                Ok(Value::from_bool(result))
+            });
+
+            add_operator(&operator, &$precedence_group);
+
+            env.borrow_mut().set_variable(
+                $name,
+                Value::of(operator),
+            );
+        }};
+    }
+
+    let comparison_precedence_group = add_precedence_group(
+        Associativity::Right,
+        PrecedenceGroupComparison::higher_than(multiplication_precedence_group),
+    );
+
+    boolean_math!(>, comparison_precedence_group);
+    boolean_math!(<, comparison_precedence_group);
+    boolean_math!("=", ==, comparison_precedence_group);
 }
