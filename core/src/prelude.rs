@@ -293,8 +293,8 @@ fn temporary_prelude(env: &EnvironmentRef) {
     math!(/, multiplication_precedence_group);
 
     macro_rules! boolean_math {
-        ($operator:tt, $precedence_group:ident) => {
-            boolean_math!(stringify!($operation), $operator, $precedence_group)
+        ($operation:tt, $precedence_group:ident) => {
+            boolean_math!(stringify!($operation), $operation, $precedence_group)
         };
         ($name:expr, $operation:tt, $precedence_group:ident) => {{
             let operator = Operator::collect(|left, right, env, stack| {
