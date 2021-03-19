@@ -8,8 +8,8 @@ default = ["convert"]
 convert = ["wipple"]
 
 [dependencies]
-bigdecimal = "0.1.2"
+bigdecimal = "0.2.0"
 line-col = "0.2.1"
-peg = "0.6.3"
+logos = "0.12.0"
 snailquote = "0.3.0"
 wipple = { path = "../core", optional = true }

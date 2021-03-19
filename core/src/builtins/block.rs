@@ -21,34 +21,33 @@ impl Block {
 
 fundamental_primitive!(pub block for Block);
 
-pub(crate) fn setup(env: &mut Environment) {
-    // Block ::= Text
-    env.add_text_conformance(TraitID::block(), "block");
+impl Block {
+    pub fn evaluate_as_sequence(&self, env: &EnvironmentRef, stack: &Stack) -> Result {
+        let mut stack = stack.clone();
+        if let Some(location) = &self.location {
+            stack.queue_location(location);
+        }
 
-    // Block ::= Evaluate
-    env.add_primitive_conformance(|block: Block| {
-        EvaluateFn::new(move |env, stack| {
+        let mut result = Value::empty();
+
+        for statement in &self.statements {
             let mut stack = stack.clone();
-            if let Some(location) = &block.location {
+            if let Some(location) = &statement.location {
                 stack.queue_location(location);
             }
 
-            let mut result = Value::empty();
+            // Evaluate each statement as a list
+            let list = Value::of(statement.clone());
+            result = list.evaluate(env, &stack)?;
+        }
 
-            for statement in &block.statements {
-                let mut stack = stack.clone();
-                if let Some(location) = &statement.location {
-                    stack.queue_location(location);
-                }
+        Ok(result)
+    }
+}
 
-                // Evaluate each statement as a list
-                let list = Value::of(statement.clone());
-                result = list.evaluate(env, &stack)?;
-            }
-
-            Ok(result)
-        })
-    });
+pub(crate) fn setup(env: &mut Environment) {
+    // Block ::= Text
+    env.add_text_conformance(TraitID::block(), "block");
 
     // Block ::= Macro-Expand
     env.add_primitive_conformance(|block: Block| {

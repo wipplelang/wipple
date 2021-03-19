@@ -180,7 +180,8 @@ fn test(code: &str) -> (String, std::time::Duration) {
 
     let stack = Stack::new();
 
-    let ast = wipple_parser::parse_inline_program(code).unwrap();
+    let (tokens, lookup) = wipple_parser::lex(&code);
+    let ast = wipple_parser::parse_file(&mut tokens.iter().peekable(), &lookup).unwrap();
     let program = wipple_parser::convert(&ast, None);
 
     let output = Rc::new(RefCell::new(Vec::new()));

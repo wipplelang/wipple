@@ -3,7 +3,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use wasm_bindgen::prelude::*;
 use wipple::*;
-use wipple_parser::{convert, parse_inline_program};
+use wipple_parser::{convert, lex, parse_file};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ShownValue {
@@ -29,7 +29,8 @@ pub fn run(code: &str) -> JsValue {
 }
 
 fn run_code(code: &str) -> InterpreterResult {
-    let ast = match parse_inline_program(code) {
+    let (tokens, lookup) = lex(code);
+    let ast = match parse_file(&mut tokens.iter().peekable(), &lookup) {
         Ok(value) => value,
         Err(error) => {
             return InterpreterResult {
@@ -40,11 +41,11 @@ fn run_code(code: &str) -> InterpreterResult {
                         &error.message,
                         &Stack::new().add_location(
                             || String::from("Parsing input"),
-                            &SourceLocation {
+                            error.location.map(|location| SourceLocation {
                                 file: None,
-                                line: error.line,
-                                column: error.column,
-                            },
+                                line: location.line,
+                                column: location.column,
+                            }),
                         ),
                     )
                     .to_string(),

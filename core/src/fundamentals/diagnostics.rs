@@ -79,10 +79,14 @@ impl Stack {
         })
     }
 
-    pub fn add_location(&self, label: impl FnOnce() -> String, location: &SourceLocation) -> Self {
+    pub fn add_location(
+        &self,
+        label: impl FnOnce() -> String,
+        location: Option<SourceLocation>,
+    ) -> Self {
         self.add_item(|| StackItem {
             label: label(),
-            location: Some(location.clone()),
+            location,
         })
     }
 }

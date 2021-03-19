@@ -23,21 +23,6 @@ pub fn convert(ast: &Ast, file: Option<&Path>) -> Value {
             Some(location(&ast.location, file)),
         )),
 
-        Module(statements) => Value::of(wipple::ModuleBlock::new_located(
-            &statements
-                .iter()
-                .map(|statement| wipple::List {
-                    items: statement
-                        .items
-                        .iter()
-                        .map(|node| convert(node, file))
-                        .collect(),
-                    location: Some(location(&statement.location, file)),
-                })
-                .collect::<Vec<_>>(),
-            Some(location(&ast.location, file)),
-        )),
-
         List(items) => Value::of(wipple::List::new_located(
             &items
                 .iter()

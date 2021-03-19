@@ -27,12 +27,16 @@ impl Run {
 
         match &self.evaluate_string {
             Some(code) => {
-                let ast = parse_inline_program(&code).map_err(|error| {
-                    wipple::ReturnState::Error(wipple::Error::new(
-                        &format!("Error parsing: {}", error.message),
-                        &stack,
-                    ))
-                })?;
+                let (tokens, lookup) = lex(&code);
+
+                let ast = parse_inline_program(&mut tokens.iter().peekable(), &lookup).map_err(
+                    |error| {
+                        wipple::ReturnState::Error(wipple::Error::new(
+                            &format!("Error parsing: {}", error.message),
+                            &stack,
+                        ))
+                    },
+                )?;
 
                 let program = convert(&ast, None);
 

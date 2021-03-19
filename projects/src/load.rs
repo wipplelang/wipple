@@ -134,16 +134,22 @@ pub fn load_file(path: &Path, stack: &Stack) -> Result {
         ))
     })?;
 
-    let ast = wipple_parser::parse_file(&code).map_err(|error| {
-        ReturnState::Error(Error::new(
-            &format!(
-                "Error parsing file {}: {}",
-                path.to_string_lossy(),
-                error.message
-            ),
-            stack,
-        ))
-    })?;
+    let (tokens, lookup) = wipple_parser::lex(&code);
+
+    let ast =
+        wipple_parser::parse_file(&mut tokens.iter().peekable(), &lookup).map_err(|error| {
+            ReturnState::Error(Error::new(
+                &format!("Parse error: {}", error.message),
+                &stack.add_location(
+                    || format!("Parsing file {}", path.to_string_lossy()),
+                    error.location.map(|location| SourceLocation {
+                        file: None,
+                        line: location.line,
+                        column: location.column,
+                    }),
+                ),
+            ))
+        })?;
 
     let program = wipple_parser::convert(&ast, Some(path));
 

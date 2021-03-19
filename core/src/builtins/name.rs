@@ -69,21 +69,6 @@ impl Environment {
 
         self.variables().insert(name, value);
     }
-
-    pub fn add_text_conformance(&mut self, id: TraitID, value_name: &'static str) {
-        self.add_conformance(TraitID::text(), move |value, env, stack| {
-            if !value.has_trait(id, env, stack)? {
-                return Ok(None);
-            }
-
-            let named = value.get_primitive_if_present::<Named>(env, stack)?;
-
-            Ok(Some(Value::of(Text::new(&match named {
-                Some(named) => format!("<{} '{}'>", value_name, named.name),
-                None => format!("<{}>", value_name),
-            }))))
-        });
-    }
 }
 
 impl Name {
