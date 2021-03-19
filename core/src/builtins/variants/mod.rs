@@ -3,7 +3,7 @@ mod maybe;
 mod result;
 
 use crate::*;
-use std::collections::HashMap;
+use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 #[derive(Clone)]
 pub struct Variant {
@@ -85,6 +85,14 @@ impl Module {
     }
 }
 
+fn setup_match_block(env: &mut Environment, matches: Rc<RefCell<HashMap<String, Value>>>) {
+    *env.handle_assign() = HandleAssignFn::new(move |left, right, env, stack| {
+        let name = left.get_primitive_or::<Name>("Expected name for match", env, &stack)?;
+        matches.borrow_mut().insert(name.name, right.clone());
+        Ok(())
+    })
+}
+
 pub(crate) fn setup(env: &mut Environment) {
     boolean::setup(env);
     maybe::setup(env);
@@ -114,22 +122,25 @@ pub(crate) fn setup(env: &mut Environment) {
                 .cast_primitive::<Variant>();
 
             Ok(Value::of(Function::new(move |value, env, stack| {
-                let module = value.evaluate(env, stack)?.get_primitive_or::<Module>(
-                    "Expected module containing matches",
+                let block = value.get_primitive_or::<Block>(
+                    "Expected block defining matches",
                     env,
                     stack,
                 )?;
 
-                let mut r#match =
-                    match Name::new(&variant.name).resolve_variable_if_present(&module.env) {
-                        Some(variable) => variable.value,
-                        None => {
-                            return Err(ReturnState::Error(Error::new(
-                                &format!("No match for variant '{}'", variant.name),
-                                stack,
-                            )))
-                        }
-                    };
+                let matches = Rc::new(RefCell::new(HashMap::new()));
+                let mut match_env = Environment::child_of(env);
+                setup_match_block(&mut match_env, matches.clone());
+
+                block.reduce_inline(&match_env.into_ref(), stack)?;
+
+                let mut r#match = match matches.borrow().get(&variant.name) {
+                    Some(value) => value.evaluate(env, stack),
+                    None => Err(ReturnState::Error(Error::new(
+                        &format!("No match for variant '{}'", variant.name),
+                        stack,
+                    ))),
+                }?;
 
                 for value in &variant.associated_values {
                     r#match = r#match.call(value, env, stack)?;

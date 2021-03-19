@@ -76,7 +76,7 @@ fn temporary_prelude(env: &EnvironmentRef) {
         "do",
         Value::of(Function::new(|value, env, stack| {
             let block = value.get_primitive_or::<Block>("Expected block", env, stack)?;
-            block.evaluate_as_sequence(env, stack)
+            block.reduce(env, stack)
         })),
     );
 
@@ -84,7 +84,7 @@ fn temporary_prelude(env: &EnvironmentRef) {
         "inline",
         Value::of(Function::new(|value, env, stack| {
             let block = value.get_primitive_or::<Block>("Expected block", env, stack)?;
-            block.evaluate_as_inline_sequence(env, stack)
+            block.reduce_inline(env, stack)
         })),
     );
 

@@ -19,7 +19,7 @@ impl Module {
 fundamental_primitive!(pub module for Module);
 
 impl Block {
-    pub fn evaluate_as_module(&self, env: &EnvironmentRef, stack: &Stack) -> Result {
+    pub fn reduce_into_module(&self, env: &EnvironmentRef, stack: &Stack) -> Result {
         let mut stack = stack.clone();
         if let Some(location) = &self.location {
             stack.queue_location(location);
@@ -72,7 +72,7 @@ pub(crate) fn setup(env: &mut Environment) {
     // Block ::= Evaluate
     env.add_primitive_conformance(|block: Block| {
         // Blocks are evaluated as modules by default
-        EvaluateFn::new(move |env, stack| block.evaluate_as_module(env, stack))
+        EvaluateFn::new(move |env, stack| block.reduce_into_module(env, stack))
     });
 
     // Module ::= Text
