@@ -23,6 +23,15 @@ fundamental_primitive!(pub block for Block);
 
 impl Block {
     pub fn evaluate_as_sequence(&self, env: &EnvironmentRef, stack: &Stack) -> Result {
+        let mut block_env = Environment::child_of(env);
+        setup_module_block(&mut block_env);
+
+        let block_env = block_env.into_ref();
+
+        self.evaluate_as_inline_sequence(&block_env, stack)
+    }
+
+    pub fn evaluate_as_inline_sequence(&self, env: &EnvironmentRef, stack: &Stack) -> Result {
         let mut stack = stack.clone();
         if let Some(location) = &self.location {
             stack.queue_location(location);

@@ -29,7 +29,7 @@ impl Block {
         let mut module_env = Environment::child_of(env);
         setup_module_block(&mut module_env);
 
-        let captured_env = module_env.into_ref();
+        let module_env = module_env.into_ref();
 
         for statement in &self.statements {
             let mut stack = stack.clone();
@@ -39,12 +39,12 @@ impl Block {
 
             // Evaluate each statement as a list
             let list = Value::of(statement.clone());
-            list.evaluate(&captured_env, &stack)?;
+            list.evaluate(&module_env, &stack)?;
         }
 
-        let captured_env = captured_env.borrow().clone();
+        let module_env = module_env.borrow().clone();
 
-        Ok(Value::of(Module::new(captured_env)))
+        Ok(Value::of(Module::new(module_env)))
     }
 }
 

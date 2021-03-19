@@ -70,13 +70,21 @@ fn temporary_prelude(env: &EnvironmentRef) {
         })),
     );
 
-    // 'do' function
+    // Block functions
 
     env.borrow_mut().set_variable(
         "do",
         Value::of(Function::new(|value, env, stack| {
-            let inner_env = Environment::child_of(env).into_ref();
-            value.evaluate(&inner_env, stack)
+            let block = value.get_primitive_or::<Block>("Expected block", env, stack)?;
+            block.evaluate_as_sequence(env, stack)
+        })),
+    );
+
+    env.borrow_mut().set_variable(
+        "inline",
+        Value::of(Function::new(|value, env, stack| {
+            let block = value.get_primitive_or::<Block>("Expected block", env, stack)?;
+            block.evaluate_as_inline_sequence(env, stack)
         })),
     );
 
