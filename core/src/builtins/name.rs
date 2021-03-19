@@ -53,12 +53,12 @@ fundamental_env_key!(pub variables for Variables {
 });
 
 fn_wrapper_struct! {
-    pub type AssignHandlerFn(&str, Value, &mut Environment, &Stack) -> Result<()>;
+    pub type HandleAssignFn(&Value, &Value, &EnvironmentRef, &Stack) -> Result<()>;
 }
 
-impl Default for AssignHandlerFn {
+impl Default for HandleAssignFn {
     fn default() -> Self {
-        AssignHandlerFn::new(|_, _, _, stack| {
+        HandleAssignFn::new(|_, _, _, stack| {
             Err(ReturnState::Error(Error::new(
                 "Cannot assign to variables inside this block",
                 stack,
@@ -67,7 +67,7 @@ impl Default for AssignHandlerFn {
     }
 }
 
-fundamental_env_key!(pub handle_assign for AssignHandlerFn {
+fundamental_env_key!(pub handle_assign for HandleAssignFn {
     EnvironmentKey::new(
         UseFn::take_new(),
         true,

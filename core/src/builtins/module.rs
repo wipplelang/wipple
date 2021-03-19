@@ -26,7 +26,10 @@ impl Block {
         }
 
         // Modules capture their environment
-        let captured_env = Environment::child_of(env).into_ref();
+        let mut module_env = Environment::child_of(env);
+        setup_module_block(&mut module_env);
+
+        let captured_env = module_env.into_ref();
 
         for statement in &self.statements {
             let mut stack = stack.clone();
@@ -43,6 +46,26 @@ impl Block {
 
         Ok(Value::of(Module::new(captured_env)))
     }
+}
+
+pub(crate) fn setup_module_block(env: &mut Environment) {
+    *env.handle_assign() = HandleAssignFn::new(|left, right, env, stack| {
+        let stack = stack.add(|| {
+            format!(
+                "Assigning '{}' to '{}'",
+                right.try_format(env, stack),
+                left.try_format(env, stack)
+            )
+        });
+
+        let assign = left.get_primitive_or::<AssignFn>(
+            "Cannot assign to this value because it does not have the Assign trait",
+            env,
+            &stack,
+        )?;
+
+        assign(&right, env, &stack)
+    })
 }
 
 pub(crate) fn setup(env: &mut Environment) {

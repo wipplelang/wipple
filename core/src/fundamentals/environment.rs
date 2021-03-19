@@ -1,12 +1,17 @@
 use crate::*;
 use std::{
-    cell::RefCell,
     collections::HashMap,
     fmt::Debug,
     hash::{Hash, Hasher},
     rc::Rc,
 };
 use uuid::Uuid;
+
+#[cfg(feature = "debug_cell")]
+use debug_cell::RefCell;
+
+#[cfg(not(feature = "debug_cell"))]
+use std::cell::RefCell;
 
 pub type EnvironmentValues = HashMap<EnvironmentKey, Dynamic>;
 pub type EnvironmentRef = Rc<RefCell<Environment>>;

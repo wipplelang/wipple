@@ -4,9 +4,11 @@ version = "0.0.0"
 edition = "2018"
 
 [features]
+debug_cell = ["debug-cell"]
 log_diagnostics = []
 
 [dependencies]
 bigdecimal = "0.2.0"
+debug-cell = { version = "0.1.1", optional = true }
 paste = "1.0.4"
 uuid = { version = "0.8.2", features = ["v4"] }

@@ -99,30 +99,14 @@ fn temporary_prelude(env: &EnvironmentRef) {
 
     // Assignment operator (:)
 
-    fn assign(left: &Value, right: &Value, env: &EnvironmentRef, stack: &Stack) -> Result {
-        let stack = stack.add(|| {
-            format!(
-                "Assigning '{}' to '{}'",
-                right.try_format(env, stack),
-                left.try_format(env, stack)
-            )
-        });
-
-        let assign = left.get_primitive_or::<AssignFn>(
-            "Cannot assign to this value because it does not have the Assign trait",
-            env,
-            &stack,
-        )?;
-
-        assign(right, env, &stack)?;
-
-        Ok(Value::empty())
-    }
-
     let assignment_precedence_group =
         add_precedence_group(Associativity::Right, PrecedenceGroupComparison::highest());
 
-    let assignment_operator = Operator::collect(assign);
+    let assignment_operator = Operator::collect(|left, right, env, stack| {
+        let handle_assign = env.borrow_mut().handle_assign().clone();
+        handle_assign(left, right, env, stack)?;
+        Ok(Value::empty())
+    });
 
     add_operator(&assignment_operator, &assignment_precedence_group);
 
@@ -160,7 +144,9 @@ fn temporary_prelude(env: &EnvironmentRef) {
 
         let new_value = add(&value, trait_constructor, trait_value, env);
 
-        assign(
+        let handle_assign = env.borrow_mut().handle_assign().clone();
+
+        handle_assign(
             &value,
             // We have to quote the result because we've already evaluated it;
             // in real Wipple code, the result would be assigned to a variable
@@ -168,7 +154,9 @@ fn temporary_prelude(env: &EnvironmentRef) {
             &Value::of(Quoted::new(new_value)),
             env,
             &stack,
-        )
+        )?;
+
+        Ok(Value::empty())
     });
 
     add_operator(&add_trait_operator, &assignment_precedence_group);
