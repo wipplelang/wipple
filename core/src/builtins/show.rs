@@ -1,14 +1,7 @@
-use std::rc::Rc;
-
 use crate::*;
 
-#[derive(Clone)]
-pub struct ShowFn(Rc<dyn Fn(&Value, &EnvironmentRef, &Stack) -> Result<()>>);
-
-impl ShowFn {
-    pub fn new(show: impl Fn(&Value, &EnvironmentRef, &Stack) -> Result<()> + 'static) -> Self {
-        ShowFn(Rc::new(show))
-    }
+fn_wrapper_struct! {
+    pub type ShowFn(&Value, &EnvironmentRef, &Stack) -> Result<()>;
 }
 
 impl Default for ShowFn {

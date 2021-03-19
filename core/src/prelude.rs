@@ -22,7 +22,7 @@ fn temporary_prelude(env: &EnvironmentRef) {
 
         let r#trait = Trait::new(
             trait_constructor.id,
-            move |_, stack| match trait_constructor.validation.0(&value, &captured_env, stack)? {
+            move |_, stack| match (trait_constructor.validation)(&value, &captured_env, stack)? {
                 Validated::Valid(value) => Ok(value),
                 Validated::Invalid => Err(ReturnState::Error(Error::new(
                     "Cannot use this value to represent this trait",
@@ -114,7 +114,7 @@ fn temporary_prelude(env: &EnvironmentRef) {
             &stack,
         )?;
 
-        assign.0(right, env, &stack)?;
+        assign(right, env, &stack)?;
 
         Ok(Value::empty())
     }
@@ -176,30 +176,27 @@ fn temporary_prelude(env: &EnvironmentRef) {
     env.borrow_mut()
         .set_variable("::", Value::of(add_trait_operator));
 
-    // Macro operator (=>)
+    // Template operator (=>)
 
     let function_precedence_group = add_precedence_group(
         Associativity::Right,
         PrecedenceGroupComparison::lower_than(assignment_precedence_group),
     );
 
-    let macro_operator = Operator::collect(|parameter, value_to_expand, env, stack| {
-        let define_parameter = parameter.get_primitive_or::<DefineMacroParameterFn>(
-            "Macro parameter must have the Macro-Parameter trait",
-            env,
-            stack,
-        )?;
+    let template_operator = Operator::collect(|parameter, value_to_expand, env, stack| {
+        let name =
+            parameter.get_primitive_or::<Name>("Template parameter must be a name", env, stack)?;
 
-        Ok(Value::of(Macro {
-            define_parameter,
-            value_to_expand: value_to_expand.clone(),
+        Ok(Value::of(Template {
+            parameter: name.name,
+            replace_in: value_to_expand.clone(),
         }))
     });
 
-    add_operator(&macro_operator, &function_precedence_group);
+    add_operator(&template_operator, &function_precedence_group);
 
     env.borrow_mut()
-        .set_variable("=>", Value::of(macro_operator));
+        .set_variable("=>", Value::of(template_operator));
 
     // Closure operator (->)
 

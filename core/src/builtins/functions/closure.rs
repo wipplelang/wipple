@@ -15,7 +15,7 @@ pub(crate) fn setup(env: &mut Environment) {
         Function::new(move |value, _, stack| {
             let inner_env = Environment::child_of(&closure.captured_env).into_ref();
 
-            closure.define_parameter.0(value, &inner_env, stack)?;
+            (closure.define_parameter)(value, &inner_env, stack)?;
             closure.return_value.evaluate(&inner_env, stack)
         })
     });

@@ -54,13 +54,13 @@ pub(crate) fn setup(env: &mut Environment) {
         })
     });
 
-    // List ::= Macro-Expand
+    // List ::= Replace-In-Template
     env.add_primitive_conformance(|list: List| {
-        MacroExpandFn::new(move |parameter, replacement, env, stack| {
+        ReplaceInTemplateFn::new(move |parameter, replacement, env, stack| {
             let mut expanded_items = vec![];
 
             for item in &list.items {
-                let item = item.macro_expand(parameter, replacement, env, stack)?;
+                let item = item.replace_in_template(parameter, replacement, env, stack)?;
 
                 expanded_items.push(item);
             }

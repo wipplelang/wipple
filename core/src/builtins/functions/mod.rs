@@ -1,19 +1,13 @@
 mod closure;
-mod r#macro;
+mod template;
 
 pub use closure::*;
-pub use r#macro::*;
+pub use template::*;
 
 use crate::*;
-use std::rc::Rc;
 
-#[derive(Clone)]
-pub struct Function(pub Rc<dyn Fn(&Value, &EnvironmentRef, &Stack) -> Result>);
-
-impl Function {
-    pub fn new(function: impl Fn(&Value, &EnvironmentRef, &Stack) -> Result + 'static) -> Self {
-        Function(Rc::new(function))
-    }
+fn_wrapper_struct! {
+    pub type Function(&Value, &EnvironmentRef, &Stack) -> Result;
 }
 
 fundamental_primitive!(pub function for Function);
@@ -34,5 +28,5 @@ impl Value {
 
 pub(crate) fn setup(env: &mut Environment) {
     closure::setup(env);
-    r#macro::setup(env);
+    template::setup(env);
 }

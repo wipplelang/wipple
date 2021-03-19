@@ -48,7 +48,7 @@ impl Module {
                         let (validation, remaining_validations) =
                             remaining_validations.split_first().unwrap();
 
-                        let validated_value = match validation.0(value, env, stack)? {
+                        let validated_value = match validation(value, env, stack)? {
                             Validated::Valid(value) => value,
                             Validated::Invalid => {
                                 return Err(ReturnState::Error(Error::new(
@@ -120,17 +120,16 @@ pub(crate) fn setup(env: &mut Environment) {
                     stack,
                 )?;
 
-                let mut r#match = match Name::new(&variant.name)
-                    .resolve_without_computing_if_present(&module.env)
-                {
-                    Some(r#match) => r#match,
-                    None => {
-                        return Err(ReturnState::Error(Error::new(
-                            &format!("No match for variant '{}'", variant.name),
-                            stack,
-                        )))
-                    }
-                };
+                let mut r#match =
+                    match Name::new(&variant.name).resolve_variable_if_present(&module.env) {
+                        Some(variable) => variable.value,
+                        None => {
+                            return Err(ReturnState::Error(Error::new(
+                                &format!("No match for variant '{}'", variant.name),
+                                stack,
+                            )))
+                        }
+                    };
 
                 for value in &variant.associated_values {
                     r#match = r#match.call(value, env, stack)?;

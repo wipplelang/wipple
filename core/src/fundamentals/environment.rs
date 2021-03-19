@@ -51,25 +51,26 @@ impl Environment {
     }
 }
 
-#[derive(Clone)]
-pub struct UseFn(pub Rc<dyn Fn(&Dynamic, &Dynamic) -> Dynamic>);
+fn_wrapper_struct! {
+    pub type UseFn(&Dynamic, &Dynamic) -> Dynamic;
+}
 
 impl UseFn {
-    pub fn new<T: Clone + 'static>(r#use: impl Fn(&T, &T) -> T + 'static) -> Self {
-        UseFn(Rc::new(move |parent, new| {
+    pub fn from<T: Clone + 'static>(r#use: impl Fn(&T, &T) -> T + 'static) -> Self {
+        UseFn::new(move |parent, new| {
             let parent = parent.cast::<T>();
             let new = new.cast::<T>();
 
             Dynamic::new(r#use(parent, new))
-        }))
+        })
     }
 
     pub fn take_parent() -> Self {
-        UseFn(Rc::new(move |parent, _| parent.clone()))
+        UseFn::new(move |parent, _| parent.clone())
     }
 
     pub fn take_new() -> Self {
-        UseFn(Rc::new(move |_, new| new.clone()))
+        UseFn::new(move |_, new| new.clone())
     }
 }
 

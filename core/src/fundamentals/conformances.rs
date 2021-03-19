@@ -5,7 +5,7 @@ pub type Conformances = Vec<Conformance>;
 
 fundamental_env_key!(pub conformances for Conformances {
     EnvironmentKey::new(
-        UseFn::new(|parent: &Conformances, new| {
+        UseFn::from(|parent: &Conformances, new| {
             parent.clone().into_iter().chain(new.clone()).collect()
         }),
         true,

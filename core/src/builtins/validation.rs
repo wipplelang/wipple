@@ -1,19 +1,10 @@
 use crate::*;
-use std::rc::Rc;
 
-#[derive(Clone)]
-pub struct Validation(
-    #[allow(clippy::type_complexity)]
-    pub  Rc<dyn Fn(&Value, &EnvironmentRef, &Stack) -> Result<Validated<Value>>>,
-);
+fn_wrapper_struct! {
+    pub type Validation(&Value, &EnvironmentRef, &Stack) -> Result<Validated<Value>>;
+}
 
 impl Validation {
-    pub fn new(
-        validation: impl Fn(&Value, &EnvironmentRef, &Stack) -> Result<Validated<Value>> + 'static,
-    ) -> Self {
-        Validation(Rc::new(validation))
-    }
-
     pub fn any() -> Self {
         Validation::new(|value, _, _| Ok(Validated::Valid(value.clone())))
     }

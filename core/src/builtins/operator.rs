@@ -78,10 +78,10 @@ impl Operator {
 
     pub fn from_function(function: Function) -> Self {
         Operator::new(move |left, env, stack| {
-            let function = function.0(left, env, stack)?.get_primitive::<Function>(env, stack)?;
+            let function = function(left, env, stack)?.get_primitive::<Function>(env, stack)?;
 
             Ok(Box::new(move |right, env, stack| {
-                function.0(right, env, stack)
+                function(right, env, stack)
             }))
         })
     }
@@ -141,8 +141,9 @@ impl Hash for PrecedenceGroup {
     }
 }
 
-#[derive(Clone)]
-pub struct PrecedenceGroupComparison(Rc<dyn Fn(PrecedenceGroup)>);
+fn_wrapper_struct! {
+    pub type PrecedenceGroupComparison(PrecedenceGroup);
+}
 
 macro_rules! comparison_find {
     ($offset:expr, $target:expr, $insert:expr) => {
@@ -236,10 +237,12 @@ pub fn get_operator(
     stack: &Stack,
 ) -> Result<Option<Operator>> {
     if let Some(name) = value.get_primitive_if_present::<Name>(env, stack)? {
-        let variable = name.resolve_without_computing_if_present(env);
+        let variable = name.resolve_variable_if_present(env);
 
         if let Some(variable) = variable {
-            variable.get_primitive_if_present::<Operator>(env, stack)
+            variable
+                .value
+                .get_primitive_if_present::<Operator>(env, stack)
         } else {
             Ok(None)
         }

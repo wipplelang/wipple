@@ -1,5 +1,5 @@
 use crate::*;
-use std::{collections::HashMap, rc::Rc};
+use std::collections::HashMap;
 
 #[derive(Clone)]
 pub struct Name {
@@ -22,21 +22,11 @@ impl Name {
 
 fundamental_primitive!(pub name for Name);
 
-#[derive(Clone)]
-pub struct AssignFn(pub Rc<dyn Fn(&Value, &EnvironmentRef, &Stack) -> Result<()>>);
-
-impl AssignFn {
-    pub fn new(assign: impl Fn(&Value, &EnvironmentRef, &Stack) -> Result<()> + 'static) -> Self {
-        AssignFn(Rc::new(assign))
-    }
+fn_wrapper_struct! {
+    pub type AssignFn(&Value, &EnvironmentRef, &Stack) -> Result<()>;
 }
 
 fundamental_primitive!(pub assign for AssignFn);
-
-#[derive(Clone, Copy)]
-pub struct Computed;
-
-fundamental_primitive!(pub computed for Computed);
 
 #[derive(Clone)]
 pub struct Named {
@@ -45,13 +35,41 @@ pub struct Named {
 
 fundamental_primitive!(pub named for Named);
 
-pub type Variables = HashMap<String, Value>;
+#[derive(Clone)]
+pub struct Variable {
+    pub value: Value,
+    pub computed: bool,
+}
+
+pub type Variables = HashMap<String, Variable>;
 
 fundamental_env_key!(pub variables for Variables {
     EnvironmentKey::new(
-        UseFn::new(|parent: &Variables, new| {
+        UseFn::from(|parent: &Variables, new| {
             parent.clone().into_iter().chain(new.clone()).collect()
         }),
+        true,
+    )
+});
+
+fn_wrapper_struct! {
+    pub type AssignHandlerFn(&str, Value, &mut Environment, &Stack) -> Result<()>;
+}
+
+impl Default for AssignHandlerFn {
+    fn default() -> Self {
+        AssignHandlerFn::new(|_, _, _, stack| {
+            Err(ReturnState::Error(Error::new(
+                "Cannot assign to variables inside this block",
+                stack,
+            )))
+        })
+    }
+}
+
+fundamental_env_key!(pub handle_assign for AssignHandlerFn {
+    EnvironmentKey::new(
+        UseFn::take_new(),
         true,
     )
 });
@@ -67,7 +85,13 @@ impl Environment {
             value.add(&Trait::of_primitive(Named { name: name.clone() }))
         };
 
-        self.variables().insert(name, value);
+        self.variables().insert(
+            name,
+            Variable {
+                value,
+                computed: false,
+            },
+        );
     }
 }
 
@@ -82,26 +106,25 @@ impl Name {
         compute_env: &EnvironmentRef,
         stack: &Stack,
     ) -> Result {
-        let variable = self.resolve_without_computing(resolve_env, stack)?;
+        let variable = self.resolve_variable(resolve_env, stack)?;
 
-        if variable.has_trait(TraitID::computed(), compute_env, &stack)? {
-            variable.evaluate(compute_env, &stack)
+        if variable.computed {
+            variable.value.evaluate(compute_env, &stack)
         } else {
-            Ok(variable)
+            Ok(variable.value)
         }
     }
 
-    pub fn resolve_without_computing(&self, env: &EnvironmentRef, stack: &Stack) -> Result {
+    pub fn resolve_variable(&self, env: &EnvironmentRef, stack: &Stack) -> Result<Variable> {
         let stack = stack.add(|| format!("Resolving variable '{}'", self.name));
 
-        self.resolve_without_computing_if_present(env)
-            .ok_or_else(|| {
-                ReturnState::Error(Error::new("Name does not refer to a variable", &stack))
-            })
+        self.resolve_variable_if_present(env).ok_or_else(|| {
+            ReturnState::Error(Error::new("Name does not refer to a variable", &stack))
+        })
     }
 
-    pub fn resolve_without_computing_if_present(&self, env: &EnvironmentRef) -> Option<Value> {
-        fn get(name: &Name, env: &EnvironmentRef) -> Option<Value> {
+    pub fn resolve_variable_if_present(&self, env: &EnvironmentRef) -> Option<Variable> {
+        fn get(name: &Name, env: &EnvironmentRef) -> Option<Variable> {
             let variable = env.borrow_mut().variables().get(&name.name).cloned();
             if let Some(variable) = variable {
                 return Some(variable);
@@ -139,18 +162,10 @@ pub(crate) fn setup(env: &mut Environment) {
         EvaluateFn::new(move |env, stack| name.resolve(env, stack))
     });
 
-    // Name ::= Macro-Parameter
+    // Name ::= Replace-In-Template
     env.add_primitive_conformance(|name: Name| {
-        DefineMacroParameterFn::new(move |replacement, _, _| {
-            let parameter = MacroParameter(name.name.clone());
-            Ok((parameter, replacement.clone()))
-        })
-    });
-
-    // Name ::= Macro-Expand
-    env.add_primitive_conformance(|name: Name| {
-        MacroExpandFn::new(move |parameter, replacement, _, _| {
-            Ok(if name.name == parameter.0 {
+        ReplaceInTemplateFn::new(move |parameter, replacement, _, _| {
+            Ok(if name.name == parameter {
                 replacement.clone()
             } else {
                 Value::of(name.clone())

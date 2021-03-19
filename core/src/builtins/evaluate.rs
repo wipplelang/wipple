@@ -1,13 +1,7 @@
 use crate::*;
-use std::rc::Rc;
 
-#[derive(Clone)]
-pub struct EvaluateFn(pub Rc<dyn Fn(&EnvironmentRef, &Stack) -> Result>);
-
-impl EvaluateFn {
-    pub fn new(evaluate: impl Fn(&EnvironmentRef, &Stack) -> Result + 'static) -> Self {
-        EvaluateFn(Rc::new(evaluate))
-    }
+fn_wrapper_struct! {
+    pub type EvaluateFn(&EnvironmentRef, &Stack) -> Result;
 }
 
 fundamental_primitive!(pub evaluate for EvaluateFn);
