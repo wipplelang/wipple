@@ -36,13 +36,17 @@ impl Module {
                 values: Vec<Value>,
             ) -> Value {
                 if remaining_validations.is_empty() {
-                    let mut variant_trait = Trait::new(id, move |_, _| {
-                        Ok(Value::of(Variant::new(id, &name, &values)))
+                    let mut variant_trait = Trait::new(id, {
+                        let name = name.clone();
+                        move |_, _| Ok(Value::of(Variant::new(id, &name, &values)))
                     });
 
                     variant_trait.is_variant = true;
 
-                    Value::new(&variant_trait)
+                    let text_trait =
+                        Trait::of_primitive(Text::new(&format!("<variant '{}'>", name)));
+
+                    Value::new(&variant_trait).add(&text_trait)
                 } else {
                     Value::of(Function::new(move |value, env, stack| {
                         let (validation, remaining_validations) =

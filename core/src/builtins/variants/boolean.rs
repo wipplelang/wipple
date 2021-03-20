@@ -15,21 +15,23 @@ fn boolean_variant() -> Module {
     })
 }
 
-fn true_variant() -> Variant {
-    Variant::new(TraitID::of::<BooleanVariantMarker>(), "true", &[])
-}
-
-fn false_variant() -> Variant {
-    Variant::new(TraitID::of::<BooleanVariantMarker>(), "false", &[])
-}
-
 impl Value {
     pub fn r#true() -> Self {
-        Value::of(true_variant())
+        let env = boolean_variant().env;
+        env.borrow_mut().parent = Some(Environment::global());
+
+        Value::of(Name::new("true"))
+            .evaluate(&env, &Stack::new())
+            .unwrap()
     }
 
     pub fn r#false() -> Self {
-        Value::of(false_variant())
+        let env = boolean_variant().env;
+        env.borrow_mut().parent = Some(Environment::global());
+
+        Value::of(Name::new("false"))
+            .evaluate(&env, &Stack::new())
+            .unwrap()
     }
 
     pub fn from_bool(value: bool) -> Self {

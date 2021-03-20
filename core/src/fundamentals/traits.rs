@@ -25,7 +25,7 @@ impl TraitID {
 pub struct Trait {
     pub id: TraitID,
     pub value: Rc<dyn Fn(&EnvironmentRef, &Stack) -> Result>,
-    pub is_variant: bool,
+    pub is_variant: bool, // FIXME: Remove special case
 }
 
 impl Trait {
