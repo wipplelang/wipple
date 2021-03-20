@@ -40,7 +40,7 @@
         },
         // Adjust the delay based on the size of the code (lines is a rough
         // but OK metric)
-        () => code.split("\n").length * 20
+        () => Math.min(code.split("\n").length * 20, 1000)
     );
 
     const handleLoading = () => {
