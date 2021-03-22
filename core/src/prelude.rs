@@ -105,21 +105,25 @@ fn temporary_prelude(env: &EnvironmentRef) {
         })),
     );
 
-    // Assignment operator (:)
+    // Assignment operators
 
     let assignment_precedence_group =
         add_precedence_group(Associativity::Right, PrecedenceGroupComparison::highest());
 
-    let assignment_operator = Operator::collect(|left, right, env, stack| {
-        let handle_assign = env.borrow_mut().handle_assign().clone();
-        handle_assign(left, right, env, stack)?;
-        Ok(Value::empty())
-    });
+    let add_assignment_operator = |name: &str, computed: bool, env: &EnvironmentRef| {
+        let operator = Operator::collect(move |left, right, env, stack| {
+            let handle_assign = env.borrow_mut().handle_assign().clone();
+            handle_assign(left, right, computed, env, stack)?;
+            Ok(Value::empty())
+        });
 
-    add_operator(&assignment_operator, &assignment_precedence_group);
+        add_operator(&operator, &assignment_precedence_group);
 
-    env.borrow_mut()
-        .set_variable(":", Value::of(assignment_operator));
+        env.borrow_mut().set_variable(name, Value::of(operator));
+    };
+
+    add_assignment_operator(":", false, env);
+    add_assignment_operator(":>", true, env);
 
     // Add trait operator (::)
 
@@ -160,6 +164,9 @@ fn temporary_prelude(env: &EnvironmentRef) {
             // in real Wipple code, the result would be assigned to a variable
             // before being passed here and we wouldn't have this problem
             &Value::of(Quoted::new(new_value)),
+            // Traits cannot be added to computed values (TODO: add a better
+            // warning/error about this?)
+            false,
             env,
             &stack,
         )?;

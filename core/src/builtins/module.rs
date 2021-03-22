@@ -49,7 +49,7 @@ impl Block {
 }
 
 pub(crate) fn setup_module_block(env: &mut Environment) {
-    *env.handle_assign() = HandleAssignFn::new(|left, right, env, stack| {
+    *env.handle_assign() = HandleAssignFn::new(|left, right, computed, env, stack| {
         let stack = stack.add(|| {
             format!(
                 "Assigning '{}' to '{}'",
@@ -64,7 +64,7 @@ pub(crate) fn setup_module_block(env: &mut Environment) {
             &stack,
         )?;
 
-        assign(&right, env, &stack)
+        assign(&right, computed, env, &stack)
     })
 }
 
@@ -82,8 +82,7 @@ pub(crate) fn setup(env: &mut Environment) {
     env.add_primitive_conformance(|module: Module| {
         Function::new(move |value, env, stack| {
             let name = value.get_primitive_or::<Name>("Expected a name", env, stack)?;
-
-            name.resolve_in(&module.env, env, stack)
+            name.resolve(&module.env, stack)
         })
     });
 }

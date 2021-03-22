@@ -29,9 +29,8 @@ fn get_main_file(project_module: &Module, env: &EnvironmentRef, stack: &Stack) -
         name: String::from("main"),
         location: None,
     }
-    .resolve_in(
+    .resolve(
         &project_module.env,
-        env,
         &stack.add(|| String::from("Resolving main file in project")),
     )?;
 

@@ -236,18 +236,18 @@ pub fn get_operator(
     env: &EnvironmentRef,
     stack: &Stack,
 ) -> Result<Option<Operator>> {
-    if let Some(name) = value.get_primitive_if_present::<Name>(env, stack)? {
-        let variable = name.resolve_variable_if_present(env);
+    match value.get_primitive_if_present::<Name>(env, stack)? {
+        Some(name) => {
+            let variable = name.resolve_variable_if_present(env);
 
-        if let Some(variable) = variable {
-            variable
-                .value
-                .get_primitive_if_present::<Operator>(env, stack)
-        } else {
-            Ok(None)
+            match variable {
+                Some(Variable::Just(value)) => {
+                    value.get_primitive_if_present::<Operator>(env, stack)
+                }
+                _ => Ok(None),
+            }
         }
-    } else {
-        Ok(None)
+        None => Ok(None),
     }
 }
 

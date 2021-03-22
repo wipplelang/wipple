@@ -90,9 +90,18 @@ impl Module {
 }
 
 fn setup_match_block(env: &mut Environment, matches: Rc<RefCell<HashMap<String, Value>>>) {
-    *env.handle_assign() = HandleAssignFn::new(move |left, right, env, stack| {
+    *env.handle_assign() = HandleAssignFn::new(move |left, right, computed, env, stack| {
         let name = left.get_primitive_or::<Name>("Expected name for match", env, &stack)?;
+
+        if computed {
+            return Err(ReturnState::Error(Error::new(
+                "Matches are already lazily evaluated, so creating a computed variable here is unnecessary",
+                stack
+            )));
+        }
+
         matches.borrow_mut().insert(name.name, right.clone());
+
         Ok(())
     })
 }
