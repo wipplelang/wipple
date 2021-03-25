@@ -1,21 +1,31 @@
 use crate::*;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use wipple::*;
 
-pub fn load_project(path: &Path, stack: &Stack) -> Result<Module> {
+#[derive(Clone, Default)]
+pub struct ProjectRoot(pub Option<PathBuf>);
+
+stack_key!(pub project_root for ProjectRoot);
+
+pub fn load_project(path: &Path, mut stack: Stack) -> Result<Module> {
     let mut env = Environment::child_of(&Environment::global());
     setup_project_file(&mut env);
     let env = env.into_ref();
 
-    let mut stack = stack.add(|| format!("Importing project {}", path.to_string_lossy()));
-    stack.project_root = Some(path.parent().unwrap().to_path_buf());
+    stack = stack
+        .update_evaluation(|e| e.with(|| format!("Importing project {}", path.to_string_lossy())));
 
-    let project_module = load_file_with_parent_env(path, &env, &stack)?;
+    stack = with_project_root_in(
+        stack,
+        ProjectRoot(Some(path.parent().unwrap().to_path_buf())),
+    );
+
+    let project_module = load_file_with_parent_env(path, &env, stack.clone())?;
 
     // TODO: Install dependencies
 
-    let main_file = get_main_file(&project_module, &env, &stack)?;
-    let main_module = import(&main_file, &stack)?;
+    let main_file = get_main_file(&project_module, &env, stack.clone())?;
+    let main_module = import(&main_file, stack)?;
 
     Ok(main_module)
 }
@@ -24,14 +34,16 @@ fn setup_project_file(_: &mut Environment) {
     // TODO
 }
 
-fn get_main_file(project_module: &Module, env: &EnvironmentRef, stack: &Stack) -> Result<String> {
+fn get_main_file(project_module: &Module, env: &EnvironmentRef, stack: Stack) -> Result<String> {
     let variable = Name {
         name: String::from("main"),
         location: None,
     }
     .resolve(
         &project_module.env,
-        &stack.add(|| String::from("Resolving main file in project")),
+        stack
+            .clone()
+            .update_evaluation(|e| e.with(|| String::from("Resolving main file in project"))),
     )?;
 
     let path = variable.get_primitive_or::<Text>(

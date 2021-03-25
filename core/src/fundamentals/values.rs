@@ -22,7 +22,7 @@ impl Value {
                 let value = self.clone();
 
                 traits.insert(Trait::new(
-                    TraitID::Primitive(primitive.type_info),
+                    ID::Primitive(primitive.type_info),
                     move |_, _| Ok(value.clone()),
                 ));
 

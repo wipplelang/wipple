@@ -1,3 +1,4 @@
+use crate::*;
 use std::{fmt, path::PathBuf};
 
 #[derive(Debug, Clone)]
@@ -22,38 +23,39 @@ impl fmt::Display for SourceLocation {
     }
 }
 
-// TODO: Use dynamic key-based storage like Environment
 #[derive(Clone)]
-pub struct Stack {
+pub struct EvaluationStack {
     pub items: Vec<StackItem>,
-    pub project_root: Option<PathBuf>,
-    pub current_file: Option<PathBuf>,
     queued_location: Option<SourceLocation>,
     recording_enabled: bool,
 }
 
-impl Stack {
-    pub fn new() -> Self {
-        Stack {
+fundamental_stack_key!(pub evaluation for EvaluationStack);
+
+impl Default for EvaluationStack {
+    fn default() -> Self {
+        EvaluationStack {
             items: vec![],
-            project_root: None,
-            current_file: None,
             queued_location: None,
             recording_enabled: true,
         }
     }
+}
 
-    pub fn queue_location(&mut self, location: &SourceLocation) {
+impl EvaluationStack {
+    pub fn queue_location(mut self, location: &SourceLocation) -> Self {
         self.queued_location = Some(location.clone());
+        self
     }
 
-    pub fn disable_recording(&mut self) {
+    pub fn disable_recording(mut self) -> Self {
         self.recording_enabled = false;
+        self
     }
 
-    pub fn add_item(&self, item: impl FnOnce() -> StackItem) -> Self {
+    pub fn with_item(mut self, item: impl FnOnce() -> StackItem) -> Self {
         if !self.recording_enabled {
-            return self.clone();
+            return self;
         }
 
         let mut item = item();
@@ -64,40 +66,33 @@ impl Stack {
         #[cfg(feature = "log_diagnostics")]
         println!("{}{}", "  ".repeat(self.items.len()), item.label);
 
-        let mut stack = self.clone();
-        stack.items.push(item);
-        stack.queued_location = None;
-        stack.recording_enabled = true;
+        self.items.push(item);
+        self.queued_location = None;
+        self.recording_enabled = true;
 
-        stack
+        self
     }
 
-    pub fn add(&self, label: impl FnOnce() -> String) -> Self {
-        self.add_item(|| StackItem {
+    pub fn with(self, label: impl FnOnce() -> String) -> Self {
+        self.with_item(|| StackItem {
             label: label(),
             location: None,
         })
     }
 
-    pub fn add_location(
-        &self,
+    pub fn with_location(
+        self,
         label: impl FnOnce() -> String,
         location: Option<SourceLocation>,
     ) -> Self {
-        self.add_item(|| StackItem {
+        self.with_item(|| StackItem {
             label: label(),
             location,
         })
     }
 }
 
-impl Default for Stack {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl fmt::Debug for Stack {
+impl fmt::Debug for EvaluationStack {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
@@ -137,7 +132,7 @@ pub enum ReturnState {
 impl ReturnState {
     /// Call when all other return states have made it to the top level,
     /// converting them into errors.
-    pub fn into_error(self, stack: &Stack) -> Error {
+    pub fn into_error(self, stack: Stack) -> Error {
         use ReturnState::*;
 
         match self {
@@ -151,14 +146,14 @@ impl ReturnState {
 #[derive(Debug, Clone)]
 pub struct Error {
     pub message: String,
-    pub stack: Stack,
+    pub stack: EvaluationStack,
 }
 
 impl Error {
-    pub fn new(message: &str, stack: &Stack) -> Self {
+    pub fn new(message: &str, stack: Stack) -> Self {
         Error {
             message: String::from(message),
-            stack: stack.clone(),
+            stack: stack.get_evaluation(),
         }
     }
 }

@@ -7,7 +7,7 @@ struct ResultVariantMarker;
 impl Primitive for ResultVariantMarker {}
 
 fn result_variant() -> Module {
-    Module::for_variant_of(TraitID::of::<ResultVariantMarker>(), {
+    Module::for_variant_of(ID::of::<ResultVariantMarker>(), {
         let mut h = HashMap::new();
         h.insert(String::from("ok"), vec![Validation::any()]);
         // FIXME: Require errors conform to an Error trait
@@ -17,11 +17,11 @@ fn result_variant() -> Module {
 }
 
 fn ok_variant(value: Value) -> Variant {
-    Variant::new(TraitID::of::<ResultVariantMarker>(), "ok", &[value])
+    Variant::new(ID::of::<ResultVariantMarker>(), "ok", &[value])
 }
 
 fn error_variant(value: Value) -> Variant {
-    Variant::new(TraitID::of::<ResultVariantMarker>(), "error", &[value])
+    Variant::new(ID::of::<ResultVariantMarker>(), "error", &[value])
 }
 
 impl Value {
@@ -43,10 +43,10 @@ impl Value {
     pub fn as_result_if_present(
         &self,
         env: &EnvironmentRef,
-        stack: &Stack,
+        stack: Stack,
     ) -> Result<Option<std::result::Result<Value, Value>>> {
         let variant =
-            match self.get_trait_if_present(TraitID::of::<ResultVariantMarker>(), env, stack)? {
+            match self.get_trait_if_present(ID::of::<ResultVariantMarker>(), env, stack)? {
                 Some(value) => value.cast_primitive::<Variant>(),
                 _ => return Ok(None),
             };
@@ -61,9 +61,9 @@ impl Value {
     pub fn as_result(
         &self,
         env: &EnvironmentRef,
-        stack: &Stack,
+        stack: Stack,
     ) -> Result<std::result::Result<Value, Value>> {
-        self.as_result_if_present(env, stack)?
+        self.as_result_if_present(env, stack.clone())?
             .ok_or_else(|| ReturnState::Error(Error::new("Expected Result", stack)))
     }
 }

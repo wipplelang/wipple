@@ -18,7 +18,11 @@ pub fn setup() {
         "import",
         Value::of(Function::new(|value, env, stack| {
             let path = value
-                .get_primitive_or::<Text>("Expected a path to a file or folder", env, stack)?
+                .get_primitive_or::<Text>(
+                    "Expected a path to a file or folder",
+                    env,
+                    stack.clone(),
+                )?
                 .text;
 
             let module = import(&path, stack)?;
@@ -34,11 +38,11 @@ pub fn setup() {
                 .get_primitive_or::<Text>(
                     "Expected a path to a folder containing .wplplugin files",
                     env,
-                    stack,
+                    stack.clone(),
                 )?
                 .text;
 
-            let path = resolve_plugin(&path, stack)?;
+            let path = resolve_plugin(&path, stack.clone())?;
 
             load_plugin(path, env, stack)
         })),
@@ -46,8 +50,8 @@ pub fn setup() {
 
     // Text ::= Module
     env.borrow_mut()
-        .add_conformance(TraitID::module(), |value, env, stack| {
-            let text = match value.get_primitive_if_present::<Text>(env, stack)? {
+        .add_conformance(ID::module(), |value, env, stack| {
+            let text = match value.get_primitive_if_present::<Text>(env, stack.clone())? {
                 Some(text) => text,
                 None => return Ok(None),
             };

@@ -7,13 +7,13 @@ use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 #[derive(Clone)]
 pub struct Variant {
-    pub variant_id: TraitID,
+    pub variant_id: ID,
     pub name: String,
     pub associated_values: Vec<Value>,
 }
 
 impl Variant {
-    pub fn new(variant_id: TraitID, name: &str, associated_values: &[Value]) -> Self {
+    pub fn new(variant_id: ID, name: &str, associated_values: &[Value]) -> Self {
         Variant {
             variant_id,
             name: String::from(name),
@@ -25,13 +25,13 @@ impl Variant {
 impl Primitive for Variant {}
 
 impl Module {
-    pub fn for_variant_of(id: TraitID, items: HashMap<String, Vec<Validation>>) -> Self {
+    pub fn for_variant_of(id: ID, items: HashMap<String, Vec<Validation>>) -> Self {
         let mut env = Environment::blank();
 
         for (name, validations) in items {
             fn build_constructor(
                 name: String,
-                id: TraitID,
+                id: ID,
                 remaining_validations: Vec<Validation>,
                 values: Vec<Value>,
             ) -> Value {
@@ -52,7 +52,7 @@ impl Module {
                         let (validation, remaining_validations) =
                             remaining_validations.split_first().unwrap();
 
-                        let validated_value = match validation(value, env, stack)? {
+                        let validated_value = match validation(value, env, stack.clone())? {
                             Validated::Valid(value) => value,
                             Validated::Invalid => {
                                 return Err(ReturnState::Error(Error::new(
@@ -85,13 +85,13 @@ impl Module {
     }
 
     pub fn for_variant(items: HashMap<String, Vec<Validation>>) -> Self {
-        Module::for_variant_of(TraitID::new(), items)
+        Module::for_variant_of(ID::new(), items)
     }
 }
 
 fn setup_match_block(env: &mut Environment, matches: Rc<RefCell<HashMap<String, Value>>>) {
     *env.handle_assign() = HandleAssignFn::new(move |left, right, computed, env, stack| {
-        let name = left.get_primitive_or::<Name>("Expected name for match", env, &stack)?;
+        let name = left.get_primitive_or::<Name>("Expected name for match", env, stack.clone())?;
 
         if computed {
             return Err(ReturnState::Error(Error::new(
@@ -116,7 +116,7 @@ pub(crate) fn setup(env: &mut Environment) {
         Value::of(Function::new(|value, env, stack| {
             // FIXME: Only works with traits directly defined on the value
             let variant_traits = value
-                .evaluate(env, stack)?
+                .evaluate(env, stack.clone())?
                 .traits()
                 .into_iter()
                 .filter(|t| t.is_variant)
@@ -138,25 +138,25 @@ pub(crate) fn setup(env: &mut Environment) {
                 let block = value.get_primitive_or::<Block>(
                     "Expected block defining matches",
                     env,
-                    stack,
+                    stack.clone(),
                 )?;
 
                 let matches = Rc::new(RefCell::new(HashMap::new()));
                 let mut match_env = Environment::child_of(env);
                 setup_match_block(&mut match_env, matches.clone());
 
-                block.reduce_inline(&match_env.into_ref(), stack)?;
+                block.reduce_inline(&match_env.into_ref(), stack.clone())?;
 
                 let mut r#match = match matches.borrow().get(&variant.name) {
-                    Some(value) => value.evaluate(env, stack),
+                    Some(value) => value.evaluate(env, stack.clone()),
                     None => Err(ReturnState::Error(Error::new(
                         &format!("No match for variant '{}'", variant.name),
-                        stack,
+                        stack.clone(),
                     ))),
                 }?;
 
                 for value in &variant.associated_values {
-                    r#match = r#match.call(value, env, stack)?;
+                    r#match = r#match.call(value, env, stack.clone())?;
                 }
 
                 Ok(r#match)

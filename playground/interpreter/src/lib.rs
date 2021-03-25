@@ -39,14 +39,16 @@ fn run_code(code: &str) -> InterpreterResult {
                 error: Some(
                     Error::new(
                         &error.message,
-                        &Stack::new().add_location(
-                            || String::from("Parsing input"),
-                            error.location.map(|location| SourceLocation {
-                                file: None,
-                                line: location.line,
-                                column: location.column,
-                            }),
-                        ),
+                        Stack::empty().update_evaluation(|e| {
+                            e.with_location(
+                                || String::from("Parsing input"),
+                                error.location.map(|location| SourceLocation {
+                                    file: None,
+                                    line: location.line,
+                                    column: location.column,
+                                }),
+                            )
+                        }),
                     )
                     .to_string(),
                 ),
@@ -62,9 +64,9 @@ fn run_code(code: &str) -> InterpreterResult {
     setup_playground(&output);
 
     let env = Environment::child_of(&Environment::global()).into_ref();
-    let stack = Stack::new();
+    let stack = Stack::empty();
 
-    match value.evaluate(&env, &stack) {
+    match value.evaluate(&env, stack.clone()) {
         Ok(_) => InterpreterResult {
             success: true,
             output: Some(output.as_ref().clone().get_mut().clone()),
@@ -73,7 +75,7 @@ fn run_code(code: &str) -> InterpreterResult {
         Err(state) => InterpreterResult {
             success: false,
             output: None,
-            error: Some(state.into_error(&stack).to_string()),
+            error: Some(state.into_error(stack).to_string()),
         },
     }
 }
@@ -85,8 +87,8 @@ fn setup_playground(output: &Rc<RefCell<Vec<ShownValue>>>) {
     let output = output.clone();
 
     *env.show() = ShowFn::new(move |value, env, stack| {
-        let source_text = value.format(env, stack)?;
-        let output_text = value.evaluate(env, stack)?.format(env, stack)?;
+        let source_text = value.format(env, stack.clone())?;
+        let output_text = value.evaluate(env, stack.clone())?.format(env, stack)?;
 
         output.borrow_mut().push(ShownValue {
             input: source_text,

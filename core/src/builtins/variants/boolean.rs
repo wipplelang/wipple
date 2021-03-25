@@ -7,7 +7,7 @@ struct BooleanVariantMarker;
 impl Primitive for BooleanVariantMarker {}
 
 fn boolean_variant() -> Module {
-    Module::for_variant_of(TraitID::of::<BooleanVariantMarker>(), {
+    Module::for_variant_of(ID::of::<BooleanVariantMarker>(), {
         let mut h = HashMap::new();
         h.insert(String::from("true"), vec![]);
         h.insert(String::from("false"), vec![]);
@@ -21,7 +21,7 @@ impl Value {
         env.borrow_mut().parent = Some(Environment::global());
 
         Value::of(Name::new("true"))
-            .evaluate(&env, &Stack::new())
+            .evaluate(&env, Stack::empty())
             .unwrap()
     }
 
@@ -30,7 +30,7 @@ impl Value {
         env.borrow_mut().parent = Some(Environment::global());
 
         Value::of(Name::new("false"))
-            .evaluate(&env, &Stack::new())
+            .evaluate(&env, Stack::empty())
             .unwrap()
     }
 
@@ -42,9 +42,9 @@ impl Value {
         }
     }
 
-    pub fn as_bool_if_present(&self, env: &EnvironmentRef, stack: &Stack) -> Result<Option<bool>> {
+    pub fn as_bool_if_present(&self, env: &EnvironmentRef, stack: Stack) -> Result<Option<bool>> {
         let variant =
-            match self.get_trait_if_present(TraitID::of::<BooleanVariantMarker>(), env, stack)? {
+            match self.get_trait_if_present(ID::of::<BooleanVariantMarker>(), env, stack)? {
                 Some(value) => value.cast_primitive::<Variant>(),
                 _ => return Ok(None),
             };
@@ -56,8 +56,8 @@ impl Value {
         }))
     }
 
-    pub fn as_bool(&self, env: &EnvironmentRef, stack: &Stack) -> Result<bool> {
-        self.as_bool_if_present(env, stack)?
+    pub fn as_bool(&self, env: &EnvironmentRef, stack: Stack) -> Result<bool> {
+        self.as_bool_if_present(env, stack.clone())?
             .ok_or_else(|| ReturnState::Error(Error::new("Expected Boolean", stack)))
     }
 }

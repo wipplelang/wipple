@@ -19,11 +19,11 @@ impl Module {
 fundamental_primitive!(pub module for Module);
 
 impl Block {
-    pub fn reduce_into_module(&self, env: &EnvironmentRef, stack: &Stack) -> Result {
-        let mut stack = stack.clone();
-        if let Some(location) = &self.location {
-            stack.queue_location(location);
-        }
+    pub fn reduce_into_module(&self, env: &EnvironmentRef, stack: Stack) -> Result {
+        let stack = match &self.location {
+            Some(location) => stack.update_evaluation(|e| e.queue_location(&location)),
+            None => stack,
+        };
 
         // Modules capture their environment
         let mut module_env = Environment::child_of(env);
@@ -32,14 +32,16 @@ impl Block {
         let module_env = module_env.into_ref();
 
         for statement in &self.statements {
-            let mut stack = stack.clone();
-            if let Some(location) = &statement.location {
-                stack.queue_location(location);
-            }
+            let stack = match &statement.location {
+                Some(location) => stack
+                    .clone()
+                    .update_evaluation(|e| e.queue_location(&location)),
+                None => stack.clone(),
+            };
 
             // Evaluate each statement as a list
             let list = Value::of(statement.clone());
-            list.evaluate(&module_env, &stack)?;
+            list.evaluate(&module_env, stack)?;
         }
 
         let module_env = module_env.borrow().clone();
@@ -50,21 +52,23 @@ impl Block {
 
 pub(crate) fn setup_module_block(env: &mut Environment) {
     *env.handle_assign() = HandleAssignFn::new(|left, right, computed, env, stack| {
-        let stack = stack.add(|| {
-            format!(
-                "Assigning '{}' to '{}'",
-                right.try_format(env, stack),
-                left.try_format(env, stack)
-            )
+        let stack = stack.clone().update_evaluation(|e| {
+            e.with(|| {
+                format!(
+                    "Assigning '{}' to '{}'",
+                    right.try_format(env, stack.clone()),
+                    left.try_format(env, stack)
+                )
+            })
         });
 
         let assign = left.get_primitive_or::<AssignFn>(
             "Cannot assign to this value because it does not have the Assign trait",
             env,
-            &stack,
+            stack.clone(),
         )?;
 
-        assign(&right, computed, env, &stack)
+        assign(&right, computed, env, stack)
     })
 }
 
@@ -76,12 +80,12 @@ pub(crate) fn setup(env: &mut Environment) {
     });
 
     // Module ::= Text
-    env.add_text_conformance(TraitID::module(), "module");
+    env.add_text_conformance(ID::module(), "module");
 
     // Module ::= Function
     env.add_primitive_conformance(|module: Module| {
         Function::new(move |value, env, stack| {
-            let name = value.get_primitive_or::<Name>("Expected a name", env, stack)?;
+            let name = value.get_primitive_or::<Name>("Expected a name", env, stack.clone())?;
             name.resolve(&module.env, stack)
         })
     });

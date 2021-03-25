@@ -5,7 +5,7 @@ pub(crate) fn setup(env: &mut Environment) {
     env.set_variable("_", Value::empty());
 
     // Allow the use of '_' as a catch-all validation that returns its input
-    env.add_conformance(TraitID::validation(), {
+    env.add_conformance(ID::validation(), {
         move |value, _, _| {
             if value.is_empty() {
                 Ok(Some(Value::of(Validation::any())))
@@ -28,7 +28,7 @@ pub(crate) fn setup(env: &mut Environment) {
     );
 
     // empty ::= Text
-    env.add_conformance(TraitID::text(), move |value, _, _| {
+    env.add_conformance(ID::text(), move |value, _, _| {
         Ok(if value.is_empty() {
             Some(Value::of(Text::new("<empty value>")))
         } else {

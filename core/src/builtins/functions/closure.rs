@@ -15,11 +15,11 @@ pub(crate) fn setup(env: &mut Environment) {
         Function::new(move |value, _, stack| {
             let inner_env = Environment::child_of(&closure.captured_env).into_ref();
 
-            (closure.define_parameter)(value, false, &inner_env, stack)?;
+            (closure.define_parameter)(value, false, &inner_env, stack.clone())?;
             closure.return_value.evaluate(&inner_env, stack)
         })
     });
 
     // Closure ::= Text
-    env.add_text_conformance(TraitID::closure(), "closure");
+    env.add_text_conformance(ID::closure(), "closure");
 }

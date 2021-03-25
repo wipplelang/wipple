@@ -1,7 +1,7 @@
 use crate::*;
 
 fn_wrapper_struct! {
-    pub type Validation(&Value, &EnvironmentRef, &Stack) -> Result<Validated<Value>>;
+    pub type Validation(&Value, &EnvironmentRef, Stack) -> Result<Validated<Value>>;
 }
 
 impl Validation {
@@ -59,5 +59,5 @@ fundamental_primitive!(pub validation for Validation);
 
 pub(crate) fn setup(env: &mut Environment) {
     // Validation ::= Text
-    env.add_text_conformance(TraitID::validation(), "validation");
+    env.add_text_conformance(ID::validation(), "validation");
 }

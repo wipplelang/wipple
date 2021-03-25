@@ -3,33 +3,16 @@ use std::{
     hash::{Hash, Hasher},
     rc::Rc,
 };
-use uuid::Uuid;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum TraitID {
-    Primitive(TypeInfo),
-    Runtime(Uuid),
-}
-
-impl TraitID {
-    pub fn of<T: Primitive>() -> Self {
-        TraitID::Primitive(TypeInfo::of::<T>())
-    }
-
-    pub fn new() -> Self {
-        TraitID::Runtime(Uuid::new_v4())
-    }
-}
 
 #[derive(Clone)]
 pub struct Trait {
-    pub id: TraitID,
-    pub value: Rc<dyn Fn(&EnvironmentRef, &Stack) -> Result>,
+    pub id: ID,
+    pub value: Rc<dyn Fn(&EnvironmentRef, Stack) -> Result>,
     pub is_variant: bool, // FIXME: Remove special case
 }
 
 impl Trait {
-    pub fn new(id: TraitID, value: impl Fn(&EnvironmentRef, &Stack) -> Result + 'static) -> Self {
+    pub fn new(id: ID, value: impl Fn(&EnvironmentRef, Stack) -> Result + 'static) -> Self {
         Trait {
             id,
             value: Rc::new(value),
@@ -38,15 +21,12 @@ impl Trait {
     }
 
     pub fn of<T: Primitive>(
-        primitive: impl Fn(&EnvironmentRef, &Stack) -> Result<T> + 'static,
+        primitive: impl Fn(&EnvironmentRef, Stack) -> Result<T> + 'static,
     ) -> Self {
-        Trait::new(
-            TraitID::Primitive(TypeInfo::of::<T>()),
-            move |env, stack| {
-                let value = primitive(env, stack)?;
-                Ok(Value::of(value))
-            },
-        )
+        Trait::new(ID::Primitive(TypeInfo::of::<T>()), move |env, stack| {
+            let value = primitive(env, stack)?;
+            Ok(Value::of(value))
+        })
     }
 
     pub fn of_primitive<T: Primitive>(primitive: T) -> Self {
@@ -68,43 +48,38 @@ impl Hash for Trait {
     }
 }
 
-fundamental_env_key!(is_deriving_from_conformance for bool {
-    EnvironmentKey::new(
-        UseFn::take_parent(),
-        true,
-    )
-});
+fundamental_stack_key!(is_deriving_from_conformance for bool);
 
 impl Value {
-    pub fn get_trait(&self, id: TraitID, env: &EnvironmentRef, stack: &Stack) -> Result {
+    pub fn get_trait(&self, id: ID, env: &EnvironmentRef, stack: Stack) -> Result {
         self.get_trait_or(id, "Cannot find trait", env, stack)
     }
 
-    pub fn has_trait(&self, id: TraitID, env: &EnvironmentRef, stack: &Stack) -> Result<bool> {
+    pub fn has_trait(&self, id: ID, env: &EnvironmentRef, stack: Stack) -> Result<bool> {
         self.get_trait_if_present(id, env, stack)
             .map(|t| t.is_some())
     }
 
-    pub fn has_trait_directly(&self, id: TraitID) -> bool {
+    pub fn has_trait_directly(&self, id: ID) -> bool {
         self.traits().iter().any(|t| t.id == id)
     }
 
     pub fn get_trait_or(
         &self,
-        id: TraitID,
+        id: ID,
         message: &str,
         env: &EnvironmentRef,
-        stack: &Stack,
+        stack: Stack,
     ) -> Result {
-        self.get_trait_if_present(id, env, stack)?
+        self.get_trait_if_present(id, env, stack.clone())?
             .ok_or_else(|| ReturnState::Error(Error::new(message, stack)))
     }
 
     pub fn get_trait_if_present(
         &self,
-        id: TraitID,
+        id: ID,
         env: &EnvironmentRef,
-        stack: &Stack,
+        mut stack: Stack,
     ) -> Result<Option<Value>> {
         // Always use traits directly defined on the value if they exist instead
         // of deriving them
@@ -116,11 +91,11 @@ impl Value {
         // Don't derive traits from conformances if we're already deriving
         // another trait — this can cause ambiguity (eg. A -> B -> C vs. A -> C)
 
-        if *env.borrow_mut().is_deriving_from_conformance() {
+        if stack.clone().get_is_deriving_from_conformance() {
             return Ok(None);
         }
 
-        *env.borrow_mut().is_deriving_from_conformance() = true;
+        stack = stack.with_is_deriving_from_conformance(true);
 
         // Attempt to derive the trait via a conformance
 
@@ -141,7 +116,9 @@ impl Value {
                     continue;
                 }
 
-                if let Some(derived_value) = (conformance.derive_trait_value)(self, &env, stack)? {
+                if let Some(derived_value) =
+                    (conformance.derive_trait_value)(self, &env, stack.clone())?
+                {
                     if derived_trait.is_some() {
                         return Err(ReturnState::Error(Error::new(
                             "Value satisfies multiple conformances, so the conformance to use is ambiguous",
@@ -153,7 +130,7 @@ impl Value {
                 }
             }
 
-            *env.borrow_mut().is_deriving_from_conformance() = false;
+            stack = stack.with_is_deriving_from_conformance(false);
 
             if let Some(derived_trait) = derived_trait {
                 let trait_value = (derived_trait.value)(&env, stack)?;
@@ -171,7 +148,7 @@ impl Value {
 }
 
 impl Value {
-    pub fn get_primitive<T: Primitive>(&self, env: &EnvironmentRef, stack: &Stack) -> Result<T> {
+    pub fn get_primitive<T: Primitive>(&self, env: &EnvironmentRef, stack: Stack) -> Result<T> {
         self.get_primitive_or("Cannot find trait", env, stack)
     }
 
@@ -179,19 +156,19 @@ impl Value {
         &self,
         message: &str,
         env: &EnvironmentRef,
-        stack: &Stack,
+        stack: Stack,
     ) -> Result<T> {
-        self.get_primitive_if_present(env, stack)?
+        self.get_primitive_if_present(env, stack.clone())?
             .ok_or_else(|| ReturnState::Error(Error::new(message, stack)))
     }
 
     pub fn get_primitive_if_present<T: Primitive>(
         &self,
         env: &EnvironmentRef,
-        stack: &Stack,
+        stack: Stack,
     ) -> Result<Option<T>> {
         Ok(self
-            .get_trait_if_present(TraitID::of::<T>(), env, stack)?
+            .get_trait_if_present(ID::of::<T>(), env, stack)?
             .map(|value| value.cast_primitive::<T>()))
     }
 }

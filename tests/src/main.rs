@@ -178,7 +178,7 @@ fn parse_test_file(path: &Path) -> Vec<Test> {
 fn test(code: &str) -> (String, std::time::Duration) {
     let start = Instant::now();
 
-    let stack = Stack::new();
+    let stack = Stack::empty();
 
     let (tokens, lookup) = wipple_parser::lex(&code);
     let ast = wipple_parser::parse_file(&mut tokens.iter().peekable(), &lookup).unwrap();
@@ -192,8 +192,8 @@ fn test(code: &str) -> (String, std::time::Duration) {
 
     let env = Environment::child_of(&env).into_ref();
 
-    if let Err(error) = program.evaluate(&env, &stack) {
-        output.replace(vec![error.into_error(&stack).to_string()]);
+    if let Err(error) = program.evaluate(&env, stack.clone()) {
+        output.replace(vec![error.into_error(stack).to_string()]);
     }
 
     let output = output.borrow().join("\n");
@@ -204,8 +204,8 @@ fn test(code: &str) -> (String, std::time::Duration) {
 
 fn setup(output: Rc<RefCell<Vec<String>>>, env: &EnvironmentRef) {
     *env.borrow_mut().show() = ShowFn::new(move |value, env, stack| {
-        let source_text = value.format(env, stack)?;
-        let output_text = value.evaluate(env, stack)?.format(env, stack)?;
+        let source_text = value.format(env, stack.clone())?;
+        let output_text = value.evaluate(env, stack.clone())?.format(env, stack)?;
 
         output
             .borrow_mut()

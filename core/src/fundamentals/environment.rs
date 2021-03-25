@@ -5,7 +5,6 @@ use std::{
     hash::{Hash, Hasher},
     rc::Rc,
 };
-use uuid::Uuid;
 
 #[cfg(feature = "debug_cell")]
 use debug_cell::RefCell;
@@ -70,28 +69,25 @@ impl UseFn {
         })
     }
 
-    pub fn take_parent() -> Self {
-        UseFn::new(move |parent, _| parent.clone())
-    }
-
-    pub fn take_new() -> Self {
+    pub fn take() -> Self {
         UseFn::new(move |_, new| new.clone())
     }
 }
 
 impl Environment {
-    pub fn r#use(&mut self, new: &Environment) {
-        for (key, new_value) in &new.values {
+    pub fn r#use(&mut self, other: &Environment) {
+        for (key, new_value) in &other.values {
+            let r#use = match &key.visibility {
+                EnvironmentVisibility::Public(r#use) => r#use,
+                EnvironmentVisibility::Private => continue,
+            };
+
             match self.get(&key) {
                 Some(parent_value) => {
-                    let used_value = key.r#use.0(parent_value, new_value);
+                    let used_value = r#use(parent_value, new_value);
                     *parent_value = used_value;
                 }
-                None => {
-                    if key.insert {
-                        self.set(&key, new_value.clone());
-                    }
-                }
+                None => self.set(&key, new_value.clone()),
             }
         }
     }
@@ -108,26 +104,40 @@ impl Environment {
 }
 
 #[derive(Clone)]
+pub enum EnvironmentVisibility {
+    /// The value cannot be `use`d by another environment
+    Private,
+
+    /// The value can be `use`d by another environment. If the value does not
+    /// exist in the other environment, it will just be copied over
+    Public(UseFn),
+}
+
+#[derive(Clone)]
 pub struct EnvironmentKey {
-    pub id: Uuid,
-    pub r#use: UseFn,
-    /// What to do when the key is not in the parent environment
-    pub insert: bool,
+    pub id: ID,
+    pub visibility: EnvironmentVisibility,
 }
 
 impl EnvironmentKey {
-    pub fn new(r#use: UseFn, insert: bool) -> Self {
+    pub fn of<T: 'static>(visibility: EnvironmentVisibility) -> Self {
         EnvironmentKey {
-            id: Uuid::new_v4(),
-            r#use,
-            insert,
+            id: ID::of::<T>(),
+            visibility,
+        }
+    }
+
+    pub fn new(visibility: EnvironmentVisibility) -> Self {
+        EnvironmentKey {
+            id: ID::new(),
+            visibility,
         }
     }
 }
 
 impl Debug for EnvironmentKey {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "(EnvironmentKey {})", self.id)
+        write!(f, "(EnvironmentKey {:?})", self.id)
     }
 }
 

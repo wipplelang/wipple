@@ -1,7 +1,7 @@
 use crate::*;
 
 fn_wrapper_struct! {
-    pub type ShowFn(&Value, &EnvironmentRef, &Stack) -> Result<()>;
+    pub type ShowFn(&Value, &EnvironmentRef, Stack) -> Result<()>;
 }
 
 impl Default for ShowFn {
@@ -16,10 +16,8 @@ impl Default for ShowFn {
 }
 
 fundamental_env_key!(pub show for ShowFn {
-    EnvironmentKey::new(
-        UseFn::take_new(),
-        true,
-    )
+    // The 'show' implementation must be declared in the global environment
+    visibility: EnvironmentVisibility::Private,
 });
 
 pub(crate) fn setup(env: &mut Environment) {

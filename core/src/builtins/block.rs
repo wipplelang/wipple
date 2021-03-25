@@ -22,7 +22,7 @@ impl Block {
 fundamental_primitive!(pub block for Block);
 
 impl Block {
-    pub fn reduce(&self, env: &EnvironmentRef, stack: &Stack) -> Result {
+    pub fn reduce(&self, env: &EnvironmentRef, stack: Stack) -> Result {
         let mut block_env = Environment::child_of(env);
         setup_module_block(&mut block_env);
 
@@ -31,23 +31,25 @@ impl Block {
         self.reduce_inline(&block_env, stack)
     }
 
-    pub fn reduce_inline(&self, env: &EnvironmentRef, stack: &Stack) -> Result {
-        let mut stack = stack.clone();
-        if let Some(location) = &self.location {
-            stack.queue_location(location);
-        }
+    pub fn reduce_inline(&self, env: &EnvironmentRef, stack: Stack) -> Result {
+        let stack = match &self.location {
+            Some(location) => stack.update_evaluation(|e| e.queue_location(&location)),
+            None => stack,
+        };
 
         let mut result = Value::empty();
 
         for statement in &self.statements {
-            let mut stack = stack.clone();
-            if let Some(location) = &statement.location {
-                stack.queue_location(location);
-            }
+            let stack = match &statement.location {
+                Some(location) => stack
+                    .clone()
+                    .update_evaluation(|e| e.queue_location(&location)),
+                None => stack.clone(),
+            };
 
             // Evaluate each statement as a list
             let list = Value::of(statement.clone());
-            result = list.evaluate(env, &stack)?;
+            result = list.evaluate(env, stack)?;
         }
 
         Ok(result)
@@ -56,29 +58,31 @@ impl Block {
 
 pub(crate) fn setup(env: &mut Environment) {
     // Block ::= Text
-    env.add_text_conformance(TraitID::block(), "block");
+    env.add_text_conformance(ID::block(), "block");
 
     // Block ::= Replace-In-Template
     env.add_primitive_conformance(|block: Block| {
         ReplaceInTemplateFn::new(move |parameter, replacement, env, stack| {
-            let mut stack = stack.clone();
-            if let Some(location) = &block.location {
-                stack.queue_location(location);
-            }
+            let stack = match &block.location {
+                Some(location) => stack.update_evaluation(|e| e.queue_location(&location)),
+                None => stack,
+            };
 
             let mut statements = vec![];
 
             for statement in &block.statements {
-                let mut stack = stack.clone();
-                if let Some(location) = &statement.location {
-                    stack.queue_location(location);
-                }
+                let stack = match &statement.location {
+                    Some(location) => stack
+                        .clone()
+                        .update_evaluation(|e| e.queue_location(&location)),
+                    None => stack.clone(),
+                };
 
                 // Expand each statement as a list
                 let list = Value::of(statement.clone());
                 let expanded = list
-                    .replace_in_template(parameter, replacement, env, &stack)?
-                    .get_primitive::<List>(env, &stack)?;
+                    .replace_in_template(parameter, replacement, env, stack.clone())?
+                    .get_primitive::<List>(env, stack)?;
 
                 statements.push(expanded);
             }

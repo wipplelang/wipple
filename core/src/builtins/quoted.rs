@@ -25,8 +25,8 @@ pub(crate) fn setup(env: &mut Environment) {
     });
 
     // Quoted ::= Text
-    env.add_conformance(TraitID::text(), |value, env, stack| {
-        let quoted = match value.get_primitive_if_present::<Quoted>(env, stack)? {
+    env.add_conformance(ID::text(), |value, env, stack| {
+        let quoted = match value.get_primitive_if_present::<Quoted>(env, stack.clone())? {
             Some(quoted) => quoted,
             None => return Ok(None),
         };

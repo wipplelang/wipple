@@ -23,7 +23,7 @@ impl Run {
         setup();
 
         let env = Environment::global();
-        let stack = Stack::new();
+        let stack = Stack::empty();
 
         match &self.evaluate_string {
             Some(code) => {
@@ -33,16 +33,16 @@ impl Run {
                     |error| {
                         wipple::ReturnState::Error(wipple::Error::new(
                             &format!("Error parsing: {}", error.message),
-                            &stack,
+                            stack.clone(),
                         ))
                     },
                 )?;
 
                 let program = convert(&ast, None);
 
-                let result = program.evaluate(&env, &stack)?;
+                let result = program.evaluate(&env, stack.clone())?;
 
-                println!("{}", result.try_format(&env, &stack));
+                println!("{}", result.try_format(&env, stack));
             }
             None => {
                 let current_dir = self
@@ -51,8 +51,8 @@ impl Run {
                     .unwrap_or_else(|| std::env::current_dir().unwrap());
 
                 match &self.path {
-                    Some(path) if !path.is_dir() => import_path(path, &stack)?,
-                    _ => load_project(&current_dir.join("project.wpl"), &stack)?,
+                    Some(path) if !path.is_dir() => import_path(path, stack)?,
+                    _ => load_project(&current_dir.join("project.wpl"), stack)?,
                 };
             }
         }
@@ -63,7 +63,10 @@ impl Run {
 
 fn setup() {
     *Environment::global().borrow_mut().show() = ShowFn::new(move |value, env, stack| {
-        println!("{}", value.evaluate(env, stack)?.format(env, stack)?);
+        println!(
+            "{}",
+            value.evaluate(env, stack.clone())?.format(env, stack)?
+        );
 
         Ok(())
     })

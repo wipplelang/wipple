@@ -22,7 +22,11 @@ fn temporary_prelude(env: &EnvironmentRef) {
 
         let r#trait = Trait::new(
             trait_constructor.id,
-            move |_, stack| match (trait_constructor.validation)(&value, &captured_env, stack)? {
+            move |_, stack| match (trait_constructor.validation)(
+                &value,
+                &captured_env,
+                stack.clone(),
+            )? {
                 Validated::Valid(value) => Ok(value),
                 Validated::Invalid => Err(ReturnState::Error(Error::new(
                     "Cannot use this value to represent this trait",
@@ -40,7 +44,7 @@ fn temporary_prelude(env: &EnvironmentRef) {
         "new",
         Value::of(Function::new(|value, env, stack| {
             let trait_constructor = value
-                .evaluate(env, stack)?
+                .evaluate(env, stack.clone())?
                 .get_primitive::<TraitConstructor>(env, stack)?;
 
             Ok(Value::of(Function::new(move |value, env, stack| {
@@ -57,14 +61,12 @@ fn temporary_prelude(env: &EnvironmentRef) {
     env.borrow_mut().set_variable(
         "trait",
         Value::of(Function::new(|value, env, stack| {
-            let validation = value.evaluate(env, stack)?.get_primitive_or::<Validation>(
-                "Expected validation",
-                env,
-                stack,
-            )?;
+            let validation = value
+                .evaluate(env, stack.clone())?
+                .get_primitive_or::<Validation>("Expected validation", env, stack)?;
 
             Ok(Value::of(TraitConstructor {
-                id: TraitID::new(),
+                id: ID::new(),
                 validation,
             }))
         })),
@@ -75,7 +77,7 @@ fn temporary_prelude(env: &EnvironmentRef) {
     env.borrow_mut().set_variable(
         "do",
         Value::of(Function::new(|value, env, stack| {
-            let block = value.get_primitive_or::<Block>("Expected block", env, stack)?;
+            let block = value.get_primitive_or::<Block>("Expected block", env, stack.clone())?;
             block.reduce(env, stack)
         })),
     );
@@ -83,7 +85,7 @@ fn temporary_prelude(env: &EnvironmentRef) {
     env.borrow_mut().set_variable(
         "inline",
         Value::of(Function::new(|value, env, stack| {
-            let block = value.get_primitive_or::<Block>("Expected block", env, stack)?;
+            let block = value.get_primitive_or::<Block>("Expected block", env, stack.clone())?;
             block.reduce_inline(env, stack)
         })),
     );
@@ -93,11 +95,9 @@ fn temporary_prelude(env: &EnvironmentRef) {
     env.borrow_mut().set_variable(
         "use",
         Value::of(Function::new(|value, env, stack| {
-            let module = value.evaluate(env, stack)?.get_primitive_or::<Module>(
-                "Expected a module",
-                env,
-                stack,
-            )?;
+            let module = value
+                .evaluate(env, stack.clone())?
+                .get_primitive_or::<Module>("Expected a module", env, stack)?;
 
             env.borrow_mut().r#use(&module.env.borrow());
 
@@ -129,10 +129,10 @@ fn temporary_prelude(env: &EnvironmentRef) {
 
     let add_trait_operator = Operator::collect(|value, right, env, stack| {
         let (trait_constructor_value, trait_value) =
-            match right.get_primitive_if_present::<List>(env, stack)? {
+            match right.get_primitive_if_present::<List>(env, stack.clone())? {
                 Some(right) if right.items.len() == 2 => (
-                    right.items[0].evaluate(env, stack)?,
-                    right.items[1].evaluate(env, stack)?,
+                    right.items[0].evaluate(env, stack.clone())?,
+                    right.items[1].evaluate(env, stack.clone())?,
                 ),
                 _ => {
                     return Err(ReturnState::Error(Error::new(
@@ -142,17 +142,19 @@ fn temporary_prelude(env: &EnvironmentRef) {
                 }
             };
 
-        let stack = stack.add(|| {
-            format!(
-                "Adding trait '{}' with '{}' to '{}'",
-                trait_constructor_value.try_format(env, stack),
-                trait_value.try_format(env, stack),
-                value.try_format(env, stack)
-            )
+        let stack = stack.clone().update_evaluation(|e| {
+            e.with(|| {
+                format!(
+                    "Adding trait '{}' with '{}' to '{}'",
+                    trait_constructor_value.try_format(env, stack.clone()),
+                    trait_value.try_format(env, stack.clone()),
+                    value.try_format(env, stack.clone())
+                )
+            })
         });
 
         let trait_constructor =
-            trait_constructor_value.get_primitive::<TraitConstructor>(env, &stack)?;
+            trait_constructor_value.get_primitive::<TraitConstructor>(env, stack.clone())?;
 
         let new_value = add(&value, trait_constructor, trait_value, env);
 
@@ -168,7 +170,7 @@ fn temporary_prelude(env: &EnvironmentRef) {
             // warning/error about this?)
             false,
             env,
-            &stack,
+            stack,
         )?;
 
         Ok(Value::empty())
@@ -233,10 +235,10 @@ fn temporary_prelude(env: &EnvironmentRef) {
 
     let for_operator = Operator::collect(|trait_constructor, value, env, stack| {
         let trait_constructor = trait_constructor
-            .evaluate(env, stack)?
-            .get_primitive_or::<TraitConstructor>("Expected trait", env, stack)?;
+            .evaluate(env, stack.clone())?
+            .get_primitive_or::<TraitConstructor>("Expected trait", env, stack.clone())?;
 
-        let trait_value = value.evaluate(env, stack)?.get_trait_or(
+        let trait_value = value.evaluate(env, stack.clone())?.get_trait_or(
             trait_constructor.id,
             "Value does not have trait",
             env,
@@ -257,12 +259,12 @@ fn temporary_prelude(env: &EnvironmentRef) {
         ($operation:tt, $precedence_group:ident) => {{
             let operator = Operator::collect(|left, right, env, stack| {
                 let left = left
-                    .evaluate(env, stack)?
-                    .get_primitive::<Number>(env, stack)?;
+                    .evaluate(env, stack.clone())?
+                    .get_primitive::<Number>(env, stack.clone())?;
 
                 let right = right
-                    .evaluate(env, stack)?
-                    .get_primitive::<Number>(env, stack)?;
+                    .evaluate(env, stack.clone())?
+                    .get_primitive::<Number>(env, stack.clone())?;
 
                 let result = left.number $operation right.number;
 
@@ -299,12 +301,12 @@ fn temporary_prelude(env: &EnvironmentRef) {
         ($name:expr, $operation:tt, $precedence_group:ident) => {{
             let operator = Operator::collect(|left, right, env, stack| {
                 let left = left
-                    .evaluate(env, stack)?
-                    .get_primitive::<Number>(env, stack)?;
+                    .evaluate(env, stack.clone())?
+                    .get_primitive::<Number>(env, stack.clone())?;
 
                 let right = right
-                    .evaluate(env, stack)?
-                    .get_primitive::<Number>(env, stack)?;
+                    .evaluate(env, stack.clone())?
+                    .get_primitive::<Number>(env, stack.clone())?;
 
                 let result = left.number $operation right.number;
 

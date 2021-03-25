@@ -25,21 +25,21 @@ pub(crate) fn setup(env: &mut Environment) {
     // List ::= Evaluate
     env.add_primitive_conformance(|list: List| {
         EvaluateFn::new(move |env, stack| {
-            let mut stack = stack.clone();
-            if let Some(location) = &list.location {
-                stack.queue_location(location);
-            }
+            let stack = match &list.location {
+                Some(location) => stack.update_evaluation(|e| e.queue_location(&location)),
+                None => stack,
+            };
 
-            let operators = list.find_operators(env, &stack)?;
+            let operators = list.find_operators(env, stack.clone())?;
 
-            if let Some(parsed) = list.parse_operators(operators, env, &stack)? {
+            if let Some(parsed) = list.parse_operators(operators, env, stack.clone())? {
                 return Ok(parsed);
             }
 
             // Reduce the list as a series of function calls
 
             let mut result = match list.items.first() {
-                Some(value) => value.evaluate(env, &stack)?,
+                Some(value) => value.evaluate(env, stack.clone())?,
                 None => {
                     // Empty list evaluates to itself
                     return Ok(Value::of(list.clone()));
@@ -47,7 +47,7 @@ pub(crate) fn setup(env: &mut Environment) {
             };
 
             for item in list.items.iter().skip(1) {
-                result = result.call(item, env, &stack)?;
+                result = result.call(item, env, stack.clone())?;
             }
 
             Ok(result)
@@ -60,7 +60,7 @@ pub(crate) fn setup(env: &mut Environment) {
             let mut expanded_items = vec![];
 
             for item in &list.items {
-                let item = item.replace_in_template(parameter, replacement, env, stack)?;
+                let item = item.replace_in_template(parameter, replacement, env, stack.clone())?;
 
                 expanded_items.push(item);
             }
@@ -70,8 +70,8 @@ pub(crate) fn setup(env: &mut Environment) {
     });
 
     // List ::= Text
-    env.add_conformance(TraitID::text(), |value, env, stack| {
-        let list = match value.get_primitive_if_present::<List>(env, stack)? {
+    env.add_conformance(ID::text(), |value, env, stack| {
+        let list = match value.get_primitive_if_present::<List>(env, stack.clone())? {
             Some(list) => list,
             None => return Ok(None),
         };
@@ -79,7 +79,7 @@ pub(crate) fn setup(env: &mut Environment) {
         let mut items = Vec::new();
 
         for item in &list.items {
-            let text = item.format(env, stack)?;
+            let text = item.format(env, stack.clone())?;
             items.push(text);
         }
 

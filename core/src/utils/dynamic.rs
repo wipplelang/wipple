@@ -54,6 +54,22 @@ impl Dynamic {
         }
     }
 
+    pub fn try_into_cast<T: Clone + 'static>(self) -> Option<T> {
+        self.value.downcast::<T>().ok().map(|x| *x)
+    }
+
+    pub fn into_cast<T: Clone + 'static>(self) -> T {
+        let type_info = self.type_info;
+
+        self.try_into_cast().unwrap_or_else(|| {
+            panic!(
+                "Cannot cast from {:?} to {:?}",
+                type_info,
+                TypeInfo::of::<T>()
+            )
+        })
+    }
+
     pub fn try_cast<T: Clone + 'static>(&self) -> Option<&T> {
         self.value.downcast_ref()
     }

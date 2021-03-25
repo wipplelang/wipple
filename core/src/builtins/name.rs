@@ -23,7 +23,7 @@ impl Name {
 fundamental_primitive!(pub name for Name);
 
 fn_wrapper_struct! {
-    pub type AssignFn(&Value, bool, &EnvironmentRef, &Stack) -> Result<()>;
+    pub type AssignFn(&Value, bool, &EnvironmentRef, Stack) -> Result<()>;
 }
 
 fundamental_primitive!(pub assign for AssignFn);
@@ -36,7 +36,7 @@ pub struct Named {
 fundamental_primitive!(pub named for Named);
 
 fn_wrapper_struct! {
-    pub type ComputeFn(&Stack) -> Result;
+    pub type ComputeFn(Stack) -> Result;
 }
 
 #[derive(Clone)]
@@ -48,16 +48,13 @@ pub enum Variable {
 pub type Variables = HashMap<String, Variable>;
 
 fundamental_env_key!(pub variables for Variables {
-    EnvironmentKey::new(
-        UseFn::from(|parent: &Variables, new| {
-            parent.clone().into_iter().chain(new.clone()).collect()
-        }),
-        true,
-    )
+    visibility: EnvironmentVisibility::Public(UseFn::from(|parent: &Variables, new| {
+        parent.clone().into_iter().chain(new.clone()).collect()
+    }))
 });
 
 fn_wrapper_struct! {
-    pub type HandleAssignFn(&Value, &Value, bool, &EnvironmentRef, &Stack) -> Result<()>;
+    pub type HandleAssignFn(&Value, &Value, bool, &EnvironmentRef, Stack) -> Result<()>;
 }
 
 impl Default for HandleAssignFn {
@@ -72,10 +69,7 @@ impl Default for HandleAssignFn {
 }
 
 fundamental_env_key!(pub handle_assign for HandleAssignFn {
-    EnvironmentKey::new(
-        UseFn::take_new(),
-        true,
-    )
+    visibility: EnvironmentVisibility::Public(UseFn::take()),
 });
 
 impl Environment {
@@ -83,7 +77,7 @@ impl Environment {
         let name = String::from(name);
 
         // Add a 'Named' trait to the value if it isn't already named
-        if !value.has_trait_directly(TraitID::named()) {
+        if !value.has_trait_directly(ID::named()) {
             value = value.add(&Trait::of_primitive(Named { name: name.clone() }));
         }
 
@@ -101,7 +95,7 @@ impl Environment {
                 let mut value = value.evaluate(&captured_env, stack)?;
 
                 // Add a 'Named' trait to the value if it isn't already named
-                if !value.has_trait_directly(TraitID::named()) {
+                if !value.has_trait_directly(ID::named()) {
                     value = value.add(&Trait::of_primitive(Named { name: name.clone() }));
                 }
 
@@ -112,8 +106,8 @@ impl Environment {
 }
 
 impl Name {
-    pub fn resolve(&self, env: &EnvironmentRef, stack: &Stack) -> Result {
-        let variable = self.resolve_variable(env, stack)?;
+    pub fn resolve(&self, env: &EnvironmentRef, stack: Stack) -> Result {
+        let variable = self.resolve_variable(env, stack.clone())?;
 
         match variable {
             Variable::Just(value) => Ok(value),
@@ -121,11 +115,12 @@ impl Name {
         }
     }
 
-    pub fn resolve_variable(&self, env: &EnvironmentRef, stack: &Stack) -> Result<Variable> {
-        let stack = stack.add(|| format!("Resolving variable '{}'", self.name));
+    pub fn resolve_variable(&self, env: &EnvironmentRef, stack: Stack) -> Result<Variable> {
+        let stack =
+            stack.update_evaluation(|e| e.with(|| format!("Resolving variable '{}'", self.name)));
 
         self.resolve_variable_if_present(env).ok_or_else(|| {
-            ReturnState::Error(Error::new("Name does not refer to a variable", &stack))
+            ReturnState::Error(Error::new("Name does not refer to a variable", stack))
         })
     }
 
@@ -149,7 +144,7 @@ pub(crate) fn setup(env: &mut Environment) {
     env.set_variable(
         "Name",
         Value::of(TraitConstructor {
-            id: TraitID::name(),
+            id: ID::name(),
             validation: Validation::of::<Name>(),
         }),
     );
