@@ -79,7 +79,7 @@ impl Value {
         &self,
         id: ID,
         env: &EnvironmentRef,
-        mut stack: Stack,
+        stack: Stack,
     ) -> Result<Option<Value>> {
         // Always use traits directly defined on the value if they exist instead
         // of deriving them
@@ -94,8 +94,6 @@ impl Value {
         if stack.clone().get_is_deriving_from_conformance() {
             return Ok(None);
         }
-
-        stack = stack.with_is_deriving_from_conformance(true);
 
         // Attempt to derive the trait via a conformance
 
@@ -116,21 +114,26 @@ impl Value {
                     continue;
                 }
 
-                if let Some(derived_value) =
-                    (conformance.derive_trait_value)(self, &env, stack.clone())?
-                {
-                    if derived_trait.is_some() {
-                        return Err(ReturnState::Error(Error::new(
-                            "Value satisfies multiple conformances, so the conformance to use is ambiguous",
-                            stack
-                        )));
-                    }
+                let stack = stack.clone().with_is_deriving_from_conformance(true);
 
-                    derived_trait = Some(Trait::new(id, move |_, _| Ok(derived_value.clone())))
+                let value = match (conformance.validation)(self, &env, stack.clone())? {
+                    Validated::Valid(value) => value,
+                    Validated::Invalid => continue,
+                };
+
+                let stack = stack.with_is_deriving_from_conformance(false);
+
+                if derived_trait.is_some() {
+                    return Err(ReturnState::Error(Error::new(
+                        "Value satisfies multiple conformances, so the conformance to use is ambiguous",
+                        stack
+                    )));
                 }
-            }
 
-            stack = stack.with_is_deriving_from_conformance(false);
+                let derived_value = (conformance.derive_trait_value)(&value, &env, stack.clone())?;
+
+                derived_trait = Some(Trait::new(id, move |_, _| Ok(derived_value.clone())))
+            }
 
             if let Some(derived_trait) = derived_trait {
                 let trait_value = (derived_trait.value)(&env, stack)?;

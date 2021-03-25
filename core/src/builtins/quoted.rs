@@ -25,15 +25,16 @@ pub(crate) fn setup(env: &mut Environment) {
     });
 
     // Quoted ::= Text
-    env.add_conformance(ID::text(), |value, env, stack| {
-        let quoted = match value.get_primitive_if_present::<Quoted>(env, stack.clone())? {
-            Some(quoted) => quoted,
-            None => return Ok(None),
-        };
+    env.add_conformance(
+        ID::text(),
+        Validation::of::<Quoted>(),
+        |value, env, stack| {
+            let quoted = value.clone().cast_primitive::<Quoted>();
 
-        Ok(Some(Value::of(Text::new(&format!(
-            "'{}",
-            quoted.value.format(env, stack)?
-        )))))
-    });
+            Ok(Value::of(Text::new(&format!(
+                "'{}",
+                quoted.value.format(env, stack)?
+            ))))
+        },
+    );
 }

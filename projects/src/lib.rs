@@ -50,13 +50,10 @@ pub fn setup() {
 
     // Text ::= Module
     env.borrow_mut()
-        .add_conformance(ID::module(), |value, env, stack| {
-            let text = match value.get_primitive_if_present::<Text>(env, stack.clone())? {
-                Some(text) => text,
-                None => return Ok(None),
-            };
+        .add_conformance(ID::module(), Validation::of::<Text>(), |value, _, stack| {
+            let text = value.clone().cast_primitive::<Text>();
 
             let module = import(&text.text, stack)?;
-            Ok(Some(Value::of(module)))
+            Ok(Value::of(module))
         });
 }

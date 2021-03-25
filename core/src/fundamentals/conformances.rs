@@ -12,19 +12,20 @@ fundamental_env_key!(pub conformances for Conformances {
 #[derive(Clone)]
 pub struct Conformance {
     pub derived_trait_id: ID,
-
-    #[allow(clippy::type_complexity)]
-    pub derive_trait_value: Rc<dyn Fn(&Value, &EnvironmentRef, Stack) -> Result<Option<Value>>>,
+    pub validation: Validation,
+    pub derive_trait_value: Rc<dyn Fn(&Value, &EnvironmentRef, Stack) -> Result>,
 }
 
 impl Environment {
     pub fn add_conformance(
         &mut self,
         derived_trait_id: ID,
-        derive_trait_value: impl Fn(&Value, &EnvironmentRef, Stack) -> Result<Option<Value>> + 'static,
+        validation: Validation,
+        derive_trait_value: impl Fn(&Value, &EnvironmentRef, Stack) -> Result + 'static,
     ) {
         self.conformances().push(Conformance {
             derived_trait_id,
+            validation,
             derive_trait_value: Rc::new(derive_trait_value),
         })
     }
@@ -33,30 +34,31 @@ impl Environment {
         &mut self,
         derive_trait_value: impl Fn(A) -> B + 'static,
     ) {
-        self.add_conformance(ID::of::<B>(), move |value, env, stack| {
-            let a = match value.get_primitive_if_present::<A>(env, stack)? {
-                Some(primitive) => primitive,
-                None => return Ok(None),
-            };
-
+        self.add_conformance(ID::of::<B>(), Validation::of::<A>(), move |value, _, _| {
+            let a = value.clone().cast_primitive::<A>();
             let b = derive_trait_value(a);
-
-            Ok(Some(Value::of(b)))
+            Ok(Value::of(b))
         });
     }
 
     pub fn add_text_conformance(&mut self, id: ID, value_name: &'static str) {
-        self.add_conformance(ID::text(), move |value, env, stack| {
-            if !value.has_trait(id, env, stack.clone())? {
-                return Ok(None);
-            }
+        self.add_conformance(
+            ID::text(),
+            Validation::new(move |value, env, stack| {
+                Ok(if value.has_trait(id, env, stack)? {
+                    Validated::Valid(value.clone())
+                } else {
+                    Validated::Invalid
+                })
+            }),
+            move |value, env, stack| {
+                let named = value.get_primitive_if_present::<Named>(env, stack)?;
 
-            let named = value.get_primitive_if_present::<Named>(env, stack)?;
-
-            Ok(Some(Value::of(Text::new(&match named {
-                Some(named) => format!("<{} '{}'>", value_name, named.name),
-                None => format!("<{}>", value_name),
-            }))))
-        });
+                Ok(Value::of(Text::new(&match named {
+                    Some(named) => format!("<{} '{}'>", value_name, named.name),
+                    None => format!("<{}>", value_name),
+                })))
+            },
+        );
     }
 }

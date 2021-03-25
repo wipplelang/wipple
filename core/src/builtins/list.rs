@@ -70,11 +70,8 @@ pub(crate) fn setup(env: &mut Environment) {
     });
 
     // List ::= Text
-    env.add_conformance(ID::text(), |value, env, stack| {
-        let list = match value.get_primitive_if_present::<List>(env, stack.clone())? {
-            Some(list) => list,
-            None => return Ok(None),
-        };
+    env.add_conformance(ID::text(), Validation::of::<List>(), |value, env, stack| {
+        let list = value.clone().cast_primitive::<List>();
 
         let mut items = Vec::new();
 
@@ -83,9 +80,6 @@ pub(crate) fn setup(env: &mut Environment) {
             items.push(text);
         }
 
-        Ok(Some(Value::of(Text::new(&format!(
-            "({})",
-            items.join(" ")
-        )))))
+        Ok(Value::of(Text::new(&format!("({})", items.join(" ")))))
     });
 }
