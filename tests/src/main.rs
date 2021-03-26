@@ -180,9 +180,8 @@ fn test(code: &str) -> (String, std::time::Duration) {
 
     let stack = Stack::empty();
 
-    let (tokens, lookup) = wipple_parser::lex(&code);
-    let ast = wipple_parser::parse_file(&mut tokens.iter().peekable(), &lookup).unwrap();
-    let program = wipple_parser::convert(&ast, None);
+    let program =
+        wipple_projects::load_string(code, None, stack.clone()).expect("Failed to parse file");
 
     let output = Rc::new(RefCell::new(Vec::new()));
 
@@ -190,9 +189,12 @@ fn test(code: &str) -> (String, std::time::Duration) {
     wipple::setup();
     setup(output.clone(), &env);
 
-    let env = Environment::child_of(&env).into_ref();
+    // Load the standard library
+    wipple_stdlib::_wipple_plugin(&env, stack.clone()).expect("Failed to load standard library");
 
-    if let Err(error) = program.evaluate(&env, stack.clone()) {
+    if let Err(error) =
+        wipple_projects::import_program_with_parent_env(program, None, &env, stack.clone())
+    {
         output.replace(vec![error.into_error(stack).to_string()]);
     }
 

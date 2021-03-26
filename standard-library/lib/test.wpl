@@ -1,0 +1,4 @@
+if : bool => then => else => match bool {
+    true : then
+    false : else
+}

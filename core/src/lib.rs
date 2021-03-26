@@ -142,10 +142,15 @@ macro_rules! stack_key {
 
 mod builtins;
 mod fundamentals;
-mod prelude;
 mod utils;
 
 pub use builtins::*;
 pub use fundamentals::*;
-pub use prelude::{setup, *};
 pub use utils::*;
+
+pub fn setup() {
+    let env = Environment::global();
+    *env.borrow_mut() = Environment::blank();
+
+    builtins::setup(&mut env.borrow_mut());
+}

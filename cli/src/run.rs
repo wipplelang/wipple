@@ -18,12 +18,15 @@ pub struct Run {
 
 impl Run {
     pub fn run(&self) -> wipple::Result<()> {
+        let env = Environment::global();
+        let stack = Stack::empty();
+
         wipple::setup();
         wipple_projects::setup();
         setup();
 
-        let env = Environment::global();
-        let stack = Stack::empty();
+        // Load the standard library
+        (*wipple_stdlib::_wipple_plugin(&env, stack.clone()))?;
 
         match &self.evaluate_string {
             Some(code) => {

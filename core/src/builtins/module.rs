@@ -50,7 +50,7 @@ impl Block {
     }
 }
 
-pub(crate) fn setup_module_block(env: &mut Environment) {
+pub fn setup_module_block(env: &mut Environment) {
     *env.handle_assign() = HandleAssignFn::new(|left, right, computed, env, stack| {
         let stack = stack.clone().update_evaluation(|e| {
             e.with(|| {

@@ -6,6 +6,7 @@ members = [
     "playground/interpreter",
     "plugins",
     "projects",
+    "standard-library",
     "tests",
 ]
 

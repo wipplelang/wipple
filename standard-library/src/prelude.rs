@@ -1,17 +1,6 @@
-use crate::*;
+use wipple::*;
 
-pub fn setup() {
-    let env = Environment::global();
-    *env.borrow_mut() = Environment::blank();
-
-    builtins::setup(&mut env.borrow_mut());
-    temporary_prelude(&env);
-
-    // TODO: Load bundled prelude files
-}
-
-// FIXME: Temporary
-fn temporary_prelude(env: &EnvironmentRef) {
+pub fn prelude(env: &EnvironmentRef) {
     fn add(
         base: &Value,
         trait_constructor: TraitConstructor,

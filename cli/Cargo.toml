@@ -9,3 +9,4 @@ structopt = "0.3.21"
 wipple = { path = "../core" }
 wipple_parser = { path = "../parser" }
 wipple_projects = { path = "../projects" }
+wipple_stdlib = { path = "../standard-library" }

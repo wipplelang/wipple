@@ -20,7 +20,7 @@ pub fn load_project(path: &Path, mut stack: Stack) -> Result<Module> {
         ProjectRoot(Some(path.parent().unwrap().to_path_buf())),
     );
 
-    let project_module = load_file_with_parent_env(path, &env, stack.clone())?;
+    let project_module = import_file_with_parent_env(path, &env, stack.clone())?;
 
     // TODO: Install dependencies
 

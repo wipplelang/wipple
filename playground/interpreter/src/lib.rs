@@ -3,7 +3,6 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use wasm_bindgen::prelude::*;
 use wipple::*;
-use wipple_parser::{convert, lex, parse_file};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ShownValue {
@@ -23,53 +22,12 @@ pub fn run(code: &str) -> JsValue {
     #[cfg(feature = "console_error_panic_hook")]
     console_error_panic_hook::set_once();
 
-    let result = run_code(code);
-
-    JsValue::from_serde(&result).unwrap()
-}
-
-fn run_code(code: &str) -> InterpreterResult {
-    let (tokens, lookup) = lex(code);
-    let ast = match parse_file(&mut tokens.iter().peekable(), &lookup) {
-        Ok(value) => value,
-        Err(error) => {
-            return InterpreterResult {
-                success: false,
-                output: None,
-                error: Some(
-                    Error::new(
-                        &error.message,
-                        Stack::empty().update_evaluation(|e| {
-                            e.with_location(
-                                || String::from("Parsing input"),
-                                error.location.map(|location| SourceLocation {
-                                    file: None,
-                                    line: location.line,
-                                    column: location.column,
-                                }),
-                            )
-                        }),
-                    )
-                    .to_string(),
-                ),
-            }
-        }
-    };
-
-    let value = convert(&ast, None);
-
-    let output = Rc::new(RefCell::new(Vec::<ShownValue>::new()));
-
-    wipple::setup();
-    setup_playground(&output);
-
-    let env = Environment::child_of(&Environment::global()).into_ref();
     let stack = Stack::empty();
 
-    match value.evaluate(&env, stack.clone()) {
-        Ok(_) => InterpreterResult {
+    let result = match run_code(code, stack.clone()) {
+        Ok(output) => InterpreterResult {
             success: true,
-            output: Some(output.as_ref().clone().get_mut().clone()),
+            output: Some(output),
             error: None,
         },
         Err(state) => InterpreterResult {
@@ -77,7 +35,26 @@ fn run_code(code: &str) -> InterpreterResult {
             output: None,
             error: Some(state.into_error(stack).to_string()),
         },
-    }
+    };
+
+    JsValue::from_serde(&result).unwrap()
+}
+
+fn run_code(code: &str, stack: Stack) -> wipple::Result<Vec<ShownValue>> {
+    let output = Rc::new(RefCell::new(Vec::<ShownValue>::new()));
+
+    wipple::setup();
+    setup_playground(&output);
+
+    // Load the standard library
+    (*wipple_stdlib::_wipple_plugin(&Environment::global(), stack.clone()))?;
+
+    let env = Environment::child_of(&Environment::global()).into_ref();
+
+    let program = wipple_projects::load_string(code, None, stack.clone())?;
+    wipple_projects::include_program(program, &env, stack)?;
+
+    Ok(output.as_ref().clone().get_mut().clone())
 }
 
 fn setup_playground(output: &Rc<RefCell<Vec<ShownValue>>>) {

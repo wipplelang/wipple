@@ -62,7 +62,7 @@ pub fn import_path_with_parent_env(
     if let Some(module) = try_import_folder(path, stack.clone())? {
         Ok(module)
     } else {
-        load_file_with_parent_env(path, env, stack)
+        import_file_with_parent_env(path, env, stack)
     }
 }
 
@@ -134,26 +134,45 @@ fn try_import_folder(path: &Path, stack: Stack) -> Result<Option<Module>> {
 
 /// Import a file, returning a module.
 pub fn import_file(path: &Path, stack: Stack) -> Result<Module> {
-    let env = Environment::child_of(&Environment::global()).into_ref();
-    load_file_with_parent_env(path, &env, stack)
+    import_file_with_parent_env(path, &Environment::global(), stack)
 }
 
-pub fn load_file_with_parent_env(
+pub fn import_file_with_parent_env(
     path: &Path,
     env: &EnvironmentRef,
     stack: Stack,
 ) -> Result<Module> {
-    let stack = with_current_file_in(stack, CurrentFile(Some(path.to_path_buf())));
-
     let program = load_file(path, stack.clone())?;
-    let result = program.evaluate(env, stack.clone())?;
-    let module = result.get_primitive::<Module>(env, stack).unwrap(); // files always evaluate to modules
+    import_program_with_parent_env(program, Some(path), env, stack)
+}
+
+pub fn import_program_with_parent_env(
+    program: Block,
+    path: Option<&Path>,
+    env: &EnvironmentRef,
+    stack: Stack,
+) -> Result<Module> {
+    let stack = with_current_file_in(stack, CurrentFile(path.map(|p| p.to_path_buf())));
+
+    let result = Value::of(program).evaluate(&env, stack)?;
+    let module = result.cast_primitive::<Module>(); // files always evaluate to modules
 
     Ok(module)
 }
 
+pub fn include_file(path: &Path, env: &EnvironmentRef, stack: Stack) -> Result {
+    let stack = with_current_file_in(stack, CurrentFile(Some(path.to_path_buf())));
+
+    let program = load_file(path, stack.clone())?;
+    include_program(program, env, stack)
+}
+
+pub fn include_program(program: Block, env: &EnvironmentRef, stack: Stack) -> Result {
+    program.reduce_inline(env, stack)
+}
+
 /// Load a Wipple file into a value. Does not evaluate the file.
-pub fn load_file(path: &Path, stack: Stack) -> Result {
+pub fn load_file(path: &Path, stack: Stack) -> Result<Block> {
     let code = fs::read_to_string(path).map_err(|error| {
         ReturnState::Error(Error::new(
             &format!("Error loading file {}: {}", path.to_string_lossy(), error),
@@ -161,6 +180,10 @@ pub fn load_file(path: &Path, stack: Stack) -> Result {
         ))
     })?;
 
+    load_string(&code, Some(path), stack)
+}
+
+pub fn load_string(code: &str, path: Option<&Path>, stack: Stack) -> Result<Block> {
     let (tokens, lookup) = wipple_parser::lex(&code);
 
     let ast =
@@ -169,9 +192,12 @@ pub fn load_file(path: &Path, stack: Stack) -> Result {
                 &format!("Parse error: {}", error.message),
                 stack.update_evaluation(|e| {
                     e.with_location(
-                        || format!("Parsing file {}", path.to_string_lossy()),
+                        || match path {
+                            Some(path) => format!("Parsing file {}", path.to_string_lossy()),
+                            None => String::from("Parsing input"),
+                        },
                         error.location.map(|location| SourceLocation {
-                            file: None,
+                            file: path.map(PathBuf::from),
                             line: location.line,
                             column: location.column,
                         }),
@@ -180,7 +206,8 @@ pub fn load_file(path: &Path, stack: Stack) -> Result {
             ))
         })?;
 
-    let program = wipple_parser::convert(&ast, Some(path));
+    // Wipple programs are always blocks
+    let program = wipple_parser::convert(&ast, path).cast_primitive::<Block>();
 
     Ok(program)
 }

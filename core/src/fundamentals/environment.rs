@@ -101,6 +101,10 @@ impl Environment {
     pub fn global() -> EnvironmentRef {
         GLOBAL_ENV.with(|env| env.clone())
     }
+
+    pub fn is_global(env: &EnvironmentRef) -> bool {
+        env.as_ptr() == Environment::global().as_ptr()
+    }
 }
 
 #[derive(Clone)]
