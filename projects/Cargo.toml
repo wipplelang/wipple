@@ -7,4 +7,6 @@ edition = "2018"
 rust-embed = "5.9.0"
 wipple = { path = "../core" }
 wipple_parser = { path = "../parser" }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 wipple_plugins = { path = "../plugins" }

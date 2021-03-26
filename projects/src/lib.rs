@@ -9,6 +9,8 @@ pub use project::*;
 pub use resolve::*;
 
 use wipple::*;
+
+#[cfg(not(target_arch = "wasm32"))]
 use wipple_plugins::*;
 
 pub fn setup() {
@@ -31,6 +33,7 @@ pub fn setup() {
         })),
     );
 
+    #[cfg(not(target_arch = "wasm32"))]
     env.borrow_mut().set_variable(
         "load-plugin!",
         Value::of(Function::new(|value, env, stack| {
