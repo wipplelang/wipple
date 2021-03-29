@@ -101,8 +101,7 @@ pub fn prelude(env: &EnvironmentRef) {
 
     let add_assignment_operator = |name: &str, computed: bool, env: &EnvironmentRef| {
         let operator = Operator::collect(move |left, right, env, stack| {
-            let handle_assign = env.borrow_mut().handle_assign().clone();
-            handle_assign(left, right, computed, env, stack)?;
+            stack.clone().get_handle_assign()(left, right, computed, env, stack)?;
             Ok(Value::empty())
         });
 
@@ -147,9 +146,7 @@ pub fn prelude(env: &EnvironmentRef) {
 
         let new_value = add(&value, trait_constructor, trait_value, env);
 
-        let handle_assign = env.borrow_mut().handle_assign().clone();
-
-        handle_assign(
+        stack.clone().get_handle_assign()(
             &value,
             // We have to quote the result because we've already evaluated it;
             // in real Wipple code, the result would be assigned to a variable

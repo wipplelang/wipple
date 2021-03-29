@@ -23,10 +23,9 @@ fundamental_primitive!(pub block for Block);
 
 impl Block {
     pub fn reduce(&self, env: &EnvironmentRef, stack: Stack) -> Result {
-        let mut block_env = Environment::child_of(env);
-        setup_module_block(&mut block_env);
+        let block_env = Environment::child_of(env).into_ref();
 
-        let block_env = block_env.into_ref();
+        let stack = setup_module_block(stack);
 
         self.reduce_inline(&block_env, stack)
     }

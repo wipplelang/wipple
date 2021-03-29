@@ -52,6 +52,8 @@ fn run_code(code: &str, stack: Stack) -> wipple::Result<Vec<ShownValue>> {
     let env = Environment::child_of(&Environment::global()).into_ref();
 
     let program = wipple_projects::load_string(code, None, stack.clone())?;
+
+    let stack = setup_module_block(stack);
     wipple_projects::include_program(program, &env, stack)?;
 
     Ok(output.as_ref().clone().get_mut().clone())

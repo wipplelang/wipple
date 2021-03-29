@@ -20,16 +20,15 @@ fundamental_primitive!(pub module for Module);
 
 impl Block {
     pub fn reduce_into_module(&self, env: &EnvironmentRef, stack: Stack) -> Result {
+        // Modules capture their environment
+        let module_env = Environment::child_of(env).into_ref();
+
         let stack = match &self.location {
             Some(location) => stack.update_evaluation(|e| e.queue_location(&location)),
             None => stack,
         };
 
-        // Modules capture their environment
-        let mut module_env = Environment::child_of(env);
-        setup_module_block(&mut module_env);
-
-        let module_env = module_env.into_ref();
+        let stack = setup_module_block(stack);
 
         for statement in &self.statements {
             let stack = match &statement.location {
@@ -50,8 +49,8 @@ impl Block {
     }
 }
 
-pub fn setup_module_block(env: &mut Environment) {
-    *env.handle_assign() = HandleAssignFn::new(|left, right, computed, env, stack| {
+pub fn setup_module_block(stack: Stack) -> Stack {
+    stack.with_handle_assign(HandleAssignFn::new(|left, right, computed, env, stack| {
         let stack = stack.clone().update_evaluation(|e| {
             e.with(|| {
                 format!(
@@ -69,7 +68,7 @@ pub fn setup_module_block(env: &mut Environment) {
         )?;
 
         assign(&right, computed, env, stack)
-    })
+    }))
 }
 
 pub(crate) fn setup(env: &mut Environment) {

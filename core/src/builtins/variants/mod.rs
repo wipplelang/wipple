@@ -89,8 +89,8 @@ impl Module {
     }
 }
 
-fn setup_match_block(env: &mut Environment, matches: Rc<RefCell<HashMap<String, Value>>>) {
-    *env.handle_assign() = HandleAssignFn::new(move |left, right, computed, env, stack| {
+fn setup_match_block(matches: Rc<RefCell<HashMap<String, Value>>>, stack: Stack) -> Stack {
+    stack.with_handle_assign(HandleAssignFn::new(move |left, right, computed, env, stack| {
         let name = left.get_primitive_or::<Name>("Expected name for match", env, stack.clone())?;
 
         if computed {
@@ -103,7 +103,7 @@ fn setup_match_block(env: &mut Environment, matches: Rc<RefCell<HashMap<String, 
         matches.borrow_mut().insert(name.name, right.clone());
 
         Ok(())
-    })
+    }))
 }
 
 pub(crate) fn setup(env: &mut Environment) {
@@ -142,8 +142,9 @@ pub(crate) fn setup(env: &mut Environment) {
                 )?;
 
                 let matches = Rc::new(RefCell::new(HashMap::new()));
-                let mut match_env = Environment::child_of(env);
-                setup_match_block(&mut match_env, matches.clone());
+                let match_env = Environment::child_of(env);
+
+                let stack = setup_match_block(matches.clone(), stack);
 
                 block.reduce_inline(&match_env.into_ref(), stack.clone())?;
 

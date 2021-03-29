@@ -68,10 +68,6 @@ impl UseFn {
             Dynamic::new(r#use(parent, new))
         })
     }
-
-    pub fn take() -> Self {
-        UseFn::new(move |_, new| new.clone())
-    }
 }
 
 impl Environment {

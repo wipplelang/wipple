@@ -68,9 +68,7 @@ impl Default for HandleAssignFn {
     }
 }
 
-fundamental_env_key!(pub handle_assign for HandleAssignFn {
-    visibility: EnvironmentVisibility::Public(UseFn::take()),
-});
+fundamental_stack_key!(pub handle_assign for HandleAssignFn);
 
 impl Environment {
     pub fn set_variable(&mut self, name: &str, mut value: Value) {
