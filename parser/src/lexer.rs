@@ -18,7 +18,7 @@ pub enum Token {
     #[regex(r#"[^ \t\n\(\)\[\]{}'"]+"#, |lex| lex.slice().to_string(), priority = 1)]
     Name(String),
 
-    #[regex(r"[0-9]+(\.[0-9]+)?", |lex| lex.slice().parse(), priority = 2)]
+    #[regex(r"-?[0-9]+(\.[0-9]+)?", |lex| lex.slice().parse(), priority = 2)]
     Number(BigDecimal),
 
     #[regex(r#""[^\n"]*""#, |lex| unescape(lex.slice()))]

@@ -21,7 +21,7 @@ Prism.languages.wipple = {
         greedy: true,
     },
     number: {
-        pattern: /[0-9]+(\.[0-9]+)?(?=[ \t()\[\]{}']|$)/m,
+        pattern: /-?[0-9]+(\.[0-9]+)?(?=[ \t()\[\]{}']|$)/m,
         greedy: true,
     },
     name: {
