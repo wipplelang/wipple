@@ -3,15 +3,15 @@ use std::collections::HashMap;
 use crate::*;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct StackKey(ID);
+pub struct StackKey(Id);
 
 impl StackKey {
     pub fn of<T: 'static>() -> Self {
-        StackKey(ID::of::<T>())
+        StackKey(Id::of::<T>())
     }
 
     pub fn new() -> Self {
-        StackKey(ID::new())
+        StackKey(Id::new())
     }
 }
 

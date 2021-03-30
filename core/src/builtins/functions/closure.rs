@@ -21,5 +21,5 @@ pub(crate) fn setup(env: &mut Environment) {
     });
 
     // Closure ::= Text
-    env.add_text_conformance(ID::closure(), "closure");
+    env.add_text_conformance(Trait::closure(), "closure");
 }

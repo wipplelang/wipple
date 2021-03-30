@@ -1,51 +1,7 @@
 use wipple::*;
 
 pub fn prelude(env: &EnvironmentRef) {
-    fn add(
-        base: &Value,
-        trait_constructor: TraitConstructor,
-        value: Value,
-        env: &EnvironmentRef,
-    ) -> Value {
-        let captured_env = Environment::child_of(env).into_ref();
-
-        let r#trait = Trait::new(
-            trait_constructor.id,
-            move |_, stack| match (trait_constructor.validation)(
-                &value,
-                &captured_env,
-                stack.clone(),
-            )? {
-                Validated::Valid(value) => Ok(value),
-                Validated::Invalid => Err(ReturnState::Error(Error::new(
-                    "Cannot use this value to represent this trait",
-                    stack,
-                ))),
-            },
-        );
-
-        base.add(&r#trait)
-    }
-
     // Trait functions
-
-    env.borrow_mut().set_variable(
-        "new",
-        Value::of(Function::new(|value, env, stack| {
-            let trait_constructor = value
-                .evaluate(env, stack.clone())?
-                .get_primitive::<TraitConstructor>(env, stack)?;
-
-            Ok(Value::of(Function::new(move |value, env, stack| {
-                Ok(add(
-                    &Value::empty(),
-                    trait_constructor.clone(),
-                    value.evaluate(env, stack)?,
-                    env,
-                ))
-            })))
-        })),
-    );
 
     env.borrow_mut().set_variable(
         "trait",
@@ -55,7 +11,7 @@ pub fn prelude(env: &EnvironmentRef) {
                 .get_primitive_or::<Validation>("Expected validation", env, stack)?;
 
             Ok(Value::of(TraitConstructor {
-                id: ID::new(),
+                r#trait: Trait::new(),
                 validation,
             }))
         })),
@@ -112,60 +68,6 @@ pub fn prelude(env: &EnvironmentRef) {
 
     add_assignment_operator(":", false, env);
     add_assignment_operator(":>", true, env);
-
-    // Add trait operator (::)
-
-    let add_trait_operator = Operator::collect(|value, right, env, stack| {
-        let (trait_constructor_value, trait_value) =
-            match right.get_primitive_if_present::<List>(env, stack.clone())? {
-                Some(right) if right.items.len() == 2 => (
-                    right.items[0].evaluate(env, stack.clone())?,
-                    right.items[1].evaluate(env, stack.clone())?,
-                ),
-                _ => {
-                    return Err(ReturnState::Error(Error::new(
-                        "Expected a trait and a value for the trati",
-                        stack,
-                    )))
-                }
-            };
-
-        let stack = stack.clone().update_evaluation(|e| {
-            e.with(|| {
-                format!(
-                    "Adding trait '{}' with '{}' to '{}'",
-                    trait_constructor_value.try_format(env, stack.clone()),
-                    trait_value.try_format(env, stack.clone()),
-                    value.try_format(env, stack.clone())
-                )
-            })
-        });
-
-        let trait_constructor =
-            trait_constructor_value.get_primitive::<TraitConstructor>(env, stack.clone())?;
-
-        let new_value = add(&value, trait_constructor, trait_value, env);
-
-        stack.clone().get_handle_assign()(
-            &value,
-            // We have to quote the result because we've already evaluated it;
-            // in real Wipple code, the result would be assigned to a variable
-            // before being passed here and we wouldn't have this problem
-            &Value::of(Quoted::new(new_value)),
-            // Traits cannot be added to computed values (TODO: add a better
-            // warning/error about this?)
-            false,
-            env,
-            stack,
-        )?;
-
-        Ok(Value::empty())
-    });
-
-    add_operator(&add_trait_operator, &assignment_precedence_group);
-
-    env.borrow_mut()
-        .set_variable("::", Value::of(add_trait_operator));
 
     // Template operator (=>)
 
@@ -225,7 +127,7 @@ pub fn prelude(env: &EnvironmentRef) {
             .get_primitive_or::<TraitConstructor>("Expected trait", env, stack.clone())?;
 
         let trait_value = value.evaluate(env, stack.clone())?.get_trait_or(
-            trait_constructor.id,
+            &trait_constructor.r#trait,
             "Value does not have trait",
             env,
             stack,

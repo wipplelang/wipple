@@ -25,16 +25,11 @@ pub(crate) fn setup(env: &mut Environment) {
     });
 
     // Quoted ::= Text
-    env.add_conformance(
-        ID::text(),
-        Validation::of::<Quoted>(),
-        |value, env, stack| {
-            let quoted = value.clone().cast_primitive::<Quoted>();
+    env.add_conformance(Trait::quoted(), Trait::text(), |value, env, stack| {
+        let quoted = value.clone().into_primitive::<Quoted>();
 
-            Ok(Value::of(Text::new(&format!(
-                "'{}",
-                quoted.value.format(env, stack)?
-            ))))
-        },
-    );
+        let text = quoted.value.format(env, stack)?;
+
+        Ok(Value::of(Text::new(&format!("'{}", text))))
+    });
 }

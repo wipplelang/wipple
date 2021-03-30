@@ -23,10 +23,11 @@ impl Run {
 
         wipple::setup();
         wipple_projects::setup();
-        setup();
 
         // Load the standard library
         (*wipple_stdlib::_wipple_plugin(&env, stack.clone()))?;
+
+        let stack = setup(stack);
 
         match &self.evaluate_string {
             Some(code) => {
@@ -64,13 +65,13 @@ impl Run {
     }
 }
 
-fn setup() {
-    *Environment::global().borrow_mut().show() = ShowFn::new(move |value, env, stack| {
+fn setup(stack: Stack) -> Stack {
+    stack.with_show(ShowFn::new(move |value, env, stack| {
         println!(
             "{}",
             value.evaluate(env, stack.clone())?.format(env, stack)?
         );
 
         Ok(())
-    })
+    }))
 }

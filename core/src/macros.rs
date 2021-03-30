@@ -30,9 +30,9 @@ macro_rules! fundamental_primitive {
     ($vis:vis $name:ident for $Type:ty) => {
         impl $crate::Primitive for $Type {}
 
-        impl $crate::ID {
+        impl $crate::Trait {
             $vis fn $name() -> Self {
-                $crate::ID::of::<$Type>()
+                $crate::Trait::of::<$Type>()
             }
         }
     };

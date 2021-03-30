@@ -1,63 +1,36 @@
 use crate::*;
-use std::collections::HashSet;
 
 pub trait Primitive: Clone + 'static {}
 
 #[derive(Clone)]
-pub enum Value {
-    Primitive(Dynamic),
-    Composite(HashSet<Trait>),
+pub struct Value {
+    /// ID for this specific value — persists across clones but does not persist
+    /// in, for example, a situation like this:
+    ///
+    /// ```wipple
+    /// x : 3 -- id "1"
+    /// y : x -- id "1"
+    /// z : Number for x -- id "2"
+    /// ```
+    pub id: Id,
+    pub r#trait: Trait,
+    pub raw_value: Dynamic,
 }
 
 impl Value {
-    pub fn empty() -> Self {
-        Value::Composite(HashSet::new())
-    }
-
-    pub fn traits(&self) -> HashSet<Trait> {
-        match &self {
-            Value::Primitive(primitive) => {
-                let mut traits = HashSet::new();
-
-                let value = self.clone();
-
-                traits.insert(Trait::new(
-                    ID::Primitive(primitive.type_info),
-                    move |_, _| Ok(value.clone()),
-                ));
-
-                traits
-            }
-            Value::Composite(traits) => traits.clone(),
+    pub fn new(r#trait: Trait, raw_value: Dynamic) -> Self {
+        Value {
+            id: Id::new(),
+            r#trait,
+            raw_value,
         }
     }
 
-    pub fn add(&self, r#trait: &Trait) -> Self {
-        let mut traits = self.traits();
-        traits.remove(r#trait);
-        traits.insert(r#trait.clone());
-        Value::Composite(traits)
+    pub fn of<T: Primitive>(primitive: T) -> Self {
+        Value::new(Trait::of::<T>(), Dynamic::new(primitive))
     }
 
-    pub fn new(r#trait: &Trait) -> Self {
-        Value::empty().add(r#trait)
-    }
-
-    pub fn of(primitive: impl Primitive) -> Self {
-        Value::Primitive(Dynamic::new(primitive))
-    }
-
-    pub fn is_empty(&self) -> bool {
-        match &self {
-            Value::Primitive(_) => false,
-            Value::Composite(traits) => traits.is_empty(),
-        }
-    }
-
-    pub fn cast_primitive<T: Primitive>(self) -> T {
-        match self {
-            Value::Primitive(value) => value.cast::<T>().clone(),
-            _ => panic!("Value is not a primitive"),
-        }
+    pub fn into_primitive<T: Primitive>(self) -> T {
+        self.raw_value.cast::<T>().clone()
     }
 }

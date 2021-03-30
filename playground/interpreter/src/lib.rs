@@ -44,7 +44,6 @@ fn run_code(code: &str, stack: Stack) -> wipple::Result<Vec<ShownValue>> {
     let output = Rc::new(RefCell::new(Vec::<ShownValue>::new()));
 
     wipple::setup();
-    setup_playground(&output);
 
     // Load the standard library
     (*wipple_stdlib::_wipple_plugin(&Environment::global(), stack.clone()))?;
@@ -54,18 +53,16 @@ fn run_code(code: &str, stack: Stack) -> wipple::Result<Vec<ShownValue>> {
     let program = wipple_projects::load_string(code, None, stack.clone())?;
 
     let stack = setup_module_block(stack);
+    let stack = setup_playground(&output, stack);
     wipple_projects::include_program(program, &env, stack)?;
 
     Ok(output.as_ref().clone().get_mut().clone())
 }
 
-fn setup_playground(output: &Rc<RefCell<Vec<ShownValue>>>) {
-    let env = Environment::global();
-    let env = &mut env.borrow_mut();
-
+fn setup_playground(output: &Rc<RefCell<Vec<ShownValue>>>, stack: Stack) -> Stack {
     let output = output.clone();
 
-    *env.show() = ShowFn::new(move |value, env, stack| {
+    stack.with_show(ShowFn::new(move |value, env, stack| {
         let source_text = value.format(env, stack.clone())?;
         let output_text = value.evaluate(env, stack.clone())?.format(env, stack)?;
 
@@ -75,5 +72,5 @@ fn setup_playground(output: &Rc<RefCell<Vec<ShownValue>>>) {
         });
 
         Ok(())
-    });
+    }))
 }

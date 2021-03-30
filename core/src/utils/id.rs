@@ -2,17 +2,17 @@ use crate::*;
 use uuid::Uuid;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum ID {
+pub enum Id {
     Primitive(TypeInfo),
     Runtime(Uuid),
 }
 
-impl ID {
+impl Id {
     pub fn of<T: 'static>() -> Self {
-        ID::Primitive(TypeInfo::of::<T>())
+        Id::Primitive(TypeInfo::of::<T>())
     }
 
     pub fn new() -> Self {
-        ID::Runtime(Uuid::new_v4())
+        Id::Runtime(Uuid::new_v4())
     }
 }

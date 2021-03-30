@@ -79,7 +79,7 @@ pub(crate) fn setup(env: &mut Environment) {
     });
 
     // Module ::= Text
-    env.add_text_conformance(ID::module(), "module");
+    env.add_text_conformance(Trait::module(), "module");
 
     // Module ::= Function
     env.add_primitive_conformance(|module: Module| {

@@ -71,33 +71,18 @@ impl Default for HandleAssignFn {
 fundamental_stack_key!(pub handle_assign for HandleAssignFn);
 
 impl Environment {
-    pub fn set_variable(&mut self, name: &str, mut value: Value) {
-        let name = String::from(name);
-
-        // Add a 'Named' trait to the value if it isn't already named
-        if !value.has_trait_directly(ID::named()) {
-            value = value.add(&Trait::of_primitive(Named { name: name.clone() }));
-        }
-
-        self.variables().insert(name, Variable::Just(value));
+    pub fn set_variable(&mut self, name: &str, value: Value) {
+        self.variables()
+            .insert(name.to_string(), Variable::Just(value));
     }
 
     pub fn set_computed_variable(name: &str, value: Value, env: &EnvironmentRef) {
-        let name = String::from(name);
-
         let captured_env = env.clone();
 
         env.borrow_mut().variables().insert(
-            name.clone(),
+            name.to_string(),
             Variable::Computed(ComputeFn::new(move |stack| {
-                let mut value = value.evaluate(&captured_env, stack)?;
-
-                // Add a 'Named' trait to the value if it isn't already named
-                if !value.has_trait_directly(ID::named()) {
-                    value = value.add(&Trait::of_primitive(Named { name: name.clone() }));
-                }
-
-                Ok(value)
+                value.evaluate(&captured_env, stack)
             })),
         );
     }
@@ -142,7 +127,7 @@ pub(crate) fn setup(env: &mut Environment) {
     env.set_variable(
         "Name",
         Value::of(TraitConstructor {
-            id: ID::name(),
+            r#trait: Trait::name(),
             validation: Validation::of::<Name>(),
         }),
     );

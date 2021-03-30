@@ -5,15 +5,23 @@ mod result;
 use crate::*;
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
+struct VariantKind;
+
+impl Kind {
+    pub fn variant() -> Self {
+        Kind::of_with_parent::<VariantKind>(&Kind::Any)
+    }
+}
+
 #[derive(Clone)]
 pub struct Variant {
-    pub variant_id: ID,
+    pub variant_id: Id,
     pub name: String,
     pub associated_values: Vec<Value>,
 }
 
 impl Variant {
-    pub fn new(variant_id: ID, name: &str, associated_values: &[Value]) -> Self {
+    pub fn new(variant_id: Id, name: &str, associated_values: &[Value]) -> Self {
         Variant {
             variant_id,
             name: String::from(name),
@@ -25,28 +33,26 @@ impl Variant {
 impl Primitive for Variant {}
 
 impl Module {
-    pub fn for_variant_of(id: ID, items: HashMap<String, Vec<Validation>>) -> Self {
+    pub fn for_variant_of(id: Id, items: HashMap<String, Vec<Validation>>) -> Self {
         let mut env = Environment::blank();
 
         for (name, validations) in items {
             fn build_constructor(
                 name: String,
-                id: ID,
+                id: Id,
                 remaining_validations: Vec<Validation>,
                 values: Vec<Value>,
             ) -> Value {
                 if remaining_validations.is_empty() {
-                    let mut variant_trait = Trait::new(id, {
-                        let name = name.clone();
-                        move |_, _| Ok(Value::of(Variant::new(id, &name, &values)))
-                    });
+                    let variant_trait = Trait {
+                        id,
+                        kind: Kind::variant(),
+                    };
 
-                    variant_trait.is_variant = true;
-
-                    let text_trait =
-                        Trait::of_primitive(Text::new(&format!("<variant '{}'>", name)));
-
-                    Value::new(&variant_trait).add(&text_trait)
+                    Value::new(
+                        variant_trait,
+                        Dynamic::new(Variant::new(id, &name, &values)),
+                    )
                 } else {
                     Value::of(Function::new(move |value, env, stack| {
                         let (validation, remaining_validations) =
@@ -85,7 +91,7 @@ impl Module {
     }
 
     pub fn for_variant(items: HashMap<String, Vec<Validation>>) -> Self {
-        Module::for_variant_of(ID::new(), items)
+        Module::for_variant_of(Id::new(), items)
     }
 }
 
@@ -114,25 +120,9 @@ pub(crate) fn setup(env: &mut Environment) {
     env.set_variable(
         "match",
         Value::of(Function::new(|value, env, stack| {
-            // FIXME: Only works with traits directly defined on the value
-            let variant_traits = value
-                .evaluate(env, stack.clone())?
-                .traits()
-                .into_iter()
-                .filter(|t| t.is_variant)
-                .collect::<Vec<_>>();
-
-            let variant =
-                (match variant_traits.len() {
-                    1 => variant_traits[0].clone(),
-                    0 => return Err(ReturnState::Error(Error::new("Expected variant", stack))),
-                    _ => return Err(ReturnState::Error(Error::new(
-                        "Value contains multiple variants, so the variant to match is ambiguous",
-                        stack,
-                    ))),
-                }
-                .value)(env, stack)?
-                .cast_primitive::<Variant>();
+            let variant = value
+                .get_kind_or(&Kind::variant(), "Expected variant", env, stack)?
+                .into_primitive::<Variant>();
 
             Ok(Value::of(Function::new(move |value, env, stack| {
                 let block = value.get_primitive_or::<Block>(

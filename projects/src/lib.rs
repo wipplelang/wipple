@@ -52,9 +52,11 @@ pub fn setup() {
     );
 
     // Text ::= Module
+    // FIXME: This is impure and should not be a direct conformance; use some
+    // kind of 'Import' trait instead
     env.borrow_mut()
-        .add_conformance(ID::module(), Validation::of::<Text>(), |value, _, stack| {
-            let text = value.clone().cast_primitive::<Text>();
+        .add_conformance(Trait::text(), Trait::module(), |value, _, stack| {
+            let text = value.clone().into_primitive::<Text>();
 
             let module = import(&text.text, stack)?;
             Ok(Value::of(module))

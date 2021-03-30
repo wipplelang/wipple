@@ -7,7 +7,7 @@ struct ResultVariantMarker;
 impl Primitive for ResultVariantMarker {}
 
 fn result_variant() -> Module {
-    Module::for_variant_of(ID::of::<ResultVariantMarker>(), {
+    Module::for_variant_of(Id::of::<ResultVariantMarker>(), {
         let mut h = HashMap::new();
         h.insert(String::from("ok"), vec![Validation::any()]);
         // FIXME: Require errors conform to an Error trait
@@ -17,11 +17,11 @@ fn result_variant() -> Module {
 }
 
 fn ok_variant(value: Value) -> Variant {
-    Variant::new(ID::of::<ResultVariantMarker>(), "ok", &[value])
+    Variant::new(Id::of::<ResultVariantMarker>(), "ok", &[value])
 }
 
 fn error_variant(value: Value) -> Variant {
-    Variant::new(ID::of::<ResultVariantMarker>(), "error", &[value])
+    Variant::new(Id::of::<ResultVariantMarker>(), "error", &[value])
 }
 
 impl Value {
@@ -46,8 +46,8 @@ impl Value {
         stack: Stack,
     ) -> Result<Option<std::result::Result<Value, Value>>> {
         let variant =
-            match self.get_trait_if_present(ID::of::<ResultVariantMarker>(), env, stack)? {
-                Some(value) => value.cast_primitive::<Variant>(),
+            match self.get_trait_if_present(&Trait::of::<ResultVariantMarker>(), env, stack)? {
+                Some(value) => value.into_primitive::<Variant>(),
                 _ => return Ok(None),
             };
 

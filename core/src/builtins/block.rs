@@ -57,7 +57,7 @@ impl Block {
 
 pub(crate) fn setup(env: &mut Environment) {
     // Block ::= Text
-    env.add_text_conformance(ID::block(), "block");
+    env.add_text_conformance(Trait::block(), "block");
 
     // Block ::= Replace-In-Template
     env.add_primitive_conformance(|block: Block| {

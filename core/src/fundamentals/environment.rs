@@ -115,21 +115,21 @@ pub enum EnvironmentVisibility {
 
 #[derive(Clone)]
 pub struct EnvironmentKey {
-    pub id: ID,
+    pub id: Id,
     pub visibility: EnvironmentVisibility,
 }
 
 impl EnvironmentKey {
     pub fn of<T: 'static>(visibility: EnvironmentVisibility) -> Self {
         EnvironmentKey {
-            id: ID::of::<T>(),
+            id: Id::of::<T>(),
             visibility,
         }
     }
 
     pub fn new(visibility: EnvironmentVisibility) -> Self {
         EnvironmentKey {
-            id: ID::new(),
+            id: Id::new(),
             visibility,
         }
     }

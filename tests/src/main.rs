@@ -185,16 +185,19 @@ fn test(code: &str) -> (String, std::time::Duration) {
 
     let output = Rc::new(RefCell::new(Vec::new()));
 
-    let env = Environment::global();
     wipple::setup();
-    setup(output.clone(), &env);
+    let stack = setup(output.clone(), stack);
 
     // Load the standard library
-    wipple_stdlib::_wipple_plugin(&env, stack.clone()).expect("Failed to load standard library");
+    wipple_stdlib::_wipple_plugin(&Environment::global(), stack.clone())
+        .expect("Failed to load standard library");
 
-    if let Err(error) =
-        wipple_projects::import_program_with_parent_env(program, None, &env, stack.clone())
-    {
+    if let Err(error) = wipple_projects::import_program_with_parent_env(
+        program,
+        None,
+        &Environment::global(),
+        stack.clone(),
+    ) {
         output.replace(vec![error.into_error(stack).to_string()]);
     }
 
@@ -204,8 +207,8 @@ fn test(code: &str) -> (String, std::time::Duration) {
     (output, duration)
 }
 
-fn setup(output: Rc<RefCell<Vec<String>>>, env: &EnvironmentRef) {
-    *env.borrow_mut().show() = ShowFn::new(move |value, env, stack| {
+fn setup(output: Rc<RefCell<Vec<String>>>, stack: Stack) -> Stack {
+    stack.with_show(ShowFn::new(move |value, env, stack| {
         let source_text = value.format(env, stack.clone())?;
         let output_text = value.evaluate(env, stack.clone())?.format(env, stack)?;
 
@@ -214,5 +217,5 @@ fn setup(output: Rc<RefCell<Vec<String>>>, env: &EnvironmentRef) {
             .push(format!("{} ==> {}", source_text, output_text));
 
         Ok(())
-    })
+    }))
 }

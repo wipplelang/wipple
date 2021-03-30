@@ -7,7 +7,7 @@ struct BooleanVariantMarker;
 impl Primitive for BooleanVariantMarker {}
 
 fn boolean_variant() -> Module {
-    Module::for_variant_of(ID::of::<BooleanVariantMarker>(), {
+    Module::for_variant_of(Id::of::<BooleanVariantMarker>(), {
         let mut h = HashMap::new();
         h.insert(String::from("true"), vec![]);
         h.insert(String::from("false"), vec![]);
@@ -16,6 +16,7 @@ fn boolean_variant() -> Module {
 }
 
 impl Value {
+    // FIXME: Don't rely on the environment for this
     pub fn r#true() -> Self {
         let env = boolean_variant().env;
         env.borrow_mut().parent = Some(Environment::global());
@@ -25,6 +26,7 @@ impl Value {
             .unwrap()
     }
 
+    // FIXME: Don't rely on the environment for this
     pub fn r#false() -> Self {
         let env = boolean_variant().env;
         env.borrow_mut().parent = Some(Environment::global());
@@ -44,8 +46,8 @@ impl Value {
 
     pub fn as_bool_if_present(&self, env: &EnvironmentRef, stack: Stack) -> Result<Option<bool>> {
         let variant =
-            match self.get_trait_if_present(ID::of::<BooleanVariantMarker>(), env, stack)? {
-                Some(value) => value.cast_primitive::<Variant>(),
+            match self.get_trait_if_present(&Trait::of::<BooleanVariantMarker>(), env, stack)? {
+                Some(value) => value.into_primitive::<Variant>(),
                 _ => return Ok(None),
             };
 

@@ -15,17 +15,13 @@ impl Default for ShowFn {
     }
 }
 
-fundamental_env_key!(pub show for ShowFn {
-    // The 'show' implementation must be declared in the global environment
-    visibility: EnvironmentVisibility::Private,
-});
+fundamental_stack_key!(pub show for ShowFn);
 
 pub(crate) fn setup(env: &mut Environment) {
     env.set_variable(
         "show",
         Value::of(Function::new(|value, env, stack| {
-            let show = Environment::global().borrow_mut().show().clone();
-            show.0(value, env, stack)?;
+            stack.clone().get_show()(value, env, stack)?;
 
             Ok(Value::empty())
         })),

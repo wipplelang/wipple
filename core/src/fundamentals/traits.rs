@@ -1,152 +1,207 @@
 use crate::*;
-use std::{
-    hash::{Hash, Hasher},
-    rc::Rc,
-};
 
-#[derive(Clone)]
-pub struct Trait {
-    pub id: ID,
-    pub value: Rc<dyn Fn(&EnvironmentRef, Stack) -> Result>,
-    pub is_variant: bool, // FIXME: Remove special case
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Kind {
+    Any,
+    Child { id: Id, parent: Box<Kind> },
 }
 
-impl Trait {
-    pub fn new(id: ID, value: impl Fn(&EnvironmentRef, Stack) -> Result + 'static) -> Self {
-        Trait {
-            id,
-            value: Rc::new(value),
-            is_variant: false,
+impl Kind {
+    pub fn new_with_parent(parent: &Kind) -> Self {
+        Kind::Child {
+            id: Id::new(),
+            parent: Box::new(parent.clone()),
         }
     }
 
-    pub fn of<T: Primitive>(
-        primitive: impl Fn(&EnvironmentRef, Stack) -> Result<T> + 'static,
-    ) -> Self {
-        Trait::new(ID::Primitive(TypeInfo::of::<T>()), move |env, stack| {
-            let value = primitive(env, stack)?;
-            Ok(Value::of(value))
-        })
-    }
-
-    pub fn of_primitive<T: Primitive>(primitive: T) -> Self {
-        Trait::of(move |_, _| Ok(primitive.clone()))
+    pub fn of_with_parent<T: 'static>(parent: &Kind) -> Self {
+        Kind::Child {
+            id: Id::of::<T>(),
+            parent: Box::new(parent.clone()),
+        }
     }
 }
 
+impl Kind {
+    pub fn is_subset_of(&self, other: &Self) -> bool {
+        use Kind::*;
+
+        match (self, other) {
+            (Any, Any) => true,
+            (Any, Child { .. }) => true,
+            (Child { .. }, Any) => false,
+            (
+                Child {
+                    id: a_id,
+                    parent: a_parent,
+                },
+                Child {
+                    id: b_id,
+                    parent: b_parent,
+                },
+            ) => a_id == b_id || a_parent.is_subset_of(b_parent),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct Trait {
+    pub id: Id,
+    pub kind: Kind,
+}
+
 impl PartialEq for Trait {
-    fn eq(&self, other: &Trait) -> bool {
+    fn eq(&self, other: &Self) -> bool {
         self.id == other.id
     }
 }
 
 impl Eq for Trait {}
 
-impl Hash for Trait {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.id.hash(state);
+impl Trait {
+    #[allow(clippy::new_without_default)]
+    pub fn new() -> Self {
+        Trait::new_with_kind(&Kind::Any)
+    }
+
+    pub fn new_with_kind(kind: &Kind) -> Self {
+        Trait {
+            id: Id::new(),
+            kind: kind.clone(),
+        }
+    }
+
+    pub fn of<T: 'static>() -> Self {
+        Trait::of_with_kind::<T>(&Kind::Any)
+    }
+
+    pub fn of_with_kind<T: 'static>(kind: &Kind) -> Self {
+        Trait {
+            id: Id::of::<T>(),
+            kind: kind.clone(),
+        }
     }
 }
 
-fundamental_stack_key!(is_deriving_from_conformance for bool);
-
 impl Value {
-    pub fn get_trait(&self, id: ID, env: &EnvironmentRef, stack: Stack) -> Result {
-        self.get_trait_or(id, "Cannot find trait", env, stack)
+    pub fn get_trait(&self, r#trait: &Trait, env: &EnvironmentRef, stack: Stack) -> Result {
+        self.get_trait_or(r#trait, "Value does not have this trait", env, stack)
     }
 
-    pub fn has_trait(&self, id: ID, env: &EnvironmentRef, stack: Stack) -> Result<bool> {
-        self.get_trait_if_present(id, env, stack)
+    pub fn has_trait(&self, r#trait: &Trait, env: &EnvironmentRef, stack: Stack) -> Result<bool> {
+        self.get_trait_if_present(r#trait, env, stack)
             .map(|t| t.is_some())
     }
 
-    pub fn has_trait_directly(&self, id: ID) -> bool {
-        self.traits().iter().any(|t| t.id == id)
+    pub fn has_trait_directly(&self, r#trait: &Trait) -> bool {
+        &self.r#trait == r#trait
     }
 
     pub fn get_trait_or(
         &self,
-        id: ID,
+        r#trait: &Trait,
         message: &str,
         env: &EnvironmentRef,
         stack: Stack,
     ) -> Result {
-        self.get_trait_if_present(id, env, stack.clone())?
+        self.get_trait_if_present(r#trait, env, stack.clone())?
             .ok_or_else(|| ReturnState::Error(Error::new(message, stack)))
     }
 
     pub fn get_trait_if_present(
         &self,
-        id: ID,
+        r#trait: &Trait,
         env: &EnvironmentRef,
         stack: Stack,
     ) -> Result<Option<Value>> {
-        // Always use traits directly defined on the value if they exist instead
-        // of deriving them
-        if let Some(r#trait) = self.traits().iter().find(|t| t.id == id) {
-            let trait_value = (r#trait.value)(env, stack)?;
-            return Ok(Some(trait_value));
+        if self.has_trait_directly(r#trait) {
+            Ok(Some(self.clone()))
+        } else {
+            self.derive(|c| &c.derived_trait == r#trait, env, stack)
         }
+    }
+}
 
-        // Don't derive traits from conformances if we're already deriving
-        // another trait — this can cause ambiguity (eg. A -> B -> C vs. A -> C)
+impl Value {
+    pub fn get_kind(&self, kind: &Kind, env: &EnvironmentRef, stack: Stack) -> Result {
+        self.get_kind_or(kind, "Value is not of this kind", env, stack)
+    }
 
-        if stack.clone().get_is_deriving_from_conformance() {
-            return Ok(None);
+    pub fn is_kind(&self, kind: &Kind, env: &EnvironmentRef, stack: Stack) -> Result<bool> {
+        self.get_kind_if_present(kind, env, stack)
+            .map(|t| t.is_some())
+    }
+
+    pub fn has_kind_directly(&self, kind: &Kind) -> bool {
+        self.r#trait.kind.is_subset_of(kind)
+    }
+
+    pub fn get_kind_or(
+        &self,
+        kind: &Kind,
+        message: &str,
+        env: &EnvironmentRef,
+        stack: Stack,
+    ) -> Result {
+        self.get_kind_if_present(kind, env, stack.clone())?
+            .ok_or_else(|| ReturnState::Error(Error::new(message, stack)))
+    }
+
+    pub fn get_kind_if_present(
+        &self,
+        kind: &Kind,
+        env: &EnvironmentRef,
+        stack: Stack,
+    ) -> Result<Option<Value>> {
+        if self.has_kind_directly(kind) {
+            Ok(Some(self.clone()))
+        } else {
+            self.derive(|c| c.derived_trait.kind.is_subset_of(kind), env, stack)
         }
+    }
+}
 
-        // Attempt to derive the trait via a conformance
-
-        let mut env = env.clone();
-
-        loop {
-            let conformances = env
+impl Value {
+    fn derive(
+        &self,
+        predicate: impl Fn(&Conformance) -> bool,
+        env: &EnvironmentRef,
+        stack: Stack,
+    ) -> Result<Option<Value>> {
+        fn derive(
+            value: &Value,
+            predicate: impl Fn(&Conformance) -> bool,
+            search_env: &EnvironmentRef,
+            eval_env: &EnvironmentRef,
+            stack: Stack,
+        ) -> Result<Option<Value>> {
+            let conformances = search_env
                 .borrow_mut()
                 .conformances()
                 .clone()
                 .into_iter()
-                .filter(|c| c.derived_trait_id == id);
+                .filter(|c| c.matches(value) && predicate(c))
+                .collect::<Vec<_>>();
 
-            let mut derived_trait = None;
+            match conformances.len() {
+                0 => {
+                    let parent = match &search_env.borrow().parent {
+                        Some(parent) => parent.clone(),
+                        None => return Ok(None),
+                    };
 
-            for conformance in conformances {
-                if conformance.derived_trait_id != id {
-                    continue;
-                }
-
-                let stack = stack.clone().with_is_deriving_from_conformance(true);
-
-                let value = match (conformance.validation)(self, &env, stack.clone())? {
-                    Validated::Valid(value) => value,
-                    Validated::Invalid => continue,
-                };
-
-                let stack = stack.with_is_deriving_from_conformance(false);
-
-                if derived_trait.is_some() {
-                    return Err(ReturnState::Error(Error::new(
-                        "Value satisfies multiple conformances, so the conformance to use is ambiguous",
-                        stack
-                    )));
-                }
-
-                let derived_value = (conformance.derive_trait_value)(&value, &env, stack.clone())?;
-
-                derived_trait = Some(Trait::new(id, move |_, _| Ok(derived_value.clone())))
-            }
-
-            if let Some(derived_trait) = derived_trait {
-                let trait_value = (derived_trait.value)(&env, stack)?;
-                return Ok(Some(trait_value));
-            }
-
-            let parent = env.borrow_mut().parent.clone();
-            if let Some(parent) = parent {
-                env = parent.clone();
-            } else {
-                return Ok(None);
+                    derive(value, predicate, &parent, eval_env, stack)
+                },
+                1 => (conformances.first().unwrap().derive_value)(value, eval_env, stack).map(Some),
+                _ => Err(ReturnState::Error(Error::new(
+                    // TODO: Better diagnostics -- list out all of the matching conformances
+                    "Multiple conformances match this value, so the conformance to use is ambiguous",
+                    stack,
+                ))),
             }
         }
+
+        derive(self, predicate, env, env, stack)
     }
 }
 
@@ -171,7 +226,7 @@ impl Value {
         stack: Stack,
     ) -> Result<Option<T>> {
         Ok(self
-            .get_trait_if_present(ID::of::<T>(), env, stack)?
-            .map(|value| value.cast_primitive::<T>()))
+            .get_trait_if_present(&Trait::of::<T>(), env, stack)?
+            .map(|value| value.into_primitive::<T>()))
     }
 }

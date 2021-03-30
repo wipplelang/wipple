@@ -90,7 +90,7 @@ fundamental_primitive!(pub operator for Operator);
 
 pub(crate) fn setup(env: &mut Environment) {
     // Operator ::= Text
-    env.add_text_conformance(ID::operator(), "operator");
+    env.add_text_conformance(Trait::operator(), "operator");
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]

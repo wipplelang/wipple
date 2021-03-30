@@ -70,8 +70,8 @@ pub(crate) fn setup(env: &mut Environment) {
     });
 
     // List ::= Text
-    env.add_conformance(ID::text(), Validation::of::<List>(), |value, env, stack| {
-        let list = value.clone().cast_primitive::<List>();
+    env.add_conformance(Trait::list(), Trait::text(), |value, env, stack| {
+        let list = value.clone().into_primitive::<List>();
 
         let mut items = Vec::new();
 

@@ -41,5 +41,5 @@ pub(crate) fn setup(env: &mut Environment) {
     });
 
     // Template ::= Text
-    env.add_text_conformance(ID::template(), "template");
+    env.add_text_conformance(Trait::template(), "template");
 }
