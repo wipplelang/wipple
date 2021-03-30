@@ -8,12 +8,11 @@ You can use this documentation to learn how to write Wipple code, how to express
 
 I ([Wilson Gramer](https://gramer.dev)) initially started building Wipple to learn how programming languages work. Every language is built to satisfy their creator's vision of a "perfect" way of expressing code — and Wipple is no exception! — but I noticed that often this perfection is tarnished by reasons of practicality or history. Therefore, Wipple's design philosophy is **no magic**: the Wipple core has no special cases and no assumptions about language constructs. This means you can create your own language extensions by writing plugins that will be treated with the same centrality as the standard library.
 
-Wipple is built upon four main ideas:
+Wipple is built upon three main ideas:
 
 - **Traits** describe representations and behavior of a piece of the program.
-- **Values** are collections of traits.
 - **Conformances** describe relationships between traits.
-- **The environment** handles the program state.
+- **The environment and the stack** handle the program state.
 
 I've designed Wipple under the same assumption as [Bel](http://www.paulgraham.com/bel.html) — "if computers were as powerful as we wanted, what would programming languages look like?" Wipple code is about **describing your ideas** more than it is about how those ideas are actually executed or represented in memory by the computer. Even constructs like booleans are represented using variants (sum types) in Wipple, because truth and falsehood are axioms — even if computers store them as a 1 or 0, logically they are defined in terms of their relationships to other values.
 
