@@ -45,6 +45,15 @@ pub enum Variable {
     Computed(ComputeFn),
 }
 
+impl Variable {
+    pub fn get_value(&self, stack: Stack) -> Result {
+        match self {
+            Variable::Just(value) => Ok(value.clone()),
+            Variable::Computed(compute) => compute(stack),
+        }
+    }
+}
+
 pub type Variables = HashMap<String, Variable>;
 
 fundamental_env_key!(pub variables for Variables {
@@ -68,7 +77,9 @@ impl Default for HandleAssignFn {
     }
 }
 
-fundamental_stack_key!(pub handle_assign for HandleAssignFn);
+fundamental_env_key!(pub handle_assign for HandleAssignFn {
+    visibility: EnvironmentVisibility::Private,
+});
 
 impl Environment {
     pub fn set_variable(&mut self, name: &str, value: Value) {
@@ -91,11 +102,7 @@ impl Environment {
 impl Name {
     pub fn resolve(&self, env: &EnvironmentRef, stack: Stack) -> Result {
         let variable = self.resolve_variable(env, stack.clone())?;
-
-        match variable {
-            Variable::Just(value) => Ok(value),
-            Variable::Computed(compute) => compute(stack),
-        }
+        variable.get_value(stack)
     }
 
     pub fn resolve_variable(&self, env: &EnvironmentRef, stack: Stack) -> Result<Variable> {

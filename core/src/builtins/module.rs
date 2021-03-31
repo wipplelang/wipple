@@ -28,7 +28,7 @@ impl Block {
             None => stack,
         };
 
-        let stack = setup_module_block(stack);
+        setup_module_block(&module_env);
 
         for statement in &self.statements {
             let stack = match &statement.location {
@@ -49,8 +49,8 @@ impl Block {
     }
 }
 
-pub fn setup_module_block(stack: Stack) -> Stack {
-    stack.with_handle_assign(HandleAssignFn::new(|left, right, computed, env, stack| {
+pub fn setup_module_block(env: &EnvironmentRef) {
+    *env.borrow_mut().handle_assign() = HandleAssignFn::new(|left, right, computed, env, stack| {
         let stack = stack.clone().update_evaluation(|e| {
             e.with(|| {
                 format!(
@@ -68,7 +68,7 @@ pub fn setup_module_block(stack: Stack) -> Stack {
         )?;
 
         assign(&right, computed, env, stack)
-    }))
+    })
 }
 
 pub(crate) fn setup(env: &mut Environment) {

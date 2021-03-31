@@ -95,21 +95,24 @@ impl Module {
     }
 }
 
-fn setup_match_block(matches: Rc<RefCell<HashMap<String, Value>>>, stack: Stack) -> Stack {
-    stack.with_handle_assign(HandleAssignFn::new(move |left, right, computed, env, stack| {
-        let name = left.get_primitive_or::<Name>("Expected name for match", env, stack.clone())?;
+fn setup_match_block(matches: Rc<RefCell<HashMap<String, Value>>>, env: &EnvironmentRef) {
+    *env.borrow_mut().handle_assign() = HandleAssignFn::new(
+        move |left, right, computed, env, stack| {
+            let name =
+                left.get_primitive_or::<Name>("Expected name for match", env, stack.clone())?;
 
-        if computed {
-            return Err(ReturnState::Error(Error::new(
-                "Matches are already lazily evaluated, so creating a computed variable here is unnecessary",
-                stack
-            )));
-        }
+            if computed {
+                return Err(ReturnState::Error(Error::new(
+                    "Matches are already lazily evaluated, so creating a computed variable here is unnecessary",
+                    stack
+                )));
+            }
 
-        matches.borrow_mut().insert(name.name, right.clone());
+            matches.borrow_mut().insert(name.name, right.clone());
 
-        Ok(())
-    }))
+            Ok(())
+        },
+    )
 }
 
 pub(crate) fn setup(env: &mut Environment) {
@@ -132,13 +135,15 @@ pub(crate) fn setup(env: &mut Environment) {
                 )?;
 
                 let matches = Rc::new(RefCell::new(HashMap::new()));
-                let match_env = Environment::child_of(env);
+                let match_env = Environment::child_of(env).into_ref();
 
-                let stack = setup_match_block(matches.clone(), stack);
+                setup_match_block(matches.clone(), &match_env);
 
-                block.reduce_inline(&match_env.into_ref(), stack.clone())?;
+                block.reduce_inline(&match_env, stack.clone())?;
 
-                let mut r#match = match matches.borrow().get(&variant.name) {
+                let matches = matches.take();
+
+                let mut r#match = match matches.get(&variant.name) {
                     Some(value) => value.evaluate(env, stack.clone()),
                     None => Err(ReturnState::Error(Error::new(
                         &format!("No match for variant '{}'", variant.name),

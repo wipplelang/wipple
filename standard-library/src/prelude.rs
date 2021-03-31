@@ -57,7 +57,8 @@ pub fn prelude(env: &EnvironmentRef) {
 
     let add_assignment_operator = |name: &str, computed: bool, env: &EnvironmentRef| {
         let operator = Operator::collect(move |left, right, env, stack| {
-            stack.clone().get_handle_assign()(left, right, computed, env, stack)?;
+            let handle_assign = env.borrow_mut().handle_assign().clone();
+            handle_assign(left, right, computed, env, stack)?;
             Ok(Value::empty())
         });
 

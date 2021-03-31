@@ -52,7 +52,7 @@ fn run_code(code: &str, stack: Stack) -> wipple::Result<Vec<ShownValue>> {
 
     let program = wipple_projects::load_string(code, None, stack.clone())?;
 
-    let stack = setup_module_block(stack);
+    setup_module_block(&env);
     let stack = setup_playground(&output, stack);
     wipple_projects::include_program(program, &env, stack)?;
 
