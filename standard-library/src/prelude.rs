@@ -225,4 +225,39 @@ pub fn prelude(env: &EnvironmentRef) {
     boolean_math!(>, comparison_precedence_group, env);
     boolean_math!(<, comparison_precedence_group, env);
     boolean_math!("=", ==, comparison_precedence_group, env);
+
+    // 'format' function
+
+    env.borrow_mut().set_variable(
+        "format",
+        Value::of(Function::new(|value, env, stack| {
+            let format_text = value.get_primitive_or::<Text>("Expected format text", env, stack)?;
+
+            fn build_formatter(remaining_strings: Vec<String>, result: String) -> Value {
+                if remaining_strings.len() == 1 {
+                    Value::of(Text::new(&(result + &remaining_strings[0])))
+                } else {
+                    Value::of(Function::new(move |value, env, stack| {
+                        let (leading_string, remaining_strings) =
+                            remaining_strings.split_first().unwrap();
+
+                        let text = value.get_primitive_or::<Text>(
+                            "Cannot format this value because it does not conform to Text",
+                            env,
+                            stack,
+                        )?;
+
+                        Ok(build_formatter(
+                            remaining_strings.to_vec(),
+                            result.clone() + leading_string + &text.text,
+                        ))
+                    }))
+                }
+            }
+
+            let strings = format_text.text.split('_').map(String::from).collect();
+
+            Ok(build_formatter(strings, String::from("")))
+        })),
+    )
 }

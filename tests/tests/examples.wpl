@@ -42,3 +42,11 @@ show text
 ---
 
 text ==> (CORRECT ANSWER 5)
+
+>>> Formatting
+
+show (format "_, _!" "Hello" "world")
+
+---
+
+(format _, _! Hello world) ==> Hello, world!
