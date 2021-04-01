@@ -5,7 +5,9 @@ on:
       - cli/**
       - core/**
       - parser/**
-      - plugin-loader/**
+      - plugins/**
+      - projects/**
+      - standard-library/**
       - tests/**
 
 name: Tests

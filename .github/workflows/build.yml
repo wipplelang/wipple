@@ -7,6 +7,7 @@ on:
       - parser/**
       - plugins/**
       - projects/**
+      - standard-library/**
 
 name: Build
 
