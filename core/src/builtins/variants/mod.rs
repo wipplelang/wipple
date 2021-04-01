@@ -244,6 +244,7 @@ pub(crate) fn setup(env: &mut Environment) {
         "match",
         Value::of(Function::new(|value, env, stack| {
             let variant = value
+                .evaluate(env, stack.clone())?
                 .get_kind_or(&Kind::variant(), "Expected variant", env, stack)?
                 .into_primitive::<Variant>();
 

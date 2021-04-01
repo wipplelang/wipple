@@ -24,6 +24,17 @@ pub(crate) fn setup(env: &mut Environment) {
         EvaluateFn::new(move |_, _| Ok(quoted.value.clone()))
     });
 
+    // Quoted ::= Replace-In-Template
+    env.add_primitive_conformance(|quoted: Quoted| {
+        ReplaceInTemplateFn::new(move |parameter, replacement, env, stack| {
+            let replaced = quoted
+                .value
+                .replace_in_template(parameter, replacement, env, stack)?;
+
+            Ok(Value::of(Quoted::new(replaced)))
+        })
+    });
+
     // Quoted ::= Text
     env.add_conformance(Trait::quoted(), Trait::text(), |value, env, stack| {
         let quoted = value.clone().into_primitive::<Quoted>();

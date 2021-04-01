@@ -22,3 +22,23 @@ show (withdraw 10)
 
 (deposit 50) ==> 125
 (withdraw 10) ==> 65
+
+>>> Guess example
+
+use (variant {
+    correct : (_)
+    incorrect : ()
+})
+
+guess : correct 5
+
+text : match guess {
+    correct : x => '("CORRECT ANSWER" x)
+    incorrect : "INCORRECT ANSWER"
+}
+
+show text
+
+---
+
+text ==> (CORRECT ANSWER 5)
