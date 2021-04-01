@@ -3,43 +3,34 @@ use std::rc::Rc;
 
 pub type Conformances = Vec<Conformance>;
 
-fundamental_env_key!(pub conformances for Conformances {
+core_env_key!(pub conformances for Conformances {
     visibility: EnvironmentVisibility::Public(UseFn::from(|parent: &Conformances, new| {
         parent.clone().into_iter().chain(new.clone()).collect()
     })),
 });
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum ConformanceMatch {
-    Trait(Trait),
-    Kind(Kind),
-}
-
 #[derive(Clone)]
 pub struct Conformance {
-    pub matching: ConformanceMatch,
+    pub matching_trait: Trait,
     pub derived_trait: Trait,
     pub derive_value: Rc<dyn Fn(&Value, &EnvironmentRef, Stack) -> Result>,
 }
 
 impl Conformance {
     pub fn new(
-        matching: ConformanceMatch,
+        matching_trait: Trait,
         derived_trait: Trait,
         derive_value: impl Fn(&Value, &EnvironmentRef, Stack) -> Result + 'static,
     ) -> Self {
         Conformance {
-            matching,
+            matching_trait,
             derived_trait,
             derive_value: Rc::new(derive_value),
         }
     }
 
     pub fn matches(&self, value: &Value) -> bool {
-        match &self.matching {
-            ConformanceMatch::Kind(kind) => &value.r#trait.kind == kind,
-            ConformanceMatch::Trait(r#trait) => &value.r#trait == r#trait,
-        }
+        value.r#trait == self.matching_trait
     }
 }
 
@@ -51,7 +42,7 @@ impl Environment {
         derive_value: impl Fn(&Value, &EnvironmentRef, Stack) -> Result + 'static,
     ) {
         self.conformances().push(Conformance::new(
-            ConformanceMatch::Trait(matching_trait),
+            matching_trait,
             derived_trait,
             derive_value,
         ))

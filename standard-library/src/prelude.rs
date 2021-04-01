@@ -184,10 +184,10 @@ pub fn prelude(env: &EnvironmentRef) {
     math!(/, multiplication_precedence_group);
 
     macro_rules! boolean_math {
-        ($operation:tt, $precedence_group:ident) => {
-            boolean_math!(stringify!($operation), $operation, $precedence_group)
+        ($operation:tt, $precedence_group:ident, $prelude_env:expr) => {
+            boolean_math!(stringify!($operation), $operation, $precedence_group, $prelude_env)
         };
-        ($name:expr, $operation:tt, $precedence_group:ident) => {{
+        ($name:expr, $operation:tt, $precedence_group:ident, $prelude_env:expr) => {{
             let operator = Operator::collect(|left, right, env, stack| {
                 let left = left
                     .evaluate(env, stack.clone())?
@@ -199,7 +199,13 @@ pub fn prelude(env: &EnvironmentRef) {
 
                 let result = left.number $operation right.number;
 
-                Ok(Value::from_bool(result))
+                // This will always work because 'true' and 'false' are defined
+                // inside the standard library, which we have full control over
+                let value = Name::new(&result.to_string())
+                    .resolve(env, stack)
+                    .expect("'true' and 'false' somehow aren't defined");
+
+                Ok(value)
             });
 
             add_operator(&operator, &$precedence_group);
@@ -216,7 +222,7 @@ pub fn prelude(env: &EnvironmentRef) {
         PrecedenceGroupComparison::higher_than(multiplication_precedence_group),
     );
 
-    boolean_math!(>, comparison_precedence_group);
-    boolean_math!(<, comparison_precedence_group);
-    boolean_math!("=", ==, comparison_precedence_group);
+    boolean_math!(>, comparison_precedence_group, env);
+    boolean_math!(<, comparison_precedence_group, env);
+    boolean_math!("=", ==, comparison_precedence_group, env);
 }

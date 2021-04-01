@@ -3,7 +3,7 @@ use crate::*;
 #[derive(Clone, Copy)]
 struct Empty;
 
-fundamental_primitive!(pub empty for Empty);
+core_primitive!(pub empty for Empty);
 
 impl Value {
     pub fn empty() -> Self {

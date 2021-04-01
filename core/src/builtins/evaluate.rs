@@ -4,7 +4,7 @@ fn_wrapper_struct! {
     pub type EvaluateFn(&EnvironmentRef, Stack) -> Result;
 }
 
-fundamental_primitive!(pub evaluate for EvaluateFn);
+core_primitive!(pub evaluate for EvaluateFn);
 
 impl Value {
     pub fn evaluate(&self, env: &EnvironmentRef, stack: Stack) -> Result {

@@ -16,7 +16,7 @@ impl Quoted {
     }
 }
 
-fundamental_primitive!(pub quoted for Quoted);
+core_primitive!(pub quoted for Quoted);
 
 pub(crate) fn setup(env: &mut Environment) {
     // Quoted ::= Evaluate

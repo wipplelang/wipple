@@ -16,7 +16,7 @@ impl Module {
     }
 }
 
-fundamental_primitive!(pub module for Module);
+core_primitive!(pub module for Module);
 
 impl Block {
     pub fn reduce_into_module(&self, env: &EnvironmentRef, stack: Stack) -> Result {

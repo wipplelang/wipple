@@ -55,7 +55,7 @@ impl<T> From<Validated<T>> for Option<T> {
     }
 }
 
-fundamental_primitive!(pub validation for Validation);
+core_primitive!(pub validation for Validation);
 
 pub(crate) fn setup(env: &mut Environment) {
     // Validation ::= Text

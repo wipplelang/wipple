@@ -10,7 +10,7 @@ fn_wrapper_struct! {
     pub type Function(&Value, &EnvironmentRef, Stack) -> Result;
 }
 
-fundamental_primitive!(pub function for Function);
+core_primitive!(pub function for Function);
 
 impl Value {
     pub fn call(&self, parameter: &Value, env: &EnvironmentRef, stack: Stack) -> Result {

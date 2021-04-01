@@ -7,7 +7,7 @@ pub struct Closure {
     pub return_value: Value,
 }
 
-fundamental_primitive!(pub closure for Closure);
+core_primitive!(pub closure for Closure);
 
 pub(crate) fn setup(env: &mut Environment) {
     // Closure ::= Function

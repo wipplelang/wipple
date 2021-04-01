@@ -26,7 +26,7 @@ macro_rules! fn_wrapper_struct {
     };
 }
 
-macro_rules! fundamental_primitive {
+macro_rules! core_primitive {
     ($vis:vis $name:ident for $Type:ty) => {
         impl $crate::Primitive for $Type {}
 
@@ -49,7 +49,7 @@ macro_rules! primitive {
     };
 }
 
-macro_rules! fundamental_env_key {
+macro_rules! core_env_key {
     ($vis:vis $name:ident for $Type:ty { visibility: $visibility:expr $(,)? }) => {
         impl $crate::EnvironmentKey {
             $vis fn $name() -> Self {
@@ -82,7 +82,7 @@ macro_rules! env_key {
     };
 }
 
-macro_rules! fundamental_stack_key {
+macro_rules! core_stack_key {
     ($vis:vis $name:ident for $Type:ty) => {
         impl $crate::StackKey {
             $vis fn $name() -> Self {

@@ -30,7 +30,7 @@ pub struct EvaluationStack {
     recording_enabled: bool,
 }
 
-fundamental_stack_key!(pub evaluation for EvaluationStack);
+core_stack_key!(pub evaluation for EvaluationStack);
 
 impl Default for EvaluationStack {
     fn default() -> Self {

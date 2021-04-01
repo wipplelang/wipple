@@ -21,7 +21,7 @@ impl Block {
     }
 }
 
-fundamental_primitive!(pub block for Block);
+core_primitive!(pub block for Block);
 
 impl Block {
     pub fn reduce(&self, env: &EnvironmentRef, stack: Stack) -> Result {
@@ -109,7 +109,7 @@ pub(crate) fn setup(env: &mut Environment) {
 
             let variables = module.env.borrow_mut().variables().clone();
             for (name, variable) in variables {
-                let value = variable.get_value(stack.clone())?;
+                let value = variable.get_value(env, stack.clone())?;
 
                 let validated = match fields.get(&name) {
                     Some(validation) => validation(&value, env, stack.clone())?,

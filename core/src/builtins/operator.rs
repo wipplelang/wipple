@@ -6,7 +6,7 @@ use std::{
 };
 use uuid::Uuid;
 
-fundamental_env_key!(pub operator_precedences for Vec<PrecedenceGroup> {
+core_env_key!(pub operator_precedences for Vec<PrecedenceGroup> {
     // All operators must be declared in the global environment
     visibility: EnvironmentVisibility::Private,
 });
@@ -86,7 +86,7 @@ impl Operator {
     }
 }
 
-fundamental_primitive!(pub operator for Operator);
+core_primitive!(pub operator for Operator);
 
 pub(crate) fn setup(env: &mut Environment) {
     // Operator ::= Text

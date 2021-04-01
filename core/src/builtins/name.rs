@@ -20,23 +20,23 @@ impl Name {
     }
 }
 
-fundamental_primitive!(pub name for Name);
+core_primitive!(pub name for Name);
 
 fn_wrapper_struct! {
     pub type AssignFn(&Value, bool, &EnvironmentRef, Stack) -> Result<()>;
 }
 
-fundamental_primitive!(pub assign for AssignFn);
+core_primitive!(pub assign for AssignFn);
 
 #[derive(Clone)]
 pub struct Named {
     pub name: String,
 }
 
-fundamental_primitive!(pub named for Named);
+core_primitive!(pub named for Named);
 
 fn_wrapper_struct! {
-    pub type ComputeFn(Stack) -> Result;
+    pub type ComputeFn(&EnvironmentRef, Stack) -> Result;
 }
 
 #[derive(Clone)]
@@ -46,17 +46,17 @@ pub enum Variable {
 }
 
 impl Variable {
-    pub fn get_value(&self, stack: Stack) -> Result {
+    pub fn get_value(&self, env: &EnvironmentRef, stack: Stack) -> Result {
         match self {
             Variable::Just(value) => Ok(value.clone()),
-            Variable::Computed(compute) => compute(stack),
+            Variable::Computed(compute) => compute(env, stack),
         }
     }
 }
 
 pub type Variables = HashMap<String, Variable>;
 
-fundamental_env_key!(pub variables for Variables {
+core_env_key!(pub variables for Variables {
     visibility: EnvironmentVisibility::Public(UseFn::from(|parent: &Variables, new| {
         parent.clone().into_iter().chain(new.clone()).collect()
     }))
@@ -77,7 +77,7 @@ impl Default for HandleAssignFn {
     }
 }
 
-fundamental_env_key!(pub handle_assign for HandleAssignFn {
+core_env_key!(pub handle_assign for HandleAssignFn {
     visibility: EnvironmentVisibility::Private,
 });
 
@@ -87,14 +87,14 @@ impl Environment {
             .insert(name.to_string(), Variable::Just(value));
     }
 
-    pub fn set_computed_variable(name: &str, value: Value, env: &EnvironmentRef) {
-        let captured_env = env.clone();
-
-        env.borrow_mut().variables().insert(
+    pub fn set_computed_variable(
+        &mut self,
+        name: &str,
+        compute: impl Fn(&EnvironmentRef, Stack) -> Result + 'static,
+    ) {
+        self.variables().insert(
             name.to_string(),
-            Variable::Computed(ComputeFn::new(move |stack| {
-                value.evaluate(&captured_env, stack)
-            })),
+            Variable::Computed(ComputeFn::new(compute)),
         );
     }
 }
@@ -102,7 +102,7 @@ impl Environment {
 impl Name {
     pub fn resolve(&self, env: &EnvironmentRef, stack: Stack) -> Result {
         let variable = self.resolve_variable(env, stack.clone())?;
-        variable.get_value(stack)
+        variable.get_value(env, stack)
     }
 
     pub fn resolve_variable(&self, env: &EnvironmentRef, stack: Stack) -> Result<Variable> {
@@ -143,7 +143,13 @@ pub(crate) fn setup(env: &mut Environment) {
     env.add_primitive_conformance(|name: Name| {
         AssignFn::new(move |value, computed, env, stack| {
             if computed {
-                Environment::set_computed_variable(&name.name, value.clone(), env);
+                let value = value.clone();
+                let captured_env = Environment::child_of(env).into_ref();
+
+                env.borrow_mut()
+                    .set_computed_variable(&name.name, move |_, stack| {
+                        value.evaluate(&captured_env, stack)
+                    });
             } else {
                 let value = value.evaluate(env, stack)?;
                 env.borrow_mut().set_variable(&name.name, value);

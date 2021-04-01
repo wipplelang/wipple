@@ -19,7 +19,7 @@ impl Text {
     }
 }
 
-fundamental_primitive!(pub text for Text);
+core_primitive!(pub text for Text);
 
 impl Value {
     pub fn try_format(&self, env: &EnvironmentRef, stack: Stack) -> String {

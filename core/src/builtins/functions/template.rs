@@ -4,7 +4,7 @@ fn_wrapper_struct! {
     pub type ReplaceInTemplateFn(&str, &Value, &EnvironmentRef, Stack) -> Result;
 }
 
-fundamental_primitive!(pub replace_in_template for ReplaceInTemplateFn);
+core_primitive!(pub replace_in_template for ReplaceInTemplateFn);
 
 impl Value {
     pub fn replace_in_template(
@@ -27,7 +27,7 @@ pub struct Template {
     pub replace_in: Value,
 }
 
-fundamental_primitive!(pub template for Template);
+core_primitive!(pub template for Template);
 
 pub(crate) fn setup(env: &mut Environment) {
     // Template ::= Function

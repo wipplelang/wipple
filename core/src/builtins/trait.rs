@@ -19,7 +19,7 @@ impl TraitConstructor {
     }
 }
 
-fundamental_primitive!(pub trait_constructor for TraitConstructor);
+core_primitive!(pub trait_constructor for TraitConstructor);
 
 pub(crate) fn setup(env: &mut Environment) {
     // Trait ::= Text

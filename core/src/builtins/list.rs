@@ -19,7 +19,7 @@ impl List {
     }
 }
 
-fundamental_primitive!(pub list for List);
+core_primitive!(pub list for List);
 
 pub(crate) fn setup(env: &mut Environment) {
     // List ::= Evaluate

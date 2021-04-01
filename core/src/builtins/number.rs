@@ -17,7 +17,7 @@ impl Number {
     }
 }
 
-fundamental_primitive!(pub number for Number);
+core_primitive!(pub number for Number);
 
 pub(crate) fn setup(env: &mut Environment) {
     // Number ::= Text

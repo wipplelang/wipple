@@ -15,7 +15,7 @@ impl Default for ShowFn {
     }
 }
 
-fundamental_stack_key!(pub show for ShowFn);
+core_stack_key!(pub show for ShowFn);
 
 pub(crate) fn setup(env: &mut Environment) {
     env.set_variable(

@@ -1,39 +1,27 @@
-mod boolean;
-mod maybe;
-mod result;
-
 use crate::*;
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
-struct VariantKind;
-
-impl Kind {
-    pub fn variant() -> Self {
-        Kind::of_with_parent::<VariantKind>(&Kind::Any)
-    }
-}
-
 #[derive(Clone)]
 pub struct Variant {
-    pub variant_id: Id,
+    pub id: Id,
     pub name: String,
     pub associated_values: Vec<Value>,
 }
 
 impl Variant {
-    pub fn new(variant_id: Id, name: &str, associated_values: &[Value]) -> Self {
+    pub fn new(id: Id, name: &str, associated_values: &[Value]) -> Self {
         Variant {
-            variant_id,
+            id,
             name: String::from(name),
             associated_values: associated_values.to_vec(),
         }
     }
 }
 
-impl Primitive for Variant {}
+core_primitive!(pub variant for Variant);
 
 impl Module {
-    pub fn for_variant_of(id: Id, items: HashMap<String, Vec<Validation>>) -> Self {
+    pub fn for_variant(items: HashMap<String, Vec<Validation>>) -> Self {
         let mut env = Environment::blank();
 
         for (name, validations) in items {
@@ -44,15 +32,7 @@ impl Module {
                 values: Vec<Value>,
             ) -> Value {
                 if remaining_validations.is_empty() {
-                    let variant_trait = Trait {
-                        id,
-                        kind: Kind::variant(),
-                    };
-
-                    Value::new(
-                        variant_trait,
-                        Dynamic::new(Variant::new(id, &name, &values)),
-                    )
+                    Value::of(Variant::new(id, &name, &values))
                 } else {
                     Value::of(Function::new(move |value, env, stack| {
                         let (validation, remaining_validations) =
@@ -87,15 +67,11 @@ impl Module {
 
             env.set_variable(
                 &name,
-                build_constructor(name.clone(), id, validations, vec![]),
+                build_constructor(name.clone(), Id::new(), validations, vec![]),
             );
         }
 
         Module::new(env)
-    }
-
-    pub fn for_variant(items: HashMap<String, Vec<Validation>>) -> Self {
-        Module::for_variant_of(Id::new(), items)
     }
 }
 
@@ -169,37 +145,29 @@ fn setup_variant_block(
 }
 
 pub(crate) fn setup(env: &mut Environment) {
-    boolean::setup(env);
-    maybe::setup(env);
-    result::setup(env);
+    env.add_conformance(Trait::variant(), Trait::text(), |value, env, stack| {
+        let variant = value.clone().into_primitive::<Variant>();
 
-    env.conformances().push(Conformance::new(
-        ConformanceMatch::Kind(Kind::variant()),
-        Trait::text(),
-        |value, env, stack| {
-            let variant = value.clone().into_primitive::<Variant>();
+        let mut associated_values = Vec::new();
 
-            let mut associated_values = Vec::new();
+        for value in variant.associated_values {
+            let text = value.get_primitive_or::<Text>(
+                "Variant value does not conform to Text",
+                env,
+                stack.clone(),
+            )?;
 
-            for value in variant.associated_values {
-                let text = value.get_primitive_or::<Text>(
-                    "Variant value does not conform to Text",
-                    env,
-                    stack.clone(),
-                )?;
+            associated_values.push(text.text);
+        }
 
-                associated_values.push(text.text);
-            }
+        let text = if associated_values.is_empty() {
+            variant.name
+        } else {
+            format!("{} {}", variant.name, associated_values.join(" "))
+        };
 
-            let text = if associated_values.is_empty() {
-                variant.name
-            } else {
-                format!("{} {}", variant.name, associated_values.join(" "))
-            };
-
-            Ok(Value::of(Text::new(&text)))
-        },
-    ));
+        Ok(Value::of(Text::new(&text)))
+    });
 
     env.set_variable(
         "variant",
@@ -234,7 +202,7 @@ pub(crate) fn setup(env: &mut Environment) {
                     )));
                 };
 
-            let variant = Module::for_variant_of(Id::new(), variants);
+            let variant = Module::for_variant(variants);
 
             Ok(Value::of(variant))
         })),
@@ -245,8 +213,7 @@ pub(crate) fn setup(env: &mut Environment) {
         Value::of(Function::new(|value, env, stack| {
             let variant = value
                 .evaluate(env, stack.clone())?
-                .get_kind_or(&Kind::variant(), "Expected variant", env, stack)?
-                .into_primitive::<Variant>();
+                .get_primitive_or::<Variant>("Expected variant", env, stack)?;
 
             Ok(Value::of(Function::new(move |value, env, stack| {
                 let block = value.get_primitive_or::<Block>(
