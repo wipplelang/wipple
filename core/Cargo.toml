@@ -4,7 +4,6 @@ version = "0.0.0"
 edition = "2018"
 
 [features]
-default = ["log_diagnostics"]
 debug_cell = ["debug-cell"]
 log_diagnostics = []
 

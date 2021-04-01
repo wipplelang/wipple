@@ -58,7 +58,11 @@ impl Module {
                         let (validation, remaining_validations) =
                             remaining_validations.split_first().unwrap();
 
-                        let validated_value = match validation(value, env, stack.clone())? {
+                        let validated_value = match validation(
+                            &value.evaluate(env, stack.clone())?,
+                            env,
+                            stack.clone(),
+                        )? {
                             Validated::Valid(value) => value,
                             Validated::Invalid => {
                                 return Err(ReturnState::Error(Error::new(
@@ -115,10 +119,126 @@ fn setup_match_block(matches: Rc<RefCell<HashMap<String, Value>>>, env: &Environ
     )
 }
 
+fn setup_variant_block(
+    variants: Rc<RefCell<HashMap<String, Vec<Validation>>>>,
+    env: &EnvironmentRef,
+) {
+    *env.borrow_mut().handle_assign() =
+        HandleAssignFn::new(move |left, right, computed, env, stack| {
+            let name =
+                left.get_primitive_or::<Name>("Expected name for variant", env, stack.clone())?;
+
+            if computed {
+                return Err(ReturnState::Error(Error::new(
+                    "Lazy evaluation is not supported for variants",
+                    stack,
+                )));
+            }
+
+            if variants.borrow().contains_key(&name.name) {
+                return Err(ReturnState::Error(Error::new(
+                    "Cannot have two variants with the same name",
+                    stack,
+                )));
+            }
+
+            let list = right.get_primitive_or::<List>(
+                "Expected list of validations for variant",
+                env,
+                stack.clone(),
+            )?;
+
+            let mut validations = Vec::new();
+
+            for item in list.items {
+                let validation = item
+                    .evaluate(env, stack.clone())?
+                    .get_primitive_or::<Validation>(
+                        "Expected validation in list of variant items",
+                        env,
+                        stack.clone(),
+                    )?;
+
+                validations.push(validation);
+            }
+
+            variants.borrow_mut().insert(name.name, validations);
+
+            Ok(())
+        })
+}
+
 pub(crate) fn setup(env: &mut Environment) {
     boolean::setup(env);
     maybe::setup(env);
     result::setup(env);
+
+    env.conformances().push(Conformance::new(
+        ConformanceMatch::Kind(Kind::variant()),
+        Trait::text(),
+        |value, env, stack| {
+            let variant = value.clone().into_primitive::<Variant>();
+
+            let mut associated_values = Vec::new();
+
+            for value in variant.associated_values {
+                let text = value.get_primitive_or::<Text>(
+                    "Variant value does not conform to Text",
+                    env,
+                    stack.clone(),
+                )?;
+
+                associated_values.push(text.text);
+            }
+
+            let text = if associated_values.is_empty() {
+                variant.name
+            } else {
+                format!("{} {}", variant.name, associated_values.join(" "))
+            };
+
+            Ok(Value::of(Text::new(&text)))
+        },
+    ));
+
+    env.set_variable(
+        "variant",
+        Value::of(Function::new(|value, env, stack| {
+            let variants =
+                if let Some(list) = value.get_primitive_if_present::<List>(env, stack.clone())? {
+                    let mut variants = HashMap::new();
+
+                    for item in list.items {
+                        let name =
+                            item.get_primitive_or::<Name>("Expected name", env, stack.clone())?;
+
+                        variants.insert(name.name, Vec::new());
+                    }
+
+                    variants
+                } else if let Some(block) =
+                    value.get_primitive_if_present::<Block>(env, stack.clone())?
+                {
+                    let variant_env = Environment::child_of(env).into_ref();
+
+                    let variants = Rc::new(RefCell::new(HashMap::new()));
+                    setup_variant_block(variants.clone(), &variant_env);
+
+                    block.reduce_inline(&variant_env, stack)?;
+
+                    variants.take()
+                } else {
+                    return Err(ReturnState::Error(Error::new(
+                        "Expected list or module containing variants",
+                        stack,
+                    )));
+                };
+
+            let variant = Module::for_variant_of(Id::new(), variants);
+
+            Ok(Value::of(variant))
+        })),
+    );
 
     env.set_variable(
         "match",

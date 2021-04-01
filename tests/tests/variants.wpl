@@ -1,0 +1,49 @@
+>>> Simple variant
+
+my-variant : variant (a b)
+
+show my-variant
+show (my-variant a)
+show (my-variant b)
+
+---
+
+my-variant ==> <module>
+(my-variant a) ==> a
+(my-variant b) ==> b
+
+>>> Variant with single associated value
+
+either : variant {
+    a : (_)
+    b : (_)
+}
+
+show (either a 5)
+show (either b 'foo)
+
+---
+
+(either a 5) ==> a 5
+(either b 'foo) ==> b foo
+
+>>> Variant with multiple associated values
+
+amount : variant {
+    none : ()
+    one : (_)
+    two : (_ _)
+    three : (_ _ _)
+}
+
+show (amount none)
+show (amount one 'a)
+show (amount two 'a 'b)
+show (amount three 'a 'b 'c)
+
+---
+
+(amount none) ==> none
+(amount one 'a) ==> one a
+(amount two 'a 'b) ==> two a b
+(amount three 'a 'b 'c) ==> three a b c
