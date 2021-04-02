@@ -70,26 +70,42 @@ pub fn prelude(env: &EnvironmentRef) {
     // Conformance operator (==)
 
     let conformance_operator = Operator::collect(|left, right, env, stack| {
-        let (matching_trait, name) =
-            match left.get_primitive_if_present::<List>(env, stack.clone())? {
-                Some(left) if left.items.len() == 2 => {
-                    let matching_trait = left.items[0]
+        let (matching_trait, name) = match left
+            .get_primitive_if_present::<List>(env, stack.clone())?
+        {
+            Some(left) => {
+                let matching_trait = match left.items.len() {
+                    1 | 2 => left.items[0]
                         .evaluate(env, stack.clone())?
-                        .get_primitive_or::<Trait>("Expected trait", env, stack.clone())?;
+                        .get_primitive_or::<Trait>("Expected trait", env, stack.clone())?,
+                    _ => {
+                        return Err(ReturnState::Error(Error::new(
+                            "Expected conformance predicate in the form 'T x', or just 'T' if you don't care about the name",
+                            stack,
+                        )))
+                    }
+                };
 
+                let name = if left.items.len() == 2 {
                     let name = left.items[1]
                         .get_primitive_or::<Name>("Expected name", env, stack.clone())?
                         .name;
 
-                    (matching_trait, name)
-                }
-                _ => {
-                    return Err(ReturnState::Error(Error::new(
-                        "Expected conformance predicate in the form 'T x'",
-                        stack,
-                    )))
-                }
-            };
+                    Some(name)
+                } else {
+                    None
+                };
+
+                (matching_trait, name)
+            }
+            None => {
+                let matching_trait = left
+                    .evaluate(env, stack.clone())?
+                    .get_primitive_or::<Trait>("Expected trait", env, stack.clone())?;
+
+                (matching_trait, None)
+            }
+        };
 
         let right = right.get_primitive_or::<List>(
             "Expected a list containing the value to derive",
@@ -117,7 +133,9 @@ pub fn prelude(env: &EnvironmentRef) {
             matching_trait,
             derived_trait.clone(),
             move |value, _, stack| {
-                derive_env.borrow_mut().set_variable(&name, value.clone());
+                if let Some(name) = &name {
+                    derive_env.borrow_mut().set_variable(name, value.clone());
+                }
 
                 let derived_value = derived_value.evaluate(&derive_env, stack.clone())?;
 

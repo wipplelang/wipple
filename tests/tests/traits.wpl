@@ -54,3 +54,15 @@ show (B (A 'foo))
 
 (A 'foo) ==> A foo
 (B (A 'foo)) ==> B A foo
+
+>>> Conformance without binding a name
+
+A : trait _
+
+A == Text "A"
+
+show (A _)
+
+---
+
+(A _) ==> A
