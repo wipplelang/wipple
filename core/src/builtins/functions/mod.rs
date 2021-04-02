@@ -31,4 +31,6 @@ impl Value {
 pub(crate) fn setup(env: &mut Environment) {
     closure::setup(env);
     template::setup(env);
+
+    env.set_variable("Function", Value::of(Trait::of::<Function>()));
 }
