@@ -13,7 +13,7 @@ a
 
 ---
 
-Name does not refer to a variable
+Name 'a' does not refer to a variable
     Resolving variable 'a' (1:1)
     Importing program
 

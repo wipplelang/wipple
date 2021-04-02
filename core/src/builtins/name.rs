@@ -110,7 +110,10 @@ impl Name {
             stack.update_evaluation(|e| e.with(|| format!("Resolving variable '{}'", self.name)));
 
         self.resolve_variable_if_present(env).ok_or_else(|| {
-            ReturnState::Error(Error::new("Name does not refer to a variable", stack))
+            ReturnState::Error(Error::new(
+                &format!("Name '{}' does not refer to a variable", self.name),
+                stack,
+            ))
         })
     }
 
