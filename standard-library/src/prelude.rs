@@ -72,7 +72,7 @@ pub fn prelude(env: &EnvironmentRef) {
     let conformance_operator = Operator::collect(|left, right, env, stack| {
         let (matching_trait, name) =
             match left.get_primitive_if_present::<List>(env, stack.clone())? {
-                Some(left) if (1..=2).contains(&left.items.len()) => {
+                Some(left) if left.items.len() == 2 => {
                     let matching_trait = left.items[0]
                         .evaluate(env, stack.clone())?
                         .get_primitive_or::<Trait>("Expected trait", env, stack.clone())?;
@@ -81,24 +81,13 @@ pub fn prelude(env: &EnvironmentRef) {
                         .get_primitive_or::<Name>("Expected name", env, stack.clone())?
                         .name;
 
-                    (matching_trait, Some(name))
+                    (matching_trait, name)
                 }
-                Some(_) => {
+                _ => {
                     return Err(ReturnState::Error(Error::new(
-                        "Expected conformance predicate in the form 'T x' or 'T'",
+                        "Expected conformance predicate in the form 'T x'",
                         stack,
                     )))
-                }
-                None => {
-                    let matching_trait = left
-                        .evaluate(env, stack.clone())?
-                        .get_primitive_or::<Trait>(
-                            "Expected trait in conformance predicate",
-                            env,
-                            stack.clone(),
-                        )?;
-
-                    (matching_trait, None)
                 }
             };
 
@@ -117,50 +106,24 @@ pub fn prelude(env: &EnvironmentRef) {
 
         let derived_trait = right.items[0]
             .evaluate(env, stack.clone())?
-            .get_primitive_or::<Trait>("Expected trait", env, stack.clone())?;
+            .get_primitive_or::<Trait>("Expected trait", env, stack)?;
 
-        match name {
-            // Computed form ('T x == U y')
-            Some(name) => {
-                let derived_value = right.items[1].clone();
+        let derived_value = right.items[1].clone();
 
-                let derive_env = Environment::child_of(env).into_ref();
-                let check_env = env.clone();
+        let derive_env = Environment::child_of(env).into_ref();
+        let check_env = env.clone();
 
-                env.borrow_mut().add_conformance(
-                    matching_trait,
-                    derived_trait.clone(),
-                    move |value, _, stack| {
-                        derive_env.borrow_mut().set_variable(&name, value.clone());
+        env.borrow_mut().add_conformance(
+            matching_trait,
+            derived_trait.clone(),
+            move |value, _, stack| {
+                derive_env.borrow_mut().set_variable(&name, value.clone());
 
-                        let derived_value = derived_value.evaluate(&derive_env, stack.clone())?;
+                let derived_value = derived_value.evaluate(&derive_env, stack.clone())?;
 
-                        Value::new_validated(
-                            derived_trait.clone(),
-                            derived_value,
-                            &check_env,
-                            stack,
-                        )
-                    },
-                );
-            }
-
-            // Function form ('T == U (x -> y)')
-            None => {
-                let function = right.items[1]
-                    .evaluate(env, stack.clone())?
-                    .get_primitive_or::<Function>("Expected function", env, stack)?;
-
-                env.borrow_mut().add_conformance(
-                    matching_trait,
-                    derived_trait.clone(),
-                    move |value, env, stack| {
-                        let derived_value = function(value, env, stack.clone())?;
-                        Value::new_validated(derived_trait.clone(), derived_value, env, stack)
-                    },
-                );
-            }
-        };
+                Value::new_validated(derived_trait.clone(), derived_value, &check_env, stack)
+            },
+        );
 
         Ok(Value::empty())
     });
@@ -340,11 +303,13 @@ pub fn prelude(env: &EnvironmentRef) {
                         let (leading_string, remaining_strings) =
                             remaining_strings.split_first().unwrap();
 
-                        let text = value.get_primitive_or::<Text>(
-                            "Cannot format this value because it does not conform to Text",
-                            env,
-                            stack,
-                        )?;
+                        let text = value
+                            .evaluate(env, stack.clone())?
+                            .get_primitive_or::<Text>(
+                                "Cannot format this value because it does not conform to Text",
+                                env,
+                                stack,
+                            )?;
 
                         Ok(build_formatter(
                             remaining_strings.to_vec(),

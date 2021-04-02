@@ -1,22 +1,22 @@
 >>> Traits
 
 T : trait _
-T == Text (format "T _")
+T x == Text (format "T _" x)
 
-t : T 'foo
+x : T 'foo
 
-show t
+show x
 
 ---
 
-t ==> T foo
+x ==> T foo
 
 >>> Traits with validations
 
 A : trait _
 
 B : trait A -- B receives the **value of** A, not the A value itself
-B == Text (format "B _")
+B b == Text (format "B _" b)
 
 b : B (A 'foo)
 show b
@@ -41,17 +41,16 @@ Cannot use this value to represent this trait
 >>> Conformances
 
 A : trait _
-Name n == A n
-A == Text (format "A _")
+A x == Text (format "A _" x)
 
 B : trait _
-A a == B a
-B == Text (format "B _")
+A x == B (A x)
+B a == Text (format "B _" a)
 
-show (A for 'foo)
-show (B for A for 'foo)
+show (A 'foo)
+show (B (A 'foo))
 
 ---
 
-(A for 'foo) ==> A foo
-(B for A for 'foo) ==> B foo
+(A 'foo) ==> A foo
+(B (A 'foo)) ==> B A foo
