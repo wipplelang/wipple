@@ -3,6 +3,8 @@ use crate::*;
 core_primitive!(pub r#trait for Trait);
 
 pub(crate) fn setup(env: &mut Environment) {
+    env.set_variable("Trait", Value::of(Trait::of::<Trait>()));
+
     // Trait == Text
     env.add_text_conformance(Trait::r#trait(), "trait");
 

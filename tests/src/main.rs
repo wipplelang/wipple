@@ -208,14 +208,17 @@ fn test(code: &str) -> (String, std::time::Duration) {
 }
 
 fn setup(output: Rc<RefCell<Vec<String>>>, stack: Stack) -> Stack {
-    stack.with_show(ShowFn::new(move |value, env, stack| {
-        let source_text = value.format(env, stack.clone())?;
-        let output_text = value.evaluate(env, stack.clone())?.format(env, stack)?;
+    wipple_stdlib::show::with_show_in(
+        stack,
+        wipple_stdlib::show::ShowFn::new(move |value, env, stack| {
+            let source_text = value.format(env, stack.clone())?;
+            let output_text = value.evaluate(env, stack.clone())?.format(env, stack)?;
 
-        output
-            .borrow_mut()
-            .push(format!("{} ==> {}", source_text, output_text));
+            output
+                .borrow_mut()
+                .push(format!("{} ==> {}", source_text, output_text));
 
-        Ok(())
-    }))
+            Ok(())
+        }),
+    )
 }

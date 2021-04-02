@@ -66,12 +66,15 @@ impl Run {
 }
 
 fn setup(stack: Stack) -> Stack {
-    stack.with_show(ShowFn::new(move |value, env, stack| {
-        println!(
-            "{}",
-            value.evaluate(env, stack.clone())?.format(env, stack)?
-        );
+    wipple_stdlib::show::with_show_in(
+        stack,
+        wipple_stdlib::show::ShowFn::new(move |value, env, stack| {
+            println!(
+                "{}",
+                value.evaluate(env, stack.clone())?.format(env, stack)?
+            );
 
-        Ok(())
-    }))
+            Ok(())
+        }),
+    )
 }

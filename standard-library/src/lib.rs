@@ -1,3 +1,5 @@
+pub mod show;
+
 mod prelude;
 
 use prelude::prelude;
@@ -10,6 +12,7 @@ struct Asset;
 
 wipple_plugin!(|env, stack: Stack| {
     prelude(env);
+    show::setup(&mut env.borrow_mut());
 
     for path in Asset::iter() {
         let file = Asset::get(&path).unwrap();

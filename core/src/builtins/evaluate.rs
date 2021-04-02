@@ -16,6 +16,8 @@ impl Value {
 }
 
 pub(crate) fn setup(env: &mut Environment) {
+    env.set_variable("Evaluate", Value::of(Trait::of::<EvaluateFn>()));
+
     env.set_variable(
         "evaluate!",
         Value::of(Function::new(|value, env, stack| {

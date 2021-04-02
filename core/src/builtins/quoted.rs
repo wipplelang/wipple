@@ -19,6 +19,8 @@ impl Quoted {
 core_primitive!(pub quoted for Quoted);
 
 pub(crate) fn setup(env: &mut Environment) {
+    env.set_variable("Quoted", Value::of(Trait::of::<Quoted>()));
+
     // Quoted == Evaluate
     env.add_primitive_conformance(|quoted: Quoted| {
         EvaluateFn::new(move |_, _| Ok(quoted.value.clone()))

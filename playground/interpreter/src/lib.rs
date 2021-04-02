@@ -62,15 +62,18 @@ fn run_code(code: &str, stack: Stack) -> wipple::Result<Vec<ShownValue>> {
 fn setup_playground(output: &Rc<RefCell<Vec<ShownValue>>>, stack: Stack) -> Stack {
     let output = output.clone();
 
-    stack.with_show(ShowFn::new(move |value, env, stack| {
-        let source_text = value.format(env, stack.clone())?;
-        let output_text = value.evaluate(env, stack.clone())?.format(env, stack)?;
+    wipple_stdlib::show::with_show_in(
+        stack,
+        wipple_stdlib::show::ShowFn::new(move |value, env, stack| {
+            let source_text = value.format(env, stack.clone())?;
+            let output_text = value.evaluate(env, stack.clone())?.format(env, stack)?;
 
-        output.borrow_mut().push(ShownValue {
-            input: source_text,
-            output: output_text,
-        });
+            output.borrow_mut().push(ShownValue {
+                input: source_text,
+                output: output_text,
+            });
 
-        Ok(())
-    }))
+            Ok(())
+        }),
+    )
 }

@@ -56,6 +56,8 @@ impl Block {
 }
 
 pub(crate) fn setup(env: &mut Environment) {
+    env.set_variable("Block", Value::of(Trait::of::<Block>()));
+
     // Block == Text
     env.add_text_conformance(Trait::block(), "block");
 

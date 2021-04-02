@@ -145,6 +145,10 @@ fn setup_variant_block(
 }
 
 pub(crate) fn setup(env: &mut Environment) {
+    env.set_variable("Variant", Value::of(Trait::of::<Variant>()));
+
+    // TODO: Variant-Of
+
     env.add_conformance(Trait::variant(), Trait::text(), |value, env, stack| {
         let variant = value.clone().into_primitive::<Variant>();
 

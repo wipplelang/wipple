@@ -16,6 +16,8 @@ impl Value {
 }
 
 pub(crate) fn setup(env: &mut Environment) {
+    env.set_variable("Empty", Value::of(Trait::of::<Empty>()));
+
     // _ : <empty value>
     env.set_variable("_", Value::empty());
 
@@ -24,20 +26,6 @@ pub(crate) fn setup(env: &mut Environment) {
         Ok(Value::of(Validation::any()))
     });
 
-    // empty : <validation>
-    env.set_variable(
-        "empty",
-        Value::of(Validation::new(|value, _, _| {
-            Ok(if value.is_empty() {
-                Validated::Valid(value.clone())
-            } else {
-                Validated::Invalid
-            })
-        })),
-    );
-
-    // empty == Text
-    env.add_conformance(Trait::empty(), Trait::text(), move |_, _, _| {
-        Ok(Value::of(Text::new("<empty value>")))
-    })
+    // Empty == Text
+    env.add_text_conformance(Trait::empty(), "empty")
 }

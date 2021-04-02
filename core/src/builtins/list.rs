@@ -22,6 +22,8 @@ impl List {
 core_primitive!(pub list for List);
 
 pub(crate) fn setup(env: &mut Environment) {
+    env.set_variable("List", Value::of(Trait::of::<List>()));
+
     // List == Evaluate
     env.add_primitive_conformance(|list: List| {
         EvaluateFn::new(move |env, stack| {

@@ -15,13 +15,13 @@ impl Default for ShowFn {
     }
 }
 
-core_stack_key!(pub show for ShowFn);
+stack_key!(pub show for ShowFn);
 
-pub(crate) fn setup(env: &mut Environment) {
+pub fn setup(env: &mut Environment) {
     env.set_variable(
         "show",
         Value::of(Function::new(|value, env, stack| {
-            stack.clone().get_show()(value, env, stack)?;
+            get_show_in(stack.clone())(value, env, stack)?;
 
             Ok(Value::empty())
         })),

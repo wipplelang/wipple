@@ -78,6 +78,8 @@ pub(crate) fn setup(env: &mut Environment) {
         EvaluateFn::new(move |env, stack| block.reduce_into_module(env, stack))
     });
 
+    env.set_variable("Module", Value::of(Trait::of::<Module>()));
+
     // Module == Text
     env.add_text_conformance(Trait::module(), "module");
 
