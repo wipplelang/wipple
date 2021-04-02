@@ -132,8 +132,11 @@ pub(crate) fn setup(env: &mut Environment) {
 fn setup_validation_block(fields: Rc<RefCell<HashMap<String, Validation>>>, env: &EnvironmentRef) {
     *env.borrow_mut().handle_assign() =
         HandleAssignFn::new(move |left, right, computed, env, stack| {
-            let name =
-                left.get_primitive_or::<Name>("Expected name for match", env, stack.clone())?;
+            let name = left.get_primitive_or::<Name>(
+                "Expected name for variable to validate",
+                env,
+                stack.clone(),
+            )?;
 
             if computed {
                 return Err(ReturnState::Error(Error::new(
@@ -142,8 +145,9 @@ fn setup_validation_block(fields: Rc<RefCell<HashMap<String, Validation>>>, env:
                 )));
             }
 
-            let validation =
-                right.get_primitive_or::<Validation>("Expected validation", env, stack)?;
+            let validation = right
+                .evaluate(env, stack.clone())?
+                .get_primitive_or::<Validation>("Expected validation", env, stack)?;
 
             fields.borrow_mut().insert(name.name, validation);
 
