@@ -204,6 +204,32 @@ pub fn prelude(env: &EnvironmentRef) {
     env.borrow_mut()
         .set_variable("for", Value::of(for_operator));
 
+    // 'as' operator (equivalent to 'T (T for x)')
+
+    let as_precedence_group = add_precedence_group(
+        Associativity::Left,
+        PrecedenceGroupComparison::lower_than(for_precedence_group),
+    );
+
+    let as_operator = Operator::collect(|value, r#trait, env, stack| {
+        let r#trait = r#trait
+            .evaluate(env, stack.clone())?
+            .get_primitive_or::<Trait>("Expected trait", env, stack.clone())?;
+
+        let trait_value = value.evaluate(env, stack.clone())?.get_trait_or(
+            &r#trait,
+            "Value does not have trait",
+            env,
+            stack,
+        )?;
+
+        Ok(trait_value)
+    });
+
+    add_operator(&as_operator, &as_precedence_group);
+
+    env.borrow_mut().set_variable("as", Value::of(as_operator));
+
     // Math
 
     macro_rules! math {

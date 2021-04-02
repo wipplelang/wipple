@@ -50,3 +50,25 @@ show (format "_, _!" "Hello" "world")
 ---
 
 (format _, _! Hello world) ==> Hello, world!
+
+>>> Trait-oriented greeting example
+
+Greet : trait Text
+
+Greet name == Text (format "Hello, _!" name)
+
+Person : trait '{
+    name : Text
+}
+
+bob : Person {
+    name : "Bob"
+}
+
+Person person == Greet (person name)
+
+show (bob as Greet)
+
+---
+
+(bob as Greet) ==> Hello, Bob!
