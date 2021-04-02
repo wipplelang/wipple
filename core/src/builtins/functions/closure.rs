@@ -10,7 +10,7 @@ pub struct Closure {
 core_primitive!(pub closure for Closure);
 
 pub(crate) fn setup(env: &mut Environment) {
-    // Closure ::= Function
+    // Closure == Function
     env.add_primitive_conformance(|closure: Closure| {
         Function::new(move |value, _, stack| {
             let inner_env = Environment::child_of(&closure.captured_env).into_ref();
@@ -20,6 +20,6 @@ pub(crate) fn setup(env: &mut Environment) {
         })
     });
 
-    // Closure ::= Text
+    // Closure == Text
     env.add_text_conformance(Trait::closure(), "closure");
 }

@@ -1,0 +1,57 @@
+>>> Traits
+
+T : trait _
+T == Text (format "T _")
+
+t : T 'foo
+
+show t
+
+---
+
+t ==> T foo
+
+>>> Traits with validations
+
+A : trait _
+
+B : trait A -- B receives the **value of** A, not the A value itself
+B == Text (format "B _")
+
+b : B (A 'foo)
+show b
+
+---
+
+b ==> B foo
+
+>>> Passing an invalid value to a trait
+
+A : trait _
+B : trait A
+
+B 'foo
+
+---
+
+Cannot use this value to represent this trait
+    Calling '<trait>' (4:1)
+    Importing program
+
+>>> Conformances
+
+A : trait _
+Name n == A n
+A == Text (format "A _")
+
+B : trait _
+A a == B a
+B == Text (format "B _")
+
+show (A for 'foo)
+show (B for A for 'foo)
+
+---
+
+(A for 'foo) ==> A foo
+(B for A for 'foo) ==> B foo

@@ -22,7 +22,7 @@ impl List {
 core_primitive!(pub list for List);
 
 pub(crate) fn setup(env: &mut Environment) {
-    // List ::= Evaluate
+    // List == Evaluate
     env.add_primitive_conformance(|list: List| {
         EvaluateFn::new(move |env, stack| {
             let stack = match &list.location {
@@ -54,7 +54,7 @@ pub(crate) fn setup(env: &mut Environment) {
         })
     });
 
-    // List ::= Replace-In-Template
+    // List == Replace-In-Template
     env.add_primitive_conformance(|list: List| {
         ReplaceInTemplateFn::new(move |parameter, replacement, env, stack| {
             let mut expanded_items = vec![];
@@ -69,7 +69,7 @@ pub(crate) fn setup(env: &mut Environment) {
         })
     });
 
-    // List ::= Text
+    // List == Text
     env.add_conformance(Trait::list(), Trait::text(), |value, env, stack| {
         let list = value.clone().into_primitive::<List>();
 

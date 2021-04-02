@@ -51,7 +51,7 @@ pub fn setup() {
         })),
     );
 
-    // Text ::= Module
+    // Text == Module
     // FIXME: This is impure and should not be a direct conformance; use some
     // kind of 'Import' trait instead
     env.borrow_mut()

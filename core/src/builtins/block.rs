@@ -56,10 +56,10 @@ impl Block {
 }
 
 pub(crate) fn setup(env: &mut Environment) {
-    // Block ::= Text
+    // Block == Text
     env.add_text_conformance(Trait::block(), "block");
 
-    // Block ::= Replace-In-Template
+    // Block == Replace-In-Template
     env.add_primitive_conformance(|block: Block| {
         ReplaceInTemplateFn::new(move |parameter, replacement, env, stack| {
             let stack = match &block.location {
@@ -90,7 +90,7 @@ pub(crate) fn setup(env: &mut Environment) {
         })
     });
 
-    // Block ::= Validation
+    // Block == Validation
     env.add_conformance(Trait::block(), Trait::validation(), |value, env, stack| {
         let block = value.clone().into_primitive::<Block>();
 

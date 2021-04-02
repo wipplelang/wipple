@@ -1,7 +1,0 @@
->>> Nested conformances
-
-show '(hi)
-
----
-
-'(hi) ==> (hi)

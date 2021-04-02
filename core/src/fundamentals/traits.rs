@@ -1,18 +1,38 @@
 use crate::*;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Clone)]
 pub struct Trait {
     pub id: Id,
+    pub validation: Validation,
 }
 
 impl Trait {
-    #[allow(clippy::new_without_default)]
-    pub fn new() -> Self {
-        Trait { id: Id::new() }
+    pub fn new(validation: Validation) -> Self {
+        Trait {
+            id: Id::new(),
+            validation,
+        }
     }
 
-    pub fn of<T: 'static>() -> Self {
-        Trait { id: Id::of::<T>() }
+    pub fn of<T: Primitive>() -> Self {
+        Trait {
+            id: Id::of::<T>(),
+            validation: Validation::of::<T>(),
+        }
+    }
+}
+
+impl PartialEq for Trait {
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id
+    }
+}
+
+impl Eq for Trait {}
+
+impl std::fmt::Debug for Trait {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "(Trait {:?})", self.id)
     }
 }
 
@@ -48,7 +68,7 @@ impl Value {
         stack: Stack,
     ) -> Result<Option<Value>> {
         if self.has_trait_directly(r#trait) {
-            Ok(Some(self.clone()))
+            Ok(Some(self.contained_value().clone()))
         } else {
             fn derive(
                 r#trait: &Trait,
@@ -74,7 +94,7 @@ impl Value {
 
                         derive(r#trait, value, &parent, eval_env, stack)
                     },
-                    1 => (conformances.first().unwrap().derive_value)(value, eval_env, stack).map(Some),
+                    1 => (conformances.first().unwrap().derive_value)(value.contained_value(), eval_env, stack).map(Some),
                     _ => Err(ReturnState::Error(Error::new(
                         // TODO: Better diagnostics -- list out all of the matching conformances
                         "Multiple conformances match this value, so the conformance to use is ambiguous",

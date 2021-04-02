@@ -23,10 +23,8 @@ pub use name::*;
 pub use number::*;
 pub use operator::*;
 pub use quoted::*;
-pub use r#trait::*;
 pub use show::*;
 pub use text::*;
-pub use validation::*;
 pub use variants::*;
 
 use crate::*;
@@ -43,6 +41,7 @@ pub(crate) fn setup(env: &mut Environment) {
     operator::setup(env);
     quoted::setup(env);
     show::setup(env);
+    text::setup(env);
     r#trait::setup(env);
     validation::setup(env);
     variants::setup(env);

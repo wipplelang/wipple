@@ -41,3 +41,8 @@ impl Value {
             .unwrap_or_else(|| String::from("<value>")))
     }
 }
+
+pub(crate) fn setup(env: &mut Environment) {
+    // Text : trait
+    env.set_variable("Text", Value::of(Trait::of::<Text>()));
+}

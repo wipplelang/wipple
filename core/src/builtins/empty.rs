@@ -36,7 +36,7 @@ pub(crate) fn setup(env: &mut Environment) {
         })),
     );
 
-    // empty ::= Text
+    // empty == Text
     env.add_conformance(Trait::empty(), Trait::text(), move |_, _, _| {
         Ok(Value::of(Text::new("<empty value>")))
     })

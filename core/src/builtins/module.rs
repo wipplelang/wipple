@@ -72,16 +72,16 @@ pub fn setup_module_block(env: &EnvironmentRef) {
 }
 
 pub(crate) fn setup(env: &mut Environment) {
-    // Block ::= Evaluate
+    // Block == Evaluate
     env.add_primitive_conformance(|block: Block| {
         // Blocks are evaluated as modules by default
         EvaluateFn::new(move |env, stack| block.reduce_into_module(env, stack))
     });
 
-    // Module ::= Text
+    // Module == Text
     env.add_text_conformance(Trait::module(), "module");
 
-    // Module ::= Function
+    // Module == Function
     env.add_primitive_conformance(|module: Module| {
         Function::new(move |value, env, stack| {
             let name = value.get_primitive_or::<Name>("Expected a name", env, stack.clone())?;

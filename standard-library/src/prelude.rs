@@ -10,10 +10,7 @@ pub fn prelude(env: &EnvironmentRef) {
                 .evaluate(env, stack.clone())?
                 .get_primitive_or::<Validation>("Expected validation", env, stack)?;
 
-            Ok(Value::of(TraitConstructor {
-                r#trait: Trait::new(),
-                validation,
-            }))
+            Ok(Value::of(Trait::new(validation)))
         })),
     );
 
@@ -70,6 +67,109 @@ pub fn prelude(env: &EnvironmentRef) {
     add_assignment_operator(":", false, env);
     add_assignment_operator(":>", true, env);
 
+    // Conformance operator (==)
+
+    let conformance_operator = Operator::collect(|left, right, env, stack| {
+        let (matching_trait, name) =
+            match left.get_primitive_if_present::<List>(env, stack.clone())? {
+                Some(left) if (1..=2).contains(&left.items.len()) => {
+                    let matching_trait = left.items[0]
+                        .evaluate(env, stack.clone())?
+                        .get_primitive_or::<Trait>("Expected trait", env, stack.clone())?;
+
+                    let name = left.items[1]
+                        .get_primitive_or::<Name>("Expected name", env, stack.clone())?
+                        .name;
+
+                    (matching_trait, Some(name))
+                }
+                Some(_) => {
+                    return Err(ReturnState::Error(Error::new(
+                        "Expected conformance predicate in the form 'T x' or 'T'",
+                        stack,
+                    )))
+                }
+                None => {
+                    let matching_trait = left
+                        .evaluate(env, stack.clone())?
+                        .get_primitive_or::<Trait>(
+                            "Expected trait in conformance predicate",
+                            env,
+                            stack.clone(),
+                        )?;
+
+                    (matching_trait, None)
+                }
+            };
+
+        let right = right.get_primitive_or::<List>(
+            "Expected a list containing the value to derive",
+            env,
+            stack.clone(),
+        )?;
+
+        if right.items.len() != 2 {
+            return Err(ReturnState::Error(Error::new(
+                "Expected a value to derive and its trait",
+                stack,
+            )));
+        }
+
+        let derived_trait = right.items[0]
+            .evaluate(env, stack.clone())?
+            .get_primitive_or::<Trait>("Expected trait", env, stack.clone())?;
+
+        match name {
+            // Computed form ('T x == U y')
+            Some(name) => {
+                let derived_value = right.items[1].clone();
+
+                let derive_env = Environment::child_of(env).into_ref();
+                let check_env = env.clone();
+
+                env.borrow_mut().add_conformance(
+                    matching_trait,
+                    derived_trait.clone(),
+                    move |value, _, stack| {
+                        derive_env.borrow_mut().set_variable(&name, value.clone());
+
+                        let derived_value = derived_value.evaluate(&derive_env, stack.clone())?;
+
+                        Value::new_validated(
+                            derived_trait.clone(),
+                            derived_value,
+                            &check_env,
+                            stack,
+                        )
+                    },
+                );
+            }
+
+            // Function form ('T == U (x -> y)')
+            None => {
+                let function = right.items[1]
+                    .evaluate(env, stack.clone())?
+                    .get_primitive_or::<Function>("Expected function", env, stack)?;
+
+                env.borrow_mut().add_conformance(
+                    matching_trait,
+                    derived_trait.clone(),
+                    move |value, env, stack| {
+                        let derived_value = function(value, env, stack.clone())?;
+                        Value::new_validated(derived_trait.clone(), derived_value, env, stack)
+                    },
+                );
+            }
+        };
+
+        Ok(Value::empty())
+    });
+
+    add_operator(&conformance_operator, &assignment_precedence_group);
+
+    env.borrow_mut()
+        .set_variable("==", Value::of(conformance_operator));
+
     // Template operator (=>)
 
     let function_precedence_group = add_precedence_group(
@@ -122,13 +222,13 @@ pub fn prelude(env: &EnvironmentRef) {
         PrecedenceGroupComparison::lower_than(function_precedence_group),
     );
 
-    let for_operator = Operator::collect(|trait_constructor, value, env, stack| {
-        let trait_constructor = trait_constructor
+    let for_operator = Operator::collect(|r#trait, value, env, stack| {
+        let r#trait = r#trait
             .evaluate(env, stack.clone())?
-            .get_primitive_or::<TraitConstructor>("Expected trait", env, stack.clone())?;
+            .get_primitive_or::<Trait>("Expected trait", env, stack.clone())?;
 
         let trait_value = value.evaluate(env, stack.clone())?.get_trait_or(
-            &trait_constructor.r#trait,
+            &r#trait,
             "Value does not have trait",
             env,
             stack,

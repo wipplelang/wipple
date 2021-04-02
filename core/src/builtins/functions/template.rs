@@ -30,7 +30,7 @@ pub struct Template {
 core_primitive!(pub template for Template);
 
 pub(crate) fn setup(env: &mut Environment) {
-    // Template ::= Function
+    // Template == Function
     env.add_primitive_conformance(|template: Template| {
         Function::new(move |replacement, env, stack| {
             template
@@ -40,6 +40,6 @@ pub(crate) fn setup(env: &mut Environment) {
         })
     });
 
-    // Template ::= Text
+    // Template == Text
     env.add_text_conformance(Trait::template(), "template");
 }

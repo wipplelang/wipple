@@ -2,35 +2,67 @@ use crate::*;
 
 pub trait Primitive: Clone + 'static {}
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct Value {
-    /// ID for this specific value — persists across clones but does not persist
-    /// in, for example, a situation like this:
-    ///
-    /// ```wipple
-    /// x : 3 -- id "1"
-    /// y : x -- id "1"
-    /// z : Number for x -- id "2"
-    /// ```
-    pub id: Id,
     pub r#trait: Trait,
-    pub raw_value: Dynamic,
+    contained: Contained,
+}
+
+#[derive(Debug, Clone)]
+enum Contained {
+    Primitive(Dynamic),
+    Value(Box<Value>),
 }
 
 impl Value {
-    pub fn new(r#trait: Trait, raw_value: Dynamic) -> Self {
+    pub fn new_validated(
+        r#trait: Trait,
+        value: Value,
+        env: &EnvironmentRef,
+        stack: Stack,
+    ) -> Result {
+        let value = match (r#trait.validation)(&value, env, stack.clone())? {
+            Validated::Valid(value) => value,
+            Validated::Invalid => {
+                return Err(ReturnState::Error(Error::new(
+                    "Cannot use this value to represent this trait",
+                    stack,
+                )))
+            }
+        };
+
+        Ok(Value::new_unvalidated(r#trait, value))
+    }
+
+    pub fn new_unvalidated(r#trait: Trait, value: Value) -> Self {
         Value {
-            id: Id::new(),
             r#trait,
-            raw_value,
+            contained: Contained::Value(Box::new(value)),
+        }
+    }
+
+    pub fn primitive(r#trait: Trait, primitive: Dynamic) -> Self {
+        Value {
+            r#trait,
+            contained: Contained::Primitive(primitive),
         }
     }
 
     pub fn of<T: Primitive>(primitive: T) -> Self {
-        Value::new(Trait::of::<T>(), Dynamic::new(primitive))
+        Value::primitive(Trait::of::<T>(), Dynamic::new(primitive))
     }
 
     pub fn into_primitive<T: Primitive>(self) -> T {
-        self.raw_value.cast::<T>().clone()
+        match self.contained {
+            Contained::Primitive(primitive) => primitive.cast::<T>().clone(),
+            Contained::Value(value) => value.into_primitive::<T>(), // handles nested primitives
+        }
+    }
+
+    pub fn contained_value(&self) -> &Value {
+        match &self.contained {
+            Contained::Primitive(_) => self,
+            Contained::Value(value) => value,
+        }
     }
 }

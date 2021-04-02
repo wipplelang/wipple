@@ -131,15 +131,9 @@ impl Name {
 
 pub(crate) fn setup(env: &mut Environment) {
     // Name : trait
-    env.set_variable(
-        "Name",
-        Value::of(TraitConstructor {
-            r#trait: Trait::name(),
-            validation: Validation::of::<Name>(),
-        }),
-    );
+    env.set_variable("Name", Value::of(Trait::of::<Name>()));
 
-    // Name ::= Assign
+    // Name == Assign
     env.add_primitive_conformance(|name: Name| {
         AssignFn::new(move |value, computed, env, stack| {
             if computed {
@@ -159,12 +153,12 @@ pub(crate) fn setup(env: &mut Environment) {
         })
     });
 
-    // Name ::= Evaluate
+    // Name == Evaluate
     env.add_primitive_conformance(|name: Name| {
         EvaluateFn::new(move |env, stack| name.resolve(env, stack))
     });
 
-    // Name ::= Replace-In-Template
+    // Name == Replace-In-Template
     env.add_primitive_conformance(|name: Name| {
         ReplaceInTemplateFn::new(move |parameter, replacement, _, _| {
             Ok(if name.name == parameter {
@@ -175,6 +169,6 @@ pub(crate) fn setup(env: &mut Environment) {
         })
     });
 
-    // Name ::= Text
+    // Name == Text
     env.add_primitive_conformance(|name: Name| Text::new(&name.name));
 }
