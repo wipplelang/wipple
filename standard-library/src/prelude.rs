@@ -227,12 +227,11 @@ pub fn prelude(env: &EnvironmentRef) {
             .evaluate(env, stack.clone())?
             .get_primitive_or::<Trait>("Expected trait", env, stack.clone())?;
 
-        let trait_value = value.evaluate(env, stack.clone())?.get_trait_or(
-            &r#trait,
-            "Value does not have trait",
-            env,
-            stack,
-        )?;
+        let trait_value = value
+            .evaluate(env, stack.clone())?
+            .get_trait_or(&r#trait, "Value does not have trait", env, stack)?
+            .contained_value()
+            .clone();
 
         Ok(trait_value)
     });
