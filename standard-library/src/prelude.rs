@@ -435,4 +435,33 @@ pub fn prelude(env: &EnvironmentRef) {
             Ok(value)
         }
     });
+
+    // 'evaluate-text!' function
+
+    fn evaluate_text(code: &str, env: &EnvironmentRef, stack: Stack) -> Result {
+        let (tokens, lookup) = wipple_parser::lex(&code);
+
+        let ast = wipple_parser::parse_inline_program(&mut tokens.iter().peekable(), &lookup)
+            .map_err(|error| {
+                wipple::ReturnState::Error(wipple::Error::new(
+                    &format!("Error parsing: {}", error.message),
+                    stack.clone(),
+                ))
+            })?;
+
+        let program = wipple_parser::convert(&ast, None);
+
+        program.evaluate(&env, stack)
+    }
+
+    env.borrow_mut().set_variable(
+        "evaluate-text!",
+        Value::of(Function::new(|value, env, stack| {
+            let code = value
+                .get_primitive_or::<Text>("Expected text", env, stack.clone())?
+                .text;
+
+            evaluate_text(&code, env, stack)
+        })),
+    );
 }

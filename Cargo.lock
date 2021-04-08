@@ -821,6 +821,7 @@ version = "0.0.0"
 dependencies = [
  "rust-embed",
  "wipple",
+ "wipple_parser",
  "wipple_plugins",
  "wipple_projects",
 ]
