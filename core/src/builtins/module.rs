@@ -56,7 +56,20 @@ pub fn setup_module_block(env: &EnvironmentRef) {
         env.borrow_mut().set_variable(&left.name, value);
 
         Ok(())
-    })
+    });
+
+    *env.borrow_mut().handle_computed_assign() =
+        HandleComputedAssignFn::new(|left, right, env, _| {
+            let right = right.clone();
+            let captured_env = Environment::child_of(env).into_ref();
+
+            env.borrow_mut()
+                .set_computed_variable(&left.name, move |_, stack| {
+                    right.evaluate(&captured_env, stack)
+                });
+
+            Ok(())
+        });
 }
 
 pub(crate) fn setup(env: &mut Environment) {

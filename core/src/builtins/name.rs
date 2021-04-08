@@ -68,6 +68,25 @@ core_env_key!(pub handle_assign for HandleAssignFn {
     visibility: EnvironmentVisibility::Private,
 });
 
+fn_wrapper_struct! {
+    pub type HandleComputedAssignFn(&Name, &Value, &EnvironmentRef, Stack) -> Result<()>;
+}
+
+impl Default for HandleComputedAssignFn {
+    fn default() -> Self {
+        HandleComputedAssignFn::new(|_, _, _, stack| {
+            Err(ReturnState::Error(Error::new(
+                "Cannot assign to computed variables here",
+                stack,
+            )))
+        })
+    }
+}
+
+core_env_key!(pub handle_computed_assign for HandleComputedAssignFn {
+    visibility: EnvironmentVisibility::Private,
+});
+
 impl Environment {
     pub fn set_variable(&mut self, name: &str, value: Value) {
         self.variables()

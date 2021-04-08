@@ -16,3 +16,30 @@ a
 Name 'a' does not refer to a variable
     Resolving variable 'a' (1:1)
     Importing program
+
+>>> Computed variables
+
+a : do {
+    show "1"
+    "a"
+}
+
+show "2"
+
+b :> do {
+    show "3"
+    "b"
+}
+
+show "4"
+show a
+show b
+
+---
+
+1 ==> 1
+2 ==> 2
+4 ==> 4
+a ==> a
+3 ==> 3
+b ==> b

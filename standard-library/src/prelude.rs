@@ -52,19 +52,25 @@ pub fn prelude(env: &EnvironmentRef) {
     let assignment_precedence_group =
         add_precedence_group(Associativity::Right, PrecedenceGroupComparison::highest());
 
-    let assignment_operator = Operator::collect(move |left, right, env, stack| {
-        let name = left.get_primitive_or::<Name>("Expected name", env, stack.clone())?;
+    macro_rules! assignment_operator {
+        ($name:expr, $handle:ident, $env:expr) => {
+            let operator = Operator::collect(move |left, right, env, stack| {
+                let name = left.get_primitive_or::<Name>("Expected name", env, stack.clone())?;
 
-        let handle_assign = env.borrow_mut().handle_assign().clone();
-        handle_assign(&name, right, env, stack)?;
+                let handle = env.borrow_mut().$handle().clone();
+                handle(&name, right, env, stack)?;
 
-        Ok(Value::empty())
-    });
+                Ok(Value::empty())
+            });
 
-    add_operator(&assignment_operator, &assignment_precedence_group);
+            add_operator(&operator, &assignment_precedence_group);
 
-    env.borrow_mut()
-        .set_variable(":", Value::of(assignment_operator));
+            $env.borrow_mut().set_variable($name, Value::of(operator));
+        };
+    }
+
+    assignment_operator!(":", handle_assign, env);
+    assignment_operator!(":>", handle_computed_assign, env);
 
     // Conformance operator (==)
 
