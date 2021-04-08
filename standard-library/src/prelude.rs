@@ -479,4 +479,40 @@ pub fn prelude(env: &EnvironmentRef) {
             evaluate_text(&code, env, stack)
         })),
     );
+
+    // Dot operator (.) -- 'a . b' is equivalent to 'b a'
+
+    let dot_precedence_group =
+        add_precedence_group(Associativity::Left, PrecedenceGroupComparison::lowest());
+
+    let dot_operator = Operator::collect(|left, right, env, stack| {
+        right.evaluate(env, stack.clone())?.call(left, env, stack)
+    });
+
+    add_operator(&dot_operator, &dot_precedence_group);
+
+    env.borrow_mut().set_variable(".", Value::of(dot_operator));
+
+    // Flow operator (|) -- 'a | b' is equivalent to 'x -> b (a x)'
+
+    let flow_precedence_group =
+        add_precedence_group(Associativity::Left, PrecedenceGroupComparison::lowest());
+
+    let flow_operator = Operator::collect(|left, right, env, stack| {
+        let left = left
+            .evaluate(env, stack.clone())?
+            .get_primitive_or::<Function>("Expected function", env, stack.clone())?;
+
+        let right = right
+            .evaluate(env, stack.clone())?
+            .get_primitive_or::<Function>("Expected function", env, stack)?;
+
+        Ok(Value::of(Function::new(move |value, env, stack| {
+            right(&left(value, env, stack.clone())?, env, stack)
+        })))
+    });
+
+    add_operator(&flow_operator, &flow_precedence_group);
+
+    env.borrow_mut().set_variable("|", Value::of(flow_operator));
 }
