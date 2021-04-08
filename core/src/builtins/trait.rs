@@ -6,7 +6,7 @@ pub(crate) fn setup(env: &mut Environment) {
     env.set_variable("Trait", Value::of(Trait::of::<Trait>()));
 
     // Trait == Text
-    env.add_text_conformance(Trait::r#trait(), "trait");
+    env.add_text_conformance::<Trait>("trait");
 
     // Trait == Function
     env.add_primitive_conformance(|r#trait: Trait| {

@@ -15,7 +15,7 @@ use std::cell::RefCell;
 pub type EnvironmentValues = HashMap<EnvironmentKey, Dynamic>;
 pub type EnvironmentRef = Rc<RefCell<Environment>>;
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct Environment {
     pub values: EnvironmentValues,
     pub parent: Option<EnvironmentRef>,
@@ -60,7 +60,9 @@ fn_wrapper_struct! {
 }
 
 impl UseFn {
-    pub fn from<T: Clone + 'static>(r#use: impl Fn(&T, &T) -> T + 'static) -> Self {
+    pub fn from<T: std::fmt::Debug + Clone + 'static>(
+        r#use: impl Fn(&T, &T) -> T + 'static,
+    ) -> Self {
         UseFn::new(move |parent, new| {
             let parent = parent.cast::<T>();
             let new = new.cast::<T>();
@@ -137,7 +139,7 @@ impl EnvironmentKey {
 
 impl Debug for EnvironmentKey {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "(EnvironmentKey {:?})", self.id)
+        write!(f, "EnvironmentKey({:?})", self.id)
     }
 }
 

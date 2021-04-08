@@ -30,6 +30,7 @@ impl Validation {
     }
 }
 
+#[derive(Debug)]
 pub enum Validated<T> {
     Valid(T),
     Invalid,

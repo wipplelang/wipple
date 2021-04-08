@@ -1,6 +1,6 @@
 use crate::*;
 
-pub trait Primitive: Clone + 'static {}
+pub trait Primitive: std::fmt::Debug + Clone + 'static {}
 
 #[derive(Debug, Clone)]
 pub struct Value {

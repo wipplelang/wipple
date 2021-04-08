@@ -1,6 +1,6 @@
 use crate::*;
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct Quoted {
     pub value: Value,
     pub location: Option<SourceLocation>,

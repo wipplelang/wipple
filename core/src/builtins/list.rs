@@ -1,6 +1,6 @@
 use crate::*;
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct List {
     pub items: Vec<Value>,
     pub location: Option<SourceLocation>,

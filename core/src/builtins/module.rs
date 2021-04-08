@@ -1,6 +1,6 @@
 use crate::*;
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct Module {
     /// The captured environment will have its parent discarded.
     pub env: EnvironmentRef,
@@ -50,24 +50,12 @@ impl Block {
 }
 
 pub fn setup_module_block(env: &EnvironmentRef) {
-    *env.borrow_mut().handle_assign() = HandleAssignFn::new(|left, right, computed, env, stack| {
-        let stack = stack.clone().update_evaluation(|e| {
-            e.with(|| {
-                format!(
-                    "Assigning '{}' to '{}'",
-                    right.try_format(env, stack.clone()),
-                    left.try_format(env, stack)
-                )
-            })
-        });
+    *env.borrow_mut().handle_assign() = HandleAssignFn::new(|left, right, env, stack| {
+        let value = right.evaluate(env, stack)?;
 
-        let assign = left.get_primitive_or::<AssignFn>(
-            "Cannot assign to this value because it does not have the Assign trait",
-            env,
-            stack.clone(),
-        )?;
+        env.borrow_mut().set_variable(&left.name, value);
 
-        assign(&right, computed, env, stack)
+        Ok(())
     })
 }
 
@@ -81,7 +69,7 @@ pub(crate) fn setup(env: &mut Environment) {
     env.set_variable("Module", Value::of(Trait::of::<Module>()));
 
     // Module == Text
-    env.add_text_conformance(Trait::module(), "module");
+    env.add_text_conformance::<Module>("module");
 
     // Module == Function
     env.add_primitive_conformance(|module: Module| {

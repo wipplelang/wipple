@@ -21,7 +21,7 @@ impl Value {
     }
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct Template {
     pub parameter: String,
     pub replace_in: Value,
@@ -41,5 +41,5 @@ pub(crate) fn setup(env: &mut Environment) {
     });
 
     // Template == Text
-    env.add_text_conformance(Trait::template(), "template");
+    env.add_text_conformance::<Template>("template");
 }

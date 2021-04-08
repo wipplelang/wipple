@@ -1,9 +1,10 @@
 use crate::*;
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct Closure {
     pub captured_env: EnvironmentRef,
-    pub define_parameter: AssignFn,
+    pub validation: Validation,
+    pub parameter: Name,
     pub return_value: Value,
 }
 
@@ -12,14 +13,31 @@ core_primitive!(pub closure for Closure);
 pub(crate) fn setup(env: &mut Environment) {
     // Closure == Function
     env.add_primitive_conformance(|closure: Closure| {
-        Function::new(move |value, _, stack| {
+        Function::new(move |value, env, stack| {
+            let value = value.evaluate(env, stack.clone())?;
+
+            let validated = (closure.validation)(&value, env, stack.clone())?;
+
+            let value = match validated {
+                Validated::Valid(value) => value,
+                Validated::Invalid => {
+                    return Err(ReturnState::Error(Error::new(
+                        "Cannot use this value as input to this closure",
+                        stack,
+                    )))
+                }
+            };
+
             let inner_env = Environment::child_of(&closure.captured_env).into_ref();
 
-            (closure.define_parameter)(value, false, &inner_env, stack.clone())?;
+            inner_env
+                .borrow_mut()
+                .set_variable(&closure.parameter.name, value);
+
             closure.return_value.evaluate(&inner_env, stack)
         })
     });
 
     // Closure == Text
-    env.add_text_conformance(Trait::closure(), "closure");
+    env.add_text_conformance::<Closure>("closure");
 }

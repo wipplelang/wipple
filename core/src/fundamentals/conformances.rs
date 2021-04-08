@@ -28,7 +28,19 @@ impl Conformance {
             derive_value: Rc::new(derive_value),
         }
     }
+}
 
+impl std::fmt::Debug for Conformance {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(
+            f,
+            "(Conformance {:?} == {:?})",
+            self.matching_trait, self.derived_trait
+        )
+    }
+}
+
+impl Conformance {
     pub fn matches(&self, value: &Value) -> bool {
         value.r#trait == self.matching_trait
     }
@@ -59,14 +71,7 @@ impl Environment {
         });
     }
 
-    pub fn add_text_conformance(&mut self, r#trait: Trait, value_name: &'static str) {
-        self.add_conformance(r#trait, Trait::text(), move |value, env, stack| {
-            let named = value.get_primitive_if_present::<Named>(env, stack)?;
-
-            Ok(Value::of(Text::new(&match named {
-                Some(named) => format!("<{} '{}'>", value_name, named.name),
-                None => format!("<{}>", value_name),
-            })))
-        });
+    pub fn add_text_conformance<T: Primitive>(&mut self, value_name: &'static str) {
+        self.add_primitive_conformance(move |_: T| Text::new(&format!("<{}>", value_name)));
     }
 }

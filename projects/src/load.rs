@@ -22,7 +22,7 @@ impl Default for LoadFileFn {
 
 stack_key!(pub load_file for LoadFileFn);
 
-#[derive(Clone, Default)]
+#[derive(Debug, Clone, Default)]
 pub struct CurrentFile(pub Option<PathBuf>);
 
 stack_key!(pub current_file for CurrentFile);

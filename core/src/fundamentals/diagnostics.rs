@@ -130,15 +130,13 @@ pub enum ReturnState {
 }
 
 impl ReturnState {
-    /// Call when all other return states have made it to the top level,
-    /// converting them into errors.
+    /// Call when all other return states have made it to the top level to
+    /// convert them into errors.
     pub fn into_error(self, stack: Stack) -> Error {
-        use ReturnState::*;
-
         match self {
-            ReturnFromBlock => crate::Error::new("'return' outside block", stack),
-            BreakOutOfLoop => crate::Error::new("'break' outside loop", stack),
-            Error(error) => error,
+            ReturnState::ReturnFromBlock => Error::new("'return' outside block", stack),
+            ReturnState::BreakOutOfLoop => Error::new("'break' outside loop", stack),
+            ReturnState::Error(error) => error,
         }
     }
 }

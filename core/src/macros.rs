@@ -23,6 +23,12 @@ macro_rules! fn_wrapper_struct {
                 &*self.0
             }
         }
+
+        impl std::fmt::Debug for $name {
+            fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+                write!(f, "({})", stringify!($name))
+            }
+        }
     };
 }
 

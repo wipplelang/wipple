@@ -1,7 +1,7 @@
 use crate::*;
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct Variant {
     pub id: Id,
     pub name: String,
@@ -35,14 +35,12 @@ impl Module {
                     Value::of(Variant::new(id, &name, &values))
                 } else {
                     Value::of(Function::new(move |value, env, stack| {
+                        let value = value.evaluate(env, stack.clone())?;
+
                         let (validation, remaining_validations) =
                             remaining_validations.split_first().unwrap();
 
-                        let validated_value = match validation(
-                            &value.evaluate(env, stack.clone())?,
-                            env,
-                            stack.clone(),
-                        )? {
+                        let validated_value = match validation(&value, env, stack.clone())? {
                             Validated::Valid(value) => value,
                             Validated::Invalid => {
                                 return Err(ReturnState::Error(Error::new(
@@ -76,72 +74,51 @@ impl Module {
 }
 
 fn setup_match_block(matches: Rc<RefCell<HashMap<String, Value>>>, env: &EnvironmentRef) {
-    *env.borrow_mut().handle_assign() = HandleAssignFn::new(
-        move |left, right, computed, env, stack| {
-            let name =
-                left.get_primitive_or::<Name>("Expected name for match", env, stack.clone())?;
+    *env.borrow_mut().handle_assign() = HandleAssignFn::new(move |left, right, _, _| {
+        matches
+            .borrow_mut()
+            .insert(left.name.clone(), right.clone());
 
-            if computed {
-                return Err(ReturnState::Error(Error::new(
-                    "Matches are already lazily evaluated, so creating a computed variable here is unnecessary",
-                    stack
-                )));
-            }
-
-            matches.borrow_mut().insert(name.name, right.clone());
-
-            Ok(())
-        },
-    )
+        Ok(())
+    })
 }
 
 fn setup_variant_block(
     variants: Rc<RefCell<HashMap<String, Vec<Validation>>>>,
     env: &EnvironmentRef,
 ) {
-    *env.borrow_mut().handle_assign() =
-        HandleAssignFn::new(move |left, right, computed, env, stack| {
-            let name =
-                left.get_primitive_or::<Name>("Expected name for variant", env, stack.clone())?;
+    *env.borrow_mut().handle_assign() = HandleAssignFn::new(move |left, right, env, stack| {
+        if variants.borrow().contains_key(&left.name) {
+            return Err(ReturnState::Error(Error::new(
+                "Cannot have two variants with the same name",
+                stack,
+            )));
+        }
 
-            if computed {
-                return Err(ReturnState::Error(Error::new(
-                    "Lazy evaluation is not supported for variants",
-                    stack,
-                )));
-            }
+        let list = right.get_primitive_or::<List>(
+            "Expected list of validations for variant",
+            env,
+            stack.clone(),
+        )?;
 
-            if variants.borrow().contains_key(&name.name) {
-                return Err(ReturnState::Error(Error::new(
-                    "Cannot have two variants with the same name",
-                    stack,
-                )));
-            }
+        let mut validations = Vec::new();
 
-            let list = right.get_primitive_or::<List>(
-                "Expected list of validations for variant",
-                env,
-                stack.clone(),
-            )?;
+        for item in list.items {
+            let validation = item
+                .evaluate(env, stack.clone())?
+                .get_primitive_or::<Validation>(
+                    "Expected validation in list of variant items",
+                    env,
+                    stack.clone(),
+                )?;
 
-            let mut validations = Vec::new();
+            validations.push(validation);
+        }
 
-            for item in list.items {
-                let validation = item
-                    .evaluate(env, stack.clone())?
-                    .get_primitive_or::<Validation>(
-                        "Expected validation in list of variant items",
-                        env,
-                        stack.clone(),
-                    )?;
+        variants.borrow_mut().insert(left.name.clone(), validations);
 
-                validations.push(validation);
-            }
-
-            variants.borrow_mut().insert(name.name, validations);
-
-            Ok(())
-        })
+        Ok(())
+    })
 }
 
 pub(crate) fn setup(env: &mut Environment) {

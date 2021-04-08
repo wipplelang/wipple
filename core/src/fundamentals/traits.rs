@@ -32,7 +32,7 @@ impl Eq for Trait {}
 
 impl std::fmt::Debug for Trait {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "(Trait {:?})", self.id)
+        write!(f, "Trait({:?})", self.id)
     }
 }
 
@@ -93,8 +93,24 @@ impl Value {
                         };
 
                         derive(r#trait, value, &parent, eval_env, stack)
-                    },
-                    1 => (conformances.first().unwrap().derive_value)(value.contained_value(), eval_env, stack).map(Some),
+                    }
+                    1 => {
+                        let value = value.contained_value();
+
+                        let derived_value = (conformances.first().unwrap().derive_value)(value, eval_env, stack.clone())?;
+
+                        let contained_value = match (r#trait.validation)(&derived_value, eval_env, stack.clone())? {
+                            Validated::Valid(value) => value,
+                            Validated::Invalid => {
+                                return Err(ReturnState::Error(Error::new(
+                                    "Cannot use this value to derive this trait",
+                                    stack
+                                )))
+                            },
+                        };
+
+                        Ok(Some(contained_value))
+                    }
                     _ => Err(ReturnState::Error(Error::new(
                         // TODO: Better diagnostics -- list out all of the matching conformances
                         "Multiple conformances match this value, so the conformance to use is ambiguous",

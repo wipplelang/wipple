@@ -43,9 +43,24 @@ pub struct Dynamic {
     pub type_info: TypeInfo,
     value: Box<dyn Any>,
     clone: Rc<dyn Fn(&dyn Any) -> Box<dyn Any>>,
+
+    #[cfg(debug_assertions)]
+    #[allow(clippy::clippy::type_complexity)]
+    debug: Rc<dyn Fn(&dyn Any, &mut std::fmt::Formatter) -> std::fmt::Result>,
 }
 
 impl Dynamic {
+    #[cfg(debug_assertions)]
+    pub fn new<T: std::fmt::Debug + Clone + 'static>(value: T) -> Self {
+        Dynamic {
+            type_info: TypeInfo::of::<T>(),
+            value: Box::new(value),
+            clone: Rc::new(move |value| Box::new(value.downcast_ref::<T>().unwrap().clone())),
+            debug: Rc::new(|value, f| value.downcast_ref::<T>().unwrap().clone().fmt(f)),
+        }
+    }
+
+    #[cfg(not(debug_assertions))]
     pub fn new<T: Clone + 'static>(value: T) -> Self {
         Dynamic {
             type_info: TypeInfo::of::<T>(),
@@ -109,6 +124,9 @@ impl Clone for Dynamic {
             type_info: self.type_info,
             value: (self.clone)(&*self.value),
             clone: self.clone.clone(),
+
+            #[cfg(debug_assertions)]
+            debug: self.debug.clone(),
         }
     }
 }
@@ -116,7 +134,10 @@ impl Clone for Dynamic {
 impl fmt::Debug for Dynamic {
     #[cfg(debug_assertions)]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "(Dynamic {:?})", self.type_info)
+        write!(f, "Dynamic(")?;
+        (self.debug)(&*self.value, f)?;
+        write!(f, ")")?;
+        Ok(())
     }
 
     #[cfg(not(debug_assertions))]

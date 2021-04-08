@@ -2,7 +2,7 @@ use crate::*;
 use std::path::{Path, PathBuf};
 use wipple::*;
 
-#[derive(Clone, Default)]
+#[derive(Debug, Clone, Default)]
 pub struct ProjectRoot(pub Option<PathBuf>);
 
 stack_key!(pub project_root for ProjectRoot);

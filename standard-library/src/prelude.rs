@@ -52,20 +52,19 @@ pub fn prelude(env: &EnvironmentRef) {
     let assignment_precedence_group =
         add_precedence_group(Associativity::Right, PrecedenceGroupComparison::highest());
 
-    let add_assignment_operator = |name: &str, computed: bool, env: &EnvironmentRef| {
-        let operator = Operator::collect(move |left, right, env, stack| {
-            let handle_assign = env.borrow_mut().handle_assign().clone();
-            handle_assign(left, right, computed, env, stack)?;
-            Ok(Value::empty())
-        });
+    let assignment_operator = Operator::collect(move |left, right, env, stack| {
+        let name = left.get_primitive_or::<Name>("Expected name", env, stack.clone())?;
 
-        add_operator(&operator, &assignment_precedence_group);
+        let handle_assign = env.borrow_mut().handle_assign().clone();
+        handle_assign(&name, right, env, stack)?;
 
-        env.borrow_mut().set_variable(name, Value::of(operator));
-    };
+        Ok(Value::empty())
+    });
 
-    add_assignment_operator(":", false, env);
-    add_assignment_operator(":>", true, env);
+    add_operator(&assignment_operator, &assignment_precedence_group);
+
+    env.borrow_mut()
+        .set_variable(":", Value::of(assignment_operator));
 
     // Conformance operator (==)
 
@@ -127,21 +126,15 @@ pub fn prelude(env: &EnvironmentRef) {
         let derived_value = right.items[1].clone();
 
         let derive_env = Environment::child_of(env).into_ref();
-        let check_env = env.clone();
 
-        env.borrow_mut().add_conformance(
-            matching_trait,
-            derived_trait.clone(),
-            move |value, _, stack| {
+        env.borrow_mut()
+            .add_conformance(matching_trait, derived_trait, move |value, _, stack| {
                 if let Some(name) = &name {
                     derive_env.borrow_mut().set_variable(name, value.clone());
                 }
 
-                let derived_value = derived_value.evaluate(&derive_env, stack.clone())?;
-
-                Value::new_validated(derived_trait.clone(), derived_value, &check_env, stack)
-            },
-        );
+                derived_value.evaluate(&derive_env, stack)
+            });
 
         Ok(Value::empty())
     });
@@ -176,17 +169,43 @@ pub fn prelude(env: &EnvironmentRef) {
     // Closure operator (->)
 
     let closure_operator = Operator::collect(|parameter, return_value, env, stack| {
-        let define_parameter = parameter.get_primitive_or::<AssignFn>(
-            "Closure parameter must have the Assign trait",
-            env,
-            stack,
-        )?;
+        let (validation, parameter) = match parameter
+            .get_primitive_if_present::<List>(env, stack.clone())?
+        {
+            Some(list) => {
+                if list.items.len() != 2 {
+                    return Err(ReturnState::Error(Error::new("", stack)));
+                }
+
+                let validation = list.items[0]
+                    .evaluate(env, stack.clone())?
+                    .get_primitive_or::<Validation>("Expected validation", env, stack.clone())?;
+
+                let parameter = list.items[1].get_primitive_or::<Name>(
+                    "Closure parameter must be a name",
+                    env,
+                    stack,
+                )?;
+
+                (validation, parameter)
+            }
+            None => {
+                let parameter = parameter.get_primitive_or::<Name>(
+                    "Closure parameter must be a name",
+                    env,
+                    stack,
+                )?;
+
+                (Validation::any(), parameter)
+            }
+        };
 
         let captured_env = env.clone();
 
         Ok(Value::of(Closure {
             captured_env,
-            define_parameter,
+            validation,
+            parameter,
             return_value: return_value.clone(),
         }))
     });
@@ -347,13 +366,13 @@ pub fn prelude(env: &EnvironmentRef) {
                         let (leading_string, remaining_strings) =
                             remaining_strings.split_first().unwrap();
 
-                        let text = value
-                            .evaluate(env, stack.clone())?
-                            .get_primitive_or::<Text>(
-                                "Cannot format this value because it does not conform to Text",
-                                env,
-                                stack,
-                            )?;
+                        let value = value.evaluate(env, stack.clone())?;
+
+                        let text = value.get_primitive_or::<Text>(
+                            "Cannot format this value because it does not conform to Text",
+                            env,
+                            stack,
+                        )?;
 
                         Ok(build_formatter(
                             remaining_strings.to_vec(),

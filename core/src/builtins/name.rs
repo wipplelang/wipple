@@ -1,7 +1,7 @@
 use crate::*;
 use std::collections::HashMap;
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct Name {
     pub name: String,
     pub location: Option<SourceLocation>,
@@ -23,23 +23,10 @@ impl Name {
 core_primitive!(pub name for Name);
 
 fn_wrapper_struct! {
-    pub type AssignFn(&Value, bool, &EnvironmentRef, Stack) -> Result<()>;
-}
-
-core_primitive!(pub assign for AssignFn);
-
-#[derive(Clone)]
-pub struct Named {
-    pub name: String,
-}
-
-core_primitive!(pub named for Named);
-
-fn_wrapper_struct! {
     pub type ComputeFn(&EnvironmentRef, Stack) -> Result;
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub enum Variable {
     Just(Value),
     Computed(ComputeFn),
@@ -63,14 +50,14 @@ core_env_key!(pub variables for Variables {
 });
 
 fn_wrapper_struct! {
-    pub type HandleAssignFn(&Value, &Value, bool, &EnvironmentRef, Stack) -> Result<()>;
+    pub type HandleAssignFn(&Name, &Value, &EnvironmentRef, Stack) -> Result<()>;
 }
 
 impl Default for HandleAssignFn {
     fn default() -> Self {
-        HandleAssignFn::new(|_, _, _, _, stack| {
+        HandleAssignFn::new(|_, _, _, stack| {
             Err(ReturnState::Error(Error::new(
-                "Cannot assign to variables inside this block",
+                "Cannot assign to variables here",
                 stack,
             )))
         })
@@ -135,26 +122,6 @@ impl Name {
 pub(crate) fn setup(env: &mut Environment) {
     // Name : trait
     env.set_variable("Name", Value::of(Trait::of::<Name>()));
-
-    // Name == Assign
-    env.add_primitive_conformance(|name: Name| {
-        AssignFn::new(move |value, computed, env, stack| {
-            if computed {
-                let value = value.clone();
-                let captured_env = Environment::child_of(env).into_ref();
-
-                env.borrow_mut()
-                    .set_computed_variable(&name.name, move |_, stack| {
-                        value.evaluate(&captured_env, stack)
-                    });
-            } else {
-                let value = value.evaluate(env, stack)?;
-                env.borrow_mut().set_variable(&name.name, value);
-            }
-
-            Ok(())
-        })
-    });
 
     // Name == Evaluate
     env.add_primitive_conformance(|name: Name| {

@@ -1,7 +1,7 @@
 use crate::*;
 use bigdecimal::BigDecimal;
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct Number {
     pub number: BigDecimal,
     pub location: Option<SourceLocation>,

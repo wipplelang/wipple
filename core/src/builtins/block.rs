@@ -2,7 +2,7 @@ use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use crate::*;
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct Block {
     pub statements: Vec<List>,
     pub location: Option<SourceLocation>,
@@ -59,7 +59,7 @@ pub(crate) fn setup(env: &mut Environment) {
     env.set_variable("Block", Value::of(Trait::of::<Block>()));
 
     // Block == Text
-    env.add_text_conformance(Trait::block(), "block");
+    env.add_text_conformance::<Block>("block");
 
     // Block == Replace-In-Template
     env.add_primitive_conformance(|block: Block| {
@@ -130,27 +130,13 @@ pub(crate) fn setup(env: &mut Environment) {
 }
 
 fn setup_validation_block(fields: Rc<RefCell<HashMap<String, Validation>>>, env: &EnvironmentRef) {
-    *env.borrow_mut().handle_assign() =
-        HandleAssignFn::new(move |left, right, computed, env, stack| {
-            let name = left.get_primitive_or::<Name>(
-                "Expected name for variable to validate",
-                env,
-                stack.clone(),
-            )?;
+    *env.borrow_mut().handle_assign() = HandleAssignFn::new(move |left, right, env, stack| {
+        let validation = right
+            .evaluate(env, stack.clone())?
+            .get_primitive_or::<Validation>("Expected validation", env, stack)?;
 
-            if computed {
-                return Err(ReturnState::Error(Error::new(
-                    "Lazy evaluation is not supported for validations",
-                    stack,
-                )));
-            }
+        fields.borrow_mut().insert(left.name.clone(), validation);
 
-            let validation = right
-                .evaluate(env, stack.clone())?
-                .get_primitive_or::<Validation>("Expected validation", env, stack)?;
-
-            fields.borrow_mut().insert(name.name, validation);
-
-            Ok(())
-        })
+        Ok(())
+    });
 }

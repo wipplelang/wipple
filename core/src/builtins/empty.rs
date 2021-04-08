@@ -1,6 +1,6 @@
 use crate::*;
 
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 struct Empty;
 
 core_primitive!(pub empty for Empty);
@@ -27,5 +27,5 @@ pub(crate) fn setup(env: &mut Environment) {
     });
 
     // Empty == Text
-    env.add_text_conformance(Trait::empty(), "empty")
+    env.add_text_conformance::<Empty>("empty")
 }

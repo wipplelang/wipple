@@ -55,6 +55,12 @@ impl Hash for Operator {
     }
 }
 
+impl std::fmt::Debug for Operator {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "Operator({:?})", self.id)
+    }
+}
+
 impl Operator {
     pub fn collect(
         function: impl Fn(&Value, &Value, &EnvironmentRef, Stack) -> Result + 'static,
@@ -92,7 +98,7 @@ pub(crate) fn setup(env: &mut Environment) {
     env.set_variable("Operator", Value::of(Trait::of::<Operator>()));
 
     // Operator == Text
-    env.add_text_conformance(Trait::operator(), "operator");
+    env.add_text_conformance::<Operator>("operator");
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -101,7 +107,7 @@ pub enum Arity {
     Variadic,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Associativity {
     Left,
     Right,
@@ -111,7 +117,7 @@ pub enum Associativity {
 
 pub type OperatorList = Vec<(Operator, usize)>;
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct PrecedenceGroup {
     pub id: Uuid,
     pub operators: HashSet<Operator>,
