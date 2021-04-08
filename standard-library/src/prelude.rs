@@ -319,7 +319,9 @@ pub fn prelude(env: &EnvironmentRef) {
             boolean_math!(stringify!($operation), $operation, $precedence_group, $prelude_env)
         };
         ($name:expr, $operation:tt, $precedence_group:ident, $prelude_env:expr) => {{
-            let operator = Operator::collect(|left, right, env, stack| {
+            let stdlib_env = env.clone();
+
+            let operator = Operator::collect(move |left, right, env, stack| {
                 let left = left
                     .evaluate(env, stack.clone())?
                     .get_primitive::<Number>(env, stack.clone())?;
@@ -333,7 +335,7 @@ pub fn prelude(env: &EnvironmentRef) {
                 // This will always work because 'true' and 'false' are defined
                 // inside the standard library, which we have full control over
                 let value = Name::new(&result.to_string())
-                    .resolve(env, stack)
+                    .resolve(&stdlib_env, stack)
                     .expect("'true' and 'false' somehow aren't defined");
 
                 Ok(value)
@@ -392,5 +394,45 @@ pub fn prelude(env: &EnvironmentRef) {
 
             Ok(build_formatter(strings, String::from("")))
         })),
-    )
+    );
+
+    // Global environment functions
+
+    env.borrow_mut().set_variable(
+        "inline-global!",
+        Value::of(Function::new(|value, env, stack| {
+            let block = value.get_primitive_or::<Block>("Expected block", env, stack.clone())?;
+            block.reduce_inline(&Environment::global(), stack)
+        })),
+    );
+
+    env.borrow_mut().set_variable(
+        "use-global!",
+        Value::of(Function::new(|value, env, stack| {
+            let block = value
+                .evaluate(env, stack.clone())?
+                .get_primitive_or::<Module>("Expected module", env, stack)?;
+
+            Environment::global()
+                .borrow_mut()
+                .r#use(&block.env.borrow());
+
+            Ok(Value::empty())
+        })),
+    );
+
+    env.borrow_mut().set_computed_variable("global?", {
+        let stdlib_env = env.clone();
+
+        move |env, stack| {
+            let is_global = Environment::is_global(env);
+
+            // This will always work; see above
+            let value = Name::new(&is_global.to_string())
+                .resolve(&stdlib_env, stack)
+                .expect("'true' and 'false' somehow aren't defined");
+
+            Ok(value)
+        }
+    });
 }
