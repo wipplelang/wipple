@@ -1,0 +1,16 @@
+>>> 'Is' validation
+
+A : trait Text
+A text == Text (format "A _" text)
+
+a : A "foo"
+
+show a
+show (A for a)
+show ((Is A) for a)
+
+---
+
+a ==> A foo
+(A for a) ==> foo
+((Is A) for a) ==> A foo

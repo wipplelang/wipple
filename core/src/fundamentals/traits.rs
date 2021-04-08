@@ -41,12 +41,12 @@ impl Value {
         self.get_trait_or(r#trait, "Value does not have this trait", env, stack)
     }
 
-    pub fn has_trait(&self, r#trait: &Trait, env: &EnvironmentRef, stack: Stack) -> Result<bool> {
+    pub fn is_trait(&self, r#trait: &Trait, env: &EnvironmentRef, stack: Stack) -> Result<bool> {
         self.get_trait_if_present(r#trait, env, stack)
             .map(|t| t.is_some())
     }
 
-    pub fn has_trait_directly(&self, r#trait: &Trait) -> bool {
+    pub fn is_trait_directly(&self, r#trait: &Trait) -> bool {
         &self.r#trait == r#trait
     }
 
@@ -67,7 +67,7 @@ impl Value {
         env: &EnvironmentRef,
         stack: Stack,
     ) -> Result<Option<Value>> {
-        if self.has_trait_directly(r#trait) {
+        if self.is_trait_directly(r#trait) {
             Ok(Some(self.contained_value().clone()))
         } else {
             fn derive(

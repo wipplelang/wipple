@@ -22,10 +22,19 @@ impl Validation {
 
     pub fn for_trait(r#trait: Trait) -> Self {
         Validation::new(move |value, env, stack| {
-            Ok(match value.get_trait_if_present(&r#trait, env, stack)? {
+            let trait_value = value.get_trait_if_present(&r#trait, env, stack)?;
+
+            Ok(match trait_value {
                 Some(value) => Validated::Valid(value),
                 None => Validated::Invalid,
             })
+        })
+    }
+
+    /// Validate a value, retaining it instead of using the validated value.
+    pub fn is(validation: Validation) -> Self {
+        Validation::new(move |value, env, stack| {
+            Ok(validation(value, env, stack)?.map(|_| value.clone()))
         })
     }
 }

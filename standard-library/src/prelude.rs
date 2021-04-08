@@ -14,6 +14,19 @@ pub fn prelude(env: &EnvironmentRef) {
         })),
     );
 
+    // Validation functions
+
+    env.borrow_mut().set_variable(
+        "Is",
+        Value::of(Function::new(|value, env, stack| {
+            let validation = value
+                .evaluate(env, stack.clone())?
+                .get_primitive_or::<Validation>("Expected validation", env, stack)?;
+
+            Ok(Value::of(Validation::is(validation)))
+        })),
+    );
+
     // Block functions
 
     env.borrow_mut().set_variable(
@@ -228,18 +241,20 @@ pub fn prelude(env: &EnvironmentRef) {
         PrecedenceGroupComparison::lower_than(function_precedence_group),
     );
 
-    let for_operator = Operator::collect(|r#trait, value, env, stack| {
-        let r#trait = r#trait
+    let for_operator = Operator::collect(|left, right, env, stack| {
+        let validation = left
             .evaluate(env, stack.clone())?
-            .get_primitive_or::<Trait>("Expected trait", env, stack.clone())?;
+            .get_primitive_or::<Validation>("Expected validation", env, stack.clone())?;
 
-        let trait_value = value
-            .evaluate(env, stack.clone())?
-            .get_trait_or(&r#trait, "Value does not have trait", env, stack)?
-            .contained_value()
-            .clone();
+        let value = right.evaluate(env, stack.clone())?;
 
-        Ok(trait_value)
+        match validation(&value, env, stack.clone())? {
+            Validated::Valid(value) => Ok(value),
+            Validated::Invalid => Err(ReturnState::Error(Error::new(
+                "Value does not satisfy validation",
+                stack,
+            ))),
+        }
     });
 
     add_operator(&for_operator, &for_precedence_group);
