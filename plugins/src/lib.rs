@@ -7,7 +7,7 @@ macro_rules! wipple_plugin {
         #[no_mangle]
         pub extern "C" fn _wipple_plugin(
             env: &wipple::EnvironmentRef,
-            stack: wipple::Stack,
+            stack: &wipple::Stack,
         ) -> Box<wipple::Result> {
             Box::new($func(env, stack))
         }
@@ -23,7 +23,7 @@ pub fn load_plugin(
     let convert_error = |error| {
         wipple::ReturnState::Error(wipple::Error::new(
             &format!("Error loading plugin: {}", error),
-            stack.clone(),
+            &stack,
         ))
     };
 

@@ -17,28 +17,25 @@ impl StackKey {
 
 pub type StackValues = HashMap<StackKey, Dynamic>;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct Stack {
     pub values: StackValues,
 }
 
 impl Stack {
-    pub fn empty() -> Self {
-        Stack {
-            values: StackValues::new(),
-        }
+    pub fn new() -> Self {
+        Stack::default()
     }
 
-    pub fn get(&self, key: StackKey) -> Option<&Dynamic> {
+    pub fn try_get(&self, key: StackKey) -> Option<&Dynamic> {
         self.values.get(&key)
     }
 
-    pub fn get_or(self, key: StackKey, default: Dynamic) -> Dynamic {
+    pub fn get(&self, key: StackKey, default: Dynamic) -> Dynamic {
         self.values.get(&key).cloned().unwrap_or(default)
     }
 
-    pub fn with(mut self, key: StackKey, value: Dynamic) -> Self {
-        self.values.insert(key, value);
-        self
+    pub fn get_mut(&mut self, key: StackKey, default: Dynamic) -> &mut Dynamic {
+        self.values.entry(key).or_insert(default)
     }
 }

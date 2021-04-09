@@ -100,19 +100,14 @@ macro_rules! core_stack_key {
             #![allow(dead_code)]
 
             $crate::paste! {
-                $vis fn [<get_ $name>](self) -> $Type {
-                    self.get_or(StackKey::$name(), Dynamic::new(<$Type>::default()))
+                $vis fn $name(&self) -> $Type {
+                    self.get(StackKey::$name(), Dynamic::new(<$Type>::default()))
                         .into_cast::<$Type>()
                 }
 
-                $vis fn [<with_ $name>](self, value: $Type) -> Self {
-                    self.with(StackKey::$name(), Dynamic::new(value))
-                }
-
-                $vis fn [<update_ $name>](self, update: impl FnOnce($Type) -> $Type) -> Self {
-                    let value = self.clone().[<get_ $name>]().clone();
-                    let value = update(value);
-                    self.[<with_ $name>](value)
+                $vis fn [<$name _mut>](&mut self) -> &mut $Type {
+                    self.get_mut(StackKey::$name(), Dynamic::new(<$Type>::default()))
+                        .cast_mut::<$Type>()
                 }
             }
         }
@@ -127,20 +122,14 @@ macro_rules! stack_key {
                 StackKey::of::<$Type>()
             }
 
-            $vis fn [<get_ $name _in>](stack: $crate::Stack) -> $Type {
-                stack
-                    .get_or([<$name _stack_key>](), Dynamic::new(<$Type>::default()))
+            $vis fn [<$name _in>](stack: &$crate::Stack) -> $Type {
+                stack.get([<$name _stack_key>](), Dynamic::new(<$Type>::default()))
                     .into_cast::<$Type>()
             }
 
-            $vis fn [<with_ $name _in>](stack: $crate::Stack, value: $Type) -> $crate::Stack {
-                stack.with([<$name _stack_key>](), Dynamic::new(value))
-            }
-
-            $vis fn [<update_ $name>](stack: $crate::Stack, update: impl FnOnce($Type) -> $Type) -> $crate::Stack {
-                let value = [<get_ $name _in>](stack.clone()).clone();
-                let value = update(value);
-                [<with_ $name _in>](stack, value)
+            $vis fn [<$name _mut_in>](stack: &mut $crate::Stack) -> &mut $Type {
+                stack.get_mut([<$name _stack_key>](), Dynamic::new(<$Type>::default()))
+                    .cast_mut::<$Type>()
             }
         }
     };

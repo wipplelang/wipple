@@ -6,9 +6,11 @@ pub fn prelude(env: &EnvironmentRef) {
     env.borrow_mut().set_variable(
         "trait",
         Value::of(Function::new(|value, env, stack| {
-            let validation = value
-                .evaluate(env, stack.clone())?
-                .get_primitive_or::<Validation>("Expected validation", env, stack)?;
+            let validation = value.evaluate(env, stack)?.get_primitive_or::<Validation>(
+                "Expected validation",
+                env,
+                stack,
+            )?;
 
             Ok(Value::of(Trait::new(validation)))
         })),
@@ -19,9 +21,11 @@ pub fn prelude(env: &EnvironmentRef) {
     env.borrow_mut().set_variable(
         "Is",
         Value::of(Function::new(|value, env, stack| {
-            let validation = value
-                .evaluate(env, stack.clone())?
-                .get_primitive_or::<Validation>("Expected validation", env, stack)?;
+            let validation = value.evaluate(env, stack)?.get_primitive_or::<Validation>(
+                "Expected validation",
+                env,
+                stack,
+            )?;
 
             Ok(Value::of(Validation::is(validation)))
         })),
@@ -32,7 +36,7 @@ pub fn prelude(env: &EnvironmentRef) {
     env.borrow_mut().set_variable(
         "do",
         Value::of(Function::new(|value, env, stack| {
-            let block = value.get_primitive_or::<Block>("Expected block", env, stack.clone())?;
+            let block = value.get_primitive_or::<Block>("Expected block", env, stack)?;
             block.reduce(env, stack)
         })),
     );
@@ -40,7 +44,7 @@ pub fn prelude(env: &EnvironmentRef) {
     env.borrow_mut().set_variable(
         "inline",
         Value::of(Function::new(|value, env, stack| {
-            let block = value.get_primitive_or::<Block>("Expected block", env, stack.clone())?;
+            let block = value.get_primitive_or::<Block>("Expected block", env, stack)?;
             block.reduce_inline(env, stack)
         })),
     );
@@ -50,9 +54,11 @@ pub fn prelude(env: &EnvironmentRef) {
     env.borrow_mut().set_variable(
         "use",
         Value::of(Function::new(|value, env, stack| {
-            let module = value
-                .evaluate(env, stack.clone())?
-                .get_primitive_or::<Module>("Expected a module", env, stack)?;
+            let module = value.evaluate(env, stack)?.get_primitive_or::<Module>(
+                "Expected a module",
+                env,
+                stack,
+            )?;
 
             env.borrow_mut().r#use(&module.env.borrow());
 
@@ -68,7 +74,7 @@ pub fn prelude(env: &EnvironmentRef) {
     macro_rules! assignment_operator {
         ($name:expr, $handle:ident, $env:expr) => {
             let operator = Operator::collect(move |left, right, env, stack| {
-                let name = left.get_primitive_or::<Name>("Expected name", env, stack.clone())?;
+                let name = left.get_primitive_or::<Name>("Expected name", env, stack)?;
 
                 let handle = env.borrow_mut().$handle().clone();
                 handle(&name, right, env, stack)?;
@@ -88,14 +94,12 @@ pub fn prelude(env: &EnvironmentRef) {
     // Conformance operator (==)
 
     let conformance_operator = Operator::collect(|left, right, env, stack| {
-        let (matching_trait, name) = match left
-            .get_primitive_if_present::<List>(env, stack.clone())?
-        {
+        let (matching_trait, name) = match left.get_primitive_if_present::<List>(env, stack)? {
             Some(left) => {
                 let matching_trait = match left.items.len() {
                     1 | 2 => left.items[0]
-                        .evaluate(env, stack.clone())?
-                        .get_primitive_or::<Trait>("Expected trait", env, stack.clone())?,
+                        .evaluate(env, stack)?
+                        .get_primitive_or::<Trait>("Expected trait", env, stack)?,
                     _ => {
                         return Err(ReturnState::Error(Error::new(
                             "Expected conformance predicate in the form 'T x', or just 'T' if you don't care about the name",
@@ -106,7 +110,7 @@ pub fn prelude(env: &EnvironmentRef) {
 
                 let name = if left.items.len() == 2 {
                     let name = left.items[1]
-                        .get_primitive_or::<Name>("Expected name", env, stack.clone())?
+                        .get_primitive_or::<Name>("Expected name", env, stack)?
                         .name;
 
                     Some(name)
@@ -117,9 +121,11 @@ pub fn prelude(env: &EnvironmentRef) {
                 (matching_trait, name)
             }
             None => {
-                let matching_trait = left
-                    .evaluate(env, stack.clone())?
-                    .get_primitive_or::<Trait>("Expected trait", env, stack.clone())?;
+                let matching_trait = left.evaluate(env, stack)?.get_primitive_or::<Trait>(
+                    "Expected trait",
+                    env,
+                    stack,
+                )?;
 
                 (matching_trait, None)
             }
@@ -128,7 +134,7 @@ pub fn prelude(env: &EnvironmentRef) {
         let right = right.get_primitive_or::<List>(
             "Expected a list containing the value to derive",
             env,
-            stack.clone(),
+            stack,
         )?;
 
         if right.items.len() != 2 {
@@ -139,7 +145,7 @@ pub fn prelude(env: &EnvironmentRef) {
         }
 
         let derived_trait = right.items[0]
-            .evaluate(env, stack.clone())?
+            .evaluate(env, stack)?
             .get_primitive_or::<Trait>("Expected trait", env, stack)?;
 
         let derived_value = right.items[1].clone();
@@ -188,36 +194,35 @@ pub fn prelude(env: &EnvironmentRef) {
     // Closure operator (->)
 
     let closure_operator = Operator::collect(|parameter, return_value, env, stack| {
-        let (validation, parameter) = match parameter
-            .get_primitive_if_present::<List>(env, stack.clone())?
-        {
-            Some(list) => {
-                if list.items.len() != 2 {
-                    return Err(ReturnState::Error(Error::new("", stack)));
+        let (validation, parameter) =
+            match parameter.get_primitive_if_present::<List>(env, stack)? {
+                Some(list) => {
+                    if list.items.len() != 2 {
+                        return Err(ReturnState::Error(Error::new("", stack)));
+                    }
+
+                    let validation = list.items[0]
+                        .evaluate(env, stack)?
+                        .get_primitive_or::<Validation>("Expected validation", env, stack)?;
+
+                    let parameter = list.items[1].get_primitive_or::<Name>(
+                        "Closure parameter must be a name",
+                        env,
+                        stack,
+                    )?;
+
+                    (validation, parameter)
                 }
+                None => {
+                    let parameter = parameter.get_primitive_or::<Name>(
+                        "Closure parameter must be a name",
+                        env,
+                        stack,
+                    )?;
 
-                let validation = list.items[0]
-                    .evaluate(env, stack.clone())?
-                    .get_primitive_or::<Validation>("Expected validation", env, stack.clone())?;
-
-                let parameter = list.items[1].get_primitive_or::<Name>(
-                    "Closure parameter must be a name",
-                    env,
-                    stack,
-                )?;
-
-                (validation, parameter)
-            }
-            None => {
-                let parameter = parameter.get_primitive_or::<Name>(
-                    "Closure parameter must be a name",
-                    env,
-                    stack,
-                )?;
-
-                (Validation::any(), parameter)
-            }
-        };
+                    (Validation::any(), parameter)
+                }
+            };
 
         let captured_env = env.clone();
 
@@ -242,13 +247,15 @@ pub fn prelude(env: &EnvironmentRef) {
     );
 
     let for_operator = Operator::collect(|left, right, env, stack| {
-        let validation = left
-            .evaluate(env, stack.clone())?
-            .get_primitive_or::<Validation>("Expected validation", env, stack.clone())?;
+        let validation = left.evaluate(env, stack)?.get_primitive_or::<Validation>(
+            "Expected validation",
+            env,
+            stack,
+        )?;
 
-        let value = right.evaluate(env, stack.clone())?;
+        let value = right.evaluate(env, stack)?;
 
-        match validation(&value, env, stack.clone())? {
+        match validation(&value, env, stack)? {
             Validated::Valid(value) => Ok(value),
             Validated::Invalid => Err(ReturnState::Error(Error::new(
                 "Value does not satisfy validation",
@@ -270,11 +277,13 @@ pub fn prelude(env: &EnvironmentRef) {
     );
 
     let as_operator = Operator::collect(|value, r#trait, env, stack| {
-        let r#trait = r#trait
-            .evaluate(env, stack.clone())?
-            .get_primitive_or::<Trait>("Expected trait", env, stack.clone())?;
+        let r#trait = r#trait.evaluate(env, stack)?.get_primitive_or::<Trait>(
+            "Expected trait",
+            env,
+            stack,
+        )?;
 
-        let trait_value = value.evaluate(env, stack.clone())?.get_trait_or(
+        let trait_value = value.evaluate(env, stack)?.get_trait_or(
             &r#trait,
             "Value does not have trait",
             env,
@@ -294,12 +303,12 @@ pub fn prelude(env: &EnvironmentRef) {
         ($operation:tt, $precedence_group:ident) => {{
             let operator = Operator::collect(|left, right, env, stack| {
                 let left = left
-                    .evaluate(env, stack.clone())?
-                    .get_primitive::<Number>(env, stack.clone())?;
+                    .evaluate(env, stack)?
+                    .get_primitive::<Number>(env, stack)?;
 
                 let right = right
-                    .evaluate(env, stack.clone())?
-                    .get_primitive::<Number>(env, stack.clone())?;
+                    .evaluate(env, stack)?
+                    .get_primitive::<Number>(env, stack)?;
 
                 let result = left.number $operation right.number;
 
@@ -338,12 +347,12 @@ pub fn prelude(env: &EnvironmentRef) {
 
             let operator = Operator::collect(move |left, right, env, stack| {
                 let left = left
-                    .evaluate(env, stack.clone())?
-                    .get_primitive::<Number>(env, stack.clone())?;
+                    .evaluate(env, stack)?
+                    .get_primitive::<Number>(env, stack)?;
 
                 let right = right
-                    .evaluate(env, stack.clone())?
-                    .get_primitive::<Number>(env, stack.clone())?;
+                    .evaluate(env, stack)?
+                    .get_primitive::<Number>(env, stack)?;
 
                 let result = left.number $operation right.number;
 
@@ -389,7 +398,7 @@ pub fn prelude(env: &EnvironmentRef) {
                         let (leading_string, remaining_strings) =
                             remaining_strings.split_first().unwrap();
 
-                        let value = value.evaluate(env, stack.clone())?;
+                        let value = value.evaluate(env, stack)?;
 
                         let text = value.get_primitive_or::<Text>(
                             "Cannot format this value because it does not conform to Text",
@@ -416,7 +425,7 @@ pub fn prelude(env: &EnvironmentRef) {
     env.borrow_mut().set_variable(
         "inline-global!",
         Value::of(Function::new(|value, env, stack| {
-            let block = value.get_primitive_or::<Block>("Expected block", env, stack.clone())?;
+            let block = value.get_primitive_or::<Block>("Expected block", env, stack)?;
             block.reduce_inline(&Environment::global(), stack)
         })),
     );
@@ -424,9 +433,11 @@ pub fn prelude(env: &EnvironmentRef) {
     env.borrow_mut().set_variable(
         "use-global!",
         Value::of(Function::new(|value, env, stack| {
-            let block = value
-                .evaluate(env, stack.clone())?
-                .get_primitive_or::<Module>("Expected module", env, stack)?;
+            let block = value.evaluate(env, stack)?.get_primitive_or::<Module>(
+                "Expected module",
+                env,
+                stack,
+            )?;
 
             Environment::global()
                 .borrow_mut()
@@ -453,14 +464,14 @@ pub fn prelude(env: &EnvironmentRef) {
 
     // 'evaluate-text!' function
 
-    fn evaluate_text(code: &str, env: &EnvironmentRef, stack: Stack) -> Result {
+    fn evaluate_text(code: &str, env: &EnvironmentRef, stack: &Stack) -> Result {
         let (tokens, lookup) = wipple_parser::lex(&code);
 
         let ast = wipple_parser::parse_inline_program(&mut tokens.iter().peekable(), &lookup)
             .map_err(|error| {
                 wipple::ReturnState::Error(wipple::Error::new(
                     &format!("Error parsing: {}", error.message),
-                    stack.clone(),
+                    stack,
                 ))
             })?;
 
@@ -473,7 +484,7 @@ pub fn prelude(env: &EnvironmentRef) {
         "evaluate-text!",
         Value::of(Function::new(|value, env, stack| {
             let code = value
-                .get_primitive_or::<Text>("Expected text", env, stack.clone())?
+                .get_primitive_or::<Text>("Expected text", env, stack)?
                 .text;
 
             evaluate_text(&code, env, stack)
@@ -486,7 +497,7 @@ pub fn prelude(env: &EnvironmentRef) {
         add_precedence_group(Associativity::Left, PrecedenceGroupComparison::lowest());
 
     let dot_operator = Operator::collect(|left, right, env, stack| {
-        right.evaluate(env, stack.clone())?.call(left, env, stack)
+        right.evaluate(env, stack)?.call(left, env, stack)
     });
 
     add_operator(&dot_operator, &dot_precedence_group);
@@ -499,16 +510,20 @@ pub fn prelude(env: &EnvironmentRef) {
         add_precedence_group(Associativity::Left, PrecedenceGroupComparison::lowest());
 
     let flow_operator = Operator::collect(|left, right, env, stack| {
-        let left = left
-            .evaluate(env, stack.clone())?
-            .get_primitive_or::<Function>("Expected function", env, stack.clone())?;
+        let left = left.evaluate(env, stack)?.get_primitive_or::<Function>(
+            "Expected function",
+            env,
+            stack,
+        )?;
 
-        let right = right
-            .evaluate(env, stack.clone())?
-            .get_primitive_or::<Function>("Expected function", env, stack)?;
+        let right = right.evaluate(env, stack)?.get_primitive_or::<Function>(
+            "Expected function",
+            env,
+            stack,
+        )?;
 
         Ok(Value::of(Function::new(move |value, env, stack| {
-            right(&left(value, env, stack.clone())?, env, stack)
+            right(&left(value, env, stack)?, env, stack)
         })))
     });
 

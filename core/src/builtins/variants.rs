@@ -35,12 +35,12 @@ impl Module {
                     Value::of(Variant::new(id, &name, &values))
                 } else {
                     Value::of(Function::new(move |value, env, stack| {
-                        let value = value.evaluate(env, stack.clone())?;
+                        let value = value.evaluate(env, stack)?;
 
                         let (validation, remaining_validations) =
                             remaining_validations.split_first().unwrap();
 
-                        let validated_value = match validation(&value, env, stack.clone())? {
+                        let validated_value = match validation(&value, env, stack)? {
                             Validated::Valid(value) => value,
                             Validated::Invalid => {
                                 return Err(ReturnState::Error(Error::new(
@@ -98,19 +98,17 @@ fn setup_variant_block(
         let list = right.get_primitive_or::<List>(
             "Expected list of validations for variant",
             env,
-            stack.clone(),
+            stack,
         )?;
 
         let mut validations = Vec::new();
 
         for item in list.items {
-            let validation = item
-                .evaluate(env, stack.clone())?
-                .get_primitive_or::<Validation>(
-                    "Expected validation in list of variant items",
-                    env,
-                    stack.clone(),
-                )?;
+            let validation = item.evaluate(env, stack)?.get_primitive_or::<Validation>(
+                "Expected validation in list of variant items",
+                env,
+                stack,
+            )?;
 
             validations.push(validation);
         }
@@ -135,7 +133,7 @@ pub(crate) fn setup(env: &mut Environment) {
             let text = value.get_primitive_or::<Text>(
                 "Variant value does not conform to Text",
                 env,
-                stack.clone(),
+                stack,
             )?;
 
             associated_values.push(text.text);
@@ -153,35 +151,31 @@ pub(crate) fn setup(env: &mut Environment) {
     env.set_variable(
         "variant",
         Value::of(Function::new(|value, env, stack| {
-            let variants =
-                if let Some(list) = value.get_primitive_if_present::<List>(env, stack.clone())? {
-                    let mut variants = HashMap::new();
+            let variants = if let Some(list) = value.get_primitive_if_present::<List>(env, stack)? {
+                let mut variants = HashMap::new();
 
-                    for item in list.items {
-                        let name =
-                            item.get_primitive_or::<Name>("Expected name", env, stack.clone())?;
+                for item in list.items {
+                    let name = item.get_primitive_or::<Name>("Expected name", env, stack)?;
 
-                        variants.insert(name.name, Vec::new());
-                    }
+                    variants.insert(name.name, Vec::new());
+                }
 
-                    variants
-                } else if let Some(block) =
-                    value.get_primitive_if_present::<Block>(env, stack.clone())?
-                {
-                    let variant_env = Environment::child_of(env).into_ref();
+                variants
+            } else if let Some(block) = value.get_primitive_if_present::<Block>(env, stack)? {
+                let variant_env = Environment::child_of(env).into_ref();
 
-                    let variants = Rc::new(RefCell::new(HashMap::new()));
-                    setup_variant_block(variants.clone(), &variant_env);
+                let variants = Rc::new(RefCell::new(HashMap::new()));
+                setup_variant_block(variants.clone(), &variant_env);
 
-                    block.reduce_inline(&variant_env, stack)?;
+                block.reduce_inline(&variant_env, stack)?;
 
-                    variants.take()
-                } else {
-                    return Err(ReturnState::Error(Error::new(
-                        "Expected list or module containing variants",
-                        stack,
-                    )));
-                };
+                variants.take()
+            } else {
+                return Err(ReturnState::Error(Error::new(
+                    "Expected list or module containing variants",
+                    stack,
+                )));
+            };
 
             let variant = Module::for_variant(variants);
 
@@ -192,15 +186,17 @@ pub(crate) fn setup(env: &mut Environment) {
     env.set_variable(
         "match",
         Value::of(Function::new(|value, env, stack| {
-            let variant = value
-                .evaluate(env, stack.clone())?
-                .get_primitive_or::<Variant>("Expected variant", env, stack)?;
+            let variant = value.evaluate(env, stack)?.get_primitive_or::<Variant>(
+                "Expected variant",
+                env,
+                stack,
+            )?;
 
             Ok(Value::of(Function::new(move |value, env, stack| {
                 let block = value.get_primitive_or::<Block>(
                     "Expected block defining matches",
                     env,
-                    stack.clone(),
+                    stack,
                 )?;
 
                 let matches = Rc::new(RefCell::new(HashMap::new()));
@@ -208,20 +204,20 @@ pub(crate) fn setup(env: &mut Environment) {
 
                 setup_match_block(matches.clone(), &match_env);
 
-                block.reduce_inline(&match_env, stack.clone())?;
+                block.reduce_inline(&match_env, stack)?;
 
                 let matches = matches.take();
 
                 let mut r#match = match matches.get(&variant.name) {
-                    Some(value) => value.evaluate(env, stack.clone()),
+                    Some(value) => value.evaluate(env, stack),
                     None => Err(ReturnState::Error(Error::new(
                         &format!("No match for variant '{}'", variant.name),
-                        stack.clone(),
+                        stack,
                     ))),
                 }?;
 
                 for value in &variant.associated_values {
-                    r#match = r#match.call(value, env, stack.clone())?;
+                    r#match = r#match.call(value, env, stack)?;
                 }
 
                 Ok(r#match)

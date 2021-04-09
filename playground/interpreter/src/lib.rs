@@ -22,9 +22,7 @@ pub fn run(code: &str) -> JsValue {
     #[cfg(feature = "console_error_panic_hook")]
     console_error_panic_hook::set_once();
 
-    let stack = Stack::empty();
-
-    let result = match run_code(code, stack.clone()) {
+    let result = match run_code(code) {
         Ok(output) => InterpreterResult {
             success: true,
             output: Some(output),
@@ -33,40 +31,41 @@ pub fn run(code: &str) -> JsValue {
         Err(state) => InterpreterResult {
             success: false,
             output: None,
-            error: Some(state.into_error(stack).to_string()),
+            error: Some(state.into_error(&Stack::new()).to_string()),
         },
     };
 
     JsValue::from_serde(&result).unwrap()
 }
 
-fn run_code(code: &str, stack: Stack) -> wipple::Result<Vec<ShownValue>> {
+fn run_code(code: &str) -> wipple::Result<Vec<ShownValue>> {
     let output = Rc::new(RefCell::new(Vec::<ShownValue>::new()));
 
     wipple::setup();
 
+    let mut stack = Stack::new();
+
     // Load the standard library
-    (*wipple_stdlib::_wipple_plugin(&Environment::global(), stack.clone()))?;
+    (*wipple_stdlib::_wipple_plugin(&Environment::global(), &stack))?;
 
     let env = Environment::child_of(&Environment::global()).into_ref();
 
-    let program = wipple_projects::load_string(code, None, stack.clone())?;
+    let program = wipple_projects::load_string(code, None, &stack)?;
 
     setup_module_block(&env);
-    let stack = setup_playground(&output, stack);
-    wipple_projects::include_program(program, &env, stack)?;
+    setup_playground(&output, &mut stack);
+    wipple_projects::include_program(program, &env, &stack)?;
 
     Ok(output.as_ref().clone().get_mut().clone())
 }
 
-fn setup_playground(output: &Rc<RefCell<Vec<ShownValue>>>, stack: Stack) -> Stack {
+fn setup_playground(output: &Rc<RefCell<Vec<ShownValue>>>, stack: &mut Stack) {
     let output = output.clone();
 
-    wipple_stdlib::show::with_show_in(
-        stack,
+    *wipple_stdlib::show::show_mut_in(stack) =
         wipple_stdlib::show::ShowFn::new(move |value, env, stack| {
-            let source_text = value.format(env, stack.clone())?;
-            let output_text = value.evaluate(env, stack.clone())?.format(env, stack)?;
+            let source_text = value.format(env, stack)?;
+            let output_text = value.evaluate(env, stack)?.format(env, stack)?;
 
             output.borrow_mut().push(ShownValue {
                 input: source_text,
@@ -74,6 +73,5 @@ fn setup_playground(output: &Rc<RefCell<Vec<ShownValue>>>, stack: Stack) -> Stac
             });
 
             Ok(())
-        }),
-    )
+        });
 }

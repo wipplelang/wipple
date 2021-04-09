@@ -24,31 +24,25 @@ impl Block {
 core_primitive!(pub block for Block);
 
 impl Block {
-    pub fn reduce(&self, env: &EnvironmentRef, stack: Stack) -> Result {
+    pub fn reduce(&self, env: &EnvironmentRef, stack: &Stack) -> Result {
         let block_env = Environment::child_of(env).into_ref();
         setup_module_block(&block_env);
         self.reduce_inline(&block_env, stack)
     }
 
-    pub fn reduce_inline(&self, env: &EnvironmentRef, stack: Stack) -> Result {
-        let stack = match &self.location {
-            Some(location) => stack.update_evaluation(|e| e.queue_location(&location)),
-            None => stack,
-        };
+    pub fn reduce_inline(&self, env: &EnvironmentRef, stack: &Stack) -> Result {
+        let mut stack = stack.clone();
+        stack.evaluation_mut().queue_location(&self.location);
 
         let mut result = Value::empty();
 
         for statement in &self.statements {
-            let stack = match &statement.location {
-                Some(location) => stack
-                    .clone()
-                    .update_evaluation(|e| e.queue_location(&location)),
-                None => stack.clone(),
-            };
+            let mut stack = stack.clone();
+            stack.evaluation_mut().queue_location(&statement.location);
 
             // Evaluate each statement as a list
             let list = Value::of(statement.clone());
-            result = list.evaluate(env, stack)?;
+            result = list.evaluate(env, &stack)?;
         }
 
         Ok(result)
@@ -64,26 +58,20 @@ pub(crate) fn setup(env: &mut Environment) {
     // Block == Replace-In-Template
     env.add_primitive_conformance(|block: Block| {
         ReplaceInTemplateFn::new(move |parameter, replacement, env, stack| {
-            let stack = match &block.location {
-                Some(location) => stack.update_evaluation(|e| e.queue_location(&location)),
-                None => stack,
-            };
+            let mut stack = stack.clone();
+            stack.evaluation_mut().queue_location(&block.location);
 
             let mut statements = vec![];
 
             for statement in &block.statements {
-                let stack = match &statement.location {
-                    Some(location) => stack
-                        .clone()
-                        .update_evaluation(|e| e.queue_location(&location)),
-                    None => stack.clone(),
-                };
+                let mut stack = stack.clone();
+                stack.evaluation_mut().queue_location(&statement.location);
 
                 // Expand each statement as a list
                 let list = Value::of(statement.clone());
                 let expanded = list
-                    .replace_in_template(parameter, replacement, env, stack.clone())?
-                    .get_primitive::<List>(env, stack)?;
+                    .replace_in_template(parameter, replacement, env, &stack)?
+                    .get_primitive::<List>(env, &stack)?;
 
                 statements.push(expanded);
             }
@@ -105,16 +93,16 @@ pub(crate) fn setup(env: &mut Environment) {
         let fields = fields.take();
 
         Ok(Value::of(Validation::new(move |value, env, stack| {
-            let module = value.get_primitive_or::<Module>("Expected module", env, stack.clone())?;
+            let module = value.get_primitive_or::<Module>("Expected module", env, stack)?;
 
             let mut validated_env = Environment::blank();
 
             let variables = module.env.borrow_mut().variables().clone();
             for (name, variable) in variables {
-                let value = variable.get_value(env, stack.clone())?;
+                let value = variable.get_value(env, stack)?;
 
                 let validated = match fields.get(&name) {
-                    Some(validation) => validation(&value, env, stack.clone())?,
+                    Some(validation) => validation(&value, env, stack)?,
                     None => return Ok(Validated::Invalid),
                 };
 
@@ -131,9 +119,11 @@ pub(crate) fn setup(env: &mut Environment) {
 
 fn setup_validation_block(fields: Rc<RefCell<HashMap<String, Validation>>>, env: &EnvironmentRef) {
     *env.borrow_mut().handle_assign() = HandleAssignFn::new(move |left, right, env, stack| {
-        let validation = right
-            .evaluate(env, stack.clone())?
-            .get_primitive_or::<Validation>("Expected validation", env, stack)?;
+        let validation = right.evaluate(env, stack)?.get_primitive_or::<Validation>(
+            "Expected validation",
+            env,
+            stack,
+        )?;
 
         fields.borrow_mut().insert(left.name.clone(), validation);
 

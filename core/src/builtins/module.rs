@@ -19,28 +19,22 @@ impl Module {
 core_primitive!(pub module for Module);
 
 impl Block {
-    pub fn reduce_into_module(&self, env: &EnvironmentRef, stack: Stack) -> Result {
+    pub fn reduce_into_module(&self, env: &EnvironmentRef, stack: &Stack) -> Result {
         // Modules capture their environment
         let module_env = Environment::child_of(env).into_ref();
 
-        let stack = match &self.location {
-            Some(location) => stack.update_evaluation(|e| e.queue_location(&location)),
-            None => stack,
-        };
+        let mut stack = stack.clone();
+        stack.evaluation_mut().queue_location(&self.location);
 
         setup_module_block(&module_env);
 
         for statement in &self.statements {
-            let stack = match &statement.location {
-                Some(location) => stack
-                    .clone()
-                    .update_evaluation(|e| e.queue_location(&location)),
-                None => stack.clone(),
-            };
+            let mut stack = stack.clone();
+            stack.evaluation_mut().queue_location(&statement.location);
 
             // Evaluate each statement as a list
             let list = Value::of(statement.clone());
-            list.evaluate(&module_env, stack)?;
+            list.evaluate(&module_env, &stack)?;
         }
 
         let module_env = module_env.borrow().clone();
@@ -87,7 +81,7 @@ pub(crate) fn setup(env: &mut Environment) {
     // Module == Function
     env.add_primitive_conformance(|module: Module| {
         Function::new(move |value, env, stack| {
-            let name = value.get_primitive_or::<Name>("Expected a name", env, stack.clone())?;
+            let name = value.get_primitive_or::<Name>("Expected a name", env, stack)?;
             name.resolve(&module.env, stack)
         })
     });

@@ -27,21 +27,19 @@ pub(crate) fn setup(env: &mut Environment) {
     // List == Evaluate
     env.add_primitive_conformance(|list: List| {
         EvaluateFn::new(move |env, stack| {
-            let stack = match &list.location {
-                Some(location) => stack.update_evaluation(|e| e.queue_location(&location)),
-                None => stack,
-            };
+            let mut stack = stack.clone();
+            stack.evaluation_mut().queue_location(&list.location);
 
-            let operators = list.find_operators(env, stack.clone())?;
+            let operators = list.find_operators(env, &stack)?;
 
-            if let Some(parsed) = list.parse_operators(operators, env, stack.clone())? {
+            if let Some(parsed) = list.parse_operators(operators, env, &stack)? {
                 return Ok(parsed);
             }
 
             // Reduce the list as a series of function calls
 
             let mut result = match list.items.first() {
-                Some(value) => value.evaluate(env, stack.clone())?,
+                Some(value) => value.evaluate(env, &stack)?,
                 None => {
                     // Empty list evaluates to itself
                     return Ok(Value::of(list.clone()));
@@ -49,7 +47,7 @@ pub(crate) fn setup(env: &mut Environment) {
             };
 
             for item in list.items.iter().skip(1) {
-                result = result.call(item, env, stack.clone())?;
+                result = result.call(item, env, &stack)?;
             }
 
             Ok(result)
@@ -62,7 +60,7 @@ pub(crate) fn setup(env: &mut Environment) {
             let mut expanded_items = vec![];
 
             for item in &list.items {
-                let item = item.replace_in_template(parameter, replacement, env, stack.clone())?;
+                let item = item.replace_in_template(parameter, replacement, env, stack)?;
 
                 expanded_items.push(item);
             }
@@ -78,7 +76,7 @@ pub(crate) fn setup(env: &mut Environment) {
         let mut items = Vec::new();
 
         for item in &list.items {
-            let text = item.format(env, stack.clone())?;
+            let text = item.format(env, stack)?;
             items.push(text);
         }
 

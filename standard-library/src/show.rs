@@ -1,7 +1,7 @@
 use crate::*;
 
 fn_wrapper_struct! {
-    pub type ShowFn(&Value, &EnvironmentRef, Stack) -> Result<()>;
+    pub type ShowFn(&Value, &EnvironmentRef, &Stack) -> Result<()>;
 }
 
 impl Default for ShowFn {
@@ -21,7 +21,7 @@ pub fn setup(env: &mut Environment) {
     env.set_variable(
         "show",
         Value::of(Function::new(|value, env, stack| {
-            get_show_in(stack.clone())(value, env, stack)?;
+            show_in(stack)(value, env, stack)?;
 
             Ok(Value::empty())
         })),

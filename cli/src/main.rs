@@ -24,7 +24,7 @@ fn run() -> i32 {
             if let Err(state) = run.run() {
                 eprintln!(
                     "{}",
-                    state.into_error(wipple::Stack::empty()).to_string().red()
+                    state.into_error(&wipple::Stack::new()).to_string().red()
                 );
                 return 1;
             }

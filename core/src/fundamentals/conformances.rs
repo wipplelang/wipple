@@ -13,14 +13,14 @@ core_env_key!(pub conformances for Conformances {
 pub struct Conformance {
     pub matching_trait: Trait,
     pub derived_trait: Trait,
-    pub derive_value: Rc<dyn Fn(&Value, &EnvironmentRef, Stack) -> Result>,
+    pub derive_value: Rc<dyn Fn(&Value, &EnvironmentRef, &Stack) -> Result>,
 }
 
 impl Conformance {
     pub fn new(
         matching_trait: Trait,
         derived_trait: Trait,
-        derive_value: impl Fn(&Value, &EnvironmentRef, Stack) -> Result + 'static,
+        derive_value: impl Fn(&Value, &EnvironmentRef, &Stack) -> Result + 'static,
     ) -> Self {
         Conformance {
             matching_trait,
@@ -51,7 +51,7 @@ impl Environment {
         &mut self,
         matching_trait: Trait,
         derived_trait: Trait,
-        derive_value: impl Fn(&Value, &EnvironmentRef, Stack) -> Result + 'static,
+        derive_value: impl Fn(&Value, &EnvironmentRef, &Stack) -> Result + 'static,
     ) {
         self.conformances().push(Conformance::new(
             matching_trait,

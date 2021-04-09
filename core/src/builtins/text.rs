@@ -22,21 +22,23 @@ impl Text {
 core_primitive!(pub text for Text);
 
 impl Value {
-    pub fn try_format(&self, env: &EnvironmentRef, stack: Stack) -> String {
-        let stack = stack.update_evaluation(|e| e.disable_recording());
+    pub fn try_format(&self, env: &EnvironmentRef, stack: &Stack) -> String {
+        let mut stack = stack.clone();
+        stack.evaluation_mut().disable_recording();
 
-        match self.get_primitive_if_present::<Text>(env, stack) {
+        match self.get_primitive_if_present::<Text>(env, &stack) {
             Ok(Some(text)) => text.text,
             Ok(None) => String::from("<value>"),
             Err(_) => String::from("<error retrieving text>"),
         }
     }
 
-    pub fn format(&self, env: &EnvironmentRef, stack: Stack) -> Result<String> {
-        let stack = stack.update_evaluation(|e| e.disable_recording());
+    pub fn format(&self, env: &EnvironmentRef, stack: &Stack) -> Result<String> {
+        let mut stack = stack.clone();
+        stack.evaluation_mut().disable_recording();
 
         Ok(self
-            .get_primitive_if_present::<Text>(env, stack)?
+            .get_primitive_if_present::<Text>(env, &stack)?
             .map(|t| t.text)
             .unwrap_or_else(|| String::from("<value>")))
     }

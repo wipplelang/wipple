@@ -19,15 +19,15 @@ pub struct Run {
 impl Run {
     pub fn run(&self) -> wipple::Result<()> {
         let env = Environment::global();
-        let stack = Stack::empty();
+        let mut stack = Stack::new();
 
         wipple::setup();
         wipple_projects::setup();
 
         // Load the standard library
-        (*wipple_stdlib::_wipple_plugin(&env, stack.clone()))?;
+        (*wipple_stdlib::_wipple_plugin(&env, &stack))?;
 
-        let stack = setup(stack);
+        setup(&mut stack);
 
         match &self.evaluate_string {
             Some(code) => {
@@ -37,16 +37,16 @@ impl Run {
                     |error| {
                         wipple::ReturnState::Error(wipple::Error::new(
                             &format!("Error parsing: {}", error.message),
-                            stack.clone(),
+                            &stack,
                         ))
                     },
                 )?;
 
                 let program = convert(&ast, None);
 
-                let result = program.evaluate(&env, stack.clone())?;
+                let result = program.evaluate(&env, &stack)?;
 
-                println!("{}", result.try_format(&env, stack));
+                println!("{}", result.try_format(&env, &stack));
             }
             None => {
                 let current_dir = self
@@ -55,8 +55,8 @@ impl Run {
                     .unwrap_or_else(|| std::env::current_dir().unwrap());
 
                 match &self.path {
-                    Some(path) if !path.is_dir() => import_path(path, stack)?,
-                    _ => load_project(&current_dir.join("project.wpl"), stack)?,
+                    Some(path) if !path.is_dir() => import_path(path, &stack)?,
+                    _ => load_project(&current_dir.join("project.wpl"), &stack)?,
                 };
             }
         }
@@ -65,16 +65,11 @@ impl Run {
     }
 }
 
-fn setup(stack: Stack) -> Stack {
-    wipple_stdlib::show::with_show_in(
-        stack,
+fn setup(stack: &mut Stack) {
+    *wipple_stdlib::show::show_mut_in(stack) =
         wipple_stdlib::show::ShowFn::new(move |value, env, stack| {
-            println!(
-                "{}",
-                value.evaluate(env, stack.clone())?.format(env, stack)?
-            );
+            println!("{}", value.evaluate(env, stack)?.format(env, stack)?);
 
             Ok(())
-        }),
-    )
+        });
 }

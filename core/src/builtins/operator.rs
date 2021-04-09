@@ -20,8 +20,8 @@ pub struct Operator {
         dyn Fn(
             &Value,
             &EnvironmentRef,
-            Stack,
-        ) -> Result<Box<dyn Fn(&Value, &EnvironmentRef, Stack) -> Result>>,
+            &Stack,
+        ) -> Result<Box<dyn Fn(&Value, &EnvironmentRef, &Stack) -> Result>>,
     >,
 }
 
@@ -30,8 +30,8 @@ impl Operator {
         function: impl Fn(
                 &Value,
                 &EnvironmentRef,
-                Stack,
-            ) -> Result<Box<dyn Fn(&Value, &EnvironmentRef, Stack) -> Result>>
+                &Stack,
+            ) -> Result<Box<dyn Fn(&Value, &EnvironmentRef, &Stack) -> Result>>
             + 'static,
     ) -> Self {
         Operator {
@@ -63,7 +63,7 @@ impl std::fmt::Debug for Operator {
 
 impl Operator {
     pub fn collect(
-        function: impl Fn(&Value, &Value, &EnvironmentRef, Stack) -> Result + 'static,
+        function: impl Fn(&Value, &Value, &EnvironmentRef, &Stack) -> Result + 'static,
     ) -> Operator {
         let function = Rc::new(function);
 
@@ -82,8 +82,7 @@ impl Operator {
 
     pub fn from_function(function: Function) -> Self {
         Operator::new(move |left, env, stack| {
-            let function =
-                function(left, env, stack.clone())?.get_primitive::<Function>(env, stack)?;
+            let function = function(left, env, stack)?.get_primitive::<Function>(env, stack)?;
 
             Ok(Box::new(move |right, env, stack| {
                 function(right, env, stack)
@@ -218,11 +217,11 @@ pub fn add_operator(operator: &Operator, group: &PrecedenceGroup) {
 // Operator parsing
 
 impl List {
-    pub fn find_operators(&self, env: &EnvironmentRef, stack: Stack) -> Result<OperatorList> {
+    pub fn find_operators(&self, env: &EnvironmentRef, stack: &Stack) -> Result<OperatorList> {
         let mut operators = OperatorList::new();
 
         for (index, item) in self.items.iter().enumerate() {
-            if let Some(operator) = get_operator(item, env, stack.clone())? {
+            if let Some(operator) = get_operator(item, env, stack)? {
                 operators.push((operator, index));
             }
         }
@@ -231,8 +230,12 @@ impl List {
     }
 }
 
-pub fn get_operator(value: &Value, env: &EnvironmentRef, stack: Stack) -> Result<Option<Operator>> {
-    match value.get_primitive_if_present::<Name>(env, stack.clone())? {
+pub fn get_operator(
+    value: &Value,
+    env: &EnvironmentRef,
+    stack: &Stack,
+) -> Result<Option<Operator>> {
+    match value.get_primitive_if_present::<Name>(env, stack)? {
         Some(name) => {
             let variable = name.resolve_variable_if_present(env);
 
@@ -261,7 +264,7 @@ impl List {
         &self,
         operators_in_list: OperatorList,
         env: &EnvironmentRef,
-        stack: Stack,
+        stack: &Stack,
     ) -> Result<Option<Value>> {
         // No need to parse a list containing no operators
         if operators_in_list.is_empty() {
@@ -363,7 +366,7 @@ impl List {
         match (left, right) {
             (Some(left), Some(right)) => {
                 // Convert to a function call
-                let result = (operator.function)(&left, env, stack.clone())?(&right, env, stack)?;
+                let result = (operator.function)(&left, env, stack)?(&right, env, stack)?;
 
                 Ok(Some(result))
             }
@@ -378,7 +381,7 @@ impl List {
             (None, Some(right)) => {
                 // Partially apply the left side
                 let partial = Function::new(move |left, env, stack| {
-                    (operator.function)(&left, env, stack.clone())?(&right, env, stack)
+                    (operator.function)(&left, env, stack)?(&right, env, stack)
                 });
 
                 let function = Value::of(partial);

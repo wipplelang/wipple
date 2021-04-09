@@ -43,19 +43,19 @@ impl Default for EvaluationStack {
 }
 
 impl EvaluationStack {
-    pub fn queue_location(mut self, location: &SourceLocation) -> Self {
-        self.queued_location = Some(location.clone());
-        self
+    pub fn queue_location(&mut self, location: &Option<SourceLocation>) {
+        if location.is_some() {
+            self.queued_location = location.clone();
+        }
     }
 
-    pub fn disable_recording(mut self) -> Self {
+    pub fn disable_recording(&mut self) {
         self.recording_enabled = false;
-        self
     }
 
-    pub fn with_item(mut self, item: impl FnOnce() -> StackItem) -> Self {
+    pub fn set_item(&mut self, item: impl FnOnce() -> StackItem) {
         if !self.recording_enabled {
-            return self;
+            return;
         }
 
         let mut item = item();
@@ -69,23 +69,21 @@ impl EvaluationStack {
         self.items.push(item);
         self.queued_location = None;
         self.recording_enabled = true;
-
-        self
     }
 
-    pub fn with(self, label: impl FnOnce() -> String) -> Self {
-        self.with_item(|| StackItem {
+    pub fn set(&mut self, label: impl FnOnce() -> String) {
+        self.set_item(|| StackItem {
             label: label(),
             location: None,
         })
     }
 
-    pub fn with_location(
-        self,
+    pub fn set_location(
+        &mut self,
         label: impl FnOnce() -> String,
         location: Option<SourceLocation>,
-    ) -> Self {
-        self.with_item(|| StackItem {
+    ) {
+        self.set_item(|| StackItem {
             label: label(),
             location,
         })
@@ -132,7 +130,7 @@ pub enum ReturnState {
 impl ReturnState {
     /// Call when all other return states have made it to the top level to
     /// convert them into errors.
-    pub fn into_error(self, stack: Stack) -> Error {
+    pub fn into_error(self, stack: &Stack) -> Error {
         match self {
             ReturnState::ReturnFromBlock => Error::new("'return' outside block", stack),
             ReturnState::BreakOutOfLoop => Error::new("'break' outside loop", stack),
@@ -148,10 +146,10 @@ pub struct Error {
 }
 
 impl Error {
-    pub fn new(message: &str, stack: Stack) -> Self {
+    pub fn new(message: &str, stack: &Stack) -> Self {
         Error {
             message: String::from(message),
-            stack: stack.get_evaluation(),
+            stack: stack.evaluation(),
         }
     }
 }

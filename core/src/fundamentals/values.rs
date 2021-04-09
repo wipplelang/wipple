@@ -19,9 +19,9 @@ impl Value {
         r#trait: Trait,
         value: Value,
         env: &EnvironmentRef,
-        stack: Stack,
+        stack: &Stack,
     ) -> Result {
-        let value = match (r#trait.validation)(&value, env, stack.clone())? {
+        let value = match (r#trait.validation)(&value, env, stack)? {
             Validated::Valid(value) => value,
             Validated::Invalid => {
                 return Err(ReturnState::Error(Error::new(

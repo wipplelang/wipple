@@ -37,11 +37,11 @@ impl std::fmt::Debug for Trait {
 }
 
 impl Value {
-    pub fn get_trait(&self, r#trait: &Trait, env: &EnvironmentRef, stack: Stack) -> Result {
+    pub fn get_trait(&self, r#trait: &Trait, env: &EnvironmentRef, stack: &Stack) -> Result {
         self.get_trait_or(r#trait, "Value does not have this trait", env, stack)
     }
 
-    pub fn is_trait(&self, r#trait: &Trait, env: &EnvironmentRef, stack: Stack) -> Result<bool> {
+    pub fn is_trait(&self, r#trait: &Trait, env: &EnvironmentRef, stack: &Stack) -> Result<bool> {
         self.get_trait_if_present(r#trait, env, stack)
             .map(|t| t.is_some())
     }
@@ -55,9 +55,9 @@ impl Value {
         r#trait: &Trait,
         message: &str,
         env: &EnvironmentRef,
-        stack: Stack,
+        stack: &Stack,
     ) -> Result {
-        self.get_trait_if_present(r#trait, env, stack.clone())?
+        self.get_trait_if_present(r#trait, env, stack)?
             .ok_or_else(|| ReturnState::Error(Error::new(message, stack)))
     }
 
@@ -65,7 +65,7 @@ impl Value {
         &self,
         r#trait: &Trait,
         env: &EnvironmentRef,
-        stack: Stack,
+        stack: &Stack,
     ) -> Result<Option<Value>> {
         if self.is_trait_directly(r#trait) {
             Ok(Some(self.contained_value().clone()))
@@ -75,7 +75,7 @@ impl Value {
                 value: &Value,
                 search_env: &EnvironmentRef,
                 eval_env: &EnvironmentRef,
-                stack: Stack,
+                stack: &Stack,
             ) -> Result<Option<Value>> {
                 let conformances = search_env
                     .borrow_mut()
@@ -97,9 +97,9 @@ impl Value {
                     1 => {
                         let value = value.contained_value();
 
-                        let derived_value = (conformances.first().unwrap().derive_value)(value, eval_env, stack.clone())?;
+                        let derived_value = (conformances.first().unwrap().derive_value)(value, eval_env, stack)?;
 
-                        let contained_value = match (r#trait.validation)(&derived_value, eval_env, stack.clone())? {
+                        let contained_value = match (r#trait.validation)(&derived_value, eval_env, stack)? {
                             Validated::Valid(value) => value,
                             Validated::Invalid => {
                                 return Err(ReturnState::Error(Error::new(
@@ -125,7 +125,7 @@ impl Value {
 }
 
 impl Value {
-    pub fn get_primitive<T: Primitive>(&self, env: &EnvironmentRef, stack: Stack) -> Result<T> {
+    pub fn get_primitive<T: Primitive>(&self, env: &EnvironmentRef, stack: &Stack) -> Result<T> {
         self.get_primitive_or("Cannot find trait", env, stack)
     }
 
@@ -133,16 +133,16 @@ impl Value {
         &self,
         message: &str,
         env: &EnvironmentRef,
-        stack: Stack,
+        stack: &Stack,
     ) -> Result<T> {
-        self.get_primitive_if_present(env, stack.clone())?
+        self.get_primitive_if_present(env, stack)?
             .ok_or_else(|| ReturnState::Error(Error::new(message, stack)))
     }
 
     pub fn get_primitive_if_present<T: Primitive>(
         &self,
         env: &EnvironmentRef,
-        stack: Stack,
+        stack: &Stack,
     ) -> Result<Option<T>> {
         Ok(self
             .get_trait_if_present(&Trait::of::<T>(), env, stack)?

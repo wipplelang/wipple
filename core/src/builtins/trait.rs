@@ -11,12 +11,7 @@ pub(crate) fn setup(env: &mut Environment) {
     // Trait == Function
     env.add_primitive_conformance(|r#trait: Trait| {
         Function::new(move |value, env, stack| {
-            Value::new_validated(
-                r#trait.clone(),
-                value.evaluate(env, stack.clone())?,
-                env,
-                stack,
-            )
+            Value::new_validated(r#trait.clone(), value.evaluate(env, stack)?, env, stack)
         })
     });
 

@@ -178,27 +178,26 @@ fn parse_test_file(path: &Path) -> Vec<Test> {
 fn test(code: &str) -> (String, std::time::Duration) {
     let start = Instant::now();
 
-    let stack = Stack::empty();
+    let mut stack = Stack::new();
 
-    let program =
-        wipple_projects::load_string(code, None, stack.clone()).expect("Failed to parse file");
+    let program = wipple_projects::load_string(code, None, &stack).expect("Failed to parse file");
 
     let output = Rc::new(RefCell::new(Vec::new()));
 
     wipple::setup();
-    let stack = setup(output.clone(), stack);
+    setup(output.clone(), &mut stack);
 
     // Load the standard library
-    wipple_stdlib::_wipple_plugin(&Environment::global(), stack.clone())
+    wipple_stdlib::_wipple_plugin(&Environment::global(), &stack)
         .expect("Failed to load standard library");
 
     if let Err(error) = wipple_projects::import_program_with_parent_env(
         program,
         None,
         &Environment::global(),
-        stack.clone(),
+        &stack,
     ) {
-        output.replace(vec![error.into_error(stack).to_string()]);
+        output.replace(vec![error.into_error(&stack).to_string()]);
     }
 
     let output = output.borrow().join("\n");
@@ -207,18 +206,16 @@ fn test(code: &str) -> (String, std::time::Duration) {
     (output, duration)
 }
 
-fn setup(output: Rc<RefCell<Vec<String>>>, stack: Stack) -> Stack {
-    wipple_stdlib::show::with_show_in(
-        stack,
+fn setup(output: Rc<RefCell<Vec<String>>>, stack: &mut Stack) {
+    *wipple_stdlib::show::show_mut_in(stack) =
         wipple_stdlib::show::ShowFn::new(move |value, env, stack| {
-            let source_text = value.format(env, stack.clone())?;
-            let output_text = value.evaluate(env, stack.clone())?.format(env, stack)?;
+            let source_text = value.format(env, stack)?;
+            let output_text = value.evaluate(env, stack)?.format(env, stack)?;
 
             output
                 .borrow_mut()
                 .push(format!("{} ==> {}", source_text, output_text));
 
             Ok(())
-        }),
-    )
+        });
 }

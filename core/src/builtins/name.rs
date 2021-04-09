@@ -23,7 +23,7 @@ impl Name {
 core_primitive!(pub name for Name);
 
 fn_wrapper_struct! {
-    pub type ComputeFn(&EnvironmentRef, Stack) -> Result;
+    pub type ComputeFn(&EnvironmentRef, &Stack) -> Result;
 }
 
 #[derive(Debug, Clone)]
@@ -33,7 +33,7 @@ pub enum Variable {
 }
 
 impl Variable {
-    pub fn get_value(&self, env: &EnvironmentRef, stack: Stack) -> Result {
+    pub fn get_value(&self, env: &EnvironmentRef, stack: &Stack) -> Result {
         match self {
             Variable::Just(value) => Ok(value.clone()),
             Variable::Computed(compute) => compute(env, stack),
@@ -50,7 +50,7 @@ core_env_key!(pub variables for Variables {
 });
 
 fn_wrapper_struct! {
-    pub type HandleAssignFn(&Name, &Value, &EnvironmentRef, Stack) -> Result<()>;
+    pub type HandleAssignFn(&Name, &Value, &EnvironmentRef, &Stack) -> Result<()>;
 }
 
 impl Default for HandleAssignFn {
@@ -69,7 +69,7 @@ core_env_key!(pub handle_assign for HandleAssignFn {
 });
 
 fn_wrapper_struct! {
-    pub type HandleComputedAssignFn(&Name, &Value, &EnvironmentRef, Stack) -> Result<()>;
+    pub type HandleComputedAssignFn(&Name, &Value, &EnvironmentRef, &Stack) -> Result<()>;
 }
 
 impl Default for HandleComputedAssignFn {
@@ -96,7 +96,7 @@ impl Environment {
     pub fn set_computed_variable(
         &mut self,
         name: &str,
-        compute: impl Fn(&EnvironmentRef, Stack) -> Result + 'static,
+        compute: impl Fn(&EnvironmentRef, &Stack) -> Result + 'static,
     ) {
         self.variables().insert(
             name.to_string(),
@@ -106,19 +106,21 @@ impl Environment {
 }
 
 impl Name {
-    pub fn resolve(&self, env: &EnvironmentRef, stack: Stack) -> Result {
-        let variable = self.resolve_variable(env, stack.clone())?;
+    pub fn resolve(&self, env: &EnvironmentRef, stack: &Stack) -> Result {
+        let variable = self.resolve_variable(env, stack)?;
         variable.get_value(env, stack)
     }
 
-    pub fn resolve_variable(&self, env: &EnvironmentRef, stack: Stack) -> Result<Variable> {
-        let stack =
-            stack.update_evaluation(|e| e.with(|| format!("Resolving variable '{}'", self.name)));
+    pub fn resolve_variable(&self, env: &EnvironmentRef, stack: &Stack) -> Result<Variable> {
+        let mut stack = stack.clone();
+        stack
+            .evaluation_mut()
+            .set(|| format!("Resolving variable '{}'", self.name));
 
         self.resolve_variable_if_present(env).ok_or_else(|| {
             ReturnState::Error(Error::new(
                 &format!("Name '{}' does not refer to a variable", self.name),
-                stack,
+                &stack,
             ))
         })
     }

@@ -14,9 +14,9 @@ pub(crate) fn setup(env: &mut Environment) {
     // Closure == Function
     env.add_primitive_conformance(|closure: Closure| {
         Function::new(move |value, env, stack| {
-            let value = value.evaluate(env, stack.clone())?;
+            let value = value.evaluate(env, stack)?;
 
-            let validated = (closure.validation)(&value, env, stack.clone())?;
+            let validated = (closure.validation)(&value, env, stack)?;
 
             let value = match validated {
                 Validated::Valid(value) => value,
