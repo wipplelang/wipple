@@ -1,5 +1,3 @@
-#![allow(clippy::clippy::unnecessary_wraps)]
-
 use bigdecimal::BigDecimal;
 use line_col::LineColLookup;
 use std::ops::Range;

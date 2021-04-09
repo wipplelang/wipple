@@ -45,7 +45,6 @@ pub struct Dynamic {
     clone: Rc<dyn Fn(&dyn Any) -> Box<dyn Any>>,
 
     #[cfg(debug_assertions)]
-    #[allow(clippy::clippy::type_complexity)]
     debug: Rc<dyn Fn(&dyn Any, &mut std::fmt::Formatter) -> std::fmt::Result>,
 }
 
