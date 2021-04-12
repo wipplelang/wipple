@@ -19,7 +19,7 @@ impl Value {
             .evaluation_mut()
             .set(|| format!("Calling '{}'", self.try_format(env, &stack_)));
 
-        let function = self.get_primitive_or::<Function>(
+        let function = self.get_or::<Function>(
             "Cannot call this value because it does not have the Function trait",
             env,
             &stack,

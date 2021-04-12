@@ -95,16 +95,12 @@ fn setup_variant_block(
             )));
         }
 
-        let list = right.get_primitive_or::<List>(
-            "Expected list of validations for variant",
-            env,
-            stack,
-        )?;
+        let list = right.get_or::<List>("Expected list of validations for variant", env, stack)?;
 
         let mut validations = Vec::new();
 
         for item in list.items {
-            let validation = item.evaluate(env, stack)?.get_primitive_or::<Validation>(
+            let validation = item.evaluate(env, stack)?.get_or::<Validation>(
                 "Expected validation in list of variant items",
                 env,
                 stack,
@@ -130,11 +126,8 @@ pub(crate) fn setup(env: &mut Environment) {
         let mut associated_values = Vec::new();
 
         for value in variant.associated_values {
-            let text = value.get_primitive_or::<Text>(
-                "Variant value does not conform to Text",
-                env,
-                stack,
-            )?;
+            let text =
+                value.get_or::<Text>("Variant value does not conform to Text", env, stack)?;
 
             associated_values.push(text.text);
         }
@@ -151,17 +144,17 @@ pub(crate) fn setup(env: &mut Environment) {
     env.set_variable(
         "variant",
         Value::of(Function::new(|value, env, stack| {
-            let variants = if let Some(list) = value.get_primitive_if_present::<List>(env, stack)? {
+            let variants = if let Some(list) = value.get_if_present::<List>(env, stack)? {
                 let mut variants = HashMap::new();
 
                 for item in list.items {
-                    let name = item.get_primitive_or::<Name>("Expected name", env, stack)?;
+                    let name = item.get_or::<Name>("Expected name", env, stack)?;
 
                     variants.insert(name.name, Vec::new());
                 }
 
                 variants
-            } else if let Some(block) = value.get_primitive_if_present::<Block>(env, stack)? {
+            } else if let Some(block) = value.get_if_present::<Block>(env, stack)? {
                 let variant_env = Environment::child_of(env).into_ref();
 
                 let variants = Rc::new(RefCell::new(HashMap::new()));
@@ -186,18 +179,13 @@ pub(crate) fn setup(env: &mut Environment) {
     env.set_variable(
         "match",
         Value::of(Function::new(|value, env, stack| {
-            let variant = value.evaluate(env, stack)?.get_primitive_or::<Variant>(
-                "Expected variant",
-                env,
-                stack,
-            )?;
+            let variant =
+                value
+                    .evaluate(env, stack)?
+                    .get_or::<Variant>("Expected variant", env, stack)?;
 
             Ok(Value::of(Function::new(move |value, env, stack| {
-                let block = value.get_primitive_or::<Block>(
-                    "Expected block defining matches",
-                    env,
-                    stack,
-                )?;
+                let block = value.get_or::<Block>("Expected block defining matches", env, stack)?;
 
                 let matches = Rc::new(RefCell::new(HashMap::new()));
                 let match_env = Environment::child_of(env).into_ref();

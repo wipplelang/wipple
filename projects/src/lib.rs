@@ -20,7 +20,7 @@ pub fn setup() {
         "import",
         Value::of(Function::new(|value, env, stack| {
             let path = value
-                .get_primitive_or::<Text>("Expected a path to a file or folder", env, stack)?
+                .get_or::<Text>("Expected a path to a file or folder", env, stack)?
                 .text;
 
             let module = import(&path, stack)?;
@@ -34,7 +34,7 @@ pub fn setup() {
         "load-plugin!",
         Value::of(Function::new(|value, env, stack| {
             let path = value
-                .get_primitive_or::<Text>(
+                .get_or::<Text>(
                     "Expected a path to a folder containing .wplplugin files",
                     env,
                     stack,

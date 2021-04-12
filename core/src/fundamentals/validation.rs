@@ -13,7 +13,7 @@ impl Validation {
         // We can't use Validation::for_trait here because it leads to infinite
         // recursion, as Trait::of calls Validation::of
         Validation::new(move |value, env, stack| {
-            Ok(match value.get_primitive_if_present::<T>(env, stack)? {
+            Ok(match value.get_if_present::<T>(env, stack)? {
                 Some(primitive) => Validated::Valid(Value::of(primitive)),
                 None => Validated::Invalid,
             })

@@ -8,7 +8,7 @@ core_primitive!(pub evaluate for EvaluateFn);
 
 impl Value {
     pub fn evaluate(&self, env: &EnvironmentRef, stack: &Stack) -> Result {
-        match self.get_primitive_if_present::<EvaluateFn>(env, stack)? {
+        match self.get_if_present::<EvaluateFn>(env, stack)? {
             Some(evaluate) => evaluate.0(env, stack),
             None => Ok(self.clone()),
         }

@@ -82,7 +82,7 @@ impl Operator {
 
     pub fn from_function(function: Function) -> Self {
         Operator::new(move |left, env, stack| {
-            let function = function(left, env, stack)?.get_primitive::<Function>(env, stack)?;
+            let function = function(left, env, stack)?.get::<Function>(env, stack)?;
 
             Ok(Box::new(move |right, env, stack| {
                 function(right, env, stack)
@@ -235,14 +235,12 @@ pub fn get_operator(
     env: &EnvironmentRef,
     stack: &Stack,
 ) -> Result<Option<Operator>> {
-    match value.get_primitive_if_present::<Name>(env, stack)? {
+    match value.get_if_present::<Name>(env, stack)? {
         Some(name) => {
             let variable = name.resolve_variable_if_present(env);
 
             match variable {
-                Some(Variable::Just(value)) => {
-                    value.get_primitive_if_present::<Operator>(env, stack)
-                }
+                Some(Variable::Just(value)) => value.get_if_present::<Operator>(env, stack),
                 _ => Ok(None),
             }
         }

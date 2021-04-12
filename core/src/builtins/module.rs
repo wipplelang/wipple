@@ -81,7 +81,7 @@ pub(crate) fn setup(env: &mut Environment) {
     // Module == Function
     env.add_primitive_conformance(|module: Module| {
         Function::new(move |value, env, stack| {
-            let name = value.get_primitive_or::<Name>("Expected a name", env, stack)?;
+            let name = value.get_or::<Name>("Expected a name", env, stack)?;
             name.resolve(&module.env, stack)
         })
     });

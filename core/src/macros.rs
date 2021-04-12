@@ -49,8 +49,10 @@ macro_rules! primitive {
     ($vis:vis $name:ident for $Type:ty) => {
         impl $crate::Primitive for $Type {}
 
-        $vis fn $name() -> Self {
-            $crate::ID::of::<$Type>()
+        paste::paste! {
+            $vis fn [<$name _trait>]() -> Trait {
+                $crate::Trait::of::<$Type>()
+            }
         }
     };
 }
@@ -80,7 +82,7 @@ macro_rules! env_key {
                 EnvironmentKey::of::<$Type>($visibility)
             }
 
-            $vis fn [<get_ $name _in>](env: &mut $crate::Environment) -> &mut $Type {
+            $vis fn [<$name _in>](env: &mut $crate::Environment) -> &mut $Type {
                 env.get_or_insert(&[<$name _env_key>](), Dynamic::new(<$Type>::default()))
                     .cast_mut::<$Type>()
             }

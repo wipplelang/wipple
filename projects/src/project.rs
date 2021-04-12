@@ -45,7 +45,7 @@ fn get_main_file(project_module: &Module, env: &EnvironmentRef, stack: &Stack) -
     }
     .resolve(&project_module.env, &stack)?;
 
-    let path = variable.get_primitive_or::<Text>(
+    let path = variable.get_or::<Text>(
         "Expected a Text value containing the path to the main file",
         env,
         &stack,

@@ -125,21 +125,21 @@ impl Value {
 }
 
 impl Value {
-    pub fn get_primitive<T: Primitive>(&self, env: &EnvironmentRef, stack: &Stack) -> Result<T> {
-        self.get_primitive_or("Cannot find trait", env, stack)
+    pub fn get<T: Primitive>(&self, env: &EnvironmentRef, stack: &Stack) -> Result<T> {
+        self.get_or("Cannot find trait", env, stack)
     }
 
-    pub fn get_primitive_or<T: Primitive>(
+    pub fn get_or<T: Primitive>(
         &self,
         message: &str,
         env: &EnvironmentRef,
         stack: &Stack,
     ) -> Result<T> {
-        self.get_primitive_if_present(env, stack)?
+        self.get_if_present(env, stack)?
             .ok_or_else(|| ReturnState::Error(Error::new(message, stack)))
     }
 
-    pub fn get_primitive_if_present<T: Primitive>(
+    pub fn get_if_present<T: Primitive>(
         &self,
         env: &EnvironmentRef,
         stack: &Stack,

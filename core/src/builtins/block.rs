@@ -71,7 +71,7 @@ pub(crate) fn setup(env: &mut Environment) {
                 let list = Value::of(statement.clone());
                 let expanded = list
                     .replace_in_template(parameter, replacement, env, &stack)?
-                    .get_primitive::<List>(env, &stack)?;
+                    .get::<List>(env, &stack)?;
 
                 statements.push(expanded);
             }
@@ -93,7 +93,7 @@ pub(crate) fn setup(env: &mut Environment) {
         let fields = fields.take();
 
         Ok(Value::of(Validation::new(move |value, env, stack| {
-            let module = value.get_primitive_or::<Module>("Expected module", env, stack)?;
+            let module = value.get_or::<Module>("Expected module", env, stack)?;
 
             let mut validated_env = Environment::blank();
 
@@ -119,11 +119,10 @@ pub(crate) fn setup(env: &mut Environment) {
 
 fn setup_validation_block(fields: Rc<RefCell<HashMap<String, Validation>>>, env: &EnvironmentRef) {
     *env.borrow_mut().handle_assign() = HandleAssignFn::new(move |left, right, env, stack| {
-        let validation = right.evaluate(env, stack)?.get_primitive_or::<Validation>(
-            "Expected validation",
-            env,
-            stack,
-        )?;
+        let validation =
+            right
+                .evaluate(env, stack)?
+                .get_or::<Validation>("Expected validation", env, stack)?;
 
         fields.borrow_mut().insert(left.name.clone(), validation);
 

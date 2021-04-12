@@ -26,7 +26,7 @@ impl Value {
         let mut stack = stack.clone();
         stack.evaluation_mut().disable_recording();
 
-        match self.get_primitive_if_present::<Text>(env, &stack) {
+        match self.get_if_present::<Text>(env, &stack) {
             Ok(Some(text)) => text.text,
             Ok(None) => String::from("<value>"),
             Err(_) => String::from("<error retrieving text>"),
@@ -38,7 +38,7 @@ impl Value {
         stack.evaluation_mut().disable_recording();
 
         Ok(self
-            .get_primitive_if_present::<Text>(env, &stack)?
+            .get_if_present::<Text>(env, &stack)?
             .map(|t| t.text)
             .unwrap_or_else(|| String::from("<value>")))
     }

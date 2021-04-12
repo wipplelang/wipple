@@ -14,7 +14,7 @@ impl Value {
         env: &EnvironmentRef,
         stack: &Stack,
     ) -> Result {
-        match self.get_primitive_if_present::<ReplaceInTemplateFn>(env, stack)? {
+        match self.get_if_present::<ReplaceInTemplateFn>(env, stack)? {
             Some(replace_in_template) => replace_in_template(parameter, replacement, env, stack),
             None => Ok(self.clone()),
         }
