@@ -49,8 +49,8 @@ macro_rules! primitive {
     ($vis:vis $name:ident for $Type:ty) => {
         impl $crate::Primitive for $Type {}
 
-        paste::paste! {
-            $vis fn [<$name _trait>]() -> Trait {
+        $crate::paste! {
+            $vis fn [<$name _trait>]() -> $crate::Trait {
                 $crate::Trait::of::<$Type>()
             }
         }
@@ -78,12 +78,12 @@ macro_rules! core_env_key {
 macro_rules! env_key {
     ($vis:vis $name:ident for $Type:ty { visibility: $visibility:expr $(,)? }) => {
         $crate::paste! {
-            $vis fn [<$name _env_key>]() -> EnvironmentKey {
-                EnvironmentKey::of::<$Type>($visibility)
+            $vis fn [<$name _env_key>]() -> $crate::EnvironmentKey {
+                $crate::EnvironmentKey::of::<$Type>($visibility)
             }
 
             $vis fn [<$name _in>](env: &mut $crate::Environment) -> &mut $Type {
-                env.get_or_insert(&[<$name _env_key>](), Dynamic::new(<$Type>::default()))
+                env.get_or_insert(&[<$name _env_key>](), $crate::Dynamic::new(<$Type>::default()))
                     .cast_mut::<$Type>()
             }
         }
@@ -120,17 +120,17 @@ macro_rules! core_stack_key {
 macro_rules! stack_key {
     ($vis:vis $name:ident for $Type:ty) => {
         $crate::paste! {
-            $vis fn [<$name _stack_key>]() -> StackKey {
-                StackKey::of::<$Type>()
+            $vis fn [<$name _stack_key>]() -> $crate::StackKey {
+                $crate::StackKey::of::<$Type>()
             }
 
             $vis fn [<$name _in>](stack: &$crate::Stack) -> $Type {
-                stack.get([<$name _stack_key>](), Dynamic::new(<$Type>::default()))
+                stack.get([<$name _stack_key>](), $crate::Dynamic::new(<$Type>::default()))
                     .into_cast::<$Type>()
             }
 
             $vis fn [<$name _mut_in>](stack: &mut $crate::Stack) -> &mut $Type {
-                stack.get_mut([<$name _stack_key>](), Dynamic::new(<$Type>::default()))
+                stack.get_mut([<$name _stack_key>](), $crate::Dynamic::new(<$Type>::default()))
                     .cast_mut::<$Type>()
             }
         }

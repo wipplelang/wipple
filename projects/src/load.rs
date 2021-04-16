@@ -5,23 +5,6 @@ use std::{
 };
 use wipple::*;
 
-fn_wrapper_struct! {
-    pub type LoadFileFn(&Path, &Stack) -> Result<String>;
-}
-
-impl Default for LoadFileFn {
-    fn default() -> Self {
-        LoadFileFn::new(|_, stack| {
-            Err(ReturnState::Error(Error::new(
-                "This runtime does not support loading other files",
-                stack,
-            )))
-        })
-    }
-}
-
-stack_key!(pub load_file for LoadFileFn);
-
 #[derive(Debug, Clone, Default)]
 pub struct CurrentFile(pub Option<PathBuf>);
 
@@ -137,9 +120,10 @@ fn try_import_folder(path: &Path, stack: &Stack) -> Result<Option<Module>> {
     }
 }
 
-/// Import a file, returning a module.
+/// Import a file, returning a module. If the file belongs to a project, the
+/// file's environment will descend from the project's environment.
 pub fn import_file(path: &Path, stack: &Stack) -> Result<Module> {
-    import_file_with_parent_env(path, &Environment::global(), stack)
+    import_file_with_parent_env(path, &project_env_in(stack), stack)
 }
 
 pub fn import_file_with_parent_env(

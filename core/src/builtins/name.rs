@@ -111,6 +111,18 @@ impl Name {
         variable.get_value(env, stack)
     }
 
+    pub fn resolve_if_present(&self, env: &EnvironmentRef, stack: &Stack) -> Result<Option<Value>> {
+        let mut stack = stack.clone();
+        stack
+            .evaluation_mut()
+            .set(|| format!("Resolving variable '{}'", self.name));
+
+        match self.resolve_variable_if_present(env) {
+            Some(variable) => variable.get_value(env, &stack).map(Some),
+            None => Ok(None),
+        }
+    }
+
     pub fn resolve_variable(&self, env: &EnvironmentRef, stack: &Stack) -> Result<Variable> {
         let mut stack = stack.clone();
         stack

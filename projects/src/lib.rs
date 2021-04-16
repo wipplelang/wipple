@@ -1,8 +1,10 @@
+mod dependencies;
 mod load;
 mod new;
 mod project;
 mod resolve;
 
+pub use dependencies::*;
 pub use load::*;
 pub use new::*;
 pub use project::*;
@@ -20,6 +22,7 @@ pub fn setup() {
         "import",
         Value::of(Function::new(|value, env, stack| {
             let path = value
+                .evaluate(env, stack)?
                 .get_or::<Text>("Expected a path to a file or folder", env, stack)?
                 .text;
 
