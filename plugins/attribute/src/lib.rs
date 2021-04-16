@@ -1,0 +1,23 @@
+#![crate_type = "proc-macro"]
+
+use proc_macro::TokenStream;
+use quote::quote;
+
+#[proc_macro_attribute]
+pub fn wipple_plugin_attribute(_attr: TokenStream, item: TokenStream) -> TokenStream {
+    let item = syn::parse::<syn::ItemFn>(item).unwrap();
+
+    let fn_name = &item.sig.ident;
+
+    let result = quote! {
+        #item
+
+        #[no_mangle]
+        #[export_name = "_wipple_plugin"]
+        pub extern "C" fn _wipple_plugin(env: &wipple::EnvironmentRef, stack: &wipple::Stack) -> Box<wipple::Result> {
+            Box::new(#fn_name(env, stack))
+        }
+    };
+
+    result.into()
+}

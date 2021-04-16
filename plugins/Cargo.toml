@@ -5,6 +5,7 @@ edition = "2018"
 
 [dependencies]
 wipple = { path = "../core" }
+wipple_plugin_attribute = { path = "./attribute" }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 libloading = "0.7.0"

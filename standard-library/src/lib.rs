@@ -1,8 +1,8 @@
-pub mod show;
-
 mod prelude;
+mod show;
 
-use prelude::prelude;
+pub use show::*;
+
 use wipple::*;
 use wipple_plugins::wipple_plugin;
 
@@ -10,8 +10,9 @@ use wipple_plugins::wipple_plugin;
 #[folder = "lib"]
 struct Asset;
 
-wipple_plugin!(|env, stack: &Stack| {
-    prelude(env);
+#[wipple_plugin]
+pub fn setup(env: &EnvironmentRef, stack: &Stack) -> Result {
+    prelude::prelude(env);
     show::setup(&mut env.borrow_mut());
 
     for path in Asset::iter() {
@@ -29,4 +30,4 @@ wipple_plugin!(|env, stack: &Stack| {
     }
 
     Ok(Value::empty())
-});
+}

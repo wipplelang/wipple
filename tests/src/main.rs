@@ -187,9 +187,7 @@ fn test(code: &str) -> (String, std::time::Duration) {
     wipple::setup();
     setup(output.clone(), &mut stack);
 
-    // Load the standard library
-    wipple_stdlib::_wipple_plugin(&Environment::global(), &stack)
-        .expect("Failed to load standard library");
+    wipple_stdlib::setup(&Environment::global(), &stack).expect("Failed to load standard library");
 
     if let Err(error) = wipple_projects::import_program_with_parent_env(
         program,
@@ -207,15 +205,14 @@ fn test(code: &str) -> (String, std::time::Duration) {
 }
 
 fn setup(output: Rc<RefCell<Vec<String>>>, stack: &mut Stack) {
-    *wipple_stdlib::show::show_mut_in(stack) =
-        wipple_stdlib::show::ShowFn::new(move |value, env, stack| {
-            let source_text = value.format(env, stack)?;
-            let output_text = value.evaluate(env, stack)?.format(env, stack)?;
+    *wipple_stdlib::show_mut_in(stack) = wipple_stdlib::ShowFn::new(move |value, env, stack| {
+        let source_text = value.format(env, stack)?;
+        let output_text = value.evaluate(env, stack)?.format(env, stack)?;
 
-            output
-                .borrow_mut()
-                .push(format!("{} ==> {}", source_text, output_text));
+        output
+            .borrow_mut()
+            .push(format!("{} ==> {}", source_text, output_text));
 
-            Ok(())
-        });
+        Ok(())
+    });
 }

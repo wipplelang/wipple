@@ -1754,11 +1754,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "wipple_plugin_attribute"
+version = "0.0.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "wipple_plugins"
 version = "0.0.0"
 dependencies = [
  "libloading",
  "wipple",
+ "wipple_plugin_attribute",
 ]
 
 [[package]]

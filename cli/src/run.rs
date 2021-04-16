@@ -23,9 +23,7 @@ impl Run {
 
         wipple::setup();
         wipple_projects::setup();
-
-        // Load the standard library
-        (*wipple_stdlib::_wipple_plugin(&env, &stack))?;
+        wipple_stdlib::setup(&env, &stack)?;
 
         setup(&mut stack);
 
@@ -66,10 +64,9 @@ impl Run {
 }
 
 fn setup(stack: &mut Stack) {
-    *wipple_stdlib::show::show_mut_in(stack) =
-        wipple_stdlib::show::ShowFn::new(move |value, env, stack| {
-            println!("{}", value.evaluate(env, stack)?.format(env, stack)?);
+    *wipple_stdlib::show_mut_in(stack) = wipple_stdlib::ShowFn::new(move |value, env, stack| {
+        println!("{}", value.evaluate(env, stack)?.format(env, stack)?);
 
-            Ok(())
-        });
+        Ok(())
+    });
 }
