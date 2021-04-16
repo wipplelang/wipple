@@ -47,6 +47,9 @@ jobs:
             target
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
+      - name: Install OpenSSL
+        run: sudo apt install libssl-dev
+
       - name: Get current date
         id: date
         run: echo "::set-output name=date::$(date -u +'%Y%m%d%H%M%S')"
