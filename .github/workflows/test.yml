@@ -2,6 +2,7 @@ on:
   workflow_dispatch:
   push:
     paths:
+      - .github/**
       - cli/**
       - core/**
       - parser/**
