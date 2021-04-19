@@ -42,8 +42,12 @@ impl Environment {
         self.values.get_mut(key)
     }
 
-    pub fn get_or_insert(&mut self, key: &EnvironmentKey, default: Dynamic) -> &mut Dynamic {
-        self.values.entry(key.clone()).or_insert(default)
+    pub fn get_or_insert(
+        &mut self,
+        key: &EnvironmentKey,
+        default: impl FnOnce() -> Dynamic,
+    ) -> &mut Dynamic {
+        self.values.entry(key.clone()).or_insert_with(default)
     }
 
     pub fn set(&mut self, key: &EnvironmentKey, value: Dynamic) {
@@ -60,9 +64,7 @@ fn_wrapper_struct! {
 }
 
 impl UseFn {
-    pub fn from<T: std::fmt::Debug + Clone + 'static>(
-        r#use: impl Fn(&T, &T) -> T + 'static,
-    ) -> Self {
+    pub fn from<T: TypeInfo>(r#use: impl Fn(&T, &T) -> T + 'static) -> Self {
         UseFn::new(move |parent, new| {
             let parent = parent.cast::<T>();
             let new = new.cast::<T>();
@@ -122,7 +124,7 @@ pub struct EnvironmentKey {
 }
 
 impl EnvironmentKey {
-    pub fn of<T: 'static>(visibility: EnvironmentVisibility) -> Self {
+    pub fn of<T: TypeInfo>(visibility: EnvironmentVisibility) -> Self {
         EnvironmentKey {
             id: Id::of::<T>(),
             visibility,

@@ -4,6 +4,8 @@ mod new;
 mod project;
 mod resolve;
 
+use std::path::PathBuf;
+
 pub use dependencies::*;
 pub use load::*;
 pub use new::*;
@@ -12,7 +14,7 @@ pub use resolve::*;
 
 use wipple::*;
 
-#[cfg(feature = "plugins")]
+#[cfg(not(target_arch = "wasm32"))]
 use wipple_plugins::*;
 
 pub fn setup() {
@@ -32,19 +34,23 @@ pub fn setup() {
         })),
     );
 
-    #[cfg(feature = "plugins")]
+    #[cfg(not(target_arch = "wasm32"))]
     env.borrow_mut().set_variable(
         "load-plugin!",
         Value::of(Function::new(|value, env, stack| {
             let path = value
-                .get_or::<Text>(
-                    "Expected a path to a folder containing .wplplugin files",
-                    env,
-                    stack,
-                )?
+                .evaluate(env, stack)?
+                .get_or::<Text>("Expected a path to a .wplplugin file", env, stack)?
                 .text;
 
-            let path = resolve_plugin(&path, stack)?;
+            let path = PathBuf::from(path);
+
+            if !path.exists() {
+                return Err(ReturnState::Error(Error::new(
+                    &format!("Cannot find plugin at '{}'", path.to_string_lossy()),
+                    stack,
+                )));
+            }
 
             load_plugin(path, env, stack)
         })),

@@ -5,6 +5,7 @@ use std::{
 };
 use wipple::*;
 
+#[typeinfo]
 #[derive(Debug, Clone, Default)]
 pub struct CurrentFile(pub Option<PathBuf>);
 

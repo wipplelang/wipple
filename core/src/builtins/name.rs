@@ -1,6 +1,7 @@
 use crate::*;
 use std::collections::HashMap;
 
+#[typeinfo]
 #[derive(Debug, Clone)]
 pub struct Name {
     pub name: String,
@@ -41,15 +42,18 @@ impl Variable {
     }
 }
 
-pub type Variables = HashMap<String, Variable>;
+#[typeinfo]
+#[derive(Debug, Clone, Default)]
+pub struct Variables(pub HashMap<String, Variable>);
 
 core_env_key!(pub variables for Variables {
     visibility: EnvironmentVisibility::Public(UseFn::from(|parent: &Variables, new| {
-        parent.clone().into_iter().chain(new.clone()).collect()
+        Variables(parent.0.clone().into_iter().chain(new.0.clone()).collect())
     }))
 });
 
 fn_wrapper_struct! {
+    #[typeinfo]
     pub type HandleAssignFn(&Name, &Value, &EnvironmentRef, &Stack) -> Result<()>;
 }
 
@@ -69,6 +73,7 @@ core_env_key!(pub handle_assign for HandleAssignFn {
 });
 
 fn_wrapper_struct! {
+    #[typeinfo]
     pub type HandleComputedAssignFn(&Name, &Value, &EnvironmentRef, &Stack) -> Result<()>;
 }
 
@@ -90,6 +95,7 @@ core_env_key!(pub handle_computed_assign for HandleComputedAssignFn {
 impl Environment {
     pub fn set_variable(&mut self, name: &str, value: Value) {
         self.variables()
+            .0
             .insert(name.to_string(), Variable::Just(value));
     }
 
@@ -98,7 +104,7 @@ impl Environment {
         name: &str,
         compute: impl Fn(&EnvironmentRef, &Stack) -> Result + 'static,
     ) {
-        self.variables().insert(
+        self.variables().0.insert(
             name.to_string(),
             Variable::Computed(ComputeFn::new(compute)),
         );
@@ -139,7 +145,7 @@ impl Name {
 
     pub fn resolve_variable_if_present(&self, env: &EnvironmentRef) -> Option<Variable> {
         fn get(name: &Name, env: &EnvironmentRef) -> Option<Variable> {
-            let variable = env.borrow_mut().variables().get(&name.name).cloned();
+            let variable = env.borrow_mut().variables().0.get(&name.name).cloned();
             if let Some(variable) = variable {
                 return Some(variable);
             }

@@ -9,6 +9,7 @@ use wipple::*;
 
 const TARGET: &str = env!("TARGET");
 
+#[typeinfo]
 #[derive(Debug, Clone, Default)]
 pub struct ProjectRoot(pub Option<PathBuf>);
 
@@ -32,7 +33,7 @@ pub fn project_env_in(stack: &Stack) -> EnvironmentRef {
 
 pub fn load_project(path: &Path, stack: &Stack) -> Result<Module> {
     let mut env = Environment::child_of(&Environment::global());
-    setup_project_file(&mut env);
+    setup_project_file(path, &mut env);
     let env = env.into_ref();
 
     let mut stack = stack.clone();
@@ -71,17 +72,29 @@ pub fn load_project(path: &Path, stack: &Stack) -> Result<Module> {
     Ok(main_module)
 }
 
-fn setup_project_file(env: &mut Environment) {
+fn setup_project_file(project_path: &Path, env: &mut Environment) {
+    let project_path = project_path.parent().unwrap().to_path_buf();
+
     env.set_variable(
         "path",
-        Value::of(Function::new(|value, env, stack| {
+        Value::of(Function::new(move |value, env, stack| {
             let path =
                 value
                     .evaluate(env, stack)?
                     .get_or::<Text>("Expected path text", env, stack)?;
 
+            let path = project_path
+                .join(PathBuf::from(path.text))
+                .canonicalize()
+                .map_err(|error| {
+                    ReturnState::Error(Error::new(
+                        &format!("Error resolving path: {}", error),
+                        stack,
+                    ))
+                })?;
+
             Ok(Value::of(Dependency::project(DependencyLocation::Path(
-                PathBuf::from(path.text),
+                path,
             ))))
         })),
     );
@@ -175,7 +188,7 @@ fn get_dependencies(
 
     let mut dependencies = HashMap::new();
 
-    for (name, dependency_variable) in dependencies_module.env.borrow_mut().variables() {
+    for (name, dependency_variable) in dependencies_module.env.borrow_mut().variables().0.clone() {
         let mut stack = stack.clone();
         stack
             .evaluation_mut()

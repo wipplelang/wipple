@@ -1,5 +1,6 @@
 use crate::*;
 
+#[typeinfo]
 #[derive(Debug, Clone)]
 pub struct Text {
     pub text: String,

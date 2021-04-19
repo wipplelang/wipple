@@ -23,6 +23,7 @@ impl fmt::Display for SourceLocation {
     }
 }
 
+#[typeinfo]
 #[derive(Clone)]
 pub struct EvaluationStack {
     pub items: Vec<StackItem>,

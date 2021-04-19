@@ -3,13 +3,13 @@ use uuid::Uuid;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Id {
-    Primitive(TypeInfo),
+    Primitive(DynamicType),
     Runtime(Uuid),
 }
 
 impl Id {
-    pub fn of<T: 'static>() -> Self {
-        Id::Primitive(TypeInfo::of::<T>())
+    pub fn of<T: TypeInfo>() -> Self {
+        Id::Primitive(DynamicType::of::<T>())
     }
 
     pub fn new() -> Self {

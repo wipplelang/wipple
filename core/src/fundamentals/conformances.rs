@@ -1,11 +1,13 @@
 use crate::*;
 use std::rc::Rc;
 
-pub type Conformances = Vec<Conformance>;
+#[typeinfo]
+#[derive(Debug, Clone, Default)]
+pub struct Conformances(pub Vec<Conformance>);
 
 core_env_key!(pub conformances for Conformances {
     visibility: EnvironmentVisibility::Public(UseFn::from(|parent: &Conformances, new| {
-        parent.clone().into_iter().chain(new.clone()).collect()
+        Conformances(parent.0.clone().into_iter().chain(new.0.clone()).collect())
     })),
 });
 
@@ -53,7 +55,7 @@ impl Environment {
         derived_trait: Trait,
         derive_value: impl Fn(&Value, &EnvironmentRef, &Stack) -> Result + 'static,
     ) {
-        self.conformances().push(Conformance::new(
+        self.conformances().0.push(Conformance::new(
             matching_trait,
             derived_trait,
             derive_value,

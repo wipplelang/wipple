@@ -6,11 +6,16 @@ use std::{
 };
 use uuid::Uuid;
 
-core_env_key!(pub operator_precedences for Vec<PrecedenceGroup> {
+#[typeinfo]
+#[derive(Debug, Clone, Default)]
+pub struct OperatorPrecedences(pub Vec<PrecedenceGroup>);
+
+core_env_key!(pub operator_precedences for OperatorPrecedences {
     // All operators must be declared in the global environment
     visibility: EnvironmentVisibility::Private,
 });
 
+#[typeinfo]
 #[derive(Clone)]
 pub struct Operator {
     pub id: Uuid,
@@ -149,6 +154,7 @@ macro_rules! comparison_find {
         let index = Environment::global()
             .borrow_mut()
             .operator_precedences()
+            .0
             .iter()
             .position(|o| o.id == $target.id)
             .unwrap();
@@ -156,6 +162,7 @@ macro_rules! comparison_find {
         Environment::global()
             .borrow_mut()
             .operator_precedences()
+            .0
             .insert(index + $offset, $insert);
     };
 }
@@ -166,6 +173,7 @@ impl PrecedenceGroupComparison {
             Environment::global()
                 .borrow_mut()
                 .operator_precedences()
+                .0
                 .insert(0, group)
         }))
     }
@@ -175,6 +183,7 @@ impl PrecedenceGroupComparison {
             Environment::global()
                 .borrow_mut()
                 .operator_precedences()
+                .0
                 .push(group)
         }))
     }
@@ -207,6 +216,7 @@ pub fn add_operator(operator: &Operator, group: &PrecedenceGroup) {
 
     let group = env
         .operator_precedences()
+        .0
         .iter_mut()
         .find(|p| p.id == group.id)
         .expect("Invalid precedence group");
@@ -288,7 +298,8 @@ impl List {
             let precedences = Environment::global()
                 .borrow_mut()
                 .operator_precedences()
-                .clone();
+                .clone()
+                .0;
 
             let mut precedences_to_sort = HashMap::new();
 

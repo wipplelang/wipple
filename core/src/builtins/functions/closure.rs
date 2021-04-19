@@ -1,5 +1,6 @@
 use crate::*;
 
+#[typeinfo]
 #[derive(Debug, Clone)]
 pub struct Closure {
     pub captured_env: EnvironmentRef,

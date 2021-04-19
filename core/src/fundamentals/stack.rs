@@ -6,7 +6,7 @@ use crate::*;
 pub struct StackKey(Id);
 
 impl StackKey {
-    pub fn of<T: 'static>() -> Self {
+    pub fn of<T: TypeInfo>() -> Self {
         StackKey(Id::of::<T>())
     }
 

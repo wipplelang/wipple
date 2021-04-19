@@ -5,7 +5,7 @@ use std::{
     io::Write,
     path::{Path, PathBuf},
 };
-use wipple::primitive;
+use wipple::{dynamic, primitive, typeinfo};
 
 pub fn update_dependencies(
     dependencies: HashMap<String, Dependency>,
@@ -40,6 +40,7 @@ pub enum DependencyType {
     Plugin,
 }
 
+#[typeinfo]
 #[derive(Debug, Clone, Hash)]
 pub struct Dependency {
     pub r#type: DependencyType,

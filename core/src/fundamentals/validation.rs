@@ -1,6 +1,7 @@
 use crate::*;
 
 fn_wrapper_struct! {
+    #[typeinfo]
     pub type Validation(&Value, &EnvironmentRef, &Stack) -> Result<Validated<Value>>;
 }
 

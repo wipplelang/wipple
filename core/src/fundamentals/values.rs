@@ -1,6 +1,6 @@
 use crate::*;
 
-pub trait Primitive: std::fmt::Debug + Clone + 'static {}
+pub trait Primitive: TypeInfo {}
 
 #[derive(Debug, Clone)]
 pub struct Value {
@@ -54,7 +54,7 @@ impl Value {
 
     pub fn into_primitive<T: Primitive>(self) -> T {
         match self.contained {
-            Contained::Primitive(primitive) => primitive.cast::<T>().clone(),
+            Contained::Primitive(primitive) => primitive.into_cast::<T>(),
             Contained::Value(value) => value.into_primitive::<T>(), // handles nested primitives
         }
     }

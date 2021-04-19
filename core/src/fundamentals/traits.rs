@@ -1,5 +1,6 @@
 use crate::*;
 
+#[typeinfo]
 #[derive(Clone)]
 pub struct Trait {
     pub id: Id,
@@ -81,6 +82,7 @@ impl Value {
                     .borrow_mut()
                     .conformances()
                     .clone()
+                    .0
                     .into_iter()
                     .filter(|c| c.matches(value) && &c.derived_trait == r#trait)
                     .collect::<Vec<_>>();

@@ -67,7 +67,7 @@ macro_rules! core_env_key {
 
         impl $crate::Environment {
             $vis fn $name(&mut self) -> &mut $Type {
-                self.get_or_insert(&EnvironmentKey::$name(), Dynamic::new(<$Type>::default()))
+                self.get_or_insert(&EnvironmentKey::$name(), || Dynamic::new(<$Type>::default()))
                     .cast_mut::<$Type>()
             }
         }
@@ -83,7 +83,7 @@ macro_rules! env_key {
             }
 
             $vis fn [<$name _in>](env: &mut $crate::Environment) -> &mut $Type {
-                env.get_or_insert(&[<$name _env_key>](), $crate::Dynamic::new(<$Type>::default()))
+                env.get_or_insert(&[<$name _env_key>](), || $crate::Dynamic::new(<$Type>::default()))
                     .cast_mut::<$Type>()
             }
         }

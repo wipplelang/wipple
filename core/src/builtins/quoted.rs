@@ -1,5 +1,6 @@
 use crate::*;
 
+#[typeinfo]
 #[derive(Debug, Clone)]
 pub struct Quoted {
     pub value: Value,

@@ -7,6 +7,7 @@ pub use template::*;
 use crate::*;
 
 fn_wrapper_struct! {
+    #[typeinfo]
     pub type Function(&Value, &EnvironmentRef, &Stack) -> Result;
 }
 

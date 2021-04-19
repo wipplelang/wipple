@@ -2,6 +2,7 @@ use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use crate::*;
 
+#[typeinfo]
 #[derive(Debug, Clone)]
 pub struct Block {
     pub statements: Vec<List>,
@@ -98,7 +99,7 @@ pub(crate) fn setup(env: &mut Environment) {
             let mut validated_env = Environment::blank();
 
             let variables = module.env.borrow_mut().variables().clone();
-            for (name, variable) in variables {
+            for (name, variable) in variables.0 {
                 let value = variable.get_value(env, stack)?;
 
                 let validated = match fields.get(&name) {

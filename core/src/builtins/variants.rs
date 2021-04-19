@@ -1,6 +1,7 @@
 use crate::*;
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
+#[typeinfo]
 #[derive(Debug, Clone)]
 pub struct Variant {
     pub id: Id,

@@ -22,7 +22,8 @@ pub fn setup(env: &EnvironmentRef, stack: &Stack) -> Result {
 
         // Instead of running the files directly in the parent environment, run
         // each file in its own child environment and then 'use' it to prevent
-        // private/local items from leaking
+        // private/local items from leaking (this is the same behavior as
+        // regular Wipple code)
 
         let module = wipple_projects::import_program_with_parent_env(program, None, &env, stack)?;
 
