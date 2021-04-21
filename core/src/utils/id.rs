@@ -1,10 +1,14 @@
-use crate::*;
-use uuid::Uuid;
+use dynamic::*;
+use ref_thread_local::{ref_thread_local, RefThreadLocal};
+
+ref_thread_local! {
+    static managed COUNTER: usize = 0;
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Id {
     Primitive(DynamicType),
-    Runtime(Uuid),
+    Runtime(usize),
 }
 
 impl Id {
@@ -13,6 +17,9 @@ impl Id {
     }
 
     pub fn new() -> Self {
-        Id::Runtime(Uuid::new_v4())
+        let mut counter = COUNTER.borrow_mut();
+        let id = Id::Runtime(*counter);
+        *counter += 1;
+        id
     }
 }

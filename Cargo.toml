@@ -2,6 +2,7 @@
 members = [
     "cli",
     "core",
+    "loading",
     "parser",
     "playground/interpreter",
     "plugins",

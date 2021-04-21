@@ -12,4 +12,4 @@ bigdecimal = "0.2.0"
 debug-cell = { version = "0.1.1", optional = true }
 dynamic = { git = "https://github.com/wipplelang/dynamic" }
 paste = "1.0.4"
-uuid = { version = "0.8.2", features = ["v4"] }
+ref_thread_local = "0.1.0"

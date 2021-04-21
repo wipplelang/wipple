@@ -168,7 +168,7 @@ pub fn prelude(env: &EnvironmentRef) {
 
     let function_precedence_group = add_precedence_group(
         Associativity::Right,
-        PrecedenceGroupComparison::lower_than(assignment_precedence_group),
+        PrecedenceGroupComparison::lower_than(&assignment_precedence_group),
     );
 
     let template_operator = Operator::collect(|parameter, value_to_expand, env, stack| {
@@ -232,7 +232,7 @@ pub fn prelude(env: &EnvironmentRef) {
 
     let for_precedence_group = add_precedence_group(
         Associativity::Right,
-        PrecedenceGroupComparison::lower_than(function_precedence_group),
+        PrecedenceGroupComparison::lower_than(&function_precedence_group),
     );
 
     let for_operator = Operator::collect(|left, right, env, stack| {
@@ -260,7 +260,7 @@ pub fn prelude(env: &EnvironmentRef) {
 
     let as_precedence_group = add_precedence_group(
         Associativity::Left,
-        PrecedenceGroupComparison::lower_than(for_precedence_group),
+        PrecedenceGroupComparison::lower_than(&for_precedence_group),
     );
 
     let as_operator = Operator::collect(|value, r#trait, env, stack| {
@@ -318,7 +318,7 @@ pub fn prelude(env: &EnvironmentRef) {
 
     let multiplication_precedence_group = add_precedence_group(
         Associativity::Left,
-        PrecedenceGroupComparison::higher_than(addition_precedence_group),
+        PrecedenceGroupComparison::higher_than(&addition_precedence_group),
     );
 
     math!(*, multiplication_precedence_group);
@@ -362,7 +362,7 @@ pub fn prelude(env: &EnvironmentRef) {
 
     let comparison_precedence_group = add_precedence_group(
         Associativity::Right,
-        PrecedenceGroupComparison::higher_than(multiplication_precedence_group),
+        PrecedenceGroupComparison::higher_than(&multiplication_precedence_group),
     );
 
     boolean_math!(>, comparison_precedence_group, env);

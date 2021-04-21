@@ -4,17 +4,16 @@ mod new;
 mod project;
 mod resolve;
 
-use std::path::PathBuf;
-
 pub use dependencies::*;
 pub use load::*;
 pub use new::*;
 pub use project::*;
 pub use resolve::*;
 
-use wipple::*;
+pub use wipple_loading::*;
 
-#[cfg(not(target_arch = "wasm32"))]
+use std::path::PathBuf;
+use wipple::*;
 use wipple_plugins::*;
 
 pub fn setup() {
@@ -34,7 +33,6 @@ pub fn setup() {
         })),
     );
 
-    #[cfg(not(target_arch = "wasm32"))]
     env.borrow_mut().set_variable(
         "load-plugin!",
         Value::of(Function::new(|value, env, stack| {

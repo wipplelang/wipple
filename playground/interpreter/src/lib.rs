@@ -49,11 +49,11 @@ fn run_code(code: &str) -> wipple::Result<Vec<ShownValue>> {
 
     let env = Environment::child_of(&Environment::global()).into_ref();
 
-    let program = wipple_projects::load_string(code, None, &stack)?;
+    let program = wipple_loading::load_string(code, None, &stack)?;
 
     setup_module_block(&env);
     setup_playground(&output, &mut stack);
-    wipple_projects::include_program(program, &env, &stack)?;
+    wipple_loading::include_program(program, &env, &stack)?;
 
     Ok(output.as_ref().clone().get_mut().clone())
 }

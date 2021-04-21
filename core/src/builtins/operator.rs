@@ -1,24 +1,31 @@
 use crate::*;
+use ref_thread_local::{RefMut, RefThreadLocal};
 use std::{
     collections::{HashMap, HashSet},
     hash::{Hash, Hasher},
     rc::Rc,
 };
-use uuid::Uuid;
 
-#[typeinfo]
-#[derive(Debug, Clone, Default)]
-pub struct OperatorPrecedences(pub Vec<PrecedenceGroup>);
+// Ensure Result inside ref_thread_local! refers to std::result::Result and not
+// crate::Result
+pub use operator_precedences_storage::*;
+mod operator_precedences_storage {
+    use super::PrecedenceGroup;
+    use ref_thread_local::ref_thread_local;
 
-core_env_key!(pub operator_precedences for OperatorPrecedences {
-    // All operators must be declared in the global environment
-    visibility: EnvironmentVisibility::Private,
-});
+    ref_thread_local! {
+        pub static managed OPERATOR_PRECEDENCES: Vec<PrecedenceGroup> = Vec::new();
+    }
+}
+
+pub fn operator_precedences<'a>() -> RefMut<'a, Vec<PrecedenceGroup>> {
+    OPERATOR_PRECEDENCES.borrow_mut()
+}
 
 #[typeinfo]
 #[derive(Clone)]
 pub struct Operator {
-    pub id: Uuid,
+    pub id: Id,
 
     #[allow(clippy::type_complexity)]
     pub function: Rc<
@@ -40,7 +47,7 @@ impl Operator {
             + 'static,
     ) -> Self {
         Operator {
-            id: Uuid::new_v4(),
+            id: Id::new(),
             function: Rc::new(function),
         }
     }
@@ -73,7 +80,7 @@ impl Operator {
         let function = Rc::new(function);
 
         Operator {
-            id: Uuid::new_v4(),
+            id: Id::new(),
             function: Rc::new(move |left, _, _| {
                 let left = left.clone();
                 let function = function.clone();
@@ -116,7 +123,7 @@ pub type OperatorList = Vec<(Operator, usize)>;
 
 #[derive(Debug, Clone)]
 pub struct PrecedenceGroup {
-    pub id: Uuid,
+    pub id: Id,
     pub operators: HashSet<Operator>,
     pub associativity: Associativity,
 }
@@ -124,7 +131,7 @@ pub struct PrecedenceGroup {
 impl PrecedenceGroup {
     fn new(associativity: Associativity) -> Self {
         PrecedenceGroup {
-            id: Uuid::new_v4(),
+            id: Id::new(),
             operators: HashSet::new(),
             associativity,
         }
@@ -151,50 +158,33 @@ fn_wrapper_struct! {
 
 macro_rules! comparison_find {
     ($offset:expr, $target:expr, $insert:expr) => {
-        let index = Environment::global()
-            .borrow_mut()
-            .operator_precedences()
-            .0
-            .iter()
-            .position(|o| o.id == $target.id)
-            .unwrap();
+        let mut precedences = operator_precedences();
 
-        Environment::global()
-            .borrow_mut()
-            .operator_precedences()
-            .0
-            .insert(index + $offset, $insert);
+        let index = precedences.iter().position(|o| o.id == $target.id).unwrap();
+        precedences.insert(index + $offset, $insert);
     };
 }
 
 impl PrecedenceGroupComparison {
     pub fn highest() -> Self {
-        Self(Rc::new(|group| {
-            Environment::global()
-                .borrow_mut()
-                .operator_precedences()
-                .0
-                .insert(0, group)
-        }))
+        Self(Rc::new(|group| operator_precedences().insert(0, group)))
     }
 
     pub fn lowest() -> Self {
-        Self(Rc::new(|group| {
-            Environment::global()
-                .borrow_mut()
-                .operator_precedences()
-                .0
-                .push(group)
-        }))
+        Self(Rc::new(|group| operator_precedences().push(group)))
     }
 
-    pub fn higher_than(other: PrecedenceGroup) -> Self {
+    pub fn higher_than(other: &PrecedenceGroup) -> Self {
+        let other = other.clone();
+
         Self(Rc::new(move |group| {
             comparison_find!(0, other, group);
         }))
     }
 
-    pub fn lower_than(other: PrecedenceGroup) -> Self {
+    pub fn lower_than(other: &PrecedenceGroup) -> Self {
+        let other = other.clone();
+
         Self(Rc::new(move |group| {
             comparison_find!(1, other, group);
         }))
@@ -211,12 +201,9 @@ pub fn add_precedence_group(
 }
 
 pub fn add_operator(operator: &Operator, group: &PrecedenceGroup) {
-    let env = Environment::global();
-    let mut env = env.borrow_mut();
+    let mut precedences = operator_precedences();
 
-    let group = env
-        .operator_precedences()
-        .0
+    let group = precedences
         .iter_mut()
         .find(|p| p.id == group.id)
         .expect("Invalid precedence group");
@@ -295,11 +282,7 @@ impl List {
         let sorted_operators_by_precedence = {
             // FIXME: Probably very inefficient
 
-            let precedences = Environment::global()
-                .borrow_mut()
-                .operator_precedences()
-                .clone()
-                .0;
+            let precedences = operator_precedences();
 
             let mut precedences_to_sort = HashMap::new();
 

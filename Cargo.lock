@@ -55,9 +55,9 @@ checksum = "cdb031dd78e28731d87d56cc8ffef4a8f36ca26c38fe2de700543e627f8a464a"
 
 [[package]]
 name = "backtrace"
-version = "0.3.56"
+version = "0.3.57"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9d117600f438b1707d4e4ae15d3595657288f8235a0eb593e80ecc98ab34e1bc"
+checksum = "78ed203b9ba68b242c62b3fb7480f589dd49829be1edb3fe8fc8b4ffda2dcb8d"
 dependencies = [
  "addr2line",
  "cfg-if 1.0.0",
@@ -1128,6 +1128,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "ref_thread_local"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "13ed77408f669435578692a16ae54efbbc662f9727c85315d9beb319be098d94"
+
+[[package]]
 name = "regex-syntax"
 version = "0.6.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1320,9 +1326,9 @@ dependencies = [
 
 [[package]]
 name = "slab"
-version = "0.4.2"
+version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c111b5bd5695e56cffe5129854aa230b39c93a305372fdbb2668ca2394eea9f8"
+checksum = "f173ac3d1a7e3b28003f40de0b5ce7fe2710f9b9dc3fc38664cebee46b3b6527"
 
 [[package]]
 name = "snailquote"
@@ -1811,7 +1817,7 @@ dependencies = [
  "debug-cell",
  "dynamic",
  "paste",
- "uuid",
+ "ref_thread_local",
 ]
 
 [[package]]
@@ -1824,6 +1830,14 @@ dependencies = [
  "wipple_parser",
  "wipple_projects",
  "wipple_stdlib",
+]
+
+[[package]]
+name = "wipple_loading"
+version = "0.0.0"
+dependencies = [
+ "wipple",
+ "wipple_parser",
 ]
 
 [[package]]
@@ -1846,7 +1860,7 @@ dependencies = [
  "uuid",
  "wasm-bindgen",
  "wipple",
- "wipple_projects",
+ "wipple_loading",
  "wipple_stdlib",
 ]
 
@@ -1878,6 +1892,7 @@ dependencies = [
  "rust-embed",
  "tempfile",
  "wipple",
+ "wipple_loading",
  "wipple_parser",
  "wipple_plugins",
  "zip",
@@ -1889,9 +1904,9 @@ version = "0.0.0"
 dependencies = [
  "rust-embed",
  "wipple",
+ "wipple_loading",
  "wipple_parser",
  "wipple_plugins",
- "wipple_projects",
 ]
 
 [[package]]
