@@ -1,7 +1,6 @@
 use crate::*;
 
-#[typeinfo]
-#[derive(Debug, Clone)]
+#[derive(TypeInfo, Debug, Clone)]
 pub struct Module {
     /// The captured environment will have its parent discarded.
     pub env: EnvironmentRef,

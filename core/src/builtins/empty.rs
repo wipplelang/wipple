@@ -1,7 +1,6 @@
 use crate::*;
 
-#[typeinfo]
-#[derive(Debug, Clone, Copy)]
+#[derive(TypeInfo, Debug, Clone, Copy)]
 struct Empty;
 
 core_primitive!(pub empty for Empty);

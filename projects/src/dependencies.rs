@@ -5,7 +5,7 @@ use std::{
     io::Write,
     path::{Path, PathBuf},
 };
-use wipple::{dynamic, primitive, typeinfo};
+use wipple::{dynamic, primitive};
 
 pub fn update_dependencies(
     dependencies: HashMap<String, Dependency>,
@@ -40,8 +40,7 @@ pub enum DependencyType {
     Plugin,
 }
 
-#[typeinfo]
-#[derive(Debug, Clone, Hash)]
+#[derive(dynamic::TypeInfo, Debug, Clone, Hash)]
 pub struct Dependency {
     pub r#type: DependencyType,
     pub location: DependencyLocation,
@@ -68,7 +67,7 @@ impl Dependency {
 #[derive(Debug, Clone, Hash)]
 pub enum DependencyLocation {
     Path(PathBuf),
-    URL(String),
+    Url(String),
     Git {
         location: String,
         branch: Option<String>,
@@ -88,7 +87,7 @@ impl Dependency {
 
         match &self.location {
             Path(_) => {}
-            URL(url) => {
+            Url(url) => {
                 on_install();
                 download_url(url, &dir, matches!(self.r#type, DependencyType::Project))?
             }

@@ -2,8 +2,7 @@ use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use crate::*;
 
-#[typeinfo]
-#[derive(Debug, Clone)]
+#[derive(TypeInfo, Debug, Clone)]
 pub struct Block {
     pub statements: Vec<List>,
     pub location: Option<SourceLocation>,

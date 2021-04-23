@@ -4,8 +4,7 @@ use std::{
 };
 use wipple::*;
 
-#[typeinfo]
-#[derive(Debug, Clone, Default)]
+#[derive(TypeInfo, Debug, Clone, Default)]
 pub struct CurrentFile(pub Option<PathBuf>);
 
 stack_key!(pub current_file for CurrentFile);

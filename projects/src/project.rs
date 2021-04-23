@@ -9,8 +9,7 @@ use wipple::*;
 
 const TARGET: &str = env!("TARGET");
 
-#[typeinfo]
-#[derive(Debug, Clone, Default)]
+#[derive(TypeInfo, Debug, Clone, Default)]
 pub struct ProjectRoot(pub Option<PathBuf>);
 
 stack_key!(pub project_root for ProjectRoot);
@@ -107,7 +106,7 @@ fn setup_project_file(project_path: &Path, env: &mut Environment) {
                     .evaluate(env, stack)?
                     .get_or::<Text>("Expected URL text", env, stack)?;
 
-            Ok(Value::of(Dependency::project(DependencyLocation::URL(
+            Ok(Value::of(Dependency::project(DependencyLocation::Url(
                 url.text,
             ))))
         })),

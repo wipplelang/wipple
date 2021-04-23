@@ -1,8 +1,7 @@
 use crate::*;
 use std::rc::Rc;
 
-#[typeinfo]
-#[derive(Debug, Clone, Default)]
+#[derive(TypeInfo, Debug, Clone, Default)]
 pub struct Conformances(pub Vec<Conformance>);
 
 core_env_key!(pub conformances for Conformances {

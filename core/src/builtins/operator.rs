@@ -22,78 +22,72 @@ pub fn operator_precedences<'a>() -> RefMut<'a, Vec<PrecedenceGroup>> {
     OPERATOR_PRECEDENCES.borrow_mut()
 }
 
-#[typeinfo]
 #[derive(Clone)]
-pub struct Operator {
+pub struct SomeOperator<T> {
     pub id: Id,
 
     #[allow(clippy::type_complexity)]
     pub function: Rc<
         dyn Fn(
-            &Value,
+            T,
             &EnvironmentRef,
             &Stack,
-        ) -> Result<Box<dyn Fn(&Value, &EnvironmentRef, &Stack) -> Result>>,
+        ) -> Result<Box<dyn Fn(T, &EnvironmentRef, &Stack) -> Result>>,
     >,
 }
 
-impl Operator {
+impl<T> SomeOperator<T> {
     pub fn new(
         function: impl Fn(
-                &Value,
+                T,
                 &EnvironmentRef,
                 &Stack,
-            ) -> Result<Box<dyn Fn(&Value, &EnvironmentRef, &Stack) -> Result>>
+            ) -> Result<Box<dyn Fn(T, &EnvironmentRef, &Stack) -> Result>>
             + 'static,
     ) -> Self {
-        Operator {
+        SomeOperator {
             id: Id::new(),
             function: Rc::new(function),
         }
     }
 }
 
-impl PartialEq for Operator {
+impl<T> PartialEq for SomeOperator<T> {
     fn eq(&self, other: &Self) -> bool {
         self.id == other.id
     }
 }
 
-impl Eq for Operator {}
+impl<T> Eq for SomeOperator<T> {}
 
-impl Hash for Operator {
+impl<T> Hash for SomeOperator<T> {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.id.hash(state);
     }
 }
 
-impl std::fmt::Debug for Operator {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "Operator({:?})", self.id)
-    }
-}
+pub type BinaryOperator = SomeOperator<Value>;
 
-impl Operator {
+impl BinaryOperator {
     pub fn collect(
-        function: impl Fn(&Value, &Value, &EnvironmentRef, &Stack) -> Result + 'static,
-    ) -> Operator {
+        function: impl Fn(Value, Value, &EnvironmentRef, &Stack) -> Result + 'static,
+    ) -> BinaryOperator {
         let function = Rc::new(function);
 
-        Operator {
+        BinaryOperator {
             id: Id::new(),
             function: Rc::new(move |left, _, _| {
-                let left = left.clone();
                 let function = function.clone();
 
                 Ok(Box::new(move |right, env, stack| {
-                    function(&left, right, env, stack)
+                    function(left.clone(), right, env, stack)
                 }))
             }),
         }
     }
 
     pub fn from_function(function: Function) -> Self {
-        Operator::new(move |left, env, stack| {
+        BinaryOperator::new(move |left, env, stack| {
             let function = function(left, env, stack)?.get::<Function>(env, stack)?;
 
             Ok(Box::new(move |right, env, stack| {
@@ -103,7 +97,98 @@ impl Operator {
     }
 }
 
+#[derive(Debug, Clone)]
+pub enum VariadicOperatorInput {
+    Single(Value),
+    List(Vec<Value>),
+}
+
+impl VariadicOperatorInput {
+    pub fn into_value(self) -> Value {
+        match self {
+            VariadicOperatorInput::Single(value) => value,
+            VariadicOperatorInput::List(list) => Value::of(List::new(list)),
+        }
+    }
+}
+
+pub type VariadicOperator = SomeOperator<VariadicOperatorInput>;
+
+impl VariadicOperator {
+    pub fn collect(
+        function: impl Fn(VariadicOperatorInput, VariadicOperatorInput, &EnvironmentRef, &Stack) -> Result
+            + 'static,
+    ) -> VariadicOperator {
+        let function = Rc::new(function);
+
+        VariadicOperator {
+            id: Id::new(),
+            function: Rc::new(move |left, _, _| {
+                let function = function.clone();
+
+                Ok(Box::new(move |right, env, stack| {
+                    function(left.clone(), right, env, stack)
+                }))
+            }),
+        }
+    }
+
+    pub fn from_function(function: Function) -> Self {
+        VariadicOperator::new(move |left, env, stack| {
+            let function = function(
+                match left {
+                    VariadicOperatorInput::Single(value) => value,
+                    VariadicOperatorInput::List(list) => Value::of(List::new(list)),
+                },
+                env,
+                stack,
+            )?
+            .get::<Function>(env, stack)?;
+
+            Ok(Box::new(move |right, env, stack| {
+                function(
+                    match right {
+                        VariadicOperatorInput::Single(value) => value,
+                        VariadicOperatorInput::List(list) => Value::of(List::new(list)),
+                    },
+                    env,
+                    stack,
+                )
+            }))
+        })
+    }
+}
+
+#[derive(TypeInfo, Clone)]
+pub enum Operator {
+    Binary(BinaryOperator),
+    Variadic(VariadicOperator),
+}
+
 core_primitive!(pub operator for Operator);
+
+impl Operator {
+    pub fn id(&self) -> Id {
+        match self {
+            Operator::Binary(operator) => operator.id,
+            Operator::Variadic(operator) => operator.id,
+        }
+    }
+}
+
+impl PartialEq for Operator {
+    fn eq(&self, other: &Self) -> bool {
+        self.id() == other.id()
+    }
+}
+
+impl Eq for Operator {}
+
+impl Hash for Operator {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.id().hash(state);
+    }
+}
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Arity {
@@ -111,7 +196,7 @@ pub enum Arity {
     Variadic,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Associativity {
     Left,
     Right,
@@ -121,26 +206,94 @@ pub enum Associativity {
 
 pub type OperatorList = Vec<(Operator, usize)>;
 
-#[derive(Debug, Clone)]
-pub struct PrecedenceGroup {
+#[derive(Clone)]
+pub struct SomePrecedenceGroup<T> {
     pub id: Id,
-    pub operators: HashSet<Operator>,
+    pub arity: Arity,
     pub associativity: Associativity,
+    pub operators: HashSet<SomeOperator<T>>,
+}
+
+pub type BinaryPrecedenceGroup = SomePrecedenceGroup<Value>;
+pub type VariadicPrecedenceGroup = SomePrecedenceGroup<VariadicOperatorInput>;
+
+impl BinaryPrecedenceGroup {
+    fn new(associativity: Associativity) -> Self {
+        SomePrecedenceGroup {
+            id: Id::new(),
+            arity: Arity::Binary,
+            associativity,
+            operators: HashSet::new(),
+        }
+    }
+}
+
+impl VariadicPrecedenceGroup {
+    fn new(associativity: Associativity) -> Self {
+        SomePrecedenceGroup {
+            id: Id::new(),
+            arity: Arity::Variadic,
+            associativity,
+            operators: HashSet::new(),
+        }
+    }
+}
+
+#[derive(Clone)]
+pub enum PrecedenceGroup {
+    Binary(BinaryPrecedenceGroup),
+    Variadic(VariadicPrecedenceGroup),
 }
 
 impl PrecedenceGroup {
-    fn new(associativity: Associativity) -> Self {
-        PrecedenceGroup {
-            id: Id::new(),
-            operators: HashSet::new(),
-            associativity,
+    pub fn id(&self) -> Id {
+        use PrecedenceGroup::*;
+
+        match self {
+            Binary(p) => p.id,
+            Variadic(p) => p.id,
+        }
+    }
+
+    pub fn arity(&self) -> Arity {
+        use PrecedenceGroup::*;
+
+        match self {
+            Binary(p) => p.arity,
+            Variadic(p) => p.arity,
+        }
+    }
+
+    pub fn associativity(&self) -> Associativity {
+        use PrecedenceGroup::*;
+
+        match self {
+            Binary(p) => p.associativity,
+            Variadic(p) => p.associativity,
+        }
+    }
+
+    pub fn operators(&self) -> HashSet<Operator> {
+        use PrecedenceGroup::*;
+
+        match self {
+            Binary(p) => p
+                .operators
+                .iter()
+                .map(|o| Operator::Binary(o.clone()))
+                .collect(),
+            Variadic(p) => p
+                .operators
+                .iter()
+                .map(|o| Operator::Variadic(o.clone()))
+                .collect(),
         }
     }
 }
 
 impl PartialEq for PrecedenceGroup {
     fn eq(&self, other: &Self) -> bool {
-        self.id == other.id
+        self.id() == other.id()
     }
 }
 
@@ -148,67 +301,110 @@ impl Eq for PrecedenceGroup {}
 
 impl Hash for PrecedenceGroup {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        self.id.hash(state);
+        self.id().hash(state);
     }
 }
 
-fn_wrapper_struct! {
-    pub type PrecedenceGroupComparison(PrecedenceGroup);
-}
+#[derive(Clone)]
+pub struct PrecedenceGroupComparison<P: 'static>(Rc<dyn Fn(P)>);
 
 macro_rules! comparison_find {
     ($offset:expr, $target:expr, $insert:expr) => {
-        let mut precedences = operator_precedences();
+        let index = operator_precedences()
+            .iter()
+            .position(|o| o.id() == $target.id)
+            .unwrap();
 
-        let index = precedences.iter().position(|o| o.id == $target.id).unwrap();
-        precedences.insert(index + $offset, $insert);
+        operator_precedences().insert(index + $offset, $insert);
     };
 }
 
-impl PrecedenceGroupComparison {
-    pub fn highest() -> Self {
-        Self(Rc::new(|group| operator_precedences().insert(0, group)))
-    }
+macro_rules! comparisons {
+    ($group:ident, $name:ident) => {
+        impl PrecedenceGroupComparison<$group> {
+            pub fn highest() -> Self {
+                Self(Rc::new(|group| {
+                    operator_precedences().insert(0, PrecedenceGroup::$name(group))
+                }))
+            }
 
-    pub fn lowest() -> Self {
-        Self(Rc::new(|group| operator_precedences().push(group)))
-    }
+            pub fn lowest() -> Self {
+                Self(Rc::new(|group| {
+                    operator_precedences().push(PrecedenceGroup::$name(group))
+                }))
+            }
 
-    pub fn higher_than(other: &PrecedenceGroup) -> Self {
-        let other = other.clone();
+            pub fn higher_than(other: &$group) -> Self {
+                let other = other.clone();
 
-        Self(Rc::new(move |group| {
-            comparison_find!(0, other, group);
-        }))
-    }
+                Self(Rc::new(move |group| {
+                    comparison_find!(0, other, PrecedenceGroup::$name(group));
+                }))
+            }
 
-    pub fn lower_than(other: &PrecedenceGroup) -> Self {
-        let other = other.clone();
+            pub fn lower_than(other: &$group) -> Self {
+                let other = other.clone();
 
-        Self(Rc::new(move |group| {
-            comparison_find!(1, other, group);
-        }))
-    }
+                Self(Rc::new(move |group| {
+                    comparison_find!(1, other, PrecedenceGroup::$name(group));
+                }))
+            }
+        }
+    };
 }
 
-pub fn add_precedence_group(
+comparisons!(BinaryPrecedenceGroup, Binary);
+comparisons!(VariadicPrecedenceGroup, Variadic);
+
+pub type BinaryPrecedenceGroupComparison = PrecedenceGroupComparison<BinaryPrecedenceGroup>;
+pub type VariadicPrecedenceGroupComparison = PrecedenceGroupComparison<VariadicPrecedenceGroup>;
+
+macro_rules! add_operator {
+    ($group:ident, $operator:ident, $name:ident) => {
+        let mut precedences = operator_precedences();
+
+        let group = precedences
+            .iter_mut()
+            .find_map(|p| match p {
+                PrecedenceGroup::$name(p) => {
+                    if p.id == $group.id {
+                        Some(p)
+                    } else {
+                        None
+                    }
+                }
+                _ => None,
+            })
+            .expect("Invalid precedence group; make sure to create all precedence groups using Environment::precedence_group");
+
+        group.operators.insert($operator.clone());
+    };
+}
+
+pub fn add_binary_precedence_group(
     associativity: Associativity,
-    comparison: PrecedenceGroupComparison,
-) -> PrecedenceGroup {
-    let group = PrecedenceGroup::new(associativity);
+    comparison: BinaryPrecedenceGroupComparison,
+) -> BinaryPrecedenceGroup {
+    let group = BinaryPrecedenceGroup::new(associativity);
     comparison.0(group.clone());
     group
 }
 
-pub fn add_operator(operator: &Operator, group: &PrecedenceGroup) {
-    let mut precedences = operator_precedences();
+pub fn add_variadic_precedence_group(
+    associativity: Associativity,
+    comparison: VariadicPrecedenceGroupComparison,
+) -> VariadicPrecedenceGroup {
+    let group = VariadicPrecedenceGroup::new(associativity);
+    comparison.0(group.clone());
+    group
+}
 
-    let group = precedences
-        .iter_mut()
-        .find(|p| p.id == group.id)
-        .expect("Invalid precedence group");
+pub fn add_binary_operator(operator: &BinaryOperator, group: &BinaryPrecedenceGroup) {
+    add_operator!(group, operator, Binary);
+}
 
-    group.operators.insert(operator.clone());
+pub fn add_variadic_operator(operator: &VariadicOperator, group: &VariadicPrecedenceGroup) {
+    add_operator!(group, operator, Variadic);
 }
 
 // Operator parsing
@@ -245,12 +441,49 @@ pub fn get_operator(
     }
 }
 
-impl Operator {
+impl BinaryOperator {
     pub fn into_function(self) -> Function {
         Function::new(move |left, env, stack| {
             let function = (self.function)(left, env, stack)?;
             Ok(Value::of(Function::new(function)))
         })
+    }
+}
+
+impl VariadicOperator {
+    pub fn into_function(self) -> Function {
+        Function::new(move |left, env, stack| {
+            let function = (self.function)(get_variadic_items(left), env, stack)?;
+
+            Ok(Value::of(Function::new(move |right, env, stack| {
+                function(get_variadic_items(right), env, stack)
+            })))
+        })
+    }
+}
+
+impl Operator {
+    pub fn into_function(self) -> Function {
+        use Operator::*;
+
+        match self {
+            Binary(o) => o.into_function(),
+            Variadic(o) => o.into_function(),
+        }
+    }
+}
+
+fn get_variadic_items(value: Value) -> VariadicOperatorInput {
+    if value.is_trait_directly(&Trait::list()) {
+        let items = value.into_primitive::<List>().items;
+
+        if items.len() == 1 {
+            VariadicOperatorInput::Single(items[0].clone())
+        } else {
+            VariadicOperatorInput::List(items)
+        }
+    } else {
+        VariadicOperatorInput::Single(value)
     }
 }
 
@@ -282,7 +515,7 @@ impl List {
         let sorted_operators_by_precedence = {
             // FIXME: Probably very inefficient
 
-            let precedences = operator_precedences();
+            let precedences = operator_precedences().clone();
 
             let mut precedences_to_sort = HashMap::new();
 
@@ -290,7 +523,7 @@ impl List {
                 let (precedence, group) = precedences
                     .iter()
                     .enumerate()
-                    .find(|p| p.1.operators.contains(&operator.0))
+                    .find(|p| p.1.operators().contains(&operator.0))
                     .expect("Operator is not registered");
 
                 precedences_to_sort
@@ -322,65 +555,128 @@ impl List {
         };
 
         // Choose the left/rightmost operator based on the level's associativity
-        // Left and right are flipped because associativity is for inner grouping,
-        // and the outer grouping is evaluated first
-        let (operator, index) = match precedence_group.associativity {
-            Associativity::Left => sorted_operators.last().unwrap().clone(),
-            Associativity::Right => sorted_operators.first().unwrap().clone(),
+        macro_rules! choose {
+            (Left => $left:ident, Right => $right:ident) => {
+                match precedence_group.associativity() {
+                    Associativity::Left => sorted_operators.$left().unwrap().clone(),
+                    Associativity::Right => sorted_operators.$right().unwrap().clone(),
+                }
+            };
+        }
+
+        let (operator, index) = match precedence_group.arity() {
+            Arity::Binary => choose!(Left => first, Right => last),
+
+            // Left and right are flipped because associativity is for inner grouping,
+            // and the outer grouping is evaluated first
+            Arity::Variadic => choose!(Left => last, Right => first),
         };
 
-        fn group(list: &[Value]) -> Value {
-            if list.len() == 1 {
-                list[0].clone()
-            } else {
-                Value::of(List::new(list))
-            }
-        }
+        match operator {
+            Operator::Binary(operator) => {
+                // Take a single value from each side of the operator
 
-        // Take all values from each side of the operator -- list with 2 values
-        // is partially applied
-
-        macro_rules! take {
-            ($range:expr) => {{
-                let items = self.items.get($range).unwrap_or_default();
-
-                if items.is_empty() {
+                let left = if index == 0 {
                     None
                 } else {
-                    Some(group(items))
+                    self.items.get(index - 1).cloned()
+                };
+
+                let right = self.items.get(index + 1).cloned();
+
+                match (left, right) {
+                    (Some(left), Some(right)) => {
+                        // Convert to a function call
+                        let call = (operator.function)(left, env, stack)?(right, env, stack)?;
+
+                        // Put the function call in place of the values consumed by the operator
+                        let result = self.items[..(index - 1)]
+                            .iter()
+                            .chain(&[call])
+                            .chain(&self.items[(index + 2)..])
+                            .map(Clone::clone)
+                            .collect::<Vec<_>>();
+
+                        Value::of(List::new(result)).evaluate(env, stack).map(Some)
+                    }
+                    (Some(left), None) => {
+                        // Partially apply the right side
+                        let partial = Function::new(move |right, env, stack| {
+                            (operator.function)(left.clone(), env, stack)?(right, env, stack)
+                        });
+
+                        let function = Value::of(partial);
+
+                        Ok(Some(function))
+                    }
+                    (None, Some(right)) => {
+                        // Partially apply the left side
+                        let partial = Function::new(move |left, env, stack| {
+                            (operator.function)(left, env, stack)?(right.clone(), env, stack)
+                        });
+
+                        let function = Value::of(partial);
+
+                        Ok(Some(function))
+                    }
+                    (None, None) => unreachable!(),
                 }
-            }};
-        }
-
-        let left = take!(..index);
-        let right = take!((index + 1)..);
-
-        match (left, right) {
-            (Some(left), Some(right)) => {
-                // Convert to a function call
-                let result = (operator.function)(&left, env, stack)?(&right, env, stack)?;
-
-                Ok(Some(result))
             }
-            (Some(left), None) => {
-                // Partially apply the right side
-                let partial = Function::new((operator.function)(&left, env, stack)?);
+            Operator::Variadic(operator) => {
+                // Take all values from each side of the operator
+                let left = self.items.get(..index).map(|v| v.to_vec());
+                let right = self.items.get((index + 1)..).map(|v| v.to_vec());
 
-                let function = Value::of(partial);
+                fn get_variadic_input(items: Vec<Value>) -> VariadicOperatorInput {
+                    if items.len() == 1 {
+                        VariadicOperatorInput::Single(items[0].clone())
+                    } else {
+                        VariadicOperatorInput::List(items)
+                    }
+                }
 
-                Ok(Some(function))
+                match (left, right) {
+                    (Some(left), Some(right)) => {
+                        // Convert to a function call
+                        let result = (operator.function)(get_variadic_input(left), env, stack)?(
+                            get_variadic_input(right),
+                            env,
+                            stack,
+                        )?;
+
+                        Ok(Some(result))
+                    }
+                    (Some(left), None) => {
+                        // Partially apply the right side
+                        let partial = Function::new(move |right, env, stack| {
+                            (operator.function)(get_variadic_input(left.clone()), env, stack)?(
+                                get_variadic_items(right),
+                                env,
+                                stack,
+                            )
+                        });
+
+                        let function = Value::of(partial);
+
+                        Ok(Some(function))
+                    }
+                    (None, Some(right)) => {
+                        // Partially apply the left side
+                        let partial = Function::new(move |left, env, stack| {
+                            (operator.function)(get_variadic_items(left), env, stack)?(
+                                get_variadic_input(right.clone()),
+                                env,
+                                stack,
+                            )
+                        });
+
+                        let function = Value::of(partial);
+
+                        Ok(Some(function))
+                    }
+                    (None, None) => unreachable!(),
+                }
             }
-            (None, Some(right)) => {
-                // Partially apply the left side
-                let partial = Function::new(move |left, env, stack| {
-                    (operator.function)(&left, env, stack)?(&right, env, stack)
-                });
-
-                let function = Value::of(partial);
-
-                Ok(Some(function))
-            }
-            (None, None) => unreachable!("Case where no values are on either side of the operator, meaning the operator is the only item in the list and it would have been returned above"),
         }
     }
 }

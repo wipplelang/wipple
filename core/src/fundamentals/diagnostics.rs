@@ -23,8 +23,7 @@ impl fmt::Display for SourceLocation {
     }
 }
 
-#[typeinfo]
-#[derive(Clone)]
+#[derive(TypeInfo, Clone)]
 pub struct EvaluationStack {
     pub items: Vec<StackItem>,
     queued_location: Option<SourceLocation>,

@@ -67,23 +67,36 @@ pub fn prelude(env: &EnvironmentRef) {
 
     // Assignment operators
 
-    let assignment_precedence_group =
-        add_precedence_group(Associativity::Right, PrecedenceGroupComparison::highest());
+    let assignment_precedence_group = add_variadic_precedence_group(
+        Associativity::Right,
+        VariadicPrecedenceGroupComparison::highest(),
+    );
 
     macro_rules! assignment_operator {
         ($name:expr, $handle:ident, $env:expr) => {
-            let operator = Operator::collect(move |left, right, env, stack| {
+            let operator = VariadicOperator::collect(move |left, right, env, stack| {
+                let left = match left {
+                    VariadicOperatorInput::Single(left) => left,
+                    _ => {
+                        return Err(ReturnState::Error(Error::new(
+                            "Expected single value on left side of assignment",
+                            stack,
+                        )))
+                    }
+                };
+
                 let name = left.get_or::<Name>("Expected name", env, stack)?;
 
                 let handle = env.borrow_mut().$handle().clone();
-                handle(&name, right, env, stack)?;
+                handle(&name, &right.into_value(), env, stack)?;
 
                 Ok(Value::empty())
             });
 
-            add_operator(&operator, &assignment_precedence_group);
+            add_variadic_operator(&operator, &assignment_precedence_group);
 
-            $env.borrow_mut().set_variable($name, Value::of(operator));
+            $env.borrow_mut()
+                .set_variable($name, Value::of(Operator::Variadic(operator)));
         };
     }
 
@@ -92,58 +105,53 @@ pub fn prelude(env: &EnvironmentRef) {
 
     // Conformance operator (==)
 
-    let conformance_operator = Operator::collect(|left, right, env, stack| {
-        let (matching_trait, name) = match left.get_if_present::<List>(env, stack)? {
-            Some(left) => {
-                let matching_trait = match left.items.len() {
-                    1 | 2 => left.items[0]
-                        .evaluate(env, stack)?
-                        .get_or::<Trait>("Expected trait", env, stack)?,
-                    _ => {
-                        return Err(ReturnState::Error(Error::new(
-                            "Expected conformance predicate in the form 'T x', or just 'T' if you don't care about the name",
-                            stack,
-                        )))
-                    }
-                };
-
-                let name = if left.items.len() == 2 {
-                    let name = left.items[1]
-                        .get_or::<Name>("Expected name", env, stack)?
-                        .name;
-
-                    Some(name)
-                } else {
-                    None
-                };
-
-                (matching_trait, name)
-            }
-            None => {
+    let conformance_operator = VariadicOperator::collect(|left, right, env, stack| {
+        let (matching_trait, name) = match left {
+            VariadicOperatorInput::Single(left) => {
                 let matching_trait =
                     left.evaluate(env, stack)?
                         .get_or::<Trait>("Expected trait", env, stack)?;
 
                 (matching_trait, None)
             }
+            VariadicOperatorInput::List(left) => {
+                if left.len() != 2 {
+                    return Err(ReturnState::Error(Error::new(
+                        "Expected conformance predicate in the form 'T x', or just 'T' if you don't care about the name",
+                        stack,
+                    )));
+                }
+
+                let matching_trait =
+                    left[0]
+                        .evaluate(env, stack)?
+                        .get_or::<Trait>("Expected trait", env, stack)?;
+
+                let name = left[1].get_or::<Name>("Expected name", env, stack)?.name;
+
+                (matching_trait, Some(name))
+            }
         };
 
-        let right =
-            right.get_or::<List>("Expected a list containing the value to derive", env, stack)?;
-
-        if right.items.len() != 2 {
+        let (derived_trait, derived_value) = if matches!(right, VariadicOperatorInput::Single(_))
+            || matches!(&right, VariadicOperatorInput::List(items) if items.len() != 2)
+        {
             return Err(ReturnState::Error(Error::new(
                 "Expected a value to derive and its trait",
                 stack,
             )));
-        }
+        } else if let VariadicOperatorInput::List(right) = right {
+            let derived_trait =
+                right[0]
+                    .evaluate(env, stack)?
+                    .get_or::<Trait>("Expected trait", env, stack)?;
 
-        let derived_trait =
-            right.items[0]
-                .evaluate(env, stack)?
-                .get_or::<Trait>("Expected trait", env, stack)?;
+            let derived_value = right[1].clone();
 
-        let derived_value = right.items[1].clone();
+            (derived_trait, derived_value)
+        } else {
+            unreachable!()
+        };
 
         let derive_env = Environment::child_of(env).into_ref();
 
@@ -159,57 +167,69 @@ pub fn prelude(env: &EnvironmentRef) {
         Ok(Value::empty())
     });
 
-    add_operator(&conformance_operator, &assignment_precedence_group);
+    add_variadic_operator(&conformance_operator, &assignment_precedence_group);
 
     env.borrow_mut()
-        .set_variable("==", Value::of(conformance_operator));
+        .set_variable("==", Value::of(Operator::Variadic(conformance_operator)));
 
     // Template operator (=>)
 
-    let function_precedence_group = add_precedence_group(
+    let function_precedence_group = add_variadic_precedence_group(
         Associativity::Right,
-        PrecedenceGroupComparison::lower_than(&assignment_precedence_group),
+        VariadicPrecedenceGroupComparison::lower_than(&assignment_precedence_group),
     );
 
-    let template_operator = Operator::collect(|parameter, value_to_expand, env, stack| {
-        let name = parameter.get_or::<Name>("Template parameter must be a name", env, stack)?;
+    let template_operator = VariadicOperator::collect(|parameter, value_to_expand, env, stack| {
+        let name = match parameter {
+            VariadicOperatorInput::Single(parameter) => {
+                parameter.get_or::<Name>("Template parameter must be a name", env, stack)?
+            }
+            _ => {
+                return Err(ReturnState::Error(Error::new(
+                    "Expected template parameter",
+                    stack,
+                )))
+            }
+        };
 
         Ok(Value::of(Template {
             parameter: name.name,
-            replace_in: value_to_expand.clone(),
+            replace_in: value_to_expand.into_value(),
         }))
     });
 
-    add_operator(&template_operator, &function_precedence_group);
+    add_variadic_operator(&template_operator, &function_precedence_group);
 
     env.borrow_mut()
-        .set_variable("=>", Value::of(template_operator));
+        .set_variable("=>", Value::of(Operator::Variadic(template_operator)));
 
     // Closure operator (->)
 
-    let closure_operator = Operator::collect(|parameter, return_value, env, stack| {
-        let (validation, parameter) = match parameter.get_if_present::<List>(env, stack)? {
-            Some(list) => {
-                if list.items.len() != 2 {
-                    return Err(ReturnState::Error(Error::new("", stack)));
-                }
+    let closure_operator = VariadicOperator::collect(|parameter, return_value, env, stack| {
+        let (validation, parameter) = match parameter {
+            VariadicOperatorInput::Single(parameter) => {
+                let parameter =
+                    parameter.get_or::<Name>("Closure parameter must be a name", env, stack)?;
 
-                let validation = list.items[0].evaluate(env, stack)?.get_or::<Validation>(
+                (Validation::any(), parameter)
+            }
+            VariadicOperatorInput::List(parameter) if parameter.len() == 2 => {
+                let validation = parameter[0].evaluate(env, stack)?.get_or::<Validation>(
                     "Expected validation",
                     env,
                     stack,
                 )?;
 
                 let parameter =
-                    list.items[1].get_or::<Name>("Closure parameter must be a name", env, stack)?;
+                    parameter[1].get_or::<Name>("Closure parameter must be a name", env, stack)?;
 
                 (validation, parameter)
             }
-            None => {
-                let parameter =
-                    parameter.get_or::<Name>("Closure parameter must be a name", env, stack)?;
-
-                (Validation::any(), parameter)
+            _ => {
+                return Err(ReturnState::Error(Error::new(
+                    "Expected closure parameter",
+                    stack,
+                )))
             }
         };
 
@@ -219,23 +239,23 @@ pub fn prelude(env: &EnvironmentRef) {
             captured_env,
             validation,
             parameter,
-            return_value: return_value.clone(),
+            return_value: return_value.into_value(),
         }))
     });
 
-    add_operator(&closure_operator, &function_precedence_group);
+    add_variadic_operator(&closure_operator, &function_precedence_group);
 
     env.borrow_mut()
-        .set_variable("->", Value::of(closure_operator));
+        .set_variable("->", Value::of(Operator::Variadic(closure_operator)));
 
     // 'for' operator
 
-    let for_precedence_group = add_precedence_group(
+    let for_precedence_group = add_binary_precedence_group(
         Associativity::Right,
-        PrecedenceGroupComparison::lower_than(&function_precedence_group),
+        BinaryPrecedenceGroupComparison::lowest(),
     );
 
-    let for_operator = Operator::collect(|left, right, env, stack| {
+    let for_operator = BinaryOperator::collect(|left, right, env, stack| {
         let validation =
             left.evaluate(env, stack)?
                 .get_or::<Validation>("Expected validation", env, stack)?;
@@ -251,19 +271,19 @@ pub fn prelude(env: &EnvironmentRef) {
         }
     });
 
-    add_operator(&for_operator, &for_precedence_group);
+    add_binary_operator(&for_operator, &for_precedence_group);
 
     env.borrow_mut()
-        .set_variable("for", Value::of(for_operator));
+        .set_variable("for", Value::of(Operator::Binary(for_operator)));
 
     // 'as' operator (equivalent to 'T (T for x)')
 
-    let as_precedence_group = add_precedence_group(
+    let as_precedence_group = add_binary_precedence_group(
         Associativity::Left,
-        PrecedenceGroupComparison::lower_than(&for_precedence_group),
+        BinaryPrecedenceGroupComparison::lowest(),
     );
 
-    let as_operator = Operator::collect(|value, r#trait, env, stack| {
+    let as_operator = BinaryOperator::collect(|value, r#trait, env, stack| {
         let r#trait =
             r#trait
                 .evaluate(env, stack)?
@@ -279,15 +299,16 @@ pub fn prelude(env: &EnvironmentRef) {
         Ok(trait_value)
     });
 
-    add_operator(&as_operator, &as_precedence_group);
+    add_binary_operator(&as_operator, &as_precedence_group);
 
-    env.borrow_mut().set_variable("as", Value::of(as_operator));
+    env.borrow_mut()
+        .set_variable("as", Value::of(Operator::Binary(as_operator)));
 
     // Math
 
     macro_rules! math {
         ($operation:tt, $precedence_group:ident) => {{
-            let operator = Operator::collect(|left, right, env, stack| {
+            let operator = BinaryOperator::collect(|left, right, env, stack| {
                 let left = left
                     .evaluate(env, stack)?
                     .get::<Number>(env, stack)?;
@@ -301,24 +322,26 @@ pub fn prelude(env: &EnvironmentRef) {
                 Ok(Value::of(Number::new(result)))
             });
 
-            add_operator(&operator, &$precedence_group);
+            add_binary_operator(&operator, &$precedence_group);
 
             env.borrow_mut().set_variable(
                 stringify!($operation),
-                Value::of(operator),
+                Value::of(Operator::Binary(operator)),
             );
         }};
     }
 
-    let addition_precedence_group =
-        add_precedence_group(Associativity::Left, PrecedenceGroupComparison::lowest());
+    let addition_precedence_group = add_binary_precedence_group(
+        Associativity::Left,
+        BinaryPrecedenceGroupComparison::lowest(),
+    );
 
     math!(+, addition_precedence_group);
     math!(-, addition_precedence_group);
 
-    let multiplication_precedence_group = add_precedence_group(
+    let multiplication_precedence_group = add_binary_precedence_group(
         Associativity::Left,
-        PrecedenceGroupComparison::higher_than(&addition_precedence_group),
+        BinaryPrecedenceGroupComparison::higher_than(&addition_precedence_group),
     );
 
     math!(*, multiplication_precedence_group);
@@ -331,7 +354,7 @@ pub fn prelude(env: &EnvironmentRef) {
         ($name:expr, $operation:tt, $precedence_group:ident, $prelude_env:expr) => {{
             let stdlib_env = env.clone();
 
-            let operator = Operator::collect(move |left, right, env, stack| {
+            let operator = BinaryOperator::collect(move |left, right, env, stack| {
                 let left = left
                     .evaluate(env, stack)?
                     .get::<Number>(env, stack)?;
@@ -351,18 +374,18 @@ pub fn prelude(env: &EnvironmentRef) {
                 Ok(value)
             });
 
-            add_operator(&operator, &$precedence_group);
+            add_binary_operator(&operator, &$precedence_group);
 
             env.borrow_mut().set_variable(
                 $name,
-                Value::of(operator),
+                Value::of(Operator::Binary(operator)),
             );
         }};
     }
 
-    let comparison_precedence_group = add_precedence_group(
+    let comparison_precedence_group = add_binary_precedence_group(
         Associativity::Right,
-        PrecedenceGroupComparison::higher_than(&multiplication_precedence_group),
+        BinaryPrecedenceGroupComparison::lower_than(&addition_precedence_group),
     );
 
     boolean_math!(>, comparison_precedence_group, env);
@@ -476,23 +499,28 @@ pub fn prelude(env: &EnvironmentRef) {
 
     // Dot operator (.) -- 'a . b' is equivalent to 'b a'
 
-    let dot_precedence_group =
-        add_precedence_group(Associativity::Left, PrecedenceGroupComparison::lowest());
+    let dot_precedence_group = add_binary_precedence_group(
+        Associativity::Left,
+        BinaryPrecedenceGroupComparison::lowest(),
+    );
 
-    let dot_operator = Operator::collect(|left, right, env, stack| {
+    let dot_operator = BinaryOperator::collect(|left, right, env, stack| {
         right.evaluate(env, stack)?.call(left, env, stack)
     });
 
-    add_operator(&dot_operator, &dot_precedence_group);
+    add_binary_operator(&dot_operator, &dot_precedence_group);
 
-    env.borrow_mut().set_variable(".", Value::of(dot_operator));
+    env.borrow_mut()
+        .set_variable(".", Value::of(Operator::Binary(dot_operator)));
 
     // Flow operator (|) -- 'a | b' is equivalent to 'x -> b (a x)'
 
-    let flow_precedence_group =
-        add_precedence_group(Associativity::Left, PrecedenceGroupComparison::lowest());
+    let flow_precedence_group = add_binary_precedence_group(
+        Associativity::Left,
+        BinaryPrecedenceGroupComparison::lowest(),
+    );
 
-    let flow_operator = Operator::collect(|left, right, env, stack| {
+    let flow_operator = BinaryOperator::collect(|left, right, env, stack| {
         let left =
             left.evaluate(env, stack)?
                 .get_or::<Function>("Expected function", env, stack)?;
@@ -503,11 +531,12 @@ pub fn prelude(env: &EnvironmentRef) {
                 .get_or::<Function>("Expected function", env, stack)?;
 
         Ok(Value::of(Function::new(move |value, env, stack| {
-            right(&left(value, env, stack)?, env, stack)
+            right(left(value, env, stack)?, env, stack)
         })))
     });
 
-    add_operator(&flow_operator, &flow_precedence_group);
+    add_binary_operator(&flow_operator, &flow_precedence_group);
 
-    env.borrow_mut().set_variable("|", Value::of(flow_operator));
+    env.borrow_mut()
+        .set_variable("|", Value::of(Operator::Binary(flow_operator)));
 }

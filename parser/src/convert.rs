@@ -24,7 +24,7 @@ pub fn convert(ast: &Ast, file: Option<&Path>) -> Value {
         )),
 
         List(items) => Value::of(wipple::List::new_located(
-            &items
+            items
                 .iter()
                 .map(|node| convert(node, file))
                 .collect::<Vec<_>>(),

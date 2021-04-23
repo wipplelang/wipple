@@ -1,7 +1,7 @@
 use crate::*;
 
 fn_wrapper_struct! {
-    #[typeinfo]
+    #[derive(TypeInfo)]
     pub type EvaluateFn(&EnvironmentRef, &Stack) -> Result;
 }
 

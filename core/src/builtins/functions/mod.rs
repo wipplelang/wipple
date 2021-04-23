@@ -7,14 +7,14 @@ pub use template::*;
 use crate::*;
 
 fn_wrapper_struct! {
-    #[typeinfo]
-    pub type Function(&Value, &EnvironmentRef, &Stack) -> Result;
+    #[derive(TypeInfo)]
+    pub type Function(Value, &EnvironmentRef, &Stack) -> Result;
 }
 
 core_primitive!(pub function for Function);
 
 impl Value {
-    pub fn call(&self, parameter: &Value, env: &EnvironmentRef, stack_: &Stack) -> Result {
+    pub fn call(&self, parameter: Value, env: &EnvironmentRef, stack_: &Stack) -> Result {
         let mut stack = stack_.clone();
         stack
             .evaluation_mut()

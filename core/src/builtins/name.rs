@@ -1,8 +1,7 @@
 use crate::*;
 use std::collections::HashMap;
 
-#[typeinfo]
-#[derive(Debug, Clone)]
+#[derive(TypeInfo, Debug, Clone)]
 pub struct Name {
     pub name: String,
     pub location: Option<SourceLocation>,
@@ -42,8 +41,7 @@ impl Variable {
     }
 }
 
-#[typeinfo]
-#[derive(Debug, Clone, Default)]
+#[derive(TypeInfo, Debug, Clone, Default)]
 pub struct Variables(pub HashMap<String, Variable>);
 
 core_env_key!(pub variables for Variables {
@@ -53,7 +51,7 @@ core_env_key!(pub variables for Variables {
 });
 
 fn_wrapper_struct! {
-    #[typeinfo]
+    #[derive(TypeInfo)]
     pub type HandleAssignFn(&Name, &Value, &EnvironmentRef, &Stack) -> Result<()>;
 }
 
@@ -73,7 +71,7 @@ core_env_key!(pub handle_assign for HandleAssignFn {
 });
 
 fn_wrapper_struct! {
-    #[typeinfo]
+    #[derive(TypeInfo)]
     pub type HandleComputedAssignFn(&Name, &Value, &EnvironmentRef, &Stack) -> Result<()>;
 }
 

@@ -1,7 +1,7 @@
 use crate::*;
 
 fn_wrapper_struct! {
-    #[typeinfo]
+    #[derive(TypeInfo)]
     pub type ReplaceInTemplateFn(&str, &Value, &EnvironmentRef, &Stack) -> Result;
 }
 
@@ -22,8 +22,7 @@ impl Value {
     }
 }
 
-#[typeinfo]
-#[derive(Debug, Clone)]
+#[derive(TypeInfo, Debug, Clone)]
 pub struct Template {
     pub parameter: String,
     pub replace_in: Value,

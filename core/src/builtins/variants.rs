@@ -1,8 +1,7 @@
 use crate::*;
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
-#[typeinfo]
-#[derive(Debug, Clone)]
+#[derive(TypeInfo, Debug, Clone)]
 pub struct Variant {
     pub id: Id,
     pub name: String,
@@ -205,7 +204,7 @@ pub(crate) fn setup(env: &mut Environment) {
                     ))),
                 }?;
 
-                for value in &variant.associated_values {
+                for value in variant.associated_values.clone() {
                     r#match = r#match.call(value, env, stack)?;
                 }
 

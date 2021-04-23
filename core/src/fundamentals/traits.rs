@@ -1,7 +1,6 @@
 use crate::*;
 
-#[typeinfo]
-#[derive(Clone)]
+#[derive(TypeInfo, Clone)]
 pub struct Trait {
     pub id: Id,
     pub validation: Validation,

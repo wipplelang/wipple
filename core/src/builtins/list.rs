@@ -1,18 +1,17 @@
 use crate::*;
 
-#[typeinfo]
-#[derive(Debug, Clone)]
+#[derive(TypeInfo, Debug, Clone)]
 pub struct List {
     pub items: Vec<Value>,
     pub location: Option<SourceLocation>,
 }
 
 impl List {
-    pub fn new(items: &[Value]) -> Self {
+    pub fn new(items: Vec<Value>) -> Self {
         List::new_located(items, None)
     }
 
-    pub fn new_located(items: &[Value], location: Option<SourceLocation>) -> Self {
+    pub fn new_located(items: Vec<Value>, location: Option<SourceLocation>) -> Self {
         List {
             items: items.to_vec(),
             location,
@@ -47,7 +46,7 @@ pub(crate) fn setup(env: &mut Environment) {
                 }
             };
 
-            for item in list.items.iter().skip(1) {
+            for item in list.items.clone().into_iter().skip(1) {
                 result = result.call(item, env, &stack)?;
             }
 
@@ -66,7 +65,7 @@ pub(crate) fn setup(env: &mut Environment) {
                 expanded_items.push(item);
             }
 
-            Ok(Value::of(List::new(&expanded_items)))
+            Ok(Value::of(List::new(expanded_items)))
         })
     });
 
