@@ -307,17 +307,24 @@ pub fn prelude(env: &EnvironmentRef) {
     // Math
 
     macro_rules! math {
-        ($operation:tt, $precedence_group:ident) => {{
+        ($operation:tt, $precedence_group:ident) => {
+            math!($operation, $precedence_group, |_, _, _| Ok(()))
+        };
+        ($operation:tt, $precedence_group:ident, $check:expr) => {{
             let operator = BinaryOperator::collect(|left, right, env, stack| {
                 let left = left
                     .evaluate(env, stack)?
-                    .get::<Number>(env, stack)?;
+                    .get::<Number>(env, stack)?
+                    .number;
 
                 let right = right
                     .evaluate(env, stack)?
-                    .get::<Number>(env, stack)?;
+                    .get::<Number>(env, stack)?
+                    .number;
 
-                let result = left.number $operation right.number;
+                $check(&left, &right, stack)?;
+
+                let result = left $operation right;
 
                 Ok(Value::of(Number::new(result)))
             });
@@ -345,7 +352,16 @@ pub fn prelude(env: &EnvironmentRef) {
     );
 
     math!(*, multiplication_precedence_group);
-    math!(/, multiplication_precedence_group);
+
+    math!(
+        /,
+        multiplication_precedence_group,
+        |_, right, stack| if right == &BigDecimal::zero() {
+            Err(ReturnState::Error(Error::new("Cannot divide by 0", stack)))
+        } else {
+            Ok(())
+        }
+    );
 
     macro_rules! boolean_math {
         ($operation:tt, $precedence_group:ident, $prelude_env:expr) => {

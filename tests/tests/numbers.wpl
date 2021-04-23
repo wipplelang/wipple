@@ -5,3 +5,12 @@ show (0.1 + 0.2)
 ---
 
 (0.1 + 0.2) ==> 0.3
+
+>>> Dividing by 0
+
+1 / 0
+
+---
+
+Cannot divide by 0
+    Importing program
