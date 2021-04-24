@@ -19,13 +19,7 @@ pub struct Run {
 impl Run {
     pub fn run(&self) -> wipple::Result<()> {
         let env = Environment::global();
-        let mut stack = Stack::new();
-
-        wipple::setup();
-        wipple_projects::setup();
-        wipple_stdlib::setup(&env, &stack)?;
-
-        setup(&mut stack);
+        let stack = wipple_bundled_interpreter::setup()?;
 
         match &self.evaluate_string {
             Some(code) => {
@@ -61,12 +55,4 @@ impl Run {
 
         Ok(())
     }
-}
-
-fn setup(stack: &mut Stack) {
-    *wipple_stdlib::show_mut_in(stack) = wipple_stdlib::ShowFn::new(move |value, env, stack| {
-        println!("{}", value.evaluate(env, stack)?.format(env, stack)?);
-
-        Ok(())
-    });
 }

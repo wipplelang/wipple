@@ -349,6 +349,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "filetime"
+version = "0.2.14"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1d34cfa13a63ae058bfa601fe9e313bbdb3746427c1459185464ce0fcf62e1e8"
+dependencies = [
+ "cfg-if 1.0.0",
+ "libc",
+ "redox_syscall 0.2.6",
+ "winapi",
+]
+
+[[package]]
 name = "flate2"
 version = "1.0.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1392,6 +1404,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "tar"
+version = "0.4.33"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c0bcfbd6a598361fda270d82469fff3d65089dc33e175c9a131f7b4cd395f228"
+dependencies = [
+ "filetime",
+ "libc",
+ "xattr",
+]
+
+[[package]]
 name = "tempfile"
 version = "3.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1801,15 +1824,33 @@ dependencies = [
 ]
 
 [[package]]
+name = "wipple_bundled_interpreter"
+version = "0.0.0"
+dependencies = [
+ "colored",
+ "tar",
+ "tempfile",
+ "wipple",
+ "wipple_projects",
+ "wipple_stdlib",
+ "zip",
+]
+
+[[package]]
 name = "wipple_cli"
 version = "0.0.0"
 dependencies = [
  "colored",
+ "libc",
+ "reqwest",
  "structopt",
  "wipple",
+ "wipple_bundled_interpreter",
  "wipple_parser",
  "wipple_projects",
  "wipple_stdlib",
+ "zip",
+ "zip-extensions",
 ]
 
 [[package]]
@@ -1902,6 +1943,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "xattr"
+version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "244c3741f4240ef46274860397c7c74e50eb23624996930e484c16679633a54c"
+dependencies = [
+ "libc",
+]
+
+[[package]]
 name = "xml-rs"
 version = "0.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1919,4 +1969,13 @@ dependencies = [
  "flate2",
  "thiserror",
  "time",
+]
+
+[[package]]
+name = "zip-extensions"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6b9397aa85b738c68f94ca15ee7168a8d46c664e408f2a456d623f7a55384891"
+dependencies = [
+ "zip",
 ]

@@ -121,20 +121,31 @@ impl DependencyLocation {
     }
 }
 
-fn download_url(url: &str, path: &Path, extract: bool) -> Result<(), Box<dyn std::error::Error>> {
+fn download_url(url: &str, path: &Path, extract: bool) -> Result<(), String> {
     let client = reqwest::blocking::Client::new();
-    let data = client.get(url).send()?.bytes()?;
+    let response = client.get(url).send().map_err(|e| format!("{}", e))?;
 
-    if extract {
-        let mut file = tempfile::tempfile()?;
-        file.write_all(&data)?;
-
-        let mut zip = zip::read::ZipArchive::new(file)?;
-        std::fs::create_dir_all(path)?;
-        zip.extract(path)?;
-    } else {
-        std::fs::write(path, data)?;
+    if !response.status().is_success() {
+        return Err("Server sent error response".to_string());
     }
+
+    (|| -> Result<(), Box<dyn std::error::Error>> {
+        let data = response.bytes()?;
+
+        if extract {
+            let mut file = tempfile::tempfile()?;
+            file.write_all(&data)?;
+
+            let mut zip = zip::read::ZipArchive::new(file)?;
+            std::fs::create_dir_all(path)?;
+            zip.extract(path)?;
+        } else {
+            std::fs::write(path, data)?;
+        }
+
+        Ok(())
+    })()
+    .map_err(|e| format!("{}", e))?;
 
     Ok(())
 }

@@ -1,3 +1,4 @@
+mod bundle;
 mod new;
 mod run;
 
@@ -10,6 +11,7 @@ use structopt::StructOpt;
 pub enum Args {
     Run(run::Run),
     New(new::New),
+    Bundle(bundle::Bundle),
 }
 
 fn main() {
@@ -31,6 +33,12 @@ fn run() -> i32 {
         }
         Args::New(new) => {
             if let Err(error) = new.run() {
+                eprintln!("{}", error.red());
+                return 1;
+            }
+        }
+        Args::Bundle(bundle) => {
+            if let Err(error) = bundle.run() {
                 eprintln!("{}", error.red());
                 return 1;
             }

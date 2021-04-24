@@ -8,7 +8,7 @@ main() {
 
     echo "Installing Wipple ($arch) to $path..."
 
-    url="https://github.com/wipplelang/wipple/releases/latest/download/$arch"
+    url="https://github.com/wipplelang/wipple/releases/latest/download/wipple-cli-$arch"
     curl -fSL "$url" -o "$path"
     chmod +x "$path"
 

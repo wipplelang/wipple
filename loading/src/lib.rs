@@ -31,7 +31,12 @@ pub fn import_program_with_parent_env(
         .set(|| String::from("Importing program"));
 
     let result = Value::of(program).evaluate(&env, &stack)?;
-    let module = result.into_primitive::<Module>(); // files always evaluate to modules
+
+    if !result.is_trait_directly(&Trait::module()) {
+        panic!("Could not evaluate file, is the standard library set up correctly?");
+    }
+
+    let module = result.into_primitive::<Module>();
 
     Ok(module)
 }

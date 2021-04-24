@@ -1,0 +1,13 @@
+[package]
+name = "wipple_bundled_interpreter"
+version = "0.0.0"
+edition = "2018"
+
+[dependencies]
+colored = "2.0.0"
+tar = "0.4.33"
+tempfile = "3.2.0"
+wipple = { path = "../core" }
+wipple_projects = { path = "../projects" }
+wipple_stdlib = { path = "../standard-library" }
+zip = "0.5.12"

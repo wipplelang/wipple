@@ -1,5 +1,6 @@
 [workspace]
 members = [
+    "bundled-interpreter",
     "cli",
     "core",
     "loading",
