@@ -6,3 +6,10 @@ if : bool => then => else => match bool {
     true : then
     false : else
 }
+
+when : bool => then => if bool then ()
+
+not : bool -> match bool {
+    true : false
+    false : true
+}

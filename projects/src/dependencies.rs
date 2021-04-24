@@ -9,6 +9,7 @@ use wipple::{dynamic, primitive};
 
 pub fn update_dependencies(
     dependencies: HashMap<String, Dependency>,
+    install_dir: Option<&Path>,
     on_install: impl Fn(),
 ) -> Result<HashMap<String, PathBuf>, Box<dyn std::error::Error>> {
     let mut result = HashMap::new();
@@ -16,7 +17,7 @@ pub fn update_dependencies(
     let mut already_downloading = false;
 
     for (name, dependency) in dependencies {
-        let path = dependency.update(|| {
+        let path = dependency.update(install_dir, || {
             if already_downloading {
                 return;
             }
@@ -75,18 +76,46 @@ pub enum DependencyLocation {
 }
 
 impl Dependency {
-    pub fn update(&self, on_install: impl FnOnce()) -> Result<PathBuf, Box<dyn std::error::Error>> {
+    pub fn update(
+        &self,
+        install_dir: Option<&Path>,
+        on_install: impl FnOnce(),
+    ) -> Result<PathBuf, Box<dyn std::error::Error>> {
         use DependencyLocation::*;
 
-        let dir = self.location.cache_dir();
+        let dir = match install_dir {
+            Some(install_dir) => {
+                let dir = self.location.cache_dir(install_dir, true);
 
-        // TODO: Option to ignore cache
-        if dir.exists() {
-            return Ok(dir);
-        }
+                if dir.exists() {
+                    std::fs::remove_dir_all(&dir)?;
+                }
+
+                dir
+            }
+            None => {
+                let cache_dir = dirs::cache_dir()
+                    .expect("Could not resolve cache directory")
+                    .join("wipple");
+
+                let dir = self.location.cache_dir(&cache_dir, false);
+
+                // TODO: Option to ignore cache
+                if dir.exists() {
+                    return Ok(dir);
+                }
+
+                dir
+            }
+        };
 
         match &self.location {
-            Path(_) => {}
+            Path(path) => {
+                if install_dir.is_some() {
+                    on_install();
+                    copy_dir(path, &dir)?;
+                }
+            }
             Url(url) => {
                 on_install();
                 download_url(url, &dir, matches!(self.r#type, DependencyType::Project))?
@@ -102,23 +131,35 @@ impl Dependency {
 }
 
 impl DependencyLocation {
-    pub fn cache_dir(&self) -> PathBuf {
+    pub fn cache_dir(&self, base: &Path, installing: bool) -> PathBuf {
         use DependencyLocation::*;
 
         match self {
-            Path(path) => path.clone(),
+            Path(path) if !installing => path.clone(),
             _ => {
                 let mut hasher = DefaultHasher::new();
                 self.hash(&mut hasher);
                 let hash = hasher.finish();
 
-                let mut dir = dirs::cache_dir().expect("Could not resolve cache directory");
-                dir.push("wipple");
-                dir.push(&hash.to_string());
-                dir
+                base.join(&hash.to_string())
             }
         }
     }
+}
+
+/// https://stackoverflow.com/a/65192210/5569234
+fn copy_dir(src: impl AsRef<Path>, dst: impl AsRef<Path>) -> std::io::Result<()> {
+    std::fs::create_dir_all(&dst)?;
+    for entry in std::fs::read_dir(src)? {
+        let entry = entry?;
+        let ty = entry.file_type()?;
+        if ty.is_dir() {
+            copy_dir(entry.path(), dst.as_ref().join(entry.file_name()))?;
+        } else {
+            std::fs::copy(entry.path(), dst.as_ref().join(entry.file_name()))?;
+        }
+    }
+    Ok(())
 }
 
 fn download_url(url: &str, path: &Path, extract: bool) -> Result<(), String> {

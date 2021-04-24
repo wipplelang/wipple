@@ -19,6 +19,10 @@ fn run() -> i32 {
 
     zip.extract(&tempdir).expect("Could not extract bundle");
 
+    // SAFETY: This is the only location where this value is set, and it
+    // always happens before it is read in 'wipple_projects::load_project'
+    unsafe { wipple_projects::IS_RUNNING_BUNDLED = true };
+
     let load = || -> wipple::Result<()> {
         let stack = wipple_bundled_interpreter::setup()?;
         wipple_projects::load_project(&tempdir.join("project.wpl"), &stack)?;

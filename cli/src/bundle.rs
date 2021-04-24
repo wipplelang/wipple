@@ -39,6 +39,24 @@ impl Bundle {
             ));
         }
 
+        println!("Preparing project for bundling");
+
+        // SAFETY: This is the only location where this value is set, and it
+        // always happens before it is read in 'wipple_projects::load_project'
+        unsafe { wipple_projects::IS_BUNDLING = true };
+
+        (|| -> wipple::Result<()> {
+            let stack = wipple_bundled_interpreter::setup()?;
+            wipple_projects::load_project(&path.join("project.wpl"), &stack)?;
+            Ok(())
+        })()
+        .map_err(|e| {
+            format!(
+                "Error preparing project: {}",
+                e.into_error(&wipple::Stack::new())
+            )
+        })?;
+
         let mut zip_data = Vec::new();
 
         let mut zip = ZipWriter::new(std::io::Cursor::new(&mut zip_data));

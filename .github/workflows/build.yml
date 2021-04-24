@@ -3,8 +3,10 @@ on:
   push:
     paths:
       - .github/**
+      - bundled-interpreter/**
       - cli/**
       - core/**
+      - loading/**
       - parser/**
       - plugins/**
       - projects/**

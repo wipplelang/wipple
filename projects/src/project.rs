@@ -18,6 +18,9 @@ thread_local! {
     static PROJECT_ENVS: Rc<RefCell<HashMap<PathBuf, EnvironmentRef>>> = Default::default();
 }
 
+pub static mut IS_BUNDLING: bool = false;
+pub static mut IS_RUNNING_BUNDLED: bool = false;
+
 pub fn project_env_in(stack: &Stack) -> EnvironmentRef {
     match project_root_in(stack).0 {
         Some(project_root) => PROJECT_ENVS
@@ -40,14 +43,25 @@ pub fn load_project(path: &Path, stack: &Stack) -> Result<Module> {
         .evaluation_mut()
         .set(|| format!("Importing project {}", path.to_string_lossy()));
 
-    *project_root_mut_in(&mut stack) = ProjectRoot(Some(path.parent().unwrap().to_path_buf()));
+    let project_root = path.parent().unwrap();
+
+    *project_root_mut_in(&mut stack) = ProjectRoot(Some(project_root.to_path_buf()));
 
     let project_env = project_env_in(&stack);
 
     let project_module = import_file_with_parent_env(path, &env, &stack)?;
 
     if let Some(dependencies) = get_dependencies(&project_module, &env, &stack)? {
-        let paths = update_dependencies(dependencies, || {
+        // SAFETY: This is only set once
+        let is_bundled = unsafe { IS_BUNDLING || IS_RUNNING_BUNDLED };
+
+        let install_dir = if is_bundled {
+            Some(project_root.join("dependencies"))
+        } else {
+            None
+        };
+
+        let paths = update_dependencies(dependencies, install_dir.as_deref(), || {
             // TODO: Move to CLI
             println!("Installing dependencies");
         })
@@ -65,10 +79,10 @@ pub fn load_project(path: &Path, stack: &Stack) -> Result<Module> {
         }
     }
 
-    let main_file = get_main_file(&project_module, &env, &stack)?;
-    let main_module = import(&main_file, &stack)?;
-
-    Ok(main_module)
+    match get_main_file(&project_module, &env, &stack)? {
+        Some(main_file) => import(&main_file, &stack),
+        None => Ok(Module::new(Environment::blank())),
+    }
 }
 
 fn setup_project_file(project_path: &Path, env: &mut Environment) {
@@ -161,6 +175,13 @@ fn setup_project_file(project_path: &Path, env: &mut Environment) {
     );
 
     env.set_variable("host", Value::of(Text::new(TARGET)));
+
+    // SAFETY: This is only set once
+    let is_bundling = unsafe { IS_BUNDLING };
+
+    env.set_computed_variable("bundling?", move |env, stack| {
+        Name::new(&is_bundling.to_string()).resolve(env, stack)
+    });
 }
 
 fn get_dependencies(
@@ -203,19 +224,26 @@ fn get_dependencies(
     Ok(Some(dependencies))
 }
 
-fn get_main_file(project_module: &Module, env: &EnvironmentRef, stack: &Stack) -> Result<String> {
+fn get_main_file(
+    project_module: &Module,
+    env: &EnvironmentRef,
+    stack: &Stack,
+) -> Result<Option<String>> {
     let mut stack = stack.clone();
     stack
         .evaluation_mut()
         .set(|| String::from("Resolving main file in project"));
 
-    let main_value = Name::new("main").resolve(&project_module.env, &stack)?;
+    let path_value = match Name::new("main").resolve_if_present(&project_module.env, &stack)? {
+        Some(value) => value,
+        None => return Ok(None),
+    };
 
-    let path = main_value.get_or::<Text>(
+    let path = path_value.get_or::<Text>(
         "Expected a Text value containing the path to the main file",
         env,
         &stack,
     )?;
 
-    Ok(path.text)
+    Ok(Some(path.text))
 }
