@@ -5,7 +5,6 @@ edition = "2018"
 
 [dependencies]
 colored = "2.0.0"
-tar = "0.4.33"
 tempfile = "3.2.0"
 wipple = { path = "../core" }
 wipple_projects = { path = "../projects" }
