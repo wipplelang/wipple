@@ -3,13 +3,13 @@ use std::path::Path;
 
 /// Import a file/folder using a module name
 pub fn import(module_name: &str, stack: &Stack) -> Result<Module> {
-    let path = resolve(module_name, stack)?;
+    let path = resolve_module(module_name, stack)?;
     import_path(&path, stack)
 }
 
 /// Import a file/folder using a module name directly in the current environment
 pub fn include(module_name: &str, env: &EnvironmentRef, stack: &Stack) -> Result<Module> {
-    let path = resolve(module_name, stack)?;
+    let path = resolve_module(module_name, stack)?;
     import_path_with_parent_env(&path, env, stack)
 }
 
