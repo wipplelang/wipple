@@ -41,9 +41,12 @@ jobs:
           - x86_64-unknown-linux-gnu
           - armv7-unknown-linux-gnueabihf
           - aarch64-unknown-linux-gnu
+        cross:
+          - "true"
         include:
           - os: macos-latest
             target: x86_64-apple-darwin
+            cross: "false"
 
     runs-on: ${{ matrix.os }}
 
@@ -58,7 +61,7 @@ jobs:
             target
           key: ${{ matrix.os }}-${{ matrix.target }}
 
-      - run: ./scripts/build.sh ${{ matrix.target }}
+      - run: ./scripts/build.sh ${{ matrix.target }} ${{ matrix.cross }}
 
       - uses: svenstaro/upload-release-action@v2
         with:
