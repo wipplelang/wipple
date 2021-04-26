@@ -36,6 +36,7 @@ fn resolve_path(path: &str, stack: &Stack) -> Result<PathBuf> {
         current_file_in(stack)
             .0
             .ok_or_else(|| Return::error("Current file is not set", stack))
+            .map(|p| p.parent().unwrap().to_path_buf())
     } else {
         project_root_in(stack)
             .0
