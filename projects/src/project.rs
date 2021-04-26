@@ -185,7 +185,7 @@ fn setup_project_env(project_root: &Path, env: &EnvironmentRef) {
                     Return::error(&format!("Error resolving path: {}", error), stack)
                 })?;
 
-            Ok(Value::of(Dependency::new(DependencyLocation::Path(path))))
+            Ok(Value::of(Dependency::Path(path)))
         })),
     );
 
@@ -197,9 +197,7 @@ fn setup_project_env(project_root: &Path, env: &EnvironmentRef) {
                     .evaluate(env, stack)?
                     .get_or::<Text>("Expected URL text", env, stack)?;
 
-            Ok(Value::of(Dependency::new(DependencyLocation::Url(
-                url.text,
-            ))))
+            Ok(Value::of(Dependency::Url(url.text)))
         })),
     );
 
@@ -211,7 +209,7 @@ fn setup_project_env(project_root: &Path, env: &EnvironmentRef) {
                 .get_or::<Text>("Expected URL to Git repository", env, stack)?
                 .text;
 
-            let git = if repo.contains(' ') {
+            let dependency = if repo.contains(' ') {
                 let repo = repo.split(' ').collect::<Vec<_>>();
 
                 if repo.len() != 2 {
@@ -221,31 +219,16 @@ fn setup_project_env(project_root: &Path, env: &EnvironmentRef) {
                     ));
                 }
 
-                DependencyLocation::Git {
+                Dependency::Git {
                     url: repo[0].to_string(),
                     branch: Some(repo[1].to_string()),
                 }
             } else {
-                DependencyLocation::Git {
+                Dependency::Git {
                     url: repo,
                     branch: None,
                 }
             };
-
-            Ok(Value::of(Dependency::new(git)))
-        })),
-    );
-
-    env.borrow_mut().set_variable(
-        "plugin",
-        Value::of(Function::new(|value, env, stack| {
-            let mut dependency = value.evaluate(env, stack)?.get_or::<Dependency>(
-                "Expected dependency",
-                env,
-                stack,
-            )?;
-
-            dependency.is_plugin = true;
 
             Ok(Value::of(dependency))
         })),
@@ -323,28 +306,13 @@ fn parse_project_env(
 }
 
 #[derive(TypeInfo, Clone, Hash)]
-pub struct Dependency {
-    pub location: DependencyLocation,
-    pub is_plugin: bool,
-}
-
-primitive!(pub dependency for Dependency);
-
-impl Dependency {
-    pub fn new(location: DependencyLocation) -> Self {
-        Dependency {
-            location,
-            is_plugin: false,
-        }
-    }
-}
-
-#[derive(Clone, Hash)]
-pub enum DependencyLocation {
+pub enum Dependency {
     Url(String),
     Git { url: String, branch: Option<String> },
     Path(PathBuf),
 }
+
+primitive!(pub dependency for Dependency);
 
 impl Dependency {
     pub fn update(
@@ -353,19 +321,19 @@ impl Dependency {
         on_install: impl FnOnce(),
         stack: &Stack,
     ) -> Result<Project, Box<dyn Error>> {
-        use DependencyLocation::*;
+        use Dependency::*;
 
-        let path = self.location.cache_path(install_path);
+        let path = self.cache_path(install_path);
 
-        if path.exists() && !matches!(self.location, Path(_)) {
+        if path.exists() && !matches!(self, Path(_)) {
             return project_file_in(&path, stack);
         }
 
         on_install();
 
-        match &self.location {
+        match &self {
             Path(dependency_path) => copy_dir(dependency_path, &path)?,
-            Url(url) => download_url(url, &path, !self.is_plugin)?,
+            Url(url) => download_zip(url, &path)?,
             Git { url, branch } => download_git(url, branch.as_deref(), &path)?,
         }
 
@@ -379,7 +347,7 @@ fn project_file_in(path: &Path, stack: &Stack) -> Result<Project, Box<dyn Error>
     Ok(project)
 }
 
-impl DependencyLocation {
+impl Dependency {
     pub fn cache_path(&self, base: &Path) -> PathBuf {
         let mut hasher = DefaultHasher::new();
         self.hash(&mut hasher);
@@ -404,7 +372,7 @@ pub fn copy_dir(src: impl AsRef<Path>, dst: impl AsRef<Path>) -> std::io::Result
     Ok(())
 }
 
-pub fn download_url(url: &str, path: &Path, extract: bool) -> Result<(), String> {
+pub fn download_zip(url: &str, path: &Path) -> Result<(), String> {
     let client = reqwest::blocking::Client::new();
     let response = client.get(url).send().map_err(|e| format!("{}", e))?;
 
@@ -415,37 +383,33 @@ pub fn download_url(url: &str, path: &Path, extract: bool) -> Result<(), String>
     (|| -> Result<(), Box<dyn std::error::Error>> {
         let data = response.bytes()?;
 
-        if extract {
-            let mut file = tempfile::tempfile()?;
-            file.write_all(&data)?;
+        let mut file = tempfile::tempfile()?;
+        file.write_all(&data)?;
 
-            let mut zip = zip::read::ZipArchive::new(file)?;
+        let mut zip = zip::read::ZipArchive::new(file)?;
 
-            let tempdir = tempfile::tempdir()?;
+        let tempdir = tempfile::tempdir()?;
 
-            std::fs::create_dir_all(&tempdir)?;
-            zip.extract(&tempdir)?;
+        std::fs::create_dir_all(&tempdir)?;
+        zip.extract(&tempdir)?;
 
-            let entries = tempdir
-                .as_ref()
-                .read_dir()?
-                .filter_map(|e| e.ok())
-                .collect::<Vec<_>>();
+        let entries = tempdir
+            .as_ref()
+            .read_dir()?
+            .filter_map(|e| e.ok())
+            .collect::<Vec<_>>();
 
-            // Flatten zip containing a single directory
-            if entries.len() == 1 {
-                let entry = entries.first().unwrap().path();
+        // Flatten zip containing a single directory
+        if entries.len() == 1 {
+            let entry = entries.first().unwrap().path();
 
-                if entry.is_dir() {
-                    copy_dir(entry, path)?;
-                    return Ok(());
-                }
+            if entry.is_dir() {
+                copy_dir(entry, path)?;
+                return Ok(());
             }
-
-            copy_dir(tempdir, path)?;
-        } else {
-            std::fs::write(path, data)?;
         }
+
+        copy_dir(tempdir, path)?;
 
         Ok(())
     })()

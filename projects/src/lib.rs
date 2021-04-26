@@ -10,7 +10,6 @@ pub use resolve::*;
 
 pub use wipple_loading::*;
 
-use std::path::PathBuf;
 use wipple::*;
 use wipple_plugins::*;
 
@@ -34,19 +33,12 @@ pub fn setup() {
     env.borrow_mut().set_variable(
         "load-plugin!",
         Value::of(Function::new(|value, env, stack| {
-            let path = value
+            let path_string = value
                 .evaluate(env, stack)?
                 .get_or::<Text>("Expected a path to a .wplplugin file", env, stack)?
                 .text;
 
-            let path = PathBuf::from(path);
-
-            if !path.exists() {
-                return Err(Return::error(
-                    &format!("Cannot find plugin at '{}'", path.to_string_lossy()),
-                    stack,
-                ));
-            }
+            let path = resolve(&path_string, stack)?;
 
             load_plugin(path, env, stack)
         })),
