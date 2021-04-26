@@ -420,8 +420,29 @@ pub fn download_url(url: &str, path: &Path, extract: bool) -> Result<(), String>
             file.write_all(&data)?;
 
             let mut zip = zip::read::ZipArchive::new(file)?;
-            std::fs::create_dir_all(path)?;
-            zip.extract(path)?;
+
+            let tempdir = tempfile::tempdir()?;
+
+            std::fs::create_dir_all(&tempdir)?;
+            zip.extract(&tempdir)?;
+
+            let entries = tempdir
+                .as_ref()
+                .read_dir()?
+                .filter_map(|e| e.ok())
+                .collect::<Vec<_>>();
+
+            // Flatten zip containing a single directory
+            if entries.len() == 1 {
+                let entry = entries.first().unwrap().path();
+
+                if entry.is_dir() {
+                    copy_dir(entry, path)?;
+                    return Ok(());
+                }
+            }
+
+            copy_dir(tempdir, path)?;
         } else {
             std::fs::write(path, data)?;
         }
