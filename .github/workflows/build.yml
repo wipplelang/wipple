@@ -21,9 +21,12 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
+      - id: short_sha
+        run: echo "::set-output name=short_sha::$(git rev-parse --short HEAD)"
+
       - uses: ncipollo/release-action@v1
         with:
-          name: Wipple Development Snapshot
+          name: Wipple Development Snapshot (${{ steps.short_sha.outputs.short_sha }})
           tag: 0.0.0-dev-${{ github.sha }}
           omitBody: true
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -53,7 +56,7 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             target
-          key: ${{ matrix.os }}-cargo
+          key: ${{ matrix.os }}-${{ matrix.target }}
 
       - run: ./scripts/build.sh ${{ matrix.target }}
 
