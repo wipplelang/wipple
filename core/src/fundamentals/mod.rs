@@ -14,4 +14,4 @@ pub use traits::*;
 pub use validation::*;
 pub use values::*;
 
-pub type Result<T = Value> = std::result::Result<T, ReturnState>;
+pub type Result<T = Value> = std::result::Result<T, Return>;

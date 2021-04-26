@@ -24,10 +24,7 @@ fn run() -> i32 {
     match args {
         Args::Run(run) => {
             if let Err(state) = run.run() {
-                eprintln!(
-                    "{}",
-                    state.into_error(&wipple::Stack::new()).to_string().red()
-                );
+                eprintln!("{}", state.red());
                 return 1;
             }
         }

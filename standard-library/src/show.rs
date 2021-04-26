@@ -8,10 +8,10 @@ fn_wrapper_struct! {
 impl Default for ShowFn {
     fn default() -> Self {
         ShowFn::new(|_, _, stack| {
-            Err(ReturnState::Error(Error::new(
+            Err(Return::error(
                 "Cannot use 'show' because this runtime does not handle output",
                 stack,
-            )))
+            ))
         })
     }
 }

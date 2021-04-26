@@ -43,10 +43,10 @@ impl Module {
                         let validated_value = match validation(&value, env, stack)? {
                             Validated::Valid(value) => value,
                             Validated::Invalid => {
-                                return Err(ReturnState::Error(Error::new(
+                                return Err(Return::error(
                                     "Cannot use this value to represent this variant",
                                     stack,
-                                )))
+                                ))
                             }
                         };
 
@@ -89,10 +89,10 @@ fn setup_variant_block(
 ) {
     *env.borrow_mut().handle_assign() = HandleAssignFn::new(move |left, right, env, stack| {
         if variants.borrow().contains_key(&left.name) {
-            return Err(ReturnState::Error(Error::new(
+            return Err(Return::error(
                 "Cannot have two variants with the same name",
                 stack,
-            )));
+            ));
         }
 
         let list = right.get_or::<List>("Expected list of validations for variant", env, stack)?;
@@ -164,10 +164,10 @@ pub(crate) fn setup(env: &mut Environment) {
 
                 variants.take()
             } else {
-                return Err(ReturnState::Error(Error::new(
+                return Err(Return::error(
                     "Expected list or module containing variants",
                     stack,
-                )));
+                ));
             };
 
             let variant = Module::for_variant(variants);
@@ -198,10 +198,10 @@ pub(crate) fn setup(env: &mut Environment) {
 
                 let mut r#match = match matches.get(&variant.name) {
                     Some(value) => value.evaluate(env, stack),
-                    None => Err(ReturnState::Error(Error::new(
+                    None => Err(Return::error(
                         &format!("No match for variant '{}'", variant.name),
                         stack,
-                    ))),
+                    )),
                 }?;
 
                 for value in variant.associated_values.clone() {

@@ -10,12 +10,8 @@ pub fn load_plugin(
     env: &wipple::EnvironmentRef,
     stack: &wipple::Stack,
 ) -> wipple::Result {
-    let convert_error = |error| {
-        wipple::ReturnState::Error(wipple::Error::new(
-            &format!("Error loading plugin: {}", error),
-            &stack,
-        ))
-    };
+    let convert_error =
+        |error| wipple::Return::error(&format!("Error loading plugin: {}", error), &stack);
 
     let lib = Library::open(path).map_err(convert_error)?;
     let plugin: PluginFn = *unsafe { lib.symbol("_wipple_plugin") }.map_err(convert_error)?;

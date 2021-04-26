@@ -7,11 +7,11 @@ pub fn resolve(module_name: &str, stack: &Stack) -> Result<PathBuf> {
     let base = if module_name.starts_with("./") || module_name.starts_with("../") {
         current_file_in(stack)
             .0
-            .ok_or_else(|| ReturnState::Error(Error::new("Current file is not set", stack)))
+            .ok_or_else(|| Return::error("Current file is not set", stack))
     } else {
         project_root_in(stack)
             .0
-            .ok_or_else(|| ReturnState::Error(Error::new("Project root is not set", stack)))
+            .ok_or_else(|| Return::error("Project root is not set", stack))
     }?;
 
     let path = base.join(module_name);
@@ -21,9 +21,9 @@ pub fn resolve(module_name: &str, stack: &Stack) -> Result<PathBuf> {
     } else if let Some(path) = Some(path.with_extension("wpl")).filter(|p| p.exists()) {
         Ok(path)
     } else {
-        Err(ReturnState::Error(Error::new(
+        Err(Return::error(
             &format!("Cannot find module '{}'", module_name),
             stack,
-        )))
+        ))
     }
 }

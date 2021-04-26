@@ -27,6 +27,13 @@ pub struct Bundle {
 
 impl Bundle {
     pub fn run(&self) -> Result<(), String> {
+        if self.output_path.exists() {
+            return Err(format!(
+                "Error: Output path '{}' already exists",
+                self.output_path.to_string_lossy()
+            ));
+        }
+
         let path = self
             .project_path
             .clone()
@@ -41,29 +48,45 @@ impl Bundle {
 
         println!("Preparing project for bundling");
 
-        // SAFETY: This is the only location where this value is set, and it
-        // always happens before it is read in 'wipple_projects::load_project'
-        unsafe { wipple_projects::IS_BUNDLING = true };
-
-        (|| -> wipple::Result<()> {
+        let tempdir = (|| -> Result<_, Box<dyn std::error::Error>> {
+            let tempdir = tempfile::tempdir()?;
             let stack = wipple_bundled_interpreter::setup()?;
-            wipple_projects::load_project(&path.join("project.wpl"), &stack)?;
-            Ok(())
+
+            let dependencies_path = tempdir.as_ref().join("dependencies");
+
+            let project = wipple_projects::Project::from_file(&path.join("project.wpl"), &stack)?;
+
+            let dependencies = project.update_dependencies(
+                &dependencies_path,
+                &|| println!("Updating dependencies"),
+                &stack,
+            )?;
+
+            let mut parsed_project = project.parse(dependencies);
+
+            let project_path = tempdir.as_ref().join("project");
+            parsed_project.path = PathBuf::from("project/project.wpl");
+            parsed_project.change_dependency_paths(&|path| {
+                path.strip_prefix(&dependencies_path).unwrap().to_path_buf()
+            });
+
+            let project_file = std::fs::File::create(tempdir.as_ref().join("project.json"))?;
+            serde_json::to_writer(project_file, &parsed_project)?;
+
+            wipple_projects::copy_dir(path, project_path)?;
+
+            Ok(tempdir)
         })()
-        .map_err(|e| {
-            format!(
-                "Error preparing project: {}",
-                e.into_error(&wipple::Stack::new())
-            )
-        })?;
+        .map_err(|e| format!("Error preparing project: {}", e))?;
 
         let mut zip_data = Vec::new();
 
         let mut zip = ZipWriter::new(std::io::Cursor::new(&mut zip_data));
-        zip.create_from_directory(&path)
-            .map_err(|e| format!("Error: Could not bundle project: {}", e))?;
+        zip.create_from_directory(&tempdir.as_ref().to_path_buf())
+            .map_err(|e| format!("Error bundling project: {}", e))?;
 
         drop(zip);
+        drop(tempdir);
 
         let mut interpreter = if let Some(path) = &self.interpreter_path {
             println!(

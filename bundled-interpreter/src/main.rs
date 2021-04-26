@@ -1,6 +1,6 @@
 use colored::Colorize;
 use std::process::exit;
-use wipple::*;
+use wipple_projects::{set_dependency_path_in, ParsedProject};
 
 fn main() {
     exit(run())
@@ -12,25 +12,33 @@ fn run() -> i32 {
             .expect("Could not open current executable");
 
     let tempdir = tempfile::tempdir()
-        .expect("Could not create temporary folder to extract bundled data into")
-        .into_path();
+        .expect("Could not create temporary folder to extract bundled data into");
 
     let mut zip = zip::ZipArchive::new(current_exe).expect("Could not load bundle");
 
     zip.extract(&tempdir).expect("Could not extract bundle");
 
-    // SAFETY: This is the only location where this value is set, and it
-    // always happens before it is read in 'wipple_projects::load_project'
-    unsafe { wipple_projects::IS_RUNNING_BUNDLED = true };
+    let dependency_path = tempdir.as_ref().join("dependencies");
+
+    let project_file = std::fs::File::open(tempdir.as_ref().join("project.json"))
+        .expect("Could not open bundled project manifest");
+
+    let mut project: ParsedProject =
+        serde_json::from_reader(project_file).expect("Could not parse bundled project manifest");
+
+    project.path = tempdir.as_ref().join(project.path.clone());
+    project.change_dependency_paths(&|path| dependency_path.join(path));
 
     let load = || -> wipple::Result<()> {
-        let stack = wipple_bundled_interpreter::setup()?;
-        wipple_projects::load_project(&tempdir.join("project.wpl"), &stack)?;
+        let mut stack = wipple_bundled_interpreter::setup()?;
+        set_dependency_path_in(&mut stack, &dependency_path);
+        project.register();
+        project.run(&stack)?;
         Ok(())
     };
 
     if let Err(error) = load() {
-        eprintln!("{}", error.into_error(&Stack::new()).to_string().red());
+        eprintln!("{}", error.as_error().to_string().red());
         return 1;
     }
 

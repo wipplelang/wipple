@@ -1,10 +1,8 @@
-mod dependencies;
 mod load;
 mod new;
 mod project;
 mod resolve;
 
-pub use dependencies::*;
 pub use load::*;
 pub use new::*;
 pub use project::*;
@@ -44,10 +42,10 @@ pub fn setup() {
             let path = PathBuf::from(path);
 
             if !path.exists() {
-                return Err(ReturnState::Error(Error::new(
+                return Err(Return::error(
                     &format!("Cannot find plugin at '{}'", path.to_string_lossy()),
                     stack,
-                )));
+                ));
             }
 
             load_plugin(path, env, stack)

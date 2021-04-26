@@ -58,10 +58,7 @@ fn_wrapper_struct! {
 impl Default for HandleAssignFn {
     fn default() -> Self {
         HandleAssignFn::new(|_, _, _, stack| {
-            Err(ReturnState::Error(Error::new(
-                "Cannot assign to variables here",
-                stack,
-            )))
+            Err(Return::error("Cannot assign to variables here", stack))
         })
     }
 }
@@ -78,10 +75,10 @@ fn_wrapper_struct! {
 impl Default for HandleComputedAssignFn {
     fn default() -> Self {
         HandleComputedAssignFn::new(|_, _, _, stack| {
-            Err(ReturnState::Error(Error::new(
+            Err(Return::error(
                 "Cannot assign to computed variables here",
                 stack,
-            )))
+            ))
         })
     }
 }
@@ -119,7 +116,7 @@ impl Name {
         let mut stack = stack.clone();
         stack
             .evaluation_mut()
-            .set(|| format!("Resolving variable '{}'", self.name));
+            .add(|| format!("Resolving variable '{}'", self.name));
 
         match self.resolve_variable_if_present(env) {
             Some(variable) => variable.get_value(env, &stack).map(Some),
@@ -131,13 +128,13 @@ impl Name {
         let mut stack = stack.clone();
         stack
             .evaluation_mut()
-            .set(|| format!("Resolving variable '{}'", self.name));
+            .add(|| format!("Resolving variable '{}'", self.name));
 
         self.resolve_variable_if_present(env).ok_or_else(|| {
-            ReturnState::Error(Error::new(
+            Return::error(
                 &format!("Name '{}' does not refer to a variable", self.name),
                 &stack,
-            ))
+            )
         })
     }
 

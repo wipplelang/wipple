@@ -21,10 +21,10 @@ pub(crate) fn setup(env: &mut Environment) {
             let value = match validated {
                 Validated::Valid(value) => value,
                 Validated::Invalid => {
-                    return Err(ReturnState::Error(Error::new(
+                    return Err(Return::error(
                         "Cannot use this value as input to this closure",
                         stack,
-                    )))
+                    ))
                 }
             };
 

@@ -5,6 +5,7 @@ edition = "2018"
 
 [dependencies]
 colored = "2.0.0"
+serde_json = "1.0.64"
 tempfile = "3.2.0"
 wipple = { path = "../core" }
 wipple_projects = { path = "../projects" }

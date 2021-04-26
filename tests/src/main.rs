@@ -195,7 +195,7 @@ fn test(code: &str) -> (String, std::time::Duration) {
         &Environment::global(),
         &stack,
     ) {
-        output.replace(vec![error.into_error(&stack).to_string()]);
+        output.replace(vec![error.as_error().to_string()]);
     }
 
     let output = output.borrow().join("\n");

@@ -1,9 +1,13 @@
 use crate::*;
+use serde::{Deserialize, Serialize};
 use std::{
-    cell::RefCell,
+    collections::hash_map::DefaultHasher,
     collections::HashMap,
+    error::Error,
+    hash::{Hash, Hasher},
+    io::Write,
     path::{Path, PathBuf},
-    rc::Rc,
+    result::Result,
 };
 use wipple::*;
 
@@ -14,81 +18,159 @@ pub struct ProjectRoot(pub Option<PathBuf>);
 
 stack_key!(pub project_root for ProjectRoot);
 
-thread_local! {
-    static PROJECT_ENVS: Rc<RefCell<HashMap<PathBuf, EnvironmentRef>>> = Default::default();
+#[derive(TypeInfo, Debug, Clone, Default)]
+pub struct DependencyPath(pub Option<PathBuf>);
+
+stack_key!(_dependency_path for DependencyPath);
+
+pub fn dependency_path_in(stack: &Stack) -> wipple::Result<PathBuf> {
+    _dependency_path_in(stack)
+        .0
+        .ok_or_else(|| Return::error("Dependency path not set", stack))
 }
 
-pub static mut IS_BUNDLING: bool = false;
-pub static mut IS_RUNNING_BUNDLED: bool = false;
+pub fn set_dependency_path_in(stack: &mut Stack, path: &Path) {
+    *_dependency_path_mut_in(stack) = DependencyPath(Some(path.to_path_buf()))
+}
+
+ref_thread_local! {
+    pub static managed PROJECT_ENVS: HashMap<PathBuf, EnvironmentRef> = HashMap::new();
+    pub static managed DEPENDENCIES: HashMap<PathBuf, ParsedProject> = HashMap::new();
+}
+
+pub fn project_env_for_path(path: &Path) -> EnvironmentRef {
+    PROJECT_ENVS
+        .borrow_mut()
+        .entry(path.to_path_buf())
+        .or_insert_with(|| Environment::child_of(&Environment::global()).into_ref())
+        .clone()
+}
 
 pub fn project_env_in(stack: &Stack) -> EnvironmentRef {
     match project_root_in(stack).0 {
-        Some(project_root) => PROJECT_ENVS
-            .with(|x| x.clone())
-            .borrow_mut()
-            .entry(project_root)
-            .or_insert_with(|| Environment::child_of(&Environment::global()).into_ref())
-            .clone(),
+        Some(path) => project_env_for_path(&path),
         None => Environment::global(),
     }
 }
 
-pub fn load_project(path: &Path, stack: &Stack) -> Result<Module> {
-    let mut env = Environment::child_of(&Environment::global());
-    setup_project_file(path, &mut env);
-    let env = env.into_ref();
+#[derive(Clone)]
+pub struct Project {
+    pub path: PathBuf,
+    pub dependencies: HashMap<String, Dependency>,
+    pub main: String,
+}
 
-    let mut stack = stack.clone();
-    stack
-        .evaluation_mut()
-        .set(|| format!("Importing project {}", path.to_string_lossy()));
+impl Project {
+    pub fn from_file(path: &Path, stack: &Stack) -> wipple::Result<Project> {
+        let mut stack = stack.clone();
+        stack
+            .evaluation_mut()
+            .add(|| format!("Loading project '{}'", path.to_string_lossy()));
 
-    let project_root = path.parent().unwrap();
+        let env = Environment::child_of(&project_env_for_path(path)).into_ref();
+        setup_project_env(path.parent().unwrap(), &env);
 
-    *project_root_mut_in(&mut stack) = ProjectRoot(Some(project_root.to_path_buf()));
+        let module = wipple_loading::import_file_with_parent_env(path, &env, &stack)?;
 
-    let project_env = project_env_in(&stack);
-
-    let project_module = import_file_with_parent_env(path, &env, &stack)?;
-
-    if let Some(dependencies) = get_dependencies(&project_module, &env, &stack)? {
-        // SAFETY: This is only set once
-        let is_bundled = unsafe { IS_BUNDLING || IS_RUNNING_BUNDLED };
-
-        let install_dir = if is_bundled {
-            Some(project_root.join("dependencies"))
-        } else {
-            None
-        };
-
-        let paths = update_dependencies(dependencies, install_dir.as_deref(), || {
-            // TODO: Move to CLI
-            println!("Installing dependencies");
-        })
-        .map_err(|error| {
-            ReturnState::Error(Error::new(
-                &format!("Error installing dependencies: {}", error),
-                &stack,
-            ))
-        })?;
-
-        for (name, path) in paths {
-            project_env
-                .borrow_mut()
-                .set_variable(&name, Value::of(Text::new(&path.to_string_lossy())))
-        }
+        parse_project_env(path, &module.env, &stack)
     }
 
-    match get_main_file(&project_module, &env, &stack)? {
-        Some(main_file) => import(&main_file, &stack),
-        None => Ok(Module::new(Environment::blank())),
+    pub fn update_dependencies(
+        &self,
+        install_path: &Path,
+        on_install: &dyn Fn(),
+        stack: &Stack,
+    ) -> Result<HashMap<String, ParsedProject>, Box<dyn Error>> {
+        let mut dependencies = HashMap::new();
+
+        for (name, dependency) in &self.dependencies {
+            let project = dependency.update(install_path, &on_install, stack)?;
+            let subdependencies = project.update_dependencies(install_path, &on_install, stack)?;
+            let parsed_project = project.parse(subdependencies);
+
+            dependencies.insert(name.clone(), parsed_project);
+        }
+
+        Ok(dependencies)
+    }
+
+    pub fn parse(self, dependencies: HashMap<String, ParsedProject>) -> ParsedProject {
+        ParsedProject {
+            path: self.path,
+            dependencies,
+            main: self.main,
+        }
     }
 }
 
-fn setup_project_file(project_path: &Path, env: &mut Environment) {
-    let project_path = project_path.parent().unwrap().to_path_buf();
+#[derive(Clone, Serialize, Deserialize)]
+pub struct ParsedProject {
+    pub path: PathBuf,
+    pub dependencies: HashMap<String, ParsedProject>,
+    pub main: String,
+}
 
-    env.set_variable(
+impl ParsedProject {
+    pub fn root_path(&self) -> &Path {
+        self.path.parent().unwrap()
+    }
+
+    pub fn register(&self) {
+        DEPENDENCIES
+            .borrow_mut()
+            .insert(self.path.clone(), self.clone());
+
+        for dependency in self.dependencies.values() {
+            dependency.register()
+        }
+    }
+
+    pub fn change_dependency_paths(&mut self, change: &dyn Fn(&Path) -> PathBuf) {
+        for dependency in self.dependencies.values_mut() {
+            dependency.path = change(&dependency.path);
+            dependency.change_dependency_paths(change);
+        }
+    }
+
+    pub fn run(&self, stack: &Stack) -> wipple::Result<Module> {
+        let mut stack = stack.clone();
+
+        let project_root_path = self.root_path();
+        *project_root_mut_in(&mut stack) = ProjectRoot(Some(project_root_path.to_path_buf()));
+
+        stack
+            .evaluation_mut()
+            .add(|| format!("Running project '{}'", self.path.to_string_lossy()));
+
+        let project_env = project_env_for_path(project_root_path);
+
+        for (name, project) in &self.dependencies {
+            let path = project.root_path();
+
+            if !path.exists() {
+                return Err(Return::error(
+                    &format!(
+                        "Dependency '{}' is not installed at '{}'",
+                        name,
+                        path.to_string_lossy()
+                    ),
+                    &stack,
+                ));
+            }
+
+            project_env
+                .borrow_mut()
+                .set_variable(name, Value::of(Text::new(&path.to_string_lossy())));
+        }
+
+        import(&self.main, &stack)
+    }
+}
+
+fn setup_project_env(project_root: &Path, env: &EnvironmentRef) {
+    let project_root = project_root.to_path_buf();
+
+    env.borrow_mut().set_variable(
         "path",
         Value::of(Function::new(move |value, env, stack| {
             let path =
@@ -96,23 +178,18 @@ fn setup_project_file(project_path: &Path, env: &mut Environment) {
                     .evaluate(env, stack)?
                     .get_or::<Text>("Expected path text", env, stack)?;
 
-            let path = project_path
+            let path = project_root
                 .join(PathBuf::from(path.text))
                 .canonicalize()
                 .map_err(|error| {
-                    ReturnState::Error(Error::new(
-                        &format!("Error resolving path: {}", error),
-                        stack,
-                    ))
+                    Return::error(&format!("Error resolving path: {}", error), stack)
                 })?;
 
-            Ok(Value::of(Dependency::project(DependencyLocation::Path(
-                path,
-            ))))
+            Ok(Value::of(Dependency::new(DependencyLocation::Path(path))))
         })),
     );
 
-    env.set_variable(
+    env.borrow_mut().set_variable(
         "url",
         Value::of(Function::new(|value, env, stack| {
             let url =
@@ -120,13 +197,13 @@ fn setup_project_file(project_path: &Path, env: &mut Environment) {
                     .evaluate(env, stack)?
                     .get_or::<Text>("Expected URL text", env, stack)?;
 
-            Ok(Value::of(Dependency::project(DependencyLocation::Url(
+            Ok(Value::of(Dependency::new(DependencyLocation::Url(
                 url.text,
             ))))
         })),
     );
 
-    env.set_variable(
+    env.borrow_mut().set_variable(
         "git",
         Value::of(Function::new(|value, env, stack| {
             let repo = value
@@ -138,28 +215,28 @@ fn setup_project_file(project_path: &Path, env: &mut Environment) {
                 let repo = repo.split(' ').collect::<Vec<_>>();
 
                 if repo.len() != 2 {
-                    return Err(ReturnState::Error(Error::new(
+                    return Err(Return::error(
                         "Expected a URL and a branch separated by a space",
                         stack,
-                    )));
+                    ));
                 }
 
                 DependencyLocation::Git {
-                    location: repo[0].to_string(),
+                    url: repo[0].to_string(),
                     branch: Some(repo[1].to_string()),
                 }
             } else {
                 DependencyLocation::Git {
-                    location: repo,
+                    url: repo,
                     branch: None,
                 }
             };
 
-            Ok(Value::of(Dependency::project(git)))
+            Ok(Value::of(Dependency::new(git)))
         })),
     );
 
-    env.set_variable(
+    env.borrow_mut().set_variable(
         "plugin",
         Value::of(Function::new(|value, env, stack| {
             let mut dependency = value.evaluate(env, stack)?.get_or::<Dependency>(
@@ -168,82 +245,206 @@ fn setup_project_file(project_path: &Path, env: &mut Environment) {
                 stack,
             )?;
 
-            dependency.r#type = DependencyType::Plugin;
+            dependency.is_plugin = true;
 
             Ok(Value::of(dependency))
         })),
     );
 
-    env.set_variable("host", Value::of(Text::new(TARGET)));
-
-    // SAFETY: This is only set once
-    let is_bundling = unsafe { IS_BUNDLING };
-
-    env.set_computed_variable("bundling?", move |env, stack| {
-        Name::new(&is_bundling.to_string()).resolve(env, stack)
-    });
+    env.borrow_mut()
+        .set_variable("target", Value::of(Text::new(TARGET)));
 }
 
-fn get_dependencies(
-    project_module: &Module,
+fn parse_project_env(
+    project_path: &Path,
     env: &EnvironmentRef,
     stack: &Stack,
-) -> Result<Option<HashMap<String, Dependency>>> {
-    let mut stack = stack.clone();
-    stack
-        .evaluation_mut()
-        .set(|| String::from("Updating dependencies"));
-
-    let dependencies_value =
-        match Name::new("dependencies").resolve_if_present(&project_module.env, &stack)? {
-            Some(dependencies) => dependencies,
-            None => return Ok(None),
-        };
-
-    let dependencies_module = dependencies_value.get_or::<Module>(
-        "Expected a module containing dependencies",
-        env,
-        &stack,
-    )?;
-
-    let mut dependencies = HashMap::new();
-
-    for (name, dependency_variable) in dependencies_module.env.borrow_mut().variables().0.clone() {
+) -> wipple::Result<Project> {
+    let dependencies = (|| {
         let mut stack = stack.clone();
         stack
             .evaluation_mut()
-            .set(|| format!("Parsing dependency '{}'", name));
+            .add(|| String::from("Updating dependencies"));
 
-        let dependency = dependency_variable
-            .get_value(env, &stack)?
-            .get_or::<Dependency>("Expected dependency", env, &stack)?;
+        let dependencies_value = match Name::new("dependencies").resolve_if_present(&env, &stack)? {
+            Some(dependencies) => dependencies,
+            None => return Ok(HashMap::new()),
+        };
 
-        dependencies.insert(name.clone(), dependency);
-    }
+        let dependencies_module = dependencies_value.get_or::<Module>(
+            "Expected a module containing dependencies",
+            env,
+            &stack,
+        )?;
 
-    Ok(Some(dependencies))
+        let mut dependencies = HashMap::new();
+
+        for (name, dependency_variable) in
+            dependencies_module.env.borrow_mut().variables().0.clone()
+        {
+            let mut stack = stack.clone();
+            stack
+                .evaluation_mut()
+                .add(|| format!("Parsing dependency '{}'", name));
+
+            let dependency = dependency_variable
+                .get_value(env, &stack)?
+                .get_or::<Dependency>("Expected dependency", env, &stack)?;
+
+            dependencies.insert(name.clone(), dependency);
+        }
+
+        Ok(dependencies)
+    })()?;
+
+    let main = (|| {
+        let mut stack = stack.clone();
+        stack.evaluation_mut().add(|| {
+            format!(
+                "Resolving main file in project '{}'",
+                project_path.to_string_lossy()
+            )
+        });
+
+        let main = Name::new("main").resolve(&env, &stack)?.get_or::<Text>(
+            "Expected a Text value containing the path to the main file",
+            env,
+            &stack,
+        )?;
+
+        Ok(main.text)
+    })()?;
+
+    Ok(Project {
+        path: project_path.to_path_buf(),
+        dependencies,
+        main,
+    })
 }
 
-fn get_main_file(
-    project_module: &Module,
-    env: &EnvironmentRef,
-    stack: &Stack,
-) -> Result<Option<String>> {
-    let mut stack = stack.clone();
-    stack
-        .evaluation_mut()
-        .set(|| String::from("Resolving main file in project"));
+#[derive(TypeInfo, Clone, Hash)]
+pub struct Dependency {
+    pub location: DependencyLocation,
+    pub is_plugin: bool,
+}
 
-    let path_value = match Name::new("main").resolve_if_present(&project_module.env, &stack)? {
-        Some(value) => value,
-        None => return Ok(None),
-    };
+primitive!(pub dependency for Dependency);
 
-    let path = path_value.get_or::<Text>(
-        "Expected a Text value containing the path to the main file",
-        env,
-        &stack,
-    )?;
+impl Dependency {
+    pub fn new(location: DependencyLocation) -> Self {
+        Dependency {
+            location,
+            is_plugin: false,
+        }
+    }
+}
 
-    Ok(Some(path.text))
+#[derive(Clone, Hash)]
+pub enum DependencyLocation {
+    Url(String),
+    Git { url: String, branch: Option<String> },
+    Path(PathBuf),
+}
+
+impl Dependency {
+    pub fn update(
+        &self,
+        install_path: &Path,
+        on_install: impl FnOnce(),
+        stack: &Stack,
+    ) -> Result<Project, Box<dyn Error>> {
+        use DependencyLocation::*;
+
+        let path = self.location.cache_path(install_path);
+
+        if path.exists() && !matches!(self.location, Path(_)) {
+            return project_file_in(&path, stack);
+        }
+
+        on_install();
+
+        match &self.location {
+            Path(dependency_path) => copy_dir(dependency_path, &path)?,
+            Url(url) => download_url(url, &path, !self.is_plugin)?,
+            Git { url, branch } => download_git(url, branch.as_deref(), &path)?,
+        }
+
+        project_file_in(&path, stack)
+    }
+}
+
+fn project_file_in(path: &Path, stack: &Stack) -> Result<Project, Box<dyn Error>> {
+    let project_path = path.join("project.wpl");
+    let project = Project::from_file(&project_path, stack)?;
+    Ok(project)
+}
+
+impl DependencyLocation {
+    pub fn cache_path(&self, base: &Path) -> PathBuf {
+        let mut hasher = DefaultHasher::new();
+        self.hash(&mut hasher);
+        let hash = hasher.finish();
+
+        base.join(&hash.to_string())
+    }
+}
+
+/// https://stackoverflow.com/a/65192210/5569234
+pub fn copy_dir(src: impl AsRef<Path>, dst: impl AsRef<Path>) -> std::io::Result<()> {
+    std::fs::create_dir_all(&dst)?;
+    for entry in std::fs::read_dir(src)? {
+        let entry = entry?;
+        let ty = entry.file_type()?;
+        if ty.is_dir() {
+            copy_dir(entry.path(), dst.as_ref().join(entry.file_name()))?;
+        } else {
+            std::fs::copy(entry.path(), dst.as_ref().join(entry.file_name()))?;
+        }
+    }
+    Ok(())
+}
+
+pub fn download_url(url: &str, path: &Path, extract: bool) -> Result<(), String> {
+    let client = reqwest::blocking::Client::new();
+    let response = client.get(url).send().map_err(|e| format!("{}", e))?;
+
+    if !response.status().is_success() {
+        return Err("Server sent error response".to_string());
+    }
+
+    (|| -> Result<(), Box<dyn std::error::Error>> {
+        let data = response.bytes()?;
+
+        if extract {
+            let mut file = tempfile::tempfile()?;
+            file.write_all(&data)?;
+
+            let mut zip = zip::read::ZipArchive::new(file)?;
+            std::fs::create_dir_all(path)?;
+            zip.extract(path)?;
+        } else {
+            std::fs::write(path, data)?;
+        }
+
+        Ok(())
+    })()
+    .map_err(|e| format!("{}", e))?;
+
+    Ok(())
+}
+
+pub fn download_git(
+    url: &str,
+    branch: Option<&str>,
+    dir: &Path,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let mut repo = git2::build::RepoBuilder::new();
+
+    if let Some(branch) = branch {
+        repo.branch(branch);
+    }
+
+    repo.clone(url, dir)?;
+
+    Ok(())
 }

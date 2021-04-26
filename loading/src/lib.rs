@@ -26,9 +26,13 @@ pub fn import_program_with_parent_env(
 ) -> Result<Module> {
     let mut stack = stack.clone();
     *current_file_mut_in(&mut stack) = CurrentFile(path.map(|p| p.to_path_buf()));
-    stack
-        .evaluation_mut()
-        .set(|| String::from("Importing program"));
+    stack.evaluation_mut().add(|| {
+        if let Some(path) = path {
+            format!("Importing {}", path.to_string_lossy())
+        } else {
+            String::from("Importing program")
+        }
+    });
 
     let result = Value::of(program).evaluate(&env, &stack)?;
 
@@ -46,7 +50,7 @@ pub fn include_file(path: &Path, env: &EnvironmentRef, stack: &Stack) -> Result 
     *current_file_mut_in(&mut stack) = CurrentFile(Some(path.to_path_buf()));
     stack
         .evaluation_mut()
-        .set(|| format!("Including file {}", path.to_string_lossy()));
+        .add(|| format!("Including file {}", path.to_string_lossy()));
 
     let program = load_file(path, &stack)?;
     include_program(program, env, &stack)
@@ -56,7 +60,7 @@ pub fn include_program(program: Block, env: &EnvironmentRef, stack: &Stack) -> R
     let mut stack = stack.clone();
     stack
         .evaluation_mut()
-        .set(|| String::from("Including program"));
+        .add(|| String::from("Including program"));
 
     program.reduce_inline(env, &stack)
 }
@@ -66,13 +70,13 @@ pub fn load_file(path: &Path, stack: &Stack) -> Result<Block> {
     let mut stack = stack.clone();
     stack
         .evaluation_mut()
-        .set(|| format!("Loading file {}", path.to_string_lossy()));
+        .add(|| format!("Loading file {}", path.to_string_lossy()));
 
     let code = fs::read_to_string(path).map_err(|error| {
-        ReturnState::Error(Error::new(
+        Return::error(
             &format!("Error loading file {}: {}", path.to_string_lossy(), error),
             &stack,
-        ))
+        )
     })?;
 
     load_string(&code, Some(path), &stack)
@@ -83,9 +87,9 @@ pub fn load_string(code: &str, path: Option<&Path>, stack: &Stack) -> Result<Blo
 
     let ast =
         wipple_parser::parse_file(&mut tokens.iter().peekable(), &lookup).map_err(|error| {
-            ReturnState::Error(Error::new(&format!("Parse error: {}", error.message), &{
+            Return::error(&format!("Parse error: {}", error.message), &{
                 let mut stack = stack.clone();
-                stack.evaluation_mut().set_location(
+                stack.evaluation_mut().add_location(
                     || match path {
                         Some(path) => format!("Parsing file {}", path.to_string_lossy()),
                         None => String::from("Parsing input"),
@@ -97,7 +101,7 @@ pub fn load_string(code: &str, path: Option<&Path>, stack: &Stack) -> Result<Blo
                     }),
                 );
                 stack
-            }))
+            })
         })?;
 
     // Wipple programs are always blocks

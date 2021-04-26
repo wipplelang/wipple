@@ -53,7 +53,7 @@ impl EvaluationStack {
         self.recording_enabled = false;
     }
 
-    pub fn set_item(&mut self, item: impl FnOnce() -> StackItem) {
+    pub fn add_item(&mut self, item: impl FnOnce() -> StackItem) {
         if !self.recording_enabled {
             return;
         }
@@ -71,19 +71,19 @@ impl EvaluationStack {
         self.recording_enabled = true;
     }
 
-    pub fn set(&mut self, label: impl FnOnce() -> String) {
-        self.set_item(|| StackItem {
+    pub fn add(&mut self, label: impl FnOnce() -> String) {
+        self.add_item(|| StackItem {
             label: label(),
             location: None,
         })
     }
 
-    pub fn set_location(
+    pub fn add_location(
         &mut self,
         label: impl FnOnce() -> String,
         location: Option<SourceLocation>,
     ) {
-        self.set_item(|| StackItem {
+        self.add_item(|| StackItem {
             label: label(),
             location,
         })
@@ -121,23 +121,45 @@ impl fmt::Display for StackItem {
 }
 
 #[derive(Debug, Clone)]
-pub enum ReturnState {
-    ReturnFromBlock,
-    BreakOutOfLoop,
+pub enum Return {
+    Return(Stack),
+    Break(Stack),
     Error(Error),
 }
 
-impl ReturnState {
-    /// Call when all other return states have made it to the top level to
-    /// convert them into errors.
-    pub fn into_error(self, stack: &Stack) -> Error {
-        match self {
-            ReturnState::ReturnFromBlock => Error::new("'return' outside block", stack),
-            ReturnState::BreakOutOfLoop => Error::new("'break' outside loop", stack),
-            ReturnState::Error(error) => error,
+impl Return {
+    pub fn r#return(stack: &Stack) -> Self {
+        Return::Return(stack.clone())
+    }
+
+    pub fn r#break(stack: &Stack) -> Self {
+        Return::Break(stack.clone())
+    }
+
+    pub fn error(message: &str, stack: &Stack) -> Self {
+        Return::Error(Error::new(message, stack))
+    }
+}
+
+impl Return {
+    /// Call when all other returns have made it to the top level to convert
+    /// them into errors.
+    pub fn as_error(&self) -> Error {
+        match &self {
+            Return::Return(stack) => Error::new("'return' outside block", stack),
+            Return::Break(stack) => Error::new("'break' outside loop", stack),
+            Return::Error(error) => error.clone(),
         }
     }
 }
+
+impl fmt::Display for Return {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.as_error().fmt(f)
+    }
+}
+
+impl std::error::Error for Return {}
 
 #[derive(Debug, Clone)]
 pub struct Error {

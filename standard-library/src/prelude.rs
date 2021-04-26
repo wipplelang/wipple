@@ -78,10 +78,10 @@ pub fn prelude(env: &EnvironmentRef) {
                 let left = match left {
                     VariadicOperatorInput::Single(left) => left,
                     _ => {
-                        return Err(ReturnState::Error(Error::new(
+                        return Err(Return::error(
                             "Expected single value on left side of assignment",
                             stack,
-                        )))
+                        ))
                     }
                 };
 
@@ -116,10 +116,10 @@ pub fn prelude(env: &EnvironmentRef) {
             }
             VariadicOperatorInput::List(left) => {
                 if left.len() != 2 {
-                    return Err(ReturnState::Error(Error::new(
+                    return Err(Return::error(
                         "Expected conformance predicate in the form 'T x', or just 'T' if you don't care about the name",
                         stack,
-                    )));
+                    ));
                 }
 
                 let matching_trait =
@@ -136,10 +136,10 @@ pub fn prelude(env: &EnvironmentRef) {
         let (derived_trait, derived_value) = if matches!(right, VariadicOperatorInput::Single(_))
             || matches!(&right, VariadicOperatorInput::List(items) if items.len() != 2)
         {
-            return Err(ReturnState::Error(Error::new(
+            return Err(Return::error(
                 "Expected a value to derive and its trait",
                 stack,
-            )));
+            ));
         } else if let VariadicOperatorInput::List(right) = right {
             let derived_trait =
                 right[0]
@@ -184,12 +184,7 @@ pub fn prelude(env: &EnvironmentRef) {
             VariadicOperatorInput::Single(parameter) => {
                 parameter.get_or::<Name>("Template parameter must be a name", env, stack)?
             }
-            _ => {
-                return Err(ReturnState::Error(Error::new(
-                    "Expected template parameter",
-                    stack,
-                )))
-            }
+            _ => return Err(Return::error("Expected template parameter", stack)),
         };
 
         Ok(Value::of(Template {
@@ -225,12 +220,7 @@ pub fn prelude(env: &EnvironmentRef) {
 
                 (validation, parameter)
             }
-            _ => {
-                return Err(ReturnState::Error(Error::new(
-                    "Expected closure parameter",
-                    stack,
-                )))
-            }
+            _ => return Err(Return::error("Expected closure parameter", stack)),
         };
 
         let captured_env = env.clone();
@@ -264,10 +254,7 @@ pub fn prelude(env: &EnvironmentRef) {
 
         match validation(&value, env, stack)? {
             Validated::Valid(value) => Ok(value),
-            Validated::Invalid => Err(ReturnState::Error(Error::new(
-                "Value does not satisfy validation",
-                stack,
-            ))),
+            Validated::Invalid => Err(Return::error("Value does not satisfy validation", stack)),
         }
     });
 
@@ -357,7 +344,7 @@ pub fn prelude(env: &EnvironmentRef) {
         /,
         multiplication_precedence_group,
         |_, right, stack| if right == &BigDecimal::zero() {
-            Err(ReturnState::Error(Error::new("Cannot divide by 0", stack)))
+            Err(Return::error("Cannot divide by 0", stack))
         } else {
             Ok(())
         }
@@ -493,10 +480,7 @@ pub fn prelude(env: &EnvironmentRef) {
 
         let ast = wipple_parser::parse_inline_program(&mut tokens.iter().peekable(), &lookup)
             .map_err(|error| {
-                wipple::ReturnState::Error(wipple::Error::new(
-                    &format!("Error parsing: {}", error.message),
-                    stack,
-                ))
+                wipple::Return::error(&format!("Error parsing: {}", error.message), stack)
             })?;
 
         let program = wipple_parser::convert(&ast, None);

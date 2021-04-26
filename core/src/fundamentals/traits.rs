@@ -58,7 +58,7 @@ impl Value {
         stack: &Stack,
     ) -> Result {
         self.get_trait_if_present(r#trait, env, stack)?
-            .ok_or_else(|| ReturnState::Error(Error::new(message, stack)))
+            .ok_or_else(|| Return::error(message, stack))
     }
 
     pub fn get_trait_if_present(
@@ -103,20 +103,20 @@ impl Value {
                         let contained_value = match (r#trait.validation)(&derived_value, eval_env, stack)? {
                             Validated::Valid(value) => value,
                             Validated::Invalid => {
-                                return Err(ReturnState::Error(Error::new(
+                                return Err(Return::error(
                                     "Cannot use this value to derive this trait",
                                     stack
-                                )))
+                                ))
                             },
                         };
 
                         Ok(Some(contained_value))
                     }
-                    _ => Err(ReturnState::Error(Error::new(
+                    _ => Err(Return::error(
                         // TODO: Better diagnostics -- list out all of the matching conformances
                         "Multiple conformances match this value, so the conformance to use is ambiguous",
                         stack,
-                    ))),
+                    )),
                 }
             }
 
@@ -137,7 +137,7 @@ impl Value {
         stack: &Stack,
     ) -> Result<T> {
         self.get_if_present(env, stack)?
-            .ok_or_else(|| ReturnState::Error(Error::new(message, stack)))
+            .ok_or_else(|| Return::error(message, stack))
     }
 
     pub fn get_if_present<T: Primitive>(

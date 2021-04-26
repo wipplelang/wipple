@@ -31,7 +31,7 @@ pub fn run(code: &str) -> JsValue {
         Err(state) => InterpreterResult {
             success: false,
             output: None,
-            error: Some(state.into_error(&Stack::new()).to_string()),
+            error: Some(state.as_error().to_string()),
         },
     };
 

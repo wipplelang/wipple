@@ -24,10 +24,10 @@ impl Value {
         let value = match (r#trait.validation)(&value, env, stack)? {
             Validated::Valid(value) => value,
             Validated::Invalid => {
-                return Err(ReturnState::Error(Error::new(
+                return Err(Return::error(
                     "Cannot use this value to represent this trait",
                     stack,
-                )))
+                ))
             }
         };
 
