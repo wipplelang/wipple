@@ -27,13 +27,11 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          key: ${{ runner.os }}-cargo
 
-      - name: Test
-        run: cargo run --bin wipple_tests
+      - run: cargo run --bin wipple_tests
 
-      - name: Publish test results
-        uses: mikepenz/action-junit-report@v2
+      - uses: mikepenz/action-junit-report@v2
         if: always()
         with:
           report_paths: "tests/tests/*.report.xml"
