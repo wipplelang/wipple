@@ -10,7 +10,6 @@ pub use builtins::*;
 pub use fundamentals::*;
 pub use utils::*;
 
-pub use bigdecimal::{self, *};
 pub use dynamic::{self, *};
 pub use ref_thread_local::{self, *};
 

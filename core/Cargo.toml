@@ -8,7 +8,6 @@ debug_cell = ["debug-cell"]
 log_diagnostics = []
 
 [dependencies]
-bigdecimal = "0.2.0"
 debug-cell = { version = "0.1.1", optional = true }
 dynamic = { git = "https://github.com/wipplelang/dynamic" }
 paste = "1.0.4"

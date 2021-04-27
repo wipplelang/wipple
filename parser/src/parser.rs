@@ -1,4 +1,3 @@
-use bigdecimal::BigDecimal;
 use line_col::LineColLookup;
 use std::ops::Range;
 
@@ -42,7 +41,7 @@ pub enum AstNode {
     List(Vec<Ast>),
     Name(String),
     Text(String),
-    Number(BigDecimal),
+    Number(f64),
     Quoted(Box<Ast>),
 }
 

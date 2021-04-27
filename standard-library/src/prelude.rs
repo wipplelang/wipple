@@ -343,7 +343,7 @@ pub fn prelude(env: &EnvironmentRef) {
     math!(
         /,
         multiplication_precedence_group,
-        |_, right, stack| if right == &BigDecimal::zero() {
+        |_, right: &f64, stack| if *right == 0.0 {
             Err(Return::error("Cannot divide by 0", stack))
         } else {
             Ok(())
@@ -351,22 +351,15 @@ pub fn prelude(env: &EnvironmentRef) {
     );
 
     macro_rules! boolean_math {
-        ($operation:tt, $precedence_group:ident, $prelude_env:expr) => {
-            boolean_math!(stringify!($operation), $operation, $precedence_group, $prelude_env)
-        };
-        ($name:expr, $operation:tt, $precedence_group:ident, $prelude_env:expr) => {{
+        ($name:expr, $operation:expr, $precedence_group:ident, $prelude_env:expr) => {{
             let stdlib_env = env.clone();
 
             let operator = BinaryOperator::collect(move |left, right, env, stack| {
-                let left = left
-                    .evaluate(env, stack)?
-                    .get::<Number>(env, stack)?;
+                let left = left.evaluate(env, stack)?.get::<Number>(env, stack)?;
 
-                let right = right
-                    .evaluate(env, stack)?
-                    .get::<Number>(env, stack)?;
+                let right = right.evaluate(env, stack)?.get::<Number>(env, stack)?;
 
-                let result = left.number $operation right.number;
+                let result = $operation(left.number, right.number);
 
                 // This will always work because 'true' and 'false' are defined
                 // inside the standard library, which we have full control over
@@ -379,10 +372,8 @@ pub fn prelude(env: &EnvironmentRef) {
 
             add_binary_operator(&operator, &$precedence_group);
 
-            env.borrow_mut().set_variable(
-                $name,
-                Value::of(Operator::Binary(operator)),
-            );
+            env.borrow_mut()
+                .set_variable($name, Value::of(Operator::Binary(operator)));
         }};
     }
 
@@ -391,9 +382,14 @@ pub fn prelude(env: &EnvironmentRef) {
         BinaryPrecedenceGroupComparison::lower_than(&addition_precedence_group),
     );
 
-    boolean_math!(>, comparison_precedence_group, env);
-    boolean_math!(<, comparison_precedence_group, env);
-    boolean_math!("=", ==, comparison_precedence_group, env);
+    boolean_math!(">", |a, b| a > b, comparison_precedence_group, env);
+    boolean_math!("<", |a, b| a < b, comparison_precedence_group, env);
+    boolean_math!(
+        "=",
+        |a: f64, b: f64| (a - b).abs() < f64::EPSILON,
+        comparison_precedence_group,
+        env
+    );
 
     // 'format' function
 

@@ -42,7 +42,7 @@ pub fn convert(ast: &Ast, file: Option<&Path>) -> Value {
         )),
 
         Number(number) => Value::of(wipple::Number::new_located(
-            number.clone(),
+            *number,
             Some(location(&ast.location, file)),
         )),
 

@@ -1,4 +1,3 @@
-use bigdecimal::BigDecimal;
 use line_col::LineColLookup;
 use logos::Logos;
 use snailquote::unescape;
@@ -13,13 +12,13 @@ pub fn lex(code: &str) -> (Vec<(Token, Range<usize>)>, LineColLookup) {
     )
 }
 
-#[derive(Logos, Debug, PartialEq, Eq)]
+#[derive(Logos, Debug, PartialEq)]
 pub enum Token {
     #[regex(r#"[^ \t\n\(\)\[\]{}'"]+"#, |lex| lex.slice().to_string(), priority = 1)]
     Name(String),
 
     #[regex(r"-?[0-9]+(\.[0-9]+)?", |lex| lex.slice().parse(), priority = 2)]
-    Number(BigDecimal),
+    Number(f64),
 
     #[regex(r#""[^\n"]*""#, |lex| unescape(lex.slice()))]
     Text(String),
