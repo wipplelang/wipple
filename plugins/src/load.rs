@@ -16,6 +16,9 @@ pub fn load_plugin(
     let lib = Library::open(path).map_err(convert_error)?;
     let plugin: PluginFn = *unsafe { lib.symbol("_wipple_plugin") }.map_err(convert_error)?;
 
+    // HACK: keep the library loaded for now
+    std::mem::forget(lib);
+
     // SAFETY: Need to bind to a variable to prevent premature deallocation of
     // the returned result
     let result = plugin(env, stack);
