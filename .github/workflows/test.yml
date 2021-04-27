@@ -27,7 +27,9 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             target
-          key: ${{ runner.os }}-tests
+          key: ${{ runner.os }}-tests-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-tests
 
       - run: cargo run --bin wipple_tests
 
