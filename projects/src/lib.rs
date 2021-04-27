@@ -31,11 +31,27 @@ pub fn setup() {
     );
 
     env.borrow_mut().set_variable(
-        "load-plugin!",
+        "include!",
+        Value::of(Function::new(|value, env, stack| {
+            let path = value
+                .evaluate(env, stack)?
+                .get_or::<Text>("Expected a path to a file", env, stack)?
+                .text;
+
+            include(&path, env, stack)
+        })),
+    );
+
+    env.borrow_mut().set_variable(
+        "plugin!",
         Value::of(Function::new(|value, env, stack| {
             let path_string = value
                 .evaluate(env, stack)?
-                .get_or::<Text>("Expected a path to a .wplplugin file", env, stack)?
+                .get_or::<Text>(
+                    "Expected a path to a .wplplugin file, including the extension",
+                    env,
+                    stack,
+                )?
                 .text;
 
             let path = resolve(&path_string, stack)?;

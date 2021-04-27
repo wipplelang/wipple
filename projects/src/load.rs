@@ -8,9 +8,15 @@ pub fn import(module_name: &str, stack: &Stack) -> Result<Module> {
 }
 
 /// Import a file/folder using a module name directly in the current environment
-pub fn include(module_name: &str, env: &EnvironmentRef, stack: &Stack) -> Result<Module> {
+pub fn include(module_name: &str, env: &EnvironmentRef, stack: &Stack) -> Result {
     let path = resolve_module(module_name, stack)?;
-    import_path_with_parent_env(&path, env, stack)
+
+    let mut stack = stack.clone();
+    stack
+        .evaluation_mut()
+        .add(|| format!("Including file '{}'", path.to_string_lossy()));
+
+    include_file(&path, env, &stack)
 }
 
 /// Import a file/folder using a path

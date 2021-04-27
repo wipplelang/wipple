@@ -1,6 +1,8 @@
 use std::{
+    collections::HashMap,
     fs,
     path::{Path, PathBuf},
+    result::Result,
 };
 use wipple::*;
 
@@ -9,13 +11,37 @@ pub struct CurrentFile(pub Option<PathBuf>);
 
 stack_key!(pub current_file for CurrentFile);
 
+ref_thread_local! {
+    static managed CACHED_IMPORTS: HashMap<PathBuf, Module> = HashMap::new();
+}
+
+fn get_cached_import(path: &Path) -> Option<Module> {
+    CACHED_IMPORTS.borrow().get(path).cloned()
+}
+
+fn cache_import(path: &Path, module: Module) {
+    CACHED_IMPORTS
+        .borrow_mut()
+        .insert(path.to_path_buf(), module);
+}
+
+/// Import a file into an environment. If this file has already been imported,
+/// it won't be loaded again and the cached module will be returned.
 pub fn import_file_with_parent_env(
     path: &Path,
     env: &EnvironmentRef,
     stack: &Stack,
-) -> Result<Module> {
-    let program = load_file(path, stack)?;
-    import_program_with_parent_env(program, Some(path), env, stack)
+) -> wipple::Result<Module> {
+    if let Some(module) = get_cached_import(path) {
+        Ok(module)
+    } else {
+        let program = load_file(&path, stack)?;
+        let module = import_program_with_parent_env(program, Some(&path), env, stack)?;
+
+        cache_import(path, module.clone());
+
+        Ok(module)
+    }
 }
 
 pub fn import_program_with_parent_env(
@@ -23,7 +49,7 @@ pub fn import_program_with_parent_env(
     path: Option<&Path>,
     env: &EnvironmentRef,
     stack: &Stack,
-) -> Result<Module> {
+) -> wipple::Result<Module> {
     let mut stack = stack.clone();
     *current_file_mut_in(&mut stack) = CurrentFile(path.map(|p| p.to_path_buf()));
     stack.evaluation_mut().add(|| {
@@ -45,7 +71,7 @@ pub fn import_program_with_parent_env(
     Ok(module)
 }
 
-pub fn include_file(path: &Path, env: &EnvironmentRef, stack: &Stack) -> Result {
+pub fn include_file(path: &Path, env: &EnvironmentRef, stack: &Stack) -> wipple::Result {
     let mut stack = stack.clone();
     *current_file_mut_in(&mut stack) = CurrentFile(Some(path.to_path_buf()));
     stack
@@ -56,7 +82,7 @@ pub fn include_file(path: &Path, env: &EnvironmentRef, stack: &Stack) -> Result 
     include_program(program, env, &stack)
 }
 
-pub fn include_program(program: Block, env: &EnvironmentRef, stack: &Stack) -> Result {
+pub fn include_program(program: Block, env: &EnvironmentRef, stack: &Stack) -> wipple::Result {
     let mut stack = stack.clone();
     stack
         .evaluation_mut()
@@ -66,7 +92,7 @@ pub fn include_program(program: Block, env: &EnvironmentRef, stack: &Stack) -> R
 }
 
 /// Load a Wipple file into a value. Does not evaluate the file.
-pub fn load_file(path: &Path, stack: &Stack) -> Result<Block> {
+pub fn load_file(path: &Path, stack: &Stack) -> wipple::Result<Block> {
     let mut stack = stack.clone();
     stack
         .evaluation_mut()
@@ -82,7 +108,7 @@ pub fn load_file(path: &Path, stack: &Stack) -> Result<Block> {
     load_string(&code, Some(path), &stack)
 }
 
-pub fn load_string(code: &str, path: Option<&Path>, stack: &Stack) -> Result<Block> {
+pub fn load_string(code: &str, path: Option<&Path>, stack: &Stack) -> wipple::Result<Block> {
     let (tokens, lookup) = wipple_parser::lex(&code);
 
     let ast =
