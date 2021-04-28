@@ -58,7 +58,7 @@ impl Block {
 
 fn_wrapper_struct! {
     #[derive(TypeInfo)]
-    pub type ReturnFn(Value, &EnvironmentRef, &Stack) -> Result<()>; // TODO: Use ! instead
+    pub type ReturnFn(Value, &EnvironmentRef, &Stack) -> Result<()>; // TODO: Use Result<!> instead
 }
 
 impl Default for ReturnFn {

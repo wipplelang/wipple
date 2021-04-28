@@ -1,6 +1,8 @@
+mod r#loop;
 mod prelude;
 mod show;
 
+pub use r#loop::*;
 pub use show::*;
 
 use wipple::*;
@@ -13,7 +15,8 @@ struct Asset;
 #[wipple_plugin]
 pub fn setup(env: &EnvironmentRef, stack: &Stack) -> Result {
     prelude::prelude(env);
-    show::setup(&mut env.borrow_mut());
+    show::setup(env);
+    r#loop::setup(env);
 
     for path in Asset::iter() {
         let file = Asset::get(&path).unwrap();

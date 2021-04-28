@@ -12,3 +12,18 @@ show x
 
 Before return ==> Before return
 x ==> foo
+
+>>> Loops
+
+i : 1
+
+x : loop {
+    i : i * 2
+    when (i > 100) (break i)
+}
+
+show x
+
+---
+
+x ==> 128

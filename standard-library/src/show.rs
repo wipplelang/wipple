@@ -18,8 +18,8 @@ impl Default for ShowFn {
 
 stack_key!(pub show for ShowFn);
 
-pub fn setup(env: &mut Environment) {
-    env.set_variable(
+pub fn setup(env: &EnvironmentRef) {
+    env.borrow_mut().set_variable(
         "show",
         Value::of(Function::new(|value, env, stack| {
             show_in(stack)(value, env, stack)?;
