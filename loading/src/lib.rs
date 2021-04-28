@@ -88,7 +88,7 @@ pub fn include_program(program: Block, env: &EnvironmentRef, stack: &Stack) -> w
         .evaluation_mut()
         .add(|| String::from("Including program"));
 
-    program.reduce_inline(env, &stack)
+    program.do_inline(env, &stack)
 }
 
 /// Load a Wipple file into a value. Does not evaluate the file.

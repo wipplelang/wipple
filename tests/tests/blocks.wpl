@@ -1,0 +1,14 @@
+>>> 'return' from blocks
+
+x : do {
+    show "Before return"
+    return 'foo
+    show "After return"
+}
+
+show x
+
+---
+
+Before return ==> Before return
+x ==> foo

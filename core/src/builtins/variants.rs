@@ -160,7 +160,7 @@ pub(crate) fn setup(env: &mut Environment) {
                 let variants = Rc::new(RefCell::new(HashMap::new()));
                 setup_variant_block(variants.clone(), &variant_env);
 
-                block.reduce_inline(&variant_env, stack)?;
+                block.do_inline(&variant_env, stack)?;
 
                 variants.take()
             } else {
@@ -192,7 +192,7 @@ pub(crate) fn setup(env: &mut Environment) {
 
                 setup_match_block(matches.clone(), &match_env);
 
-                block.reduce_inline(&match_env, stack)?;
+                block.do_inline(&match_env, stack)?;
 
                 let matches = matches.take();
 

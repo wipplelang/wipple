@@ -37,7 +37,7 @@ pub fn prelude(env: &EnvironmentRef) {
         "do",
         Value::of(Function::new(|value, env, stack| {
             let block = value.get_or::<Block>("Expected block", env, stack)?;
-            block.reduce(env, stack)
+            block.r#do(env, stack)
         })),
     );
 
@@ -45,7 +45,16 @@ pub fn prelude(env: &EnvironmentRef) {
         "inline",
         Value::of(Function::new(|value, env, stack| {
             let block = value.get_or::<Block>("Expected block", env, stack)?;
-            block.reduce_inline(env, stack)
+            block.do_inline(env, stack)
+        })),
+    );
+
+    env.borrow_mut().set_variable(
+        "return",
+        Value::of(Function::new(|value, env, stack| {
+            let r#return = env.borrow_mut().r#return().clone();
+            r#return(value, env, stack)?;
+            unreachable!() // TODO: Have ReturnFn return a Result<!> instead
         })),
     );
 
@@ -434,7 +443,7 @@ pub fn prelude(env: &EnvironmentRef) {
         "inline-global!",
         Value::of(Function::new(|value, env, stack| {
             let block = value.get_or::<Block>("Expected block", env, stack)?;
-            block.reduce_inline(&Environment::global(), stack)
+            block.do_inline(&Environment::global(), stack)
         })),
     );
 

@@ -19,7 +19,7 @@ impl Module {
 core_primitive!(pub module for Module);
 
 impl Block {
-    pub fn reduce_into_module(&self, env: &EnvironmentRef, stack: &Stack) -> Result {
+    pub fn as_module(&self, env: &EnvironmentRef, stack: &Stack) -> Result {
         // Modules capture their environment
         let module_env = Environment::child_of(env).into_ref();
 
@@ -70,7 +70,7 @@ pub(crate) fn setup(env: &mut Environment) {
     // Block == Evaluate
     env.add_primitive_conformance(|block: Block| {
         // Blocks are evaluated as modules by default
-        EvaluateFn::new(move |env, stack| block.reduce_into_module(env, stack))
+        EvaluateFn::new(move |env, stack| block.as_module(env, stack))
     });
 
     env.set_variable("Module", Value::of(Trait::of::<Module>()));

@@ -24,13 +24,20 @@ impl Block {
 core_primitive!(pub block for Block);
 
 impl Block {
-    pub fn reduce(&self, env: &EnvironmentRef, stack: &Stack) -> Result {
+    pub fn r#do(&self, env: &EnvironmentRef, stack: &Stack) -> Result {
         let block_env = Environment::child_of(env).into_ref();
-        setup_module_block(&block_env);
-        self.reduce_inline(&block_env, stack)
+        setup_do_block(&block_env);
+
+        match self.do_inline(&block_env, stack) {
+            Ok(value) => Ok(value),
+            Err(r#return) => match r#return {
+                Return::Return(value, _) => Ok(value),
+                _ => Err(r#return),
+            },
+        }
     }
 
-    pub fn reduce_inline(&self, env: &EnvironmentRef, stack: &Stack) -> Result {
+    pub fn do_inline(&self, env: &EnvironmentRef, stack: &Stack) -> Result {
         let mut stack = stack.clone();
         stack.evaluation_mut().queue_location(&self.location);
 
@@ -48,6 +55,21 @@ impl Block {
         Ok(result)
     }
 }
+
+fn_wrapper_struct! {
+    #[derive(TypeInfo)]
+    pub type ReturnFn(Value, &EnvironmentRef, &Stack) -> Result<()>; // TODO: Use ! instead
+}
+
+impl Default for ReturnFn {
+    fn default() -> Self {
+        ReturnFn::new(|_, _, stack| Err(Return::error("Cannot use 'return' here", stack)))
+    }
+}
+
+core_env_key!(pub r#return for ReturnFn {
+    visibility: EnvironmentVisibility::Private,
+});
 
 pub(crate) fn setup(env: &mut Environment) {
     env.set_variable("Block", Value::of(Trait::of::<Block>()));
@@ -88,7 +110,7 @@ pub(crate) fn setup(env: &mut Environment) {
         let child_env = Environment::child_of(env).into_ref();
         setup_validation_block(fields.clone(), &child_env);
 
-        block.reduce_inline(&child_env, stack)?;
+        block.do_inline(&child_env, stack)?;
 
         let fields = fields.take();
 
@@ -114,6 +136,15 @@ pub(crate) fn setup(env: &mut Environment) {
 
             Ok(Validated::Valid(Value::of(Module::new(validated_env))))
         })))
+    });
+}
+
+pub fn setup_do_block(env: &EnvironmentRef) {
+    setup_module_block(&env);
+
+    *env.borrow_mut().r#return() = ReturnFn::new(|value, env, stack| {
+        let value = value.evaluate(env, stack)?;
+        Err(Return::r#return(value, stack))
     });
 }
 

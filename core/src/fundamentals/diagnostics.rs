@@ -122,18 +122,18 @@ impl fmt::Display for StackItem {
 
 #[derive(Debug, Clone)]
 pub enum Return {
-    Return(Stack),
-    Break(Stack),
+    Return(Value, Stack),
+    Break(Value, Stack),
     Error(Error),
 }
 
 impl Return {
-    pub fn r#return(stack: &Stack) -> Self {
-        Return::Return(stack.clone())
+    pub fn r#return(value: Value, stack: &Stack) -> Self {
+        Return::Return(value, stack.clone())
     }
 
-    pub fn r#break(stack: &Stack) -> Self {
-        Return::Break(stack.clone())
+    pub fn r#break(value: Value, stack: &Stack) -> Self {
+        Return::Break(value, stack.clone())
     }
 
     pub fn error(message: &str, stack: &Stack) -> Self {
@@ -146,8 +146,8 @@ impl Return {
     /// them into errors.
     pub fn as_error(&self) -> Error {
         match &self {
-            Return::Return(stack) => Error::new("'return' outside block", stack),
-            Return::Break(stack) => Error::new("'break' outside loop", stack),
+            Return::Return(_, stack) => Error::new("'return' outside block", stack),
+            Return::Break(_, stack) => Error::new("'break' outside loop", stack),
             Return::Error(error) => error.clone(),
         }
     }
