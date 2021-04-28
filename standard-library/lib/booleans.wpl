@@ -7,7 +7,7 @@ if : bool => then => else => match bool {
     false : else
 }
 
-when : bool => then => if bool then ()
+when : bool => then => if bool then _
 
 not : bool -> match bool {
     true : false
