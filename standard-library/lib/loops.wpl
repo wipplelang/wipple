@@ -1,6 +1,5 @@
 while : condition => body => loop {
-    result : _
-    if condition (result : inline body) (break result)
+    if condition (inline body) (break _)
 }
 
 until : condition => while (not condition)
