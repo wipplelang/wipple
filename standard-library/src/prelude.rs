@@ -400,6 +400,18 @@ pub fn prelude(env: &EnvironmentRef) {
         env
     );
 
+    env.borrow_mut().set_variable(
+        "floor",
+        Value::of(Function::new(|value, env, stack| {
+            let number = value
+                .evaluate(env, stack)?
+                .get_or::<Number>("Expected number", env, stack)?
+                .number;
+
+            Ok(Value::of(Number::new(number.floor())))
+        })),
+    );
+
     // 'format' function
 
     env.borrow_mut().set_variable(
