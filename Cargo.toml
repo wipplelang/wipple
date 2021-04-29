@@ -1,15 +1,15 @@
 [workspace]
 members = [
-    "bundled-interpreter",
-    "cli",
     "core",
-    "loading",
     "parser",
-    "playground/interpreter",
-    "plugins",
-    "projects",
+    "plugins/api",
     "standard-library",
     "tests",
+    "tooling/bundled-interpreter",
+    "tooling/cli",
+    "tooling/loading",
+    "tooling/projects",
+    "website/playground/interpreter",
 ]
 
 [profile.release.package.wipple_playground_interpreter]

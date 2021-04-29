@@ -4,5 +4,5 @@ version = "0.0.0"
 edition = "2018"
 
 [dependencies]
-wipple = { path = "../core" }
-wipple_parser = { path = "../parser" }
+wipple = { path = "../../core" }
+wipple_parser = { path = "../../parser" }

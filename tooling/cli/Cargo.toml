@@ -12,10 +12,10 @@ structopt = "0.3.21"
 serde = "1.0.125"
 serde_json = "1.0.64"
 tempfile = "3.2.0"
-wipple = { path = "../core" }
+wipple = { path = "../../core" }
 wipple_bundled_interpreter = { path = "../bundled-interpreter" }
-wipple_parser = { path = "../parser" }
+wipple_parser = { path = "../../parser" }
 wipple_projects = { path = "../projects" }
-wipple_stdlib = { path = "../standard-library" }
+wipple_stdlib = { path = "../../standard-library" }
 zip = "0.5.12"
 zip-extensions = "0.6.0"

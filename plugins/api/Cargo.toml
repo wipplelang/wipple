@@ -4,7 +4,7 @@ version = "0.0.0"
 edition = "2018"
 
 [dependencies]
-wipple = { path = "../core" }
+wipple = { path = "../../core" }
 wipple_plugin_attribute = { path = "./attribute" }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]

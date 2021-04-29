@@ -7,5 +7,5 @@ edition = "2018"
 rust-embed = "5.9.0"
 wipple = { path = "../core" }
 wipple_parser = { path = "../parser" }
-wipple_plugins = { path = "../plugins" }
-wipple_loading = { path = "../loading" }
+wipple_plugins = { path = "../plugins/api" }
+wipple_loading = { path = "../tooling/loading" }

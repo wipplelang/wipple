@@ -3,15 +3,12 @@ on:
   push:
     paths:
       - .github/**
-      - bundled-interpreter/**
-      - cli/**
       - core/**
-      - loading/**
       - parser/**
       - plugins/**
-      - projects/**
       - standard-library/**
       - tests/**
+      - tooling/**
 
 name: Tests
 

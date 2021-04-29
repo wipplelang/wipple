@@ -3,14 +3,11 @@ on:
   push:
     paths:
       - .github/**
-      - bundled-interpreter/**
-      - cli/**
       - core/**
-      - loading/**
       - parser/**
       - plugins/**
-      - projects/**
       - standard-library/**
+      - tooling/**
 
 name: Build
 
@@ -41,12 +38,12 @@ jobs:
           - x86_64-unknown-linux-gnu
           - armv7-unknown-linux-gnueabihf
           - aarch64-unknown-linux-gnu
-        cross:
-          - "true"
+        compiler:
+          - "cross"
         include:
           - os: macos-latest
             target: x86_64-apple-darwin
-            cross: "false"
+            compiler: "cargo"
 
     runs-on: ${{ matrix.os }}
 
@@ -63,7 +60,7 @@ jobs:
           restore-keys: |
             ${{ matrix.os }}-${{ matrix.target }}
 
-      - run: ./scripts/build.sh ${{ matrix.target }} ${{ matrix.cross }}
+      - run: .github/scripts/build.sh ${{ matrix.target }} ${{ matrix.compiler }}
 
       - uses: svenstaro/upload-release-action@v2
         with:
