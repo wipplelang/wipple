@@ -1702,6 +1702,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "wipple_bind"
+version = "0.0.0"
+dependencies = [
+ "wipple",
+]
+
+[[package]]
 name = "wipple_bundled_interpreter"
 version = "0.0.0"
 dependencies = [

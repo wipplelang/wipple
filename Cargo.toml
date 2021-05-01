@@ -3,6 +3,7 @@ members = [
     "core",
     "parser",
     "plugins/api",
+    "plugins/bind",
     "standard-library",
     "tests",
     "tooling/bundled-interpreter",
