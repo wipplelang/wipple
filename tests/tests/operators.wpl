@@ -1,4 +1,4 @@
->>> Partial application
+>>> Partial application of binary operator
 
 increment : + 1
 show (increment 42)
@@ -6,3 +6,13 @@ show (increment 42)
 ---
 
 (increment 42) ==> 43
+
+>>> Partial application of variadic operator
+
+set-x! : (x :)
+set-x! 5
+show x
+
+---
+
+x ==> 5

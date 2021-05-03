@@ -623,9 +623,23 @@ impl List {
                 }
             }
             Operator::Variadic(operator) => {
-                // Take all values from each side of the operator
-                let left = self.items.get(..index).map(|v| v.to_vec());
-                let right = self.items.get((index + 1)..).map(|v| v.to_vec());
+                // Take all values from each side of the operator -- list with 2 values
+                // is partially applied
+
+                macro_rules! take {
+                    ($range:expr) => {{
+                        let items = self.items.get($range).unwrap_or_default();
+
+                        if items.is_empty() {
+                            None
+                        } else {
+                            Some(items.to_vec())
+                        }
+                    }};
+                }
+
+                let left = take!(..index);
+                let right = take!((index + 1)..);
 
                 fn get_variadic_input(items: Vec<Value>) -> VariadicOperatorInput {
                     if items.len() == 1 {
