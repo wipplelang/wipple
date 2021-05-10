@@ -14,7 +14,7 @@ add : a -> b -> a + b
 We've always passed numbers into this function, but technically there's nothing stopping us from passing in anything we want! Let's try passing in two text values:
 
 ```wipple
-add "hello " "world" -- helloworld
+add "hello " "world" -- hello world
 ```
 
 Looks like text can be added together as well! Can we add a text value and a number?
@@ -50,7 +50,7 @@ bob : Person "Bob"
 greet bob
 ```
 
-And... error? How come? Well, we're providing a `Person` value to `greet`, but we probably want to be using the name (ie. the `Text` value) contained _within_ the `Person `value. This use case leads to patterns' other purpose — to provide a new value that does what we need.
+And... error? How come? Well, we're providing a `Person` value to `greet`, but we probably want to be using the name (ie. the `Text` value) contained _within_ the `Person` value. This use case leads to patterns' second purpose — to provide a new value that does what we need.
 
 Traits are patterns that:
 
@@ -75,7 +75,7 @@ Here's a good rule to use:
 
 `is` is just a function that changes a pattern to only perform purpose 1; that is, it makes the pattern only check that a value has a specific representation or behavior, but doesn't provide a new value in its place.
 
-To address why we write `Person : trait Text` instead of `Person : trait (is Text)`: this is due to `Text` being a "primitive" trait. A text value doesn't _contain_ anything, it just _is_ text. `Number`, `Name` and `List` are other "primitive" traits.
+To address why we write `Person : trait Text` instead of `Person : trait (is Text)`: this is due to `Text` being a "primitive" trait. A text value doesn't _contain_ anything, it just _is_ text, so there's no need to use `is` here. (`Number`, `Name` and `List` are other "primitive" traits.)
 
 > In technical terms, a primitive trait is a trait whose pattern is of itself: `T : trait (is T)`.
 

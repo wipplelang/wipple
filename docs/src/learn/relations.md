@@ -1,6 +1,6 @@
 # Relations
 
-Perhaps you've picked up the fact that "closures and modules are functions", "numbers can be added and converted to text", and so on. But wait, aren't `Function`, `Number`, `Add`, and so on, all separate traits? Wipple is supposed to be strict about this!
+Perhaps you've picked up the fact that "closures and modules are functions", "numbers can be added and converted to text", "traits are patterns", and so on. But wait, aren't `Function`, `Number`, `Add`, etc. all separate traits? Wipple is supposed to be strict about this!
 
 Wipple provides a way to **derive** a trait from a value that matches a pattern. This allows you to create relations between parts of your program, like "all numbers can be added". In code, it looks like this:
 
@@ -8,7 +8,7 @@ Wipple provides a way to **derive** a trait from a value that matches a pattern.
 Number == Add
 ```
 
-This reads as "`Number` relates to `Add`", or "the `Add` trait can be derived from `Number` values". The most common relation is one that derives `Text`, to allow `show`ing values:
+This reads as "`Number` derives `Add`", or "the `Add` trait can be derived from `Number` values". The most common relation is one that derives `Text`, to allow `show`ing values:
 
 ```wipple
 Person : trait Text
@@ -72,7 +72,7 @@ Add : trait Function
 add : for Add
 ```
 
-Here, `add` is defined as a function that accepts a value `x` and a value `f` representing the `Function` contained in `Add`, and then calls `f` on `x`:
+Here, `add` is a function that accepts the input to an `Add` function, as well as the `Add` value to use in particular:
 
 ```wipple
 'increment == Add (x -> x + 1)
