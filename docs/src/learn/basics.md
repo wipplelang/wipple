@@ -34,7 +34,7 @@ When writing a decimal number like `.1`, you have to put the `0` in front:
 0.1 -- interpreted as number
 ```
 
-Wipple doesn't store numbers as integers or with floating-point; instead, numbers are stored in base 10 with arbitrary precision. This means Wipple has no weird rounding errors!
+Wipple stores numbers in base 10, just like how they are written in source.
 
 ```wipple
 -- In other languages this would return 0.30000000000000004, in Wipple you get
@@ -62,4 +62,4 @@ two : 2
 three : one + two
 ```
 
-By convention, if a variable name contains multiple words, use dashes to separate them. Names can contain any character, including punctuation, with the exception of parentheses, quotes and brackets. Even `:`, `+` and `->` are variables!
+By convention, if a variable name contains multiple words, use dashes to separate them. Names can contain any character, including punctuation, with the exception of quotes and grouping symbols like parentheses. Even `:`, `+` and `->` are variables!

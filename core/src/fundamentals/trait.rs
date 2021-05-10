@@ -70,34 +70,34 @@ impl Value {
         fn derive(
             r#trait: &Trait,
             value: &Value,
-            conformances_env: &Environment,
+            relations_env: &Environment,
             env: &Environment,
             stack: &Stack,
         ) -> Result<Option<Value>> {
-            // Conformances declared in parent environments take precedence
-            let parent_env = conformances_env.borrow().parent.clone();
+            // Relations declared in parent environments take precedence
+            let parent_env = relations_env.borrow().parent.clone();
             if let Some(parent_env) = parent_env {
                 if let Some(derived_value) = derive(r#trait, value, &parent_env, env, stack)? {
                     return Ok(Some(derived_value));
                 };
             }
 
-            let conformances = conformances_env.borrow_mut().conformances().0.clone();
+            let relations = relations_env.borrow_mut().relations().0.clone();
 
-            // Conformances declared first have a higher precedence
-            for conformance in conformances {
-                if &conformance.derived_trait != r#trait {
+            // Relations declared first have a higher precedence
+            for relation in relations {
+                if &relation.derived_trait != r#trait {
                     continue;
                 }
 
-                if let Some(value) = (conformance.pattern)(value.clone(), env, stack)?.as_valid() {
-                    let derived_value = (conformance.derive_value)(value.clone(), env, stack)?;
+                if let Some(value) = (relation.pattern)(value.clone(), env, stack)?.as_valid() {
+                    let derived_value = (relation.derive_value)(value.clone(), env, stack)?;
 
                     let trait_value = (r#trait.pattern)(derived_value, env, stack)?
                         .into_valid()
                         .ok_or_else(|| {
                             Return::error(
-                                "Value derived from conformance cannot be used to represent the derived trait",
+                                "Value derived from relation cannot be used to represent the derived trait",
                                 stack,
                             )
                         })?;

@@ -103,9 +103,9 @@ pub fn prelude(env: &Environment) {
     assignment_operator!(":", assignment, env);
     assignment_operator!(":>", computed_assignment, env);
 
-    // Conformance operator (==)
+    // Relation operator (==)
 
-    let conformance_operator = VariadicOperator::collect(|left, right, env, stack| {
+    let relation_operator = VariadicOperator::collect(|left, right, env, stack| {
         let (name, pattern) = match left {
             VariadicOperatorInput::Single(left) => {
                 let pattern =
@@ -117,7 +117,7 @@ pub fn prelude(env: &Environment) {
             VariadicOperatorInput::List(left) => {
                 if left.len() != 2 {
                     return Err(Return::error(
-                        "Expected conformance predicate in the form 'x T', or just 'T' if you don't care about the name",
+                        "Expected relation predicate in the form 'x T', or just 'T' if you don't care about the name",
                         stack,
                     ));
                 }
@@ -156,7 +156,7 @@ pub fn prelude(env: &Environment) {
         let derive_env: Environment = env::child_of(env).into();
 
         env.borrow_mut()
-            .add_conformance(pattern, derived_trait, move |value, _, stack| {
+            .add_relation(pattern, derived_trait, move |value, _, stack| {
                 if let Some(name) = &name {
                     derive_env.borrow_mut().set_variable(name, value);
                 }
@@ -167,10 +167,10 @@ pub fn prelude(env: &Environment) {
         Ok(Value::empty())
     });
 
-    add_variadic_operator(&conformance_operator, &assignment_precedence_group);
+    add_variadic_operator(&relation_operator, &assignment_precedence_group);
 
     env.borrow_mut()
-        .set_variable("==", Value::of(Operator::Variadic(conformance_operator)));
+        .set_variable("==", Value::of(Operator::Variadic(relation_operator)));
 
     // Template operator (=>)
 
@@ -458,7 +458,7 @@ pub fn prelude(env: &Environment) {
                         let value = value.evaluate(env, stack)?;
 
                         let text = value.get_or::<Text>(
-                            "Cannot format this value because it does not conform to Text",
+                            "Cannot format this value because it cannot be represented as Text",
                             env,
                             stack,
                         )?;

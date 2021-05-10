@@ -23,7 +23,7 @@ pub(crate) fn setup(env: &mut EnvironmentInner) {
     env.set_variable("List", Value::of(Trait::of::<List>()));
 
     // List == Evaluate
-    env.add_primitive_conformance(|list: List| {
+    env.add_primitive_relation(|list: List| {
         EvaluateFn::new(move |env, stack| {
             let mut stack = stack.clone();
             stack.evaluation_mut().queue_location(&list.location);
@@ -53,7 +53,7 @@ pub(crate) fn setup(env: &mut EnvironmentInner) {
     });
 
     // List == Replace-In-Template
-    env.add_primitive_conformance(|list: List| {
+    env.add_primitive_relation(|list: List| {
         ReplaceInTemplateFn::new(move |parameter, replacement, env, stack| {
             let mut expanded_items = vec![];
 
@@ -68,7 +68,7 @@ pub(crate) fn setup(env: &mut EnvironmentInner) {
     });
 
     // List == Text
-    env.add_conformance(
+    env.add_relation(
         Pattern::for_trait(Trait::of::<List>()),
         Trait::of::<Text>(),
         |value, env, stack| {

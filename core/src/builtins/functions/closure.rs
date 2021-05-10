@@ -10,7 +10,7 @@ pub struct Closure {
 
 pub(crate) fn setup(env: &mut EnvironmentInner) {
     // Closure == Function
-    env.add_primitive_conformance(|closure: Closure| {
+    env.add_primitive_relation(|closure: Closure| {
         Function::new(move |value, env, stack| {
             let value = value.evaluate(env, stack)?;
 
@@ -29,5 +29,5 @@ pub(crate) fn setup(env: &mut EnvironmentInner) {
     });
 
     // Closure == Text
-    env.add_text_conformance::<Closure>("closure");
+    env.add_text_relation::<Closure>("closure");
 }

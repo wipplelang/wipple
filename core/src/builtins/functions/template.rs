@@ -28,7 +28,7 @@ pub struct Template {
 
 pub(crate) fn setup(env: &mut EnvironmentInner) {
     // Template == Function
-    env.add_primitive_conformance(|template: Template| {
+    env.add_primitive_relation(|template: Template| {
         Function::new(move |replacement, env, stack| {
             template
                 .replace_in
@@ -38,5 +38,5 @@ pub(crate) fn setup(env: &mut EnvironmentInner) {
     });
 
     // Template == Text
-    env.add_text_conformance::<Template>("template");
+    env.add_text_relation::<Template>("template");
 }

@@ -685,5 +685,5 @@ pub(crate) fn setup(env: &mut EnvironmentInner) {
     env.set_variable("Operator", Value::of(Trait::of::<Operator>()));
 
     // Operator == Text
-    env.add_text_conformance::<Operator>("operator");
+    env.add_text_relation::<Operator>("operator");
 }

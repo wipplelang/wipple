@@ -2,19 +2,19 @@ use crate::*;
 use std::rc::Rc;
 
 #[derive(Clone)]
-pub struct Conformance {
+pub struct Relation {
     pub pattern: Pattern,
     pub derived_trait: Trait,
     pub derive_value: Rc<dyn Fn(Value, &Environment, &Stack) -> Result>,
 }
 
-impl Conformance {
+impl Relation {
     pub fn new(
         pattern: Pattern,
         derived_trait: Trait,
         derive_value: impl Fn(Value, &Environment, &Stack) -> Result + 'static,
     ) -> Self {
-        Conformance {
+        Relation {
             pattern,
             derived_trait,
             derive_value: Rc::new(derive_value),
@@ -22,43 +22,43 @@ impl Conformance {
     }
 }
 
-impl std::fmt::Debug for Conformance {
+impl std::fmt::Debug for Relation {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(
             f,
-            "(Conformance {:?} == {:?})",
+            "(Relation {:?} == {:?})",
             self.pattern, self.derived_trait
         )
     }
 }
 
 #[derive(TypeInfo, Debug, Clone, Default)]
-pub struct Conformances(pub Vec<Conformance>);
+pub struct Relations(pub Vec<Relation>);
 
-core_env_key!(pub conformances for Conformances {
-    visibility: EnvironmentVisibility::Public(UseFn::from(|parent: &Conformances, new| {
-        Conformances(parent.0.clone().into_iter().chain(new.0.clone()).collect())
+core_env_key!(pub relations for Relations {
+    visibility: EnvironmentVisibility::Public(UseFn::from(|parent: &Relations, new| {
+        Relations(parent.0.clone().into_iter().chain(new.0.clone()).collect())
     })),
 });
 
 impl EnvironmentInner {
-    pub fn add_conformance(
+    pub fn add_relation(
         &mut self,
         pattern: Pattern,
         derived_trait: Trait,
         derive_value: impl Fn(Value, &Environment, &Stack) -> Result + 'static,
     ) {
-        // New conformances always have a lower precedence than older conformances
-        self.conformances()
+        // New relations always have a lower precedence than older relations
+        self.relations()
             .0
-            .push(Conformance::new(pattern, derived_trait, derive_value))
+            .push(Relation::new(pattern, derived_trait, derive_value))
     }
 
-    pub fn add_primitive_conformance<A: TypeInfo, B: TypeInfo>(
+    pub fn add_primitive_relation<A: TypeInfo, B: TypeInfo>(
         &mut self,
         derive_trait_value: impl Fn(A) -> B + 'static,
     ) {
-        self.add_conformance(
+        self.add_relation(
             Pattern::for_trait(Trait::of::<A>()),
             Trait::of::<B>(),
             move |value, _, _| {
@@ -69,7 +69,7 @@ impl EnvironmentInner {
         );
     }
 
-    pub fn add_text_conformance<T: TypeInfo>(&mut self, value_name: &'static str) {
-        self.add_primitive_conformance(move |_: T| Text::new(&format!("<{}>", value_name)));
+    pub fn add_text_relation<T: TypeInfo>(&mut self, value_name: &'static str) {
+        self.add_primitive_relation(move |_: T| Text::new(&format!("<{}>", value_name)));
     }
 }

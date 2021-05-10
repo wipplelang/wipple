@@ -68,7 +68,7 @@ pub(crate) fn setup(env: &mut EnvironmentInner) {
     env.set_variable("Block", Value::of(Trait::of::<Block>()));
 
     // Block == Evaluate
-    env.add_primitive_conformance(|block: Block| {
+    env.add_primitive_relation(|block: Block| {
         EvaluateFn::new(move |env, stack| {
             let evaluate_block = env.borrow_mut().evaluate_block().clone();
             evaluate_block(block.clone(), env, stack)
@@ -76,10 +76,10 @@ pub(crate) fn setup(env: &mut EnvironmentInner) {
     });
 
     // Block == Text
-    env.add_text_conformance::<Block>("block");
+    env.add_text_relation::<Block>("block");
 
     // Block == Replace-In-Template
-    env.add_primitive_conformance(|block: Block| {
+    env.add_primitive_relation(|block: Block| {
         ReplaceInTemplateFn::new(move |parameter, replacement, env, stack| {
             let mut stack = stack.clone();
             stack.evaluation_mut().queue_location(&block.location);

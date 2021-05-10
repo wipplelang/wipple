@@ -20,12 +20,12 @@ pub(crate) fn setup(env: &mut EnvironmentInner) {
     env.set_variable("Literal", Value::of(Trait::of::<Literal>()));
 
     // Literal == Evaluate
-    env.add_primitive_conformance(|literal: Literal| {
+    env.add_primitive_relation(|literal: Literal| {
         EvaluateFn::new(move |_, _| Ok(literal.value.clone()))
     });
 
     // Literal == Replace-In-Template
-    env.add_primitive_conformance(|literal: Literal| {
+    env.add_primitive_relation(|literal: Literal| {
         ReplaceInTemplateFn::new(move |parameter, replacement, env, stack| {
             let replaced = literal
                 .value
@@ -36,7 +36,7 @@ pub(crate) fn setup(env: &mut EnvironmentInner) {
     });
 
     // Literal == Text
-    env.add_conformance(
+    env.add_relation(
         Pattern::for_trait(Trait::of::<Literal>()),
         Trait::of::<Text>(),
         |value, env, stack| {

@@ -32,10 +32,10 @@ pub(crate) fn setup(env: &mut EnvironmentInner) {
     env.set_variable("Module", Value::of(Trait::of::<Module>()));
 
     // Module == Text
-    env.add_text_conformance::<Module>("module");
+    env.add_text_relation::<Module>("module");
 
     // Module == Function
-    env.add_primitive_conformance(|module: Module| {
+    env.add_primitive_relation(|module: Module| {
         Function::new(move |value, env, stack| {
             let name = value.get_or::<Name>("Expected a name", env, stack)?;
             name.resolve(&module.env, stack)
@@ -43,7 +43,7 @@ pub(crate) fn setup(env: &mut EnvironmentInner) {
     });
 
     // Module == pattern
-    env.add_conformance(
+    env.add_relation(
         Pattern::for_trait(Trait::of::<Module>()),
         Trait::of::<Pattern>(),
         |value, env, stack| {

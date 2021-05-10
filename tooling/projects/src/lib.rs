@@ -61,9 +61,9 @@ pub fn setup() {
     );
 
     // Text == Module
-    // FIXME: This is impure and should not be a direct conformance; use some
+    // FIXME: This is impure and should not be a direct relation; use some
     // kind of 'Import' trait instead
-    env.borrow_mut().add_conformance(
+    env.borrow_mut().add_relation(
         Pattern::for_trait(Trait::of::<Text>()),
         Trait::of::<Module>(),
         |value, _, stack| {

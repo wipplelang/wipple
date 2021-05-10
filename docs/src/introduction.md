@@ -10,8 +10,8 @@ I ([Wilson Gramer](https://gramer.dev)) initially started building Wipple to lea
 
 Wipple is built upon three main ideas:
 
-- **Traits** describe representations and behavior of a piece of the program.
-- **Conformances** describe relationships between traits.
+- **Traits and relations** describe representations and behavior of values.
+- **Patterns** ensure values match a specific representation or behavior, and/or provide a value that does.
 - **The environment and the stack** handle the program state.
 
 I've designed Wipple under the same assumption as [Bel](http://www.paulgraham.com/bel.html) — "if computers were as powerful as we wanted, what would programming languages look like?" Wipple code is about **describing your ideas** more than it is about how those ideas are actually executed or represented in memory by the computer. Even constructs like booleans are represented using variants (sum types) in Wipple, because truth and falsehood are axioms — even if computers store them as a 1 or 0, logically they are defined in terms of their relationships to other values.

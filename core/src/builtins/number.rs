@@ -20,5 +20,5 @@ pub(crate) fn setup(env: &mut EnvironmentInner) {
     env.set_variable("Number", Value::of(Trait::of::<Number>()));
 
     // Number == Text
-    env.add_primitive_conformance(|number: Number| Text::new(&number.number.to_string()));
+    env.add_primitive_relation(|number: Number| Text::new(&number.number.to_string()));
 }

@@ -180,12 +180,12 @@ pub(crate) fn setup(env: &mut EnvironmentInner) {
     env.set_variable("Name", Value::of(Trait::of::<Name>()));
 
     // Name == Evaluate
-    env.add_primitive_conformance(|name: Name| {
+    env.add_primitive_relation(|name: Name| {
         EvaluateFn::new(move |env, stack| name.resolve(env, stack))
     });
 
     // Name == Replace-In-Template
-    env.add_primitive_conformance(|name: Name| {
+    env.add_primitive_relation(|name: Name| {
         ReplaceInTemplateFn::new(move |parameter, replacement, _, _| {
             Ok(if name.name == parameter {
                 replacement.clone()
@@ -196,5 +196,5 @@ pub(crate) fn setup(env: &mut EnvironmentInner) {
     });
 
     // Name == Text
-    env.add_primitive_conformance(|name: Name| Text::new(&name.name));
+    env.add_primitive_relation(|name: Name| Text::new(&name.name));
 }

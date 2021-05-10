@@ -38,7 +38,7 @@ Cannot use this value to represent this trait
     Calling '<trait>' (4:1)
     Importing program
 
->>> Conformances
+>>> Relations
 
 A : trait _
 x A == Text (format "A _" x)
@@ -55,7 +55,7 @@ show (B (A 'foo))
 (A 'foo) ==> A foo
 (B (A 'foo)) ==> B A foo
 
->>> Conformance without binding a name
+>>> Relation without binding a name
 
 A : trait _
 

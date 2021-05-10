@@ -113,7 +113,7 @@ pub(crate) fn setup(env: &mut EnvironmentInner) {
 
     // TODO: Variant-Of
 
-    env.add_conformance(
+    env.add_relation(
         Pattern::for_trait(Trait::of::<Variant>()),
         Trait::of::<Text>(),
         |value, env, stack| {
@@ -122,8 +122,11 @@ pub(crate) fn setup(env: &mut EnvironmentInner) {
             let mut associated_values = Vec::new();
 
             for value in variant.associated_values {
-                let text =
-                    value.get_or::<Text>("Variant value does not conform to Text", env, stack)?;
+                let text = value.get_or::<Text>(
+                    "Variant value cannot be represented as Text",
+                    env,
+                    stack,
+                )?;
 
                 associated_values.push(text.text);
             }

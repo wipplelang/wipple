@@ -20,14 +20,14 @@ pub(crate) fn setup(env: &mut EnvironmentInner) {
     env.set_constant_variable("_", Value::empty());
 
     // Allow the use of '_' as a catch-all pattern that returns its input
-    env.add_conformance(
+    env.add_relation(
         Pattern::for_empty_value(),
         Trait::of::<Pattern>(),
         move |_, _, _| Ok(Value::of(Pattern::any())),
     );
 
     // Empty == Text
-    env.add_conformance(
+    env.add_relation(
         Pattern::for_empty_value(),
         Trait::of::<Text>(),
         |_, _, _| Ok(Value::of(Text::new("<empty>"))),
