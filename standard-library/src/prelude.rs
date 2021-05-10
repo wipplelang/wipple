@@ -1,6 +1,6 @@
 use wipple::*;
 
-pub fn prelude(env: &EnvironmentRef) {
+pub fn prelude(env: &Environment) {
     // Trait functions
 
     env.borrow_mut().set_variable(
@@ -12,14 +12,16 @@ pub fn prelude(env: &EnvironmentRef) {
                 stack,
             )?;
 
-            Ok(Value::of(Trait::new(validation)))
+            let r#trait = Trait::new(validation);
+
+            Ok(Value::of(r#trait))
         })),
     );
 
     // Validation functions
 
     env.borrow_mut().set_variable(
-        "Is",
+        "is",
         Value::of(Function::new(|value, env, stack| {
             let validation = value.evaluate(env, stack)?.get_or::<Validation>(
                 "Expected validation",
@@ -34,27 +36,18 @@ pub fn prelude(env: &EnvironmentRef) {
     // Block functions
 
     env.borrow_mut().set_variable(
-        "do",
-        Value::of(Function::new(|value, env, stack| {
-            let block = value.get_or::<Block>("Expected block", env, stack)?;
-            block.r#do(env, stack)
-        })),
-    );
-
-    env.borrow_mut().set_variable(
         "inline",
         Value::of(Function::new(|value, env, stack| {
             let block = value.get_or::<Block>("Expected block", env, stack)?;
-            block.do_inline(env, stack)
+            block.reduce(env, stack)
         })),
     );
 
     env.borrow_mut().set_variable(
         "return",
         Value::of(Function::new(|value, env, stack| {
-            let r#return = env.borrow_mut().r#return().clone();
-            r#return(value, env, stack)?;
-            unreachable!() // TODO: Have ReturnFn return a Result<!> instead
+            let value = value.evaluate(env, stack)?;
+            Err(Return::r#return(value, stack))
         })),
     );
 
@@ -109,19 +102,21 @@ pub fn prelude(env: &EnvironmentRef) {
         };
     }
 
-    assignment_operator!(":", handle_assign, env);
-    assignment_operator!(":>", handle_computed_assign, env);
+    assignment_operator!(":", assignment, env);
+    assignment_operator!(":>", computed_assignment, env);
 
     // Conformance operator (==)
 
     let conformance_operator = VariadicOperator::collect(|left, right, env, stack| {
-        let (matching_trait, name) = match left {
+        let (validation, name) = match left {
             VariadicOperatorInput::Single(left) => {
-                let matching_trait =
-                    left.evaluate(env, stack)?
-                        .get_or::<Trait>("Expected trait", env, stack)?;
+                let validation = left.evaluate(env, stack)?.get_or::<Validation>(
+                    "Expected validation",
+                    env,
+                    stack,
+                )?;
 
-                (matching_trait, None)
+                (validation, None)
             }
             VariadicOperatorInput::List(left) => {
                 if left.len() != 2 {
@@ -131,43 +126,43 @@ pub fn prelude(env: &EnvironmentRef) {
                     ));
                 }
 
-                let matching_trait =
-                    left[0]
-                        .evaluate(env, stack)?
-                        .get_or::<Trait>("Expected trait", env, stack)?;
+                let validation = left[0].evaluate(env, stack)?.get_or::<Validation>(
+                    "Expected validation",
+                    env,
+                    stack,
+                )?;
 
                 let name = left[1].get_or::<Name>("Expected name", env, stack)?.name;
 
-                (matching_trait, Some(name))
+                (validation, Some(name))
             }
         };
 
-        let (derived_trait, derived_value) = if matches!(right, VariadicOperatorInput::Single(_))
-            || matches!(&right, VariadicOperatorInput::List(items) if items.len() != 2)
-        {
-            return Err(Return::error(
-                "Expected a value to derive and its trait",
-                stack,
-            ));
-        } else if let VariadicOperatorInput::List(right) = right {
-            let derived_trait =
-                right[0]
-                    .evaluate(env, stack)?
-                    .get_or::<Trait>("Expected trait", env, stack)?;
+        let (derived_trait, derived_value) = match right {
+            VariadicOperatorInput::List(right) if right.len() == 2 => {
+                let derived_trait =
+                    right[0]
+                        .evaluate(env, stack)?
+                        .get_or::<Trait>("Expected trait", env, stack)?;
 
-            let derived_value = right[1].clone();
+                let derived_value = right[1].clone();
 
-            (derived_trait, derived_value)
-        } else {
-            unreachable!()
+                (derived_trait, derived_value)
+            }
+            _ => {
+                return Err(Return::error(
+                    "Expected a value to derive and its trait",
+                    stack,
+                ))
+            }
         };
 
-        let derive_env = Environment::child_of(env).into_ref();
+        let derive_env: Environment = env::child_of(env).into();
 
         env.borrow_mut()
-            .add_conformance(matching_trait, derived_trait, move |value, _, stack| {
+            .add_conformance(validation, derived_trait, move |value, _, stack| {
                 if let Some(name) = &name {
-                    derive_env.borrow_mut().set_variable(name, value.clone());
+                    derive_env.borrow_mut().set_variable(name, value);
                 }
 
                 derived_value.evaluate(&derive_env, stack)
@@ -247,58 +242,95 @@ pub fn prelude(env: &EnvironmentRef) {
     env.borrow_mut()
         .set_variable("->", Value::of(Operator::Variadic(closure_operator)));
 
-    // 'for' operator
+    // 'is?' operator
 
-    let for_precedence_group = add_binary_precedence_group(
-        Associativity::Right,
+    let is_precedence_group = add_binary_precedence_group(
+        Associativity::Left,
         BinaryPrecedenceGroupComparison::lowest(),
     );
 
-    let for_operator = BinaryOperator::collect(|left, right, env, stack| {
+    let is_operator = BinaryOperator::collect(|left, right, env, stack| {
+        let value = left.evaluate(env, stack)?;
+
         let validation =
-            left.evaluate(env, stack)?
+            right
+                .evaluate(env, stack)?
                 .get_or::<Validation>("Expected validation", env, stack)?;
 
-        let value = right.evaluate(env, stack)?;
+        let _is_valid = validation(value, env, stack)?.is_valid();
 
-        match validation(&value, env, stack)? {
-            Validated::Valid(value) => Ok(value),
-            Validated::Invalid => Err(Return::error("Value does not satisfy validation", stack)),
-        }
+        todo!("Link to booleans")
     });
 
-    add_binary_operator(&for_operator, &for_precedence_group);
+    add_binary_operator(&is_operator, &is_precedence_group);
 
     env.borrow_mut()
-        .set_variable("for", Value::of(Operator::Binary(for_operator)));
+        .set_variable("is?", Value::of(Operator::Binary(is_operator)));
 
-    // 'as' operator (equivalent to 'T (T for x)')
+    // 'as' and 'as?' operators
 
     let as_precedence_group = add_binary_precedence_group(
         Associativity::Left,
         BinaryPrecedenceGroupComparison::lowest(),
     );
 
-    let as_operator = BinaryOperator::collect(|value, r#trait, env, stack| {
-        let r#trait =
-            r#trait
+    let as_operator = BinaryOperator::collect(|left, right, env, stack| {
+        let value = left.evaluate(env, stack)?;
+
+        let validation =
+            right
                 .evaluate(env, stack)?
-                .get_or::<Trait>("Expected trait", env, stack)?;
+                .get_or::<Validation>("Expected validation", env, stack)?;
 
-        let trait_value = value.evaluate(env, stack)?.get_trait_or(
-            &r#trait,
-            "Value does not have trait",
-            env,
-            stack,
-        )?;
-
-        Ok(trait_value)
+        validation(value, env, stack)?
+            .into_valid()
+            .ok_or_else(|| Return::error("Invalid value", stack))
     });
 
     add_binary_operator(&as_operator, &as_precedence_group);
 
     env.borrow_mut()
         .set_variable("as", Value::of(Operator::Binary(as_operator)));
+
+    let into_operator = BinaryOperator::collect(|left, right, env, stack| {
+        let value = left.evaluate(env, stack)?;
+
+        let r#trait = right
+            .evaluate(env, stack)?
+            .get_or::<Trait>("Expected trait", env, stack)?;
+
+        let trait_value = value.get_trait_or(
+            &r#trait,
+            "Cannot use this value to represent this trait",
+            env,
+            stack,
+        )?;
+
+        Ok(Value::new(r#trait, trait_value))
+    });
+
+    add_binary_operator(&into_operator, &as_precedence_group);
+
+    env.borrow_mut()
+        .set_variable("into", Value::of(Operator::Binary(into_operator)));
+
+    let as_maybe_operator = BinaryOperator::collect(|left, right, env, stack| {
+        let value = left.evaluate(env, stack)?;
+
+        let validation =
+            right
+                .evaluate(env, stack)?
+                .get_or::<Validation>("Expected validation", env, stack)?;
+
+        let _maybe_valid = validation(value, env, stack)?.into_valid();
+
+        todo!("Link to maybes")
+    });
+
+    add_binary_operator(&as_maybe_operator, &as_precedence_group);
+
+    env.borrow_mut()
+        .set_variable("as?", Value::of(Operator::Binary(as_maybe_operator)));
 
     // Math
 
@@ -449,13 +481,28 @@ pub fn prelude(env: &EnvironmentRef) {
         })),
     );
 
-    // Global environment functions
+    // Environment functions
 
     env.borrow_mut().set_variable(
-        "inline-global!",
+        "do",
+        Value::of(Function::new(|value, env, stack| {
+            let env = env::child_of(env).into();
+            value.evaluate(&env, stack)
+        })),
+    );
+
+    env.borrow_mut().set_variable(
+        "new",
         Value::of(Function::new(|value, env, stack| {
             let block = value.get_or::<Block>("Expected block", env, stack)?;
-            block.do_inline(&Environment::global(), stack)
+            EvaluateBlockFn::into_module()(block, env, stack)
+        })),
+    );
+
+    env.borrow_mut().set_variable(
+        "do-global!",
+        Value::of(Function::new(|value, _, stack| {
+            value.evaluate(&env::global(), stack)
         })),
     );
 
@@ -467,9 +514,7 @@ pub fn prelude(env: &EnvironmentRef) {
                     .evaluate(env, stack)?
                     .get_or::<Module>("Expected module", env, stack)?;
 
-            Environment::global()
-                .borrow_mut()
-                .r#use(&block.env.borrow());
+            env::global().borrow_mut().r#use(&block.env.borrow());
 
             Ok(Value::empty())
         })),
@@ -479,7 +524,7 @@ pub fn prelude(env: &EnvironmentRef) {
         let stdlib_env = env.clone();
 
         move |env, stack| {
-            let is_global = Environment::is_global(env);
+            let is_global = env::is_global(env);
 
             // This will always work; see above
             let value = Name::new(&is_global.to_string())
@@ -492,7 +537,7 @@ pub fn prelude(env: &EnvironmentRef) {
 
     // 'evaluate-text!' function
 
-    fn evaluate_text(code: &str, env: &EnvironmentRef, stack: &Stack) -> Result {
+    fn evaluate_text(code: &str, env: &Environment, stack: &Stack) -> Result {
         let (tokens, lookup) = wipple_parser::lex(&code);
 
         let ast = wipple_parser::parse_inline_program(&mut tokens.iter().peekable(), &lookup)

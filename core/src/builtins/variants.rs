@@ -18,11 +18,9 @@ impl Variant {
     }
 }
 
-core_primitive!(pub variant for Variant);
-
 impl Module {
     pub fn for_variant(items: HashMap<String, Vec<Validation>>) -> Self {
-        let mut env = Environment::blank();
+        let mut env = env::blank();
 
         for (name, validations) in items {
             fn build_constructor(
@@ -40,15 +38,13 @@ impl Module {
                         let (validation, remaining_validations) =
                             remaining_validations.split_first().unwrap();
 
-                        let validated_value = match validation(&value, env, stack)? {
-                            Validated::Valid(value) => value,
-                            Validated::Invalid => {
-                                return Err(Return::error(
+                        let validated_value =
+                            validation(value, env, stack)?.into_valid().ok_or_else(|| {
+                                Return::error(
                                     "Cannot use this value to represent this variant",
                                     stack,
-                                ))
-                            }
-                        };
+                                )
+                            })?;
 
                         let mut values = values.clone();
                         values.push(validated_value);
@@ -69,12 +65,12 @@ impl Module {
             );
         }
 
-        Module::new(env)
+        Module::new(env.into())
     }
 }
 
-fn setup_match_block(matches: Rc<RefCell<HashMap<String, Value>>>, env: &EnvironmentRef) {
-    *env.borrow_mut().handle_assign() = HandleAssignFn::new(move |left, right, _, _| {
+fn setup_match_block(matches: Rc<RefCell<HashMap<String, Value>>>, env: &Environment) {
+    *env.borrow_mut().assignment() = AssignmentFn::new(move |left, right, _, _| {
         matches
             .borrow_mut()
             .insert(left.name.clone(), right.clone());
@@ -83,11 +79,8 @@ fn setup_match_block(matches: Rc<RefCell<HashMap<String, Value>>>, env: &Environ
     })
 }
 
-fn setup_variant_block(
-    variants: Rc<RefCell<HashMap<String, Vec<Validation>>>>,
-    env: &EnvironmentRef,
-) {
-    *env.borrow_mut().handle_assign() = HandleAssignFn::new(move |left, right, env, stack| {
+fn setup_variant_block(variants: Rc<RefCell<HashMap<String, Vec<Validation>>>>, env: &Environment) {
+    *env.borrow_mut().assignment() = AssignmentFn::new(move |left, right, env, stack| {
         if variants.borrow().contains_key(&left.name) {
             return Err(Return::error(
                 "Cannot have two variants with the same name",
@@ -115,31 +108,35 @@ fn setup_variant_block(
     })
 }
 
-pub(crate) fn setup(env: &mut Environment) {
+pub(crate) fn setup(env: &mut EnvironmentInner) {
     env.set_variable("Variant", Value::of(Trait::of::<Variant>()));
 
     // TODO: Variant-Of
 
-    env.add_conformance(Trait::variant(), Trait::text(), |value, env, stack| {
-        let variant = value.clone().into_primitive::<Variant>();
+    env.add_conformance(
+        Validation::for_trait(Trait::of::<Variant>()),
+        Trait::of::<Text>(),
+        |value, env, stack| {
+            let variant = value.into_primitive::<Variant>().unwrap();
 
-        let mut associated_values = Vec::new();
+            let mut associated_values = Vec::new();
 
-        for value in variant.associated_values {
-            let text =
-                value.get_or::<Text>("Variant value does not conform to Text", env, stack)?;
+            for value in variant.associated_values {
+                let text =
+                    value.get_or::<Text>("Variant value does not conform to Text", env, stack)?;
 
-            associated_values.push(text.text);
-        }
+                associated_values.push(text.text);
+            }
 
-        let text = if associated_values.is_empty() {
-            variant.name
-        } else {
-            format!("{} {}", variant.name, associated_values.join(" "))
-        };
+            let text = if associated_values.is_empty() {
+                variant.name
+            } else {
+                format!("{} {}", variant.name, associated_values.join(" "))
+            };
 
-        Ok(Value::of(Text::new(&text)))
-    });
+            Ok(Value::of(Text::new(&text)))
+        },
+    );
 
     env.set_variable(
         "variant",
@@ -155,12 +152,12 @@ pub(crate) fn setup(env: &mut Environment) {
 
                 variants
             } else if let Some(block) = value.get_if_present::<Block>(env, stack)? {
-                let variant_env = Environment::child_of(env).into_ref();
+                let variant_env = env::child_of(env).into();
 
                 let variants = Rc::new(RefCell::new(HashMap::new()));
                 setup_variant_block(variants.clone(), &variant_env);
 
-                block.do_inline(&variant_env, stack)?;
+                block.reduce(&variant_env, stack)?;
 
                 variants.take()
             } else {
@@ -188,11 +185,11 @@ pub(crate) fn setup(env: &mut Environment) {
                 let block = value.get_or::<Block>("Expected block defining matches", env, stack)?;
 
                 let matches = Rc::new(RefCell::new(HashMap::new()));
-                let match_env = Environment::child_of(env).into_ref();
+                let match_env = env::child_of(env).into();
 
                 setup_match_block(matches.clone(), &match_env);
 
-                block.do_inline(&match_env, stack)?;
+                block.reduce(&match_env, stack)?;
 
                 let matches = matches.take();
 

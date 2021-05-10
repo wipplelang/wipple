@@ -8,7 +8,7 @@ pub fn import(module_name: &str, stack: &Stack) -> Result<Module> {
 }
 
 /// Import a file/folder using a module name directly in the current environment
-pub fn include(module_name: &str, env: &EnvironmentRef, stack: &Stack) -> Result {
+pub fn include(module_name: &str, env: &Environment, stack: &Stack) -> Result {
     let path = resolve_module(module_name, stack)?;
 
     let mut stack = stack.clone();
@@ -35,7 +35,7 @@ pub fn import_path(path: &Path, stack: &Stack) -> Result<Module> {
 
 pub fn import_path_with_parent_env(
     path: &Path,
-    env: &EnvironmentRef,
+    env: &Environment,
     stack: &Stack,
 ) -> Result<Module> {
     let mut stack = stack.clone();
@@ -78,7 +78,7 @@ fn try_import_folder(path: &Path, stack: &Stack) -> Result<Option<Module>> {
         .evaluation_mut()
         .add(|| format!("Importing all files in folder {}", path.to_string_lossy()));
 
-    let temp_env = Environment::child_of(&Environment::global()).into_ref();
+    let mut temp_env = env::child_of(&env::global());
 
     let mut files = path
         .read_dir()
@@ -117,10 +117,10 @@ fn try_import_folder(path: &Path, stack: &Stack) -> Result<Option<Module>> {
 
     for file in files {
         let module = import_file(&file, &stack)?;
-        temp_env.borrow_mut().r#use(&module.env.borrow());
+        temp_env.r#use(&module.env.borrow());
     }
 
-    let module = Module::new(temp_env.borrow().clone());
+    let module = Module::new(temp_env.into());
 
     Ok(Some(module))
 }

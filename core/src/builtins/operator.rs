@@ -28,21 +28,13 @@ pub struct SomeOperator<T> {
 
     #[allow(clippy::type_complexity)]
     pub function: Rc<
-        dyn Fn(
-            T,
-            &EnvironmentRef,
-            &Stack,
-        ) -> Result<Box<dyn Fn(T, &EnvironmentRef, &Stack) -> Result>>,
+        dyn Fn(T, &Environment, &Stack) -> Result<Box<dyn Fn(T, &Environment, &Stack) -> Result>>,
     >,
 }
 
 impl<T> SomeOperator<T> {
     pub fn new(
-        function: impl Fn(
-                T,
-                &EnvironmentRef,
-                &Stack,
-            ) -> Result<Box<dyn Fn(T, &EnvironmentRef, &Stack) -> Result>>
+        function: impl Fn(T, &Environment, &Stack) -> Result<Box<dyn Fn(T, &Environment, &Stack) -> Result>>
             + 'static,
     ) -> Self {
         SomeOperator {
@@ -70,7 +62,7 @@ pub type BinaryOperator = SomeOperator<Value>;
 
 impl BinaryOperator {
     pub fn collect(
-        function: impl Fn(Value, Value, &EnvironmentRef, &Stack) -> Result + 'static,
+        function: impl Fn(Value, Value, &Environment, &Stack) -> Result + 'static,
     ) -> BinaryOperator {
         let function = Rc::new(function);
 
@@ -116,7 +108,7 @@ pub type VariadicOperator = SomeOperator<VariadicOperatorInput>;
 
 impl VariadicOperator {
     pub fn collect(
-        function: impl Fn(VariadicOperatorInput, VariadicOperatorInput, &EnvironmentRef, &Stack) -> Result
+        function: impl Fn(VariadicOperatorInput, VariadicOperatorInput, &Environment, &Stack) -> Result
             + 'static,
     ) -> VariadicOperator {
         let function = Rc::new(function);
@@ -164,8 +156,6 @@ pub enum Operator {
     Binary(BinaryOperator),
     Variadic(VariadicOperator),
 }
-
-core_primitive!(pub operator for Operator);
 
 impl Operator {
     pub fn id(&self) -> Id {
@@ -410,7 +400,7 @@ pub fn add_variadic_operator(operator: &VariadicOperator, group: &VariadicPreced
 // Operator parsing
 
 impl List {
-    pub fn find_operators(&self, env: &EnvironmentRef, stack: &Stack) -> Result<OperatorList> {
+    pub fn find_operators(&self, env: &Environment, stack: &Stack) -> Result<OperatorList> {
         let mut operators = OperatorList::new();
 
         for (index, item) in self.items.iter().enumerate() {
@@ -423,11 +413,7 @@ impl List {
     }
 }
 
-pub fn get_operator(
-    value: &Value,
-    env: &EnvironmentRef,
-    stack: &Stack,
-) -> Result<Option<Operator>> {
+pub fn get_operator(value: &Value, env: &Environment, stack: &Stack) -> Result<Option<Operator>> {
     match value.get_if_present::<Name>(env, stack)? {
         Some(name) => {
             let variable = name.resolve_variable_if_present(env);
@@ -474,8 +460,8 @@ impl Operator {
 }
 
 fn get_variadic_items(value: Value) -> VariadicOperatorInput {
-    if value.is_trait_directly(&Trait::list()) {
-        let items = value.into_primitive::<List>().items;
+    if value.is_trait_directly(&Trait::of::<List>()) {
+        let items = value.into_primitive::<List>().unwrap().items;
 
         if items.len() == 1 {
             VariadicOperatorInput::Single(items[0].clone())
@@ -491,7 +477,7 @@ impl List {
     pub fn parse_operators(
         &self,
         operators_in_list: OperatorList,
-        env: &EnvironmentRef,
+        env: &Environment,
         stack: &Stack,
     ) -> Result<Option<Value>> {
         // No need to parse a list containing no operators
@@ -695,7 +681,7 @@ impl List {
     }
 }
 
-pub(crate) fn setup(env: &mut Environment) {
+pub(crate) fn setup(env: &mut EnvironmentInner) {
     env.set_variable("Operator", Value::of(Trait::of::<Operator>()));
 
     // Operator == Text

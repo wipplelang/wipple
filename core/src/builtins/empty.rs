@@ -3,29 +3,33 @@ use crate::*;
 #[derive(TypeInfo, Debug, Clone, Copy)]
 struct Empty;
 
-core_primitive!(pub empty for Empty);
-
 impl Value {
     pub fn empty() -> Self {
         Value::of(Empty)
     }
 
     pub fn is_empty(&self) -> bool {
-        self.r#trait == Trait::of::<Empty>()
+        self.is_trait_directly(&Trait::of::<Empty>())
     }
 }
 
-pub(crate) fn setup(env: &mut Environment) {
-    env.set_variable("Empty", Value::of(Trait::of::<Empty>()));
+pub(crate) fn setup(env: &mut EnvironmentInner) {
+    env.set_variable("Empty", Value::empty());
 
     // _ : <empty value>
     env.set_variable("_", Value::empty());
 
     // Allow the use of '_' as a catch-all validation that returns its input
-    env.add_conformance(Trait::empty(), Trait::validation(), move |_, _, _| {
-        Ok(Value::of(Validation::any()))
-    });
+    env.add_conformance(
+        Validation::for_empty_value(),
+        Trait::of::<Validation>(),
+        move |_, _, _| Ok(Value::of(Validation::any())),
+    );
 
     // Empty == Text
-    env.add_text_conformance::<Empty>("empty")
+    env.add_conformance(
+        Validation::for_empty_value(),
+        Trait::of::<Text>(),
+        |_, _, _| Ok(Value::of(Text::new("<empty>"))),
+    );
 }

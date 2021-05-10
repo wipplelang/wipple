@@ -70,7 +70,7 @@ mod tests {
             a + b
         }
 
-        let env = wipple::Environment::global();
+        let env = wipple::env::global();
 
         env.borrow_mut()
             .set_variable("add", bind!(fn add(i32, i32) -> i32));

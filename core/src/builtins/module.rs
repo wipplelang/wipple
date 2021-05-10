@@ -1,78 +1,34 @@
 use crate::*;
+use std::collections::HashMap;
 
-#[derive(TypeInfo, Debug, Clone)]
+#[derive(TypeInfo, Clone)]
 pub struct Module {
-    /// The captured environment will have its parent discarded.
-    pub env: EnvironmentRef,
+    pub env: Environment,
 }
 
 impl Module {
-    pub fn new(mut env: Environment) -> Self {
-        env.parent = None;
-
-        Module {
-            env: env.into_ref(),
-        }
+    pub fn new(env: Environment) -> Self {
+        Module { env }
     }
 }
 
-core_primitive!(pub module for Module);
+impl EvaluateBlockFn {
+    pub fn into_module() -> Self {
+        fn evaluate_block(block: Block, env: &Environment, stack: &Stack) -> Result {
+            let mut env = env::child_of(env);
+            *env.evaluate_block() = EvaluateBlockFn::into_module();
 
-impl Block {
-    pub fn as_module(&self, env: &EnvironmentRef, stack: &Stack) -> Result {
-        // Modules capture their environment
-        let module_env = Environment::child_of(env).into_ref();
+            let env = env.into();
 
-        let mut stack = stack.clone();
-        stack.evaluation_mut().queue_location(&self.location);
-
-        setup_module_block(&module_env);
-
-        for statement in &self.statements {
-            let mut stack = stack.clone();
-            stack.evaluation_mut().queue_location(&statement.location);
-
-            // Evaluate each statement as a list
-            let list = Value::of(statement.clone());
-            list.evaluate(&module_env, &stack)?;
+            block.reduce(&env, stack)?;
+            Ok(Value::of(Module::new(env)))
         }
 
-        let module_env = module_env.borrow().clone();
-
-        Ok(Value::of(Module::new(module_env)))
+        EvaluateBlockFn::new(evaluate_block)
     }
 }
 
-pub fn setup_module_block(env: &EnvironmentRef) {
-    *env.borrow_mut().handle_assign() = HandleAssignFn::new(|left, right, env, stack| {
-        let value = right.evaluate(env, stack)?;
-
-        env.borrow_mut().set_variable(&left.name, value);
-
-        Ok(())
-    });
-
-    *env.borrow_mut().handle_computed_assign() =
-        HandleComputedAssignFn::new(|left, right, env, _| {
-            let right = right.clone();
-            let captured_env = Environment::child_of(env).into_ref();
-
-            env.borrow_mut()
-                .set_computed_variable(&left.name, move |_, stack| {
-                    right.evaluate(&captured_env, stack)
-                });
-
-            Ok(())
-        });
-}
-
-pub(crate) fn setup(env: &mut Environment) {
-    // Block == Evaluate
-    env.add_primitive_conformance(|block: Block| {
-        // Blocks are evaluated as modules by default
-        EvaluateFn::new(move |env, stack| block.as_module(env, stack))
-    });
-
+pub(crate) fn setup(env: &mut EnvironmentInner) {
     env.set_variable("Module", Value::of(Trait::of::<Module>()));
 
     // Module == Text
@@ -85,4 +41,49 @@ pub(crate) fn setup(env: &mut Environment) {
             name.resolve(&module.env, stack)
         })
     });
+
+    // Module == Validation
+    env.add_conformance(
+        Validation::for_trait(Trait::of::<Module>()),
+        Trait::of::<Validation>(),
+        |value, env, stack| {
+            let module = value.into_primitive::<Module>().unwrap();
+            let variables = module.env.borrow_mut().variables().0.clone();
+
+            let mut fields = HashMap::new();
+
+            for (name, variable) in variables {
+                let validation = variable.get_value(env, stack)?.get_or::<Validation>(
+                    "Expected validation",
+                    env,
+                    stack,
+                )?;
+
+                fields.insert(name, validation);
+            }
+
+            Ok(Value::of(Validation::new(move |value, env, stack| {
+                let module = value.get_or::<Module>("Expected module", env, stack)?;
+
+                let mut validated_env = env::blank();
+
+                let variables = module.env.borrow_mut().variables().clone();
+                for (name, variable) in variables.0 {
+                    let value = variable.get_value(env, stack)?;
+
+                    let validated = match fields.get(&name) {
+                        Some(validation) => validation(value, env, stack)?,
+                        None => return Ok(Validated::Invalid),
+                    };
+
+                    match validated.into_valid() {
+                        Some(value) => validated_env.set_variable(&name, value),
+                        None => return Ok(Validated::Invalid),
+                    }
+                }
+
+                Ok(Validated::Valid(Value::of(module)))
+            })))
+        },
+    );
 }

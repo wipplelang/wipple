@@ -1,17 +1,17 @@
-mod conformances;
+mod conformance;
 mod diagnostics;
 mod environment;
 mod stack;
-mod traits;
+mod r#trait;
 mod validation;
-mod values;
+mod value;
 
-pub use conformances::*;
+pub use conformance::*;
 pub use diagnostics::*;
 pub use environment::*;
+pub use r#trait::*;
 pub use stack::*;
-pub use traits::*;
 pub use validation::*;
-pub use values::*;
+pub use value::*;
 
 pub type Result<T = Value> = std::result::Result<T, Return>;

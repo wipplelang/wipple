@@ -29,7 +29,7 @@ fn cache_import(path: &Path, module: Module) {
 /// it won't be loaded again and the cached module will be returned.
 pub fn import_file_with_parent_env(
     path: &Path,
-    env: &EnvironmentRef,
+    env: &Environment,
     stack: &Stack,
 ) -> wipple::Result<Module> {
     if let Some(module) = get_cached_import(path) {
@@ -47,7 +47,7 @@ pub fn import_file_with_parent_env(
 pub fn import_program_with_parent_env(
     program: Block,
     path: Option<&Path>,
-    env: &EnvironmentRef,
+    env: &Environment,
     stack: &Stack,
 ) -> wipple::Result<Module> {
     let mut stack = stack.clone();
@@ -60,18 +60,14 @@ pub fn import_program_with_parent_env(
         }
     });
 
-    let result = Value::of(program).evaluate(&env, &stack)?;
-
-    if !result.is_trait_directly(&Trait::module()) {
-        panic!("Could not evaluate file, is the standard library set up correctly?");
-    }
-
-    let module = result.into_primitive::<Module>();
+    let env = env::child_of(env).into();
+    program.reduce(&env, &stack)?;
+    let module = Module::new(env);
 
     Ok(module)
 }
 
-pub fn include_file(path: &Path, env: &EnvironmentRef, stack: &Stack) -> wipple::Result {
+pub fn include_file(path: &Path, env: &Environment, stack: &Stack) -> wipple::Result {
     let mut stack = stack.clone();
     *current_file_mut_in(&mut stack) = CurrentFile(Some(path.to_path_buf()));
     stack
@@ -82,13 +78,13 @@ pub fn include_file(path: &Path, env: &EnvironmentRef, stack: &Stack) -> wipple:
     include_program(program, env, &stack)
 }
 
-pub fn include_program(program: Block, env: &EnvironmentRef, stack: &Stack) -> wipple::Result {
+pub fn include_program(program: Block, env: &Environment, stack: &Stack) -> wipple::Result {
     let mut stack = stack.clone();
     stack
         .evaluation_mut()
         .add(|| String::from("Including program"));
 
-    program.do_inline(env, &stack)
+    program.reduce(env, &stack)
 }
 
 /// Load a Wipple file into a value. Does not evaluate the file.
@@ -130,8 +126,9 @@ pub fn load_string(code: &str, path: Option<&Path>, stack: &Stack) -> wipple::Re
             })
         })?;
 
-    // Wipple programs are always blocks
-    let program = wipple_parser::convert(&ast, path).into_primitive::<Block>();
+    let program = wipple_parser::convert(&ast, path)
+        .into_primitive::<Block>()
+        .expect("Wipple programs are always blocks");
 
     Ok(program)
 }

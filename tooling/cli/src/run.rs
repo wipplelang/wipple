@@ -22,7 +22,7 @@ pub struct Run {
 
 impl Run {
     pub fn run(&self) -> std::result::Result<(), String> {
-        let env = Environment::global();
+        let env = env::global();
         let mut stack = wipple_bundled_interpreter::setup()
             .map_err(|error| format!("Error initializing interpreter: {}", error))?;
 

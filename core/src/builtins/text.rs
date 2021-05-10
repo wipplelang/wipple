@@ -19,10 +19,8 @@ impl Text {
     }
 }
 
-core_primitive!(pub text for Text);
-
 impl Value {
-    pub fn try_format(&self, env: &EnvironmentRef, stack: &Stack) -> String {
+    pub fn try_format(&self, env: &Environment, stack: &Stack) -> String {
         let mut stack = stack.clone();
         stack.evaluation_mut().disable_recording();
 
@@ -33,7 +31,7 @@ impl Value {
         }
     }
 
-    pub fn format(&self, env: &EnvironmentRef, stack: &Stack) -> Result<String> {
+    pub fn format(&self, env: &Environment, stack: &Stack) -> Result<String> {
         let mut stack = stack.clone();
         stack.evaluation_mut().disable_recording();
 
@@ -44,7 +42,7 @@ impl Value {
     }
 }
 
-pub(crate) fn setup(env: &mut Environment) {
+pub(crate) fn setup(env: &mut EnvironmentInner) {
     // Text : trait
     env.set_variable("Text", Value::of(Trait::of::<Text>()));
 }

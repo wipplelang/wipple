@@ -1,8 +1,8 @@
 use crate::*;
 
-fn_wrapper_struct! {
+fn_wrapper! {
     #[derive(TypeInfo)]
-    pub type ShowFn(Value, &EnvironmentRef, &Stack) -> Result<()>;
+    pub struct ShowFn(Value, &Environment, &Stack) -> Result<()>;
 }
 
 impl Default for ShowFn {
@@ -18,7 +18,7 @@ impl Default for ShowFn {
 
 stack_key!(pub show for ShowFn);
 
-pub fn setup(env: &EnvironmentRef) {
+pub fn setup(env: &Environment) {
     env.borrow_mut().set_variable(
         "show",
         Value::of(Function::new(|value, env, stack| {

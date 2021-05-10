@@ -6,15 +6,13 @@ pub use template::*;
 
 use crate::*;
 
-fn_wrapper_struct! {
+fn_wrapper! {
     #[derive(TypeInfo)]
-    pub type Function(Value, &EnvironmentRef, &Stack) -> Result;
+    pub struct Function(Value, &Environment, &Stack) -> Result;
 }
 
-core_primitive!(pub function for Function);
-
 impl Value {
-    pub fn call(&self, parameter: Value, env: &EnvironmentRef, stack_: &Stack) -> Result {
+    pub fn call(&self, parameter: Value, env: &Environment, stack_: &Stack) -> Result {
         let mut stack = stack_.clone();
         stack
             .evaluation_mut()
@@ -30,7 +28,7 @@ impl Value {
     }
 }
 
-pub(crate) fn setup(env: &mut Environment) {
+pub(crate) fn setup(env: &mut EnvironmentInner) {
     closure::setup(env);
     template::setup(env);
 

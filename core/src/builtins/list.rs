@@ -19,9 +19,7 @@ impl List {
     }
 }
 
-core_primitive!(pub list for List);
-
-pub(crate) fn setup(env: &mut Environment) {
+pub(crate) fn setup(env: &mut EnvironmentInner) {
     env.set_variable("List", Value::of(Trait::of::<List>()));
 
     // List == Evaluate
@@ -70,16 +68,20 @@ pub(crate) fn setup(env: &mut Environment) {
     });
 
     // List == Text
-    env.add_conformance(Trait::list(), Trait::text(), |value, env, stack| {
-        let list = value.clone().into_primitive::<List>();
+    env.add_conformance(
+        Validation::for_trait(Trait::of::<List>()),
+        Trait::of::<Text>(),
+        |value, env, stack| {
+            let list = value.into_primitive::<List>().unwrap();
 
-        let mut items = Vec::new();
+            let mut items = Vec::new();
 
-        for item in &list.items {
-            let text = item.format(env, stack)?;
-            items.push(text);
-        }
+            for item in &list.items {
+                let text = item.format(env, stack)?;
+                items.push(text);
+            }
 
-        Ok(Value::of(Text::new(&format!("({})", items.join(" ")))))
-    });
+            Ok(Value::of(Text::new(&format!("({})", items.join(" ")))))
+        },
+    );
 }

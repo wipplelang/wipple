@@ -13,31 +13,15 @@ use debug_cell::RefCell;
 use std::cell::RefCell;
 
 pub type EnvironmentValues = HashMap<EnvironmentKey, Dynamic>;
-pub type EnvironmentRef = Rc<RefCell<Environment>>;
+pub type Environment = Rc<RefCell<EnvironmentInner>>;
 
-#[derive(Debug, Clone)]
-pub struct Environment {
+#[derive(Clone)]
+pub struct EnvironmentInner {
     pub values: EnvironmentValues,
-    pub parent: Option<EnvironmentRef>,
+    pub parent: Option<Environment>,
 }
 
-impl Environment {
-    pub fn blank() -> Self {
-        Environment {
-            values: EnvironmentValues::new(),
-            parent: None,
-        }
-    }
-
-    pub fn child_of(parent: &EnvironmentRef) -> Environment {
-        Environment {
-            values: EnvironmentValues::new(),
-            parent: Some(parent.clone()),
-        }
-    }
-}
-
-impl Environment {
+impl EnvironmentInner {
     pub fn get(&mut self, key: &EnvironmentKey) -> Option<&mut Dynamic> {
         self.values.get_mut(key)
     }
@@ -53,14 +37,22 @@ impl Environment {
     pub fn set(&mut self, key: &EnvironmentKey, value: Dynamic) {
         self.values.insert(key.clone(), value);
     }
+}
 
-    pub fn into_ref(self) -> EnvironmentRef {
-        Rc::new(RefCell::new(self))
+impl From<EnvironmentInner> for Environment {
+    fn from(env: EnvironmentInner) -> Self {
+        Rc::new(RefCell::new(env))
     }
 }
 
-fn_wrapper_struct! {
-    pub type UseFn(&Dynamic, &Dynamic) -> Dynamic;
+impl From<EnvironmentInner> for Rc<RefCell<Option<EnvironmentInner>>> {
+    fn from(env: EnvironmentInner) -> Self {
+        Rc::new(RefCell::new(Some(env)))
+    }
+}
+
+fn_wrapper! {
+    pub struct UseFn(&Dynamic, &Dynamic) -> Dynamic;
 }
 
 impl UseFn {
@@ -74,46 +66,68 @@ impl UseFn {
     }
 }
 
-impl Environment {
-    pub fn r#use(&mut self, other: &Environment) {
+impl EnvironmentInner {
+    pub fn r#use(&mut self, other: &EnvironmentInner) {
         for (key, new_value) in &other.values {
-            let r#use = match &key.visibility {
-                EnvironmentVisibility::Public(r#use) => r#use,
-                EnvironmentVisibility::Private => continue,
-            };
-
-            match self.get(&key) {
-                Some(parent_value) => {
-                    let used_value = r#use(parent_value, new_value);
-                    *parent_value = used_value;
-                }
-                None => self.set(&key, new_value.clone()),
+            match &key.visibility {
+                EnvironmentVisibility::Public(r#use) => match self.get(&key) {
+                    Some(parent_value) => {
+                        let used_value = r#use(parent_value, new_value);
+                        *parent_value = used_value;
+                    }
+                    None => self.set(&key, new_value.clone()),
+                },
+                EnvironmentVisibility::Private => {}
             }
         }
     }
 }
 
-thread_local! {
-    static GLOBAL_ENV: EnvironmentRef = Environment::blank().into_ref();
-}
+/// Helper functions for managing environment
+pub mod env {
+    use super::*;
 
-impl Environment {
-    pub fn global() -> EnvironmentRef {
+    thread_local! {
+        static GLOBAL_ENV: Environment = Environment::from(blank());
+    }
+
+    pub fn blank() -> EnvironmentInner {
+        EnvironmentInner {
+            values: EnvironmentValues::new(),
+            parent: None,
+        }
+    }
+
+    pub fn child_of(parent: &Environment) -> EnvironmentInner {
+        EnvironmentInner {
+            values: EnvironmentValues::new(),
+            parent: Some(parent.clone()),
+        }
+    }
+
+    pub fn global() -> Environment {
         GLOBAL_ENV.with(|env| env.clone())
     }
 
-    pub fn is_global(env: &EnvironmentRef) -> bool {
-        env.as_ptr() == Environment::global().as_ptr()
+    pub fn is_global(env: &Environment) -> bool {
+        Environment::as_ptr(env) == Environment::as_ptr(&global())
     }
 }
 
 #[derive(Clone)]
 pub enum EnvironmentVisibility {
-    /// The value cannot be `use`d by another environment
+    /// The value cannot be accessed by children and cannot be `use`d by another
+    /// environment.
     Private,
 
-    /// The value can be `use`d by another environment. If the value does not
-    /// exist in the other environment, it will just be copied over
+    /// The value can be accessed by children but cannot be `use`d by another
+    /// environment. (TODO: Implement)
+    // Protected,
+
+    /// The value can be accessed by children and can be `use`d by another
+    /// environment. If the value already exists in the other environment, the
+    /// provided `UseFn` will be called to handle merging them. If the value
+    /// doesn't exist, it will be copied.
     Public(UseFn),
 }
 

@@ -1,14 +1,12 @@
 use crate::*;
 
-fn_wrapper_struct! {
+fn_wrapper! {
     #[derive(TypeInfo)]
-    pub type EvaluateFn(&EnvironmentRef, &Stack) -> Result;
+    pub struct EvaluateFn(&Environment, &Stack) -> Result;
 }
 
-core_primitive!(pub evaluate for EvaluateFn);
-
 impl Value {
-    pub fn evaluate(&self, env: &EnvironmentRef, stack: &Stack) -> Result {
+    pub fn evaluate(&self, env: &Environment, stack: &Stack) -> Result {
         match self.get_if_present::<EvaluateFn>(env, stack)? {
             Some(evaluate) => evaluate.0(env, stack),
             None => Ok(self.clone()),
@@ -16,7 +14,7 @@ impl Value {
     }
 }
 
-pub(crate) fn setup(env: &mut Environment) {
+pub(crate) fn setup(env: &mut EnvironmentInner) {
     env.set_variable("Evaluate", Value::of(Trait::of::<EvaluateFn>()));
 
     env.set_variable(

@@ -34,22 +34,22 @@ pub fn set_dependency_path_in(stack: &mut Stack, path: &Path) {
 }
 
 ref_thread_local! {
-    pub static managed PROJECT_ENVS: HashMap<PathBuf, EnvironmentRef> = HashMap::new();
+    pub static managed PROJECT_ENVS: HashMap<PathBuf, Environment> = HashMap::new();
     pub static managed DEPENDENCIES: HashMap<PathBuf, ParsedProject> = HashMap::new();
 }
 
-pub fn project_env_for_path(path: &Path) -> EnvironmentRef {
+pub fn project_env_for_path(path: &Path) -> Environment {
     PROJECT_ENVS
         .borrow_mut()
         .entry(path.to_path_buf())
-        .or_insert_with(|| Environment::child_of(&Environment::global()).into_ref())
+        .or_insert_with(|| env::child_of(&env::global()).into())
         .clone()
 }
 
-pub fn project_env_in(stack: &Stack) -> EnvironmentRef {
+pub fn project_env_in(stack: &Stack) -> Environment {
     match project_root_in(stack).0 {
         Some(path) => project_env_for_path(&path),
-        None => Environment::global(),
+        None => env::global(),
     }
 }
 
@@ -67,7 +67,7 @@ impl Project {
             .evaluation_mut()
             .add(|| format!("Loading project '{}'", path.to_string_lossy()));
 
-        let env = Environment::child_of(&project_env_for_path(path)).into_ref();
+        let env = env::child_of(&project_env_for_path(path)).into();
         setup_project_env(path.parent().unwrap(), &env);
 
         let module = wipple_loading::import_file_with_parent_env(path, &env, &stack)?;
@@ -167,7 +167,7 @@ impl ParsedProject {
     }
 }
 
-fn setup_project_env(project_root: &Path, env: &EnvironmentRef) {
+fn setup_project_env(project_root: &Path, env: &Environment) {
     let project_root = project_root.to_path_buf();
 
     env.borrow_mut().set_variable(
@@ -240,7 +240,7 @@ fn setup_project_env(project_root: &Path, env: &EnvironmentRef) {
 
 fn parse_project_env(
     project_path: &Path,
-    env: &EnvironmentRef,
+    env: &Environment,
     stack: &Stack,
 ) -> wipple::Result<Project> {
     let dependencies = (|| {
@@ -311,8 +311,6 @@ pub enum Dependency {
     Git { url: String, branch: Option<String> },
     Path(PathBuf),
 }
-
-primitive!(pub dependency for Dependency);
 
 impl Dependency {
     pub fn update(

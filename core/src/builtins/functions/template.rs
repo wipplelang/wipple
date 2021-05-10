@@ -1,18 +1,16 @@
 use crate::*;
 
-fn_wrapper_struct! {
+fn_wrapper! {
     #[derive(TypeInfo)]
-    pub type ReplaceInTemplateFn(&str, &Value, &EnvironmentRef, &Stack) -> Result;
+    pub struct ReplaceInTemplateFn(&str, &Value, &Environment, &Stack) -> Result;
 }
-
-core_primitive!(pub replace_in_template for ReplaceInTemplateFn);
 
 impl Value {
     pub fn replace_in_template(
         &self,
         parameter: &str,
         replacement: &Value,
-        env: &EnvironmentRef,
+        env: &Environment,
         stack: &Stack,
     ) -> Result {
         match self.get_if_present::<ReplaceInTemplateFn>(env, stack)? {
@@ -28,9 +26,7 @@ pub struct Template {
     pub replace_in: Value,
 }
 
-core_primitive!(pub template for Template);
-
-pub(crate) fn setup(env: &mut Environment) {
+pub(crate) fn setup(env: &mut EnvironmentInner) {
     // Template == Function
     env.add_primitive_conformance(|template: Template| {
         Function::new(move |replacement, env, stack| {

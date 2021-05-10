@@ -1,8 +1,6 @@
 use crate::*;
 
-core_primitive!(pub validation for Validation);
-
-pub(crate) fn setup(env: &mut Environment) {
+pub(crate) fn setup(env: &mut EnvironmentInner) {
     env.set_variable("Validation", Value::of(Trait::of::<Validation>()));
 
     // Validation == Text

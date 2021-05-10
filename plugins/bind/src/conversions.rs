@@ -4,15 +4,15 @@ pub trait FromValue
 where
     Self: Sized,
 {
-    fn from_value(value: Value, env: &EnvironmentRef, stack: &Stack) -> Result<Self>;
+    fn from_value(value: Value, env: &Environment, stack: &Stack) -> Result<Self>;
 }
 
 pub trait AsValue {
-    fn as_value(&self, env: &EnvironmentRef, stack: &Stack) -> Result;
+    fn as_value(&self, env: &Environment, stack: &Stack) -> Result;
 }
 
 impl FromValue for () {
-    fn from_value(value: Value, _: &EnvironmentRef, stack: &Stack) -> Result<Self> {
+    fn from_value(value: Value, _: &Environment, stack: &Stack) -> Result<Self> {
         if value.is_empty() {
             Ok(())
         } else {
@@ -24,13 +24,13 @@ impl FromValue for () {
 // Conversions for primitive types
 
 impl AsValue for () {
-    fn as_value(&self, _: &EnvironmentRef, _: &Stack) -> Result {
+    fn as_value(&self, _: &Environment, _: &Stack) -> Result {
         Ok(Value::empty())
     }
 }
 
 impl FromValue for String {
-    fn from_value(value: Value, env: &EnvironmentRef, stack: &Stack) -> Result<Self> {
+    fn from_value(value: Value, env: &Environment, stack: &Stack) -> Result<Self> {
         value
             .get_or::<Text>("Expected text", env, stack)
             .map(|x| x.text)
@@ -38,7 +38,7 @@ impl FromValue for String {
 }
 
 impl AsValue for String {
-    fn as_value(&self, _: &EnvironmentRef, _: &Stack) -> Result {
+    fn as_value(&self, _: &Environment, _: &Stack) -> Result {
         Ok(Value::of(Text::new(self)))
     }
 }
@@ -46,7 +46,7 @@ impl AsValue for String {
 macro_rules! number_conversion {
     ($type:ty, $desc:expr) => {
         impl FromValue for $type {
-            fn from_value(value: Value, env: &EnvironmentRef, stack: &Stack) -> Result<Self> {
+            fn from_value(value: Value, env: &Environment, stack: &Stack) -> Result<Self> {
                 let number = value.get_or::<Number>("Expected number", env, stack)?;
 
                 Ok(number.number as $type)
@@ -54,7 +54,7 @@ macro_rules! number_conversion {
         }
 
         impl AsValue for $type {
-            fn as_value(&self, _: &EnvironmentRef, _: &Stack) -> Result {
+            fn as_value(&self, _: &Environment, _: &Stack) -> Result {
                 Ok(Value::of(Number::new(*self as f64)))
             }
         }

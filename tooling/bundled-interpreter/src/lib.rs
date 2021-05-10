@@ -2,7 +2,7 @@ use wipple::*;
 use wipple_stdlib::*;
 
 pub fn setup() -> Result<Stack> {
-    let env = Environment::global();
+    let env = env::global();
     let mut stack = Stack::new();
 
     wipple::setup();

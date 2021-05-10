@@ -14,7 +14,7 @@ use wipple::*;
 use wipple_plugins::*;
 
 pub fn setup() {
-    let env = Environment::global();
+    let env = env::global();
 
     env.borrow_mut().set_variable(
         "import",
@@ -63,11 +63,14 @@ pub fn setup() {
     // Text == Module
     // FIXME: This is impure and should not be a direct conformance; use some
     // kind of 'Import' trait instead
-    env.borrow_mut()
-        .add_conformance(Trait::text(), Trait::module(), |value, _, stack| {
-            let text = value.clone().into_primitive::<Text>();
+    env.borrow_mut().add_conformance(
+        Validation::for_trait(Trait::of::<Text>()),
+        Trait::of::<Module>(),
+        |value, _, stack| {
+            let text = value.into_primitive::<Text>().unwrap();
 
             let module = import(&text.text, stack)?;
             Ok(Value::of(module))
-        });
+        },
+    );
 }

@@ -14,7 +14,7 @@ pub fn wipple_plugin_attribute(_attr: TokenStream, item: TokenStream) -> TokenSt
 
         #[no_mangle]
         pub extern "C" fn _wipple_plugin(
-            env: &wipple::EnvironmentRef,
+            env: &wipple::Environment,
             stack: &wipple::Stack,
         ) -> Box<wipple::Result> {
             Box::new(#fn_name(env, stack))

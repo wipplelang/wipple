@@ -187,12 +187,12 @@ fn test(code: &str) -> (String, std::time::Duration) {
     wipple::setup();
     setup(output.clone(), &mut stack);
 
-    wipple_stdlib::setup(&Environment::global(), &stack).expect("Failed to load standard library");
+    wipple_stdlib::setup(&wipple::env::global(), &stack).expect("Failed to load standard library");
 
     if let Err(error) = wipple_projects::import_program_with_parent_env(
         program,
         None,
-        &Environment::global(),
+        &wipple::env::global(),
         &stack,
     ) {
         output.replace(vec![error.as_error().to_string()]);

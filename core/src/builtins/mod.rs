@@ -27,7 +27,7 @@ pub use variants::*;
 
 use crate::*;
 
-pub(crate) fn setup(env: &mut Environment) {
+pub(crate) fn setup(env: &mut EnvironmentInner) {
     block::setup(env);
     empty::setup(env);
     evaluate::setup(env);

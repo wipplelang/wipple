@@ -16,9 +16,7 @@ impl Number {
     }
 }
 
-core_primitive!(pub number for Number);
-
-pub(crate) fn setup(env: &mut Environment) {
+pub(crate) fn setup(env: &mut EnvironmentInner) {
     env.set_variable("Number", Value::of(Trait::of::<Number>()));
 
     // Number == Text

@@ -45,13 +45,12 @@ fn run_code(code: &str) -> wipple::Result<Vec<ShownValue>> {
 
     let mut stack = Stack::new();
 
-    wipple_stdlib::setup(&Environment::global(), &stack)?;
+    wipple_stdlib::setup(&env::global(), &stack)?;
 
-    let env = Environment::child_of(&Environment::global()).into_ref();
+    let env = env::child_of(&env::global()).into();
 
     let program = wipple_loading::load_string(code, None, &stack)?;
 
-    setup_module_block(&env);
     setup_playground(&output, &mut stack);
     wipple_loading::include_program(program, &env, &stack)?;
 

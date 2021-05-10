@@ -61,13 +61,13 @@ pub struct Foo { ... };
 primitive!(pub foo for Foo);
 
 impl FromValue for Foo {
-    fn from_value(value: Value, env: &EnvironmentRef, stack: &Stack) -> Result<Self> {
+    fn from_value(value: Value, env: &Environment, stack: &Stack) -> Result<Self> {
         value.get_or::<Foo>("Expected Foo value", env, stack)
     }
 }
 
 impl AsValue for Foo {
-    fn as_value(&self, _: &EnvironmentRef, _: &Stack) -> Result {
+    fn as_value(&self, _: &Environment, _: &Stack) -> Result {
         Ok(Value::of(self.clone()))
     }
 }

@@ -1,4 +1,4 @@
->>> 'Is' validation
+>>> 'is' validation
 
 A : trait Text
 A text == Text (format "A _" text)
@@ -6,11 +6,13 @@ A text == Text (format "A _" text)
 a : A "foo"
 
 show a
-show (A for a)
-show ((Is A) for a)
+show (a as A)
+show (a as (is A))
+show (a into A) -- equivalent for traits
 
 ---
 
 a ==> A foo
-(A for a) ==> foo
-((Is A) for a) ==> A foo
+(a as A) ==> foo
+(a as (is A)) ==> A foo
+(a into A) ==> A foo

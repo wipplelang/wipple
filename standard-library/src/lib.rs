@@ -13,7 +13,7 @@ use wipple_plugins::wipple_plugin;
 struct Asset;
 
 #[wipple_plugin]
-pub fn setup(env: &EnvironmentRef, stack: &Stack) -> Result {
+pub fn setup(env: &Environment, stack: &Stack) -> Result {
     prelude::prelude(env);
     show::setup(env);
     r#loop::setup(env);

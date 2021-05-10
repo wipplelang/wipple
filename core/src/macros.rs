@@ -1,10 +1,10 @@
 pub use paste::paste;
 
 #[macro_export]
-macro_rules! fn_wrapper_struct {
+macro_rules! fn_wrapper {
     {
         $(#[$attr:meta])*
-        $vis:vis type $name:ident ($($args:ty),*) $(-> $return:ty)?;
+        $vis:vis struct $name:ident ($($args:ty),*) $(-> $return:ty)?;
     } => {
         $(#[$attr])*
         #[derive(Clone)]
@@ -32,31 +32,6 @@ macro_rules! fn_wrapper_struct {
     };
 }
 
-macro_rules! core_primitive {
-    ($vis:vis $name:ident for $Type:ty) => {
-        impl $crate::Primitive for $Type {}
-
-        impl $crate::Trait {
-            $vis fn $name() -> Self {
-                $crate::Trait::of::<$Type>()
-            }
-        }
-    };
-}
-
-#[macro_export]
-macro_rules! primitive {
-    ($vis:vis $name:ident for $Type:ty) => {
-        impl $crate::Primitive for $Type {}
-
-        $crate::paste! {
-            $vis fn [<$name _trait>]() -> $crate::Trait {
-                $crate::Trait::of::<$Type>()
-            }
-        }
-    };
-}
-
 macro_rules! core_env_key {
     ($vis:vis $name:ident for $Type:ty { visibility: $visibility:expr $(,)? }) => {
         impl $crate::EnvironmentKey {
@@ -65,7 +40,7 @@ macro_rules! core_env_key {
             }
         }
 
-        impl $crate::Environment {
+        impl $crate::EnvironmentInner {
             $vis fn $name(&mut self) -> &mut $Type {
                 self.get_or_insert(&EnvironmentKey::$name(), || Dynamic::new(<$Type>::default()))
                     .cast_mut::<$Type>()

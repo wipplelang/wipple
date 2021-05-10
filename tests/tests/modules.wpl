@@ -2,7 +2,7 @@
 
 a : 1
 
-{
+new {
     a : 2
 }
 
@@ -16,7 +16,7 @@ a ==> 1
 
 a : 1
 
-{
+new {
     a : a + 1
     show a
 }
@@ -30,7 +30,7 @@ a ==> 1
 
 >>> Accessing variables inside a module
 
-module : {
+module : new {
     a : 1
 }
 
@@ -42,20 +42,12 @@ show (module a)
 
 >>> 'use' function
 
-use {
+use (new {
     a : 1
-}
+})
 
 show a
 
 ---
 
 a ==> 1
-
->>> Module text
-
-show {}
-
----
-
-<block> ==> <module>

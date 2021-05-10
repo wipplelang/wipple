@@ -56,15 +56,17 @@ show (format "_, _!" "Hello" "world")
 Greet : trait Text
 greet : Greet name -> format "Hello, _!" name
 
-Person : trait '{
+Person : trait (new {
     name : Text
-}
+})
+
+person : name -> Person (new {
+    name : name
+})
 
 Person person == Greet (person name)
 
-bob : Person {
-    name : "Bob"
-}
+bob : person "Bob"
 
 show (greet bob)
 

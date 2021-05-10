@@ -16,9 +16,7 @@ impl Quoted {
     }
 }
 
-core_primitive!(pub quoted for Quoted);
-
-pub(crate) fn setup(env: &mut Environment) {
+pub(crate) fn setup(env: &mut EnvironmentInner) {
     env.set_variable("Quoted", Value::of(Trait::of::<Quoted>()));
 
     // Quoted == Evaluate
@@ -38,11 +36,15 @@ pub(crate) fn setup(env: &mut Environment) {
     });
 
     // Quoted == Text
-    env.add_conformance(Trait::quoted(), Trait::text(), |value, env, stack| {
-        let quoted = value.clone().into_primitive::<Quoted>();
+    env.add_conformance(
+        Validation::for_trait(Trait::of::<Quoted>()),
+        Trait::of::<Text>(),
+        |value, env, stack| {
+            let quoted = value.into_primitive::<Quoted>().unwrap();
 
-        let text = quoted.value.format(env, stack)?;
+            let text = quoted.value.format(env, stack)?;
 
-        Ok(Value::of(Text::new(&format!("'{}", text))))
-    });
+            Ok(Value::of(Text::new(&format!("'{}", text))))
+        },
+    );
 }

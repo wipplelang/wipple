@@ -1,40 +1,30 @@
 use crate::*;
 
-#[derive(TypeInfo, Debug, Clone)]
+#[derive(TypeInfo, Clone)]
 pub struct Closure {
-    pub captured_env: EnvironmentRef,
+    pub captured_env: Environment,
     pub validation: Validation,
     pub parameter: Name,
     pub return_value: Value,
 }
 
-core_primitive!(pub closure for Closure);
-
-pub(crate) fn setup(env: &mut Environment) {
+pub(crate) fn setup(env: &mut EnvironmentInner) {
     // Closure == Function
     env.add_primitive_conformance(|closure: Closure| {
         Function::new(move |value, env, stack| {
             let value = value.evaluate(env, stack)?;
 
-            let validated = (closure.validation)(&value, env, stack)?;
+            let validated = (closure.validation)(value, env, stack)?;
 
-            let value = match validated {
-                Validated::Valid(value) => value,
-                Validated::Invalid => {
-                    return Err(Return::error(
-                        "Cannot use this value as input to this closure",
-                        stack,
-                    ))
-                }
-            };
+            let value = validated.into_valid().ok_or_else(|| {
+                Return::error("Cannot use this value as input to this closure", stack)
+            })?;
 
-            let inner_env = Environment::child_of(&closure.captured_env).into_ref();
+            let mut inner_env = env::child_of(&closure.captured_env);
 
-            inner_env
-                .borrow_mut()
-                .set_variable(&closure.parameter.name, value);
+            inner_env.set_variable(&closure.parameter.name, value);
 
-            closure.return_value.evaluate(&inner_env, stack)
+            closure.return_value.evaluate(&inner_env.into(), stack)
         })
     });
 

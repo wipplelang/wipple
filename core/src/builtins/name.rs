@@ -20,10 +20,8 @@ impl Name {
     }
 }
 
-core_primitive!(pub name for Name);
-
-fn_wrapper_struct! {
-    pub type ComputeFn(&EnvironmentRef, &Stack) -> Result;
+fn_wrapper! {
+    pub struct ComputeFn(&Environment, &Stack) -> Result;
 }
 
 #[derive(Debug, Clone)]
@@ -33,7 +31,7 @@ pub enum Variable {
 }
 
 impl Variable {
-    pub fn get_value(&self, env: &EnvironmentRef, stack: &Stack) -> Result {
+    pub fn get_value(&self, env: &Environment, stack: &Stack) -> Result {
         match self {
             Variable::Just(value) => Ok(value.clone()),
             Variable::Computed(compute) => compute(env, stack),
@@ -50,44 +48,51 @@ core_env_key!(pub variables for Variables {
     }))
 });
 
-fn_wrapper_struct! {
+fn_wrapper! {
     #[derive(TypeInfo)]
-    pub type HandleAssignFn(&Name, &Value, &EnvironmentRef, &Stack) -> Result<()>;
+    pub struct AssignmentFn(&Name, &Value, &Environment, &Stack) -> Result<()>;
 }
 
-impl Default for HandleAssignFn {
+impl Default for AssignmentFn {
     fn default() -> Self {
-        HandleAssignFn::new(|_, _, _, stack| {
-            Err(Return::error("Cannot assign to variables here", stack))
+        AssignmentFn::new(|left, right, env, stack| {
+            let value = right.evaluate(env, stack)?;
+            env.borrow_mut().set_variable(&left.name, value);
+            Ok(())
         })
     }
 }
 
-core_env_key!(pub handle_assign for HandleAssignFn {
+core_env_key!(pub assignment for AssignmentFn {
     visibility: EnvironmentVisibility::Private,
 });
 
-fn_wrapper_struct! {
+fn_wrapper! {
     #[derive(TypeInfo)]
-    pub type HandleComputedAssignFn(&Name, &Value, &EnvironmentRef, &Stack) -> Result<()>;
+    pub struct ComputedAssignmentFn(&Name, &Value, &Environment, &Stack) -> Result<()>;
 }
 
-impl Default for HandleComputedAssignFn {
+impl Default for ComputedAssignmentFn {
     fn default() -> Self {
-        HandleComputedAssignFn::new(|_, _, _, stack| {
-            Err(Return::error(
-                "Cannot assign to computed variables here",
-                stack,
-            ))
+        ComputedAssignmentFn::new(|left, right, env, _| {
+            let right = right.clone();
+            let captured_env = env::child_of(env).into();
+
+            env.borrow_mut()
+                .set_computed_variable(&left.name, move |_, stack| {
+                    right.evaluate(&captured_env, stack)
+                });
+
+            Ok(())
         })
     }
 }
 
-core_env_key!(pub handle_computed_assign for HandleComputedAssignFn {
+core_env_key!(pub computed_assignment for ComputedAssignmentFn {
     visibility: EnvironmentVisibility::Private,
 });
 
-impl Environment {
+impl EnvironmentInner {
     pub fn set_variable(&mut self, name: &str, value: Value) {
         self.variables()
             .0
@@ -97,7 +102,7 @@ impl Environment {
     pub fn set_computed_variable(
         &mut self,
         name: &str,
-        compute: impl Fn(&EnvironmentRef, &Stack) -> Result + 'static,
+        compute: impl Fn(&Environment, &Stack) -> Result + 'static,
     ) {
         self.variables().0.insert(
             name.to_string(),
@@ -107,12 +112,12 @@ impl Environment {
 }
 
 impl Name {
-    pub fn resolve(&self, env: &EnvironmentRef, stack: &Stack) -> Result {
+    pub fn resolve(&self, env: &Environment, stack: &Stack) -> Result {
         let variable = self.resolve_variable(env, stack)?;
         variable.get_value(env, stack)
     }
 
-    pub fn resolve_if_present(&self, env: &EnvironmentRef, stack: &Stack) -> Result<Option<Value>> {
+    pub fn resolve_if_present(&self, env: &Environment, stack: &Stack) -> Result<Option<Value>> {
         let mut stack = stack.clone();
         stack
             .evaluation_mut()
@@ -124,7 +129,7 @@ impl Name {
         }
     }
 
-    pub fn resolve_variable(&self, env: &EnvironmentRef, stack: &Stack) -> Result<Variable> {
+    pub fn resolve_variable(&self, env: &Environment, stack: &Stack) -> Result<Variable> {
         let mut stack = stack.clone();
         stack
             .evaluation_mut()
@@ -138,22 +143,65 @@ impl Name {
         })
     }
 
-    pub fn resolve_variable_if_present(&self, env: &EnvironmentRef) -> Option<Variable> {
-        fn get(name: &Name, env: &EnvironmentRef) -> Option<Variable> {
+    pub fn resolve_variable_if_present(&self, env: &Environment) -> Option<Variable> {
+        fn get_recursive(name: &Name, env: &Environment) -> Option<Variable> {
             let variable = env.borrow_mut().variables().0.get(&name.name).cloned();
             if let Some(variable) = variable {
                 return Some(variable);
             }
 
             let parent = env.borrow_mut().parent.clone();
-            parent.and_then(|parent| get(name, &parent))
+            parent.and_then(|parent| get_recursive(name, &parent))
         }
 
-        get(self, env)
+        get_recursive(self, env)
+    }
+
+    pub fn update_variable(
+        &self,
+        update: impl FnOnce(&mut Value),
+        env: &Environment,
+        stack: &Stack,
+    ) -> Result<()> {
+        let mut stack = stack.clone();
+        stack
+            .evaluation_mut()
+            .add(|| format!("Resolving variable '{}'", self.name));
+
+        fn update_recursive(
+            name: &Name,
+            update: impl FnOnce(&mut Value),
+            env: &Environment,
+            stack: &Stack,
+        ) -> Result<()> {
+            let mut env = env.borrow_mut();
+            let variable = env.variables().0.get_mut(&name.name);
+
+            if let Some(variable) = variable {
+                match variable {
+                    Variable::Just(value) => {
+                        update(value);
+                        Ok(())
+                    }
+                    Variable::Computed(_) => {
+                        Err(Return::error("Cannot modify a computed variable", stack))
+                    }
+                }
+            } else if let Some(parent) = env.parent.clone() {
+                update_recursive(name, update, &parent, stack)
+            } else {
+                Err(Return::error(
+                    &format!("Name '{}' does not refer to a variable", name.name),
+                    &stack,
+                ))
+            }
+        }
+
+        update_recursive(self, update, env, &stack)
     }
 }
 
-pub(crate) fn setup(env: &mut Environment) {
+pub(crate) fn setup(env: &mut EnvironmentInner) {
     // Name : trait
     env.set_variable("Name", Value::of(Trait::of::<Name>()));
 
