@@ -10,7 +10,7 @@ Grade : variant (A B C D F)
 
 By convention, variant sets and individual variants are capitalized.
 
-All variant sets have the `Variant-Set` trait, which conforms to `Module` and `Pattern`. This means you can access individual variants just like modules, and you can bring them all into scope with `use`:
+All variant sets have the `Variant-Set` trait, which derives `Module`. This means you can access individual variants just like modules, and you can bring them all into scope with `use`:
 
 ```wipple
 my-grade : Grade A
