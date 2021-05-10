@@ -11,3 +11,5 @@
   - [Patterns](./learn/patterns.md)
   - [Relations](./learn/relations.md)
   - [Variants and logic](./learn/variants-and-logic.md)
+  - [Functional programming](./learn/functional-programming.md)
+  - [Controlling evaluation](./learn/controlling-evaluation.md)

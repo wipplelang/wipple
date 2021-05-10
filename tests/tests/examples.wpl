@@ -33,7 +33,7 @@ use (variant {
 guess : correct 5
 
 text : match guess {
-    correct : x => '("CORRECT ANSWER" x)
+    correct : x => literal ("CORRECT ANSWER" x)
     incorrect : "INCORRECT ANSWER"
 }
 

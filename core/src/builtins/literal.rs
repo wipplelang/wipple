@@ -24,17 +24,6 @@ pub(crate) fn setup(env: &mut EnvironmentInner) {
         EvaluateFn::new(move |_, _| Ok(literal.value.clone()))
     });
 
-    // Literal == Replace-In-Template
-    env.add_primitive_relation(|literal: Literal| {
-        ReplaceInTemplateFn::new(move |parameter, replacement, env, stack| {
-            let replaced = literal
-                .value
-                .replace_in_template(parameter, replacement, env, stack)?;
-
-            Ok(Value::of(Literal::new(replaced)))
-        })
-    });
-
     // Literal == Text
     env.add_relation(
         Pattern::for_trait(Trait::of::<Literal>()),
@@ -47,4 +36,6 @@ pub(crate) fn setup(env: &mut EnvironmentInner) {
             Ok(Value::of(Text::new(&format!("'{}", text))))
         },
     );
+
+    env.set_variable("literal", Value::of(Function::new(|value, _, _| Ok(value))));
 }
