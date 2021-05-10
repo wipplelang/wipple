@@ -2,16 +2,16 @@ use crate::*;
 
 fn_wrapper! {
     #[derive(TypeInfo)]
-    pub struct Validation(Value, &Environment, &Stack) -> Result<Validated<Value>>;
+    pub struct Pattern(Value, &Environment, &Stack) -> Result<Validated<Value>>;
 }
 
-impl Validation {
+impl Pattern {
     pub fn any() -> Self {
-        Validation::new(|value, _, _| Ok(Validated::Valid(value)))
+        Pattern::new(|value, _, _| Ok(Validated::Valid(value)))
     }
 
     pub fn for_empty_value() -> Self {
-        Validation::new(|value, _, _| {
+        Pattern::new(|value, _, _| {
             Ok(if value.is_empty() {
                 Validated::Valid(value)
             } else {
@@ -21,9 +21,9 @@ impl Validation {
     }
 
     pub fn of<T: TypeInfo>() -> Self {
-        Validation::new(move |value, env, stack| {
+        Pattern::new(move |value, env, stack| {
             // Defer the call to Trait::of to prevent infinite recursion when
-            // creating the validation -- Trait::of calls Validation:of
+            // creating the pattern -- Trait::of calls pattern:of
             Ok(match value.get_if_present::<T>(env, stack)? {
                 Some(primitive) => Validated::Valid(Value::of(primitive)),
                 None => Validated::Invalid,
@@ -32,7 +32,7 @@ impl Validation {
     }
 
     pub fn for_trait(r#trait: Trait) -> Self {
-        Validation::new(move |value, env, stack| {
+        Pattern::new(move |value, env, stack| {
             Ok(match value.get_trait_if_present(&r#trait, env, stack)? {
                 Some(value) => Validated::Valid(value),
                 None => Validated::Invalid,
@@ -40,9 +40,9 @@ impl Validation {
         })
     }
 
-    pub fn is(validation: Validation) -> Self {
-        Validation::new(move |value, env, stack| {
-            validation(value.clone(), env, stack).map(|result| match result {
+    pub fn is(pattern: Pattern) -> Self {
+        Pattern::new(move |value, env, stack| {
+            pattern(value.clone(), env, stack).map(|result| match result {
                 Validated::Valid(_) => Validated::Valid(value),
                 Validated::Invalid => Validated::Invalid,
             })

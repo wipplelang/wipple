@@ -42,7 +42,7 @@ pub enum AstNode {
     Name(String),
     Text(String),
     Number(f64),
-    Quoted(Box<Ast>),
+    Literal(Box<Ast>),
 }
 
 #[derive(Debug)]
@@ -210,9 +210,9 @@ pub fn parse_number(tokens: &mut Tokens, lc: &LineColLookup) -> Result<Option<As
     parse_single_token!(Number, tokens, lc)
 }
 
-pub fn parse_quoted(tokens: &mut Tokens, lc: &LineColLookup) -> Result<Option<Ast>> {
+pub fn parse_literal(tokens: &mut Tokens, lc: &LineColLookup) -> Result<Option<Ast>> {
     let offset = match tokens.peek() {
-        Some((Token::Quote, offset)) => {
+        Some((Token::SingleQuote, offset)) => {
             tokens.next();
             offset
         }
@@ -221,7 +221,11 @@ pub fn parse_quoted(tokens: &mut Tokens, lc: &LineColLookup) -> Result<Option<As
 
     let value = parse_value(tokens, lc)?.ok_or_else(|| Error::new("Expected value", None, lc))?;
 
-    Ok(Some(Ast::new(AstNode::Quoted(Box::new(value)), offset, lc)))
+    Ok(Some(Ast::new(
+        AstNode::Literal(Box::new(value)),
+        offset,
+        lc,
+    )))
 }
 
 fn parse_value(tokens: &mut Tokens, lc: &LineColLookup) -> Result<Option<Ast>> {
@@ -232,7 +236,7 @@ fn parse_value(tokens: &mut Tokens, lc: &LineColLookup) -> Result<Option<Ast>> {
         parse_name,
         parse_text,
         parse_number,
-        parse_quoted,
+        parse_literal,
     ];
 
     for choice in choices {

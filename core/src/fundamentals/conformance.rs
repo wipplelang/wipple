@@ -3,19 +3,19 @@ use std::rc::Rc;
 
 #[derive(Clone)]
 pub struct Conformance {
-    pub validation: Validation,
+    pub pattern: Pattern,
     pub derived_trait: Trait,
     pub derive_value: Rc<dyn Fn(Value, &Environment, &Stack) -> Result>,
 }
 
 impl Conformance {
     pub fn new(
-        validation: Validation,
+        pattern: Pattern,
         derived_trait: Trait,
         derive_value: impl Fn(Value, &Environment, &Stack) -> Result + 'static,
     ) -> Self {
         Conformance {
-            validation,
+            pattern,
             derived_trait,
             derive_value: Rc::new(derive_value),
         }
@@ -27,7 +27,7 @@ impl std::fmt::Debug for Conformance {
         write!(
             f,
             "(Conformance {:?} == {:?})",
-            self.validation, self.derived_trait
+            self.pattern, self.derived_trait
         )
     }
 }
@@ -44,14 +44,14 @@ core_env_key!(pub conformances for Conformances {
 impl EnvironmentInner {
     pub fn add_conformance(
         &mut self,
-        validation: Validation,
+        pattern: Pattern,
         derived_trait: Trait,
         derive_value: impl Fn(Value, &Environment, &Stack) -> Result + 'static,
     ) {
         // New conformances always have a lower precedence than older conformances
         self.conformances()
             .0
-            .push(Conformance::new(validation, derived_trait, derive_value))
+            .push(Conformance::new(pattern, derived_trait, derive_value))
     }
 
     pub fn add_primitive_conformance<A: TypeInfo, B: TypeInfo>(
@@ -59,7 +59,7 @@ impl EnvironmentInner {
         derive_trait_value: impl Fn(A) -> B + 'static,
     ) {
         self.add_conformance(
-            Validation::for_trait(Trait::of::<A>()),
+            Pattern::for_trait(Trait::of::<A>()),
             Trait::of::<B>(),
             move |value, _, _| {
                 let a = value.into_primitive::<A>().unwrap();

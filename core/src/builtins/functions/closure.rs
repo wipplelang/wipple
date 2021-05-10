@@ -3,7 +3,7 @@ use crate::*;
 #[derive(TypeInfo, Clone)]
 pub struct Closure {
     pub captured_env: Environment,
-    pub validation: Validation,
+    pub pattern: Pattern,
     pub parameter: Name,
     pub return_value: Value,
 }
@@ -14,7 +14,7 @@ pub(crate) fn setup(env: &mut EnvironmentInner) {
         Function::new(move |value, env, stack| {
             let value = value.evaluate(env, stack)?;
 
-            let validated = (closure.validation)(value, env, stack)?;
+            let validated = (closure.pattern)(value, env, stack)?;
 
             let value = validated.into_valid().ok_or_else(|| {
                 Return::error("Cannot use this value as input to this closure", stack)

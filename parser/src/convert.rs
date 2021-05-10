@@ -31,7 +31,7 @@ pub fn convert(ast: &Ast, file: Option<&Path>) -> Value {
             Some(location(&ast.location, file)),
         )),
 
-        Quoted(node) => Value::of(wipple::Quoted::new_located(
+        Literal(node) => Value::of(wipple::Literal::new_located(
             convert(node, file),
             Some(location(&ast.location, file)),
         )),

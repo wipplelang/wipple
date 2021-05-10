@@ -1,7 +1,7 @@
->>> 'is' validation
+>>> 'is' pattern
 
 A : trait Text
-A text == Text (format "A _" text)
+text A == Text (format "A _" text)
 
 a : A "foo"
 

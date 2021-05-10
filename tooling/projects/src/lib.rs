@@ -64,7 +64,7 @@ pub fn setup() {
     // FIXME: This is impure and should not be a direct conformance; use some
     // kind of 'Import' trait instead
     env.borrow_mut().add_conformance(
-        Validation::for_trait(Trait::of::<Text>()),
+        Pattern::for_trait(Trait::of::<Text>()),
         Trait::of::<Module>(),
         |value, _, stack| {
             let text = value.into_primitive::<Text>().unwrap();

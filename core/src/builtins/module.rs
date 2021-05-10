@@ -42,10 +42,10 @@ pub(crate) fn setup(env: &mut EnvironmentInner) {
         })
     });
 
-    // Module == Validation
+    // Module == pattern
     env.add_conformance(
-        Validation::for_trait(Trait::of::<Module>()),
-        Trait::of::<Validation>(),
+        Pattern::for_trait(Trait::of::<Module>()),
+        Trait::of::<Pattern>(),
         |value, env, stack| {
             let module = value.into_primitive::<Module>().unwrap();
             let variables = module.env.borrow_mut().variables().0.clone();
@@ -53,16 +53,16 @@ pub(crate) fn setup(env: &mut EnvironmentInner) {
             let mut fields = HashMap::new();
 
             for (name, variable) in variables {
-                let validation = variable.get_value(env, stack)?.get_or::<Validation>(
-                    "Expected validation",
+                let pattern = variable.get_value(env, stack)?.get_or::<Pattern>(
+                    "Expected pattern",
                     env,
                     stack,
                 )?;
 
-                fields.insert(name, validation);
+                fields.insert(name, pattern);
             }
 
-            Ok(Value::of(Validation::new(move |value, env, stack| {
+            Ok(Value::of(Pattern::new(move |value, env, stack| {
                 let module = value.get_or::<Module>("Expected module", env, stack)?;
 
                 let mut validated_env = env::blank();
@@ -72,7 +72,7 @@ pub(crate) fn setup(env: &mut EnvironmentInner) {
                     let value = variable.get_value(env, stack)?;
 
                     let validated = match fields.get(&name) {
-                        Some(validation) => validation(value, env, stack)?,
+                        Some(pattern) => pattern(value, env, stack)?,
                         None => return Ok(Validated::Invalid),
                     };
 

@@ -24,7 +24,7 @@ pub enum Token {
     Text(String),
 
     #[token("'")]
-    Quote,
+    SingleQuote,
 
     #[token("(")]
     OpenParenthesis,

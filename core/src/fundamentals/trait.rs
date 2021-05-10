@@ -3,21 +3,21 @@ use crate::*;
 #[derive(TypeInfo, Clone)]
 pub struct Trait {
     pub id: Id,
-    pub validation: Validation,
+    pub pattern: Pattern,
 }
 
 impl Trait {
-    pub fn new(validation: Validation) -> Self {
+    pub fn new(pattern: Pattern) -> Self {
         Trait {
             id: Id::new(),
-            validation,
+            pattern,
         }
     }
 
     pub fn of<T: TypeInfo>() -> Self {
         Trait {
             id: Id::of::<T>(),
-            validation: Validation::of::<T>(),
+            pattern: Pattern::of::<T>(),
         }
     }
 }
@@ -90,11 +90,10 @@ impl Value {
                     continue;
                 }
 
-                if let Some(value) = (conformance.validation)(value.clone(), env, stack)?.as_valid()
-                {
+                if let Some(value) = (conformance.pattern)(value.clone(), env, stack)?.as_valid() {
                     let derived_value = (conformance.derive_value)(value.clone(), env, stack)?;
 
-                    let trait_value = (r#trait.validation)(derived_value, env, stack)?
+                    let trait_value = (r#trait.pattern)(derived_value, env, stack)?
                         .into_valid()
                         .ok_or_else(|| {
                             Return::error(

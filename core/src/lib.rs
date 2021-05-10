@@ -26,12 +26,12 @@ mod tests {
 
     #[test]
     fn f() {
-        let a_trait = Trait::new(Validation::of::<Number>());
+        let a_trait = Trait::new(Pattern::of::<Number>());
 
         let a_value = Value::new(a_trait.clone(), Value::of(Number::new(42.0)));
 
         assert!(
-            Validation::for_trait(a_trait)(a_value, &env::global(), &Stack::new())
+            Pattern::for_trait(a_trait)(a_value, &env::global(), &Stack::new())
                 .unwrap()
                 .is_valid()
         );

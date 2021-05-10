@@ -19,27 +19,27 @@ impl Variant {
 }
 
 impl Module {
-    pub fn for_variant(items: HashMap<String, Vec<Validation>>) -> Self {
+    pub fn for_variant(items: HashMap<String, Vec<Pattern>>) -> Self {
         let mut env = env::blank();
 
-        for (name, validations) in items {
+        for (name, patterns) in items {
             fn build_constructor(
                 name: String,
                 id: Id,
-                remaining_validations: Vec<Validation>,
+                remaining_patterns: Vec<Pattern>,
                 values: Vec<Value>,
             ) -> Value {
-                if remaining_validations.is_empty() {
+                if remaining_patterns.is_empty() {
                     Value::of(Variant::new(id, &name, &values))
                 } else {
                     Value::of(Function::new(move |value, env, stack| {
                         let value = value.evaluate(env, stack)?;
 
-                        let (validation, remaining_validations) =
-                            remaining_validations.split_first().unwrap();
+                        let (pattern, remaining_patterns) =
+                            remaining_patterns.split_first().unwrap();
 
                         let validated_value =
-                            validation(value, env, stack)?.into_valid().ok_or_else(|| {
+                            pattern(value, env, stack)?.into_valid().ok_or_else(|| {
                                 Return::error(
                                     "Cannot use this value to represent this variant",
                                     stack,
@@ -52,7 +52,7 @@ impl Module {
                         Ok(build_constructor(
                             name.clone(),
                             id,
-                            remaining_validations.to_vec(),
+                            remaining_patterns.to_vec(),
                             values,
                         ))
                     }))
@@ -61,7 +61,7 @@ impl Module {
 
             env.set_variable(
                 &name,
-                build_constructor(name.clone(), Id::new(), validations, vec![]),
+                build_constructor(name.clone(), Id::new(), patterns, vec![]),
             );
         }
 
@@ -79,7 +79,7 @@ fn setup_match_block(matches: Rc<RefCell<HashMap<String, Value>>>, env: &Environ
     })
 }
 
-fn setup_variant_block(variants: Rc<RefCell<HashMap<String, Vec<Validation>>>>, env: &Environment) {
+fn setup_variant_block(variants: Rc<RefCell<HashMap<String, Vec<Pattern>>>>, env: &Environment) {
     *env.borrow_mut().assignment() = AssignmentFn::new(move |left, right, env, stack| {
         if variants.borrow().contains_key(&left.name) {
             return Err(Return::error(
@@ -88,21 +88,21 @@ fn setup_variant_block(variants: Rc<RefCell<HashMap<String, Vec<Validation>>>>, 
             ));
         }
 
-        let list = right.get_or::<List>("Expected list of validations for variant", env, stack)?;
+        let list = right.get_or::<List>("Expected list of patterns for variant", env, stack)?;
 
-        let mut validations = Vec::new();
+        let mut patterns = Vec::new();
 
         for item in list.items {
-            let validation = item.evaluate(env, stack)?.get_or::<Validation>(
-                "Expected validation in list of variant items",
+            let pattern = item.evaluate(env, stack)?.get_or::<Pattern>(
+                "Expected pattern in list of variant items",
                 env,
                 stack,
             )?;
 
-            validations.push(validation);
+            patterns.push(pattern);
         }
 
-        variants.borrow_mut().insert(left.name.clone(), validations);
+        variants.borrow_mut().insert(left.name.clone(), patterns);
 
         Ok(())
     })
@@ -114,7 +114,7 @@ pub(crate) fn setup(env: &mut EnvironmentInner) {
     // TODO: Variant-Of
 
     env.add_conformance(
-        Validation::for_trait(Trait::of::<Variant>()),
+        Pattern::for_trait(Trait::of::<Variant>()),
         Trait::of::<Text>(),
         |value, env, stack| {
             let variant = value.into_primitive::<Variant>().unwrap();

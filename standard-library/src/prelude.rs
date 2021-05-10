@@ -6,30 +6,28 @@ pub fn prelude(env: &Environment) {
     env.borrow_mut().set_variable(
         "trait",
         Value::of(Function::new(|value, env, stack| {
-            let validation = value.evaluate(env, stack)?.get_or::<Validation>(
-                "Expected validation",
-                env,
-                stack,
-            )?;
+            let pattern =
+                value
+                    .evaluate(env, stack)?
+                    .get_or::<Pattern>("Expected pattern", env, stack)?;
 
-            let r#trait = Trait::new(validation);
+            let r#trait = Trait::new(pattern);
 
             Ok(Value::of(r#trait))
         })),
     );
 
-    // Validation functions
+    // pattern functions
 
     env.borrow_mut().set_variable(
         "is",
         Value::of(Function::new(|value, env, stack| {
-            let validation = value.evaluate(env, stack)?.get_or::<Validation>(
-                "Expected validation",
-                env,
-                stack,
-            )?;
+            let pattern =
+                value
+                    .evaluate(env, stack)?
+                    .get_or::<Pattern>("Expected pattern", env, stack)?;
 
-            Ok(Value::of(Validation::is(validation)))
+            Ok(Value::of(Pattern::is(pattern)))
         })),
     );
 
@@ -108,33 +106,31 @@ pub fn prelude(env: &Environment) {
     // Conformance operator (==)
 
     let conformance_operator = VariadicOperator::collect(|left, right, env, stack| {
-        let (validation, name) = match left {
+        let (name, pattern) = match left {
             VariadicOperatorInput::Single(left) => {
-                let validation = left.evaluate(env, stack)?.get_or::<Validation>(
-                    "Expected validation",
-                    env,
-                    stack,
-                )?;
+                let pattern =
+                    left.evaluate(env, stack)?
+                        .get_or::<Pattern>("Expected pattern", env, stack)?;
 
-                (validation, None)
+                (None, pattern)
             }
             VariadicOperatorInput::List(left) => {
                 if left.len() != 2 {
                     return Err(Return::error(
-                        "Expected conformance predicate in the form 'T x', or just 'T' if you don't care about the name",
+                        "Expected conformance predicate in the form 'x T', or just 'T' if you don't care about the name",
                         stack,
                     ));
                 }
 
-                let validation = left[0].evaluate(env, stack)?.get_or::<Validation>(
-                    "Expected validation",
+                let name = left[0].get_or::<Name>("Expected name", env, stack)?.name;
+
+                let pattern = left[1].evaluate(env, stack)?.get_or::<Pattern>(
+                    "Expected pattern",
                     env,
                     stack,
                 )?;
 
-                let name = left[1].get_or::<Name>("Expected name", env, stack)?.name;
-
-                (validation, Some(name))
+                (Some(name), pattern)
             }
         };
 
@@ -160,7 +156,7 @@ pub fn prelude(env: &Environment) {
         let derive_env: Environment = env::child_of(env).into();
 
         env.borrow_mut()
-            .add_conformance(validation, derived_trait, move |value, _, stack| {
+            .add_conformance(pattern, derived_trait, move |value, _, stack| {
                 if let Some(name) = &name {
                     derive_env.borrow_mut().set_variable(name, value);
                 }
@@ -205,24 +201,24 @@ pub fn prelude(env: &Environment) {
     // Closure operator (->)
 
     let closure_operator = VariadicOperator::collect(|parameter, return_value, env, stack| {
-        let (validation, parameter) = match parameter {
-            VariadicOperatorInput::Single(parameter) => {
+        let (parameter, pattern) = match parameter {
+            VariadicOperatorInput::Single(input) => {
                 let parameter =
-                    parameter.get_or::<Name>("Closure parameter must be a name", env, stack)?;
+                    input.get_or::<Name>("Closure parameter must be a name", env, stack)?;
 
-                (Validation::any(), parameter)
+                (parameter, Pattern::any())
             }
-            VariadicOperatorInput::List(parameter) if parameter.len() == 2 => {
-                let validation = parameter[0].evaluate(env, stack)?.get_or::<Validation>(
-                    "Expected validation",
+            VariadicOperatorInput::List(input) if input.len() == 2 => {
+                let parameter =
+                    input[0].get_or::<Name>("Closure parameter must be a name", env, stack)?;
+
+                let pattern = input[1].evaluate(env, stack)?.get_or::<Pattern>(
+                    "Expected pattern",
                     env,
                     stack,
                 )?;
 
-                let parameter =
-                    parameter[1].get_or::<Name>("Closure parameter must be a name", env, stack)?;
-
-                (validation, parameter)
+                (parameter, pattern)
             }
             _ => return Err(Return::error("Expected closure parameter", stack)),
         };
@@ -231,7 +227,7 @@ pub fn prelude(env: &Environment) {
 
         Ok(Value::of(Closure {
             captured_env,
-            validation,
+            pattern,
             parameter,
             return_value: return_value.into_value(),
         }))
@@ -252,12 +248,12 @@ pub fn prelude(env: &Environment) {
     let is_operator = BinaryOperator::collect(|left, right, env, stack| {
         let value = left.evaluate(env, stack)?;
 
-        let validation =
+        let pattern =
             right
                 .evaluate(env, stack)?
-                .get_or::<Validation>("Expected validation", env, stack)?;
+                .get_or::<Pattern>("Expected pattern", env, stack)?;
 
-        let _is_valid = validation(value, env, stack)?.is_valid();
+        let _is_valid = pattern(value, env, stack)?.is_valid();
 
         todo!("Link to booleans")
     });
@@ -277,12 +273,12 @@ pub fn prelude(env: &Environment) {
     let as_operator = BinaryOperator::collect(|left, right, env, stack| {
         let value = left.evaluate(env, stack)?;
 
-        let validation =
+        let pattern =
             right
                 .evaluate(env, stack)?
-                .get_or::<Validation>("Expected validation", env, stack)?;
+                .get_or::<Pattern>("Expected pattern", env, stack)?;
 
-        validation(value, env, stack)?
+        pattern(value, env, stack)?
             .into_valid()
             .ok_or_else(|| Return::error("Invalid value", stack))
     });
@@ -317,12 +313,12 @@ pub fn prelude(env: &Environment) {
     let as_maybe_operator = BinaryOperator::collect(|left, right, env, stack| {
         let value = left.evaluate(env, stack)?;
 
-        let validation =
+        let pattern =
             right
                 .evaluate(env, stack)?
-                .get_or::<Validation>("Expected validation", env, stack)?;
+                .get_or::<Pattern>("Expected pattern", env, stack)?;
 
-        let _maybe_valid = validation(value, env, stack)?.into_valid();
+        let _maybe_valid = pattern(value, env, stack)?.into_valid();
 
         todo!("Link to maybes")
     });

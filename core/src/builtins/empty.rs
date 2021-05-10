@@ -19,16 +19,16 @@ pub(crate) fn setup(env: &mut EnvironmentInner) {
     // _ : <empty value>
     env.set_variable("_", Value::empty());
 
-    // Allow the use of '_' as a catch-all validation that returns its input
+    // Allow the use of '_' as a catch-all pattern that returns its input
     env.add_conformance(
-        Validation::for_empty_value(),
-        Trait::of::<Validation>(),
-        move |_, _, _| Ok(Value::of(Validation::any())),
+        Pattern::for_empty_value(),
+        Trait::of::<Pattern>(),
+        move |_, _, _| Ok(Value::of(Pattern::any())),
     );
 
     // Empty == Text
     env.add_conformance(
-        Validation::for_empty_value(),
+        Pattern::for_empty_value(),
         Trait::of::<Text>(),
         |_, _, _| Ok(Value::of(Text::new("<empty>"))),
     );

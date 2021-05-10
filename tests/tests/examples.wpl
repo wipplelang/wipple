@@ -54,7 +54,7 @@ show (format "_, _!" "Hello" "world")
 >>> Trait-oriented greeting example
 
 Greet : trait Text
-greet : Greet name -> format "Hello, _!" name
+greet : name Greet -> format "Hello, _!" name
 
 Person : trait (new {
     name : Text
@@ -64,7 +64,7 @@ person : name -> Person (new {
     name : name
 })
 
-Person person == Greet (person name)
+person Person == Greet (person name)
 
 bob : person "Bob"
 
@@ -74,15 +74,15 @@ show (greet bob)
 
 (greet bob) ==> Hello, Bob!
 
->>> Validations
+>>> patterns
 
 A : trait Number
-A number == Text (format "A _" number)
+number A == Text (format "A _" number)
 
 a : A 42
 show a
 
-f : A number -> format "The number is _" number
+f : number A -> format "The number is _" number
 show (f a)
 
 ---
