@@ -17,7 +17,7 @@ pub(crate) fn setup(env: &mut EnvironmentInner) {
     env.set_variable("Empty", Value::empty());
 
     // _ : <empty value>
-    env.set_variable("_", Value::empty());
+    env.set_constant_variable("_", Value::empty());
 
     // Allow the use of '_' as a catch-all pattern that returns its input
     env.add_conformance(

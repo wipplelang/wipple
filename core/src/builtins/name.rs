@@ -26,14 +26,15 @@ fn_wrapper! {
 
 #[derive(Debug, Clone)]
 pub enum Variable {
-    Just(Value),
+    Mutable(Value),
+    Constant(Value),
     Computed(ComputeFn),
 }
 
 impl Variable {
     pub fn get_value(&self, env: &Environment, stack: &Stack) -> Result {
         match self {
-            Variable::Just(value) => Ok(value.clone()),
+            Variable::Mutable(value) | Variable::Constant(value) => Ok(value.clone()),
             Variable::Computed(compute) => compute(env, stack),
         }
     }
@@ -94,9 +95,21 @@ core_env_key!(pub computed_assignment for ComputedAssignmentFn {
 
 impl EnvironmentInner {
     pub fn set_variable(&mut self, name: &str, value: Value) {
+        if let Some(variable) = get_variable_recursive(name, self) {
+            if matches!(variable, Variable::Constant(_)) {
+                return; // assignments to constants are ignored
+            }
+        }
+
         self.variables()
             .0
-            .insert(name.to_string(), Variable::Just(value));
+            .insert(name.to_string(), Variable::Mutable(value));
+    }
+
+    pub fn set_constant_variable(&mut self, name: &str, value: Value) {
+        self.variables()
+            .0
+            .insert(name.to_string(), Variable::Constant(value));
     }
 
     pub fn set_computed_variable(
@@ -144,61 +157,22 @@ impl Name {
     }
 
     pub fn resolve_variable_if_present(&self, env: &Environment) -> Option<Variable> {
-        fn get_recursive(name: &Name, env: &Environment) -> Option<Variable> {
-            let variable = env.borrow_mut().variables().0.get(&name.name).cloned();
-            if let Some(variable) = variable {
-                return Some(variable);
-            }
+        get_variable_recursive(&self.name, &mut env.borrow_mut())
+    }
+}
 
-            let parent = env.borrow_mut().parent.clone();
-            parent.and_then(|parent| get_recursive(name, &parent))
+fn get_variable_recursive(name: &str, env: &mut EnvironmentInner) -> Option<Variable> {
+    fn get_recursive(name: &str, env: &mut EnvironmentInner) -> Option<Variable> {
+        let variable = env.variables().0.get(name).cloned();
+        if let Some(variable) = variable {
+            return Some(variable);
         }
 
-        get_recursive(self, env)
+        let parent = env.parent.clone();
+        parent.and_then(|parent| get_recursive(name, &mut parent.borrow_mut()))
     }
 
-    pub fn update_variable(
-        &self,
-        update: impl FnOnce(&mut Value),
-        env: &Environment,
-        stack: &Stack,
-    ) -> Result<()> {
-        let mut stack = stack.clone();
-        stack
-            .evaluation_mut()
-            .add(|| format!("Resolving variable '{}'", self.name));
-
-        fn update_recursive(
-            name: &Name,
-            update: impl FnOnce(&mut Value),
-            env: &Environment,
-            stack: &Stack,
-        ) -> Result<()> {
-            let mut env = env.borrow_mut();
-            let variable = env.variables().0.get_mut(&name.name);
-
-            if let Some(variable) = variable {
-                match variable {
-                    Variable::Just(value) => {
-                        update(value);
-                        Ok(())
-                    }
-                    Variable::Computed(_) => {
-                        Err(Return::error("Cannot modify a computed variable", stack))
-                    }
-                }
-            } else if let Some(parent) = env.parent.clone() {
-                update_recursive(name, update, &parent, stack)
-            } else {
-                Err(Return::error(
-                    &format!("Name '{}' does not refer to a variable", name.name),
-                    &stack,
-                ))
-            }
-        }
-
-        update_recursive(self, update, env, &stack)
-    }
+    get_recursive(name, env)
 }
 
 pub(crate) fn setup(env: &mut EnvironmentInner) {

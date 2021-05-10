@@ -43,3 +43,12 @@ show b
 a ==> a
 3 ==> 3
 b ==> b
+
+>>> Assigning to constant variables is ignored
+
+_ : 42
+show _
+
+---
+
+_ ==> <empty>

@@ -419,7 +419,7 @@ pub fn get_operator(value: &Value, env: &Environment, stack: &Stack) -> Result<O
             let variable = name.resolve_variable_if_present(env);
 
             match variable {
-                Some(Variable::Just(value)) => value.get_if_present::<Operator>(env, stack),
+                Some(Variable::Mutable(value)) => value.get_if_present::<Operator>(env, stack),
                 _ => Ok(None),
             }
         }
