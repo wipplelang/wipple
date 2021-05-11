@@ -1,7 +1,6 @@
 # Summary
 
 - [Introduction](./introduction.md)
-
 - [Let's write some Wipple code!](./learn/index.md)
   - [Language basics](./learn/basics.md)
   - [Functions](./learn/functions.md)
@@ -12,4 +11,5 @@
   - [Relations](./learn/relations.md)
   - [Variants and logic](./learn/variants-and-logic.md)
   - [Functional programming](./learn/functional-programming.md)
-  - [Controlling evaluation](./learn/controlling-evaluation.md)
+- [Advanced topics](./advanced/index.md)
+  - [Controlling evaluation](./advanced/controlling-evaluation.md)
