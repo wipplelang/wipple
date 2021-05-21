@@ -57,7 +57,7 @@ if : condition => then => else => match (condition as Condition) {
 If `if` evaluated its inputs as they were passed into the function, like in closures, then both `then` and `else` would be evaluated! This can cause trouble when the input to `if` has side effects:
 
 ```wipple
-bad-if : condition Condition -> then -> else -> match condition {
+bad-if : Condition condition -> then -> else -> match condition {
   True : then
   False : else
 }
@@ -66,19 +66,19 @@ bad-if : condition Condition -> then -> else -> match condition {
 bad-if True (show "Woohoo!") (show "Oh no!")
 ```
 
-Of course, in this example you could just do `show (bad-if True "Woohoo!" "Oh no!")`, but if you want `bad-if` to accept *any arbitrary* code, it's more correct to delay evaluation by using a template.
+Of course, in this example you could just do `show (bad-if True "Woohoo!" "Oh no!")`, but if you want `bad-if` to accept _any arbitrary_ code, it's more correct to delay evaluation by using a template.
 
 In general, you should use functional programming concepts in your code, and evaluation will "just work". But templates are useful in a few cases:
 
 - When you want to delay evaluation of your input
 
 - When you want to do something directly in the caller's scope, like declaring a variable
+
   - For example:
     ```wipple
     increment! : x => (x : x + 1)
     ```
-  
+
 - When you're implementing a DSL that evaluates code in custom ways
 
-> **What about quasiquoting?** If you're coming from Lisp you may miss this! In an effort to reduce complexity and keep the syntax small, Wipple doesn't have builtin support for quasiquoting. If templates don't serve your needs, you can implement it yourself in code or by using an interpreter plugin!
-
+> **What about quasiquoting?** A revamp of templates and literals is planned and will support quasiquoting using `\` (eg. `'(\a b \c d)` evaluates to `(1 b 3 d)`)!

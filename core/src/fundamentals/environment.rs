@@ -52,32 +52,24 @@ impl From<EnvironmentInner> for Rc<RefCell<Option<EnvironmentInner>>> {
 }
 
 fn_wrapper! {
-    pub struct UseFn(&Dynamic, &Dynamic) -> Dynamic;
+    pub struct UseMergeFn(&mut Dynamic, Dynamic);
 }
 
-impl UseFn {
-    pub fn from<T: TypeInfo>(r#use: impl Fn(&T, &T) -> T + 'static) -> Self {
-        UseFn::new(move |parent, new| {
-            let parent = parent.cast::<T>();
-            let new = new.cast::<T>();
-
-            Dynamic::new(r#use(parent, new))
-        })
+impl UseMergeFn {
+    pub fn of<T: TypeInfo>(r#use: impl Fn(&mut T, T) + 'static) -> Self {
+        UseMergeFn::new(move |current, new| r#use(current.cast_mut(), new.into_cast()))
     }
 }
 
 impl EnvironmentInner {
-    pub fn r#use(&mut self, other: &EnvironmentInner) {
+    pub fn r#use(&mut self, other: &Self) {
         for (key, new_value) in &other.values {
             match &key.visibility {
-                EnvironmentVisibility::Public(r#use) => match self.get(&key) {
-                    Some(parent_value) => {
-                        let used_value = r#use(parent_value, new_value);
-                        *parent_value = used_value;
-                    }
+                EnvironmentKeyVisibility::Public(merge) => match self.get(&key) {
+                    Some(current_value) => merge(current_value, new_value.clone()),
                     None => self.set(&key, new_value.clone()),
                 },
-                EnvironmentVisibility::Private => {}
+                EnvironmentKeyVisibility::Private => {}
             }
         }
     }
@@ -115,37 +107,31 @@ pub mod env {
 }
 
 #[derive(Clone)]
-pub enum EnvironmentVisibility {
-    /// The value cannot be accessed by children and cannot be `use`d by another
-    /// environment.
+pub enum EnvironmentKeyVisibility {
+    /// The value cannot be `use`d by another environment.
     Private,
 
-    /// The value can be accessed by children but cannot be `use`d by another
-    /// environment. (TODO: Implement)
-    // Protected,
-
-    /// The value can be accessed by children and can be `use`d by another
-    /// environment. If the value already exists in the other environment, the
-    /// provided `UseFn` will be called to handle merging them. If the value
-    /// doesn't exist, it will be copied.
-    Public(UseFn),
+    /// The value can be `use`d by another environment. If the value already
+    /// exists in the other environment, the provided `UseFn` will be called to
+    /// handle merging them. If the value doesn't exist, it will be copied.
+    Public(UseMergeFn),
 }
 
 #[derive(Clone)]
 pub struct EnvironmentKey {
     pub id: Id,
-    pub visibility: EnvironmentVisibility,
+    pub visibility: EnvironmentKeyVisibility,
 }
 
 impl EnvironmentKey {
-    pub fn of<T: TypeInfo>(visibility: EnvironmentVisibility) -> Self {
+    pub fn of<T: TypeInfo>(visibility: EnvironmentKeyVisibility) -> Self {
         EnvironmentKey {
             id: Id::of::<T>(),
             visibility,
         }
     }
 
-    pub fn new(visibility: EnvironmentVisibility) -> Self {
+    pub fn new(visibility: EnvironmentKeyVisibility) -> Self {
         EnvironmentKey {
             id: Id::new(),
             visibility,

@@ -44,9 +44,9 @@ pub(crate) fn setup(env: &mut EnvironmentInner) {
 
     // Module == pattern
     env.add_relation(
-        Pattern::for_trait(Trait::of::<Module>()),
+        Trait::of::<Module>(),
         Trait::of::<Pattern>(),
-        |value, env, stack| {
+        DeriveValueFn::new(|value, env, stack| {
             let module = value.into_primitive::<Module>().unwrap();
             let variables = module.env.borrow_mut().variables().0.clone();
 
@@ -84,6 +84,6 @@ pub(crate) fn setup(env: &mut EnvironmentInner) {
 
                 Ok(Validated::Valid(Value::of(module)))
             })))
-        },
+        }),
     );
 }

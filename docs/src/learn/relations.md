@@ -2,7 +2,7 @@
 
 Perhaps you've picked up the fact that "closures and modules are functions", "numbers can be added and converted to text", "traits are patterns", and so on. But wait, aren't `Function`, `Number`, `Add`, etc. all separate traits? Wipple is supposed to be strict about this!
 
-Wipple provides a way to **derive** a trait from a value that matches a pattern. This allows you to create relations between parts of your program, like "all numbers can be added". In code, it looks like this:
+Wipple provides a way to **derive** a trait from another trait. This allows you to create relations between parts of your program, like "all numbers can be added". In code, it looks like this:
 
 ```wipple
 Number == Add
@@ -12,7 +12,7 @@ This reads as "`Number` derives `Add`", or "the `Add` trait can be derived from 
 
 ```wipple
 Person : trait Text
-name Person == Text name
+Person name == Text name
 ```
 
 This reads as "a value with the `Person` trait can derive the `Text` trait by using the contained `name`." In practice, it means `show`ing a person is equivalent to `show`ing the person's name:
@@ -25,7 +25,7 @@ show bob -- Bob
 Of course, you can customize the implementation however you want!
 
 ```wipple
-name Person == Text (format "_ the Great" name)
+Person name == Text (format "_ the Great" name)
 
 alexander : Person "Alexander"
 show alexander -- Alexander the Great
@@ -42,10 +42,10 @@ Now that we know how traits, patterns and relations work, we can make our `greet
 ```wipple
 Greet : trait Text -- a name to be greeted
 
-greet : name Greet -> show (format "Hello, _!" name)
+greet : Greet name -> show (format "Hello, _!" name)
 
 Person : trait Text -- the person's name
-name Person == Greet name -- greet the person by their name
+Person name == Greet name -- greet the person by their name
 
 bob : Person "Bob"
 
@@ -62,7 +62,7 @@ greet earth -- Hello, world!
 Creating traits that implement a function is a common pattern in Wipple. In fact, you can use the `for` function to make this task a little more concise:
 
 ```wipple
-for : T Trait -> as T
+for : Trait T -> as T
 ```
 
 This is a _very_ generic function, but basically it takes a trait and constructs a function that will delegate to the implementation of the trait on some value. Here's an example:

@@ -26,10 +26,10 @@ add "we are number " 1 -- error
 Nope, looks like we can't. Really, what we want to do is ensure that `add` only accepts values that can be added together. "Adding" sounds like a behavior, which means it's a good fit for a trait, and indeed Wipple provides an `Add` trait!
 
 ```wipple
-add : a (is Add) -> b -> a + b
+add : (is Add) a -> b -> a + b
 ```
 
-Closures allow you to provide a pattern after the parameter name to restrict the kinds of values you can provide. Notice that we only need to restrict `a`, because `a`'s implementation of `Add` will have its own restrictions (eg. only numbers can be added to other numbers). If you don't provide a pattern, the default is `_`, which is a pattern that accepts any value.
+Closures allow you to provide a pattern before the parameter name to restrict the kinds of values you can provide. Notice that we only need to restrict `a`, because `a`'s implementation of `Add` will have its own restrictions (eg. only numbers can be added to other numbers). If you don't provide a pattern, the default is `_`, which is a pattern that accepts any value.
 
 Let's try using patterns on our own trait!
 
@@ -40,7 +40,7 @@ Person : trait Text
 We were using `_` before, but now we're requiring values with the `Person` trait to contain a text value. Let's use our trait to build a `greet` function!
 
 ```wipple
-greet : person (is Person) -> show (format "Hello, _!" person)
+greet : (is Person) person -> show (format "Hello, _!" person)
 ```
 
 Now if we make a `Person` value, we can pass it to `greet`:
@@ -60,13 +60,13 @@ Traits are patterns that:
 So if we just use the trait on its own as a pattern, the code will work!
 
 ```wipple
-greet : name Person -> show (format "Hello, _!" name)
+greet : Person name -> show (format "Hello, _!" name)
 
 bob : Person "Bob"
 greet bob -- Hello, Bob!
 ```
 
-There seem to be inconsistencies here. Why do we still use `(is Add)` for `add`, and why don't we write `(is Text)` instead of just `Text` for our `Person` trait? Well, the `Add` trait requires a function; that is, `Add` is defined as `Add : trait Function`. This function is used to add to the right-hand side of `+`. If we wrote `a Add` instead of `a (is Add)`, then our `add` implementation would receive the actual function used to add instead of the `Add` value. Because functions have the `Function` trait and not the `Add` trait, our call to `+` would fail.
+There seem to be inconsistencies here. Why do we still use `(is Add)` for `add`, and why don't we write `(is Text)` instead of just `Text` for our `Person` trait? Well, the `Add` trait requires a function; that is, `Add` is defined as `Add : trait Function`. This function is used to add to the right-hand side of `+`. If we wrote `Add a` instead of `(is Add) a`, then our `add` implementation would receive the actual function used to add instead of the `Add` value. Because functions have the `Function` trait and not the `Add` trait, our call to `+` would fail.
 
 Here's a good rule to use:
 
@@ -77,7 +77,7 @@ Here's a good rule to use:
 
 To address why we write `Person : trait Text` instead of `Person : trait (is Text)`: this is due to `Text` being a "primitive" trait. A text value doesn't _contain_ anything, it just _is_ text, so there's no need to use `is` here. (`Number`, `Name` and `List` are other "primitive" traits.)
 
-> In technical terms, a primitive trait is a trait whose pattern is of itself: `T : trait (is T)`.
+> Theoretically, a primitive trait is a trait whose pattern is of itself: `T : trait (is T)`.
 
 ## Other patterns
 
@@ -114,13 +114,11 @@ increment-if-not-0 : x Number -> match x {
 }
 
 add : x -> match x {
-  text Text : "hello " + text
-  number Number : 1 + number
-  name Person : Person (name + " Jr.")
+  Text text : "hello " + text
+  Number number : 1 + number
+  Person name : Person (name + " Jr.")
   _ : x
 }
 ```
-
-> **Note:** If you provide a name for a pattern, the right-hand side will be evaluated like a template, replacing all occurrences of the name with the matched value. `match` does not create its own scope.
 
 Another place you can use patterns is in **relations**, which is the subject of the next section!

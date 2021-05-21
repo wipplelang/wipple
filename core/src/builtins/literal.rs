@@ -26,15 +26,15 @@ pub(crate) fn setup(env: &mut EnvironmentInner) {
 
     // Literal == Text
     env.add_relation(
-        Pattern::for_trait(Trait::of::<Literal>()),
+        Trait::of::<Literal>(),
         Trait::of::<Text>(),
-        |value, env, stack| {
+        DeriveValueFn::new(|value, env, stack| {
             let literal = value.into_primitive::<Literal>().unwrap();
 
             let text = literal.value.format(env, stack)?;
 
             Ok(Value::of(Text::new(&format!("'{}", text))))
-        },
+        }),
     );
 
     env.set_variable("literal", Value::of(Function::new(|value, _, _| Ok(value))));

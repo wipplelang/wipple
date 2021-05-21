@@ -64,13 +64,13 @@ pub fn setup() {
     // FIXME: This is impure and should not be a direct relation; use some
     // kind of 'Import' trait instead
     env.borrow_mut().add_relation(
-        Pattern::for_trait(Trait::of::<Text>()),
+        Trait::of::<Text>(),
         Trait::of::<Module>(),
-        |value, _, stack| {
+        DeriveValueFn::new(|value, _, stack| {
             let text = value.into_primitive::<Text>().unwrap();
 
             let module = import(&text.text, stack)?;
             Ok(Value::of(module))
-        },
+        }),
     );
 }

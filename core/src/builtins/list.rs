@@ -69,9 +69,9 @@ pub(crate) fn setup(env: &mut EnvironmentInner) {
 
     // List == Text
     env.add_relation(
-        Pattern::for_trait(Trait::of::<List>()),
+        Trait::of::<List>(),
         Trait::of::<Text>(),
-        |value, env, stack| {
+        DeriveValueFn::new(|value, env, stack| {
             let list = value.into_primitive::<List>().unwrap();
 
             let mut items = Vec::new();
@@ -82,6 +82,6 @@ pub(crate) fn setup(env: &mut EnvironmentInner) {
             }
 
             Ok(Value::of(Text::new(&format!("({})", items.join(" ")))))
-        },
+        }),
     );
 }

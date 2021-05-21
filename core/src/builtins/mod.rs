@@ -11,7 +11,7 @@ mod operator;
 mod pattern;
 mod text;
 mod r#trait;
-mod variants;
+mod variant;
 
 pub use block::*;
 pub use evaluate::*;
@@ -23,7 +23,7 @@ pub use name::*;
 pub use number::*;
 pub use operator::*;
 pub use text::*;
-pub use variants::*;
+pub use variant::*;
 
 use crate::*;
 
@@ -41,5 +41,5 @@ pub(crate) fn setup(env: &mut EnvironmentInner) {
     text::setup(env);
     r#trait::setup(env);
     pattern::setup(env);
-    variants::setup(env);
+    variant::setup(env);
 }

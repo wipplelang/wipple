@@ -26,12 +26,15 @@ fn_wrapper! {
 
 impl Default for EvaluateBlockFn {
     fn default() -> Self {
-        EvaluateBlockFn::new(|block, env, stack| block.reduce(env, stack))
+        EvaluateBlockFn::new(|block, env, stack| {
+            let env = env::child_of(env).into();
+            block.reduce(&env, stack)
+        })
     }
 }
 
 core_env_key!(pub evaluate_block for EvaluateBlockFn {
-    visibility: EnvironmentVisibility::Private,
+    visibility: EnvironmentKeyVisibility::Private,
 });
 
 impl Block {
@@ -49,13 +52,14 @@ impl Block {
 
             let list = Value::of(statement.clone());
 
-            match list.evaluate(env, &stack) {
+            match list.evaluate(&env, &stack) {
                 Ok(value) => result = value,
                 Err(r#return) => {
+                    // TODO: Move to closures
                     return match r#return {
                         Return::Return(value, _) => Ok(value),
                         _ => Err(r#return),
-                    }
+                    };
                 }
             };
         }

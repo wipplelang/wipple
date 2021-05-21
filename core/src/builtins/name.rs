@@ -44,45 +44,56 @@ impl Variable {
 pub struct Variables(pub HashMap<String, Variable>);
 
 core_env_key!(pub variables for Variables {
-    visibility: EnvironmentVisibility::Public(UseFn::from(|parent: &Variables, new| {
-        Variables(parent.0.clone().into_iter().chain(new.0.clone()).collect())
-    }))
+    visibility: EnvironmentKeyVisibility::Public(UseMergeFn::of(|parent: &mut Variables, new| {
+        for (key, value) in new.0 {
+            parent.0.entry(key).or_insert(value);
+        }
+    })),
 });
 
 fn_wrapper! {
     #[derive(TypeInfo)]
-    pub struct AssignmentFn(&Name, &Value, &Environment, &Stack) -> Result<()>;
+    pub struct AssignmentFn(VariadicOperatorInput, Value, &Environment, &Stack) -> Result<()>;
 }
 
 impl Default for AssignmentFn {
     fn default() -> Self {
         AssignmentFn::new(|left, right, env, stack| {
+            let name = left
+                .into_value()
+                .get_or::<Name>("Expected name", env, stack)?
+                .name;
+
             let value = right.evaluate(env, stack)?;
-            env.borrow_mut().set_variable(&left.name, value);
+
+            env.borrow_mut().set_variable(&name, value);
+
             Ok(())
         })
     }
 }
 
 core_env_key!(pub assignment for AssignmentFn {
-    visibility: EnvironmentVisibility::Private,
+    visibility: EnvironmentKeyVisibility::Private,
 });
 
 fn_wrapper! {
     #[derive(TypeInfo)]
-    pub struct ComputedAssignmentFn(&Name, &Value, &Environment, &Stack) -> Result<()>;
+    pub struct ComputedAssignmentFn(VariadicOperatorInput, Value, &Environment, &Stack) -> Result<()>;
 }
 
 impl Default for ComputedAssignmentFn {
     fn default() -> Self {
-        ComputedAssignmentFn::new(|left, right, env, _| {
-            let right = right.clone();
+        ComputedAssignmentFn::new(|left, right, env, stack| {
+            let name = left
+                .into_value()
+                .get_or::<Name>("Expected name", env, stack)?
+                .name;
+
             let captured_env = env::child_of(env).into();
 
             env.borrow_mut()
-                .set_computed_variable(&left.name, move |_, stack| {
-                    right.evaluate(&captured_env, stack)
-                });
+                .set_computed_variable(&name, move |_, stack| right.evaluate(&captured_env, stack));
 
             Ok(())
         })
@@ -90,7 +101,7 @@ impl Default for ComputedAssignmentFn {
 }
 
 core_env_key!(pub computed_assignment for ComputedAssignmentFn {
-    visibility: EnvironmentVisibility::Private,
+    visibility: EnvironmentKeyVisibility::Private,
 });
 
 impl EnvironmentInner {

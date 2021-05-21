@@ -11,7 +11,7 @@ pub(crate) fn setup(env: &mut EnvironmentInner) {
         Function::new(move |value, env, stack| {
             let value = value.evaluate(env, stack)?;
 
-            let trait_value = (r#trait.pattern)(value, env, stack)?
+            let trait_value = r#trait.pattern()(value, env, stack)?
                 .into_valid()
                 .ok_or_else(|| {
                     Return::error("Cannot use this value to represent this trait", stack)

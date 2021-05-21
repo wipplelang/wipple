@@ -23,7 +23,7 @@ my-grade : A
 You can also use variant sets and individual variants as patterns:
 
 ```wipple
-report-card : grade Grade -> {
+report-card : Grade grade -> {
   use Grade
 
   match grade {
@@ -55,9 +55,9 @@ if : condition => then => else => match (condition as Condition) {
 We can derive `Not`, `And` and `Or` using `if`:
 
 ```wipple
-x Condition == Not (if x False True)
-a Condition == And (b Condition -> if a b False)
-a Condition == Or (b Condition -> if a True b)
+Condition x == Not (if x False True)
+Condition a == And (Condition b -> if a b False)
+Condition a == Or (Condition b -> if a True b)
 ```
 
 We just implemented fundamental programming concepts using Wipple traits and variants!
@@ -76,11 +76,11 @@ Maybe : variant {
 Instead of providing a list of variants, you can provide a block. `variant` changes the meaning of `:` to "define a variant" instead of "assign to a variable". A variant can either have one value, restricted by a pattern, or no value, denoted by `_`. That is, the following two variants are equivalent:
 
 ```wipple
-My-Variant : variant (a b)
+My-Variant : variant (A B)
 
 My-Variant : variant {
-  a : _
-  b : _
+  A : _
+  B : _
 }
 ```
 

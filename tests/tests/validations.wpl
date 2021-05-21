@@ -1,7 +1,7 @@
 >>> 'is' pattern
 
 A : trait Text
-text A == Text (format "A _" text)
+A text == Text (format "A _" text)
 
 a : A "foo"
 

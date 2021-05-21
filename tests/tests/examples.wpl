@@ -23,25 +23,28 @@ show (withdraw 10)
 (deposit 50) ==> 125
 (withdraw 10) ==> 65
 
->>> Guess example
+>>> Grade example
 
-use (variant {
-    correct : (_)
-    incorrect : ()
-})
+Grade : variant (A B C D F)
 
-guess : correct 5
+report-card : Grade grade -> {
+  use Grade
 
-text : match guess {
-    correct : x => literal ("CORRECT ANSWER" x)
-    incorrect : "INCORRECT ANSWER"
+  match grade {
+    A : "Top of the class"
+    B : "Average"
+    C : "Getting there"
+    _ : "Need to study"
+  }
 }
 
-show text
+my-grade : Grade A
+
+show (report-card my-grade)
 
 ---
 
-text ==> (CORRECT ANSWER 5)
+(report-card my-grade) ==> Top of the class
 
 >>> Formatting
 
@@ -51,38 +54,40 @@ show (format "_, _!" "Hello" "world")
 
 (format _, _! Hello world) ==> Hello, world!
 
->>> Trait-oriented greeting example
+>>> Trait-oriented greeting example from documentation
 
-Greet : trait Text
-greet : name Greet -> format "Hello, _!" name
+Greet : trait Text -- a name to be greeted
 
-Person : trait (new {
-    name : Text
-})
+greet : Greet name -> format "Hello, _!" name
 
-person : name -> Person (new {
-    name : name
-})
+Person : trait Text -- the person's name
+Person name == Greet name -- greet the person by their name
 
-person Person == Greet (person name)
+bob : Person "Bob"
 
-bob : person "Bob"
+Planet : trait _
+Planet == Greet "world" -- always greet planets with "Hello, world!"
 
-show (greet bob)
+earth : Planet _ -- we don't need to contain anything, we just need
+                 -- to know that the value is a planet
+
+show (greet bob) -- Hello, Bob!
+show (greet earth) -- Hello, world!
 
 ---
 
 (greet bob) ==> Hello, Bob!
+(greet earth) ==> Hello, world!
 
 >>> patterns
 
 A : trait Number
-number A == Text (format "A _" number)
+A number == Text (format "A _" number)
 
 a : A 42
 show a
 
-f : number A -> format "The number is _" number
+f : A number -> format "The number is _" number
 show (f a)
 
 ---

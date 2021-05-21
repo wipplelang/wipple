@@ -1,30 +1,44 @@
 use crate::*;
 
 #[derive(TypeInfo, Clone)]
-pub struct Trait {
-    pub id: Id,
-    pub pattern: Pattern,
+pub enum Trait {
+    Primitive(DynamicType),
+    Runtime(Id, Pattern),
 }
 
 impl Trait {
     pub fn new(pattern: Pattern) -> Self {
-        Trait {
-            id: Id::new(),
-            pattern,
-        }
+        Trait::Runtime(Id::new(), pattern)
     }
 
     pub fn of<T: TypeInfo>() -> Self {
-        Trait {
-            id: Id::of::<T>(),
-            pattern: Pattern::of::<T>(),
+        Trait::Primitive(DynamicType::of::<T>())
+    }
+}
+
+impl Trait {
+    pub fn id(&self) -> Id {
+        match self {
+            Trait::Primitive(r#type) => Id::Primitive(*r#type),
+            Trait::Runtime(id, _) => *id,
+        }
+    }
+
+    pub fn pattern(&self) -> Pattern {
+        match self {
+            Trait::Primitive(_) => Pattern::for_trait(self.clone()),
+            Trait::Runtime(_, pattern) => pattern.clone(),
         }
     }
 }
 
 impl PartialEq for Trait {
     fn eq(&self, other: &Self) -> bool {
-        self.id == other.id
+        match (self, other) {
+            (Trait::Primitive(a), Trait::Primitive(b)) => a == b,
+            (Trait::Runtime(a, _), Trait::Runtime(b, _)) => a == b,
+            _ => false,
+        }
     }
 }
 
@@ -32,7 +46,7 @@ impl Eq for Trait {}
 
 impl std::fmt::Debug for Trait {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "Trait({:?})", self.id)
+        write!(f, "Trait({:?})", self.id())
     }
 }
 
@@ -67,49 +81,7 @@ impl Value {
             return Ok(Some(value.clone()));
         }
 
-        fn derive(
-            r#trait: &Trait,
-            value: &Value,
-            relations_env: &Environment,
-            env: &Environment,
-            stack: &Stack,
-        ) -> Result<Option<Value>> {
-            // Relations declared in parent environments take precedence
-            let parent_env = relations_env.borrow().parent.clone();
-            if let Some(parent_env) = parent_env {
-                if let Some(derived_value) = derive(r#trait, value, &parent_env, env, stack)? {
-                    return Ok(Some(derived_value));
-                };
-            }
-
-            let relations = relations_env.borrow_mut().relations().0.clone();
-
-            // Relations declared first have a higher precedence
-            for relation in relations {
-                if &relation.derived_trait != r#trait {
-                    continue;
-                }
-
-                if let Some(value) = (relation.pattern)(value.clone(), env, stack)?.as_valid() {
-                    let derived_value = (relation.derive_value)(value.clone(), env, stack)?;
-
-                    let trait_value = (r#trait.pattern)(derived_value, env, stack)?
-                        .into_valid()
-                        .ok_or_else(|| {
-                            Return::error(
-                                "Value derived from relation cannot be used to represent the derived trait",
-                                stack,
-                            )
-                        })?;
-
-                    return Ok(Some(trait_value));
-                }
-            }
-
-            Ok(None)
-        }
-
-        derive(r#trait, self, env, env, stack)
+        self.derive(r#trait, env, stack)
     }
 }
 

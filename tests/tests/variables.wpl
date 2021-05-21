@@ -19,14 +19,14 @@ Name 'a' does not refer to a variable
 
 >>> Computed variables
 
-a : do {
+a : {
     show "1"
     "a"
 }
 
 show "2"
 
-b :> do {
+b :> {
     show "3"
     "b"
 }

@@ -1,7 +1,7 @@
 >>> Traits
 
 T : trait _
-x T == Text (format "T _" x)
+T x == Text (format "T _" x)
 
 x : T 'foo
 
@@ -16,7 +16,7 @@ x ==> T foo
 A : trait _
 
 B : trait A -- B receives the **value of** A, not the A value itself
-b B == Text (format "B _" b)
+B b == Text (format "B _" b)
 
 b : B (A 'foo)
 show b
@@ -41,11 +41,11 @@ Cannot use this value to represent this trait
 >>> Relations
 
 A : trait _
-x A == Text (format "A _" x)
+A x == Text (format "A _" x)
 
 B : trait _
-x A == B (A x)
-a B == Text (format "B _" a)
+A x == B (A x)
+B a == Text (format "B _" a)
 
 show (A 'foo)
 show (B (A 'foo))

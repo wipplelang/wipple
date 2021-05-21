@@ -1,3 +1,5 @@
+use std::{cell::RefCell, rc::Rc};
+
 use wipple::*;
 
 pub fn prelude(env: &Environment) {
@@ -75,20 +77,8 @@ pub fn prelude(env: &Environment) {
     macro_rules! assignment_operator {
         ($name:expr, $handle:ident, $env:expr) => {
             let operator = VariadicOperator::collect(move |left, right, env, stack| {
-                let left = match left {
-                    VariadicOperatorInput::Single(left) => left,
-                    _ => {
-                        return Err(Return::error(
-                            "Expected single value on left side of assignment",
-                            stack,
-                        ))
-                    }
-                };
-
-                let name = left.get_or::<Name>("Expected name", env, stack)?;
-
                 let handle = env.borrow_mut().$handle().clone();
-                handle(&name, &right.into_value(), env, stack)?;
+                handle(left, right.into_value(), env, stack)?;
 
                 Ok(Value::empty())
             });
@@ -106,13 +96,13 @@ pub fn prelude(env: &Environment) {
     // Relation operator (==)
 
     let relation_operator = VariadicOperator::collect(|left, right, env, stack| {
-        let (name, pattern) = match left {
+        let (from_trait, name) = match left {
             VariadicOperatorInput::Single(left) => {
-                let pattern =
+                let from_trait =
                     left.evaluate(env, stack)?
-                        .get_or::<Pattern>("Expected pattern", env, stack)?;
+                        .get_or::<Trait>("Expected trait", env, stack)?;
 
-                (None, pattern)
+                (from_trait, None)
             }
             VariadicOperatorInput::List(left) => {
                 if left.len() != 2 {
@@ -122,19 +112,18 @@ pub fn prelude(env: &Environment) {
                     ));
                 }
 
-                let name = left[0].get_or::<Name>("Expected name", env, stack)?.name;
+                let from_trait =
+                    left[0]
+                        .evaluate(env, stack)?
+                        .get_or::<Trait>("Expected trait", env, stack)?;
 
-                let pattern = left[1].evaluate(env, stack)?.get_or::<Pattern>(
-                    "Expected pattern",
-                    env,
-                    stack,
-                )?;
+                let name = left[1].get_or::<Name>("Expected name", env, stack)?.name;
 
-                (Some(name), pattern)
+                (from_trait, Some(name))
             }
         };
 
-        let (derived_trait, derived_value) = match right {
+        let (to_trait, derived_value) = match right {
             VariadicOperatorInput::List(right) if right.len() == 2 => {
                 let derived_trait =
                     right[0]
@@ -155,14 +144,17 @@ pub fn prelude(env: &Environment) {
 
         let derive_env: Environment = env::child_of(env).into();
 
-        env.borrow_mut()
-            .add_relation(pattern, derived_trait, move |value, _, stack| {
+        env.borrow_mut().add_relation(
+            from_trait,
+            to_trait,
+            DeriveValueFn::new(move |value, _, stack| {
                 if let Some(name) = &name {
                     derive_env.borrow_mut().set_variable(name, value);
                 }
 
                 derived_value.evaluate(&derive_env, stack)
-            });
+            }),
+        );
 
         Ok(Value::empty())
     });
@@ -201,24 +193,24 @@ pub fn prelude(env: &Environment) {
     // Closure operator (->)
 
     let closure_operator = VariadicOperator::collect(|parameter, return_value, env, stack| {
-        let (parameter, pattern) = match parameter {
+        let (pattern, parameter) = match parameter {
             VariadicOperatorInput::Single(input) => {
                 let parameter =
                     input.get_or::<Name>("Closure parameter must be a name", env, stack)?;
 
-                (parameter, Pattern::any())
+                (Pattern::any(), parameter)
             }
             VariadicOperatorInput::List(input) if input.len() == 2 => {
-                let parameter =
-                    input[0].get_or::<Name>("Closure parameter must be a name", env, stack)?;
-
-                let pattern = input[1].evaluate(env, stack)?.get_or::<Pattern>(
+                let pattern = input[0].evaluate(env, stack)?.get_or::<Pattern>(
                     "Expected pattern",
                     env,
                     stack,
                 )?;
 
-                (parameter, pattern)
+                let parameter =
+                    input[1].get_or::<Name>("Closure parameter must be a name", env, stack)?;
+
+                (pattern, parameter)
             }
             _ => return Err(Return::error("Expected closure parameter", stack)),
         };
@@ -237,6 +229,84 @@ pub fn prelude(env: &Environment) {
 
     env.borrow_mut()
         .set_variable("->", Value::of(Operator::Variadic(closure_operator)));
+
+    // 'match' function
+
+    env.borrow_mut().set_variable(
+        "match",
+        Value::of(Function::new(|value, env, stack| {
+            let value = value.evaluate(env, stack)?;
+
+            Ok(Value::of(Function::new(move |block, env, stack| {
+                let block = block.get_or::<Block>("Expected block", env, stack)?;
+                let patterns = Rc::new(RefCell::new(Some(Vec::new())));
+
+                let match_env: Environment = env::child_of(env).into();
+
+                *match_env.borrow_mut().assignment() =
+                    AssignmentFn::new({
+                        let patterns = patterns.clone();
+                        move |left, right, env, stack| {
+                            let (pattern, name) =
+                                match left {
+                                    VariadicOperatorInput::Single(value) => {
+                                        let pattern = value
+                                            .evaluate(env, stack)?
+                                            .get_or::<Pattern>("Expected pattern", env, stack)?;
+
+                                        (pattern, None)
+                                    }
+                                    VariadicOperatorInput::List(items) if items.len() == 2 => {
+                                        let pattern = items[0]
+                                            .evaluate(env, stack)?
+                                            .get_or::<Pattern>("Expected pattern", env, stack)?;
+
+                                        let name =
+                                            items[1].get_or::<Name>("Expected name", env, stack)?;
+
+                                        (pattern, Some(name))
+                                    }
+                                    _ => {
+                                        return Err(Return::error(
+                                            "Expected pattern to match and optional name",
+                                            stack,
+                                        ))
+                                    }
+                                };
+
+                            patterns
+                                .borrow_mut()
+                                .as_mut()
+                                .unwrap()
+                                .push((pattern, name, right));
+
+                            Ok(())
+                        }
+                    });
+
+                block.reduce(&match_env, stack)?;
+
+                let patterns = patterns.take().unwrap();
+
+                for (pattern, name, result) in patterns {
+                    let matched_value = match pattern(value.clone(), env, stack)?.into_valid() {
+                        Some(value) => value,
+                        None => continue,
+                    };
+
+                    let mut env = env::child_of(env);
+
+                    if let Some(name) = name {
+                        env.set_variable(&name.name, matched_value);
+                    }
+
+                    return result.evaluate(&env.into(), stack);
+                }
+
+                Err(Return::error("Value did not match any pattern", stack))
+            })))
+        })),
+    );
 
     // 'is?' operator
 
@@ -478,14 +548,6 @@ pub fn prelude(env: &Environment) {
     );
 
     // Environment functions
-
-    env.borrow_mut().set_variable(
-        "do",
-        Value::of(Function::new(|value, env, stack| {
-            let env = env::child_of(env).into();
-            value.evaluate(&env, stack)
-        })),
-    );
 
     env.borrow_mut().set_variable(
         "new",

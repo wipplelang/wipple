@@ -1,17 +1,26 @@
->>> 'return' from blocks
+>>> 'return' from functions and computed variables
 
-x : do {
-    show "Before return"
-    return 'foo
-    show "After return"
+f : _ -> {
+    show "f: Before return"
+    return 42
+    show "f: After return"
 }
 
+x :> {
+    show "x: Before return"
+    return 42
+    show "x: After return"
+}
+
+show (f _)
 show x
 
 ---
 
-Before return ==> Before return
-x ==> foo
+f: Before return ==> f: Before return
+(f _) ==> 42
+x: Before return ==> x: Before return
+x ==> 42
 
 >>> Loops
 
