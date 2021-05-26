@@ -271,7 +271,10 @@ fn return_function() -> Value {
 }
 
 fn break_function() -> Value {
-    Value::of(Function::new(|_, _, _| todo!()))
+    Value::of(Function::transparent(|value, env, stack| {
+        let value = value.evaluate(env, stack)?;
+        Err(Exit::Break(value.into_owned(), stack.clone()))
+    }))
 }
 
 // Output functions
