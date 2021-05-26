@@ -1,0 +1,12 @@
+[package]
+name = "wipple_stdlib"
+version = "0.0.0"
+edition = "2018"
+
+[lib]
+path = "builtins/lib.rs"
+
+[dependencies]
+rust-embed = "5"
+wipple = { path = "../language" }
+wipple_parser = { path = "../parser" }

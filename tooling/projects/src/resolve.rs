@@ -11,7 +11,7 @@ pub fn resolve_module(module_name: &str, stack: &Stack) -> Result<PathBuf> {
     } else if let Some(path) = Some(path.with_extension("wpl")).filter(|p| p.exists()) {
         Ok(path)
     } else {
-        Err(Return::error(
+        Err(error(
             &format!("Cannot find module '{}'", module_name),
             stack,
         ))
@@ -24,7 +24,7 @@ pub fn resolve(path: &str, stack: &Stack) -> Result<PathBuf> {
     if path.exists() {
         Ok(path)
     } else {
-        Err(Return::error(
+        Err(error(
             &format!("Path '{}' does not exist", path.to_string_lossy()),
             stack,
         ))
@@ -32,15 +32,20 @@ pub fn resolve(path: &str, stack: &Stack) -> Result<PathBuf> {
 }
 
 fn resolve_path(path: &str, stack: &Stack) -> Result<PathBuf> {
+    let current_file = stack.current_file();
+    let project_root = stack.project_root();
+
     let base = if path.starts_with("./") || path.starts_with("../") {
-        current_file_in(stack)
+        current_file
             .0
-            .ok_or_else(|| Return::error("Current file is not set", stack))
-            .map(|p| p.parent().unwrap().to_path_buf())
+            .as_ref()
+            .ok_or_else(|| error("Current file is not set", stack))
+            .map(|p| p.parent().unwrap())
     } else {
-        project_root_in(stack)
+        project_root
             .0
-            .ok_or_else(|| Return::error("Project root is not set", stack))
+            .as_deref()
+            .ok_or_else(|| error("Project root is not set", stack))
     }?;
 
     Ok(base.join(path))

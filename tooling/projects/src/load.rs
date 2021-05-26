@@ -8,7 +8,7 @@ pub fn import(module_name: &str, stack: &Stack) -> Result<Module> {
 }
 
 /// Import a file/folder using a module name directly in the current environment
-pub fn include(module_name: &str, env: &Environment, stack: &Stack) -> Result {
+pub fn include(module_name: &str, env: &Env, stack: &Stack) -> Result<Value> {
     let path = resolve_module(module_name, stack)?;
 
     let mut stack = stack.clone();
@@ -33,11 +33,7 @@ pub fn import_path(path: &Path, stack: &Stack) -> Result<Module> {
     }
 }
 
-pub fn import_path_with_parent_env(
-    path: &Path,
-    env: &Environment,
-    stack: &Stack,
-) -> Result<Module> {
+pub fn import_path_with_parent_env(path: &Path, env: &Env, stack: &Stack) -> Result<Module> {
     let mut stack = stack.clone();
     stack
         .evaluation_mut()
@@ -60,11 +56,12 @@ fn try_import_folder(path: &Path, stack: &Stack) -> Result<Option<Module>> {
     let project_file = path.join("project.wpl");
 
     if project_file.is_file() {
-        let dependencies = DEPENDENCIES.borrow();
+        let dependencies = DEPENDENCIES.with(Clone::clone);
+        let dependencies = dependencies.borrow();
 
-        let project = dependencies.get(&project_file).ok_or_else(|| {
-            Return::error("Cannot import a project that is not a dependency", stack)
-        })?;
+        let project = dependencies
+            .get(&project_file)
+            .ok_or_else(|| error("Cannot import a project that is not a dependency", stack))?;
 
         let module = project.run(stack)?;
 
@@ -78,49 +75,47 @@ fn try_import_folder(path: &Path, stack: &Stack) -> Result<Option<Module>> {
         .evaluation_mut()
         .add(|| format!("Importing all files in folder {}", path.to_string_lossy()));
 
-    let mut temp_env = env::child_of(&env::global());
+    let temp_env = Env::global().child();
 
-    let mut files = path
-        .read_dir()
-        .map_err(|error| {
-            Return::error(
-                &format!("Error reading folder {}: {}", path.to_string_lossy(), error),
-                &stack,
-            )
-        })?
-        .filter_map(|entry| {
-            let path = match entry {
-                Ok(file) => file.path(),
-                Err(error) => {
-                    return Some(Err(Return::error(
-                        &format!("Error reading file {}: {}", path.to_string_lossy(), error),
-                        &stack,
-                    )))
-                }
-            };
+    let mut files = Vec::new();
 
-            if path.is_dir()
-                || path.file_name().unwrap().to_string_lossy().starts_with('.')
-                || path
-                    .extension()
-                    .map(|extension| extension != "wpl")
-                    .unwrap_or(false)
-            {
-                None
-            } else {
-                Some(Ok(path))
+    let entries = path.read_dir().map_err(|error| {
+        wipple::error(
+            &format!("Error reading folder {}: {}", path.to_string_lossy(), error),
+            &stack,
+        )
+    })?;
+
+    for entry in entries {
+        let path = match entry {
+            Ok(file) => file.path(),
+            Err(error) => {
+                return Err(wipple::error(
+                    &format!("Error reading file {}: {}", path.to_string_lossy(), error),
+                    &stack,
+                ))
             }
-        })
-        .collect::<std::result::Result<Vec<_>, _>>()?;
+        };
+
+        if !path.is_dir()
+            && !path.file_name().unwrap().to_string_lossy().starts_with('.')
+            && !path
+                .extension()
+                .map(|extension| extension != "wpl")
+                .unwrap_or(false)
+        {
+            files.push(path);
+        }
+    }
 
     files.sort();
 
     for file in files {
         let module = import_file(&file, &stack)?;
-        temp_env.r#use(&module.env.borrow());
+        temp_env.r#use(&module.env, &stack)?;
     }
 
-    let module = Module::new(temp_env.into());
+    let module = Module::new(temp_env);
 
     Ok(Some(module))
 }

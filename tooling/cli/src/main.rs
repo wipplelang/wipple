@@ -23,8 +23,8 @@ fn run() -> i32 {
 
     match args {
         Args::Run(run) => {
-            if let Err(state) = run.run() {
-                eprintln!("{}", state.red());
+            if let Err(exit) = run.run() {
+                eprintln!("{}", exit.into_error().to_string().red());
                 return 1;
             }
         }

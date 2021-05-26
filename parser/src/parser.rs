@@ -1,7 +1,6 @@
+use crate::lexer::{Token, Tokens};
 use line_col::LineColLookup;
 use std::ops::Range;
-
-use crate::lexer::{Token, Tokens};
 
 pub type Result<T> = std::result::Result<T, Error>;
 
@@ -212,7 +211,7 @@ pub fn parse_number(tokens: &mut Tokens, lc: &LineColLookup) -> Result<Option<As
 
 pub fn parse_literal(tokens: &mut Tokens, lc: &LineColLookup) -> Result<Option<Ast>> {
     let offset = match tokens.peek() {
-        Some((Token::SingleQuote, offset)) => {
+        Some((Token::Quote, offset)) => {
             tokens.next();
             offset
         }
@@ -253,11 +252,9 @@ fn parse_newline(tokens: &mut Tokens) -> Result<Option<()>> {
 }
 
 fn parse_newlines(tokens: &mut Tokens) -> Result<()> {
-    loop {
-        if parse_newline(tokens)?.is_none() {
-            return Ok(());
-        }
-    }
+    while parse_newline(tokens)?.is_some() {}
+
+    Ok(())
 }
 
 impl SourceLocation {

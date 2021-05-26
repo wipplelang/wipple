@@ -1,14 +1,12 @@
 [workspace]
 members = [
-    "core",
+    "language",
+    "library",
     "parser",
-    "plugins/api",
-    "plugins/bind",
-    "standard-library",
     "tests",
     "tooling/bundled-interpreter",
     "tooling/cli",
-    "tooling/loading",
+    "tooling/plugins",
     "tooling/projects",
     "website/playground/interpreter",
 ]

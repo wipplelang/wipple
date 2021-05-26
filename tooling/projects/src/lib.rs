@@ -8,69 +8,68 @@ pub use new::*;
 pub use project::*;
 pub use resolve::*;
 
-pub use wipple_loading::*;
-
 use wipple::*;
 use wipple_plugins::*;
+use wipple_stdlib::*;
 
-pub fn setup() {
-    let env = env::global();
+#[ext(pub, name = EnvProjectsExt)]
+impl Env {
+    fn projects(stack: &Stack) -> Result<Env> {
+        Env::try_with(|env| {
+            env.set_variable(
+                "import",
+                Value::of(Function::new(|value, env, stack| {
+                    let value = value.evaluate(env, stack)?;
+                    let path =
+                        value.get_or::<Text>("Expected a path to a file or folder", env, stack)?;
 
-    env.borrow_mut().set_variable(
-        "import",
-        Value::of(Function::new(|value, env, stack| {
-            let path = value
-                .evaluate(env, stack)?
-                .get_or::<Text>("Expected a path to a file or folder", env, stack)?
-                .text;
+                    let module = import(&path.text, stack)?;
 
-            let module = import(&path, stack)?;
+                    Ok(Value::of(module))
+                })),
+            );
 
-            Ok(Value::of(module))
-        })),
-    );
+            env.set_variable(
+                "include!",
+                Value::of(Function::new(|value, env, stack| {
+                    let value = value.evaluate(env, stack)?;
+                    let path = value.get_or::<Text>("Expected a path to a file", env, stack)?;
+                    include(&path.text, env, stack)
+                })),
+            );
 
-    env.borrow_mut().set_variable(
-        "include!",
-        Value::of(Function::new(|value, env, stack| {
-            let path = value
-                .evaluate(env, stack)?
-                .get_or::<Text>("Expected a path to a file", env, stack)?
-                .text;
+            env.set_variable(
+                "plugin!",
+                Value::of(Function::new(|value, env, stack| {
+                    let value = value.evaluate(env, stack)?;
 
-            include(&path, env, stack)
-        })),
-    );
+                    let path = value.get_or::<Text>(
+                        "Expected a path to a .wplplugin file, including the extension",
+                        env,
+                        stack,
+                    )?;
 
-    env.borrow_mut().set_variable(
-        "plugin!",
-        Value::of(Function::new(|value, env, stack| {
-            let path_string = value
-                .evaluate(env, stack)?
-                .get_or::<Text>(
-                    "Expected a path to a .wplplugin file, including the extension",
-                    env,
-                    stack,
-                )?
-                .text;
+                    let path = resolve(&path.text, stack)?;
 
-            let path = resolve(&path_string, stack)?;
+                    load_plugin(&path, env, stack)
+                })),
+            );
 
-            load_plugin(path, env, stack)
-        })),
-    );
+            // Text == Module
+            // FIXME: This is impure and should not be a direct relation; use some
+            // kind of 'Import' trait instead
+            env.add_relation(
+                Trait::of::<Text>(),
+                Trait::of::<Module>(),
+                stack,
+                DeriveValueFn::new(|value, _, stack| {
+                    let text = value.into_primitive().unwrap().into_cast::<Text>();
+                    let module = import(&text.text, stack)?;
+                    Ok(Value::of(module))
+                }),
+            )?;
 
-    // Text == Module
-    // FIXME: This is impure and should not be a direct relation; use some
-    // kind of 'Import' trait instead
-    env.borrow_mut().add_relation(
-        Trait::of::<Text>(),
-        Trait::of::<Module>(),
-        DeriveValueFn::new(|value, _, stack| {
-            let text = value.into_primitive::<Text>().unwrap();
-
-            let module = import(&text.text, stack)?;
-            Ok(Value::of(module))
-        }),
-    );
+            Ok(())
+        })
+    }
 }

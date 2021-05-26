@@ -50,17 +50,20 @@ impl Bundle {
 
         let tempdir = (|| -> Result<_, Box<dyn std::error::Error>> {
             let tempdir = tempfile::tempdir()?;
-            let stack = wipple_bundled_interpreter::setup()?;
+            let stack = wipple::Stack::default();
 
             let dependencies_path = tempdir.as_ref().join("dependencies");
 
-            let project = wipple_projects::Project::from_file(&path.join("project.wpl"), &stack)?;
+            let project = wipple_projects::Project::from_file(&path.join("project.wpl"), &stack)
+                .map_err(|exit| exit.into_error())?;
 
-            let dependencies = project.update_dependencies(
-                &dependencies_path,
-                &|| println!("Updating dependencies"),
-                &stack,
-            )?;
+            let dependencies = project
+                .update_dependencies(
+                    &dependencies_path,
+                    &|| println!("Updating dependencies"),
+                    &stack,
+                )
+                .map_err(|exit| exit.into_error())?;
 
             let mut parsed_project = project.parse(dependencies);
 

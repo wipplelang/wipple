@@ -3,12 +3,7 @@ name = "wipple_parser"
 version = "0.0.0"
 edition = "2018"
 
-[features]
-default = ["convert"]
-convert = ["wipple"]
-
 [dependencies]
 line-col = "0.2.1"
 logos = "0.12.0"
 snailquote = "0.3.0"
-wipple = { path = "../core", optional = true }

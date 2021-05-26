@@ -24,7 +24,7 @@ pub enum Token {
     Text(String),
 
     #[token("'")]
-    SingleQuote,
+    Quote,
 
     #[token("(")]
     OpenParenthesis,
@@ -50,7 +50,7 @@ pub enum Token {
     #[regex("\n")]
     Newline,
 
-    #[regex("--.*", logos::skip)]
+    #[regex("--.*")]
     Comment,
 
     #[error]

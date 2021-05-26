@@ -1,9 +1,8 @@
 use colored::Colorize;
 use std::path::PathBuf;
 use structopt::StructOpt;
-use wipple::*;
-use wipple_parser::*;
 use wipple_projects::*;
+use wipple_stdlib::*;
 
 /// Run a Wipple program
 #[derive(StructOpt)]
@@ -21,27 +20,15 @@ pub struct Run {
 }
 
 impl Run {
-    pub fn run(&self) -> std::result::Result<(), String> {
-        let env = env::global();
-        let mut stack = wipple_bundled_interpreter::setup()
-            .map_err(|error| format!("Error initializing interpreter: {}", error))?;
-
-        let convert_error = |error: Return| error.as_error().to_string();
-
+    pub fn run(&self) -> wipple::Result<()> {
         match &self.evaluate_string {
             Some(code) => {
-                let (tokens, lookup) = lex(&code);
-
-                let ast = parse_inline_program(&mut tokens.iter().peekable(), &lookup)
-                    .map_err(|error| format!("Error parsing: {}", error.message))?;
-
-                let program = convert(&ast, None);
-
-                let result = program.evaluate(&env, &stack).map_err(convert_error)?;
-
-                println!("{}", result.try_format(&env, &stack));
+                run(code, |_, _| Ok(()), |output| println!("{}", output));
+                Ok(())
             }
             None => {
+                let (_, mut stack) = default_setup(wipple_bundled_interpreter::handle_output)?;
+
                 let current_dir = self
                     .path
                     .clone()
@@ -49,38 +36,36 @@ impl Run {
 
                 match &self.path {
                     Some(path) if !path.is_dir() => {
-                        import_path(path, &stack).map_err(convert_error)?;
+                        import_path(path, &stack)?;
+                        Ok(())
                     }
                     _ => {
-                        let project = Project::from_file(&current_dir.join("project.wpl"), &stack)
-                            .map_err(convert_error)?;
+                        let project = Project::from_file(&current_dir.join("project.wpl"), &stack)?;
 
                         let install_path = dirs::cache_dir()
                             .expect("Could not resolve cache directory")
                             .join("wipple");
 
-                        let dependencies = project
-                            .update_dependencies(
-                                &install_path,
-                                &|| {
-                                    if !self.quiet {
-                                        println!("{}", "Updating dependencies".bright_black())
-                                    }
-                                },
-                                &stack,
-                            )
-                            .map_err(|error| format!("Error updating dependencies: {}", error))?;
+                        let dependencies = project.update_dependencies(
+                            &install_path,
+                            &|| {
+                                if !self.quiet {
+                                    println!("{}", "Updating dependencies".bright_black())
+                                }
+                            },
+                            &stack,
+                        )?;
 
-                        set_dependency_path_in(&mut stack, &install_path);
+                        stack.set_dependency_path(install_path);
 
                         let parsed_project = project.parse(dependencies);
                         parsed_project.register();
-                        parsed_project.run(&stack).map_err(convert_error)?;
+                        parsed_project.run(&stack)?;
+
+                        Ok(())
                     }
-                };
+                }
             }
         }
-
-        Ok(())
     }
 }

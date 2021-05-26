@@ -14,6 +14,5 @@ console_error_panic_hook = { version = "0.1.6", optional = true }
 serde = { version = "1.0", features = ["derive"] }
 uuid = { version = "0.8", features = ["v4", "wasm-bindgen"] }
 wasm-bindgen = { version = "0.2.73", features = ["serde-serialize"] }
-wipple = { path = "../../../core" }
-wipple_loading = { path = "../../../tooling/loading" }
-wipple_stdlib = { path = "../../../standard-library" }
+wipple = { path = "../../../language" }
+wipple_stdlib = { path = "../../../library" }

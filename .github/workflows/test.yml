@@ -3,10 +3,9 @@ on:
   push:
     paths:
       - .github/**
-      - core/**
+      - language/**
+      - library/**
       - parser/**
-      - plugins/**
-      - standard-library/**
       - tests/**
       - tooling/**
 
