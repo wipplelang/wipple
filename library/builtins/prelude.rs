@@ -394,46 +394,52 @@ fn relation_operator() -> VariadicOperator {
 
 // -> and => operators
 
+macro_rules! make_function_operator {
+    ($type:tt) => {
+        VariadicOperator::new(|left, right, env, stack| {
+            let (parameter_pattern, parameter_name) = match left {
+                VariadicInput::Single(input) => {
+                    let parameter = input
+                        .get_or::<Name>(&format!("Parameter must be a name"), env, stack)?
+                        .name
+                        .clone();
+
+                    (Pattern::any(), parameter)
+                }
+                VariadicInput::List(input) if input.len() == 2 => {
+                    let pattern = input[0]
+                        .evaluate(env, stack)?
+                        .get_or::<Pattern>("Expected pattern", env, stack)?
+                        .into_owned();
+
+                    let parameter = input[1]
+                        .get_or::<Name>("Parameter must be a name", env, stack)?
+                        .name
+                        .clone();
+
+                    (pattern, parameter)
+                }
+                _ => return Err(error("Expected parameter", stack)),
+            };
+
+            let captured_env = env.clone();
+
+            Ok(Value::of($type {
+                captured_env,
+                parameter_pattern,
+                parameter_name,
+                return_value: Value::from(right),
+            }))
+        })
+    };
+}
+
 fn closure_operator() -> VariadicOperator {
-    VariadicOperator::new(|left, right, env, stack| {
-        let (parameter_pattern, parameter_name) = match left {
-            VariadicInput::Single(input) => {
-                let parameter = input
-                    .get_or::<Name>("Closure parameter must be a name", env, stack)?
-                    .name
-                    .clone();
-
-                (Pattern::any(), parameter)
-            }
-            VariadicInput::List(input) if input.len() == 2 => {
-                let pattern = input[0]
-                    .evaluate(env, stack)?
-                    .get_or::<Pattern>("Expected pattern", env, stack)?
-                    .into_owned();
-
-                let parameter = input[1]
-                    .get_or::<Name>("Closure parameter must be a name", env, stack)?
-                    .name
-                    .clone();
-
-                (pattern, parameter)
-            }
-            _ => return Err(error("Expected closure parameter", stack)),
-        };
-
-        let captured_env = env.clone();
-
-        Ok(Value::of(Closure {
-            captured_env,
-            parameter_pattern,
-            parameter_name,
-            return_value: Value::from(right),
-        }))
-    })
+    make_function_operator!(Closure)
 }
 
 fn template_operator() -> VariadicOperator {
-    VariadicOperator::new(|_, _, _, _| todo!())
+    make_function_operator!(Template)
 }
 
 // as, as?, is? and into operators
