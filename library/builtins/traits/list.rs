@@ -15,10 +15,7 @@ impl List {
     }
 
     pub fn new_located(items: Vec<Value>, location: Option<SourceLocation>) -> Self {
-        List {
-            items: items.to_vec(),
-            location,
-        }
+        List { items, location }
     }
 }
 
@@ -30,7 +27,7 @@ pub(crate) fn setup(env: &Env, stack: &Stack) -> Result<()> {
         EvaluateFn::new(move |env, stack| {
             let mut stack = stack.clone();
             stack
-                .evaluation_mut()
+                .diagnostics_mut()
                 .queue_location(list.location.as_ref());
 
             let operators = list.find_operators(env, &stack)?;
@@ -54,6 +51,20 @@ pub(crate) fn setup(env: &Env, stack: &Stack) -> Result<()> {
             }
 
             Ok(result)
+        })
+    })?;
+
+    // List == Interpolate
+    env.add_relation_between(stack, |list: List| {
+        InterpolateFn::new(move |in_escaped, env, stack| {
+            let mut items = vec![];
+
+            for item in &list.items {
+                let item = item.interpolate(in_escaped, env, stack)?.into_owned();
+                items.push(item);
+            }
+
+            Ok(Value::of(List::new(items)))
         })
     })?;
 

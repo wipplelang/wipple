@@ -2,9 +2,9 @@
 
 My-Variant : variant (A B)
 
-show My-Variant
-show (My-Variant A)
-show (My-Variant B)
+debug My-Variant
+debug (My-Variant A)
+debug (My-Variant B)
 
 ---
 
@@ -19,8 +19,8 @@ Either : variant {
     B : is _
 }
 
-show (Either A)
-show (Either B 'foo)
+debug (Either A)
+debug (Either B 'foo)
 
 ---
 

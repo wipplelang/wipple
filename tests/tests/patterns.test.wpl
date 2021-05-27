@@ -5,10 +5,10 @@ A text == Text (format "A _" text)
 
 a : A "foo"
 
-show a
-show (a as A)
-show (a as (is A))
-show (a into A) -- equivalent for traits
+debug a
+debug (a as A)
+debug (a as (is A))
+debug (a into A) -- equivalent for traits
 
 ---
 

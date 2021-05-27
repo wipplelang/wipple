@@ -44,21 +44,27 @@ fn run() -> i32 {
     let mut pass_count = 0;
     let mut fail_count = 0;
 
+    let mut space = false;
+
     for file in test_files {
-        eprintln!("{}\n", format!("Testing {}", file.name).dimmed());
+        if space {
+            eprintln!();
+        }
+
+        eprintln!("{}\n", file.name.bold().underline());
 
         for test in file.tests {
             let result = (test.run)();
 
             fn duration_text(duration: Duration) -> ColoredString {
-                format!("(took {:.3} sec)", duration.as_secs_f32()).dimmed()
+                format!("{}ms", duration.as_millis()).dimmed()
             }
 
             match result {
                 TestResult::Passed { duration } => {
                     eprintln!(
                         "{} {} {}",
-                        " PASS ".bold().bright_white().on_green(),
+                        "PASS".bold().green(),
                         test.name,
                         duration_text(duration)
                     );
@@ -70,23 +76,29 @@ fn run() -> i32 {
                     found,
                     duration,
                 } => {
+                    if space {
+                        eprintln!();
+                    }
+
                     eprintln!(
                         "{} {} {}\n    Expected:\n{}\n    Found:\n{}",
-                        " FAIL ".bold().bright_white().on_red(),
+                        "FAIL".bold().red(),
                         test.name,
                         duration_text(duration),
                         indent(2, &expected).dimmed(),
                         indent(2, &found).dimmed(),
                     );
 
+                    if space {
+                        eprintln!();
+                    }
+
                     fail_count += 1;
                 }
             }
 
-            eprintln!();
+            space = true;
         }
-
-        eprintln!();
     }
 
     macro_rules! count_text {
@@ -101,11 +113,19 @@ fn run() -> i32 {
         }};
     }
 
+    if space {
+        eprintln!();
+    }
+
     eprintln!(
-        "{} tests, {}, {}",
-        pass_count + fail_count,
-        count_text!(pass_count, "passed", green),
-        count_text!(fail_count, "failed", red),
+        "{}",
+        format!(
+            "{} tests, {}, {}",
+            pass_count + fail_count,
+            count_text!(pass_count, "passed", green),
+            count_text!(fail_count, "failed", red),
+        )
+        .bold()
     );
 
     // TODO: JUnit report

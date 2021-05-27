@@ -10,13 +10,13 @@ pub struct Block {
 impl Primitive for Block {}
 
 impl Block {
-    pub fn new(statements: &[List]) -> Self {
+    pub fn new(statements: Vec<List>) -> Self {
         Block::new_located(statements, None)
     }
 
-    pub fn new_located(statements: &[List], location: Option<SourceLocation>) -> Self {
+    pub fn new_located(statements: Vec<List>, location: Option<SourceLocation>) -> Self {
         Block {
-            statements: statements.to_vec(),
+            statements,
             location,
         }
     }
@@ -41,7 +41,7 @@ impl Block {
     pub fn reduce(&self, env: &Env, stack: &Stack) -> Result<Value> {
         let mut stack = stack.clone();
         stack
-            .evaluation_mut()
+            .diagnostics_mut()
             .queue_location(self.location.as_ref());
 
         let mut result = Value::empty();
@@ -49,7 +49,7 @@ impl Block {
         for statement in &self.statements {
             let mut stack = stack.clone();
             stack
-                .evaluation_mut()
+                .diagnostics_mut()
                 .queue_location(statement.location.as_ref());
 
             // Evaluate each statement as a list
@@ -68,6 +68,26 @@ pub(crate) fn setup(env: &Env, stack: &Stack) -> Result<()> {
     // Block == Evaluate
     env.add_relation_between(stack, |block: Block| {
         EvaluateFn::new(move |env, stack| env.evaluate_block()(&block, env, stack))
+    })?;
+
+    // Block == Interpolate
+    env.add_relation_between(stack, |block: Block| {
+        InterpolateFn::new(move |in_escaped, env, stack| {
+            let mut statements = Vec::new();
+
+            for statement in &block.statements {
+                // Interpolate within each statement as a list
+                let result = Value::of(statement.clone())
+                    .interpolate(in_escaped, env, stack)?
+                    .into_owned()
+                    .into_primitive()
+                    .into_cast::<List>();
+
+                statements.push(result);
+            }
+
+            Ok(Value::of(Block::new(statements)))
+        })
     })?;
 
     // Block == Text

@@ -2,7 +2,7 @@ use crate::*;
 use wipple::*;
 
 #[derive(TypeInfo, Debug, Clone, Copy)]
-struct Empty;
+pub struct Empty;
 
 impl Primitive for Empty {}
 
@@ -27,7 +27,7 @@ pub(crate) fn setup(env: &Env, stack: &Stack) -> Result<()> {
     env.add_relation_between(stack, |_: Empty| Pattern::any())?;
 
     // Empty == Text
-    env.add_relation_between(stack, |_: Empty| Text::new("<empty>".to_string()))?;
+    env.add_text_relation::<Empty>("empty", stack)?;
 
     Ok(())
 }

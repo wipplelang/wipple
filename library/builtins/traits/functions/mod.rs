@@ -5,7 +5,6 @@ pub use closure::*;
 pub use template::*;
 
 use crate::*;
-
 use wipple::*;
 
 stored_closure!(struct FunctionCallFn(Value, &Env, &Stack) -> Result<Value>);
@@ -48,7 +47,7 @@ impl Value {
     fn call_with(&self, parameter: Value, env: &Env, stack_: &Stack) -> Result<Value> {
         let mut stack = stack_.clone();
         stack
-            .evaluation_mut()
+            .diagnostics_mut()
             .add(|| format!("Calling '{}'", self.format_with_fallback(env, &stack_)));
 
         let function = self.get_or::<Function>(
@@ -60,9 +59,7 @@ impl Value {
         if function.transparent {
             function(parameter, env, &stack)
         } else {
-            catch!(Return {
-                function(parameter, env, &stack)
-            })
+            catch!(Return in function(parameter, env, &stack))
         }
     }
 }

@@ -13,7 +13,7 @@ pub fn include(module_name: &str, env: &Env, stack: &Stack) -> Result<Value> {
 
     let mut stack = stack.clone();
     stack
-        .evaluation_mut()
+        .diagnostics_mut()
         .add(|| format!("Including file '{}'", path.to_string_lossy()));
 
     include_file(&path, env, &stack)
@@ -23,7 +23,7 @@ pub fn include(module_name: &str, env: &Env, stack: &Stack) -> Result<Value> {
 pub fn import_path(path: &Path, stack: &Stack) -> Result<Module> {
     let mut stack = stack.clone();
     stack
-        .evaluation_mut()
+        .diagnostics_mut()
         .add(|| format!("Importing {}", path.to_string_lossy()));
 
     if let Some(module) = try_import_folder(path, &stack)? {
@@ -36,7 +36,7 @@ pub fn import_path(path: &Path, stack: &Stack) -> Result<Module> {
 pub fn import_path_with_parent_env(path: &Path, env: &Env, stack: &Stack) -> Result<Module> {
     let mut stack = stack.clone();
     stack
-        .evaluation_mut()
+        .diagnostics_mut()
         .add(|| format!("Importing {}", path.to_string_lossy()));
 
     if let Some(module) = try_import_folder(path, &stack)? {
@@ -72,7 +72,7 @@ fn try_import_folder(path: &Path, stack: &Stack) -> Result<Option<Module>> {
 
     let mut stack = stack.clone();
     stack
-        .evaluation_mut()
+        .diagnostics_mut()
         .add(|| format!("Importing all files in folder {}", path.to_string_lossy()));
 
     let temp_env = Env::global().child();

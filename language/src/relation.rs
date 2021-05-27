@@ -70,7 +70,7 @@ impl Env {
             Trait::of::<B>(),
             stack,
             DeriveValueFn::new(move |value, env, stack| {
-                let from = value.into_primitive().unwrap().into_cast::<A>();
+                let from = value.into_primitive().into_cast::<A>();
                 let to = derive(from, env, stack)?;
                 Ok(Value::of(to))
             }),

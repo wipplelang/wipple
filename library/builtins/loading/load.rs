@@ -34,7 +34,7 @@ pub fn import_program_with_parent_env(
 ) -> Result<Module> {
     let mut stack = stack.clone();
     *stack.current_file_mut() = CurrentFile(path.map(|p| p.to_path_buf()));
-    stack.evaluation_mut().add(|| {
+    stack.diagnostics_mut().add(|| {
         if let Some(path) = path {
             format!("Importing {}", path.to_string_lossy())
         } else {
@@ -69,7 +69,7 @@ pub fn include_program(
     stack: &Stack,
 ) -> Result<Value> {
     let mut stack = stack.clone();
-    stack.evaluation_mut().add(|| {
+    stack.diagnostics_mut().add(|| {
         if let Some(path) = path {
             format!("Including {}", path)
         } else {
@@ -84,7 +84,7 @@ pub fn include_program(
 pub fn load_file(path: &Path, stack: &Stack) -> Result<Block> {
     let mut stack = stack.clone();
     stack
-        .evaluation_mut()
+        .diagnostics_mut()
         .add(|| format!("Loading file {}", path.to_string_lossy()));
 
     let code = fs::read_to_string(path).map_err(|error| {
@@ -104,7 +104,7 @@ pub fn load_string(code: &str, path: Option<&str>, stack: &Stack) -> Result<Bloc
         wipple_parser::parse_file(&mut tokens.iter().peekable(), &lookup).map_err(|error| {
             wipple::error(&format!("Parse error: {}", error.message), &{
                 let mut stack = stack.clone();
-                stack.evaluation_mut().add_location(
+                stack.diagnostics_mut().add_location(
                     || match path {
                         Some(path) => format!("Parsing file {}", path),
                         None => String::from("Parsing input"),
@@ -117,7 +117,6 @@ pub fn load_string(code: &str, path: Option<&str>, stack: &Stack) -> Result<Bloc
 
     let program = crate::convert_ast(&ast, path)
         .into_primitive()
-        .unwrap()
         .try_into_cast::<Block>()
         .expect("Wipple programs are always blocks");
 

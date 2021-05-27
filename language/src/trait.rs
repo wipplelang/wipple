@@ -85,8 +85,8 @@ impl Value {
         Ok(self
             .get_trait_if_present(&Trait::of::<T>(), env, stack)?
             .map(|value| match value {
-                Cow::Owned(value) => Cow::Owned(value.into_primitive().unwrap().into_cast()),
-                Cow::Borrowed(value) => Cow::Borrowed(value.primitive().unwrap().cast()),
+                Cow::Owned(value) => Cow::Owned(value.into_primitive().into_cast()),
+                Cow::Borrowed(value) => Cow::Borrowed(value.primitive().cast()),
             }))
     }
 }

@@ -49,14 +49,23 @@ fn load_prelude(env: &Env) {
     env.set_computed_variable("global?", globalq_computed_variable());
 
     env.set_variable("match", match_function());
+    env.set_variable("loop", loop_function());
     env.set_variable("return", return_function());
     env.set_variable("break", break_function());
 
     env.set_variable("show", show_function());
     env.set_variable("format", format_function());
 
-    let assignment_precedence_group: VariadicPrecedenceGroup =
-        add_precedence_group!(Associativity::Right, highest());
+    let default_variadic_precedence_group: VariadicPrecedenceGroup =
+        add_precedence_group!(Associativity::Left, lowest());
+
+    let default_binary_precedence_group: BinaryPrecedenceGroup =
+        add_precedence_group!(Associativity::Left, lowest());
+
+    let assignment_precedence_group: VariadicPrecedenceGroup = add_precedence_group!(
+        Associativity::Right,
+        higher_than(default_variadic_precedence_group.clone()) // FIXME: Remove PrecedenceGroupTrait
+    );
 
     env.add_operator(":", assignment_operator(), &assignment_precedence_group);
     env.add_operator(
@@ -74,16 +83,46 @@ fn load_prelude(env: &Env) {
     env.add_operator("->", closure_operator(), &function_precedence_group);
     env.add_operator("=>", template_operator(), &function_precedence_group);
 
+    let power_precedence_group: BinaryPrecedenceGroup = add_precedence_group!(
+        Associativity::Left,
+        higher_than(default_binary_precedence_group)
+    );
+
+    env.add_operator("^", power_operator(), &power_precedence_group);
+
+    let multiplication_precedence_group =
+        add_precedence_group!(Associativity::Left, lower_than(power_precedence_group));
+
+    env.add_operator("*", multiply_operator(), &multiplication_precedence_group);
+    env.add_operator("/", divide_operator(), &multiplication_precedence_group);
+    env.add_operator("mod", modulo_operator(), &multiplication_precedence_group);
+
+    let addition_precedence_group = add_precedence_group!(
+        Associativity::Left,
+        lower_than(multiplication_precedence_group)
+    );
+
+    env.add_operator("+", add_operator(), &addition_precedence_group);
+    env.add_operator("-", subtract_operator(), &addition_precedence_group);
+
     let convert_precedence_group: BinaryPrecedenceGroup =
-        add_precedence_group!(Associativity::Left, lowest());
+        add_precedence_group!(Associativity::Left, lower_than(addition_precedence_group));
 
     env.add_operator("as", as_operator(), &convert_precedence_group);
     env.add_operator("as?", asq_operator(), &convert_precedence_group);
     env.add_operator("is?", isq_operator(), &convert_precedence_group);
     env.add_operator("into", into_operator(), &convert_precedence_group);
 
-    let dot_precedence_group =
+    let comparison_precedence_group =
         add_precedence_group!(Associativity::Left, lower_than(convert_precedence_group));
+
+    env.add_operator("=", equal_to_operator(), &comparison_precedence_group);
+    env.add_operator("<", less_than_operator(), &comparison_precedence_group);
+
+    let dot_precedence_group = add_precedence_group!(
+        Associativity::Left,
+        higher_than(default_variadic_precedence_group)
+    );
 
     env.add_operator(".", dot_operator(), &dot_precedence_group);
 
@@ -263,6 +302,14 @@ fn match_function() -> Value {
     }))
 }
 
+fn loop_function() -> Value {
+    Value::of(Function::new(|value, env, stack| loop {
+        if let Some(value) = catch_only!(Break in value.evaluate(env, stack))? {
+            return Ok(value);
+        }
+    }))
+}
+
 fn return_function() -> Value {
     Value::of(Function::transparent(|value, env, stack| {
         let value = value.evaluate(env, stack)?;
@@ -302,7 +349,46 @@ fn show_function() -> Value {
 }
 
 fn format_function() -> Value {
-    Value::of(Function::new(|_, _, _| todo!()))
+    Value::of(Function::new(|value, env, stack| {
+        let value = value.evaluate(env, stack)?;
+        let format_text = value.get_or::<Text>("Expected format text", env, stack)?;
+
+        fn build_formatter(index: usize, remaining_strings: Vec<String>, result: String) -> Value {
+            if remaining_strings.len() == 1 {
+                Value::of(Text::new(result + &remaining_strings[0]))
+            } else {
+                Value::of(Function::new(move |value, env, stack| {
+                    let (leading_string, remaining_strings) =
+                        remaining_strings.split_first().unwrap();
+
+                    let value = value.evaluate(env, stack)?;
+
+                    let text = value.get_or::<Text>(
+                        &format!(
+                            "Cannot format input #{} because it cannot be represented as text",
+                            index,
+                        ),
+                        env,
+                        stack,
+                    )?;
+
+                    Ok(build_formatter(
+                        index - 1,
+                        remaining_strings.to_vec(),
+                        result.clone() + leading_string + &text.text,
+                    ))
+                }))
+            }
+        }
+
+        let strings = format_text
+            .text
+            .split('_')
+            .map(String::from)
+            .collect::<Vec<_>>();
+
+        Ok(build_formatter(strings.len(), strings, String::new()))
+    }))
 }
 
 // :, :> and == operators
@@ -505,22 +591,24 @@ fn into_operator() -> BinaryOperator {
 
 // . operator
 
-fn dot_operator() -> BinaryOperator {
-    BinaryOperator::new(|left, right, env, stack| {
-        right.evaluate(env, stack)?.call_with(left, env, stack)
+fn dot_operator() -> VariadicOperator {
+    VariadicOperator::new(|left, right, env, stack| {
+        Value::from(right)
+            .evaluate(env, stack)?
+            .call_with(left.into(), env, stack)
     })
 }
 
 // | operator
 
-fn pipe_operator() -> BinaryOperator {
-    BinaryOperator::new(|left, right, env, stack| {
-        let left = left
+fn pipe_operator() -> VariadicOperator {
+    VariadicOperator::new(|left, right, env, stack| {
+        let left = Value::from(left)
             .evaluate(env, stack)?
             .get_or::<Function>("Expected function", env, stack)?
             .into_owned();
 
-        let right = right
+        let right = Value::from(right)
             .evaluate(env, stack)?
             .get_or::<Function>("Expected function", env, stack)?
             .into_owned();
@@ -530,3 +618,19 @@ fn pipe_operator() -> BinaryOperator {
         })))
     })
 }
+
+// Math operators
+
+macro_rules! make_math_operators {
+    ($($operation:ident),* $(,)?) => {
+        $(paste! {
+            fn [<$operation _operator>]() -> BinaryOperator {
+                BinaryOperator::new(|left, right, env, stack| {
+                    left.evaluate(env, stack)?.$operation(right, env, stack)
+                })
+            }
+        })*
+    };
+}
+
+make_math_operators!(power, multiply, divide, modulo, add, subtract, equal_to, less_than);

@@ -9,7 +9,7 @@ show x
 
 ---
 
-x ==> T foo
+T foo
 
 >>> Traits with patterns
 
@@ -23,7 +23,7 @@ show b
 
 ---
 
-b ==> B foo
+B foo
 
 >>> Passing an invalid value to a trait
 
@@ -47,8 +47,8 @@ B : trait _
 A x == B (A x)
 B a == Text (format "B _" a)
 
-show (A 'foo)
-show (B (A 'foo))
+debug (A 'foo)
+debug (B (A 'foo))
 
 ---
 
@@ -65,4 +65,4 @@ show (A _)
 
 ---
 
-(A _) ==> A
+A

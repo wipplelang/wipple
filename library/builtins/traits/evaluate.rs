@@ -7,7 +7,6 @@ impl Primitive for EvaluateFn {}
 
 #[ext(pub, name = ValueEvaluateExt)]
 impl Value {
-    #[track_caller]
     fn evaluate(&self, env: &Env, stack: &Stack) -> Result<Cow<Value>> {
         Ok(match self.get_if_present::<EvaluateFn>(env, stack)? {
             Some(evaluate) => Cow::Owned(evaluate.0(env, stack)?),

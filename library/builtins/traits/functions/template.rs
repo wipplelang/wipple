@@ -18,14 +18,14 @@ pub(crate) fn setup(env: &Env, stack: &Stack) -> Result<()> {
             let validated = (template.parameter_pattern)(&value, env, stack)?;
 
             let value = validated
-                .ok_or_else(|| error("Cannot use this value as input to this closure", stack))?;
+                .ok_or_else(|| error("Cannot use this value as input to this template", stack))?;
 
             let inner_env = template.captured_env.child();
             inner_env.set_variable(&template.parameter_name, value.into_owned());
 
             template
                 .return_value
-                .evaluate(&inner_env, stack)?
+                .interpolate(true, &inner_env, stack)?
                 .evaluate(env, stack)
                 .map(Cow::into_owned)
         })

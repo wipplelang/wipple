@@ -1,0 +1,91 @@
+>>> Quoting a value prevents it from being evaluated
+
+show 'foo
+
+---
+
+foo
+
+>>> Use interpolation to evaluate some values within a literal
+
+foo : 'x
+bar : 'y
+
+result : '(foo \foo bar \bar)
+
+show result
+
+---
+
+(foo x bar y)
+
+>>> Use interpolation to evaluate all values within an expression
+
+foo : 'x
+bar : 'y
+
+result : \('foo foo 'bar bar)
+
+show result
+
+---
+
+(foo x bar y)
+
+>>> Interpolation semantics
+
+x : 'y
+
+debug 'x
+debug x
+debug \x
+debug \\x
+debug \\\x
+debug \'x
+debug '\x
+debug '\\x
+debug '\'x
+debug '\'\x
+
+---
+
+'x ==> x
+x ==> y
+\x ==> y
+\\x ==> y
+\\\x ==> y
+\'x ==> x
+'\x ==> y
+'\\x ==> y
+'\'x ==> x
+'\'\x ==> y
+
+>>> Templates capture their environment
+
+t : {
+    n : 42
+    x => (x : \n)
+}
+
+t foo
+show foo
+
+---
+
+42
+
+>>> Templates interpolate their return value
+
+foo : x => \{
+    show "Inside template"
+    x
+}
+
+a : 1
+
+show (foo a)
+
+---
+
+Inside template
+1

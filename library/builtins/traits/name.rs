@@ -91,7 +91,7 @@ impl Default for ComputedAssignmentFn {
             env.set_computed_variable(
                 &name.name,
                 ComputeFn::new(move |_, stack| {
-                    Ok(right.evaluate(&captured_env, stack)?.into_owned())
+                    catch!(Return in right.evaluate(&captured_env, stack).map(Cow::into_owned))
                 }),
             );
 
@@ -144,7 +144,7 @@ impl Name {
     pub fn resolve_if_present(&self, env: &Env, stack: &Stack) -> Result<Option<Value>> {
         let mut stack = stack.clone();
         stack
-            .evaluation_mut()
+            .diagnostics_mut()
             .add(|| format!("Resolving variable '{}'", self.name));
 
         match self.resolve_variable_if_present(env) {
@@ -156,7 +156,7 @@ impl Name {
     pub fn resolve_variable<'a>(&self, env: &'a Env, stack: &Stack) -> Result<Variable> {
         let mut stack = stack.clone();
         stack
-            .evaluation_mut()
+            .diagnostics_mut()
             .add(|| format!("Resolving variable '{}'", self.name));
 
         self.resolve_variable_if_present(env).ok_or_else(|| {

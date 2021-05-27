@@ -1,0 +1,16 @@
+Condition : variant (True False)
+
+use Condition
+
+#stdlib-link Condition
+#stdlib-link True
+#stdlib-link False
+
+if : bool => 'then => ''else => \match bool {
+    \True : 'then
+    \False : ''else
+}
+
+when : bool => 'then => \if bool 'then _
+
+not : bool -> if bool False True

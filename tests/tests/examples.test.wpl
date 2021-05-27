@@ -6,17 +6,17 @@ show (add 2 3)
 
 ---
 
-(add 2 3) ==> 5
+5
 
 >>> Bank account example
 
 balance : 75
 
 deposit : dollars => balance + dollars
-show (deposit 50)
+debug (deposit 50)
 
 withdraw : dollars => balance - dollars
-show (withdraw 10)
+debug (withdraw 10)
 
 ---
 
@@ -28,14 +28,14 @@ show (withdraw 10)
 Grade : variant (A B C D F)
 
 report-card : Grade grade -> {
-  use Grade
+    use Grade
 
-  match grade {
-    A : "Top of the class"
-    B : "Average"
-    C : "Getting there"
-    _ : "Need to study"
-  }
+    match grade {
+        A : "Top of the class"
+        B : "Average"
+        C : "Getting there"
+        _ : "Need to study"
+    }
 }
 
 my-grade : Grade A
@@ -44,7 +44,7 @@ show (report-card my-grade)
 
 ---
 
-(report-card my-grade) ==> Top of the class
+Top of the class
 
 >>> Formatting
 
@@ -52,7 +52,7 @@ show (format "_, _!" "Hello" "world")
 
 ---
 
-(format _, _! Hello world) ==> Hello, world!
+Hello, world!
 
 >>> Trait-oriented greeting example from documentation
 
@@ -71,13 +71,13 @@ Planet == Greet "world" -- always greet planets with "Hello, world!"
 earth : Planet _ -- we don't need to contain anything, we just need
                  -- to know that the value is a planet
 
-show (greet bob) -- Hello, Bob!
-show (greet earth) -- Hello, world!
+show (greet bob)
+show (greet earth)
 
 ---
 
-(greet bob) ==> Hello, Bob!
-(greet earth) ==> Hello, world!
+Hello, Bob!
+Hello, world!
 
 >>> patterns
 
@@ -85,10 +85,10 @@ A : trait Number
 A number == Text (format "A _" number)
 
 a : A 42
-show a
+debug a
 
 f : A number -> format "The number is _" number
-show (f a)
+debug (f a)
 
 ---
 

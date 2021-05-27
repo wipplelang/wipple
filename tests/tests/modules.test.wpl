@@ -10,7 +10,7 @@ show a
 
 ---
 
-a ==> 1
+1
 
 >>> Outside variables are accessible inside a module
 
@@ -25,8 +25,8 @@ show a
 
 ---
 
-a ==> 2
-a ==> 1
+2
+1
 
 >>> Accessing variables inside a module
 
@@ -38,7 +38,7 @@ show (module a)
 
 ---
 
-(module a) ==> 1
+1
 
 >>> 'use' function
 
@@ -50,4 +50,4 @@ show a
 
 ---
 
-a ==> 1
+1

@@ -5,7 +5,7 @@ show a
 
 ---
 
-a ==> 42
+42
 
 >>> Resolving a variable that doesn't exist
 
@@ -13,7 +13,7 @@ a
 
 ---
 
-Name 'a' does not refer to a variable
+'a' does not refer to a variable
     Resolving variable 'a' (1:1)
     Importing program
 
@@ -37,12 +37,12 @@ show b
 
 ---
 
-1 ==> 1
-2 ==> 2
-4 ==> 4
-a ==> a
-3 ==> 3
-b ==> b
+1
+2
+4
+a
+3
+b
 
 >>> Assigning to constant variables is ignored
 
@@ -51,4 +51,4 @@ show _
 
 ---
 
-_ ==> <empty>
+<empty>

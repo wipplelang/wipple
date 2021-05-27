@@ -3,8 +3,8 @@
 increment : (+ 1)
 double : (* 2)
 
-show (2 . increment . double)
-show (5 . double . increment)
+debug (2 . increment . double)
+debug (5 . double . increment)
 
 ---
 
@@ -19,8 +19,8 @@ double : (* 2)
 increment-and-double : increment | double
 double-and-increment : double | increment
 
-show (increment-and-double 2)
-show (double-and-increment 5)
+debug (increment-and-double 2)
+debug (double-and-increment 5)
 
 ---
 

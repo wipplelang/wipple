@@ -1,13 +1,12 @@
 use crate::*;
 use wipple::*;
 
-thread_local! {
-    static OPERATOR_PRECEDENCES: Rc<RefCell<Vec<PrecedenceGroup>>> = Default::default();
-}
+#[derive(TypeInfo, Clone, Default)]
+struct OperatorPrecedences(Vec<PrecedenceGroup>);
 
-pub fn operator_precedences() -> Rc<RefCell<Vec<PrecedenceGroup>>> {
-    OPERATOR_PRECEDENCES.with(Clone::clone)
-}
+env_key!(operator_precedences: OperatorPrecedences {
+    visibility: EnvKeyVisibility::Private,
+});
 
 macro_rules! match_member {
     ($member:ident() -> $type:ty) => {
@@ -132,7 +131,7 @@ pub enum VariadicInput {
 
 impl From<Value> for VariadicInput {
     fn from(value: Value) -> Self {
-        if let Some(list) = value.primitive().and_then(|p| p.try_cast::<List>()) {
+        if let Some(list) = value.try_primitive().and_then(|p| p.try_cast::<List>()) {
             if list.items.len() == 1 {
                 VariadicInput::Single(list.items[0].clone())
             } else {
@@ -267,81 +266,49 @@ precedence_group!(Variadic);
 stored_closure!(pub struct AddPrecedenceGroupFn<P: PrecedenceGroupTrait>(P));
 
 use std::collections::HashMap;
-#[cfg(debug_assertions)]
-use std::collections::HashSet;
-
-#[cfg(debug_assertions)]
-thread_local! {
-    static HIGHEST_CALLED: Rc<RefCell<HashSet<DynamicType>>> = Default::default();
-    static LOWEST_CALLED: Rc<RefCell<HashSet<DynamicType>>> = Default::default();
-}
 
 impl<P: PrecedenceGroupTrait> AddPrecedenceGroupFn<P> {
     pub fn highest() -> Self {
         AddPrecedenceGroupFn::new(|group: P| {
-            #[cfg(debug_assertions)]
-            {
-                let highest_called = HIGHEST_CALLED.with(Clone::clone);
-                let mut highest_called = highest_called.borrow_mut();
-
-                let r#type = DynamicType::of::<P>();
-
-                if highest_called.contains(&r#type) {
-                    panic!("highest() may only be called once");
-                }
-
-                highest_called.insert(r#type);
-            }
-
-            operator_precedences().borrow_mut().insert(0, group.into());
+            Env::global().update_operator_precedences(|operator_precedences| {
+                operator_precedences.0.insert(0, group.into());
+            });
         })
     }
 
     pub fn lowest() -> Self {
         AddPrecedenceGroupFn::new(|group: P| {
-            #[cfg(debug_assertions)]
-            {
-                let lowest_called = HIGHEST_CALLED.with(Clone::clone);
-                let mut lowest_called = lowest_called.borrow_mut();
-
-                let r#type = DynamicType::of::<P>();
-
-                if lowest_called.contains(&r#type) {
-                    panic!("lowest() may only be called once");
-                }
-
-                lowest_called.insert(r#type);
-            }
-
-            operator_precedences().borrow_mut().push(group.into());
+            Env::global().update_operator_precedences(|operator_precedences| {
+                operator_precedences.0.push(group.into());
+            });
         })
     }
 
     pub fn higher_than(other: P) -> Self {
         AddPrecedenceGroupFn::new(move |group: P| {
-            let operator_precedences = operator_precedences();
-            let mut operator_precedences = operator_precedences.borrow_mut();
+            Env::global().update_operator_precedences(|operator_precedences| {
+                let index = operator_precedences
+                    .0
+                    .iter()
+                    .position(|g| g.id() == other.id())
+                    .unwrap();
 
-            let index = operator_precedences
-                .iter()
-                .position(|g| g.id() == other.id())
-                .unwrap();
-
-            operator_precedences.insert(index, group.into());
+                operator_precedences.0.insert(index, group.into());
+            });
         })
     }
 
     pub fn lower_than(other: P) -> Self {
         AddPrecedenceGroupFn::new(move |group: P| {
-            let operator_precedences = operator_precedences();
-            let mut operator_precedences = operator_precedences.borrow_mut();
+            Env::global().update_operator_precedences(|operator_precedences| {
+                let index = operator_precedences
+                    .0
+                    .iter()
+                    .position(|g| g.id() == other.id())
+                    .unwrap();
 
-            let index = operator_precedences
-                .iter()
-                .position(|g| g.id() == other.id())
-                .unwrap();
-
-            operator_precedences.insert(index + 1, group.into());
+                operator_precedences.0.insert(index + 1, group.into());
+            });
         })
     }
 }
@@ -365,17 +332,17 @@ macro_rules! add_precedence_group {
 #[ext(pub, name = AddOperatorExt)]
 impl<O: OperatorTrait> O {
     fn add_to<P: PrecedenceGroupTrait<Operator = O>>(self, group: &P) {
-        let operator_precedences = operator_precedences();
-        let mut operator_precedences = operator_precedences.borrow_mut();
+        Env::global().update_operator_precedences(|operator_precedences| {
+            let index = operator_precedences
+                .0
+                .iter()
+                .position(|g| g.id() == group.id())
+                .unwrap();
 
-        let index = operator_precedences
-            .iter()
-            .position(|g| g.id() == group.id())
-            .unwrap();
-
-        let mut operators = operator_precedences[index].operators();
-        operators.push(self.into());
-        operator_precedences[index].set_operators(operators);
+            let mut operators = operator_precedences.0[index].operators();
+            operators.push(self.into());
+            operator_precedences.0[index].set_operators(operators);
+        });
     }
 }
 
@@ -407,20 +374,24 @@ impl List {
 
 #[ext(pub, name = ValueGetOperatorExt)]
 impl Value {
-    fn get_operator<'a>(&self, env: &Env, stack: &Stack) -> Result<Option<Operator>> {
-        Ok(match self.get_if_present::<Name>(env, stack)? {
-            Some(name) => {
-                let variable = name.resolve_variable_if_present(env);
-
-                match variable {
-                    Some(Variable::Constant(value)) => value
-                        .get_if_present::<Operator>(env, stack)?
-                        .map(Cow::into_owned),
-                    _ => None,
+    fn get_operator(&self, env: &Env, stack: &Stack) -> Result<Option<Operator>> {
+        macro_rules! return_operator_if_present {
+            ($value:expr) => {
+                if let Some(operator) = $value.get_if_present::<Operator>(env, stack)? {
+                    return Ok(Some(operator.into_owned()));
                 }
+            };
+        }
+
+        return_operator_if_present!(self);
+
+        if let Some(name) = self.get_if_present::<Name>(env, stack)? {
+            if let Some(Variable::Constant(variable)) = name.resolve_variable_if_present(env) {
+                return_operator_if_present!(variable);
             }
-            None => None,
-        })
+        }
+
+        Ok(None)
     }
 }
 
@@ -448,17 +419,17 @@ impl List {
             _ => {}
         };
 
+        let operator_precedences = Env::global().operator_precedences();
+
         // Sort the operators into their precedence groups
         let sorted_operators_by_precedence = {
             // FIXME: Probably very inefficient
 
-            let precedences = operator_precedences();
-            let precedences = precedences.borrow();
-
             let mut precedences_to_sort = HashMap::new();
 
             for operator in operators_in_list {
-                let (precedence, group) = precedences
+                let (precedence, group) = operator_precedences
+                    .0
                     .iter()
                     .enumerate()
                     .find(|p| p.1.operators().iter().any(|o| o.id() == operator.0.id()))

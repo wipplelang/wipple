@@ -58,16 +58,7 @@ impl Env {
             // Text == Module
             // FIXME: This is impure and should not be a direct relation; use some
             // kind of 'Import' trait instead
-            env.add_relation(
-                Trait::of::<Text>(),
-                Trait::of::<Module>(),
-                stack,
-                DeriveValueFn::new(|value, _, stack| {
-                    let text = value.into_primitive().unwrap().into_cast::<Text>();
-                    let module = import(&text.text, stack)?;
-                    Ok(Value::of(module))
-                }),
-            )?;
+            env.add_relation_between_with(stack, |text: Text, _, stack| import(&text.text, stack))?;
 
             Ok(())
         })

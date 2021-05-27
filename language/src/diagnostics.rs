@@ -25,7 +25,7 @@ impl std::fmt::Display for SourceLocation {
 
 #[derive(Derivative, TypeInfo, Debug, Clone, PartialEq, Eq, Hash)]
 #[derivative(Default)]
-pub struct EvaluationStack {
+pub struct DiagnosticsStack {
     pub items: Vec<EvaluationStackItem>,
 
     queued_location: Option<SourceLocation>,
@@ -34,7 +34,7 @@ pub struct EvaluationStack {
     recording_enabled: bool,
 }
 
-impl EvaluationStack {
+impl DiagnosticsStack {
     pub fn queue_location(&mut self, location: Option<&SourceLocation>) {
         if location.is_some() {
             self.queued_location = location.cloned();
@@ -106,9 +106,20 @@ pub enum Exit {
 
 #[macro_export]
 macro_rules! catch {
-    ($exit:ident $expr:expr) => {
+    ($exit:ident in $expr:expr) => {
         match $expr {
             Ok(value) | Err(Exit::$exit(value, _)) => Ok(value),
+            Err(exit) => Err(exit),
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! catch_only {
+    ($exit:ident in $expr:expr) => {
+        match $expr {
+            Ok(_) => Ok(None),
+            Err(Exit::$exit(value, _)) => Ok(Some(value)),
             Err(exit) => Err(exit),
         }
     };
@@ -117,16 +128,16 @@ macro_rules! catch {
 #[derive(Debug, Clone)]
 pub struct Error {
     pub message: String,
-    pub stack: EvaluationStack,
+    pub stack: DiagnosticsStack,
 }
 
-stack_key!(pub evaluation: EvaluationStack);
+stack_key!(pub diagnostics: DiagnosticsStack);
 
 impl Error {
     pub fn new(message: &str, stack: &Stack) -> Self {
         Error {
             message: message.to_string(),
-            stack: stack.evaluation().into_owned(),
+            stack: stack.diagnostics().into_owned(),
         }
     }
 }

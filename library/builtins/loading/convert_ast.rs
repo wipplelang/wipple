@@ -1,14 +1,13 @@
+use crate::*;
 use wipple::*;
 use wipple_parser::*;
 
 pub fn convert_ast(ast: &Ast, file: Option<&str>) -> Value {
-    use AstNode::*;
-
     match &ast.node {
-        Block(statements) => Value::of(crate::Block::new_located(
-            &statements
+        AstNode::Block(statements) => Value::of(Block::new_located(
+            statements
                 .iter()
-                .map(|statement| crate::List {
+                .map(|statement| List {
                     items: statement
                         .items
                         .iter()
@@ -20,7 +19,7 @@ pub fn convert_ast(ast: &Ast, file: Option<&str>) -> Value {
             Some(location(&ast.location, file)),
         )),
 
-        List(items) => Value::of(crate::List::new_located(
+        AstNode::List(items) => Value::of(List::new_located(
             items
                 .iter()
                 .map(|node| convert_ast(node, file))
@@ -28,22 +27,26 @@ pub fn convert_ast(ast: &Ast, file: Option<&str>) -> Value {
             Some(location(&ast.location, file)),
         )),
 
-        Literal(node) => Value::of(crate::Literal::new_located(
+        AstNode::Literal(node) => Value::of(Literal::new_located(
             convert_ast(node, file),
             Some(location(&ast.location, file)),
         )),
 
-        Name(name) => Value::of(crate::Name::new_located(
-            name,
+        AstNode::Escaped(node) => Value::of(Escaped::new_located(
+            convert_ast(node, file),
             Some(location(&ast.location, file)),
         )),
 
-        Number(number) => Value::of(crate::Number::new_located(
-            *number,
+        AstNode::Name(name) => {
+            Value::of(Name::new_located(name, Some(location(&ast.location, file))))
+        }
+
+        AstNode::Number(number) => Value::of(Number::new_located(
+            number.parse().unwrap(),
             Some(location(&ast.location, file)),
         )),
 
-        Text(text) => Value::of(crate::Text::new_located(
+        AstNode::Text(text) => Value::of(Text::new_located(
             text.to_string(),
             Some(location(&ast.location, file)),
         )),

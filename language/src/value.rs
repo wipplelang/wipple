@@ -38,17 +38,24 @@ impl Value {
         }
     }
 
-    pub fn primitive(&self) -> Option<&Any> {
+    pub fn try_primitive(&self) -> Option<&Any> {
         match self {
             Value::Primitive(primitive) => Some(primitive),
             _ => None,
         }
     }
 
-    pub fn into_primitive(self) -> Option<Any> {
+    pub fn primitive(&self) -> &Any {
         match self {
-            Value::Primitive(primitive) => Some(primitive),
-            _ => None,
+            Value::Primitive(primitive) => primitive,
+            _ => panic!("Not a primitive value"),
+        }
+    }
+
+    pub fn into_primitive(self) -> Any {
+        match self {
+            Value::Primitive(primitive) => primitive,
+            _ => panic!("Not a primitive value"),
         }
     }
 }

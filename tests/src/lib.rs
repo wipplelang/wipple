@@ -43,7 +43,7 @@ pub fn load_tests() -> Vec<TestFile> {
     )
     .unwrap();
 
-    fs::read_dir(tests_folder)
+    let mut tests = fs::read_dir(tests_folder)
         .unwrap()
         .filter_map(|entry| {
             let entry = match entry {
@@ -84,7 +84,11 @@ pub fn load_tests() -> Vec<TestFile> {
                 tests,
             })
         })
-        .collect()
+        .collect::<Vec<_>>();
+
+    tests.sort_by(|a, b| a.name.cmp(&b.name));
+
+    tests
 }
 
 fn test(code: String, expected_output: String) -> TestResult {

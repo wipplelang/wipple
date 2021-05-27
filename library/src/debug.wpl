@@ -1,1 +1,1 @@
-debug : x => (format "_ ==> _" (literal x) x)
+debug : x => show (format "_ ==> _" (literal x) x)

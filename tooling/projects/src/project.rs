@@ -69,7 +69,7 @@ impl Project {
     pub fn from_file(path: &Path, stack: &Stack) -> Result<Project> {
         let mut stack = stack.clone();
         stack
-            .evaluation_mut()
+            .diagnostics_mut()
             .add(|| format!("Loading project '{}'", path.to_string_lossy()));
 
         let env = project_env_for_path(path).child();
@@ -144,7 +144,7 @@ impl ParsedProject {
         let project_root_path = self.root_path();
         *stack.project_root_mut() = ProjectRoot(Some(project_root_path.to_path_buf()));
         stack
-            .evaluation_mut()
+            .diagnostics_mut()
             .add(|| format!("Running project '{}'", self.path.to_string_lossy()));
 
         let project_env = project_env_for_path(project_root_path);
@@ -243,7 +243,7 @@ fn parse_project_env(project_path: &Path, env: &Env, stack: &Stack) -> Result<Pr
     let dependencies = (|| {
         let mut stack = stack.clone();
         stack
-            .evaluation_mut()
+            .diagnostics_mut()
             .add(|| String::from("Updating dependencies"));
 
         let dependencies_value = match Name::new("dependencies").resolve_if_present(&env, &stack)? {
@@ -263,7 +263,7 @@ fn parse_project_env(project_path: &Path, env: &Env, stack: &Stack) -> Result<Pr
         for (name, dependency_variable) in variables {
             let mut stack = stack.clone();
             stack
-                .evaluation_mut()
+                .diagnostics_mut()
                 .add(|| format!("Parsing dependency '{}'", name));
 
             let dependency = dependency_variable
@@ -279,7 +279,7 @@ fn parse_project_env(project_path: &Path, env: &Env, stack: &Stack) -> Result<Pr
 
     let main = (|| {
         let mut stack = stack.clone();
-        stack.evaluation_mut().add(|| {
+        stack.diagnostics_mut().add(|| {
             format!(
                 "Resolving main file in project '{}'",
                 project_path.to_string_lossy()

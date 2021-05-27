@@ -40,8 +40,9 @@ pub enum AstNode {
     List(Vec<Ast>),
     Name(String),
     Text(String),
-    Number(f64),
+    Number(String),
     Literal(Box<Ast>),
+    Escaped(Box<Ast>),
 }
 
 #[derive(Debug)]
@@ -76,6 +77,23 @@ macro_rules! parse_single_token {
             _ => None,
         })
     };
+}
+
+macro_rules! parse_prefix_token {
+    ($token:ident => $node:ident, $tokens:expr, $lc:expr) => {{
+        let offset = match $tokens.peek() {
+            Some((Token::$token, offset)) => {
+                $tokens.next();
+                offset
+            }
+            _ => return Ok(None),
+        };
+
+        let value =
+            parse_value($tokens, $lc)?.ok_or_else(|| Error::new("Expected value", None, $lc))?;
+
+        Ok(Some(Ast::new(AstNode::$node(Box::new(value)), offset, $lc)))
+    }};
 }
 
 pub fn parse_block(tokens: &mut Tokens, lc: &LineColLookup) -> Result<Option<Ast>> {
@@ -210,21 +228,11 @@ pub fn parse_number(tokens: &mut Tokens, lc: &LineColLookup) -> Result<Option<As
 }
 
 pub fn parse_literal(tokens: &mut Tokens, lc: &LineColLookup) -> Result<Option<Ast>> {
-    let offset = match tokens.peek() {
-        Some((Token::Quote, offset)) => {
-            tokens.next();
-            offset
-        }
-        _ => return Ok(None),
-    };
+    parse_prefix_token!(Quote => Literal, tokens, lc)
+}
 
-    let value = parse_value(tokens, lc)?.ok_or_else(|| Error::new("Expected value", None, lc))?;
-
-    Ok(Some(Ast::new(
-        AstNode::Literal(Box::new(value)),
-        offset,
-        lc,
-    )))
+pub fn parse_escaped(tokens: &mut Tokens, lc: &LineColLookup) -> Result<Option<Ast>> {
+    parse_prefix_token!(Backslash => Escaped, tokens, lc)
 }
 
 fn parse_value(tokens: &mut Tokens, lc: &LineColLookup) -> Result<Option<Ast>> {
@@ -236,6 +244,7 @@ fn parse_value(tokens: &mut Tokens, lc: &LineColLookup) -> Result<Option<Ast>> {
         parse_text,
         parse_number,
         parse_literal,
+        parse_escaped,
     ];
 
     for choice in choices {

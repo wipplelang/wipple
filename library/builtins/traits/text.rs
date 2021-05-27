@@ -34,7 +34,7 @@ impl Env {
 impl Value {
     fn format_with_fallback(&self, env: &Env, stack: &Stack) -> Cow<str> {
         let mut stack = stack.clone();
-        stack.evaluation_mut().disable_recording();
+        stack.diagnostics_mut().disable_recording();
 
         match self.get_if_present::<Text>(env, &stack) {
             Ok(Some(text)) => match text {
@@ -48,7 +48,7 @@ impl Value {
 
     fn format(&self, env: &Env, stack: &Stack) -> Result<Cow<String>> {
         let mut stack = stack.clone();
-        stack.evaluation_mut().disable_recording();
+        stack.diagnostics_mut().disable_recording();
 
         Ok(self
             .get_if_present::<Text>(env, &stack)?

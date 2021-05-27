@@ -98,15 +98,15 @@ pub(crate) fn setup(env: &Env, stack: &Stack) -> Result<()> {
     );
 
     // Variant-Set == Pattern
-    env.add_relation_between(stack, |target: VariantSet| {
+    env.add_relation_between(stack, |variant_set: VariantSet| {
         Pattern::new(move |value, env, stack| {
-            let variant_set = match value.get_if_present::<VariantSet>(env, stack)? {
+            let variant = match value.get_if_present::<Variant>(env, stack)? {
                 Some(value) => value.into_owned(),
                 None => return Ok(None),
             };
 
-            Ok(if variant_set.id == target.id {
-                Some(Cow::Owned(Value::of(variant_set)))
+            Ok(if variant.id == variant_set.id {
+                Some(Cow::Owned(Value::of(variant)))
             } else {
                 None
             })
@@ -150,6 +150,9 @@ pub(crate) fn setup(env: &Env, stack: &Stack) -> Result<()> {
         Ok(Module::new(env))
     })?;
 
+    // Variant-Set == Text
+    env.add_text_relation::<VariantSet>("variant set", stack)?;
+
     // Variant == Pattern
     env.add_relation_between(stack, |target: Variant| {
         Pattern::new(move |value, env, stack| {
@@ -167,6 +170,16 @@ pub(crate) fn setup(env: &Env, stack: &Stack) -> Result<()> {
             } else {
                 None
             })
+        })
+    })?;
+
+    env.add_relation_between_with(stack, |variant: Variant, env, stack| {
+        Ok(match variant.value {
+            Some(value) => {
+                let text = value.format(env, stack)?;
+                Text::new(format!("{} {}", variant.name, text))
+            }
+            None => Text::new(variant.name),
         })
     })?;
 

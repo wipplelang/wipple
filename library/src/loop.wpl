@@ -1,0 +1,5 @@
+while : condition => body => \loop {
+    \if condition body (\break _)
+}
+
+until : condition => while (not condition)

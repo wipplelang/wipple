@@ -14,6 +14,7 @@ pub trait IntoValue {
 #[cfg(feature = "stdlib")]
 mod stdlib_conversions {
     use super::*;
+    use rust_decimal::prelude::{Decimal, FromPrimitive, ToPrimitive};
     use wipple_stdlib::*;
 
     impl FromValue for () {
@@ -46,38 +47,47 @@ mod stdlib_conversions {
         }
     }
 
-    macro_rules! number_conversion {
-        ($type:ty, $desc:expr) => {
-            impl FromValue for $type {
+    macro_rules! number_conversions {
+        ($($type:ty => $desc:expr);*;) => {
+            $(impl FromValue for $type {
                 fn from_value(value: Value, env: &Env, stack: &Stack) -> Result<Self> {
                     let number = value.get_or::<Number>("Expected number", env, stack)?;
 
-                    Ok(number.number as $type)
+                    paste!(number.number.[<to_ $type>]()).ok_or_else(|| {
+                        error(
+                            &format!("Cannot represent this number as {}", $desc),
+                            stack
+                        )
+                    })
                 }
             }
 
             impl IntoValue for $type {
-                fn into_value(self, _: &Env, _: &Stack) -> Result<Value> {
-                    Ok(Value::of(Number::new(self as f64)))
+                fn into_value(self, _: &Env, stack: &Stack) -> Result<Value> {
+                    paste!(Decimal::[<from _$type>](self))
+                        .map(|number| Value::of(Number::new(number)))
+                        .ok_or_else(|| error("Cannot represent this number in Wipple", stack))
                 }
-            }
+            })*
         };
     }
 
-    number_conversion!(isize, "a platform-sized integer");
-    number_conversion!(i8, "an 8-bit integer");
-    number_conversion!(i16, "a 16-bit integer");
-    number_conversion!(i32, "a 32-bit integer");
-    number_conversion!(i64, "a 64-bit integer");
-    number_conversion!(i128, "a 128-bit integer");
-    number_conversion!(usize, "a platform-sized unsigned integer");
-    number_conversion!(u8, "an 8-bit unsigned integer");
-    number_conversion!(u16, "a 16-bit unsigned integer");
-    number_conversion!(u32, "a 32-bit unsigned integer");
-    number_conversion!(u64, "a 64-bit unsigned integer");
-    number_conversion!(u128, "a 128-bit unsigned integer");
-    number_conversion!(f32, "a 32-bit floating-point number");
-    number_conversion!(f64, "a 64-bit floating-point number");
+    number_conversions! {
+        isize => "a platform-sized integer";
+        i8 => "an 8-bit integer";
+        i16 => "a 16-bit integer";
+        i32 => "a 32-bit integer";
+        i64 => "a 64-bit integer";
+        i128 => "a 128-bit integer";
+        usize => "a platform-sized unsigned integer";
+        u8 => "an 8-bit unsigned integer";
+        u16 => "a 16-bit unsigned integer";
+        u32 => "a 32-bit unsigned integer";
+        u64 => "a 64-bit unsigned integer";
+        u128 => "a 128-bit unsigned integer";
+        f32 => "a 32-bit floating-point number";
+        f64 => "a 64-bit floating-point number";
+    }
 }
 
 #[cfg(feature = "stdlib")]
