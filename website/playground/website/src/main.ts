@@ -17,7 +17,7 @@ Prism.languages.wipple = {
         greedy: true,
     },
     operator: {
-        pattern: /[`~!@#$%^&*()\-_=+\\|;:,<.>/?]+(?=[ \t()\[\]{}']|$)/m,
+        pattern: /[`~!@#$%^&*()\-_=+|;:,<.>/?]+(?=[ \t()\[\]{}']|$)/m,
         greedy: true,
     },
     number: {
@@ -25,14 +25,14 @@ Prism.languages.wipple = {
         greedy: true,
     },
     name: {
-        pattern: /[^ \t\n()\[\]{}'"]+/,
+        pattern: /[^ \t\n()\[\]{}'\\"]+/,
         greedy: true,
     },
     string: {
         pattern: /"[^\n"]*"/,
         greedy: true,
     },
-    punctuation: /[()\[\]{}']/,
+    punctuation: /[()\[\]{}'\\]/,
 };
 
 import "./prismLineNumbersPlugin.js";
