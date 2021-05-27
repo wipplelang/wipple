@@ -1,7 +1,0 @@
->>> Quoting a value prevents it from being evaluated
-
-show 'foo
-
----
-
-'foo ==> foo

@@ -1,218 +1,148 @@
-use colored::Colorize;
-use junit_report::*;
-use std::{
-    cell::RefCell,
-    fs::{self, File},
-    path::{Path, PathBuf},
-    process::exit,
-    rc::Rc,
-};
-use std::{env, time::Instant};
-use wipple::*;
+use colored::{ColoredString, Colorize};
+use std::{process::exit, time::Duration};
+use structopt::StructOpt;
+use wipple_tests::*;
 
-macro_rules! println_interactive {
-    ($($arg:tt)*) => {
-        if env::var("CI").is_err() {
-            println!($($arg)*);
-        }
-    };
+#[derive(StructOpt)]
+pub struct Args {
+    #[structopt(long = "file")]
+    pub single_file: Option<String>,
+
+    #[structopt(long = "test")]
+    pub single_test: Option<String>,
 }
 
 fn main() {
-    let tests_folder = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests");
+    exit(run())
+}
 
-    let args = std::env::args().collect::<Vec<_>>();
+fn run() -> i32 {
+    let args = Args::from_args();
 
-    let single_test = if args.get(1).filter(|&s| s == "--single").is_some() {
-        Some(&args[2])
-    } else {
-        None
-    };
+    let mut test_files = load_tests();
+
+    if let Some(file_name) = args.single_file {
+        test_files.retain(|file| file.name == file_name);
+    }
+
+    if let Some(test_name) = args.single_test {
+        test_files = test_files
+            .into_iter()
+            .filter_map(|mut file| {
+                let tests = std::mem::take(&mut file.tests);
+
+                if let Some(test) = tests.into_iter().find(|test| test.name == test_name) {
+                    file.tests.push(test);
+                    Some(file)
+                } else {
+                    None
+                }
+            })
+            .collect();
+    }
 
     let mut pass_count = 0;
     let mut fail_count = 0;
 
-    for path in fs::read_dir(tests_folder).unwrap() {
-        let path = path.unwrap().path();
+    let mut space = false;
 
-        if single_test.is_none() {
-            println_interactive!("{}: {}", "TEST".blue(), path.to_string_lossy());
+    for file in test_files {
+        if space {
+            eprintln!();
         }
 
-        let mut suite = TestSuite::new(&path.to_string_lossy());
+        eprintln!("{}\n", file.name.bold().underline());
 
-        for test_case in parse_test_file(&path) {
-            if let Some(single_test) = single_test {
-                if &test_case.name != single_test {
-                    continue;
+        for test in file.tests {
+            let result = (test.run)();
+
+            fn duration_text(duration: Duration) -> ColoredString {
+                format!("{}ms", duration.as_millis()).dimmed()
+            }
+
+            match result {
+                TestResult::Passed { duration } => {
+                    eprintln!(
+                        "{} {} {}",
+                        "PASS".bold().green(),
+                        test.name,
+                        duration_text(duration)
+                    );
+
+                    pass_count += 1;
+                }
+                TestResult::Failed {
+                    expected,
+                    found,
+                    duration,
+                } => {
+                    if space {
+                        eprintln!();
+                    }
+
+                    eprintln!(
+                        "{} {} {}\n    Expected:\n{}\n    Found:\n{}",
+                        "FAIL".bold().red(),
+                        test.name,
+                        duration_text(duration),
+                        indent(2, &expected).dimmed(),
+                        indent(2, &found).dimmed(),
+                    );
+
+                    if space {
+                        eprintln!();
+                    }
+
+                    fail_count += 1;
                 }
             }
 
-            let (output, duration) = test(&test_case.code);
-
-            let reported_duration = Duration::from_std(duration).unwrap();
-
-            if output == test_case.expected_output {
-                println_interactive!(
-                    "{}",
-                    indent(
-                        1,
-                        &format!(
-                            "{}: {} {}",
-                            "PASS".green(),
-                            test_case.name,
-                            format!("(took {:.3} sec)", duration.as_secs_f32()).bright_black()
-                        )
-                    )
-                );
-
-                suite = suite.add_testcase(TestCase::success(&test_case.name, reported_duration));
-
-                pass_count += 1;
-            } else {
-                let message = format!(
-                    "Expected:\n{}\nFound:\n{}",
-                    indent(1, &test_case.expected_output),
-                    indent(1, &output),
-                );
-
-                println_interactive!(
-                    "{}\n{}",
-                    indent(
-                        1,
-                        &format!(
-                            "{}: {} {}",
-                            "FAIL".red(),
-                            test_case.name,
-                            format!("(took {:.3} sec)", duration.as_secs_f32()).bright_black()
-                        )
-                    ),
-                    indent(2, &message),
-                );
-
-                suite = suite.add_testcase(TestCase::failure(
-                    &test_case.name,
-                    reported_duration,
-                    "Invalid output",
-                    &message,
-                ));
-
-                fail_count += 1;
-            }
-        }
-
-        let report = Report::new().add_testsuite(suite);
-
-        if env::var("CI").is_ok() {
-            report
-                .write_xml(&mut File::create(path.with_extension("report.xml")).unwrap())
-                .unwrap();
+            space = true;
         }
     }
 
-    println_interactive!(
-        "{}: {} tests, {}, {}",
-        "DONE".blue(),
-        pass_count + fail_count,
-        format!("{} passed", pass_count).green(),
-        {
-            let text = format!("{} failed", fail_count);
+    macro_rules! count_text {
+        ($count:expr, $text:expr, $color:ident) => {{
+            let text = format!("{} {}", $count, $text);
 
-            if fail_count > 0 {
-                text.red().to_string()
+            if $count > 0 {
+                text.$color()
             } else {
-                text
+                text.normal()
             }
-        },
+        }};
+    }
+
+    if space {
+        eprintln!();
+    }
+
+    eprintln!(
+        "{}",
+        format!(
+            "{} tests, {}, {}",
+            pass_count + fail_count,
+            count_text!(pass_count, "passed", green),
+            count_text!(fail_count, "failed", red),
+        )
+        .bold()
     );
 
-    exit(if fail_count > 0 { 1 } else { 0 });
-}
+    // TODO: JUnit report
 
-const INDENT: &str = "  ";
+    if fail_count > 0 {
+        1
+    } else {
+        0
+    }
+}
 
 fn indent(n: usize, string: &str) -> String {
-    let indent = INDENT.repeat(n);
+    let indent = "    ".repeat(n);
 
     string
         .split('\n')
-        .map(|line| format!("{}{}", indent, line))
+        .map(|line| indent.clone() + line)
         .collect::<Vec<_>>()
         .join("\n")
-}
-
-fn filter_lines(string: &str, filter: impl Fn(&&str) -> bool) -> String {
-    string
-        .split('\n')
-        .filter(filter)
-        .collect::<Vec<_>>()
-        .join("\n")
-}
-
-struct Test {
-    name: String,
-    code: String,
-    expected_output: String,
-}
-
-fn parse_test_file(path: &Path) -> Vec<Test> {
-    let file = fs::read_to_string(path).unwrap();
-
-    let file = filter_lines(&file, |line| !line.starts_with('#'));
-
-    file.split(">>>")
-        .skip(1)
-        .map(|test_code| {
-            let parts: Vec<_> = test_code.split("---").map(|x| x.trim()).collect();
-            let first_part: Vec<_> = parts[0].splitn(2, '\n').map(|x| x.trim()).collect();
-
-            Test {
-                name: String::from(first_part[0]),
-                code: String::from(first_part[1]),
-                expected_output: String::from(parts[1]),
-            }
-        })
-        .collect()
-}
-
-fn test(code: &str) -> (String, std::time::Duration) {
-    let start = Instant::now();
-
-    let mut stack = Stack::new();
-
-    let program = wipple_projects::load_string(code, None, &stack).expect("Failed to parse file");
-
-    let output = Rc::new(RefCell::new(Vec::new()));
-
-    wipple::setup();
-    setup(output.clone(), &mut stack);
-
-    wipple_stdlib::setup(&wipple::env::global(), &stack).expect("Failed to load standard library");
-
-    if let Err(error) = wipple_projects::import_program_with_parent_env(
-        program,
-        None,
-        &wipple::env::global(),
-        &stack,
-    ) {
-        output.replace(vec![error.as_error().to_string()]);
-    }
-
-    let output = output.borrow().join("\n");
-    let duration = start.elapsed();
-
-    (output, duration)
-}
-
-fn setup(output: Rc<RefCell<Vec<String>>>, stack: &mut Stack) {
-    *wipple_stdlib::show_mut_in(stack) = wipple_stdlib::ShowFn::new(move |value, env, stack| {
-        let source_text = value.format(env, stack)?;
-        let output_text = value.evaluate(env, stack)?.format(env, stack)?;
-
-        output
-            .borrow_mut()
-            .push(format!("{} ==> {}", source_text, output_text));
-
-        Ok(())
-    });
 }

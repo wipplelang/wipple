@@ -1,0 +1,7 @@
+[package]
+name = "dynamic"
+version = "0.0.0"
+edition = "2018"
+
+[dependencies]
+derive = { path = "./derive" }

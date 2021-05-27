@@ -4,9 +4,11 @@ version = "0.0.0"
 edition = "2018"
 
 [dependencies]
-colored = "2.0.0"
-junit-report = "0.4.1"
-wipple = { path = "../core" }
+colored = "2"
+fancy-regex = "0.6"
+junit-report = "0.4"
+structopt = "0.3"
+wipple = { path = "../language" }
 wipple_cli = { path = "../tooling/cli" }
-wipple_projects = { path = "../tooling/projects" }
-wipple_stdlib = { path = "../standard-library" }
+wipple_parser = { path = "../parser" }
+wipple_stdlib = { path = "../library" }

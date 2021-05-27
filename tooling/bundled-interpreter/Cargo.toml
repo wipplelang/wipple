@@ -7,7 +7,7 @@ edition = "2018"
 colored = "2.0.0"
 serde_json = "1.0.64"
 tempfile = "3.2.0"
-wipple = { path = "../../core" }
+wipple = { path = "../../language" }
 wipple_projects = { path = "../projects" }
-wipple_stdlib = { path = "../../standard-library" }
+wipple_stdlib = { path = "../../library" }
 zip = "0.5.12"

@@ -1,6 +1,8 @@
 use colored::Colorize;
 use std::process::exit;
-use wipple_projects::{set_dependency_path_in, ParsedProject};
+use wipple_bundled_interpreter::*;
+use wipple_projects::*;
+use wipple_stdlib::*;
 
 fn main() {
     exit(run())
@@ -30,15 +32,18 @@ fn run() -> i32 {
     project.change_dependency_paths(&|path| dependency_path.join(path));
 
     let load = || -> wipple::Result<()> {
-        let mut stack = wipple_bundled_interpreter::setup()?;
-        set_dependency_path_in(&mut stack, &dependency_path);
+        let (_, mut stack) = default_setup(handle_output)?;
+        stack.set_dependency_path(dependency_path);
+
         project.register();
+
         project.run(&stack)?;
+
         Ok(())
     };
 
     if let Err(error) = load() {
-        eprintln!("{}", error.as_error().to_string().red());
+        eprintln!("{}", error.into_error().to_string().red());
         return 1;
     }
 

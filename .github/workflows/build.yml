@@ -1,12 +1,13 @@
 on:
   workflow_dispatch:
   push:
+    branches:
+      - master
     paths:
       - .github/**
-      - core/**
+      - language/**
+      - library/**
       - parser/**
-      - plugins/**
-      - standard-library/**
       - tooling/**
 
 name: Build

@@ -14,17 +14,20 @@ pub fn lex(code: &str) -> (Vec<(Token, Range<usize>)>, LineColLookup) {
 
 #[derive(Logos, Debug, PartialEq)]
 pub enum Token {
-    #[regex(r#"[^ \t\n\(\)\[\]{}'"]+"#, |lex| lex.slice().to_string(), priority = 1)]
+    #[regex(r#"[^ \t\n\(\)\[\]{}'\\"]+"#, |lex| lex.slice().to_string(), priority = 1)]
     Name(String),
 
-    #[regex(r"-?[0-9]+(\.[0-9]+)?", |lex| lex.slice().parse(), priority = 2)]
-    Number(f64),
+    #[regex(r"-?[0-9]+(\.[0-9]+)?", |lex| lex.slice().to_string(), priority = 2)]
+    Number(String),
 
     #[regex(r#""[^\n"]*""#, |lex| unescape(lex.slice()))]
     Text(String),
 
     #[token("'")]
-    SingleQuote,
+    Quote,
+
+    #[token("\\")]
+    Backslash,
 
     #[token("(")]
     OpenParenthesis,

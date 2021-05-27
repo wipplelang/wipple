@@ -3,10 +3,9 @@ on:
   push:
     paths:
       - .github/**
-      - core/**
+      - language/**
+      - library/**
       - parser/**
-      - plugins/**
-      - standard-library/**
       - tests/**
       - tooling/**
 
@@ -29,9 +28,3 @@ jobs:
             ${{ runner.os }}-tests
 
       - run: cargo run --bin wipple_tests
-
-      - uses: mikepenz/action-junit-report@v2
-        if: always()
-        with:
-          report_paths: "tests/tests/*.report.xml"
-          github_token: ${{ secrets.GITHUB_TOKEN }}

@@ -1,0 +1,10 @@
+[package]
+name = "wipple"
+version = "0.0.0"
+edition = "2018"
+
+[dependencies]
+dynamic = { path = "./src/helpers/dynamic" }
+derivative = "2"
+extend = "1"
+paste = "1"

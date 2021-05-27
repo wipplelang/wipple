@@ -1,0 +1,28 @@
+>>> Simple variant
+
+My-Variant : variant (A B)
+
+debug My-Variant
+debug (My-Variant A)
+debug (My-Variant B)
+
+---
+
+My-Variant ==> <variant set>
+(My-Variant A) ==> A
+(My-Variant B) ==> B
+
+>>> Variant with associated value
+
+Either : variant {
+    A : _
+    B : is _
+}
+
+debug (Either A)
+debug (Either B 'foo)
+
+---
+
+(Either A) ==> A
+(Either B 'foo) ==> B foo

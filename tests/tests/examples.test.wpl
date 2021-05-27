@@ -1,0 +1,96 @@
+>>> Adding two numbers
+
+add : a -> b -> a + b
+
+show (add 2 3)
+
+---
+
+5
+
+>>> Bank account example
+
+balance : 75
+
+deposit : dollars => balance + dollars
+debug (deposit 50)
+
+withdraw : dollars => balance - dollars
+debug (withdraw 10)
+
+---
+
+(deposit 50) ==> 125
+(withdraw 10) ==> 65
+
+>>> Grade example
+
+Grade : variant (A B C D F)
+
+report-card : Grade grade -> {
+    use Grade
+
+    match grade {
+        A : "Top of the class"
+        B : "Average"
+        C : "Getting there"
+        _ : "Need to study"
+    }
+}
+
+my-grade : Grade A
+
+show (report-card my-grade)
+
+---
+
+Top of the class
+
+>>> Formatting
+
+show (format "_, _!" "Hello" "world")
+
+---
+
+Hello, world!
+
+>>> Trait-oriented greeting example from documentation
+
+Greet : trait Text -- a name to be greeted
+
+greet : Greet name -> format "Hello, _!" name
+
+Person : trait Text -- the person's name
+Person name == Greet name -- greet the person by their name
+
+bob : Person "Bob"
+
+Planet : trait _
+Planet == Greet "world" -- always greet planets with "Hello, world!"
+
+earth : Planet _ -- we don't need to contain anything, we just need
+                 -- to know that the value is a planet
+
+show (greet bob)
+show (greet earth)
+
+---
+
+Hello, Bob!
+Hello, world!
+
+>>> patterns
+
+A : trait Number
+A number == Text (format "A _" number)
+
+a : A 42
+debug a
+
+f : A number -> format "The number is _" number
+debug (f a)
+
+---
+
+a ==> A 42
+(f a) ==> The number is 42

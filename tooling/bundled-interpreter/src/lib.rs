@@ -1,18 +1,12 @@
-use wipple::*;
+use colored::Colorize;
 use wipple_stdlib::*;
 
-pub fn setup() -> Result<Stack> {
-    let env = env::global();
-    let mut stack = Stack::new();
+pub fn handle_output(output: RunOutput) {
+    let (success, text) = output.into_components();
 
-    wipple::setup();
-    wipple_stdlib::setup(&env, &stack)?;
-    wipple_projects::setup();
-
-    *show_mut_in(&mut stack) = ShowFn::new(move |value, env, stack| {
-        println!("{}", value.evaluate(env, stack)?.format(env, stack)?);
-        Ok(())
-    });
-
-    Ok(stack)
+    if success {
+        println!("{}", text);
+    } else {
+        eprintln!("{}", text.red());
+    }
 }
