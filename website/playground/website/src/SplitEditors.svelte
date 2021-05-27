@@ -30,7 +30,7 @@
 
 <div class="flex">
     <div bind:this={left}>
-        <Editor bind:code {change} />
+        <Editor bind:code {change} focus />
     </div>
 
     <div bind:this={right}>

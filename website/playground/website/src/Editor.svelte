@@ -6,6 +6,7 @@
     export let code: { text: string; color?: string }[];
     export let readOnly = false;
     export let change: (() => void) | undefined = undefined;
+    export let focus = false;
 
     let editorPre: HTMLElement;
     let editorCode: HTMLElement;
@@ -27,6 +28,10 @@
             editorCode.focus();
             return false;
         };
+
+        if (focus) {
+            editorCode.focus();
+        }
     });
 </script>
 
