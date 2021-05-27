@@ -8,9 +8,8 @@
     import Split from "split.js";
     import Editor from "./Editor.svelte";
 
-    export let code: string;
-    export let output: string;
-    export let outputColor: string;
+    export let code: { text: string; color?: string }[];
+    export let output: { text: string; color?: string }[];
     export let change: () => void;
 
     let left: HTMLDivElement;
@@ -35,6 +34,6 @@
     </div>
 
     <div bind:this={right}>
-        <Editor readOnly code={output} color={outputColor} />
+        <Editor readOnly code={output} />
     </div>
 </div>

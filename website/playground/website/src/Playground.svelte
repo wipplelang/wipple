@@ -8,60 +8,59 @@
 
     const query = new URLSearchParams(window.location.search);
 
-    let code = query.get("code") || "-- Write your code here!\n\n";
-    let output = "";
-    let outputColor = grayOutputColor;
+    let code = [
+        {
+            text: query.get("code") || "-- Write your code here!\n\n",
+            color: grayOutputColor,
+        },
+    ];
 
-    const debounce = (callback, wait, immediate = false) => {
+    let output = [];
+
+    const debounce = (callback, wait) => {
         let timeout = null;
 
         return () => {
-            const callNow = immediate && !timeout;
             const next = () => callback.apply(this, arguments);
 
             clearTimeout(timeout);
             timeout = setTimeout(next, wait());
-
-            if (callNow) {
-                next();
-            }
         };
     };
 
     const handleChange = debounce(
         () => {
-            query.set("code", code);
+            query.set("code", code[0].text);
             const newURL = window.location.pathname + "?" + query.toString();
             window.history.replaceState(null, "", newURL);
 
             handleLoading();
-            const result = interpreter.run(code);
+            const result = interpreter.run(code[0].text);
             handleResult(result);
         },
         // Adjust the delay based on the size of the code (lines is a rough
         // but OK metric)
-        () => Math.min(code.split("\n").length * 20, 1000)
+        () => Math.min(code[0].text.split("\n").length * 20, 1000)
     );
 
     const handleLoading = () => {
-        output = "Running...";
-        outputColor = grayOutputColor;
+        output = [{ text: "Running...", color: grayOutputColor }];
     };
 
     const handleResult = (result) => {
-        if (result.success) {
-            if (result.output.length === 0) {
-                output = "No output\nTip: Use 'show' to display values here";
-                outputColor = grayOutputColor;
-            } else {
-                output = result.output.map((entry) => entry.output).join("\n");
-                outputColor = undefined;
-            }
-        } else {
-            output = result.error;
-            outputColor = redOutputColor;
-        }
+        output =
+            result.length === 0
+                ? [
+                      {
+                          text: "No output\nYou can display values here using 'show'",
+                          color: grayOutputColor,
+                      },
+                  ]
+                : result.map((item) => ({
+                      text: item.text,
+                      color: item.success ? undefined : redOutputColor,
+                  }));
     };
 </script>
 
-<SplitEditors bind:code bind:output {outputColor} change={handleChange} />
+<SplitEditors bind:code bind:output change={handleChange} />
