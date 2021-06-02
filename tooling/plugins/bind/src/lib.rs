@@ -12,7 +12,7 @@ macro_rules! bind {
         |env, stack| {
             #[allow(unused_unsafe)]
             let result: $returntype = unsafe { $func() };
-            AsValue::as_value(&result, env, stack)
+            $crate::IntoValue::into_value(&result, env, stack)
         }
     };
 
@@ -22,14 +22,14 @@ macro_rules! bind {
 
     (fn $func:ident($arg:ty $(, $restargs:ty)* $(,)?) -> $returntype:ty) => {
         ::wipple::Value::of(::wipple_stdlib::Function::new(move |value, env, stack| {
-            let arg: $arg = FromValue::from_value(value, env, stack)?;
+            let arg: $arg = $crate::FromValue::from_value(value, env, stack)?;
             bind!(@expand fn $func($($restargs),*) -> $returntype, [arg], env, stack)
         }))
     };
 
     (@expand fn $func:ident($arg:ty $(, $restargs:ty)*) -> $returntype:ty, [$($var:ident),+], $env:expr, $stack:expr) => {
         Ok(::wipple::Value::of(::wipple_stdlib::Function::new(move |value, env, stack| {
-            let arg: $arg = FromValue::from_value(value, env, stack)?;
+            let arg: $arg = $crate::FromValue::from_value(value, env, stack)?;
             bind!(@expand fn $func($($restargs),*) -> $returntype, [$($var),+, arg], env, stack)
         })))
     };
@@ -37,7 +37,7 @@ macro_rules! bind {
     (@expand fn $func:ident() -> $returntype:ty, [$($var:ident),+], $env:expr, $stack:expr) => {{
         #[allow(unused_unsafe)]
         let result: $returntype = unsafe { $func($($var),+) };
-        IntoValue::into_value(result, $env, $stack)
+        $crate::IntoValue::into_value(result, $env, $stack)
     }};
 }
 
