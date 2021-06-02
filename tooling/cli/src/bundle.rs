@@ -1,5 +1,7 @@
 use std::path::{Path, PathBuf};
 use structopt::StructOpt;
+use wipple_bundled_interpreter::handle_output;
+use wipple_stdlib::*;
 use zip::ZipWriter;
 use zip_extensions::write::ZipWriterExtensions;
 
@@ -50,7 +52,7 @@ impl Bundle {
 
         let tempdir = (|| -> Result<_, Box<dyn std::error::Error>> {
             let tempdir = tempfile::tempdir()?;
-            let stack = wipple::Stack::default();
+            let (_, stack) = default_setup(handle_output).map_err(wipple::Exit::into_error)?;
 
             let dependencies_path = tempdir.as_ref().join("dependencies");
 
