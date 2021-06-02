@@ -120,6 +120,8 @@ pub fn parse_block(tokens: &mut Tokens, lc: &LineColLookup) -> Result<Option<Ast
 }
 
 pub fn parse_file(tokens: &mut Tokens, lc: &LineColLookup) -> Result<Ast> {
+    parse_single_token!(Shebang, tokens)?;
+
     let statements = parse_statements(tokens, lc)?;
 
     parse_newlines(tokens)?;
@@ -131,6 +133,8 @@ pub fn parse_file(tokens: &mut Tokens, lc: &LineColLookup) -> Result<Ast> {
 }
 
 pub fn parse_inline_program(tokens: &mut Tokens, lc: &LineColLookup) -> Result<Ast> {
+    parse_single_token!(Shebang, tokens)?;
+
     let mut values = Vec::new();
 
     while let Some(value) = parse_value(tokens, lc)? {

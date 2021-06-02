@@ -4,6 +4,6 @@ version = "0.0.0"
 edition = "2018"
 
 [dependencies]
-line-col = "0.2.1"
-logos = "0.12.0"
-snailquote = "0.3.0"
+line-col = "0.2"
+logos = "0.12"
+snailquote = "0.3"
