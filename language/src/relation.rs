@@ -4,7 +4,7 @@ use std::{
     collections::{HashMap, HashSet},
 };
 
-stored_closure!(pub struct DeriveValueFn(Value, &Env, &Stack) -> Result<Value>);
+stored_closure!(pub struct DeriveValueFn(Value, &Stack) -> Result<Value>);
 
 env_key!(relations: RelationGraph {
     visibility: EnvKeyVisibility::Public(
@@ -63,15 +63,15 @@ impl Env {
     pub fn add_relation_between_with<A: Primitive, B: Primitive>(
         &self,
         stack: &Stack,
-        derive: impl Fn(A, &Env, &Stack) -> Result<B> + 'static,
+        derive: impl Fn(A, &Stack) -> Result<B> + 'static,
     ) -> Result<()> {
         self.add_relation(
             Trait::of::<A>(),
             Trait::of::<B>(),
             stack,
-            DeriveValueFn::new(move |value, env, stack| {
+            DeriveValueFn::new(move |value, stack| {
                 let from = value.into_primitive().into_cast::<A>();
-                let to = derive(from, env, stack)?;
+                let to = derive(from, stack)?;
                 Ok(Value::of(to))
             }),
         )
@@ -82,7 +82,7 @@ impl Env {
         stack: &Stack,
         derive: impl Fn(A) -> B + 'static,
     ) -> Result<()> {
-        self.add_relation_between_with(stack, move |value, _, _| Ok(derive(value)))
+        self.add_relation_between_with(stack, move |value, _| Ok(derive(value)))
     }
 }
 
@@ -139,10 +139,10 @@ impl Value {
         }
 
         if let Some(derive) = direct_relations.first() {
-            let derived_value = derive(self.stored_value().clone(), env, stack)?;
+            let derived_value = derive(self.stored_value().clone(), stack)?;
 
             let matched_value =
-                to_trait.pattern()(&derived_value, env, stack)?
+                to_trait.pattern()(&derived_value, &env, stack)?
                 .ok_or_else(|| error("Cannot derive this trait because the relation's output cannot be represented by the trait", stack))?;
 
             return Ok(Some(matched_value.into_owned()));
@@ -164,11 +164,11 @@ impl Value {
             let mut result = self.stored_value().clone();
 
             for edge in path {
-                let derived_value = (edge.derive)(result, env, stack)?;
+                let derived_value = (edge.derive)(result, stack)?;
 
                 debug_assert!(derived_value.r#trait().as_ref() == &edge.to.r#trait);
 
-                let matched_value = edge.to.r#trait.pattern()(&derived_value, env, stack)?
+                let matched_value = edge.to.r#trait.pattern()(&derived_value, &env, stack)?
                     .ok_or_else(|| error("Cannot derive this trait because the relation's output cannot be represented by the trait", stack))?;
 
                 result = matched_value.into_owned();

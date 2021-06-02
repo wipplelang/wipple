@@ -31,7 +31,7 @@ macro_rules! define {
 macro_rules! setup {
     ($env:expr, $stack:expr, $name:ident, $operation:tt $(,)?) => {
         paste! {
-            $env.set_variable(stringify!($name:camel), Value::of(Trait::of::<[<$name:camel Fn>]>()));
+            $env.set_variable($stack, stringify!($name:camel), Value::of(Trait::of::<[<$name:camel Fn>]>()))?;
 
             $env.add_relation_between($stack, |number: Number| {
                 [<$name:camel Fn>]::new(move |other, env, stack| {

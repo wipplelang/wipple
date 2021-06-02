@@ -30,7 +30,7 @@ impl EvaluateBlockFn {
 }
 
 pub(crate) fn setup(env: &Env, stack: &Stack) -> Result<()> {
-    env.set_variable("Module", Value::of(Trait::of::<Module>()));
+    env.set_variable(stack, "Module", Value::of(Trait::of::<Module>()))?;
 
     // Module == Text
     env.add_text_relation::<Module>("module", stack)?;
@@ -44,14 +44,14 @@ pub(crate) fn setup(env: &Env, stack: &Stack) -> Result<()> {
     })?;
 
     // Module == Pattern
-    env.add_relation_between_with(stack, |module: Module, env, stack| {
+    env.add_relation_between_with(stack, |module: Module, stack| {
         let mut fields = HashMap::new();
 
         let variables = module.env.variables().0;
         for (name, variable) in variables {
             let pattern = variable
-                .get_value(env, stack)?
-                .get_or::<Pattern>("Expected pattern", env, stack)?
+                .get_value(&module.env, stack)?
+                .get_or::<Pattern>("Expected pattern", &module.env, stack)?
                 .into_owned();
 
             fields.insert(name.clone(), pattern);
@@ -74,7 +74,7 @@ pub(crate) fn setup(env: &Env, stack: &Stack) -> Result<()> {
                 };
 
                 match validated {
-                    Some(value) => validated_env.set_variable(&name, value.into_owned()),
+                    Some(value) => validated_env.set_variable(stack, &name, value.into_owned())?,
                     None => return Ok(None),
                 }
             }

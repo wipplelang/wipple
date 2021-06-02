@@ -38,6 +38,13 @@ impl Value {
         }
     }
 
+    pub fn is_primitive_of(&self, r#type: DynamicType) -> bool {
+        match self {
+            Value::Primitive(primitive) => primitive.dynamic_type() == r#type,
+            _ => false,
+        }
+    }
+
     pub fn try_primitive(&self) -> Option<&Any> {
         match self {
             Value::Primitive(primitive) => Some(primitive),
@@ -49,6 +56,13 @@ impl Value {
         match self {
             Value::Primitive(primitive) => primitive,
             _ => panic!("Not a primitive value"),
+        }
+    }
+
+    pub fn try_into_primitive(self) -> Option<Any> {
+        match self {
+            Value::Primitive(primitive) => Some(primitive),
+            _ => None,
         }
     }
 
@@ -65,13 +79,6 @@ impl Value {
         match self {
             Value::Runtime(_, value) => value,
             _ => self,
-        }
-    }
-
-    pub(crate) fn is_primitive_of(&self, r#type: DynamicType) -> bool {
-        match self {
-            Value::Primitive(primitive) => primitive.dynamic_type() == r#type,
-            _ => false,
         }
     }
 }

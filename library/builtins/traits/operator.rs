@@ -131,11 +131,13 @@ pub enum VariadicInput {
 
 impl From<Value> for VariadicInput {
     fn from(value: Value) -> Self {
-        if let Some(list) = value.try_primitive().and_then(|p| p.try_cast::<List>()) {
+        if value.is_primitive_of(DynamicType::of::<List>()) {
+            let mut list = value.into_primitive().into_cast::<List>();
+
             if list.items.len() == 1 {
-                VariadicInput::Single(list.items[0].clone())
+                VariadicInput::Single(list.items.remove(0))
             } else {
-                VariadicInput::List(list.items.clone())
+                VariadicInput::List(list.items)
             }
         } else {
             VariadicInput::Single(value)
@@ -148,6 +150,15 @@ impl From<VariadicInput> for Value {
         match input {
             VariadicInput::Single(value) => value,
             VariadicInput::List(items) => Value::of(List::new(items)),
+        }
+    }
+}
+
+impl From<VariadicInput> for Vec<Value> {
+    fn from(input: VariadicInput) -> Self {
+        match input {
+            VariadicInput::Single(value) => vec![value],
+            VariadicInput::List(items) => items,
         }
     }
 }
@@ -348,9 +359,15 @@ impl<O: OperatorTrait> O {
 
 #[ext(pub, name = EnvAddOperatorExt)]
 impl Env {
-    fn add_operator<P: PrecedenceGroupTrait>(&self, name: &str, operator: P::Operator, group: &P) {
+    fn add_operator<P: PrecedenceGroupTrait>(
+        &self,
+        name: &str,
+        operator: P::Operator,
+        group: &P,
+        stack: &Stack,
+    ) -> Result<()> {
         operator.clone().add_to(group);
-        self.set_constant_variable(name, Value::of(operator.into()));
+        self.set_constant_variable(stack, name, Value::of(operator.into()))
     }
 }
 
@@ -608,7 +625,7 @@ impl List {
 }
 
 pub(crate) fn setup(env: &Env, stack: &Stack) -> Result<()> {
-    env.set_variable("Operator", Value::of(Trait::of::<Operator>()));
+    env.set_variable(stack, "Operator", Value::of(Trait::of::<Operator>()))?;
 
     // Operator == Text
     env.add_text_relation::<Operator>("operator", stack)?;

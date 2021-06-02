@@ -20,7 +20,7 @@ impl List {
 }
 
 pub(crate) fn setup(env: &Env, stack: &Stack) -> Result<()> {
-    env.set_variable("List", Value::of(Trait::of::<List>()));
+    env.set_variable(stack, "List", Value::of(Trait::of::<List>()))?;
 
     // List == Evaluate
     env.add_relation_between(stack, |list: List| {
@@ -56,11 +56,11 @@ pub(crate) fn setup(env: &Env, stack: &Stack) -> Result<()> {
 
     // List == Interpolate
     env.add_relation_between(stack, |list: List| {
-        InterpolateFn::new(move |in_escaped, env, stack| {
-            let mut items = vec![];
+        InterpolateFn::new(move |direct, env, stack| {
+            let mut items = Vec::new();
 
             for item in &list.items {
-                let item = item.interpolate(in_escaped, env, stack)?.into_owned();
+                let item = item.interpolate(direct, env, stack)?.into_owned();
                 items.push(item);
             }
 
@@ -69,21 +69,25 @@ pub(crate) fn setup(env: &Env, stack: &Stack) -> Result<()> {
     })?;
 
     // List == Text
-    env.add_relation_between_with(stack, |list: List, env, stack| {
-        let mut items = String::new();
+    env.add_relation_between_with(stack, {
+        let env = env.clone();
 
-        let count = list.items.len();
+        move |list: List, stack| {
+            let mut items = String::new();
 
-        for (index, item) in list.items.into_iter().enumerate() {
-            let text = item.format(env, stack)?;
-            items.push_str(&text);
+            let count = list.items.len();
 
-            if index != count - 1 {
-                items.push(' ');
+            for (index, item) in list.items.into_iter().enumerate() {
+                let text = item.format(&env, stack)?;
+                items.push_str(&text);
+
+                if index != count - 1 {
+                    items.push(' ');
+                }
             }
-        }
 
-        Ok(Text::new(format!("({})", items)))
+            Ok(Text::new(format!("({})", items)))
+        }
     })?;
 
     Ok(())

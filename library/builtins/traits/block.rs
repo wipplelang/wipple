@@ -63,7 +63,7 @@ impl Block {
 }
 
 pub(crate) fn setup(env: &Env, stack: &Stack) -> Result<()> {
-    env.set_variable("Block", Value::of(Trait::of::<Block>()));
+    env.set_variable(stack, "Block", Value::of(Trait::of::<Block>()))?;
 
     // Block == Evaluate
     env.add_relation_between(stack, |block: Block| {
@@ -72,13 +72,13 @@ pub(crate) fn setup(env: &Env, stack: &Stack) -> Result<()> {
 
     // Block == Interpolate
     env.add_relation_between(stack, |block: Block| {
-        InterpolateFn::new(move |in_escaped, env, stack| {
+        InterpolateFn::new(move |direct, env, stack| {
             let mut statements = Vec::new();
 
             for statement in &block.statements {
                 // Interpolate within each statement as a list
                 let result = Value::of(statement.clone())
-                    .interpolate(in_escaped, env, stack)?
+                    .interpolate(direct, env, stack)?
                     .into_owned()
                     .into_primitive()
                     .into_cast::<List>();

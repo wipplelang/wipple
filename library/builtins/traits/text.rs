@@ -61,9 +61,9 @@ impl Value {
 }
 
 #[allow(clippy::unnecessary_wraps)]
-pub(crate) fn setup(env: &Env, _stack: &Stack) -> Result<()> {
+pub(crate) fn setup(env: &Env, stack: &Stack) -> Result<()> {
     // Text : trait
-    env.set_variable("Text", Value::of(Trait::of::<Text>()));
+    env.set_variable(stack, "Text", Value::of(Trait::of::<Text>()))?;
 
     Ok(())
 }

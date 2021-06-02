@@ -12,10 +12,10 @@ show (add 2 3)
 
 balance : 75
 
-deposit : dollars => balance + dollars
+deposit : dollars -> balance + dollars
 debug (deposit 50)
 
-withdraw : dollars => balance - dollars
+withdraw : dollars -> balance - dollars
 debug (withdraw 10)
 
 ---

@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use crate::*;
 use rust_embed::RustEmbed;
 use wipple::*;
@@ -7,7 +9,7 @@ impl Env {
     fn stdlib(stack: &Stack) -> Result<Env> {
         Env::try_with(|env| {
             env.r#use(&Env::builtins(stack)?, stack)?;
-            load_prelude(env);
+            load_prelude(env, stack)?;
             load_files(env, stack)?;
 
             Ok(())
@@ -26,7 +28,16 @@ fn load_files(env: &Env, stack: &Stack) -> Result<()> {
         let file = StdlibFiles::get(&path).unwrap();
         let code = std::str::from_utf8(&file).unwrap();
 
-        include_string(code, Some(&path), &file_env, stack)?;
+        {
+            let path = PathBuf::from(&*path);
+
+            let mut stack = stack.clone();
+            // This path is only used for diagnostics, because these files can't
+            // import other files
+            *stack.current_file_mut() = CurrentFile(Some(path.clone()));
+
+            include_string(code, Some(path), &file_env, &stack)?;
+        }
 
         env.r#use(&file_env, stack)?;
     }
@@ -34,27 +45,27 @@ fn load_files(env: &Env, stack: &Stack) -> Result<()> {
     Ok(())
 }
 
-fn load_prelude(env: &Env) {
-    env.set_variable("#stdlib-link", stdlib_link_function());
+fn load_prelude(env: &Env, stack: &Stack) -> Result<()> {
+    env.set_variable(stack, "#stdlib-link", stdlib_link_function())?;
 
-    env.set_variable("trait", trait_function());
+    env.set_variable(stack, "trait", trait_function())?;
 
-    env.set_variable("is", is_function());
+    env.set_variable(stack, "is", is_function())?;
 
-    env.set_variable("inline", inline_function());
-    env.set_variable("new", new_function());
-    env.set_variable("use", use_function());
-    env.set_variable("eval-global!", eval_global_function());
-    env.set_variable("use-global!", use_global_function());
-    env.set_computed_variable("global?", globalq_computed_variable());
+    env.set_variable(stack, "inline", inline_function())?;
+    env.set_variable(stack, "new", new_function())?;
+    env.set_variable(stack, "use", use_function())?;
+    env.set_variable(stack, "eval-global!", eval_global_function())?;
+    env.set_variable(stack, "use-global!", use_global_function())?;
+    env.set_computed_variable(stack, "global?", globalq_computed_variable())?;
 
-    env.set_variable("match", match_function());
-    env.set_variable("loop", loop_function());
-    env.set_variable("return", return_function());
-    env.set_variable("break", break_function());
+    env.set_variable(stack, "match", match_function())?;
+    env.set_variable(stack, "loop", loop_function())?;
+    env.set_variable(stack, "return", return_function())?;
+    env.set_variable(stack, "break", break_function())?;
 
-    env.set_variable("show", show_function());
-    env.set_variable("format", format_function());
+    env.set_variable(stack, "show", show_function())?;
+    env.set_variable(stack, "format", format_function())?;
 
     let default_variadic_precedence_group: VariadicPrecedenceGroup =
         add_precedence_group!(Associativity::Left, lowest());
@@ -67,69 +78,112 @@ fn load_prelude(env: &Env) {
         higher_than(default_variadic_precedence_group.clone()) // FIXME: Remove PrecedenceGroupTrait
     );
 
-    env.add_operator(":", assignment_operator(), &assignment_precedence_group);
+    env.add_operator(
+        ":",
+        assignment_operator(),
+        &assignment_precedence_group,
+        stack,
+    )?;
+
     env.add_operator(
         ":>",
         computed_assignment_operator(),
         &assignment_precedence_group,
-    );
-    env.add_operator("==", relation_operator(), &assignment_precedence_group);
+        stack,
+    )?;
+
+    env.add_operator(
+        "==",
+        relation_operator(),
+        &assignment_precedence_group,
+        stack,
+    )?;
 
     let function_precedence_group = add_precedence_group!(
         Associativity::Right,
         lower_than(assignment_precedence_group),
     );
 
-    env.add_operator("->", closure_operator(), &function_precedence_group);
-    env.add_operator("=>", template_operator(), &function_precedence_group);
+    env.add_operator("->", closure_operator(), &function_precedence_group, stack)?;
+    env.add_operator("=>", template_operator(), &function_precedence_group, stack)?;
 
     let power_precedence_group: BinaryPrecedenceGroup = add_precedence_group!(
         Associativity::Left,
         higher_than(default_binary_precedence_group)
     );
 
-    env.add_operator("^", power_operator(), &power_precedence_group);
+    env.add_operator("^", power_operator(), &power_precedence_group, stack)?;
 
     let multiplication_precedence_group =
         add_precedence_group!(Associativity::Left, lower_than(power_precedence_group));
 
-    env.add_operator("*", multiply_operator(), &multiplication_precedence_group);
-    env.add_operator("/", divide_operator(), &multiplication_precedence_group);
-    env.add_operator("mod", modulo_operator(), &multiplication_precedence_group);
+    env.add_operator(
+        "*",
+        multiply_operator(),
+        &multiplication_precedence_group,
+        stack,
+    )?;
+
+    env.add_operator(
+        "/",
+        divide_operator(),
+        &multiplication_precedence_group,
+        stack,
+    )?;
+
+    env.add_operator(
+        "mod",
+        modulo_operator(),
+        &multiplication_precedence_group,
+        stack,
+    )?;
 
     let addition_precedence_group = add_precedence_group!(
         Associativity::Left,
         lower_than(multiplication_precedence_group)
     );
 
-    env.add_operator("+", add_operator(), &addition_precedence_group);
-    env.add_operator("-", subtract_operator(), &addition_precedence_group);
+    env.add_operator("+", add_operator(), &addition_precedence_group, stack)?;
+    env.add_operator("-", subtract_operator(), &addition_precedence_group, stack)?;
 
     let convert_precedence_group: BinaryPrecedenceGroup =
         add_precedence_group!(Associativity::Left, lower_than(addition_precedence_group));
 
-    env.add_operator("as", as_operator(), &convert_precedence_group);
-    env.add_operator("as?", asq_operator(), &convert_precedence_group);
-    env.add_operator("is?", isq_operator(), &convert_precedence_group);
-    env.add_operator("into", into_operator(), &convert_precedence_group);
+    env.add_operator("as", as_operator(), &convert_precedence_group, stack)?;
+    env.add_operator("as?", asq_operator(), &convert_precedence_group, stack)?;
+    env.add_operator("is?", isq_operator(), &convert_precedence_group, stack)?;
+    env.add_operator("into", into_operator(), &convert_precedence_group, stack)?;
 
     let comparison_precedence_group =
         add_precedence_group!(Associativity::Left, lower_than(convert_precedence_group));
 
-    env.add_operator("=", equal_to_operator(), &comparison_precedence_group);
-    env.add_operator("<", less_than_operator(), &comparison_precedence_group);
+    env.add_operator(
+        "=",
+        equal_to_operator(),
+        &comparison_precedence_group,
+        stack,
+    )?;
+
+    env.add_operator(
+        "<",
+        less_than_operator(),
+        &comparison_precedence_group,
+        stack,
+    )?;
 
     let dot_precedence_group = add_precedence_group!(
         Associativity::Left,
         higher_than(default_variadic_precedence_group)
     );
 
-    env.add_operator(".", dot_operator(), &dot_precedence_group);
+    env.add_operator(".", dot_operator(), &dot_precedence_group, stack)?;
 
     let pipe_precedence_group =
         add_precedence_group!(Associativity::Left, lower_than(dot_precedence_group));
 
-    env.add_operator("|", pipe_operator(), &pipe_precedence_group);
+    env.add_operator("|", pipe_operator(), &pipe_precedence_group, stack)?;
+
+    Ok(())
 }
 
 // Link values to the standard library
@@ -291,7 +345,7 @@ fn match_function() -> Value {
                 let env = env.child();
 
                 if let Some(name) = name {
-                    env.set_variable(&name.name, matched_value);
+                    env.set_variable(stack, &name.name, matched_value)?;
                 }
 
                 return result.evaluate(&env, stack).map(Cow::into_owned);
@@ -457,20 +511,20 @@ fn relation_operator() -> VariadicOperator {
             _ => return Err(error("Expected a value to derive and its trait", stack)),
         };
 
-        let derive_env = env.child();
+        let captured_env = env.child();
 
         env.add_relation(
             from_trait,
             to_trait,
             stack,
-            DeriveValueFn::new(move |value, _, stack| {
+            DeriveValueFn::new(move |value, stack| {
+                let env = captured_env.child();
+
                 if let Some(name) = &name {
-                    derive_env.set_variable(name, value);
+                    env.set_variable(stack, name, value)?;
                 }
 
-                derived_value
-                    .evaluate(&derive_env, stack)
-                    .map(Cow::into_owned)
+                derived_value.evaluate(&env, stack).map(Cow::into_owned)
             }),
         )?;
 
@@ -480,52 +534,65 @@ fn relation_operator() -> VariadicOperator {
 
 // -> and => operators
 
-macro_rules! make_function_operator {
-    ($type:tt) => {
-        VariadicOperator::new(|left, right, env, stack| {
-            let (parameter_pattern, parameter_name) = match left {
-                VariadicInput::Single(input) => {
-                    let parameter = input
-                        .get_or::<Name>(&format!("Parameter must be a name"), env, stack)?
-                        .name
-                        .clone();
-
-                    (Pattern::any(), parameter)
-                }
-                VariadicInput::List(input) if input.len() == 2 => {
-                    let pattern = input[0]
-                        .evaluate(env, stack)?
-                        .get_or::<Pattern>("Expected pattern", env, stack)?
-                        .into_owned();
-
-                    let parameter = input[1]
-                        .get_or::<Name>("Parameter must be a name", env, stack)?
-                        .name
-                        .clone();
-
-                    (pattern, parameter)
-                }
-                _ => return Err(error("Expected parameter", stack)),
-            };
-
-            let captured_env = env.clone();
-
-            Ok(Value::of($type {
-                captured_env,
-                parameter_pattern,
-                parameter_name,
-                return_value: Value::from(right),
-            }))
-        })
-    };
-}
-
 fn closure_operator() -> VariadicOperator {
-    make_function_operator!(Closure)
+    VariadicOperator::new(|left, right, env, stack| {
+        let (parameter_pattern, parameter_name) = get_parameter(left, env, stack)?;
+        let captured_env = env.clone();
+
+        Ok(Value::of(Closure {
+            captured_env,
+            parameter_pattern,
+            parameter_name,
+            return_value: Value::from(right),
+        }))
+    })
 }
 
 fn template_operator() -> VariadicOperator {
-    make_function_operator!(Template)
+    VariadicOperator::new(|left, right, env, stack| {
+        let mut parameters = Vec::new();
+
+        for parameter in Vec::from(left) {
+            let (pattern, name) = get_parameter(parameter.into(), env, stack)?;
+            parameters.push((pattern, name));
+        }
+
+        let captured_env = env.clone();
+
+        Ok(Value::of(Template {
+            captured_env,
+            parameters,
+            return_value: Value::from(right),
+            partially_applied_inputs: Vec::new(),
+        }))
+    })
+}
+
+fn get_parameter(input: VariadicInput, env: &Env, stack: &Stack) -> Result<(Pattern, String)> {
+    match input {
+        VariadicInput::Single(input) => {
+            let parameter = input
+                .get_or::<Name>("Parameter must be a name", env, stack)?
+                .name
+                .clone();
+
+            Ok((Pattern::any(), parameter))
+        }
+        VariadicInput::List(input) if input.len() == 2 => {
+            let pattern = input[0]
+                .evaluate(env, stack)?
+                .get_or::<Pattern>("Expected pattern", env, stack)?
+                .into_owned();
+
+            let parameter = input[1]
+                .get_or::<Name>("Parameter must be a name", env, stack)?
+                .name
+                .clone();
+
+            Ok((pattern, parameter))
+        }
+        _ => Err(error("Expected parameter", stack)),
+    }
 }
 
 // as, as?, is? and into operators

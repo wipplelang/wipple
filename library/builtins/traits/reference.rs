@@ -13,17 +13,19 @@ impl Reference {
 }
 
 pub(crate) fn setup(env: &Env, stack: &Stack) -> Result<()> {
-    env.set_variable("Ref", Value::of(Trait::of::<Reference>()));
+    env.set_variable(stack, "Ref", Value::of(Trait::of::<Reference>()))?;
 
     env.set_variable(
+        stack,
         "ref",
         Value::of(Function::new(|value, env, stack| {
             let value = value.evaluate(env, stack)?.into_owned();
             Ok(Value::of(Reference::new(value)))
         })),
-    );
+    )?;
 
     env.set_variable(
+        stack,
         "get",
         Value::of(Function::new(|value, env, stack| {
             Ok(value
@@ -33,9 +35,10 @@ pub(crate) fn setup(env: &Env, stack: &Stack) -> Result<()> {
                 .borrow()
                 .clone())
         })),
-    );
+    )?;
 
     env.set_variable(
+        stack,
         "set!",
         Value::of(Function::new(|value, env, stack| {
             let set_value = value.evaluate(env, stack)?.into_owned();
@@ -49,7 +52,7 @@ pub(crate) fn setup(env: &Env, stack: &Stack) -> Result<()> {
                 Ok(Value::empty())
             })))
         })),
-    );
+    )?;
 
     // Empty == Text
     env.add_text_relation::<Reference>("reference", stack)?;

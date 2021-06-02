@@ -3,7 +3,7 @@ use crate::*;
 use wipple::*;
 
 pub(crate) fn setup(env: &Env, stack: &Stack) -> Result<()> {
-    env.set_variable("Trait", Value::of(Trait::of::<Trait>()));
+    env.set_variable(stack, "Trait", Value::of(Trait::of::<Trait>()))?;
 
     // Trait == Text
     env.add_text_relation::<Trait>("trait", stack)?;

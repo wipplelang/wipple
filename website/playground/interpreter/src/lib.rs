@@ -19,7 +19,7 @@ pub fn run(code: &str) -> JsValue {
     #[cfg(feature = "console_error_panic_hook")]
     console_error_panic_hook::set_once();
 
-    let result = run_and_collect_output(code, |_, _| Ok(()))
+    let result = run_and_collect_output(code, None, |_, _| Ok(()))
         .into_iter()
         .map(|output| match output {
             RunOutput::Log(text) => InterpreterResult {

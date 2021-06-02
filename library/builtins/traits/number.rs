@@ -23,7 +23,7 @@ impl Number {
 }
 
 pub(crate) fn setup(env: &Env, stack: &Stack) -> Result<()> {
-    env.set_variable("Number", Value::of(Trait::of::<Number>()));
+    env.set_variable(stack, "Number", Value::of(Trait::of::<Number>()))?;
 
     // Number == Text
     env.add_relation_between(stack, |number: Number| {

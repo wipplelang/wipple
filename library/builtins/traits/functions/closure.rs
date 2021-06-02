@@ -24,7 +24,7 @@ pub(crate) fn setup(env: &Env, stack: &Stack) -> Result<()> {
 
             let inner_env = closure.captured_env.child();
 
-            inner_env.set_variable(&closure.parameter_name, value.into_owned());
+            inner_env.set_variable(stack, &closure.parameter_name, value.into_owned())?;
 
             let result = closure.return_value.evaluate(&inner_env, stack)?;
 

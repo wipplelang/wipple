@@ -67,13 +67,14 @@ mod tests {
     use wipple_stdlib::*;
 
     #[test]
-    fn typecheck() {
+    fn typecheck() -> Result<()> {
         fn add(a: i32, b: i32) -> i32 {
             a + b
         }
 
         let env = Env::global();
+        let stack = Stack::default();
 
-        env.set_variable("add", bind!(fn add(i32, i32) -> i32));
+        env.set_variable(&stack, "add", bind!(fn add(i32, i32) -> i32))
     }
 }

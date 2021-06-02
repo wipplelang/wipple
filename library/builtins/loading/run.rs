@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use crate::*;
 use wipple::*;
 
@@ -29,18 +31,19 @@ where
 
 pub fn run(
     code: &str,
-    prepare: impl FnOnce(&Env, &Stack) -> Result<()>,
+    path: Option<PathBuf>,
+    prepare: impl FnOnce(&Env, &mut Stack) -> Result<()>,
     on_output: impl Fn(RunOutput) + 'static,
 ) {
     let on_output = Rc::new(on_output);
 
     (|| {
-        let (env, stack) = default_setup_with(on_output.clone())?;
-        prepare(&env, &stack)?;
+        let (env, mut stack) = default_setup_with(on_output.clone())?;
+        prepare(&env, &mut stack)?;
 
-        let program = load_string(code, None, &stack)?;
+        let program = load_string(code, path.clone(), &stack)?;
 
-        import_program_with_parent_env(program, None, &env, &stack)
+        import_program_with_parent_env(program, path, &env, &stack)
     })()
     .map_or_else(
         |exit: Exit| on_output(RunOutput::Error(exit.into_error())),
@@ -50,11 +53,12 @@ pub fn run(
 
 pub fn run_and_collect_output(
     code: &str,
-    prepare: impl FnOnce(&Env, &Stack) -> Result<()>,
+    path: Option<PathBuf>,
+    prepare: impl FnOnce(&Env, &mut Stack) -> Result<()>,
 ) -> Vec<RunOutput> {
     let output: Rc<RefCell<Vec<RunOutput>>> = Default::default();
 
-    run(code, prepare, {
+    run(code, path, prepare, {
         let output = output.clone();
         move |o| output.borrow_mut().push(o)
     });

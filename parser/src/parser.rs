@@ -131,7 +131,7 @@ pub fn parse_file(tokens: &mut Tokens, lc: &LineColLookup) -> Result<Ast> {
 }
 
 pub fn parse_inline_program(tokens: &mut Tokens, lc: &LineColLookup) -> Result<Ast> {
-    let mut values = vec![];
+    let mut values = Vec::new();
 
     while let Some(value) = parse_value(tokens, lc)? {
         values.push(value);
@@ -144,11 +144,11 @@ pub fn parse_inline_program(tokens: &mut Tokens, lc: &LineColLookup) -> Result<A
 }
 
 fn parse_statements(tokens: &mut Tokens, lc: &LineColLookup) -> Result<Vec<AstNodeStatement>> {
-    let mut values: Vec<(Vec<Ast>, Option<SourceLocation>)> = vec![(vec![], None)];
+    let mut values: Vec<(Vec<Ast>, Option<SourceLocation>)> = vec![(Vec::new(), None)];
 
     loop {
         if parse_newline(tokens)?.is_some() {
-            values.push((vec![], None));
+            values.push((Vec::new(), None));
             continue;
         }
 
@@ -182,7 +182,7 @@ pub fn parse_list(tokens: &mut Tokens, lc: &LineColLookup) -> Result<Option<Ast>
         _ => return Ok(None),
     };
 
-    let mut values = vec![];
+    let mut values = Vec::new();
 
     loop {
         parse_newlines(tokens)?;

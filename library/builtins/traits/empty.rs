@@ -18,10 +18,10 @@ impl Value {
 }
 
 pub(crate) fn setup(env: &Env, stack: &Stack) -> Result<()> {
-    env.set_variable("Empty", Value::of(Trait::of::<Empty>()));
+    env.set_variable(stack, "Empty", Value::of(Trait::of::<Empty>()))?;
 
     // _ : <empty value>
-    env.set_constant_variable("_", Value::empty());
+    env.set_constant_variable(stack, "_", Value::empty())?;
 
     // Allow the use of '_' as a catch-all pattern that returns its input
     env.add_relation_between(stack, |_: Empty| Pattern::any())?;

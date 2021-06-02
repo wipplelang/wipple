@@ -32,22 +32,18 @@ impl Primitive for InterpolateFn {}
 
 #[ext(pub, name = ValueInterpolateExt)]
 impl Value {
-    fn interpolate(&self, in_escaped: bool, env: &Env, stack: &Stack) -> Result<Cow<Value>> {
+    // FIXME: Split into two different traits
+    fn interpolate(&self, direct: bool, env: &Env, stack: &Stack) -> Result<Cow<Value>> {
         match self.get_if_present::<InterpolateFn>(env, stack)? {
-            Some(interpolate) => interpolate.0(in_escaped, env, stack).map(Cow::Owned),
-            None => {
-                if in_escaped {
-                    self.evaluate(env, stack)
-                } else {
-                    Ok(Cow::Borrowed(self))
-                }
-            }
+            Some(interpolate) => interpolate(direct, env, stack).map(Cow::Owned),
+            None if direct => self.evaluate(env, stack),
+            None => Ok(Cow::Borrowed(self)),
         }
     }
 }
 
 pub(crate) fn setup(env: &Env, stack: &Stack) -> Result<()> {
-    env.set_variable("Literal", Value::of(Trait::of::<Literal>()));
+    env.set_variable(stack, "Literal", Value::of(Trait::of::<Literal>()))?;
 
     // Literal == Evaluate
     env.add_relation_between(stack, |literal: Literal| {
@@ -59,20 +55,23 @@ pub(crate) fn setup(env: &Env, stack: &Stack) -> Result<()> {
         })
     })?;
 
-    // Literal == Interpolate
-    env.add_relation_between(stack, |literal: Literal| {
-        InterpolateFn::new(move |_, _, _| Ok(literal.value.clone()))
-    })?;
-
     // Literal == Text
-    env.add_relation_between_with(stack, |literal: Literal, env, stack| {
-        let text = literal.value.format(env, stack)?;
-        Ok(Text::new(format!("'{}", text)))
+    env.add_relation_between_with(stack, {
+        let env = env.clone();
+
+        move |literal: Literal, stack| {
+            let text = literal.value.format(&env, stack)?;
+            Ok(Text::new(format!("'{}", text)))
+        }
     })?;
 
-    env.set_variable("literal", Value::of(Function::new(|value, _, _| Ok(value))));
+    env.set_variable(
+        stack,
+        "literal",
+        Value::of(Function::new(|value, _, _| Ok(value))),
+    )?;
 
-    env.set_variable("Escaped", Value::of(Trait::of::<Escaped>()));
+    env.set_variable(stack, "Escaped", Value::of(Trait::of::<Escaped>()))?;
 
     // Escaped == Evaluate
     env.add_relation_between(stack, |escaped: Escaped| {
@@ -92,12 +91,20 @@ pub(crate) fn setup(env: &Env, stack: &Stack) -> Result<()> {
     })?;
 
     // Escaped == Text
-    env.add_relation_between_with(stack, |escaped: Escaped, env, stack| {
-        let text = escaped.value.format(env, stack)?;
-        Ok(Text::new(format!("\\{}", text)))
+    env.add_relation_between_with(stack, {
+        let env = env.clone();
+
+        move |escaped: Escaped, stack| {
+            let text = escaped.value.format(&env, stack)?;
+            Ok(Text::new(format!("\\{}", text)))
+        }
     })?;
 
-    env.set_variable("Interpolate", Value::of(Trait::of::<InterpolateFn>()));
+    env.set_variable(
+        stack,
+        "Interpolate",
+        Value::of(Trait::of::<InterpolateFn>()),
+    )?;
 
     Ok(())
 }

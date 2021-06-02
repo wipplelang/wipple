@@ -1,10 +1,10 @@
 use crate::*;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 /// Import a file/folder using a module name
 pub fn import(module_name: &str, stack: &Stack) -> Result<Module> {
     let path = resolve_module(module_name, stack)?;
-    import_path(&path, stack)
+    import_path(path, stack)
 }
 
 /// Import a file/folder using a module name directly in the current environment
@@ -16,30 +16,30 @@ pub fn include(module_name: &str, env: &Env, stack: &Stack) -> Result<Value> {
         .diagnostics_mut()
         .add(|| format!("Including file '{}'", path.to_string_lossy()));
 
-    include_file(&path, env, &stack)
+    include_file(path, env, &stack)
 }
 
 /// Import a file/folder using a path
-pub fn import_path(path: &Path, stack: &Stack) -> Result<Module> {
+pub fn import_path(path: PathBuf, stack: &Stack) -> Result<Module> {
     let mut stack = stack.clone();
     stack
         .diagnostics_mut()
         .add(|| format!("Importing {}", path.to_string_lossy()));
 
-    if let Some(module) = try_import_folder(path, &stack)? {
+    if let Some(module) = try_import_folder(&path, &stack)? {
         Ok(module)
     } else {
         import_file(path, &stack)
     }
 }
 
-pub fn import_path_with_parent_env(path: &Path, env: &Env, stack: &Stack) -> Result<Module> {
+pub fn import_path_with_parent_env(path: PathBuf, env: &Env, stack: &Stack) -> Result<Module> {
     let mut stack = stack.clone();
     stack
         .diagnostics_mut()
         .add(|| format!("Importing {}", path.to_string_lossy()));
 
-    if let Some(module) = try_import_folder(path, &stack)? {
+    if let Some(module) = try_import_folder(&path, &stack)? {
         Ok(module)
     } else {
         import_file_with_parent_env(path, env, &stack)
@@ -111,7 +111,7 @@ fn try_import_folder(path: &Path, stack: &Stack) -> Result<Option<Module>> {
     files.sort();
 
     for file in files {
-        let module = import_file(&file, &stack)?;
+        let module = import_file(file, &stack)?;
         temp_env.r#use(&module.env, &stack)?;
     }
 
@@ -122,6 +122,6 @@ fn try_import_folder(path: &Path, stack: &Stack) -> Result<Option<Module>> {
 
 /// Import a file, returning a module. If the file belongs to a project, the
 /// file's environment will descend from the project's environment.
-pub fn import_file(path: &Path, stack: &Stack) -> Result<Module> {
+pub fn import_file(path: PathBuf, stack: &Stack) -> Result<Module> {
     import_file_with_parent_env(path, &project_env_in(stack), stack)
 }

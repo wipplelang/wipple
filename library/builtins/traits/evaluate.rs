@@ -16,18 +16,19 @@ impl Value {
 }
 
 #[allow(clippy::unnecessary_wraps)]
-pub(crate) fn setup(env: &Env, _stack: &Stack) -> Result<()> {
-    env.set_variable("Evaluate", Value::of(Trait::of::<EvaluateFn>()));
+pub(crate) fn setup(env: &Env, stack: &Stack) -> Result<()> {
+    env.set_variable(stack, "Evaluate", Value::of(Trait::of::<EvaluateFn>()))?;
 
     env.set_variable(
-        "eval",
+        stack,
+        "evaluate",
         Value::of(Function::new(|value, env, stack| {
             Ok(value
                 .evaluate(env, stack)?
                 .evaluate(env, stack)?
                 .into_owned())
         })),
-    );
+    )?;
 
     Ok(())
 }

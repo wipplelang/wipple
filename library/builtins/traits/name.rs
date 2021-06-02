@@ -27,7 +27,7 @@ stored_closure!(pub struct ComputeFn(&Env, &Stack) -> Result<Value>);
 
 #[derive(Debug, Clone)]
 pub enum Variable {
-    Mutable(Value),
+    Local(Value),
     Constant(Value),
     Computed(ComputeFn),
 }
@@ -35,7 +35,7 @@ pub enum Variable {
 impl Variable {
     pub fn get_value(&self, env: &Env, stack: &Stack) -> Result<Value> {
         match self {
-            Variable::Mutable(value) | Variable::Constant(value) => Ok(value.clone()),
+            Variable::Local(value) | Variable::Constant(value) => Ok(value.clone()),
             Variable::Computed(compute) => compute(env, stack),
         }
     }
@@ -65,7 +65,7 @@ impl Default for AssignmentFn {
             let name = left.get_or::<Name>("Expected name", env, stack)?;
             let value = right.evaluate(env, stack)?;
 
-            env.set_variable(&name.name, value.into_owned());
+            env.set_variable(stack, &name.name, value.into_owned())?;
 
             Ok(())
         })
@@ -89,11 +89,12 @@ impl Default for ComputedAssignmentFn {
             let captured_env = env.child();
 
             env.set_computed_variable(
+                stack,
                 &name.name,
                 ComputeFn::new(move |_, stack| {
                     catch!(Return in right.evaluate(&captured_env, stack).map(Cow::into_owned))
                 }),
-            );
+            )?;
 
             Ok(())
         })
@@ -105,33 +106,43 @@ env_key!(pub computed_assignment: ComputedAssignmentFn {
 });
 
 macro_rules! set_variable {
-    ($self:expr, $name:expr, $value:expr, $kind:ident) => {
-        $self.update_variables(|variables| {
-            variables
-                .0
-                .insert($name.to_string(), Variable::$kind($value));
-        })
-    };
+    ($name:expr, $variable:expr, $env:expr, $stack:expr) => {{
+        if let Some(variable) = get_variable_recursive($name, $env) {
+            if matches!(variable, Variable::Constant(_)) {
+                return Ok(()); // assignments to constants are ignored
+            }
+        }
+
+        if $env.variables().0.contains_key($name) {
+            return Err(error(
+                &format!(
+                    "Cannot assign to the same variable ('{}') more than once per scope",
+                    $name,
+                ),
+                $stack,
+            ));
+        }
+
+        $env.update_variables(|variables| {
+            variables.0.insert($name.to_string(), $variable);
+        });
+
+        Ok(())
+    }};
 }
 
 #[ext(pub, name = EnvVariablesExt)]
 impl Env {
-    fn set_variable(&self, name: &str, value: Value) {
-        if let Some(variable) = get_variable_recursive(name, self) {
-            if matches!(variable, Variable::Constant(_)) {
-                return; // assignments to constants are ignored
-            }
-        };
-
-        set_variable!(self, name, value, Mutable);
+    fn set_variable(&self, stack: &Stack, name: &str, value: Value) -> Result<()> {
+        set_variable!(name, Variable::Local(value), self, stack)
     }
 
-    fn set_constant_variable(&self, name: &str, value: Value) {
-        set_variable!(self, name, value, Constant);
+    fn set_constant_variable(&self, stack: &Stack, name: &str, value: Value) -> Result<()> {
+        set_variable!(name, Variable::Constant(value), self, stack)
     }
 
-    fn set_computed_variable(&self, name: &str, compute: ComputeFn) {
-        set_variable!(self, name, compute, Computed);
+    fn set_computed_variable(&self, stack: &Stack, name: &str, compute: ComputeFn) -> Result<()> {
+        set_variable!(name, Variable::Computed(compute), self, stack)
     }
 }
 
@@ -173,19 +184,15 @@ impl Name {
 }
 
 fn get_variable_recursive(name: &str, env: &Env) -> Option<Variable> {
-    let mut variables = env.variables();
-
-    if variables.0.contains_key(name) {
-        return Some(variables.0.remove(name).unwrap());
-    }
-
-    env.parent()
-        .and_then(|parent| get_variable_recursive(name, parent))
+    env.variables().0.remove(name).or_else(|| {
+        env.parent()
+            .and_then(|parent| get_variable_recursive(name, parent))
+    })
 }
 
 pub(crate) fn setup(env: &Env, stack: &Stack) -> Result<()> {
     // Name : trait
-    env.set_variable("Name", Value::of(Trait::of::<Name>()));
+    env.set_variable(stack, "Name", Value::of(Trait::of::<Name>()))?;
 
     // Name == Evaluate
     env.add_relation_between(stack, |name: Name| {

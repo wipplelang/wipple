@@ -1,70 +1,106 @@
->>> Quoting a value prevents it from being evaluated
+>>> Evaluation semantics
 
-show 'foo
+a : 1
+b : 2
+c : 3
 
----
+test : x => show (format "_ ==> _" (literal x) x)
 
-foo
+show "Normal evaluation:"
+test a
 
->>> Use interpolation to evaluate some values within a literal
+show "\nDelayed evaluation of literal:"
+test 'a
+test ''a
 
-foo : 'x
-bar : 'y
+show "\nLiteral interpolation:"
+test '(\a b c)
+test '(\a \b \c)
+test '\a
 
-result : '(foo \foo bar \bar)
+show "\nRecursive literal interpolation:"
+test '((\a b c ) b c)
 
-show result
+show "\nRecursive literal interpolation with delayed evaluation:"
+test ''\a
+test '('(\a b c) b c)
 
----
+show "\nDirect interpolation:"
+test \(a b c)
 
-(foo x bar y)
+show "\nDirect interpolation with delayed evaluation:"
+test \'a
+test \('a b c)
 
->>> Use interpolation to evaluate all values within an expression
+show "\nRecursive direct interpolation:"
+test \\a
+test \(\a b c)
 
-foo : 'x
-bar : 'y
-
-result : \('foo foo 'bar bar)
-
-show result
-
----
-
-(foo x bar y)
-
->>> Interpolation semantics
-
-x : 'y
-
-debug 'x
-debug x
-debug \x
-debug \\x
-debug \\\x
-debug \'x
-debug '\x
-debug '\\x
-debug '\'x
-debug '\'\x
+show "\nRecursive direct interpolation with delayed interpolation:"
+test \('(\a b c) b c)
 
 ---
 
-'x ==> x
-x ==> y
-\x ==> y
-\\x ==> y
-\\\x ==> y
-\'x ==> x
-'\x ==> y
-'\\x ==> y
-'\'x ==> x
-'\'\x ==> y
+Normal evaluation:
+a ==> 1
+
+Delayed evaluation of literal:
+'a ==> a
+''a ==> 'a
+
+Literal interpolation:
+'(\a b c) ==> (1 b c)
+'(\a \b \c) ==> (1 2 3)
+'\a ==> 1
+
+Recursive literal interpolation:
+'((\a b c) b c) ==> ((1 b c) b c)
+
+Recursive literal interpolation with delayed evaluation:
+''\a ==> '\a
+'('(\a b c) b c) ==> ('(\a b c) b c)
+
+Direct interpolation:
+\(a b c) ==> (1 2 3)
+
+Direct interpolation with delayed evaluation:
+\'a ==> a
+\('a b c) ==> (a 2 3)
+
+Recursive direct interpolation:
+\\a ==> 1
+\(\a b c) ==> (1 2 3)
+
+Recursive direct interpolation with delayed interpolation:
+\('(\a b c) b c) ==> ((1 b c) 2 3)
+
+>>> Template semantics
+
+a : 1
+
+test : template => show (format "_ y ==> _" (literal template) (template . expand ''(y)))
+
+test (x => x)
+test (x => a x)
+test (x => a 'x)
+test (x => '(a x))
+test (x => '(a \x))
+test (x => \x)
+
+---
+
+(x => x) y ==> y
+(x => a x) y ==> (1 y)
+(x => a 'x) y ==> (1 x)
+(x => '(a x)) y ==> (a x)
+(x => '(a \x)) y ==> (a y)
+(x => \x) y ==> y
 
 >>> Templates capture their environment
 
 t : {
     n : 42
-    x => (x : \n)
+    x => (x : n)
 }
 
 t foo
@@ -74,18 +110,18 @@ show foo
 
 42
 
->>> Templates interpolate their return value
+>>> Template with a block
 
-foo : x => \{
+foo : x => {
     show "Inside template"
     x
 }
 
-a : 1
+a : 'b
 
 show (foo a)
 
 ---
 
 Inside template
-1
+b

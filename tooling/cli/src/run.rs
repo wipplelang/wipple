@@ -20,10 +20,10 @@ pub struct Run {
 }
 
 impl Run {
-    pub fn run(&self) -> wipple::Result<()> {
-        match &self.evaluate_string {
+    pub fn run(self) -> wipple::Result<()> {
+        match self.evaluate_string {
             Some(code) => {
-                run(code, |_, _| Ok(()), |output| println!("{}", output));
+                run(&code, None, |_, _| Ok(()), |output| println!("{}", output));
                 Ok(())
             }
             None => {
@@ -34,13 +34,13 @@ impl Run {
                     .clone()
                     .unwrap_or_else(|| std::env::current_dir().unwrap());
 
-                match &self.path {
+                match self.path {
                     Some(path) if !path.is_dir() => {
                         import_path(path, &stack)?;
                         Ok(())
                     }
                     _ => {
-                        let project = Project::from_file(&current_dir.join("project.wpl"), &stack)?;
+                        let project = Project::from_file(current_dir.join("project.wpl"), &stack)?;
 
                         let install_path = dirs::cache_dir()
                             .expect("Could not resolve cache directory")

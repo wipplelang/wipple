@@ -66,18 +66,18 @@ pub struct Project {
 }
 
 impl Project {
-    pub fn from_file(path: &Path, stack: &Stack) -> Result<Project> {
+    pub fn from_file(path: PathBuf, stack: &Stack) -> Result<Project> {
         let mut stack = stack.clone();
         stack
             .diagnostics_mut()
             .add(|| format!("Loading project '{}'", path.to_string_lossy()));
 
-        let env = project_env_for_path(path).child();
-        setup_project_env(path.parent().unwrap(), &env);
+        let env = project_env_for_path(&path).child();
+        setup_project_env(path.parent().unwrap(), &env, &stack)?;
 
-        let module = import_file_with_parent_env(path, &env, &stack)?;
+        let module = import_file_with_parent_env(path.clone(), &env, &stack)?;
 
-        parse_project_env(path, &module.env, &stack)
+        parse_project_env(&path, &module.env, &stack)
     }
 
     pub fn update_dependencies(
@@ -164,19 +164,21 @@ impl ParsedProject {
             }
 
             project_env.set_variable(
+                &stack,
                 name,
                 Value::of(Text::new(path.to_string_lossy().to_string())),
-            );
+            )?;
         }
 
         import(&self.main, &stack)
     }
 }
 
-fn setup_project_env(project_root: &Path, env: &Env) {
+fn setup_project_env(project_root: &Path, env: &Env, stack: &Stack) -> Result<()> {
     let project_root = project_root.to_path_buf();
 
     env.set_variable(
+        stack,
         "path",
         Value::of(Function::new(move |value, env, stack| {
             let value = value.evaluate(env, stack)?;
@@ -191,18 +193,20 @@ fn setup_project_env(project_root: &Path, env: &Env) {
 
             Ok(Value::of(Dependency::Path(path)))
         })),
-    );
+    )?;
 
     env.set_variable(
+        stack,
         "url",
         Value::of(Function::new(|value, env, stack| {
             let value = value.evaluate(env, stack)?;
             let url = value.get_or::<Text>("Expected URL text", env, stack)?;
             Ok(Value::of(Dependency::Url(url.text.to_string())))
         })),
-    );
+    )?;
 
     env.set_variable(
+        stack,
         "git",
         Value::of(Function::new(|value, env, stack| {
             let value = value.evaluate(env, stack)?;
@@ -234,9 +238,11 @@ fn setup_project_env(project_root: &Path, env: &Env) {
 
             Ok(Value::of(dependency))
         })),
-    );
+    )?;
 
-    env.set_variable("target", Value::of(Text::new(TARGET.to_string())));
+    env.set_variable(stack, "target", Value::of(Text::new(TARGET.to_string())))?;
+
+    Ok(())
 }
 
 fn parse_project_env(project_path: &Path, env: &Env, stack: &Stack) -> Result<Project> {
@@ -345,7 +351,7 @@ impl Dependency {
 
 fn project_file_in(path: &Path, stack: &Stack) -> Result<Project> {
     let project_path = path.join("project.wpl");
-    Project::from_file(&project_path, stack)
+    Project::from_file(project_path, stack)
 }
 
 impl Dependency {

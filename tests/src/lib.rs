@@ -5,7 +5,7 @@ use std::{
     time::{Duration, Instant},
 };
 use wipple_parser::line_col;
-use wipple_stdlib::run_and_collect_output;
+use wipple_stdlib::*;
 
 pub struct TestFile {
     pub path: PathBuf,
@@ -60,6 +60,8 @@ pub fn load_tests() -> Vec<TestFile> {
             let tests = regex
                 .find_iter(&code)
                 .map(|r#match| {
+                    let path = path.clone();
+
                     let r#match = r#match.unwrap();
                     let (line, _) = lc.get(r#match.start());
 
@@ -73,7 +75,7 @@ pub fn load_tests() -> Vec<TestFile> {
                     Test {
                         name,
                         line,
-                        run: Box::new(move || test(code, expected_output)),
+                        run: Box::new(move || test(path.clone(), code, expected_output)),
                     }
                 })
                 .collect::<Vec<_>>();
@@ -91,14 +93,15 @@ pub fn load_tests() -> Vec<TestFile> {
     tests
 }
 
-fn test(code: String, expected_output: String) -> TestResult {
+fn test(file: PathBuf, code: String, expected_output: String) -> TestResult {
     let start = Instant::now();
 
-    let output = run_and_collect_output(&code, |_, _| Ok(()))
-        .into_iter()
-        .map(|o| o.to_string())
-        .collect::<Vec<_>>()
-        .join("\n");
+    let output =
+        run_and_collect_output(&code, Some(file.file_name().unwrap().into()), |_, _| Ok(()))
+            .into_iter()
+            .map(|o| o.to_string())
+            .collect::<Vec<_>>()
+            .join("\n");
 
     let duration = Instant::now().duration_since(start);
 

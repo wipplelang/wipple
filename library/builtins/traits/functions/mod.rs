@@ -68,7 +68,7 @@ pub(crate) fn setup(env: &Env, stack: &Stack) -> Result<()> {
     closure::setup(env, stack)?;
     template::setup(env, stack)?;
 
-    env.set_variable("Function", Value::of(Trait::of::<Function>()));
+    env.set_variable(stack, "Function", Value::of(Trait::of::<Function>()))?;
 
     Ok(())
 }

@@ -1,15 +1,17 @@
+use std::path::PathBuf;
+
 use crate::*;
 use derivative::*;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct SourceLocation {
-    pub file: Option<String>,
+    pub file: Option<PathBuf>,
     pub line: usize,
     pub column: usize,
 }
 
 impl SourceLocation {
-    pub fn new(file: Option<String>, line: usize, column: usize) -> Self {
+    pub fn new(file: Option<PathBuf>, line: usize, column: usize) -> Self {
         SourceLocation { file, line, column }
     }
 }
@@ -17,7 +19,12 @@ impl SourceLocation {
 impl std::fmt::Display for SourceLocation {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match &self.file {
-            Some(file) => f.write_str(&format!("{}:{}:{}", file, self.line, self.column)),
+            Some(file) => f.write_str(&format!(
+                "{}:{}:{}",
+                file.to_string_lossy(),
+                self.line,
+                self.column
+            )),
             None => f.write_str(&format!("{}:{}", self.line, self.column)),
         }
     }

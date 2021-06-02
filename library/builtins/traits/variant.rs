@@ -27,6 +27,7 @@ impl Primitive for Variant {}
 
 pub(crate) fn setup(env: &Env, stack: &Stack) -> Result<()> {
     env.set_variable(
+        stack,
         "variant",
         Value::of(Function::new(|value, env, stack| {
             let id = Id::new();
@@ -95,7 +96,7 @@ pub(crate) fn setup(env: &Env, stack: &Stack) -> Result<()> {
 
             Ok(Value::of(VariantSet { id, variants }))
         })),
-    );
+    )?;
 
     // Variant-Set == Pattern
     env.add_relation_between(stack, |variant_set: VariantSet| {
@@ -114,11 +115,12 @@ pub(crate) fn setup(env: &Env, stack: &Stack) -> Result<()> {
     })?;
 
     // Variant-Set == Module
-    env.add_relation_between_with(stack, |variant_set: VariantSet, _, _| {
+    env.add_relation_between_with(stack, |variant_set: VariantSet, stack| {
         let env = Env::new();
 
         for (name, variant) in &variant_set.variants {
             env.set_variable(
+                stack,
                 name,
                 match variant.value_pattern {
                     Some(ref pattern) => {
@@ -144,7 +146,7 @@ pub(crate) fn setup(env: &Env, stack: &Stack) -> Result<()> {
                         value: None,
                     }),
                 },
-            );
+            )?;
         }
 
         Ok(Module::new(env))
@@ -173,14 +175,18 @@ pub(crate) fn setup(env: &Env, stack: &Stack) -> Result<()> {
         })
     })?;
 
-    env.add_relation_between_with(stack, |variant: Variant, env, stack| {
-        Ok(match variant.value {
-            Some(value) => {
-                let text = value.format(env, stack)?;
-                Text::new(format!("{} {}", variant.name, text))
-            }
-            None => Text::new(variant.name),
-        })
+    env.add_relation_between_with(stack, {
+        let env = env.clone();
+
+        move |variant: Variant, stack| {
+            Ok(match variant.value {
+                Some(value) => {
+                    let text = value.format(&env, stack)?;
+                    Text::new(format!("{} {}", variant.name, text))
+                }
+                None => Text::new(variant.name),
+            })
+        }
     })?;
 
     Ok(())

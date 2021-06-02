@@ -54,7 +54,7 @@ impl Bundle {
 
             let dependencies_path = tempdir.as_ref().join("dependencies");
 
-            let project = wipple_projects::Project::from_file(&path.join("project.wpl"), &stack)
+            let project = wipple_projects::Project::from_file(path.join("project.wpl"), &stack)
                 .map_err(|exit| exit.into_error())?;
 
             let dependencies = project

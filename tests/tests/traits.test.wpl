@@ -35,8 +35,8 @@ B 'foo
 ---
 
 Cannot use this value to represent this trait
-    Calling '<trait>' (4:1)
-    Importing program
+    Calling '<trait>' (traits.test.wpl:4:1)
+    Importing traits.test.wpl
 
 >>> Relations
 

@@ -14,8 +14,8 @@ a
 ---
 
 'a' does not refer to a variable
-    Resolving variable 'a' (1:1)
-    Importing program
+    Resolving variable 'a' (variables.test.wpl:1:1)
+    Importing variables.test.wpl
 
 >>> Computed variables
 
