@@ -96,6 +96,16 @@ impl Env {
     }
 }
 
+macro_rules! try_parent {
+    ($self:ident . $derive:tt, $to_trait:expr, $env:expr, $stack:expr) => {
+        if let Some(parent) = $env.parent() {
+            if let Some(value) = $self.$derive($to_trait, &parent.relations(), parent, $stack)? {
+                return Ok(Some(value));
+            }
+        }
+    };
+}
+
 impl Value {
     /// Relations are resolved in the following way:
     ///
@@ -113,14 +123,23 @@ impl Value {
         env: &Env,
         stack: &Stack,
     ) -> Result<Option<Value>> {
-        // Parent scopes have priority
-        if let Some(parent) = env.parent() {
-            if let Some(value) = self.derive(to_trait, parent, stack)? {
-                return Ok(Some(value));
-            }
-        }
-
         let relations = env.relations();
+
+        if let Some(result) = self.derive_direct(to_trait, &relations, env, stack)? {
+            Ok(Some(result))
+        } else {
+            self.derive_indirect(to_trait, &relations, env, stack)
+        }
+    }
+
+    fn derive_direct(
+        &self,
+        to_trait: &Trait,
+        relations: &RelationGraph,
+        env: &Env,
+        stack: &Stack,
+    ) -> Result<Option<Value>> {
+        try_parent!(self.derive_direct, to_trait, env, stack);
 
         let direct_relations = relations
             .edges()
@@ -147,6 +166,18 @@ impl Value {
 
             return Ok(Some(matched_value.into_owned()));
         }
+
+        Ok(None)
+    }
+
+    fn derive_indirect(
+        &self,
+        to_trait: &Trait,
+        relations: &RelationGraph,
+        env: &Env,
+        stack: &Stack,
+    ) -> Result<Option<Value>> {
+        try_parent!(self.derive_indirect, to_trait, env, stack);
 
         let mut paths = match relations.paths(&self.r#trait(), to_trait) {
             Some(paths) => paths,
