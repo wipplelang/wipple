@@ -108,7 +108,7 @@ Templates work by directly interpolating their return value, and then evaluating
 
 ## Interpolation semantics by example
 
-If you're confused, this table might help: (But first [open an issue]() to help improve this documentation! 😄)
+If you're confused, this table might help: (But first [open an issue](https://github.com/wipplelang/wipple/issues/new?labels=docs) to help improve this documentation! 😄)
 
 | INPUT              | OUTPUT<br /><small>Assume `a : 1`, `b : 2` and `c : 3`.</small> |
 | ------------------ | ------------------------------------------------------------ |
