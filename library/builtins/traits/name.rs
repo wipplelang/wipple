@@ -54,6 +54,10 @@ env_key!(pub variables: Variables {
     })),
 });
 
+stored_closure!(pub for <'a> struct AssignFn(&'a Value, &Env, &Stack) -> Result<(String, Cow<'a, Value>)>);
+
+impl Primitive for AssignFn {}
+
 stored_closure!(pub struct AssignmentFn(VariadicInput, VariadicInput, &Env, &Stack) -> Result<()>);
 
 impl Default for AssignmentFn {
@@ -62,10 +66,15 @@ impl Default for AssignmentFn {
             let left = Value::from(left);
             let right = Value::from(right);
 
-            let name = left.get_or::<Name>("Expected name", env, stack)?;
-            let value = right.evaluate(env, stack)?;
+            let assign = left.get_or::<AssignFn>(
+                "Cannot assign to this value because it does not have the Assign trait",
+                env,
+                stack,
+            )?;
 
-            env.set_variable(stack, &name.name, value.into_owned())?;
+            let (name, value) = assign(&right, env, stack)?;
+
+            env.set_variable(stack, &name, value.into_owned())?;
 
             Ok(())
         })
@@ -197,6 +206,11 @@ pub(crate) fn setup(env: &Env, stack: &Stack) -> Result<()> {
     // Name == Evaluate
     env.add_relation_between(stack, |name: Name| {
         EvaluateFn::new(move |env, stack| name.resolve(env, stack))
+    })?;
+
+    // Name == Assign
+    env.add_relation_between(stack, |name: Name| {
+        AssignFn::new(move |value, env, stack| Ok((name.name.clone(), value.evaluate(env, stack)?)))
     })?;
 
     // Name == Text
