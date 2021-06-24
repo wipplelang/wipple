@@ -1,0 +1,28 @@
+>>> Dot operator
+
+increment : (+ 1)
+double : (* 2)
+
+debug (2 . increment . double)
+debug (5 . double . increment)
+
+---
+
+(2 . increment . double) ==> 6
+(5 . double . increment) ==> 11
+
+>>> Flow operator
+
+increment : (+ 1)
+double : (* 2)
+
+increment-and-double : increment | double
+double-and-increment : double | increment
+
+debug (increment-and-double 2)
+debug (double-and-increment 5)
+
+---
+
+(increment-and-double 2) ==> 6
+(double-and-increment 5) ==> 11

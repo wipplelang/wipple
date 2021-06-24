@@ -1,6 +1,0 @@
--- Run 'wipple run' in your terminal to run this file.
-main : "src/main"
-
-dependencies : {
-    -- Add your project dependencies here.
-}

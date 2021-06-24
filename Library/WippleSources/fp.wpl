@@ -1,0 +1,29 @@
+precedence! dot-precedence {
+    associativity : Associativity Right
+    lower-than : comparison-precedence
+}
+
+operator! '. {
+    precedence : dot-precedence
+    arity : {
+        left : Arity Many
+        right : Arity Many
+    }
+    direction : Direction Left
+    function : x -> Function f -> f x
+}
+
+precedence! pipe-precedence {
+    associativity : Associativity Right
+    lower-than : dot-precedence
+}
+
+operator! '| {
+    precedence : pipe-precedence
+    arity : {
+        left : Arity Many
+        right : Arity Many
+    }
+    direction : Direction Left
+    function : Function f -> Function g -> x -> g (f x)
+}
