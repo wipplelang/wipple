@@ -1,0 +1,8 @@
+[package]
+name = "wipple_bytecode_parser"
+version = "0.0.0"
+edition = "2018"
+
+[dependencies]
+atoms = "2"
+semver = "1"
