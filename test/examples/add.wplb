@@ -3,8 +3,15 @@
 (version "0.0.0")
 
 (def add extern "math" "add")
+(def show extern "io" "show")
 
 (block (def one) (def result)
   (use (const num 1))
   (call add one one)
   (exit result))
+
+(block
+  (thunk $0)
+  (enter $0)
+  (call show $1)
+  (exit))

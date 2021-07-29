@@ -59,11 +59,7 @@ pub enum Instruction<'a> {
     Exit(Vec<Loc<'a, Reference<'a>>>),
     Call(Loc<'a, Reference<'a>>, Vec<Loc<'a, Reference<'a>>>),
     Use(Loc<'a, Reference<'a>>),
-    If(
-        Loc<'a, Reference<'a>>,
-        Vec<Loc<'a, Instruction<'a>>>,
-        Vec<Loc<'a, Instruction<'a>>>,
-    ),
+    Thunk(Loc<'a, Reference<'a>>, Vec<Loc<'a, Reference<'a>>>),
 }
 
 #[derive(Debug, Clone)]
@@ -750,41 +746,19 @@ impl<'a> Parse<'a> for Instruction<'a> {
                     .next()
                     .ok_or_else(|| Error::new("Expected reference", "Not provided", kind_span))?,
             )?),
-            "if" => {
-                macro_rules! branch {
-                    () => {{
-                        let mut input = match input.next().ok_or_else(|| {
-                            Error::new("Expected list of instructions", "Not provided", span)
-                        })? {
-                            Sexp::List(list, _) => list.into_iter().peekable(),
-                            expr => {
-                                return Err(Error::new(
-                                    "Expected list of instructions",
-                                    "Invalid",
-                                    Span::closed(source, *expr.get_loc()),
-                                ))
-                            }
-                        };
-
-                        Vec::<Instruction>::parse_list(source, &mut input)?
-                    }};
-                }
-
-                Instruction::If(
-                    Reference::parse(
-                        source,
-                        input.next().ok_or_else(|| {
-                            Error::new("Expected reference", "Not provided", kind_span)
-                        })?,
-                    )?,
-                    branch!(),
-                    branch!(),
-                )
-            }
+            "thunk" => Instruction::Thunk(
+                Reference::parse(
+                    source,
+                    input.next().ok_or_else(|| {
+                        Error::new("Expected reference", "Not provided", kind_span)
+                    })?,
+                )?,
+                Vec::<Reference>::parse_list(source, input)?,
+            ),
             _ => {
                 return Err(Error::new(
                     "Invalid instruction",
-                    "Expected 'def', 'enter', 'exit', 'call', 'use', or 'if'",
+                    "Expected 'def', 'enter', 'exit', 'call', 'use', or 'follow'",
                     kind_span,
                 ))
             }
@@ -804,7 +778,7 @@ impl<'a> WriteList<'a> for Instruction<'a> {
             Instruction::Exit(_) => "exit",
             Instruction::Call(_, _) => "call",
             Instruction::Use(_) => "use",
-            Instruction::If(_, _, _) => "if",
+            Instruction::Thunk(_, _) => "thunk",
         };
 
         list.push(Sexp::Sym(Cow::Borrowed(kind), Default::default()));
@@ -821,10 +795,9 @@ impl<'a> WriteList<'a> for Instruction<'a> {
                 inputs.write_list(list);
             }
             Instruction::Use(reference) => list.push(reference.into_inner().write()),
-            Instruction::If(condition, then, r#else) => {
-                list.push(condition.into_inner().write());
-                list.push(then.write());
-                list.push(r#else.write());
+            Instruction::Thunk(reference, inputs) => {
+                list.push(reference.into_inner().write());
+                inputs.write_list(list);
             }
         }
     }

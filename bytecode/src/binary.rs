@@ -37,7 +37,7 @@ pub enum Instruction {
     Exit(Vec<Index>),
     Call(Index, Vec<Index>),
     Use(Index),
-    If(Index, Vec<Instruction>, Vec<Instruction>),
+    Thunk(Index, Vec<Index>),
 }
 
 pub type Index = usize;
@@ -67,6 +67,7 @@ impl<'a> File<'a> {
 
         let mut bin_file = File::new(version.into_inner());
         let mut defines = HashMap::new();
+        let mut blocks_to_resolve = Vec::new();
 
         for statement in text_file {
             let statement = statement?;
@@ -82,8 +83,7 @@ impl<'a> File<'a> {
                     ))
                 }
                 Statement::Block(statement) => {
-                    let block = parse_block(statement, &mut defines, &mut bin_file)?;
-                    bin_file.blocks.push(block);
+                    blocks_to_resolve.push(statement);
                 }
                 Statement::Data(statement) => {
                     let data = parse_data(statement);
@@ -118,13 +118,9 @@ impl<'a> File<'a> {
                             define!(data, bin_file.globals)
                         }
                         Definition::Block(statement) => {
-                            let index = bin_file.blocks.len();
+                            let index = blocks_to_resolve.len();
                             defines.insert(name, index);
-
-                            let block =
-                                parse_block(statement.into_inner(), &mut defines, &mut bin_file)?;
-
-                            bin_file.blocks.push(block);
+                            blocks_to_resolve.push(statement.into_inner());
                         }
                         Definition::Extern(statement) => {
                             let r#extern = parse_extern(statement.into_inner());
@@ -135,9 +131,132 @@ impl<'a> File<'a> {
             }
         }
 
+        for statement in blocks_to_resolve {
+            let block = parse_block(statement, &mut defines, &mut bin_file)?;
+            bin_file.blocks.push(block);
+        }
+
         Ok(bin_file)
     }
+}
 
+fn parse_block<'a>(
+    statement: BlockStatement<'a>,
+    defines: &mut HashMap<Cow<'a, str>, Index>,
+    bin_file: &mut File<'a>,
+) -> Result<'a, Block> {
+    let mut locals = HashMap::new();
+    let mut can_parse_define = true;
+
+    macro_rules! resolve {
+        ($reference:expr) => {{
+            let (reference, span) = $reference.into_parts();
+
+            match reference {
+                Reference::Index(index) => Ok(index),
+                Reference::Variable(variable) => locals
+                    .get(&variable)
+                    .or_else(|| defines.get(&variable))
+                    .copied()
+                    .ok_or_else(|| {
+                        Error::new(
+                            format!("Variable '{}' not found", variable),
+                            "No such variable",
+                            span,
+                        )
+                    }),
+                Reference::Const(data) => {
+                    bin_file.globals.push(parse_data(data));
+                    Ok(bin_file.globals.len() - 1)
+                }
+            }
+        }};
+    }
+
+    macro_rules! resolve_all {
+        ($references:expr) => {
+            $references
+                .into_iter()
+                .map(|r| resolve!(r))
+                .collect::<Result<_>>()
+        };
+    }
+
+    let mut block = Block::with_capacity(statement.instructions.len());
+
+    for instruction in statement.instructions {
+        let (instruction, span) = instruction.into_parts();
+
+        match instruction {
+            text::Instruction::Define(statement) => {
+                if !can_parse_define {
+                    return Err(Error::new(
+                        "Unexpected define statement",
+                        "Define statement may only be used at beginning of block",
+                        span,
+                    ));
+                }
+
+                let index = match statement.definition {
+                    Definition::Auto => locals.len(),
+                    _ => {
+                        return Err(Error::new(
+                            "Unexpected definition",
+                            "Only auto definitions are allowed within blocks",
+                            span,
+                        ))
+                    }
+                };
+
+                locals.insert(statement.name.into_inner(), index);
+            }
+            _ => {
+                can_parse_define = false;
+
+                let instruction = match instruction {
+                    text::Instruction::Define(_) => unreachable!(),
+                    text::Instruction::Enter(block, inputs) => {
+                        Instruction::Enter(resolve!(block)?, resolve_all!(inputs)?)
+                    }
+                    text::Instruction::Exit(outputs) => Instruction::Exit(resolve_all!(outputs)?),
+                    text::Instruction::Call(r#extern, inputs) => {
+                        Instruction::Call(resolve!(r#extern)?, resolve_all!(inputs)?)
+                    }
+                    text::Instruction::Use(global) => Instruction::Use(resolve!(global)?),
+                    text::Instruction::Thunk(block, inputs) => {
+                        Instruction::Thunk(resolve!(block)?, resolve_all!(inputs)?)
+                    }
+                };
+
+                block.push(instruction);
+            }
+        }
+    }
+
+    Ok(block)
+}
+
+fn parse_data(statement: DataStatement) -> Cow<[u8]> {
+    match statement {
+        DataStatement::Number(n) => Cow::Owned(n.into_inner().to_le_bytes().to_vec()),
+        DataStatement::Integer(n) => Cow::Owned(n.into_inner().to_le_bytes().to_vec()),
+        DataStatement::String(s) => match s.into_inner() {
+            Cow::Owned(s) => Cow::Owned(s.into_bytes()),
+            Cow::Borrowed(s) => Cow::Borrowed(s.as_bytes()),
+        },
+        DataStatement::Bool(b) => Cow::Owned((b.into_inner() as u8).to_le_bytes().to_vec()),
+        DataStatement::Raw(data) => data.into_inner(),
+    }
+}
+
+fn parse_extern(statement: ExternStatement) -> Extern {
+    Extern {
+        object: statement.object.into_inner(),
+        symbol: statement.symbol.into_inner(),
+    }
+}
+
+impl<'a> File<'a> {
     pub fn decompile(self) -> String {
         let mut statements = vec![Statement::Version(VersionStatement {
             version: Loc::new(self.version, Span::default()),
@@ -174,10 +293,9 @@ impl<'a> File<'a> {
                         inputs.into_iter().map(to_reference).collect(),
                     ),
                     Instruction::Use(index) => text::Instruction::Use(to_reference(index)),
-                    Instruction::If(condition, then, r#else) => text::Instruction::If(
-                        to_reference(condition),
-                        then.into_iter().map(to_instruction).collect(),
-                        r#else.into_iter().map(to_instruction).collect(),
+                    Instruction::Thunk(index, inputs) => text::Instruction::Thunk(
+                        to_reference(index),
+                        inputs.into_iter().map(to_reference).collect(),
                     ),
                 };
 
@@ -211,138 +329,5 @@ impl<'a> File<'a> {
             .map(print)
             .collect::<Vec<_>>()
             .join("\n")
-    }
-}
-
-fn parse_block<'a>(
-    statement: BlockStatement<'a>,
-    defines: &mut HashMap<Cow<'a, str>, Index>,
-    bin_file: &mut File<'a>,
-) -> Result<'a, Block> {
-    fn parse<'a>(
-        instructions: Vec<Loc<'a, text::Instruction<'a>>>,
-        defines: &mut HashMap<Cow<'a, str>, Index>,
-        bin_file: &mut File<'a>,
-        locals: &mut HashMap<Cow<'a, str>, Index>,
-        can_parse_define: &mut bool,
-    ) -> Result<'a, Block> {
-        macro_rules! resolve {
-            ($reference:expr) => {{
-                let (reference, span) = $reference.into_parts();
-
-                match reference {
-                    Reference::Index(index) => Ok(index),
-                    Reference::Variable(variable) => locals
-                        .get(&variable)
-                        .or_else(|| defines.get(&variable))
-                        .copied()
-                        .ok_or_else(|| {
-                            Error::new(
-                                format!("Variable '{}' not found", variable),
-                                "No such variable",
-                                span,
-                            )
-                        }),
-                    Reference::Const(data) => {
-                        bin_file.globals.push(parse_data(data));
-                        Ok(bin_file.globals.len() - 1)
-                    }
-                }
-            }};
-        }
-
-        macro_rules! resolve_all {
-            ($references:expr) => {
-                $references
-                    .into_iter()
-                    .map(|r| resolve!(r))
-                    .collect::<Result<_>>()
-            };
-        }
-
-        let mut block = Block::with_capacity(instructions.len());
-
-        for instruction in instructions {
-            let (instruction, span) = instruction.into_parts();
-
-            match instruction {
-                text::Instruction::Define(statement) => {
-                    if !*can_parse_define {
-                        return Err(Error::new(
-                            "Unexpected define statement",
-                            "Define statement may only be used at beginning of block",
-                            span,
-                        ));
-                    }
-
-                    let index = match statement.definition {
-                        Definition::Auto => locals.len(),
-                        _ => {
-                            return Err(Error::new(
-                                "Unexpected definition",
-                                "Only auto definitions are allowed within blocks",
-                                span,
-                            ))
-                        }
-                    };
-
-                    locals.insert(statement.name.into_inner(), index);
-                }
-                _ => {
-                    *can_parse_define = false;
-
-                    let instruction = match instruction {
-                        text::Instruction::Define(_) => unreachable!(),
-                        text::Instruction::Enter(block, inputs) => {
-                            Instruction::Enter(resolve!(block)?, resolve_all!(inputs)?)
-                        }
-                        text::Instruction::Exit(outputs) => {
-                            Instruction::Exit(resolve_all!(outputs)?)
-                        }
-                        text::Instruction::Call(r#extern, inputs) => {
-                            Instruction::Call(resolve!(r#extern)?, resolve_all!(inputs)?)
-                        }
-                        text::Instruction::Use(global) => Instruction::Use(resolve!(global)?),
-                        text::Instruction::If(condition, then, r#else) => Instruction::If(
-                            resolve!(condition)?,
-                            parse(then, defines, bin_file, locals, can_parse_define)?,
-                            parse(r#else, defines, bin_file, locals, can_parse_define)?,
-                        ),
-                    };
-
-                    block.push(instruction);
-                }
-            }
-        }
-
-        Ok(block)
-    }
-
-    parse(
-        statement.instructions,
-        defines,
-        bin_file,
-        &mut HashMap::new(),
-        &mut true,
-    )
-}
-
-fn parse_data(statement: DataStatement) -> Cow<[u8]> {
-    match statement {
-        DataStatement::Number(n) => Cow::Owned(n.into_inner().to_le_bytes().to_vec()),
-        DataStatement::Integer(n) => Cow::Owned(n.into_inner().to_le_bytes().to_vec()),
-        DataStatement::String(s) => match s.into_inner() {
-            Cow::Owned(s) => Cow::Owned(s.into_bytes()),
-            Cow::Borrowed(s) => Cow::Borrowed(s.as_bytes()),
-        },
-        DataStatement::Bool(b) => Cow::Owned((b.into_inner() as u8).to_le_bytes().to_vec()),
-        DataStatement::Raw(data) => data.into_inner(),
-    }
-}
-
-fn parse_extern(statement: ExternStatement) -> Extern {
-    Extern {
-        object: statement.object.into_inner(),
-        symbol: statement.symbol.into_inner(),
     }
 }

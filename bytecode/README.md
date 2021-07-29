@@ -111,7 +111,7 @@ The available instructions for use in a block are as follows:
     <tbody>
         <tr>
             <td><code>(enter block inputs...)</code></td>
-            <td>Enter a block, coping the provided inputs into the block's stack frame</td>
+            <td>Enter a thunk, copying the provided inputs into the resolved block's stack frame</td>
         </tr>
         <tr>
             <td><code>(exit outputs...)</code></td>
@@ -132,10 +132,10 @@ The available instructions for use in a block are as follows:
             </td>
         </tr>
         <tr>
-            <td><code>(if condition (then...) (else...))</code></td>
+            <td><code>(thunk block inputs...)</code></td>
             <td>
-                Read the boolean stored at `condition`, executing the first list of instructions if
-                nonzero and the second list of instructions if zero
+                Wrap a block index and copies of the provided inputs into a thunk value that can be
+                resolved dynamically, and store the value into the next variable on the stack
             </td>
         </tr>
     </tbody>

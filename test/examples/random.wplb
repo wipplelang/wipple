@@ -1,0 +1,21 @@
+; Add two random numbers
+
+(version "0.0.0")
+
+(def add extern "math" "add")
+(def random extern "random" "random")
+(def show extern "io" "show")
+
+(block (def min) (def max) (def result)
+  (use (const num 1))
+  (use (const num 10))
+  (call random min max)
+  (exit result))
+
+(block
+  (thunk $0)
+  (enter $0)
+  (enter $0)
+  (call add $1 $2)
+  (call show $3)
+  (exit))
