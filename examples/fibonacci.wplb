@@ -1,3 +1,18 @@
+; Fibonacci sequence
+;
+; Since this is getting complicated, here is the (functionally) equivalent
+; Wipple code:
+;
+;     fib : n -> if n <= 1 n (fib n - 1) + (fib n - 2)
+;     show (fib 10)
+
+(version "0.0.0")
+
+(def lte extern "math" "lte")
+(def add extern "math" "add")
+(def sub extern "math" "sub")
+(def show extern "io" "show")
+
 (def fib block (def n)
   (use (const num 1))         ; store 1 in $1
   (call lte n $1)             ; call 'lte' with $0 (n) and $1 (1), which stores
@@ -21,3 +36,10 @@
                               ;  (fib n - 2), which stores its result in $9
      (exit $9))))             ; exit the block, returning $9 ((fib n - 1) +
                               ;  (fib n - 2))
+
+(block (def input) (def result)
+  (use (const num 10))        ; store 10 in #0
+  (enter fib input)           ; enter 'fib' with #0 (10), storing the result in
+                              ;  #1
+  (call show result)          ; call 'show' with #1
+  (exit))                     ; exit the block

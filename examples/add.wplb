@@ -1,0 +1,10 @@
+; Add 1 + 1
+
+(version "0.0.0")
+
+(def add extern "math" "add")
+
+(block (def one) (def result)
+  (use (const num 1))
+  (call add one one)
+  (exit result))

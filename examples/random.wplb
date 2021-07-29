@@ -1,0 +1,12 @@
+; Add two random numbers
+
+(version "0.0.0")
+
+(def add extern "math" "add")
+(def random extern "random" "random")
+
+(block (def a) (def b) (def result)
+  (call random)
+  (call random)
+  (call add a b)
+  (exit result))
