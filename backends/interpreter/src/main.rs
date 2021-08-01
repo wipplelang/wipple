@@ -1,11 +1,12 @@
-mod resolver;
-
 use bytecode::binary::Index;
 use rand::Rng;
-use resolver::{ClosureResolver, Object};
 use std::{error::Error, io};
 use wipple_bytecode as bytecode;
-use wipple_interpreter::{self as interpreter, Context, Interpreter, Reference, Value};
+use wipple_interpreter::{
+    self as interpreter,
+    closure_resolver::{Object, Resolver as ClosureResolver},
+    Context, Interpreter, Reference, Value,
+};
 
 fn main() -> Result<(), Box<dyn Error>> {
     let file: bytecode::BinFile = bincode::deserialize_from(io::stdin())?;

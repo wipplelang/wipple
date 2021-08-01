@@ -1,3 +1,5 @@
+pub mod closure_resolver;
+
 use std::{fmt, mem::ManuallyDrop};
 use wipple_bytecode::{self as bytecode, binary::Index};
 

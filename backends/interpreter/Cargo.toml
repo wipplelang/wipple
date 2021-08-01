@@ -4,4 +4,6 @@ version = "0.0.0"
 edition = "2018"
 
 [dependencies]
-wipple_bytecode = { path = "../bytecode" }
+bincode = "1"
+rand = "0.8"
+wipple_bytecode = { path = "../../frontend/bytecode" }

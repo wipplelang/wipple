@@ -469,6 +469,8 @@ dependencies = [
 name = "wipple_interpreter"
 version = "0.0.0"
 dependencies = [
+ "bincode",
+ "rand",
  "wipple_bytecode",
 ]
 
@@ -479,14 +481,4 @@ dependencies = [
  "line-col",
  "logos",
  "snailquote",
-]
-
-[[package]]
-name = "wipple_test"
-version = "0.0.0"
-dependencies = [
- "bincode",
- "rand",
- "wipple_bytecode",
- "wipple_interpreter",
 ]

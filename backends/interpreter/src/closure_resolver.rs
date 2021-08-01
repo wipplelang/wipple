@@ -1,13 +1,12 @@
 use std::collections::HashMap;
 use wipple_bytecode as bytecode;
-use wipple_interpreter as interpreter;
 
 #[derive(Default)]
-pub struct ClosureResolver {
+pub struct Resolver {
     pub objects: HashMap<String, Object>,
 }
 
-impl ClosureResolver {
+impl Resolver {
     pub fn new() -> Self {
         Default::default()
     }
@@ -20,7 +19,7 @@ impl ClosureResolver {
 
 #[derive(Default)]
 pub struct Object {
-    pub symbols: HashMap<String, interpreter::ExternFn>,
+    pub symbols: HashMap<String, crate::ExternFn>,
 }
 
 impl Object {
@@ -31,16 +30,15 @@ impl Object {
     pub fn with(
         mut self,
         name: impl ToString,
-        func: impl Fn(&[bytecode::binary::Index], &mut interpreter::Context) -> interpreter::Result<()>
-            + 'static,
+        func: impl Fn(&[bytecode::binary::Index], &mut crate::Context) -> crate::Result<()> + 'static,
     ) -> Self {
         self.symbols.insert(name.to_string(), Box::new(func));
         self
     }
 }
 
-impl interpreter::ExternResolver for ClosureResolver {
-    fn resolve(&self, r#extern: &bytecode::binary::Extern) -> Option<&interpreter::ExternFn> {
+impl crate::ExternResolver for Resolver {
+    fn resolve(&self, r#extern: &bytecode::binary::Extern) -> Option<&crate::ExternFn> {
         self.objects
             .get(r#extern.object.as_ref())
             .and_then(|object| object.symbols.get(r#extern.symbol.as_ref()))
