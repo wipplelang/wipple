@@ -1,4 +1,4 @@
-use std::mem::ManuallyDrop;
+use std::{fmt, mem::ManuallyDrop};
 use wipple_bytecode::{self as bytecode, binary::Index};
 
 pub struct Interpreter<R: ExternResolver> {
@@ -149,6 +149,15 @@ impl Error {
         }
     }
 }
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        // TODO: Custom format
+        write!(f, "{:#?}", self)
+    }
+}
+
+impl std::error::Error for Error {}
 
 pub type Result<T> = core::result::Result<T, Error>;
 

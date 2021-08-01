@@ -71,60 +71,21 @@ pub enum Reference<'a> {
 
 pub struct File<'a> {
     pub source: Source<'a>,
-    pub(crate) contents: vec::IntoIter<Sexp<'a>>,
+    pub(crate) input: Input<'a>,
+    pub(crate) errors: Vec<Error<'a>>,
 }
 
 impl<'a> File<'a> {
-    pub fn parse(source: Source<'a>) -> Result<File<'a>> {
-        let exprs = match ess::parse(source.code) {
-            (exprs, None) => exprs,
-            (_, Some(err)) => {
-                use ess::parser::ParseError::*;
+    pub fn parse(source: Source<'a>) -> (File<'a>, Option<ess::parser::ParseError>) {
+        let (contents, err) = ess::parse(source.code);
 
-                let span = match err {
-                    UnexpectedEof => Span::eof(source),
-                    List(_, loc)
-                    | Sexp(_, loc)
-                    | Char(_, loc)
-                    | String(_, loc)
-                    | Symbol(_, loc)
-                    | Number(_, loc) => Span::closed(source, loc),
-                    Unexpected(_, loc) => Span::open(source, loc),
-                };
-
-                return Err(Error::new(
-                    "Parse error",
-                    format!("{:?}", err), // TODO: Better description
-                    span,
-                ));
-            }
-        };
-
-        Ok(File {
+        let file = File {
             source,
-            contents: exprs.into_iter(),
-        })
-    }
-}
-
-impl<'a> Iterator for File<'a> {
-    type Item = Result<'a, Loc<'a, Statement<'a>>>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        let expr = self.contents.next()?;
-
-        let (mut input, span) = match expr {
-            Sexp::List(list, loc) => (list.into_iter().peekable(), Span::closed(self.source, loc)),
-            _ => {
-                return Some(Err(Error::new(
-                    "Expected statement",
-                    "Statements must be in list form",
-                    Span::closed(self.source, *expr.get_loc()),
-                )))
-            }
+            input: contents.into_iter().peekable(),
+            errors: Vec::new(),
         };
 
-        Some(Statement::parse(self.source, &mut input, span))
+        (file, err)
     }
 }
 
@@ -209,7 +170,7 @@ impl<'a, T> Loc<'a, T> {
     }
 }
 
-type Input<'a> = Peekable<vec::IntoIter<Sexp<'a>>>;
+pub(crate) type Input<'a> = Peekable<vec::IntoIter<Sexp<'a>>>;
 
 trait Parse<'a>
 where
@@ -219,19 +180,19 @@ where
         source: Source<'a>,
         input: &mut Input<'a>,
         span: Span<'a>,
-    ) -> Result<'a, Loc<'a, Self>>;
+        errors: &mut Vec<Error<'a>>,
+    ) -> Option<Loc<'a, Self>>;
 }
 
-trait ParseList<'a>
+pub(crate) trait ParseExpr<'a>
 where
     Self: Sized,
 {
-    type Item: 'a;
-
-    fn parse_list(
+    fn parse_expr(
         source: Source<'a>,
-        input: &mut Input<'a>,
-    ) -> Result<'a, Vec<Loc<'a, Self::Item>>>;
+        expr: Sexp<'a>,
+        errors: &mut Vec<Error<'a>>,
+    ) -> Option<Loc<'a, Self>>;
 }
 
 trait ParseStatement<'a>
@@ -240,23 +201,36 @@ where
 {
     const NAME: &'static str;
 
-    fn parse_body(source: Source<'a>, input: &mut Input<'a>, span: Span<'a>) -> Result<'a, Self>;
+    fn parse_body(
+        source: Source<'a>,
+        input: &mut Input<'a>,
+        span: Span<'a>,
+        errors: &mut Vec<Error<'a>>,
+    ) -> Option<Self>;
 
     fn parse(
         source: Source<'a>,
         input: &mut Input<'a>,
         span: Span<'a>,
-    ) -> Result<'a, Option<Loc<'a, Self>>> {
-        let expr = input
-            .peek()
-            .ok_or_else(|| Error::new("Expected statement", "Not provided", span))?;
+        errors: &mut Vec<Error<'a>>,
+    ) -> Option<Option<Loc<'a, Self>>> {
+        let expr = match input.peek() {
+            Some(expr) => expr,
+            None => {
+                errors.push(Error::new("Expected statement", "Not provided", span));
+                return None;
+            }
+        };
 
         if !matches!(expr, Sexp::Sym(s, _) if s == Self::NAME) {
-            return Ok(None);
+            return Some(None);
         }
 
         input.next();
-        Ok(Some(Loc::new(Self::parse_body(source, input, span)?, span)))
+        Some(Some(Loc::new(
+            Self::parse_body(source, input, span, errors)?,
+            span,
+        )))
     }
 }
 
@@ -284,14 +258,21 @@ impl<'a, T: Write<'a>> WriteList<'a> for Vec<Loc<'a, T>> {
     }
 }
 
-fn parse_end<'a>(source: Source<'a>, input: &mut Input<'a>) -> Result<'a, ()> {
+fn parse_end<'a>(
+    source: Source<'a>,
+    input: &mut Input<'a>,
+    errors: &mut Vec<Error<'a>>,
+) -> Option<()> {
     match input.peek() {
-        Some(expr) => Err(Error::new(
-            "Expected end of statement",
-            "Extra arguments",
-            Span::closed(source, *expr.get_loc()),
-        )),
-        None => Ok(()),
+        Some(expr) => {
+            errors.push(Error::new(
+                "Expected end of statement",
+                "Extra arguments",
+                Span::closed(source, *expr.get_loc()),
+            ));
+            None
+        }
+        None => Some(()),
     }
 }
 
@@ -300,24 +281,48 @@ impl<'a> Parse<'a> for Statement<'a> {
         source: Source<'a>,
         input: &mut Input<'a>,
         span: Span<'a>,
-    ) -> Result<'a, Loc<'a, Self>> {
-        if let Some(version) = VersionStatement::parse(source, input, span)? {
-            Ok(version.map(Statement::Version))
-        } else if let Some(block) = BlockStatement::parse(source, input, span)? {
-            Ok(block.map(Statement::Block))
-        } else if let Some(data) = DataStatement::parse(source, input, span)? {
-            Ok(data.map(Statement::Data))
-        } else if let Some(r#extern) = ExternStatement::parse(source, input, span)? {
-            Ok(r#extern.map(Statement::Extern))
-        } else if let Some(define) = DefineStatement::parse(source, input, span)? {
-            Ok(define.map(Statement::Define))
+        errors: &mut Vec<Error<'a>>,
+    ) -> Option<Loc<'a, Self>> {
+        if let Some(version) = VersionStatement::parse(source, input, span, errors)? {
+            Some(version.map(Statement::Version))
+        } else if let Some(block) = BlockStatement::parse(source, input, span, errors)? {
+            Some(block.map(Statement::Block))
+        } else if let Some(data) = DataStatement::parse(source, input, span, errors)? {
+            Some(data.map(Statement::Data))
+        } else if let Some(r#extern) = ExternStatement::parse(source, input, span, errors)? {
+            Some(r#extern.map(Statement::Extern))
+        } else if let Some(define) = DefineStatement::parse(source, input, span, errors)? {
+            Some(define.map(Statement::Define))
         } else {
-            Err(Error::new(
+            errors.push(Error::new(
                 "Invalid statement",
                 "Expected version, block, data, extern or define statement",
                 span,
-            ))
+            ));
+            None
         }
+    }
+}
+
+impl<'a> ParseExpr<'a> for Statement<'a> {
+    fn parse_expr(
+        source: Source<'a>,
+        expr: Sexp<'a>,
+        errors: &mut Vec<Error<'a>>,
+    ) -> Option<Loc<'a, Self>> {
+        let (mut input, span) = match expr {
+            Sexp::List(list, loc) => (list.into_iter().peekable(), Span::closed(source, loc)),
+            _ => {
+                errors.push(Error::new(
+                    "Expected statement",
+                    "Statements must be in list form",
+                    Span::closed(source, *expr.get_loc()),
+                ));
+                return None;
+            }
+        };
+
+        Statement::parse(source, &mut input, span, errors)
     }
 }
 
@@ -346,27 +351,39 @@ impl<'a> WriteList<'a> for Statement<'a> {
 impl<'a> ParseStatement<'a> for VersionStatement<'a> {
     const NAME: &'static str = "version";
 
-    fn parse_body(source: Source<'a>, input: &mut Input<'a>, span: Span<'a>) -> Result<'a, Self> {
-        let (version, span) = match input
-            .next()
-            .ok_or_else(|| Error::new("Expected version string", "Not provided", span))?
-        {
-            Sexp::Str(s, loc) => (s, Span::closed(source, loc)),
-            expr => {
-                return Err(Error::new(
+    fn parse_body(
+        source: Source<'a>,
+        input: &mut Input<'a>,
+        span: Span<'a>,
+        errors: &mut Vec<Error<'a>>,
+    ) -> Option<Self> {
+        let (version, span) = match input.next() {
+            Some(Sexp::Str(s, loc)) => (s, Span::closed(source, loc)),
+            Some(expr) => {
+                errors.push(Error::new(
                     "Expected version string",
                     "Invalid",
                     Span::closed(source, *expr.get_loc()),
-                ))
+                ));
+                return None;
+            }
+            None => {
+                errors.push(Error::new("Expected version string", "Not provided", span));
+                return None;
             }
         };
 
-        let version = semver::Version::parse(&version)
-            .map_err(|err| Error::new("Invalid version string", err, span))?;
+        let version = match semver::Version::parse(&version) {
+            Ok(version) => version,
+            Err(err) => {
+                errors.push(Error::new("Invalid version string", err, span));
+                return None;
+            }
+        };
 
-        parse_end(source, input)?;
+        parse_end(source, input, errors)?;
 
-        Ok(VersionStatement {
+        Some(VersionStatement {
             version: Loc::new(version, span),
         })
     }
@@ -384,10 +401,17 @@ impl<'a> WriteList<'a> for VersionStatement<'a> {
 impl<'a> ParseStatement<'a> for BlockStatement<'a> {
     const NAME: &'static str = "block";
 
-    fn parse_body(source: Source<'a>, input: &mut Input<'a>, _: Span<'a>) -> Result<'a, Self> {
-        let instructions = Vec::<Instruction<'a>>::parse_list(source, input)?;
+    fn parse_body(
+        source: Source<'a>,
+        input: &mut Input<'a>,
+        _: Span<'a>,
+        errors: &mut Vec<Error<'a>>,
+    ) -> Option<Self> {
+        let instructions = input
+            .filter_map(|expr| ParseExpr::parse_expr(source, expr, errors))
+            .collect();
 
-        Ok(BlockStatement { instructions })
+        Some(BlockStatement { instructions })
     }
 }
 
@@ -397,152 +421,177 @@ impl<'a> WriteList<'a> for BlockStatement<'a> {
     }
 }
 
-impl<'a> ParseList<'a> for Vec<Instruction<'a>> {
-    type Item = Instruction<'a>;
-
-    fn parse_list(
+impl<'a> ParseExpr<'a> for Instruction<'a> {
+    fn parse_expr(
         source: Source<'a>,
-        input: &mut Input<'a>,
-    ) -> Result<'a, Vec<Loc<'a, Self::Item>>> {
-        let mut instructions = Vec::new();
+        expr: Sexp<'a>,
+        errors: &mut Vec<Error<'a>>,
+    ) -> Option<Loc<'a, Self>> {
+        let (mut input, span) = match expr {
+            Sexp::List(list, loc) => (list.into_iter().peekable(), Span::closed(source, loc)),
+            expr => {
+                errors.push(Error::new(
+                    "Expected instruction",
+                    "Instructions must be in list form",
+                    Span::closed(source, *expr.get_loc()),
+                ));
+                return None;
+            }
+        };
 
-        for expr in input {
-            let (mut input, span) = match expr {
-                Sexp::List(list, loc) => (list.into_iter().peekable(), Span::closed(source, loc)),
-                expr => {
-                    return Err(Error::new(
-                        "Expected instruction",
-                        "Instructions must be in list form",
-                        Span::closed(source, *expr.get_loc()),
-                    ))
-                }
-            };
-
-            let instruction = Instruction::parse(source, &mut input, span)?;
-            instructions.push(instruction);
-        }
-
-        Ok(instructions)
+        Instruction::parse(source, &mut input, span, errors)
     }
 }
 
 impl<'a> ParseStatement<'a> for DataStatement<'a> {
     const NAME: &'static str = "data";
 
-    fn parse_body(source: Source<'a>, input: &mut Input<'a>, span: Span<'a>) -> Result<'a, Self> {
-        let (kind, span) = match input
-            .next()
-            .ok_or_else(|| Error::new("Expected data type", "Not provided", span))?
-        {
-            Sexp::Sym(s, loc) => (s, Span::closed(source, loc)),
-            expr => {
-                return Err(Error::new(
+    fn parse_body(
+        source: Source<'a>,
+        input: &mut Input<'a>,
+        span: Span<'a>,
+        errors: &mut Vec<Error<'a>>,
+    ) -> Option<Self> {
+        let (kind, span) = match input.next() {
+            Some(Sexp::Sym(s, loc)) => (s, Span::closed(source, loc)),
+            Some(expr) => {
+                errors.push(Error::new(
                     "Expected data type",
                     "Invalid",
                     Span::closed(source, *expr.get_loc()),
-                ))
+                ));
+                return None;
+            }
+            None => {
+                errors.push(Error::new("Expected data type", "Not provided", span));
+                return None;
             }
         };
 
         let value = match kind.as_ref() {
-            "num" => match input
-                .next()
-                .ok_or_else(|| Error::new("Expected number", "Not provided", span))?
-            {
-                Sexp::Int(n, loc) => {
+            "num" => match input.next() {
+                Some(Sexp::Int(n, loc)) => {
                     DataStatement::Number(Loc::new(n as f64, Span::closed(source, loc)))
                 }
-                Sexp::Float(n, loc) => {
+                Some(Sexp::Float(n, loc)) => {
                     DataStatement::Number(Loc::new(n, Span::closed(source, loc)))
                 }
-                expr => {
-                    return Err(Error::new(
+                Some(expr) => {
+                    errors.push(Error::new(
                         "Expected number",
                         "Invalid",
                         Span::closed(source, *expr.get_loc()),
-                    ))
+                    ));
+                    return None;
+                }
+                None => {
+                    errors.push(Error::new("Expected number", "Not provided", span));
+                    return None;
                 }
             },
-            "int" => match input
-                .next()
-                .ok_or_else(|| Error::new("Expected integer", "Not provided", span))?
-            {
-                Sexp::Int(n, loc) => DataStatement::Integer(Loc::new(n, Span::closed(source, loc))),
-                expr => {
-                    return Err(Error::new(
+            "int" => match input.next() {
+                Some(Sexp::Int(n, loc)) => {
+                    DataStatement::Integer(Loc::new(n, Span::closed(source, loc)))
+                }
+                Some(expr) => {
+                    errors.push(Error::new(
                         "Expected integer",
                         "Invalid",
                         Span::closed(source, *expr.get_loc()),
-                    ))
+                    ));
+                    return None;
+                }
+                None => {
+                    errors.push(Error::new("Expected integer", "Not provided", span));
+                    return None;
                 }
             },
             "bin" => {
-                let (s, span) = match input
-                    .next()
-                    .ok_or_else(|| Error::new("Expected binary integer", "Not provided", span))?
-                {
-                    Sexp::Int(n, loc) => (n.to_string(), Span::closed(source, loc)),
-                    expr => {
-                        return Err(Error::new(
+                let (s, span) = match input.next() {
+                    Some(Sexp::Int(n, loc)) => (n.to_string(), Span::closed(source, loc)),
+                    Some(expr) => {
+                        errors.push(Error::new(
                             "Expected binary integer",
                             "Invalid",
                             Span::closed(source, *expr.get_loc()),
-                        ))
+                        ));
+                        return None;
+                    }
+                    None => {
+                        errors.push(Error::new("Expected binary integer", "Not provided", span));
+                        return None;
                     }
                 };
 
-                let n = i64::from_str_radix(&s, 2)
-                    .map_err(|err| Error::new("Invalid binary integer", err, span))?;
+                let n = match i64::from_str_radix(&s, 2) {
+                    Ok(n) => n,
+                    Err(err) => {
+                        errors.push(Error::new("Invalid binary integer", err, span));
+                        return None;
+                    }
+                };
 
                 DataStatement::Integer(Loc::new(n, span))
             }
-            "str" => match input
-                .next()
-                .ok_or_else(|| Error::new("Expected string", "Not provided", span))?
-            {
-                Sexp::Str(s, loc) => DataStatement::String(Loc::new(s, Span::closed(source, loc))),
-                expr => {
-                    return Err(Error::new(
+            "str" => match input.next() {
+                Some(Sexp::Str(s, loc)) => {
+                    DataStatement::String(Loc::new(s, Span::closed(source, loc)))
+                }
+                Some(expr) => {
+                    errors.push(Error::new(
                         "Expected string",
                         "Invalid",
                         Span::closed(source, *expr.get_loc()),
-                    ))
+                    ));
+                    return None;
+                }
+                None => {
+                    errors.push(Error::new("Expected string", "Not provided", span));
+                    return None;
                 }
             },
             "true" => DataStatement::Bool(Loc::new(true, span)),
             "false" => DataStatement::Bool(Loc::new(false, span)),
             "raw" => {
-                let (s, span) = match input
-                    .next()
-                    .ok_or_else(|| Error::new("Expected data", "Not provided", span))?
-                {
-                    Sexp::Str(s, loc) => (s, Span::closed(source, loc)),
-                    expr => {
-                        return Err(Error::new(
+                let (s, span) = match input.next() {
+                    Some(Sexp::Str(s, loc)) => (s, Span::closed(source, loc)),
+                    Some(expr) => {
+                        errors.push(Error::new(
                             "Invalid data",
                             "Expected string containing hex data",
                             Span::closed(source, *expr.get_loc()),
-                        ))
+                        ));
+                        return None;
+                    }
+                    None => {
+                        errors.push(Error::new("Expected data", "Not provided", span));
+                        return None;
                     }
                 };
 
-                let data =
-                    hex::decode(s.as_ref()).map_err(|err| Error::new("Invalid data", err, span))?;
+                let data = match hex::decode(s.as_ref()) {
+                    Ok(data) => data,
+                    Err(err) => {
+                        errors.push(Error::new("Invalid data", err, span));
+                        return None;
+                    }
+                };
 
                 DataStatement::Raw(Loc::new(Cow::Owned(data), span))
             }
             _ => {
-                return Err(Error::new(
+                errors.push(Error::new(
                     "Invalid data type",
                     "Expected 'num', 'int', 'bin', 'str', 'true', 'false' or 'raw'",
                     span,
-                ))
+                ));
+                return None;
             }
         };
 
-        parse_end(source, input)?;
+        parse_end(source, input, errors)?;
 
-        Ok(value)
+        Some(value)
     }
 }
 
@@ -580,38 +629,47 @@ impl<'a> WriteList<'a> for DataStatement<'a> {
 impl<'a> ParseStatement<'a> for ExternStatement<'a> {
     const NAME: &'static str = "extern";
 
-    fn parse_body(source: Source<'a>, input: &mut Input<'a>, span: Span<'a>) -> Result<'a, Self> {
-        let object = match input
-            .next()
-            .ok_or_else(|| Error::new("Expected object name", "Not provided", span))?
-        {
-            Sexp::Str(s, loc) => Loc::new(s, Span::closed(source, loc)),
-            expr => {
-                return Err(Error::new(
+    fn parse_body(
+        source: Source<'a>,
+        input: &mut Input<'a>,
+        span: Span<'a>,
+        errors: &mut Vec<Error<'a>>,
+    ) -> Option<Self> {
+        let object = match input.next() {
+            Some(Sexp::Str(s, loc)) => Loc::new(s, Span::closed(source, loc)),
+            Some(expr) => {
+                errors.push(Error::new(
                     "Expected object name",
                     "Object name must be a string",
                     Span::closed(source, *expr.get_loc()),
-                ))
+                ));
+                return None;
+            }
+            None => {
+                errors.push(Error::new("Expected object name", "Not provided", span));
+                return None;
             }
         };
 
-        let symbol = match input
-            .next()
-            .ok_or_else(|| Error::new("Expected symbol name", "Not provided", span))?
-        {
-            Sexp::Str(s, loc) => Loc::new(s, Span::closed(source, loc)),
-            expr => {
-                return Err(Error::new(
+        let symbol = match input.next() {
+            Some(Sexp::Str(s, loc)) => Loc::new(s, Span::closed(source, loc)),
+            Some(expr) => {
+                errors.push(Error::new(
                     "Expected symbol name",
                     "Symbol name must be a string",
                     Span::closed(source, *expr.get_loc()),
-                ))
+                ));
+                return None;
+            }
+            None => {
+                errors.push(Error::new("Expected symbol name", "Not provided", span));
+                return None;
             }
         };
 
-        parse_end(source, input)?;
+        parse_end(source, input, errors)?;
 
-        Ok(ExternStatement { object, symbol })
+        Some(ExternStatement { object, symbol })
     }
 }
 
@@ -625,18 +683,25 @@ impl<'a> WriteList<'a> for ExternStatement<'a> {
 impl<'a> ParseStatement<'a> for DefineStatement<'a> {
     const NAME: &'static str = "def";
 
-    fn parse_body(source: Source<'a>, input: &mut Input<'a>, span: Span<'a>) -> Result<'a, Self> {
-        let name = match input
-            .next()
-            .ok_or_else(|| Error::new("Expected variable name", "Not provided", span))?
-        {
-            Sexp::Sym(s, loc) => Loc::new(s, Span::closed(source, loc)),
-            expr => {
-                return Err(Error::new(
+    fn parse_body(
+        source: Source<'a>,
+        input: &mut Input<'a>,
+        span: Span<'a>,
+        errors: &mut Vec<Error<'a>>,
+    ) -> Option<Self> {
+        let name = match input.next() {
+            Some(Sexp::Sym(s, loc)) => Loc::new(s, Span::closed(source, loc)),
+            Some(expr) => {
+                errors.push(Error::new(
                     "Expected variable name",
                     "Invalid",
                     Span::closed(source, *expr.get_loc()),
-                ))
+                ));
+                return None;
+            }
+            None => {
+                errors.push(Error::new("Expected variable name", "Not provided", span));
+                return None;
             }
         };
 
@@ -645,10 +710,10 @@ impl<'a> ParseStatement<'a> for DefineStatement<'a> {
             Some(expr) => {
                 let span = Span::closed(source, *expr.get_loc());
 
-                if let Some(index) = Reference::parse_index(source, &expr)? {
+                if let Some(index) = Reference::parse_index(source, expr, errors)? {
                     Definition::Variable(index)
                 } else {
-                    let statement = Statement::parse(source, input, span)?;
+                    let statement = Statement::parse(source, input, span, errors)?;
 
                     let (statement, span) = statement.into_parts();
 
@@ -659,20 +724,21 @@ impl<'a> ParseStatement<'a> for DefineStatement<'a> {
                             Definition::Extern(Loc::new(statement, span))
                         }
                         _ => {
-                            return Err(Error::new(
+                            errors.push(Error::new(
                                 "Invalid definition",
                                 "Expected data, block or extern",
                                 span,
-                            ))
+                            ));
+                            return None;
                         }
                     }
                 }
             }
         };
 
-        parse_end(source, input)?;
+        parse_end(source, input, errors)?;
 
-        Ok(DefineStatement { name, definition })
+        Some(DefineStatement { name, definition })
     }
 }
 
@@ -704,69 +770,66 @@ impl<'a> Parse<'a> for Instruction<'a> {
         source: Source<'a>,
         input: &mut Input<'a>,
         span: Span<'a>,
-    ) -> Result<'a, Loc<'a, Self>> {
-        let (kind, kind_span) = match input
-            .next()
-            .ok_or_else(|| Error::new("Expected instruction", "Not provided", span))?
-        {
-            Sexp::Sym(s, loc) => (s, Span::closed(source, loc)),
-            expr => {
-                return Err(Error::new(
+        errors: &mut Vec<Error<'a>>,
+    ) -> Option<Loc<'a, Self>> {
+        let (kind, kind_span) = match input.next() {
+            Some(Sexp::Sym(s, loc)) => (s, Span::closed(source, loc)),
+            Some(expr) => {
+                errors.push(Error::new(
                     "Expected instruction",
                     "Invalid",
                     Span::closed(source, *expr.get_loc()),
-                ))
+                ));
+                return None;
+            }
+            None => {
+                errors.push(Error::new("Expected instruction", "Not provided", span));
+                return None;
             }
         };
 
-        let instruction = match kind.as_ref() {
-            "def" => Instruction::Define(DefineStatement::parse_body(source, input, kind_span)?),
-            "enter" => Instruction::Enter(
-                Reference::parse(
-                    source,
-                    input.next().ok_or_else(|| {
-                        Error::new("Expected reference", "Not provided", kind_span)
-                    })?,
-                )?,
-                Vec::<Reference>::parse_list(source, input)?,
-            ),
-            "exit" => Instruction::Exit(Vec::<Reference>::parse_list(source, input)?),
-            "call" => Instruction::Call(
-                Reference::parse(
-                    source,
-                    input.next().ok_or_else(|| {
-                        Error::new("Expected reference", "Not provided", kind_span)
-                    })?,
-                )?,
-                Vec::<Reference>::parse_list(source, input)?,
-            ),
-            "use" => Instruction::Use(Reference::parse(
-                source,
+        macro_rules! reference {
+            () => {
+                match input.next() {
+                    Some(expr) => Reference::parse(source, expr, errors)?,
+                    None => {
+                        errors.push(Error::new("Expected reference", "Not provided", kind_span));
+                        return None;
+                    }
+                };
+            };
+        }
+
+        macro_rules! references {
+            () => {
                 input
-                    .next()
-                    .ok_or_else(|| Error::new("Expected reference", "Not provided", kind_span))?,
+                    .filter_map(|expr| Reference::parse(source, expr, errors))
+                    .collect()
+            };
+        }
+
+        let instruction = match kind.as_ref() {
+            "def" => Instruction::Define(DefineStatement::parse_body(
+                source, input, kind_span, errors,
             )?),
-            "thunk" => Instruction::Thunk(
-                Reference::parse(
-                    source,
-                    input.next().ok_or_else(|| {
-                        Error::new("Expected reference", "Not provided", kind_span)
-                    })?,
-                )?,
-                Vec::<Reference>::parse_list(source, input)?,
-            ),
+            "enter" => Instruction::Enter(reference!(), references!()),
+            "exit" => Instruction::Exit(references!()),
+            "call" => Instruction::Call(reference!(), references!()),
+            "use" => Instruction::Use(reference!()),
+            "thunk" => Instruction::Thunk(reference!(), references!()),
             _ => {
-                return Err(Error::new(
+                errors.push(Error::new(
                     "Invalid instruction",
                     "Expected 'def', 'enter', 'exit', 'call', 'use', or 'follow'",
                     kind_span,
-                ))
+                ));
+                return None;
             }
         };
 
-        parse_end(source, input)?;
+        parse_end(source, input, errors)?;
 
-        Ok(Loc::new(instruction, span))
+        Some(Loc::new(instruction, span))
     }
 }
 
@@ -804,70 +867,91 @@ impl<'a> WriteList<'a> for Instruction<'a> {
 }
 
 impl<'a> Reference<'a> {
-    fn parse(source: Source<'a>, expr: ess::Sexp<'a>) -> Result<'a, Loc<'a, Self>> {
-        if let Some(index) = Reference::parse_index(source, &expr)? {
-            Ok(index.map(Reference::Index))
+    fn parse(
+        source: Source<'a>,
+        expr: ess::Sexp<'a>,
+        errors: &mut Vec<Error<'a>>,
+    ) -> Option<Loc<'a, Self>> {
+        if let Some(index) = Reference::parse_index(source, &expr, errors)? {
+            Some(index.map(Reference::Index))
         } else {
             match expr {
                 Sexp::Sym(s, loc) => {
-                    Ok(Loc::new(Reference::Variable(s), Span::closed(source, loc)))
+                    Some(Loc::new(Reference::Variable(s), Span::closed(source, loc)))
                 }
                 Sexp::List(list, loc) => {
                     let mut input = list.into_iter().peekable();
                     let span = Span::closed(source, loc);
 
-                    let (kind, kind_span) = match input
-                        .next()
-                        .ok_or_else(|| Error::new("Expected inline data", "Not provided", span))?
-                    {
-                        Sexp::Sym(s, loc) => (s, Span::closed(source, loc)),
-                        expr => {
-                            return Err(Error::new(
+                    let (kind, kind_span) = match input.next() {
+                        Some(Sexp::Sym(s, loc)) => (s, Span::closed(source, loc)),
+                        Some(expr) => {
+                            errors.push(Error::new(
                                 "Expected inline data",
                                 "Invalid",
                                 Span::closed(source, *expr.get_loc()),
-                            ))
+                            ));
+                            return None;
+                        }
+                        None => {
+                            errors.push(Error::new("Expected inline data", "Not provided", span));
+                            return None;
                         }
                     };
 
                     let reference = match kind.as_ref() {
                         "const" => Reference::Const(DataStatement::parse_body(
-                            source, &mut input, kind_span,
+                            source, &mut input, kind_span, errors,
                         )?),
                         _ => {
-                            return Err(Error::new(
+                            errors.push(Error::new(
                                 "Invalid inline data",
                                 "Expected 'const'",
                                 kind_span,
-                            ))
+                            ));
+                            return None;
                         }
                     };
 
-                    Ok(Loc::new(reference, span))
+                    Some(Loc::new(reference, span))
                 }
-                expr => Err(Error::new(
-                    "Invalid reference",
-                    "Expected index, variable name or inline data",
-                    Span::closed(source, *expr.get_loc()),
-                )),
+                expr => {
+                    errors.push(Error::new(
+                        "Invalid reference",
+                        "Expected index, variable name or inline data",
+                        Span::closed(source, *expr.get_loc()),
+                    ));
+                    None
+                }
             }
         }
     }
 
-    fn parse_index(source: Source<'a>, expr: &ess::Sexp<'a>) -> Result<'a, Option<Loc<'a, usize>>> {
+    fn parse_index(
+        source: Source<'a>,
+        expr: &ess::Sexp<'a>,
+        errors: &mut Vec<Error<'a>>,
+    ) -> Option<Option<Loc<'a, usize>>> {
         let (s, span) = match expr {
             Sexp::Sym(s, loc) => (s, Span::closed(source, *loc)),
-            _ => return Ok(None),
+            _ => return Some(None),
         };
 
         if !matches!(s.chars().next(), Some('$')) {
-            return Ok(None);
+            return Some(None);
         }
 
-        let index = usize::from_str_radix(&s[1..], 10)
-            .map_err(|err| Error::new("Invalid variable index", err, span))?;
+        let s = &s[1..];
 
-        Ok(Some(Loc::new(index, span)))
+        let index = match s.parse() {
+            Ok(index) => index,
+            Err(err) => {
+                errors.push(Error::new("Invalid variable index", err, span));
+                return None;
+            }
+        };
+
+        Some(Some(Loc::new(index, span)))
     }
 }
 
@@ -884,23 +968,5 @@ impl<'a> Write<'a> for Reference<'a> {
                 Sexp::List(list, Default::default())
             }
         }
-    }
-}
-
-impl<'a> ParseList<'a> for Vec<Reference<'a>> {
-    type Item = Reference<'a>;
-
-    fn parse_list(
-        source: Source<'a>,
-        input: &mut Input<'a>,
-    ) -> Result<'a, Vec<Loc<'a, Self::Item>>> {
-        let mut references = Vec::new();
-
-        for expr in input {
-            let instruction = Reference::parse(source, expr)?;
-            references.push(instruction);
-        }
-
-        Ok(references)
     }
 }

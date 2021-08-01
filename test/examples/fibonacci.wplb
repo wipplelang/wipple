@@ -49,7 +49,7 @@
 
 (block
   (thunk fib)                 ; store a thunk to 'fib' in $0
-  (use (const num 10))        ; store 10 in $1
+  (use (const num 15))        ; store 10 in $1
   (enter $0 $1)               ; enter $0 ('fib') with $1 (10), storing the
                               ;  result in $2
   (call show $2)              ; call 'show' with $2

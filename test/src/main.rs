@@ -1,21 +1,14 @@
+mod resolver;
+
 use bytecode::binary::Index;
 use rand::Rng;
-use std::{fs, path::PathBuf};
-use structopt::StructOpt;
+use resolver::{ClosureResolver, Object};
+use std::{error::Error, io};
 use wipple_bytecode as bytecode;
-use wipple_closure_resolver::{ClosureResolver, Object};
 use wipple_interpreter::{self as interpreter, Context, Interpreter, Reference, Value};
 
-#[derive(StructOpt)]
-struct Args {
-    path: PathBuf,
-}
-
-fn main() {
-    let args = Args::from_args();
-
-    let file: bytecode::BinFile =
-        bincode::deserialize_from(fs::File::open(args.path).unwrap()).unwrap();
+fn main() -> Result<(), Box<dyn Error>> {
+    let file: bytecode::BinFile = bincode::deserialize_from(io::stdin())?;
 
     unsafe fn get<T: Copy>(index: Index, context: &mut Context) -> interpreter::Result<T> {
         let value = context.get(index)?.reference().unwrap();
@@ -105,5 +98,7 @@ fn main() {
             ),
     );
 
-    interpreter.execute(&file).unwrap();
+    interpreter.execute(&file)?;
+
+    Ok(())
 }

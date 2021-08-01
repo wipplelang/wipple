@@ -43,108 +43,131 @@ pub enum Instruction {
 pub type Index = usize;
 
 impl<'a> File<'a> {
-    pub fn compile(mut text_file: TextFile<'a>) -> Result<Self> {
-        let version = match text_file
-            .next()
-            .ok_or_else(|| {
-                Error::new(
-                    "Expected version statement",
-                    "Not provided",
-                    Span::eof(text_file.source),
-                )
-            })??
-            .into_parts()
-        {
-            (Statement::Version(statement), _) => statement.version,
-            (_, span) => {
-                return Err(Error::new(
-                    "Expected version statement",
-                    "Version statements must appear at the top of the file",
+    pub fn compile(text_file: TextFile<'a>) -> (Option<Self>, Vec<Error<'a>>) {
+        let TextFile {
+            source,
+            mut input,
+            mut errors,
+        } = text_file;
+
+        let bin_file = parse_file(source, &mut input, &mut errors);
+
+        (bin_file, errors)
+    }
+}
+
+fn parse_file<'a>(
+    source: Source<'a>,
+    input: &mut Input<'a>,
+    errors: &mut Vec<Error<'a>>,
+) -> Option<File<'a>> {
+    let statement = match input.next() {
+        Some(expr) => Statement::parse_expr(source, expr, errors),
+        None => {
+            errors.push(Error::new(
+                "Expected version statement",
+                "Not provided",
+                Span::eof(source),
+            ));
+            return None;
+        }
+    };
+
+    let version = match statement?.into_parts() {
+        (Statement::Version(statement), _) => statement.version,
+        (_, span) => {
+            errors.push(Error::new(
+                "Expected version statement",
+                "Version statements must appear at the top of the file",
+                span,
+            ));
+            return None;
+        }
+    };
+
+    let mut bin_file = File::new(version.into_inner());
+    let mut defines = HashMap::new();
+    let mut blocks_to_resolve = Vec::new();
+
+    for expr in input {
+        let (statement, span) = Statement::parse_expr(source, expr, errors)?.into_parts();
+
+        match statement {
+            Statement::Version(_) => {
+                errors.push(Error::new(
+                    "Unexpected version statement",
+                    "Version statements are only allowed at the top of the file",
                     span,
-                ))
+                ));
+                return None;
             }
-        };
+            Statement::Block(statement) => {
+                blocks_to_resolve.push(statement);
+            }
+            Statement::Data(statement) => {
+                let data = parse_data(statement);
+                bin_file.globals.push(data);
+            }
+            Statement::Extern(statement) => {
+                let r#extern = parse_extern(statement);
+                bin_file.externs.push(r#extern);
+            }
+            Statement::Define(statement) => {
+                let name = statement.name.into_inner();
 
-        let mut bin_file = File::new(version.into_inner());
-        let mut defines = HashMap::new();
-        let mut blocks_to_resolve = Vec::new();
-
-        for statement in text_file {
-            let statement = statement?;
-
-            let (statement, span) = statement.into_parts();
-
-            match statement {
-                Statement::Version(_) => {
-                    return Err(Error::new(
-                        "Unexpected version statement",
-                        "Version statements are only allowed at the top of the file",
-                        span,
-                    ))
+                macro_rules! define {
+                    ($value:expr, $section:expr) => {{
+                        let index = $section.len();
+                        $section.push($value);
+                        defines.insert(name, index);
+                    }};
                 }
-                Statement::Block(statement) => {
-                    blocks_to_resolve.push(statement);
-                }
-                Statement::Data(statement) => {
-                    let data = parse_data(statement);
-                    bin_file.globals.push(data);
-                }
-                Statement::Extern(statement) => {
-                    let r#extern = parse_extern(statement);
-                    bin_file.externs.push(r#extern);
-                }
-                Statement::Define(statement) => {
-                    let name = statement.name.into_inner();
 
-                    macro_rules! define {
-                        ($value:expr, $section:expr) => {{
-                            let index = $section.len();
-                            $section.push($value);
-                            defines.insert(name, index);
-                        }};
-                    }
-
-                    match statement.definition {
-                        Definition::Auto => return Err(Error::new(
+                match statement.definition {
+                    Definition::Auto => {
+                        errors.push(Error::new(
                             "Unexpected variable definition",
                             "Automatic variable definitions are only allowed at the top of a block",
                             span,
-                        )),
-                        Definition::Variable(index) => {
-                            defines.insert(name, index.into_inner());
-                        }
-                        Definition::Data(statement) => {
-                            let data = parse_data(statement.into_inner());
-                            define!(data, bin_file.globals)
-                        }
-                        Definition::Block(statement) => {
-                            let index = blocks_to_resolve.len();
-                            defines.insert(name, index);
-                            blocks_to_resolve.push(statement.into_inner());
-                        }
-                        Definition::Extern(statement) => {
-                            let r#extern = parse_extern(statement.into_inner());
-                            define!(r#extern, bin_file.externs)
-                        }
-                    };
-                }
+                        ));
+                        return None;
+                    }
+                    Definition::Variable(index) => {
+                        defines.insert(name, index.into_inner());
+                    }
+                    Definition::Data(statement) => {
+                        let data = parse_data(statement.into_inner());
+                        define!(data, bin_file.globals)
+                    }
+                    Definition::Block(statement) => {
+                        let index = blocks_to_resolve.len();
+                        defines.insert(name, index);
+                        blocks_to_resolve.push(statement.into_inner());
+                    }
+                    Definition::Extern(statement) => {
+                        let r#extern = parse_extern(statement.into_inner());
+                        define!(r#extern, bin_file.externs)
+                    }
+                };
             }
         }
+    }
 
-        for statement in blocks_to_resolve {
-            let block = parse_block(statement, &mut defines, &mut bin_file)?;
+    for statement in blocks_to_resolve {
+        if let Some(block) = parse_block(statement, &mut defines, &mut bin_file, errors) {
             bin_file.blocks.push(block);
         }
-
-        Ok(bin_file)
     }
+
+    Some(bin_file)
 }
 
 fn parse_block<'a>(
     statement: BlockStatement<'a>,
     defines: &mut HashMap<Cow<'a, str>, Index>,
     bin_file: &mut File<'a>,
-) -> Result<'a, Block> {
+    errors: &mut Vec<Error<'a>>,
+) -> Option<Block> {
     let mut locals = HashMap::new();
     let mut can_parse_define = true;
 
@@ -153,21 +176,27 @@ fn parse_block<'a>(
             let (reference, span) = $reference.into_parts();
 
             match reference {
-                Reference::Index(index) => Ok(index),
-                Reference::Variable(variable) => locals
-                    .get(&variable)
-                    .or_else(|| defines.get(&variable))
-                    .copied()
-                    .ok_or_else(|| {
-                        Error::new(
-                            format!("Variable '{}' not found", variable),
-                            "No such variable",
-                            span,
-                        )
-                    }),
+                Reference::Index(index) => Some(index),
+                Reference::Variable(variable) => {
+                    match locals
+                        .get(&variable)
+                        .or_else(|| defines.get(&variable))
+                        .copied()
+                    {
+                        Some(index) => Some(index),
+                        None => {
+                            errors.push(Error::new(
+                                format!("Variable '{}' not found", variable),
+                                "No such variable",
+                                span,
+                            ));
+                            None
+                        }
+                    }
+                }
                 Reference::Const(data) => {
                     bin_file.globals.push(parse_data(data));
-                    Ok(bin_file.globals.len() - 1)
+                    Some(bin_file.globals.len() - 1)
                 }
             }
         }};
@@ -177,8 +206,8 @@ fn parse_block<'a>(
         ($references:expr) => {
             $references
                 .into_iter()
-                .map(|r| resolve!(r))
-                .collect::<Result<_>>()
+                .filter_map(|r| resolve!(r))
+                .collect()
         };
     }
 
@@ -190,21 +219,23 @@ fn parse_block<'a>(
         match instruction {
             text::Instruction::Define(statement) => {
                 if !can_parse_define {
-                    return Err(Error::new(
+                    errors.push(Error::new(
                         "Unexpected define statement",
                         "Define statement may only be used at beginning of block",
                         span,
                     ));
+                    return None;
                 }
 
                 let index = match statement.definition {
                     Definition::Auto => locals.len(),
                     _ => {
-                        return Err(Error::new(
+                        errors.push(Error::new(
                             "Unexpected definition",
                             "Only auto definitions are allowed within blocks",
                             span,
-                        ))
+                        ));
+                        return None;
                     }
                 };
 
@@ -216,15 +247,15 @@ fn parse_block<'a>(
                 let instruction = match instruction {
                     text::Instruction::Define(_) => unreachable!(),
                     text::Instruction::Enter(block, inputs) => {
-                        Instruction::Enter(resolve!(block)?, resolve_all!(inputs)?)
+                        Instruction::Enter(resolve!(block)?, resolve_all!(inputs))
                     }
-                    text::Instruction::Exit(outputs) => Instruction::Exit(resolve_all!(outputs)?),
+                    text::Instruction::Exit(outputs) => Instruction::Exit(resolve_all!(outputs)),
                     text::Instruction::Call(r#extern, inputs) => {
-                        Instruction::Call(resolve!(r#extern)?, resolve_all!(inputs)?)
+                        Instruction::Call(resolve!(r#extern)?, resolve_all!(inputs))
                     }
                     text::Instruction::Use(global) => Instruction::Use(resolve!(global)?),
                     text::Instruction::Thunk(block, inputs) => {
-                        Instruction::Thunk(resolve!(block)?, resolve_all!(inputs)?)
+                        Instruction::Thunk(resolve!(block)?, resolve_all!(inputs))
                     }
                 };
 
@@ -233,7 +264,7 @@ fn parse_block<'a>(
         }
     }
 
-    Ok(block)
+    Some(block)
 }
 
 fn parse_data(statement: DataStatement) -> Cow<[u8]> {

@@ -67,5 +67,3 @@ impl fmt::Display for Error<'_> {
 }
 
 impl std::error::Error for Error<'_> {}
-
-pub type Result<'a, T> = core::result::Result<T, Error<'a>>;

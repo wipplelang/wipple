@@ -1,8 +1,0 @@
-[package]
-name = "wipple_closure_resolver"
-version = "0.0.0"
-edition = "2018"
-
-[dependencies]
-wipple_bytecode = { path = "../../bytecode" }
-wipple_interpreter = { path = "../../interpreter" }
