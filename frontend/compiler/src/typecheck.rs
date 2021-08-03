@@ -14,6 +14,7 @@ pub enum Type {
 
 pub struct Id(usize); // TODO
 
+#[derive(Default)]
 pub struct RelationGraph {} // TODO
 
 impl Type {

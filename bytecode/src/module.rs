@@ -2,7 +2,7 @@ use crate::*;
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct File<'a> {
     pub constants: Vec<constant::Constant<'a>>,
     pub blocks: Vec<Block<'a>>,

@@ -1,4 +1,5 @@
 use crate::*;
+use codemap_diagnostic::Diagnostic;
 use std::{borrow::Cow, collections::HashMap, rc::Rc};
 use wipple_bytecode::{constant::Constant, module};
 
@@ -18,11 +19,14 @@ pub enum Compiled<'a> {
     Empty,
 }
 
+#[derive(Default)]
 pub struct Context<'a> {
-    pub bytecode: module::File<'a>,
+    pub file: module::File<'a>,
     pub scope: Scope<'a>,
+    pub diagnostics: Vec<Diagnostic>,
 }
 
+#[derive(Default)]
 pub struct Scope<'a> {
     pub parent: Option<Rc<Scope<'a>>>,
     pub builtins: HashMap<Cow<'a, str>, Builtin>,

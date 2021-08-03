@@ -4,4 +4,6 @@ version = "0.0.0"
 edition = "2018"
 
 [dependencies]
+codemap-diagnostic = "0.1"
+wipple_parser = { path = "../parser" }
 wipple_bytecode = { path = "../../bytecode" }

@@ -4,37 +4,37 @@ use std::ops::Range;
 
 pub type Result<T> = std::result::Result<T, Error>;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Error {
     pub message: String,
-    pub location: Option<SourceLocation>,
+    pub location: Option<Location>,
 }
 
 impl Error {
     fn new(message: &str, offset: Option<&Range<usize>>, lc: &LineColLookup) -> Self {
         Error {
             message: String::from(message),
-            location: offset.map(|offset| SourceLocation::new(offset, lc)),
+            location: offset.map(|offset| Location::new(offset, lc)),
         }
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Ast {
     pub node: AstNode,
-    pub location: SourceLocation,
+    pub location: Location,
 }
 
 impl Ast {
     fn new(node: AstNode, offset: &Range<usize>, lc: &LineColLookup) -> Self {
         Ast {
             node,
-            location: SourceLocation::new(offset, lc),
+            location: Location::new(offset, lc),
         }
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum AstNode {
     Block(Vec<AstNodeStatement>),
     List(Vec<Ast>),
@@ -45,14 +45,14 @@ pub enum AstNode {
     Escaped(Box<Ast>),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct AstNodeStatement {
     pub items: Vec<Ast>,
-    pub location: SourceLocation,
+    pub location: Location,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub struct SourceLocation {
+pub struct Location {
     pub line: usize,
     pub column: usize,
 }
@@ -148,7 +148,7 @@ pub fn parse_inline_program(tokens: &mut Tokens, lc: &LineColLookup) -> Result<A
 }
 
 fn parse_statements(tokens: &mut Tokens, lc: &LineColLookup) -> Result<Vec<AstNodeStatement>> {
-    let mut values: Vec<(Vec<Ast>, Option<SourceLocation>)> = vec![(Vec::new(), None)];
+    let mut values: Vec<(Vec<Ast>, Option<Location>)> = vec![(Vec::new(), None)];
 
     loop {
         if parse_newline(tokens)?.is_some() {
@@ -270,9 +270,9 @@ fn parse_newlines(tokens: &mut Tokens) -> Result<()> {
     Ok(())
 }
 
-impl SourceLocation {
+impl Location {
     pub fn new(offset: &Range<usize>, lc: &LineColLookup) -> Self {
         let (line, column) = lc.get(offset.start);
-        SourceLocation { line, column }
+        Location { line, column }
     }
 }
