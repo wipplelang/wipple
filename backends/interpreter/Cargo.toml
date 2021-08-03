@@ -4,6 +4,4 @@ version = "0.0.0"
 edition = "2018"
 
 [dependencies]
-bincode = "1"
-rand = "0.8"
 wipple_compiler = { path = "../../frontend/compiler" }
