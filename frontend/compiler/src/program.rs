@@ -3,11 +3,11 @@ use codemap_diagnostic::Diagnostic;
 use std::{borrow::Cow, collections::HashMap, rc::Rc};
 use wipple_bytecode::{constant::Constant, module};
 
-pub trait Expression {
+pub(crate) trait Expression {
     fn compile<'a>(&'a self, context: &mut Context<'a>) -> Option<Compiled<'a>>;
 }
 
-pub enum Compiled<'a> {
+pub(crate) enum Compiled<'a> {
     Type(typecheck::Type),
     // TODO: Type variable
     Attribute(Attribute),
@@ -20,14 +20,16 @@ pub enum Compiled<'a> {
 }
 
 #[derive(Default)]
-pub struct Context<'a> {
+pub(crate) struct Context<'a> {
     pub file: module::File<'a>,
     pub scope: Scope<'a>,
+    pub codemap: CodeMap,
     pub diagnostics: Vec<Diagnostic>,
+    pub success: bool,
 }
 
 #[derive(Default)]
-pub struct Scope<'a> {
+pub(crate) struct Scope<'a> {
     pub parent: Option<Rc<Scope<'a>>>,
     pub builtins: HashMap<Cow<'a, str>, Builtin>,
     // TODO: Type variables
@@ -40,26 +42,26 @@ pub struct Scope<'a> {
     pub relations: typecheck::RelationGraph,
 }
 
-pub type Builtin =
+pub(crate) type Builtin =
     for<'a> fn(input: &Compiled<'a>, context: &mut Context<'a>) -> Option<Compiled<'a>>;
 
-pub struct Attribute {
+pub(crate) struct Attribute {
     // TODO
 }
 
-pub struct Template {
+pub(crate) struct Template {
     // TODO
 }
 
-pub struct Operator {
+pub(crate) struct Operator {
     // TODO
 }
 
-pub struct Precedence {
+pub(crate) struct Precedence {
     // TODO
 }
 
-pub enum Variable<'a> {
+pub(crate) enum Variable<'a> {
     Constant(Constant<'a>),
     Alias(Cow<'a, str>, Rc<Scope<'a>>),
 }

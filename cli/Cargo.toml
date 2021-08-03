@@ -1,0 +1,13 @@
+[package]
+name = "wipple_cli"
+version = "0.0.0"
+edition = "2018"
+
+[dependencies]
+codemap = "0.1"
+codemap-diagnostic = "0.1"
+structopt = "0.3"
+wipple_bytecode = { path = "../bytecode" }
+wipple_compiler = { path = "../frontend/compiler" }
+wipple_interpreter = { path = "../backends/interpreter" }
+wipple_parser = { path = "../frontend/parser" }

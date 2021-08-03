@@ -2,6 +2,7 @@
 members = [
     "backends/interpreter",
     "bytecode",
+    "cli",
     "frontend/compiler",
     "frontend/parser",
 ]

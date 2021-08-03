@@ -1,8 +1,9 @@
 use wipple_bytecode::constant::Constant;
 
-pub enum Type {
+pub(crate) enum Type {
     Number,
     Text,
+    Import,
     List(Id),
     Tuple(Vec<Id>),
     Function(Id, Id),
@@ -12,16 +13,17 @@ pub enum Type {
     // TODO
 }
 
-pub struct Id(usize); // TODO
+pub(crate) struct Id(usize); // TODO
 
 #[derive(Default)]
-pub struct RelationGraph {} // TODO
+pub(crate) struct RelationGraph {} // TODO
 
 impl Type {
     pub fn of_constant(constant: Constant) -> Self {
         match constant {
             Constant::Number(_) => Type::Number,
             Constant::Text(_) => Type::Text,
+            Constant::Import(_) => Type::Import,
             // TODO
         }
     }

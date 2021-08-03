@@ -1,24 +1,68 @@
 use crate::*;
 
-pub trait Input {
+pub trait Input<'a> {
     type Error: std::error::Error;
 
-    fn get_file<'a>(&self, index: usize) -> Result<module::File<'a>, Self::Error>;
+    fn get_file(&mut self, index: usize) -> Result<module::File<'a>, Self::Error>;
 }
 
-pub enum Error<I: Input> {
+#[derive(Debug)]
+pub enum Error<'a, I: Input<'a>> {
     Input(I::Error),
     InvalidReference,
     NoEntrypoint,
     MultipleEntrypoints { first: usize, second: usize },
 }
 
-pub fn link<'a, I: Input>(input: I) -> Result<object::File<'a>, Error<I>> {
-    fn resolve_file_reference<I: Input>(
+impl<'a, I: Input<'a>> std::fmt::Display for Error<'a, I> {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Error::Input(err) => write!(f, "Input error: {}", err),
+            Error::InvalidReference => f.write_str("Invalid reference"),
+            Error::NoEntrypoint => f.write_str("No entrypoint"),
+            Error::MultipleEntrypoints { first, second } => {
+                write!(f, "Multiple entrypoints: {} and {}", first, second)
+            }
+        }
+    }
+}
+
+impl<'a, I: Input<'a> + std::fmt::Debug> std::error::Error for Error<'a, I> {}
+
+#[derive(Debug)]
+pub struct SingleInput<'a> {
+    file: Option<module::File<'a>>,
+}
+
+impl<'a> Input<'a> for SingleInput<'a> {
+    type Error = SingleInputError;
+
+    fn get_file(&mut self, _: usize) -> Result<module::File<'a>, Self::Error> {
+        Ok(mem::take(&mut self.file).unwrap())
+    }
+}
+
+#[derive(Debug)]
+pub struct SingleInputError;
+
+impl std::fmt::Display for SingleInputError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        f.write_str("Standalone files may not have dependencies")
+    }
+}
+
+impl std::error::Error for SingleInputError {}
+
+pub fn link_single(module: module::File) -> Result<object::File, Error<SingleInput>> {
+    link(SingleInput { file: Some(module) })
+}
+
+pub fn link<'a, I: Input<'a>>(input: I) -> Result<object::File<'a>, Error<'a, I>> {
+    fn resolve_file_reference<'a, I: Input<'a>>(
         reference: &module::FileReference,
         file: LinkedFile,
-        ctx: &RefCell<Context<I>>,
-    ) -> Result<LinkedFile, Error<I>> {
+        ctx: &RefCell<Context<'a, I>>,
+    ) -> Result<LinkedFile, Error<'a, I>> {
         match reference {
             module::FileReference::Current => Ok(file),
             module::FileReference::Dependency(index) => {
@@ -29,11 +73,11 @@ pub fn link<'a, I: Input>(input: I) -> Result<object::File<'a>, Error<I>> {
         }
     }
 
-    fn resolve_block_reference<'a, I: Input>(
+    fn resolve_block_reference<'a, I: Input<'a>>(
         reference: &module::BlockReference<'a>,
         file: LinkedFile,
         ctx: &RefCell<Context<'a, I>>,
-    ) -> Result<object::BlockReference<'a>, Error<I>> {
+    ) -> Result<object::BlockReference<'a>, Error<'a, I>> {
         match reference {
             module::BlockReference::External { namespace, name } => {
                 Ok(object::BlockReference::External {
@@ -51,11 +95,11 @@ pub fn link<'a, I: Input>(input: I) -> Result<object::File<'a>, Error<I>> {
         }
     }
 
-    fn resolve_value_reference<I: Input>(
+    fn resolve_value_reference<'a, I: Input<'a>>(
         reference: &module::ValueReference,
         file: LinkedFile,
-        ctx: &RefCell<Context<I>>,
-    ) -> Result<object::ValueReference, Error<I>> {
+        ctx: &RefCell<Context<'a, I>>,
+    ) -> Result<object::ValueReference, Error<'a, I>> {
         match reference {
             module::ValueReference::Constant(file_ref, index) => {
                 let file = resolve_file_reference(file_ref, file, ctx)?;
@@ -68,10 +112,10 @@ pub fn link<'a, I: Input>(input: I) -> Result<object::File<'a>, Error<I>> {
         }
     }
 
-    fn link_file<I: Input>(
+    fn link_file<'a, I: Input<'a>>(
         index: usize,
-        ctx: &RefCell<Context<I>>,
-    ) -> Result<LinkedFile, Error<I>> {
+        ctx: &RefCell<Context<'a, I>>,
+    ) -> Result<LinkedFile, Error<'a, I>> {
         if let Some(file) = ctx.borrow().cache.get(&index).copied() {
             return Ok(file);
         }
@@ -81,7 +125,11 @@ pub fn link<'a, I: Input>(input: I) -> Result<object::File<'a>, Error<I>> {
             block_offset: ctx.borrow().blocks.len(),
         };
 
-        let mut module = ctx.borrow().input.get_file(index).map_err(Error::Input)?;
+        let mut module = ctx
+            .borrow_mut()
+            .input
+            .get_file(index)
+            .map_err(Error::Input)?;
 
         let mut blocks = module
             .blocks
@@ -140,7 +188,7 @@ pub fn link<'a, I: Input>(input: I) -> Result<object::File<'a>, Error<I>> {
     })
 }
 
-struct Context<'a, I: Input> {
+struct Context<'a, I: Input<'a>> {
     input: I,
     constants: Vec<constant::Constant<'a>>,
     blocks: Vec<object::Block<'a>>,
@@ -154,7 +202,7 @@ struct LinkedFile {
     block_offset: usize,
 }
 
-impl<I: Input> Context<'_, I> {
+impl<'a, I: Input<'a>> Context<'a, I> {
     fn new(input: I) -> Self {
         Context {
             input,

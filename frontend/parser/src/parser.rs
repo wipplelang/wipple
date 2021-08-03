@@ -10,6 +10,15 @@ pub struct Error {
     pub location: Option<Location>,
 }
 
+impl std::fmt::Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        // TODO: Better format string
+        write!(f, "{:?}", self)
+    }
+}
+
+impl std::error::Error for Error {}
+
 impl Error {
     fn new(message: &str, offset: Option<&Range<usize>>, lc: &LineColLookup) -> Self {
         Error {
