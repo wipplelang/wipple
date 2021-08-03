@@ -5,6 +5,7 @@ pub type Value<'a> = Constant<'a>;
 
 #[derive(Default)]
 pub struct Interpreter {
+    pub builtins: Namespace,
     pub namespaces: HashMap<String, Namespace>,
     pub trace: bool,
 }
@@ -19,8 +20,13 @@ impl Interpreter {
         self
     }
 
-    pub fn namespace(mut self, name: impl ToString, object: Namespace) -> Self {
-        self.namespaces.insert(name.to_string(), object);
+    pub fn builtins(mut self, namespace: Namespace) -> Self {
+        self.builtins = namespace;
+        self
+    }
+
+    pub fn namespace(mut self, name: impl ToString, namespace: Namespace) -> Self {
+        self.namespaces.insert(name.to_string(), namespace);
         self
     }
 }
@@ -117,7 +123,7 @@ pub enum Trace<'a> {
         instruction: usize,
     },
     Extern {
-        namespace: Cow<'a, str>,
+        namespace: Option<Cow<'a, str>>,
         name: Cow<'a, str>,
     },
 }
@@ -205,13 +211,17 @@ impl Interpreter {
                             });
                         }
 
-                        let func = self
-                            .namespaces
-                            .get(namespace.as_ref())
-                            .and_then(|object| object.items.get(name.as_ref()))
-                            .ok_or_else(|| {
-                                Error::new("Invalid external reference", mem::take(&mut ctx.trace))
-                            })?;
+                        let namespace = match namespace {
+                            Some(n) => self.namespaces.get(n.as_ref()).ok_or_else(|| {
+                                Error::new("Invalid namespace", mem::take(&mut ctx.trace))
+                            })?,
+                            None => &self.builtins,
+                        };
+
+                        let func = namespace
+                            .items
+                            .get(name.as_ref())
+                            .ok_or_else(|| Error::new("Invalid name", mem::take(&mut ctx.trace)))?;
 
                         let inputs = ctx.copy(inputs, file);
                         let mut outputs = func(inputs, ctx, self)?;

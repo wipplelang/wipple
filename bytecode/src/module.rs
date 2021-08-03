@@ -16,7 +16,7 @@ pub type Instruction<'a> = crate::Instruction<BlockReference<'a>, ValueReference
 pub enum BlockReference<'a> {
     File(FileReference, usize),
     External {
-        namespace: Cow<'a, str>,
+        namespace: Option<Cow<'a, str>>,
         name: Cow<'a, str>,
     },
 }
