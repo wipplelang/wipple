@@ -1,5 +1,5 @@
 use std::{borrow::Cow, collections::HashMap, mem};
-use wipple_linker::{constant::Constant, object::*};
+use wipple_bytecode::{constant::Constant, object::*};
 
 pub type Value<'a> = Constant<'a>;
 

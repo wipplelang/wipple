@@ -1,6 +1,6 @@
 use crate::*;
 use std::{borrow::Cow, collections::HashMap, rc::Rc};
-use wipple_linker::{bytecode, constant::Constant};
+use wipple_bytecode::{constant::Constant, module};
 
 pub trait Expression {
     fn compile<'a>(&'a self, context: &mut Context<'a>) -> Option<Compiled<'a>>;
@@ -14,12 +14,12 @@ pub enum Compiled<'a> {
     Operator(Operator),
     Precedence(Precedence),
     Variable(Variable<'a>),
-    Block(bytecode::Block<'a>),
+    Block(module::Block<'a>),
     Empty,
 }
 
 pub struct Context<'a> {
-    pub bytecode: bytecode::File<'a>,
+    pub bytecode: module::File<'a>,
     pub scope: Scope<'a>,
 }
 

@@ -1,4 +1,4 @@
-use wipple_linker::constant::Constant;
+use wipple_bytecode::constant::Constant;
 
 pub enum Type {
     Number,

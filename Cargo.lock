@@ -148,24 +148,24 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b4ae116fef2b7fea257ed6440d3cfcff7f190865f170cdad00bb6465bf18ecba"
 
 [[package]]
+name = "wipple_bytecode"
+version = "0.0.0"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "wipple_compiler"
 version = "0.0.0"
 dependencies = [
- "wipple_linker",
+ "wipple_bytecode",
 ]
 
 [[package]]
 name = "wipple_interpreter"
 version = "0.0.0"
 dependencies = [
- "wipple_linker",
-]
-
-[[package]]
-name = "wipple_linker"
-version = "0.0.0"
-dependencies = [
- "serde",
+ "wipple_bytecode",
 ]
 
 [[package]]
