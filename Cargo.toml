@@ -1,6 +1,6 @@
 [workspace]
 members = [
     "backends/interpreter",
-    "frontend/bytecode",
     "frontend/compiler",
+    "frontend/parser",
 ]

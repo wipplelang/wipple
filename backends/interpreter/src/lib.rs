@@ -1,35 +1,69 @@
-pub mod closure_resolver;
+use std::{borrow::Cow, collections::HashMap, mem};
+use wipple_compiler::{object::*, value::Value};
 
-use std::{fmt, mem::ManuallyDrop};
-use wipple_bytecode::{self as bytecode, binary::Index};
-
-pub struct Interpreter<R: ExternResolver> {
-    pub resolver: R,
+#[derive(Default)]
+pub struct Interpreter {
+    pub namespaces: HashMap<String, Namespace>,
+    pub trace: bool,
 }
 
-impl<R: ExternResolver> Interpreter<R> {
-    pub fn new(resolver: R) -> Self {
-        Interpreter { resolver }
+impl Interpreter {
+    pub fn new() -> Self {
+        Default::default()
+    }
+
+    pub fn trace(mut self, trace: bool) -> Self {
+        self.trace = trace;
+        self
+    }
+
+    pub fn namespace(mut self, name: impl ToString, object: Namespace) -> Self {
+        self.namespaces.insert(name.to_string(), object);
+        self
+    }
+}
+
+pub type ExternFn = Box<
+    dyn for<'a> Fn(Vec<Value<'a>>, &mut Context<'a>, &Interpreter) -> Result<'a, Vec<Value<'a>>>,
+>;
+
+#[derive(Default)]
+pub struct Namespace {
+    pub items: HashMap<String, ExternFn>,
+}
+
+impl Namespace {
+    pub fn new() -> Self {
+        Default::default()
+    }
+
+    pub fn with(
+        mut self,
+        name: impl ToString,
+        func: impl for<'a> Fn(Vec<Value<'a>>, &mut Context<'a>, &Interpreter) -> Result<'a, Vec<Value<'a>>>
+            + 'static,
+    ) -> Self {
+        self.items.insert(name.to_string(), Box::new(func));
+        self
     }
 }
 
 pub struct Context<'a> {
-    pub file: &'a bytecode::BinFile<'a>,
-    pub stack: Stack,
-    pub trace: Vec<Trace>,
+    pub stack: Stack<'a>,
+    pub trace: Vec<Trace<'a>>,
 }
 
 #[derive(Default)]
-pub struct Stack {
-    pub frames: Vec<StackFrame>,
+pub struct Stack<'a> {
+    pub frames: Vec<StackFrame<'a>>,
 }
 
-impl Stack {
+impl<'a> Stack<'a> {
     pub fn new() -> Self {
         Stack::default()
     }
 
-    pub fn push(&mut self, frame: StackFrame) {
+    pub fn push(&mut self, frame: StackFrame<'a>) {
         self.frames.push(frame)
     }
 
@@ -37,301 +71,171 @@ impl Stack {
         self.frames.pop().expect("Stack is empty");
     }
 
-    pub fn current(&self) -> &StackFrame {
+    pub fn current(&self) -> &StackFrame<'a> {
         self.frames.last().expect("Stack is empty")
     }
 
-    pub fn current_mut(&mut self) -> &mut StackFrame {
+    pub fn current_mut(&mut self) -> &mut StackFrame<'a> {
         self.frames.last_mut().expect("Stack is empty")
     }
 }
 
-pub type StackFrame = Vec<Value>;
+pub type StackFrame<'a> = Vec<Value<'a>>;
 
 #[derive(Debug, Clone)]
-pub enum Value {
-    Thunk(Thunk),
-    Reference(Reference),
-}
-
-impl Value {
-    pub fn thunk(&self) -> Option<&Thunk> {
-        match self {
-            Value::Thunk(thunk) => Some(thunk),
-            _ => None,
-        }
-    }
-
-    pub fn reference(&self) -> Option<&Reference> {
-        match self {
-            Value::Reference(reference) => Some(reference),
-            _ => None,
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct Thunk {
-    pub index: usize,
-    pub inputs: Vec<Value>,
-}
-
-#[derive(Debug)]
-pub struct Reference {
-    references: *mut usize,
-    ptr: *const (),
-}
-
-impl Reference {
-    pub fn from_data(data: Vec<u8>) -> Self {
-        let data = ManuallyDrop::new(data);
-        let ptr = data.as_ptr() as *const ();
-        unsafe { Reference::new(ptr) }
-    }
-
-    /// Create a managed value from a pointer.
-    ///
-    /// # Safety
-    /// This function takes ownership of the memory behind the pointer, so the
-    /// pointer must be valid.
-    pub unsafe fn new(ptr: *const ()) -> Self {
-        Reference {
-            references: Box::leak(Box::new(1)),
-            ptr,
-        }
-    }
-
-    pub fn as_ptr(&self) -> *const () {
-        self.ptr
-    }
-}
-
-impl Clone for Reference {
-    fn clone(&self) -> Self {
-        unsafe {
-            *self.references += 1;
-
-            Reference {
-                references: self.references,
-                ptr: self.ptr,
-            }
-        }
-    }
-}
-
-impl Drop for Reference {
-    fn drop(&mut self) {
-        unsafe {
-            *self.references -= 1;
-
-            if *self.references == 0 {
-                drop(Box::from_raw(self.ptr as *mut ()))
-            }
-        }
-    }
-}
-
-pub type ExternFn = Box<dyn Fn(&[Index], &mut Context) -> Result<()>>;
-
-pub trait ExternResolver {
-    fn resolve(&self, r#extern: &bytecode::binary::Extern) -> Option<&ExternFn>;
-}
-
-#[derive(Debug, Clone)]
-pub struct Error {
+pub struct Error<'a> {
     pub message: String,
-    pub trace: Vec<Trace>,
+    pub trace: Vec<Trace<'a>>,
 }
 
-impl Error {
-    pub fn new(message: impl ToString, trace: &[Trace]) -> Self {
+impl<'a> Error<'a> {
+    pub fn new(message: impl ToString, trace: Vec<Trace<'a>>) -> Self {
         Error {
             message: message.to_string(),
-            trace: trace.to_vec(),
+            trace,
         }
     }
 }
 
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+impl std::fmt::Display for Error<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         // TODO: Custom format
         write!(f, "{:#?}", self)
     }
 }
 
-impl std::error::Error for Error {}
+impl std::error::Error for Error<'_> {}
 
-pub type Result<T> = core::result::Result<T, Error>;
+pub type Result<'a, T> = core::result::Result<T, Error<'a>>;
 
 #[derive(Debug, Clone)]
-pub enum Trace {
-    Block { index: Index, instruction: usize },
-    Extern(Index),
+pub enum Trace<'a> {
+    Block {
+        reference: BlockReference<'a>,
+        instruction: usize,
+    },
+    Extern {
+        namespace: Cow<'a, str>,
+        name: Cow<'a, str>,
+    },
 }
 
-impl Trace {
-    fn instruction_mut(&mut self) -> Option<&mut usize> {
-        match self {
-            Trace::Block { instruction, .. } => Some(instruction),
-            Trace::Extern(_) => None,
-        }
-    }
-}
-
-impl<R: ExternResolver> Interpreter<R> {
-    pub fn execute(&self, file: &bytecode::BinFile) -> Result<()> {
-        let index = file.blocks.len() - 1;
-
-        let block = file
-            .blocks
-            .last()
-            .ok_or_else(|| Error::new("Program must contain as least one block", &[]))?;
-
-        let mut context = Context {
-            file,
+impl Interpreter {
+    pub fn execute<'a>(&self, file: File<'a>) -> Result<'a, ()> {
+        let mut ctx = Context {
             stack: Stack::new(),
             trace: Vec::new(),
         };
 
-        let outputs = self.execute_block(index, block, Vec::new(), &mut context)?;
+        let block = &file.blocks[file.entrypoint];
 
-        if !outputs.is_empty() {
-            return Err(Error::new(
-                "Top-level block must not return any output",
-                &[],
-            ));
-        }
+        self.execute_block(
+            &BlockReference::Block(file.entrypoint),
+            block,
+            Vec::new(),
+            &file,
+            &mut ctx,
+        )?;
 
         Ok(())
     }
 
-    #[allow(clippy::ptr_arg)]
-    fn execute_block<'a>(
+    pub fn execute_block<'a>(
         &self,
-        index: Index,
-        block: &'a bytecode::binary::Block,
-        inputs: Vec<Value>,
-        context: &mut Context<'a>,
-    ) -> Result<Vec<Value>> {
-        context.stack.push(inputs);
+        reference: &BlockReference<'a>,
+        block: &[Instruction<'a>],
+        inputs: Vec<Value<'a>>,
+        file: &File<'a>,
+        ctx: &mut Context<'a>,
+    ) -> Result<'a, Vec<Value<'a>>> {
+        ctx.stack.push(inputs);
 
-        context.trace.push(Trace::Block {
-            index,
-            instruction: 0,
-        });
+        if self.trace {
+            ctx.trace.push(Trace::Block {
+                reference: reference.clone(),
+                instruction: 0,
+            });
+        }
 
         let outputs = 'outer: loop {
             for instruction in block {
-                if let Some(outputs) = self.execute_instruction(instruction, context)? {
+                if let Some(outputs) = self.execute_instruction(instruction, file, ctx)? {
                     break 'outer outputs;
                 }
 
-                *context.trace.last_mut().unwrap().instruction_mut().unwrap() += 1;
+                match ctx.trace.last_mut().unwrap() {
+                    Trace::Block { instruction, .. } => *instruction += 1,
+                    _ => unreachable!(),
+                }
             }
         };
 
-        context.stack.pop();
-        context.trace.pop();
+        ctx.stack.pop();
+        ctx.trace.pop();
 
         Ok(outputs)
     }
 
-    fn execute_instruction<'a>(
+    pub fn execute_instruction<'a>(
         &self,
-        instruction: &bytecode::binary::Instruction,
-        context: &mut Context<'a>,
-    ) -> Result<Option<Vec<Value>>> {
-        use bytecode::binary::Instruction;
-
+        instruction: &Instruction<'a>,
+        file: &File<'a>,
+        ctx: &mut Context<'a>,
+    ) -> Result<'a, Option<Vec<Value<'a>>>> {
         match instruction {
-            Instruction::Enter(index, additional_inputs) => {
-                let value = context.get(*index)?;
+            Instruction::Enter(reference, inputs) => {
+                match reference {
+                    BlockReference::Block(index) => {
+                        let block = &file.blocks[*index];
 
-                let thunk = match value {
-                    Value::Thunk(thunk) => thunk,
-                    _ => return Err(Error::new("Expected thunk", &context.trace)),
-                };
+                        let inputs = ctx.copy(inputs, file);
 
-                let block = &context.file.blocks[thunk.index];
+                        let mut outputs =
+                            self.execute_block(reference, block, inputs, file, ctx)?;
 
-                let mut inputs = thunk.inputs.clone();
-                inputs.append(&mut context.copy(additional_inputs)?);
+                        ctx.stack.current_mut().append(&mut outputs);
+                    }
+                    BlockReference::External { namespace, name } => {
+                        if self.trace {
+                            ctx.trace.push(Trace::Extern {
+                                namespace: namespace.clone(),
+                                name: name.clone(),
+                            });
+                        }
 
-                let mut outputs = self.execute_block(thunk.index, block, inputs, context)?;
-                context.stack.current_mut().append(&mut outputs);
-            }
-            Instruction::Exit(outputs) => {
-                let outputs = context.copy(outputs)?;
-                return Ok(Some(outputs));
-            }
-            Instruction::Call(index, inputs) => {
-                context.trace.push(Trace::Extern(*index));
+                        let func = self
+                            .namespaces
+                            .get(namespace.as_ref())
+                            .and_then(|object| object.items.get(name.as_ref()))
+                            .ok_or_else(|| {
+                                Error::new("Invalid external reference", mem::take(&mut ctx.trace))
+                            })?;
 
-                let r#extern = context.file.externs.get(*index).ok_or_else(|| {
-                    Error::new(
-                        format!("No external reference exists at index {}", index),
-                        &context.trace,
-                    )
-                })?;
-
-                let func = self.resolver.resolve(r#extern).ok_or_else(|| {
-                    Error::new("Failed to resolve external reference", &context.trace)
-                })?;
-
-                func(inputs, context)?;
-
-                context.trace.pop();
-            }
-            Instruction::Use(index) => {
-                let data = context.file.globals.get(*index).ok_or_else(|| {
-                    Error::new(
-                        format!("No global data exists at index {}", index),
-                        &context.trace,
-                    )
-                })?;
-
-                let value = Value::Reference(Reference::from_data(data.to_vec()));
-                context.stack.current_mut().push(value);
-            }
-            Instruction::Thunk(index, inputs) => {
-                if context.file.blocks.get(*index).is_none() {
-                    return Err(Error::new(
-                        format!("No block exists at index {}", index),
-                        &context.trace,
-                    ));
+                        let inputs = ctx.copy(inputs, file);
+                        let mut outputs = func(inputs, ctx, self)?;
+                        ctx.stack.current_mut().append(&mut outputs);
+                    }
                 }
 
-                let inputs = context.copy(inputs)?;
-
-                let value = Value::Thunk(Thunk {
-                    index: *index,
-                    inputs,
-                });
-
-                context.stack.current_mut().push(value);
+                Ok(None)
+            }
+            Instruction::Exit(outputs) => {
+                let outputs = ctx.copy(outputs, file);
+                Ok(Some(outputs))
             }
         }
-
-        Ok(None)
     }
 }
 
 impl<'a> Context<'a> {
-    pub fn get(&self, index: usize) -> Result<&Value> {
-        self.stack
-            .current()
-            .get(index)
-            .ok_or_else(|| Error::new(format!("No data exists at index {}", index), &self.trace))
+    fn resolve(&self, reference: &ValueReference, file: &File<'a>) -> Value<'a> {
+        match reference {
+            ValueReference::Variable(index) => self.stack.current()[*index].clone(),
+            ValueReference::Constant(index) => file.constants[*index].clone(),
+        }
     }
 
-    fn copy(&self, indices: &[Index]) -> Result<Vec<Value>> {
-        let mut values = Vec::with_capacity(indices.len());
-
-        for index in indices {
-            let value = self.get(*index)?;
-            values.push(value.clone());
-        }
-
-        Ok(values)
+    fn copy(&self, references: &[ValueReference], file: &File<'a>) -> Vec<Value<'a>> {
+        references.iter().map(|r| self.resolve(r, file)).collect()
     }
 }
