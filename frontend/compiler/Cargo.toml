@@ -4,5 +4,4 @@ version = "0.0.0"
 edition = "2018"
 
 [dependencies]
-serde = { version = "1", features = ["derive"] }
-structopt = "0.3"
+wipple_linker = { path = "../linker" }

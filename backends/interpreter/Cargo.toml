@@ -4,4 +4,4 @@ version = "0.0.0"
 edition = "2018"
 
 [dependencies]
-wipple_compiler = { path = "../../frontend/compiler" }
+wipple_linker = { path = "../../frontend/linker" }

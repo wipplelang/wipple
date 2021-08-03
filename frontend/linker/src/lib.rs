@@ -1,4 +1,7 @@
-use crate::*;
+pub mod bytecode;
+pub mod constant;
+pub mod object;
+
 use serde::{Deserialize, Serialize};
 use std::{cell::RefCell, collections::HashMap, mem};
 
@@ -154,7 +157,7 @@ pub fn link<'a, I: Input>(input: I) -> Result<object::File<'a>, Error<I>> {
 
 struct Context<'a, I: Input> {
     input: I,
-    constants: Vec<value::Value<'a>>,
+    constants: Vec<constant::Constant<'a>>,
     blocks: Vec<object::Block<'a>>,
     entrypoint: Option<usize>,
     cache: HashMap<usize, LinkedFile>,

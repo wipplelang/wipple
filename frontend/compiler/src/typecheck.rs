@@ -1,6 +1,5 @@
-use serde::{Deserialize, Serialize};
+use wipple_linker::constant::Constant;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Type {
     Number,
     Text,
@@ -13,12 +12,19 @@ pub enum Type {
     // TODO
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct Id(usize); // TODO
 
 pub struct RelationGraph {} // TODO
 
 impl Type {
+    pub fn of_constant(constant: Constant) -> Self {
+        match constant {
+            Constant::Number(_) => Type::Number,
+            Constant::Text(_) => Type::Text,
+            // TODO
+        }
+    }
+
     pub fn is_assignable_to(&self, other: &Self, graph: &RelationGraph) -> bool {
         todo!()
     }

@@ -1,5 +1,7 @@
 use std::{borrow::Cow, collections::HashMap, mem};
-use wipple_compiler::{object::*, value::Value};
+use wipple_linker::{constant::Constant, object::*};
+
+pub type Value<'a> = Constant<'a>;
 
 #[derive(Default)]
 pub struct Interpreter {

@@ -2,5 +2,6 @@
 members = [
     "backends/interpreter",
     "frontend/compiler",
+    "frontend/linker",
     "frontend/parser",
 ]

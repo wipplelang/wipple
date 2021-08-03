@@ -1,5 +1,6 @@
 use crate::*;
 use std::{borrow::Cow, collections::HashMap, rc::Rc};
+use wipple_linker::{bytecode, constant::Constant};
 
 pub trait Expression {
     fn compile<'a>(&'a self, context: &mut Context<'a>) -> Option<Compiled<'a>>;
@@ -55,6 +56,6 @@ pub struct Precedence {
 }
 
 pub enum Variable<'a> {
-    Constant(value::Value<'a>),
+    Constant(Constant<'a>),
     Alias(Cow<'a, str>, Rc<Scope<'a>>),
 }
