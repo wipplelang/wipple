@@ -1,10 +1,12 @@
 //! Log diagnostic information for a source file.
 
-use crate::parser;
 use codemap::{CodeMap, File};
 use codemap_diagnostic::{Diagnostic, Level, SpanLabel, SpanStyle};
 use lazy_static::lazy_static;
-use std::sync::{Arc, Mutex};
+use std::{
+    ops::Range,
+    sync::{Arc, Mutex},
+};
 
 lazy_static! {
     static ref CODEMAP: Mutex<CodeMap> = Default::default();
@@ -26,7 +28,7 @@ impl Diagnostics {
     }
 
     /// Add a diagnostic item to the managed file.
-    pub fn add(&mut self, location: parser::Location, level: Level, msg: impl ToString) {
+    pub fn add(&mut self, location: Range<usize>, level: Level, msg: impl ToString) {
         let span = SpanLabel {
             span: self
                 .file

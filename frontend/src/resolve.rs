@@ -2,7 +2,7 @@
 
 use crate::{diagnostics::Diagnostics, parser};
 use codemap_diagnostic::Level;
-use std::{cell::RefCell, collections::HashMap, rc::Rc};
+use std::{cell::RefCell, collections::HashMap, ops::Range, rc::Rc};
 
 id! {
     /// A unique identifier for a variable.
@@ -23,7 +23,7 @@ macro_rules! expression_type {
             pub id: ExpressionId,
 
             /// The expression's location in the source code.
-            pub location: parser::Location,
+            pub location: Range<usize>,
 
             /// The kind of expression.
             pub kind: $kind,
@@ -269,7 +269,7 @@ fn resolve_expr<'a>(
 
                             PartialExpression {
                                 id: first.id,
-                                location: first.location,
+                                location: first.location.clone(),
                                 kind: PartialExpressionKind::Unresolved(
                                     UnresolvedExpressionKind::List(statement),
                                 ),
