@@ -283,8 +283,6 @@ dependencies = [
 name = "wipple_cli"
 version = "0.0.0"
 dependencies = [
- "codemap",
- "codemap-diagnostic",
  "structopt",
  "wipple_bytecode",
  "wipple_compiler",

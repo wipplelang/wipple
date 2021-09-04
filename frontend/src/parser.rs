@@ -25,3 +25,7 @@ pub struct Expression {
     /// The kind of expression.
     pub kind: ExpressionKind,
 }
+
+enum Token {
+    // TODO
+}

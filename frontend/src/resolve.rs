@@ -2,7 +2,7 @@
 
 use crate::{diagnostics::Diagnostics, parser};
 use codemap_diagnostic::Level;
-use std::{cell::RefCell, collections::HashMap, mem, rc::Rc};
+use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 id! {
     /// A unique identifier for a variable.
@@ -138,10 +138,17 @@ impl From<Expression> for PartialExpression {
 }
 
 /// Container for variables and their definitions.
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct Scope<'a> {
     parent: Option<&'a Self>,
-    variables: RefCell<HashMap<&'static str, Rc<RefCell<Option<PartialExpression>>>>>,
+    variables: RefCell<HashMap<&'static str, Rc<RefCell<Variable>>>>,
+}
+
+#[derive(Debug, Clone)]
+enum Variable {
+    Value(PartialExpression),
+    Resolving,
+    Unresolvable,
 }
 
 impl<'a> Scope<'a> {
@@ -155,7 +162,7 @@ impl<'a> Scope<'a> {
 }
 
 impl Scope<'_> {
-    fn variable(&self, name: &'static str) -> Option<Rc<RefCell<Option<PartialExpression>>>> {
+    fn variable(&self, name: &'static str) -> Option<Rc<RefCell<Variable>>> {
         self.variables
             .borrow_mut()
             .get(name)
@@ -170,40 +177,24 @@ pub fn resolve<'a>(
     expr: UnresolvedExpression,
     scope: &'a Scope<'a>,
     diagnostics: &mut Diagnostics,
-) -> Option<Vec<Expression>> {
-    let mut queue = vec![PartialExpression::from(expr)];
+) -> Option<Expression> {
+    let mut unresolved = PartialExpression::from(expr);
 
-    let mut resolved = Vec::new();
+    loop {
+        let expr = resolve_expr(unresolved, scope, diagnostics)?;
 
-    while !queue.is_empty() {
-        let previous = queue.iter().map(|e| e.id).collect::<Vec<_>>();
-
-        for expr in mem::take(&mut queue) {
-            let expr = resolve_expr(expr, scope, diagnostics);
-
-            match expr.try_into_fully_resolved() {
-                Ok(expr) => resolved.push(expr),
-                Err(expr) => queue.push(expr),
-            }
-        }
-
-        let new = queue.iter().map(|e| e.id).collect::<Vec<_>>();
-
-        // Ensure that some progress has been made in resolution; otherwise
-        // the queued expressions are unresolvable
-        if previous == new {
-            return None;
+        match expr.try_into_fully_resolved() {
+            Ok(expr) => return Some(expr),
+            Err(expr) => unresolved = expr,
         }
     }
-
-    Some(resolved)
 }
 
 fn resolve_expr<'a>(
     expr: PartialExpression,
     scope: &'a Scope<'a>,
     diagnostics: &mut Diagnostics,
-) -> PartialExpression {
+) -> Option<PartialExpression> {
     match expr.kind {
         PartialExpressionKind::Unresolved(kind) => {
             let expr = UnresolvedExpression {
@@ -223,41 +214,45 @@ fn resolve_expr<'a>(
                                 "Cannot find variable",
                             );
 
-                            return expr.into();
+                            return None;
                         }
                     };
 
-                    let expr = match variable.take() {
-                        Some(expr) => expr,
-                        None => {
+                    let new = match variable.replace(Variable::Resolving) {
+                        Variable::Value(expr) => Variable::Value(expr),
+                        Variable::Resolving => {
                             diagnostics.add(
                                 expr.clone().location,
                                 Level::Error,
                                 "Variable refers to itself",
                             );
 
-                            expr.into()
+                            Variable::Unresolvable
                         }
+                        Variable::Unresolvable => Variable::Unresolvable,
                     };
 
-                    *variable.borrow_mut() = Some(expr.clone());
+                    *variable.borrow_mut() = new.clone();
 
-                    expr
+                    match new {
+                        Variable::Value(expr) => Some(expr),
+                        Variable::Resolving | Variable::Unresolvable => None,
+                    }
                 }
-                UnresolvedExpressionKind::Number(n) => PartialExpression {
+                UnresolvedExpressionKind::Number(n) => Some(PartialExpression {
                     id: expr.id,
                     location: expr.location,
                     kind: PartialExpressionKind::FullyResolved(ExpressionKind::Constant(
                         parser::ExpressionKind::Number(n),
                     )),
-                },
-                UnresolvedExpressionKind::Text(t) => PartialExpression {
+                }),
+                UnresolvedExpressionKind::Text(t) => Some(PartialExpression {
                     id: expr.id,
                     location: expr.location,
                     kind: PartialExpressionKind::FullyResolved(ExpressionKind::Constant(
                         parser::ExpressionKind::Text(t),
                     )),
-                },
+                }),
                 UnresolvedExpressionKind::List(items) => {
                     let mut result = Vec::with_capacity(items.len());
                     for expr in items {
@@ -282,13 +277,13 @@ fn resolve_expr<'a>(
                         })
                         .collect();
 
-                    PartialExpression {
+                    Some(PartialExpression {
                         id: expr.id,
                         location: expr.location,
                         kind: PartialExpressionKind::PartiallyResolved(
                             InnerPartialExpressionKind::Block(statements),
                         ),
-                    }
+                    })
                 }
             }
         }
@@ -301,17 +296,17 @@ fn resolve_expr<'a>(
                 let statements = statements
                     .into_iter()
                     .map(|expr| {
-                        let expr = resolve_expr(expr, &scope, diagnostics);
+                        let expr = resolve_expr(expr, &scope, diagnostics)?;
 
                         if !matches!(expr.kind, PartialExpressionKind::FullyResolved(_)) {
                             is_fully_resolved = false;
                         }
 
-                        expr
+                        Some(expr)
                     })
-                    .collect::<Vec<_>>();
+                    .collect::<Option<Vec<_>>>()?;
 
-                PartialExpression {
+                Some(PartialExpression {
                     id: expr.id,
                     location: expr.location,
                     kind: if is_fully_resolved {
@@ -326,9 +321,9 @@ fn resolve_expr<'a>(
                             statements,
                         ))
                     },
-                }
+                })
             }
         },
-        PartialExpressionKind::FullyResolved(_) => expr,
+        PartialExpressionKind::FullyResolved(_) => Some(expr),
     }
 }
