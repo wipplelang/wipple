@@ -3,6 +3,7 @@ mod block;
 mod builtin;
 mod constant;
 mod data_block;
+mod declare;
 mod external_reference;
 mod initialize;
 mod operator;
@@ -14,6 +15,7 @@ pub use block::*;
 pub use builtin::*;
 pub use constant::*;
 pub use data_block::*;
+pub use declare::*;
 pub use external_reference::*;
 pub use initialize::*;
 pub use operator::*;
@@ -33,6 +35,7 @@ pub struct LoweredExpr {
 pub enum LoweredExprKind {
     Unit(LoweredUnitExpr),
     Constant(LoweredConstantExpr),
+    Declare(LoweredDeclareExpr),
     Initialize(LoweredInitializeExpr),
     Block(LoweredBlockExpr),
     DataBlock(LoweredDataBlockExpr),

@@ -95,7 +95,8 @@ fn main() -> anyhow::Result<()> {
             diagnostics.add_file(path, Arc::clone(&code));
 
             let expr = frontend::parser::parse(path, &code, &mut diagnostics)
-                .map(|file| frontend::lowering::lower(file, &mut diagnostics));
+                .map(|file| frontend::lowering::lower(file, &mut diagnostics))
+                .and_then(|expr| frontend::analysis::analyze(expr, &mut diagnostics));
 
             let (codemap, diagnostics) = diagnostics.into_console_friendly();
 

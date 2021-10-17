@@ -1,17 +1,16 @@
 use crate::lowering::*;
-use internment::Intern;
 use serde::Serialize;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct LoweredInitializeExpr {
-    pub name: Intern<String>,
+    pub variable: Variable,
     pub value: Box<LoweredExpr>,
 }
 
 impl LoweredInitializeExpr {
-    pub fn new(name: Intern<String>, value: LoweredExpr) -> Self {
+    pub fn new(variable: Variable, value: LoweredExpr) -> Self {
         LoweredInitializeExpr {
-            name,
+            variable,
             value: Box::new(value),
         }
     }

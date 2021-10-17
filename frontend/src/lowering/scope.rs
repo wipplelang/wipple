@@ -32,21 +32,6 @@ impl<'a> Scope<'a> {
         self.variables
             .get(&name_expr.value)
             .map(|f| f(name_expr.span, diagnostics))
-            .or_else(|| {
-                self.parent.and_then(|p| {
-                    p.resolve(name_expr, diagnostics)
-                        .map(|expr| match &expr.kind {
-                            LoweredExprKind::RuntimeVariable(runtime_variable_expr) => {
-                                LoweredExpr::new(
-                                    expr.span,
-                                    LoweredExprKind::RuntimeVariable(
-                                        runtime_variable_expr.clone().in_ancestor_scope(),
-                                    ),
-                                )
-                            }
-                            _ => expr,
-                        })
-                })
-            })
+            .or_else(|| self.parent.and_then(|p| p.resolve(name_expr, diagnostics)))
     }
 }

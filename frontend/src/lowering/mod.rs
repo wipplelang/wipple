@@ -3,12 +3,14 @@ mod builtin;
 mod expr;
 mod lowered;
 mod scope;
+mod variable;
 
 pub use binding::*;
 pub use builtin::*;
 pub use expr::*;
 pub use lowered::*;
 pub use scope::*;
+pub use variable::*;
 
 use crate::{diagnostics, parser};
 

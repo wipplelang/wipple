@@ -14,7 +14,7 @@ impl Binding {
     ) -> LoweredExpr {
         match self {
             Binding::Name(name) => {
-                let raw_name = name.value;
+                let variable = Variable::new(name.span, name.value);
 
                 let expr_is_runtime_value = !matches!(
                     expr.kind,
@@ -28,21 +28,21 @@ impl Binding {
                         LoweredExpr::new(
                             span,
                             LoweredExprKind::RuntimeVariable(
-                                LoweredRuntimeVariableExpr::in_current_scope(raw_name),
+                                LoweredRuntimeVariableExpr::new(variable),
                             ),
                         )
                     });
 
                     LoweredExpr::new(
                         assignment_span,
-                        LoweredExprKind::Initialize(LoweredInitializeExpr::new(raw_name, expr)),
+                        LoweredExprKind::Initialize(LoweredInitializeExpr::new(variable, expr)),
                     )
                 } else {
                     scope.insert(name.value, move |_, _| expr.clone());
 
                     LoweredExpr::new(
                         assignment_span,
-                        LoweredExprKind::Unit(LoweredUnitExpr::new()),
+                        LoweredExprKind::Declare(LoweredDeclareExpr::new(variable)),
                     )
                 }
             }

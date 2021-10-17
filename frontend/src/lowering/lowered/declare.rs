@@ -2,12 +2,12 @@ use crate::lowering::*;
 use serde::Serialize;
 
 #[derive(Debug, Clone, Serialize)]
-pub struct LoweredRuntimeVariableExpr {
+pub struct LoweredDeclareExpr {
     pub variable: Variable,
 }
 
-impl LoweredRuntimeVariableExpr {
+impl LoweredDeclareExpr {
     pub fn new(variable: Variable) -> Self {
-        LoweredRuntimeVariableExpr { variable }
+        LoweredDeclareExpr { variable }
     }
 }
