@@ -1,10 +1,5 @@
-//! Compile Wipple programs into bytecode.
-
-#![warn(missing_docs)]
-
-#[macro_use]
-mod utils;
+#![allow(clippy::new_without_default, clippy::type_complexity)]
 
 pub mod diagnostics;
+pub mod lowering;
 pub mod parser;
-pub mod resolve;

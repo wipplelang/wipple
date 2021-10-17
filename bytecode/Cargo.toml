@@ -1,7 +1,0 @@
-[package]
-name = "wipple_bytecode"
-version = "0.0.0"
-edition = "2018"
-
-[dependencies]
-serde = { version = "1", features = ["derive"] }

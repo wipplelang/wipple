@@ -1,11 +1,16 @@
 [package]
-name = "wipple_compiler"
+name = "wipple_frontend"
 version = "0.0.0"
 edition = "2018"
 
 [dependencies]
-codemap = "0.1"
+codemap = "=0.1.2"
 codemap-diagnostic = "0.1"
+enum_dispatch = "0.3"
+internment = { version = "0.5", features = ["serde"] }
 lazy_static = "1"
 logos = "0.12"
+regex = "1"
+rust_decimal = "1"
 rustc_lexer = "0.1"
+serde = { version = "1", features = ["derive", "rc"] }
