@@ -1,4 +1,4 @@
-use internment::Intern;
+use wipple_parser::Intern;
 use serde::Serialize;
 
 #[derive(Debug, Clone, Serialize)]

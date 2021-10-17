@@ -1,9 +1,6 @@
-use crate::{
-    diagnostics::{Diagnostic, DiagnosticLevel, Diagnostics, Note},
-    lowering::*,
-    parser::Span,
-};
-use internment::Intern;
+use crate::lowering::*;
+use wipple_diagnostics::*;
+use wipple_parser::Intern;
 
 #[derive(Debug)]
 pub struct NameExpr {

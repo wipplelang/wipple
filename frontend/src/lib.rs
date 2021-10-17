@@ -4,6 +4,4 @@
 mod id;
 
 pub mod analysis;
-pub mod diagnostics;
 pub mod lowering;
-pub mod parser;

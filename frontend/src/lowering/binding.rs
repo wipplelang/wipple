@@ -1,4 +1,5 @@
-use crate::{lowering::*, parser::Span};
+use crate::lowering::*;
+use wipple_diagnostics::*;
 
 pub enum Binding {
     Name(NameExpr),
@@ -27,9 +28,9 @@ impl Binding {
                     scope.insert(name.value, move |span, _| {
                         LoweredExpr::new(
                             span,
-                            LoweredExprKind::RuntimeVariable(
-                                LoweredRuntimeVariableExpr::new(variable),
-                            ),
+                            LoweredExprKind::RuntimeVariable(LoweredRuntimeVariableExpr::new(
+                                variable,
+                            )),
                         )
                     });
 

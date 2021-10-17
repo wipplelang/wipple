@@ -22,8 +22,8 @@ pub use operator::*;
 pub use runtime_variable::*;
 pub use unit::*;
 
-use crate::parser::Span;
 use serde::Serialize;
+use wipple_diagnostics::*;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct LoweredExpr {

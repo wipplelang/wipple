@@ -562,7 +562,19 @@ dependencies = [
  "serde_json",
  "structopt",
  "strum",
+ "wipple_diagnostics",
  "wipple_frontend",
+ "wipple_parser",
+]
+
+[[package]]
+name = "wipple_diagnostics"
+version = "0.0.0"
+dependencies = [
+ "codemap",
+ "codemap-diagnostic",
+ "internment",
+ "serde",
 ]
 
 [[package]]
@@ -572,6 +584,16 @@ dependencies = [
  "codemap",
  "codemap-diagnostic",
  "enum_dispatch",
+ "lazy_static",
+ "serde",
+ "wipple_diagnostics",
+ "wipple_parser",
+]
+
+[[package]]
+name = "wipple_parser"
+version = "0.0.0"
+dependencies = [
  "internment",
  "lazy_static",
  "logos",
@@ -579,4 +601,5 @@ dependencies = [
  "rust_decimal",
  "rustc_lexer",
  "serde",
+ "wipple_diagnostics",
 ]

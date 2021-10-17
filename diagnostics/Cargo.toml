@@ -1,13 +1,10 @@
 [package]
-name = "wipple_frontend"
+name = "wipple_diagnostics"
 version = "0.0.0"
 edition = "2018"
 
 [dependencies]
 codemap = "=0.1.2"
 codemap-diagnostic = "0.1"
-enum_dispatch = "0.3"
-lazy_static = "1"
+internment = { version = "0.5", features = ["serde"] }
 serde = { version = "1", features = ["derive", "rc"] }
-wipple_diagnostics = { path = "../diagnostics" }
-wipple_parser = { path = "../parser" }

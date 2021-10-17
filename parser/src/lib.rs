@@ -1,89 +1,59 @@
-use crate::diagnostics::{Diagnostic, DiagnosticLevel, Diagnostics, Note};
-use internment::Intern;
 use lazy_static::lazy_static;
 use logos::{Lexer, Logos, SpannedIter};
 use regex::Regex;
 use rust_decimal::prelude::*;
 use serde::Serialize;
 use std::{fmt, iter::Peekable, ops::Range, path::PathBuf};
+use wipple_diagnostics::*;
 
-#[derive(Default, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
-pub struct Span {
-    pub file: Intern<PathBuf>,
-    pub start: usize,
-    pub end: usize,
-}
-
-impl Span {
-    pub fn new(file: Intern<PathBuf>, range: Range<usize>) -> Self {
-        Span {
-            file,
-            start: range.start,
-            end: range.end,
-        }
-    }
-
-    pub fn with_start(self, start: usize) -> Self {
-        Span { start, ..self }
-    }
-
-    pub fn with_end(self, end: usize) -> Self {
-        Span { end, ..self }
-    }
-
-    pub fn offset(self, range: usize) -> Self {
-        Span {
-            start: self.start + range,
-            end: self.end + range,
-            ..self
-        }
-    }
-}
-
-impl fmt::Debug for Span {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "{} @ {}..{}",
-            self.file.to_string_lossy(),
-            self.start,
-            self.end
-        )
-    }
-}
+pub use internment::Intern;
+pub use rust_decimal as decimal;
 
 #[derive(Serialize)]
 pub struct File<'src> {
     pub span: Span,
     pub shebang: Option<&'src str>,
-    pub statements: Vec<Expr>,
+    pub statements: Vec<Statement<'src>>,
 }
 
 #[derive(Serialize)]
-pub struct Expr {
+pub struct Expr<'src> {
     pub span: Span,
-    pub kind: ExprKind,
+    pub kind: ExprKind<'src>,
 }
 
 #[derive(Serialize)]
-pub enum ExprKind {
+pub enum ExprKind<'src> {
     Name(Intern<String>),
     Text(Intern<String>),
     Number(Intern<Decimal>),
-    Quote(Box<Expr>),
-    List(Vec<Expr>),
-    Attribute(Vec<Expr>),
-    Block(Vec<Expr>),
+    Quote(Box<Expr<'src>>),
+    List(Vec<ListLine<'src>>),
+    Attribute(Vec<ListLine<'src>>),
+    Block(Vec<Statement<'src>>),
 }
 
-impl Expr {
-    pub fn new(span: Span, kind: ExprKind) -> Self {
+#[derive(Serialize)]
+pub struct Statement<'src> {
+    pub leading_lines: u32,
+    pub indent: u32,
+    pub lines: Vec<ListLine<'src>>,
+}
+
+#[derive(Serialize)]
+pub struct ListLine<'src> {
+    pub exprs: Vec<Expr<'src>>,
+    pub comment: Option<&'src str>,
+}
+
+impl<'src> Expr<'src> {
+    pub fn new(span: Span, kind: ExprKind<'src>) -> Self {
         Expr { span, kind }
     }
 }
 
-impl From<File<'_>> for Expr {
-    fn from(file: File) -> Self {
+impl<'src> From<File<'src>> for Expr<'src> {
+    fn from(file: File<'src>) -> Self {
         Expr::new(file.span, ExprKind::Block(file.statements))
     }
 }
@@ -145,8 +115,8 @@ enum Token<'src> {
     #[regex(r#" +"#, logos::skip)]
     Space,
 
-    #[regex(r#"--.*"#, logos::skip, priority = 2)]
-    Comment,
+    #[regex(r#"--.*"#, |lex| &lex.slice()[2..], priority = 2)]
+    Comment(&'src str),
 
     #[regex(r#"[^\n\t \(\)\[\]\{\}'"]+"#, |lex| lex.slice())]
     Name(&'src str),
@@ -173,7 +143,8 @@ impl<'src> fmt::Display for Token<'src> {
             Token::RightBrace => write!(f, "'}}'"),
             Token::LineBreak => write!(f, "line break"),
             Token::Indent(_) => write!(f, "indent"),
-            Token::Space | Token::Comment => unreachable!(),
+            Token::Space => unreachable!(),
+            Token::Comment(_) => write!(f, "comment"),
             Token::Text(text) => write!(f, "'\"{}\"'", text),
             Token::Number(number) => write!(f, "'{}'", number),
             Token::Name(name) => write!(f, "'{}'", name),
@@ -198,7 +169,7 @@ enum ParseError {
 }
 
 impl<'src> Parser<'_, 'src> {
-    fn parse_file(&mut self) -> Option<Vec<Expr>> {
+    fn parse_file(&mut self) -> Option<Vec<Statement<'src>>> {
         let (statements, _) = self.parse_statements(None)?;
 
         if let (span, Some(token)) = self.consume() {
@@ -217,13 +188,18 @@ impl<'src> Parser<'_, 'src> {
         Some(statements)
     }
 
-    fn parse_statements(&mut self, end_token: Option<Token>) -> Option<(Vec<Expr>, Span)> {
-        let mut statements = Vec::<(u32, Vec<Expr>)>::new();
+    fn parse_statements(
+        &mut self,
+        end_token: Option<Token>,
+    ) -> Option<(Vec<Statement<'src>>, Span)> {
+        let mut statements = Vec::<Statement>::new();
         let mut error = false;
 
         let end_span = loop {
             // Consume line breaks
+            let mut leading_lines = 0;
             while let (_, Some(Token::LineBreak)) = self.peek() {
+                leading_lines += 1;
                 self.consume();
             }
 
@@ -236,30 +212,35 @@ impl<'src> Parser<'_, 'src> {
             };
 
             // Consume expressions
-            let (mut exprs, parsed_end_token, end_span) = (|| {
+            let (exprs, parsed_end_token, end_span, comment) = (|| {
                 let mut exprs = Vec::new();
+                let mut comment = None;
                 loop {
                     let (span, token) = self.peek();
 
                     match (token, end_token) {
                         (Some(Token::LineBreak), _) => {
                             self.consume();
-                            return (exprs, token, None);
+                            return (exprs, token, None, comment);
+                        }
+                        (Some(Token::Comment(c)), _) => {
+                            self.consume();
+                            comment = Some(c)
                         }
                         (None, _) => {
                             self.consume();
-                            return (exprs, token, Some(span));
+                            return (exprs, token, Some(span), comment);
                         }
                         (Some(token), Some(end_token)) if token == end_token => {
                             self.consume();
-                            return (exprs, Some(token), Some(span));
+                            return (exprs, Some(token), Some(span), comment);
                         }
                         _ => {
                             if let Some(expr) = self.parse_expr() {
                                 exprs.push(expr);
                             } else {
                                 error = true;
-                                return (exprs, token, None);
+                                return (exprs, token, None, comment);
                             }
                         }
                     }
@@ -283,41 +264,32 @@ impl<'src> Parser<'_, 'src> {
 
             let last_indent = statements
                 .last()
-                .map(|(indent, ..)| *indent)
+                .map(|statement| statement.indent)
                 .unwrap_or(indent);
 
             if indent <= last_indent {
-                statements.push((indent, Vec::new()));
+                statements.push(Statement {
+                    leading_lines,
+                    indent,
+                    lines: Vec::new(),
+                })
             }
 
-            statements.last_mut().unwrap().1.append(&mut exprs);
+            statements
+                .last_mut()
+                .unwrap()
+                .lines
+                .push(ListLine { exprs, comment });
 
             if let Some(end_span) = end_span {
                 break end_span;
             }
         };
 
-        (!error).then(|| {
-            let statements = statements
-                .into_iter()
-                .filter_map(|(_, statement)| {
-                    (!statement.is_empty()).then(|| {
-                        let span = statement
-                            .first()
-                            .unwrap()
-                            .span
-                            .with_end(statement.last().unwrap().span.end);
-
-                        Expr::new(span, ExprKind::List(statement))
-                    })
-                })
-                .collect();
-
-            (statements, end_span)
-        })
+        (!error).then(|| (statements, end_span))
     }
 
-    fn parse_expr(&mut self) -> Option<Expr> {
+    fn parse_expr(&mut self) -> Option<Expr<'src>> {
         macro_rules! parse_each {
             ($parse:ident $(, $rest:ident)* $(,)?) => {
                 match self.$parse() {
@@ -368,7 +340,7 @@ impl<'src> Parser<'_, 'src> {
         )
     }
 
-    fn try_parse_name(&mut self) -> Result<Expr, ParseError> {
+    fn try_parse_name(&mut self) -> Result<Expr<'src>, ParseError> {
         let (span, token) = self.peek();
 
         match token {
@@ -382,7 +354,7 @@ impl<'src> Parser<'_, 'src> {
         }
     }
 
-    fn try_parse_text(&mut self) -> Result<Expr, ParseError> {
+    fn try_parse_text(&mut self) -> Result<Expr<'src>, ParseError> {
         let (span, token) = self.peek();
 
         match token {
@@ -419,7 +391,7 @@ impl<'src> Parser<'_, 'src> {
         }
     }
 
-    fn try_parse_number(&mut self) -> Result<Expr, ParseError> {
+    fn try_parse_number(&mut self) -> Result<Expr<'src>, ParseError> {
         let (span, token) = self.peek();
 
         match token {
@@ -444,7 +416,7 @@ impl<'src> Parser<'_, 'src> {
         }
     }
 
-    fn try_parse_quote(&mut self) -> Result<Expr, ParseError> {
+    fn try_parse_quote(&mut self) -> Result<Expr<'src>, ParseError> {
         let (span, token) = self.peek();
 
         match token {
@@ -464,7 +436,7 @@ impl<'src> Parser<'_, 'src> {
         }
     }
 
-    fn try_parse_list(&mut self) -> Result<Expr, ParseError> {
+    fn try_parse_list(&mut self) -> Result<Expr<'src>, ParseError> {
         let (span, token) = self.peek();
 
         match token {
@@ -485,7 +457,7 @@ impl<'src> Parser<'_, 'src> {
         }
     }
 
-    fn try_parse_attribute(&mut self) -> Result<Expr, ParseError> {
+    fn try_parse_attribute(&mut self) -> Result<Expr<'src>, ParseError> {
         let (span, token) = self.peek();
 
         match token {
@@ -506,8 +478,8 @@ impl<'src> Parser<'_, 'src> {
         }
     }
 
-    fn parse_list_contents(&mut self, end_token: Token) -> Option<(Vec<Expr>, Span)> {
-        let mut exprs = Vec::<Expr>::new();
+    fn parse_list_contents(&mut self, end_token: Token) -> Option<(Vec<ListLine<'src>>, Span)> {
+        let mut lines = Vec::<ListLine>::new();
         let mut error = false;
 
         let (parsed_end_token, end_span) = loop {
@@ -517,34 +489,44 @@ impl<'src> Parser<'_, 'src> {
             }
 
             // Consume expressions
-            let end_span = loop {
-                let (span, token) = self.peek();
+            let (exprs, token, end_span, comment) = (|| {
+                let mut exprs = Vec::new();
+                let mut comment = None;
+                loop {
+                    let (span, token) = self.peek();
 
-                match token {
-                    Some(Token::LineBreak) => {
-                        self.consume();
-                        break (token, None);
-                    }
-                    Some(token) if token == end_token => {
-                        self.consume();
-                        break (Some(token), Some(span));
-                    }
-                    None => {
-                        self.consume();
-                        break (token, Some(span));
-                    }
-                    _ => {
-                        if let Some(expr) = self.parse_expr() {
-                            exprs.push(expr);
-                        } else {
-                            error = true;
-                            break (token, None);
+                    match token {
+                        Some(Token::LineBreak) => {
+                            self.consume();
+                            return (exprs, token, None, comment);
+                        }
+                        Some(Token::Comment(c)) => {
+                            self.consume();
+                            comment = Some(c)
+                        }
+                        Some(token) if token == end_token => {
+                            self.consume();
+                            return (exprs, Some(token), Some(span), comment);
+                        }
+                        None => {
+                            self.consume();
+                            return (exprs, token, Some(span), comment);
+                        }
+                        _ => {
+                            if let Some(expr) = self.parse_expr() {
+                                exprs.push(expr);
+                            } else {
+                                error = true;
+                                return (exprs, token, None, comment);
+                            }
                         }
                     }
                 }
-            };
+            })();
 
-            if let (token, Some(end_span)) = end_span {
+            lines.push(ListLine { exprs, comment });
+
+            if let Some(end_span) = end_span {
                 break (token, end_span);
             }
         };
@@ -562,10 +544,10 @@ impl<'src> Parser<'_, 'src> {
             return None;
         }
 
-        (!error).then(|| (exprs, end_span))
+        (!error).then(|| (lines, end_span))
     }
 
-    fn try_parse_block(&mut self) -> Result<Expr, ParseError> {
+    fn try_parse_block(&mut self) -> Result<Expr<'src>, ParseError> {
         let (span, token) = self.peek();
 
         match token {

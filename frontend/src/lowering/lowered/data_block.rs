@@ -1,7 +1,7 @@
 use crate::lowering::*;
-use internment::Intern;
 use serde::Serialize;
 use std::collections::HashMap;
+use wipple_parser::Intern;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct LoweredDataBlockExpr {

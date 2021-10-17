@@ -1,5 +1,6 @@
-use crate::{diagnostics::Diagnostics, lowering::*, parser::Span};
-use internment::Intern;
+use crate::lowering::*;
+use wipple_diagnostics::*;
+use wipple_parser::Intern;
 
 #[derive(Debug)]
 pub struct TextExpr {

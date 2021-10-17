@@ -1,6 +1,7 @@
-use crate::{diagnostics::Diagnostics, lowering::*, parser::Span};
-use internment::Intern;
+use crate::lowering::*;
 use std::{collections::HashMap, sync::Arc};
+use wipple_diagnostics::*;
+use wipple_parser::Intern;
 
 #[derive(Default)]
 pub struct Scope<'a> {

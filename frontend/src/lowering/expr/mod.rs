@@ -12,12 +12,10 @@ pub use name::*;
 pub use number::*;
 pub use text::*;
 
-use crate::{
-    diagnostics::Diagnostics,
-    lowering::*,
-    parser::{self, Span},
-};
+use crate::lowering::*;
 use enum_dispatch::enum_dispatch;
+use wipple_diagnostics::*;
+use wipple_parser as parser;
 
 #[enum_dispatch]
 pub trait Expr
@@ -50,23 +48,36 @@ pub enum AnyExpr {
     TextExpr,
 }
 
-impl From<parser::Expr> for AnyExpr {
-    fn from(expr: parser::Expr) -> Self {
+impl<'src> From<parser::Expr<'src>> for AnyExpr {
+    fn from(expr: parser::Expr<'src>) -> Self {
         use parser::ExprKind::*;
+
+        fn parse_lines(lines: Vec<parser::ListLine>) -> Vec<AnyExpr> {
+            lines
+                .into_iter()
+                .filter_map(|line| {
+                    (!line.exprs.is_empty()).then(|| line.exprs.into_iter().map(From::from))
+                })
+                .flatten()
+                .collect()
+        }
 
         match expr.kind {
             Name(value) => AnyExpr::from(NameExpr::new(expr.span, value)),
             Text(value) => AnyExpr::from(TextExpr::new(expr.span, value)),
             Number(value) => AnyExpr::from(NumberExpr::new(expr.span, value)),
             Quote(_) => todo!(),
-            List(exprs) => AnyExpr::from(ListExpr::new(
-                expr.span,
-                exprs.into_iter().map(From::from).collect(),
-            )),
+            List(lines) => AnyExpr::from(ListExpr::new(expr.span, parse_lines(lines))),
             Attribute(_) => todo!(),
-            Block(exprs) => AnyExpr::from(BlockExpr::new(
+            Block(statements) => AnyExpr::from(BlockExpr::new(
                 expr.span,
-                exprs.into_iter().map(From::from).collect(),
+                statements
+                    .into_iter()
+                    .filter_map(|statement| {
+                        let exprs = parse_lines(statement.lines);
+                        (!exprs.is_empty()).then(|| AnyExpr::from(ListExpr::infer_span(exprs)))
+                    })
+                    .collect(),
             )),
         }
     }

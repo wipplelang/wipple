@@ -1,9 +1,6 @@
-use crate::{
-    diagnostics::{Diagnostic, DiagnosticLevel, Diagnostics, Note},
-    lowering::*,
-    parser::Span,
-};
+use crate::lowering::*;
 use std::sync::Arc;
+use wipple_diagnostics::*;
 
 pub fn builtin_assignment_operator(span: Span, _: &mut Diagnostics) -> LoweredExpr {
     LoweredExpr::new(
@@ -66,10 +63,7 @@ pub fn builtin_assignment_operator(span: Span, _: &mut Diagnostics) -> LoweredEx
                         )],
                     ));
 
-                    LoweredExpr::new(
-                        span.with_end(rhs.span.end),
-                        LoweredExprKind::Error,
-                    )
+                    LoweredExpr::new(span.with_end(rhs.span.end), LoweredExprKind::Error)
                 }),
             },
         )),

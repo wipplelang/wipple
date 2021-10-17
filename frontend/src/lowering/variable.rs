@@ -1,7 +1,6 @@
-use internment::Intern;
 use serde::Serialize;
-
-use crate::parser::Span;
+use wipple_diagnostics::*;
+use wipple_parser::Intern;
 
 id! {
     pub struct VariableId;

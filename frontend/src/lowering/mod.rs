@@ -12,8 +12,9 @@ pub use lowered::*;
 pub use scope::*;
 pub use variable::*;
 
-use crate::{diagnostics, parser};
+use wipple_diagnostics::*;
+use wipple_parser as parser;
 
-pub fn lower(file: parser::File, diagnostics: &mut diagnostics::Diagnostics) -> LoweredExpr {
+pub fn lower(file: parser::File, diagnostics: &mut Diagnostics) -> LoweredExpr {
     AnyExpr::from(parser::Expr::from(file)).lower(&mut Scope::root(), diagnostics)
 }

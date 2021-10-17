@@ -1,4 +1,5 @@
-use crate::{diagnostics::Diagnostics, lowering::*, parser::Span};
+use crate::lowering::*;
+use wipple_diagnostics::*;
 
 #[derive(Debug)]
 pub struct BlockExpr {

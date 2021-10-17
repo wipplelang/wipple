@@ -1,6 +1,6 @@
-use crate::{diagnostics::Diagnostics, lowering::*, parser::Span};
-use internment::Intern;
-use rust_decimal::Decimal;
+use crate::lowering::*;
+use wipple_diagnostics::*;
+use wipple_parser::{decimal::Decimal, Intern};
 
 #[derive(Debug)]
 pub struct NumberExpr {

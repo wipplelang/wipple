@@ -1,6 +1,7 @@
-use crate::{diagnostics::Diagnostics, lowering::*, parser::Span};
+use crate::lowering::*;
 use serde::Serialize;
 use std::{fmt, sync::Arc};
+use wipple_diagnostics::*;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct LoweredOperatorExpr {

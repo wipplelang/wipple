@@ -1,13 +1,59 @@
-use crate::parser::Span;
 use codemap::CodeMap;
 use internment::Intern;
 use serde::Serialize;
 use std::{
     cmp::Ordering,
     collections::{hash_map::Entry, HashMap},
+    fmt,
+    ops::Range,
     path::PathBuf,
     sync::Arc,
 };
+
+#[derive(Default, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
+pub struct Span {
+    pub file: Intern<PathBuf>,
+    pub start: usize,
+    pub end: usize,
+}
+
+impl Span {
+    pub fn new(file: Intern<PathBuf>, range: Range<usize>) -> Self {
+        Span {
+            file,
+            start: range.start,
+            end: range.end,
+        }
+    }
+
+    pub fn with_start(self, start: usize) -> Self {
+        Span { start, ..self }
+    }
+
+    pub fn with_end(self, end: usize) -> Self {
+        Span { end, ..self }
+    }
+
+    pub fn offset(self, range: usize) -> Self {
+        Span {
+            start: self.start + range,
+            end: self.end + range,
+            ..self
+        }
+    }
+}
+
+impl fmt::Debug for Span {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{} @ {}..{}",
+            self.file.to_string_lossy(),
+            self.start,
+            self.end
+        )
+    }
+}
 
 #[derive(Serialize)]
 pub struct Diagnostic {

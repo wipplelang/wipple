@@ -1,14 +1,10 @@
 use codemap_diagnostic::{ColorConfig, Emitter};
-use frontend::{
-    diagnostics::{Diagnostic, Diagnostics},
-    parser,
-};
 use internment::Intern;
 use serde::Serialize;
 use std::{fs, io, path::PathBuf, process, sync::Arc};
 use structopt::StructOpt;
 use strum::{EnumString, ToString};
-use wipple_frontend as frontend;
+use wipple_diagnostics::*;
 
 #[derive(StructOpt)]
 #[structopt(
@@ -58,7 +54,7 @@ fn main() -> anyhow::Result<()> {
             let mut diagnostics = Diagnostics::new();
             diagnostics.add_file(path, Arc::clone(&code));
 
-            let file = frontend::parser::parse(path, &code, &mut diagnostics);
+            let file = wipple_parser::parse(path, &code, &mut diagnostics);
 
             match output_style {
                 OutputStyle::Console => {
@@ -94,9 +90,9 @@ fn main() -> anyhow::Result<()> {
             let mut diagnostics = Diagnostics::new();
             diagnostics.add_file(path, Arc::clone(&code));
 
-            let expr = frontend::parser::parse(path, &code, &mut diagnostics)
-                .map(|file| frontend::lowering::lower(file, &mut diagnostics))
-                .and_then(|expr| frontend::analysis::analyze(expr, &mut diagnostics));
+            let expr = wipple_parser::parse(path, &code, &mut diagnostics)
+                .map(|file| wipple_frontend::lowering::lower(file, &mut diagnostics))
+                .and_then(|expr| wipple_frontend::analysis::analyze(expr, &mut diagnostics));
 
             let (codemap, diagnostics) = diagnostics.into_console_friendly();
 
@@ -116,6 +112,6 @@ fn main() -> anyhow::Result<()> {
 
 #[derive(Serialize)]
 struct ParseOutput<'src> {
-    file: Option<parser::File<'src>>,
+    file: Option<wipple_parser::File<'src>>,
     diagnostics: Vec<Diagnostic>,
 }

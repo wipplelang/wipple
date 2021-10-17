@@ -1,6 +1,5 @@
-use internment::Intern;
-use rust_decimal::Decimal;
 use serde::Serialize;
+use wipple_parser::{decimal::Decimal, Intern};
 
 #[derive(Debug, Clone, Serialize)]
 pub struct LoweredConstantExpr {

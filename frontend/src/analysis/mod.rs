@@ -1,10 +1,7 @@
-use crate::{
-    diagnostics::{Diagnostic, DiagnosticLevel, Diagnostics, Note},
-    lowering::*,
-    parser::Span,
-};
+use crate::lowering::*;
 use serde::Serialize;
 use std::{collections::HashSet, sync::Arc};
+use wipple_diagnostics::*;
 
 id! {
     pub struct ExprId;

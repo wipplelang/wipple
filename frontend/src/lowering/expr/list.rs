@@ -1,9 +1,6 @@
-use crate::{
-    diagnostics::{Diagnostic, DiagnosticLevel, Diagnostics, Note},
-    lowering::*,
-    parser::Span,
-};
+use crate::lowering::*;
 use std::cmp::Ordering;
+use wipple_diagnostics::*;
 
 #[derive(Debug)]
 pub struct ListExpr {

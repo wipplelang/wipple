@@ -1,9 +1,6 @@
-use crate::{
-    diagnostics::{Diagnostic, DiagnosticLevel, Diagnostics, Note},
-    lowering::*,
-    parser::Span,
-};
+use crate::lowering::*;
 use serde::Serialize;
+use wipple_diagnostics::*;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct LoweredBuiltinExpr {

@@ -5,7 +5,7 @@ pub use assignment::*;
 pub use external::*;
 
 use crate::lowering::*;
-use internment::Intern;
+use wipple_parser::Intern;
 
 impl Scope<'_> {
     pub fn root() -> Self {
