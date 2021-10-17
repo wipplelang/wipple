@@ -40,12 +40,14 @@ impl Expr {
 }
 
 pub fn analyze(expr: LoweredExpr, diagnostics: &mut Diagnostics) -> Option<Expr> {
-    fn analyze(
-        expr: LoweredExpr,
-        mask: &HashSet<Variable>,
-        used: &mut HashSet<VariableId>,
-        diagnostics: &mut Diagnostics,
-    ) -> Option<Expr> {
+    struct Context<'a> {
+        mask: &'a mut HashSet<Variable>,
+        used: &'a mut HashSet<VariableId>,
+        top_level: bool,
+        diagnostics: &'a mut Diagnostics,
+    }
+
+    fn analyze(expr: LoweredExpr, ctx: &mut Context) -> Option<Expr> {
         let (kind, references) = match expr.kind {
             LoweredExprKind::Unit(_) => (ExprKind::Unit, Default::default()),
             LoweredExprKind::Constant(constant_expr) => {
@@ -55,7 +57,7 @@ pub fn analyze(expr: LoweredExpr, diagnostics: &mut Diagnostics) -> Option<Expr>
                 (ExprKind::Declare(declare_expr.variable), Default::default())
             }
             LoweredExprKind::Initialize(initialize_expr) => {
-                let expr = analyze(*initialize_expr.value, mask, used, diagnostics)?;
+                let expr = analyze(*initialize_expr.value, ctx)?;
                 let references = expr.references.clone();
 
                 (
@@ -66,22 +68,34 @@ pub fn analyze(expr: LoweredExpr, diagnostics: &mut Diagnostics) -> Option<Expr>
             LoweredExprKind::Block(block_expr) => {
                 let mut mask = HashSet::new();
                 let mut used = HashSet::new();
+
+                let mut inner_ctx = Context {
+                    mask: &mut mask,
+                    used: &mut used,
+                    top_level: false,
+                    diagnostics: ctx.diagnostics,
+                };
+
                 let mut statements = Vec::with_capacity(block_expr.statements.len());
                 let mut references = HashSet::new();
                 let mut error = false;
-                for statement in block_expr.statements {
-                    if let Some(expr) = analyze(statement, &mask, &mut used, diagnostics) {
+                for (index, statement) in block_expr.statements.into_iter().enumerate() {
+                    if let Some(expr) = analyze(statement, &mut inner_ctx) {
                         if let ExprKind::Declare(variable) | ExprKind::Initialize(variable, _) =
                             expr.kind
                         {
-                            mask.insert(variable);
+                            inner_ctx.mask.insert(variable);
                         }
 
-                        if matches!(
-                            expr.kind,
-                            ExprKind::Unit | ExprKind::Constant(_) | ExprKind::RuntimeVariable(_)
-                        ) {
-                            diagnostics.add(Diagnostic::new(
+                        if index < statements.capacity() - 1
+                            && matches!(
+                                expr.kind,
+                                ExprKind::Unit
+                                    | ExprKind::Constant(_)
+                                    | ExprKind::RuntimeVariable(_)
+                            )
+                        {
+                            inner_ctx.diagnostics.add(Diagnostic::new(
                                 DiagnosticLevel::Warning,
                                 "Unused expression",
                                 vec![Note::primary(expr.span, "This expression has no effect")],
@@ -95,13 +109,15 @@ pub fn analyze(expr: LoweredExpr, diagnostics: &mut Diagnostics) -> Option<Expr>
                     }
                 }
 
-                for variable in mask {
-                    if !used.contains(&variable.id) {
-                        diagnostics.add(Diagnostic::new(
-                            DiagnosticLevel::Warning,
-                            format!("'{}' is unused", variable.name),
-                            vec![Note::primary(variable.declaration_span, "Unused variable")],
-                        ));
+                if !ctx.top_level {
+                    for variable in inner_ctx.mask.iter() {
+                        if !inner_ctx.used.contains(&variable.id) {
+                            inner_ctx.diagnostics.add(Diagnostic::new(
+                                DiagnosticLevel::Warning,
+                                format!("'{}' is unused", variable.name),
+                                vec![Note::primary(variable.declaration_span, "Unused variable")],
+                            ));
+                        }
                     }
                 }
 
@@ -114,7 +130,7 @@ pub fn analyze(expr: LoweredExpr, diagnostics: &mut Diagnostics) -> Option<Expr>
             LoweredExprKind::DataBlock(_) => todo!(),
             LoweredExprKind::Apply(_) => todo!(),
             LoweredExprKind::RuntimeVariable(runtime_variable_expr) => {
-                used.insert(runtime_variable_expr.variable.id);
+                ctx.used.insert(runtime_variable_expr.variable.id);
 
                 let mut references = HashSet::new();
                 references.insert(runtime_variable_expr.variable);
@@ -136,5 +152,12 @@ pub fn analyze(expr: LoweredExpr, diagnostics: &mut Diagnostics) -> Option<Expr>
         Some(Expr::new(expr.span, kind, references))
     }
 
-    analyze(expr, &HashSet::new(), &mut HashSet::new(), diagnostics)
+    let mut ctx = Context {
+        mask: &mut HashSet::new(),
+        used: &mut HashSet::new(),
+        top_level: true,
+        diagnostics,
+    };
+
+    analyze(expr, &mut ctx)
 }

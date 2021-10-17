@@ -3,6 +3,7 @@ use codemap::CodeMap;
 use internment::Intern;
 use serde::Serialize;
 use std::{
+    cmp::Ordering,
     collections::{hash_map::Entry, HashMap},
     path::PathBuf,
     sync::Arc,
@@ -146,6 +147,13 @@ impl Diagnostics {
 
             diagnostics.push(diagnostic);
         }
+
+        diagnostics.sort_by(|a, b| match (a.spans.first(), b.spans.first()) {
+            (None, None) => Ordering::Equal,
+            (None, Some(_)) => Ordering::Less,
+            (Some(_), None) => Ordering::Greater,
+            (Some(a), Some(b)) => a.span.low().cmp(&b.span.low()),
+        });
 
         (codemap, diagnostics)
     }
