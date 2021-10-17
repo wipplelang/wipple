@@ -18,7 +18,9 @@ impl Binding {
 
                 let expr_is_runtime_value = !matches!(
                     expr.kind,
-                    LoweredExprKind::Operator(_) | LoweredExprKind::Builtin(_)
+                    LoweredExprKind::Operator(_)
+                        | LoweredExprKind::ExternalReference(_)
+                        | LoweredExprKind::Builtin(_)
                 );
 
                 if expr_is_runtime_value {

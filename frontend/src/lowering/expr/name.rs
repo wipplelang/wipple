@@ -38,7 +38,7 @@ impl Expr for NameExpr {
                     )],
                 ));
 
-                LoweredExpr::new(self.span, LoweredExprKind::Error(LoweredErrorExpr::new()))
+                LoweredExpr::new(self.span, LoweredExprKind::Error)
             }
         }
     }

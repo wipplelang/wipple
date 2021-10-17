@@ -3,7 +3,7 @@ mod block;
 mod builtin;
 mod constant;
 mod data_block;
-mod error;
+mod external_reference;
 mod initialize;
 mod operator;
 mod runtime_variable;
@@ -14,7 +14,7 @@ pub use block::*;
 pub use builtin::*;
 pub use constant::*;
 pub use data_block::*;
-pub use error::*;
+pub use external_reference::*;
 pub use initialize::*;
 pub use operator::*;
 pub use runtime_variable::*;
@@ -42,8 +42,9 @@ pub enum LoweredExprKind {
     ApplyOperator(LoweredApplyOperatorExpr),
     PartiallyApplyLeftOfOperator(LoweredPartiallyApplyLeftOfOperatorExpr),
     PartiallyApplyRightOfOperator(LoweredPartiallyApplyRightOfOperatorExpr),
+    ExternalReference(LoweredExternalReferenceExpr),
     Builtin(LoweredBuiltinExpr),
-    Error(LoweredErrorExpr),
+    Error,
 }
 
 impl LoweredExpr {

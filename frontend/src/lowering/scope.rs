@@ -9,23 +9,6 @@ pub struct Scope<'a> {
 }
 
 impl<'a> Scope<'a> {
-    pub fn root() -> Self {
-        let mut scope = Scope::default();
-
-        scope.insert(Intern::from(":"), builtin_assignment_operator);
-
-        scope.insert(Intern::from("n"), |span, _| {
-            LoweredExpr::new(
-                span,
-                LoweredExprKind::Constant(LoweredConstantExpr::new(
-                    LoweredConstantExprKind::Number(Intern::new("42".parse().unwrap())),
-                )),
-            )
-        });
-
-        scope
-    }
-
     pub fn child(&'a self) -> Self {
         Scope {
             parent: Some(self),

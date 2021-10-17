@@ -31,7 +31,7 @@ pub fn builtin_assignment_operator(span: Span, _: &mut Diagnostics) -> LoweredEx
 
                             return LoweredExpr::new(
                                 lhs_span.with_end(span.end),
-                                LoweredExprKind::Error(LoweredErrorExpr::new()),
+                                LoweredExprKind::Error,
                             );
                         }
                     };
@@ -54,7 +54,7 @@ pub fn builtin_assignment_operator(span: Span, _: &mut Diagnostics) -> LoweredEx
                         )],
                     ));
 
-                    LoweredExpr::new(span, LoweredExprKind::Error(LoweredErrorExpr::new()))
+                    LoweredExpr::new(span, LoweredExprKind::Error)
                 }),
                 partially_apply_right: Arc::new(move |rhs, _, diagnostics| {
                     diagnostics.add(Diagnostic::new(
@@ -68,7 +68,7 @@ pub fn builtin_assignment_operator(span: Span, _: &mut Diagnostics) -> LoweredEx
 
                     LoweredExpr::new(
                         span.with_end(rhs.span.end),
-                        LoweredExprKind::Error(LoweredErrorExpr::new()),
+                        LoweredExprKind::Error,
                     )
                 }),
             },

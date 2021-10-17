@@ -41,7 +41,7 @@ impl Expr for ListExpr {
             Err(error) => {
                 diagnostics.add(error.into());
 
-                return LoweredExpr::new(span, LoweredExprKind::Error(LoweredErrorExpr::new()));
+                return LoweredExpr::new(span, LoweredExprKind::Error);
             }
         };
 
@@ -58,7 +58,7 @@ impl Expr for ListExpr {
                     while !list_expr.items.is_empty() {
                         acc = match acc.kind {
                             LoweredExprKind::Builtin(builtin) => {
-                                builtin.apply(acc.span, &mut list_expr.items, diagnostics)
+                                builtin.apply(&mut list_expr.items, scope, diagnostics)
                             }
                             // eventually, templates
                             _ => {
