@@ -1,0 +1,27 @@
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - .github/**
+      - src/**
+      - tests/**
+
+name: Tests
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            src/target
+          key: ${{ runner.os }}-tests-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-tests
+
+      - run: echo "TODO" # cargo run --bin wipple_tests

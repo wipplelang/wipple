@@ -268,6 +268,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "pretty"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ad9940b913ee56ddd94aec2d3cd179dd47068236f42a1a6415ccf9d880ce2a61"
+dependencies = [
+ "arrayvec",
+ "typed-arena",
+]
+
+[[package]]
 name = "proc-macro-error"
 version = "1.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -485,6 +495,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "typed-arena"
+version = "2.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0685c84d5d54d1c26f7d3eb96cd41550adb97baed141a761cf335d3d33bcd0ae"
+
+[[package]]
 name = "unicode-segmentation"
 version = "1.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -563,6 +579,7 @@ dependencies = [
  "structopt",
  "strum",
  "wipple_diagnostics",
+ "wipple_formatter",
  "wipple_frontend",
  "wipple_parser",
 ]
@@ -578,11 +595,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "wipple_formatter"
+version = "0.0.0"
+dependencies = [
+ "pretty",
+ "wipple_parser",
+]
+
+[[package]]
 name = "wipple_frontend"
 version = "0.0.0"
 dependencies = [
- "codemap",
- "codemap-diagnostic",
  "enum_dispatch",
  "lazy_static",
  "serde",

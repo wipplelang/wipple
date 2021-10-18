@@ -12,22 +12,42 @@ use wipple_diagnostics::*;
     bin_name = "wipple",
     about = "The Wipple programming language"
 )]
-enum Args {
-    #[structopt(name = "parse", about = "Parse a Wipple source file")]
-    Parse {
-        #[structopt(name = "file")]
-        path: PathBuf,
+struct Args {
+    #[structopt(subcommand)]
+    command: Command,
+}
 
-        #[structopt(long, default_value)]
-        output_style: OutputStyle,
+#[derive(StructOpt)]
+enum Command {
+    #[structopt(about = "Parse a Wipple source file")]
+    Parse {
+        #[structopt(flatten)]
+        options: SharedOptions,
+    },
+
+    #[structopt(about = "Format a Wipple source file")]
+    Format {
+        #[structopt(flatten)]
+        options: SharedOptions,
+
+        #[structopt(long)]
+        in_place: bool,
     },
 
     // FIXME: Temporary
-    #[structopt(name = "lower")]
     Lower {
-        #[structopt(name = "file")]
-        path: PathBuf,
+        #[structopt(flatten)]
+        options: SharedOptions,
     },
+}
+
+#[derive(StructOpt)]
+struct SharedOptions {
+    #[structopt(name = "file")]
+    path: PathBuf,
+
+    #[structopt(long, default_value)]
+    output_style: OutputStyle,
 }
 
 #[derive(Clone, Copy, EnumString, ToString)]
@@ -46,17 +66,17 @@ impl Default for OutputStyle {
 fn main() -> anyhow::Result<()> {
     let args = Args::from_args();
 
-    match args {
-        Args::Parse { path, output_style } => {
-            let code = Arc::from(fs::read_to_string(&path)?);
-            let path = Intern::new(path);
+    match args.command {
+        Command::Parse { options } => {
+            let code = Arc::from(fs::read_to_string(&options.path)?);
+            let path = Intern::new(options.path);
 
             let mut diagnostics = Diagnostics::new();
             diagnostics.add_file(path, Arc::clone(&code));
 
             let file = wipple_parser::parse(path, &code, &mut diagnostics);
 
-            match output_style {
+            match options.output_style {
                 OutputStyle::Console => {
                     let (codemap, diagnostics) = diagnostics.into_console_friendly();
 
@@ -83,9 +103,27 @@ fn main() -> anyhow::Result<()> {
                 }
             }
         }
-        Args::Lower { path } => {
-            let code = Arc::from(fs::read_to_string(&path)?);
-            let path = Intern::new(path);
+        Command::Format { options, in_place } => {
+            let code = Arc::from(fs::read_to_string(&options.path)?);
+            let path = Intern::new(options.path);
+
+            let file = wipple_parser::parse(path, &code, &mut Diagnostics::new())
+                .map(wipple_formatter::format);
+
+            let file = match file {
+                Some(file) => file,
+                None => process::exit(1),
+            };
+
+            if in_place {
+                todo!();
+            } else {
+                println!("{}", file);
+            }
+        }
+        Command::Lower { options } => {
+            let code = Arc::from(fs::read_to_string(&options.path)?);
+            let path = Intern::new(options.path);
 
             let mut diagnostics = Diagnostics::new();
             diagnostics.add_file(path, Arc::clone(&code));

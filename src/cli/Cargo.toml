@@ -3,6 +3,10 @@ name = "wipple_cli"
 version = "0.0.0"
 edition = "2018"
 
+[[bin]]
+name = "wipple"
+path = "src/main.rs"
+
 [dependencies]
 anyhow = "1"
 codemap-diagnostic = "0.1"
@@ -12,5 +16,6 @@ serde_json = "1"
 structopt = "0.3"
 strum = { version = "0.21", features = ["derive"] }
 wipple_diagnostics = { path = "../diagnostics" }
+wipple_formatter = { path = "../formatter" }
 wipple_frontend = { path = "../frontend" }
 wipple_parser = { path = "../parser" }

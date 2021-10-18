@@ -2,6 +2,7 @@
 members = [
     "cli",
     "diagnostics",
+    "formatter",
     "frontend",
     "parser",
 ]
