@@ -1,8 +1,0 @@
->>> Dividing by zero
-
-1 / 0
-
----
-
-Cannot divide by zero
-    Importing numbers.test.wpl
