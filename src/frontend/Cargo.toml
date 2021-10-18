@@ -1,0 +1,11 @@
+[package]
+name = "wipple_frontend"
+version = "0.0.0"
+edition = "2018"
+
+[dependencies]
+enum_dispatch = "0.3"
+lazy_static = "1"
+serde = { version = "1", features = ["derive", "rc"] }
+wipple_diagnostics = { path = "../diagnostics" }
+wipple_parser = { path = "../parser" }

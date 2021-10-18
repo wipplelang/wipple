@@ -1,0 +1,14 @@
+[package]
+name = "wipple_parser"
+version = "0.0.0"
+edition = "2018"
+
+[dependencies]
+internment = { version = "0.5", features = ["serde"] }
+lazy_static = "1"
+logos = "0.12"
+regex = "1"
+rust_decimal = "1"
+rustc_lexer = "0.1"
+serde = { version = "1", features = ["derive", "rc"] }
+wipple_diagnostics = { path = "../diagnostics" }

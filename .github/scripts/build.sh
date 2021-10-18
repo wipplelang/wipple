@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 target=$1
 compiler=$2
 
@@ -9,7 +11,6 @@ if [ "$compiler" = "cross" ]; then
     cargo install cross
 fi
 
-$compiler build --target=$target --release
+(cd src && $compiler build --target=$target --release)
 
-cp target/$target/release/wipple_bundled_interpreter bin/wipple-bundled-$target
-cp target/$target/release/wipple_cli bin/wipple-cli-$target
+cp src/target/$target/release/wipple bin/wipple-$target

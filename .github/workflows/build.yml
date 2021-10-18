@@ -2,13 +2,10 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - master
+      - main
     paths:
       - .github/**
-      - language/**
-      - library/**
-      - parser/**
-      - tooling/**
+      - src/**
 
 name: Build
 
@@ -32,19 +29,16 @@ jobs:
   build:
     strategy:
       matrix:
-        os:
-          - ubuntu-latest
-        target:
-          - i686-unknown-linux-gnu
-          - x86_64-unknown-linux-gnu
-          - armv7-unknown-linux-gnueabihf
-          - aarch64-unknown-linux-gnu
-        compiler:
-          - "cross"
         include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            compiler: cargo
+          - os: ubuntu-latest
+            target: aarch64-unknown-linux-gnu
+            compiler: cross
           - os: macos-latest
             target: x86_64-apple-darwin
-            compiler: "cargo"
+            compiler: cargo
 
     runs-on: ${{ matrix.os }}
 
@@ -56,7 +50,7 @@ jobs:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
-            target
+            src/target
           key: ${{ matrix.os }}-${{ matrix.target }}-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
             ${{ matrix.os }}-${{ matrix.target }}
