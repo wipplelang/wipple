@@ -11,6 +11,6 @@ if [ "$compiler" = "cross" ]; then
     cargo install cross
 fi
 
-(cd src && $compiler build --target=$target --release)
+$compiler build --target=$target --release
 
-cp src/target/$target/release/wipple bin/wipple-$target
+cp target/$target/release/wipple bin/wipple-$target

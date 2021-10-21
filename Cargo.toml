@@ -1,0 +1,8 @@
+[workspace]
+members = [
+    "src/cli",
+    "src/diagnostics",
+    "src/formatter",
+    "src/frontend",
+    "src/parser",
+]

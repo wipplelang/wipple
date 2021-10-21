@@ -19,7 +19,7 @@ jobs:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
-            src/target
+            target
           key: ${{ runner.os }}-tests-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
             ${{ runner.os }}-tests
