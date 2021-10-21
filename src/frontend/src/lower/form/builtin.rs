@@ -1,6 +1,6 @@
 use crate::lower::*;
 use std::collections::HashMap;
-use wipple_diagnostics::Span;
+use wipple_diagnostics::*;
 use wipple_parser::Intern;
 
 pub fn builtins() -> HashMap<Intern<String>, Variable> {
@@ -33,15 +33,30 @@ impl SpannedForm {
             span,
             OperatorPrecedence::new(9),
             OperatorAssociativity::None,
-            move |lhs, rhs, stack, diagnostics| {
+            move |lhs, rhs, stack, info| {
                 let lhs_span = lhs.span;
                 let rhs_span = rhs.span;
 
-                let binding = lhs.lower_to_binding(stack, diagnostics);
-                let value = rhs.lower_to_form(stack, diagnostics);
+                let binding = match lhs.lower_to_binding(stack, info) {
+                    Some(binding) => binding,
+                    None => {
+                        info.diagnostics.add(Diagnostic::new(
+                            DiagnosticLevel::Error,
+                            "Cannot assign to this",
+                            vec![Note::primary(
+                                lhs_span,
+                                "Expected a variable name or other assignable expression",
+                            )],
+                        ));
+
+                        return SpannedItem::error(span).into();
+                    }
+                };
+
+                let value = rhs.lower_to_form(stack, info);
 
                 binding
-                    .assign(lhs_span.with_end(rhs_span.end), value, stack, diagnostics)
+                    .assign(lhs_span.with_end(rhs_span.end), value, stack, info)
                     .into()
             },
         )

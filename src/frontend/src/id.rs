@@ -2,7 +2,7 @@
 macro_rules! id {
     ($(#[$meta:meta])* $vis:vis struct $name:ident;) => {
         $(#[$meta])*
-        #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, ::serde::Serialize)]
+        #[derive(Clone, Copy, PartialEq, Eq, Hash, ::serde::Serialize)]
         $vis struct $name(usize);
 
         ::lazy_static::lazy_static! {

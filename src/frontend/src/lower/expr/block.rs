@@ -1,6 +1,5 @@
 use crate::lower::*;
 
-#[derive(Debug)]
 pub struct BlockExpr {
     pub span: Span,
     pub statements: Vec<SpannedExpr>,
@@ -30,18 +29,5 @@ impl Expr for BlockExpr {
             .collect();
 
         SpannedItem::block(self.span, statements).into()
-    }
-
-    fn lower_to_binding(self, _: Stack, info: &mut Info) -> SpannedBinding {
-        info.diagnostics.add(Diagnostic::new(
-            DiagnosticLevel::Error,
-            "Cannot assign to a block",
-            vec![Note::primary(
-                self.span,
-                "Expected a variable name or other assignable expression",
-            )],
-        ));
-
-        SpannedBinding::error(self.span)
     }
 }

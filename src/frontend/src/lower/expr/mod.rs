@@ -12,22 +12,21 @@ pub use text::*;
 
 use crate::lower::*;
 use enum_dispatch::enum_dispatch;
-use std::fmt;
 use wipple_parser as parser;
 
 #[enum_dispatch]
 pub trait Expr
 where
-    Self: fmt::Debug + Sized,
+    Self: Sized,
     SpannedExpr: From<Self>,
 {
     fn span(&self) -> Span;
 
-    fn lower_to_form(self, stack: Stack, info: &mut Info) -> SpannedForm {
-        self.lower_to_item(stack, info).into()
-    }
+    fn lower_to_form(self, stack: Stack, info: &mut Info) -> SpannedForm;
 
-    fn lower_to_binding(self, stack: Stack, info: &mut Info) -> SpannedBinding;
+    fn lower_to_binding(self, stack: Stack, info: &mut Info) -> Option<SpannedBinding> {
+        None
+    }
 
     // eventually quoted, type, etc.
 
@@ -59,7 +58,6 @@ where
 }
 
 #[enum_dispatch(Expr)]
-#[derive(Debug)]
 pub enum SpannedExpr {
     Block(BlockExpr),
     List(ListExpr),

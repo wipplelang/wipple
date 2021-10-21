@@ -71,7 +71,11 @@ impl Variable {
             id,
             declaration_span,
             name,
-            form: Arc::new(move |span| SpannedItem::variable(span, id).into()),
+            form: Arc::new(move |span| {
+                let mut item = SpannedItem::variable(span, id);
+                item.info.declared_name = Some(name);
+                item.into()
+            }),
         }
     }
 }

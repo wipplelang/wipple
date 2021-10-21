@@ -10,7 +10,7 @@ pub struct OperatorForm {
     pub apply: Arc<dyn Fn(ListExpr, ListExpr, Stack, &mut Info) -> SpannedForm>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize)]
 pub struct OperatorPrecedence(u8);
 
 impl OperatorPrecedence {
@@ -21,7 +21,7 @@ impl OperatorPrecedence {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[derive(Clone, Copy, PartialEq, Eq, Serialize)]
 pub enum OperatorAssociativity {
     Left,
     Right,

@@ -161,7 +161,7 @@ struct Parser<'a, 'src> {
     diagnostics: &'a mut Diagnostics,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Clone, Copy)]
 enum ParseError {
     WrongTokenType,
     InvalidExpr,

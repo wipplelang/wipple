@@ -1,7 +1,6 @@
 use crate::lower::*;
 use std::cmp::Ordering;
 
-#[derive(Debug)]
 pub struct ListExpr {
     pub span: Span,
     pub items: Vec<SpannedExpr>,
@@ -91,16 +90,10 @@ impl Expr for ListExpr {
         }
     }
 
-    fn lower_to_binding(mut self, stack: Stack, info: &mut Info) -> SpannedBinding {
+    fn lower_to_binding(mut self, stack: Stack, info: &mut Info) -> Option<SpannedBinding> {
         // eventually, support more complex expressions with operators
         if self.items.len() != 1 {
-            info.diagnostics.add(Diagnostic::new(
-                DiagnosticLevel::Error,
-                "Assigning to complex expressions is not yet supported",
-                vec![Note::primary(self.span, "Try providing a name here")],
-            ));
-
-            return SpannedBinding::error(self.span);
+            return None;
         }
 
         let inner_expr = self.items.remove(0);

@@ -8,7 +8,7 @@ pub use template::*;
 
 use crate::lower::*;
 use serde::Serialize;
-use wipple_diagnostics::Span;
+use wipple_diagnostics::*;
 
 #[derive(Clone, Serialize)]
 pub struct SpannedForm {

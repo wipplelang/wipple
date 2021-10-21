@@ -5,7 +5,6 @@ use std::{
 };
 use wipple_parser::Intern;
 
-#[derive(Debug)]
 pub struct NameExpr {
     pub span: Span,
     pub value: Intern<String>,
@@ -40,8 +39,10 @@ impl Expr for NameExpr {
         }
     }
 
-    fn lower_to_binding(self, _: Stack, _: &mut Info) -> SpannedBinding {
-        SpannedBinding::name(self.span, self.value)
+    fn lower_to_binding(self, _: Stack, _: &mut Info) -> Option<SpannedBinding> {
+        Some(SpannedBinding::from(NameBinding::new(
+            self.span, self.value,
+        )))
     }
 }
 
