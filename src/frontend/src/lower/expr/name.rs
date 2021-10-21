@@ -20,7 +20,7 @@ impl Expr for NameExpr {
         self.span
     }
 
-    fn lower_to_form(self, stack: Stack, info: &mut Info) -> SpannedForm {
+    fn lower_to_form(self, stack: &Stack, info: &mut Info) -> SpannedForm {
         match self.resolve(stack, info) {
             Some(form) => form,
             None => {
@@ -38,7 +38,7 @@ impl Expr for NameExpr {
         }
     }
 
-    fn lower_to_binding(self, _: Stack, _: &mut Info) -> Option<SpannedBinding> {
+    fn lower_to_binding(self, _: &Stack, _: &mut Info) -> Option<SpannedBinding> {
         Some(SpannedBinding::from(NameBinding::new(
             self.span, self.value,
         )))
@@ -46,7 +46,7 @@ impl Expr for NameExpr {
 }
 
 impl NameExpr {
-    pub(super) fn resolve(&self, mut stack: Stack, info: &mut Info) -> Option<SpannedForm> {
+    pub(super) fn resolve(&self, mut stack: &Stack, info: &mut Info) -> Option<SpannedForm> {
         enum EitherRefMut<'a, T> {
             Cell(RefMut<'a, T>),
             Ref(&'a mut T),
@@ -78,37 +78,29 @@ impl NameExpr {
             macro_rules! parent {
                 () => {
                     if let Some(parent) = stack.parent {
-                        stack = *parent;
+                        stack = parent;
                     } else {
                         break None;
                     }
                 };
             }
 
-            match stack.scope {
-                Scope::Function {
-                    parameter_name,
-                    parameter,
-                    captures,
-                } => {
-                    if parameter_name == self.value {
-                        break Some((parameter.form)(self.span));
-                    } else {
-                        parent!();
-                        used.push(EitherRefMut::Cell(captures.borrow_mut()));
-                    }
-                }
-                Scope::Block { variables } => {
-                    if let Some(variable) = variables.borrow().get(&self.value) {
-                        for mut list in used {
-                            list.push(variable.id);
-                        }
+            if let Some(variable) = stack.variables.borrow().get(&self.value) {
+                let form = (variable.form)(self.span);
 
-                        break Some((variable.form)(self.span));
-                    } else {
-                        parent!();
+                if matches!(form.form, Form::Item(_)) {
+                    for mut list in used {
+                        list.insert(variable.id);
                     }
                 }
+
+                break Some(form);
+            } else {
+                if let Some(captures) = &stack.captures {
+                    used.push(EitherRefMut::Cell(captures.borrow_mut()));
+                }
+
+                parent!();
             }
         }
     }

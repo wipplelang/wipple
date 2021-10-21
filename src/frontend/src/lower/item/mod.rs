@@ -2,6 +2,8 @@ mod apply;
 mod block;
 mod constant;
 mod external;
+mod function;
+mod function_input;
 mod initialize;
 mod unit;
 mod variable;
@@ -10,6 +12,8 @@ pub use apply::*;
 pub use block::*;
 pub use constant::*;
 pub use external::*;
+pub use function::*;
+pub use function_input::*;
 pub use initialize::*;
 pub use unit::*;
 pub use variable::*;
@@ -32,6 +36,8 @@ pub enum Item {
     Block(BlockItem),
     Apply(ApplyItem),
     Variable(VariableItem),
+    Function(FunctionItem),
+    FunctionInput(FunctionInputItem),
     External(ExternalItem),
     Error,
 }

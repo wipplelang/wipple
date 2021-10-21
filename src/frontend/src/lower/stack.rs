@@ -1,37 +1,40 @@
 use crate::lower::*;
 use serde::Serialize;
-use std::{cell::RefCell, collections::HashMap, sync::Arc};
+use std::{
+    cell::RefCell,
+    collections::{HashMap, HashSet},
+    sync::Arc,
+};
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub struct Stack<'a: 'p, 'p> {
     pub parent: Option<&'a Stack<'p, 'p>>,
-    pub scope: Scope<'a>,
-}
-
-#[derive(Clone, Copy)]
-pub enum Scope<'a> {
-    Function {
-        parameter_name: LocalIntern<String>,
-        parameter: &'a Variable,
-        captures: &'a RefCell<Vec<VariableId>>,
-    },
-    Block {
-        variables: &'a RefCell<HashMap<LocalIntern<String>, Variable>>,
-    },
+    pub variables: RefCell<HashMap<LocalIntern<String>, Variable>>,
+    pub captures: Option<RefCell<HashSet<VariableId>>>,
 }
 
 impl<'a, 'p> Stack<'a, 'p> {
-    pub fn root(scope: Scope<'a>) -> Self {
+    pub fn root() -> Self {
         Stack {
             parent: None,
-            scope,
+            variables: RefCell::new(builtins()),
+            captures: None,
         }
     }
 
-    pub fn child(&'a self, scope: Scope<'p>) -> Self {
+    pub fn child_block(&'a self) -> Self {
         Stack {
             parent: Some(self),
-            scope,
+            variables: Default::default(),
+            captures: None,
+        }
+    }
+
+    pub fn child_function(&'a self) -> Self {
+        Stack {
+            parent: Some(self),
+            variables: Default::default(),
+            captures: Some(Default::default()),
         }
     }
 }

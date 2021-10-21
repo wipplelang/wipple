@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use crate::lower::*;
 use serde::Serialize;
 use wipple_diagnostics::*;
@@ -5,7 +7,7 @@ use wipple_diagnostics::*;
 pub struct Info<'a> {
     pub diagnostics: &'a mut Diagnostics,
     pub declared_variables: Vec<Variable>,
-    pub used_variables: Vec<VariableId>,
+    pub used_variables: HashSet<VariableId>,
     pub functions: HashMap<FunctionId, Function>,
 }
 
@@ -41,6 +43,17 @@ id! {
 
 #[derive(Serialize)]
 pub struct Function {
+    pub id: FunctionId,
     pub body: SpannedItem,
-    pub captures: Vec<VariableId>,
+    pub captures: HashSet<VariableId>,
+}
+
+impl Function {
+    pub fn new(body: SpannedItem, captures: HashSet<VariableId>) -> Self {
+        Function {
+            id: FunctionId::new(),
+            body,
+            captures,
+        }
+    }
 }

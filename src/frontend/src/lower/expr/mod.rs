@@ -22,15 +22,15 @@ where
 {
     fn span(&self) -> Span;
 
-    fn lower_to_form(self, stack: Stack, info: &mut Info) -> SpannedForm;
+    fn lower_to_form(self, stack: &Stack, info: &mut Info) -> SpannedForm;
 
-    fn lower_to_binding(self, stack: Stack, info: &mut Info) -> Option<SpannedBinding> {
+    fn lower_to_binding(self, _: &Stack, _: &mut Info) -> Option<SpannedBinding> {
         None
     }
 
     // eventually quoted, type, etc.
 
-    fn lower_to_item(self, stack: Stack, info: &mut Info) -> SpannedItem {
+    fn lower_to_item(self, stack: &Stack, info: &mut Info) -> SpannedItem {
         let form = self.lower_to_form(stack, info);
 
         match form.form {

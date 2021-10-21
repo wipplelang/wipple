@@ -12,7 +12,7 @@ where
     SpannedBinding: From<Self>,
 {
     fn span(&self) -> Span;
-    fn assign(self, span: Span, form: SpannedForm, stack: Stack, info: &mut Info) -> SpannedItem;
+    fn assign(self, span: Span, form: SpannedForm, stack: &Stack, info: &mut Info) -> SpannedItem;
 }
 
 #[enum_dispatch(Binding)]

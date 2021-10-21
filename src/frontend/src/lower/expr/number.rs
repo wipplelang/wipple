@@ -17,7 +17,7 @@ impl Expr for NumberExpr {
         self.span
     }
 
-    fn lower_to_form(self, _: Stack, _: &mut Info) -> SpannedForm {
+    fn lower_to_form(self, _: &Stack, _: &mut Info) -> SpannedForm {
         SpannedItem::constant_number(self.span, self.value).into()
     }
 }

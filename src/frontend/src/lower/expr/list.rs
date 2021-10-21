@@ -28,7 +28,7 @@ impl Expr for ListExpr {
         self.span
     }
 
-    fn lower_to_form(self, stack: Stack, info: &mut Info) -> SpannedForm {
+    fn lower_to_form(self, stack: &Stack, info: &mut Info) -> SpannedForm {
         let span = self.span;
 
         let form = match self.parse_operators(stack, info) {
@@ -90,7 +90,7 @@ impl Expr for ListExpr {
         }
     }
 
-    fn lower_to_binding(mut self, stack: Stack, info: &mut Info) -> Option<SpannedBinding> {
+    fn lower_to_binding(mut self, stack: &Stack, info: &mut Info) -> Option<SpannedBinding> {
         // eventually, support more complex expressions with operators
         if self.items.len() != 1 {
             return None;
@@ -139,7 +139,7 @@ impl From<Error> for Diagnostic {
 }
 
 impl ListExpr {
-    fn parse_operators(mut self, stack: Stack, info: &mut Info) -> Result<ParseResult, Error> {
+    fn parse_operators(mut self, stack: &Stack, info: &mut Info) -> Result<ParseResult, Error> {
         if self.items.len() <= 1 {
             return Ok(ParseResult::List(self));
         }

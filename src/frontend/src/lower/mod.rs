@@ -27,15 +27,10 @@ pub use info::{DebugInfo, Function, FunctionId};
 pub use item::*;
 
 pub fn lower(file: wipple_parser::File, diagnostics: &mut Diagnostics) -> File {
-    let variables = RefCell::new(builtins());
-    let stack = Stack::root(Scope::Block {
-        variables: &variables,
-    });
-
     let mut info = Info::new(diagnostics);
 
     let program =
-        SpannedExpr::from(wipple_parser::Expr::from(file)).lower_to_item(stack, &mut info);
+        SpannedExpr::from(wipple_parser::Expr::from(file)).lower_to_item(&Stack::root(), &mut info);
 
     File {
         program,
