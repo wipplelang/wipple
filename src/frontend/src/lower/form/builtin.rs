@@ -37,7 +37,10 @@ impl SpannedForm {
                 let lhs_span = lhs.span;
                 let rhs_span = rhs.span;
 
-                let binding = match lhs.lower_to_binding(stack, info) {
+                let binding = lhs.lower_to_binding(stack, info);
+                let value = rhs.lower_to_form(stack, info);
+
+                let binding = match binding {
                     Some(binding) => binding,
                     None => {
                         info.diagnostics.add(Diagnostic::new(
@@ -52,8 +55,6 @@ impl SpannedForm {
                         return SpannedItem::error(span).into();
                     }
                 };
-
-                let value = rhs.lower_to_form(stack, info);
 
                 binding
                     .assign(lhs_span.with_end(rhs_span.end), value, stack, info)
