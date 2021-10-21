@@ -1,7 +1,6 @@
 use crate::lower::*;
-use std::ops::{Deref, DerefMut};
-
-pub use wipple_diagnostics::*;
+use serde::Serialize;
+use wipple_diagnostics::*;
 
 pub struct Info<'a> {
     pub diagnostics: &'a mut Diagnostics,
@@ -16,5 +15,16 @@ impl<'a> Info<'a> {
             declared_variables: Default::default(),
             used_variables: Default::default(),
         }
+    }
+}
+
+#[derive(Clone, Serialize)]
+pub struct DebugInfo {
+    pub span: Span,
+}
+
+impl DebugInfo {
+    pub fn new(span: Span) -> Self {
+        DebugInfo { span }
     }
 }

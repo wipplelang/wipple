@@ -14,12 +14,13 @@ pub use initialize::*;
 pub use unit::*;
 pub use variable::*;
 
+use crate::lower::*;
 use serde::Serialize;
 use wipple_diagnostics::Span;
 
 #[derive(Clone, Serialize)]
 pub struct SpannedItem {
-    pub span: Span,
+    pub info: DebugInfo,
     pub item: Item,
 }
 
@@ -37,10 +38,18 @@ pub enum Item {
 
 impl SpannedItem {
     pub fn new(span: Span, item: Item) -> Self {
-        SpannedItem { span, item }
+        SpannedItem::with_info(DebugInfo::new(span), item)
+    }
+
+    pub fn with_info(info: DebugInfo, item: Item) -> Self {
+        SpannedItem { info, item }
     }
 
     pub fn error(span: Span) -> Self {
         SpannedItem::new(span, Item::Error)
+    }
+
+    pub fn error_with_info(info: DebugInfo) -> Self {
+        SpannedItem::with_info(info, Item::Error)
     }
 }

@@ -60,7 +60,7 @@ impl SpannedBinding {
                             assignment_span,
                             Item::Initialize(InitializeItem::new(
                                 variable_id,
-                                SpannedItem::new(form.span, item),
+                                SpannedItem::with_info(form.info, item),
                             )),
                         )
                     } else {
@@ -68,7 +68,7 @@ impl SpannedBinding {
                     }
                 }
             },
-            Binding::Error => SpannedItem::error(form.span),
+            Binding::Error => SpannedItem::error_with_info(form.info),
         }
     }
 }

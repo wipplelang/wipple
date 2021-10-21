@@ -35,24 +35,24 @@ where
         let form = self.lower_to_form(stack, info);
 
         match form.form {
-            Form::Item(item) => SpannedItem::new(form.span, item),
+            Form::Item(item) => SpannedItem::with_info(form.info, item),
             Form::Operator(_) => {
                 info.diagnostics.add(Diagnostic::new(
                     DiagnosticLevel::Error,
                     "Expected value, found operator",
-                    vec![Note::primary(form.span, "Expected value here")],
+                    vec![Note::primary(form.info.span, "Expected value here")],
                 ));
 
-                SpannedItem::error(form.span)
+                SpannedItem::error(form.info.span)
             }
             Form::Template(_) => {
                 info.diagnostics.add(Diagnostic::new(
                     DiagnosticLevel::Error,
                     "Expected value, found template",
-                    vec![Note::primary(form.span, "Expected value here")],
+                    vec![Note::primary(form.info.span, "Expected value here")],
                 ));
 
-                SpannedItem::error(form.span)
+                SpannedItem::error_with_info(form.info)
             }
         }
     }

@@ -13,11 +13,9 @@ use item::*;
 use stack::*;
 
 use std::cell::RefCell;
+use wipple_diagnostics::*;
 
-pub fn lower(
-    file: wipple_parser::File,
-    diagnostics: &mut wipple_diagnostics::Diagnostics,
-) -> SpannedItem {
+pub fn lower(file: wipple_parser::File, diagnostics: &mut Diagnostics) -> SpannedItem {
     let variables = RefCell::new(builtins());
     let stack = Stack::root(Scope::Block {
         variables: &variables,

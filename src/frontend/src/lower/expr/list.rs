@@ -50,13 +50,13 @@ impl Expr for ListExpr {
 
                     match form.form {
                         Form::Item(item) => {
-                            let mut acc = SpannedItem::new(form.span, item);
+                            let mut acc = SpannedItem::with_info(form.info, item);
 
                             while !list_expr.items.is_empty() {
                                 let input = list_expr.items.remove(0).lower_to_item(stack, info);
 
                                 acc = SpannedItem::apply(
-                                    acc.span.with_end(input.span.end),
+                                    acc.info.span.with_end(input.info.span.end),
                                     acc,
                                     input,
                                 )
@@ -75,13 +75,13 @@ impl Expr for ListExpr {
                 stack,
                 info,
             ),
-            ParseResult::PartiallyApplyLeft(_, (operator_span, _))
-            | ParseResult::PartiallyApplyRight((operator_span, _), _) => {
+            ParseResult::PartiallyApplyLeft(_, (operator_info, _))
+            | ParseResult::PartiallyApplyRight((operator_info, _), _) => {
                 info.diagnostics.add(Diagnostic::new(
                     DiagnosticLevel::Error,
                     "Partial application of operators is currently unsupported",
                     vec![Note::primary(
-                        operator_span,
+                        operator_info.span,
                         "Try adding an expression on both sides of this",
                     )],
                 ));
@@ -111,9 +111,13 @@ impl Expr for ListExpr {
 
 enum ParseResult {
     List(ListExpr),
-    Apply(Vec<SpannedExpr>, (Span, OperatorForm), Vec<SpannedExpr>),
-    PartiallyApplyLeft(Vec<SpannedExpr>, (Span, OperatorForm)),
-    PartiallyApplyRight((Span, OperatorForm), Vec<SpannedExpr>),
+    Apply(
+        Vec<SpannedExpr>,
+        (DebugInfo, OperatorForm),
+        Vec<SpannedExpr>,
+    ),
+    PartiallyApplyLeft(Vec<SpannedExpr>, (DebugInfo, OperatorForm)),
+    PartiallyApplyRight((DebugInfo, OperatorForm), Vec<SpannedExpr>),
 }
 
 enum Error {
@@ -153,7 +157,7 @@ impl ListExpr {
             if let SpannedExpr::Name(name) = expr {
                 if let Some(form) = name.resolve(stack, info) {
                     if let Form::Operator(operator) = form.form {
-                        operators.push((index, form.span, operator));
+                        operators.push((index, form.info, operator));
                     }
                 }
             }
@@ -163,13 +167,13 @@ impl ListExpr {
             return Ok(ParseResult::List(self));
         }
 
-        let (mut max_index, mut max_span, mut max_operator) = operators.remove(0);
+        let (mut max_index, mut max_info, mut max_operator) = operators.remove(0);
 
-        for (index, span, operator) in operators {
+        for (index, info, operator) in operators {
             macro_rules! replace {
                 () => {{
                     max_index = index;
-                    max_span = span;
+                    max_info = info;
                     max_operator = operator;
                 }};
             }
@@ -213,11 +217,11 @@ impl ListExpr {
         lhs.pop().unwrap();
 
         Ok(if rhs.is_empty() {
-            ParseResult::PartiallyApplyLeft(lhs, (max_span, max_operator))
+            ParseResult::PartiallyApplyLeft(lhs, (max_info, max_operator))
         } else if lhs.is_empty() {
-            ParseResult::PartiallyApplyRight((max_span, max_operator), rhs)
+            ParseResult::PartiallyApplyRight((max_info, max_operator), rhs)
         } else {
-            ParseResult::Apply(lhs, (max_span, max_operator), rhs)
+            ParseResult::Apply(lhs, (max_info, max_operator), rhs)
         })
     }
 }
