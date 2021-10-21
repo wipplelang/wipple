@@ -6,6 +6,7 @@ pub struct Info<'a> {
     pub diagnostics: &'a mut Diagnostics,
     pub declared_variables: Vec<Variable>,
     pub used_variables: Vec<VariableId>,
+    pub functions: HashMap<FunctionId, Function>,
 }
 
 impl<'a> Info<'a> {
@@ -14,6 +15,7 @@ impl<'a> Info<'a> {
             diagnostics,
             declared_variables: Default::default(),
             used_variables: Default::default(),
+            functions: Default::default(),
         }
     }
 }
@@ -31,4 +33,14 @@ impl DebugInfo {
             declared_name: None,
         }
     }
+}
+
+id! {
+    pub struct FunctionId;
+}
+
+#[derive(Serialize)]
+pub struct Function {
+    pub body: SpannedItem,
+    pub captures: Vec<VariableId>,
 }

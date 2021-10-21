@@ -7,7 +7,7 @@ use wipple_parser::LocalIntern;
 #[derive(Serialize)]
 pub struct Result {
     pub diagnostics: Vec<Diagnostic>,
-    pub item: Option<wipple_frontend::lower::SpannedItem>,
+    pub file: Option<wipple_frontend::lower::File>,
 }
 
 #[wasm_bindgen]
@@ -20,12 +20,12 @@ pub fn run(code: &str) -> JsValue {
     let mut diagnostics = Diagnostics::new();
     diagnostics.add_file(path, Arc::from(code));
 
-    let item = wipple_parser::parse(path, code, &mut diagnostics)
+    let file = wipple_parser::parse(path, code, &mut diagnostics)
         .map(|file| wipple_frontend::lower::lower(file, &mut diagnostics));
 
     let result = Result {
         diagnostics: diagnostics.diagnostics,
-        item,
+        file,
     };
 
     JsValue::from_serde(&result).unwrap()
