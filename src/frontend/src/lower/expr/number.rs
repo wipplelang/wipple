@@ -1,13 +1,13 @@
 use crate::lower::*;
-use wipple_parser::{decimal::Decimal, Intern};
+use wipple_parser::decimal::Decimal;
 
 pub struct NumberExpr {
     pub span: Span,
-    pub value: Intern<Decimal>,
+    pub value: LocalIntern<Decimal>,
 }
 
 impl NumberExpr {
-    pub fn new(span: Span, value: Intern<Decimal>) -> Self {
+    pub fn new(span: Span, value: LocalIntern<Decimal>) -> Self {
         NumberExpr { span, value }
     }
 }

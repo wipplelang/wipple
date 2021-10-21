@@ -5,4 +5,5 @@ members = [
     "src/formatter",
     "src/frontend",
     "src/parser",
+    "website/playground/runner",
 ]

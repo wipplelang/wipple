@@ -4,7 +4,7 @@
         redOutputColor,
     } from "./SplitEditors.svelte";
 
-    export let interpreter;
+    export let runner;
 
     const query = new URLSearchParams(window.location.search);
 
@@ -35,7 +35,7 @@
             window.history.replaceState(null, "", newURL);
 
             handleLoading();
-            const result = interpreter.run(code[0].text);
+            const result = runner.run(code[0].text);
             handleResult(result);
         },
         // Adjust the delay based on the size of the code (lines is a rough
@@ -48,18 +48,25 @@
     };
 
     const handleResult = (result) => {
-        output =
-            result.length === 0
-                ? [
-                      {
-                          text: "No output\nYou can display values here using 'show'",
-                          color: grayOutputColor,
-                      },
-                  ]
-                : result.map((item) => ({
-                      text: item.text,
-                      color: item.success ? undefined : redOutputColor,
-                  }));
+        // output =
+        //     result.length === 0
+        //         ? [
+        //               {
+        //                   text: "No output\nYou can display values here using 'show'",
+        //                   color: grayOutputColor,
+        //               },
+        //           ]
+        //         : result.map((item) => ({
+        //               text: item.text,
+        //               color: item.success ? undefined : redOutputColor,
+        //           }));
+
+        output = [
+            {
+                text: JSON.stringify(result, null, 2),
+                color: undefined,
+            },
+        ];
     };
 </script>
 

@@ -2,12 +2,12 @@ import App from "./App.svelte";
 import Prism from "prismjs";
 
 // @ts-ignore
-import interpreterWasm from "../../interpreter/Cargo.toml";
+import runnerWasm from "../../runner/Cargo.toml";
 
-interpreterWasm().then((interpreter) => {
+runnerWasm().then((runner) => {
     new App({
         target: document.body,
-        props: { interpreter },
+        props: { runner },
     });
 });
 

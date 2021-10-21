@@ -1,5 +1,5 @@
 use codemap_diagnostic::{ColorConfig, Emitter};
-use internment::Intern;
+use internment::LocalIntern;
 use serde::Serialize;
 use std::{fs, io, path::PathBuf, process, sync::Arc};
 use structopt::StructOpt;
@@ -69,12 +69,12 @@ fn main() -> anyhow::Result<()> {
     match args.command {
         Command::Parse { options } => {
             let code = Arc::from(fs::read_to_string(&options.path)?);
-            let path = Intern::new(options.path);
+            let path = LocalIntern::new(options.path);
 
             let mut diagnostics = Diagnostics::new();
             diagnostics.add_file(path, Arc::clone(&code));
 
-            let file = wipple_parser::parse(path, &code, &mut diagnostics);
+            let result = wipple_parser::parse(path, &code, &mut diagnostics);
 
             match options.output_style {
                 OutputStyle::Console => {
@@ -83,15 +83,15 @@ fn main() -> anyhow::Result<()> {
                     let mut emitter = Emitter::stderr(ColorConfig::Auto, Some(&codemap));
                     emitter.emit(&diagnostics);
 
-                    if let Some(file) = file {
-                        serde_json::to_writer_pretty(io::stdout(), &file)?;
+                    if let Some(result) = result {
+                        serde_json::to_writer_pretty(io::stdout(), &result)?;
                     } else {
                         process::exit(1);
                     }
                 }
                 OutputStyle::Json => {
                     let output = ParseOutput {
-                        file,
+                        file: result,
                         diagnostics: diagnostics.diagnostics,
                     };
 
@@ -105,30 +105,30 @@ fn main() -> anyhow::Result<()> {
         }
         Command::Format { options, in_place } => {
             let code = Arc::from(fs::read_to_string(&options.path)?);
-            let path = Intern::new(options.path);
+            let path = LocalIntern::new(options.path);
 
-            let file = wipple_parser::parse(path, &code, &mut Diagnostics::new())
+            let result = wipple_parser::parse(path, &code, &mut Diagnostics::new())
                 .map(wipple_formatter::format);
 
-            let file = match file {
-                Some(file) => file,
+            let result = match result {
+                Some(result) => result,
                 None => process::exit(1),
             };
 
             if in_place {
                 todo!();
             } else {
-                println!("{}", file);
+                println!("{}", result);
             }
         }
         Command::Lower { options } => {
             let code = Arc::from(fs::read_to_string(&options.path)?);
-            let path = Intern::new(options.path);
+            let path = LocalIntern::new(options.path);
 
             let mut diagnostics = Diagnostics::new();
             diagnostics.add_file(path, Arc::clone(&code));
 
-            let expr = wipple_parser::parse(path, &code, &mut diagnostics)
+            let result = wipple_parser::parse(path, &code, &mut diagnostics)
                 .map(|file| wipple_frontend::lower::lower(file, &mut diagnostics));
 
             let (codemap, diagnostics) = diagnostics.into_console_friendly();
@@ -136,8 +136,8 @@ fn main() -> anyhow::Result<()> {
             let mut emitter = Emitter::stderr(ColorConfig::Auto, Some(&codemap));
             emitter.emit(&diagnostics);
 
-            if let Some(expr) = expr {
-                serde_json::to_writer_pretty(io::stdout(), &expr)?;
+            if let Some(result) = result {
+                serde_json::to_writer_pretty(io::stdout(), &result)?;
             } else {
                 process::exit(1);
             }

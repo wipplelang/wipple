@@ -1,5 +1,5 @@
 use codemap::CodeMap;
-use internment::Intern;
+use internment::LocalIntern;
 use serde::Serialize;
 use std::{
     cmp::Ordering,
@@ -12,13 +12,13 @@ use std::{
 
 #[derive(Default, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
 pub struct Span {
-    pub file: Intern<PathBuf>,
+    pub file: LocalIntern<PathBuf>,
     pub start: usize,
     pub end: usize,
 }
 
 impl Span {
-    pub fn new(file: Intern<PathBuf>, range: Range<usize>) -> Self {
+    pub fn new(file: LocalIntern<PathBuf>, range: Range<usize>) -> Self {
         Span {
             file,
             start: range.start,
@@ -131,7 +131,7 @@ impl Note {
 
 #[derive(Default, Serialize)]
 pub struct Diagnostics {
-    pub files: HashMap<Intern<PathBuf>, Arc<str>>,
+    pub files: HashMap<LocalIntern<PathBuf>, Arc<str>>,
     pub diagnostics: Vec<Diagnostic>,
 }
 
@@ -140,7 +140,7 @@ impl Diagnostics {
         Default::default()
     }
 
-    pub fn add_file(&mut self, path: Intern<PathBuf>, code: Arc<str>) {
+    pub fn add_file(&mut self, path: LocalIntern<PathBuf>, code: Arc<str>) {
         self.files.insert(path, code);
     }
 

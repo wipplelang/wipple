@@ -14,6 +14,9 @@ use stack::*;
 
 use std::cell::RefCell;
 use wipple_diagnostics::*;
+use wipple_parser::LocalIntern;
+
+pub use item::*;
 
 pub fn lower(file: wipple_parser::File, diagnostics: &mut Diagnostics) -> SpannedItem {
     let variables = RefCell::new(builtins());

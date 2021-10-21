@@ -3,15 +3,14 @@ use std::{
     cell::RefMut,
     ops::{Deref, DerefMut},
 };
-use wipple_parser::Intern;
 
 pub struct NameExpr {
     pub span: Span,
-    pub value: Intern<String>,
+    pub value: LocalIntern<String>,
 }
 
 impl NameExpr {
-    pub fn new(span: Span, value: Intern<String>) -> Self {
+    pub fn new(span: Span, value: LocalIntern<String>) -> Self {
         NameExpr { span, value }
     }
 }

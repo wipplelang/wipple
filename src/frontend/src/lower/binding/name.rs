@@ -1,13 +1,12 @@
 use crate::lower::*;
-use wipple_parser::Intern;
 
 pub struct NameBinding {
     pub span: Span,
-    pub name: Intern<String>,
+    pub name: LocalIntern<String>,
 }
 
 impl NameBinding {
-    pub fn new(span: Span, name: Intern<String>) -> Self {
+    pub fn new(span: Span, name: LocalIntern<String>) -> Self {
         NameBinding { span, name }
     }
 }

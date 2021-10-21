@@ -1,13 +1,12 @@
 use crate::lower::*;
-use wipple_parser::Intern;
 
 pub struct TextExpr {
     pub span: Span,
-    pub value: Intern<String>,
+    pub value: LocalIntern<String>,
 }
 
 impl TextExpr {
-    pub fn new(span: Span, value: Intern<String>) -> Self {
+    pub fn new(span: Span, value: LocalIntern<String>) -> Self {
         TextExpr { span, value }
     }
 }

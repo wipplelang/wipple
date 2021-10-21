@@ -1,7 +1,6 @@
 use crate::lower::*;
 use serde::Serialize;
 use std::{cell::RefCell, collections::HashMap, sync::Arc};
-use wipple_parser::Intern;
 
 #[derive(Clone, Copy)]
 pub struct Stack<'a: 'p, 'p> {
@@ -12,12 +11,12 @@ pub struct Stack<'a: 'p, 'p> {
 #[derive(Clone, Copy)]
 pub enum Scope<'a> {
     Function {
-        parameter_name: Intern<String>,
+        parameter_name: LocalIntern<String>,
         parameter: &'a Variable,
         captures: &'a RefCell<Vec<VariableId>>,
     },
     Block {
-        variables: &'a RefCell<HashMap<Intern<String>, Variable>>,
+        variables: &'a RefCell<HashMap<LocalIntern<String>, Variable>>,
     },
 }
 
@@ -45,7 +44,7 @@ id! {
 pub struct Variable {
     pub id: VariableId,
     pub declaration_span: Span,
-    pub name: Intern<String>,
+    pub name: LocalIntern<String>,
     #[serde(skip)]
     pub form: Arc<dyn Fn(Span) -> SpannedForm>,
 }
@@ -53,7 +52,7 @@ pub struct Variable {
 impl Variable {
     pub fn new(
         declaration_span: Span,
-        name: Intern<String>,
+        name: LocalIntern<String>,
         form: impl Fn(Span) -> SpannedForm + 'static,
     ) -> Self {
         Variable {
@@ -64,7 +63,7 @@ impl Variable {
         }
     }
 
-    pub fn runtime(declaration_span: Span, name: Intern<String>) -> Self {
+    pub fn runtime(declaration_span: Span, name: LocalIntern<String>) -> Self {
         let id = VariableId::new();
 
         Variable {

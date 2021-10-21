@@ -1,15 +1,14 @@
 use crate::lower::*;
 use std::collections::HashMap;
 use wipple_diagnostics::*;
-use wipple_parser::Intern;
 
-pub fn builtins() -> HashMap<Intern<String>, Variable> {
+pub fn builtins() -> HashMap<LocalIntern<String>, Variable> {
     macro_rules! builtins {
         ($($name:expr => $value:expr,)*) => {{
             let mut variables = HashMap::default();
 
             $({
-                let name = Intern::from($name);
+                let name = LocalIntern::from($name);
 
                 variables.insert(
                     name,

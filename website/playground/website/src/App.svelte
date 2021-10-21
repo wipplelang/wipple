@@ -2,12 +2,12 @@
     import Header from "./Header.svelte";
     import Playground from "./Playground.svelte";
 
-    export let interpreter;
+    export let runner;
 </script>
 
 <div class="flex flex-col space-y-6 p-6">
     <Header />
-    <Playground {interpreter} />
+    <Playground {runner} />
 </div>
 
 <style global lang="postcss">

@@ -1,6 +1,6 @@
 use crate::lower::*;
 use serde::Serialize;
-use wipple_parser::{decimal::Decimal, Intern};
+use wipple_parser::{decimal::Decimal, LocalIntern};
 
 #[derive(Clone, Serialize)]
 pub struct ConstantItem {
@@ -9,8 +9,8 @@ pub struct ConstantItem {
 
 #[derive(Clone, Serialize)]
 pub enum ConstantValueExprKind {
-    Number(Intern<Decimal>),
-    Text(Intern<String>),
+    Number(LocalIntern<Decimal>),
+    Text(LocalIntern<String>),
 }
 
 impl SpannedItem {
@@ -18,11 +18,11 @@ impl SpannedItem {
         SpannedItem::new(span, Item::Constant(ConstantItem { kind }))
     }
 
-    pub fn constant_number(span: Span, value: Intern<Decimal>) -> Self {
+    pub fn constant_number(span: Span, value: LocalIntern<Decimal>) -> Self {
         SpannedItem::constant(span, ConstantValueExprKind::Number(value))
     }
 
-    pub fn constant_text(span: Span, value: Intern<String>) -> Self {
+    pub fn constant_text(span: Span, value: LocalIntern<String>) -> Self {
         SpannedItem::constant(span, ConstantValueExprKind::Text(value))
     }
 }

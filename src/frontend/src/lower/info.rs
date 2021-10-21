@@ -1,7 +1,6 @@
 use crate::lower::*;
 use serde::Serialize;
 use wipple_diagnostics::*;
-use wipple_parser::Intern;
 
 pub struct Info<'a> {
     pub diagnostics: &'a mut Diagnostics,
@@ -22,7 +21,7 @@ impl<'a> Info<'a> {
 #[derive(Clone, Serialize)]
 pub struct DebugInfo {
     pub span: Span,
-    pub declared_name: Option<Intern<String>>,
+    pub declared_name: Option<LocalIntern<String>>,
 }
 
 impl DebugInfo {
