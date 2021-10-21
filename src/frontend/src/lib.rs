@@ -3,5 +3,4 @@
 #[macro_use]
 mod id;
 
-pub mod analysis;
-pub mod lowering;
+pub mod lower;

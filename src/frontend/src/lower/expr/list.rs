@@ -1,19 +1,18 @@
-use crate::lowering::*;
+use crate::lower::*;
 use std::cmp::Ordering;
-use wipple_diagnostics::*;
 
 #[derive(Debug)]
 pub struct ListExpr {
     pub span: Span,
-    pub items: Vec<AnyExpr>,
+    pub items: Vec<SpannedExpr>,
 }
 
 impl ListExpr {
-    pub fn new(span: Span, items: Vec<AnyExpr>) -> Self {
+    pub fn new(span: Span, items: Vec<SpannedExpr>) -> Self {
         ListExpr { span, items }
     }
 
-    pub fn infer_span(items: Vec<AnyExpr>) -> Self {
+    pub fn infer_span(items: Vec<SpannedExpr>) -> Self {
         ListExpr::new(
             items
                 .first()
@@ -30,80 +29,92 @@ impl Expr for ListExpr {
         self.span
     }
 
-    fn lower(self, scope: &mut Scope, diagnostics: &mut Diagnostics) -> LoweredExpr {
+    fn lower_to_form(self, stack: Stack, diagnostics: &mut Diagnostics) -> SpannedForm {
         let span = self.span;
 
-        let form = match self.parse_operators(scope, diagnostics) {
+        let form = match self.parse_operators(stack, diagnostics) {
             Ok(operators) => operators,
             Err(error) => {
                 diagnostics.add(error.into());
 
-                return LoweredExpr::new(span, LoweredExprKind::Error);
+                return SpannedItem::new(span, Item::Error).into();
             }
         };
 
         match form {
-            Form::List(mut list_expr) => match list_expr.items.len() {
-                0 => LoweredExpr::new(
-                    list_expr.span,
-                    LoweredExprKind::Unit(LoweredUnitExpr::new()),
-                ),
-                1 => list_expr.items.remove(0).lower(scope, diagnostics),
+            ParseResult::List(mut list_expr) => match list_expr.items.len() {
+                0 => SpannedItem::unit(list_expr.span).into(),
+                1 => list_expr.items.remove(0).lower_to_form(stack, diagnostics),
                 _ => {
-                    let mut acc = list_expr.items.remove(0).lower(scope, diagnostics);
+                    let form = list_expr.items.remove(0).lower_to_form(stack, diagnostics);
 
-                    while !list_expr.items.is_empty() {
-                        acc = match acc.kind {
-                            LoweredExprKind::Builtin(builtin) => {
-                                builtin.apply(&mut list_expr.items, scope, diagnostics)
-                            }
-                            // eventually, templates
-                            _ => {
-                                let input = list_expr.items.remove(0).lower(scope, diagnostics);
+                    match form.form {
+                        Form::Item(item) => {
+                            let mut acc = SpannedItem::new(form.span, item);
 
-                                LoweredExpr::new(
+                            while !list_expr.items.is_empty() {
+                                let input =
+                                    list_expr.items.remove(0).lower_to_item(stack, diagnostics);
+
+                                acc = SpannedItem::apply(
                                     acc.span.with_end(input.span.end),
-                                    LoweredExprKind::Apply(LoweredApplyExpr::new(acc, input)),
+                                    acc,
+                                    input,
                                 )
                             }
-                        };
-                    }
 
-                    acc
+                            acc.into()
+                        }
+                        Form::Template(template) => todo!(),
+                        Form::Operator(_) => unreachable!(),
+                    }
                 }
             },
-            Form::Apply(lhs, operator, rhs) => (operator.apply)(
+            ParseResult::Apply(lhs, (_, operator), rhs) => (operator.apply)(
                 ListExpr::infer_span(lhs),
                 ListExpr::infer_span(rhs),
-                scope,
+                stack,
                 diagnostics,
             ),
-            Form::PartiallyApplyLeft(lhs, operator) => {
-                (operator.partially_apply_left)(ListExpr::infer_span(lhs), scope, diagnostics)
-            }
-            Form::PartiallyApplyRight(operator, rhs) => {
-                (operator.partially_apply_right)(ListExpr::infer_span(rhs), scope, diagnostics)
+            ParseResult::PartiallyApplyLeft(_, (operator_span, _))
+            | ParseResult::PartiallyApplyRight((operator_span, _), _) => {
+                diagnostics.add(Diagnostic::new(
+                    DiagnosticLevel::Error,
+                    "Partial application of operators is currently unsupported",
+                    vec![Note::primary(
+                        operator_span,
+                        "Try adding an expression on both sides of this",
+                    )],
+                ));
+
+                SpannedItem::error(span).into()
             }
         }
     }
 
-    fn binding(mut self) -> Option<Binding> {
+    fn lower_to_binding(mut self, stack: Stack, diagnostics: &mut Diagnostics) -> SpannedBinding {
         // eventually, support more complex expressions with operators
         if self.items.len() != 1 {
-            return None;
+            diagnostics.add(Diagnostic::new(
+                DiagnosticLevel::Error,
+                "Assigning to complex expressions is not yet supported",
+                vec![Note::primary(self.span, "Expected a name here")],
+            ));
+
+            return SpannedBinding::error(self.span);
         }
 
         let inner_expr = self.items.remove(0);
 
-        inner_expr.binding()
+        inner_expr.lower_to_binding(stack, diagnostics)
     }
 }
 
-enum Form {
+enum ParseResult {
     List(ListExpr),
-    Apply(Vec<AnyExpr>, Operator, Vec<AnyExpr>),
-    PartiallyApplyLeft(Vec<AnyExpr>, Operator),
-    PartiallyApplyRight(Operator, Vec<AnyExpr>),
+    Apply(Vec<SpannedExpr>, (Span, OperatorForm), Vec<SpannedExpr>),
+    PartiallyApplyLeft(Vec<SpannedExpr>, (Span, OperatorForm)),
+    PartiallyApplyRight((Span, OperatorForm), Vec<SpannedExpr>),
     // TODO: partial application
 }
 
@@ -128,34 +139,43 @@ impl From<Error> for Diagnostic {
             ],
         };
 
-        Diagnostic::new(DiagnosticLevel::Error, "Syntax error", notes)
+        Diagnostic::new(DiagnosticLevel::Error, "Operator ambiguity", notes)
     }
 }
 
 impl ListExpr {
     fn parse_operators(
         mut self,
-        scope: &Scope,
+        stack: Stack,
         diagnostics: &mut Diagnostics,
-    ) -> Result<Form, Error> {
+    ) -> Result<ParseResult, Error> {
+        if self.items.len() <= 1 {
+            return Ok(ParseResult::List(self));
+        }
+
         let mut operators = Vec::new();
 
         for (index, expr) in self.items.iter().enumerate() {
-            if let Some(operator) = expr.operator(scope, diagnostics) {
-                operators.push((index, operator));
+            if let SpannedExpr::Name(name) = expr {
+                if let Some(form) = name.resolve(stack, diagnostics) {
+                    if let Form::Operator(operator) = form.form {
+                        operators.push((index, form.span, operator));
+                    }
+                }
             }
         }
 
         if operators.is_empty() {
-            return Ok(Form::List(self));
+            return Ok(ParseResult::List(self));
         }
 
-        let (mut max_index, mut max_operator) = operators.remove(0);
+        let (mut max_index, mut max_span, mut max_operator) = operators.remove(0);
 
-        for (index, operator) in operators {
+        for (index, span, operator) in operators {
             macro_rules! replace {
                 () => {{
                     max_index = index;
+                    max_span = span;
                     max_operator = operator;
                 }};
             }
@@ -199,11 +219,11 @@ impl ListExpr {
         lhs.pop().unwrap();
 
         Ok(if rhs.is_empty() {
-            Form::PartiallyApplyLeft(lhs, max_operator.operator)
+            ParseResult::PartiallyApplyLeft(lhs, (max_span, max_operator))
         } else if lhs.is_empty() {
-            Form::PartiallyApplyRight(max_operator.operator, rhs)
+            ParseResult::PartiallyApplyRight((max_span, max_operator), rhs)
         } else {
-            Form::Apply(lhs, max_operator.operator, rhs)
+            ParseResult::Apply(lhs, (max_span, max_operator), rhs)
         })
     }
 }

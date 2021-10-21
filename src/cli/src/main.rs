@@ -129,8 +129,7 @@ fn main() -> anyhow::Result<()> {
             diagnostics.add_file(path, Arc::clone(&code));
 
             let expr = wipple_parser::parse(path, &code, &mut diagnostics)
-                .map(|file| wipple_frontend::lowering::lower(file, &mut diagnostics))
-                .and_then(|expr| wipple_frontend::analysis::analyze(expr, &mut diagnostics));
+                .map(|file| wipple_frontend::lower::lower(file, &mut diagnostics));
 
             let (codemap, diagnostics) = diagnostics.into_console_friendly();
 
