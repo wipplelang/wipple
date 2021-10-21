@@ -16,7 +16,8 @@ impl Expr for TextExpr {
         self.span
     }
 
-    fn lower_to_form(self, _: &Stack, _: &mut Info) -> SpannedForm {
-        SpannedItem::constant_text(self.span, self.value).into()
+    fn lower_to_form(self, _: &Stack, info: &mut Info) -> SpannedForm {
+        let constant = info.add_constant(ConstantValue::Text(self.value));
+        SpannedItem::constant(self.span, constant).into()
     }
 }

@@ -13,13 +13,14 @@ use item::*;
 use stack::*;
 
 use serde::Serialize;
-use std::{cell::RefCell, collections::HashMap};
+use std::collections::HashMap;
 use wipple_diagnostics::*;
 use wipple_parser::LocalIntern;
 
 #[derive(Serialize)]
 pub struct File {
     pub program: SpannedItem,
+    pub constants: HashMap<ConstantId, Constant>,
     pub functions: HashMap<FunctionId, Function>,
 }
 
@@ -34,6 +35,11 @@ pub fn lower(file: wipple_parser::File, diagnostics: &mut Diagnostics) -> File {
 
     File {
         program,
+        constants: info
+            .constants
+            .into_iter()
+            .map(|(value, id)| (id, Constant::with_id(id, value)))
+            .collect(),
         functions: info.functions,
     }
 }

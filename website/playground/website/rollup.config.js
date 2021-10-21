@@ -7,6 +7,8 @@ import sveltePreprocess from "svelte-preprocess";
 import typescript from "@rollup/plugin-typescript";
 import css from "rollup-plugin-css-only";
 import rust from "@wasm-tool/rollup-plugin-rust";
+import path from "path";
+import glob from "fast-glob";
 
 const production = !process.env.ROLLUP_WATCH;
 
@@ -44,6 +46,16 @@ export default {
         file: "public/build/bundle.js",
     },
     plugins: [
+        {
+            name: "watch-src",
+            buildStart: async function () {
+                const src = path.resolve(__dirname, "../../../src");
+                const files = await glob(src + "/**/*");
+
+                files.forEach(this.addWatchFile);
+            },
+        },
+
         svelte({
             preprocess: sveltePreprocess({
                 sourceMap: !production,
