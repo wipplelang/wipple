@@ -29,13 +29,13 @@ impl Expr for ListExpr {
         self.span
     }
 
-    fn lower_to_form(self, stack: Stack, diagnostics: &mut Diagnostics) -> SpannedForm {
+    fn lower_to_form(self, stack: Stack, info: &mut Info) -> SpannedForm {
         let span = self.span;
 
-        let form = match self.parse_operators(stack, diagnostics) {
+        let form = match self.parse_operators(stack, info) {
             Ok(operators) => operators,
             Err(error) => {
-                diagnostics.add(error.into());
+                info.diagnostics.add(error.into());
 
                 return SpannedItem::new(span, Item::Error).into();
             }
@@ -44,17 +44,16 @@ impl Expr for ListExpr {
         match form {
             ParseResult::List(mut list_expr) => match list_expr.items.len() {
                 0 => SpannedItem::unit(list_expr.span).into(),
-                1 => list_expr.items.remove(0).lower_to_form(stack, diagnostics),
+                1 => list_expr.items.remove(0).lower_to_form(stack, info),
                 _ => {
-                    let form = list_expr.items.remove(0).lower_to_form(stack, diagnostics);
+                    let form = list_expr.items.remove(0).lower_to_form(stack, info);
 
                     match form.form {
                         Form::Item(item) => {
                             let mut acc = SpannedItem::new(form.span, item);
 
                             while !list_expr.items.is_empty() {
-                                let input =
-                                    list_expr.items.remove(0).lower_to_item(stack, diagnostics);
+                                let input = list_expr.items.remove(0).lower_to_item(stack, info);
 
                                 acc = SpannedItem::apply(
                                     acc.span.with_end(input.span.end),
@@ -74,11 +73,11 @@ impl Expr for ListExpr {
                 ListExpr::infer_span(lhs),
                 ListExpr::infer_span(rhs),
                 stack,
-                diagnostics,
+                info,
             ),
             ParseResult::PartiallyApplyLeft(_, (operator_span, _))
             | ParseResult::PartiallyApplyRight((operator_span, _), _) => {
-                diagnostics.add(Diagnostic::new(
+                info.diagnostics.add(Diagnostic::new(
                     DiagnosticLevel::Error,
                     "Partial application of operators is currently unsupported",
                     vec![Note::primary(
@@ -92,13 +91,13 @@ impl Expr for ListExpr {
         }
     }
 
-    fn lower_to_binding(mut self, stack: Stack, diagnostics: &mut Diagnostics) -> SpannedBinding {
+    fn lower_to_binding(mut self, stack: Stack, info: &mut Info) -> SpannedBinding {
         // eventually, support more complex expressions with operators
         if self.items.len() != 1 {
-            diagnostics.add(Diagnostic::new(
+            info.diagnostics.add(Diagnostic::new(
                 DiagnosticLevel::Error,
                 "Assigning to complex expressions is not yet supported",
-                vec![Note::primary(self.span, "Expected a name here")],
+                vec![Note::primary(self.span, "Try providing a name here")],
             ));
 
             return SpannedBinding::error(self.span);
@@ -106,7 +105,7 @@ impl Expr for ListExpr {
 
         let inner_expr = self.items.remove(0);
 
-        inner_expr.lower_to_binding(stack, diagnostics)
+        inner_expr.lower_to_binding(stack, info)
     }
 }
 
@@ -143,11 +142,7 @@ impl From<Error> for Diagnostic {
 }
 
 impl ListExpr {
-    fn parse_operators(
-        mut self,
-        stack: Stack,
-        diagnostics: &mut Diagnostics,
-    ) -> Result<ParseResult, Error> {
+    fn parse_operators(mut self, stack: Stack, info: &mut Info) -> Result<ParseResult, Error> {
         if self.items.len() <= 1 {
             return Ok(ParseResult::List(self));
         }
@@ -156,7 +151,7 @@ impl ListExpr {
 
         for (index, expr) in self.items.iter().enumerate() {
             if let SpannedExpr::Name(name) = expr {
-                if let Some(form) = name.resolve(stack, diagnostics) {
+                if let Some(form) = name.resolve(stack, info) {
                     if let Form::Operator(operator) = form.form {
                         operators.push((index, form.span, operator));
                     }

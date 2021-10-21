@@ -23,21 +23,21 @@ where
 {
     fn span(&self) -> Span;
 
-    fn lower_to_form(self, stack: Stack, diagnostics: &mut Diagnostics) -> SpannedForm {
-        self.lower_to_item(stack, diagnostics).into()
+    fn lower_to_form(self, stack: Stack, info: &mut Info) -> SpannedForm {
+        self.lower_to_item(stack, info).into()
     }
 
-    fn lower_to_binding(self, stack: Stack, diagnostics: &mut Diagnostics) -> SpannedBinding;
+    fn lower_to_binding(self, stack: Stack, info: &mut Info) -> SpannedBinding;
 
     // eventually quoted, type, etc.
 
-    fn lower_to_item(self, stack: Stack, diagnostics: &mut Diagnostics) -> SpannedItem {
-        let form = self.lower_to_form(stack, diagnostics);
+    fn lower_to_item(self, stack: Stack, info: &mut Info) -> SpannedItem {
+        let form = self.lower_to_form(stack, info);
 
         match form.form {
             Form::Item(item) => SpannedItem::new(form.span, item),
             Form::Operator(_) => {
-                diagnostics.add(Diagnostic::new(
+                info.diagnostics.add(Diagnostic::new(
                     DiagnosticLevel::Error,
                     "Expected value, found operator",
                     vec![Note::primary(form.span, "Expected value here")],
@@ -46,7 +46,7 @@ where
                 SpannedItem::error(form.span)
             }
             Form::Template(_) => {
-                diagnostics.add(Diagnostic::new(
+                info.diagnostics.add(Diagnostic::new(
                     DiagnosticLevel::Error,
                     "Expected value, found template",
                     vec![Note::primary(form.span, "Expected value here")],

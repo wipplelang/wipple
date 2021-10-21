@@ -7,7 +7,7 @@ pub struct OperatorForm {
     pub precedence: OperatorPrecedence,
     pub associativity: OperatorAssociativity,
     #[serde(skip)]
-    pub apply: Arc<dyn Fn(ListExpr, ListExpr, Stack, &mut Diagnostics) -> SpannedForm>,
+    pub apply: Arc<dyn Fn(ListExpr, ListExpr, Stack, &mut Info) -> SpannedForm>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize)]
@@ -33,7 +33,7 @@ impl SpannedForm {
         span: Span,
         precedence: OperatorPrecedence,
         associativity: OperatorAssociativity,
-        apply: impl Fn(ListExpr, ListExpr, Stack, &mut Diagnostics) -> SpannedForm + 'static,
+        apply: impl Fn(ListExpr, ListExpr, Stack, &mut Info) -> SpannedForm + 'static,
     ) -> Self {
         SpannedForm::new(
             span,

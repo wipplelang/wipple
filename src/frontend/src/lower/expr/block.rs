@@ -17,7 +17,7 @@ impl Expr for BlockExpr {
         self.span
     }
 
-    fn lower_to_form(self, stack: Stack, diagnostics: &mut Diagnostics) -> SpannedForm {
+    fn lower_to_form(self, stack: Stack, info: &mut Info) -> SpannedForm {
         let variables = Default::default();
         let stack = stack.child(Scope::Block {
             variables: &variables,
@@ -26,14 +26,14 @@ impl Expr for BlockExpr {
         let statements = self
             .statements
             .into_iter()
-            .map(|statement| statement.lower_to_item(stack, diagnostics))
+            .map(|statement| statement.lower_to_item(stack, info))
             .collect();
 
         SpannedItem::block(self.span, statements).into()
     }
 
-    fn lower_to_binding(self, _: Stack, diagnostics: &mut Diagnostics) -> SpannedBinding {
-        diagnostics.add(Diagnostic::new(
+    fn lower_to_binding(self, _: Stack, info: &mut Info) -> SpannedBinding {
+        info.diagnostics.add(Diagnostic::new(
             DiagnosticLevel::Error,
             "Cannot assign to a block",
             vec![Note::primary(

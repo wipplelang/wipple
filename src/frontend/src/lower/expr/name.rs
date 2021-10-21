@@ -22,11 +22,11 @@ impl Expr for NameExpr {
         self.span
     }
 
-    fn lower_to_form(self, stack: Stack, diagnostics: &mut Diagnostics) -> SpannedForm {
-        match self.resolve(stack, diagnostics) {
+    fn lower_to_form(self, stack: Stack, info: &mut Info) -> SpannedForm {
+        match self.resolve(stack, info) {
             Some(form) => form,
             None => {
-                diagnostics.add(Diagnostic::new(
+                info.diagnostics.add(Diagnostic::new(
                     DiagnosticLevel::Error,
                     format!("'{}' is not defined", self.value),
                     vec![Note::primary(
@@ -40,17 +40,13 @@ impl Expr for NameExpr {
         }
     }
 
-    fn lower_to_binding(self, _: Stack, _: &mut Diagnostics) -> SpannedBinding {
+    fn lower_to_binding(self, _: Stack, _: &mut Info) -> SpannedBinding {
         SpannedBinding::name(self.span, self.value)
     }
 }
 
 impl NameExpr {
-    pub(super) fn resolve(
-        &self,
-        mut stack: Stack,
-        diagnostics: &mut Diagnostics,
-    ) -> Option<SpannedForm> {
+    pub(super) fn resolve(&self, mut stack: Stack, info: &mut Info) -> Option<SpannedForm> {
         enum EitherRefMut<'a, T> {
             Cell(RefMut<'a, T>),
             Ref(&'a mut T),
@@ -76,7 +72,7 @@ impl NameExpr {
             }
         }
 
-        let mut used = vec![EitherRefMut::Ref(&mut diagnostics.used_variables)];
+        let mut used = vec![EitherRefMut::Ref(&mut info.used_variables)];
 
         loop {
             macro_rules! parent {

@@ -32,44 +32,42 @@ impl SpannedBinding {
         assignment_span: Span,
         form: SpannedForm,
         stack: Stack,
-        diagnostics: &mut Diagnostics,
+        info: &mut Info,
     ) -> SpannedItem {
         match self.binding {
-            Binding::Name(name) => {
-                let form_span = form.span;
-                let variable = Variable::runtime(self.span, name);
-                let variable_id = variable.id;
+            Binding::Name(name) => match &stack.scope {
+                Scope::Function { .. } => {
+                    info.diagnostics.add(Diagnostic::new(
+                        DiagnosticLevel::Error,
+                        "Cannot assign to variable here",
+                        vec![Note::primary(
+                            assignment_span,
+                            "Try moving this into a block",
+                        )],
+                    ));
 
-                match &stack.scope {
-                    Scope::Function { .. } => {
-                        diagnostics.add(Diagnostic::new(
-                            DiagnosticLevel::Error,
-                            "Cannot assign to variable here",
-                            vec![Note::primary(
-                                assignment_span,
-                                "Try moving this into a block",
-                            )],
-                        ));
+                    SpannedItem::error(assignment_span)
+                }
+                Scope::Block { variables } => {
+                    let variable = Variable::runtime(self.span, name);
+                    let variable_id = variable.id;
 
-                        return SpannedItem::error(assignment_span);
-                    }
-                    Scope::Block { variables } => {
-                        variables.borrow_mut().insert(name, variable);
+                    variables.borrow_mut().insert(name, variable.clone());
+                    info.declared_variables.push(variable);
+
+                    if let Form::Item(item) = form.form {
+                        SpannedItem::new(
+                            assignment_span,
+                            Item::Initialize(InitializeItem::new(
+                                variable_id,
+                                SpannedItem::new(form.span, item),
+                            )),
+                        )
+                    } else {
+                        SpannedItem::unit(assignment_span)
                     }
                 }
-
-                if let Form::Item(item) = form.form {
-                    SpannedItem::new(
-                        assignment_span,
-                        Item::Initialize(InitializeItem::new(
-                            variable_id,
-                            SpannedItem::new(form_span, item),
-                        )),
-                    )
-                } else {
-                    SpannedItem::unit(assignment_span)
-                }
-            }
+            },
             Binding::Error => SpannedItem::error(form.span),
         }
     }

@@ -19,12 +19,12 @@ impl Expr for NumberExpr {
         self.span
     }
 
-    fn lower_to_item(self, _: Stack, _: &mut Diagnostics) -> SpannedItem {
+    fn lower_to_item(self, _: Stack, _: &mut Info) -> SpannedItem {
         SpannedItem::constant_number(self.span, self.value)
     }
 
-    fn lower_to_binding(self, _: Stack, diagnostics: &mut Diagnostics) -> SpannedBinding {
-        diagnostics.add(Diagnostic::new(
+    fn lower_to_binding(self, _: Stack, info: &mut Info) -> SpannedBinding {
+        info.diagnostics.add(Diagnostic::new(
             DiagnosticLevel::Error,
             "Cannot assign to a number",
             vec![Note::primary(

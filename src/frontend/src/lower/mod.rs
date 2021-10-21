@@ -1,14 +1,14 @@
 mod binding;
-mod diagnostics;
 mod expr;
 mod form;
+mod info;
 mod item;
 mod stack;
 
 use binding::*;
-use diagnostics::*;
 use expr::*;
 use form::*;
+use info::*;
 use item::*;
 use stack::*;
 
@@ -24,5 +24,5 @@ pub fn lower(
     });
 
     SpannedExpr::from(wipple_parser::Expr::from(file))
-        .lower_to_item(stack, &mut Diagnostics::new(diagnostics))
+        .lower_to_item(stack, &mut Info::new(diagnostics))
 }
