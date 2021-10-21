@@ -115,7 +115,6 @@ enum ParseResult {
     Apply(Vec<SpannedExpr>, (Span, OperatorForm), Vec<SpannedExpr>),
     PartiallyApplyLeft(Vec<SpannedExpr>, (Span, OperatorForm)),
     PartiallyApplyRight((Span, OperatorForm), Vec<SpannedExpr>),
-    // TODO: partial application
 }
 
 enum Error {

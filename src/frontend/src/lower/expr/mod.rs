@@ -21,7 +21,7 @@ where
     Self: fmt::Debug + Sized,
     SpannedExpr: From<Self>,
 {
-    fn span(&self) -> Span; // TODO: Remove
+    fn span(&self) -> Span;
 
     fn lower_to_form(self, stack: Stack, diagnostics: &mut Diagnostics) -> SpannedForm {
         self.lower_to_item(stack, diagnostics).into()
