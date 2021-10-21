@@ -10,6 +10,7 @@ macro_rules! id {
         }
 
         impl $name {
+            #[allow(clippy::new_without_default)]
             $vis fn new() -> Self {
                 Self(NEXT_ID.fetch_add(1, ::std::sync::atomic::Ordering::Relaxed))
             }
