@@ -236,11 +236,11 @@ fn unify_one(constraint: &Constraint, diagnostics: &mut Diagnostics) -> Option<S
                 vec![
                     Note::primary(
                         constraint.0.value_span,
-                        format!("Found {} here", constraint.0),
+                        format!("This is inferred to be '{}'...", constraint.0),
                     ),
                     Note::primary(
                         constraint.1.value_span,
-                        format!("Found {} here", constraint.1),
+                        format!("...but '{}' is expected here", constraint.1),
                     ),
                 ],
             ));
