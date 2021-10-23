@@ -186,6 +186,14 @@ fn constraints(item: &Item, info: &mut Info, diagnostics: &mut Diagnostics) -> C
     }
 }
 
+fn occurs(var: TypeVariableId, ty: &Type) -> bool {
+    match &ty.kind {
+        TypeKind::Error | TypeKind::Unit | TypeKind::Number | TypeKind::Text => false,
+        TypeKind::Variable(other) => var == *other,
+        TypeKind::Function(input, body) => occurs(var, input) || occurs(var, body),
+    }
+}
+
 fn substitute(ty: Type, substitution: &Substitution) -> Type {
     match ty.kind {
         TypeKind::Error | TypeKind::Unit | TypeKind::Number | TypeKind::Text => ty,
@@ -219,8 +227,8 @@ fn unify_one(constraint: &Constraint, diagnostics: &mut Diagnostics) -> Option<S
                 + Constraints::new(*body_a.clone(), *body_b.clone()),
             diagnostics,
         ),
-        (TypeKind::Variable(var), _) => Some(Substitutions::new(*var, constraint.1.clone())),
-        (_, TypeKind::Variable(var)) => Some(Substitutions::new(*var, constraint.0.clone())),
+        (TypeKind::Variable(var), _) => unify_var(*var, &constraint.1, diagnostics),
+        (_, TypeKind::Variable(var)) => unify_var(*var, &constraint.0, diagnostics),
         _ => {
             diagnostics.add(Diagnostic::new(
                 DiagnosticLevel::Error,
@@ -239,6 +247,24 @@ fn unify_one(constraint: &Constraint, diagnostics: &mut Diagnostics) -> Option<S
 
             None
         }
+    }
+}
+
+fn unify_var(
+    var: TypeVariableId,
+    ty: &Type,
+    diagnostics: &mut Diagnostics,
+) -> Option<Substitutions> {
+    if occurs(var, ty) {
+        diagnostics.add(Diagnostic::new(
+            DiagnosticLevel::Error,
+            "Type annotations needed",
+            vec![Note::primary(ty.value_span, format!("Found {} here", ty))],
+        ));
+
+        None
+    } else {
+        Some(Substitutions::new(var, ty.clone()))
     }
 }
 
