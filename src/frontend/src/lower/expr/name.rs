@@ -1,8 +1,4 @@
 use crate::lower::*;
-use std::{
-    cell::RefMut,
-    ops::{Deref, DerefMut},
-};
 
 pub struct NameExpr {
     pub span: Span,
@@ -15,12 +11,12 @@ impl NameExpr {
     }
 }
 
-impl Expr for NameExpr {
+impl ExprKind for NameExpr {
     fn span(&self) -> Span {
         self.span
     }
 
-    fn lower_to_form(self, stack: &Stack, info: &mut Info) -> SpannedForm {
+    fn lower_to_form(self, stack: &Stack, info: &mut Info) -> Form {
         match self.resolve(stack, info) {
             Some(form) => form,
             None => {
@@ -33,7 +29,7 @@ impl Expr for NameExpr {
                     )],
                 ));
 
-                SpannedForm::from(SpannedItem::error(self.span))
+                Form::Item(Item::error(self.span))
             }
         }
     }
@@ -46,33 +42,8 @@ impl Expr for NameExpr {
 }
 
 impl NameExpr {
-    pub(super) fn resolve(&self, mut stack: &Stack, info: &mut Info) -> Option<SpannedForm> {
-        enum EitherRefMut<'a, T> {
-            Cell(RefMut<'a, T>),
-            Ref(&'a mut T),
-        }
-
-        impl<'a, T> Deref for EitherRefMut<'a, T> {
-            type Target = T;
-
-            fn deref(&self) -> &Self::Target {
-                match self {
-                    EitherRefMut::Cell(r) => &*r,
-                    EitherRefMut::Ref(r) => r,
-                }
-            }
-        }
-
-        impl<'a, T> DerefMut for EitherRefMut<'a, T> {
-            fn deref_mut(&mut self) -> &mut Self::Target {
-                match self {
-                    EitherRefMut::Cell(r) => &mut *r,
-                    EitherRefMut::Ref(r) => r,
-                }
-            }
-        }
-
-        let mut used = vec![EitherRefMut::Ref(&mut info.used_variables)];
+    pub(super) fn resolve(&self, mut stack: &Stack, info: &mut Info) -> Option<Form> {
+        let mut used = vec![info.used_variables.clone()];
 
         loop {
             macro_rules! parent {
@@ -86,18 +57,18 @@ impl NameExpr {
             }
 
             if let Some(variable) = stack.variables.borrow().get(&self.value) {
-                let form = (variable.form)(self.span);
+                let form = (variable.form)(self.span, info);
 
-                if matches!(form.form, Form::Item(_)) {
-                    for mut list in used {
-                        list.insert(variable.id);
+                if matches!(form, Form::Item(_)) {
+                    for list in used {
+                        list.borrow_mut().insert(variable.id);
                     }
                 }
 
                 break Some(form);
             } else {
                 if let Some(captures) = &stack.captures {
-                    used.push(EitherRefMut::Cell(captures.borrow_mut()));
+                    used.push(captures.clone());
                 }
 
                 parent!();

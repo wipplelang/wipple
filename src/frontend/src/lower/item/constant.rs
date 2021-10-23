@@ -1,13 +1,20 @@
 use crate::lower::*;
 use serde::Serialize;
+use wipple_parser::decimal::Decimal;
 
-#[derive(Clone, Serialize)]
+#[derive(Clone, Copy, Serialize)]
 pub struct ConstantItem {
-    pub constant: ConstantId,
+    pub kind: ConstantItemKind,
 }
 
-impl SpannedItem {
-    pub fn constant(span: Span, constant: ConstantId) -> Self {
-        SpannedItem::new(span, Item::Constant(ConstantItem { constant }))
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Serialize)]
+pub enum ConstantItemKind {
+    Number(LocalIntern<Decimal>),
+    Text(LocalIntern<String>),
+}
+
+impl Item {
+    pub fn constant(span: Span, kind: ConstantItemKind) -> Self {
+        Item::new(span, ItemKind::Constant(ConstantItem { kind }))
     }
 }

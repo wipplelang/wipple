@@ -12,13 +12,15 @@ impl NumberExpr {
     }
 }
 
-impl Expr for NumberExpr {
+impl ExprKind for NumberExpr {
     fn span(&self) -> Span {
         self.span
     }
 
-    fn lower_to_form(self, _: &Stack, info: &mut Info) -> SpannedForm {
-        let constant = info.add_constant(ConstantValue::Number(self.value));
-        SpannedItem::constant(self.span, constant).into()
+    fn lower_to_form(self, _: &Stack, _: &mut Info) -> Form {
+        Form::Item(Item::constant(
+            self.span,
+            ConstantItemKind::Number(self.value),
+        ))
     }
 }

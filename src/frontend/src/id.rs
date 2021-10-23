@@ -1,27 +1,37 @@
-#[macro_export]
 macro_rules! id {
-    ($(#[$meta:meta])* $vis:vis struct $name:ident;) => {
-        ::paste::paste! {
+    ($($(#[$meta:meta])* $name:ident,)*) => {
+        $(::paste::paste! {
             $(#[$meta])*
-            #[derive(Clone, Copy, PartialEq, Eq, Hash, ::serde::Serialize)]
-            $vis struct $name(usize);
+            #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, ::serde::Serialize)]
+            pub struct $name(usize);
 
-            ::lazy_static::lazy_static! {
-                static ref [<NEXT_ $name:upper _ID>]: ::std::sync::atomic::AtomicUsize = Default::default();
+            thread_local! {
+                static [<NEXT_ $name:upper _ID>]: ::std::cell::Cell<usize> = Default::default();
             }
 
             impl $name {
                 #[allow(clippy::new_without_default)]
-                $vis fn new() -> Self {
-                    Self([<NEXT_ $name:upper _ID>].fetch_add(1, ::std::sync::atomic::Ordering::Relaxed))
+                pub fn new() -> Self {
+                    [<NEXT_ $name:upper _ID>].with(|next_id| {
+                        let id = next_id.get();
+                        next_id.set(id + 1);
+                        Self(id)
+                    })
                 }
 
-                $vis fn all() -> impl Iterator<Item = Self> {
-                    (0..[<NEXT_ $name:upper _ID>].load(::std::sync::atomic::Ordering::Release))
-                        .into_iter()
-                        .map($name)
+                pub fn reset() {
+                    [<NEXT_ $name:upper _ID>].with(|next_id| next_id.set(0))
                 }
             }
+        })*
+
+        pub fn reset() {
+            $($name::reset();)*
         }
     };
+}
+
+id! {
+    VariableId,
+    TypeVariableId,
 }

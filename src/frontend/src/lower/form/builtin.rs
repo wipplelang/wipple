@@ -1,5 +1,5 @@
 use crate::lower::*;
-use std::collections::HashMap;
+use std::{collections::HashMap, rc::Rc};
 use wipple_diagnostics::*;
 
 pub fn builtins() -> HashMap<LocalIntern<String>, Variable> {
@@ -12,7 +12,7 @@ pub fn builtins() -> HashMap<LocalIntern<String>, Variable> {
 
                 variables.insert(
                     name,
-                    Variable::new(Span::default(), name, $value),
+                    Variable::compiletime(Span::default(), name, $value),
                 );
             })*
 
@@ -21,15 +21,15 @@ pub fn builtins() -> HashMap<LocalIntern<String>, Variable> {
     }
 
     builtins! {
-        ":" => SpannedForm::builtin_assign,
-        "->" => SpannedForm::builtin_function,
-        "external" => SpannedForm::builtin_external,
+        ":" => Form::builtin_assign,
+        "->" => Form::builtin_function,
+        "external" => Form::builtin_external,
     }
 }
 
-impl SpannedForm {
+impl Form {
     fn builtin_assign(span: Span) -> Self {
-        SpannedForm::operator(
+        Form::operator(
             span,
             OperatorPrecedence::new(9),
             OperatorAssociativity::None,
@@ -52,24 +52,23 @@ impl SpannedForm {
                             )],
                         ));
 
-                        return SpannedItem::error(span).into();
+                        return Form::Item(Item::error(span));
                     }
                 };
 
-                binding
-                    .assign(lhs_span.with_end(rhs_span.end), value, stack, info)
-                    .into()
+                Form::Item(binding.assign(lhs_span.with_end(rhs_span.end), value, stack, info))
             },
         )
     }
 
     fn builtin_function(span: Span) -> Self {
-        SpannedForm::operator(
+        Form::operator(
             span,
             OperatorPrecedence::new(8),
             OperatorAssociativity::None,
             move |lhs, rhs, stack, info| {
                 let lhs_span = lhs.span;
+                let rhs_span = rhs.span;
 
                 let binding = match lhs.lower_to_binding(stack, info) {
                     Some(binding) => binding,
@@ -83,18 +82,20 @@ impl SpannedForm {
                             )],
                         ));
 
-                        return SpannedItem::error(span).into();
+                        return Form::Item(Item::error(span));
                     }
                 };
 
+                let binding_span = binding.span();
+
                 let stack = stack.child_function();
 
-                let body = SpannedItem::block(
-                    rhs.span,
+                let body = Item::block(
+                    rhs_span,
                     vec![
                         binding.assign(
                             lhs_span,
-                            SpannedItem::function_input(lhs_span).into(),
+                            Form::Item(Item::function_input(lhs_span)),
                             &stack,
                             info,
                         ),
@@ -102,12 +103,11 @@ impl SpannedForm {
                     ],
                 );
 
-                let function = Function::new(body, stack.captures.unwrap().into_inner());
-                let function_id = function.id;
+                let captures = Rc::try_unwrap(stack.captures.unwrap())
+                    .unwrap_or_else(|_| unreachable!())
+                    .into_inner();
 
-                info.functions.insert(function_id, function);
-
-                SpannedItem::function(span, function_id).into()
+                Form::Item(Item::function(span, binding_span, body, captures))
             },
         )
     }

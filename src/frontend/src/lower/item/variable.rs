@@ -6,8 +6,8 @@ pub struct VariableItem {
     pub variable: VariableId,
 }
 
-impl SpannedItem {
+impl Item {
     pub fn variable(span: Span, variable: VariableId) -> Self {
-        SpannedItem::new(span, Item::Variable(VariableItem { variable }))
+        Item::new(span, ItemKind::Variable(VariableItem { variable }))
     }
 }

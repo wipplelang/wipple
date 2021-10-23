@@ -1,11 +1,11 @@
 use crate::lower::*;
 use serde::Serialize;
 
-#[derive(Clone, Serialize)]
+#[derive(Clone, Copy, Serialize)]
 pub struct UnitItem;
 
-impl SpannedItem {
+impl Item {
     pub fn unit(span: Span) -> Self {
-        SpannedItem::new(span, Item::Unit(UnitItem))
+        Item::new(span, ItemKind::Unit(UnitItem))
     }
 }

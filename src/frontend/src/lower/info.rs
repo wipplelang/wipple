@@ -1,15 +1,12 @@
 use crate::lower::*;
 use serde::Serialize;
-use std::collections::HashSet;
+use std::{cell::RefCell, collections::HashSet, rc::Rc, sync::Arc};
 use wipple_diagnostics::*;
-use wipple_parser::decimal::Decimal;
 
 pub struct Info<'a> {
     pub diagnostics: &'a mut Diagnostics,
     pub declared_variables: Vec<Variable>,
-    pub used_variables: HashSet<VariableId>,
-    pub constants: HashMap<ConstantValue, ConstantId>,
-    pub functions: HashMap<FunctionId, Function>,
+    pub used_variables: Rc<RefCell<HashSet<VariableId>>>,
 }
 
 impl<'a> Info<'a> {
@@ -18,72 +15,45 @@ impl<'a> Info<'a> {
             diagnostics,
             declared_variables: Default::default(),
             used_variables: Default::default(),
-            constants: Default::default(),
-            functions: Default::default(),
         }
     }
 }
 
 #[derive(Clone, Serialize)]
-pub struct DebugInfo {
-    pub span: Span,
-    pub declared_name: Option<LocalIntern<String>>,
+pub struct Variable {
+    pub id: VariableId,
+    pub declaration_span: Span,
+    pub name: LocalIntern<String>,
+    #[serde(skip)]
+    pub form: Arc<dyn Fn(Span, &mut Info) -> Form>,
 }
 
-impl DebugInfo {
-    pub fn new(span: Span) -> Self {
-        DebugInfo {
-            span,
-            declared_name: None,
+impl Variable {
+    pub fn compiletime(
+        declaration_span: Span,
+        name: LocalIntern<String>,
+        form: impl Fn(Span) -> Form + 'static,
+    ) -> Self {
+        Variable {
+            id: VariableId::new(),
+            declaration_span,
+            name,
+            form: Arc::new(move |span, _| form(span)),
         }
     }
-}
 
-id! {
-    pub struct ConstantId;
-}
+    pub fn runtime(declaration_span: Span, name: LocalIntern<String>) -> Self {
+        let id = VariableId::new();
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Serialize)]
-pub struct Constant {
-    pub id: ConstantId,
-    pub value: ConstantValue,
-}
-
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Serialize)]
-pub enum ConstantValue {
-    Number(LocalIntern<Decimal>),
-    Text(LocalIntern<String>),
-}
-
-impl Constant {
-    pub fn with_id(id: ConstantId, value: ConstantValue) -> Self {
-        Constant { id, value }
-    }
-}
-
-impl Info<'_> {
-    pub fn add_constant(&mut self, value: ConstantValue) -> ConstantId {
-        *self.constants.entry(value).or_insert_with(ConstantId::new)
-    }
-}
-
-id! {
-    pub struct FunctionId;
-}
-
-#[derive(Serialize)]
-pub struct Function {
-    pub id: FunctionId,
-    pub body: SpannedItem,
-    pub captures: HashSet<VariableId>,
-}
-
-impl Function {
-    pub fn new(body: SpannedItem, captures: HashSet<VariableId>) -> Self {
-        Function {
-            id: FunctionId::new(),
-            body,
-            captures,
+        Variable {
+            id,
+            declaration_span,
+            name,
+            form: Arc::new(move |span, _| {
+                let mut item = Item::variable(span, id);
+                item.declared_name = Some(name);
+                Form::Item(item)
+            }),
         }
     }
 }

@@ -4,14 +4,17 @@ use serde::Serialize;
 #[derive(Clone, Serialize)]
 pub struct InitializeItem {
     pub variable: VariableId,
-    pub value: Box<SpannedItem>,
+    pub value: Box<Item>,
 }
 
-impl InitializeItem {
-    pub fn new(variable: VariableId, value: SpannedItem) -> Self {
-        InitializeItem {
-            variable,
-            value: Box::new(value),
-        }
+impl Item {
+    pub fn initialize(span: Span, variable: VariableId, value: Item) -> Self {
+        Item::new(
+            span,
+            ItemKind::Initialize(InitializeItem {
+                variable,
+                value: Box::new(value),
+            }),
+        )
     }
 }

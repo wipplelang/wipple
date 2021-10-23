@@ -3,11 +3,11 @@ use serde::Serialize;
 
 #[derive(Clone, Serialize)]
 pub struct BlockItem {
-    pub statements: Vec<SpannedItem>,
+    pub statements: Vec<Item>,
 }
 
-impl SpannedItem {
-    pub fn block(span: Span, statements: Vec<SpannedItem>) -> Self {
-        SpannedItem::new(span, Item::Block(BlockItem { statements }))
+impl Item {
+    pub fn block(span: Span, statements: Vec<Item>) -> Self {
+        Item::new(span, ItemKind::Block(BlockItem { statements }))
     }
 }

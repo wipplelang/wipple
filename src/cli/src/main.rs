@@ -35,7 +35,7 @@ enum Command {
     },
 
     // FIXME: Temporary
-    Lower {
+    Compile {
         #[structopt(flatten)]
         options: SharedOptions,
     },
@@ -121,7 +121,7 @@ fn main() -> anyhow::Result<()> {
                 println!("{}", result);
             }
         }
-        Command::Lower { options } => {
+        Command::Compile { options } => {
             let code = Arc::from(fs::read_to_string(&options.path)?);
             let path = LocalIntern::new(options.path);
 
@@ -129,7 +129,7 @@ fn main() -> anyhow::Result<()> {
             diagnostics.add_file(path, Arc::clone(&code));
 
             let result = wipple_parser::parse(path, &code, &mut diagnostics)
-                .map(|file| wipple_frontend::lower::lower(file, &mut diagnostics));
+                .and_then(|file| wipple_frontend::compile(file, &mut diagnostics));
 
             let (codemap, diagnostics) = diagnostics.into_console_friendly();
 

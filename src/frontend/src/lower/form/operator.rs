@@ -4,10 +4,11 @@ use std::sync::Arc;
 
 #[derive(Clone, Serialize)]
 pub struct OperatorForm {
+    pub span: Span,
     pub precedence: OperatorPrecedence,
     pub associativity: OperatorAssociativity,
     #[serde(skip)]
-    pub apply: Arc<dyn Fn(ListExpr, ListExpr, &Stack, &mut Info) -> SpannedForm>,
+    pub apply: Arc<dyn Fn(ListExpr, ListExpr, &Stack, &mut Info) -> Form>,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize)]
@@ -28,20 +29,18 @@ pub enum OperatorAssociativity {
     None,
 }
 
-impl SpannedForm {
+impl Form {
     pub fn operator(
         span: Span,
         precedence: OperatorPrecedence,
         associativity: OperatorAssociativity,
-        apply: impl Fn(ListExpr, ListExpr, &Stack, &mut Info) -> SpannedForm + 'static,
+        apply: impl Fn(ListExpr, ListExpr, &Stack, &mut Info) -> Form + 'static,
     ) -> Self {
-        SpannedForm::new(
+        Form::Operator(OperatorForm {
             span,
-            Form::Operator(OperatorForm {
-                precedence,
-                associativity,
-                apply: Arc::new(apply),
-            }),
-        )
+            precedence,
+            associativity,
+            apply: Arc::new(apply),
+        })
     }
 }

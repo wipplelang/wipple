@@ -3,11 +3,15 @@ use serde::Serialize;
 
 #[derive(Clone, Serialize)]
 pub struct TemplateForm {
+    pub span: Span,
     // TODO
 }
 
-impl SpannedForm {
+impl Form {
     pub fn template(span: Span) -> Self {
-        SpannedForm::new(span, Form::Template(TemplateForm {}))
+        Form::Template(TemplateForm {
+            span,
+            // TODO
+        })
     }
 }

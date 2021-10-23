@@ -7,15 +7,15 @@ pub struct ExternalItem {
     pub identifier: LocalIntern<String>,
 }
 
-impl SpannedItem {
+impl Item {
     pub fn external(
         span: Span,
         namespace: LocalIntern<String>,
         identifier: LocalIntern<String>,
     ) -> Self {
-        SpannedItem::new(
+        Item::new(
             span,
-            Item::External(ExternalItem {
+            ItemKind::External(ExternalItem {
                 namespace,
                 identifier,
             }),

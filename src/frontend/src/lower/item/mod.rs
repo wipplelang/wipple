@@ -18,44 +18,42 @@ pub use initialize::*;
 pub use unit::*;
 pub use variable::*;
 
-use crate::lower::*;
+use crate::{lower::*, typecheck::Type};
 use serde::Serialize;
-use wipple_diagnostics::*;
 
 #[derive(Clone, Serialize)]
-pub struct SpannedItem {
-    pub info: DebugInfo,
-    pub item: Item,
+pub struct Item {
+    pub span: Span,
+    pub declared_name: Option<LocalIntern<String>>,
+    pub ty: Type,
+    pub kind: ItemKind,
 }
 
 #[derive(Clone, Serialize)]
-pub enum Item {
+pub enum ItemKind {
+    Error,
     Unit(UnitItem),
     Constant(ConstantItem),
-    Initialize(InitializeItem),
     Block(BlockItem),
     Apply(ApplyItem),
+    Initialize(InitializeItem),
     Variable(VariableItem),
     Function(FunctionItem),
     FunctionInput(FunctionInputItem),
     External(ExternalItem),
-    Error,
 }
 
-impl SpannedItem {
-    pub fn new(span: Span, item: Item) -> Self {
-        SpannedItem::with_info(DebugInfo::new(span), item)
-    }
-
-    pub fn with_info(info: DebugInfo, item: Item) -> Self {
-        SpannedItem { info, item }
+impl Item {
+    pub fn new(span: Span, kind: ItemKind) -> Self {
+        Item {
+            span,
+            declared_name: None,
+            ty: Type::variable(span),
+            kind,
+        }
     }
 
     pub fn error(span: Span) -> Self {
-        SpannedItem::new(span, Item::Error)
-    }
-
-    pub fn error_with_info(info: DebugInfo) -> Self {
-        SpannedItem::with_info(info, Item::Error)
+        Item::new(span, ItemKind::Error)
     }
 }

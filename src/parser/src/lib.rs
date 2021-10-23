@@ -305,7 +305,7 @@ impl<'src> Parser<'_, 'src> {
 
                         None
                     }
-                };
+                }
             };
             () => {{
                 let (span, token) = self.consume();

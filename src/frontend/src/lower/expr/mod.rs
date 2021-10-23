@@ -15,14 +15,14 @@ use enum_dispatch::enum_dispatch;
 use wipple_parser as parser;
 
 #[enum_dispatch]
-pub trait Expr
+pub trait ExprKind
 where
     Self: Sized,
-    SpannedExpr: From<Self>,
+    Expr: From<Self>,
 {
     fn span(&self) -> Span;
 
-    fn lower_to_form(self, stack: &Stack, info: &mut Info) -> SpannedForm;
+    fn lower_to_form(self, stack: &Stack, info: &mut Info) -> Form;
 
     fn lower_to_binding(self, _: &Stack, _: &mut Info) -> Option<SpannedBinding> {
         None
@@ -30,35 +30,35 @@ where
 
     // eventually quoted, type, etc.
 
-    fn lower_to_item(self, stack: &Stack, info: &mut Info) -> SpannedItem {
+    fn lower_to_item(self, stack: &Stack, info: &mut Info) -> Item {
         let form = self.lower_to_form(stack, info);
 
-        match form.form {
-            Form::Item(item) => SpannedItem::with_info(form.info, item),
-            Form::Operator(_) => {
+        match form {
+            Form::Item(item) => item,
+            Form::Operator(operator) => {
                 info.diagnostics.add(Diagnostic::new(
                     DiagnosticLevel::Error,
                     "Expected value, found operator",
-                    vec![Note::primary(form.info.span, "Expected value here")],
+                    vec![Note::primary(operator.span, "Expected value here")],
                 ));
 
-                SpannedItem::error(form.info.span)
+                Item::error(operator.span)
             }
-            Form::Template(_) => {
+            Form::Template(template) => {
                 info.diagnostics.add(Diagnostic::new(
                     DiagnosticLevel::Error,
                     "Expected value, found template",
-                    vec![Note::primary(form.info.span, "Expected value here")],
+                    vec![Note::primary(template.span, "Expected value here")],
                 ));
 
-                SpannedItem::error_with_info(form.info)
+                Item::error(template.span)
             }
         }
     }
 }
 
-#[enum_dispatch(Expr)]
-pub enum SpannedExpr {
+#[enum_dispatch(ExprKind)]
+pub enum Expr {
     Block(BlockExpr),
     List(ListExpr),
     Name(NameExpr),
@@ -66,11 +66,11 @@ pub enum SpannedExpr {
     Text(TextExpr),
 }
 
-impl<'src> From<parser::Expr<'src>> for SpannedExpr {
+impl<'src> From<parser::Expr<'src>> for Expr {
     fn from(expr: parser::Expr<'src>) -> Self {
         use parser::ExprKind::*;
 
-        fn parse_lines(lines: Vec<parser::ListLine>) -> Vec<SpannedExpr> {
+        fn parse_lines(lines: Vec<parser::ListLine>) -> Vec<Expr> {
             lines
                 .into_iter()
                 .filter_map(|line| {
@@ -81,19 +81,19 @@ impl<'src> From<parser::Expr<'src>> for SpannedExpr {
         }
 
         match expr.kind {
-            Name(value) => SpannedExpr::from(NameExpr::new(expr.span, value)),
-            Text(value) => SpannedExpr::from(TextExpr::new(expr.span, value)),
-            Number(value) => SpannedExpr::from(NumberExpr::new(expr.span, value)),
+            Name(value) => Expr::from(NameExpr::new(expr.span, value)),
+            Text(value) => Expr::from(TextExpr::new(expr.span, value)),
+            Number(value) => Expr::from(NumberExpr::new(expr.span, value)),
             Quote(_) => todo!(),
-            List(lines) => SpannedExpr::from(ListExpr::new(expr.span, parse_lines(lines))),
+            List(lines) => Expr::from(ListExpr::new(expr.span, parse_lines(lines))),
             Attribute(_) => todo!(),
-            Block(statements) => SpannedExpr::from(BlockExpr::new(
+            Block(statements) => Expr::from(BlockExpr::new(
                 expr.span,
                 statements
                     .into_iter()
                     .filter_map(|statement| {
                         let exprs = parse_lines(statement.lines);
-                        (!exprs.is_empty()).then(|| SpannedExpr::from(ListExpr::infer_span(exprs)))
+                        (!exprs.is_empty()).then(|| Expr::from(ListExpr::infer_span(exprs)))
                     })
                     .collect(),
             )),

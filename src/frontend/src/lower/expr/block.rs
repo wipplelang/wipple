@@ -2,21 +2,21 @@ use crate::lower::*;
 
 pub struct BlockExpr {
     pub span: Span,
-    pub statements: Vec<SpannedExpr>,
+    pub statements: Vec<Expr>,
 }
 
 impl BlockExpr {
-    pub fn new(span: Span, statements: Vec<SpannedExpr>) -> Self {
+    pub fn new(span: Span, statements: Vec<Expr>) -> Self {
         BlockExpr { span, statements }
     }
 }
 
-impl Expr for BlockExpr {
+impl ExprKind for BlockExpr {
     fn span(&self) -> Span {
         self.span
     }
 
-    fn lower_to_form(self, stack: &Stack, info: &mut Info) -> SpannedForm {
+    fn lower_to_form(self, stack: &Stack, info: &mut Info) -> Form {
         let stack = stack.child_function();
 
         let statements = self
@@ -25,6 +25,6 @@ impl Expr for BlockExpr {
             .map(|statement| statement.lower_to_item(&stack, info))
             .collect();
 
-        SpannedItem::block(self.span, statements).into()
+        Form::Item(Item::block(self.span, statements))
     }
 }

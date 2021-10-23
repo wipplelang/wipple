@@ -3,15 +3,15 @@ use std::cmp::Ordering;
 
 pub struct ListExpr {
     pub span: Span,
-    pub items: Vec<SpannedExpr>,
+    pub items: Vec<Expr>,
 }
 
 impl ListExpr {
-    pub fn new(span: Span, items: Vec<SpannedExpr>) -> Self {
+    pub fn new(span: Span, items: Vec<Expr>) -> Self {
         ListExpr { span, items }
     }
 
-    pub fn infer_span(items: Vec<SpannedExpr>) -> Self {
+    pub fn infer_span(items: Vec<Expr>) -> Self {
         ListExpr::new(
             items
                 .first()
@@ -23,12 +23,12 @@ impl ListExpr {
     }
 }
 
-impl Expr for ListExpr {
+impl ExprKind for ListExpr {
     fn span(&self) -> Span {
         self.span
     }
 
-    fn lower_to_form(self, stack: &Stack, info: &mut Info) -> SpannedForm {
+    fn lower_to_form(self, stack: &Stack, info: &mut Info) -> Form {
         let span = self.span;
 
         let form = match self.parse_operators(stack, info) {
@@ -36,32 +36,23 @@ impl Expr for ListExpr {
             Err(error) => {
                 info.diagnostics.add(error.into());
 
-                return SpannedItem::new(span, Item::Error).into();
+                return Form::Item(Item::new(span, ItemKind::Error));
             }
         };
 
         match form {
             ParseResult::List(mut list_expr) => match list_expr.items.len() {
-                0 => SpannedItem::unit(list_expr.span).into(),
+                0 => Form::Item(Item::unit(list_expr.span)),
                 1 => list_expr.items.remove(0).lower_to_form(stack, info),
                 _ => {
                     let form = list_expr.items.remove(0).lower_to_form(stack, info);
 
-                    match form.form {
+                    match form {
                         Form::Item(item) => {
-                            let mut acc = SpannedItem::with_info(form.info, item);
-
-                            while !list_expr.items.is_empty() {
-                                let input = list_expr.items.remove(0).lower_to_item(stack, info);
-
-                                acc = SpannedItem::apply(
-                                    acc.info.span.with_end(input.info.span.end),
-                                    acc,
-                                    input,
-                                )
-                            }
-
-                            acc.into()
+                            Form::Item(list_expr.items.into_iter().fold(item, |function, expr| {
+                                let input = expr.lower_to_item(stack, info);
+                                Item::apply(function.span.with_end(input.span.end), function, input)
+                            }))
                         }
                         Form::Template(template) => todo!(),
                         Form::Operator(_) => unreachable!(),
@@ -74,18 +65,18 @@ impl Expr for ListExpr {
                 stack,
                 info,
             ),
-            ParseResult::PartiallyApplyLeft(_, (operator_info, _))
-            | ParseResult::PartiallyApplyRight((operator_info, _), _) => {
+            ParseResult::PartiallyApplyLeft(_, (operator_span, _))
+            | ParseResult::PartiallyApplyRight((operator_span, _), _) => {
                 info.diagnostics.add(Diagnostic::new(
                     DiagnosticLevel::Error,
                     "Partial application of operators is currently unsupported",
                     vec![Note::primary(
-                        operator_info.span,
+                        operator_span,
                         "Try adding an expression on both sides of this",
                     )],
                 ));
 
-                SpannedItem::error(span).into()
+                Form::Item(Item::error(span))
             }
         }
     }
@@ -104,13 +95,9 @@ impl Expr for ListExpr {
 
 enum ParseResult {
     List(ListExpr),
-    Apply(
-        Vec<SpannedExpr>,
-        (DebugInfo, OperatorForm),
-        Vec<SpannedExpr>,
-    ),
-    PartiallyApplyLeft(Vec<SpannedExpr>, (DebugInfo, OperatorForm)),
-    PartiallyApplyRight((DebugInfo, OperatorForm), Vec<SpannedExpr>),
+    Apply(Vec<Expr>, (Span, OperatorForm), Vec<Expr>),
+    PartiallyApplyLeft(Vec<Expr>, (Span, OperatorForm)),
+    PartiallyApplyRight((Span, OperatorForm), Vec<Expr>),
 }
 
 enum Error {
@@ -147,11 +134,9 @@ impl ListExpr {
         let mut operators = Vec::new();
 
         for (index, expr) in self.items.iter().enumerate() {
-            if let SpannedExpr::Name(name) = expr {
-                if let Some(form) = name.resolve(stack, info) {
-                    if let Form::Operator(operator) = form.form {
-                        operators.push((index, form.info, operator));
-                    }
+            if let Expr::Name(name) = expr {
+                if let Some(Form::Operator(operator)) = name.resolve(stack, info) {
+                    operators.push((index, operator.span, operator));
                 }
             }
         }
@@ -160,13 +145,13 @@ impl ListExpr {
             return Ok(ParseResult::List(self));
         }
 
-        let (mut max_index, mut max_info, mut max_operator) = operators.remove(0);
+        let (mut max_index, mut max_span, mut max_operator) = operators.remove(0);
 
-        for (index, info, operator) in operators {
+        for (index, span, operator) in operators {
             macro_rules! replace {
                 () => {{
                     max_index = index;
-                    max_info = info;
+                    max_span = span;
                     max_operator = operator;
                 }};
             }
@@ -210,11 +195,11 @@ impl ListExpr {
         lhs.pop().unwrap();
 
         Ok(if rhs.is_empty() {
-            ParseResult::PartiallyApplyLeft(lhs, (max_info, max_operator))
+            ParseResult::PartiallyApplyLeft(lhs, (max_span, max_operator))
         } else if lhs.is_empty() {
-            ParseResult::PartiallyApplyRight((max_info, max_operator), rhs)
+            ParseResult::PartiallyApplyRight((max_span, max_operator), rhs)
         } else {
-            ParseResult::Apply(lhs, (max_info, max_operator), rhs)
+            ParseResult::Apply(lhs, (max_span, max_operator), rhs)
         })
     }
 }

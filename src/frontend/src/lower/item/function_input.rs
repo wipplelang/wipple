@@ -4,8 +4,8 @@ use serde::Serialize;
 #[derive(Clone, Serialize)]
 pub struct FunctionInputItem;
 
-impl SpannedItem {
+impl Item {
     pub fn function_input(span: Span) -> Self {
-        SpannedItem::new(span, Item::FunctionInput(FunctionInputItem))
+        Item::new(span, ItemKind::FunctionInput(FunctionInputItem))
     }
 }

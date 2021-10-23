@@ -1,4 +1,12 @@
-#[macro_use]
-mod id;
+pub mod id;
+mod lower;
+mod typecheck;
 
-pub mod lower;
+pub use lower::{info::Variable, item::*};
+
+use wipple_diagnostics::Diagnostics;
+
+pub fn compile(file: wipple_parser::File, diagnostics: &mut Diagnostics) -> Option<Item> {
+    let item = lower::lower(file, diagnostics);
+    typecheck::typecheck(item, diagnostics).ok()
+}
