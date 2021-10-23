@@ -7,6 +7,8 @@ compiler=$2
 
 mkdir -p bin
 
+rustup update stable
+
 if [ "$compiler" = "cross" ]; then
     cargo install cross
 fi
