@@ -8,5 +8,5 @@ use wipple_diagnostics::Diagnostics;
 
 pub fn compile(file: wipple_parser::File, diagnostics: &mut Diagnostics) -> Option<Item> {
     let item = lower::lower(file, diagnostics);
-    typecheck::typecheck(item, diagnostics).ok()
+    typecheck::typecheck(item, diagnostics)
 }

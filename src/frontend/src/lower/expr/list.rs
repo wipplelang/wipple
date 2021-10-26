@@ -55,7 +55,15 @@ impl ExprKind for ListExpr {
                             }))
                         }
                         Form::Template(template) => todo!(),
-                        Form::Operator(_) => unreachable!(),
+                        Form::Operator(operator) => {
+                            info.diagnostics.add(Diagnostic::new(
+                                DiagnosticLevel::Error,
+                                "Expected value, found operator",
+                                vec![Note::primary(operator.span, "Expected value here")],
+                            ));
+
+                            Form::Item(Item::error(operator.span))
+                        }
                     }
                 }
             },
@@ -161,8 +169,8 @@ impl ListExpr {
                 Ordering::Equal => {
                     if operator.associativity != max_operator.associativity {
                         return Err(Error::AmbiguousAssociativity {
-                            first: self.items[index].span(),
-                            second: self.items[max_index].span(),
+                            first: self.items[max_index].span(),
+                            second: self.items[index].span(),
                         });
                     }
 
@@ -179,8 +187,8 @@ impl ListExpr {
                         }
                         OperatorAssociativity::None => {
                             return Err(Error::MultipleNonAssociativeOperators {
-                                first: self.items[index].span(),
-                                second: self.items[max_index].span(),
+                                first: self.items[max_index].span(),
+                                second: self.items[index].span(),
                             })
                         }
                     }

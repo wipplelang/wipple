@@ -1,325 +1,279 @@
 use crate::{id::*, lower::*};
 use serde::Serialize;
-use std::{
-    collections::{HashMap, VecDeque},
-    fmt, mem,
-    ops::Add,
-};
+use std::{cell::RefCell, collections::HashMap, fmt, rc::Rc};
 use wipple_diagnostics::*;
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
-pub struct Type {
-    pub value_span: Span,
-    pub kind: TypeKind,
+#[derive(Debug, Clone, Serialize)]
+pub struct Ty {
+    pub value_span: Option<Span>,
+    pub kind: Rc<RefCell<TyKind>>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
-pub enum TypeKind {
-    Error,
-    Unit, // eventually, more general tuple type
+#[derive(Debug, Clone, Serialize)]
+pub enum TyKind {
+    Unknown, // TODO: Bounds
+    Generic, // TODO: Generic ID and bounds
+    Unit,    // eventually, more general tuple type
     Number,
     Text,
-    Variable(TypeVariableId),
-    Function(Box<Type>, Box<Type>),
+    Function(Ty, Ty),
 }
 
-impl Type {
-    fn new(value_span: Span, kind: TypeKind) -> Self {
-        Type { value_span, kind }
+impl Ty {
+    fn new(kind: TyKind) -> Self {
+        Ty {
+            value_span: None,
+            kind: Rc::new(RefCell::new(kind)),
+        }
     }
 
-    fn error(value_span: Span) -> Self {
-        Type::new(value_span, TypeKind::Error)
-    }
-
-    fn unit(value_span: Span) -> Self {
-        Type::new(value_span, TypeKind::Unit)
-    }
-
-    fn number(value_span: Span) -> Self {
-        Type::new(value_span, TypeKind::Number)
-    }
-
-    fn text(value_span: Span) -> Self {
-        Type::new(value_span, TypeKind::Text)
-    }
-
-    pub(crate) fn variable(value_span: Span) -> Self {
-        Type::new(value_span, TypeKind::Variable(TypeVariableId::new()))
-    }
-
-    fn function(value_span: Span, input: Type, body: Type) -> Self {
-        Type::new(
-            value_span,
-            TypeKind::Function(Box::new(input), Box::new(body)),
-        )
-    }
-}
-
-impl fmt::Display for Type {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match &self.kind {
-            TypeKind::Error => write!(f, "_"),
-            TypeKind::Unit => write!(f, "."),
-            TypeKind::Number => write!(f, "Number"),
-            TypeKind::Text => write!(f, "Text"),
-            TypeKind::Variable(_) => write!(f, "_"),
-            TypeKind::Function(input, body) => write!(f, "{} -> {}", input, body),
+    pub(crate) fn unknown(value_span: Span) -> Self {
+        Ty {
+            value_span: Some(value_span),
+            kind: Rc::new(RefCell::new(TyKind::Unknown)),
         }
     }
 }
 
-pub fn typecheck(item: Item, diagnostics: &mut Diagnostics) -> Result<Item, Item> {
-    let mut info = Info {
-        variables: Default::default(),
-        function_input_ty: None,
-    };
-
-    resolve(item, &mut info, diagnostics)
-}
-
-struct Info {
-    variables: HashMap<VariableId, Type>,
-    function_input_ty: Option<Type>,
-}
-
-#[derive(Debug, Serialize)]
-struct MapSet<T, U>(VecDeque<(T, U)>);
-
-impl<T, U> MapSet<T, U> {
-    pub fn new(left: T, right: U) -> Self {
-        MapSet(vec![(left, right)].into())
-    }
-
-    pub fn empty() -> Self {
-        MapSet(VecDeque::new())
+impl fmt::Display for Ty {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match &*self.kind.borrow() {
+            TyKind::Unknown => write!(f, "_"),
+            TyKind::Generic => write!(f, "_"), // TODO
+            TyKind::Unit => write!(f, "."),
+            TyKind::Number => write!(f, "Number"),
+            TyKind::Text => write!(f, "Text"),
+            TyKind::Function(input, body) => write!(f, "{} -> {}", input, body),
+        }
     }
 }
 
-impl<T, U> Add for MapSet<T, U> {
-    type Output = Self;
+pub fn typecheck(mut item: Item, diagnostics: &mut Diagnostics) -> Option<Item> {
+    let mut info = Info::new(diagnostics);
+    typecheck_item(&mut item, &mut info)?;
+    Some(item)
+}
 
-    fn add(self, rhs: Self) -> Self::Output {
-        MapSet(self.0.into_iter().chain(rhs.0).collect())
+struct Info<'a> {
+    diagnostics: &'a mut Diagnostics,
+    variables: HashMap<VariableId, Ty>,
+    function_input_ty: Option<Ty>,
+}
+
+impl<'a> Info<'a> {
+    pub fn new(diagnostics: &'a mut Diagnostics) -> Self {
+        Info {
+            diagnostics,
+            variables: Default::default(),
+            function_input_ty: None,
+        }
     }
 }
 
-impl<T, U> FromIterator<(T, U)> for MapSet<T, U> {
-    fn from_iter<It: IntoIterator<Item = (T, U)>>(iter: It) -> Self {
-        MapSet(iter.into_iter().collect())
-    }
-}
-
-impl<T, U> FromIterator<MapSet<T, U>> for MapSet<T, U> {
-    fn from_iter<It: IntoIterator<Item = MapSet<T, U>>>(iter: It) -> Self {
-        MapSet(iter.into_iter().flat_map(|c| c.0).collect())
-    }
-}
-
-type Constraints = MapSet<Type, Type>;
-type Constraint = (Type, Type);
-
-type Substitutions = MapSet<TypeVariableId, Type>;
-type Substitution = (TypeVariableId, Type);
-
-fn constraints(item: &Item, info: &mut Info, diagnostics: &mut Diagnostics) -> Constraints {
-    let ty = item.ty.clone();
-
-    match &item.kind {
-        ItemKind::Error => Constraints::new(ty, Type::error(item.span)),
-        ItemKind::Unit(_) => Constraints::new(ty, Type::unit(item.span)),
+#[must_use]
+fn typecheck_item(item: &mut Item, info: &mut Info) -> Option<()> {
+    match &mut item.kind {
+        ItemKind::Error => return None,
+        ItemKind::Unit(_) => {
+            item.ty.unify(&Ty::new(TyKind::Unit), info)?;
+        }
         ItemKind::Constant(constant_item) => match constant_item.kind {
-            ConstantItemKind::Number(_) => Constraints::new(ty, Type::number(item.span)),
-            ConstantItemKind::Text(_) => Constraints::new(ty, Type::text(item.span)),
+            ConstantItemKind::Number(_) => {
+                item.ty.unify(&Ty::new(TyKind::Number), info)?;
+            }
+            ConstantItemKind::Text(_) => {
+                item.ty.unify(&Ty::new(TyKind::Text), info)?;
+            }
         },
         ItemKind::Block(block_item) => {
-            let statements = block_item
-                .statements
-                .iter()
-                .map(|item| constraints(item, info, diagnostics))
-                .collect::<Constraints>();
+            // Typecheck each statement; the type of the last statement is the
+            // type of the entire block
+            let mut last_ty = Ty::new(TyKind::Unit);
+            for statement in &mut block_item.statements {
+                typecheck_item(statement, info)?;
+                last_ty = statement.ty.clone();
+            }
 
-            let last_ty = block_item
-                .statements
-                .last()
-                .map(|item| item.ty.clone())
-                .unwrap_or_else(|| Type::unit(item.span));
-
-            statements + Constraints::new(ty, last_ty)
+            item.ty.unify(&last_ty, info)?;
         }
         ItemKind::Apply(apply_item) => {
-            constraints(&apply_item.function, info, diagnostics)
-                + constraints(&apply_item.value, info, diagnostics)
-                + Constraints::new(
-                    apply_item.function.ty.clone(),
-                    Type::function(item.span, apply_item.value.ty.clone(), ty),
-                )
+            // Typecheck the function
+            typecheck_item(&mut apply_item.function, info)?;
+
+            // Ensure the function has a function type, retrieving the types of
+            // its input and body
+            let input_ty = Ty::new(TyKind::Unknown);
+            let body_ty = Ty::new(TyKind::Unknown);
+            Ty::new(TyKind::Function(input_ty.clone(), body_ty.clone()))
+                .unify(&apply_item.function.ty, info)?;
+
+            // Typecheck the input
+            typecheck_item(&mut apply_item.input, info)?;
+
+            // Ensure the type of the input matches the type of the function's
+            // input, including generics
+            let substituted_generics = apply_item.input.ty.unify(&input_ty, info)?;
+
+            // If 'A -> A' has been converted to 'X -> A', convert it further to
+            // 'X -> X'
+            body_ty.substitute_generics(&substituted_generics);
+
+            // Infer the type of the item as the type of the function's body
+            item.ty.unify(&body_ty, info)?;
         }
         ItemKind::Initialize(initialize_item) => {
-            let variable_ty = Type::variable(item.span);
+            // Typecheck the value
+            typecheck_item(&mut initialize_item.value, info)?;
 
+            // Track the type of the variable
             info.variables
-                .insert(initialize_item.variable, variable_ty.clone());
+                .insert(initialize_item.variable, initialize_item.value.ty.clone());
 
-            constraints(&initialize_item.value, info, diagnostics)
-                + Constraints::new(ty, Type::unit(item.span))
-                + Constraints::new(variable_ty, initialize_item.value.ty.clone())
+            item.ty.unify(&Ty::new(TyKind::Unit), info)?;
         }
-        ItemKind::Variable(variable_item) => Constraints::new(
-            ty,
-            info.variables.get(&variable_item.variable).unwrap().clone(),
-        ),
+        ItemKind::Variable(variable_item) => {
+            item.ty = info.variables.get(&variable_item.variable).unwrap().clone();
+        }
         ItemKind::Function(function_item) => {
-            let function_input_ty = Type::variable(function_item.input_span);
+            // Track the type of the function's input within the body
+            debug_assert!(info.function_input_ty.is_none());
+            let function_input_ty = Ty::new(TyKind::Unknown);
             info.function_input_ty = Some(function_input_ty.clone());
 
-            constraints(&function_item.body, info, diagnostics)
-                + Constraints::new(
-                    ty,
-                    Type::function(item.span, function_input_ty, function_item.body.ty.clone()),
-                )
+            // Typecheck the function body
+            typecheck_item(&mut function_item.body, info)?;
+
+            // Convert '_ -> X' to 'for A -> A -> X'
+            function_input_ty.make_generic();
+
+            item.ty.unify(
+                &Ty::new(TyKind::Function(
+                    function_input_ty,
+                    function_item.body.ty.clone(),
+                )),
+                info,
+            )?;
         }
         ItemKind::FunctionInput(_) => {
-            Constraints::new(ty, info.function_input_ty.as_ref().unwrap().clone())
+            item.ty = info.function_input_ty.as_ref().unwrap().clone();
         }
         ItemKind::External(_) => todo!(),
     }
+
+    Some(())
 }
 
-fn occurs(var: TypeVariableId, ty: &Type) -> bool {
-    match &ty.kind {
-        TypeKind::Error | TypeKind::Unit | TypeKind::Number | TypeKind::Text => false,
-        TypeKind::Variable(other) => var == *other,
-        TypeKind::Function(input, body) => occurs(var, input) || occurs(var, body),
-    }
-}
+type SubstitutedGenerics = HashMap<(), TyKind>; // TODO: HashMap<GenericId, TyKind>
 
-fn substitute(ty: Type, substitution: &Substitution) -> Type {
-    match ty.kind {
-        TypeKind::Error | TypeKind::Unit | TypeKind::Number | TypeKind::Text => ty,
-        TypeKind::Variable(var) => {
-            if var == substitution.0 {
-                substitution.1.clone()
-            } else {
-                ty
-            }
+impl Ty {
+    #[must_use]
+    fn unify(&mut self, known: &Ty, info: &mut Info) -> Option<SubstitutedGenerics> {
+        let mut substituted_generics = SubstitutedGenerics::new();
+
+        macro_rules! get {
+            ($x:expr) => {
+                $x.borrow_mut()
+            };
         }
-        TypeKind::Function(input, value) => Type::function(
-            ty.value_span,
-            substitute(*input, substitution),
-            substitute(*value, substitution),
-        ),
+
+        if matches!(*get!(self.kind), TyKind::Unknown)
+            && matches!(*get!(known.kind), TyKind::Unknown)
+        {
+            // TODO: Check bounds
+            self.kind = known.kind.clone();
+            return Some(substituted_generics);
+        }
+
+        let mut kind = get!(self.kind);
+        let mut known_kind = get!(known.kind);
+
+        macro_rules! error {
+            () => {{
+                drop(kind);
+                drop(known_kind);
+
+                info.diagnostics.add(Diagnostic::new(
+                    DiagnosticLevel::Error,
+                    "Mismatched types",
+                    vec![Note::primary(
+                        self.value_span.unwrap_or_else(|| known.value_span.unwrap()),
+                        format!("Expected {}, found {}", self, known),
+                    )],
+                ));
+
+                return None;
+            }};
+        }
+
+        match &mut *known_kind {
+            TyKind::Unknown => error!(),
+            TyKind::Generic => match &mut *kind {
+                TyKind::Unknown => *kind = TyKind::Generic,
+                TyKind::Generic => {} // TODO: Check ID
+                // TODO: Check bounds
+                _ => {
+                    substituted_generics.insert((), kind.clone());
+                }
+            },
+            TyKind::Unit => match &mut *kind {
+                TyKind::Unknown => *kind = TyKind::Unit, // TODO: Check bounds
+                TyKind::Unit => {}
+                _ => error!(),
+            },
+            TyKind::Number => match &mut *kind {
+                TyKind::Unknown => *kind = TyKind::Number, // TODO: Check bounds
+                TyKind::Number => {}
+                _ => error!(),
+            },
+            TyKind::Text => match &mut *kind {
+                TyKind::Unknown => *kind = TyKind::Text, // TODO: Check bounds
+                TyKind::Text => {}
+                _ => error!(),
+            },
+            TyKind::Function(known_input, known_body) => match &mut *kind {
+                // TODO: Check bounds
+                TyKind::Unknown => {
+                    let mut input = Ty::new(TyKind::Unknown);
+                    let mut body = Ty::new(TyKind::Unknown);
+
+                    input.unify(known_input, info)?;
+                    body.unify(known_body, info)?;
+
+                    *kind = TyKind::Function(input, body);
+                }
+                TyKind::Function(input, body) => {
+                    input.unify(known_input, info)?;
+                    body.unify(known_body, info)?;
+                }
+                _ => error!(),
+            },
+        }
+
+        Some(substituted_generics)
     }
-}
 
-fn apply(ty: Type, substitutions: &Substitutions) -> Type {
-    substitutions.0.iter().fold(ty, substitute)
-}
+    fn make_generic(&self) {
+        let kind = &mut *self.kind.borrow_mut();
 
-fn unify_one(constraint: &Constraint, diagnostics: &mut Diagnostics) -> Option<Substitutions> {
-    match (&constraint.0.kind, &constraint.1.kind) {
-        (TypeKind::Error, _) => None,
-        (TypeKind::Unit, TypeKind::Unit)
-        | (TypeKind::Number, TypeKind::Number)
-        | (TypeKind::Text, TypeKind::Text) => Some(Substitutions::empty()),
-        (TypeKind::Function(input_a, body_a), TypeKind::Function(input_b, body_b)) => unify(
-            Constraints::new(*input_a.clone(), *input_b.clone())
-                + Constraints::new(*body_a.clone(), *body_b.clone()),
-            diagnostics,
-        ),
-        (TypeKind::Variable(var), _) => unify_var(*var, &constraint.1, diagnostics),
-        (_, TypeKind::Variable(var)) => unify_var(*var, &constraint.0, diagnostics),
-        _ => {
-            diagnostics.add(Diagnostic::new(
-                DiagnosticLevel::Error,
-                "Mismatched types",
-                vec![
-                    Note::primary(
-                        constraint.0.value_span,
-                        format!("This is inferred to be '{}'...", constraint.0),
-                    ),
-                    Note::primary(
-                        constraint.1.value_span,
-                        format!("...but '{}' is expected here", constraint.1),
-                    ),
-                ],
-            ));
-
-            None
+        if matches!(kind, TyKind::Unknown) {
+            *kind = TyKind::Generic
         }
     }
-}
 
-fn unify_var(
-    var: TypeVariableId,
-    ty: &Type,
-    diagnostics: &mut Diagnostics,
-) -> Option<Substitutions> {
-    if occurs(var, ty) {
-        diagnostics.add(Diagnostic::new(
-            DiagnosticLevel::Error,
-            "Type annotations needed",
-            vec![Note::primary(ty.value_span, format!("Found {} here", ty))],
-        ));
+    fn substitute_generics(&self, substituted_generics: &SubstitutedGenerics) {
+        let kind = &mut *self.kind.borrow_mut();
 
-        None
-    } else {
-        Some(Substitutions::new(var, ty.clone()))
-    }
-}
-
-fn unify(mut constraints: Constraints, diagnostics: &mut Diagnostics) -> Option<Substitutions> {
-    if let Some(head) = constraints.0.pop_front() {
-        let head = unify_one(&head, diagnostics)?;
-
-        let tail = constraints
-            .0
-            .into_iter()
-            .map(|(left, right)| {
-                let apply = |ty| apply(ty, &head);
-                (apply(left), apply(right))
-            })
-            .collect();
-
-        Some(head + unify(tail, diagnostics)?)
-    } else {
-        Some(Substitutions::empty())
-    }
-}
-
-fn resolve(mut root: Item, info: &mut Info, diagnostics: &mut Diagnostics) -> Result<Item, Item> {
-    let constraints = constraints(&root, info, diagnostics);
-    let substitutions = match unify(constraints, diagnostics) {
-        Some(substitutions) => substitutions,
-        None => return Err(root),
-    };
-
-    fn resolve(item: &mut Item, substitutions: &Substitutions) {
-        let ty = mem::replace(&mut item.ty, Type::error(item.span));
-        item.ty = apply(ty, substitutions);
-
-        match &mut item.kind {
-            ItemKind::Error
-            | ItemKind::Unit(_)
-            | ItemKind::Constant(_)
-            | ItemKind::Variable(_)
-            | ItemKind::FunctionInput(_)
-            | ItemKind::External(_) => {}
-            ItemKind::Block(item) => {
-                for statement in &mut item.statements {
-                    resolve(statement, substitutions)
+        match kind {
+            TyKind::Generic => {
+                if let Some(substitute) = substituted_generics.get(&()) {
+                    *kind = substitute.clone();
                 }
             }
-            ItemKind::Apply(item) => {
-                resolve(&mut item.function, substitutions);
-                resolve(&mut item.value, substitutions);
+            TyKind::Function(input, body) => {
+                input.substitute_generics(substituted_generics);
+                body.substitute_generics(substituted_generics);
             }
-            ItemKind::Initialize(item) => resolve(&mut item.value, substitutions),
-            ItemKind::Function(item) => resolve(&mut item.body, substitutions),
+            TyKind::Unknown | TyKind::Unit | TyKind::Number | TyKind::Text => {}
         }
     }
-
-    resolve(&mut root, &substitutions);
-
-    Ok(root)
 }

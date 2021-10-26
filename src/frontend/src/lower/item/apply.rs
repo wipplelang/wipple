@@ -4,16 +4,16 @@ use serde::Serialize;
 #[derive(Clone, Serialize)]
 pub struct ApplyItem {
     pub function: Box<Item>,
-    pub value: Box<Item>,
+    pub input: Box<Item>,
 }
 
 impl Item {
-    pub fn apply(span: Span, function: Item, value: Item) -> Self {
+    pub fn apply(span: Span, function: Item, input: Item) -> Self {
         Item::new(
             span,
             ItemKind::Apply(ApplyItem {
                 function: Box::new(function),
-                value: Box::new(value),
+                input: Box::new(input),
             }),
         )
     }

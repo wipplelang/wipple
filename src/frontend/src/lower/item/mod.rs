@@ -18,14 +18,14 @@ pub use initialize::*;
 pub use unit::*;
 pub use variable::*;
 
-use crate::{lower::*, typecheck::Type};
+use crate::{lower::*, typecheck::Ty};
 use serde::Serialize;
 
 #[derive(Clone, Serialize)]
 pub struct Item {
     pub span: Span,
     pub declared_name: Option<LocalIntern<String>>,
-    pub ty: Type,
+    pub ty: Ty,
     pub kind: ItemKind,
 }
 
@@ -48,7 +48,7 @@ impl Item {
         Item {
             span,
             declared_name: None,
-            ty: Type::variable(span),
+            ty: Ty::unknown(span),
             kind,
         }
     }

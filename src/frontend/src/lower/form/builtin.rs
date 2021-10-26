@@ -65,7 +65,7 @@ impl Form {
         Form::operator(
             span,
             OperatorPrecedence::new(8),
-            OperatorAssociativity::None,
+            OperatorAssociativity::Right,
             move |lhs, rhs, stack, info| {
                 let lhs_span = lhs.span;
                 let rhs_span = rhs.span;
