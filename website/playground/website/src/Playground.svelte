@@ -63,7 +63,7 @@
 
         output = [
             {
-                text: JSON.stringify(result, null, 2),
+                text: result,
                 color: undefined,
             },
         ];

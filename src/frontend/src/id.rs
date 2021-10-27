@@ -3,7 +3,7 @@ macro_rules! id {
         $(::paste::paste! {
             $(#[$meta])*
             #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, ::serde::Serialize)]
-            pub struct $name(usize);
+            pub struct $name(pub usize);
 
             thread_local! {
                 static [<NEXT_ $name:upper _ID>]: ::std::cell::Cell<usize> = Default::default();
@@ -33,5 +33,4 @@ macro_rules! id {
 
 id! {
     VariableId,
-    TypeVariableId,
 }

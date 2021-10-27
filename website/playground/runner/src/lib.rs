@@ -1,14 +1,7 @@
-use serde::Serialize;
 use std::{path::PathBuf, sync::Arc};
 use wasm_bindgen::prelude::*;
 use wipple_diagnostics::*;
 use wipple_parser::LocalIntern;
-
-#[derive(Serialize)]
-pub struct Result<T> {
-    pub diagnostics: Vec<Diagnostic>,
-    pub item: Option<T>,
-}
 
 #[wasm_bindgen]
 pub fn run(code: &str) -> JsValue {
@@ -22,13 +15,9 @@ pub fn run(code: &str) -> JsValue {
     let mut diagnostics = Diagnostics::new();
     diagnostics.add_file(path, Arc::from(code));
 
-    let item = wipple_parser::parse(path, code, &mut diagnostics)
-        .and_then(|file| wipple_frontend::compile(file, &mut diagnostics));
-
-    let result = Result {
-        diagnostics: diagnostics.diagnostics,
-        item,
-    };
+    let result = wipple_parser::parse(path, code, &mut diagnostics)
+        .and_then(|file| wipple_frontend::compile(file, &mut diagnostics))
+        .map(wipple_js_backend::gen);
 
     JsValue::from_serde(&result).unwrap()
 }

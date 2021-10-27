@@ -377,6 +377,33 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f497285884f3fcff424ffc933e56d7cbca511def0c9831a7f9b5f6153e3cc89b"
 
 [[package]]
+name = "resast"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "273826a2b71cf97b320906fa4db27ae82e90309d9f3f605dc556b9a7a59eddb5"
+
+[[package]]
+name = "ress"
+version = "0.11.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d6e4a5e63c0b065c6e29630b59c9c2635d4f0c3297a6703d3ce981068a5cf512"
+dependencies = [
+ "log",
+ "unicode-xid",
+]
+
+[[package]]
+name = "resw"
+version = "0.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "06584bef78f8dcab480c4f1e8db24ff5efb087e02e10ecf986969afc4d3cd0b0"
+dependencies = [
+ "log",
+ "resast",
+ "ress",
+]
+
+[[package]]
 name = "rust_decimal"
 version = "1.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -702,6 +729,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "wipple_js_backend"
+version = "0.0.0"
+dependencies = [
+ "resast",
+ "resw",
+ "wipple_frontend",
+]
+
+[[package]]
 name = "wipple_parser"
 version = "0.0.0"
 dependencies = [
@@ -725,5 +761,6 @@ dependencies = [
  "wipple_diagnostics",
  "wipple_formatter",
  "wipple_frontend",
+ "wipple_js_backend",
  "wipple_parser",
 ]

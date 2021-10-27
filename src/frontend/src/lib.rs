@@ -2,6 +2,7 @@ pub mod id;
 mod lower;
 mod typecheck;
 
+pub use id::*;
 pub use lower::{info::Variable, item::*};
 
 use wipple_diagnostics::Diagnostics;
