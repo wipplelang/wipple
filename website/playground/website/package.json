@@ -1,6 +1,7 @@
 {
     "private": true,
     "scripts": {
+        "preinstall": "cd ../runner && wasm-pack build",
         "start": "craco start",
         "build": "craco build",
         "test": "craco test",
