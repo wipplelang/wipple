@@ -1,5 +1,6 @@
 {
     "private": true,
+    "homepage": "/",
     "scripts": {
         "preinstall": "cd ../runner && wasm-pack build",
         "start": "craco start",
