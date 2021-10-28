@@ -2,12 +2,12 @@ use crate::lower::*;
 use serde::Serialize;
 use wipple_parser::decimal::Decimal;
 
-#[derive(Clone, Copy, Serialize)]
+#[derive(Debug, Clone, Copy, Serialize)]
 pub struct ConstantItem {
     pub kind: ConstantItemKind,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
 pub enum ConstantItemKind {
     Number(LocalIntern<Decimal>),
     Text(LocalIntern<String>),

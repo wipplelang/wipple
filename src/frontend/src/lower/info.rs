@@ -1,12 +1,18 @@
-use crate::lower::*;
+use crate::{lower::*, Ty};
 use serde::Serialize;
-use std::{cell::RefCell, collections::HashSet, rc::Rc, sync::Arc};
+use std::{
+    cell::RefCell,
+    collections::{HashMap, HashSet},
+    rc::Rc,
+    sync::Arc,
+};
 use wipple_diagnostics::*;
 
 pub struct Info<'a> {
     pub diagnostics: &'a mut Diagnostics,
     pub declared_variables: Vec<Variable>,
     pub used_variables: Rc<RefCell<HashSet<VariableId>>>,
+    pub externals: HashMap<(String, String), Vec<Ty>>,
 }
 
 impl<'a> Info<'a> {
@@ -15,6 +21,7 @@ impl<'a> Info<'a> {
             diagnostics,
             declared_variables: Default::default(),
             used_variables: Default::default(),
+            externals: Default::default(),
         }
     }
 }

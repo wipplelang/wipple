@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use crate::lower::*;
 use serde::Serialize;
 
-#[derive(Clone, Serialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct FunctionItem {
     pub input_span: Span,
     pub body: Box<Item>,
@@ -11,7 +11,12 @@ pub struct FunctionItem {
 }
 
 impl Item {
-    pub fn function(span: Span, input_span: Span, body: Item, captures: HashSet<VariableId>) -> Self {
+    pub fn function(
+        span: Span,
+        input_span: Span,
+        body: Item,
+        captures: HashSet<VariableId>,
+    ) -> Self {
         Item::new(
             span,
             ItemKind::Function(FunctionItem {

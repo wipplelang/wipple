@@ -2,8 +2,8 @@ use resast::prelude::*;
 use std::borrow::Cow;
 use wipple_frontend::{id::VariableId, *};
 
-pub fn gen(item: Item) -> String {
-    let expr = gen_item(item, &mut Info::default());
+pub fn gen(item: TypecheckedItem) -> String {
+    let expr = gen_item(item.0, &mut Info::default());
 
     let program = Program::Script(vec![
         ProgramPart::Dir(Dir {
@@ -26,7 +26,7 @@ struct Info {
 
 fn gen_item<'a>(item: Item, info: &mut Info) -> Expr<'a> {
     match item.kind {
-        ItemKind::Error => panic!("Must provide fully-typechecked item"),
+        ItemKind::Error => unreachable!(),
         ItemKind::Unit(_) => Expr::Lit(Lit::Null),
         ItemKind::Constant(constant_item) => match constant_item.kind {
             ConstantItemKind::Number(number) => {

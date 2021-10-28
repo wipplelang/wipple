@@ -729,6 +729,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "wipple_interpreter_backend"
+version = "0.0.0"
+dependencies = [
+ "rust_decimal",
+ "serde",
+ "wipple_frontend",
+]
+
+[[package]]
 name = "wipple_js_backend"
 version = "0.0.0"
 dependencies = [
@@ -761,6 +770,6 @@ dependencies = [
  "wipple_diagnostics",
  "wipple_formatter",
  "wipple_frontend",
- "wipple_js_backend",
+ "wipple_interpreter_backend",
  "wipple_parser",
 ]

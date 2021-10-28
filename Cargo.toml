@@ -1,5 +1,6 @@
 [workspace]
 members = [
+    "src/backends/interpreter",
     "src/backends/js",
     "src/cli",
     "src/diagnostics",

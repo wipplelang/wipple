@@ -1,0 +1,9 @@
+[package]
+name = "wipple_interpreter_backend"
+version = "0.0.0"
+edition = "2021"
+
+[dependencies]
+rust_decimal = "1"
+serde = { version = "1", features = ["derive"] }
+wipple_frontend = { path = "../../frontend" }

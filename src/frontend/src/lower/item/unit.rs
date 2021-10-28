@@ -1,7 +1,7 @@
 use crate::lower::*;
 use serde::Serialize;
 
-#[derive(Clone, Copy, Serialize)]
+#[derive(Debug, Clone, Copy, Serialize)]
 pub struct UnitItem;
 
 impl Item {

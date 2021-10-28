@@ -3,6 +3,10 @@ use serde::Serialize;
 use std::{cell::RefCell, collections::HashMap, fmt, rc::Rc};
 use wipple_diagnostics::*;
 
+#[non_exhaustive]
+#[derive(Debug, Clone, Serialize)]
+pub struct TypecheckedItem(pub Item);
+
 #[derive(Debug, Clone, Serialize)]
 pub struct Ty {
     pub value_span: Option<Span>,
@@ -48,10 +52,10 @@ impl fmt::Display for Ty {
     }
 }
 
-pub fn typecheck(mut item: Item, diagnostics: &mut Diagnostics) -> Option<Item> {
+pub fn typecheck(mut item: Item, diagnostics: &mut Diagnostics) -> Option<TypecheckedItem> {
     let mut info = Info::new(diagnostics);
     typecheck_item(&mut item, &mut info)?;
-    Some(item)
+    Some(TypecheckedItem(item))
 }
 
 struct Info<'a> {

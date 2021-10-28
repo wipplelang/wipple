@@ -21,7 +21,7 @@ pub use variable::*;
 use crate::{lower::*, typecheck::Ty};
 use serde::Serialize;
 
-#[derive(Clone, Serialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct Item {
     pub span: Span,
     pub declared_name: Option<LocalIntern<String>>,
@@ -29,7 +29,7 @@ pub struct Item {
     pub kind: ItemKind,
 }
 
-#[derive(Clone, Serialize)]
+#[derive(Debug, Clone, Serialize)]
 pub enum ItemKind {
     Error,
     Unit(UnitItem),

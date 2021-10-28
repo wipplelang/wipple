@@ -1,7 +1,7 @@
 use crate::lower::*;
 use serde::Serialize;
 
-#[derive(Clone, Serialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct FunctionInputItem;
 
 impl Item {
