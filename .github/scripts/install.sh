@@ -2,17 +2,23 @@
 
 set -e
 
+log() {
+    if [[ -z "${WIPPLE_INSTALLER_SILENT}" ]]; then
+        echo $1
+    fi
+}
+
 main() {
-    path="/usr/local/bin/wipple"
+    path=${1:-"/usr/local/bin/wipple"}
     arch="$(get_architecture)"
 
-    echo "Installing Wipple ($arch) to $path..."
+    log "Installing Wipple ($arch) to $path..."
 
     url="https://github.com/wipplelang/wipple/releases/latest/download/wipple-$arch"
-    curl -fSL "$url" -o "$path"
+    curl -fsSL "$url" -o "$path"
     chmod +x "$path"
 
-    echo "Wipple installed!"
+    log "Wipple installed!"
 }
 
 # From rustup-init.sh
@@ -212,4 +218,4 @@ get_architecture() {
     echo "$_arch"
 }
 
-main
+main $@
