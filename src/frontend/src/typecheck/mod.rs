@@ -9,7 +9,7 @@ pub struct TypecheckedItem(pub Item);
 
 #[derive(Debug, Clone, Serialize)]
 pub struct Ty {
-    pub value_span: Option<Span>,
+    pub value_span: Span,
     pub kind: Rc<RefCell<TyKind>>,
 }
 
@@ -24,18 +24,15 @@ pub enum TyKind {
 }
 
 impl Ty {
-    fn new(kind: TyKind) -> Self {
+    fn new(value_span: Span, kind: TyKind) -> Self {
         Ty {
-            value_span: None,
+            value_span,
             kind: Rc::new(RefCell::new(kind)),
         }
     }
 
     pub(crate) fn unknown(value_span: Span) -> Self {
-        Ty {
-            value_span: Some(value_span),
-            kind: Rc::new(RefCell::new(TyKind::Unknown)),
-        }
+        Ty::new(value_span, TyKind::Unknown)
     }
 }
 
@@ -79,20 +76,20 @@ fn typecheck_item(item: &mut Item, info: &mut Info) -> Option<()> {
     match &mut item.kind {
         ItemKind::Error => return None,
         ItemKind::Unit(_) => {
-            item.ty.unify(&Ty::new(TyKind::Unit), info)?;
+            item.ty.unify(&Ty::new(item.span, TyKind::Unit), info)?;
         }
         ItemKind::Constant(constant_item) => match constant_item.kind {
             ConstantItemKind::Number(_) => {
-                item.ty.unify(&Ty::new(TyKind::Number), info)?;
+                item.ty.unify(&Ty::new(item.span, TyKind::Number), info)?;
             }
             ConstantItemKind::Text(_) => {
-                item.ty.unify(&Ty::new(TyKind::Text), info)?;
+                item.ty.unify(&Ty::new(item.span, TyKind::Text), info)?;
             }
         },
         ItemKind::Block(block_item) => {
             // Typecheck each statement; the type of the last statement is the
             // type of the entire block
-            let mut last_ty = Ty::new(TyKind::Unit);
+            let mut last_ty = Ty::new(item.span, TyKind::Unit);
             for statement in &mut block_item.statements {
                 typecheck_item(statement, info)?;
                 last_ty = statement.ty.clone();
@@ -106,10 +103,13 @@ fn typecheck_item(item: &mut Item, info: &mut Info) -> Option<()> {
 
             // Ensure the function has a function type, retrieving the types of
             // its input and body
-            let input_ty = Ty::new(TyKind::Unknown);
-            let body_ty = Ty::new(TyKind::Unknown);
-            Ty::new(TyKind::Function(input_ty.clone(), body_ty.clone()))
-                .unify(&apply_item.function.ty, info)?;
+            let input_ty = Ty::new(apply_item.function.span, TyKind::Unknown);
+            let body_ty = Ty::new(apply_item.function.span, TyKind::Unknown);
+            Ty::new(
+                apply_item.function.span,
+                TyKind::Function(input_ty.clone(), body_ty.clone()),
+            )
+            .unify(&apply_item.function.ty, info)?;
 
             // Typecheck the input
             typecheck_item(&mut apply_item.input, info)?;
@@ -133,7 +133,7 @@ fn typecheck_item(item: &mut Item, info: &mut Info) -> Option<()> {
             info.variables
                 .insert(initialize_item.variable, initialize_item.value.ty.clone());
 
-            item.ty.unify(&Ty::new(TyKind::Unit), info)?;
+            item.ty.unify(&Ty::new(item.span, TyKind::Unit), info)?;
         }
         ItemKind::Variable(variable_item) => {
             item.ty = info.variables.get(&variable_item.variable).unwrap().clone();
@@ -141,7 +141,7 @@ fn typecheck_item(item: &mut Item, info: &mut Info) -> Option<()> {
         ItemKind::Function(function_item) => {
             // Track the type of the function's input within the body
             debug_assert!(info.function_input_ty.is_none());
-            let function_input_ty = Ty::new(TyKind::Unknown);
+            let function_input_ty = Ty::new(function_item.input_span, TyKind::Unknown);
             info.function_input_ty = Some(function_input_ty.clone());
 
             // Typecheck the function body
@@ -151,10 +151,10 @@ fn typecheck_item(item: &mut Item, info: &mut Info) -> Option<()> {
             function_input_ty.make_generic();
 
             item.ty.unify(
-                &Ty::new(TyKind::Function(
-                    function_input_ty,
-                    function_item.body.ty.clone(),
-                )),
+                &Ty::new(
+                    item.span,
+                    TyKind::Function(function_input_ty, function_item.body.ty.clone()),
+                ),
                 info,
             )?;
         }
@@ -200,7 +200,7 @@ impl Ty {
                     DiagnosticLevel::Error,
                     "Mismatched types",
                     vec![Note::primary(
-                        self.value_span.unwrap_or_else(|| known.value_span.unwrap()),
+                        self.value_span,
                         format!("Expected {}, found {}", self, known),
                     )],
                 ));
@@ -237,8 +237,8 @@ impl Ty {
             TyKind::Function(known_input, known_body) => match &mut *kind {
                 // TODO: Check bounds
                 TyKind::Unknown => {
-                    let mut input = Ty::new(TyKind::Unknown);
-                    let mut body = Ty::new(TyKind::Unknown);
+                    let mut input = Ty::new(known_input.value_span, TyKind::Unknown);
+                    let mut body = Ty::new(known_body.value_span, TyKind::Unknown);
 
                     input.unify(known_input, info)?;
                     body.unify(known_body, info)?;
