@@ -1,6 +1,0 @@
-[build]
-command = "./scripts/build.sh"
-publish = "./out"
-
-[[plugins]]
-package = "./plugins/build-cache"

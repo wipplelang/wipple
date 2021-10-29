@@ -9,5 +9,6 @@ fi
 
 (cd runner && wasm-pack build)
 
+npm install
 npm run build
 npm run export
