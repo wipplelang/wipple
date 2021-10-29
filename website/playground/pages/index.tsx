@@ -36,6 +36,7 @@ const Playground = () => {
         (async () => {
             const runner = await import("../runner/pkg");
             setRunner(runner);
+            console.log("Loaded runner");
         })();
     }, []);
 
