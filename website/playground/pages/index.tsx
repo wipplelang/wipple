@@ -80,6 +80,24 @@ const Playground = () => {
 
     const [result, setResult] = useState<RunResult | undefined>();
 
+    const update = () => {
+        if (!model) return;
+
+        const code = model.getValue();
+
+        if (query) {
+            query.set("code", code);
+            const newURL = window.location.pathname + "?" + query.toString();
+            window.history.replaceState(null, "", newURL);
+        }
+
+        if (runner) {
+            setResult(runner.run(code));
+        }
+    };
+
+    useEffect(update, [model]);
+
     useEffect(() => {
         if (!monaco) return;
 
@@ -140,20 +158,6 @@ const Playground = () => {
             };
         };
 
-        const update = () => {
-            const code = model.getValue();
-
-            if (query) {
-                query.set("code", code);
-                const newURL = window.location.pathname + "?" + query.toString();
-                window.history.replaceState(null, "", newURL);
-            }
-
-            if (runner) {
-                setResult(runner.run(code));
-            }
-        };
-
         model.onDidChangeContent(
             debounce(
                 update,
@@ -162,8 +166,6 @@ const Playground = () => {
                 () => Math.min(model.getValue().split("\n").length * 20, 1000)
             )
         );
-
-        update();
     }, [monaco]);
 
     useEffect(() => {
