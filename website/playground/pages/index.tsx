@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import dynamic from "next/dynamic";
 import SplitPane from "react-split-pane";
 import Editor, { useMonaco } from "@monaco-editor/react";
 import type monaco from "monaco-editor";
@@ -41,18 +40,21 @@ const Playground = () => {
     }, []);
 
     const header = useRef<HTMLDivElement>(null);
+    const footer = useRef<HTMLDivElement>(null);
     const [windowHeight, setWindowHeight] = useState(0);
     const [headerHeight, setHeaderHeight] = useState(0);
+    const [footerHeight, setFooterHeight] = useState(0);
 
     const updateHeights = () => {
         setWindowHeight(window.innerHeight);
         setHeaderHeight(header.current?.clientHeight ?? 0);
+        setFooterHeight(footer.current?.clientHeight ?? 0);
     };
 
     useEffect(updateHeights, [header]);
-    // window.addEventListener("resize", updateHeights);
+    useEffect(() => window.addEventListener("resize", updateHeights), []);
 
-    const splitViewHeight = windowHeight - headerHeight;
+    const splitViewHeight = windowHeight - headerHeight - footerHeight;
     const splitItemHeight = splitViewHeight - 32;
 
     const output = useRef<HTMLDivElement>(null);
@@ -65,7 +67,7 @@ const Playground = () => {
     };
 
     useEffect(updateWidths, [output]);
-    // window.addEventListener("resize", updateWidths);
+    useEffect(() => window.addEventListener("resize", updateWidths), []);
 
     const editorWidth = windowWidth - outputWidth - 64;
 
@@ -211,8 +213,17 @@ const Playground = () => {
                 </a>
 
                 <div className="flex gap-4 text-gray-500">
-                    <a href="https://docs.wipple.gramer.dev">Docs</a>
-                    <a href="https://github.com/wipplelang/wipple">GitHub</a>
+                    <a target="_blank" href="https://docs.wipple.gramer.dev/learn">
+                        Learn
+                    </a>
+
+                    <a target="_blank" href="https://docs.wipple.gramer.dev">
+                        Docs
+                    </a>
+
+                    <a target="_blank" href="https://github.com/wipplelang/wipple">
+                        GitHub
+                    </a>
                 </div>
             </div>
 
@@ -227,7 +238,7 @@ const Playground = () => {
                     onChange={updateWidths}
                 >
                     <div
-                        className="m-4 mr-0 p-2 rounded-md bg-white"
+                        className="m-4 mr-0 p-2 rounded-md bg-white z-50"
                         style={{ height: splitItemHeight }}
                     >
                         <Editor
@@ -256,6 +267,15 @@ const Playground = () => {
                         {result?.output}
                     </div>
                 </SplitPane>
+            </div>
+
+            <div className="absolute bottom-0 left-0 right-0 flex-grow-0 p-4 text-center text-gray-400">
+                <div ref={footer} className="-mb-2">
+                    Built by{" "}
+                    <a target="_blank" href="https://gramer.dev" className="text-gray-500">
+                        Wilson Gramer
+                    </a>
+                </div>
             </div>
         </div>
     );
