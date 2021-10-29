@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import SplitPane from "react-split-pane";
 import Editor, { useMonaco } from "@monaco-editor/react";
 import type monaco from "monaco-editor";
+import { useRefState } from "../helpers/useRefState";
 
 interface Span {
     file: string;
@@ -31,7 +32,7 @@ interface RunResult {
 }
 
 const Playground = () => {
-    const [runner, setRunner] = useState<typeof import("../runner/pkg") | undefined>();
+    const [runner, setRunner] = useRefState<typeof import("../runner/pkg") | null>(null);
     useEffect(() => {
         (async () => {
             const runner = await import("../runner/pkg");
@@ -76,14 +77,21 @@ const Playground = () => {
     useEffect(() => setQuery(new URLSearchParams(window.location.search)), []);
 
     const monaco = useMonaco();
-    const [model, setModel] = useState<monaco.editor.ITextModel | null>(null);
+    const [model, setModel] = useRefState<monaco.editor.ITextModel | null>(null);
 
     const [result, setResult] = useState<RunResult | undefined>();
 
-    const update = () => {
-        if (!model) return;
+    useEffect(() => {
+        console.warn("Set model:", model);
+    }, [model.current]);
 
-        const code = model.getValue();
+    const update = () => {
+        console.log("Updating:", model);
+        console.log("Runner:", runner);
+
+        if (!model.current) return;
+
+        const code = model.current.getValue();
 
         if (query) {
             query.set("code", code);
@@ -91,16 +99,14 @@ const Playground = () => {
             window.history.replaceState(null, "", newURL);
         }
 
-        if (runner) {
-            setResult(runner.run(code));
+        if (runner.current) {
+            setResult(runner.current.run(code));
         }
     };
 
-    useEffect(update, [model]);
+    useEffect(update, [model.current, runner.current]);
 
-    useEffect(() => {
-        if (!monaco) return;
-
+    const initialize = (editor: monaco.editor.IEditor, monaco: typeof import("monaco-editor")) => {
         monaco.languages.register({ id: "wipple" });
 
         monaco.languages.setLanguageConfiguration("wipple", {
@@ -146,7 +152,8 @@ const Playground = () => {
 
         monaco.editor.setTheme("wipple");
 
-        const model = monaco.editor.getModels()[0];
+        const model = editor.getModel()! as monaco.editor.ITextModel;
+        console.log("MODEL:", model);
         setModel(model);
 
         const debounce = (callback: () => void, wait: () => number) => {
@@ -166,10 +173,10 @@ const Playground = () => {
                 () => Math.min(model.getValue().split("\n").length * 20, 1000)
             )
         );
-    }, [monaco]);
+    };
 
     useEffect(() => {
-        if (!monaco || !model) return;
+        if (!monaco || !model.current) return;
 
         const severity = (level: NoteLevel, diagnosticLevel: DiagnosticLevel) => {
             switch (level) {
@@ -191,8 +198,8 @@ const Playground = () => {
             diagnostic.notes[0].message = `${diagnostic.message}: ${diagnostic.notes[0].message}`;
 
             return diagnostic.notes.map((note) => {
-                const startPos = model.getPositionAt(note.span.start);
-                const endPos = model.getPositionAt(note.span.end);
+                const startPos = model.current!.getPositionAt(note.span.start);
+                const endPos = model.current!.getPositionAt(note.span.end);
 
                 return {
                     startLineNumber: startPos.lineNumber,
@@ -205,8 +212,8 @@ const Playground = () => {
             });
         });
 
-        monaco.editor.setModelMarkers(model, "wipple", markers ?? []);
-    }, [model, result]);
+        monaco.editor.setModelMarkers(model.current, "wipple", markers ?? []);
+    }, [model.current, result]);
 
     return (
         <div className="flex flex-col bg-gray-50" style={{ height: "100%" }}>
@@ -259,6 +266,7 @@ const Playground = () => {
                                 tabSize: 2,
                                 insertSpaces: false,
                             }}
+                            onMount={initialize}
                         />
                     </div>
 
