@@ -63,3 +63,6 @@ target/
 *.pdb
 
 # End of https://www.toptal.com/developers/gitignore/api/macos,linux,rust
+
+# Local Netlify folder
+.netlify

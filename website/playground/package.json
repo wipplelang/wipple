@@ -2,9 +2,9 @@
     "name": "wipple-playground",
     "private": true,
     "scripts": {
-        "preinstall": "cd runner && wasm-pack build",
         "dev": "next dev",
         "build": "next build",
+        "export": "next export",
         "start": "next start",
         "lint": "next lint"
     },
