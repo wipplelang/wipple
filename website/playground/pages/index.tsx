@@ -1,8 +1,8 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import dynamic from "next/dynamic";
 import SplitPane from "react-split-pane";
 import Editor, { useMonaco } from "@monaco-editor/react";
-import monaco from "monaco-editor";
-import type runner_ from "wipple_playground_runner";
+import type monaco from "monaco-editor";
 
 interface Span {
     file: string;
@@ -31,9 +31,14 @@ interface RunResult {
     diagnostics: Diagnostic[];
 }
 
-const App = () => {
-    let runner: typeof runner_ | undefined;
-    import("wipple_playground_runner").then((r) => (runner = r));
+const Playground = () => {
+    const [runner, setRunner] = useState<typeof import("../runner/pkg") | undefined>();
+    useEffect(() => {
+        (async () => {
+            const runner = await import("../runner/pkg");
+            setRunner(runner);
+        })();
+    }, []);
 
     const header = useRef<HTMLDivElement>(null);
     const [windowHeight, setWindowHeight] = useState(0);
@@ -44,8 +49,8 @@ const App = () => {
         setHeaderHeight(header.current?.clientHeight ?? 0);
     };
 
-    useLayoutEffect(updateHeights, [header]);
-    window.addEventListener("resize", updateHeights);
+    useEffect(updateHeights, [header]);
+    // window.addEventListener("resize", updateHeights);
 
     const splitViewHeight = windowHeight - headerHeight;
     const splitItemHeight = splitViewHeight - 32;
@@ -59,10 +64,13 @@ const App = () => {
         setOutputWidth(output.current?.clientWidth ?? 0);
     };
 
-    useLayoutEffect(updateWidths, [output]);
-    window.addEventListener("resize", updateWidths);
+    useEffect(updateWidths, [output]);
+    // window.addEventListener("resize", updateWidths);
 
     const editorWidth = windowWidth - outputWidth - 64;
+
+    const [query, setQuery] = useState<URLSearchParams | undefined>();
+    useEffect(() => setQuery(new URLSearchParams(window.location.search)), []);
 
     const monaco = useMonaco();
     const [model, setModel] = useState<monaco.editor.ITextModel | null>(null);
@@ -132,13 +140,15 @@ const App = () => {
         const update = () => {
             const code = model.getValue();
 
-            query.set("code", code);
-            const newURL = window.location.pathname + "?" + query.toString();
-            window.history.replaceState(null, "", newURL);
+            if (query) {
+                query.set("code", code);
+                const newURL = window.location.pathname + "?" + query.toString();
+                window.history.replaceState(null, "", newURL);
+            }
 
-            if (!runner) return;
-
-            setResult(runner.run(code));
+            if (runner) {
+                setResult(runner.run(code));
+            }
         };
 
         model.onDidChangeContent(
@@ -193,8 +203,6 @@ const App = () => {
         monaco.editor.setModelMarkers(model, "wipple", markers ?? []);
     }, [model, result]);
 
-    const query = new URLSearchParams(window.location.search);
-
     return (
         <div className="flex flex-col bg-gray-50" style={{ height: "100%" }}>
             <div className="flex items-center justify-between flex-grow-0 p-4 pb-0" ref={header}>
@@ -216,6 +224,7 @@ const App = () => {
                     defaultSize="40%"
                     resizerClassName="w-4"
                     resizerStyle={{ height: splitItemHeight }}
+                    onChange={updateWidths}
                 >
                     <div
                         className="m-4 mr-0 p-2 rounded-md bg-white"
@@ -225,7 +234,7 @@ const App = () => {
                             width={editorWidth}
                             height="100%"
                             language="wipple"
-                            defaultValue={query.get("code") || "-- Write your code here!"}
+                            defaultValue={query?.get("code") || "-- Write your code here!"}
                             options={{
                                 fontFamily: "JetBrains Mono",
                                 fontLigatures: true,
@@ -252,4 +261,4 @@ const App = () => {
     );
 };
 
-export default App;
+export default Playground;
