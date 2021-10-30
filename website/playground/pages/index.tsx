@@ -27,9 +27,11 @@ interface Note {
 type NoteLevel = "Primary" | "Secondary";
 
 interface RunResult {
-    output: string;
+    output: string[];
     diagnostics: Diagnostic[];
 }
+
+const fontFamily = "'JetBrains Mono', monospace";
 
 const Playground = () => {
     const [runner, setRunner] = useRefState<typeof import("../runner/pkg") | null>(null);
@@ -257,7 +259,7 @@ const Playground = () => {
                             language="wipple"
                             defaultValue={query?.get("code") || "-- Write your code here!"}
                             options={{
-                                fontFamily: "JetBrains Mono",
+                                fontFamily,
                                 fontLigatures: true,
                                 fontSize: 16,
                                 minimap: {
@@ -273,9 +275,9 @@ const Playground = () => {
                     <div
                         ref={output}
                         className="m-4 ml-0 p-2 rounded-md bg-white"
-                        style={{ height: splitItemHeight }}
+                        style={{ height: splitItemHeight, fontFamily }}
                     >
-                        {result?.output}
+                        {result && result.output.map((line, index) => <p key={index}>{line}</p>)}
                     </div>
                 </SplitPane>
             </div>
