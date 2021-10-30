@@ -7,7 +7,7 @@ x : 2 + 2
 show x
 ```
 
-Instead of using an `=` sign, Wipple uses `:` (a colon). You can pronounce `a : b` as _"a is b"_. Now, anywhere the computer sees `sum`, it will replace it with `2 + 2`!
+Instead of using an `=` sign, Wipple uses `:` (a colon). You can pronounce `a : b` as _"a is b"_. Now, anywhere the computer sees `x`, it will replace it with `2 + 2`!
 
 Let's try a more complicated example. Can you guess what the output will be?
 
