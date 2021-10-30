@@ -1,4 +1,4 @@
-use crate::lower::*;
+use crate::{debug_info::DebugInfo, lower::*};
 use std::{collections::HashMap, rc::Rc};
 use wipple_diagnostics::*;
 
@@ -107,7 +107,15 @@ impl Form {
                     .unwrap_or_else(|_| unreachable!())
                     .into_inner();
 
-                Form::Item(Item::function(span, binding_span, body, captures))
+                Form::Item(Item::function(
+                    span,
+                    DebugInfo {
+                        declared_name: None,
+                        span: binding_span,
+                    },
+                    Box::new(body),
+                    captures,
+                ))
             },
         )
     }

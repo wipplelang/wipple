@@ -1,9 +1,12 @@
 use resast::prelude::*;
 use std::borrow::Cow;
-use wipple_frontend::{id::VariableId, *};
+use wipple_frontend::{
+    id::VariableId,
+    typecheck::{Item, ItemKind},
+};
 
-pub fn gen(item: TypecheckedItem) -> String {
-    let expr = gen_item(item.0, &mut Info::default());
+pub fn gen(item: &Item) -> String {
+    let expr = gen_item(item, &mut Info::default());
 
     let program = Program::Script(vec![
         ProgramPart::Dir(Dir {
@@ -24,26 +27,22 @@ struct Info {
     variables: Vec<VariableId>,
 }
 
-fn gen_item<'a>(item: Item, info: &mut Info) -> Expr<'a> {
-    match item.kind {
-        ItemKind::Error => unreachable!(),
-        ItemKind::Unit(_) => Expr::Lit(Lit::Null),
-        ItemKind::Constant(constant_item) => match constant_item.kind {
-            ConstantItemKind::Number(number) => {
-                // TODO: Decimal support
-                Expr::Lit(Lit::Number(Cow::Owned(number.to_string())))
-            }
-            ConstantItemKind::Text(text) => {
-                Expr::Lit(Lit::String(StringLit::Double(Cow::Owned(text.to_string()))))
-            }
-        },
-        ItemKind::Block(block_item) => {
+fn gen_item<'a>(item: &'a Item, info: &mut Info) -> Expr<'a> {
+    match &item.kind {
+        ItemKind::Unit => Expr::Lit(Lit::Null),
+        ItemKind::Number { value } => {
+            // TODO: Decimal support
+            Expr::Lit(Lit::Number(Cow::Owned(value.to_string())))
+        }
+        ItemKind::Text { value } => Expr::Lit(Lit::String(StringLit::Double(Cow::Owned(
+            value.to_string(),
+        )))),
+        ItemKind::Block { statements } => {
             let mut info = Info::default();
-            let statement_count = block_item.statements.len();
+            let statement_count = statements.len();
 
-            let statements = block_item
-                .statements
-                .into_iter()
+            let statements = statements
+                .iter()
                 .enumerate()
                 .map(|(index, statement)| {
                     let expr = gen_item(statement, &mut info);
@@ -83,30 +82,30 @@ fn gen_item<'a>(item: Item, info: &mut Info) -> Expr<'a> {
                 arguments: Vec::new(),
             })
         }
-        ItemKind::Apply(apply_item) => Expr::Call(CallExpr {
-            callee: Box::new(gen_item(*apply_item.function, info)),
-            arguments: vec![gen_item(*apply_item.input, info)],
+        ItemKind::Apply { function, input } => Expr::Call(CallExpr {
+            callee: Box::new(gen_item(function, info)),
+            arguments: vec![gen_item(input, info)],
         }),
-        ItemKind::Initialize(initialize_item) => {
-            info.variables.push(initialize_item.variable);
+        ItemKind::Initialize { variable, value } => {
+            info.variables.push(*variable);
 
             Expr::Assign(AssignExpr {
                 operator: AssignOp::Equal,
-                left: AssignLeft::Pat(Pat::Ident(mangle(initialize_item.variable))),
-                right: Box::new(gen_item(*initialize_item.value, info)),
+                left: AssignLeft::Pat(Pat::Ident(mangle(*variable))),
+                right: Box::new(gen_item(value, info)),
             })
         }
-        ItemKind::Variable(variable_item) => Expr::Ident(mangle(variable_item.variable)),
-        ItemKind::Function(function_item) => Expr::ArrowFunc(ArrowFuncExpr {
+        ItemKind::Variable { variable } => Expr::Ident(mangle(*variable)),
+        ItemKind::Function { body, .. } => Expr::ArrowFunc(ArrowFuncExpr {
             id: None,
             params: vec![FuncArg::Pat(Pat::Ident(mangle_function_input()))],
-            body: ArrowFuncBody::Expr(Box::new(gen_item(*function_item.body, info))),
+            body: ArrowFuncBody::Expr(Box::new(gen_item(body, info))),
             expression: true,
             generator: false,
             is_async: false,
         }),
-        ItemKind::FunctionInput(_) => Expr::Ident(mangle_function_input()),
-        ItemKind::External(_) => todo!(),
+        ItemKind::FunctionInput => Expr::Ident(mangle_function_input()),
+        ItemKind::External { .. } => todo!(),
     }
 }
 

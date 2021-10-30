@@ -274,10 +274,15 @@ const Playground = () => {
 
                     <div
                         ref={output}
-                        className="m-4 ml-0 p-2 rounded-md bg-white"
+                        className="m-4 ml-0 p-2 rounded-md bg-white overflow-scroll"
                         style={{ height: splitItemHeight, fontFamily }}
                     >
-                        {result && result.output.map((line, index) => <p key={index}>{line}</p>)}
+                        {result &&
+                            result.output.map((line, index) => (
+                                <pre className="whitespace-pre-wrap" key={index}>
+                                    {line}
+                                </pre>
+                            ))}
                     </div>
                 </SplitPane>
             </div>

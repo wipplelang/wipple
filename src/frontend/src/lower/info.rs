@@ -1,4 +1,4 @@
-use crate::{lower::*, Ty};
+use crate::{lower::*, typecheck::Ty};
 use serde::Serialize;
 use std::{
     cell::RefCell,
@@ -58,7 +58,7 @@ impl Variable {
             name,
             form: Arc::new(move |span, _| {
                 let mut item = Item::variable(span, id);
-                item.declared_name = Some(name);
+                item.debug_info.declared_name = Some(name);
                 Form::Item(item)
             }),
         }

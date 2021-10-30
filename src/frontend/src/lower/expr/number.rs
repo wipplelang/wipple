@@ -18,9 +18,6 @@ impl ExprKind for NumberExpr {
     }
 
     fn lower_to_form(self, _: &Stack, _: &mut Info) -> Form {
-        Form::Item(Item::constant(
-            self.span,
-            ConstantItemKind::Number(self.value),
-        ))
+        Form::Item(Item::number(self.span, self.value))
     }
 }

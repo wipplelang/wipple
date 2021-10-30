@@ -5,7 +5,7 @@ pub use external::*;
 use rust_decimal::Decimal;
 use serde::Serialize;
 use std::{collections::BTreeMap, rc::Rc};
-use wipple_frontend::*;
+use wipple_frontend::{id::VariableId, typecheck::*};
 
 #[derive(Debug, Serialize)]
 pub enum Value<'a> {
@@ -15,14 +15,14 @@ pub enum Value<'a> {
     Function(&'a Item),
 }
 
-pub fn eval(item: &TypecheckedItem, external: ExternalFunctions) -> Value {
+pub fn eval(item: &Item, external: ExternalFunctions) -> Value {
     let mut info = Info {
         external,
         variables: Vec::new(),
         function_inputs: Vec::new(),
     };
 
-    let value = eval_item(&item.0, &mut info);
+    let value = eval_item(item, &mut info);
 
     drop(info);
 
@@ -37,17 +37,13 @@ struct Info<'a> {
 
 fn eval_item<'a>(item: &'a Item, info: &mut Info<'a>) -> Rc<Value<'a>> {
     match &item.kind {
-        ItemKind::Error => unreachable!(),
-        ItemKind::Unit(_) => Rc::new(Value::Unit),
-        ItemKind::Constant(constant_item) => match constant_item.kind {
-            ConstantItemKind::Number(number) => Rc::new(Value::Number(*number)),
-            ConstantItemKind::Text(text) => Rc::new(Value::Text(text.to_string())),
-        },
-        ItemKind::Block(block_item) => {
+        ItemKind::Unit => Rc::new(Value::Unit),
+        ItemKind::Number { value } => Rc::new(Value::Number(**value)),
+        ItemKind::Text { value } => Rc::new(Value::Text(value.to_string())),
+        ItemKind::Block { statements } => {
             info.variables.push(BTreeMap::new());
 
-            let value = block_item
-                .statements
+            let value = statements
                 .iter()
                 .map(|statement| eval_item(statement, info))
                 .last()
@@ -57,9 +53,9 @@ fn eval_item<'a>(item: &'a Item, info: &mut Info<'a>) -> Rc<Value<'a>> {
 
             value
         }
-        ItemKind::Apply(apply_item) => match eval_item(&apply_item.function, info).as_ref() {
+        ItemKind::Apply { function, input } => match eval_item(function, info).as_ref() {
             Value::Function(body) => {
-                let input = eval_item(&apply_item.input, info);
+                let input = eval_item(input, info);
                 info.function_inputs.push(input);
 
                 let value = eval_item(body, info);
@@ -70,22 +66,17 @@ fn eval_item<'a>(item: &'a Item, info: &mut Info<'a>) -> Rc<Value<'a>> {
             }
             _ => unreachable!(),
         },
-        ItemKind::Initialize(initialize_item) => {
-            let value = eval_item(&initialize_item.value, info);
-
-            info.variables
-                .last_mut()
-                .unwrap()
-                .insert(initialize_item.variable, value);
-
+        ItemKind::Initialize { variable, value } => {
+            let value = eval_item(value, info);
+            info.variables.last_mut().unwrap().insert(*variable, value);
             Rc::new(Value::Unit)
         }
-        ItemKind::Variable(variable_item) => {
+        ItemKind::Variable { variable } => {
             let mut index = info.variables.len() - 1;
             let mut value = None;
 
             while let Some(scope) = info.variables.get(index) {
-                if let Some(v) = scope.get(&variable_item.variable) {
+                if let Some(v) = scope.get(variable) {
                     value = Some(v);
                     break;
                 } else {
@@ -95,18 +86,15 @@ fn eval_item<'a>(item: &'a Item, info: &mut Info<'a>) -> Rc<Value<'a>> {
 
             value.unwrap().clone()
         }
-        ItemKind::Function(function_item) => Rc::new(Value::Function(&function_item.body)),
-        ItemKind::FunctionInput(_) => info.function_inputs.last().unwrap().clone(),
-        ItemKind::External(external_item) => {
-            let inputs = external_item
-                .inputs
-                .iter()
-                .map(|item| eval_item(item, info))
-                .collect();
-
-            info.external
-                .get(&external_item.namespace, &external_item.identifier)
-                .call(inputs)
+        ItemKind::Function { body, .. } => Rc::new(Value::Function(body)),
+        ItemKind::FunctionInput => info.function_inputs.last().unwrap().clone(),
+        ItemKind::External {
+            namespace,
+            identifier,
+            inputs,
+        } => {
+            let inputs = inputs.iter().map(|item| eval_item(item, info)).collect();
+            info.external.get(namespace, identifier).call(inputs)
         }
     }
 }

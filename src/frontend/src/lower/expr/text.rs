@@ -17,9 +17,6 @@ impl ExprKind for TextExpr {
     }
 
     fn lower_to_form(self, _: &Stack, _: &mut Info) -> Form {
-        Form::Item(Item::constant(
-            self.span,
-            ConstantItemKind::Text(self.value),
-        ))
+        Form::Item(Item::text(self.span, self.value))
     }
 }

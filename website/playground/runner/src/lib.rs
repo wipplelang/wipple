@@ -35,7 +35,7 @@ pub fn run(code: &str) -> JsValue {
 
         output = vec![
             String::from("I'm still working on playground support for 'show'. In the meantime, here is the value of the last statement in the program:\n"),
-            format!("{:?}", value),
+            format!("{:#?}", value),
         ];
     }
 

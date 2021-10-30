@@ -28,7 +28,7 @@ impl Binding for NameBinding {
         info.declared_variables.push(variable);
 
         if let Form::Item(item) = form {
-            Item::initialize(span, variable_id, item)
+            Item::initialize(span, variable_id, Box::new(item))
         } else {
             Item::unit(span)
         }

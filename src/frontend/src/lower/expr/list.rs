@@ -51,7 +51,11 @@ impl ExprKind for ListExpr {
                         Form::Item(item) => {
                             Form::Item(list_expr.items.into_iter().fold(item, |function, expr| {
                                 let input = expr.lower_to_item(stack, info);
-                                Item::apply(function.span.with_end(input.span.end), function, input)
+                                Item::apply(
+                                    function.debug_info.span.with_end(input.debug_info.span.end),
+                                    Box::new(function),
+                                    Box::new(input),
+                                )
                             }))
                         }
                         Form::Template(template) => todo!(),
