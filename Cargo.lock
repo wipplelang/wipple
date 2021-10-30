@@ -711,6 +711,8 @@ dependencies = [
  "wipple_diagnostics",
  "wipple_formatter",
  "wipple_frontend",
+ "wipple_interpreter_backend",
+ "wipple_js_backend",
  "wipple_parser",
 ]
 

@@ -29,14 +29,14 @@ impl ExternalFunctions {
 }
 
 #[allow(clippy::type_complexity)]
-pub struct ExternalFunction(Box<dyn for<'a> Fn(Vec<Rc<Value<'a>>>) -> Rc<Value<'a>>>);
+pub struct ExternalFunction(Box<dyn Fn(Vec<Rc<Value>>) -> Rc<Value>>);
 
 impl ExternalFunction {
-    pub fn new(func: impl for<'a> Fn(Vec<Rc<Value<'a>>>) -> Rc<Value<'a>> + 'static) -> Self {
+    pub fn new(func: impl for<'a> Fn(Vec<Rc<Value>>) -> Rc<Value> + 'static) -> Self {
         ExternalFunction(Box::new(func))
     }
 
-    pub fn call<'a>(&self, inputs: Vec<Rc<Value<'a>>>) -> Rc<Value<'a>> {
+    pub fn call(&self, inputs: Vec<Rc<Value>>) -> Rc<Value> {
         (self.0)(inputs)
     }
 }

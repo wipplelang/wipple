@@ -109,7 +109,6 @@ fn typecheck_item(item: &lower::Item, info: &mut Info) -> Option<Item> {
             captures,
         } => {
             // Track the type of the function's input within the body
-            debug_assert!(info.function_input_ty.is_none());
             let function_input_ty = Ty::unknown();
             info.function_input_ty = Some(function_input_ty.clone());
 

@@ -39,7 +39,6 @@ const Playground = () => {
         (async () => {
             const runner = await import("../runner/pkg");
             setRunner(runner);
-            console.log("Loaded runner");
         })();
     }, []);
 
@@ -83,14 +82,7 @@ const Playground = () => {
 
     const [result, setResult] = useState<RunResult | undefined>();
 
-    useEffect(() => {
-        console.warn("Set model:", model);
-    }, [model.current]);
-
     const update = () => {
-        console.log("Updating:", model);
-        console.log("Runner:", runner);
-
         if (!model.current) return;
 
         const code = model.current.getValue();
@@ -155,7 +147,6 @@ const Playground = () => {
         monaco.editor.setTheme("wipple");
 
         const model = editor.getModel()! as monaco.editor.ITextModel;
-        console.log("MODEL:", model);
         setModel(model);
 
         const debounce = (callback: () => void, wait: () => number) => {

@@ -2,7 +2,7 @@
     "name": "wipple-playground",
     "private": true,
     "scripts": {
-        "dev": "next dev",
+        "dev": "next dev & nodemon --watch ../../src --watch ./runner -e rs -x ./scripts/wasm.sh",
         "build": "next build",
         "export": "next export",
         "start": "next start",
@@ -22,6 +22,7 @@
         "autoprefixer": "^10.4.0",
         "eslint": "7.32.0",
         "eslint-config-next": "12.0.1",
+        "nodemon": "^2.0.14",
         "postcss": "^8.3.11",
         "tailwindcss": "^2.2.17",
         "typescript": "4.4.4"

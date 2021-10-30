@@ -180,12 +180,12 @@ impl ListExpr {
 
                     match operator.associativity {
                         OperatorAssociativity::Left => {
-                            if index < max_index {
+                            if index > max_index {
                                 replace!();
                             }
                         }
                         OperatorAssociativity::Right => {
-                            if index > max_index {
+                            if index < max_index {
                                 replace!();
                             }
                         }

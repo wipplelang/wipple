@@ -25,19 +25,15 @@ pub fn run(code: &str) -> JsValue {
 
     let external = ExternalFunctions::new();
 
-    // TODO: 'show' external function
-    let mut output = Vec::new();
-
-    if let Some(item) = wipple_parser::parse(path, code, &mut diagnostics)
+    let value = wipple_parser::parse(path, code, &mut diagnostics)
         .and_then(|file| wipple_frontend::compile(file, &mut diagnostics))
-    {
-        let value = wipple_interpreter_backend::eval(&item, external);
+        .map(|item| wipple_interpreter_backend::eval(item, external));
 
-        output = vec![
-            String::from("I'm still working on playground support for 'show'. In the meantime, here is the value of the last statement in the program:\n"),
-            format!("{:#?}", value),
-        ];
-    }
+    // TODO: 'show' external function
+    let output  = vec![
+        String::from("I'm still working on playground support for 'show'. In the meantime, here is the value of the last statement in the program:\n"),
+        format!("{:#?}", value),
+    ];
 
     let result = Result {
         output,

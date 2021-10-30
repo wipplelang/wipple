@@ -18,4 +18,6 @@ strum = { version = "0.21", features = ["derive"] }
 wipple_diagnostics = { path = "../diagnostics" }
 wipple_formatter = { path = "../formatter" }
 wipple_frontend = { path = "../frontend" }
+wipple_interpreter_backend = { path = "../backends/interpreter" }
+wipple_js_backend = { path = "../backends/js" }
 wipple_parser = { path = "../parser" }
