@@ -42,7 +42,7 @@ impl ExprKind for NameExpr {
     }
 
     fn lower_to_ty(self, stack: &Stack, info: &mut Info) -> Option<Ty> {
-        let form = self.resolve(stack, info)?;
+        let form = self.lower_to_form(stack, info);
 
         match form.kind {
             FormKind::Ty { ty } => Some(ty),
@@ -50,10 +50,7 @@ impl ExprKind for NameExpr {
                 info.diagnostics.add(Diagnostic::new(
                     DiagnosticLevel::Error,
                     "Expected type",
-                    vec![Note::primary(
-                        self.span,
-                        "Expected type here",
-                    )],
+                    vec![Note::primary(form.span, "Expected type here")],
                 ));
 
                 None
