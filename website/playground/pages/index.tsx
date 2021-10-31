@@ -74,7 +74,7 @@ const Playground = () => {
 
     const editorWidth = windowWidth - outputWidth - 64;
 
-    const [query, setQuery] = useState<URLSearchParams | undefined>();
+    const [query, setQuery] = useRefState<URLSearchParams | null>(null);
     useEffect(() => setQuery(new URLSearchParams(window.location.search)), []);
 
     const monaco = useMonaco();
@@ -87,9 +87,9 @@ const Playground = () => {
 
         const code = model.current.getValue();
 
-        if (query) {
-            query.set("code", code);
-            const newURL = window.location.pathname + "?" + query.toString();
+        if (query.current) {
+            query.current.set("code", code);
+            const newURL = window.location.pathname + "?" + query.current.toString();
             window.history.replaceState(null, "", newURL);
         }
 
@@ -247,7 +247,7 @@ const Playground = () => {
                         width={editorWidth}
                         height="100%"
                         language="wipple"
-                        defaultValue={query?.get("code") || "-- Write your code here!"}
+                        defaultValue={query.current?.get("code") || "-- Write your code here!"}
                         options={{
                             fontFamily,
                             fontLigatures: true,
