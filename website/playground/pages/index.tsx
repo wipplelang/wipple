@@ -210,7 +210,7 @@ const Playground = () => {
 
     return (
         <div className="flex flex-col bg-gray-50" style={{ height: "100%" }}>
-            <div className="flex items-center justify-between flex-grow-0 p-4 pb-0" ref={header}>
+            <div className="flex items-center justify-between p-4 pb-0 z-0" ref={header}>
                 <a href="https://wipple.gramer.dev">
                     <img src="/images/logo.svg" alt="Wipple Playground" className="h-10" />
                 </a>
@@ -230,53 +230,51 @@ const Playground = () => {
                 </div>
             </div>
 
-            <div className="flex-grow">
-                <SplitPane
-                    className="bg-gray-50"
-                    style={{ height: windowHeight - headerHeight }}
-                    primary="second"
-                    defaultSize="40%"
-                    resizerClassName="w-4"
-                    resizerStyle={{ height: splitItemHeight }}
-                    onChange={updateWidths}
+            <SplitPane
+                className="bg-gray-50"
+                style={{ top: headerHeight, height: windowHeight - headerHeight }}
+                primary="second"
+                defaultSize="40%"
+                resizerClassName="w-4"
+                resizerStyle={{ height: splitItemHeight }}
+                onChange={updateWidths}
+            >
+                <div
+                    className="m-4 mr-0 p-2 rounded-md bg-white"
+                    style={{ height: splitItemHeight }}
                 >
-                    <div
-                        className="m-4 mr-0 p-2 rounded-md bg-white z-50"
-                        style={{ height: splitItemHeight }}
-                    >
-                        <Editor
-                            width={editorWidth}
-                            height="100%"
-                            language="wipple"
-                            defaultValue={query?.get("code") || "-- Write your code here!"}
-                            options={{
-                                fontFamily,
-                                fontLigatures: true,
-                                fontSize: 16,
-                                minimap: {
-                                    enabled: false,
-                                },
-                                tabSize: 2,
-                                insertSpaces: false,
-                            }}
-                            onMount={initialize}
-                        />
-                    </div>
+                    <Editor
+                        width={editorWidth}
+                        height="100%"
+                        language="wipple"
+                        defaultValue={query?.get("code") || "-- Write your code here!"}
+                        options={{
+                            fontFamily,
+                            fontLigatures: true,
+                            fontSize: 16,
+                            minimap: {
+                                enabled: false,
+                            },
+                            tabSize: 2,
+                            insertSpaces: false,
+                        }}
+                        onMount={initialize}
+                    />
+                </div>
 
-                    <div
-                        ref={output}
-                        className="m-4 ml-0 p-2 rounded-md bg-white overflow-scroll"
-                        style={{ height: splitItemHeight, fontFamily }}
-                    >
-                        {result &&
-                            result.output.map((line, index) => (
-                                <pre className="whitespace-pre-wrap" key={index}>
-                                    {line}
-                                </pre>
-                            ))}
-                    </div>
-                </SplitPane>
-            </div>
+                <div
+                    ref={output}
+                    className="m-4 ml-0 p-2 rounded-md bg-white overflow-scroll"
+                    style={{ height: splitItemHeight, fontFamily }}
+                >
+                    {result &&
+                        result.output.map((line, index) => (
+                            <pre className="whitespace-pre-wrap" key={index}>
+                                {line}
+                            </pre>
+                        ))}
+                </div>
+            </SplitPane>
 
             <div className="absolute bottom-0 left-0 right-0 flex-grow-0 p-4 text-center text-gray-400">
                 <div ref={footer} className="-mb-2">

@@ -78,16 +78,7 @@ impl Form {
                 let value = lhs.lower_to_item(stack, info);
 
                 let ty = match rhs.lower_to_ty(stack, info) {
-                    Some(Some(ty)) => ty,
-                    Some(None) => {
-                        info.diagnostics.add(Diagnostic::new(
-                            DiagnosticLevel::Error,
-                            "Expected type",
-                            vec![Note::primary(rhs_span, "Expected type here")],
-                        ));
-
-                        return Form::item(span, Item::error(span));
-                    }
+                    Some(ty) => ty,
                     None => return Form::item(span, Item::error(span)),
                 };
 

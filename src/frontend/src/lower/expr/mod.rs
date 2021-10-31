@@ -29,8 +29,8 @@ where
         None
     }
 
-    fn lower_to_ty(self, _: &Stack, _: &mut Info) -> Option<Option<Ty>> {
-        Some(None)
+    fn lower_to_ty(self, _: &Stack, _: &mut Info) -> Option<Ty> {
+        None
     }
 
     // eventually quoted, etc.

@@ -102,20 +102,16 @@ impl ExprKind for ListExpr {
             return None;
         }
 
-        let inner_expr = self.items.remove(0);
-
-        inner_expr.lower_to_binding(stack, info)
+        self.items.remove(0).lower_to_binding(stack, info)
     }
 
-    fn lower_to_ty(mut self, stack: &Stack, info: &mut Info) -> Option<Option<Ty>> {
-        let inner_expr = self.items.remove(0);
-
+    fn lower_to_ty(mut self, stack: &Stack, info: &mut Info) -> Option<Ty> {
         // eventually, support more complex expressions with type parameters
-        if !self.items.is_empty() {
-            return Some(None);
+        if self.items.len() != 1 {
+            return None;
         }
 
-        inner_expr.lower_to_ty(stack, info)
+        self.items.remove(0).lower_to_ty(stack, info)
     }
 }
 

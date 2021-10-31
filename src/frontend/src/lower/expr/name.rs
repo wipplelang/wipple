@@ -20,7 +20,18 @@ impl ExprKind for NameExpr {
     fn lower_to_form(self, stack: &Stack, info: &mut Info) -> Form {
         match self.resolve(stack, info) {
             Some(form) => form,
-            None => Form::item(self.span, Item::error(self.span)),
+            None => {
+                info.diagnostics.add(Diagnostic::new(
+                    DiagnosticLevel::Error,
+                    format!("'{}' is not defined", self.value),
+                    vec![Note::primary(
+                        self.span,
+                        "This name does not resolve to a variable",
+                    )],
+                ));
+
+                Form::item(self.span, Item::error(self.span))
+            }
         }
     }
 
@@ -30,11 +41,24 @@ impl ExprKind for NameExpr {
         )))
     }
 
-    fn lower_to_ty(self, stack: &Stack, info: &mut Info) -> Option<Option<Ty>> {
-        self.resolve(stack, info).map(|form| match form.kind {
+    fn lower_to_ty(self, stack: &Stack, info: &mut Info) -> Option<Ty> {
+        let form = self.resolve(stack, info)?;
+
+        match form.kind {
             FormKind::Ty { ty } => Some(ty),
-            _ => None,
-        })
+            _ => {
+                info.diagnostics.add(Diagnostic::new(
+                    DiagnosticLevel::Error,
+                    "Expected type",
+                    vec![Note::primary(
+                        self.span,
+                        "Expected type here",
+                    )],
+                ));
+
+                None
+            }
+        }
     }
 }
 
@@ -48,15 +72,6 @@ impl NameExpr {
                     if let Some(parent) = stack.parent {
                         stack = parent;
                     } else {
-                        info.diagnostics.add(Diagnostic::new(
-                            DiagnosticLevel::Error,
-                            format!("'{}' is not defined", self.value),
-                            vec![Note::primary(
-                                self.span,
-                                "This name does not resolve to a variable",
-                            )],
-                        ));
-
                         break None;
                     }
                 };
