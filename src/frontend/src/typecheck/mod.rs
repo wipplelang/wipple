@@ -42,18 +42,25 @@ fn typecheck_item(item: &mut lower::Item, info: &mut Info) -> Option<Item> {
             // Typecheck each statement; the type of the last statement is the
             // type of the entire block
             let mut last_ty = Ty::unit();
-            let statements = statements
-                .iter_mut()
-                .map(|statement| {
-                    let statement = typecheck_item(statement, info)?;
-                    last_ty = statement.ty.clone();
-                    Some(statement)
-                })
-                .collect::<Option<_>>()?;
+            let mut typed_statements = Some(Vec::with_capacity(statements.len()));
+            for statement in statements {
+                match typecheck_item(statement, info) {
+                    Some(statement) => {
+                        if let Some(typed_statements) = typed_statements.as_mut() {
+                            last_ty = statement.ty.clone();
+                            typed_statements.push(statement);
+                        }
+                    }
+                    None => typed_statements = None,
+                }
+            }
 
-            Some(Item::block(item.debug_info, last_ty, statements))
+            Some(Item::block(item.debug_info, last_ty, typed_statements?))
         }
         lower::ItemKind::Apply { function, input } => {
+            // Typecheck the input
+            let input = typecheck_item(input, info);
+
             // Typecheck the function
             let function = typecheck_item(function, info)?;
 
@@ -67,8 +74,7 @@ fn typecheck_item(item: &mut lower::Item, info: &mut Info) -> Option<Item> {
                 info,
             )?;
 
-            // Typecheck the input
-            let mut input = typecheck_item(input, info)?;
+            let mut input = input?;
 
             // Ensure the type of the input matches the type of the function's
             // input, including generics
