@@ -8,9 +8,9 @@ use crate::{id::VariableId, lower};
 use std::collections::HashMap;
 use wipple_diagnostics::*;
 
-pub fn typecheck(item: lower::Item, diagnostics: &mut Diagnostics) -> Option<Item> {
+pub fn typecheck(mut item: lower::Item, diagnostics: &mut Diagnostics) -> Option<Item> {
     let mut info = Info::new(diagnostics);
-    typecheck_item(&item, &mut info)
+    typecheck_item(&mut item, &mut info)
 }
 
 struct Info<'a> {
@@ -30,8 +30,8 @@ impl<'a> Info<'a> {
 }
 
 #[must_use]
-fn typecheck_item(item: &lower::Item, info: &mut Info) -> Option<Item> {
-    match &item.kind {
+fn typecheck_item(item: &mut lower::Item, info: &mut Info) -> Option<Item> {
+    match &mut item.kind {
         lower::ItemKind::Error => None,
         lower::ItemKind::Unit => Some(Item::unit(item.debug_info, Ty::unit())),
         lower::ItemKind::Number { value } => {
@@ -43,7 +43,7 @@ fn typecheck_item(item: &lower::Item, info: &mut Info) -> Option<Item> {
             // type of the entire block
             let mut last_ty = Ty::unit();
             let statements = statements
-                .iter()
+                .iter_mut()
                 .map(|statement| {
                     let statement = typecheck_item(statement, info)?;
                     last_ty = statement.ty.clone();
@@ -131,6 +131,15 @@ fn typecheck_item(item: &lower::Item, info: &mut Info) -> Option<Item> {
             Some(Item::function_input(item.debug_info, ty))
         }
         lower::ItemKind::External { .. } => todo!(),
+        lower::ItemKind::Annotate { item, ty } => {
+            let mut item = typecheck_item(item, info)?;
+
+            let substituted_generics = ty.unify(&item.ty, item.debug_info.span, info)?;
+            ty.substitute_generics(&substituted_generics);
+            item.ty = ty.clone();
+
+            Some(item)
+        }
     }
 }
 

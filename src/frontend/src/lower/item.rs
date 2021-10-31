@@ -1,4 +1,4 @@
-use crate::{debug_info::DebugInfo, lower::*};
+use crate::{debug_info::DebugInfo, lower::*, typecheck::Ty};
 use kind::kind;
 use serde::Serialize;
 use std::collections::HashSet;
@@ -59,4 +59,8 @@ pub enum ItemKind {
         identifier: LocalIntern<String>,
         inputs: Vec<Item>,
     },
+    Annotate {
+        item: Box<Item>,
+        ty: Ty,
+    }
 }

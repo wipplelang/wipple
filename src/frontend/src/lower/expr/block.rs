@@ -1,5 +1,6 @@
 use crate::lower::*;
 
+#[derive(Debug)]
 pub struct BlockExpr {
     pub span: Span,
     pub statements: Vec<Expr>,
@@ -25,6 +26,6 @@ impl ExprKind for BlockExpr {
             .map(|statement| statement.lower_to_item(&stack, info))
             .collect();
 
-        Form::Item(Item::block(self.span, statements))
+        Form::item(self.span, Item::block(self.span, statements))
     }
 }

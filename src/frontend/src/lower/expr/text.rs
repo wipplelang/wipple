@@ -1,5 +1,6 @@
 use crate::lower::*;
 
+#[derive(Debug)]
 pub struct TextExpr {
     pub span: Span,
     pub value: LocalIntern<String>,
@@ -17,6 +18,6 @@ impl ExprKind for TextExpr {
     }
 
     fn lower_to_form(self, _: &Stack, _: &mut Info) -> Form {
-        Form::Item(Item::text(self.span, self.value))
+        Form::item(self.span, Item::text(self.span, self.value))
     }
 }

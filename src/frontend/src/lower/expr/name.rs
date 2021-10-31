@@ -1,5 +1,6 @@
-use crate::lower::*;
+use crate::{lower::*, typecheck::Ty};
 
+#[derive(Debug)]
 pub struct NameExpr {
     pub span: Span,
     pub value: LocalIntern<String>,
@@ -19,18 +20,7 @@ impl ExprKind for NameExpr {
     fn lower_to_form(self, stack: &Stack, info: &mut Info) -> Form {
         match self.resolve(stack, info) {
             Some(form) => form,
-            None => {
-                info.diagnostics.add(Diagnostic::new(
-                    DiagnosticLevel::Error,
-                    format!("'{}' is not defined", self.value),
-                    vec![Note::primary(
-                        self.span,
-                        "This name does not resolve to a variable",
-                    )],
-                ));
-
-                Form::Item(Item::error(self.span))
-            }
+            None => Form::item(self.span, Item::error(self.span)),
         }
     }
 
@@ -38,6 +28,13 @@ impl ExprKind for NameExpr {
         Some(SpannedBinding::from(NameBinding::new(
             self.span, self.value,
         )))
+    }
+
+    fn lower_to_ty(self, stack: &Stack, info: &mut Info) -> Option<Option<Ty>> {
+        self.resolve(stack, info).map(|form| match form.kind {
+            FormKind::Ty { ty } => Some(ty),
+            _ => None,
+        })
     }
 }
 
@@ -51,6 +48,15 @@ impl NameExpr {
                     if let Some(parent) = stack.parent {
                         stack = parent;
                     } else {
+                        info.diagnostics.add(Diagnostic::new(
+                            DiagnosticLevel::Error,
+                            format!("'{}' is not defined", self.value),
+                            vec![Note::primary(
+                                self.span,
+                                "This name does not resolve to a variable",
+                            )],
+                        ));
+
                         break None;
                     }
                 };
@@ -59,7 +65,7 @@ impl NameExpr {
             if let Some(variable) = stack.variables.borrow().get(&self.value) {
                 let form = (variable.form)(self.span, info);
 
-                if matches!(form, Form::Item(_)) {
+                if matches!(form.kind, FormKind::Item { .. }) {
                     for list in used {
                         list.borrow_mut().insert(variable.id);
                     }

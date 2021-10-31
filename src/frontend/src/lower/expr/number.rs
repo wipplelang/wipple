@@ -1,6 +1,7 @@
 use crate::lower::*;
 use wipple_parser::decimal::Decimal;
 
+#[derive(Debug)]
 pub struct NumberExpr {
     pub span: Span,
     pub value: LocalIntern<Decimal>,
@@ -18,6 +19,6 @@ impl ExprKind for NumberExpr {
     }
 
     fn lower_to_form(self, _: &Stack, _: &mut Info) -> Form {
-        Form::Item(Item::number(self.span, self.value))
+        Form::item(self.span, Item::number(self.span, self.value))
     }
 }

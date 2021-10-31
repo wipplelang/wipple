@@ -10,14 +10,15 @@ pub use name::*;
 pub use number::*;
 pub use text::*;
 
-use crate::lower::*;
+use crate::{lower::*, typecheck::Ty};
 use enum_dispatch::enum_dispatch;
+use std::fmt;
 use wipple_parser as parser;
 
 #[enum_dispatch]
 pub trait ExprKind
 where
-    Self: Sized,
+    Self: Sized + fmt::Debug,
     Expr: From<Self>,
 {
     fn span(&self) -> Span;
@@ -28,36 +29,36 @@ where
         None
     }
 
-    // eventually quoted, type, etc.
+    fn lower_to_ty(self, _: &Stack, _: &mut Info) -> Option<Option<Ty>> {
+        Some(None)
+    }
+
+    // eventually quoted, etc.
 
     fn lower_to_item(self, stack: &Stack, info: &mut Info) -> Item {
         let form = self.lower_to_form(stack, info);
 
-        match form {
-            Form::Item(item) => item,
-            Form::Operator(operator) => {
-                info.diagnostics.add(Diagnostic::new(
-                    DiagnosticLevel::Error,
-                    "Expected value, found operator",
-                    vec![Note::primary(operator.span, "Expected value here")],
-                ));
+        let mut error = |kind| {
+            info.diagnostics.add(Diagnostic::new(
+                DiagnosticLevel::Error,
+                format!("Expected value, found {}", kind),
+                vec![Note::primary(form.span, "Expected value here")],
+            ));
 
-                Item::error(operator.span)
-            }
-            Form::Template(template) => {
-                info.diagnostics.add(Diagnostic::new(
-                    DiagnosticLevel::Error,
-                    "Expected value, found template",
-                    vec![Note::primary(template.span, "Expected value here")],
-                ));
+            Item::error(form.span)
+        };
 
-                Item::error(template.span)
-            }
+        match form.kind {
+            FormKind::Item { item } => item,
+            FormKind::Operator { .. } => error("operator"),
+            FormKind::Template { .. } => error("template"),
+            FormKind::Ty { .. } => error("type"),
         }
     }
 }
 
 #[enum_dispatch(ExprKind)]
+#[derive(Debug)]
 pub enum Expr {
     Block(BlockExpr),
     List(ListExpr),

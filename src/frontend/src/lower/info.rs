@@ -59,7 +59,7 @@ impl Variable {
             form: Arc::new(move |span, _| {
                 let mut item = Item::variable(span, id);
                 item.debug_info.declared_name = Some(name);
-                Form::Item(item)
+                Form::item(span, item)
             }),
         }
     }

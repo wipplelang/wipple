@@ -1,4 +1,4 @@
-use crate::{debug_info::DebugInfo, lower::*};
+use crate::{debug_info::DebugInfo, lower::*, typecheck::Ty};
 use std::{collections::HashMap, rc::Rc};
 use wipple_diagnostics::*;
 
@@ -22,8 +22,11 @@ pub fn builtins() -> HashMap<LocalIntern<String>, Variable> {
 
     builtins! {
         ":" => Form::builtin_assign,
+        "::" => Form::builtin_annotate,
         "->" => Form::builtin_function,
         "external" => Form::builtin_external,
+        "Number" => Form::builtin_number_ty,
+        "Text" => Form::builtin_text_ty,
     }
 }
 
@@ -33,9 +36,10 @@ impl Form {
             span,
             OperatorPrecedence::new(9),
             OperatorAssociativity::None,
-            move |lhs, rhs, stack, info| {
+            OperatorApply::new(move |lhs, rhs, stack, info| {
                 let lhs_span = lhs.span;
                 let rhs_span = rhs.span;
+                let span = lhs_span.with_end(rhs_span.end);
 
                 let binding = lhs.lower_to_binding(stack, info);
                 let value = rhs.lower_to_form(stack, info);
@@ -52,23 +56,55 @@ impl Form {
                             )],
                         ));
 
-                        return Form::Item(Item::error(span));
+                        return Form::item(span, Item::error(span));
                     }
                 };
 
-                Form::Item(binding.assign(lhs_span.with_end(rhs_span.end), value, stack, info))
-            },
+                Form::item(span, binding.assign(span, value, stack, info))
+            }),
+        )
+    }
+
+    fn builtin_annotate(span: Span) -> Self {
+        Form::operator(
+            span,
+            OperatorPrecedence::new(8),
+            OperatorAssociativity::Left,
+            OperatorApply::new(move |lhs, rhs, stack, info| {
+                let lhs_span = lhs.span;
+                let rhs_span = rhs.span;
+                let span = lhs_span.with_end(rhs_span.end);
+
+                let value = lhs.lower_to_item(stack, info);
+
+                let ty = match rhs.lower_to_ty(stack, info) {
+                    Some(Some(ty)) => ty,
+                    Some(None) => {
+                        info.diagnostics.add(Diagnostic::new(
+                            DiagnosticLevel::Error,
+                            "Expected type",
+                            vec![Note::primary(rhs_span, "Expected type here")],
+                        ));
+
+                        return Form::item(span, Item::error(span));
+                    }
+                    None => return Form::item(span, Item::error(span)),
+                };
+
+                Form::item(span, Item::annotate(span, Box::new(value), ty))
+            }),
         )
     }
 
     fn builtin_function(span: Span) -> Self {
         Form::operator(
             span,
-            OperatorPrecedence::new(8),
+            OperatorPrecedence::new(7),
             OperatorAssociativity::Right,
-            move |lhs, rhs, stack, info| {
+            OperatorApply::new(move |lhs, rhs, stack, info| {
                 let lhs_span = lhs.span;
                 let rhs_span = rhs.span;
+                let span = lhs_span.with_end(rhs_span.end);
 
                 let binding = match lhs.lower_to_binding(stack, info) {
                     Some(binding) => binding,
@@ -82,7 +118,7 @@ impl Form {
                             )],
                         ));
 
-                        return Form::Item(Item::error(span));
+                        return Form::item(span, Item::error(span));
                     }
                 };
 
@@ -95,7 +131,7 @@ impl Form {
                     vec![
                         binding.assign(
                             lhs_span,
-                            Form::Item(Item::function_input(lhs_span)),
+                            Form::item(lhs_span, Item::function_input(lhs_span)),
                             &stack,
                             info,
                         ),
@@ -107,20 +143,31 @@ impl Form {
                     .unwrap_or_else(|_| unreachable!())
                     .into_inner();
 
-                Form::Item(Item::function(
+                Form::item(
                     span,
-                    DebugInfo {
-                        declared_name: None,
-                        span: binding_span,
-                    },
-                    Box::new(body),
-                    captures,
-                ))
-            },
+                    Item::function(
+                        span,
+                        DebugInfo {
+                            declared_name: None,
+                            span: binding_span,
+                        },
+                        Box::new(body),
+                        captures,
+                    ),
+                )
+            }),
         )
     }
 
     fn builtin_external(span: Span) -> Self {
         todo!()
+    }
+
+    fn builtin_number_ty(span: Span) -> Self {
+        Form::ty(span, Ty::number())
+    }
+
+    fn builtin_text_ty(span: Span) -> Self {
+        Form::ty(span, Ty::text())
     }
 }
