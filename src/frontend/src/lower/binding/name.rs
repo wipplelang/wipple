@@ -16,7 +16,7 @@ impl Binding for NameBinding {
         self.span
     }
 
-    fn assign(self, span: Span, form: Form, stack: &Stack, info: &mut Info) -> Item {
+    fn assign_in_block(self, span: Span, form: Form, stack: &Stack, info: &mut Info) -> Item {
         let variable = Variable::runtime(self.span, self.name);
         let variable_id = variable.id;
 

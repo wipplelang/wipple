@@ -3,7 +3,7 @@ use logos::{Lexer, Logos, SpannedIter};
 use regex::Regex;
 use rust_decimal::prelude::*;
 use serde::Serialize;
-use std::{fmt, iter::Peekable, ops::Range, path::PathBuf};
+use std::{fmt, iter::Peekable, ops::Range};
 use wipple_diagnostics::*;
 
 pub use internment::LocalIntern;
@@ -11,6 +11,7 @@ pub use rust_decimal as decimal;
 
 #[derive(Serialize)]
 pub struct File<'src> {
+    pub path: LocalIntern<String>,
     pub span: Span,
     pub shebang: Option<&'src str>,
     pub statements: Vec<Statement<'src>>,
@@ -52,14 +53,8 @@ impl<'src> Expr<'src> {
     }
 }
 
-impl<'src> From<File<'src>> for Expr<'src> {
-    fn from(file: File<'src>) -> Self {
-        Expr::new(file.span, ExprKind::Block(file.statements))
-    }
-}
-
 pub fn parse<'src>(
-    file: LocalIntern<PathBuf>,
+    file: LocalIntern<String>,
     code: &'src str,
     diagnostics: &mut Diagnostics,
 ) -> Option<File<'src>> {
@@ -77,6 +72,7 @@ pub fn parse<'src>(
     };
 
     parser.parse_file().map(|statements| File {
+        path: file,
         span: parser.file_span(),
         shebang,
         statements,
@@ -157,7 +153,7 @@ struct Parser<'a, 'src> {
     lexer: Peekable<SpannedIter<'src, Token<'src>>>,
     len: usize,
     offset: usize,
-    file: LocalIntern<PathBuf>,
+    file: LocalIntern<String>,
     diagnostics: &'a mut Diagnostics,
 }
 

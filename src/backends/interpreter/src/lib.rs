@@ -5,7 +5,7 @@ pub use external::*;
 use rust_decimal::Decimal;
 use serde::Serialize;
 use std::{cell::RefCell, collections::BTreeMap, rc::Rc};
-use wipple_frontend::{id::VariableId, typecheck::*};
+use wipple_frontend::{id::*, typecheck::*};
 
 #[derive(Debug, Serialize)]
 pub enum Value {
@@ -18,18 +18,18 @@ pub enum Value {
     },
 }
 
-pub fn eval(item: Item, external: ExternalFunctions) -> Value {
+pub fn eval(files: &[File], external: ExternalFunctions) {
     let mut info = Info {
         external,
         scope: Default::default(),
         function_input: None,
     };
 
-    let value = eval_item(&item, &mut info);
-
-    drop(info);
-
-    Rc::try_unwrap(value).unwrap_or_else(|_| unreachable!())
+    for file in files.iter().rev() {
+        for statement in &file.statements {
+            eval_item(statement, &mut info);
+        }
+    }
 }
 
 struct Info {
@@ -131,8 +131,10 @@ fn resolve(variable: VariableId, info: &mut Info) -> Rc<Value> {
             scope = s.parent.clone();
         }
     }
+
     if value.is_none() {
         panic!("Variable {:?} not found in {:#?}", variable, info.scope);
     }
+
     value.unwrap()
 }

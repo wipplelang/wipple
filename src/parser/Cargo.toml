@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 internment = { version = "0.5", features = ["serde"] }
+kind = { path = "../helpers/kind" }
 lazy_static = "1"
 logos = "0.12"
 regex = "1"

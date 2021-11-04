@@ -1,9 +1,9 @@
 use serde::Serialize;
-use std::{path::PathBuf, sync::Arc};
+use std::sync::Arc;
 use wasm_bindgen::prelude::*;
 use wipple_diagnostics::*;
+use wipple_frontend::{lower::Info, project::Project};
 use wipple_interpreter_backend::ExternalFunctions;
-use wipple_parser::LocalIntern;
 
 #[derive(Serialize)]
 struct Result {
@@ -18,22 +18,34 @@ pub fn run(code: &str) -> JsValue {
 
     wipple_frontend::id::reset();
 
-    let path = LocalIntern::new(PathBuf::from("playground.wpl"));
-
     let mut diagnostics = Diagnostics::new();
-    diagnostics.add_file(path, Arc::from(code));
-
+    let project = Project::default();
     let external = ExternalFunctions::new();
 
-    let value = wipple_parser::parse(path, code, &mut diagnostics)
-        .and_then(|file| wipple_frontend::compile(file, &mut diagnostics))
-        .map(|item| wipple_interpreter_backend::eval(item, external));
+    let files = {
+        let mut info = Info::new(&mut diagnostics, &project);
+
+        let success =
+            wipple_frontend::project::load_string("playground", Arc::from(code), &mut info);
+
+        success
+            .then(|| {
+                info.files
+                    .iter()
+                    .map(|file| wipple_frontend::typecheck::typecheck(file, info.diagnostics))
+                    .collect::<Option<Vec<_>>>()
+            })
+            .flatten()
+    };
+
+    if let Some(files) = files {
+        wipple_interpreter_backend::eval(&files, external);
+    }
 
     // TODO: 'show' external function
-    let output  = vec![
-        String::from("I'm still working on playground support for 'show'. In the meantime, here is the value of the last statement in the program:\n"),
-        format!("{:#?}", value),
-    ];
+    let output = vec![String::from(
+        "I'm still working on playground support for 'show'. Check back later!",
+    )];
 
     let result = Result {
         output,

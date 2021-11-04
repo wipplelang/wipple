@@ -18,7 +18,7 @@ impl ExprKind for BlockExpr {
     }
 
     fn lower_to_form(self, stack: &Stack, info: &mut Info) -> Form {
-        let stack = stack.child_function();
+        let stack = stack.child_block();
 
         let statements = self
             .statements

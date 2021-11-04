@@ -4,13 +4,36 @@ mod ty;
 pub use item::*;
 pub use ty::*;
 
-use crate::{id::VariableId, lower};
+use crate::{id::*, lower};
+use serde::Serialize;
 use std::collections::HashMap;
 use wipple_diagnostics::*;
 
-pub fn typecheck(mut item: lower::Item, diagnostics: &mut Diagnostics) -> Option<Item> {
+#[derive(Debug, Clone, Serialize)]
+pub struct File {
+    pub id: FileId,
+    pub statements: Vec<Item>,
+}
+
+pub fn typecheck(file: &lower::File, diagnostics: &mut Diagnostics) -> Option<File> {
     let mut info = Info::new(diagnostics);
-    typecheck_item(&mut item, &mut info)
+
+    let mut typed_statements = Some(Vec::with_capacity(file.statements.len()));
+    for statement in &file.statements {
+        match typecheck_item(statement, &mut info) {
+            Some(typed_statement) => {
+                if let Some(typed_statements) = typed_statements.as_mut() {
+                    typed_statements.push(typed_statement);
+                }
+            }
+            None => typed_statements = None,
+        }
+    }
+
+    Some(File {
+        id: file.id,
+        statements: typed_statements?,
+    })
 }
 
 struct Info<'a> {
@@ -30,8 +53,8 @@ impl<'a> Info<'a> {
 }
 
 #[must_use]
-fn typecheck_item(item: &mut lower::Item, info: &mut Info) -> Option<Item> {
-    match &mut item.kind {
+fn typecheck_item(item: &lower::Item, info: &mut Info) -> Option<Item> {
+    match &item.kind {
         lower::ItemKind::Error => None,
         lower::ItemKind::Unit => Some(Item::unit(item.debug_info, Ty::unit())),
         lower::ItemKind::Number { value } => {
@@ -140,9 +163,10 @@ fn typecheck_item(item: &mut lower::Item, info: &mut Info) -> Option<Item> {
         lower::ItemKind::Annotate { item, ty } => {
             let mut item = typecheck_item(item, info)?;
 
+            let mut ty = ty.clone();
             let substituted_generics = ty.unify(&item.ty, item.debug_info.span, info)?;
             ty.substitute_generics(&substituted_generics);
-            item.ty = ty.clone();
+            item.ty = ty;
 
             Some(item)
         }
@@ -236,6 +260,14 @@ impl Ty {
                 }
                 _ => error!(),
             },
+            TyKind::File { path: known_path } => match &mut *kind {
+                TyKind::Unknown => {
+                    // TODO: Check bounds
+                    *kind = TyKind::File { path: *known_path }
+                }
+                TyKind::File { path, .. } if path == known_path => {}
+                _ => error!(),
+            },
         }
 
         Some(substituted_generics)
@@ -262,7 +294,11 @@ impl Ty {
                 input.substitute_generics(substituted_generics);
                 body.substitute_generics(substituted_generics);
             }
-            TyKind::Unknown | TyKind::Unit | TyKind::Number | TyKind::Text => {}
+            TyKind::Unknown
+            | TyKind::Unit
+            | TyKind::Number
+            | TyKind::Text
+            | TyKind::File { .. } => {}
         }
     }
 }

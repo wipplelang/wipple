@@ -5,6 +5,10 @@ use std::{fs, io, path::PathBuf, process, sync::Arc};
 use structopt::StructOpt;
 use strum::{EnumString, ToString};
 use wipple_diagnostics::*;
+use wipple_frontend::{
+    lower::Info,
+    project::{Base, Project},
+};
 
 #[derive(StructOpt)]
 #[structopt(
@@ -38,13 +42,19 @@ enum Command {
     Compile {
         #[structopt(flatten)]
         options: SharedOptions,
+
+        #[structopt(long)]
+        project: Option<PathBuf>,
+
+        #[structopt(long)]
+        cache: Option<PathBuf>,
     },
 }
 
 #[derive(StructOpt)]
 struct SharedOptions {
     #[structopt(name = "file")]
-    path: PathBuf,
+    path: String,
 
     #[structopt(long, default_value)]
     output_style: OutputStyle,
@@ -121,23 +131,48 @@ fn main() -> anyhow::Result<()> {
                 println!("{}", result);
             }
         }
-        Command::Compile { options } => {
-            let code = Arc::from(fs::read_to_string(&options.path)?);
-            let path = LocalIntern::new(options.path);
-
+        Command::Compile {
+            options,
+            project,
+            cache,
+        } => {
             let mut diagnostics = Diagnostics::new();
-            diagnostics.add_file(path, Arc::clone(&code));
 
-            let result = wipple_parser::parse(path, &code, &mut diagnostics)
-                .and_then(|file| wipple_frontend::compile(file, &mut diagnostics));
+            let project = Project {
+                base: project.map(Base::Path),
+                cache_path: Some(cache.unwrap_or_else(|| {
+                    directories::BaseDirs::new()
+                        .expect("User directories not set")
+                        .cache_dir()
+                        .join("wipple")
+                })),
+            };
+
+            let files = {
+                let mut info = Info::new(&mut diagnostics, &project);
+
+                let success =
+                    wipple_frontend::project::load_file(&options.path, Span::default(), &mut info);
+
+                success
+                    .then(|| {
+                        info.files
+                            .iter()
+                            .map(|file| {
+                                wipple_frontend::typecheck::typecheck(file, info.diagnostics)
+                            })
+                            .collect::<Option<Vec<_>>>()
+                    })
+                    .flatten()
+            };
 
             let (codemap, diagnostics) = diagnostics.into_console_friendly();
 
             let mut emitter = Emitter::stderr(ColorConfig::Auto, Some(&codemap));
             emitter.emit(&diagnostics);
 
-            if let Some(result) = result {
-                serde_json::to_writer_pretty(io::stdout(), &result)?;
+            if let Some(files) = files {
+                serde_json::to_writer_pretty(io::stdout(), &files)?;
             } else {
                 process::exit(1);
             }

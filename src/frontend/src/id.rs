@@ -33,4 +33,5 @@ macro_rules! id {
 
 id! {
     VariableId,
+    FileId,
 }

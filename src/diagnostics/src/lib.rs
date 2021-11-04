@@ -6,19 +6,18 @@ use std::{
     collections::{hash_map::Entry, HashMap},
     fmt,
     ops::Range,
-    path::PathBuf,
     sync::Arc,
 };
 
 #[derive(Default, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
 pub struct Span {
-    pub file: LocalIntern<PathBuf>,
+    pub file: LocalIntern<String>,
     pub start: usize,
     pub end: usize,
 }
 
 impl Span {
-    pub fn new(file: LocalIntern<PathBuf>, range: Range<usize>) -> Self {
+    pub fn new(file: LocalIntern<String>, range: Range<usize>) -> Self {
         Span {
             file,
             start: range.start,
@@ -45,13 +44,7 @@ impl Span {
 
 impl fmt::Debug for Span {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "{} @ {}..{}",
-            self.file.to_string_lossy(),
-            self.start,
-            self.end
-        )
+        write!(f, "{} @ {}..{}", self.file, self.start, self.end)
     }
 }
 
@@ -131,7 +124,7 @@ impl Note {
 
 #[derive(Default, Serialize)]
 pub struct Diagnostics {
-    pub files: HashMap<LocalIntern<PathBuf>, Arc<str>>,
+    pub files: HashMap<LocalIntern<String>, Arc<str>>,
     pub diagnostics: Vec<Diagnostic>,
 }
 
@@ -140,7 +133,7 @@ impl Diagnostics {
         Default::default()
     }
 
-    pub fn add_file(&mut self, path: LocalIntern<PathBuf>, code: Arc<str>) {
+    pub fn add_file(&mut self, path: LocalIntern<String>, code: Arc<str>) {
         self.files.insert(path, code);
     }
 
@@ -167,7 +160,7 @@ impl Diagnostics {
                             Entry::Occupied(entry) => entry.get().clone(),
                             Entry::Vacant(entry) => {
                                 let file = codemap.add_file(
-                                    note.span.file.to_string_lossy().to_string(),
+                                    note.span.file.to_string(),
                                     files
                                         .get(&note.span.file)
                                         .expect("Diagnostic references unknown file")

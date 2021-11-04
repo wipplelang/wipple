@@ -1,6 +1,7 @@
 use kind::kind;
 use serde::Serialize;
 use std::{cell::RefCell, fmt, rc::Rc};
+use wipple_parser::LocalIntern;
 
 #[non_exhaustive]
 #[derive(Debug, Clone, Serialize)]
@@ -17,6 +18,7 @@ pub enum TyKind {
     Number,
     Text,
     Function { input: Ty, body: Ty },
+    File { path: LocalIntern<String> },
 }
 
 impl Ty {
@@ -36,6 +38,7 @@ impl fmt::Display for Ty {
             TyKind::Number => write!(f, "Number"),
             TyKind::Text => write!(f, "Text"),
             TyKind::Function { input, body } => write!(f, "{} -> {}", input, body),
+            TyKind::File { path, .. } => write!(f, "File \"{}\"", path),
         }
     }
 }

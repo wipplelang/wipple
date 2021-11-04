@@ -53,6 +53,7 @@ where
             FormKind::Operator { .. } => error("operator"),
             FormKind::Template { .. } => error("template"),
             FormKind::Ty { .. } => error("type"),
+            FormKind::File { .. } => error("file"),
         }
     }
 }
@@ -69,35 +70,32 @@ pub enum Expr {
 
 impl<'src> From<parser::Expr<'src>> for Expr {
     fn from(expr: parser::Expr<'src>) -> Self {
-        use parser::ExprKind::*;
-
-        fn parse_lines(lines: Vec<parser::ListLine>) -> Vec<Expr> {
-            lines
-                .into_iter()
-                .filter_map(|line| {
-                    (!line.exprs.is_empty()).then(|| line.exprs.into_iter().map(From::from))
-                })
-                .flatten()
-                .collect()
-        }
-
         match expr.kind {
-            Name(value) => Expr::from(NameExpr::new(expr.span, value)),
-            Text(value) => Expr::from(TextExpr::new(expr.span, value)),
-            Number(value) => Expr::from(NumberExpr::new(expr.span, value)),
-            Quote(_) => todo!(),
-            List(lines) => Expr::from(ListExpr::new(expr.span, parse_lines(lines))),
-            Attribute(_) => todo!(),
-            Block(statements) => Expr::from(BlockExpr::new(
+            parser::ExprKind::Name(value) => Expr::from(NameExpr::new(expr.span, value)),
+            parser::ExprKind::Text(value) => Expr::from(TextExpr::new(expr.span, value)),
+            parser::ExprKind::Number(value) => Expr::from(NumberExpr::new(expr.span, value)),
+            parser::ExprKind::Quote(_) => todo!(),
+            parser::ExprKind::List(lines) => {
+                Expr::from(ListExpr::new(expr.span, parse_lines(lines)))
+            }
+            parser::ExprKind::Attribute(_) => todo!(),
+            parser::ExprKind::Block(statements) => Expr::from(BlockExpr::new(
                 expr.span,
-                statements
-                    .into_iter()
-                    .filter_map(|statement| {
-                        let exprs = parse_lines(statement.lines);
-                        (!exprs.is_empty()).then(|| Expr::from(ListExpr::infer_span(exprs)))
-                    })
-                    .collect(),
+                statements.into_iter().filter_map(parse_statement).collect(),
             )),
         }
     }
+}
+
+fn parse_lines(lines: Vec<parser::ListLine>) -> Vec<Expr> {
+    lines
+        .into_iter()
+        .filter_map(|line| (!line.exprs.is_empty()).then(|| line.exprs.into_iter().map(From::from)))
+        .flatten()
+        .collect()
+}
+
+pub(crate) fn parse_statement(statement: parser::Statement) -> Option<Expr> {
+    let exprs = parse_lines(statement.lines);
+    (!exprs.is_empty()).then(|| Expr::from(ListExpr::infer_span(exprs)))
 }

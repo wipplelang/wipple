@@ -75,13 +75,17 @@ impl NameExpr {
             }
 
             if let Some(variable) = stack.variables.borrow().get(&self.value) {
-                let form = (variable.form)(self.span, info);
-
-                if matches!(form.kind, FormKind::Item { .. }) {
+                let form = if let Some(form) = &variable.form {
+                    form(self.span, info)
+                } else {
                     for list in used {
                         list.borrow_mut().insert(variable.id);
                     }
-                }
+
+                    let mut item = Item::variable(self.span, variable.id);
+                    item.debug_info.declared_name = Some(self.value);
+                    Form::item(self.span, item)
+                };
 
                 break Some(form);
             } else {

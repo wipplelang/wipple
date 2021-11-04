@@ -4,7 +4,7 @@ pub use builtin::*;
 use crate::{lower::*, typecheck::Ty};
 use kind::kind;
 use serde::Serialize;
-use std::{fmt, sync::Arc};
+use std::{fmt, rc::Rc, sync::Arc};
 
 #[non_exhaustive]
 #[derive(Debug, Clone, Serialize)]
@@ -36,6 +36,9 @@ pub enum FormKind {
     },
     Ty {
         ty: Ty,
+    },
+    File {
+        file: Rc<File>,
     },
 }
 

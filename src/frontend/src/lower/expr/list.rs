@@ -48,30 +48,73 @@ impl ExprKind for ListExpr {
                 _ => {
                     let form = list_expr.items.remove(0).lower_to_form(stack, info);
 
-                    match form.kind {
-                        FormKind::Item { item } => Form::item(
-                            form.span,
-                            list_expr.items.into_iter().fold(item, |function, expr| {
+                    list_expr
+                        .items
+                        .into_iter()
+                        .fold(form, |form, expr| match form.kind {
+                            FormKind::Item { item } => {
                                 let input = expr.lower_to_item(stack, info);
-                                Item::apply(
-                                    function.debug_info.span.with_end(input.debug_info.span.end),
-                                    Box::new(function),
-                                    Box::new(input),
-                                )
-                            }),
-                        ),
-                        FormKind::Template { .. } => todo!(),
-                        FormKind::Operator { .. } => {
-                            info.diagnostics.add(Diagnostic::new(
-                                DiagnosticLevel::Error,
-                                "Expected value, found operator",
-                                vec![Note::primary(form.span, "Expected value here")],
-                            ));
+                                let span = item.debug_info.span.with_end(input.debug_info.span.end);
 
-                            Form::item(form.span, Item::error(form.span))
-                        }
-                        FormKind::Ty { .. } => todo!(), // constructors
-                    }
+                                Form::item(span, Item::apply(span, Box::new(item), Box::new(input)))
+                            }
+                            FormKind::Template { .. } => todo!(),
+                            FormKind::Operator { .. } => {
+                                info.diagnostics.add(Diagnostic::new(
+                                    DiagnosticLevel::Error,
+                                    "Expected value, found operator",
+                                    vec![Note::primary(form.span, "Expected value here")],
+                                ));
+
+                                Form::item(form.span, Item::error(form.span))
+                            }
+                            FormKind::Ty { .. } => todo!(), // constructors
+                            FormKind::File { file } => {
+                                let span = expr.span();
+
+                                let name = match expr {
+                                    Expr::Name(name) => name,
+                                    _ => {
+                                        info.diagnostics.add(Diagnostic::new(
+                                            DiagnosticLevel::Error,
+                                            "Expected name",
+                                            vec![Note::primary(
+                                                form.span,
+                                                "Expected variable name here",
+                                            )],
+                                        ));
+
+                                        return Form::item(span, Item::error(span));
+                                    }
+                                };
+
+                                if let Some(variable) = file.variables.get(&name.value) {
+                                    if let Some(form) = &variable.form {
+                                        form(span, info)
+                                    } else {
+                                        info.used_variables.borrow_mut().insert(variable.id);
+
+                                        let mut item = Item::variable(span, variable.id);
+                                        item.debug_info.declared_name = Some(name.value);
+                                        Form::item(span, item)
+                                    }
+                                } else {
+                                    info.diagnostics.add(Diagnostic::new(
+                                        DiagnosticLevel::Error,
+                                        format!("'{}' is not defined inside file", name.value),
+                                        vec![
+                                            Note::primary(
+                                                span,
+                                                "This name does not resolve to a variable...",
+                                            ),
+                                            Note::secondary(form.span, "...in this file"),
+                                        ],
+                                    ));
+
+                                    Form::item(span, Item::error(span))
+                                }
+                            }
+                        })
                 }
             },
             ParseResult::Apply(lhs, (_, apply), rhs) => (apply.0)(

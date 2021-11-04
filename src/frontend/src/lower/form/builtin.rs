@@ -12,7 +12,7 @@ pub fn builtins() -> HashMap<LocalIntern<String>, Variable> {
 
                 variables.insert(
                     name,
-                    Variable::compiletime(Span::default(), name, $value),
+                    Variable::compile_time(Span::default(), name, $value),
                 );
             })*
 
@@ -25,6 +25,8 @@ pub fn builtins() -> HashMap<LocalIntern<String>, Variable> {
         "::" => Form::builtin_annotate,
         "->" => Form::builtin_function,
         "external" => Form::builtin_external,
+        "file" => Form::builtin_file,
+        "use" => Form::builtin_use,
         "Number" => Form::builtin_number_ty,
         "Text" => Form::builtin_text_ty,
     }
@@ -60,7 +62,7 @@ impl Form {
                     }
                 };
 
-                Form::item(span, binding.assign(span, value, stack, info))
+                Form::item(span, binding.assign_in_block(span, value, stack, info))
             }),
         )
     }
@@ -120,7 +122,7 @@ impl Form {
                 let body = Item::block(
                     rhs_span,
                     vec![
-                        binding.assign(
+                        binding.assign_in_block(
                             lhs_span,
                             Form::item(lhs_span, Item::function_input(lhs_span)),
                             &stack,
@@ -151,6 +153,14 @@ impl Form {
     }
 
     fn builtin_external(span: Span) -> Self {
+        todo!()
+    }
+
+    fn builtin_file(span: Span) -> Self {
+        todo!()
+    }
+
+    fn builtin_use(span: Span) -> Self {
         todo!()
     }
 

@@ -62,5 +62,5 @@ pub enum ItemKind {
     Annotate {
         item: Box<Item>,
         ty: Ty,
-    }
+    },
 }

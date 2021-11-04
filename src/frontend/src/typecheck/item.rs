@@ -1,5 +1,5 @@
 use super::Ty;
-use crate::{debug_info::DebugInfo, id::VariableId};
+use crate::{debug_info::DebugInfo, id::*};
 use kind::kind;
 use serde::Serialize;
 use std::collections::HashSet;
