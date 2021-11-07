@@ -38,11 +38,16 @@ pub fn run(code: &str) -> JsValue {
     };
 
     let output = Default::default();
-    let external = external(Rc::clone(&output));
 
-    if let Some(files) = files {
-        if let Err(error) = wipple_interpreter_backend::eval(&files, external) {
-            output.borrow_mut().push(format!("Fatal error: {:?}", error))
+    {
+        let external = external(Rc::clone(&output));
+
+        if let Some(files) = files {
+            if let Err(error) = wipple_interpreter_backend::eval(&files, external) {
+                output
+                    .borrow_mut()
+                    .push(format!("Fatal error: {:?}", error))
+            }
         }
     }
 
