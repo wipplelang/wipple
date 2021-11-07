@@ -17,7 +17,7 @@ impl ExprKind for TextExpr {
         self.span
     }
 
-    fn lower_to_form(self, _: &Stack, _: &mut Info) -> Form {
-        Form::item(self.span, Item::text(self.span, self.value))
+    fn lower(self, _: LowerContext, _: &Stack, _: &mut Info) -> Option<Form> {
+        Some(Form::item(self.span, Item::text(self.span, self.value)))
     }
 }

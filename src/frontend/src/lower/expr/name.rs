@@ -1,4 +1,4 @@
-use crate::{lower::*, typecheck::Ty};
+use crate::lower::*;
 
 #[derive(Debug)]
 pub struct NameExpr {
@@ -17,44 +17,27 @@ impl ExprKind for NameExpr {
         self.span
     }
 
-    fn lower_to_form(self, stack: &Stack, info: &mut Info) -> Form {
-        match self.resolve(stack, info) {
-            Some(form) => form,
-            None => {
-                info.diagnostics.add(Diagnostic::new(
-                    DiagnosticLevel::Error,
-                    format!("'{}' is not defined", self.value),
-                    vec![Note::primary(
-                        self.span,
-                        "This name does not resolve to a variable",
-                    )],
-                ));
+    fn lower(self, context: LowerContext, stack: &Stack, info: &mut Info) -> Option<Form> {
+        match context {
+            LowerContext::Binding => Some(Form::binding(
+                self.span,
+                Binding::from(NameBinding::new(self.span, self.value)),
+            )),
+            _ => match self.resolve(stack, info) {
+                Some(form) => Some(form),
+                None => {
+                    info.diagnostics.add(Diagnostic::new(
+                        DiagnosticLevel::Error,
+                        format!("'{}' is not defined", self.value),
+                        vec![Note::primary(
+                            self.span,
+                            "This name does not resolve to a variable",
+                        )],
+                    ));
 
-                Form::item(self.span, Item::error(self.span))
-            }
-        }
-    }
-
-    fn lower_to_binding(self, _: &Stack, _: &mut Info) -> Option<SpannedBinding> {
-        Some(SpannedBinding::from(NameBinding::new(
-            self.span, self.value,
-        )))
-    }
-
-    fn lower_to_ty(self, stack: &Stack, info: &mut Info) -> Option<Ty> {
-        let form = self.lower_to_form(stack, info);
-
-        match form.kind {
-            FormKind::Ty { ty } => Some(ty),
-            _ => {
-                info.diagnostics.add(Diagnostic::new(
-                    DiagnosticLevel::Error,
-                    "Expected type",
-                    vec![Note::primary(form.span, "Expected type here")],
-                ));
-
-                None
-            }
+                    None
+                }
+            },
         }
     }
 }

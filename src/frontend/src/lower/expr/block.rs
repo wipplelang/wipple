@@ -17,15 +17,15 @@ impl ExprKind for BlockExpr {
         self.span
     }
 
-    fn lower_to_form(self, stack: &Stack, info: &mut Info) -> Form {
+    fn lower(self, _: LowerContext, stack: &Stack, info: &mut Info) -> Option<Form> {
         let stack = stack.child_block();
 
         let statements = self
             .statements
             .into_iter()
             .map(|statement| statement.lower_to_item(&stack, info))
-            .collect();
+            .collect::<Option<_>>()?;
 
-        Form::item(self.span, Item::block(self.span, statements))
+        Some(Form::item(self.span, Item::block(self.span, statements)))
     }
 }

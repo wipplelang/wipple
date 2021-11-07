@@ -1,5 +1,5 @@
 use crate::{lower::*, typecheck::Ty};
-use std::cmp::Ordering;
+use std::{cmp::Ordering, mem};
 
 #[derive(Debug)]
 pub struct ListExpr {
@@ -29,44 +29,85 @@ impl ExprKind for ListExpr {
         self.span
     }
 
-    fn lower_to_form(self, stack: &Stack, info: &mut Info) -> Form {
+    fn lower(self, context: LowerContext, stack: &Stack, info: &mut Info) -> Option<Form> {
         let span = self.span;
 
         let form = match self.parse_operators(stack, info) {
             Ok(operators) => operators,
             Err(error) => {
                 info.diagnostics.add(error.into());
-
-                return Form::item(span, Item::new(span, ItemKind::Error));
+                return None;
             }
         };
 
         match form {
             ParseResult::List(mut list_expr) => match list_expr.items.len() {
-                0 => Form::item(list_expr.span, Item::unit(list_expr.span)),
-                1 => list_expr.items.remove(0).lower_to_form(stack, info),
+                0 => match context {
+                    LowerContext::Item => {
+                        Some(Form::item(list_expr.span, Item::unit(list_expr.span)))
+                    }
+                    LowerContext::Ty => Some(Form::ty(list_expr.span, Ty::unit())),
+                    _ => todo!(),
+                }, // TODO: empty tuple type
+                1 => list_expr.items.remove(0).lower(context, stack, info),
                 _ => {
-                    let form = list_expr.items.remove(0).lower_to_form(stack, info);
+                    let mut form = list_expr.items.remove(0).lower(context, stack, info)?;
 
-                    list_expr
-                        .items
-                        .into_iter()
-                        .fold(form, |form, expr| match form.kind {
+                    let mut items = list_expr.items.into_iter();
+                    while let Some(expr) = items.next() {
+                        form = match form.kind {
                             FormKind::Item { item } => {
-                                let input = expr.lower_to_item(stack, info);
+                                let input = expr.lower_to_item(stack, info)?;
                                 let span = item.debug_info.span.with_end(input.debug_info.span.end);
 
                                 Form::item(span, Item::apply(span, Box::new(item), Box::new(input)))
                             }
-                            FormKind::Template { .. } => todo!(),
-                            FormKind::Operator { .. } => {
-                                info.diagnostics.add(Diagnostic::new(
-                                    DiagnosticLevel::Error,
-                                    "Expected value, found operator",
-                                    vec![Note::primary(form.span, "Expected value here")],
-                                ));
+                            FormKind::Template { template } => {
+                                let mut exprs = vec![expr];
 
-                                Form::item(form.span, Item::error(form.span))
+                                if let Some(arity) = template.arity {
+                                    let arity = usize::from(arity);
+
+                                    for _ in 1..arity {
+                                        let expr = match items.next() {
+                                            Some(expr) => expr,
+                                            None => break,
+                                        };
+
+                                        exprs.push(expr);
+                                    }
+
+                                    if exprs.len() < arity {
+                                        info.diagnostics.add(Diagnostic::new(
+                                            DiagnosticLevel::Error,
+                                            format!(
+                                                "This template accepts {} expressions, but only {} were given",
+                                                arity,
+                                                exprs.len(),
+                                            ),
+                                            vec![
+                                                Note::primary(
+                                                    span,
+                                                    format!(
+                                                        "Expected {} more values here",
+                                                        arity - exprs.len()
+                                                    ),
+                                                ),
+                                            ],
+                                        ));
+
+                                        return None;
+                                    }
+                                } else {
+                                    exprs.extend(mem::replace(&mut items, Vec::new().into_iter()))
+                                }
+
+                                let span = form.span.with_end(exprs.last().unwrap().span().end);
+
+                                template.expand(context, exprs, span, stack, info)?
+                            }
+                            FormKind::Operator { operator } => {
+                                Form::template(form.span, operator.template)
                             }
                             FormKind::Ty { .. } => todo!(), // constructors
                             FormKind::File { file } => {
@@ -84,7 +125,7 @@ impl ExprKind for ListExpr {
                                             )],
                                         ));
 
-                                        return Form::item(span, Item::error(span));
+                                        return None;
                                     }
                                 };
 
@@ -111,15 +152,23 @@ impl ExprKind for ListExpr {
                                         ],
                                     ));
 
-                                    Form::item(span, Item::error(span))
+                                    return None;
                                 }
                             }
-                        })
+                            FormKind::Binding { .. } => todo!(), // TODO: Complex bindings
+                        };
+                    }
+
+                    Some(form)
                 }
             },
-            ParseResult::Apply(lhs, (_, apply), rhs) => (apply.0)(
-                ListExpr::infer_span(lhs),
-                ListExpr::infer_span(rhs),
+            ParseResult::Apply(lhs, (_, operator), rhs) => operator.template.expand(
+                context,
+                vec![
+                    Expr::List(ListExpr::infer_span(lhs)),
+                    Expr::List(ListExpr::infer_span(rhs)),
+                ],
+                span,
                 stack,
                 info,
             ),
@@ -134,35 +183,17 @@ impl ExprKind for ListExpr {
                     )],
                 ));
 
-                Form::item(span, Item::error(span))
+                None
             }
         }
-    }
-
-    fn lower_to_binding(mut self, stack: &Stack, info: &mut Info) -> Option<SpannedBinding> {
-        // eventually, support more complex expressions with operators
-        if self.items.len() != 1 {
-            return None;
-        }
-
-        self.items.remove(0).lower_to_binding(stack, info)
-    }
-
-    fn lower_to_ty(mut self, stack: &Stack, info: &mut Info) -> Option<Ty> {
-        // eventually, support more complex expressions with type parameters
-        if self.items.len() != 1 {
-            return None;
-        }
-
-        self.items.remove(0).lower_to_ty(stack, info)
     }
 }
 
 enum ParseResult {
     List(ListExpr),
-    Apply(Vec<Expr>, (Span, OperatorApply), Vec<Expr>),
-    PartiallyApplyLeft(Vec<Expr>, (Span, OperatorApply)),
-    PartiallyApplyRight((Span, OperatorApply), Vec<Expr>),
+    Apply(Vec<Expr>, (Span, Operator), Vec<Expr>),
+    PartiallyApplyLeft(Vec<Expr>, (Span, Operator)),
+    PartiallyApplyRight((Span, Operator), Vec<Expr>),
 }
 
 enum Error {
@@ -201,13 +232,8 @@ impl ListExpr {
         for (index, expr) in self.items.iter().enumerate() {
             if let Expr::Name(name) = expr {
                 if let Some(form) = name.resolve(stack, info) {
-                    if let FormKind::Operator {
-                        precedence,
-                        associativity,
-                        apply,
-                    } = form.kind
-                    {
-                        operators.push((index, form.span, (precedence, associativity, apply)));
+                    if let FormKind::Operator { operator } = form.kind {
+                        operators.push((index, form.span, operator));
                     }
                 }
             }
@@ -228,17 +254,17 @@ impl ListExpr {
                 }};
             }
 
-            match operator.0.cmp(&max_operator.0) {
+            match operator.precedence.cmp(&max_operator.precedence) {
                 Ordering::Greater => replace!(),
                 Ordering::Equal => {
-                    if operator.1 != max_operator.1 {
+                    if operator.associativity != max_operator.associativity {
                         return Err(Error::AmbiguousAssociativity {
                             first: self.items[max_index].span(),
                             second: self.items[index].span(),
                         });
                     }
 
-                    match operator.1 {
+                    match operator.associativity {
                         OperatorAssociativity::Left => {
                             if index > max_index {
                                 replace!();
@@ -267,11 +293,11 @@ impl ListExpr {
         lhs.pop().unwrap();
 
         Ok(if rhs.is_empty() {
-            ParseResult::PartiallyApplyLeft(lhs, (max_span, max_operator.2))
+            ParseResult::PartiallyApplyLeft(lhs, (max_span, max_operator))
         } else if lhs.is_empty() {
-            ParseResult::PartiallyApplyRight((max_span, max_operator.2), rhs)
+            ParseResult::PartiallyApplyRight((max_span, max_operator), rhs)
         } else {
-            ParseResult::Apply(lhs, (max_span, max_operator.2), rhs)
+            ParseResult::Apply(lhs, (max_span, max_operator), rhs)
         })
     }
 }

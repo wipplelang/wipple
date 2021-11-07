@@ -16,24 +16,33 @@ pub enum Value {
         body: Item,
         captures: BTreeMap<VariableId, Rc<Value>>,
     },
+    ExternalFunction(ExternalFunction),
 }
 
-pub fn eval(files: &[File], external: ExternalFunctions) {
+#[derive(Debug, Serialize)]
+pub enum Error {
+    UnknownExternalNamespace(String),
+    UnknownExternalIdentifier(String),
+}
+
+pub fn eval(files: &[File], external: ExternalValues) -> Result<(), Error> {
     let mut info = Info {
         external,
         scope: Default::default(),
         function_input: None,
     };
 
-    for file in files.iter().rev() {
+    for file in files {
         for statement in &file.statements {
-            eval_item(statement, &mut info);
+            eval_item(statement, &mut info)?;
         }
     }
+
+    Ok(())
 }
 
 struct Info {
-    external: ExternalFunctions,
+    external: ExternalValues,
     scope: Rc<RefCell<Scope>>,
     function_input: Option<Rc<Value>>,
 }
@@ -53,8 +62,8 @@ impl Scope {
     }
 }
 
-fn eval_item(item: &Item, info: &mut Info) -> Rc<Value> {
-    match &item.kind {
+fn eval_item(item: &Item, info: &mut Info) -> Result<Rc<Value>, Error> {
+    let value = match &item.kind {
         ItemKind::Unit => Rc::new(Value::Unit),
         ItemKind::Number { value } => Rc::new(Value::Number(**value)),
         ItemKind::Text { value } => Rc::new(Value::Text(value.to_string())),
@@ -63,19 +72,18 @@ fn eval_item(item: &Item, info: &mut Info) -> Rc<Value> {
             let child = Scope::child(&parent);
             info.scope = child;
 
-            let value = statements
-                .iter()
-                .map(|statement| eval_item(statement, info))
-                .last()
-                .unwrap_or_else(|| Rc::new(Value::Unit));
+            let mut value = Rc::new(Value::Unit);
+            for statement in statements {
+                value = eval_item(statement, info)?;
+            }
 
             info.scope = parent;
 
             value
         }
-        ItemKind::Apply { function, input } => match eval_item(function, info).as_ref() {
+        ItemKind::Apply { function, input } => match eval_item(function, info)?.as_ref() {
             Value::Function { body, captures } => {
-                let input = eval_item(input, info);
+                let input = eval_item(input, info)?;
                 info.function_input = Some(input);
 
                 let parent = info.scope.clone();
@@ -83,17 +91,21 @@ fn eval_item(item: &Item, info: &mut Info) -> Rc<Value> {
                 child.borrow_mut().variables.extend(captures.clone());
                 info.scope = child;
 
-                let value = eval_item(body, info);
+                let value = eval_item(body, info)?;
 
                 info.scope = parent;
                 info.function_input = None;
 
                 value
             }
+            Value::ExternalFunction(function) => {
+                let input = eval_item(input, info)?;
+                function.call(input)?
+            }
             _ => unreachable!(),
         },
         ItemKind::Initialize { variable, value } => {
-            let value = eval_item(value, info);
+            let value = eval_item(value, info)?;
             info.scope.borrow_mut().variables.insert(*variable, value);
             Rc::new(Value::Unit)
         }
@@ -109,12 +121,10 @@ fn eval_item(item: &Item, info: &mut Info) -> Rc<Value> {
         ItemKind::External {
             namespace,
             identifier,
-            inputs,
-        } => {
-            let inputs = inputs.iter().map(|item| eval_item(item, info)).collect();
-            info.external.get(namespace, identifier).call(inputs)
-        }
-    }
+        } => info.external.get(namespace, identifier)?.clone(),
+    };
+
+    Ok(value)
 }
 
 fn resolve(variable: VariableId, info: &mut Info) -> Rc<Value> {

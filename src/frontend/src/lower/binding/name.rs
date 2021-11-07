@@ -1,5 +1,6 @@
 use crate::lower::*;
 
+#[derive(Debug, Clone, Serialize)]
 pub struct NameBinding {
     pub span: Span,
     pub name: LocalIntern<String>,
@@ -11,7 +12,7 @@ impl NameBinding {
     }
 }
 
-impl Binding for NameBinding {
+impl BindingKind for NameBinding {
     fn span(&self) -> Span {
         self.span
     }

@@ -1,6 +1,6 @@
 pub mod binding;
 pub mod expr;
-pub mod form;
+pub mod forms;
 pub mod info;
 pub mod item;
 pub mod stack;
@@ -9,7 +9,7 @@ use std::{collections::HashMap, rc::Rc};
 
 pub use binding::*;
 pub use expr::*;
-pub use form::*;
+pub use forms::*;
 pub use info::*;
 pub use item::*;
 pub use stack::*;
@@ -27,7 +27,7 @@ pub struct File {
     pub variables: HashMap<LocalIntern<String>, Variable>,
 }
 
-pub fn lower(file: wipple_parser::File, info: &mut Info) {
+pub fn lower(file: wipple_parser::File, info: &mut Info) -> Option<()> {
     let stack = Stack::file(file.path);
 
     let statements = file
@@ -35,7 +35,7 @@ pub fn lower(file: wipple_parser::File, info: &mut Info) {
         .into_iter()
         .filter_map(parse_statement)
         .map(|statement| statement.lower_to_item(&stack, info))
-        .collect();
+        .collect::<Option<_>>()?;
 
     info.files.push(Rc::new(File {
         id: FileId::new(),
@@ -43,4 +43,6 @@ pub fn lower(file: wipple_parser::File, info: &mut Info) {
         statements,
         variables: stack.variables.into_inner(),
     }));
+
+    Some(())
 }

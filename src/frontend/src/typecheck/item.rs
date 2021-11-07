@@ -56,6 +56,5 @@ pub enum ItemKind {
     External {
         namespace: LocalIntern<String>,
         identifier: LocalIntern<String>,
-        inputs: Vec<Item>,
     },
 }

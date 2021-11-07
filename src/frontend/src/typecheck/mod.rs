@@ -55,7 +55,6 @@ impl<'a> Info<'a> {
 #[must_use]
 fn typecheck_item(item: &lower::Item, info: &mut Info) -> Option<Item> {
     match &item.kind {
-        lower::ItemKind::Error => None,
         lower::ItemKind::Unit => Some(Item::unit(item.debug_info, Ty::unit())),
         lower::ItemKind::Number { value } => {
             Some(Item::number(item.debug_info, Ty::number(), *value))
@@ -159,12 +158,18 @@ fn typecheck_item(item: &lower::Item, info: &mut Info) -> Option<Item> {
             let ty = info.function_input_ty.as_ref().unwrap().clone();
             Some(Item::function_input(item.debug_info, ty))
         }
-        lower::ItemKind::External { .. } => todo!(),
+        lower::ItemKind::External {
+            namespace,
+            identifier,
+        } => {
+            let ty = Ty::unknown();
+            Some(Item::external(item.debug_info, ty, *namespace, *identifier))
+        }
         lower::ItemKind::Annotate { item, ty } => {
             let mut item = typecheck_item(item, info)?;
 
-            let mut ty = ty.clone();
-            let substituted_generics = ty.unify(&item.ty, item.debug_info.span, info)?;
+            let ty = ty.clone();
+            let substituted_generics = item.ty.unify(&ty, item.debug_info.span, info)?;
             ty.substitute_generics(&substituted_generics);
             item.ty = ty;
 

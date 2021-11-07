@@ -26,7 +26,6 @@ impl Item {
 #[kind(Item::new(span: Span))]
 #[derive(Debug, Clone, Serialize)]
 pub enum ItemKind {
-    Error,
     Unit,
     Number {
         value: LocalIntern<Decimal>,
@@ -57,7 +56,6 @@ pub enum ItemKind {
     External {
         namespace: LocalIntern<String>,
         identifier: LocalIntern<String>,
-        inputs: Vec<Item>,
     },
     Annotate {
         item: Box<Item>,
