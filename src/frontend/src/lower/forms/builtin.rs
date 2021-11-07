@@ -1,4 +1,4 @@
-use crate::{debug_info::DebugInfo, lower::*, typecheck::Ty};
+use crate::{debug_info::DebugInfo, lower::*, project, typecheck::Ty};
 use std::{collections::HashMap, num::NonZeroUsize, rc::Rc};
 use wipple_diagnostics::*;
 
@@ -49,10 +49,7 @@ impl Form {
                         let binding = lhs.lower_to_binding(stack, info)?;
                         let value = rhs.lower(LowerContext::Item, stack, info)?;
 
-                        Some(Form::item(
-                            span,
-                            binding.assign_in_block(span, value, stack, info),
-                        ))
+                        Some(Form::item(span, binding.assign(span, value, stack, info)))
                     },
                 ),
             },
@@ -115,7 +112,7 @@ impl Form {
                                 let body = Item::block(
                                     rhs_span,
                                     vec![
-                                        binding.assign_in_block(
+                                        binding.assign(
                                             lhs_span,
                                             Form::item(lhs_span, Item::function_input(lhs_span)),
                                             &stack,
@@ -194,7 +191,32 @@ impl Form {
     }
 
     fn builtin_file(span: Span) -> Self {
-        todo!()
+        Form::template(
+            span,
+            Template::new(
+                Some(NonZeroUsize::new(1).unwrap()),
+                move |_, exprs, span, _, info| {
+                    let mut exprs = exprs.into_iter();
+
+                    let file = match exprs.next().unwrap() {
+                        Expr::Text(text) => text.value,
+                        expr => {
+                            info.diagnostics.add(Diagnostic::new(
+                                DiagnosticLevel::Error,
+                                "Expected path or URL to file",
+                                vec![Note::primary(expr.span(), "Expected a text value here")],
+                            ));
+
+                            return None;
+                        }
+                    };
+
+                    let file = project::load_file(&file, span, info)?;
+
+                    Some(Form::file(span, file))
+                },
+            ),
+        )
     }
 
     fn builtin_use(span: Span) -> Self {

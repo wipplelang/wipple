@@ -49,7 +49,6 @@ impl ExprKind for ListExpr {
                     LowerContext::Ty => Some(Form::ty(list_expr.span, Ty::unit())),
                     _ => todo!(),
                 }, // TODO: empty tuple type
-                1 => list_expr.items.remove(0).lower(context, stack, info),
                 _ => {
                     let mut form = list_expr.items.remove(0).lower(context, stack, info)?;
 
@@ -130,15 +129,13 @@ impl ExprKind for ListExpr {
                                 };
 
                                 if let Some(variable) = file.variables.get(&name.value) {
-                                    if let Some(form) = &variable.form {
-                                        form(span, info)
-                                    } else {
-                                        info.used_variables.borrow_mut().insert(variable.id);
+                                    let form = (variable.form)(span);
 
-                                        let mut item = Item::variable(span, variable.id);
-                                        item.debug_info.declared_name = Some(name.value);
-                                        Form::item(span, item)
+                                    if matches!(form.kind, FormKind::Item { .. }) {
+                                        info.used_variables.borrow_mut().insert(variable.id);
                                     }
+
+                                    form
                                 } else {
                                     info.diagnostics.add(Diagnostic::new(
                                         DiagnosticLevel::Error,

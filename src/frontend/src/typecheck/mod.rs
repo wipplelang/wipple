@@ -6,7 +6,7 @@ pub use ty::*;
 
 use crate::{id::*, lower};
 use serde::Serialize;
-use std::collections::HashMap;
+use std::{collections::HashMap, rc::Rc};
 use wipple_diagnostics::*;
 
 #[derive(Debug, Clone, Serialize)]
@@ -15,25 +15,30 @@ pub struct File {
     pub statements: Vec<Item>,
 }
 
-pub fn typecheck(file: &lower::File, diagnostics: &mut Diagnostics) -> Option<File> {
+pub fn typecheck(files: &[Rc<lower::File>], diagnostics: &mut Diagnostics) -> Option<Vec<File>> {
     let mut info = Info::new(diagnostics);
 
-    let mut typed_statements = Some(Vec::with_capacity(file.statements.len()));
-    for statement in &file.statements {
-        match typecheck_item(statement, &mut info) {
-            Some(typed_statement) => {
-                if let Some(typed_statements) = typed_statements.as_mut() {
-                    typed_statements.push(typed_statement);
+    files
+        .iter()
+        .map(|file| {
+            let mut typed_statements = Some(Vec::with_capacity(file.statements.len()));
+            for statement in &file.statements {
+                match typecheck_item(statement, &mut info) {
+                    Some(typed_statement) => {
+                        if let Some(typed_statements) = typed_statements.as_mut() {
+                            typed_statements.push(typed_statement);
+                        }
+                    }
+                    None => typed_statements = None,
                 }
             }
-            None => typed_statements = None,
-        }
-    }
 
-    Some(File {
-        id: file.id,
-        statements: typed_statements?,
-    })
+            Some(File {
+                id: file.id,
+                statements: typed_statements?,
+            })
+        })
+        .collect()
 }
 
 struct Info<'a> {

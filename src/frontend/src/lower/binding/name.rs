@@ -17,8 +17,15 @@ impl BindingKind for NameBinding {
         self.span
     }
 
-    fn assign_in_block(self, span: Span, form: Form, stack: &Stack, info: &mut Info) -> Item {
-        let variable = Variable::runtime(self.span, self.name);
+    fn assign(self, span: Span, form: Form, stack: &Stack, info: &mut Info) -> Item {
+        let (variable, runtime_item) = match form.kind {
+            FormKind::Item { item } => (Variable::runtime(self.span, self.name), Some(item)),
+            _ => (
+                Variable::compile_time(self.span, self.name, move |_| form.clone()),
+                None,
+            ),
+        };
+
         let variable_id = variable.id;
 
         stack
@@ -28,8 +35,8 @@ impl BindingKind for NameBinding {
 
         info.declared_variables.push(variable);
 
-        if let FormKind::Item { item } = form.kind {
-            Item::initialize(span, variable_id, Box::new(item))
+        if let Some(runtime_item) = runtime_item {
+            Item::initialize(span, variable_id, Box::new(runtime_item))
         } else {
             Item::unit(span)
         }

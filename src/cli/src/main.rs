@@ -152,17 +152,11 @@ fn main() -> anyhow::Result<()> {
                 let mut info = Info::new(&mut diagnostics, &project);
 
                 let success =
-                    wipple_frontend::project::load_file(&options.path, Span::default(), &mut info);
+                    wipple_frontend::project::load_file(&options.path, Span::default(), &mut info)
+                        .is_some();
 
                 success
-                    .then(|| {
-                        info.files
-                            .iter()
-                            .map(|file| {
-                                wipple_frontend::typecheck::typecheck(file, info.diagnostics)
-                            })
-                            .collect::<Option<Vec<_>>>()
-                    })
+                    .then(|| wipple_frontend::typecheck::typecheck(&info.files, info.diagnostics))
                     .flatten()
             };
 

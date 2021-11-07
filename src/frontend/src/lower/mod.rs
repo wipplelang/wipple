@@ -27,7 +27,7 @@ pub struct File {
     pub variables: HashMap<LocalIntern<String>, Variable>,
 }
 
-pub fn lower(file: wipple_parser::File, info: &mut Info) -> Option<()> {
+pub fn lower(file: wipple_parser::File, info: &mut Info) -> Option<Rc<File>> {
     let stack = Stack::file(file.path);
 
     let statements = file
@@ -37,12 +37,14 @@ pub fn lower(file: wipple_parser::File, info: &mut Info) -> Option<()> {
         .map(|statement| statement.lower_to_item(&stack, info))
         .collect::<Option<_>>()?;
 
-    info.files.push(Rc::new(File {
+    let file = Rc::new(File {
         id: FileId::new(),
         path: file.path,
         statements,
         variables: stack.variables.into_inner(),
-    }));
+    });
 
-    Some(())
+    info.files.push(file.clone());
+
+    Some(file)
 }

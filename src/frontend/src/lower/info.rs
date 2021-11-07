@@ -37,7 +37,7 @@ pub struct Variable {
     pub declaration_span: Span,
     pub name: LocalIntern<String>,
     #[serde(skip)]
-    pub form: Option<Arc<dyn Fn(Span, &mut Info) -> Form>>,
+    pub form: Arc<dyn Fn(Span) -> Form>,
 }
 
 impl Variable {
@@ -50,16 +50,22 @@ impl Variable {
             id: VariableId::new(),
             declaration_span,
             name,
-            form: Some(Arc::new(move |span, _| form(span))),
+            form: Arc::new(form),
         }
     }
 
     pub fn runtime(declaration_span: Span, name: LocalIntern<String>) -> Self {
+        let id = VariableId::new();
+
         Variable {
-            id: VariableId::new(),
+            id,
             declaration_span,
             name,
-            form: None,
+            form: Arc::new(move |span| {
+                let mut item = Item::variable(span, id);
+                item.debug_info.declared_name = Some(name);
+                Form::item(span, item)
+            }),
         }
     }
 }

@@ -2,6 +2,7 @@ use crate::lower::*;
 use std::{
     fs, io,
     path::{Path, PathBuf},
+    rc::Rc,
     sync::Arc,
 };
 use url::Url;
@@ -19,7 +20,7 @@ pub enum Base {
     Path(PathBuf),
 }
 
-pub fn load_file(name: &str, span: Span, info: &mut Info) -> bool {
+pub fn load_file(name: &str, span: Span, info: &mut Info) -> Option<Rc<File>> {
     macro_rules! error {
         ($msg:expr, $error:expr) => {{
             info.diagnostics.add(Diagnostic::new(
@@ -28,7 +29,7 @@ pub fn load_file(name: &str, span: Span, info: &mut Info) -> bool {
                 vec![Note::primary(span, $error)],
             ));
 
-            return false;
+            return None;
         }};
     }
 
@@ -85,20 +86,19 @@ pub fn load_file(name: &str, span: Span, info: &mut Info) -> bool {
     }
 }
 
-pub fn load_url(name: &str, url: &Url, info: &mut Info) -> io::Result<bool> {
+pub fn load_url(name: &str, url: &Url, info: &mut Info) -> io::Result<Option<Rc<File>>> {
     todo!()
 }
 
-pub fn load_path(name: &str, path: &Path, info: &mut Info) -> io::Result<bool> {
+pub fn load_path(name: &str, path: &Path, info: &mut Info) -> io::Result<Option<Rc<File>>> {
     let code = Arc::from(fs::read_to_string(path)?);
     Ok(load_string(name, code, info))
 }
 
-pub fn load_string(name: &str, code: Arc<str>, info: &mut Info) -> bool {
+pub fn load_string(name: &str, code: Arc<str>, info: &mut Info) -> Option<Rc<File>> {
     info.diagnostics
         .add_file(LocalIntern::from(name), Arc::clone(&code));
 
     wipple_parser::parse(LocalIntern::from(name), &code, info.diagnostics)
-        .map(|file| lower(file, info))
-        .is_some()
+        .and_then(|file| lower(file, info))
 }

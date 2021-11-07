@@ -12,7 +12,7 @@ where
     Binding: From<Self>,
 {
     fn span(&self) -> Span;
-    fn assign_in_block(self, span: Span, form: Form, stack: &Stack, info: &mut Info) -> Item;
+    fn assign(self, span: Span, form: Form, stack: &Stack, info: &mut Info) -> Item;
 }
 
 #[enum_dispatch(BindingKind)]
