@@ -30,7 +30,7 @@ impl Template {
         info: &mut Info,
     ) -> Option<Form> {
         if let Some(arity) = self.arity {
-            assert_eq!(exprs.len(), arity.into());
+            assert_eq!(exprs.len(), usize::from(arity));
         }
 
         (self.expand)(context, exprs, span, stack, info)

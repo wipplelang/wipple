@@ -1,16 +1,16 @@
 use crate::{Error, Value};
 use serde::Serialize;
-use std::{collections::HashMap, fmt, rc::Rc};
+use std::{collections::HashMap, fmt, sync::Arc};
 
 #[derive(Default)]
-pub struct ExternalValues(HashMap<String, HashMap<String, Rc<Value>>>);
+pub struct ExternalValues(HashMap<String, HashMap<String, Arc<Value>>>);
 
 impl ExternalValues {
     pub fn new() -> Self {
         Default::default()
     }
 
-    pub fn get(&self, namespace: &str, identifier: &str) -> Result<&Rc<Value>, Error> {
+    pub fn get(&self, namespace: &str, identifier: &str) -> Result<&Arc<Value>, Error> {
         self.0
             .get(namespace)
             .ok_or_else(|| Error::UnknownExternalNamespace(namespace.to_string()))?
@@ -27,7 +27,7 @@ impl ExternalValues {
         self.0
             .entry(namespace.to_string())
             .or_default()
-            .insert(identifier.to_string(), Rc::new(value));
+            .insert(identifier.to_string(), Arc::new(value));
 
         self
     }
@@ -37,17 +37,17 @@ impl ExternalValues {
 #[derive(Clone, Serialize)]
 pub struct ExternalFunction {
     #[serde(skip)]
-    function: Rc<dyn Fn(Rc<Value>) -> Result<Rc<Value>, Error>>,
+    function: Arc<dyn Fn(Arc<Value>) -> Result<Arc<Value>, Error>>,
 }
 
 impl ExternalFunction {
-    pub fn new(func: impl for<'a> Fn(Rc<Value>) -> Result<Rc<Value>, Error> + 'static) -> Self {
+    pub fn new(func: impl for<'a> Fn(Arc<Value>) -> Result<Arc<Value>, Error> + 'static) -> Self {
         ExternalFunction {
-            function: Rc::new(func),
+            function: Arc::new(func),
         }
     }
 
-    pub fn call(&self, input: Rc<Value>) -> Result<Rc<Value>, Error> {
+    pub fn call(&self, input: Arc<Value>) -> Result<Arc<Value>, Error> {
         (self.function)(input)
     }
 }

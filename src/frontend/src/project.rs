@@ -1,8 +1,7 @@
 use crate::lower::*;
 use std::{
-    fs, io,
+    fs,
     path::{Path, PathBuf},
-    rc::Rc,
     sync::Arc,
 };
 use url::Url;
@@ -20,7 +19,7 @@ pub enum Base {
     Path(PathBuf),
 }
 
-pub fn load_file(name: &str, span: Span, info: &mut Info) -> Option<Rc<File>> {
+pub fn load_file(name: &str, span: Span, info: &mut Info) -> Option<Arc<File>> {
     macro_rules! error {
         ($msg:expr, $error:expr) => {{
             info.diagnostics.add(Diagnostic::new(
@@ -86,16 +85,26 @@ pub fn load_file(name: &str, span: Span, info: &mut Info) -> Option<Rc<File>> {
     }
 }
 
-pub fn load_url(name: &str, url: &Url, info: &mut Info) -> io::Result<Option<Rc<File>>> {
-    todo!()
+pub fn load_url(name: &str, url: &Url, info: &mut Info) -> anyhow::Result<Option<Arc<File>>> {
+    #[cfg(target_arch = "wasm32")]
+    return Err(anyhow::Error::msg(
+        "Loading from URLs is not supported in the playground",
+    ));
+
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        let response = reqwest::blocking::get(url.to_string())?;
+        let code = response.text()?;
+        Ok(load_string(name, code.into(), info))
+    }
 }
 
-pub fn load_path(name: &str, path: &Path, info: &mut Info) -> io::Result<Option<Rc<File>>> {
-    let code = Arc::from(fs::read_to_string(path)?);
-    Ok(load_string(name, code, info))
+pub fn load_path(name: &str, path: &Path, info: &mut Info) -> anyhow::Result<Option<Arc<File>>> {
+    let code = fs::read_to_string(path)?;
+    Ok(load_string(name, code.into(), info))
 }
 
-pub fn load_string(name: &str, code: Arc<str>, info: &mut Info) -> Option<Rc<File>> {
+pub fn load_string(name: &str, code: Arc<str>, info: &mut Info) -> Option<Arc<File>> {
     info.diagnostics
         .add_file(LocalIntern::from(name), Arc::clone(&code));
 

@@ -89,7 +89,7 @@ lower! {
     Operator { operator: Operator } = "operator",
     Template { template: Template } = "template",
     Ty { ty: Ty } = "type",
-    File { file: Rc<File> } = "file",
+    File { file: Arc<File> } = "file",
     Binding { binding: Binding } = "binding",
 }
 

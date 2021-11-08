@@ -5,7 +5,7 @@ pub mod info;
 pub mod item;
 pub mod stack;
 
-use std::{collections::HashMap, rc::Rc};
+use std::{collections::HashMap, sync::Arc};
 
 pub use binding::*;
 pub use expr::*;
@@ -27,7 +27,7 @@ pub struct File {
     pub variables: HashMap<LocalIntern<String>, Variable>,
 }
 
-pub fn lower(file: wipple_parser::File, info: &mut Info) -> Option<Rc<File>> {
+pub fn lower(file: wipple_parser::File, info: &mut Info) -> Option<Arc<File>> {
     let stack = Stack::file(file.path);
 
     let statements = file
@@ -37,7 +37,7 @@ pub fn lower(file: wipple_parser::File, info: &mut Info) -> Option<Rc<File>> {
         .map(|statement| statement.lower_to_item(&stack, info))
         .collect::<Option<_>>()?;
 
-    let file = Rc::new(File {
+    let file = Arc::new(File {
         id: FileId::new(),
         path: file.path,
         statements,

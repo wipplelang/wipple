@@ -6,7 +6,7 @@ pub use ty::*;
 
 use crate::{id::*, lower};
 use serde::Serialize;
-use std::{collections::HashMap, rc::Rc};
+use std::{collections::HashMap, sync::Arc};
 use wipple_diagnostics::*;
 
 #[derive(Debug, Clone, Serialize)]
@@ -15,7 +15,7 @@ pub struct File {
     pub statements: Vec<Item>,
 }
 
-pub fn typecheck(files: &[Rc<lower::File>], diagnostics: &mut Diagnostics) -> Option<Vec<File>> {
+pub fn typecheck(files: &[Arc<lower::File>], diagnostics: &mut Diagnostics) -> Option<Vec<File>> {
     let mut info = Info::new(diagnostics);
 
     files

@@ -1,5 +1,5 @@
 use crate::{debug_info::DebugInfo, lower::*, project, typecheck::Ty};
-use std::{collections::HashMap, num::NonZeroUsize, rc::Rc};
+use std::{collections::HashMap, num::NonZeroUsize, sync::Arc};
 use wipple_diagnostics::*;
 
 pub fn builtins() -> HashMap<LocalIntern<String>, Variable> {
@@ -122,7 +122,7 @@ impl Form {
                                     ],
                                 );
 
-                                let captures = Rc::try_unwrap(stack.captures.unwrap())
+                                let captures = Arc::try_unwrap(stack.captures.unwrap())
                                     .unwrap_or_else(|_| unreachable!())
                                     .into_inner();
 
@@ -220,7 +220,37 @@ impl Form {
     }
 
     fn builtin_use(span: Span) -> Self {
-        todo!()
+        Form::template(
+            span,
+            Template::new(
+                Some(NonZeroUsize::new(1).unwrap()),
+                move |_, exprs, span, stack, info| {
+                    let mut exprs = exprs.into_iter();
+
+                    let file = match exprs.next().unwrap() {
+                        Expr::Text(text) => text.value,
+                        expr => {
+                            info.diagnostics.add(Diagnostic::new(
+                                DiagnosticLevel::Error,
+                                "Expected path or URL to file",
+                                vec![Note::primary(expr.span(), "Expected a text value here")],
+                            ));
+
+                            return None;
+                        }
+                    };
+
+                    let file = project::load_file(&file, span, info)?;
+
+                    let mut variables = stack.variables.borrow_mut();
+                    for (name, variable) in &file.variables {
+                        variables.entry(*name).or_insert_with(|| variable.clone());
+                    }
+
+                    Some(Form::item(span, Item::unit(span)))
+                },
+            ),
+        )
     }
 
     fn builtin_number_ty(span: Span) -> Self {

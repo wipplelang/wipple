@@ -2,7 +2,7 @@ use crate::lower::*;
 use std::{
     cell::RefCell,
     collections::{HashMap, HashSet},
-    rc::Rc,
+    sync::Arc,
 };
 
 #[derive(Clone)]
@@ -10,7 +10,7 @@ pub struct Stack<'a: 'p, 'p> {
     pub parent: Option<&'a Stack<'p, 'p>>,
     pub file_path: Option<LocalIntern<String>>,
     pub variables: RefCell<HashMap<LocalIntern<String>, Variable>>,
-    pub captures: Option<Rc<RefCell<HashSet<VariableId>>>>,
+    pub captures: Option<Arc<RefCell<HashSet<VariableId>>>>,
 }
 
 impl<'a, 'p> Stack<'a, 'p> {

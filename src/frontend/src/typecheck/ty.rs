@@ -1,12 +1,12 @@
 use kind::kind;
 use serde::Serialize;
-use std::{cell::RefCell, fmt, rc::Rc};
+use std::{cell::RefCell, fmt, sync::Arc};
 use wipple_parser::LocalIntern;
 
 #[non_exhaustive]
 #[derive(Debug, Clone, Serialize)]
 pub struct Ty {
-    pub kind: Rc<RefCell<TyKind>>,
+    pub kind: Arc<RefCell<TyKind>>,
 }
 
 #[kind(Ty::new())]
@@ -24,7 +24,7 @@ pub enum TyKind {
 impl Ty {
     pub fn new(kind: TyKind) -> Self {
         Ty {
-            kind: Rc::new(RefCell::new(kind)),
+            kind: Arc::new(RefCell::new(kind)),
         }
     }
 }

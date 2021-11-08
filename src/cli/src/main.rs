@@ -39,7 +39,7 @@ enum Command {
     },
 
     // FIXME: Temporary
-    Compile {
+    Test {
         #[structopt(flatten)]
         options: SharedOptions,
 
@@ -48,6 +48,9 @@ enum Command {
 
         #[structopt(long)]
         cache: Option<PathBuf>,
+
+        #[structopt(long)]
+        no_run: bool,
     },
 }
 
@@ -131,10 +134,11 @@ fn main() -> anyhow::Result<()> {
                 println!("{}", result);
             }
         }
-        Command::Compile {
+        Command::Test {
             options,
             project,
             cache,
+            no_run,
         } => {
             let mut diagnostics = Diagnostics::new();
 
@@ -166,7 +170,15 @@ fn main() -> anyhow::Result<()> {
             emitter.emit(&diagnostics);
 
             if let Some(files) = files {
-                serde_json::to_writer_pretty(io::stdout(), &files)?;
+                if no_run {
+                    serde_json::to_writer_pretty(io::stdout(), &files)?;
+                } else {
+                    let external = wipple_playground_runner::external(|text| println!("{}", text));
+
+                    if let Err(error) = wipple_interpreter_backend::eval(&files, external) {
+                        println!("Fatal error: {:?}", error)
+                    }
+                }
             } else {
                 process::exit(1);
             }

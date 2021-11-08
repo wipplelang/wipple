@@ -4,7 +4,7 @@ pub use external::*;
 
 use rust_decimal::Decimal;
 use serde::Serialize;
-use std::{cell::RefCell, collections::BTreeMap, rc::Rc};
+use std::{cell::RefCell, collections::BTreeMap, sync::Arc};
 use wipple_frontend::{id::*, typecheck::*};
 
 #[derive(Debug, Serialize)]
@@ -14,7 +14,7 @@ pub enum Value {
     Number(Decimal),
     Function {
         body: Item,
-        captures: BTreeMap<VariableId, Rc<Value>>,
+        captures: BTreeMap<VariableId, Arc<Value>>,
     },
     ExternalFunction(ExternalFunction),
 }
@@ -43,36 +43,36 @@ pub fn eval(files: &[File], external: ExternalValues) -> Result<(), Error> {
 
 struct Info {
     external: ExternalValues,
-    scope: Rc<RefCell<Scope>>,
-    function_input: Option<Rc<Value>>,
+    scope: Arc<RefCell<Scope>>,
+    function_input: Option<Arc<Value>>,
 }
 
 #[derive(Debug, Default)]
 struct Scope {
-    variables: BTreeMap<VariableId, Rc<Value>>,
-    parent: Option<Rc<RefCell<Scope>>>,
+    variables: BTreeMap<VariableId, Arc<Value>>,
+    parent: Option<Arc<RefCell<Scope>>>,
 }
 
 impl Scope {
-    fn child(scope: &Rc<RefCell<Self>>) -> Rc<RefCell<Self>> {
-        Rc::new(RefCell::new(Scope {
+    fn child(scope: &Arc<RefCell<Self>>) -> Arc<RefCell<Self>> {
+        Arc::new(RefCell::new(Scope {
             variables: Default::default(),
             parent: Some(scope.clone()),
         }))
     }
 }
 
-fn eval_item(item: &Item, info: &mut Info) -> Result<Rc<Value>, Error> {
+fn eval_item(item: &Item, info: &mut Info) -> Result<Arc<Value>, Error> {
     let value = match &item.kind {
-        ItemKind::Unit => Rc::new(Value::Unit),
-        ItemKind::Number { value } => Rc::new(Value::Number(**value)),
-        ItemKind::Text { value } => Rc::new(Value::Text(value.to_string())),
+        ItemKind::Unit => Arc::new(Value::Unit),
+        ItemKind::Number { value } => Arc::new(Value::Number(**value)),
+        ItemKind::Text { value } => Arc::new(Value::Text(value.to_string())),
         ItemKind::Block { statements } => {
             let parent = info.scope.clone();
             let child = Scope::child(&parent);
             info.scope = child;
 
-            let mut value = Rc::new(Value::Unit);
+            let mut value = Arc::new(Value::Unit);
             for statement in statements {
                 value = eval_item(statement, info)?;
             }
@@ -107,10 +107,10 @@ fn eval_item(item: &Item, info: &mut Info) -> Result<Rc<Value>, Error> {
         ItemKind::Initialize { variable, value } => {
             let value = eval_item(value, info)?;
             info.scope.borrow_mut().variables.insert(*variable, value);
-            Rc::new(Value::Unit)
+            Arc::new(Value::Unit)
         }
         ItemKind::Variable { variable } => resolve(*variable, info),
-        ItemKind::Function { body, captures, .. } => Rc::new(Value::Function {
+        ItemKind::Function { body, captures, .. } => Arc::new(Value::Function {
             body: body.as_ref().clone(),
             captures: captures
                 .iter()
@@ -127,7 +127,7 @@ fn eval_item(item: &Item, info: &mut Info) -> Result<Rc<Value>, Error> {
     Ok(value)
 }
 
-fn resolve(variable: VariableId, info: &mut Info) -> Rc<Value> {
+fn resolve(variable: VariableId, info: &mut Info) -> Arc<Value> {
     let mut value = None;
     let mut scope = Some(info.scope.clone());
 

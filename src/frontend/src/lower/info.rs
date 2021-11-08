@@ -4,7 +4,6 @@ use std::{
     cell::RefCell,
     collections::{HashMap, HashSet},
     fmt,
-    rc::Rc,
     sync::Arc,
 };
 use wipple_diagnostics::*;
@@ -12,9 +11,9 @@ use wipple_diagnostics::*;
 pub struct Info<'a> {
     pub diagnostics: &'a mut Diagnostics,
     pub project: &'a Project,
-    pub files: Vec<Rc<File>>,
+    pub files: Vec<Arc<File>>,
     pub declared_variables: Vec<Variable>,
-    pub used_variables: Rc<RefCell<HashSet<VariableId>>>,
+    pub used_variables: Arc<RefCell<HashSet<VariableId>>>,
     pub externals: HashMap<(String, String), Vec<Ty>>,
 }
 

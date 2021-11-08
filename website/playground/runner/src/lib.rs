@@ -1,5 +1,5 @@
 use serde::Serialize;
-use std::{cell::RefCell, rc::Rc, sync::Arc};
+use std::{cell::RefCell, sync::Arc};
 use wasm_bindgen::prelude::*;
 use wipple_diagnostics::*;
 use wipple_frontend::{lower::Info, project::Project};
@@ -33,10 +33,13 @@ pub fn run(code: &str) -> JsValue {
             .flatten()
     };
 
-    let output = Default::default();
+    let output = Arc::<RefCell<Vec<String>>>::default();
 
     {
-        let external = external(Rc::clone(&output));
+        let external = external({
+            let output = Arc::clone(&output);
+            move |text| output.borrow_mut().push(text)
+        });
 
         if let Some(files) = files {
             if let Err(error) = wipple_interpreter_backend::eval(&files, external) {
@@ -47,7 +50,7 @@ pub fn run(code: &str) -> JsValue {
         }
     }
 
-    let output = Rc::try_unwrap(output).unwrap().into_inner();
+    let output = Arc::try_unwrap(output).unwrap().into_inner();
 
     let result = Result {
         output,
@@ -57,7 +60,7 @@ pub fn run(code: &str) -> JsValue {
     JsValue::from_serde(&result).unwrap()
 }
 
-fn external(output: Rc<RefCell<Vec<String>>>) -> ExternalValues {
+pub fn external(on_output: impl Fn(String) + 'static) -> ExternalValues {
     ExternalValues::new()
         .insert("math", "pi", Value::Number("3.14".parse().unwrap()))
         .insert(
@@ -69,9 +72,9 @@ fn external(output: Rc<RefCell<Vec<String>>>) -> ExternalValues {
                     _ => format!("{:?}", input),
                 };
 
-                output.borrow_mut().push(text);
+                on_output(text);
 
-                Ok(Rc::new(Value::Unit))
+                Ok(Arc::new(Value::Unit))
             })),
         )
         .insert(
@@ -83,14 +86,14 @@ fn external(output: Rc<RefCell<Vec<String>>>) -> ExternalValues {
                     _ => unreachable!(),
                 };
 
-                Ok(Rc::new(Value::ExternalFunction(ExternalFunction::new(
+                Ok(Arc::new(Value::ExternalFunction(ExternalFunction::new(
                     move |input| {
                         let b = match input.as_ref() {
                             Value::Number(n) => *n,
                             _ => unreachable!(),
                         };
 
-                        Ok(Rc::new(Value::Number(a + b)))
+                        Ok(Arc::new(Value::Number(a + b)))
                     },
                 ))))
             })),
