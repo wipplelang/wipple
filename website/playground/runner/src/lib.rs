@@ -7,8 +7,15 @@ use wipple_interpreter_backend::{ExternalFunction, ExternalValues, Value};
 
 #[derive(Serialize)]
 struct Result {
+    annotations: Vec<Annotation>,
     output: Vec<String>,
     diagnostics: Vec<Diagnostic>,
+}
+
+#[derive(Serialize)]
+struct Annotation {
+    span: Span,
+    value: String,
 }
 
 #[wasm_bindgen]
@@ -21,43 +28,78 @@ pub fn run(code: &str) -> JsValue {
     let mut diagnostics = Diagnostics::new();
     let project = Project::default();
 
-    let files = {
+    let (annotations, output) = (|| {
         let mut info = Info::new(&mut diagnostics, &project);
 
-        let success =
-            wipple_frontend::project::load_string("playground", Arc::from(code), &mut info)
-                .is_some();
+        wipple_frontend::project::load_string("playground", Arc::from(code), &mut info)?;
+        let files = wipple_frontend::typecheck::typecheck(&info.files, info.diagnostics)?;
 
-        success
-            .then(|| wipple_frontend::typecheck::typecheck(&info.files, info.diagnostics))
-            .flatten()
-    };
+        let entrypoint = files.last().unwrap();
+        let annotations = annotations(entrypoint);
 
-    let output = Arc::<RefCell<Vec<String>>>::default();
+        let output = Arc::<RefCell<Vec<String>>>::default();
+        {
+            let external = external({
+                let output = Arc::clone(&output);
+                move |text| output.borrow_mut().push(text)
+            });
 
-    {
-        let external = external({
-            let output = Arc::clone(&output);
-            move |text| output.borrow_mut().push(text)
-        });
-
-        if let Some(files) = files {
             if let Err(error) = wipple_interpreter_backend::eval(&files, external) {
                 output
                     .borrow_mut()
                     .push(format!("Fatal error: {:?}", error))
             }
         }
-    }
+        let output = Arc::try_unwrap(output).unwrap().into_inner();
 
-    let output = Arc::try_unwrap(output).unwrap().into_inner();
+        Some((annotations, output))
+    })()
+    .unwrap_or_else(|| (Vec::new(), Vec::new()));
 
     let result = Result {
+        annotations,
         output,
         diagnostics: diagnostics.diagnostics,
     };
 
     JsValue::from_serde(&result).unwrap()
+}
+
+fn annotations(file: &wipple_frontend::typecheck::File) -> Vec<Annotation> {
+    file.statements.iter().flat_map(item_annotation).collect()
+}
+
+fn item_annotation(item: &wipple_frontend::typecheck::Item) -> Vec<Annotation> {
+    use wipple_frontend::typecheck::ItemKind;
+
+    let mut annotations = vec![Annotation {
+        span: item.debug_info.span,
+        value: format!("```wipple\n{}\n```", item.ty),
+    }];
+
+    match &item.kind {
+        ItemKind::Block { statements } => {
+            annotations.append(&mut statements.iter().flat_map(item_annotation).collect());
+        }
+        ItemKind::Apply { function, input } => {
+            annotations.append(&mut item_annotation(function));
+            annotations.append(&mut item_annotation(input));
+        }
+        ItemKind::Initialize { value, .. } => {
+            annotations.append(&mut item_annotation(value));
+        }
+        ItemKind::Function { body, .. } => {
+            annotations.append(&mut item_annotation(body));
+        }
+        ItemKind::Unit { .. }
+        | ItemKind::Number { .. }
+        | ItemKind::Text { .. }
+        | ItemKind::Variable { .. }
+        | ItemKind::FunctionInput
+        | ItemKind::External { .. } => {}
+    }
+
+    annotations
 }
 
 pub fn external(on_output: impl Fn(String) + 'static) -> ExternalValues {

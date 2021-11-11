@@ -4,6 +4,17 @@ import Editor, { useMonaco } from "@monaco-editor/react";
 import type monaco from "monaco-editor";
 import { useRefState } from "../helpers/useRefState";
 
+interface RunResult {
+    annotations: Annotation[];
+    output: string[];
+    diagnostics: Diagnostic[];
+}
+
+interface Annotation {
+    span: Span;
+    value: string;
+}
+
 interface Span {
     file: string;
     start: number;
@@ -25,11 +36,6 @@ interface Note {
 }
 
 type NoteLevel = "Primary" | "Secondary";
-
-interface RunResult {
-    output: string[];
-    diagnostics: Diagnostic[];
-}
 
 const fontFamily = "'JetBrains Mono', monospace";
 
@@ -80,7 +86,7 @@ const Playground = () => {
     const monaco = useMonaco();
     const [model, setModel] = useRefState<monaco.editor.ITextModel | null>(null);
 
-    const [result, setResult] = useState<RunResult | undefined>();
+    const [result, setResult] = useRefState<RunResult | null>(null);
 
     const update = () => {
         if (!model.current) return;
@@ -146,6 +152,35 @@ const Playground = () => {
 
         monaco.editor.setTheme("wipple");
 
+        monaco.languages.registerHoverProvider("wipple", {
+            provideHover: (model, position) => {
+                const index = model.getOffsetAt(position);
+
+                // Find the annotation with the smallest span covering the cursor
+                const annotation = result.current?.annotations
+                    .filter(
+                        (annotation) =>
+                            index >= annotation.span.start && index <= annotation.span.end
+                    )
+                    .sort((a, b) => a.span.end - a.span.start - (b.span.end - b.span.start))[0];
+
+                if (!annotation) return undefined;
+
+                const startPos = model.getPositionAt(annotation.span.start);
+                const endPos = model.getPositionAt(annotation.span.end);
+
+                return {
+                    range: new monaco.Range(
+                        startPos.lineNumber,
+                        startPos.column,
+                        endPos.lineNumber,
+                        endPos.column
+                    ),
+                    contents: [{ value: annotation.value }],
+                };
+            },
+        });
+
         const model = editor.getModel()! as monaco.editor.ITextModel;
         setModel(model);
 
@@ -187,7 +222,7 @@ const Playground = () => {
             }
         };
 
-        const markers = result?.diagnostics.flatMap((diagnostic) => {
+        const markers = result.current?.diagnostics.flatMap((diagnostic) => {
             diagnostic.notes[0].message = `${diagnostic.message}: ${diagnostic.notes[0].message}`;
 
             return diagnostic.notes.map((note) => {
@@ -267,8 +302,8 @@ const Playground = () => {
                     className="m-4 ml-0 p-2 rounded-md bg-white overflow-scroll"
                     style={{ height: splitItemHeight, fontFamily }}
                 >
-                    {result &&
-                        result.output.map((line, index) => (
+                    {result.current &&
+                        result.current.output.map((line, index) => (
                             <pre className="whitespace-pre-wrap" key={index}>
                                 {line}
                             </pre>
