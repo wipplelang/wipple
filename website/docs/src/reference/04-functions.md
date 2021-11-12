@@ -78,3 +78,4 @@ Here are some builtin functions that come in handy when using the `.` and `|` op
 | -------- | ------------------------ | ----------------------------------------- |
 | `it`     | `for A -> A -> A`        | Returns its input                         |
 | `the`    | `for A B -> A -> B -> A` | Returns a function that ignores its input |
+| `do!`    | `for A -> A -> ()`       | Evaluates its input and returns `()`      |

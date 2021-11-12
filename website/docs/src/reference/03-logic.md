@@ -38,7 +38,7 @@ Maybe : for A -> enum {
 
 use Maybe
 
-Maybe is Map : f -> x? -> when x? {
+Map : f -> x? -> when x? {
     Some x => Some (f x)
     None => None
 }
@@ -54,31 +54,31 @@ area : when shape {
 }
 ```
 
-The cases you provide to `when` must be exhaustive (ie. they must cover all variants of the enum). To ignore some cases, or to handle multiple cases in one branch, you can use `?` and `or`:
+The cases you provide to `when` must be exhaustive (ie. they must cover all variants of the enum). To ignore some cases, or to handle multiple cases in one branch, you can use `_` and `or`:
 
 ```wipple
 when color? {
     Some (Red or Blue) => "hooray"
-    ? => "oh no"
+    _ => "oh no"
 }
 ```
 
-Alternatively, you can use `let`:
+Alternatively, you can use `when?`:
 
 ```wipple
-let color? (Some (Red or Blue)) (show "hooray")
+when? color? (Some (Red or Blue)) (show "hooray")
 ```
 
-If you just want to execute a piece of code when a condition is true, you can pass an expression to `when` instead of a block of cases:
+If you just want to execute a piece of code when a condition is true, you can use `when!`:
 
 ```wipple
-when (2 + 2 = 4) (show "woohoo")
+when! (2 + 2 = 4) (show "woohoo")
 ```
 
-The opposite form is `unless`:
+The opposite form is `unless!`:
 
 ```wipple
-unless : template bool body -> when (not bool) body
+unless! : template bool body -> when! (not bool) body
 ```
 
 Finally, you can also assign to a pattern. If the pattern doesn't match, the program will crash:
