@@ -6,6 +6,7 @@ Wipple has a powerful static type system that works similarly to Haskell's. In s
 42 :: Number -- "42 is a number"
 "Hello" :: Text
 '(1 2 3) :: List Number
+(x :: Number) -> x :: Number -> Number
 ```
 
 You can also create your own types with `data` and `enum`:
@@ -40,7 +41,14 @@ Maybe : for A -> enum {
 This also works on other values, like regular functions:
 
 ```wipple
-self :: for A -> A -> A : x -> x
+it :: for A -> A -> A : x -> x
 ```
 
 By convention, generic types are named `A`, `B`, `C`, etc., but you should try to give a more specific name if applicable.
+
+Finally, you can use an underscore (`_`) to represent a placeholder type:
+
+```wipple
+Identity : for A -> type (A -> A)
+(x :: Number) -> x :: Identity _ -- inferred as Identity Number
+```

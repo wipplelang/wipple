@@ -80,3 +80,13 @@ The opposite form is `unless`:
 ```wipple
 unless : template bool body -> when (not bool) body
 ```
+
+Finally, you can also assign to a pattern. If the pattern doesn't match, the program will crash:
+
+```wipple
+x? : Some 42
+Some x : x? -- obtain the 'Some' value within 'x?'
+
+x? : None
+Some x : x? -- runtime error
+```
