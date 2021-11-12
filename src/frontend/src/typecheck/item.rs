@@ -1,29 +1,24 @@
 use super::Ty;
-use crate::{debug_info::DebugInfo, id::*};
+use crate::{id::*, lower};
 use kind::kind;
 use serde::Serialize;
-use std::collections::HashSet;
+use std::{collections::HashSet, fmt};
 use wipple_parser::{decimal::Decimal, LocalIntern};
 
 #[non_exhaustive]
 #[derive(Debug, Clone, Serialize)]
 pub struct Item {
-    pub debug_info: DebugInfo,
-    pub ty: Ty,
+    pub info: ItemInfo,
     pub kind: ItemKind,
 }
 
 impl Item {
-    pub fn new(debug_info: DebugInfo, ty: Ty, kind: ItemKind) -> Self {
-        Item {
-            debug_info,
-            ty,
-            kind,
-        }
+    pub fn new(info: ItemInfo, kind: ItemKind) -> Self {
+        Item { info, kind }
     }
 }
 
-#[kind(Item::new(debug_info: DebugInfo, ty: Ty))]
+#[kind(Item::new(debug_info: ItemInfo))]
 #[derive(Debug, Clone, Serialize)]
 pub enum ItemKind {
     Unit,
@@ -41,6 +36,7 @@ pub enum ItemKind {
         input: Box<Item>,
     },
     Initialize {
+        binding_info: ItemInfo,
         variable: VariableId,
         value: Box<Item>,
     },
@@ -48,7 +44,6 @@ pub enum ItemKind {
         variable: VariableId,
     },
     Function {
-        input_debug_info: DebugInfo,
         body: Box<Item>,
         captures: HashSet<VariableId>,
     },
@@ -57,4 +52,30 @@ pub enum ItemKind {
         namespace: LocalIntern<String>,
         identifier: LocalIntern<String>,
     },
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct ItemInfo {
+    pub info: lower::ItemInfo,
+    pub ty: Ty,
+}
+
+impl ItemInfo {
+    pub fn new(info: lower::ItemInfo, ty: Ty) -> Self {
+        ItemInfo { info, ty }
+    }
+}
+
+impl fmt::Display for ItemInfo {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "```wipple\n{}\n```",
+            if let Some(declared_name) = self.info.declared_name {
+                format!("{} :: {}", declared_name, self.ty)
+            } else {
+                self.ty.to_string()
+            }
+        )
+    }
 }

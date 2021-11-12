@@ -72,10 +72,12 @@ fn annotations(file: &wipple_frontend::typecheck::File) -> Vec<Annotation> {
 fn item_annotation(item: &wipple_frontend::typecheck::Item) -> Vec<Annotation> {
     use wipple_frontend::typecheck::ItemKind;
 
-    let mut annotations = vec![Annotation {
-        span: item.debug_info.span,
-        value: format!("```wipple\n{}\n```", item.ty),
-    }];
+    let annotation = |info: &wipple_frontend::typecheck::ItemInfo| Annotation {
+        span: info.info.span,
+        value: info.to_string(),
+    };
+
+    let mut annotations = vec![annotation(&item.info)];
 
     match &item.kind {
         ItemKind::Block { statements } => {
@@ -85,7 +87,12 @@ fn item_annotation(item: &wipple_frontend::typecheck::Item) -> Vec<Annotation> {
             annotations.append(&mut item_annotation(function));
             annotations.append(&mut item_annotation(input));
         }
-        ItemKind::Initialize { value, .. } => {
+        ItemKind::Initialize {
+            binding_info,
+            value,
+            ..
+        } => {
+            annotations.push(annotation(binding_info));
             annotations.append(&mut item_annotation(value));
         }
         ItemKind::Function { body, .. } => {

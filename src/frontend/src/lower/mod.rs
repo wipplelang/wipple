@@ -1,9 +1,9 @@
-pub mod binding;
-pub mod expr;
-pub mod forms;
-pub mod info;
-pub mod item;
-pub mod stack;
+mod binding;
+mod expr;
+mod forms;
+mod info;
+mod item;
+mod stack;
 
 use std::{collections::HashMap, sync::Arc};
 

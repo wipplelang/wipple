@@ -104,7 +104,7 @@ fn eval_item(item: &Item, info: &mut Info) -> Result<Arc<Value>, Error> {
             }
             _ => unreachable!(),
         },
-        ItemKind::Initialize { variable, value } => {
+        ItemKind::Initialize { variable, value, .. } => {
             let value = eval_item(value, info)?;
             info.scope.borrow_mut().variables.insert(*variable, value);
             Arc::new(Value::Unit)

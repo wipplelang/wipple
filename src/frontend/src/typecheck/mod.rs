@@ -57,14 +57,18 @@ impl<'a> Info<'a> {
     }
 }
 
+macro_rules! info {
+    ($item:expr, $ty:expr) => {
+        ItemInfo::new($item.debug_info.clone(), $ty)
+    };
+}
+
 #[must_use]
 fn typecheck_item(item: &lower::Item, info: &mut Info) -> Option<Item> {
     match &item.kind {
-        lower::ItemKind::Unit => Some(Item::unit(item.debug_info, Ty::unit())),
-        lower::ItemKind::Number { value } => {
-            Some(Item::number(item.debug_info, Ty::number(), *value))
-        }
-        lower::ItemKind::Text { value } => Some(Item::text(item.debug_info, Ty::text(), *value)),
+        lower::ItemKind::Unit => Some(Item::unit(info!(item, Ty::unit()))),
+        lower::ItemKind::Number { value } => Some(Item::number(info!(item, Ty::number()), *value)),
+        lower::ItemKind::Text { value } => Some(Item::text(info!(item, Ty::text()), *value)),
         lower::ItemKind::Block { statements } => {
             // Typecheck each statement; the type of the last statement is the
             // type of the entire block
@@ -74,7 +78,7 @@ fn typecheck_item(item: &lower::Item, info: &mut Info) -> Option<Item> {
                 match typecheck_item(statement, info) {
                     Some(statement) => {
                         if let Some(typed_statements) = typed_statements.as_mut() {
-                            last_ty = statement.ty.clone();
+                            last_ty = statement.info.ty.clone();
                             typed_statements.push(statement);
                         }
                     }
@@ -82,7 +86,7 @@ fn typecheck_item(item: &lower::Item, info: &mut Info) -> Option<Item> {
                 }
             }
 
-            Some(Item::block(item.debug_info, last_ty, typed_statements?))
+            Some(Item::block(info!(item, last_ty), typed_statements?))
         }
         lower::ItemKind::Apply { function, input } => {
             // Typecheck the input
@@ -96,8 +100,8 @@ fn typecheck_item(item: &lower::Item, info: &mut Info) -> Option<Item> {
             let input_ty = Ty::unknown();
             let body_ty = Ty::unknown();
             Ty::function(input_ty.clone(), body_ty.clone()).unify(
-                &function.ty,
-                function.debug_info.span,
+                &function.info.ty,
+                function.info.info.span,
                 info,
             )?;
 
@@ -105,42 +109,42 @@ fn typecheck_item(item: &lower::Item, info: &mut Info) -> Option<Item> {
 
             // Ensure the type of the input matches the type of the function's
             // input, including generics
-            let substituted_generics = input.ty.unify(&input_ty, input.debug_info.span, info)?;
+            let substituted_generics =
+                input.info.ty.unify(&input_ty, input.info.info.span, info)?;
 
             // If 'A -> A' has been converted to 'X -> A', convert it further to
             // 'X -> X'
             body_ty.substitute_generics(&substituted_generics);
 
             Some(Item::apply(
-                item.debug_info,
-                body_ty,
+                info!(item, body_ty),
                 Box::new(function),
                 Box::new(input),
             ))
         }
-        lower::ItemKind::Initialize { variable, value } => {
+        lower::ItemKind::Initialize {
+            binding_info,
+            variable,
+            value,
+        } => {
             // Typecheck the value
             let value = typecheck_item(value, info)?;
 
             // Track the type of the variable
-            info.variables.insert(*variable, value.ty.clone());
+            info.variables.insert(*variable, value.info.ty.clone());
 
             Some(Item::initialize(
-                item.debug_info,
-                Ty::unit(),
+                info!(item, Ty::unit()),
+                ItemInfo::new(binding_info.clone(), value.info.ty.clone()),
                 *variable,
                 Box::new(value),
             ))
         }
         lower::ItemKind::Variable { variable } => {
             let ty = info.variables.get(variable).unwrap().clone();
-            Some(Item::variable(item.debug_info, ty, *variable))
+            Some(Item::variable(info!(item, ty), *variable))
         }
-        lower::ItemKind::Function {
-            input_debug_info,
-            body,
-            captures,
-        } => {
+        lower::ItemKind::Function { body, captures } => {
             // Track the type of the function's input within the body
             let function_input_ty = Ty::unknown();
             info.function_input_ty = Some(function_input_ty.clone());
@@ -152,31 +156,29 @@ fn typecheck_item(item: &lower::Item, info: &mut Info) -> Option<Item> {
             function_input_ty.make_generic();
 
             Some(Item::function(
-                item.debug_info,
-                Ty::function(function_input_ty, body.ty.clone()),
-                *input_debug_info,
+                info!(item, Ty::function(function_input_ty, body.info.ty.clone())),
                 Box::new(body),
                 captures.clone(),
             ))
         }
         lower::ItemKind::FunctionInput => {
             let ty = info.function_input_ty.as_ref().unwrap().clone();
-            Some(Item::function_input(item.debug_info, ty))
+            Some(Item::function_input(info!(item, ty)))
         }
         lower::ItemKind::External {
             namespace,
             identifier,
         } => {
             let ty = Ty::unknown();
-            Some(Item::external(item.debug_info, ty, *namespace, *identifier))
+            Some(Item::external(info!(item, ty), *namespace, *identifier))
         }
         lower::ItemKind::Annotate { item, ty } => {
             let mut item = typecheck_item(item, info)?;
 
             let ty = ty.clone();
-            let substituted_generics = item.ty.unify(&ty, item.debug_info.span, info)?;
+            let substituted_generics = item.info.ty.unify(&ty, item.info.info.span, info)?;
             ty.substitute_generics(&substituted_generics);
-            item.ty = ty;
+            item.info.ty = ty;
 
             Some(item)
         }

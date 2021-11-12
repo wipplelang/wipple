@@ -1,4 +1,4 @@
-use crate::{debug_info::DebugInfo, lower::*, typecheck::Ty};
+use crate::{lower::*, typecheck::Ty};
 use kind::kind;
 use serde::Serialize;
 use std::collections::HashSet;
@@ -7,17 +7,14 @@ use wipple_parser::decimal::Decimal;
 #[non_exhaustive]
 #[derive(Debug, Clone, Serialize)]
 pub struct Item {
-    pub debug_info: DebugInfo,
+    pub debug_info: ItemInfo,
     pub kind: ItemKind,
 }
 
 impl Item {
     pub fn new(span: Span, kind: ItemKind) -> Self {
         Item {
-            debug_info: DebugInfo {
-                span,
-                declared_name: None,
-            },
+            debug_info: ItemInfo::new(span),
             kind,
         }
     }
@@ -41,6 +38,7 @@ pub enum ItemKind {
         input: Box<Item>,
     },
     Initialize {
+        binding_info: ItemInfo,
         variable: VariableId,
         value: Box<Item>,
     },
@@ -48,7 +46,6 @@ pub enum ItemKind {
         variable: VariableId,
     },
     Function {
-        input_debug_info: DebugInfo,
         body: Box<Item>,
         captures: HashSet<VariableId>,
     },
@@ -61,4 +58,19 @@ pub enum ItemKind {
         item: Box<Item>,
         ty: Ty,
     },
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct ItemInfo {
+    pub span: Span,
+    pub declared_name: Option<LocalIntern<String>>,
+}
+
+impl ItemInfo {
+    pub fn new(span: Span) -> Self {
+        ItemInfo {
+            span,
+            declared_name: None,
+        }
+    }
 }

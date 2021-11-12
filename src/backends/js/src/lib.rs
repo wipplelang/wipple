@@ -86,7 +86,9 @@ fn gen_item<'a>(item: &'a Item, info: &mut Info) -> Expr<'a> {
             callee: Box::new(gen_item(function, info)),
             arguments: vec![gen_item(input, info)],
         }),
-        ItemKind::Initialize { variable, value } => {
+        ItemKind::Initialize {
+            variable, value, ..
+        } => {
             info.variables.push(*variable);
 
             Expr::Assign(AssignExpr {

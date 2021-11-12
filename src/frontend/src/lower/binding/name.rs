@@ -35,8 +35,11 @@ impl BindingKind for NameBinding {
 
         info.declared_variables.push(variable);
 
+        let mut binding_info = ItemInfo::new(self.span);
+        binding_info.declared_name = Some(self.name);
+
         if let Some(runtime_item) = runtime_item {
-            Item::initialize(span, variable_id, Box::new(runtime_item))
+            Item::initialize(span, binding_info, variable_id, Box::new(runtime_item))
         } else {
             Item::unit(span)
         }

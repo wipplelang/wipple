@@ -1,4 +1,4 @@
-use crate::{debug_info::DebugInfo, lower::*, project, typecheck::Ty};
+use crate::{lower::*, project, typecheck::Ty};
 use std::{collections::HashMap, num::NonZeroUsize, sync::Arc};
 use wipple_diagnostics::*;
 
@@ -105,7 +105,6 @@ impl Form {
                             }
                             LowerContext::Item => {
                                 let binding = lhs.lower_to_binding(stack, info)?;
-                                let binding_span = binding.span();
 
                                 let stack = stack.child_function();
 
@@ -128,15 +127,7 @@ impl Form {
 
                                 Some(Form::item(
                                     span,
-                                    Item::function(
-                                        span,
-                                        DebugInfo {
-                                            declared_name: None,
-                                            span: binding_span,
-                                        },
-                                        Box::new(body),
-                                        captures,
-                                    ),
+                                    Item::function(span, Box::new(body), captures),
                                 ))
                             }
                             _ => None,
