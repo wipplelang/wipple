@@ -8,7 +8,7 @@
 -   [Language Reference](./reference/index.md)
     -   [Syntax](./reference/01-syntax.md)
     -   [Variables](./reference/02-variables.md)
-    -   [Logic](./reference/03-logic.md)
+    -   [Patterns and Logic](./reference/03-patterns-and-logic.md)
     -   [Functions](./reference/04-functions.md)
     -   [Loops](./reference/05-loops.md)
     -   [Types](./reference/06-types.md)
