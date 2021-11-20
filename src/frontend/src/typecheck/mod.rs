@@ -74,7 +74,7 @@ impl<'a> Typechecker<'a> {
         Typechecker {
             info,
             ctx: Default::default(),
-            success: Default::default(),
+            success: true,
             types: Default::default(),
             variables: Default::default(),
             function_input: Default::default(),

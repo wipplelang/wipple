@@ -80,7 +80,10 @@ fn item_annotation(
 
     let mut annotations = vec![Annotation {
         span: item.debug_info.span,
-        value: wipple_frontend::format_type_schema(types.get(&item.id).unwrap()),
+        value: format!(
+            "```wipple\n{}\n```",
+            wipple_frontend::format_type_schema(types.get(&item.id).unwrap())
+        ),
     }];
 
     match &item.kind {
