@@ -40,12 +40,10 @@ type NoteLevel = "Primary" | "Secondary";
 const fontFamily = "'JetBrains Mono', monospace";
 
 const Playground = () => {
-    const [runner, setRunner] = useRefState<typeof import("../runner/pkg") | null>(null);
+    const [runner, setRunner] = useRefState<Worker | undefined>(undefined);
     useEffect(() => {
-        (async () => {
-            const runner = await import("../runner/pkg");
-            setRunner(runner);
-        })();
+        const runner = new Worker(new URL("../runner/worker.js", import.meta.url));
+        setRunner(runner);
     }, []);
 
     const header = useRef<HTMLDivElement>(null);
@@ -100,7 +98,11 @@ const Playground = () => {
         }
 
         if (runner.current) {
-            setResult(runner.current.run(code));
+            runner.current.onmessage = (event) => {
+                setResult(event.data);
+            };
+
+            runner.current.postMessage(code);
         }
     };
 
@@ -201,6 +203,8 @@ const Playground = () => {
                 () => Math.min(model.getValue().split("\n").length * 20, 1000)
             )
         );
+
+        setTimeout(update, 500);
     };
 
     useEffect(() => {
@@ -241,7 +245,7 @@ const Playground = () => {
         });
 
         monaco.editor.setModelMarkers(model.current, "wipple", markers ?? []);
-    }, [model.current, result]);
+    }, [model.current, result.current]);
 
     return (
         <div className="flex flex-col bg-gray-50" style={{ height: "100%" }}>
