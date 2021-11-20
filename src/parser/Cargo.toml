@@ -4,7 +4,7 @@ version = "0.0.0"
 edition = "2021"
 
 [dependencies]
-internment = { version = "0.5", features = ["serde"] }
+interned-string = { path = "../helpers/interned-string" }
 kind = { path = "../helpers/kind" }
 lazy_static = "1"
 logos = "0.12"

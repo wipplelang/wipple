@@ -17,14 +17,14 @@ pub use stack::*;
 use crate::id::*;
 use serde::Serialize;
 use wipple_diagnostics::*;
-use wipple_parser::LocalIntern;
+use interned_string::InternedString;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct File {
     pub id: FileId,
-    pub path: LocalIntern<String>,
+    pub path: InternedString,
     pub statements: Vec<Item>,
-    pub variables: HashMap<LocalIntern<String>, Variable>,
+    pub variables: HashMap<InternedString, Variable>,
 }
 
 pub fn lower(file: wipple_parser::File, info: &mut Info) -> Option<Arc<File>> {

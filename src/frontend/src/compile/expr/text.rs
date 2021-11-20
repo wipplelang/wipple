@@ -3,11 +3,11 @@ use crate::compile::*;
 #[derive(Debug)]
 pub struct TextExpr {
     pub span: Span,
-    pub value: LocalIntern<String>,
+    pub value: InternedString,
 }
 
 impl TextExpr {
-    pub fn new(span: Span, value: LocalIntern<String>) -> Self {
+    pub fn new(span: Span, value: InternedString) -> Self {
         TextExpr { span, value }
     }
 }

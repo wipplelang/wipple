@@ -3,11 +3,11 @@ use crate::compile::*;
 #[derive(Debug, Clone, Serialize)]
 pub struct NameBinding {
     pub span: Span,
-    pub name: LocalIntern<String>,
+    pub name: InternedString,
 }
 
 impl NameBinding {
-    pub fn new(span: Span, name: LocalIntern<String>) -> Self {
+    pub fn new(span: Span, name: InternedString) -> Self {
         NameBinding { span, name }
     }
 }

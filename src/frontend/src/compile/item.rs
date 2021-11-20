@@ -1,8 +1,8 @@
 use crate::{compile::*, typecheck::Type};
 use kind::kind;
+use rust_decimal::Decimal;
 use serde::Serialize;
 use std::collections::HashSet;
-use wipple_parser::decimal::Decimal;
 
 #[non_exhaustive]
 #[derive(Debug, Clone, Serialize)]
@@ -27,10 +27,10 @@ impl Item {
 pub enum ItemKind {
     Unit,
     Number {
-        value: LocalIntern<Decimal>,
+        value: Decimal,
     },
     Text {
-        value: LocalIntern<String>,
+        value: InternedString,
     },
     Block {
         statements: Vec<Item>,
@@ -53,8 +53,8 @@ pub enum ItemKind {
     },
     FunctionInput,
     External {
-        namespace: LocalIntern<String>,
-        identifier: LocalIntern<String>,
+        namespace: InternedString,
+        identifier: InternedString,
     },
     Annotate {
         item: Box<Item>,
@@ -65,7 +65,7 @@ pub enum ItemKind {
 #[derive(Debug, Clone, Serialize)]
 pub struct ItemInfo {
     pub span: Span,
-    pub declared_name: Option<LocalIntern<String>>,
+    pub declared_name: Option<InternedString>,
 }
 
 impl ItemInfo {

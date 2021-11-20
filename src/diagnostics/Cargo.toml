@@ -6,5 +6,5 @@ edition = "2021"
 [dependencies]
 codemap = "=0.1.2"
 codemap-diagnostic = "0.1"
-internment = { version = "0.5", features = ["serde"] }
+interned-string = { path = "../helpers/interned-string" }
 serde = { version = "1", features = ["derive", "rc"] }

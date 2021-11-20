@@ -3,11 +3,11 @@ use crate::compile::*;
 #[derive(Debug)]
 pub struct NameExpr {
     pub span: Span,
-    pub value: LocalIntern<String>,
+    pub value: InternedString,
 }
 
 impl NameExpr {
-    pub fn new(span: Span, value: LocalIntern<String>) -> Self {
+    pub fn new(span: Span, value: InternedString) -> Self {
         NameExpr { span, value }
     }
 }

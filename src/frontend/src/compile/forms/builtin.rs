@@ -6,17 +6,21 @@ use crate::{
 use std::{collections::HashMap, num::NonZeroUsize, sync::Arc};
 use wipple_diagnostics::*;
 
-pub fn builtins() -> HashMap<LocalIntern<String>, Variable> {
+pub fn builtins() -> HashMap<InternedString, Variable> {
     macro_rules! builtins {
         ($($name:expr => $value:expr,)*) => {{
             let mut variables = HashMap::default();
 
             $({
-                let name = LocalIntern::from($name);
+                let name = InternedString::new($name);
 
                 variables.insert(
                     name,
-                    Variable::compile_time(Span::default(), name, $value),
+                    Variable::compile_time(
+                        Span::new(InternedString::new("builtin"), Default::default()),
+                        name,
+                        $value
+                    ),
                 );
             })*
 
@@ -206,7 +210,7 @@ impl Form {
                         }
                     };
 
-                    let file = project::load_file(&file, span, info)?;
+                    let file = project::load_file(&file.get(), span, info)?;
 
                     Some(Form::file(span, file))
                 },
@@ -235,7 +239,7 @@ impl Form {
                         }
                     };
 
-                    let file = project::load_file(&file, span, info)?;
+                    let file = project::load_file(&file.get(), span, info)?;
 
                     let mut variables = stack.variables.borrow_mut();
                     for (name, variable) in &file.variables {

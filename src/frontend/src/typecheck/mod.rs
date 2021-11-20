@@ -1,23 +1,60 @@
 #![allow(clippy::type_complexity)]
 
+mod format;
+
+pub use format::*;
+
 use crate::{
     compile::{File, Info, Item, ItemKind},
     id::{ItemId, TypeId, VariableId},
 };
+use interned_string::InternedString;
 use lazy_static::lazy_static;
 use polytype::UnificationError;
+use serde::Serialize;
 use std::{collections::HashMap, mem, sync::Arc};
 use wipple_diagnostics::{Diagnostic, DiagnosticLevel, Note};
 
-pub type Type = polytype::Type<TypeId>;
-pub type TypeSchema = polytype::TypeSchema<TypeId>;
-pub type Context = polytype::Context<TypeId>;
+#[derive(Debug, Clone, Copy, Serialize)]
+pub struct TypeName {
+    pub id: TypeId,
+    pub name: InternedString,
+    pub format: TypeNameFormat,
+}
 
-impl polytype::Name for TypeId {
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+pub enum TypeNameFormat {
+    Default,
+    Function,
+}
+
+impl TypeName {
+    pub fn new(name: impl ToString, format: TypeNameFormat) -> Self {
+        TypeName {
+            id: TypeId::new(),
+            name: InternedString::new(name.to_string()),
+            format,
+        }
+    }
+}
+
+impl PartialEq for TypeName {
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id
+    }
+}
+
+impl Eq for TypeName {}
+
+impl polytype::Name for TypeName {
     fn arrow() -> Self {
         unimplemented!()
     }
 }
+
+pub type Type = polytype::Type<TypeName>;
+pub type TypeSchema = polytype::TypeSchema<TypeName>;
+pub type Context = polytype::Context<TypeName>;
 
 pub struct BuiltinTypes {
     pub unit: Type,
@@ -26,16 +63,16 @@ pub struct BuiltinTypes {
 }
 
 macro_rules! builtin_type {
-    ($($var:expr),* $(,)?) => {
-        Type::Constructed(TypeId::new(), vec![$($var),*])
+    ($name:expr, $format:expr $(, $var:expr)* $(,)?) => {
+        Type::Constructed(TypeName::new($name, $format), vec![$($var),*])
     };
 }
 
 lazy_static! {
     pub static ref BUILTIN_TYPES: BuiltinTypes = BuiltinTypes {
-        unit: builtin_type!(),
-        number: builtin_type!(),
-        text: builtin_type!(),
+        unit: builtin_type!("()", TypeNameFormat::Default),
+        number: builtin_type!("Number", TypeNameFormat::Default),
+        text: builtin_type!("Text", TypeNameFormat::Default),
     };
 }
 
@@ -44,7 +81,10 @@ pub fn function_type(input: Type, output: Type) -> Type {
         static ref FUNCTION_TYPE_ID: TypeId = TypeId::new();
     }
 
-    Type::Constructed(*FUNCTION_TYPE_ID, vec![input, output])
+    Type::Constructed(
+        TypeName::new("->", TypeNameFormat::Function),
+        vec![input, output],
+    )
 }
 
 pub fn typecheck<'a>(
@@ -190,7 +230,7 @@ impl<'a> Typechecker<'a> {
         success.then(|| last_ty.clone())
     }
 
-    fn report_type_error(&mut self, item: &Item, error: UnificationError<TypeId>) {
+    fn report_type_error(&mut self, item: &Item, error: UnificationError<TypeName>) {
         let diagnostic = match error {
             UnificationError::Occurs(_) => Diagnostic::new(
                 DiagnosticLevel::Error,
@@ -216,14 +256,4 @@ impl<'a> Typechecker<'a> {
 
         self.info.diagnostics.add(diagnostic);
     }
-}
-
-pub fn format_type_schema(ty: &TypeSchema) -> String {
-    // TODO
-    format!("{:?}", ty)
-}
-
-pub fn format_type(ty: &Type) -> String {
-    // TODO
-    format!("{:?}", ty)
 }

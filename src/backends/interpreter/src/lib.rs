@@ -65,7 +65,7 @@ impl Scope {
 fn eval_item(item: &Item, info: &mut Info) -> Result<Arc<Value>, Error> {
     let value = match &item.kind {
         ItemKind::Unit => Arc::new(Value::Unit),
-        ItemKind::Number { value } => Arc::new(Value::Number(**value)),
+        ItemKind::Number { value } => Arc::new(Value::Number(*value)),
         ItemKind::Text { value } => Arc::new(Value::Text(value.to_string())),
         ItemKind::Block { statements } => {
             let parent = info.scope.clone();
@@ -123,7 +123,10 @@ fn eval_item(item: &Item, info: &mut Info) -> Result<Arc<Value>, Error> {
         ItemKind::External {
             namespace,
             identifier,
-        } => info.external.get(namespace, identifier)?.clone(),
+        } => info
+            .external
+            .get(&namespace.get(), &identifier.get())?
+            .clone(),
         ItemKind::Annotate { item, .. } => eval_item(item, info)?,
     };
 

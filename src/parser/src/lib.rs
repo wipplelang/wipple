@@ -1,3 +1,4 @@
+use interned_string::InternedString;
 use lazy_static::lazy_static;
 use logos::{Lexer, Logos, SpannedIter};
 use regex::Regex;
@@ -6,12 +7,9 @@ use serde::Serialize;
 use std::{fmt, iter::Peekable, ops::Range};
 use wipple_diagnostics::*;
 
-pub use internment::LocalIntern;
-pub use rust_decimal as decimal;
-
 #[derive(Serialize)]
 pub struct File<'src> {
-    pub path: LocalIntern<String>,
+    pub path: InternedString,
     pub span: Span,
     pub shebang: Option<&'src str>,
     pub statements: Vec<Statement<'src>>,
@@ -25,9 +23,9 @@ pub struct Expr<'src> {
 
 #[derive(Serialize)]
 pub enum ExprKind<'src> {
-    Name(LocalIntern<String>),
-    Text(LocalIntern<String>),
-    Number(LocalIntern<Decimal>),
+    Name(InternedString),
+    Text(InternedString),
+    Number(Decimal),
     Quote(Box<Expr<'src>>),
     List(Vec<ListLine<'src>>),
     Attribute(Vec<ListLine<'src>>),
@@ -54,7 +52,7 @@ impl<'src> Expr<'src> {
 }
 
 pub fn parse<'src>(
-    file: LocalIntern<String>,
+    file: InternedString,
     code: &'src str,
     diagnostics: &mut Diagnostics,
 ) -> Option<File<'src>> {
@@ -153,7 +151,7 @@ struct Parser<'a, 'src> {
     lexer: Peekable<SpannedIter<'src, Token<'src>>>,
     len: usize,
     offset: usize,
-    file: LocalIntern<String>,
+    file: InternedString,
     diagnostics: &'a mut Diagnostics,
 }
 
@@ -343,7 +341,7 @@ impl<'src> Parser<'_, 'src> {
             Some(Token::Name(name)) => {
                 self.consume();
 
-                Ok(Expr::new(span, ExprKind::Name(LocalIntern::from(name))))
+                Ok(Expr::new(span, ExprKind::Name(InternedString::new(name))))
             }
             Some(_) => Err(ParseError::WrongTokenType),
             None => Err(ParseError::EndOfFile),
@@ -379,7 +377,10 @@ impl<'src> Parser<'_, 'src> {
                 if error {
                     Err(ParseError::InvalidExpr)
                 } else {
-                    Ok(Expr::new(span, ExprKind::Text(LocalIntern::from(&string))))
+                    Ok(Expr::new(
+                        span,
+                        ExprKind::Text(InternedString::new(string)),
+                    ))
                 }
             }
             Some(_) => Err(ParseError::WrongTokenType),
@@ -395,7 +396,7 @@ impl<'src> Parser<'_, 'src> {
                 self.consume();
 
                 match raw.parse() {
-                    Ok(number) => Ok(Expr::new(span, ExprKind::Number(LocalIntern::new(number)))),
+                    Ok(number) => Ok(Expr::new(span, ExprKind::Number(number))),
                     Err(error) => {
                         self.diagnostics.add(Diagnostic::new(
                             DiagnosticLevel::Error,

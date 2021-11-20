@@ -1,0 +1,13 @@
+[package]
+name = "interned-string"
+version = "0.0.0"
+edition = "2021"
+
+[dependencies]
+lazy_static = "1"
+parking_lot = "0.11"
+serde = { version = "1", features = ["derive"] }
+string-interner = "0.14"
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+parking_lot = { version = "0.11", features = ["wasm-bindgen"] }

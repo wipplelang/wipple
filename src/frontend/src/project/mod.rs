@@ -1,4 +1,5 @@
 use crate::compile::*;
+use interned_string::InternedString;
 use std::{
     fs,
     path::{Path, PathBuf},
@@ -6,7 +7,6 @@ use std::{
 };
 use url::Url;
 use wipple_diagnostics::*;
-use wipple_parser::LocalIntern;
 
 #[derive(Default)]
 pub struct Project {
@@ -105,9 +105,7 @@ pub fn load_path(name: &str, path: &Path, info: &mut Info) -> anyhow::Result<Opt
 }
 
 pub fn load_string(name: &str, code: Arc<str>, info: &mut Info) -> Option<Arc<File>> {
-    info.diagnostics
-        .add_file(LocalIntern::from(name), Arc::clone(&code));
-
-    wipple_parser::parse(LocalIntern::from(name), &code, info.diagnostics)
-        .and_then(|file| lower(file, info))
+    let name = InternedString::new(name);
+    info.diagnostics.add_file(name, Arc::clone(&code));
+    wipple_parser::parse(name, &code, info.diagnostics).and_then(|file| lower(file, info))
 }

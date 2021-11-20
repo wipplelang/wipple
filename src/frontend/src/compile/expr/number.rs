@@ -1,14 +1,14 @@
 use crate::compile::*;
-use wipple_parser::decimal::Decimal;
+use rust_decimal::Decimal;
 
 #[derive(Debug)]
 pub struct NumberExpr {
     pub span: Span,
-    pub value: LocalIntern<Decimal>,
+    pub value: Decimal,
 }
 
 impl NumberExpr {
-    pub fn new(span: Span, value: LocalIntern<Decimal>) -> Self {
+    pub fn new(span: Span, value: Decimal) -> Self {
         NumberExpr { span, value }
     }
 }

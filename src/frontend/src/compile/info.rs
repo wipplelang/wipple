@@ -34,7 +34,7 @@ impl<'a> Info<'a> {
 pub struct Variable {
     pub id: VariableId,
     pub declaration_span: Span,
-    pub name: LocalIntern<String>,
+    pub name: InternedString,
     #[serde(skip)]
     pub form: Arc<dyn Fn(Span) -> Form>,
 }
@@ -42,7 +42,7 @@ pub struct Variable {
 impl Variable {
     pub fn compile_time(
         declaration_span: Span,
-        name: LocalIntern<String>,
+        name: InternedString,
         form: impl Fn(Span) -> Form + 'static,
     ) -> Self {
         Variable {
@@ -53,7 +53,7 @@ impl Variable {
         }
     }
 
-    pub fn runtime(declaration_span: Span, name: LocalIntern<String>) -> Self {
+    pub fn runtime(declaration_span: Span, name: InternedString) -> Self {
         let id = VariableId::new();
 
         Variable {
