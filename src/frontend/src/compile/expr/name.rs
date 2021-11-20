@@ -19,13 +19,23 @@ impl ExprKind for NameExpr {
 
     fn lower(self, context: LowerContext, stack: &Stack, info: &mut Info) -> Option<Form> {
         match context {
-            LowerContext::Binding => Some(Form::binding(
-                self.span,
-                Binding::from(NameBinding::new(self.span, self.value)),
-            )),
-            _ => match self.resolve(stack, info) {
-                Some(form) => Some(form),
-                None => {
+            LowerContext::Binding => Some(
+                self.resolve(context, stack, info)?
+                    .and_then(|form| match form.kind {
+                        FormKind::Binding { .. } => Some(form),
+                        _ => None,
+                    })
+                    .unwrap_or_else(|| {
+                        Form::binding(
+                            self.span,
+                            Binding::from(NameBinding::new(self.span, self.value)),
+                        )
+                    }),
+            ),
+            _ => {
+                let form = self.resolve(context, stack, info)?;
+
+                if form.is_none() {
                     info.diagnostics.add(Diagnostic::new(
                         DiagnosticLevel::Error,
                         format!("'{}' is not defined", self.value),
@@ -34,16 +44,21 @@ impl ExprKind for NameExpr {
                             "This name does not resolve to a variable",
                         )],
                     ));
-
-                    None
                 }
-            },
+
+                form
+            }
         }
     }
 }
 
 impl NameExpr {
-    pub(super) fn resolve(&self, mut stack: &Stack, info: &mut Info) -> Option<Form> {
+    pub(super) fn resolve(
+        &self,
+        context: LowerContext,
+        mut stack: &Stack,
+        info: &mut Info,
+    ) -> Option<Option<Form>> {
         let mut used = vec![info.used_variables.clone()];
 
         loop {
@@ -52,13 +67,13 @@ impl NameExpr {
                     if let Some(parent) = stack.parent {
                         stack = parent;
                     } else {
-                        break None;
+                        break Some(None);
                     }
                 };
             }
 
             if let Some(variable) = stack.variables.borrow().get(&self.value) {
-                let form = (variable.form)(self.span);
+                let form = (variable.form)(self.span, context, info)?;
 
                 if matches!(form.kind, FormKind::Item { .. }) {
                     for list in used {
@@ -66,7 +81,7 @@ impl NameExpr {
                     }
                 }
 
-                break Some(form);
+                break Some(Some(form));
             } else {
                 if let Some(captures) = &stack.captures {
                     used.push(captures.clone());

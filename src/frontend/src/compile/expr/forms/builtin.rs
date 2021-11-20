@@ -1,7 +1,7 @@
 use crate::{
     compile::*,
     project,
-    typecheck::{function_type, BUILTIN_TYPES},
+    typecheck::{function_type, typechecker_context, BUILTIN_TYPES},
 };
 use std::{collections::HashMap, num::NonZeroUsize, sync::Arc};
 use wipple_diagnostics::*;
@@ -29,6 +29,7 @@ pub fn builtins() -> HashMap<InternedString, Variable> {
     }
 
     builtins! {
+        "_" => Form::builtin_underscore,
         ":" => Form::builtin_assign,
         "::" => Form::builtin_annotate,
         "->" => Form::builtin_function,
@@ -41,8 +42,39 @@ pub fn builtins() -> HashMap<InternedString, Variable> {
 }
 
 impl Form {
-    fn builtin_assign(span: Span) -> Self {
-        Form::operator(
+    fn builtin_underscore(span: Span, context: LowerContext, info: &mut Info) -> Option<Self> {
+        match context {
+            LowerContext::Item => {
+                info.diagnostics.add(Diagnostic::new(
+                    DiagnosticLevel::Error,
+                    "Expected value, found '_'",
+                    vec![Note::primary(span, "Expected a value here")],
+                ));
+
+                None
+            }
+            LowerContext::Operator => None,
+            LowerContext::Template => None,
+            LowerContext::Ty => Some(Form::ty(
+                span,
+                typechecker_context().borrow_mut().new_variable(),
+            )),
+            LowerContext::File => None,
+            LowerContext::Binding => {
+                // TODO: Empty bindings
+                info.diagnostics.add(Diagnostic::new(
+                    DiagnosticLevel::Error,
+                    "'_' in bindings is currently unsupported",
+                    vec![Note::primary(span, "Try assigning to a name instead")],
+                ));
+
+                None
+            }
+        }
+    }
+
+    fn builtin_assign(span: Span, _: LowerContext, _: &mut Info) -> Option<Self> {
+        Some(Form::operator(
             span,
             Operator {
                 precedence: OperatorPrecedence::new(9),
@@ -61,11 +93,11 @@ impl Form {
                     },
                 ),
             },
-        )
+        ))
     }
 
-    fn builtin_annotate(span: Span) -> Self {
-        Form::operator(
+    fn builtin_annotate(span: Span, _: LowerContext, _: &mut Info) -> Option<Self> {
+        Some(Form::operator(
             span,
             Operator {
                 precedence: OperatorPrecedence::new(8),
@@ -84,11 +116,11 @@ impl Form {
                     },
                 ),
             },
-        )
+        ))
     }
 
-    fn builtin_function(span: Span) -> Self {
-        Form::operator(
+    fn builtin_function(span: Span, _: LowerContext, _: &mut Info) -> Option<Self> {
+        Some(Form::operator(
             span,
             Operator {
                 precedence: OperatorPrecedence::new(7),
@@ -143,11 +175,11 @@ impl Form {
                     },
                 ),
             },
-        )
+        ))
     }
 
-    fn builtin_external(span: Span) -> Self {
-        Form::template(
+    fn builtin_external(span: Span, _: LowerContext, _: &mut Info) -> Option<Self> {
+        Some(Form::template(
             span,
             Template::new(
                 Some(NonZeroUsize::new(2).unwrap()),
@@ -186,11 +218,11 @@ impl Form {
                     ))
                 },
             ),
-        )
+        ))
     }
 
-    fn builtin_file(span: Span) -> Self {
-        Form::template(
+    fn builtin_file(span: Span, _: LowerContext, _: &mut Info) -> Option<Self> {
+        Some(Form::template(
             span,
             Template::new(
                 Some(NonZeroUsize::new(1).unwrap()),
@@ -215,11 +247,11 @@ impl Form {
                     Some(Form::file(span, file))
                 },
             ),
-        )
+        ))
     }
 
-    fn builtin_use(span: Span) -> Self {
-        Form::template(
+    fn builtin_use(span: Span, _: LowerContext, _: &mut Info) -> Option<Self> {
+        Some(Form::template(
             span,
             Template::new(
                 Some(NonZeroUsize::new(1).unwrap()),
@@ -249,14 +281,14 @@ impl Form {
                     Some(Form::item(span, Item::unit(span)))
                 },
             ),
-        )
+        ))
     }
 
-    fn builtin_number_ty(span: Span) -> Self {
-        Form::ty(span, BUILTIN_TYPES.number.clone())
+    fn builtin_number_ty(span: Span, _: LowerContext, _: &mut Info) -> Option<Self> {
+        Some(Form::ty(span, BUILTIN_TYPES.number.clone()))
     }
 
-    fn builtin_text_ty(span: Span) -> Self {
-        Form::ty(span, BUILTIN_TYPES.text.clone())
+    fn builtin_text_ty(span: Span, _: LowerContext, _: &mut Info) -> Option<Self> {
+        Some(Form::ty(span, BUILTIN_TYPES.text.clone()))
     }
 }

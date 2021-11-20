@@ -12,7 +12,7 @@ use interned_string::InternedString;
 use lazy_static::lazy_static;
 use polytype::UnificationError;
 use serde::Serialize;
-use std::{collections::HashMap, mem, sync::Arc};
+use std::{cell::RefCell, collections::HashMap, mem, sync::Arc};
 use wipple_diagnostics::{Diagnostic, DiagnosticLevel, Note};
 
 #[derive(Debug, Clone, Copy, Serialize)]
@@ -30,8 +30,12 @@ pub enum TypeNameFormat {
 
 impl TypeName {
     pub fn new(name: impl ToString, format: TypeNameFormat) -> Self {
+        TypeName::with_id(TypeId::new(), name, format)
+    }
+
+    pub fn with_id(id: TypeId, name: impl ToString, format: TypeNameFormat) -> Self {
         TypeName {
-            id: TypeId::new(),
+            id,
             name: InternedString::new(name.to_string()),
             format,
         }
@@ -82,7 +86,7 @@ pub fn function_type(input: Type, output: Type) -> Type {
     }
 
     Type::Constructed(
-        TypeName::new("->", TypeNameFormat::Function),
+        TypeName::with_id(*FUNCTION_TYPE_ID, "->", TypeNameFormat::Function),
         vec![input, output],
     )
 }
@@ -100,6 +104,15 @@ pub fn typecheck<'a>(
     typechecker.success.then(|| (files, typechecker.types))
 }
 
+pub(crate) fn typechecker_context() -> Arc<RefCell<Context>> {
+    // TODO: Make usable across threads
+    thread_local! {
+        static TYPECHECKER_CONTEXT: Arc<RefCell<Context>> = Default::default();
+    }
+
+    TYPECHECKER_CONTEXT.with(Clone::clone)
+}
+
 struct Typechecker<'a> {
     info: &'a mut Info<'a>,
     ctx: Context,
@@ -111,9 +124,11 @@ struct Typechecker<'a> {
 
 impl<'a> Typechecker<'a> {
     fn new(info: &'a mut Info<'a>) -> Self {
+        let ctx = (*typechecker_context()).clone().into_inner();
+
         Typechecker {
             info,
-            ctx: Default::default(),
+            ctx,
             success: true,
             types: Default::default(),
             variables: Default::default(),

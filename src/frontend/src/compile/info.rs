@@ -36,14 +36,14 @@ pub struct Variable {
     pub declaration_span: Span,
     pub name: InternedString,
     #[serde(skip)]
-    pub form: Arc<dyn Fn(Span) -> Form>,
+    pub form: Arc<dyn Fn(Span, LowerContext, &mut Info) -> Option<Form>>,
 }
 
 impl Variable {
     pub fn compile_time(
         declaration_span: Span,
         name: InternedString,
-        form: impl Fn(Span) -> Form + 'static,
+        form: impl Fn(Span, LowerContext, &mut Info) -> Option<Form> + 'static,
     ) -> Self {
         Variable {
             id: VariableId::new(),
@@ -60,10 +60,10 @@ impl Variable {
             id,
             declaration_span,
             name,
-            form: Arc::new(move |span| {
+            form: Arc::new(move |span, _, _| {
                 let mut item = Item::variable(span, id);
                 item.debug_info.declared_name = Some(name);
-                Form::item(span, item)
+                Some(Form::item(span, item))
             }),
         }
     }

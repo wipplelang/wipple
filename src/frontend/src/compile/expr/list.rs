@@ -129,7 +129,7 @@ impl ExprKind for ListExpr {
                                 };
 
                                 if let Some(variable) = file.variables.get(&name.value) {
-                                    let form = (variable.form)(span);
+                                    let form = (variable.form)(span, context, info)?;
 
                                     if matches!(form.kind, FormKind::Item { .. }) {
                                         info.used_variables.borrow_mut().insert(variable.id);
@@ -228,7 +228,9 @@ impl ListExpr {
 
         for (index, expr) in self.items.iter().enumerate() {
             if let Expr::Name(name) = expr {
-                if let Some(form) = name.resolve(stack, info) {
+                // NOTE: This relies on the fact that form won't emit diagnostics if they aren't
+                // operators -- otherwise we'd get an error for most forms in the list
+                if let Some(Some(form)) = name.resolve(LowerContext::Operator, stack, info) {
                     if let FormKind::Operator { operator } = form.kind {
                         operators.push((index, form.span, operator));
                     }
@@ -276,7 +278,7 @@ impl ListExpr {
                             return Err(Error::MultipleNonAssociativeOperators {
                                 first: self.items[max_index].span(),
                                 second: self.items[index].span(),
-                            })
+                            });
                         }
                     }
                 }

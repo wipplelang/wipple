@@ -21,7 +21,7 @@ impl BindingKind for NameBinding {
         let (variable, runtime_item) = match form.kind {
             FormKind::Item { item } => (Variable::runtime(self.span, self.name), Some(item)),
             _ => (
-                Variable::compile_time(self.span, self.name, move |_| form.clone()),
+                Variable::compile_time(self.span, self.name, move |_, _, _| Some(form.clone())),
                 None,
             ),
         };

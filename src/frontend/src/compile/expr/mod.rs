@@ -1,10 +1,12 @@
 mod block;
+mod forms;
 mod list;
 mod name;
 mod number;
 mod text;
 
 pub use block::*;
+pub use forms::*;
 pub use list::*;
 pub use name::*;
 pub use number::*;

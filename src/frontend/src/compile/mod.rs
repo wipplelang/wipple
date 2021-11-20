@@ -1,6 +1,5 @@
 mod binding;
 mod expr;
-mod forms;
 mod info;
 mod item;
 mod stack;
@@ -9,15 +8,14 @@ use std::{collections::HashMap, sync::Arc};
 
 pub use binding::*;
 pub use expr::*;
-pub use forms::*;
 pub use info::*;
 pub use item::*;
 pub use stack::*;
 
 use crate::id::*;
+use interned_string::InternedString;
 use serde::Serialize;
 use wipple_diagnostics::*;
-use interned_string::InternedString;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct File {

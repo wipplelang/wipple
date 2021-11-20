@@ -1,6 +1,5 @@
-use crate::TypeNameFormat;
-
 use super::{Type, TypeSchema};
+use crate::TypeNameFormat;
 use std::collections::BTreeMap;
 
 pub fn format_type_schema(ty: &TypeSchema) -> String {
@@ -10,8 +9,7 @@ pub fn format_type_schema(ty: &TypeSchema) -> String {
             let mut ty = ty;
             let mut names = BTreeMap::new();
             while let TypeSchema::Polytype { variable, body } = ty {
-                // TODO: Letters (for A B C ...)
-                names.insert(*variable, format!("T{}", names.len()));
+                names.insert(*variable, name_for_index(names.len()));
                 ty = body
             }
 
@@ -22,7 +20,7 @@ pub fn format_type_schema(ty: &TypeSchema) -> String {
 
             format!(
                 "for {}-> {}",
-                names.values().map(|t| t.clone() + " ").collect::<String>(),
+                names.values().rev().map(|t| t.clone() + " ").collect::<String>(),
                 format_type_with(ty, &names)
             )
         }
@@ -33,7 +31,7 @@ macro_rules! format_type_fn {
     ($fn:ident($($param:ident: $ty:ty),* $(,)?), $body:expr) => {
         pub fn $fn(ty: &Type, $($param: $ty),*) -> String {
             match ty {
-                polytype::Type::Constructed(name, associated_types) => {
+                Type::Constructed(name, associated_types) => {
                     // TODO: Parentheses
                     match name.format {
                         TypeNameFormat::Default => format!(
@@ -52,7 +50,7 @@ macro_rules! format_type_fn {
                         }
                     }
                 }
-                polytype::Type::Variable(variable) => {
+                Type::Variable(variable) => {
                     #[allow(clippy::redundant_closure_call)]
                     ($body)(variable)
                 },
@@ -70,3 +68,16 @@ format_type_fn!(
         .cloned()
         .unwrap_or_else(|| String::from("_"))
 );
+
+fn name_for_index(index: usize) -> String {
+    const LETTERS: [char; 26] = [
+        'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R',
+        'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
+    ];
+
+    LETTERS
+        .get(index)
+        .copied()
+        .map(String::from)
+        .unwrap_or_else(|| format!("T{}", index))
+}

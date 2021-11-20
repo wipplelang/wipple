@@ -227,7 +227,7 @@ const Playground = () => {
         };
 
         const markers = result.current?.diagnostics.flatMap((diagnostic) => {
-            diagnostic.notes[0].message = `${diagnostic.message}: ${diagnostic.notes[0].message}`;
+            diagnostic.notes[0].message = `${diagnostic.message}\n${diagnostic.notes[0].message}`;
 
             return diagnostic.notes.map((note) => {
                 const startPos = model.current!.getPositionAt(note.span.start);

@@ -154,7 +154,7 @@ fn main() -> anyhow::Result<()> {
                 let mut info = wipple_frontend::Info::new(&mut diagnostics, &project);
 
                 wipple_frontend::load_file(
-                    &path.get(),
+                    &path.to_string(),
                     Span::new(path, Default::default()),
                     &mut info,
                 )

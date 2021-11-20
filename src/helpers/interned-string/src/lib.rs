@@ -9,7 +9,7 @@ lazy_static! {
     static ref INTERNER: RwLock<StringInterner> = Default::default();
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct InternedString {
     symbol: string_interner::DefaultSymbol,
 }
@@ -38,5 +38,11 @@ impl Serialize for InternedString {
 impl fmt::Display for InternedString {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.get())
+    }
+}
+
+impl fmt::Debug for InternedString {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", self.get())
     }
 }
