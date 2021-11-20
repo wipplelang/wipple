@@ -1,316 +1,229 @@
-mod item;
-mod ty;
+#![allow(clippy::type_complexity)]
 
-pub use item::*;
-pub use ty::*;
+use crate::{
+    compile::{File, Info, Item, ItemKind},
+    id::{ItemId, TypeId, VariableId},
+};
+use lazy_static::lazy_static;
+use polytype::UnificationError;
+use std::{collections::HashMap, mem, sync::Arc};
+use wipple_diagnostics::{Diagnostic, DiagnosticLevel, Note};
 
-use crate::{id::*, lower};
-use serde::Serialize;
-use std::{collections::HashMap, sync::Arc};
-use wipple_diagnostics::*;
+pub type Type = polytype::Type<TypeId>;
+pub type TypeSchema = polytype::TypeSchema<TypeId>;
+pub type Context = polytype::Context<TypeId>;
 
-#[derive(Debug, Clone, Serialize)]
-pub struct File {
-    pub id: FileId,
-    pub statements: Vec<Item>,
-}
-
-pub fn typecheck(files: &[Arc<lower::File>], diagnostics: &mut Diagnostics) -> Option<Vec<File>> {
-    let mut info = Info::new(diagnostics);
-
-    files
-        .iter()
-        .map(|file| {
-            let mut typed_statements = Some(Vec::with_capacity(file.statements.len()));
-            for statement in &file.statements {
-                match typecheck_item(statement, &mut info) {
-                    Some(typed_statement) => {
-                        if let Some(typed_statements) = typed_statements.as_mut() {
-                            typed_statements.push(typed_statement);
-                        }
-                    }
-                    None => typed_statements = None,
-                }
-            }
-
-            Some(File {
-                id: file.id,
-                statements: typed_statements?,
-            })
-        })
-        .collect()
-}
-
-struct Info<'a> {
-    diagnostics: &'a mut Diagnostics,
-    variables: HashMap<VariableId, Ty>,
-    function_input_ty: Option<Ty>,
-}
-
-impl<'a> Info<'a> {
-    pub fn new(diagnostics: &'a mut Diagnostics) -> Self {
-        Info {
-            diagnostics,
-            variables: Default::default(),
-            function_input_ty: None,
-        }
+impl polytype::Name for TypeId {
+    fn arrow() -> Self {
+        unimplemented!()
     }
 }
 
-macro_rules! info {
-    ($item:expr, $ty:expr) => {
-        ItemInfo::new($item.debug_info.clone(), $ty)
+pub struct BuiltinTypes {
+    pub unit: Type,
+    pub number: Type,
+    pub text: Type,
+}
+
+macro_rules! builtin_type {
+    ($($var:expr),* $(,)?) => {
+        Type::Constructed(TypeId::new(), vec![$($var),*])
     };
 }
 
-#[must_use]
-fn typecheck_item(item: &lower::Item, info: &mut Info) -> Option<Item> {
-    match &item.kind {
-        lower::ItemKind::Unit => Some(Item::unit(info!(item, Ty::unit()))),
-        lower::ItemKind::Number { value } => Some(Item::number(info!(item, Ty::number()), *value)),
-        lower::ItemKind::Text { value } => Some(Item::text(info!(item, Ty::text()), *value)),
-        lower::ItemKind::Block { statements } => {
-            // Typecheck each statement; the type of the last statement is the
-            // type of the entire block
-            let mut last_ty = Ty::unit();
-            let mut typed_statements = Some(Vec::with_capacity(statements.len()));
-            for statement in statements {
-                match typecheck_item(statement, info) {
-                    Some(statement) => {
-                        if let Some(typed_statements) = typed_statements.as_mut() {
-                            last_ty = statement.info.ty.clone();
-                            typed_statements.push(statement);
-                        }
+lazy_static! {
+    pub static ref BUILTIN_TYPES: BuiltinTypes = BuiltinTypes {
+        unit: builtin_type!(),
+        number: builtin_type!(),
+        text: builtin_type!(),
+    };
+}
+
+pub fn function_type(input: Type, output: Type) -> Type {
+    lazy_static! {
+        static ref FUNCTION_TYPE_ID: TypeId = TypeId::new();
+    }
+
+    Type::Constructed(*FUNCTION_TYPE_ID, vec![input, output])
+}
+
+pub fn typecheck<'a>(
+    info: &'a mut Info<'a>,
+) -> Option<(Vec<Arc<File>>, HashMap<ItemId, TypeSchema>)> {
+    let mut typechecker = Typechecker::new(info);
+    let files = typechecker.info.files.clone();
+
+    for file in &files {
+        typechecker.typecheck_block(&file.statements);
+    }
+
+    typechecker.success.then(|| (files, typechecker.types))
+}
+
+struct Typechecker<'a> {
+    info: &'a mut Info<'a>,
+    ctx: Context,
+    success: bool,
+    types: HashMap<ItemId, TypeSchema>,
+    variables: HashMap<VariableId, TypeSchema>,
+    function_input: Option<(ItemId, TypeSchema)>,
+}
+
+impl<'a> Typechecker<'a> {
+    fn new(info: &'a mut Info<'a>) -> Self {
+        Typechecker {
+            info,
+            ctx: Default::default(),
+            success: Default::default(),
+            types: Default::default(),
+            variables: Default::default(),
+            function_input: Default::default(),
+        }
+    }
+
+    fn typecheck_item(&mut self, item: &Item) -> Option<TypeSchema> {
+        let ty = (|| match &item.kind {
+            ItemKind::Unit => Some(TypeSchema::Monotype(BUILTIN_TYPES.unit.clone())),
+            ItemKind::Number { .. } => Some(TypeSchema::Monotype(BUILTIN_TYPES.number.clone())),
+            ItemKind::Text { .. } => Some(TypeSchema::Monotype(BUILTIN_TYPES.text.clone())),
+            ItemKind::Block { statements } => self.typecheck_block(statements),
+            ItemKind::Apply { function, input } => {
+                let function_ty = {
+                    let function_ty =
+                        function_type(self.ctx.new_variable(), self.ctx.new_variable());
+
+                    let inferred_function_ty =
+                        self.typecheck_item(function)?.instantiate(&mut self.ctx);
+
+                    if let Err(error) = self.ctx.unify(&function_ty, &inferred_function_ty) {
+                        self.report_type_error(function, error);
+                        return None;
                     }
-                    None => typed_statements = None,
+
+                    function_ty.apply(&self.ctx)
+                };
+
+                let mut function_associated_types = match function_ty {
+                    Type::Constructed(_, associated_types) => associated_types.into_iter(),
+                    _ => unreachable!(),
+                };
+
+                let input_ty = function_associated_types.next().unwrap();
+                let output_ty = function_associated_types.next().unwrap();
+
+                let inferred_input_ty = self.typecheck_item(input)?.instantiate(&mut self.ctx);
+
+                if let Err(error) = self.ctx.unify(&input_ty, &inferred_input_ty) {
+                    self.report_type_error(input, error);
+                    return None;
+                }
+
+                Some(TypeSchema::Monotype(output_ty))
+            }
+            ItemKind::Initialize {
+                variable, value, ..
+            } => {
+                let value_ty = self.typecheck_item(value)?;
+                self.variables.insert(*variable, value_ty);
+
+                Some(TypeSchema::Monotype(BUILTIN_TYPES.unit.clone()))
+            }
+            ItemKind::Variable { variable } => {
+                Some(self.variables.get(variable).cloned().unwrap_or_else(|| {
+                    panic!("Variable {:?} used before initialization", variable)
+                }))
+            }
+            ItemKind::Function { body, .. } => {
+                let previous_input = mem::take(&mut self.function_input);
+                let body_ty = self.typecheck_item(body)?.instantiate(&mut self.ctx);
+                let input = mem::replace(&mut self.function_input, previous_input);
+
+                let (input_id, input_ty) = input.unwrap();
+                self.types.insert(input_id, input_ty.clone());
+
+                let input_ty = input_ty.instantiate(&mut self.ctx);
+
+                Some(function_type(input_ty, body_ty).generalize(&[]))
+            }
+            ItemKind::FunctionInput => {
+                let var = TypeSchema::Monotype(self.ctx.new_variable());
+                self.function_input = Some((item.id, var.clone()));
+                Some(var)
+            }
+            ItemKind::External { .. } => Some(TypeSchema::Monotype(self.ctx.new_variable())),
+            ItemKind::Annotate { item, ty } => {
+                let inferred_ty = self.typecheck_item(item)?.instantiate(&mut self.ctx);
+
+                if let Err(error) = self.ctx.unify(ty, &inferred_ty) {
+                    self.report_type_error(item, error);
+                    return None;
+                }
+
+                let item_ty = ty.apply(&self.ctx);
+
+                Some(TypeSchema::Monotype(item_ty))
+            }
+        })();
+
+        if let Some(ty) = ty.clone() {
+            self.types.insert(item.id, ty);
+        } else {
+            self.success = false;
+        }
+
+        ty
+    }
+
+    fn typecheck_block(&mut self, statements: &[Item]) -> Option<TypeSchema> {
+        let mut last_ty = TypeSchema::Monotype(BUILTIN_TYPES.unit.clone());
+        let mut success = true;
+        for statement in statements {
+            last_ty = match self.typecheck_item(statement) {
+                Some(ty) => ty,
+                None => {
+                    success = false;
+                    continue;
                 }
             }
-
-            Some(Item::block(info!(item, last_ty), typed_statements?))
         }
-        lower::ItemKind::Apply { function, input } => {
-            // Typecheck the input
-            let input = typecheck_item(input, info);
 
-            // Typecheck the function
-            let function = typecheck_item(function, info)?;
+        success.then(|| last_ty.clone())
+    }
 
-            // Ensure the function has a function type, retrieving the types of
-            // its input and body
-            let input_ty = Ty::unknown();
-            let body_ty = Ty::unknown();
-            Ty::function(input_ty.clone(), body_ty.clone()).unify(
-                &function.info.ty,
-                function.info.info.span,
-                info,
-            )?;
+    fn report_type_error(&mut self, item: &Item, error: UnificationError<TypeId>) {
+        let diagnostic = match error {
+            UnificationError::Occurs(_) => Diagnostic::new(
+                DiagnosticLevel::Error,
+                "Recursive type",
+                vec![Note::primary(
+                    item.debug_info.span,
+                    "The type of this references itself",
+                )],
+            ),
+            UnificationError::Failure(expected, found) => Diagnostic::new(
+                DiagnosticLevel::Error,
+                "Mismatched types",
+                vec![Note::primary(
+                    item.debug_info.span,
+                    format!(
+                        "Expected {}, found {}",
+                        format_type(&expected),
+                        format_type(&found)
+                    ),
+                )],
+            ),
+        };
 
-            let mut input = input?;
-
-            // Ensure the type of the input matches the type of the function's
-            // input, including generics
-            let substituted_generics =
-                input.info.ty.unify(&input_ty, input.info.info.span, info)?;
-
-            // If 'A -> A' has been converted to 'X -> A', convert it further to
-            // 'X -> X'
-            body_ty.substitute_generics(&substituted_generics);
-
-            Some(Item::apply(
-                info!(item, body_ty),
-                Box::new(function),
-                Box::new(input),
-            ))
-        }
-        lower::ItemKind::Initialize {
-            binding_info,
-            variable,
-            value,
-        } => {
-            // Typecheck the value
-            let value = typecheck_item(value, info)?;
-
-            // Track the type of the variable
-            info.variables.insert(*variable, value.info.ty.clone());
-
-            Some(Item::initialize(
-                info!(item, Ty::unit()),
-                ItemInfo::new(binding_info.clone(), value.info.ty.clone()),
-                *variable,
-                Box::new(value),
-            ))
-        }
-        lower::ItemKind::Variable { variable } => {
-            let ty = info.variables.get(variable).unwrap().clone();
-            Some(Item::variable(info!(item, ty), *variable))
-        }
-        lower::ItemKind::Function { body, captures } => {
-            // Track the type of the function's input within the body
-            let function_input_ty = Ty::unknown();
-            info.function_input_ty = Some(function_input_ty.clone());
-
-            // Typecheck the function body
-            let body = typecheck_item(body, info)?;
-
-            // Convert '_ -> X' to 'for A -> A -> X'
-            function_input_ty.make_generic();
-
-            Some(Item::function(
-                info!(item, Ty::function(function_input_ty, body.info.ty.clone())),
-                Box::new(body),
-                captures.clone(),
-            ))
-        }
-        lower::ItemKind::FunctionInput => {
-            let ty = info.function_input_ty.as_ref().unwrap().clone();
-            Some(Item::function_input(info!(item, ty)))
-        }
-        lower::ItemKind::External {
-            namespace,
-            identifier,
-        } => {
-            let ty = Ty::unknown();
-            Some(Item::external(info!(item, ty), *namespace, *identifier))
-        }
-        lower::ItemKind::Annotate { item, ty } => {
-            let mut item = typecheck_item(item, info)?;
-
-            let ty = ty.clone();
-            let substituted_generics = item.info.ty.unify(&ty, item.info.info.span, info)?;
-            ty.substitute_generics(&substituted_generics);
-            item.info.ty = ty;
-
-            Some(item)
-        }
+        self.info.diagnostics.add(diagnostic);
     }
 }
 
-type SubstitutedGenerics = HashMap<(), TyKind>; // TODO: HashMap<GenericId, TyKind>
+pub fn format_type_schema(ty: &TypeSchema) -> String {
+    // TODO
+    format!("{:?}", ty)
+}
 
-impl Ty {
-    #[must_use]
-    fn unify(&mut self, known: &Ty, span: Span, info: &mut Info) -> Option<SubstitutedGenerics> {
-        let mut substituted_generics = SubstitutedGenerics::new();
-
-        macro_rules! get {
-            ($x:expr) => {
-                $x.borrow_mut()
-            };
-        }
-
-        if matches!(*get!(self.kind), TyKind::Unknown)
-            && matches!(*get!(known.kind), TyKind::Unknown)
-        {
-            // TODO: Check bounds
-            self.kind = known.kind.clone();
-            return Some(substituted_generics);
-        }
-
-        let mut kind = get!(self.kind);
-        let mut known_kind = get!(known.kind);
-
-        macro_rules! error {
-            () => {{
-                drop(kind);
-                drop(known_kind);
-
-                info.diagnostics.add(Diagnostic::new(
-                    DiagnosticLevel::Error,
-                    "Mismatched types",
-                    vec![Note::primary(
-                        span,
-                        format!("Expected {}, found {}", self, known),
-                    )],
-                ));
-
-                return None;
-            }};
-        }
-
-        match &mut *known_kind {
-            TyKind::Unknown => error!(),
-            TyKind::Generic => match &mut *kind {
-                TyKind::Unknown => *kind = TyKind::Generic,
-                TyKind::Generic => {} // TODO: Check ID
-                // TODO: Check bounds
-                _ => {
-                    substituted_generics.insert((), kind.clone());
-                }
-            },
-            TyKind::Unit => match &mut *kind {
-                TyKind::Unknown => *kind = TyKind::Unit, // TODO: Check bounds
-                TyKind::Unit => {}
-                _ => error!(),
-            },
-            TyKind::Number => match &mut *kind {
-                TyKind::Unknown => *kind = TyKind::Number, // TODO: Check bounds
-                TyKind::Number => {}
-                _ => error!(),
-            },
-            TyKind::Text => match &mut *kind {
-                TyKind::Unknown => *kind = TyKind::Text, // TODO: Check bounds
-                TyKind::Text => {}
-                _ => error!(),
-            },
-            TyKind::Function {
-                input: known_input,
-                body: known_body,
-            } => match &mut *kind {
-                // TODO: Check bounds
-                TyKind::Unknown => {
-                    let mut input = Ty::unknown();
-                    let mut body = Ty::unknown();
-
-                    input.unify(known_input, span, info)?;
-                    body.unify(known_body, span, info)?;
-
-                    *kind = TyKind::Function { input, body };
-                }
-                TyKind::Function { input, body } => {
-                    input.unify(known_input, span, info)?;
-                    body.unify(known_body, span, info)?;
-                }
-                _ => error!(),
-            },
-            TyKind::File { path: known_path } => match &mut *kind {
-                TyKind::Unknown => {
-                    // TODO: Check bounds
-                    *kind = TyKind::File { path: *known_path }
-                }
-                TyKind::File { path, .. } if path == known_path => {}
-                _ => error!(),
-            },
-        }
-
-        Some(substituted_generics)
-    }
-
-    fn make_generic(&self) {
-        let kind = &mut *self.kind.borrow_mut();
-
-        if matches!(kind, TyKind::Unknown) {
-            *kind = TyKind::Generic
-        }
-    }
-
-    fn substitute_generics(&self, substituted_generics: &SubstitutedGenerics) {
-        let kind = &mut *self.kind.borrow_mut();
-
-        match kind {
-            TyKind::Generic => {
-                if let Some(substitute) = substituted_generics.get(&()) {
-                    *kind = substitute.clone();
-                }
-            }
-            TyKind::Function { input, body } => {
-                input.substitute_generics(substituted_generics);
-                body.substitute_generics(substituted_generics);
-            }
-            TyKind::Unknown
-            | TyKind::Unit
-            | TyKind::Number
-            | TyKind::Text
-            | TyKind::File { .. } => {}
-        }
-    }
+pub fn format_type(ty: &Type) -> String {
+    // TODO
+    format!("{:?}", ty)
 }

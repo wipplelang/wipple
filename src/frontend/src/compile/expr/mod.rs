@@ -10,7 +10,7 @@ pub use name::*;
 pub use number::*;
 pub use text::*;
 
-use crate::{lower::*, typecheck::Ty};
+use crate::{compile::*, typecheck::Type};
 use enum_dispatch::enum_dispatch;
 use kind::kind;
 use paste::paste;
@@ -88,7 +88,7 @@ lower! {
     Item { item: Item } = "item",
     Operator { operator: Operator } = "operator",
     Template { template: Template } = "template",
-    Ty { ty: Ty } = "type",
+    Ty { ty: Type } = "type",
     File { file: Arc<File> } = "file",
     Binding { binding: Binding } = "binding",
 }

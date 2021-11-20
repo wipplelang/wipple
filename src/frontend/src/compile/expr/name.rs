@@ -1,4 +1,4 @@
-use crate::lower::*;
+use crate::compile::*;
 
 #[derive(Debug)]
 pub struct NameExpr {

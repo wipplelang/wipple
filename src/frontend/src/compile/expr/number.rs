@@ -1,4 +1,4 @@
-use crate::lower::*;
+use crate::compile::*;
 use wipple_parser::decimal::Decimal;
 
 #[derive(Debug)]

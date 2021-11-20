@@ -1,4 +1,4 @@
-use crate::lower::Template;
+use crate::compile::Template;
 use serde::Serialize;
 
 #[derive(Debug, Clone, Serialize)]

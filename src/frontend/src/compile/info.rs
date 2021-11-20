@@ -1,4 +1,4 @@
-use crate::{lower::*, project::Project, typecheck::Ty};
+use crate::{compile::*, project::Project, typecheck::Type};
 use serde::Serialize;
 use std::{
     cell::RefCell,
@@ -14,7 +14,7 @@ pub struct Info<'a> {
     pub files: Vec<Arc<File>>,
     pub declared_variables: Vec<Variable>,
     pub used_variables: Arc<RefCell<HashSet<VariableId>>>,
-    pub externals: HashMap<(String, String), Vec<Ty>>,
+    pub externals: HashMap<(String, String), Vec<Type>>,
 }
 
 impl<'a> Info<'a> {

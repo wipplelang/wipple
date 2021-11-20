@@ -5,10 +5,6 @@ use std::{fs, io, path::PathBuf, process, sync::Arc};
 use structopt::StructOpt;
 use strum::{EnumString, ToString};
 use wipple_diagnostics::*;
-use wipple_frontend::{
-    lower::Info,
-    project::{Base, Project},
-};
 
 #[derive(StructOpt)]
 #[structopt(
@@ -142,8 +138,8 @@ fn main() -> anyhow::Result<()> {
         } => {
             let mut diagnostics = Diagnostics::new();
 
-            let project = Project {
-                base: project.map(Base::Path),
+            let project = wipple_frontend::Project {
+                base: project.map(wipple_frontend::Base::Path),
                 cache_path: Some(cache.unwrap_or_else(|| {
                     directories::BaseDirs::new()
                         .expect("User directories not set")
@@ -153,15 +149,10 @@ fn main() -> anyhow::Result<()> {
             };
 
             let files = {
-                let mut info = Info::new(&mut diagnostics, &project);
+                let mut info = wipple_frontend::Info::new(&mut diagnostics, &project);
 
-                let success =
-                    wipple_frontend::project::load_file(&options.path, Span::default(), &mut info)
-                        .is_some();
-
-                success
-                    .then(|| wipple_frontend::typecheck::typecheck(&info.files, info.diagnostics))
-                    .flatten()
+                wipple_frontend::load_file(&options.path, Span::default(), &mut info)
+                    .and_then(|_| Some(wipple_frontend::typecheck(&mut info)?.0))
             };
 
             let (codemap, diagnostics) = diagnostics.into_console_friendly();
@@ -176,7 +167,7 @@ fn main() -> anyhow::Result<()> {
                     let external = wipple_playground_runner::external(|text| println!("{}", text));
 
                     if let Err(error) = wipple_interpreter_backend::eval(&files, external) {
-                        println!("Fatal error: {:?}", error)
+                        eprintln!("Fatal error: {:?}", error)
                     }
                 }
             } else {

@@ -5,7 +5,7 @@ pub use external::*;
 use rust_decimal::Decimal;
 use serde::Serialize;
 use std::{cell::RefCell, collections::BTreeMap, sync::Arc};
-use wipple_frontend::{id::*, typecheck::*};
+use wipple_frontend::*;
 
 #[derive(Debug, Serialize)]
 pub enum Value {
@@ -25,7 +25,7 @@ pub enum Error {
     UnknownExternalIdentifier(String),
 }
 
-pub fn eval(files: &[File], external: ExternalValues) -> Result<(), Error> {
+pub fn eval(files: &[Arc<File>], external: ExternalValues) -> Result<(), Error> {
     let mut info = Info {
         external,
         scope: Default::default(),
@@ -104,7 +104,9 @@ fn eval_item(item: &Item, info: &mut Info) -> Result<Arc<Value>, Error> {
             }
             _ => unreachable!(),
         },
-        ItemKind::Initialize { variable, value, .. } => {
+        ItemKind::Initialize {
+            variable, value, ..
+        } => {
             let value = eval_item(value, info)?;
             info.scope.borrow_mut().variables.insert(*variable, value);
             Arc::new(Value::Unit)
@@ -122,6 +124,7 @@ fn eval_item(item: &Item, info: &mut Info) -> Result<Arc<Value>, Error> {
             namespace,
             identifier,
         } => info.external.get(namespace, identifier)?.clone(),
+        ItemKind::Annotate { item, .. } => eval_item(item, info)?,
     };
 
     Ok(value)

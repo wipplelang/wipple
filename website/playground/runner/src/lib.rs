@@ -1,8 +1,7 @@
 use serde::Serialize;
-use std::{cell::RefCell, sync::Arc};
+use std::{cell::RefCell, collections::HashMap, sync::Arc};
 use wasm_bindgen::prelude::*;
 use wipple_diagnostics::*;
-use wipple_frontend::{lower::Info, project::Project};
 use wipple_interpreter_backend::{ExternalFunction, ExternalValues, Value};
 
 #[derive(Serialize)]
@@ -12,7 +11,7 @@ struct Result {
     diagnostics: Vec<Diagnostic>,
 }
 
-#[derive(Serialize)]
+#[derive(Debug, Serialize)]
 struct Annotation {
     span: Span,
     value: String,
@@ -23,19 +22,17 @@ pub fn run(code: &str) -> JsValue {
     #[cfg(feature = "console_error_panic_hook")]
     console_error_panic_hook::set_once();
 
-    wipple_frontend::id::reset();
+    wipple_frontend::reset_ids();
 
     let mut diagnostics = Diagnostics::new();
-    let project = Project::default();
+    let project = wipple_frontend::Project::default();
 
     let (annotations, output) = (|| {
-        let mut info = Info::new(&mut diagnostics, &project);
+        let mut info = wipple_frontend::Info::new(&mut diagnostics, &project);
 
-        wipple_frontend::project::load_string("playground", Arc::from(code), &mut info)?;
-        let files = wipple_frontend::typecheck::typecheck(&info.files, info.diagnostics)?;
-
-        let entrypoint = files.last().unwrap();
-        let annotations = annotations(entrypoint);
+        let entrypoint = wipple_frontend::load_string("playground", Arc::from(code), &mut info)?;
+        let (files, types) = wipple_frontend::typecheck(&mut info)?;
+        let annotations = annotations(&entrypoint, &types);
 
         let output = Arc::<RefCell<Vec<String>>>::default();
         {
@@ -65,45 +62,53 @@ pub fn run(code: &str) -> JsValue {
     JsValue::from_serde(&result).unwrap()
 }
 
-fn annotations(file: &wipple_frontend::typecheck::File) -> Vec<Annotation> {
-    file.statements.iter().flat_map(item_annotation).collect()
+fn annotations(
+    file: &wipple_frontend::File,
+    types: &HashMap<wipple_frontend::ItemId, wipple_frontend::TypeSchema>,
+) -> Vec<Annotation> {
+    file.statements
+        .iter()
+        .flat_map(|statement| item_annotation(statement, types))
+        .collect()
 }
 
-fn item_annotation(item: &wipple_frontend::typecheck::Item) -> Vec<Annotation> {
-    use wipple_frontend::typecheck::ItemKind;
+fn item_annotation(
+    item: &wipple_frontend::Item,
+    types: &HashMap<wipple_frontend::ItemId, wipple_frontend::TypeSchema>,
+) -> Vec<Annotation> {
+    use wipple_frontend::ItemKind;
 
-    let annotation = |info: &wipple_frontend::typecheck::ItemInfo| Annotation {
-        span: info.info.span,
-        value: info.to_string(),
-    };
-
-    let mut annotations = vec![annotation(&item.info)];
+    let mut annotations = vec![Annotation {
+        span: item.debug_info.span,
+        value: wipple_frontend::format_type_schema(types.get(&item.id).unwrap()),
+    }];
 
     match &item.kind {
         ItemKind::Block { statements } => {
-            annotations.append(&mut statements.iter().flat_map(item_annotation).collect());
+            annotations.append(
+                &mut statements
+                    .iter()
+                    .flat_map(|statement| item_annotation(statement, types))
+                    .collect(),
+            );
         }
         ItemKind::Apply { function, input } => {
-            annotations.append(&mut item_annotation(function));
-            annotations.append(&mut item_annotation(input));
+            annotations.append(&mut item_annotation(function, types));
+            annotations.append(&mut item_annotation(input, types));
         }
-        ItemKind::Initialize {
-            binding_info,
-            value,
-            ..
-        } => {
-            annotations.push(annotation(binding_info));
-            annotations.append(&mut item_annotation(value));
+        ItemKind::Initialize { value, .. } => {
+            annotations.append(&mut item_annotation(value, types));
         }
         ItemKind::Function { body, .. } => {
-            annotations.append(&mut item_annotation(body));
+            annotations.append(&mut item_annotation(body, types));
         }
         ItemKind::Unit { .. }
         | ItemKind::Number { .. }
         | ItemKind::Text { .. }
         | ItemKind::Variable { .. }
         | ItemKind::FunctionInput
-        | ItemKind::External { .. } => {}
+        | ItemKind::External { .. }
+        | ItemKind::Annotate { .. } => {}
     }
 
     annotations

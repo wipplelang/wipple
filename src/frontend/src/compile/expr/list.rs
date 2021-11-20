@@ -1,4 +1,4 @@
-use crate::{lower::*, typecheck::Ty};
+use crate::{compile::*, typecheck::BUILTIN_TYPES};
 use std::{cmp::Ordering, mem};
 
 #[derive(Debug)]
@@ -46,7 +46,7 @@ impl ExprKind for ListExpr {
                     LowerContext::Item => {
                         Some(Form::item(list_expr.span, Item::unit(list_expr.span)))
                     }
-                    LowerContext::Ty => Some(Form::ty(list_expr.span, Ty::unit())),
+                    LowerContext::Ty => Some(Form::ty(list_expr.span, BUILTIN_TYPES.unit.clone())),
                     _ => todo!(),
                 }, // TODO: empty tuple type
                 _ => {

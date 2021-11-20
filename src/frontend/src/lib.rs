@@ -1,4 +1,9 @@
-pub mod id;
-pub mod lower;
-pub mod project;
-pub mod typecheck;
+mod compile;
+mod id;
+mod project;
+mod typecheck;
+
+pub use compile::*;
+pub use id::*;
+pub use project::*;
+pub use typecheck::*;

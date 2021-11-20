@@ -1,4 +1,4 @@
-use crate::lower::*;
+use crate::compile::*;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct NameBinding {

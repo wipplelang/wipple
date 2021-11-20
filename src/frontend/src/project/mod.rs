@@ -1,4 +1,4 @@
-use crate::lower::*;
+use crate::compile::*;
 use std::{
     fs,
     path::{Path, PathBuf},

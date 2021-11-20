@@ -2,7 +2,7 @@ mod name;
 
 pub use name::*;
 
-use crate::lower::*;
+use crate::compile::*;
 use enum_dispatch::enum_dispatch;
 
 #[enum_dispatch]

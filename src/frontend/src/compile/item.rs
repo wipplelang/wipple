@@ -1,4 +1,4 @@
-use crate::{lower::*, typecheck::Ty};
+use crate::{compile::*, typecheck::Type};
 use kind::kind;
 use serde::Serialize;
 use std::collections::HashSet;
@@ -7,6 +7,7 @@ use wipple_parser::decimal::Decimal;
 #[non_exhaustive]
 #[derive(Debug, Clone, Serialize)]
 pub struct Item {
+    pub id: ItemId,
     pub debug_info: ItemInfo,
     pub kind: ItemKind,
 }
@@ -14,6 +15,7 @@ pub struct Item {
 impl Item {
     pub fn new(span: Span, kind: ItemKind) -> Self {
         Item {
+            id: ItemId::new(),
             debug_info: ItemInfo::new(span),
             kind,
         }
@@ -56,7 +58,7 @@ pub enum ItemKind {
     },
     Annotate {
         item: Box<Item>,
-        ty: Ty,
+        ty: Type,
     },
 }
 

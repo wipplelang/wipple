@@ -1,9 +1,6 @@
-use resast::prelude::*;
+use resast::prelude::{Expr, *};
 use std::borrow::Cow;
-use wipple_frontend::{
-    id::VariableId,
-    typecheck::{Item, ItemKind},
-};
+use wipple_frontend::*;
 
 pub fn gen(item: &Item) -> String {
     let expr = gen_item(item, &mut Info::default());
@@ -108,6 +105,7 @@ fn gen_item<'a>(item: &'a Item, info: &mut Info) -> Expr<'a> {
         }),
         ItemKind::FunctionInput => Expr::Ident(mangle_function_input()),
         ItemKind::External { .. } => todo!(),
+        ItemKind::Annotate { item, .. } => gen_item(item, info),
     }
 }
 

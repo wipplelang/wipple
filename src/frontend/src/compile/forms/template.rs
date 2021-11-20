@@ -1,4 +1,4 @@
-use crate::lower::*;
+use crate::compile::*;
 use std::{fmt, num::NonZeroUsize, sync::Arc};
 
 #[derive(Clone, Serialize)]

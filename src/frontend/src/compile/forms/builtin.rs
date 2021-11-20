@@ -1,4 +1,8 @@
-use crate::{lower::*, project, typecheck::Ty};
+use crate::{
+    compile::*,
+    project,
+    typecheck::{function_type, BUILTIN_TYPES},
+};
 use std::{collections::HashMap, num::NonZeroUsize, sync::Arc};
 use wipple_diagnostics::*;
 
@@ -101,7 +105,7 @@ impl Form {
                                 let input_ty = lhs.lower_to_ty(stack, info)?;
                                 let body_ty = rhs.lower_to_ty(stack, info)?;
 
-                                Some(Form::ty(span, Ty::function(input_ty, body_ty)))
+                                Some(Form::ty(span, function_type(input_ty, body_ty)))
                             }
                             LowerContext::Item => {
                                 let binding = lhs.lower_to_binding(stack, info)?;
@@ -245,10 +249,10 @@ impl Form {
     }
 
     fn builtin_number_ty(span: Span) -> Self {
-        Form::ty(span, Ty::number())
+        Form::ty(span, BUILTIN_TYPES.number.clone())
     }
 
     fn builtin_text_ty(span: Span) -> Self {
-        Form::ty(span, Ty::text())
+        Form::ty(span, BUILTIN_TYPES.text.clone())
     }
 }
