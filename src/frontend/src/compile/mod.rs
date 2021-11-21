@@ -1,20 +1,21 @@
 mod binding;
 mod expr;
+mod file_attribute;
 mod info;
 mod item;
 mod stack;
 
-use std::{collections::HashMap, sync::Arc};
-
 pub use binding::*;
 pub use expr::*;
+pub use file_attribute::*;
 pub use info::*;
 pub use item::*;
 pub use stack::*;
 
-use crate::id::*;
+use crate::{id::*, prelude};
 use interned_string::InternedString;
 use serde::Serialize;
+use std::{collections::HashMap, sync::Arc};
 use wipple_diagnostics::*;
 
 #[derive(Debug, Clone, Serialize)]
@@ -26,7 +27,16 @@ pub struct File {
 }
 
 pub fn lower(file: wipple_parser::File, info: &mut Info) -> Option<Arc<File>> {
-    let stack = Stack::file(file.path);
+    let stack = Stack::file(FileInfo::new(file.path));
+
+    evaluate_attributes(file.attributes, &stack, info)?;
+
+    if stack.file_info.as_ref().unwrap().borrow().include_prelude {
+        let mut variables = stack.variables.borrow_mut();
+        for (name, variable) in &prelude().variables {
+            variables.entry(*name).or_insert_with(|| variable.clone());
+        }
+    }
 
     let statements = file
         .statements

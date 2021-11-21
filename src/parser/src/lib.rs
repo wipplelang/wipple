@@ -12,6 +12,7 @@ pub struct File<'src> {
     pub path: InternedString,
     pub span: Span,
     pub shebang: Option<&'src str>,
+    pub attributes: Vec<FileAttribute<'src>>,
     pub statements: Vec<Statement<'src>>,
 }
 
@@ -28,8 +29,15 @@ pub enum ExprKind<'src> {
     Number(Decimal),
     Quote(Box<Expr<'src>>),
     List(Vec<ListLine<'src>>),
-    Attribute(Vec<ListLine<'src>>),
+    ParsedFileAttribute,
+    ExprAttribute(Vec<ListLine<'src>>, Box<Expr<'src>>),
     Block(Vec<Statement<'src>>),
+}
+
+#[derive(Serialize)]
+pub struct FileAttribute<'src> {
+    pub span: Span,
+    pub lines: Vec<ListLine<'src>>,
 }
 
 #[derive(Serialize)]
@@ -65,6 +73,7 @@ pub fn parse<'src>(
         lexer: Lexer::new(code).spanned().peekable(),
         len: code.len(),
         offset: shebang.map(|s| "#!".len() + s.len()).unwrap_or(0),
+        file_attributes: Vec::new(),
         file,
         diagnostics,
     };
@@ -73,6 +82,7 @@ pub fn parse<'src>(
         path: file,
         span: parser.file_span(),
         shebang,
+        attributes: parser.file_attributes,
         statements,
     })
 }
@@ -88,11 +98,17 @@ enum Token<'src> {
     #[token(")")]
     RightParenthesis,
 
+    #[token("[:")]
+    LeftFileBracket,
+
+    #[token(":]")]
+    RightFileBracket,
+
     #[token("[")]
-    LeftBracket,
+    LeftExprBracket,
 
     #[token("]")]
-    RightBracket,
+    RightExprBracket,
 
     #[token("{")]
     LeftBrace,
@@ -131,8 +147,10 @@ impl<'src> fmt::Display for Token<'src> {
             Token::Quote => write!(f, "'"),
             Token::LeftParenthesis => write!(f, "'('"),
             Token::RightParenthesis => write!(f, "')'"),
-            Token::LeftBracket => write!(f, "'['"),
-            Token::RightBracket => write!(f, "']'"),
+            Token::LeftFileBracket => write!(f, "'[:'"),
+            Token::RightFileBracket => write!(f, "':]'"),
+            Token::LeftExprBracket => write!(f, "'['"),
+            Token::RightExprBracket => write!(f, "']'"),
             Token::LeftBrace => write!(f, "'{{'"),
             Token::RightBrace => write!(f, "'}}'"),
             Token::LineBreak => write!(f, "line break"),
@@ -151,6 +169,7 @@ struct Parser<'a, 'src> {
     lexer: Peekable<SpannedIter<'src, Token<'src>>>,
     len: usize,
     offset: usize,
+    file_attributes: Vec<FileAttribute<'src>>,
     file: InternedString,
     diagnostics: &'a mut Diagnostics,
 }
@@ -329,7 +348,8 @@ impl<'src> Parser<'_, 'src> {
             try_parse_number,
             try_parse_quote,
             try_parse_list,
-            try_parse_attribute,
+            try_parse_file_attribute,
+            try_parse_expr_attribute,
             try_parse_block,
         )
     }
@@ -377,10 +397,7 @@ impl<'src> Parser<'_, 'src> {
                 if error {
                     Err(ParseError::InvalidExpr)
                 } else {
-                    Ok(Expr::new(
-                        span,
-                        ExprKind::Text(InternedString::new(string)),
-                    ))
+                    Ok(Expr::new(span, ExprKind::Text(InternedString::new(string))))
                 }
             }
             Some(_) => Err(ParseError::WrongTokenType),
@@ -440,10 +457,10 @@ impl<'src> Parser<'_, 'src> {
             Some(Token::LeftParenthesis) => {
                 self.consume();
 
-                if let Some((exprs, end_span)) = self.parse_list_contents(Token::RightParenthesis) {
+                if let Some((lines, end_span)) = self.parse_list_contents(Token::RightParenthesis) {
                     Ok(Expr::new(
                         span.with_end(end_span.end),
-                        ExprKind::List(exprs),
+                        ExprKind::List(lines),
                     ))
                 } else {
                     Err(ParseError::InvalidExpr)
@@ -454,18 +471,42 @@ impl<'src> Parser<'_, 'src> {
         }
     }
 
-    fn try_parse_attribute(&mut self) -> Result<Expr<'src>, ParseError> {
+    fn try_parse_file_attribute(&mut self) -> Result<Expr<'src>, ParseError> {
         let (span, token) = self.peek();
 
         match token {
-            Some(Token::LeftBracket) => {
+            Some(Token::LeftFileBracket) => {
                 self.consume();
 
-                if let Some((exprs, end_span)) = self.parse_list_contents(Token::RightBracket) {
-                    Ok(Expr::new(
-                        span.with_end(end_span.end),
-                        ExprKind::Attribute(exprs),
-                    ))
+                if let Some((lines, end_span)) = self.parse_list_contents(Token::RightFileBracket) {
+                    let span = span.with_end(end_span.end);
+
+                    self.file_attributes.push(FileAttribute { span, lines });
+                    Ok(Expr::new(span, ExprKind::ParsedFileAttribute))
+                } else {
+                    Err(ParseError::InvalidExpr)
+                }
+            }
+            Some(_) => Err(ParseError::WrongTokenType),
+            None => Err(ParseError::EndOfFile),
+        }
+    }
+
+    fn try_parse_expr_attribute(&mut self) -> Result<Expr<'src>, ParseError> {
+        let (span, token) = self.peek();
+
+        match token {
+            Some(Token::LeftExprBracket) => {
+                self.consume();
+
+                if let Some((lines, end_span)) = self.parse_list_contents(Token::RightExprBracket) {
+                    match self.parse_expr() {
+                        Some(expr) => Ok(Expr::new(
+                            span.with_end(end_span.end),
+                            ExprKind::ExprAttribute(lines, Box::new(expr)),
+                        )),
+                        None => Err(ParseError::InvalidExpr),
+                    }
                 } else {
                     Err(ParseError::InvalidExpr)
                 }

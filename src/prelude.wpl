@@ -1,0 +1,6 @@
+[: no-prelude :]
+
+-- TODO: Show trait
+show : x -> (external "internal" "show" x :: ())
+
+pi : 3.14

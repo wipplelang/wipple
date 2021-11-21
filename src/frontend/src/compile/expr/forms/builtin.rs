@@ -6,7 +6,7 @@ use crate::{
 use std::{collections::HashMap, num::NonZeroUsize, sync::Arc};
 use wipple_diagnostics::*;
 
-pub fn builtins() -> HashMap<InternedString, Variable> {
+pub fn builtin_variables() -> HashMap<InternedString, Variable> {
     macro_rules! builtins {
         ($($name:expr => $value:expr,)*) => {{
             let mut variables = HashMap::default();

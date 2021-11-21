@@ -5,7 +5,6 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1"
-ena = "0.14"
 enum_dispatch = "0.3"
 interned-string = { path = "../helpers/interned-string" }
 kind = { path = "../helpers/kind" }

@@ -105,29 +105,45 @@ pub enum Expr {
     Text(TextExpr),
 }
 
-impl<'src> From<parser::Expr<'src>> for Expr {
-    fn from(expr: parser::Expr<'src>) -> Self {
+impl<'src> TryFrom<parser::Expr<'src>> for Expr {
+    type Error = ();
+
+    fn try_from(expr: parser::Expr<'src>) -> Result<Self, Self::Error> {
         match expr.kind {
-            parser::ExprKind::Name(value) => Expr::from(NameExpr::new(expr.span, value)),
-            parser::ExprKind::Text(value) => Expr::from(TextExpr::new(expr.span, value)),
-            parser::ExprKind::Number(value) => Expr::from(NumberExpr::new(expr.span, value)),
-            parser::ExprKind::Quote(_) => todo!(),
-            parser::ExprKind::List(lines) => {
-                Expr::from(ListExpr::new(expr.span, parse_lines(lines)))
+            parser::ExprKind::Name(value) => Ok(Expr::from(NameExpr::new(expr.span, value))),
+            parser::ExprKind::Text(value) => Ok(Expr::from(TextExpr::new(expr.span, value))),
+            parser::ExprKind::Number(value) => Ok(Expr::from(NumberExpr::new(expr.span, value))),
+            parser::ExprKind::Quote(expr) => {
+                let _expr = Expr::try_from(*expr)?;
+                todo!()
             }
-            parser::ExprKind::Attribute(_) => todo!(),
-            parser::ExprKind::Block(statements) => Expr::from(BlockExpr::new(
+            parser::ExprKind::List(lines) => {
+                Ok(Expr::from(ListExpr::new(expr.span, parse_lines(lines))))
+            }
+            parser::ExprKind::ParsedFileAttribute => Err(()),
+            parser::ExprKind::ExprAttribute(lines, expr) => {
+                let _lines = parse_lines(lines);
+                let _expr = Expr::try_from(*expr)?;
+                todo!()
+            }
+            parser::ExprKind::Block(statements) => Ok(Expr::from(BlockExpr::new(
                 expr.span,
                 statements.into_iter().filter_map(parse_statement).collect(),
-            )),
+            ))),
         }
     }
 }
 
-fn parse_lines(lines: Vec<parser::ListLine>) -> Vec<Expr> {
+pub(crate) fn parse_lines(lines: Vec<parser::ListLine>) -> Vec<Expr> {
     lines
         .into_iter()
-        .filter_map(|line| (!line.exprs.is_empty()).then(|| line.exprs.into_iter().map(From::from)))
+        .filter_map(|line| {
+            (!line.exprs.is_empty()).then(|| {
+                line.exprs
+                    .into_iter()
+                    .filter_map(|expr| expr.try_into().ok())
+            })
+        })
         .flatten()
         .collect()
 }

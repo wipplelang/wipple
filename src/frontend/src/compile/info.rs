@@ -19,10 +19,18 @@ pub struct Info<'a> {
 
 impl<'a> Info<'a> {
     pub fn new(diagnostics: &'a mut Diagnostics, project: &'a Project) -> Self {
+        Info::with_files(diagnostics, project, vec![prelude()])
+    }
+
+    pub(crate) fn with_files(
+        diagnostics: &'a mut Diagnostics,
+        project: &'a Project,
+        files: Vec<Arc<File>>,
+    ) -> Self {
         Info {
             diagnostics,
             project,
-            files: Default::default(),
+            files,
             declared_variables: Default::default(),
             used_variables: Default::default(),
             externals: Default::default(),
