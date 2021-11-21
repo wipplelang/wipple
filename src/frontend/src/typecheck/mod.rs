@@ -12,7 +12,7 @@ use interned_string::InternedString;
 use lazy_static::lazy_static;
 use polytype::UnificationError;
 use serde::Serialize;
-use std::{cell::RefCell, collections::HashMap, mem, sync::Arc};
+use std::{cell::RefCell, collections::HashMap, mem, slice::SliceIndex, sync::Arc};
 use wipple_diagnostics::{Diagnostic, DiagnosticLevel, Note};
 
 #[derive(Debug, Clone, Copy, Serialize)]
@@ -101,7 +101,31 @@ pub fn typecheck<'a>(
         typechecker.typecheck_block(&file.statements);
     }
 
-    typechecker.success.then(|| (files, typechecker.types))
+    typechecker.success.then(|| {
+        let mut substitution = typechecker.ctx.substitution().clone();
+
+        let types = typechecker
+            .types
+            .into_iter()
+            .map(move |(item, ty)| {
+                let ty = match ty {
+                    TypeSchema::Monotype(ty) => {
+                        let var = match ty {
+                            Type::Variable(var) => var,
+                            _ => unreachable!(),
+                        };
+
+                        TypeSchema::Monotype(substitution.remove(&var).unwrap())
+                    }
+                    TypeSchema::Polytype { .. } => ty,
+                };
+
+                (item, ty)
+            })
+            .collect();
+
+        (files, types)
+    })
 }
 
 pub(crate) fn typechecker_context() -> Arc<RefCell<Context>> {
@@ -137,6 +161,8 @@ impl<'a> Typechecker<'a> {
     }
 
     fn typecheck_item(&mut self, item: &Item) -> Option<TypeSchema> {
+        let var = self.ctx.new_variable();
+
         let ty = (|| match &item.kind {
             ItemKind::Unit => Some(TypeSchema::Monotype(BUILTIN_TYPES.unit.clone())),
             ItemKind::Number { .. } => Some(TypeSchema::Monotype(BUILTIN_TYPES.number.clone())),
@@ -194,7 +220,7 @@ impl<'a> Typechecker<'a> {
                 let input = mem::replace(&mut self.function_input, previous_input);
 
                 let (input_id, input_ty) = input.unwrap();
-                self.types.insert(input_id, input_ty.clone());
+                // self.types.insert(input_id, input_ty.clone());
 
                 let input_ty = input_ty.instantiate(&mut self.ctx);
 
@@ -221,7 +247,15 @@ impl<'a> Typechecker<'a> {
         })();
 
         if let Some(ty) = ty.clone() {
-            self.types.insert(item.id, ty);
+            match &ty {
+                TypeSchema::Monotype(ty) => {
+                    self.ctx.unify(&var, ty).unwrap();
+                    self.types.insert(item.id, TypeSchema::Monotype(var));
+                }
+                TypeSchema::Polytype { .. } => {
+                    self.types.insert(item.id, ty);
+                }
+            }
         } else {
             self.success = false;
         }
