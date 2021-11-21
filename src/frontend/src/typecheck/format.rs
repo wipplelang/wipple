@@ -20,7 +20,11 @@ pub fn format_type_schema(ty: &TypeSchema) -> String {
 
             format!(
                 "for {}-> {}",
-                names.values().rev().map(|t| t.clone() + " ").collect::<String>(),
+                names
+                    .values()
+                    .rev()
+                    .map(|t| t.clone() + " ")
+                    .collect::<String>(),
                 format_type_with(ty, &names)
             )
         }

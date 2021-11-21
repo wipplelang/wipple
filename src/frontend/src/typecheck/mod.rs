@@ -12,7 +12,7 @@ use interned_string::InternedString;
 use lazy_static::lazy_static;
 use polytype::UnificationError;
 use serde::Serialize;
-use std::{cell::RefCell, collections::HashMap, mem, slice::SliceIndex, sync::Arc};
+use std::{cell::RefCell, collections::HashMap, mem, sync::Arc};
 use wipple_diagnostics::{Diagnostic, DiagnosticLevel, Note};
 
 #[derive(Debug, Clone, Copy, Serialize)]
@@ -102,21 +102,12 @@ pub fn typecheck<'a>(
     }
 
     typechecker.success.then(|| {
-        let mut substitution = typechecker.ctx.substitution().clone();
-
         let types = typechecker
             .types
             .into_iter()
             .map(move |(item, ty)| {
                 let ty = match ty {
-                    TypeSchema::Monotype(ty) => {
-                        let var = match ty {
-                            Type::Variable(var) => var,
-                            _ => unreachable!(),
-                        };
-
-                        TypeSchema::Monotype(substitution.remove(&var).unwrap())
-                    }
+                    TypeSchema::Monotype(ty) => TypeSchema::Monotype(ty.apply(&typechecker.ctx)),
                     TypeSchema::Polytype { .. } => ty,
                 };
 
@@ -143,7 +134,7 @@ struct Typechecker<'a> {
     success: bool,
     types: HashMap<ItemId, TypeSchema>,
     variables: HashMap<VariableId, TypeSchema>,
-    function_input: Option<(ItemId, TypeSchema)>,
+    function_input: Option<usize>,
 }
 
 impl<'a> Typechecker<'a> {
@@ -199,7 +190,7 @@ impl<'a> Typechecker<'a> {
                     return None;
                 }
 
-                Some(TypeSchema::Monotype(output_ty))
+                Some(TypeSchema::Monotype(output_ty.apply(&self.ctx)))
             }
             ItemKind::Initialize {
                 variable, value, ..
@@ -216,22 +207,43 @@ impl<'a> Typechecker<'a> {
             }
             ItemKind::Function { body, .. } => {
                 let previous_input = mem::take(&mut self.function_input);
-                let body_ty = self.typecheck_item(body)?.instantiate(&mut self.ctx);
-                let input = mem::replace(&mut self.function_input, previous_input);
 
-                let (input_id, input_ty) = input.unwrap();
-                // self.types.insert(input_id, input_ty.clone());
+                let body_ty = self
+                    .typecheck_item(body)?
+                    .instantiate(&mut self.ctx)
+                    .apply(&self.ctx);
 
-                let input_ty = input_ty.instantiate(&mut self.ctx);
+                let input_var = mem::replace(&mut self.function_input, previous_input).unwrap();
 
-                Some(function_type(input_ty, body_ty).generalize(&[]))
+                // FIXME: Instead of collecting every single type variable except the function input,
+                // implement 'generalize' ourselves
+                let vars = self
+                    .types
+                    .values()
+                    .filter_map(|ty| match ty {
+                        TypeSchema::Monotype(Type::Variable(var)) if *var != input_var => {
+                            Some(*var)
+                        }
+                        _ => None,
+                    })
+                    .collect::<Vec<_>>();
+
+                Some(
+                    function_type(Type::Variable(input_var), body_ty)
+                        .apply(&self.ctx)
+                        .generalize(&vars),
+                )
             }
             ItemKind::FunctionInput => {
-                let var = TypeSchema::Monotype(self.ctx.new_variable());
-                self.function_input = Some((item.id, var.clone()));
-                Some(var)
+                let var = match var {
+                    Type::Variable(var) => var,
+                    _ => unreachable!(),
+                };
+
+                self.function_input = Some(var);
+                Some(TypeSchema::Monotype(Type::Variable(var)))
             }
-            ItemKind::External { .. } => Some(TypeSchema::Monotype(self.ctx.new_variable())),
+            ItemKind::External { .. } => Some(TypeSchema::Monotype(var.clone())),
             ItemKind::Annotate { item, ty } => {
                 let inferred_ty = self.typecheck_item(item)?.instantiate(&mut self.ctx);
 
