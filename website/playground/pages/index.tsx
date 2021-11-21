@@ -64,16 +64,16 @@ const Playground = () => {
     const splitViewHeight = windowHeight - headerHeight - footerHeight;
     const splitItemHeight = splitViewHeight - 32;
 
-    const output = useRef<HTMLDivElement>(null);
+    const outputEditor = useRef<HTMLDivElement>(null);
     const [windowWidth, setWindowWidth] = useState(0);
     const [outputWidth, setOutputWidth] = useState(0);
 
     const updateWidths = () => {
         setWindowWidth(window.innerWidth);
-        setOutputWidth(output.current?.clientWidth ?? 0);
+        setOutputWidth(outputEditor.current?.clientWidth ?? 0);
     };
 
-    useEffect(updateWidths, [output]);
+    useEffect(updateWidths, [outputEditor]);
     useEffect(() => window.addEventListener("resize", updateWidths), []);
 
     const editorWidth = windowWidth - outputWidth - 64;
@@ -85,6 +85,7 @@ const Playground = () => {
     const [model, setModel] = useRefState<monaco.editor.ITextModel | null>(null);
 
     const [result, setResult] = useRefState<RunResult | null>(null);
+    const [output, setOutput] = useState<string[]>([]);
 
     const update = () => {
         if (!model.current) return;
@@ -100,6 +101,7 @@ const Playground = () => {
         if (runner.current) {
             runner.current.onmessage = (event) => {
                 setResult(event.data);
+                setOutput(event.data.output);
             };
 
             runner.current.postMessage(code);
@@ -248,8 +250,8 @@ const Playground = () => {
     }, [model.current, result.current]);
 
     return (
-        <div className="flex flex-col bg-gray-50" style={{ height: "100%" }}>
-            <div className="flex items-center justify-between p-4 pb-0 z-0" ref={header}>
+        <div className="bg-gray-50" style={{ height: "100%" }}>
+            <div className="flex items-center justify-between p-4 pb-0" ref={header}>
                 <a href="https://wipple.gramer.dev">
                     <img src="/images/logo.svg" alt="Wipple Playground" className="h-10" />
                 </a>
@@ -271,7 +273,11 @@ const Playground = () => {
 
             <SplitPane
                 className="bg-gray-50"
-                style={{ top: headerHeight, height: windowHeight - headerHeight }}
+                style={{
+                    top: headerHeight,
+                    height: windowHeight - headerHeight,
+                    overflow: "visible",
+                }}
                 primary="second"
                 defaultSize="40%"
                 resizerClassName="w-4"
@@ -302,22 +308,21 @@ const Playground = () => {
                 </div>
 
                 <div
-                    ref={output}
+                    ref={outputEditor}
                     className="m-4 ml-0 p-2 rounded-md bg-white overflow-scroll"
-                    style={{ height: splitItemHeight, fontFamily }}
+                    style={{ height: splitItemHeight }}
                 >
-                    {result.current &&
-                        result.current.output.map((line, index) => (
-                            <pre className="whitespace-pre-wrap" key={index}>
-                                {line}
-                            </pre>
-                        ))}
+                    {output.map((line, index) => (
+                        <pre className="whitespace-pre-wrap" key={index}>
+                            {line}
+                        </pre>
+                    ))}
                 </div>
             </SplitPane>
 
             <div className="absolute bottom-0 left-0 right-0 flex-grow-0 p-4 text-center text-gray-400">
                 <div ref={footer} className="-mb-2">
-                    Built by{" "}
+                    Made by{" "}
                     <a target="_blank" href="https://gramer.dev" className="text-gray-500">
                         Wilson Gramer
                     </a>
