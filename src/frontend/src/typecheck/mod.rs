@@ -228,11 +228,24 @@ impl<'a> Typechecker<'a> {
                     })
                     .collect::<Vec<_>>();
 
-                Some(
-                    function_type(Type::Variable(input_var), body_ty)
-                        .apply(&self.ctx)
-                        .generalize(&vars),
-                )
+                if body_ty.vars().is_empty() {
+                    Some(
+                        function_type(Type::Variable(input_var), body_ty)
+                            .apply(&self.ctx)
+                            .generalize(&vars),
+                    )
+                } else {
+                    self.info.diagnostics.add(Diagnostic::new(
+                        DiagnosticLevel::Error,
+                        "Cannot determine the return type of this function",
+                        vec![Note::primary(
+                            body.debug_info.span,
+                            "Try specifying the type of this with '::'",
+                        )],
+                    ));
+
+                    None
+                }
             }
             ItemKind::FunctionInput => {
                 let var = match var {
