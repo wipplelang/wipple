@@ -151,7 +151,7 @@ impl<'a> Typechecker<'a> {
         }
     }
 
-    fn typecheck_item(&mut self, item: &Item) -> Option<TypeSchema> {
+    fn typecheck_item(&mut self, item: &Item, expected_ty: Option<Type>) -> Option<TypeSchema> {
         let var = self.ctx.new_variable();
 
         let ty = (|| match &item.kind {
@@ -160,12 +160,22 @@ impl<'a> Typechecker<'a> {
             ItemKind::Text { .. } => Some(TypeSchema::Monotype(BUILTIN_TYPES.text.clone())),
             ItemKind::Block { statements } => self.typecheck_block(statements),
             ItemKind::Apply { function, input } => {
-                let function_ty = {
-                    let function_ty =
-                        function_type(self.ctx.new_variable(), self.ctx.new_variable());
+                let inferred_input_ty = self
+                    .typecheck_item(input, None)?
+                    .instantiate(&mut self.ctx)
+                    .apply(&self.ctx);
 
-                    let inferred_function_ty =
-                        self.typecheck_item(function)?.instantiate(&mut self.ctx);
+                let function_ty = {
+                    let function_ty = function_type(
+                        inferred_input_ty.clone(),
+                        expected_ty.unwrap_or_else(|| self.ctx.new_variable()),
+                    )
+                    .apply(&self.ctx);
+
+                    let inferred_function_ty = self
+                        .typecheck_item(function, None)?
+                        .instantiate(&mut self.ctx)
+                        .apply(&self.ctx);
 
                     if let Err(error) = self.ctx.unify(&function_ty, &inferred_function_ty) {
                         self.report_type_error(function, error);
@@ -180,10 +190,8 @@ impl<'a> Typechecker<'a> {
                     _ => unreachable!(),
                 };
 
-                let input_ty = function_associated_types.next().unwrap();
-                let output_ty = function_associated_types.next().unwrap();
-
-                let inferred_input_ty = self.typecheck_item(input)?.instantiate(&mut self.ctx);
+                let input_ty = function_associated_types.next().unwrap().apply(&self.ctx);
+                let output_ty = function_associated_types.next().unwrap().apply(&self.ctx);
 
                 if let Err(error) = self.ctx.unify(&input_ty, &inferred_input_ty) {
                     self.report_type_error(input, error);
@@ -195,7 +203,7 @@ impl<'a> Typechecker<'a> {
             ItemKind::Initialize {
                 variable, value, ..
             } => {
-                let value_ty = self.typecheck_item(value)?;
+                let value_ty = self.typecheck_item(value, None)?;
                 self.variables.insert(*variable, value_ty);
 
                 Some(TypeSchema::Monotype(BUILTIN_TYPES.unit.clone()))
@@ -209,7 +217,7 @@ impl<'a> Typechecker<'a> {
                 let previous_input = mem::take(&mut self.function_input);
 
                 let body_ty = self
-                    .typecheck_item(body)?
+                    .typecheck_item(body, None)?
                     .instantiate(&mut self.ctx)
                     .apply(&self.ctx);
 
@@ -228,24 +236,51 @@ impl<'a> Typechecker<'a> {
                     })
                     .collect::<Vec<_>>();
 
-                if body_ty.vars().is_empty() {
-                    Some(
-                        function_type(Type::Variable(input_var), body_ty)
-                            .apply(&self.ctx)
-                            .generalize(&vars),
-                    )
-                } else {
-                    self.info.diagnostics.add(Diagnostic::new(
-                        DiagnosticLevel::Error,
-                        "Cannot determine the return type of this function",
-                        vec![Note::primary(
-                            body.debug_info.span,
-                            "Try specifying the type of this with '::'",
-                        )],
-                    ));
+                Some(
+                    function_type(Type::Variable(input_var), body_ty)
+                        .apply(&self.ctx)
+                        .generalize(&vars),
+                )
 
-                    None
-                }
+                // if body_ty
+                //     .vars()
+                //     .into_iter()
+                //     .any(|var| !self.function_inputs.contains(&var))
+                // {
+                //     self.info.diagnostics.add(Diagnostic::new(
+                //         DiagnosticLevel::Error,
+                //         "Cannot determine the return type of this function",
+                //         vec![Note::primary(
+                //             body.debug_info.span,
+                //             "Try specifying the type of this with '::'",
+                //         )],
+                //     ));
+
+                //     None
+                // } else {
+                //     // FIXME: Instead of collecting every single type variable except the function
+                //     // input, implement 'generalize' ourselves
+                //     let vars = self
+                //         .types
+                //         .values()
+                //         .filter_map(|ty| match ty {
+                //             TypeSchema::Monotype(Type::Variable(var))
+                //                 if !self.function_inputs.contains(var) =>
+                //             {
+                //                 Some(*var)
+                //             }
+                //             _ => None,
+                //         })
+                //         .collect::<Vec<_>>();
+
+                //     let input_var = self.function_inputs.pop().unwrap();
+
+                //     Some(
+                //         function_type(Type::Variable(input_var).apply(&self.ctx), body_ty)
+                //             .apply(&self.ctx)
+                //             .generalize(&vars),
+                //     )
+                // }
             }
             ItemKind::FunctionInput => {
                 let var = match var {
@@ -258,7 +293,10 @@ impl<'a> Typechecker<'a> {
             }
             ItemKind::External { .. } => Some(TypeSchema::Monotype(var.clone())),
             ItemKind::Annotate { item, ty } => {
-                let inferred_ty = self.typecheck_item(item)?.instantiate(&mut self.ctx);
+                let inferred_ty = self
+                    .typecheck_item(item, Some(ty.clone()))?
+                    .instantiate(&mut self.ctx)
+                    .apply(&self.ctx);
 
                 if let Err(error) = self.ctx.unify(ty, &inferred_ty) {
                     self.report_type_error(item, error);
@@ -292,7 +330,7 @@ impl<'a> Typechecker<'a> {
         let mut last_ty = TypeSchema::Monotype(BUILTIN_TYPES.unit.clone());
         let mut success = true;
         for statement in statements {
-            last_ty = match self.typecheck_item(statement) {
+            last_ty = match self.typecheck_item(statement, None) {
                 Some(ty) => ty,
                 None => {
                     success = false;

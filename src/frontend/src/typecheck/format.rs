@@ -7,9 +7,9 @@ pub fn format_type_schema(ty: &TypeSchema) -> String {
         polytype::TypeSchema::Monotype(ty) => format_type(ty),
         polytype::TypeSchema::Polytype { .. } => {
             let mut ty = ty;
-            let mut names = BTreeMap::new();
+            let mut variables = Vec::new();
             while let TypeSchema::Polytype { variable, body } = ty {
-                names.insert(*variable, name_for_index(names.len()));
+                variables.push(*variable);
                 ty = body
             }
 
@@ -18,13 +18,14 @@ pub fn format_type_schema(ty: &TypeSchema) -> String {
                 polytype::TypeSchema::Polytype { .. } => unreachable!(),
             };
 
+            let mut names = BTreeMap::new();
+            for variable in variables.into_iter().rev() {
+                names.insert(variable, name_for_index(names.len()));
+            }
+
             format!(
                 "for {}-> {}",
-                names
-                    .values()
-                    .rev()
-                    .map(|t| t.clone() + " ")
-                    .collect::<String>(),
+                names.values().map(|t| t.clone() + " ").collect::<String>(),
                 format_type_with(ty, &names)
             )
         }
