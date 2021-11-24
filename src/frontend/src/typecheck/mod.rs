@@ -78,13 +78,10 @@ lazy_static! {
         number: builtin_type!("Number", TypeNameFormat::Default),
         text: builtin_type!("Text", TypeNameFormat::Default),
     };
+    static ref FUNCTION_TYPE_ID: TypeId = TypeId::new();
 }
 
 pub fn function_type(input: Type, output: Type) -> Type {
-    lazy_static! {
-        static ref FUNCTION_TYPE_ID: TypeId = TypeId::new();
-    }
-
     Type::Constructed(
         TypeName::with_id(*FUNCTION_TYPE_ID, "->", TypeNameFormat::Function),
         vec![input, output],
@@ -241,46 +238,6 @@ impl<'a> Typechecker<'a> {
                         .apply(&self.ctx)
                         .generalize(&vars),
                 )
-
-                // if body_ty
-                //     .vars()
-                //     .into_iter()
-                //     .any(|var| !self.function_inputs.contains(&var))
-                // {
-                //     self.info.diagnostics.add(Diagnostic::new(
-                //         DiagnosticLevel::Error,
-                //         "Cannot determine the return type of this function",
-                //         vec![Note::primary(
-                //             body.debug_info.span,
-                //             "Try specifying the type of this with '::'",
-                //         )],
-                //     ));
-
-                //     None
-                // } else {
-                //     // FIXME: Instead of collecting every single type variable except the function
-                //     // input, implement 'generalize' ourselves
-                //     let vars = self
-                //         .types
-                //         .values()
-                //         .filter_map(|ty| match ty {
-                //             TypeSchema::Monotype(Type::Variable(var))
-                //                 if !self.function_inputs.contains(var) =>
-                //             {
-                //                 Some(*var)
-                //             }
-                //             _ => None,
-                //         })
-                //         .collect::<Vec<_>>();
-
-                //     let input_var = self.function_inputs.pop().unwrap();
-
-                //     Some(
-                //         function_type(Type::Variable(input_var).apply(&self.ctx), body_ty)
-                //             .apply(&self.ctx)
-                //             .generalize(&vars),
-                //     )
-                // }
             }
             ItemKind::FunctionInput => {
                 let var = match var {

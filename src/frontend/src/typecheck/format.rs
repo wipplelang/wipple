@@ -1,4 +1,4 @@
-use super::{Type, TypeSchema};
+use super::{Type, TypeSchema, FUNCTION_TYPE_ID};
 use crate::TypeNameFormat;
 use std::collections::BTreeMap;
 
@@ -35,31 +35,55 @@ pub fn format_type_schema(ty: &TypeSchema) -> String {
 macro_rules! format_type_fn {
     ($fn:ident($($param:ident: $ty:ty),* $(,)?), $body:expr) => {
         pub fn $fn(ty: &Type, $($param: $ty),*) -> String {
-            match ty {
-                Type::Constructed(name, associated_types) => {
-                    // TODO: Parentheses
-                    match name.format {
-                        TypeNameFormat::Default => format!(
-                            "{}{}",
-                            name.name,
-                            associated_types
-                                .iter()
-                                .map(|ty| String::from(" ") + &$fn(ty, $($param),*))
-                                .collect::<String>()
-                        ),
-                        TypeNameFormat::Function => {
-                            let left = $fn(&associated_types[0], $($param),*);
-                            let right = $fn(&associated_types[1], $($param),*);
+            fn $fn(ty: &Type, parenthesize: bool, $($param: $ty),*) -> String {
+                match ty {
+                    Type::Constructed(name, associated_types) => {
+                        let (left_parenthesis, right_parenthesis) = if parenthesize {
+                            ("(", ")")
+                        } else {
+                            ("", "")
+                        };
 
-                            format!("{} {} {}", left, name.name, right)
+                        match name.format {
+                            TypeNameFormat::Default => format!(
+                                "{}{}{}{}",
+                                left_parenthesis,
+                                name.name,
+                                associated_types
+                                    .iter()
+                                    .map(|ty| String::from(" ") + &$fn(ty, true, $($param),*))
+                                    .collect::<String>(),
+                                right_parenthesis,
+                            ),
+                            TypeNameFormat::Function => {
+                                let left = $fn(&associated_types[0], true, $($param),*);
+                                let right = $fn(
+                                    &associated_types[1],
+                                    !matches!(
+                                        associated_types[1],
+                                        Type::Constructed(name, _) if name.id == *FUNCTION_TYPE_ID
+                                    ),
+                                    $($param),*
+                                );
+
+                                format!("{}{} {} {}{}",
+                                    left_parenthesis,
+                                    left,
+                                    name.name,
+                                    right,
+                                    right_parenthesis,
+                                )
+                            }
                         }
                     }
+                    Type::Variable(variable) => {
+                        #[allow(clippy::redundant_closure_call)]
+                        ($body)(variable)
+                    },
                 }
-                Type::Variable(variable) => {
-                    #[allow(clippy::redundant_closure_call)]
-                    ($body)(variable)
-                },
             }
+
+            $fn(ty, false, $($param),*)
         }
     };
 }
