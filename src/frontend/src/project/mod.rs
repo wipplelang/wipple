@@ -1,9 +1,7 @@
-use crate::compile::*;
-use interned_string::InternedString;
+use crate::*;
 use std::{
     fs,
     path::{Path, PathBuf},
-    sync::Arc,
 };
 use url::Url;
 use wipple_diagnostics::*;

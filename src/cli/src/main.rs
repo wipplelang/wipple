@@ -158,7 +158,7 @@ fn main() -> anyhow::Result<()> {
                     Span::new(path, Default::default()),
                     &mut info,
                 )
-                .and_then(|_| Some(wipple_frontend::typecheck(&mut info)?.0))
+                //.and_then(|_| Some(wipple_frontend::typecheck(&mut info)?.0))
             };
 
             let (codemap, diagnostics) = diagnostics.into_console_friendly();
@@ -170,11 +170,11 @@ fn main() -> anyhow::Result<()> {
                 if no_run {
                     serde_json::to_writer_pretty(io::stdout(), &files)?;
                 } else {
-                    let external = wipple_playground_runner::external(|text| println!("{}", text));
+                    // let external = wipple_playground_runner::external(|text| println!("{}", text));
 
-                    if let Err(error) = wipple_interpreter_backend::eval(&files, external) {
-                        eprintln!("Fatal error: {:?}", error)
-                    }
+                    // if let Err(error) = wipple_interpreter_backend::eval(&files, external) {
+                    //     eprintln!("Fatal error: {:?}", error)
+                    // }
                 }
             } else {
                 process::exit(1);

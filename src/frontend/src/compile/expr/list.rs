@@ -1,4 +1,4 @@
-use crate::{compile::*, typecheck::BUILTIN_TYPES};
+use crate::*;
 use std::{cmp::Ordering, mem};
 
 #[derive(Debug)]
@@ -55,13 +55,13 @@ impl ExprKind for ListExpr {
                     let mut items = list_expr.items.into_iter();
                     while let Some(expr) = items.next() {
                         form = match form.kind {
-                            FormKind::Item { item } => {
+                            FormKind::Item(item) => {
                                 let input = expr.lower_to_item(stack, info)?;
-                                let span = item.debug_info.span.with_end(input.debug_info.span.end);
+                                let span = item.info.span.with_end(input.info.span.end);
 
-                                Form::item(span, Item::apply(span, Box::new(item), Box::new(input)))
+                                Form::item(span, Item::apply(span, item, input))
                             }
-                            FormKind::Template { template } => {
+                            FormKind::Template(template) => {
                                 let mut exprs = vec![expr];
 
                                 if let Some(arity) = template.arity {
@@ -105,11 +105,11 @@ impl ExprKind for ListExpr {
 
                                 template.expand(context, exprs, span, stack, info)?
                             }
-                            FormKind::Operator { operator } => {
+                            FormKind::Operator(operator) => {
                                 Form::template(form.span, operator.template)
                             }
-                            FormKind::Ty { .. } => todo!(), // constructors
-                            FormKind::File { file } => {
+                            FormKind::Ty(_) => todo!(), // constructors
+                            FormKind::File(file) => {
                                 let span = expr.span();
 
                                 let name = match expr {
@@ -152,7 +152,8 @@ impl ExprKind for ListExpr {
                                     return None;
                                 }
                             }
-                            FormKind::Binding { .. } => todo!(), // TODO: Complex bindings
+                            FormKind::Binding(_) => todo!(), // TODO: Complex bindings
+                            FormKind::DataField(_) => unreachable!(),
                         };
                     }
 
@@ -231,7 +232,7 @@ impl ListExpr {
                 // NOTE: This relies on the fact that form won't emit diagnostics if they aren't
                 // operators -- otherwise we'd get an error for most forms in the list
                 if let Some(Some(form)) = name.resolve(LowerContext::Operator, stack, info) {
-                    if let FormKind::Operator { operator } = form.kind {
+                    if let FormKind::Operator(operator) = form.kind {
                         operators.push((index, form.span, operator));
                     }
                 }

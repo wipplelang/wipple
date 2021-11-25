@@ -4,21 +4,17 @@ mod format;
 
 pub use format::*;
 
-use crate::{
-    compile::{File, Info, Item, ItemKind},
-    id::{ItemId, TypeId, VariableId},
-};
-use interned_string::InternedString;
+use crate::*;
 use lazy_static::lazy_static;
 use polytype::UnificationError;
 use serde::Serialize;
-use std::{cell::RefCell, collections::HashMap, mem, sync::Arc};
+use std::{cell::RefCell, collections::HashMap, mem};
 use wipple_diagnostics::{Diagnostic, DiagnosticLevel, Note};
 
 #[derive(Debug, Clone, Copy, Serialize)]
 pub struct TypeName {
     pub id: TypeId,
-    pub name: InternedString,
+    pub name: Option<InternedString>,
     pub format: TypeNameFormat,
 }
 
@@ -29,14 +25,14 @@ pub enum TypeNameFormat {
 }
 
 impl TypeName {
-    pub fn new(name: impl ToString, format: TypeNameFormat) -> Self {
+    pub fn new(name: Option<impl ToString>, format: TypeNameFormat) -> Self {
         TypeName::with_id(TypeId::new(), name, format)
     }
 
-    pub fn with_id(id: TypeId, name: impl ToString, format: TypeNameFormat) -> Self {
+    pub fn with_id(id: TypeId, name: Option<impl ToString>, format: TypeNameFormat) -> Self {
         TypeName {
             id,
-            name: InternedString::new(name.to_string()),
+            name: name.map(|name| InternedString::new(name.to_string())),
             format,
         }
     }
@@ -74,16 +70,16 @@ macro_rules! builtin_type {
 
 lazy_static! {
     pub static ref BUILTIN_TYPES: BuiltinTypes = BuiltinTypes {
-        unit: builtin_type!("()", TypeNameFormat::Default),
-        number: builtin_type!("Number", TypeNameFormat::Default),
-        text: builtin_type!("Text", TypeNameFormat::Default),
+        unit: builtin_type!(Some("()"), TypeNameFormat::Default),
+        number: builtin_type!(Some("Number"), TypeNameFormat::Default),
+        text: builtin_type!(Some("Text"), TypeNameFormat::Default),
     };
     static ref FUNCTION_TYPE_ID: TypeId = TypeId::new();
 }
 
 pub fn function_type(input: Type, output: Type) -> Type {
     Type::Constructed(
-        TypeName::with_id(*FUNCTION_TYPE_ID, "->", TypeNameFormat::Function),
+        TypeName::with_id(*FUNCTION_TYPE_ID, Some("->"), TypeNameFormat::Function),
         vec![input, output],
     )
 }
@@ -152,13 +148,13 @@ impl<'a> Typechecker<'a> {
         let var = self.ctx.new_variable();
 
         let ty = (|| match &item.kind {
-            ItemKind::Unit => Some(TypeSchema::Monotype(BUILTIN_TYPES.unit.clone())),
-            ItemKind::Number { .. } => Some(TypeSchema::Monotype(BUILTIN_TYPES.number.clone())),
-            ItemKind::Text { .. } => Some(TypeSchema::Monotype(BUILTIN_TYPES.text.clone())),
-            ItemKind::Block { statements } => self.typecheck_block(statements),
-            ItemKind::Apply { function, input } => {
+            ItemKind::Unit(_) => Some(TypeSchema::Monotype(BUILTIN_TYPES.unit.clone())),
+            ItemKind::Number(_) => Some(TypeSchema::Monotype(BUILTIN_TYPES.number.clone())),
+            ItemKind::Text(_) => Some(TypeSchema::Monotype(BUILTIN_TYPES.text.clone())),
+            ItemKind::Block(block) => self.typecheck_block(&block.statements),
+            ItemKind::Apply(apply) => {
                 let inferred_input_ty = self
-                    .typecheck_item(input, None)?
+                    .typecheck_item(&apply.input, None)?
                     .instantiate(&mut self.ctx)
                     .apply(&self.ctx);
 
@@ -170,12 +166,12 @@ impl<'a> Typechecker<'a> {
                     .apply(&self.ctx);
 
                     let inferred_function_ty = self
-                        .typecheck_item(function, None)?
+                        .typecheck_item(&apply.function, None)?
                         .instantiate(&mut self.ctx)
                         .apply(&self.ctx);
 
                     if let Err(error) = self.ctx.unify(&function_ty, &inferred_function_ty) {
-                        self.report_type_error(function, error);
+                        self.report_type_error(&apply.function, error);
                         return None;
                     }
 
@@ -191,30 +187,31 @@ impl<'a> Typechecker<'a> {
                 let output_ty = function_associated_types.next().unwrap().apply(&self.ctx);
 
                 if let Err(error) = self.ctx.unify(&input_ty, &inferred_input_ty) {
-                    self.report_type_error(input, error);
+                    self.report_type_error(&apply.input, error);
                     return None;
                 }
 
                 Some(TypeSchema::Monotype(output_ty.apply(&self.ctx)))
             }
-            ItemKind::Initialize {
-                variable, value, ..
-            } => {
-                let value_ty = self.typecheck_item(value, None)?;
-                self.variables.insert(*variable, value_ty);
+            ItemKind::Initialize(initialize) => {
+                let value_ty = self.typecheck_item(&initialize.value, None)?;
+                self.variables.insert(initialize.variable, value_ty);
 
                 Some(TypeSchema::Monotype(BUILTIN_TYPES.unit.clone()))
             }
-            ItemKind::Variable { variable } => {
-                Some(self.variables.get(variable).cloned().unwrap_or_else(|| {
-                    panic!("Variable {:?} used before initialization", variable)
-                }))
-            }
-            ItemKind::Function { body, .. } => {
+            ItemKind::Variable(variable) => Some(
+                self.variables
+                    .get(&variable.variable)
+                    .cloned()
+                    .unwrap_or_else(|| {
+                        panic!("Variable {:?} used before initialization", variable)
+                    }),
+            ),
+            ItemKind::Function(function) => {
                 let previous_input = mem::take(&mut self.function_input);
 
                 let body_ty = self
-                    .typecheck_item(body, None)?
+                    .typecheck_item(&function.body, None)?
                     .instantiate(&mut self.ctx)
                     .apply(&self.ctx);
 
@@ -239,7 +236,7 @@ impl<'a> Typechecker<'a> {
                         .generalize(&vars),
                 )
             }
-            ItemKind::FunctionInput => {
+            ItemKind::FunctionInput(_) => {
                 let var = match var {
                     Type::Variable(var) => var,
                     _ => unreachable!(),
@@ -249,18 +246,18 @@ impl<'a> Typechecker<'a> {
                 Some(TypeSchema::Monotype(Type::Variable(var)))
             }
             ItemKind::External { .. } => Some(TypeSchema::Monotype(var.clone())),
-            ItemKind::Annotate { item, ty } => {
+            ItemKind::Annotate(annotate) => {
                 let inferred_ty = self
-                    .typecheck_item(item, Some(ty.clone()))?
+                    .typecheck_item(item, Some(annotate.ty.clone()))?
                     .instantiate(&mut self.ctx)
                     .apply(&self.ctx);
 
-                if let Err(error) = self.ctx.unify(ty, &inferred_ty) {
+                if let Err(error) = self.ctx.unify(&annotate.ty, &inferred_ty) {
                     self.report_type_error(item, error);
                     return None;
                 }
 
-                let item_ty = ty.apply(&self.ctx);
+                let item_ty = annotate.ty.apply(&self.ctx);
 
                 Some(TypeSchema::Monotype(item_ty))
             }
@@ -305,7 +302,7 @@ impl<'a> Typechecker<'a> {
                 DiagnosticLevel::Error,
                 "Recursive type",
                 vec![Note::primary(
-                    item.debug_info.span,
+                    item.info.span,
                     "The type of this references itself",
                 )],
             ),
@@ -313,7 +310,7 @@ impl<'a> Typechecker<'a> {
                 DiagnosticLevel::Error,
                 "Mismatched types",
                 vec![Note::primary(
-                    item.debug_info.span,
+                    item.info.span,
                     format!(
                         "Expected {}, found {}",
                         format_type(&expected),

@@ -1,9 +1,6 @@
+use crate::*;
 use std::collections::HashMap;
-
-use interned_string::InternedString;
 use wipple_diagnostics::{Diagnostic, DiagnosticLevel, Note};
-
-use super::FileAttribute;
 
 pub fn builtin_file_attributes() -> HashMap<InternedString, FileAttribute> {
     macro_rules! builtins {

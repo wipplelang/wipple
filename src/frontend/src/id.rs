@@ -10,7 +10,6 @@ macro_rules! id {
             }
 
             impl $name {
-                #[allow(clippy::new_without_default)]
                 pub fn new() -> Self {
                     [<NEXT_ $name:snake:upper>].with(|next_id| {
                         let id = next_id.get();
@@ -21,6 +20,12 @@ macro_rules! id {
 
                 pub fn reset() {
                     [<NEXT_ $name:snake:upper>].with(|next_id| next_id.set(0))
+                }
+            }
+
+            impl Default for $name {
+                fn default() -> Self {
+                    Self::new()
                 }
             }
         })*

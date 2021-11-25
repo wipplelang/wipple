@@ -8,8 +8,9 @@ pub use id::*;
 pub use project::*;
 pub use typecheck::*;
 
+use interned_string::InternedString;
 use std::sync::Arc;
-use wipple_diagnostics::Diagnostics;
+use wipple_diagnostics::*;
 
 fn prelude() -> Arc<File> {
     thread_local! {

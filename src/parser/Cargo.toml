@@ -5,7 +5,6 @@ edition = "2021"
 
 [dependencies]
 interned-string = { path = "../helpers/interned-string" }
-kind = { path = "../helpers/kind" }
 lazy_static = "1"
 logos = "0.12"
 regex = "1"

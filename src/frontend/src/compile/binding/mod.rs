@@ -2,8 +2,9 @@ mod name;
 
 pub use name::*;
 
-use crate::compile::*;
+use crate::*;
 use enum_dispatch::enum_dispatch;
+use serde::Serialize;
 
 #[enum_dispatch]
 pub trait BindingKind

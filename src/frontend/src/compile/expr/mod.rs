@@ -12,87 +12,19 @@ pub use name::*;
 pub use number::*;
 pub use text::*;
 
-use crate::{compile::*, typecheck::Type};
+use crate::*;
 use enum_dispatch::enum_dispatch;
-use kind::kind;
-use paste::paste;
 use std::fmt;
 use wipple_parser as parser;
 
-#[non_exhaustive]
-#[derive(Debug, Clone, Serialize)]
-pub struct Form {
-    pub span: Span,
-    pub kind: FormKind,
-}
-
-impl Form {
-    pub fn new(span: Span, kind: FormKind) -> Self {
-        Form { span, kind }
-    }
-}
-
-macro_rules! lower {
-    ($($name:ident { $var:ident: $ty:ty } = $str:literal,)*) => {
-        #[kind(Form::new(span: Span))]
-        #[derive(Debug, Clone, Serialize)]
-        pub enum FormKind {
-            $($name { $var: $ty },)*
-        }
-
-        impl fmt::Display for FormKind {
-            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                match self {
-                    $(FormKind::$name { .. } => write!(f, $str),)*
-                }
-            }
-        }
-
-        #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-        pub enum LowerContext {
-            $($name,)*
-        }
-
-        paste! {
-            #[enum_dispatch]
-            pub trait ExprKind
-            where
-                Self: Sized + fmt::Debug,
-                Expr: From<Self>,
-            {
-                fn span(&self) -> Span;
-                fn lower(self, context: LowerContext, stack: &Stack, info: &mut Info) -> Option<Form>;
-
-                $(
-                    fn [<lower_to_ $var>](self, stack: &Stack, info: &mut Info) -> Option<$ty> {
-                        let span = self.span();
-
-                        match self.lower(LowerContext::$name, stack, info)?.kind {
-                            FormKind::$name { $var } => Some($var),
-                            kind => {
-                                info.diagnostics.add(Diagnostic::new(
-                                    DiagnosticLevel::Error,
-                                    format!("Expected {}, found {}", $str, kind),
-                                    vec![Note::primary(span, format!("Expected {} here", $str))],
-                                ));
-
-                                None
-                            }
-                        }
-                    }
-                )*
-            }
-        }
-    };
-}
-
-lower! {
-    Item { item: Item } = "item",
-    Operator { operator: Operator } = "operator",
-    Template { template: Template } = "template",
-    Ty { ty: Type } = "type",
-    File { file: Arc<File> } = "file",
-    Binding { binding: Binding } = "binding",
+#[enum_dispatch]
+pub trait ExprKind
+where
+    Self: Sized + fmt::Debug,
+    Expr: From<Self>,
+{
+    fn span(&self) -> Span;
+    fn lower(self, context: LowerContext, stack: &Stack, info: &mut Info) -> Option<Form>;
 }
 
 #[enum_dispatch(ExprKind)]

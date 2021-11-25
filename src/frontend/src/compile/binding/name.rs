@@ -1,4 +1,5 @@
-use crate::compile::*;
+use crate::*;
+use serde::Serialize;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct NameBinding {
@@ -19,7 +20,7 @@ impl BindingKind for NameBinding {
 
     fn assign(self, span: Span, form: Form, stack: &Stack, info: &mut Info) -> Item {
         let (variable, runtime_item) = match form.kind {
-            FormKind::Item { item } => (Variable::runtime(self.span, self.name), Some(item)),
+            FormKind::Item(item) => (Variable::runtime(self.span, self.name), Some(item)),
             _ => (
                 Variable::compile_time(self.span, self.name, move |_, _, _| Some(form.clone())),
                 None,
@@ -39,7 +40,7 @@ impl BindingKind for NameBinding {
         binding_info.declared_name = Some(self.name);
 
         if let Some(runtime_item) = runtime_item {
-            Item::initialize(span, binding_info, variable_id, Box::new(runtime_item))
+            Item::initialize(span, binding_info, variable_id, runtime_item)
         } else {
             Item::unit(span)
         }

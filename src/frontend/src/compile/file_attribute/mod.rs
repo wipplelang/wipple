@@ -1,8 +1,9 @@
 mod builtin;
 pub use builtin::*;
 
-use crate::compile::*;
-use std::{fmt, sync::Arc, vec::IntoIter};
+use crate::*;
+use serde::Serialize;
+use std::{fmt, vec::IntoIter};
 
 pub fn evaluate_attributes(
     attributes: Vec<wipple_parser::FileAttribute>,

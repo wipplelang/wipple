@@ -1,10 +1,9 @@
-use crate::{compile::*, project::Project, typecheck::Type};
+use crate::*;
 use serde::Serialize;
 use std::{
     cell::RefCell,
     collections::{HashMap, HashSet},
     fmt,
-    sync::Arc,
 };
 use wipple_diagnostics::*;
 
@@ -70,7 +69,7 @@ impl Variable {
             name,
             form: Arc::new(move |span, _, _| {
                 let mut item = Item::variable(span, id);
-                item.debug_info.declared_name = Some(name);
+                item.info.declared_name = Some(name);
                 Some(Form::item(span, item))
             }),
         }

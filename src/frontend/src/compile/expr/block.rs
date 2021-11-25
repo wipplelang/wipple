@@ -1,4 +1,4 @@
-use crate::compile::*;
+use crate::*;
 
 #[derive(Debug)]
 pub struct BlockExpr {

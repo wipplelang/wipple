@@ -7,7 +7,6 @@ members = [
     "src/formatter",
     "src/frontend",
     "src/helpers/interned-string",
-    "src/helpers/kind",
     "src/parser",
     "website/playground/runner",
 ]

@@ -1,8 +1,7 @@
-use crate::compile::*;
+use crate::*;
 use std::{
     cell::RefCell,
     collections::{HashMap, HashSet},
-    sync::Arc,
 };
 
 #[derive(Clone)]

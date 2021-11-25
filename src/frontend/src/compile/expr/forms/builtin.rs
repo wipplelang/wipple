@@ -1,9 +1,8 @@
-use crate::{
-    compile::*,
-    project,
-    typecheck::{function_type, typechecker_context, BUILTIN_TYPES},
+use crate::*;
+use std::{
+    collections::{btree_map::Entry, BTreeMap, HashMap},
+    num::NonZeroUsize,
 };
-use std::{collections::HashMap, num::NonZeroUsize, sync::Arc};
 use wipple_diagnostics::*;
 
 pub fn builtin_variables() -> HashMap<InternedString, Variable> {
@@ -33,9 +32,13 @@ pub fn builtin_variables() -> HashMap<InternedString, Variable> {
         ":" => Form::builtin_assign,
         "::" => Form::builtin_annotate,
         "->" => Form::builtin_function,
+
         "external" => Form::builtin_external,
         "file" => Form::builtin_file,
         "use" => Form::builtin_use,
+
+        "data" => Form::builtin_data,
+
         "Number" => Form::builtin_number_ty,
         "Text" => Form::builtin_text_ty,
     }
@@ -70,6 +73,15 @@ impl Form {
 
                 None
             }
+            LowerContext::DataField => {
+                info.diagnostics.add(Diagnostic::new(
+                    DiagnosticLevel::Error,
+                    "Expected data structure field, found '_'",
+                    vec![Note::primary(span, "Expected a data structure field here")],
+                ));
+
+                None
+            }
         }
     }
 
@@ -81,15 +93,34 @@ impl Form {
                 associativity: OperatorAssociativity::None,
                 template: Template::new(
                     Some(NonZeroUsize::new(2).unwrap()),
-                    move |_, exprs, span, stack, info| {
+                    move |context, exprs, span, stack, info| {
                         let mut exprs = exprs.into_iter();
                         let lhs = exprs.next().unwrap();
                         let rhs = exprs.next().unwrap();
 
-                        let binding = lhs.lower_to_binding(stack, info)?;
-                        let value = rhs.lower(LowerContext::Item, stack, info)?;
+                        match context {
+                            LowerContext::Item => {
+                                let binding = lhs.lower_to_binding(stack, info)?;
+                                let value = rhs.lower(LowerContext::Item, stack, info)?;
 
-                        Some(Form::item(span, binding.assign(span, value, stack, info)))
+                                Some(Form::item(span, binding.assign(span, value, stack, info)))
+                            }
+                            LowerContext::DataField | LowerContext::Ty | LowerContext::Binding => {
+                                info.diagnostics.add(Diagnostic::new(
+                                    DiagnosticLevel::Error,
+                                    "Cannot assign to variable here",
+                                    vec![Note::primary(
+                                        span,
+                                        "Assignment is disallowed in this context",
+                                    )],
+                                ));
+
+                                None
+                            }
+                            LowerContext::Operator
+                            | LowerContext::Template
+                            | LowerContext::File => unreachable!(),
+                        }
                     },
                 ),
             },
@@ -100,19 +131,93 @@ impl Form {
         Some(Form::operator(
             span,
             Operator {
-                precedence: OperatorPrecedence::new(8),
+                precedence: OperatorPrecedence::new(0),
                 associativity: OperatorAssociativity::Left,
                 template: Template::new(
                     Some(NonZeroUsize::new(2).unwrap()),
-                    move |_, exprs, span, stack, info| {
+                    move |context, exprs, span, stack, info| {
                         let mut exprs = exprs.into_iter();
                         let lhs = exprs.next().unwrap();
                         let rhs = exprs.next().unwrap();
 
-                        let value = lhs.lower_to_item(stack, info)?;
-                        let ty = rhs.lower_to_ty(stack, info)?;
+                        match context {
+                            LowerContext::Item => {
+                                let value = lhs.lower_to_item(stack, info)?;
+                                let ty = rhs.lower_to_ty(stack, info)?;
 
-                        Some(Form::item(span, Item::annotate(span, Box::new(value), ty)))
+                                Some(Form::item(span, Item::annotate(span, value, ty)))
+                            }
+                            LowerContext::DataField => {
+                                let lhs_span = lhs.span();
+
+                                let lhs = match lhs {
+                                    Expr::List(list) => list.items,
+                                    _ => unreachable!(),
+                                };
+
+                                let name = match lhs.len() {
+                                    1 => match lhs.into_iter().next().unwrap() {
+                                        Expr::Name(name) => name.value,
+                                        lhs => {
+                                            info.diagnostics.add(Diagnostic::new(
+                                                DiagnosticLevel::Error,
+                                                "Expected name for data structure field",
+                                                vec![Note::primary(
+                                                    lhs.span(),
+                                                    "Expected name here",
+                                                )],
+                                            ));
+
+                                            return None;
+                                        }
+                                    },
+                                    _ => {
+                                        info.diagnostics.add(Diagnostic::new(
+                                            DiagnosticLevel::Error,
+                                            "Expected name for data structure field",
+                                            vec![Note::primary(lhs_span, "Complex bindings are not supported; you must declare one field at a time")],
+                                        ));
+
+                                        return None;
+                                    }
+                                };
+
+                                let ty = rhs.lower_to_ty(stack, info)?;
+
+                                Some(Form::data_field(
+                                    span,
+                                    DataField::new(DataFieldInfo::new(span, name), ty),
+                                ))
+                            }
+                            LowerContext::Binding => {
+                                // TODO: Bindings with type annotations
+                                info.diagnostics.add(Diagnostic::new(
+                                    DiagnosticLevel::Error,
+                                    "Type annotations in bindings are currently unsupported",
+                                    vec![Note::primary(
+                                        span,
+                                        "Add the type annotation to the value instead",
+                                    )],
+                                ));
+
+                                None
+                            }
+                            LowerContext::Ty => {
+                                info.diagnostics.add(Diagnostic::new(
+                                    DiagnosticLevel::Error,
+                                    "Cannot add type annotation here",
+                                    vec![Note::primary(
+                                        span,
+                                        "Type annotations are disallowed in this context",
+                                    )],
+                                ));
+
+                                None
+                            }
+                            LowerContext::Operator
+                            | LowerContext::Template
+                            | LowerContext::File => unreachable!(),
+                        }
                     },
                 ),
             },
@@ -123,7 +228,7 @@ impl Form {
         Some(Form::operator(
             span,
             Operator {
-                precedence: OperatorPrecedence::new(7),
+                precedence: OperatorPrecedence::new(8),
                 associativity: OperatorAssociativity::Right,
                 template: Template::new(
                     Some(NonZeroUsize::new(2).unwrap()),
@@ -165,10 +270,7 @@ impl Form {
                                     .unwrap_or_else(|_| unreachable!())
                                     .into_inner();
 
-                                Some(Form::item(
-                                    span,
-                                    Item::function(span, Box::new(body), captures),
-                                ))
+                                Some(Form::item(span, Item::function(span, body, captures)))
                             }
                             _ => None,
                         }
@@ -279,6 +381,81 @@ impl Form {
                     }
 
                     Some(Form::item(span, Item::unit(span)))
+                },
+            ),
+        ))
+    }
+
+    fn builtin_data(span: Span, _: LowerContext, _: &mut Info) -> Option<Self> {
+        Some(Form::template(
+            span,
+            Template::new(
+                Some(NonZeroUsize::new(1).unwrap()),
+                move |_, exprs, span, stack, info| {
+                    let mut exprs = exprs.into_iter();
+
+                    // TODO: Tuple data structures
+                    let block = match exprs.next().unwrap() {
+                        Expr::Block(block) => block,
+                        expr => {
+                            info.diagnostics.add(Diagnostic::new(
+                                DiagnosticLevel::Error,
+                                "Expected block",
+                                vec![Note::primary(
+                                    expr.span(),
+                                    "Tuple data structures are not currently supported",
+                                )],
+                            ));
+
+                            return None;
+                        }
+                    };
+
+                    let mut fields = BTreeMap::<InternedString, DataField>::new();
+                    let mut success = true;
+                    for statement in block.statements {
+                        let field = match statement.lower_to_data_field(stack, info) {
+                            Some(field) => field,
+                            None => {
+                                success = false;
+                                continue;
+                            }
+                        };
+
+                        match fields.entry(field.info.name) {
+                            Entry::Occupied(entry) => {
+                                let existing_field = entry.get();
+
+                                info.diagnostics.add(Diagnostic::new(
+                                    DiagnosticLevel::Error,
+                                    "Duplicate data structure field",
+                                    vec![
+                                        Note::primary(field.info.span, "Field already exists"),
+                                        Note::secondary(
+                                            existing_field.info.span,
+                                            "Existing field declared here",
+                                        ),
+                                    ],
+                                ));
+
+                                success = false;
+                            }
+                            Entry::Vacant(entry) => {
+                                entry.insert(field);
+                            }
+                        }
+                    }
+
+                    if !success {
+                        return None;
+                    }
+
+                    let ty = Type::Constructed(
+                        TypeName::new(None::<String>, TypeNameFormat::Default),
+                        vec![], // TODO: Generic data types
+                    );
+
+                    Some(Form::ty(span, ty))
                 },
             ),
         ))

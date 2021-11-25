@@ -12,11 +12,9 @@ pub use info::*;
 pub use item::*;
 pub use stack::*;
 
-use crate::{id::*, prelude};
-use interned_string::InternedString;
+use crate::*;
 use serde::Serialize;
-use std::{collections::HashMap, sync::Arc};
-use wipple_diagnostics::*;
+use std::collections::HashMap;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct File {

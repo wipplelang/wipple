@@ -9,7 +9,7 @@ lazy_static! {
     static ref INTERNER: RwLock<StringInterner> = Default::default();
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct InternedString {
     symbol: string_interner::DefaultSymbol,
 }

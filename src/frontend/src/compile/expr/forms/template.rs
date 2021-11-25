@@ -1,5 +1,6 @@
-use crate::compile::*;
-use std::{fmt, num::NonZeroUsize, sync::Arc};
+use crate::*;
+use serde::Serialize;
+use std::{fmt, num::NonZeroUsize};
 
 #[derive(Clone, Serialize)]
 pub struct Template {

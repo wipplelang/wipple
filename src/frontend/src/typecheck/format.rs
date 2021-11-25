@@ -1,5 +1,4 @@
-use super::{Type, TypeSchema, FUNCTION_TYPE_ID};
-use crate::TypeNameFormat;
+use crate::*;
 use std::collections::BTreeMap;
 
 pub fn format_type_schema(ty: &TypeSchema) -> String {
@@ -44,11 +43,16 @@ macro_rules! format_type_fn {
                             ("", "")
                         };
 
+                        let ty_name = name
+                            .name
+                            .map(|name| name.to_string())
+                            .unwrap_or_else(|| String::from("?"));
+
                         match name.format {
                             TypeNameFormat::Default => format!(
                                 "{}{}{}{}",
                                 left_parenthesis,
-                                name.name,
+                                ty_name,
                                 associated_types
                                     .iter()
                                     .map(|ty| String::from(" ") + &$fn(ty, true, $($param),*))
@@ -61,7 +65,7 @@ macro_rules! format_type_fn {
                                     &associated_types[1],
                                     !matches!(
                                         associated_types[1],
-                                        Type::Constructed(name, _) if name.id == *FUNCTION_TYPE_ID
+                                        Type::Constructed(name, _) if name.id == *typecheck::FUNCTION_TYPE_ID
                                     ),
                                     $($param),*
                                 );
@@ -69,7 +73,7 @@ macro_rules! format_type_fn {
                                 format!("{}{} {} {}{}",
                                     left_parenthesis,
                                     left,
-                                    name.name,
+                                    ty_name,
                                     right,
                                     right_parenthesis,
                                 )

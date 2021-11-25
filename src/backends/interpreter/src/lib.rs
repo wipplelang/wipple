@@ -64,16 +64,16 @@ impl Scope {
 
 fn eval_item(item: &Item, info: &mut Info) -> Result<Arc<Value>, Error> {
     let value = match &item.kind {
-        ItemKind::Unit => Arc::new(Value::Unit),
-        ItemKind::Number { value } => Arc::new(Value::Number(*value)),
-        ItemKind::Text { value } => Arc::new(Value::Text(value.to_string())),
-        ItemKind::Block { statements } => {
+        ItemKind::Unit(_) => Arc::new(Value::Unit),
+        ItemKind::Number(number) => Arc::new(Value::Number(number.value)),
+        ItemKind::Text(text) => Arc::new(Value::Text(text.value.to_string())),
+        ItemKind::Block(block) => {
             let parent = info.scope.clone();
             let child = Scope::child(&parent);
             info.scope = child;
 
             let mut value = Arc::new(Value::Unit);
-            for statement in statements {
+            for statement in &block.statements {
                 value = eval_item(statement, info)?;
             }
 
@@ -81,9 +81,9 @@ fn eval_item(item: &Item, info: &mut Info) -> Result<Arc<Value>, Error> {
 
             value
         }
-        ItemKind::Apply { function, input } => match eval_item(function, info)?.as_ref() {
+        ItemKind::Apply(apply) => match eval_item(&apply.function, info)?.as_ref() {
             Value::Function { body, captures } => {
-                let input = eval_item(input, info)?;
+                let input = eval_item(&apply.input, info)?;
                 info.function_input = Some(input);
 
                 let parent = info.scope.clone();
@@ -99,35 +99,34 @@ fn eval_item(item: &Item, info: &mut Info) -> Result<Arc<Value>, Error> {
                 value
             }
             Value::ExternalFunction(function) => {
-                let input = eval_item(input, info)?;
+                let input = eval_item(&apply.input, info)?;
                 function.call(input)?
             }
             _ => unreachable!(),
         },
-        ItemKind::Initialize {
-            variable, value, ..
-        } => {
-            let value = eval_item(value, info)?;
-            info.scope.borrow_mut().variables.insert(*variable, value);
+        ItemKind::Initialize(initialize) => {
+            let value = eval_item(&initialize.value, info)?;
+            info.scope
+                .borrow_mut()
+                .variables
+                .insert(initialize.variable, value);
             Arc::new(Value::Unit)
         }
-        ItemKind::Variable { variable } => resolve(*variable, info),
-        ItemKind::Function { body, captures, .. } => Arc::new(Value::Function {
-            body: body.as_ref().clone(),
-            captures: captures
+        ItemKind::Variable(variable) => resolve(variable.variable, info),
+        ItemKind::Function(function) => Arc::new(Value::Function {
+            body: function.body.as_ref().clone(),
+            captures: function
+                .captures
                 .iter()
                 .map(|&variable| (variable, resolve(variable, info)))
                 .collect(),
         }),
-        ItemKind::FunctionInput => info.function_input.as_ref().unwrap().clone(),
-        ItemKind::External {
-            namespace,
-            identifier,
-        } => info
+        ItemKind::FunctionInput(_) => info.function_input.as_ref().unwrap().clone(),
+        ItemKind::External(external) => info
             .external
-            .get(&namespace.get(), &identifier.get())?
+            .get(&external.namespace.get(), &external.identifier.get())?
             .clone(),
-        ItemKind::Annotate { item, .. } => eval_item(item, info)?,
+        ItemKind::Annotate(annotate) => eval_item(&annotate.item, info)?,
     };
 
     Ok(value)

@@ -26,19 +26,20 @@ struct Info {
 
 fn gen_item<'a>(item: &'a Item, info: &mut Info) -> Expr<'a> {
     match &item.kind {
-        ItemKind::Unit => Expr::Lit(Lit::Null),
-        ItemKind::Number { value } => {
+        ItemKind::Unit(_) => Expr::Lit(Lit::Null),
+        ItemKind::Number(number) => {
             // TODO: Decimal support
-            Expr::Lit(Lit::Number(Cow::Owned(value.to_string())))
+            Expr::Lit(Lit::Number(Cow::Owned(number.value.to_string())))
         }
-        ItemKind::Text { value } => Expr::Lit(Lit::String(StringLit::Double(Cow::Owned(
-            value.to_string(),
+        ItemKind::Text(text) => Expr::Lit(Lit::String(StringLit::Double(Cow::Owned(
+            text.value.to_string(),
         )))),
-        ItemKind::Block { statements } => {
+        ItemKind::Block(block) => {
             let mut info = Info::default();
-            let statement_count = statements.len();
+            let statement_count = block.statements.len();
 
-            let statements = statements
+            let statements = block
+                .statements
                 .iter()
                 .enumerate()
                 .map(|(index, statement)| {
@@ -79,33 +80,31 @@ fn gen_item<'a>(item: &'a Item, info: &mut Info) -> Expr<'a> {
                 arguments: Vec::new(),
             })
         }
-        ItemKind::Apply { function, input } => Expr::Call(CallExpr {
-            callee: Box::new(gen_item(function, info)),
-            arguments: vec![gen_item(input, info)],
+        ItemKind::Apply(apply) => Expr::Call(CallExpr {
+            callee: Box::new(gen_item(&apply.function, info)),
+            arguments: vec![gen_item(&apply.input, info)],
         }),
-        ItemKind::Initialize {
-            variable, value, ..
-        } => {
-            info.variables.push(*variable);
+        ItemKind::Initialize(initialize) => {
+            info.variables.push(initialize.variable);
 
             Expr::Assign(AssignExpr {
                 operator: AssignOp::Equal,
-                left: AssignLeft::Pat(Pat::Ident(mangle(*variable))),
-                right: Box::new(gen_item(value, info)),
+                left: AssignLeft::Pat(Pat::Ident(mangle(initialize.variable))),
+                right: Box::new(gen_item(&initialize.value, info)),
             })
         }
-        ItemKind::Variable { variable } => Expr::Ident(mangle(*variable)),
-        ItemKind::Function { body, .. } => Expr::ArrowFunc(ArrowFuncExpr {
+        ItemKind::Variable(variable) => Expr::Ident(mangle(variable.variable)),
+        ItemKind::Function(function) => Expr::ArrowFunc(ArrowFuncExpr {
             id: None,
             params: vec![FuncArg::Pat(Pat::Ident(mangle_function_input()))],
-            body: ArrowFuncBody::Expr(Box::new(gen_item(body, info))),
+            body: ArrowFuncBody::Expr(Box::new(gen_item(&function.body, info))),
             expression: true,
             generator: false,
             is_async: false,
         }),
-        ItemKind::FunctionInput => Expr::Ident(mangle_function_input()),
-        ItemKind::External { .. } => todo!(),
-        ItemKind::Annotate { item, .. } => gen_item(item, info),
+        ItemKind::FunctionInput(_) => Expr::Ident(mangle_function_input()),
+        ItemKind::External(_) => todo!(),
+        ItemKind::Annotate(annotate) => gen_item(&annotate.item, info),
     }
 }
 

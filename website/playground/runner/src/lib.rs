@@ -79,7 +79,7 @@ fn item_annotation(
     use wipple_frontend::ItemKind;
 
     let mut annotations = vec![Annotation {
-        span: item.debug_info.span,
+        span: item.info.span,
         value: format!(
             "```wipple\n{}\n```",
             wipple_frontend::format_type_schema(types.get(&item.id).unwrap())
@@ -87,31 +87,32 @@ fn item_annotation(
     }];
 
     match &item.kind {
-        ItemKind::Block { statements } => {
+        ItemKind::Block(block) => {
             annotations.append(
-                &mut statements
+                &mut block
+                    .statements
                     .iter()
                     .flat_map(|statement| item_annotation(statement, types))
                     .collect(),
             );
         }
-        ItemKind::Apply { function, input } => {
-            annotations.append(&mut item_annotation(function, types));
-            annotations.append(&mut item_annotation(input, types));
+        ItemKind::Apply(apply) => {
+            annotations.append(&mut item_annotation(&apply.function, types));
+            annotations.append(&mut item_annotation(&apply.input, types));
         }
-        ItemKind::Initialize { value, .. } => {
-            annotations.append(&mut item_annotation(value, types));
+        ItemKind::Initialize(initialize) => {
+            annotations.append(&mut item_annotation(&initialize.value, types));
         }
-        ItemKind::Function { body, .. } => {
-            annotations.append(&mut item_annotation(body, types));
+        ItemKind::Function(function) => {
+            annotations.append(&mut item_annotation(&function.body, types));
         }
-        ItemKind::Unit { .. }
-        | ItemKind::Number { .. }
-        | ItemKind::Text { .. }
-        | ItemKind::Variable { .. }
-        | ItemKind::FunctionInput
-        | ItemKind::External { .. }
-        | ItemKind::Annotate { .. } => {}
+        ItemKind::Unit(_)
+        | ItemKind::Number(_)
+        | ItemKind::Text(_)
+        | ItemKind::Variable(_)
+        | ItemKind::FunctionInput(_)
+        | ItemKind::External(_)
+        | ItemKind::Annotate(_) => {}
     }
 
     annotations
