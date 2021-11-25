@@ -58,10 +58,7 @@ impl Form {
             }
             LowerContext::Operator => None,
             LowerContext::Template => None,
-            LowerContext::Ty => Some(Form::ty(
-                span,
-                typechecker_context().borrow_mut().new_variable(),
-            )),
+            LowerContext::Constructor => Some(Form::constructor(span, Constructor::Placeholder)),
             LowerContext::File => None,
             LowerContext::Binding => {
                 // TODO: Empty bindings
@@ -105,7 +102,9 @@ impl Form {
 
                                 Some(Form::item(span, binding.assign(span, value, stack, info)))
                             }
-                            LowerContext::DataField | LowerContext::Ty | LowerContext::Binding => {
+                            LowerContext::DataField
+                            | LowerContext::Constructor
+                            | LowerContext::Binding => {
                                 info.diagnostics.add(Diagnostic::new(
                                     DiagnosticLevel::Error,
                                     "Cannot assign to variable here",
@@ -143,9 +142,9 @@ impl Form {
                         match context {
                             LowerContext::Item => {
                                 let value = lhs.lower_to_item(stack, info)?;
-                                let ty = rhs.lower_to_ty(stack, info)?;
+                                let constructor = rhs.lower_to_constructor(stack, info)?;
 
-                                Some(Form::item(span, Item::annotate(span, value, ty)))
+                                Some(Form::item(span, Item::annotate(span, value, constructor)))
                             }
                             LowerContext::DataField => {
                                 let lhs_span = lhs.span();
@@ -182,11 +181,11 @@ impl Form {
                                     }
                                 };
 
-                                let ty = rhs.lower_to_ty(stack, info)?;
+                                let ty = rhs.lower_to_constructor(stack, info)?;
 
                                 Some(Form::data_field(
                                     span,
-                                    DataField::new(DataFieldInfo::new(span, name), ty),
+                                    DataStructField::new(DataStructFieldInfo::new(span, name), ty),
                                 ))
                             }
                             LowerContext::Binding => {
@@ -202,7 +201,7 @@ impl Form {
 
                                 None
                             }
-                            LowerContext::Ty => {
+                            LowerContext::Constructor => {
                                 info.diagnostics.add(Diagnostic::new(
                                     DiagnosticLevel::Error,
                                     "Cannot add type annotation here",
@@ -242,11 +241,17 @@ impl Form {
                         let rhs_span = rhs.span();
 
                         match context {
-                            LowerContext::Ty => {
-                                let input_ty = lhs.lower_to_ty(stack, info)?;
-                                let body_ty = rhs.lower_to_ty(stack, info)?;
+                            LowerContext::Constructor => {
+                                let input_ty = lhs.lower_to_constructor(stack, info)?;
+                                let body_ty = rhs.lower_to_constructor(stack, info)?;
 
-                                Some(Form::ty(span, function_type(input_ty, body_ty)))
+                                Some(Form::constructor(
+                                    span,
+                                    Constructor::Function {
+                                        input: Box::new(input_ty),
+                                        output: Box::new(body_ty),
+                                    },
+                                ))
                             }
                             LowerContext::Item => {
                                 let binding = lhs.lower_to_binding(stack, info)?;
@@ -411,7 +416,7 @@ impl Form {
                         }
                     };
 
-                    let mut fields = BTreeMap::<InternedString, DataField>::new();
+                    let mut fields = BTreeMap::<InternedString, DataStructField>::new();
                     let mut success = true;
                     for statement in block.statements {
                         let field = match statement.lower_to_data_field(stack, info) {
@@ -446,26 +451,23 @@ impl Form {
                         }
                     }
 
-                    if !success {
-                        return None;
-                    }
-
-                    let ty = Type::Constructed(
-                        TypeName::new(None::<String>, TypeNameFormat::Default),
-                        vec![], // TODO: Generic data types
-                    );
-
-                    Some(Form::ty(span, ty))
+                    success.then(|| Form::constructor(
+                        span,
+                        Constructor::DataStruct {
+                            id: TypeId::new(),
+                            fields,
+                        },
+                    ))
                 },
             ),
         ))
     }
 
     fn builtin_number_ty(span: Span, _: LowerContext, _: &mut Info) -> Option<Self> {
-        Some(Form::ty(span, BUILTIN_TYPES.number.clone()))
+        Some(Form::constructor(span, Constructor::Number))
     }
 
     fn builtin_text_ty(span: Span, _: LowerContext, _: &mut Info) -> Option<Self> {
-        Some(Form::ty(span, BUILTIN_TYPES.text.clone()))
+        Some(Form::constructor(span, Constructor::Text))
     }
 }

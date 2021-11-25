@@ -247,17 +247,19 @@ impl<'a> Typechecker<'a> {
             }
             ItemKind::External { .. } => Some(TypeSchema::Monotype(var.clone())),
             ItemKind::Annotate(annotate) => {
+                let ty = self.convert_constructor(&annotate.constructor);
+
                 let inferred_ty = self
-                    .typecheck_item(item, Some(annotate.ty.clone()))?
+                    .typecheck_item(item, Some(ty.clone()))?
                     .instantiate(&mut self.ctx)
                     .apply(&self.ctx);
 
-                if let Err(error) = self.ctx.unify(&annotate.ty, &inferred_ty) {
+                if let Err(error) = self.ctx.unify(&ty, &inferred_ty) {
                     self.report_type_error(item, error);
                     return None;
                 }
 
-                let item_ty = annotate.ty.apply(&self.ctx);
+                let item_ty = ty.apply(&self.ctx);
 
                 Some(TypeSchema::Monotype(item_ty))
             }
@@ -321,5 +323,22 @@ impl<'a> Typechecker<'a> {
         };
 
         self.info.diagnostics.add(diagnostic);
+    }
+
+    fn convert_constructor(&mut self, constructor: &Constructor) -> Type {
+        match constructor {
+            Constructor::Placeholder => self.ctx.new_variable(),
+            Constructor::Number => BUILTIN_TYPES.number.clone(),
+            Constructor::Text => BUILTIN_TYPES.text.clone(),
+            Constructor::Unit => BUILTIN_TYPES.unit.clone(),
+            Constructor::Function { input, output } => function_type(
+                self.convert_constructor(input),
+                self.convert_constructor(output),
+            ),
+            Constructor::DataStruct { id, .. } => Type::Constructed(
+                TypeName::with_id(*id, None::<String>, TypeNameFormat::Default),
+                Vec::new(),
+            ),
+        }
     }
 }

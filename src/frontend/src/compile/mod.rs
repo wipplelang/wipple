@@ -1,6 +1,7 @@
 mod binding;
 mod expr;
 mod file_attribute;
+mod form;
 mod info;
 mod item;
 mod stack;
@@ -8,6 +9,7 @@ mod stack;
 pub use binding::*;
 pub use expr::*;
 pub use file_attribute::*;
+pub use form::*;
 pub use info::*;
 pub use item::*;
 pub use stack::*;

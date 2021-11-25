@@ -46,9 +46,11 @@ impl ExprKind for ListExpr {
                     LowerContext::Item => {
                         Some(Form::item(list_expr.span, Item::unit(list_expr.span)))
                     }
-                    LowerContext::Ty => Some(Form::ty(list_expr.span, BUILTIN_TYPES.unit.clone())),
+                    LowerContext::Constructor => {
+                        Some(Form::constructor(list_expr.span, Constructor::Unit))
+                    }
                     _ => todo!(),
-                }, // TODO: empty tuple type
+                },
                 _ => {
                     let mut form = list_expr.items.remove(0).lower(context, stack, info)?;
 
@@ -108,7 +110,64 @@ impl ExprKind for ListExpr {
                             FormKind::Operator(operator) => {
                                 Form::template(form.span, operator.template)
                             }
-                            FormKind::Ty(_) => todo!(), // constructors
+                            FormKind::Constructor(constructor) => {
+                                match context {
+                                    LowerContext::Item => match constructor {
+                                        Constructor::Placeholder => {
+                                            info.diagnostics.add(Diagnostic::new(
+                                                DiagnosticLevel::Error,
+                                                "Cannot use '_' as a constructor",
+                                                vec![Note::primary(
+                                                    span,
+                                                    "Try specifying a type here",
+                                                )],
+                                            ));
+
+                                            return None;
+                                        }
+                                        Constructor::Number
+                                        | Constructor::Text
+                                        | Constructor::Unit
+                                        | Constructor::Function { .. } => {
+                                            info.diagnostics.add(Diagnostic::new(
+                                                DiagnosticLevel::Error,
+                                                "Cannot use primitive type as a constructor",
+                                                vec![Note::primary(
+                                                    span,
+                                                    "Try using a literal instead",
+                                                )],
+                                            ));
+
+                                            return None;
+                                        }
+                                        Constructor::DataStruct { id, fields } => {
+                                            let block = match expr {
+                                                Expr::Block(block) => block,
+                                                _ => {
+                                                    info.diagnostics.add(Diagnostic::new(
+                                                        DiagnosticLevel::Error,
+                                                        "Expected block in constructor",
+                                                        vec![Note::primary(
+                                                            span,
+                                                            "Expected block here",
+                                                        )],
+                                                    ));
+
+                                                    return None;
+                                                }
+                                            };
+
+                                            todo!()
+                                        }
+                                    },
+                                    LowerContext::Constructor => todo!(), // generic arguments
+                                    LowerContext::File
+                                    | LowerContext::Template
+                                    | LowerContext::Operator
+                                    | LowerContext::Binding
+                                    | LowerContext::DataField => unreachable!(),
+                                }
+                            }
                             FormKind::File(file) => {
                                 let span = expr.span();
 
