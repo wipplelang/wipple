@@ -250,12 +250,12 @@ impl<'a> Typechecker<'a> {
                 let ty = self.convert_constructor(&annotate.constructor);
 
                 let inferred_ty = self
-                    .typecheck_item(item, Some(ty.clone()))?
+                    .typecheck_item(&annotate.item, Some(ty.clone()))?
                     .instantiate(&mut self.ctx)
                     .apply(&self.ctx);
 
                 if let Err(error) = self.ctx.unify(&ty, &inferred_ty) {
-                    self.report_type_error(item, error);
+                    self.report_type_error(&annotate.item, error);
                     return None;
                 }
 
@@ -263,7 +263,10 @@ impl<'a> Typechecker<'a> {
 
                 Some(TypeSchema::Monotype(item_ty))
             }
-            ItemKind::Data(_) => todo!(),
+            ItemKind::Data(data) => Some(TypeSchema::Monotype(Type::Constructed(
+                TypeName::with_id(data.id, None::<String>, TypeNameFormat::Default),
+                Vec::new(), // TODO: Generics
+            ))),
         })();
 
         if let Some(ty) = ty.clone() {

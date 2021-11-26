@@ -78,13 +78,17 @@ fn item_annotation(
 ) -> Vec<Annotation> {
     use wipple_frontend::ItemKind;
 
-    let mut annotations = vec![Annotation {
-        span: item.info.span,
-        value: format!(
-            "```wipple\n{}\n```",
-            wipple_frontend::format_type_schema(types.get(&item.id).unwrap())
-        ),
-    }];
+    let mut annotations = types
+        .get(&item.id)
+        .map(|ty| Annotation {
+            span: item.info.span,
+            value: format!(
+                "```wipple\n{}\n```",
+                wipple_frontend::format_type_schema(ty)
+            ),
+        })
+        .into_iter()
+        .collect::<Vec<_>>();
 
     match &item.kind {
         ItemKind::Block(block) => {

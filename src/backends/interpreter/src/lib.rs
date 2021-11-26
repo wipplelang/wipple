@@ -17,6 +17,7 @@ pub enum Value {
         captures: BTreeMap<VariableId, Arc<Value>>,
     },
     ExternalFunction(ExternalFunction),
+    Data(Vec<Arc<Value>>),
 }
 
 #[derive(Debug, Serialize)]
@@ -127,7 +128,12 @@ fn eval_item(item: &Item, info: &mut Info) -> Result<Arc<Value>, Error> {
             .get(&external.namespace.get(), &external.identifier.get())?
             .clone(),
         ItemKind::Annotate(annotate) => eval_item(&annotate.item, info)?,
-        ItemKind::Data(_) => todo!(),
+        ItemKind::Data(data) => Arc::new(Value::Data(
+            data.fields
+                .iter()
+                .map(|field| eval_item(field, info))
+                .collect::<Result<_, _>>()?,
+        )),
     };
 
     Ok(value)
