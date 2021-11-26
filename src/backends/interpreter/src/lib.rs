@@ -127,6 +127,7 @@ fn eval_item(item: &Item, info: &mut Info) -> Result<Arc<Value>, Error> {
             .get(&external.namespace.get(), &external.identifier.get())?
             .clone(),
         ItemKind::Annotate(annotate) => eval_item(&annotate.item, info)?,
+        ItemKind::Data(_) => todo!(),
     };
 
     Ok(value)

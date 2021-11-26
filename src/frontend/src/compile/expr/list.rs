@@ -1,5 +1,9 @@
 use crate::*;
-use std::{cmp::Ordering, mem};
+use std::{
+    cmp::Ordering,
+    collections::{hash_map::Entry, HashMap},
+    mem,
+};
 
 #[derive(Debug)]
 pub struct ListExpr {
@@ -140,7 +144,10 @@ impl ExprKind for ListExpr {
 
                                             return None;
                                         }
-                                        Constructor::DataStruct { id, fields } => {
+                                        Constructor::DataStruct {
+                                            id,
+                                            fields: constructor_fields,
+                                        } => {
                                             let block = match expr {
                                                 Expr::Block(block) => block,
                                                 _ => {
@@ -157,7 +164,92 @@ impl ExprKind for ListExpr {
                                                 }
                                             };
 
-                                            todo!()
+                                            let mut fields =
+                                                HashMap::<InternedString, DataStructField>::new();
+                                            let mut success = true;
+                                            for statement in block.statements {
+                                                let field = match statement
+                                                    .lower_to_data_struct_field(stack, info)
+                                                {
+                                                    Some(field) => field,
+                                                    None => {
+                                                        success = false;
+                                                        continue;
+                                                    }
+                                                };
+
+                                                match fields.entry(field.name) {
+                                                    Entry::Occupied(entry) => {
+                                                        let existing_field = entry.get();
+
+                                                        info.diagnostics.add(Diagnostic::new(
+                                                            DiagnosticLevel::Error,
+                                                            "Duplicate data structure field",
+                                                            vec![
+                                                                Note::primary(
+                                                                    field.info.span,
+                                                                    "Field already exists",
+                                                                ),
+                                                                Note::secondary(
+                                                                    existing_field.info.span,
+                                                                    "Existing field declared here",
+                                                                ),
+                                                            ],
+                                                        ));
+
+                                                        success = false;
+                                                    }
+                                                    Entry::Vacant(entry) => {
+                                                        entry.insert(field);
+                                                    }
+                                                }
+                                            }
+
+                                            if !success {
+                                                return None;
+                                            }
+
+                                            let mut fields_by_index = Vec::new();
+                                            let mut success = true;
+                                            for (field_name, field) in fields {
+                                                match constructor_fields
+                                                    .keys()
+                                                    .enumerate()
+                                                    .find_map(|(index, &name)| {
+                                                        (name == field_name).then(|| index)
+                                                    }) {
+                                                    Some(index) => {
+                                                        fields_by_index.push((index, field));
+                                                    }
+                                                    None => {
+                                                        info.diagnostics.add(Diagnostic::new(
+                                                            DiagnosticLevel::Error,
+                                                            format!("Data structure does not contain field '{}'", field_name),
+                                                            vec![
+                                                                Note::primary(
+                                                                    field.info.span,
+                                                                    "No such field",
+                                                                ),
+                                                            ],
+                                                        ));
+
+                                                        success = false;
+                                                    }
+                                                }
+                                            }
+
+                                            if !success {
+                                                return None;
+                                            }
+
+                                            fields_by_index.sort_by_key(|(index, _)| *index);
+
+                                            let fields = fields_by_index
+                                                .into_iter()
+                                                .map(|(_, field)| field.value)
+                                                .collect::<Vec<_>>();
+
+                                            Form::item(span, Item::data(span, id, fields))
                                         }
                                     },
                                     LowerContext::Constructor => todo!(), // generic arguments
@@ -165,7 +257,8 @@ impl ExprKind for ListExpr {
                                     | LowerContext::Template
                                     | LowerContext::Operator
                                     | LowerContext::Binding
-                                    | LowerContext::DataField => unreachable!(),
+                                    | LowerContext::DataStructField
+                                    | LowerContext::DataStructFieldDecl => unreachable!(),
                                 }
                             }
                             FormKind::File(file) => {
@@ -212,7 +305,9 @@ impl ExprKind for ListExpr {
                                 }
                             }
                             FormKind::Binding(_) => todo!(), // TODO: Complex bindings
-                            FormKind::DataField(_) => unreachable!(),
+                            FormKind::DataStructField(_) | FormKind::DataStructFieldDecl(_) => {
+                                unreachable!()
+                            }
                         };
                     }
 

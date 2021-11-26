@@ -263,6 +263,7 @@ impl<'a> Typechecker<'a> {
 
                 Some(TypeSchema::Monotype(item_ty))
             }
+            ItemKind::Data(_) => todo!(),
         })();
 
         if let Some(ty) = ty.clone() {

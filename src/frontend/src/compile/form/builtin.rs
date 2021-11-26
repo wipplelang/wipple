@@ -70,11 +70,23 @@ impl Form {
 
                 None
             }
-            LowerContext::DataField => {
+            LowerContext::DataStructField => {
                 info.diagnostics.add(Diagnostic::new(
                     DiagnosticLevel::Error,
                     "Expected data structure field, found '_'",
                     vec![Note::primary(span, "Expected a data structure field here")],
+                ));
+
+                None
+            }
+            LowerContext::DataStructFieldDecl => {
+                info.diagnostics.add(Diagnostic::new(
+                    DiagnosticLevel::Error,
+                    "Expected data structure field declaration, found '_'",
+                    vec![Note::primary(
+                        span,
+                        "Expected a data structure field declaration here",
+                    )],
                 ));
 
                 None
@@ -102,7 +114,53 @@ impl Form {
 
                                 Some(Form::item(span, binding.assign(span, value, stack, info)))
                             }
-                            LowerContext::DataField
+                            LowerContext::DataStructField => {
+                                let lhs_span = lhs.span();
+
+                                let lhs = match lhs {
+                                    Expr::List(list) => list.items,
+                                    _ => unreachable!(),
+                                };
+
+                                let name = match lhs.len() {
+                                    1 => match lhs.into_iter().next().unwrap() {
+                                        Expr::Name(name) => name.value,
+                                        lhs => {
+                                            info.diagnostics.add(Diagnostic::new(
+                                                DiagnosticLevel::Error,
+                                                "Expected name for data structure field",
+                                                vec![Note::primary(
+                                                    lhs.span(),
+                                                    "Expected name here",
+                                                )],
+                                            ));
+
+                                            return None;
+                                        }
+                                    },
+                                    _ => {
+                                        info.diagnostics.add(Diagnostic::new(
+                                            DiagnosticLevel::Error,
+                                            "Expected name for data structure field",
+                                            vec![Note::primary(lhs_span, "Complex bindings are not supported; you must declare one field at a time")],
+                                        ));
+
+                                        return None;
+                                    }
+                                };
+
+                                let value = rhs.lower_to_item(stack, info)?;
+
+                                Some(Form::data_struct_field(
+                                    span,
+                                    DataStructField::new(
+                                        DataStructFieldInfo::new(span),
+                                        name,
+                                        value,
+                                    ),
+                                ))
+                            }
+                            LowerContext::DataStructFieldDecl
                             | LowerContext::Constructor
                             | LowerContext::Binding => {
                                 info.diagnostics.add(Diagnostic::new(
@@ -146,7 +204,7 @@ impl Form {
 
                                 Some(Form::item(span, Item::annotate(span, value, constructor)))
                             }
-                            LowerContext::DataField => {
+                            LowerContext::DataStructFieldDecl => {
                                 let lhs_span = lhs.span();
 
                                 let lhs = match lhs {
@@ -183,9 +241,12 @@ impl Form {
 
                                 let ty = rhs.lower_to_constructor(stack, info)?;
 
-                                Some(Form::data_field(
+                                Some(Form::data_struct_field_decl(
                                     span,
-                                    DataStructField::new(DataStructFieldInfo::new(span, name), ty),
+                                    DataStructFieldDecl::new(
+                                        DataStructFieldDeclInfo::new(span, name),
+                                        ty,
+                                    ),
                                 ))
                             }
                             LowerContext::Binding => {
@@ -201,7 +262,7 @@ impl Form {
 
                                 None
                             }
-                            LowerContext::Constructor => {
+                            LowerContext::DataStructField | LowerContext::Constructor => {
                                 info.diagnostics.add(Diagnostic::new(
                                     DiagnosticLevel::Error,
                                     "Cannot add type annotation here",
@@ -416,10 +477,10 @@ impl Form {
                         }
                     };
 
-                    let mut fields = BTreeMap::<InternedString, DataStructField>::new();
+                    let mut fields = BTreeMap::<InternedString, DataStructFieldDecl>::new();
                     let mut success = true;
                     for statement in block.statements {
-                        let field = match statement.lower_to_data_field(stack, info) {
+                        let field = match statement.lower_to_data_struct_field_decl(stack, info) {
                             Some(field) => field,
                             None => {
                                 success = false;
@@ -433,7 +494,7 @@ impl Form {
 
                                 info.diagnostics.add(Diagnostic::new(
                                     DiagnosticLevel::Error,
-                                    "Duplicate data structure field",
+                                    "Duplicate data structure field declaration",
                                     vec![
                                         Note::primary(field.info.span, "Field already exists"),
                                         Note::secondary(
@@ -451,13 +512,15 @@ impl Form {
                         }
                     }
 
-                    success.then(|| Form::constructor(
-                        span,
-                        Constructor::DataStruct {
-                            id: TypeId::new(),
-                            fields,
-                        },
-                    ))
+                    success.then(|| {
+                        Form::constructor(
+                            span,
+                            Constructor::DataStruct {
+                                id: TypeId::new(),
+                                fields,
+                            },
+                        )
+                    })
                 },
             ),
         ))

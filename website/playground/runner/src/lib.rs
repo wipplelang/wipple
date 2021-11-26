@@ -106,6 +106,15 @@ fn item_annotation(
         ItemKind::Function(function) => {
             annotations.append(&mut item_annotation(&function.body, types));
         }
+        ItemKind::Data(data) => {
+            annotations.append(
+                &mut data
+                    .fields
+                    .iter()
+                    .flat_map(|field| item_annotation(field, types))
+                    .collect(),
+            );
+        }
         ItemKind::Unit(_)
         | ItemKind::Number(_)
         | ItemKind::Text(_)

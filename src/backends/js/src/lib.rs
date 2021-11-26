@@ -105,6 +105,7 @@ fn gen_item<'a>(item: &'a Item, info: &mut Info) -> Expr<'a> {
         ItemKind::FunctionInput(_) => Expr::Ident(mangle_function_input()),
         ItemKind::External(_) => todo!(),
         ItemKind::Annotate(annotate) => gen_item(&annotate.item, info),
+        ItemKind::Data(_) => todo!(),
     }
 }
 

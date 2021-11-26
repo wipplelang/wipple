@@ -1,6 +1,7 @@
 mod annotate;
 mod apply;
 mod block;
+mod data;
 mod external;
 mod function;
 mod function_input;
@@ -13,6 +14,7 @@ mod variable;
 pub use annotate::*;
 pub use apply::*;
 pub use block::*;
+pub use data::*;
 pub use external::*;
 pub use function::*;
 pub use function_input::*;
@@ -48,6 +50,7 @@ pub enum ItemKind {
     Annotate(AnnotateItem),
     Apply(ApplyItem),
     Block(BlockItem),
+    Data(DataItem),
     External(ExternalItem),
     Function(FunctionItem),
     FunctionInput(FunctionInputItem),

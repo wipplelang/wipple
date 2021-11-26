@@ -14,32 +14,56 @@ pub enum Constructor {
     },
     DataStruct {
         id: TypeId,
-        fields: BTreeMap<InternedString, DataStructField>,
+        fields: BTreeMap<InternedString, DataStructFieldDecl>,
     },
     // TODO: DataTuple
     // TODO: Enum
 }
 
 #[derive(Debug, Clone, Serialize)]
-pub struct DataStructField {
-    pub info: DataStructFieldInfo,
+pub struct DataStructFieldDecl {
+    pub info: DataStructFieldDeclInfo,
     pub constructor: Constructor,
 }
 
+impl DataStructFieldDecl {
+    pub fn new(info: DataStructFieldDeclInfo, constructor: Constructor) -> Self {
+        DataStructFieldDecl { info, constructor }
+    }
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct DataStructFieldDeclInfo {
+    pub span: Span,
+    pub name: InternedString,
+}
+
+impl DataStructFieldDeclInfo {
+    pub fn new(span: Span, name: InternedString) -> Self {
+        DataStructFieldDeclInfo { span, name }
+    }
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct DataStructField {
+    pub info: DataStructFieldInfo,
+    pub name: InternedString,
+    pub value: Item,
+}
+
 impl DataStructField {
-    pub fn new(info: DataStructFieldInfo, constructor: Constructor) -> Self {
-        DataStructField { info, constructor }
+    pub fn new(info: DataStructFieldInfo, name: InternedString, value: Item) -> Self {
+        DataStructField { info, name, value }
     }
 }
 
 #[derive(Debug, Clone, Serialize)]
 pub struct DataStructFieldInfo {
     pub span: Span,
-    pub name: InternedString,
 }
 
 impl DataStructFieldInfo {
-    pub fn new(span: Span, name: InternedString) -> Self {
-        DataStructFieldInfo { span, name }
+    pub fn new(span: Span) -> Self {
+        DataStructFieldInfo { span }
     }
 }

@@ -99,5 +99,6 @@ forms! {
     File(Arc<File>) = "file",
     Binding(Binding) = "binding",
     Constructor(Constructor) = "type",
-    DataField(DataStructField) = "data structure field",
+    DataStructFieldDecl(DataStructFieldDecl) = "data structure field declaration",
+    DataStructField(DataStructField) = "data structure field",
 }
