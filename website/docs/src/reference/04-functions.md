@@ -36,8 +36,8 @@ Many times, you'll want to write a program as a series of steps. Say you want to
 
 ```wipple
 file : load "my-file.csv"
-data : parse file
-show data
+contents : parse file
+show contents
 ```
 
 You can simplify this sequence a bit by using the `.` operator, pronounced _"then"_:
@@ -77,5 +77,4 @@ Here are some builtin functions that come in handy when using the `.` and `|` op
 | Function | Type                     | Description                               |
 | -------- | ------------------------ | ----------------------------------------- |
 | `it`     | `for A -> A -> A`        | Returns its input                         |
-| `the`    | `for A B -> A -> B -> A` | Returns a function that ignores its input |
-| `do!`    | `for A -> A -> ()`       | Evaluates its input and returns `()`      |
+| `just`   | `for A B -> A -> B -> A` | Returns a function that ignores its input |

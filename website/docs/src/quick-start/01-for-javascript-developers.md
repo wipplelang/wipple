@@ -144,13 +144,54 @@ bob . greet -- Hello, Bob!
 
 ## Inheritance
 
-Wipple has neither classes nor inheritance. Instead, you can use traits! Traits are pretty advanced, but here's a simple example:
+Wipple has neither classes nor inheritance. Instead, you can use traits! Traits are pretty advanced, but here's a simple example in TypeScript and in Wipple:
+
+### TypeScript
+
+```typescript
+// Greet is an interface that can be implemented with a function returning text
+interface Greet {
+    greet(): string;
+}
+
+// For any value implementing Greet, return a greeting
+function greet<A extends Greet>(x: A): string {
+    return `Hello, ${x.greet()}`;
+}
+
+class Person implements Greet {
+    name: string;
+
+    constructor(name: string) {
+        this.name = name;
+    }
+
+    // Greet for Person values is defined as the person's name
+    greet() {
+        return this.name;
+    }
+}
+
+class Earth implements Greet {
+    constructor() {}
+
+    // Greet for Earth values is defined as "world"
+    greet() {
+        return "world";
+    }
+}
+
+greet(new Person("Bob")); // Hello, Bob!
+greet(new Earth()); // Hello, world!
+```
+
+### Wipple
 
 ```wipple
 -- Greet is a trait that can be defined with a function returning text
 Greet : for A -> trait (A -> Text)
 
--- For any value on which Greet is defined, return a greeting
+-- For any value where Greet is defined, return a greeting
 greet : for A where (Greet A) -> x :: A -> format "Hello, _!" (Greet x)
 
 
@@ -165,7 +206,7 @@ Greet Person : p -> p name
 Earth : data
 
 -- Greet for Earth values is defined as "world"
-Greet Earth : _ -> "world"
+Greet Earth : just "world"
 
 
 greet (Person { name : "Bob" }) -- Hello, Bob!
