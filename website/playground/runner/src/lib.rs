@@ -119,6 +119,9 @@ fn item_annotation(
                     .collect(),
             );
         }
+        ItemKind::DataDecl(_decl) => {
+            // TODO
+        }
         ItemKind::Unit(_)
         | ItemKind::Number(_)
         | ItemKind::Text(_)

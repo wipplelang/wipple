@@ -105,7 +105,13 @@ fn gen_item<'a>(item: &'a Item, info: &mut Info) -> Expr<'a> {
         ItemKind::FunctionInput(_) => Expr::Ident(mangle_function_input()),
         ItemKind::External(_) => todo!(),
         ItemKind::Annotate(annotate) => gen_item(&annotate.item, info),
-        ItemKind::Data(_) => todo!(),
+        ItemKind::DataDecl(_) => Expr::Lit(Lit::Null),
+        ItemKind::Data(data) => Expr::Array(
+            data.fields
+                .iter()
+                .map(|field| Some(gen_item(field, info)))
+                .collect(),
+        ),
     }
 }
 

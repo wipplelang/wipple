@@ -102,3 +102,19 @@ forms! {
     DataStructFieldDecl(DataStructFieldDecl) = "data structure field declaration",
     DataStructField(DataStructField) = "data structure field",
 }
+
+impl Form {
+    pub fn as_decl_item(&self) -> Option<Item> {
+        match &self.kind {
+            FormKind::Constructor(Constructor::DataStruct { id, fields }) => Some(Item::data_decl(
+                self.span,
+                *id,
+                fields
+                    .values()
+                    .map(|field| field.constructor.clone())
+                    .collect(),
+            )),
+            _ => None,
+        }
+    }
+}

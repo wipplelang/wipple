@@ -148,6 +148,8 @@ impl ExprKind for ListExpr {
                                             id,
                                             fields: constructor_fields,
                                         } => {
+                                            let block_span = expr.span();
+
                                             let block = match expr {
                                                 Expr::Block(block) => block,
                                                 _ => {
@@ -155,7 +157,7 @@ impl ExprKind for ListExpr {
                                                         DiagnosticLevel::Error,
                                                         "Expected block in constructor",
                                                         vec![Note::primary(
-                                                            span,
+                                                            expr.span(),
                                                             "Expected block here",
                                                         )],
                                                     ));
@@ -206,6 +208,28 @@ impl ExprKind for ListExpr {
                                             }
 
                                             if !success {
+                                                return None;
+                                            }
+
+                                            let missing_fields = constructor_fields
+                                                .keys()
+                                                .filter(|name| !fields.contains_key(name))
+                                                .map(|name| name.to_string())
+                                                .collect::<Vec<_>>();
+
+                                            if !missing_fields.is_empty() {
+                                                info.diagnostics.add(Diagnostic::new(
+                                                    DiagnosticLevel::Error,
+                                                    format!(
+                                                        "Missing fields in data structure: {}",
+                                                        missing_fields.join(", ")
+                                                    ),
+                                                    vec![Note::primary(
+                                                        block_span,
+                                                        "Add the missing fields here",
+                                                    )],
+                                                ));
+
                                                 return None;
                                             }
 

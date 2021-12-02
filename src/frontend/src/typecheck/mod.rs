@@ -127,6 +127,7 @@ struct Typechecker<'a> {
     success: bool,
     types: HashMap<ItemId, TypeSchema>,
     variables: HashMap<VariableId, TypeSchema>,
+    data_decls: HashMap<TypeId, Vec<Type>>,
     function_input: Option<usize>,
 }
 
@@ -140,6 +141,7 @@ impl<'a> Typechecker<'a> {
             success: true,
             types: Default::default(),
             variables: Default::default(),
+            data_decls: Default::default(),
             function_input: Default::default(),
         }
     }
@@ -263,10 +265,42 @@ impl<'a> Typechecker<'a> {
 
                 Some(TypeSchema::Monotype(item_ty))
             }
-            ItemKind::Data(data) => Some(TypeSchema::Monotype(Type::Constructed(
-                TypeName::with_id(data.id, None::<String>, TypeNameFormat::Default),
-                Vec::new(), // TODO: Generics
-            ))),
+            ItemKind::DataDecl(decl) => {
+                let field_tys = decl
+                    .fields
+                    .iter()
+                    .map(|field| self.convert_constructor(field))
+                    .collect();
+
+                self.data_decls.insert(decl.id, field_tys);
+
+                Some(TypeSchema::Monotype(BUILTIN_TYPES.unit.clone()))
+            }
+            ItemKind::Data(data) => {
+                let mut field_tys = self.data_decls.get(&data.id).unwrap().clone().into_iter();
+
+                let mut success = true;
+                for field in data.fields.iter() {
+                    let expected_ty = field_tys.next().unwrap();
+
+                    let ty = self
+                        .typecheck_item(field, Some(expected_ty.clone()))?
+                        .instantiate(&mut self.ctx)
+                        .apply(&self.ctx);
+
+                    if let Err(error) = self.ctx.unify(&expected_ty, &ty) {
+                        self.report_type_error(field, error);
+                        success = false;
+                    }
+                }
+
+                success.then(|| {
+                    TypeSchema::Monotype(Type::Constructed(
+                        TypeName::with_id(data.id, None::<String>, TypeNameFormat::Default),
+                        Vec::new(), // TODO: Generics
+                    ))
+                })
+            }
         })();
 
         if let Some(ty) = ty.clone() {

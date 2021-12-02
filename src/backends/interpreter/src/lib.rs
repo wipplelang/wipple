@@ -128,6 +128,7 @@ fn eval_item(item: &Item, info: &mut Info) -> Result<Arc<Value>, Error> {
             .get(&external.namespace.get(), &external.identifier.get())?
             .clone(),
         ItemKind::Annotate(annotate) => eval_item(&annotate.item, info)?,
+        ItemKind::DataDecl(_) => Arc::new(Value::Unit),
         ItemKind::Data(data) => Arc::new(Value::Data(
             data.fields
                 .iter()

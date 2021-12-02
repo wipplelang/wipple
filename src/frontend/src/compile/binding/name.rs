@@ -19,6 +19,8 @@ impl BindingKind for NameBinding {
     }
 
     fn assign(self, span: Span, form: Form, stack: &Stack, info: &mut Info) -> Item {
+        let decl_item = form.as_decl_item();
+
         let (variable, runtime_item) = match form.kind {
             FormKind::Item(item) => (Variable::runtime(self.span, self.name), Some(item)),
             _ => (
@@ -42,7 +44,7 @@ impl BindingKind for NameBinding {
         if let Some(runtime_item) = runtime_item {
             Item::initialize(span, binding_info, variable_id, runtime_item)
         } else {
-            Item::unit(span)
+            decl_item.unwrap_or_else(|| Item::unit(span))
         }
     }
 }
