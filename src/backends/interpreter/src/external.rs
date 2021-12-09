@@ -37,17 +37,17 @@ impl ExternalValues {
 #[derive(Clone, Serialize)]
 pub struct ExternalFunction {
     #[serde(skip)]
-    function: Arc<dyn Fn(Arc<Value>) -> Result<Arc<Value>, Error>>,
+    function: Arc<dyn Fn(Arc<Value>) -> Result<Arc<Value>, Diverge>>,
 }
 
 impl ExternalFunction {
-    pub fn new(func: impl for<'a> Fn(Arc<Value>) -> Result<Arc<Value>, Error> + 'static) -> Self {
+    pub fn new(func: impl for<'a> Fn(Arc<Value>) -> Result<Arc<Value>, Diverge> + 'static) -> Self {
         ExternalFunction {
             function: Arc::new(func),
         }
     }
 
-    pub fn call(&self, input: Arc<Value>) -> Result<Arc<Value>, Error> {
+    pub fn call(&self, input: Arc<Value>) -> Result<Arc<Value>, Diverge> {
         (self.function)(input)
     }
 }

@@ -39,6 +39,9 @@ pub fn builtin_variables() -> HashMap<InternedString, Variable> {
 
         "data" => Form::builtin_data,
 
+        "loop" => Form::builtin_loop,
+        "end" => Form::builtin_end,
+
         "Number" => Form::builtin_number_ty,
         "Text" => Form::builtin_text_ty,
     }
@@ -521,6 +524,42 @@ impl Form {
                             },
                         )
                     })
+                },
+            ),
+        ))
+    }
+
+    fn builtin_loop(span: Span, _: LowerContext, _: &mut Info) -> Option<Self> {
+        Some(Form::template(
+            span,
+            Template::new(
+                Some(NonZeroUsize::new(1).unwrap()),
+                move |_, exprs, span, stack, info| {
+                    let item = exprs
+                        .into_iter()
+                        .next()
+                        .unwrap()
+                        .lower_to_item(stack, info)?;
+
+                    Some(Form::item(span, Item::r#loop(span, item)))
+                },
+            ),
+        ))
+    }
+
+    fn builtin_end(span: Span, _: LowerContext, _: &mut Info) -> Option<Self> {
+        Some(Form::template(
+            span,
+            Template::new(
+                Some(NonZeroUsize::new(1).unwrap()),
+                move |_, exprs, span, stack, info| {
+                    let item = exprs
+                        .into_iter()
+                        .next()
+                        .unwrap()
+                        .lower_to_item(stack, info)?;
+
+                    Some(Form::item(span, Item::end(span, item)))
                 },
             ),
         ))

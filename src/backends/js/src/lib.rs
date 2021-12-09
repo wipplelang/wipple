@@ -112,6 +112,12 @@ fn gen_item<'a>(item: &'a Item, info: &mut Info) -> Expr<'a> {
                 .map(|field| Some(gen_item(field, info)))
                 .collect(),
         ),
+        ItemKind::Loop(_loop) => {
+            todo!();
+        }
+        ItemKind::End(_end) => {
+            todo!();
+        }
     }
 }
 

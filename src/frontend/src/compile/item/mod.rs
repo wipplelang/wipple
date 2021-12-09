@@ -3,10 +3,12 @@ mod apply;
 mod block;
 mod data;
 mod data_decl;
+mod end;
 mod external;
 mod function;
 mod function_input;
 mod initialize;
+mod r#loop;
 mod number;
 mod text;
 mod unit;
@@ -17,11 +19,13 @@ pub use apply::*;
 pub use block::*;
 pub use data::*;
 pub use data_decl::*;
+pub use end::*;
 pub use external::*;
 pub use function::*;
 pub use function_input::*;
 pub use initialize::*;
 pub use number::*;
+pub use r#loop::*;
 pub use text::*;
 pub use unit::*;
 pub use variable::*;
@@ -54,10 +58,12 @@ pub enum ItemKind {
     Block(BlockItem),
     Data(DataItem),
     DataDecl(DataDeclItem),
+    End(EndItem),
     External(ExternalItem),
     Function(FunctionItem),
     FunctionInput(FunctionInputItem),
     Initialize(InitializeItem),
+    Loop(LoopItem),
     Number(NumberItem),
     Text(TextItem),
     Unit(UnitItem),

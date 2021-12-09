@@ -21,6 +21,12 @@ pub enum Value {
 }
 
 #[derive(Debug, Serialize)]
+pub enum Diverge {
+    End(Arc<Value>),
+    Error(Error),
+}
+
+#[derive(Debug, Serialize)]
 pub enum Error {
     UnknownExternalNamespace(String),
     UnknownExternalIdentifier(String),
@@ -35,7 +41,10 @@ pub fn eval(files: &[Arc<File>], external: ExternalValues) -> Result<(), Error> 
 
     for file in files {
         for statement in &file.statements {
-            eval_item(statement, &mut info)?;
+            eval_item(statement, &mut info).map_err(|error| match error {
+                Diverge::Error(error) => error,
+                _ => unreachable!(),
+            })?;
         }
     }
 
@@ -63,7 +72,7 @@ impl Scope {
     }
 }
 
-fn eval_item(item: &Item, info: &mut Info) -> Result<Arc<Value>, Error> {
+fn eval_item(item: &Item, info: &mut Info) -> Result<Arc<Value>, Diverge> {
     let value = match &item.kind {
         ItemKind::Unit(_) => Arc::new(Value::Unit),
         ItemKind::Number(number) => Arc::new(Value::Number(number.value)),
@@ -125,7 +134,8 @@ fn eval_item(item: &Item, info: &mut Info) -> Result<Arc<Value>, Error> {
         ItemKind::FunctionInput(_) => info.function_input.as_ref().unwrap().clone(),
         ItemKind::External(external) => info
             .external
-            .get(&external.namespace.get(), &external.identifier.get())?
+            .get(&external.namespace.get(), &external.identifier.get())
+            .map_err(Diverge::Error)?
             .clone(),
         ItemKind::Annotate(annotate) => eval_item(&annotate.item, info)?,
         ItemKind::DataDecl(_) => Arc::new(Value::Unit),
@@ -135,6 +145,17 @@ fn eval_item(item: &Item, info: &mut Info) -> Result<Arc<Value>, Error> {
                 .map(|field| eval_item(field, info))
                 .collect::<Result<_, _>>()?,
         )),
+        ItemKind::Loop(r#loop) => loop {
+            match eval_item(&r#loop.body, info) {
+                Ok(_) => continue,
+                Err(Diverge::End(value)) => break value,
+                Err(diverge) => return Err(diverge),
+            }
+        },
+        ItemKind::End(end) => {
+            let value = eval_item(&end.value, info)?;
+            return Err(Diverge::End(value));
+        }
     };
 
     Ok(value)

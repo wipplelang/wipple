@@ -110,6 +110,9 @@ fn item_annotation(
         ItemKind::Function(function) => {
             annotations.append(&mut item_annotation(&function.body, types));
         }
+        ItemKind::Annotate(annotate) => {
+            annotations.append(&mut item_annotation(&annotate.item, types));
+        }
         ItemKind::Data(data) => {
             annotations.append(
                 &mut data
@@ -122,13 +125,18 @@ fn item_annotation(
         ItemKind::DataDecl(_decl) => {
             // TODO
         }
+        ItemKind::Loop(r#loop) => {
+            annotations.append(&mut item_annotation(&r#loop.body, types));
+        }
+        ItemKind::End(end) => {
+            annotations.append(&mut item_annotation(&end.value, types));
+        }
         ItemKind::Unit(_)
         | ItemKind::Number(_)
         | ItemKind::Text(_)
         | ItemKind::Variable(_)
         | ItemKind::FunctionInput(_)
-        | ItemKind::External(_)
-        | ItemKind::Annotate(_) => {}
+        | ItemKind::External(_) => {}
     }
 
     annotations
