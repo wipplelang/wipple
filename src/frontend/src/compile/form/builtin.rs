@@ -42,10 +42,6 @@ pub fn builtin_variables() -> HashMap<InternedString, Variable> {
         "loop" => Form::builtin_loop,
         "end" => Form::builtin_end,
 
-        "mutable" => Form::builtin_mutable,
-        "get" => Form::builtin_get,
-        "set!" => Form::builtin_set,
-
         "Number" => Form::builtin_number_ty,
         "Text" => Form::builtin_text_ty,
     }
@@ -564,60 +560,6 @@ impl Form {
                         .lower_to_item(stack, info)?;
 
                     Some(Form::item(span, Item::end(span, item)))
-                },
-            ),
-        ))
-    }
-
-    fn builtin_mutable(span: Span, _: LowerContext, _: &mut Info) -> Option<Self> {
-        Some(Form::template(
-            span,
-            Template::new(
-                Some(NonZeroUsize::new(1).unwrap()),
-                move |_, exprs, span, stack, info| {
-                    let item = exprs
-                        .into_iter()
-                        .next()
-                        .unwrap()
-                        .lower_to_item(stack, info)?;
-
-                    Some(Form::item(span, Item::mutable(span, item)))
-                },
-            ),
-        ))
-    }
-
-    fn builtin_get(span: Span, _: LowerContext, _: &mut Info) -> Option<Self> {
-        Some(Form::template(
-            span,
-            Template::new(
-                Some(NonZeroUsize::new(1).unwrap()),
-                move |_, exprs, span, stack, info| {
-                    let item = exprs
-                        .into_iter()
-                        .next()
-                        .unwrap()
-                        .lower_to_item(stack, info)?;
-
-                    Some(Form::item(span, Item::get(span, item)))
-                },
-            ),
-        ))
-    }
-
-    fn builtin_set(span: Span, _: LowerContext, _: &mut Info) -> Option<Self> {
-        // TODO: MAKE 'set!' A FUNCTION
-        Some(Form::template(
-            span,
-            Template::new(
-                Some(NonZeroUsize::new(2).unwrap()),
-                move |_, exprs, span, stack, info| {
-                    let mut exprs = exprs.into_iter();
-
-                    let mutable = exprs.next().unwrap().lower_to_item(stack, info)?;
-                    let item = exprs.next().unwrap().lower_to_item(stack, info)?;
-
-                    Some(Form::item(span, Item::set(span, mutable, item)))
                 },
             ),
         ))

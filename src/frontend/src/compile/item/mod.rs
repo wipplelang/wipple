@@ -7,12 +7,9 @@ mod end;
 mod external;
 mod function;
 mod function_input;
-mod get;
 mod initialize;
 mod r#loop;
-mod mutable;
 mod number;
-mod set;
 mod text;
 mod unit;
 mod variable;
@@ -26,12 +23,9 @@ pub use end::*;
 pub use external::*;
 pub use function::*;
 pub use function_input::*;
-pub use get::*;
 pub use initialize::*;
-pub use mutable::*;
 pub use number::*;
 pub use r#loop::*;
-pub use set::*;
 pub use text::*;
 pub use unit::*;
 pub use variable::*;
@@ -68,12 +62,9 @@ pub enum ItemKind {
     External(ExternalItem),
     Function(FunctionItem),
     FunctionInput(FunctionInputItem),
-    Get(GetItem),
     Initialize(InitializeItem),
     Loop(LoopItem),
-    Mutable(MutableItem),
     Number(NumberItem),
-    Set(SetItem),
     Text(TextItem),
     Unit(UnitItem),
     Variable(VariableItem),

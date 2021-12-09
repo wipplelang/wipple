@@ -131,16 +131,6 @@ fn item_annotation(
         ItemKind::End(end) => {
             annotations.append(&mut item_annotation(&end.value, types));
         }
-        ItemKind::Mutable(mutable) => {
-            annotations.append(&mut item_annotation(&mutable.value, types));
-        }
-        ItemKind::Get(get) => {
-            annotations.append(&mut item_annotation(&get.mutable, types));
-        }
-        ItemKind::Set(set) => {
-            annotations.append(&mut item_annotation(&set.mutable, types));
-            annotations.append(&mut item_annotation(&set.value, types));
-        }
         ItemKind::Unit(_)
         | ItemKind::Number(_)
         | ItemKind::Text(_)

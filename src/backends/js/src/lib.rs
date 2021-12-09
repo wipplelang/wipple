@@ -118,15 +118,6 @@ fn gen_item<'a>(item: &'a Item, info: &mut Info) -> Expr<'a> {
         ItemKind::End(_end) => {
             todo!();
         }
-        ItemKind::Mutable(_mutable) => {
-            todo!();
-        }
-        ItemKind::Get(_get) => {
-            todo!();
-        }
-        ItemKind::Set(_set) => {
-            todo!();
-        }
     }
 }
 

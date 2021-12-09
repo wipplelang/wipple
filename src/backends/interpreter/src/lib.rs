@@ -18,7 +18,6 @@ pub enum Value {
     },
     ExternalFunction(ExternalFunction),
     Data(Vec<Arc<Value>>),
-    Mutable(RefCell<Arc<Value>>),
 }
 
 #[derive(Debug, Serialize)]
@@ -156,26 +155,6 @@ fn eval_item(item: &Item, info: &mut Info) -> Result<Arc<Value>, Diverge> {
         ItemKind::End(end) => {
             let value = eval_item(&end.value, info)?;
             return Err(Diverge::End(value));
-        }
-        ItemKind::Mutable(mutable) => {
-            let value = eval_item(&mutable.value, info)?;
-            Arc::new(Value::Mutable(RefCell::new(value)))
-        }
-        ItemKind::Get(get) => match eval_item(&get.mutable, info)?.as_ref() {
-            Value::Mutable(mutable) => mutable.borrow().clone(),
-            _ => unreachable!(),
-        },
-        ItemKind::Set(set) => {
-            let value = eval_item(&set.value, info)?;
-
-            match eval_item(&set.mutable, info)?.as_ref() {
-                Value::Mutable(mutable) => {
-                    *mutable.borrow_mut() = value;
-                }
-                _ => unreachable!(),
-            }
-
-            Arc::new(Value::Unit)
         }
     };
 
