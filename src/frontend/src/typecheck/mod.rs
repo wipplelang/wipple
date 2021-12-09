@@ -64,8 +64,8 @@ pub struct BuiltinTypes {
 }
 
 macro_rules! builtin_type {
-    ($name:expr, $format:expr $(, $var:expr)* $(,)?) => {
-        Type::Constructed(TypeName::new($name, $format), vec![$($var),*])
+    ($name:expr, $format:expr $(,)?) => {
+        Type::Constructed(TypeName::new($name, $format), Vec::new())
     };
 }
 
@@ -77,12 +77,20 @@ lazy_static! {
         text: builtin_type!(Some("Text"), TypeNameFormat::Default),
     };
     static ref FUNCTION_TYPE_ID: TypeId = TypeId::new();
+    static ref MUTABLE_TYPE_ID: TypeId = TypeId::new();
 }
 
 pub fn function_type(input: Type, output: Type) -> Type {
     Type::Constructed(
         TypeName::with_id(*FUNCTION_TYPE_ID, Some("->"), TypeNameFormat::Function),
         vec![input, output],
+    )
+}
+
+pub fn mutable_type(value: Type) -> Type {
+    Type::Constructed(
+        TypeName::with_id(*MUTABLE_TYPE_ID, Some("Mutable"), TypeNameFormat::Default),
+        vec![value],
     )
 }
 
@@ -329,6 +337,60 @@ impl<'a> Typechecker<'a> {
                         }
                     }
                     None => self.loop_end = Some(ty),
+                }
+
+                Some(TypeSchema::Monotype(BUILTIN_TYPES.unit.clone()))
+            }
+            ItemKind::Mutable(mutable) => {
+                let ty = self
+                    .typecheck_item(&mutable.value, None)?
+                    .instantiate(&mut self.ctx)
+                    .apply(&self.ctx);
+
+                Some(TypeSchema::Monotype(mutable_type(ty)))
+            }
+            ItemKind::Get(get) => {
+                let mutable_ty = {
+                    let mutable_ty = mutable_type(self.ctx.new_variable()).apply(&self.ctx);
+
+                    let inferred_mutable_ty = self
+                        .typecheck_item(&get.mutable, None)?
+                        .instantiate(&mut self.ctx)
+                        .apply(&self.ctx);
+
+                    if let Err(error) = self.ctx.unify(&mutable_ty, &inferred_mutable_ty) {
+                        self.report_type_error(&get.mutable, error);
+                        return None;
+                    }
+
+                    mutable_ty.apply(&self.ctx)
+                };
+
+                let mut mutable_associated_types = match mutable_ty {
+                    Type::Constructed(_, associated_types) => associated_types.into_iter(),
+                    _ => unreachable!(),
+                };
+
+                let value_ty = mutable_associated_types.next().unwrap().apply(&self.ctx);
+
+                Some(TypeSchema::Monotype(value_ty))
+            }
+            ItemKind::Set(set) => {
+                let inferred_value_ty = self
+                    .typecheck_item(&set.value, None)?
+                    .instantiate(&mut self.ctx)
+                    .apply(&self.ctx);
+
+                let mutable_ty = mutable_type(inferred_value_ty).apply(&self.ctx);
+
+                let inferred_mutable_ty = self
+                    .typecheck_item(&set.mutable, None)?
+                    .instantiate(&mut self.ctx)
+                    .apply(&self.ctx);
+
+                if let Err(error) = self.ctx.unify(&mutable_ty, &inferred_mutable_ty) {
+                    self.report_type_error(&set.mutable, error);
+                    return None;
                 }
 
                 Some(TypeSchema::Monotype(BUILTIN_TYPES.unit.clone()))
