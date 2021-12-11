@@ -31,7 +31,9 @@ pub fn builtin_variables() -> HashMap<InternedString, Variable> {
         "_" => Form::builtin_underscore,
         ":" => Form::builtin_assign,
         "::" => Form::builtin_annotate,
+
         "->" => Form::builtin_function,
+        "return" => Form::builtin_return,
 
         "external" => Form::builtin_external,
         "file" => Form::builtin_file,
@@ -346,6 +348,24 @@ impl Form {
                     },
                 ),
             },
+        ))
+    }
+
+    fn builtin_return(span: Span, _: LowerContext, _: &mut Info) -> Option<Self> {
+        Some(Form::template(
+            span,
+            Template::new(
+                Some(NonZeroUsize::new(1).unwrap()),
+                move |_, exprs, span, stack, info| {
+                    let item = exprs
+                        .into_iter()
+                        .next()
+                        .unwrap()
+                        .lower_to_item(stack, info)?;
+
+                    Some(Form::item(span, Item::r#return(span, item)))
+                },
+            ),
         ))
     }
 

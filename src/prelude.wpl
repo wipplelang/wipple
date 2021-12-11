@@ -1,6 +1,17 @@
 [: no-prelude :]
 
 -- TODO: Show trait
-show : x -> (external "internal" "show" x :: ())
+show : (x -> external "builtin" "show" x) :: (_ -> ())
 
-pi : 3.14
+-- -- TODO: Mutable : for A -> data A
+-- Mutable : data {
+--     value :: Number
+-- }
+
+-- -- TODO: Shorthand initialization
+-- -- TODO: Remove once we have tuple data structures
+-- mutable : value -> Mutable { value : value }
+
+-- get : external "builtin" "get" :: (_ -> _) -- TODO: get :: for A -> Mutable A -> A
+
+-- set! : external "builtin" "set" :: (_ -> _ -> ()) -- TODO: set! :: for A -> Mutable A -> A -> ()

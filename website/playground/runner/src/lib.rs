@@ -131,6 +131,9 @@ fn item_annotation(
         ItemKind::End(end) => {
             annotations.append(&mut item_annotation(&end.value, types));
         }
+        ItemKind::Return(r#return) => {
+            annotations.append(&mut item_annotation(&r#return.value, types));
+        }
         ItemKind::Unit(_)
         | ItemKind::Number(_)
         | ItemKind::Text(_)
@@ -146,7 +149,7 @@ pub fn external(on_output: impl Fn(String) + 'static) -> ExternalValues {
     ExternalValues::new()
         .insert("math", "pi", Value::Number("3.14".parse().unwrap()))
         .insert(
-            "internal",
+            "builtin",
             "show",
             Value::ExternalFunction(ExternalFunction::new(move |input| {
                 let text = match input.as_ref() {

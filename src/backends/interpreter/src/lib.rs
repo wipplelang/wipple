@@ -23,6 +23,7 @@ pub enum Value {
 #[derive(Debug, Serialize)]
 pub enum Diverge {
     End(Arc<Value>),
+    Return(Arc<Value>),
     Error(Error),
 }
 
@@ -101,7 +102,10 @@ fn eval_item(item: &Item, info: &mut Info) -> Result<Arc<Value>, Diverge> {
                 child.borrow_mut().variables.extend(captures.clone());
                 info.scope = child;
 
-                let value = eval_item(body, info)?;
+                let value = match eval_item(body, info) {
+                    Ok(value) | Err(Diverge::Return(value)) => value,
+                    diverge => return diverge,
+                };
 
                 info.scope = parent;
                 info.function_input = None;
@@ -149,12 +153,16 @@ fn eval_item(item: &Item, info: &mut Info) -> Result<Arc<Value>, Diverge> {
             match eval_item(&r#loop.body, info) {
                 Ok(_) => continue,
                 Err(Diverge::End(value)) => break value,
-                Err(diverge) => return Err(diverge),
+                diverge => return diverge,
             }
         },
         ItemKind::End(end) => {
             let value = eval_item(&end.value, info)?;
             return Err(Diverge::End(value));
+        }
+        ItemKind::Return(r#return) => {
+            let value = eval_item(&r#return.value, info)?;
+            return Err(Diverge::Return(value));
         }
     };
 

@@ -10,6 +10,7 @@ mod function_input;
 mod initialize;
 mod r#loop;
 mod number;
+mod r#return;
 mod text;
 mod unit;
 mod variable;
@@ -26,6 +27,7 @@ pub use function_input::*;
 pub use initialize::*;
 pub use number::*;
 pub use r#loop::*;
+pub use r#return::*;
 pub use text::*;
 pub use unit::*;
 pub use variable::*;
@@ -65,6 +67,7 @@ pub enum ItemKind {
     Initialize(InitializeItem),
     Loop(LoopItem),
     Number(NumberItem),
+    Return(ReturnItem),
     Text(TextItem),
     Unit(UnitItem),
     Variable(VariableItem),

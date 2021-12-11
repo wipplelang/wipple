@@ -118,6 +118,9 @@ fn gen_item<'a>(item: &'a Item, info: &mut Info) -> Expr<'a> {
         ItemKind::End(_end) => {
             todo!();
         }
+        ItemKind::Return(_return) => {
+            todo!();
+        }
     }
 }
 

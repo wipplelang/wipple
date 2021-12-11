@@ -131,7 +131,8 @@ struct Typechecker<'a> {
     variables: HashMap<VariableId, TypeSchema>,
     data_decls: HashMap<TypeId, Vec<Type>>,
     function_input: Option<usize>,
-    loop_end: Option<TypeSchema>,
+    end_ty: Option<Type>,
+    return_ty: Option<Type>,
 }
 
 impl<'a> Typechecker<'a> {
@@ -144,7 +145,8 @@ impl<'a> Typechecker<'a> {
             variables: Default::default(),
             data_decls: Default::default(),
             function_input: Default::default(),
-            loop_end: Default::default(),
+            end_ty: Default::default(),
+            return_ty: Default::default(),
         }
     }
 
@@ -213,6 +215,7 @@ impl<'a> Typechecker<'a> {
             ),
             ItemKind::Function(function) => {
                 let previous_input = mem::take(&mut self.function_input);
+                let previous_return_ty = mem::take(&mut self.return_ty);
 
                 let body_ty = self
                     .typecheck_item(&function.body, None)?
@@ -220,6 +223,9 @@ impl<'a> Typechecker<'a> {
                     .apply(&self.ctx);
 
                 let input_var = mem::replace(&mut self.function_input, previous_input).unwrap();
+
+                let return_ty =
+                    mem::replace(&mut self.return_ty, previous_return_ty).unwrap_or(body_ty);
 
                 // FIXME: Instead of collecting every single type variable except the function input,
                 // implement 'generalize' ourselves
@@ -235,7 +241,7 @@ impl<'a> Typechecker<'a> {
                     .collect::<Vec<_>>();
 
                 Some(
-                    function_type(Type::Variable(input_var), body_ty)
+                    function_type(Type::Variable(input_var), return_ty)
                         .apply(&self.ctx)
                         .generalize(&vars),
                 )
@@ -304,31 +310,53 @@ impl<'a> Typechecker<'a> {
                 })
             }
             ItemKind::Loop(r#loop) => {
-                let previous_loop_end = mem::take(&mut self.loop_end);
+                let previous_end_ty = mem::take(&mut self.end_ty);
 
                 self.typecheck_item(&r#loop.body, None)?
                     .instantiate(&mut self.ctx)
                     .apply(&self.ctx);
 
-                let end_ty = mem::replace(&mut self.loop_end, previous_loop_end)
-                    .unwrap_or_else(|| TypeSchema::Monotype(BUILTIN_TYPES.never.clone()));
+                let end_ty = mem::replace(&mut self.end_ty, previous_end_ty)
+                    .unwrap_or_else(|| BUILTIN_TYPES.never.clone());
 
-                Some(end_ty)
+                Some(TypeSchema::Monotype(end_ty))
             }
             ItemKind::End(end) => {
-                let ty = self.typecheck_item(&end.value, None)?;
+                let ty = self
+                    .typecheck_item(&end.value, None)?
+                    .instantiate(&mut self.ctx)
+                    .apply(&self.ctx);
 
-                match self.loop_end.as_mut() {
-                    Some(loop_end) => {
-                        let loop_end = loop_end.instantiate(&mut self.ctx).apply(&self.ctx);
-                        let ty = ty.instantiate(&mut self.ctx).apply(&self.ctx);
+                match self.end_ty.as_mut() {
+                    Some(end_ty) => {
+                        let end_ty = end_ty.apply(&self.ctx);
 
-                        if let Err(error) = self.ctx.unify(&loop_end, &ty) {
+                        if let Err(error) = self.ctx.unify(&end_ty, &ty) {
                             self.report_type_error(&end.value, error);
                             return None;
                         }
                     }
-                    None => self.loop_end = Some(ty),
+                    None => self.end_ty = Some(ty),
+                }
+
+                Some(TypeSchema::Monotype(BUILTIN_TYPES.unit.clone()))
+            }
+            ItemKind::Return(r#return) => {
+                let ty = self
+                    .typecheck_item(&r#return.value, None)?
+                    .instantiate(&mut self.ctx)
+                    .apply(&self.ctx);
+
+                match self.return_ty.as_mut() {
+                    Some(return_ty) => {
+                        let return_ty = return_ty.apply(&self.ctx);
+
+                        if let Err(error) = self.ctx.unify(&return_ty, &ty) {
+                            self.report_type_error(&r#return.value, error);
+                            return None;
+                        }
+                    }
+                    None => self.return_ty = Some(ty),
                 }
 
                 Some(TypeSchema::Monotype(BUILTIN_TYPES.unit.clone()))
