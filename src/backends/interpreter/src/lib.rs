@@ -138,7 +138,7 @@ fn eval_item(item: &Item, info: &mut Info) -> Result<Arc<Value>, Diverge> {
         ItemKind::FunctionInput(_) => info.function_input.as_ref().unwrap().clone(),
         ItemKind::External(external) => info
             .external
-            .get(&external.namespace.get(), &external.identifier.get())
+            .get(&external.namespace, &external.identifier)
             .map_err(Diverge::Error)?
             .clone(),
         ItemKind::Annotate(annotate) => eval_item(&annotate.item, info)?,

@@ -1,28 +1,36 @@
-use std::fmt;
-
+use lasso::ThreadedRodeo;
 use lazy_static::lazy_static;
-use parking_lot::{MappedRwLockReadGuard, RwLock, RwLockReadGuard};
 use serde::Serialize;
-use string_interner::StringInterner;
+use std::{fmt, ops::Deref};
 
 lazy_static! {
-    static ref INTERNER: RwLock<StringInterner> = Default::default();
+    static ref INTERNER: ThreadedRodeo = Default::default();
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct InternedString {
-    symbol: string_interner::DefaultSymbol,
+    symbol: lasso::Spur,
 }
 
 impl InternedString {
     pub fn new(s: impl AsRef<str>) -> Self {
         InternedString {
-            symbol: INTERNER.write().get_or_intern(s),
+            symbol: INTERNER.get_or_intern(s.as_ref()),
         }
     }
+}
 
-    pub fn get(&self) -> MappedRwLockReadGuard<str> {
-        RwLockReadGuard::map(INTERNER.read(), |f| f.resolve(self.symbol).unwrap())
+impl Deref for InternedString {
+    type Target = str;
+
+    fn deref(&self) -> &'static Self::Target {
+        INTERNER.resolve(&self.symbol)
+    }
+}
+
+impl AsRef<str> for InternedString {
+    fn as_ref(&self) -> &'static str {
+        INTERNER.resolve(&self.symbol)
     }
 }
 
@@ -31,18 +39,18 @@ impl Serialize for InternedString {
     where
         S: serde::Serializer,
     {
-        self.get().serialize(serializer)
+        (**self).serialize(serializer)
     }
 }
 
 impl fmt::Display for InternedString {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.get())
+        write!(f, "{}", *self)
     }
 }
 
 impl fmt::Debug for InternedString {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}", self.get())
+        write!(f, "{:?}", *self)
     }
 }

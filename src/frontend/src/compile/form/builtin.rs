@@ -433,7 +433,7 @@ impl Form {
                         }
                     };
 
-                    let file = project::load_file(&file.get(), span, info)?;
+                    let file = project::load_file(&file, span, info)?;
 
                     Some(Form::file(span, file))
                 },
@@ -462,7 +462,7 @@ impl Form {
                         }
                     };
 
-                    let file = project::load_file(&file.get(), span, info)?;
+                    let file = project::load_file(&file, span, info)?;
 
                     let mut variables = stack.variables.borrow_mut();
                     for (name, variable) in &file.variables {
