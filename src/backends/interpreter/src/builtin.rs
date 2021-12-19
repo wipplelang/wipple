@@ -7,7 +7,7 @@ use lazy_static::lazy_static;
 pub fn call(identifier: &str, inputs: Vec<Arc<Value>>) -> Result<Arc<Value>, Diverge> {
     let builtin = BUILTINS
         .get(identifier)
-        .ok_or_else(|| Diverge::Error(Error::from("Unknown builtin function")))?;
+        .ok_or_else(|| Diverge::Error(format!("Unknown builtin function '{}'", identifier)))?;
 
     builtin(inputs)
 }
@@ -15,17 +15,25 @@ pub fn call(identifier: &str, inputs: Vec<Arc<Value>>) -> Result<Arc<Value>, Div
 type BuiltinFunction = fn(Vec<Arc<Value>>) -> Result<Arc<Value>, Diverge>;
 
 lazy_static! {
-    static ref BUILTINS: HashMap<InternedString, BuiltinFunction> = {
+    static ref BUILTINS: HashMap<&'static str, BuiltinFunction> = {
         macro_rules! builtins {
             ($($name:expr => $f:expr,)*) => {{
-                let mut variables = HashMap::<InternedString, BuiltinFunction>::default();
+                let mut builtins = HashMap::<&'static str, BuiltinFunction>::default();
 
-                $({
-                    let name = InternedString::new($name);
-                    variables.insert(name, |inputs: Vec<Arc<Value>>| $f(inputs.into_iter().collect_tuple().expect("Wrong number of inputs to builtin function")));
-                })*
+                $(
+                    builtins.insert(
+                        $name,
+                        |inputs: Vec<Arc<Value>>| {
+                            $f(
+                                inputs
+                                    .into_iter()
+                                    .collect_tuple()
+                                    .expect("Wrong number of inputs to builtin function")
+                            )
+                        });
+                )*
 
-                variables
+                builtins
             }};
         }
 

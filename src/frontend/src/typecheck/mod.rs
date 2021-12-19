@@ -268,11 +268,19 @@ impl<'a> Typechecker<'a> {
                 Item::function_input(item.info, TypeSchema::Monotype(Type::Variable(var)))
             }
             compile::ItemKind::External(external) => {
-                for input in &external.inputs {
-                    self.typecheck_item(input, None);
-                }
+                let inputs = external
+                    .inputs
+                    .iter()
+                    .map(|item| self.typecheck_item(item, None))
+                    .collect();
 
-                Item::function_input(item.info, TypeSchema::Monotype(var.clone()))
+                Item::external(
+                    item.info,
+                    TypeSchema::Monotype(var.clone()),
+                    external.namespace,
+                    external.identifier,
+                    inputs,
+                )
             }
             compile::ItemKind::Annotate(annotate) => {
                 let ty = self.convert_constructor(&annotate.constructor);
