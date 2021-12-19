@@ -1,8 +1,8 @@
-use crate::*;
-use serde::Serialize;
+use crate::{compile::*, *};
+use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Constructor {
     Placeholder,
     Number,
@@ -20,7 +20,7 @@ pub enum Constructor {
     // TODO: Enum
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DataStructFieldDecl {
     pub info: DataStructFieldDeclInfo,
     pub constructor: Constructor,
@@ -32,7 +32,7 @@ impl DataStructFieldDecl {
     }
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DataStructFieldDeclInfo {
     pub span: Span,
     pub name: InternedString,
@@ -44,7 +44,7 @@ impl DataStructFieldDeclInfo {
     }
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DataStructField {
     pub info: DataStructFieldInfo,
     pub name: InternedString,
@@ -57,7 +57,7 @@ impl DataStructField {
     }
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DataStructFieldInfo {
     pub span: Span,
 }

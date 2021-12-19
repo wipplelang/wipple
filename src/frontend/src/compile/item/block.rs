@@ -1,7 +1,7 @@
-use crate::*;
-use serde::Serialize;
+use crate::{compile::*, *};
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BlockItem {
     pub statements: Vec<Item>,
 }
@@ -11,7 +11,6 @@ impl BlockItem {
         BlockItem { statements }
     }
 }
-
 
 impl Item {
     pub fn block(span: Span, statements: Vec<Item>) -> Self {

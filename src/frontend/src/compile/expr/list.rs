@@ -1,4 +1,4 @@
-use crate::*;
+use crate::{compile::*, *};
 use std::{
     cmp::Ordering,
     collections::{hash_map::Entry, HashMap},
@@ -146,7 +146,7 @@ impl ExprKind for ListExpr {
                                         }
                                         Constructor::DataStruct {
                                             id,
-                                            fields: constructor_fields,
+                                            fields: ref constructor_fields,
                                         } => {
                                             let block_span = expr.span();
 
@@ -213,7 +213,7 @@ impl ExprKind for ListExpr {
 
                                             let missing_fields = constructor_fields
                                                 .keys()
-                                                .filter(|name| !fields.contains_key(name))
+                                                .filter(|name| !fields.contains_key(*name))
                                                 .map(|name| name.to_string())
                                                 .collect::<Vec<_>>();
 
@@ -304,8 +304,10 @@ impl ExprKind for ListExpr {
                                     }
                                 };
 
-                                if let Some(variable) = file.variables.get(&name.value) {
-                                    let form = (variable.form)(span, context, info)?;
+                                let variable = file.variables.get(&name.value).cloned();
+
+                                if let Some(variable) = variable {
+                                    let form = variable.form(span, context, info)?;
 
                                     if matches!(form.kind, FormKind::Item { .. }) {
                                         info.used_variables.borrow_mut().insert(variable.id);

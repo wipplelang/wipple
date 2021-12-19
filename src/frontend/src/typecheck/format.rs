@@ -1,4 +1,4 @@
-use crate::*;
+use crate::{typecheck::*, *};
 use std::collections::BTreeMap;
 
 pub fn format_type_schema(ty: &TypeSchema) -> String {
@@ -112,5 +112,5 @@ fn name_for_index(index: usize) -> String {
         .get(index)
         .copied()
         .map(String::from)
-        .unwrap_or_else(|| format!("T{}", index))
+        .unwrap_or_else(|| format!("T{}", index + 1))
 }

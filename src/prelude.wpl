@@ -1,7 +1,7 @@
 [: no-prelude :]
 
 -- TODO: Show trait
-show : (x -> external "builtin" "show" x) :: (_ -> ())
+-- show : (x -> external "builtin" "show" x) :: (_ -> ())
 
 -- -- TODO: Mutable : for A -> data A
 -- Mutable : data {

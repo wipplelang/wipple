@@ -10,7 +10,7 @@ pub use name::*;
 pub use number::*;
 pub use text::*;
 
-use crate::*;
+use crate::{compile::*, *};
 use enum_dispatch::enum_dispatch;
 use std::fmt;
 use wipple_parser as parser;

@@ -1,7 +1,7 @@
 use lasso::ThreadedRodeo;
 use lazy_static::lazy_static;
-use serde::Serialize;
-use std::{fmt, ops::Deref};
+use serde::{Deserialize, Serialize};
+use std::{borrow::Borrow, fmt, ops::Deref};
 
 lazy_static! {
     static ref INTERNER: ThreadedRodeo = Default::default();
@@ -18,19 +18,29 @@ impl InternedString {
             symbol: INTERNER.get_or_intern(s.as_ref()),
         }
     }
+
+    pub fn as_str(&self) -> &'static str {
+        INTERNER.resolve(&self.symbol)
+    }
 }
 
 impl Deref for InternedString {
     type Target = str;
 
     fn deref(&self) -> &'static Self::Target {
-        INTERNER.resolve(&self.symbol)
+        self.as_str()
     }
 }
 
 impl AsRef<str> for InternedString {
     fn as_ref(&self) -> &'static str {
-        INTERNER.resolve(&self.symbol)
+        self.as_str()
+    }
+}
+
+impl Borrow<str> for InternedString {
+    fn borrow(&self) -> &'static str {
+        self.as_str()
     }
 }
 
@@ -43,14 +53,23 @@ impl Serialize for InternedString {
     }
 }
 
+impl<'de> Deserialize<'de> for InternedString {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        Ok(Self::new(String::deserialize(deserializer)?))
+    }
+}
+
 impl fmt::Display for InternedString {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", *self)
+        write!(f, "{}", self.as_str())
     }
 }
 
 impl fmt::Debug for InternedString {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}", *self)
+        write!(f, "{:?}", self.as_str())
     }
 }

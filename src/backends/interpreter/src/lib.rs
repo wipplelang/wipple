@@ -1,22 +1,24 @@
-mod external;
+mod builtin;
 
+#[cfg(not(target_arch = "wasm32"))]
+mod external;
+#[cfg(not(target_arch = "wasm32"))]
 pub use external::*;
 
 use rust_decimal::Decimal;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::{cell::RefCell, collections::BTreeMap, sync::Arc};
-use wipple_frontend::*;
+use wipple_frontend::{typecheck::*, *};
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub enum Value {
     Unit,
     Text(String),
     Number(Decimal),
     Function {
-        body: Item,
+        body: Box<Item>,
         captures: BTreeMap<VariableId, Arc<Value>>,
     },
-    ExternalFunction(ExternalFunction),
     Data(Vec<Arc<Value>>),
 }
 
@@ -24,36 +26,26 @@ pub enum Value {
 pub enum Diverge {
     End(Arc<Value>),
     Return(Arc<Value>),
-    Error(Error),
+    Error(String),
 }
 
-#[derive(Debug, Serialize)]
-pub enum Error {
-    UnknownExternalNamespace(String),
-    UnknownExternalIdentifier(String),
-}
+type Error = String;
 
-pub fn eval(files: &[Arc<File>], external: ExternalValues) -> Result<(), Error> {
+pub fn eval(item: &Item) -> Result<(), Error> {
     let mut info = Info {
-        external,
         scope: Default::default(),
         function_input: None,
     };
 
-    for file in files {
-        for statement in &file.statements {
-            eval_item(statement, &mut info).map_err(|error| match error {
-                Diverge::Error(error) => error,
-                _ => unreachable!(),
-            })?;
-        }
-    }
+    eval_item(item, &mut info).map_err(|error| match error {
+        Diverge::Error(error) => error,
+        _ => unreachable!(),
+    })?;
 
     Ok(())
 }
 
 struct Info {
-    external: ExternalValues,
     scope: Arc<RefCell<Scope>>,
     function_input: Option<Arc<Value>>,
 }
@@ -112,10 +104,6 @@ fn eval_item(item: &Item, info: &mut Info) -> Result<Arc<Value>, Diverge> {
 
                 value
             }
-            Value::ExternalFunction(function) => {
-                let input = eval_item(&apply.input, info)?;
-                function.call(input)?
-            }
             _ => unreachable!(),
         },
         ItemKind::Initialize(initialize) => {
@@ -128,7 +116,7 @@ fn eval_item(item: &Item, info: &mut Info) -> Result<Arc<Value>, Diverge> {
         }
         ItemKind::Variable(variable) => resolve(variable.variable, info),
         ItemKind::Function(function) => Arc::new(Value::Function {
-            body: function.body.as_ref().clone(),
+            body: Box::new(function.body.as_ref().clone()),
             captures: function
                 .captures
                 .iter()
@@ -136,13 +124,65 @@ fn eval_item(item: &Item, info: &mut Info) -> Result<Arc<Value>, Diverge> {
                 .collect(),
         }),
         ItemKind::FunctionInput(_) => info.function_input.as_ref().unwrap().clone(),
-        ItemKind::External(external) => info
-            .external
-            .get(&external.namespace, &external.identifier)
-            .map_err(Diverge::Error)?
-            .clone(),
-        ItemKind::Annotate(annotate) => eval_item(&annotate.item, info)?,
-        ItemKind::DataDecl(_) => Arc::new(Value::Unit),
+        ItemKind::External(external) => {
+            if external.namespace.as_str() == "builtin" {
+                let inputs = external
+                    .inputs
+                    .iter()
+                    .map(|input| eval_item(input, info))
+                    .collect::<Result<Vec<_>, _>>()?;
+
+                builtin::call(&external.identifier, inputs)?
+            } else {
+                #[cfg(target_arch = "wasm32")]
+                {
+                    return Err(Diverge::Error(Error::from(
+                        "External functions are unsupported in the playground",
+                    )));
+                }
+
+                #[cfg(not(target_arch = "wasm32"))]
+                {
+                    let inputs = external
+                        .inputs
+                        .iter()
+                        .map(|input| match &input.ty {
+                            TypeSchema::Monotype(ty) => Ok(ty),
+                            _ => Err(Diverge::Error(Error::from(
+                                "Unsupported external function input type",
+                            ))),
+                        })
+                        .collect::<Result<Vec<_>, _>>()?;
+
+                    let return_ty = match &item.ty {
+                        TypeSchema::Monotype(ty) => ty,
+                        TypeSchema::Polytype { .. } => {
+                            return Err(Diverge::Error(Error::from(
+                                "Unsupported external function return type",
+                            )));
+                        }
+                    };
+
+                    let function = match ExternalFunction::from_item(external, inputs, return_ty) {
+                        Ok(function) => function,
+                        Err(error) => {
+                            return Err(Diverge::Error(format!(
+                                "Unsupported external function type: {}",
+                                error
+                            )))
+                        }
+                    };
+
+                    let inputs = external
+                        .inputs
+                        .iter()
+                        .map(|input| eval_item(input, info))
+                        .collect::<Result<Vec<_>, _>>()?;
+
+                    function.call_with(inputs)?
+                }
+            }
+        }
         ItemKind::Data(data) => Arc::new(Value::Data(
             data.fields
                 .iter()
@@ -164,6 +204,11 @@ fn eval_item(item: &Item, info: &mut Info) -> Result<Arc<Value>, Diverge> {
             let value = eval_item(&r#return.value, info)?;
             return Err(Diverge::Return(value));
         }
+        ItemKind::Field(field) => match eval_item(&field.value, info)?.as_ref() {
+            Value::Data(data) => data[field.index].clone(),
+            _ => unreachable!(),
+        },
+        ItemKind::Error(_) => panic!("Program is not well-typed"),
     };
 
     Ok(value)

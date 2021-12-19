@@ -1,8 +1,7 @@
 use serde::Serialize;
-use std::{cell::RefCell, collections::HashMap, sync::Arc};
+use std::{cell::RefCell, sync::Arc};
 use wasm_bindgen::prelude::*;
 use wipple_diagnostics::*;
-use wipple_interpreter_backend::{ExternalFunction, ExternalValues, Value};
 
 #[derive(Serialize)]
 struct Result {
@@ -25,23 +24,23 @@ pub fn run(code: &str) -> JsValue {
     wipple_frontend::reset_ids();
 
     let mut diagnostics = Diagnostics::new();
-    let project = wipple_frontend::Project::default();
+    let project = wipple_frontend::project::Project::default();
 
     let (annotations, output) = (|| {
-        let mut info = wipple_frontend::Info::new(&mut diagnostics, &project);
+        let mut info = wipple_frontend::compile::Info::new(&mut diagnostics, &project);
+        wipple_frontend::project::load_string("playground", Arc::from(code), &mut info)?;
 
-        let entrypoint = wipple_frontend::load_string("playground", Arc::from(code), &mut info)?;
-        let (files, types) = wipple_frontend::typecheck(&mut info)?;
-        let annotations = annotations(&entrypoint, &types);
+        let (well_typed, mut item) = wipple_frontend::typecheck::typecheck(info);
+        let annotations = annotations(&mut item);
 
         let output = Arc::<RefCell<Vec<String>>>::default();
-        {
-            let external = external({
-                let output = Arc::clone(&output);
-                move |text| output.borrow_mut().push(text)
-            });
+        if well_typed {
+            // let external = external({
+            //     let output = Arc::clone(&output);
+            //     move |text| output.borrow_mut().push(text)
+            // });
 
-            if let Err(error) = wipple_interpreter_backend::eval(&files, external) {
+            if let Err(error) = wipple_interpreter_backend::eval(&item) {
                 output
                     .borrow_mut()
                     .push(format!("Fatal error: {:?}", error))
@@ -62,125 +61,18 @@ pub fn run(code: &str) -> JsValue {
     JsValue::from_serde(&result).unwrap()
 }
 
-fn annotations(
-    file: &wipple_frontend::File,
-    types: &HashMap<wipple_frontend::ItemId, wipple_frontend::TypeSchema>,
-) -> Vec<Annotation> {
-    file.statements
-        .iter()
-        .flat_map(|statement| item_annotation(statement, types))
-        .collect()
-}
+fn annotations(item: &mut wipple_frontend::typecheck::Item) -> Vec<Annotation> {
+    let mut annotations = Vec::new();
 
-fn item_annotation(
-    item: &wipple_frontend::Item,
-    types: &HashMap<wipple_frontend::ItemId, wipple_frontend::TypeSchema>,
-) -> Vec<Annotation> {
-    use wipple_frontend::ItemKind;
-
-    let mut annotations = types
-        .get(&item.id)
-        .map(|ty| Annotation {
-            span: item.info.span,
+    item.traverse(|item| {
+        annotations.push(Annotation {
+            span: item.compile_info.span,
             value: format!(
                 "```wipple\n{}\n```",
-                wipple_frontend::format_type_schema(ty)
+                wipple_frontend::typecheck::format_type_schema(&item.ty)
             ),
-        })
-        .into_iter()
-        .collect::<Vec<_>>();
-
-    match &item.kind {
-        ItemKind::Block(block) => {
-            annotations.append(
-                &mut block
-                    .statements
-                    .iter()
-                    .flat_map(|statement| item_annotation(statement, types))
-                    .collect(),
-            );
-        }
-        ItemKind::Apply(apply) => {
-            annotations.append(&mut item_annotation(&apply.function, types));
-            annotations.append(&mut item_annotation(&apply.input, types));
-        }
-        ItemKind::Initialize(initialize) => {
-            annotations.append(&mut item_annotation(&initialize.value, types));
-        }
-        ItemKind::Function(function) => {
-            annotations.append(&mut item_annotation(&function.body, types));
-        }
-        ItemKind::Annotate(annotate) => {
-            annotations.append(&mut item_annotation(&annotate.item, types));
-        }
-        ItemKind::Data(data) => {
-            annotations.append(
-                &mut data
-                    .fields
-                    .iter()
-                    .flat_map(|field| item_annotation(field, types))
-                    .collect(),
-            );
-        }
-        ItemKind::DataDecl(_decl) => {
-            // TODO
-        }
-        ItemKind::Loop(r#loop) => {
-            annotations.append(&mut item_annotation(&r#loop.body, types));
-        }
-        ItemKind::End(end) => {
-            annotations.append(&mut item_annotation(&end.value, types));
-        }
-        ItemKind::Return(r#return) => {
-            annotations.append(&mut item_annotation(&r#return.value, types));
-        }
-        ItemKind::Unit(_)
-        | ItemKind::Number(_)
-        | ItemKind::Text(_)
-        | ItemKind::Variable(_)
-        | ItemKind::FunctionInput(_)
-        | ItemKind::External(_) => {}
-    }
+        });
+    });
 
     annotations
-}
-
-pub fn external(on_output: impl Fn(String) + 'static) -> ExternalValues {
-    ExternalValues::new()
-        .insert("math", "pi", Value::Number("3.14".parse().unwrap()))
-        .insert(
-            "builtin",
-            "show",
-            Value::ExternalFunction(ExternalFunction::new(move |input| {
-                let text = match input.as_ref() {
-                    Value::Text(text) => text.clone(),
-                    _ => format!("{:?}", input),
-                };
-
-                on_output(text);
-
-                Ok(Arc::new(Value::Unit))
-            })),
-        )
-        .insert(
-            "math",
-            "add",
-            Value::ExternalFunction(ExternalFunction::new(|input| {
-                let a = match input.as_ref() {
-                    Value::Number(n) => *n,
-                    _ => unreachable!(),
-                };
-
-                Ok(Arc::new(Value::ExternalFunction(ExternalFunction::new(
-                    move |input| {
-                        let b = match input.as_ref() {
-                            Value::Number(n) => *n,
-                            _ => unreachable!(),
-                        };
-
-                        Ok(Arc::new(Value::Number(a + b)))
-                    },
-                ))))
-            })),
-        )
 }

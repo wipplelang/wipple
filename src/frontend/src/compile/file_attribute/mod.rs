@@ -1,7 +1,7 @@
 mod builtin;
 pub use builtin::*;
 
-use crate::*;
+use crate::{compile::*, *};
 use serde::Serialize;
 use std::{fmt, vec::IntoIter};
 

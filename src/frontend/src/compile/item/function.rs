@@ -1,8 +1,8 @@
-use crate::*;
-use serde::Serialize;
+use crate::{compile::*, *};
+use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FunctionItem {
     pub body: Box<Item>,
     pub captures: HashSet<VariableId>,

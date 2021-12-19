@@ -15,13 +15,14 @@ pub use item::*;
 pub use stack::*;
 
 use crate::*;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct File {
     pub id: FileId,
-    pub path: InternedString,
+    pub name: InternedString,
+    pub span: Span,
     pub statements: Vec<Item>,
     pub variables: HashMap<InternedString, Variable>,
 }
@@ -47,7 +48,8 @@ pub fn lower(file: wipple_parser::File, info: &mut Info) -> Option<Arc<File>> {
 
     let file = Arc::new(File {
         id: FileId::new(),
-        path: file.path,
+        name: file.path,
+        span: file.span,
         statements,
         variables: stack.variables.into_inner(),
     });

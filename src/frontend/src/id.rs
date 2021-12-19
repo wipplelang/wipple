@@ -2,7 +2,7 @@ macro_rules! id {
     ($($(#[$meta:meta])* $name:ident,)*) => {
         $(::paste::paste! {
             $(#[$meta])*
-            #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, ::serde::Serialize)]
+            #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, ::serde::Serialize, ::serde::Deserialize)]
             pub struct $name(pub usize);
 
             thread_local! {

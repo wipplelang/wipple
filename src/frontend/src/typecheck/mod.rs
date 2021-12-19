@@ -1,24 +1,30 @@
 #![allow(clippy::type_complexity)]
 
-mod format;
+pub mod format;
+pub mod item;
 
 pub use format::*;
+pub use item::{Item, *};
 
 use crate::*;
 use lazy_static::lazy_static;
 use polytype::UnificationError;
-use serde::Serialize;
-use std::{cell::RefCell, collections::HashMap, mem};
+use serde::{Deserialize, Serialize};
+use std::{
+    cell::RefCell,
+    collections::{BTreeMap, HashMap},
+    mem,
+};
 use wipple_diagnostics::{Diagnostic, DiagnosticLevel, Note};
 
-#[derive(Debug, Clone, Copy, Serialize)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct TypeName {
     pub id: TypeId,
     pub name: Option<InternedString>,
     pub format: TypeNameFormat,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum TypeNameFormat {
     Default,
     Function,
@@ -76,7 +82,7 @@ lazy_static! {
         number: builtin_type!(Some("Number"), TypeNameFormat::Default),
         text: builtin_type!(Some("Text"), TypeNameFormat::Default),
     };
-    static ref FUNCTION_TYPE_ID: TypeId = TypeId::new();
+    pub static ref FUNCTION_TYPE_ID: TypeId = TypeId::new();
 }
 
 pub fn function_type(input: Type, output: Type) -> Type {
@@ -86,32 +92,26 @@ pub fn function_type(input: Type, output: Type) -> Type {
     )
 }
 
-pub fn typecheck<'a>(
-    info: &'a mut Info<'a>,
-) -> Option<(Vec<Arc<File>>, HashMap<ItemId, TypeSchema>)> {
-    let mut typechecker = Typechecker::new(info);
-    let files = typechecker.info.files.clone();
-
-    for file in &files {
-        typechecker.typecheck_block(&file.statements);
-    }
-
-    typechecker.success.then(|| {
-        let types = typechecker
-            .types
+pub fn typecheck(info: compile::Info) -> (bool, Item) {
+    let block = compile::BlockItem::new(
+        info.files
             .into_iter()
-            .map(move |(item, ty)| {
-                let ty = match ty {
-                    TypeSchema::Monotype(ty) => TypeSchema::Monotype(ty.apply(&typechecker.ctx)),
-                    TypeSchema::Polytype { .. } => ty,
-                };
+            .flat_map(|file| file.statements.clone())
+            .collect(),
+    );
 
-                (item, ty)
-            })
-            .collect();
+    let mut typechecker = Typechecker::new(info.diagnostics);
 
-        (files, types)
-    })
+    let info = compile::ItemInfo::new(Span::new(InternedString::new("<root>"), Default::default()));
+
+    let mut item = typechecker.typecheck_block(info, &block.statements);
+
+    item.traverse(|item| match &mut item.ty {
+        TypeSchema::Monotype(ty) => ty.apply_mut(&typechecker.ctx),
+        TypeSchema::Polytype { .. } => {}
+    });
+
+    (typechecker.well_typed, item)
 }
 
 pub(crate) fn typechecker_context() -> Arc<RefCell<Context>> {
@@ -124,24 +124,22 @@ pub(crate) fn typechecker_context() -> Arc<RefCell<Context>> {
 }
 
 struct Typechecker<'a> {
-    info: &'a mut Info<'a>,
+    diagnostics: &'a mut Diagnostics,
     ctx: Context,
-    success: bool,
-    types: HashMap<ItemId, TypeSchema>,
+    well_typed: bool,
     variables: HashMap<VariableId, TypeSchema>,
-    data_decls: HashMap<TypeId, Vec<Type>>,
+    data_decls: HashMap<TypeId, BTreeMap<InternedString, Type>>,
     function_input: Option<usize>,
     end_ty: Option<Type>,
     return_ty: Option<Type>,
 }
 
 impl<'a> Typechecker<'a> {
-    fn new(info: &'a mut Info<'a>) -> Self {
+    fn new(diagnostics: &'a mut Diagnostics) -> Self {
         Typechecker {
-            info,
+            diagnostics,
             ctx: (*typechecker_context()).clone().into_inner(),
-            success: true,
-            types: Default::default(),
+            well_typed: true,
             variables: Default::default(),
             data_decls: Default::default(),
             function_input: Default::default(),
@@ -150,38 +148,40 @@ impl<'a> Typechecker<'a> {
         }
     }
 
-    fn typecheck_item(&mut self, item: &Item, expected_ty: Option<Type>) -> Option<TypeSchema> {
+    fn typecheck_item(&mut self, item: &compile::Item, expected_ty: Option<Type>) -> Item {
         let var = self.ctx.new_variable();
 
-        let ty = (|| match &item.kind {
-            ItemKind::Unit(_) => Some(TypeSchema::Monotype(BUILTIN_TYPES.unit.clone())),
-            ItemKind::Number(_) => Some(TypeSchema::Monotype(BUILTIN_TYPES.number.clone())),
-            ItemKind::Text(_) => Some(TypeSchema::Monotype(BUILTIN_TYPES.text.clone())),
-            ItemKind::Block(block) => self.typecheck_block(&block.statements),
-            ItemKind::Apply(apply) => {
-                let inferred_input_ty = self
-                    .typecheck_item(&apply.input, None)?
+        let item = (|| match &item.kind {
+            compile::ItemKind::Unit(_) => Item::unit(item.info),
+            compile::ItemKind::Number(number) => Item::number(item.info, number.value),
+            compile::ItemKind::Text(text) => Item::text(item.info, text.value),
+            compile::ItemKind::Block(block) => self.typecheck_block(item.info, &block.statements),
+            compile::ItemKind::Apply(apply) => {
+                let inferred_input_item = self.typecheck_item(&apply.input, None);
+
+                let inferred_input_ty = inferred_input_item
+                    .ty
                     .instantiate(&mut self.ctx)
                     .apply(&self.ctx);
 
-                let function_ty = {
+                let (function_item, function_ty) = {
                     let function_ty = function_type(
                         inferred_input_ty.clone(),
                         expected_ty.unwrap_or_else(|| self.ctx.new_variable()),
                     )
                     .apply(&self.ctx);
 
-                    let inferred_function_ty = self
-                        .typecheck_item(&apply.function, None)?
-                        .instantiate(&mut self.ctx)
-                        .apply(&self.ctx);
+                    let function_item = self.typecheck_item(&apply.function, None);
+
+                    let inferred_function_ty =
+                        function_item.ty.instantiate(&mut self.ctx).apply(&self.ctx);
 
                     if let Err(error) = self.ctx.unify(&function_ty, &inferred_function_ty) {
                         self.report_type_error(&apply.function, error);
-                        return None;
+                        return Item::error(item.info);
                     }
 
-                    function_ty.apply(&self.ctx)
+                    (function_item, function_ty.apply(&self.ctx))
                 };
 
                 let mut function_associated_types = match function_ty {
@@ -194,138 +194,154 @@ impl<'a> Typechecker<'a> {
 
                 if let Err(error) = self.ctx.unify(&input_ty, &inferred_input_ty) {
                     self.report_type_error(&apply.input, error);
-                    return None;
+                    return Item::error(item.info);
                 }
 
-                Some(TypeSchema::Monotype(output_ty.apply(&self.ctx)))
+                Item::apply(
+                    item.info,
+                    TypeSchema::Monotype(output_ty.apply(&self.ctx)),
+                    function_item,
+                    inferred_input_item,
+                )
             }
-            ItemKind::Initialize(initialize) => {
-                let value_ty = self.typecheck_item(&initialize.value, None)?;
-                self.variables.insert(initialize.variable, value_ty);
+            compile::ItemKind::Initialize(initialize) => {
+                let value_item = self.typecheck_item(&initialize.value, None);
 
-                Some(TypeSchema::Monotype(BUILTIN_TYPES.unit.clone()))
-            }
-            ItemKind::Variable(variable) => Some(
                 self.variables
+                    .insert(initialize.variable, value_item.ty.clone());
+
+                Item::initialize(
+                    item.info,
+                    initialize.binding_info,
+                    initialize.variable,
+                    value_item,
+                )
+            }
+            compile::ItemKind::Variable(variable) => {
+                let ty = self
+                    .variables
                     .get(&variable.variable)
                     .cloned()
                     .unwrap_or_else(|| {
                         panic!("Variable {:?} used before initialization", variable)
-                    }),
-            ),
-            ItemKind::Function(function) => {
+                    });
+
+                Item::variable(item.info, ty, variable.variable)
+            }
+            compile::ItemKind::Function(function) => {
                 let previous_input = mem::take(&mut self.function_input);
                 let previous_return_ty = mem::take(&mut self.return_ty);
 
-                let body_ty = self
-                    .typecheck_item(&function.body, None)?
-                    .instantiate(&mut self.ctx)
-                    .apply(&self.ctx);
+                let body_item = self.typecheck_item(&function.body, None);
+                let body_ty = body_item.ty.instantiate(&mut self.ctx).apply(&self.ctx);
 
                 let input_var = mem::replace(&mut self.function_input, previous_input).unwrap();
 
                 let return_ty =
                     mem::replace(&mut self.return_ty, previous_return_ty).unwrap_or(body_ty);
 
-                // FIXME: Instead of collecting every single type variable except the function input,
-                // implement 'generalize' ourselves
-                let vars = self
-                    .types
-                    .values()
-                    .filter_map(|ty| match ty {
-                        TypeSchema::Monotype(Type::Variable(var)) if *var != input_var => {
-                            Some(*var)
-                        }
-                        _ => None,
-                    })
-                    .collect::<Vec<_>>();
+                let ty = function_type(Type::Variable(input_var), return_ty).apply(&self.ctx);
+                let generic = ty.vars().contains(&input_var);
 
-                Some(
-                    function_type(Type::Variable(input_var), return_ty)
-                        .apply(&self.ctx)
-                        .generalize(&vars),
+                let mut generalized_ty = TypeSchema::Monotype(ty);
+                if generic {
+                    generalized_ty = TypeSchema::Polytype {
+                        variable: input_var,
+                        body: Box::new(generalized_ty),
+                    };
+                }
+
+                Item::function(
+                    item.info,
+                    generalized_ty,
+                    body_item,
+                    function.captures.clone(),
                 )
             }
-            ItemKind::FunctionInput(_) => {
+            compile::ItemKind::FunctionInput(_) => {
                 let var = match var {
                     Type::Variable(var) => var,
                     _ => unreachable!(),
                 };
 
                 self.function_input = Some(var);
-                Some(TypeSchema::Monotype(Type::Variable(var)))
+                Item::function_input(item.info, TypeSchema::Monotype(Type::Variable(var)))
             }
-            ItemKind::External { .. } => Some(TypeSchema::Monotype(var.clone())),
-            ItemKind::Annotate(annotate) => {
+            compile::ItemKind::External(external) => {
+                for input in &external.inputs {
+                    self.typecheck_item(input, None);
+                }
+
+                Item::function_input(item.info, TypeSchema::Monotype(var.clone()))
+            }
+            compile::ItemKind::Annotate(annotate) => {
                 let ty = self.convert_constructor(&annotate.constructor);
 
-                let inferred_ty = self
-                    .typecheck_item(&annotate.item, Some(ty.clone()))?
-                    .instantiate(&mut self.ctx)
-                    .apply(&self.ctx);
+                let mut inferred_item = self.typecheck_item(&annotate.item, Some(ty.clone()));
+                let inferred_ty = inferred_item.ty.instantiate(&mut self.ctx).apply(&self.ctx);
 
                 if let Err(error) = self.ctx.unify(&ty, &inferred_ty) {
                     self.report_type_error(&annotate.item, error);
-                    return None;
+                    return Item::error(item.info);
                 }
 
                 let item_ty = ty.apply(&self.ctx);
+                inferred_item.ty = TypeSchema::Monotype(item_ty);
 
-                Some(TypeSchema::Monotype(item_ty))
+                inferred_item
             }
-            ItemKind::DataDecl(decl) => {
+            compile::ItemKind::DataDecl(decl) => {
                 let field_tys = decl
                     .fields
                     .iter()
-                    .map(|field| self.convert_constructor(field))
+                    .map(|(&name, field)| (name, self.convert_constructor(field)))
                     .collect();
 
                 self.data_decls.insert(decl.id, field_tys);
 
-                Some(TypeSchema::Monotype(BUILTIN_TYPES.unit.clone()))
+                Item::unit(item.info)
             }
-            ItemKind::Data(data) => {
+            compile::ItemKind::Data(data) => {
                 let mut field_tys = self.data_decls.get(&data.id).unwrap().clone().into_iter();
 
-                let mut success = true;
-                for field in data.fields.iter() {
-                    let expected_ty = field_tys.next().unwrap();
+                let fields = data
+                    .fields
+                    .iter()
+                    .map(|field| {
+                        let (_, expected_ty) = field_tys.next().unwrap();
 
-                    let ty = self
-                        .typecheck_item(field, Some(expected_ty.clone()))?
-                        .instantiate(&mut self.ctx)
-                        .apply(&self.ctx);
+                        let item = self.typecheck_item(field, None);
+                        let ty = item.ty.instantiate(&mut self.ctx).apply(&self.ctx);
 
-                    if let Err(error) = self.ctx.unify(&expected_ty, &ty) {
-                        self.report_type_error(field, error);
-                        success = false;
-                    }
-                }
+                        if let Err(error) = self.ctx.unify(&expected_ty, &ty) {
+                            self.report_type_error(field, error);
+                        }
 
-                success.then(|| {
-                    TypeSchema::Monotype(Type::Constructed(
-                        TypeName::with_id(data.id, None::<String>, TypeNameFormat::Default),
-                        Vec::new(), // TODO: Generics
-                    ))
-                })
+                        item
+                    })
+                    .collect();
+
+                let ty = TypeSchema::Monotype(Type::Constructed(
+                    TypeName::with_id(data.id, None::<String>, TypeNameFormat::Default),
+                    Vec::new(), // TODO: Generics
+                ));
+
+                Item::data(item.info, ty, data.id, fields)
             }
-            ItemKind::Loop(r#loop) => {
+            compile::ItemKind::Loop(r#loop) => {
                 let previous_end_ty = mem::take(&mut self.end_ty);
 
-                self.typecheck_item(&r#loop.body, None)?
-                    .instantiate(&mut self.ctx)
-                    .apply(&self.ctx);
+                let body_item = self.typecheck_item(&r#loop.body, None);
+                body_item.ty.instantiate(&mut self.ctx).apply(&self.ctx);
 
                 let end_ty = mem::replace(&mut self.end_ty, previous_end_ty)
                     .unwrap_or_else(|| BUILTIN_TYPES.never.clone());
 
-                Some(TypeSchema::Monotype(end_ty))
+                Item::r#loop(item.info, TypeSchema::Monotype(end_ty), body_item)
             }
-            ItemKind::End(end) => {
-                let ty = self
-                    .typecheck_item(&end.value, None)?
-                    .instantiate(&mut self.ctx)
-                    .apply(&self.ctx);
+            compile::ItemKind::End(end) => {
+                let value_item = self.typecheck_item(&end.value, expected_ty);
+                let ty = value_item.ty.instantiate(&mut self.ctx).apply(&self.ctx);
 
                 match self.end_ty.as_mut() {
                     Some(end_ty) => {
@@ -333,19 +349,21 @@ impl<'a> Typechecker<'a> {
 
                         if let Err(error) = self.ctx.unify(&end_ty, &ty) {
                             self.report_type_error(&end.value, error);
-                            return None;
+                            return Item::error(item.info);
                         }
                     }
                     None => self.end_ty = Some(ty),
                 }
 
-                Some(TypeSchema::Monotype(BUILTIN_TYPES.unit.clone()))
+                Item::end(
+                    item.info,
+                    TypeSchema::Monotype(BUILTIN_TYPES.unit.clone()),
+                    value_item,
+                )
             }
-            ItemKind::Return(r#return) => {
-                let ty = self
-                    .typecheck_item(&r#return.value, None)?
-                    .instantiate(&mut self.ctx)
-                    .apply(&self.ctx);
+            compile::ItemKind::Return(r#return) => {
+                let value_item = self.typecheck_item(&r#return.value, expected_ty);
+                let ty = value_item.ty.instantiate(&mut self.ctx).apply(&self.ctx);
 
                 match self.return_ty.as_mut() {
                     Some(return_ty) => {
@@ -353,50 +371,115 @@ impl<'a> Typechecker<'a> {
 
                         if let Err(error) = self.ctx.unify(&return_ty, &ty) {
                             self.report_type_error(&r#return.value, error);
-                            return None;
+                            return Item::error(item.info);
                         }
                     }
                     None => self.return_ty = Some(ty),
                 }
 
-                Some(TypeSchema::Monotype(BUILTIN_TYPES.unit.clone()))
+                Item::r#return(
+                    item.info,
+                    TypeSchema::Monotype(BUILTIN_TYPES.unit.clone()),
+                    value_item,
+                )
+            }
+            compile::ItemKind::Field(field) => {
+                let value_item = self.typecheck_item(&field.value, None);
+                let value_ty = value_item.ty.instantiate(&mut self.ctx).apply(&self.ctx);
+
+                let value_ty_id = match value_ty {
+                    polytype::Type::Constructed(name, _) => name.id,
+                    polytype::Type::Variable(_) => {
+                        self.diagnostics.add(Diagnostic::new(
+                            DiagnosticLevel::Error,
+                            "Cannot access field on this",
+                            vec![Note::primary(
+                                field.value.info.span,
+                                "Could not determine the type of this value",
+                            )],
+                        ));
+
+                        return Item::error(item.info);
+                    }
+                };
+
+                let decl = match self.data_decls.get(&value_ty_id) {
+                    Some(decl) => decl,
+                    None => {
+                        self.diagnostics.add(Diagnostic::new(
+                            DiagnosticLevel::Error,
+                            "Cannot access field on this",
+                            vec![Note::primary(
+                                field.value.info.span,
+                                "Value is not a data structure",
+                            )],
+                        ));
+
+                        return Item::error(item.info);
+                    }
+                };
+
+                let (ty, index) = match decl
+                    .iter()
+                    .enumerate()
+                    .find_map(|(index, (&name, ty))| (name == field.name).then(|| (ty, index)))
+                {
+                    Some(ty) => ty,
+                    None => {
+                        self.diagnostics.add(Diagnostic::new(
+                            DiagnosticLevel::Error,
+                            format!(
+                                "Value of type '{}' does not have field '{}'",
+                                format_type(&value_ty),
+                                field.name
+                            ),
+                            vec![Note::primary(field.name_span, "No such field")],
+                        ));
+
+                        return Item::error(item.info);
+                    }
+                };
+
+                Item::field(
+                    item.info,
+                    TypeSchema::Monotype(ty.clone()),
+                    value_item,
+                    index,
+                )
             }
         })();
 
-        if let Some(ty) = ty.clone() {
-            match &ty {
-                TypeSchema::Monotype(ty) => {
-                    self.ctx.unify(&var, ty).unwrap();
-                    self.types.insert(item.id, TypeSchema::Monotype(var));
-                }
-                TypeSchema::Polytype { .. } => {
-                    self.types.insert(item.id, ty);
-                }
-            }
+        if matches!(item.kind, ItemKind::Error(_)) {
+            self.well_typed = false;
         } else {
-            self.success = false;
-        }
-
-        ty
-    }
-
-    fn typecheck_block(&mut self, statements: &[Item]) -> Option<TypeSchema> {
-        let mut last_ty = TypeSchema::Monotype(BUILTIN_TYPES.unit.clone());
-        let mut success = true;
-        for statement in statements {
-            last_ty = match self.typecheck_item(statement, None) {
-                Some(ty) => ty,
-                None => {
-                    success = false;
-                    continue;
-                }
+            match &item.ty {
+                TypeSchema::Monotype(ty) => self.ctx.unify(&var, ty).unwrap(),
+                TypeSchema::Polytype { .. } => {}
             }
         }
 
-        success.then(|| last_ty.clone())
+        item
     }
 
-    fn report_type_error(&mut self, item: &Item, error: UnificationError<TypeName>) {
+    fn typecheck_block(
+        &mut self,
+        compile_info: compile::ItemInfo,
+        statements: &[compile::Item],
+    ) -> Item {
+        let statements = statements
+            .iter()
+            .map(|statement| self.typecheck_item(statement, None))
+            .collect::<Vec<_>>();
+
+        let ty = statements
+            .last()
+            .map(|statement| statement.ty.clone())
+            .unwrap_or_else(|| TypeSchema::Monotype(BUILTIN_TYPES.unit.clone()));
+
+        Item::block(compile_info, ty, statements)
+    }
+
+    fn report_type_error(&mut self, item: &compile::Item, error: UnificationError<TypeName>) {
         let diagnostic = match error {
             UnificationError::Occurs(_) => Diagnostic::new(
                 DiagnosticLevel::Error,
@@ -420,10 +503,12 @@ impl<'a> Typechecker<'a> {
             ),
         };
 
-        self.info.diagnostics.add(diagnostic);
+        self.diagnostics.add(diagnostic);
     }
 
-    fn convert_constructor(&mut self, constructor: &Constructor) -> Type {
+    fn convert_constructor(&mut self, constructor: &compile::Constructor) -> Type {
+        use compile::Constructor;
+
         match constructor {
             Constructor::Placeholder => self.ctx.new_variable(),
             Constructor::Number => BUILTIN_TYPES.number.clone(),

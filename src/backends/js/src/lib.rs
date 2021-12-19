@@ -1,6 +1,6 @@
 use resast::prelude::{Expr, *};
 use std::borrow::Cow;
-use wipple_frontend::*;
+use wipple_frontend::{typecheck::*, *};
 
 pub fn gen(item: &Item) -> String {
     let expr = gen_item(item, &mut Info::default());
@@ -104,8 +104,6 @@ fn gen_item<'a>(item: &'a Item, info: &mut Info) -> Expr<'a> {
         }),
         ItemKind::FunctionInput(_) => Expr::Ident(mangle_function_input()),
         ItemKind::External(_) => todo!(),
-        ItemKind::Annotate(annotate) => gen_item(&annotate.item, info),
-        ItemKind::DataDecl(_) => Expr::Lit(Lit::Null),
         ItemKind::Data(data) => Expr::Array(
             data.fields
                 .iter()
@@ -121,6 +119,10 @@ fn gen_item<'a>(item: &'a Item, info: &mut Info) -> Expr<'a> {
         ItemKind::Return(_return) => {
             todo!();
         }
+        ItemKind::Field(_field) => {
+            todo!();
+        }
+        ItemKind::Error(_) => panic!("Program is not well-typed"),
     }
 }
 

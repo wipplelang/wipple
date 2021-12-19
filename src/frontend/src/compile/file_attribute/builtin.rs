@@ -1,4 +1,4 @@
-use crate::*;
+use crate::{compile::*, *};
 use std::collections::HashMap;
 use wipple_diagnostics::{Diagnostic, DiagnosticLevel, Note};
 

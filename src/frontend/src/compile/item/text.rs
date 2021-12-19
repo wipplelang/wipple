@@ -1,7 +1,7 @@
-use crate::*;
-use serde::Serialize;
+use crate::{compile::*, *};
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TextItem {
     pub value: InternedString,
 }

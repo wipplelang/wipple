@@ -1,6 +1,6 @@
 use codemap::CodeMap;
 use interned_string::InternedString;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::{
     cmp::Ordering,
     collections::{hash_map::Entry, HashMap},
@@ -9,7 +9,7 @@ use std::{
     sync::Arc,
 };
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Serialize)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Span {
     pub file: InternedString,
     pub start: usize,

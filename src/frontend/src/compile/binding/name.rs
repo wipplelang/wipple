@@ -1,4 +1,4 @@
-use crate::*;
+use crate::{compile::*, *};
 use serde::Serialize;
 
 #[derive(Debug, Clone, Serialize)]
@@ -22,9 +22,9 @@ impl BindingKind for NameBinding {
         let decl_item = form.as_decl_item();
 
         let (variable, runtime_item) = match form.kind {
-            FormKind::Item(item) => (Variable::runtime(self.span, self.name), Some(item)),
+            FormKind::Item(item) => (Variable::runtime(item.info), Some(item)),
             _ => (
-                Variable::compile_time(self.span, self.name, move |_, _, _| Some(form.clone())),
+                Variable::compile_time(move |_, _, _| Some(form.clone())),
                 None,
             ),
         };

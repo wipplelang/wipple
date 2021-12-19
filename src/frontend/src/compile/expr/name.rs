@@ -1,4 +1,4 @@
-use crate::*;
+use crate::{compile::*, *};
 
 #[derive(Debug)]
 pub struct NameExpr {
@@ -73,7 +73,7 @@ impl NameExpr {
             }
 
             if let Some(variable) = stack.variables.borrow().get(&self.value) {
-                let form = (variable.form)(self.span, context, info)?;
+                let form = variable.form(self.span, context, info)?;
 
                 if matches!(form.kind, FormKind::Item { .. }) {
                     for list in used {

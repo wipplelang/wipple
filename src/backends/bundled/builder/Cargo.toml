@@ -1,0 +1,12 @@
+[package]
+name = "wipple_bundled_backend_builder"
+version = "0.0.0"
+edition = "2021"
+
+[dependencies]
+wipple_bundled_backend_runner = { path = "../runner" }
+wipple_frontend = { path = "../../../frontend" }
+wipple_interpreter_backend = { path = "../../interpreter" }
+
+[build-dependencies]
+wipple_bundled_backend_runner = { path = "../runner" }

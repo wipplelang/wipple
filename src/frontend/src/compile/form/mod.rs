@@ -8,7 +8,7 @@ pub use constructor::*;
 pub use operator::*;
 pub use template::*;
 
-use crate::*;
+use crate::{compile::*, *};
 use paste::paste;
 use serde::Serialize;
 use std::fmt;
@@ -111,7 +111,7 @@ impl Form {
                 *id,
                 fields
                     .values()
-                    .map(|field| field.constructor.clone())
+                    .map(|field| (field.info.name, field.constructor.clone()))
                     .collect(),
             )),
             _ => None,

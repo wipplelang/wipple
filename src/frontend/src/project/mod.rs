@@ -1,4 +1,4 @@
-use crate::*;
+use crate::{compile::*, *};
 use std::{
     fs,
     path::{Path, PathBuf},
@@ -45,7 +45,11 @@ pub fn load_file(name: &str, span: Span, info: &mut Info) -> Option<Arc<File>> {
         ($path:expr) => {{
             let path = $path;
 
-            match load_path(path.to_str().unwrap(), path, info) {
+            match path
+                .canonicalize()
+                .map_err(anyhow::Error::msg)
+                .and_then(|path| load_path(path.to_str().unwrap(), &path, info))
+            {
                 Ok(file) => file,
                 Err(error) => error!("Could not load file", error),
             }
@@ -85,9 +89,13 @@ pub fn load_file(name: &str, span: Span, info: &mut Info) -> Option<Arc<File>> {
 
 pub fn load_url(name: &str, url: &Url, info: &mut Info) -> anyhow::Result<Option<Arc<File>>> {
     #[cfg(target_arch = "wasm32")]
-    return Err(anyhow::Error::msg(
-        "Loading from URLs is not supported in the playground",
-    ));
+    {
+        let _ = (name, url, info);
+
+        return Err(anyhow::Error::msg(
+            "Loading from URLs is not supported in the playground",
+        ));
+    }
 
     #[cfg(not(target_arch = "wasm32"))]
     {
@@ -103,7 +111,13 @@ pub fn load_path(name: &str, path: &Path, info: &mut Info) -> anyhow::Result<Opt
 }
 
 pub fn load_string(name: &str, code: Arc<str>, info: &mut Info) -> Option<Arc<File>> {
-    let name = InternedString::new(name);
-    info.diagnostics.add_file(name, Arc::clone(&code));
-    wipple_parser::parse(name, &code, info.diagnostics).and_then(|file| lower(file, info))
+    info.files
+        .iter()
+        .find(|file| file.name.as_str() == name)
+        .cloned()
+        .or_else(|| {
+            let name = InternedString::new(name);
+            info.diagnostics.add_file(name, Arc::clone(&code));
+            wipple_parser::parse(name, &code, info.diagnostics).and_then(|file| lower(file, info))
+        })
 }

@@ -1,4 +1,4 @@
-use crate::*;
+use crate::{compile::*, *};
 use std::{
     collections::{btree_map::Entry, BTreeMap, HashMap},
     num::NonZeroUsize,
@@ -12,15 +12,7 @@ pub fn builtin_variables() -> HashMap<InternedString, Variable> {
 
             $({
                 let name = InternedString::new($name);
-
-                variables.insert(
-                    name,
-                    Variable::compile_time(
-                        Span::new(InternedString::new("builtin"), Default::default()),
-                        name,
-                        $value
-                    ),
-                );
+                variables.insert(name, Variable::compile_time($value));
             })*
 
             variables
@@ -34,6 +26,8 @@ pub fn builtin_variables() -> HashMap<InternedString, Variable> {
 
         "->" => Form::builtin_function,
         "return" => Form::builtin_return,
+
+        ".." => Form::builtin_field,
 
         "external" => Form::builtin_external,
         "file" => Form::builtin_file,
@@ -369,46 +363,96 @@ impl Form {
         ))
     }
 
+    fn builtin_field(span: Span, _: LowerContext, _: &mut Info) -> Option<Self> {
+        Some(Form::operator(
+            span,
+            Operator {
+                precedence: OperatorPrecedence::new(7),
+                associativity: OperatorAssociativity::Left,
+                template: Template::new(
+                    Some(NonZeroUsize::new(2).unwrap()),
+                    move |_, exprs, span, stack, info| {
+                        let mut exprs = exprs.into_iter();
+
+                        let item = exprs.next().unwrap().lower_to_item(stack, info)?;
+
+                        let mut rhs = match exprs.next().unwrap() {
+                            Expr::List(list) => list,
+                            _ => unreachable!(),
+                        };
+
+                        let diagnostic = || {
+                            Diagnostic::new(
+                                DiagnosticLevel::Error,
+                                "Expected name of data structure field",
+                                vec![Note::primary(rhs.span, "Expected name here")],
+                            )
+                        };
+
+                        if rhs.items.len() != 1 {
+                            info.diagnostics.add(diagnostic());
+                            return None;
+                        }
+
+                        let field = match rhs.items.remove(0) {
+                            Expr::Name(name) => name,
+                            _ => {
+                                info.diagnostics.add(diagnostic());
+                                return None;
+                            }
+                        };
+
+                        Some(Form::item(
+                            span,
+                            Item::field(span, item, field.span, field.value),
+                        ))
+                    },
+                ),
+            },
+        ))
+    }
+
     fn builtin_external(span: Span, _: LowerContext, _: &mut Info) -> Option<Self> {
         Some(Form::template(
             span,
-            Template::new(
-                Some(NonZeroUsize::new(2).unwrap()),
-                move |_, exprs, span, _, info| {
-                    let mut exprs = exprs.into_iter();
+            Template::new(None, move |_, exprs, span, stack, info| {
+                let mut exprs = exprs.into_iter();
 
-                    let namespace = match exprs.next().unwrap() {
-                        Expr::Text(namespace) => namespace.value,
-                        expr => {
-                            info.diagnostics.add(Diagnostic::new(
-                                DiagnosticLevel::Error,
-                                "Expected namespace",
-                                vec![Note::primary(expr.span(), "Expected a text value here")],
-                            ));
+                let namespace = match exprs.next().unwrap() {
+                    Expr::Text(namespace) => namespace.value,
+                    expr => {
+                        info.diagnostics.add(Diagnostic::new(
+                            DiagnosticLevel::Error,
+                            "Expected namespace",
+                            vec![Note::primary(expr.span(), "Expected a text value here")],
+                        ));
 
-                            return None;
-                        }
-                    };
+                        return None;
+                    }
+                };
 
-                    let identifier = match exprs.next().unwrap() {
-                        Expr::Text(identifier) => identifier.value,
-                        expr => {
-                            info.diagnostics.add(Diagnostic::new(
-                                DiagnosticLevel::Error,
-                                "Expected identifier",
-                                vec![Note::primary(expr.span(), "Expected a text value here")],
-                            ));
+                let identifier = match exprs.next().unwrap() {
+                    Expr::Text(identifier) => identifier.value,
+                    expr => {
+                        info.diagnostics.add(Diagnostic::new(
+                            DiagnosticLevel::Error,
+                            "Expected identifier",
+                            vec![Note::primary(expr.span(), "Expected a text value here")],
+                        ));
 
-                            return None;
-                        }
-                    };
+                        return None;
+                    }
+                };
 
-                    Some(Form::item(
-                        span,
-                        Item::external(span, namespace, identifier),
-                    ))
-                },
-            ),
+                let inputs = exprs
+                    .map(|expr| expr.lower_to_item(stack, info))
+                    .collect::<Option<Vec<_>>>()?;
+
+                Some(Form::item(
+                    span,
+                    Item::external(span, namespace, identifier, inputs),
+                ))
+            }),
         ))
     }
 

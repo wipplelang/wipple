@@ -1,4 +1,4 @@
-use crate::*;
+use crate::{compile::*, *};
 use std::{
     cell::RefCell,
     collections::{HashMap, HashSet},

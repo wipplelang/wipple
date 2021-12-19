@@ -1,5 +1,7 @@
-use crate::*;
-use serde::Serialize;
+#![allow(clippy::type_complexity)]
+
+use crate::{compile::*, project::Project, typecheck::Type, *};
+use serde::{Deserialize, Serialize};
 use std::{
     cell::RefCell,
     collections::{HashMap, HashSet},
@@ -37,51 +39,48 @@ impl<'a> Info<'a> {
     }
 }
 
-#[derive(Clone, Serialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct Variable {
     pub id: VariableId,
-    pub declaration_span: Span,
-    pub name: InternedString,
     #[serde(skip)]
-    pub form: Arc<dyn Fn(Span, LowerContext, &mut Info) -> Option<Form>>,
+    pub form: Option<Arc<dyn Fn(Span, LowerContext, &mut Info) -> Option<Form>>>,
 }
 
 impl Variable {
     pub fn compile_time(
-        declaration_span: Span,
-        name: InternedString,
         form: impl Fn(Span, LowerContext, &mut Info) -> Option<Form> + 'static,
     ) -> Self {
         Variable {
             id: VariableId::new(),
-            declaration_span,
-            name,
-            form: Arc::new(form),
+            form: Some(Arc::new(form)),
         }
     }
 
-    pub fn runtime(declaration_span: Span, name: InternedString) -> Self {
+    pub fn runtime(info: ItemInfo) -> Self {
         let id = VariableId::new();
 
         Variable {
             id,
-            declaration_span,
-            name,
-            form: Arc::new(move |span, _, _| {
+            form: Some(Arc::new(move |span, _, _| {
                 let mut item = Item::variable(span, id);
-                item.info.declared_name = Some(name);
+                item.info = info;
                 Some(Form::item(span, item))
-            }),
+            })),
         }
+    }
+
+    pub fn form(&self, span: Span, context: LowerContext, info: &mut Info) -> Option<Form> {
+        let form = self
+            .form
+            .as_ref()
+            .expect("Cannot use 'form' after compilation");
+
+        form(span, context, info)
     }
 }
 
 impl fmt::Debug for Variable {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Variable")
-            .field("id", &self.id)
-            .field("declaration_span", &self.declaration_span)
-            .field("name", &self.name)
-            .finish()
+        f.debug_struct("Variable").field("id", &self.id).finish()
     }
 }

@@ -140,8 +140,8 @@ fn main() -> anyhow::Result<()> {
 
             let mut diagnostics = Diagnostics::new();
 
-            let project = wipple_frontend::Project {
-                base: project.map(wipple_frontend::Base::Path),
+            let project = wipple_frontend::project::Project {
+                base: project.map(wipple_frontend::project::Base::Path),
                 cache_path: Some(cache.unwrap_or_else(|| {
                     directories::BaseDirs::new()
                         .expect("User directories not set")
@@ -151,14 +151,17 @@ fn main() -> anyhow::Result<()> {
             };
 
             let files = {
-                let mut info = wipple_frontend::Info::new(&mut diagnostics, &project);
+                let mut info = wipple_frontend::compile::Info::new(&mut diagnostics, &project);
 
-                wipple_frontend::load_file(
+                wipple_frontend::project::load_file(
                     &path.to_string(),
                     Span::new(path, Default::default()),
                     &mut info,
                 )
-                .and_then(|_| Some(wipple_frontend::typecheck(&mut info)?.0))
+                .and_then(|_| {
+                    let (well_typed, item) = wipple_frontend::typecheck::typecheck(info);
+                    well_typed.then(|| item)
+                })
             };
 
             let (codemap, diagnostics) = diagnostics.into_console_friendly();
@@ -166,15 +169,11 @@ fn main() -> anyhow::Result<()> {
             let mut emitter = Emitter::stderr(ColorConfig::Auto, Some(&codemap));
             emitter.emit(&diagnostics);
 
-            if let Some(files) = files {
+            if let Some(item) = files {
                 if no_run {
-                    serde_json::to_writer_pretty(io::stdout(), &files)?;
-                } else {
-                    let external = wipple_playground_runner::external(|text| println!("{}", text));
-
-                    if let Err(error) = wipple_interpreter_backend::eval(&files, external) {
-                        eprintln!("Fatal error: {:?}", error)
-                    }
+                    serde_json::to_writer_pretty(io::stdout(), &item)?;
+                } else if let Err(error) = wipple_interpreter_backend::eval(&item) {
+                    eprintln!("Fatal error: {:?}", error)
                 }
             } else {
                 process::exit(1);
