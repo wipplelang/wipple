@@ -3,7 +3,7 @@ use libffi::high::call::*;
 use libloading::{Library, Symbol};
 use rust_decimal::prelude::{FromPrimitive, ToPrimitive};
 use serde::{Deserialize, Serialize};
-use std::{ffi::CString, sync::Arc};
+use std::{ffi::CString, os::raw::c_char, sync::Arc};
 use wipple_frontend::typecheck::{ExternalItem, Type, BUILTIN_TYPES};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -85,7 +85,7 @@ impl<'a> ExternalFunction<'a> {
 
             pub enum ExternalValueHolder {
                 F64(f64),
-                Str(*mut i8),
+                Str(*mut c_char),
             }
 
             let mut strings_to_cleanup = Vec::new();
@@ -145,7 +145,7 @@ impl<'a> ExternalFunction<'a> {
                     Arc::new(Value::Number(Decimal::from_f64(result).unwrap()))
                 }
                 Some(ExternalValueType::Text) => {
-                    let result = call::<*mut i8>(ptr, &args);
+                    let result = call::<*mut c_char>(ptr, &args);
                     Arc::new(Value::Text(
                         CString::from_raw(result).to_string_lossy().into_owned(),
                     ))
