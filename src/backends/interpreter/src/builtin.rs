@@ -1,8 +1,7 @@
-use std::collections::HashMap;
-
 use crate::*;
 use itertools::Itertools;
 use lazy_static::lazy_static;
+use std::collections::HashMap;
 
 pub fn call(identifier: &str, inputs: Vec<Arc<Value>>) -> Result<Arc<Value>, Diverge> {
     let builtin = BUILTINS
@@ -49,7 +48,11 @@ fn builtin_show((text,): (Arc<Value>,)) -> Result<Arc<Value>, Diverge> {
         _ => unreachable!(),
     };
 
-    println!("{}", text);
+    OUTPUT
+        .read()
+        .unwrap()
+        .as_ref()
+        .ok_or_else(|| Diverge::Error(Error::from("Output not configured")))?(text);
 
     Ok(Arc::new(Value::Unit))
 }

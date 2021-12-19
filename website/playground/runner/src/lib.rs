@@ -1,5 +1,5 @@
 use serde::Serialize;
-use std::{cell::RefCell, sync::Arc};
+use std::sync::{Arc, RwLock};
 use wasm_bindgen::prelude::*;
 use wipple_diagnostics::*;
 
@@ -23,6 +23,12 @@ pub fn run(code: &str) -> JsValue {
 
     wipple_frontend::reset_ids();
 
+    let output = Arc::<RwLock<Vec<String>>>::default();
+    wipple_interpreter_backend::set_output({
+        let output = Arc::clone(&output);
+        move |text| output.write().unwrap().push(text.to_string())
+    });
+
     let mut diagnostics = Diagnostics::new();
     let project = wipple_frontend::project::Project::default();
 
@@ -33,20 +39,16 @@ pub fn run(code: &str) -> JsValue {
         let (well_typed, mut item) = wipple_frontend::typecheck::typecheck(info);
         let annotations = annotations(&mut item);
 
-        let output = Arc::<RefCell<Vec<String>>>::default();
         if well_typed {
-            // let external = external({
-            //     let output = Arc::clone(&output);
-            //     move |text| output.borrow_mut().push(text)
-            // });
-
             if let Err(error) = wipple_interpreter_backend::eval(&item) {
                 output
-                    .borrow_mut()
+                    .write()
+                    .unwrap()
                     .push(format!("Fatal error: {:?}", error))
             }
         }
-        let output = Arc::try_unwrap(output).unwrap().into_inner();
+
+        let output = output.read().unwrap().clone();
 
         Some((annotations, output))
     })()
