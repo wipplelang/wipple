@@ -27,7 +27,7 @@ pub fn builtin_variables() -> HashMap<InternedString, Variable> {
         "->" => Form::builtin_function,
         "return" => Form::builtin_return,
 
-        ".." => Form::builtin_field,
+        "@" => Form::builtin_field,
 
         "external" => Form::builtin_external,
         "file" => Form::builtin_file,
