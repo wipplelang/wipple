@@ -172,8 +172,12 @@ fn main() -> anyhow::Result<()> {
             if let Some(item) = files {
                 if no_run {
                     serde_json::to_writer_pretty(io::stdout(), &item)?;
-                } else if let Err(error) = wipple_interpreter_backend::eval(&item) {
-                    eprintln!("Fatal error: {:?}", error)
+                } else {
+                    wipple_interpreter_backend::set_output(|text| println!("{}", text));
+
+                    if let Err(error) = wipple_interpreter_backend::eval(&item) {
+                        eprintln!("Fatal error: {:?}", error)
+                    }
                 }
             } else {
                 process::exit(1);
