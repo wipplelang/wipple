@@ -22,7 +22,7 @@ impl BindingKind for NameBinding {
         let decl_item = form.as_decl_item();
 
         let (variable, runtime_item) = match form.kind {
-            FormKind::Item(item) => (Variable::runtime(item.info), Some(item)),
+            FormKind::Item(item) => (Variable::runtime(self.name), Some(item)),
             _ => (
                 Variable::compile_time(move |_, _, _| Some(form.clone())),
                 None,

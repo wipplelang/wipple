@@ -80,65 +80,6 @@ pub enum ItemKind {
     Variable(VariableItem),
 }
 
-impl Item {
-    pub fn traverse(&mut self, mut f: impl FnMut(&mut Item)) {
-        pub fn traverse(item: &mut Item, f: &mut impl FnMut(&mut Item)) {
-            f(item);
-
-            match &mut item.kind {
-                ItemKind::Annotate(annotate) => {
-                    traverse(&mut annotate.item, f);
-                }
-                ItemKind::Apply(apply) => {
-                    traverse(&mut apply.function, f);
-                    traverse(&mut apply.input, f);
-                }
-                ItemKind::Block(block) => {
-                    for statement in &mut block.statements {
-                        traverse(statement, f);
-                    }
-                }
-                ItemKind::Data(data) => {
-                    for field in &mut data.fields {
-                        traverse(field, f);
-                    }
-                }
-                ItemKind::DataDecl(_) => {}
-                ItemKind::End(end) => {
-                    traverse(&mut end.value, f);
-                }
-                ItemKind::External(external) => {
-                    for input in &mut external.inputs {
-                        traverse(input, f);
-                    }
-                }
-                ItemKind::Field(field) => {
-                    traverse(&mut field.value, f);
-                }
-                ItemKind::Function(function) => {
-                    traverse(&mut function.body, f);
-                }
-                ItemKind::FunctionInput(_) => {}
-                ItemKind::Initialize(initialize) => {
-                    traverse(&mut initialize.value, f);
-                }
-                ItemKind::Loop(r#loop) => {
-                    traverse(&mut r#loop.body, f);
-                }
-                ItemKind::Number(_) => {}
-                ItemKind::Return(r#return) => {
-                    traverse(&mut r#return.value, f);
-                }
-                ItemKind::Text(_) => {}
-                ItemKind::Unit(_) => {}
-                ItemKind::Variable(_) => {}
-            }
-        }
-
-        traverse(self, &mut f)
-    }
-}
-
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct ItemInfo {
     pub span: Span,

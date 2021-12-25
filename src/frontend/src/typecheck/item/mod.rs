@@ -76,9 +76,12 @@ pub enum ItemKind {
 }
 
 impl Item {
-    pub fn traverse(&mut self, mut f: impl FnMut(&mut Item)) {
-        pub fn traverse(item: &mut Item, f: &mut impl FnMut(&mut Item)) {
-            f(item);
+    pub fn traverse(&mut self, mut f: impl FnMut(&mut compile::ItemInfo, &mut TypeSchema)) {
+        pub fn traverse(
+            item: &mut Item,
+            f: &mut impl FnMut(&mut compile::ItemInfo, &mut TypeSchema),
+        ) {
+            f(&mut item.compile_info, &mut item.ty);
 
             match &mut item.kind {
                 ItemKind::Apply(apply) => {
@@ -112,6 +115,7 @@ impl Item {
                 }
                 ItemKind::FunctionInput(_) => {}
                 ItemKind::Initialize(initialize) => {
+                    f(&mut initialize.binding_info, &mut initialize.value.ty);
                     traverse(&mut initialize.value, f);
                 }
                 ItemKind::Loop(r#loop) => {

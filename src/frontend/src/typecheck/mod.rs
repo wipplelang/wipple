@@ -105,8 +105,7 @@ pub fn typecheck(info: compile::Info) -> (bool, Item) {
     let info = compile::ItemInfo::new(Span::new(InternedString::new("<root>"), Default::default()));
 
     let mut item = typechecker.typecheck_block(info, &block.statements);
-
-    item.traverse(|item| match &mut item.ty {
+    item.traverse(|_, ty| match ty {
         TypeSchema::Monotype(ty) => ty.apply_mut(&typechecker.ctx),
         TypeSchema::Polytype { .. } => {}
     });

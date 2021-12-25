@@ -12,7 +12,8 @@ interface RunResult {
 
 interface Annotation {
     span: Span;
-    value: string;
+    declaredName?: string;
+    ty: string;
 }
 
 interface Span {
@@ -173,6 +174,10 @@ const Playground = () => {
                 const startPos = model.getPositionAt(annotation.span.start);
                 const endPos = model.getPositionAt(annotation.span.end);
 
+                const value = annotation.declaredName
+                    ? `${annotation.declaredName} :: ${annotation.ty}`
+                    : annotation.ty;
+
                 return {
                     range: new monaco.Range(
                         startPos.lineNumber,
@@ -180,7 +185,7 @@ const Playground = () => {
                         endPos.lineNumber,
                         endPos.column
                     ),
-                    contents: [{ value: annotation.value }],
+                    contents: [{ value: "```wipple\n" + value + "\n```" }],
                 };
             },
         });
@@ -312,6 +317,10 @@ const Playground = () => {
                     className="m-4 ml-0 p-2 rounded-md bg-white overflow-scroll"
                     style={{ height: splitItemHeight }}
                 >
+                    <pre className="whitespace-pre-wrap">
+                        {JSON.stringify(result.current?.annotations, null, 2)}
+                    </pre>
+
                     {output.map((line, index) => (
                         <pre className="whitespace-pre-wrap" key={index}>
                             {line}

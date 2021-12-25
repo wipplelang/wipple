@@ -93,7 +93,7 @@ macro_rules! forms {
 }
 
 forms! {
-    Item(Item) = "item",
+    Item(Item) = "value",
     Operator(Operator) = "operator",
     Template(Template) = "template",
     File(Arc<File>) = "file",

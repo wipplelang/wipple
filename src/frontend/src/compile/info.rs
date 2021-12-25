@@ -56,14 +56,15 @@ impl Variable {
         }
     }
 
-    pub fn runtime(info: ItemInfo) -> Self {
+    pub fn runtime(declared_name: InternedString) -> Self {
         let id = VariableId::new();
 
         Variable {
             id,
             form: Some(Arc::new(move |span, _, _| {
                 let mut item = Item::variable(span, id);
-                item.info = info;
+                item.info = ItemInfo::new(span);
+                item.info.declared_name = Some(declared_name);
                 Some(Form::item(span, item))
             })),
         }

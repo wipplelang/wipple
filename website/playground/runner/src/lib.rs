@@ -11,9 +11,11 @@ struct Result {
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
 struct Annotation {
     span: Span,
-    value: String,
+    declared_name: Option<String>,
+    ty: String,
 }
 
 #[wasm_bindgen]
@@ -64,15 +66,19 @@ pub fn run(code: &str) -> JsValue {
 }
 
 fn annotations(item: &mut wipple_frontend::typecheck::Item) -> Vec<Annotation> {
+    use wipple_frontend::typecheck::*;
+
     let mut annotations = Vec::new();
 
-    item.traverse(|item| {
+    item.traverse(|info, ty| {
+        if info.span.file.as_str() != "playground" {
+            return;
+        }
+
         annotations.push(Annotation {
-            span: item.compile_info.span,
-            value: format!(
-                "```wipple\n{}\n```",
-                wipple_frontend::typecheck::format_type_schema(&item.ty)
-            ),
+            span: info.span,
+            declared_name: info.declared_name.map(|name| name.to_string()),
+            ty: format_type_schema(ty),
         });
     });
 
