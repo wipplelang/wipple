@@ -148,7 +148,7 @@ impl Form {
                                     }
                                 };
 
-                                let value = rhs.lower_to_item(stack, info)?;
+                                let value = rhs.lower_to_item(stack, info);
 
                                 Some(Form::data_struct_field(
                                     span,
@@ -198,7 +198,7 @@ impl Form {
 
                         match context {
                             LowerContext::Item => {
-                                let value = lhs.lower_to_item(stack, info)?;
+                                let value = lhs.lower_to_item(stack, info);
                                 let constructor = rhs.lower_to_constructor(stack, info)?;
 
                                 Some(Form::item(span, Item::annotate(span, value, constructor)))
@@ -327,7 +327,7 @@ impl Form {
                                             &stack,
                                             info,
                                         ),
-                                        rhs.lower_to_item(&stack, info)?,
+                                        rhs.lower_to_item(&stack, info),
                                     ],
                                 );
 
@@ -351,11 +351,7 @@ impl Form {
             Template::new(
                 Some(NonZeroUsize::new(1).unwrap()),
                 move |_, exprs, span, stack, info| {
-                    let item = exprs
-                        .into_iter()
-                        .next()
-                        .unwrap()
-                        .lower_to_item(stack, info)?;
+                    let item = exprs.into_iter().next().unwrap().lower_to_item(stack, info);
 
                     Some(Form::item(span, Item::r#return(span, item)))
                 },
@@ -374,7 +370,7 @@ impl Form {
                     move |_, exprs, span, stack, info| {
                         let mut exprs = exprs.into_iter();
 
-                        let item = exprs.next().unwrap().lower_to_item(stack, info)?;
+                        let item = exprs.next().unwrap().lower_to_item(stack, info);
 
                         let mut rhs = match exprs.next().unwrap() {
                             Expr::List(list) => list,
@@ -446,7 +442,7 @@ impl Form {
 
                 let inputs = exprs
                     .map(|expr| expr.lower_to_item(stack, info))
-                    .collect::<Option<Vec<_>>>()?;
+                    .collect::<Vec<_>>();
 
                 Some(Form::item(
                     span,
@@ -599,12 +595,7 @@ impl Form {
             Template::new(
                 Some(NonZeroUsize::new(1).unwrap()),
                 move |_, exprs, span, stack, info| {
-                    let item = exprs
-                        .into_iter()
-                        .next()
-                        .unwrap()
-                        .lower_to_item(stack, info)?;
-
+                    let item = exprs.into_iter().next().unwrap().lower_to_item(stack, info);
                     Some(Form::item(span, Item::r#loop(span, item)))
                 },
             ),
@@ -617,12 +608,7 @@ impl Form {
             Template::new(
                 Some(NonZeroUsize::new(1).unwrap()),
                 move |_, exprs, span, stack, info| {
-                    let item = exprs
-                        .into_iter()
-                        .next()
-                        .unwrap()
-                        .lower_to_item(stack, info)?;
-
+                    let item = exprs.into_iter().next().unwrap().lower_to_item(stack, info);
                     Some(Form::item(span, Item::end(span, item)))
                 },
             ),

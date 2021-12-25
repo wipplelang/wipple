@@ -151,6 +151,7 @@ impl<'a> Typechecker<'a> {
         let var = self.ctx.new_variable();
 
         let item = (|| match &item.kind {
+            compile::ItemKind::Error(_) => Item::error(item.info),
             compile::ItemKind::Unit(_) => Item::unit(item.info),
             compile::ItemKind::Number(number) => Item::number(item.info, number.value),
             compile::ItemKind::Text(text) => Item::text(item.info, text.value),

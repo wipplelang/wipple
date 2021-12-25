@@ -24,7 +24,7 @@ impl ExprKind for BlockExpr {
             .statements
             .into_iter()
             .map(|statement| statement.lower_to_item(&stack, info))
-            .collect::<Option<_>>()?;
+            .collect();
 
         Some(Form::item(self.span, Item::block(self.span, statements)))
     }

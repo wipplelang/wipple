@@ -4,6 +4,7 @@ mod block;
 mod data;
 mod data_decl;
 mod end;
+mod error;
 mod external;
 mod field;
 mod function;
@@ -22,6 +23,7 @@ pub use block::*;
 pub use data::*;
 pub use data_decl::*;
 pub use end::*;
+pub use error::*;
 pub use external::*;
 pub use field::*;
 pub use function::*;
@@ -67,6 +69,7 @@ pub enum ItemKind {
     Data(DataItem),
     DataDecl(DataDeclItem),
     End(EndItem),
+    Error(ErrorItem),
     External(ExternalItem),
     Field(FieldItem),
     Function(FunctionItem),

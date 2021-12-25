@@ -44,7 +44,7 @@ pub fn lower(file: wipple_parser::File, info: &mut Info) -> Option<Arc<File>> {
         .into_iter()
         .filter_map(parse_statement)
         .map(|statement| statement.lower_to_item(&stack, info))
-        .collect::<Option<_>>()?;
+        .collect();
 
     let file = Arc::new(File {
         id: FileId::new(),

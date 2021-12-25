@@ -62,7 +62,7 @@ impl ExprKind for ListExpr {
                     while let Some(expr) = items.next() {
                         form = match form.kind {
                             FormKind::Item(item) => {
-                                let input = expr.lower_to_item(stack, info)?;
+                                let input = expr.lower_to_item(stack, info);
                                 let span = item.info.span.with_end(input.info.span.end);
 
                                 Form::item(span, Item::apply(span, item, input))

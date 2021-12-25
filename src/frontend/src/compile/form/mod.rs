@@ -30,6 +30,7 @@ macro_rules! forms {
     ($($name:ident($($ty:tt)*) = $str:literal,)*) => {
         #[derive(Debug, Clone, Serialize)]
         pub enum FormKind {
+            Item(Item),
             $($name($($ty)*),)*
         }
 
@@ -46,6 +47,7 @@ macro_rules! forms {
         impl fmt::Display for FormKind {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
                 match self {
+                    FormKind::Item { .. } => write!(f, "value"),
                     $(FormKind::$name { .. } => write!(f, $str),)*
                 }
             }
@@ -53,6 +55,7 @@ macro_rules! forms {
 
         #[derive(Debug, Clone, Copy, PartialEq, Eq)]
         pub enum LowerContext {
+            Item,
             $($name,)*
         }
 
@@ -93,7 +96,6 @@ macro_rules! forms {
 }
 
 forms! {
-    Item(Item) = "value",
     Operator(Operator) = "operator",
     Template(Template) = "template",
     File(Arc<File>) = "file",
@@ -104,6 +106,10 @@ forms! {
 }
 
 impl Form {
+    pub fn item(span: Span, item: Item) -> Self {
+        Form::new(span, FormKind::Item(item))
+    }
+
     pub fn as_decl_item(&self) -> Option<Item> {
         match &self.kind {
             FormKind::Constructor(Constructor::DataStruct { id, fields }) => Some(Item::data_decl(
@@ -115,6 +121,40 @@ impl Form {
                     .collect(),
             )),
             _ => None,
+        }
+    }
+}
+
+pub trait LowerToItem
+where
+    Self: ExprKind,
+    Expr: From<Self>,
+{
+    fn lower_to_item(self, stack: &Stack, info: &mut Info) -> Item;
+}
+
+impl<T: ExprKind> LowerToItem for T
+where
+    Expr: From<T>,
+{
+    fn lower_to_item(self, stack: &Stack, info: &mut Info) -> Item {
+        let span = self.span();
+
+        match self
+            .lower(LowerContext::Item, stack, info)
+            .map(|form| form.kind)
+            .unwrap_or_else(|| FormKind::Item(Item::error(span)))
+        {
+            FormKind::Item(item) => item,
+            kind => {
+                info.diagnostics.add(Diagnostic::new(
+                    DiagnosticLevel::Error,
+                    format!("Expected value, found {}", kind),
+                    vec![Note::primary(span, "Expected value here")],
+                ));
+
+                Item::error(span)
+            }
         }
     }
 }
