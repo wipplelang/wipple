@@ -317,10 +317,6 @@ const Playground = () => {
                     className="m-4 ml-0 p-2 rounded-md bg-white overflow-scroll"
                     style={{ height: splitItemHeight }}
                 >
-                    <pre className="whitespace-pre-wrap">
-                        {JSON.stringify(result.current?.annotations, null, 2)}
-                    </pre>
-
                     {output.map((line, index) => (
                         <pre className="whitespace-pre-wrap" key={index}>
                             {line}
