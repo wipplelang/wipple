@@ -38,6 +38,10 @@ jobs:
             target: aarch64-unknown-linux-gnu
             compiler: cross
 
+          - os: ubuntu-latest
+            target: armv7-unknown-linux-gnueabihf
+            compiler: cross
+
           - os: macos-latest
             target: x86_64-apple-darwin
             compiler: cargo
