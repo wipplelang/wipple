@@ -10,6 +10,7 @@ mkdir -p bin
 rustup update stable
 
 if [ "$compiler" = "cross" ]; then
+    docker build -t wipple -f ./.github/dockerfiles/Dockerfile.$target ./.github/dockerfiles
     cargo install cross
 fi
 
