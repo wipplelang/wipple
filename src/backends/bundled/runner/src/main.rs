@@ -8,10 +8,12 @@ fn main() {
         .expect("Could not open current executable");
 
     let item_size_index = bin.len() - mem::size_of::<usize>();
-    let item_index = usize::from_ne_bytes(bin[item_size_index..].try_into().unwrap());
+    let item_size = usize::from_ne_bytes(bin[item_size_index..].try_into().unwrap());
 
-    let item = &bin[item_index..item_size_index];
-    let item = serde_cbor::from_slice(item).expect("Invalid binary");
+    let end_index = bin.len() - mem::size_of::<usize>();
+    let item = &bin[end_index - item_size..end_index];
+
+    let item = serde_json::from_slice(item).expect("Invalid binary");
 
     wipple_interpreter_backend::set_output(|text| println!("{}", text));
 
