@@ -4,6 +4,5 @@ version = "0.0.0"
 edition = "2021"
 
 [dependencies]
-serde = { version = "1", features = ["derive"] }
-wipple_frontend = { path = "../../../frontend" }
+serde_cbor = "0.11"
 wipple_interpreter_backend = { path = "../../interpreter" }

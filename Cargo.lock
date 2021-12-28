@@ -334,6 +334,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "half"
+version = "1.8.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "eabb4a44450da02c90444cf74558da904edde8fb4e9035a9a6a4e15445af0bd7"
+
+[[package]]
 name = "hashbrown"
 version = "0.11.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1046,6 +1052,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "serde_cbor"
+version = "0.11.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2bef2ebfde456fb76bbcf9f59315333decc4fda0b2b44b420243c11e0f5ec1f5"
+dependencies = [
+ "half",
+ "serde",
+]
+
+[[package]]
 name = "serde_derive"
 version = "1.0.130"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1489,17 +1505,15 @@ dependencies = [
 name = "wipple_bundled_backend_builder"
 version = "0.0.0"
 dependencies = [
- "wipple_bundled_backend_runner",
+ "serde_cbor",
  "wipple_frontend",
- "wipple_interpreter_backend",
 ]
 
 [[package]]
 name = "wipple_bundled_backend_runner"
 version = "0.0.0"
 dependencies = [
- "serde",
- "wipple_frontend",
+ "serde_cbor",
  "wipple_interpreter_backend",
 ]
 
@@ -1515,6 +1529,7 @@ dependencies = [
  "serde_json",
  "structopt",
  "strum",
+ "wipple_bundled_backend_builder",
  "wipple_diagnostics",
  "wipple_formatter",
  "wipple_frontend",
