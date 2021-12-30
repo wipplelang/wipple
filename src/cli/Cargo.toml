@@ -12,14 +12,9 @@ anyhow = "1"
 codemap-diagnostic = "0.1"
 directories = "4"
 interned-string = { path = "../helpers/interned-string" }
-serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 structopt = "0.3"
-strum = { version = "0.21", features = ["derive"] }
 wipple_diagnostics = { path = "../diagnostics" }
 wipple_frontend = { path = "../frontend" }
 wipple_bundled_backend_builder = { path = "../backends/bundled/builder" }
 wipple_interpreter_backend = { path = "../backends/interpreter" }
-wipple_js_backend = { path = "../backends/js" }
-wipple_parser = { path = "../parser" }
-wipple_playground_runner = { path = "../../website/playground/runner" } # TEMPORARY

@@ -1,15 +1,13 @@
 use codemap_diagnostic::{ColorConfig, Emitter};
 use interned_string::InternedString;
-use serde::Serialize;
 use std::{
     fs,
-    io::{self, Read, Write},
+    io::{Read, Write},
     os::unix::prelude::PermissionsExt,
     path::PathBuf,
     process,
 };
 use structopt::StructOpt;
-use strum::{EnumString, ToString};
 use wipple_diagnostics::*;
 
 #[derive(StructOpt)]
@@ -25,13 +23,9 @@ struct Args {
 
 #[derive(StructOpt)]
 enum Command {
-    // FIXME: Temporary
-    Test {
+    Run {
         #[structopt(flatten)]
         options: SharedOptions,
-
-        #[structopt(long)]
-        no_run: bool,
     },
 
     Bundle {
@@ -58,37 +52,20 @@ struct SharedOptions {
     cache: Option<PathBuf>,
 }
 
-#[derive(Clone, Copy, EnumString, ToString)]
-#[strum(serialize_all = "kebab-case")]
-enum OutputStyle {
-    Console,
-    Json,
-}
-
-impl Default for OutputStyle {
-    fn default() -> Self {
-        OutputStyle::Console
-    }
-}
-
 fn main() -> anyhow::Result<()> {
     let args = Args::from_args();
 
     match args.command {
-        Command::Test { options, no_run } => {
+        Command::Run { options } => {
             let item = match compile(options)? {
                 Some(item) => item,
                 None => process::exit(1),
             };
 
-            if no_run {
-                serde_json::to_writer_pretty(io::stdout(), &item)?;
-            } else {
-                wipple_interpreter_backend::set_output(|text| println!("{}", text));
+            wipple_interpreter_backend::set_output(|text| println!("{}", text));
 
-                if let Err(error) = wipple_interpreter_backend::eval(&item) {
-                    eprintln!("Fatal error: {:?}", error)
-                }
+            if let Err(error) = wipple_interpreter_backend::eval(&item) {
+                eprintln!("Fatal error: {:?}", error)
             }
         }
         Command::Bundle {
@@ -154,10 +131,4 @@ fn compile(options: SharedOptions) -> anyhow::Result<Option<wipple_frontend::typ
     emitter.emit(&diagnostics);
 
     Ok(files)
-}
-
-#[derive(Serialize)]
-struct ParseOutput<'src> {
-    file: Option<wipple_parser::File<'src>>,
-    diagnostics: Vec<Diagnostic>,
 }
