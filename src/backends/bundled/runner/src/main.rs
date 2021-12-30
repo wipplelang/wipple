@@ -13,7 +13,7 @@ fn main() {
     let end_index = bin.len() - mem::size_of::<u64>();
     let item = &bin[end_index - item_size..end_index];
 
-    let item = serde_json::from_slice(item).expect("Invalid binary");
+    let item = bincode::deserialize(item).expect("Invalid binary");
 
     wipple_interpreter_backend::set_output(|text| println!("{}", text));
 

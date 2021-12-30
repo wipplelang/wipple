@@ -8,5 +8,5 @@ name = "wipple-runner"
 path = "src/main.rs"
 
 [dependencies]
-serde_json = "1"
+bincode = "1"
 wipple_interpreter_backend = { path = "../../interpreter" }

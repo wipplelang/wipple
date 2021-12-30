@@ -79,6 +79,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bed554bd50246729a1ec158d08aa3235d1b69d94ad120ebe187e28894787e736"
 
 [[package]]
+name = "bincode"
+version = "1.3.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b1f45e9417d87227c7a56d22e471c6206462cba514c7590c09aff4cf6d1ddcad"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "bitflags"
 version = "1.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1452,7 +1461,7 @@ dependencies = [
 name = "wipple_bundled_backend_builder"
 version = "0.0.0"
 dependencies = [
- "serde_json",
+ "bincode",
  "wipple_frontend",
 ]
 
@@ -1460,7 +1469,7 @@ dependencies = [
 name = "wipple_bundled_backend_runner"
 version = "0.0.0"
 dependencies = [
- "serde_json",
+ "bincode",
  "wipple_interpreter_backend",
 ]
 
