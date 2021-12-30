@@ -1,9 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { GetStaticProps, NextPage } from "next";
 import Head from "next/head";
-import Image from "next/image";
 import Markdown from "react-markdown";
-import logo from "../public/logo.svg";
 import { doc } from "../docs";
 
 interface HomeProps {
@@ -54,7 +52,7 @@ const Home: NextPage<HomeProps> = ({ homeDoc }) => {
 
                 <div className="container max-w-6xl mx-auto" ref={$background}>
                     <div className="flex flex-col items-start gap-4 p-10 md:p-20">
-                        <Image src={logo} alt="Wipple logo" />
+                        <img src="logo.svg" alt="Wipple logo" />
 
                         <h1 className="text-3xl md:text-5xl leading-tight md:leading-tight font-bold text-white">
                             Wipple is a programming language that’s natural to read, write and
