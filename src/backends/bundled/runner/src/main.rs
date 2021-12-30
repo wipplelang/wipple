@@ -7,10 +7,10 @@ fn main() {
         .and_then(|file| file.bytes().collect::<Result<Vec<_>, _>>())
         .expect("Could not open current executable");
 
-    let item_size_index = bin.len() - mem::size_of::<usize>();
-    let item_size = usize::from_ne_bytes(bin[item_size_index..].try_into().unwrap());
+    let item_size_index = bin.len() - mem::size_of::<u64>();
+    let item_size = u64::from_ne_bytes(bin[item_size_index..].try_into().unwrap()) as usize;
 
-    let end_index = bin.len() - mem::size_of::<usize>();
+    let end_index = bin.len() - mem::size_of::<u64>();
     let item = &bin[end_index - item_size..end_index];
 
     let item = serde_json::from_slice(item).expect("Invalid binary");
