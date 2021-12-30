@@ -7,7 +7,6 @@ use std::{
     os::unix::prelude::PermissionsExt,
     path::PathBuf,
     process,
-    sync::Arc,
 };
 use structopt::StructOpt;
 use strum::{EnumString, ToString};
@@ -26,31 +25,10 @@ struct Args {
 
 #[derive(StructOpt)]
 enum Command {
-    #[structopt(about = "Parse a Wipple source file")]
-    Parse {
-        #[structopt(flatten)]
-        options: SharedOptions,
-    },
-
-    #[structopt(about = "Format a Wipple source file")]
-    Format {
-        #[structopt(flatten)]
-        options: SharedOptions,
-
-        #[structopt(long)]
-        in_place: bool,
-    },
-
     // FIXME: Temporary
     Test {
         #[structopt(flatten)]
         options: SharedOptions,
-
-        #[structopt(long)]
-        project: Option<PathBuf>,
-
-        #[structopt(long)]
-        cache: Option<PathBuf>,
 
         #[structopt(long)]
         no_run: bool,
@@ -59,12 +37,6 @@ enum Command {
     Bundle {
         #[structopt(flatten)]
         options: SharedOptions,
-
-        #[structopt(long)]
-        project: Option<PathBuf>,
-
-        #[structopt(long)]
-        cache: Option<PathBuf>,
 
         #[structopt(long)]
         runner: PathBuf,
@@ -77,10 +49,13 @@ enum Command {
 #[derive(StructOpt)]
 struct SharedOptions {
     #[structopt(name = "file")]
-    path: String,
+    path: PathBuf,
 
-    #[structopt(long, default_value)]
-    output_style: OutputStyle,
+    #[structopt(long)]
+    project: Option<PathBuf>,
+
+    #[structopt(long)]
+    cache: Option<PathBuf>,
 }
 
 #[derive(Clone, Copy, EnumString, ToString)]
@@ -100,67 +75,8 @@ fn main() -> anyhow::Result<()> {
     let args = Args::from_args();
 
     match args.command {
-        Command::Parse { options } => {
-            let code = Arc::from(fs::read_to_string(&options.path)?);
-            let path = InternedString::new(options.path);
-
-            let mut diagnostics = Diagnostics::new();
-            diagnostics.add_file(path, Arc::clone(&code));
-
-            let result = wipple_parser::parse(path, &code, &mut diagnostics);
-
-            match options.output_style {
-                OutputStyle::Console => {
-                    let (codemap, diagnostics) = diagnostics.into_console_friendly();
-
-                    let mut emitter = Emitter::stderr(ColorConfig::Auto, Some(&codemap));
-                    emitter.emit(&diagnostics);
-
-                    if let Some(result) = result {
-                        serde_json::to_writer_pretty(io::stdout(), &result)?;
-                    } else {
-                        process::exit(1);
-                    }
-                }
-                OutputStyle::Json => {
-                    let output = ParseOutput {
-                        file: result,
-                        diagnostics: diagnostics.diagnostics,
-                    };
-
-                    serde_json::to_writer(io::stdout(), &output)?;
-
-                    if output.file.is_none() {
-                        process::exit(1);
-                    }
-                }
-            }
-        }
-        Command::Format { options, in_place } => {
-            let code = Arc::from(fs::read_to_string(&options.path)?);
-            let path = InternedString::new(options.path);
-
-            let result = wipple_parser::parse(path, &code, &mut Diagnostics::new())
-                .map(wipple_formatter::format);
-
-            let result = match result {
-                Some(result) => result,
-                None => process::exit(1),
-            };
-
-            if in_place {
-                todo!();
-            } else {
-                println!("{}", result);
-            }
-        }
-        Command::Test {
-            options,
-            project,
-            cache,
-            no_run,
-        } => {
-            let item = match compile(options, project, cache) {
+        Command::Test { options, no_run } => {
+            let item = match compile(options)? {
                 Some(item) => item,
                 None => process::exit(1),
             };
@@ -177,12 +93,10 @@ fn main() -> anyhow::Result<()> {
         }
         Command::Bundle {
             options,
-            project,
-            cache,
             runner,
             bin,
         } => {
-            let item = match compile(options, project, cache) {
+            let item = match compile(options)? {
                 Some(item) => item,
                 None => process::exit(1),
             };
@@ -210,18 +124,14 @@ fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-fn compile(
-    options: SharedOptions,
-    project: Option<PathBuf>,
-    cache: Option<PathBuf>,
-) -> Option<wipple_frontend::typecheck::Item> {
-    let path = InternedString::new(options.path);
+fn compile(options: SharedOptions) -> anyhow::Result<Option<wipple_frontend::typecheck::Item>> {
+    let path_str = InternedString::new(options.path.to_str().unwrap());
 
     let mut diagnostics = Diagnostics::new();
 
     let project = wipple_frontend::project::Project {
-        base: project.map(wipple_frontend::project::Base::Path),
-        cache_path: Some(cache.unwrap_or_else(|| {
+        base: options.project.map(wipple_frontend::project::Base::Path),
+        cache_path: Some(options.cache.unwrap_or_else(|| {
             directories::BaseDirs::new()
                 .expect("User directories not set")
                 .cache_dir()
@@ -232,12 +142,7 @@ fn compile(
     let files = {
         let mut info = wipple_frontend::compile::Info::new(&mut diagnostics, &project);
 
-        wipple_frontend::project::load_file(
-            &path.to_string(),
-            Span::new(path, Default::default()),
-            &mut info,
-        )
-        .and_then(|_| {
+        wipple_frontend::project::load_path(&path_str, &options.path, &mut info)?.and_then(|_| {
             let (well_typed, item) = wipple_frontend::typecheck::typecheck(info);
             well_typed.then(|| item)
         })
@@ -248,7 +153,7 @@ fn compile(
     let mut emitter = Emitter::stderr(ColorConfig::Auto, Some(&codemap));
     emitter.emit(&diagnostics);
 
-    files
+    Ok(files)
 }
 
 #[derive(Serialize)]

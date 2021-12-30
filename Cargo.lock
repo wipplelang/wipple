@@ -779,16 +779,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ed0cfbc8191465bed66e1718596ee0b0b35d5ee1f41c5df2189d0fe8bde535ba"
 
 [[package]]
-name = "pretty"
-version = "0.10.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ad9940b913ee56ddd94aec2d3cd179dd47068236f42a1a6415ccf9d880ce2a61"
-dependencies = [
- "arrayvec",
- "typed-arena",
-]
-
-[[package]]
 name = "proc-macro-error"
 version = "1.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1277,12 +1267,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "59547bce71d9c38b83d9c0e92b6066c4253371f15005def0c30d9657f50c7642"
 
 [[package]]
-name = "typed-arena"
-version = "2.0.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0685c84d5d54d1c26f7d3eb96cd41550adb97baed141a761cf335d3d33bcd0ae"
-
-[[package]]
 name = "unicode-bidi"
 version = "0.3.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1515,7 +1499,6 @@ dependencies = [
  "strum",
  "wipple_bundled_backend_builder",
  "wipple_diagnostics",
- "wipple_formatter",
  "wipple_frontend",
  "wipple_interpreter_backend",
  "wipple_js_backend",
@@ -1531,14 +1514,6 @@ dependencies = [
  "codemap-diagnostic",
  "interned-string",
  "serde",
-]
-
-[[package]]
-name = "wipple_formatter"
-version = "0.0.0"
-dependencies = [
- "pretty",
- "wipple_parser",
 ]
 
 [[package]]
@@ -1604,7 +1579,6 @@ dependencies = [
  "serde",
  "wasm-bindgen",
  "wipple_diagnostics",
- "wipple_formatter",
  "wipple_frontend",
  "wipple_interpreter_backend",
  "wipple_parser",

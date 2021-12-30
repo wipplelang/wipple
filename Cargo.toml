@@ -6,7 +6,6 @@ members = [
     "src/backends/js",
     "src/cli",
     "src/diagnostics",
-    "src/formatter",
     "src/frontend",
     "src/helpers/interned-string",
     "src/parser",
