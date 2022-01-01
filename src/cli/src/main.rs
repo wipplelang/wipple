@@ -127,8 +127,10 @@ fn compile(options: SharedOptions) -> anyhow::Result<Option<wipple_frontend::typ
 
     let (codemap, diagnostics) = diagnostics.into_console_friendly();
 
-    let mut emitter = Emitter::stderr(ColorConfig::Auto, Some(&codemap));
-    emitter.emit(&diagnostics);
+    if !diagnostics.is_empty() {
+        let mut emitter = Emitter::stderr(ColorConfig::Auto, Some(&codemap));
+        emitter.emit(&diagnostics);
+    }
 
     Ok(files)
 }
