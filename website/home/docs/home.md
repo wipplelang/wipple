@@ -6,17 +6,19 @@ These steps work for both Intel and Apple Silicon Macs.
 
 1. Open Terminal.
 
-2. Copy and paste this code:
+2. Install [Homebrew](https://brew.sh) if needed.
+
+3. Copy and paste the following command:
 
     ```shell
-    curl -fsSL https://github.com/wipplelang/wipple/releases/latest/download/wipple-x86_64-apple-darwin > /usr/local/bin/wipple
+    brew tap wipplelang/wipple && brew install wipple --build-from-source
     ```
 
 ### For Linux
 
 1. Download a binary from [Releases](https://github.com/wipplelang/wipple/releases/latest).
 
-2. Move the binary to a location of your choice, eg. `/usr/local/bin/wipple`.
+2. Move the binary to a location of your choice, eg. `/usr/local/bin/wipple`, and `chmod +x` it.
 
 ## Hello, world!
 
