@@ -85,7 +85,7 @@ const Home: NextPage<HomeProps> = ({ homeDoc }) => {
                     <Markdown>{homeDoc}</Markdown>
                 </div>
 
-                <p className="text-sm text-center text-gray-500">
+                <p className="text-sm text-center text-gray-500 mb-8">
                     Made by{" "}
                     <a href="//gramer.dev" className="font-semibold text-gray-700">
                         Wilson Gramer
