@@ -35,7 +35,15 @@ fn main() {
 
     wipple_interpreter_backend::set_output(|text| println!("{}", text));
 
-    if let Err(error) = wipple_interpreter_backend::eval(&item) {
-        eprintln!("Fatal error: {:?}", error)
+    if let Err((error, callstack)) = wipple_interpreter_backend::eval(&item) {
+        eprintln!("Fatal error: {}", error);
+
+        for (function, span) in callstack {
+            eprintln!(
+                "  {} ({:?})",
+                function.as_deref().unwrap_or("<function>"),
+                span
+            )
+        }
     }
 }

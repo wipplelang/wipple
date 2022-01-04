@@ -42,11 +42,18 @@ pub fn run(code: &str) -> JsValue {
         let annotations = annotations(&mut item);
 
         if well_typed {
-            if let Err(error) = wipple_interpreter_backend::eval(&item) {
-                output
-                    .write()
-                    .unwrap()
-                    .push(format!("Fatal error: {:?}", error))
+            if let Err((error, callstack)) = wipple_interpreter_backend::eval(&item) {
+                let mut output = output.write().unwrap();
+
+                output.push(format!("Fatal error: {}", error));
+
+                for (function, span) in callstack {
+                    output.push(format!(
+                        "  {} ({:?})",
+                        function.as_deref().unwrap_or("<function>"),
+                        span
+                    ))
+                }
             }
         }
 

@@ -7,7 +7,6 @@ edition = "2021"
 itertools = "0.10"
 lazy_static = "1"
 rust_decimal = "1"
-serde = { version = "1", features = ["derive"] }
 wipple_frontend = { path = "../../frontend" }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]

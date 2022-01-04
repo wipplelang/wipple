@@ -9,11 +9,10 @@ mod external;
 pub use external::*;
 
 use rust_decimal::Decimal;
-use serde::{Deserialize, Serialize};
 use std::{cell::RefCell, collections::BTreeMap, sync::Arc};
 use wipple_frontend::{typecheck::*, *};
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug)]
 pub enum Value {
     Unit,
     Text(String),
@@ -25,8 +24,14 @@ pub enum Value {
     Data(Vec<Arc<Value>>),
 }
 
-#[derive(Debug, Serialize)]
-pub enum Diverge {
+#[derive(Debug)]
+pub struct Diverge {
+    pub callstack: Callstack,
+    pub kind: DivergeKind,
+}
+
+#[derive(Debug)]
+pub enum DivergeKind {
     End(Arc<Value>),
     Return(Arc<Value>),
     Error(String),
@@ -34,23 +39,37 @@ pub enum Diverge {
 
 type Error = String;
 
-pub fn eval(item: &Item) -> Result<(), Error> {
+type Callstack = Vec<(Option<InternedString>, Span)>;
+
+impl Diverge {
+    #[allow(clippy::ptr_arg)]
+    pub fn new(callstack: &Callstack, kind: DivergeKind) -> Self {
+        Diverge {
+            callstack: callstack.clone(),
+            kind,
+        }
+    }
+}
+
+pub fn eval(item: &Item) -> Result<(), (Error, Callstack)> {
     let mut info = Info {
         scope: Default::default(),
         function_input: None,
+        callstack: Vec::new(),
     };
 
-    eval_item(item, &mut info).map_err(|error| match error {
-        Diverge::Error(error) => error,
+    eval_item(item, &mut info).map_err(|diverge| match diverge.kind {
+        DivergeKind::Error(error) => (error, diverge.callstack),
         _ => unreachable!(),
     })?;
 
     Ok(())
 }
 
-struct Info {
+pub struct Info {
     scope: Arc<RefCell<Scope>>,
     function_input: Option<Arc<Value>>,
+    callstack: Callstack,
 }
 
 #[derive(Debug, Default)]
@@ -97,13 +116,23 @@ fn eval_item(item: &Item, info: &mut Info) -> Result<Arc<Value>, Diverge> {
                 child.borrow_mut().variables.extend(captures.clone());
                 info.scope = child;
 
+                info.callstack.push((
+                    apply.function.compile_info.declared_name,
+                    item.compile_info.span,
+                ));
+
                 let value = match eval_item(body, info) {
-                    Ok(value) | Err(Diverge::Return(value)) => value,
+                    Ok(value)
+                    | Err(Diverge {
+                        kind: DivergeKind::Return(value),
+                        ..
+                    }) => value,
                     diverge => return diverge,
                 };
 
                 info.scope = parent;
                 info.function_input = None;
+                info.callstack.pop();
 
                 value
             }
@@ -135,7 +164,7 @@ fn eval_item(item: &Item, info: &mut Info) -> Result<Arc<Value>, Diverge> {
                     .map(|input| eval_item(input, info))
                     .collect::<Result<Vec<_>, _>>()?;
 
-                builtin::call(&external.identifier, inputs)?
+                builtin::call(&external.identifier, inputs, info)?
             } else {
                 #[cfg(target_arch = "wasm32")]
                 {
@@ -151,28 +180,37 @@ fn eval_item(item: &Item, info: &mut Info) -> Result<Arc<Value>, Diverge> {
                         .iter()
                         .map(|input| match &input.ty {
                             TypeSchema::Monotype(ty) => Ok(ty),
-                            _ => Err(Diverge::Error(Error::from(
-                                "Unsupported external function input type",
-                            ))),
+                            _ => Err(Diverge::new(
+                                &info.callstack,
+                                DivergeKind::Error(Error::from(
+                                    "Unsupported external function input type",
+                                )),
+                            )),
                         })
                         .collect::<Result<Vec<_>, _>>()?;
 
                     let return_ty = match &item.ty {
                         TypeSchema::Monotype(ty) => ty,
                         TypeSchema::Polytype { .. } => {
-                            return Err(Diverge::Error(Error::from(
-                                "Unsupported external function return type",
-                            )));
+                            return Err(Diverge::new(
+                                &info.callstack,
+                                DivergeKind::Error(Error::from(
+                                    "Unsupported external function return type",
+                                )),
+                            ));
                         }
                     };
 
                     let function = match ExternalFunction::from_item(external, inputs, return_ty) {
                         Ok(function) => function,
                         Err(error) => {
-                            return Err(Diverge::Error(format!(
-                                "Unsupported external function type: {}",
-                                error
-                            )))
+                            return Err(Diverge::new(
+                                &info.callstack,
+                                DivergeKind::Error(format!(
+                                    "Unsupported external function type: {}",
+                                    error
+                                )),
+                            ))
                         }
                     };
 
@@ -182,7 +220,7 @@ fn eval_item(item: &Item, info: &mut Info) -> Result<Arc<Value>, Diverge> {
                         .map(|input| eval_item(input, info))
                         .collect::<Result<Vec<_>, _>>()?;
 
-                    function.call_with(inputs)?
+                    function.call_with(inputs, info)?
                 }
             }
         }
@@ -195,17 +233,20 @@ fn eval_item(item: &Item, info: &mut Info) -> Result<Arc<Value>, Diverge> {
         ItemKind::Loop(r#loop) => loop {
             match eval_item(&r#loop.body, info) {
                 Ok(_) => continue,
-                Err(Diverge::End(value)) => break value,
+                Err(Diverge {
+                    kind: DivergeKind::End(value),
+                    ..
+                }) => break value,
                 diverge => return diverge,
             }
         },
         ItemKind::End(end) => {
             let value = eval_item(&end.value, info)?;
-            return Err(Diverge::End(value));
+            return Err(Diverge::new(&info.callstack, DivergeKind::End(value)));
         }
         ItemKind::Return(r#return) => {
             let value = eval_item(&r#return.value, info)?;
-            return Err(Diverge::Return(value));
+            return Err(Diverge::new(&info.callstack, DivergeKind::Return(value)));
         }
         ItemKind::Field(field) => match eval_item(&field.value, info)?.as_ref() {
             Value::Data(data) => data[field.index].clone(),

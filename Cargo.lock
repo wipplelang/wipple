@@ -1527,7 +1527,6 @@ dependencies = [
  "libffi",
  "libloading",
  "rust_decimal",
- "serde",
  "wipple_frontend",
 ]
 

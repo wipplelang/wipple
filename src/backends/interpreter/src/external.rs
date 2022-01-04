@@ -2,11 +2,10 @@ use crate::*;
 use libffi::high::call::*;
 use libloading::{Library, Symbol};
 use rust_decimal::prelude::{FromPrimitive, ToPrimitive};
-use serde::{Deserialize, Serialize};
 use std::{ffi::CString, os::raw::c_char, sync::Arc};
 use wipple_frontend::typecheck::{ExternalItem, Type, BUILTIN_TYPES};
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ExternalFunction<'a> {
     pub namespace: &'a str,
     pub identifier: &'a str,
@@ -14,7 +13,7 @@ pub struct ExternalFunction<'a> {
     pub returns: Option<ExternalValueType>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum ExternalValueType {
     Number,
     Text,
@@ -68,15 +67,21 @@ impl<'a> ExternalFunction<'a> {
         })
     }
 
-    pub fn call_with(&self, inputs: Vec<Arc<Value>>) -> Result<Arc<Value>, Diverge> {
+    pub fn call_with(&self, inputs: Vec<Arc<Value>>, info: &Info) -> Result<Arc<Value>, Diverge> {
         unsafe {
             let lib = Library::new(&self.namespace).map_err(|error| {
-                Diverge::Error(format!("Error loading external namespace: {}", error))
+                Diverge::new(
+                    &info.callstack,
+                    DivergeKind::Error(format!("Error loading external namespace: {}", error)),
+                )
             })?;
 
             let symbol: Symbol<*const ()> =
                 lib.get(self.identifier.as_bytes()).map_err(|error| {
-                    Diverge::Error(format!("Error loading external identifier: {}", error))
+                    Diverge::new(
+                        &info.callstack,
+                        DivergeKind::Error(format!("Error loading external identifier: {}", error)),
+                    )
                 })?;
 
             let ptr = CodePtr::from_ptr(symbol.into_raw().into_raw());
@@ -93,40 +98,39 @@ impl<'a> ExternalFunction<'a> {
             let args = inputs
                 .into_iter()
                 .zip(&self.params)
-                .map(|(input, ty)| {
-                    match ty {
-                        ExternalValueType::Number => {
-                            let number = match input.as_ref() {
-                                Value::Number(number) => *number,
-                                _ => unreachable!(),
-                            };
+                .map(|(input, ty)| match ty {
+                    ExternalValueType::Number => {
+                        let number = match input.as_ref() {
+                            Value::Number(number) => *number,
+                            _ => unreachable!(),
+                        };
 
-                            let float = number.to_f64().ok_or_else(|| {
-                                Diverge::Error(Error::from(
-                                    "Error converting Wipple value to external value: couldn't fit number into a 64-bit float"
-                                ))
-                            })?;
+                        let float = number.to_f64().ok_or_else(|| {
+                            Diverge::new(
+                                &info.callstack,
+                                DivergeKind::Error(Error::from("Error converting Wipple value to external value: couldn't fit number into a 64-bit float")),
+                            )
+                        })?;
 
-                            Ok(ExternalValueHolder::F64(float))
-                        },
-                        ExternalValueType::Text => {
-                            let text = match input.as_ref() {
-                                Value::Text(text) => text.clone(),
-                                _ => unreachable!(),
-                            };
+                        Ok(ExternalValueHolder::F64(float))
+                    }
+                    ExternalValueType::Text => {
+                        let text = match input.as_ref() {
+                            Value::Text(text) => text.clone(),
+                            _ => unreachable!(),
+                        };
 
-                            let string = CString::new(text).map_err(|error| {
-                                Diverge::Error(format!(
-                                    "Error converting Wipple value to external value: {}",
-                                    error
-                                ))
-                            })?;
+                        let string = CString::new(text).map_err(|error| {
+                            Diverge::new(&info.callstack, DivergeKind::Error(format!(
+                                "Error converting Wipple value to external value: {}",
+                                error
+                            )))
+                        })?;
 
-                            let ptr = string.into_raw();
-                            strings_to_cleanup.push(ptr);
+                        let ptr = string.into_raw();
+                        strings_to_cleanup.push(ptr);
 
-                            Ok(ExternalValueHolder::Str(ptr))
-                        },
+                        Ok(ExternalValueHolder::Str(ptr))
                     }
                 })
                 .collect::<Result<Vec<_>, _>>()?;
