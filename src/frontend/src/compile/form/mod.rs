@@ -16,13 +16,16 @@ use std::fmt;
 #[non_exhaustive]
 #[derive(Debug, Clone, Serialize)]
 pub struct Form {
-    pub span: Span,
+    pub info: ItemInfo,
     pub kind: FormKind,
 }
 
 impl Form {
     pub fn new(span: Span, kind: FormKind) -> Self {
-        Form { span, kind }
+        Form {
+            info: ItemInfo::new(span),
+            kind,
+        }
     }
 }
 
@@ -113,7 +116,7 @@ impl Form {
     pub fn as_decl_item(&self) -> Option<Item> {
         match &self.kind {
             FormKind::Constructor(Constructor::DataStruct { id, fields }) => Some(Item::data_decl(
-                self.span,
+                self.info.span,
                 *id,
                 fields
                     .values()

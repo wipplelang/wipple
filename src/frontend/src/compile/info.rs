@@ -63,7 +63,6 @@ impl Variable {
             id,
             form: Some(Arc::new(move |span, _, _| {
                 let mut item = Item::variable(span, id);
-                item.info = ItemInfo::new(span);
                 item.info.declared_name = Some(declared_name);
                 Some(Form::item(span, item))
             })),

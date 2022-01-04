@@ -107,12 +107,13 @@ impl ExprKind for ListExpr {
                                     exprs.extend(mem::replace(&mut items, Vec::new().into_iter()))
                                 }
 
-                                let span = form.span.with_end(exprs.last().unwrap().span().end);
+                                let span =
+                                    form.info.span.with_end(exprs.last().unwrap().span().end);
 
                                 template.expand(context, exprs, span, stack, info)?
                             }
                             FormKind::Operator(operator) => {
-                                Form::template(form.span, operator.template)
+                                Form::template(form.info.span, operator.template)
                             }
                             FormKind::Constructor(constructor) => {
                                 match context {
@@ -295,7 +296,7 @@ impl ExprKind for ListExpr {
                                             DiagnosticLevel::Error,
                                             "Expected name",
                                             vec![Note::primary(
-                                                form.span,
+                                                form.info.span,
                                                 "Expected variable name here",
                                             )],
                                         ));
@@ -323,7 +324,7 @@ impl ExprKind for ListExpr {
                                                 span,
                                                 "This name does not resolve to a variable...",
                                             ),
-                                            Note::secondary(form.span, "...in this file"),
+                                            Note::secondary(form.info.span, "...in this file"),
                                         ],
                                     ));
 
@@ -413,7 +414,7 @@ impl ListExpr {
                 // operators -- otherwise we'd get an error for most forms in the list
                 if let Some(Some(form)) = name.resolve(LowerContext::Operator, stack, info) {
                     if let FormKind::Operator(operator) = form.kind {
-                        operators.push((index, form.span, operator));
+                        operators.push((index, form.info.span, operator));
                     }
                 }
             }

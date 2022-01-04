@@ -127,7 +127,7 @@ struct Typechecker<'a> {
     ctx: Context,
     well_typed: bool,
     variables: HashMap<VariableId, TypeSchema>,
-    data_decls: HashMap<TypeId, BTreeMap<InternedString, Type>>,
+    data_decls: HashMap<TypeId, (compile::ItemInfo, BTreeMap<InternedString, Type>)>,
     function_input: Option<usize>,
     end_ty: Option<Type>,
     return_ty: Option<Type>,
@@ -305,12 +305,13 @@ impl<'a> Typechecker<'a> {
                     .map(|(&name, field)| (name, self.convert_constructor(field)))
                     .collect();
 
-                self.data_decls.insert(decl.id, field_tys);
+                self.data_decls.insert(decl.id, (item.info, field_tys));
 
                 Item::unit(item.info)
             }
             compile::ItemKind::Data(data) => {
-                let mut field_tys = self.data_decls.get(&data.id).unwrap().clone().into_iter();
+                let (data_decl_info, field_tys) = self.data_decls.get(&data.id).unwrap().clone();
+                let mut field_tys = field_tys.into_iter();
 
                 let fields = data
                     .fields
@@ -330,7 +331,11 @@ impl<'a> Typechecker<'a> {
                     .collect();
 
                 let ty = TypeSchema::Monotype(Type::Constructed(
-                    TypeName::with_id(data.id, None::<String>, TypeNameFormat::Default),
+                    TypeName::with_id(
+                        data.id,
+                        data_decl_info.declared_name,
+                        TypeNameFormat::Default,
+                    ),
                     Vec::new(), // TODO: Generics
                 ));
 
@@ -412,7 +417,7 @@ impl<'a> Typechecker<'a> {
                 };
 
                 let decl = match self.data_decls.get(&value_ty_id) {
-                    Some(decl) => decl,
+                    Some((_, decl)) => decl,
                     None => {
                         self.diagnostics.add(Diagnostic::new(
                             DiagnosticLevel::Error,

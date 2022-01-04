@@ -51,7 +51,7 @@ fn builtin_show((text,): (Arc<Value>,)) -> Result<Arc<Value>, Diverge> {
     OUTPUT
         .read()
         .unwrap()
-        .as_ref()
+        .as_deref()
         .ok_or_else(|| Diverge::Error(Error::from("Output not configured")))?(text);
 
     Ok(Arc::new(Value::Unit))

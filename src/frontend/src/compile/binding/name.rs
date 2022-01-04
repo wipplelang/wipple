@@ -19,12 +19,19 @@ impl BindingKind for NameBinding {
     }
 
     fn assign(self, span: Span, form: Form, stack: &Stack, info: &mut Info) -> Item {
-        let decl_item = form.as_decl_item();
+        let mut decl_item = form.as_decl_item();
+        if let Some(decl_item) = &mut decl_item {
+            decl_item.info.declared_name = Some(self.name);
+        }
 
         let (variable, runtime_item) = match form.kind {
             FormKind::Item(item) => (Variable::runtime(self.name), Some(item)),
             _ => (
-                Variable::compile_time(move |_, _, _| Some(form.clone())),
+                Variable::compile_time(move |_, _, _| {
+                    let mut form = form.clone();
+                    form.info.declared_name = Some(self.name);
+                    Some(form)
+                }),
                 None,
             ),
         };
