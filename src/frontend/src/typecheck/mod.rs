@@ -177,7 +177,7 @@ impl<'a> Typechecker<'a> {
                         function_item.ty.instantiate(&mut self.ctx).apply(&self.ctx);
 
                     if let Err(error) = self.ctx.unify(&function_ty, &inferred_function_ty) {
-                        self.report_type_error(&apply.function, error);
+                        self.report_type_error(&apply.function, error, true);
                         return Item::error(item.info);
                     }
 
@@ -193,7 +193,7 @@ impl<'a> Typechecker<'a> {
                 let output_ty = function_associated_types.next().unwrap().apply(&self.ctx);
 
                 if let Err(error) = self.ctx.unify(&input_ty, &inferred_input_ty) {
-                    self.report_type_error(&apply.input, error);
+                    self.report_type_error(&apply.input, error, false);
                     return Item::error(item.info);
                 }
 
@@ -289,7 +289,7 @@ impl<'a> Typechecker<'a> {
                 let inferred_ty = inferred_item.ty.instantiate(&mut self.ctx).apply(&self.ctx);
 
                 if let Err(error) = self.ctx.unify(&ty, &inferred_ty) {
-                    self.report_type_error(&annotate.item, error);
+                    self.report_type_error(&annotate.item, error, false);
                     return Item::error(item.info);
                 }
 
@@ -323,7 +323,7 @@ impl<'a> Typechecker<'a> {
                         let ty = item.ty.instantiate(&mut self.ctx).apply(&self.ctx);
 
                         if let Err(error) = self.ctx.unify(&expected_ty, &ty) {
-                            self.report_type_error(field, error);
+                            self.report_type_error(field, error, false);
                         }
 
                         item
@@ -361,7 +361,7 @@ impl<'a> Typechecker<'a> {
                         let end_ty = end_ty.apply(&self.ctx);
 
                         if let Err(error) = self.ctx.unify(&end_ty, &ty) {
-                            self.report_type_error(&end.value, error);
+                            self.report_type_error(&end.value, error, false);
                             return Item::error(item.info);
                         }
                     }
@@ -383,7 +383,7 @@ impl<'a> Typechecker<'a> {
                         let return_ty = return_ty.apply(&self.ctx);
 
                         if let Err(error) = self.ctx.unify(&return_ty, &ty) {
-                            self.report_type_error(&r#return.value, error);
+                            self.report_type_error(&r#return.value, error, false);
                             return Item::error(item.info);
                         }
                     }
@@ -492,7 +492,12 @@ impl<'a> Typechecker<'a> {
         Item::block(compile_info, ty, statements)
     }
 
-    fn report_type_error(&mut self, item: &compile::Item, error: UnificationError<TypeName>) {
+    fn report_type_error(
+        &mut self,
+        item: &compile::Item,
+        error: UnificationError<TypeName>,
+        reverse: bool,
+    ) {
         let diagnostic = match error {
             UnificationError::Occurs(_) => Diagnostic::new(
                 DiagnosticLevel::Error,
@@ -502,18 +507,26 @@ impl<'a> Typechecker<'a> {
                     "The type of this references itself",
                 )],
             ),
-            UnificationError::Failure(expected, found) => Diagnostic::new(
-                DiagnosticLevel::Error,
-                "Mismatched types",
-                vec![Note::primary(
-                    item.info.span,
-                    format!(
-                        "Expected {}, found {}",
-                        format_type(&expected),
-                        format_type(&found)
-                    ),
-                )],
-            ),
+            UnificationError::Failure(expected, found) => {
+                let (expected, found) = if reverse {
+                    (found, expected)
+                } else {
+                    (expected, found)
+                };
+
+                Diagnostic::new(
+                    DiagnosticLevel::Error,
+                    "Mismatched types",
+                    vec![Note::primary(
+                        item.info.span,
+                        format!(
+                            "Expected {}, found {}",
+                            format_type(&expected),
+                            format_type(&found)
+                        ),
+                    )],
+                )
+            }
         };
 
         self.diagnostics.add(diagnostic);

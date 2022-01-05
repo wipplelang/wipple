@@ -1,4 +1,4 @@
-use crate::{typecheck::*, *};
+use crate::typecheck::*;
 use std::collections::BTreeMap;
 
 pub fn format_type_schema(ty: &TypeSchema) -> String {
@@ -31,76 +31,59 @@ pub fn format_type_schema(ty: &TypeSchema) -> String {
     }
 }
 
-macro_rules! format_type_fn {
-    ($fn:ident($($param:ident: $ty:ty),* $(,)?), $body:expr) => {
-        pub fn $fn(ty: &Type, $($param: $ty),*) -> String {
-            fn $fn(ty: &Type, parenthesize: bool, $($param: $ty),*) -> String {
-                match ty {
-                    Type::Constructed(name, associated_types) => {
-                        let (left_parenthesis, right_parenthesis) = if parenthesize {
-                            ("(", ")")
-                        } else {
-                            ("", "")
-                        };
-
-                        let ty_name = name
-                            .name
-                            .map(|name| name.to_string())
-                            .unwrap_or_else(|| String::from("?"));
-
-                        match name.format {
-                            TypeNameFormat::Default => format!(
-                                "{}{}{}{}",
-                                left_parenthesis,
-                                ty_name,
-                                associated_types
-                                    .iter()
-                                    .map(|ty| String::from(" ") + &$fn(ty, true, $($param),*))
-                                    .collect::<String>(),
-                                right_parenthesis,
-                            ),
-                            TypeNameFormat::Function => {
-                                let left = $fn(&associated_types[0], true, $($param),*);
-                                let right = $fn(
-                                    &associated_types[1],
-                                    !matches!(
-                                        associated_types[1],
-                                        Type::Constructed(name, _) if name.id == *typecheck::FUNCTION_TYPE_ID
-                                    ),
-                                    $($param),*
-                                );
-
-                                format!("{}{} {} {}{}",
-                                    left_parenthesis,
-                                    left,
-                                    ty_name,
-                                    right,
-                                    right_parenthesis,
-                                )
-                            }
-                        }
-                    }
-                    Type::Variable(variable) => {
-                        #[allow(clippy::redundant_closure_call)]
-                        ($body)(variable)
-                    },
-                }
-            }
-
-            $fn(ty, false, $($param),*)
-        }
-    };
+pub fn format_type(ty: &Type) -> String {
+    format_type_with(ty, &BTreeMap::new())
 }
 
-format_type_fn!(format_type(), |_| String::from("_"));
+pub fn format_type_with(ty: &Type, names: &BTreeMap<usize, String>) -> String {
+    fn format_type(
+        ty: &Type,
+        is_top_level: bool,
+        is_return: bool,
+        names: &BTreeMap<usize, String>,
+    ) -> String {
+        match ty {
+            Type::Constructed(name, associated_types) => {
+                let ty_name = name
+                    .name
+                    .map(|name| name.to_string())
+                    .unwrap_or_else(|| String::from("<unnamed>"));
 
-format_type_fn!(
-    format_type_with(names: &BTreeMap<usize, String>),
-    |variable| names
-        .get(variable)
-        .cloned()
-        .unwrap_or_else(|| String::from("_"))
-);
+                match name.format {
+                    TypeNameFormat::Default => {
+                        let associated_types = associated_types
+                            .iter()
+                            .map(|ty| String::from(" ") + &format_type(ty, false, true, names))
+                            .collect::<String>();
+
+                        if is_top_level {
+                            format!("{}{}", ty_name, associated_types)
+                        } else {
+                            format!("({}{})", ty_name, associated_types)
+                        }
+                    }
+                    TypeNameFormat::Function => {
+                        let left = format_type(&associated_types[0], true, false, names);
+
+                        let right = format_type(&associated_types[1], true, true, names);
+
+                        if is_top_level && is_return {
+                            format!("{} {} {}", left, ty_name, right)
+                        } else {
+                            format!("({} {} {})", left, ty_name, right)
+                        }
+                    }
+                }
+            }
+            Type::Variable(variable) => names
+                .get(variable)
+                .cloned()
+                .unwrap_or_else(|| String::from("_")),
+        }
+    }
+
+    format_type(ty, true, true, names)
+}
 
 fn name_for_index(index: usize) -> String {
     const LETTERS: [char; 26] = [
