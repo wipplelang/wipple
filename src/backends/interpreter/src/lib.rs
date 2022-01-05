@@ -168,9 +168,12 @@ fn eval_item(item: &Item, info: &mut Info) -> Result<Arc<Value>, Diverge> {
             } else {
                 #[cfg(target_arch = "wasm32")]
                 {
-                    return Err(Diverge::Error(Error::from(
-                        "External functions are unsupported in the playground",
-                    )));
+                    return Err(Diverge::new(
+                        &info.callstack,
+                        DivergeKind::Error(Error::from(
+                            "External functions are unsupported in the playground",
+                        )),
+                    ));
                 }
 
                 #[cfg(not(target_arch = "wasm32"))]

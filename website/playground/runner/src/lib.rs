@@ -35,7 +35,7 @@ pub fn run(code: &str) -> JsValue {
     let project = wipple_frontend::project::Project::default();
 
     let (annotations, output) = (|| {
-        let mut info = wipple_frontend::compile::Info::new(&mut diagnostics, &project);
+        let mut info = wipple_frontend::compile::Info::with_prelude(&mut diagnostics, &project);
         wipple_frontend::project::load_string("playground", Arc::from(code), &mut info)?;
 
         let (well_typed, mut item) = wipple_frontend::typecheck::typecheck(info);

@@ -19,8 +19,10 @@ pub struct Info<'a> {
 }
 
 impl<'a> Info<'a> {
-    pub fn new(diagnostics: &'a mut Diagnostics, project: &'a Project) -> Self {
-        Info::with_files(diagnostics, project, vec![prelude()])
+    pub fn with_prelude(diagnostics: &'a mut Diagnostics, project: &'a Project) -> Self {
+        let (prelude, mut info) = prelude(diagnostics, project);
+        info.files.push(prelude);
+        info
     }
 
     pub(crate) fn with_files(

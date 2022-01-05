@@ -125,7 +125,7 @@ fn compile(options: SharedOptions) -> anyhow::Result<Option<wipple_frontend::typ
     };
 
     let item = {
-        let mut info = wipple_frontend::compile::Info::new(&mut diagnostics, &project);
+        let mut info = wipple_frontend::compile::Info::with_prelude(&mut diagnostics, &project);
 
         wipple_frontend::project::load_path(&path_str, &options.path, &mut info)?.and_then(|_| {
             let (well_typed, item) = wipple_frontend::typecheck::typecheck(info);

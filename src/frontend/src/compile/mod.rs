@@ -33,8 +33,11 @@ pub fn lower(file: wipple_parser::File, info: &mut Info) -> Option<Arc<File>> {
     evaluate_attributes(file.attributes, &stack, info)?;
 
     if stack.file_info.as_ref().unwrap().borrow().include_prelude {
+        // The prelude is always the first file loaded
+        let prelude = info.files.first().unwrap();
+
         let mut variables = stack.variables.borrow_mut();
-        for (name, variable) in &prelude().variables {
+        for (name, variable) in &prelude.variables {
             variables.entry(*name).or_insert_with(|| variable.clone());
         }
     }
