@@ -11,7 +11,7 @@ impl FunctionInputItem {
 }
 
 impl Item {
-    pub fn function_input(compile_info: compile::ItemInfo, ty: TypeSchema) -> Self {
+    pub fn function_input(compile_info: compile::ItemInfo, ty: Scheme) -> Self {
         Item::new(
             compile_info,
             ty,

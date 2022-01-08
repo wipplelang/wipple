@@ -21,7 +21,7 @@ impl ExternalItem {
 impl Item {
     pub fn external(
         compile_info: compile::ItemInfo,
-        ty: TypeSchema,
+        ty: Scheme,
         namespace: InternedString,
         identifier: InternedString,
         inputs: Vec<Item>,

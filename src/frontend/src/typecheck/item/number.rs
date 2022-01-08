@@ -17,7 +17,7 @@ impl Item {
     pub fn number(compile_info: compile::ItemInfo, value: Decimal) -> Self {
         Item::new(
             compile_info,
-            TypeSchema::Monotype(BUILTIN_TYPES.number.clone()),
+            Scheme::Type(BUILTIN_TYPES.number.clone()),
             ItemKind::Number(NumberItem::new(value)),
         )
     }

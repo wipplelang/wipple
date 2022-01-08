@@ -13,7 +13,15 @@ impl BlockItem {
 }
 
 impl Item {
-    pub fn block(compile_info: compile::ItemInfo, ty: TypeSchema, statements: Vec<Item>) -> Self {
-        Item::new(compile_info, ty, ItemKind::Block(BlockItem::new(statements)))
+    pub fn block(
+        compile_info: compile::ItemInfo,
+        ty: Scheme,
+        statements: Vec<Item>,
+    ) -> Self {
+        Item::new(
+            compile_info,
+            ty,
+            ItemKind::Block(BlockItem::new(statements)),
+        )
     }
 }

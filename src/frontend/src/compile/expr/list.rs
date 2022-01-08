@@ -130,7 +130,8 @@ impl ExprKind for ListExpr {
 
                                             return None;
                                         }
-                                        Constructor::Number
+                                        Constructor::Never
+                                        | Constructor::Number
                                         | Constructor::Text
                                         | Constructor::Unit
                                         | Constructor::Function { .. } => {

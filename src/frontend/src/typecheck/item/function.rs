@@ -20,7 +20,7 @@ impl FunctionItem {
 impl Item {
     pub fn function(
         compile_info: compile::ItemInfo,
-        ty: TypeSchema,
+        ty: Scheme,
         body: Item,
         captures: HashSet<VariableId>,
     ) -> Self {

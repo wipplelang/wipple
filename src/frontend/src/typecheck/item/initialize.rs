@@ -27,7 +27,7 @@ impl Item {
     ) -> Self {
         Item::new(
             compile_info,
-            TypeSchema::Monotype(BUILTIN_TYPES.unit.clone()),
+            Scheme::Type(BUILTIN_TYPES.unit.clone()),
             ItemKind::Initialize(InitializeItem::new(binding_info, variable, value)),
         )
     }

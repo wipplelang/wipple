@@ -19,10 +19,14 @@ impl FieldItem {
 impl typecheck::Item {
     pub fn field(
         compile_info: compile::ItemInfo,
-        ty: TypeSchema,
+        ty: Scheme,
         value: Item,
         index: usize,
     ) -> Self {
-        Item::new(compile_info, ty, ItemKind::Field(FieldItem::new(value, index)))
+        Item::new(
+            compile_info,
+            ty,
+            ItemKind::Field(FieldItem::new(value, index)),
+        )
     }
 }

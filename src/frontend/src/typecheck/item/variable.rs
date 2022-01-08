@@ -13,7 +13,7 @@ impl VariableItem {
 }
 
 impl Item {
-    pub fn variable(compile_info: compile::ItemInfo, ty: TypeSchema, variable: VariableId) -> Self {
+    pub fn variable(compile_info: compile::ItemInfo, ty: Scheme, variable: VariableId) -> Self {
         Item::new(
             compile_info,
             ty,

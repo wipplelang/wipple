@@ -15,7 +15,7 @@ impl EndItem {
 }
 
 impl Item {
-    pub fn end(compile_info: compile::ItemInfo, ty: TypeSchema, value: Item) -> Self {
+    pub fn end(compile_info: compile::ItemInfo, ty: Scheme, value: Item) -> Self {
         Item::new(compile_info, ty, ItemKind::End(EndItem::new(value)))
     }
 }

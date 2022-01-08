@@ -28,7 +28,7 @@ impl<'a> ExternalFunction<'a> {
         macro_rules! type_id {
             ($ty:expr) => {
                 match $ty {
-                    Type::Constructed(name, _) => name.id,
+                    Type::Constructed { id, .. } => id.id,
                     Type::Variable(_) => {
                         return Err(Error::from("Type of input or result is unknown"))
                     }

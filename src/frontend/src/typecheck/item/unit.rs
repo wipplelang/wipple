@@ -14,7 +14,7 @@ impl Item {
     pub fn unit(compile_info: compile::ItemInfo) -> Self {
         Item::new(
             compile_info,
-            TypeSchema::Monotype(BUILTIN_TYPES.unit.clone()),
+            Scheme::Type(BUILTIN_TYPES.unit.clone()),
             ItemKind::Unit(UnitItem::new()),
         )
     }

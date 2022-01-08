@@ -15,7 +15,7 @@ impl ReturnItem {
 }
 
 impl Item {
-    pub fn r#return(compile_info: compile::ItemInfo, ty: TypeSchema, value: Item) -> Self {
+    pub fn r#return(compile_info: compile::ItemInfo, ty: Scheme, value: Item) -> Self {
         Item::new(compile_info, ty, ItemKind::Return(ReturnItem::new(value)))
     }
 }

@@ -17,12 +17,7 @@ impl ApplyItem {
 }
 
 impl Item {
-    pub fn apply(
-        compile_info: compile::ItemInfo,
-        ty: TypeSchema,
-        function: Item,
-        input: Item,
-    ) -> Self {
+    pub fn apply(compile_info: compile::ItemInfo, ty: Scheme, function: Item, input: Item) -> Self {
         Item::new(
             compile_info,
             ty,

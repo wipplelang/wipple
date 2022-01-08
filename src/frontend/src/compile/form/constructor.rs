@@ -5,6 +5,7 @@ use std::collections::BTreeMap;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Constructor {
     Placeholder,
+    Never,
     Number,
     Text,
     Unit, // TODO: Tuples

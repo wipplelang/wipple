@@ -14,7 +14,7 @@ impl Item {
     pub fn error(compile_info: compile::ItemInfo) -> Self {
         Item::new(
             compile_info,
-            TypeSchema::Monotype(BUILTIN_TYPES.never.clone()),
+            Scheme::Type(BUILTIN_TYPES.never.clone()),
             ItemKind::Error(ErrorItem::new()),
         )
     }

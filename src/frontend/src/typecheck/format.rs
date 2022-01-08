@@ -1,31 +1,23 @@
 use crate::typecheck::*;
 use std::collections::BTreeMap;
 
-pub fn format_type_schema(ty: &TypeSchema) -> String {
+pub fn format_type_scheme(ty: &Scheme) -> String {
     match ty {
-        polytype::TypeSchema::Monotype(ty) => format_type(ty),
-        polytype::TypeSchema::Polytype { .. } => {
-            let mut ty = ty;
-            let mut variables = Vec::new();
-            while let TypeSchema::Polytype { variable, body } = ty {
-                variables.push(*variable);
-                ty = body
+        Scheme::Type(ty) => format_type(ty),
+        Scheme::ForAll(forall) => {
+            if forall.vars.is_empty() {
+                return format_type(&forall.ty);
             }
 
-            let ty = match ty {
-                polytype::TypeSchema::Monotype(ty) => ty,
-                polytype::TypeSchema::Polytype { .. } => unreachable!(),
-            };
-
             let mut names = BTreeMap::new();
-            for variable in variables.into_iter().rev() {
-                names.insert(variable, name_for_index(names.len()));
+            for variable in forall.vars.iter().collect::<Vec<_>>().into_iter().rev() {
+                names.insert(variable.0, name_for_index(names.len()));
             }
 
             format!(
                 "for {}-> {}",
                 names.values().map(|t| t.clone() + " ").collect::<String>(),
-                format_type_with(ty, &names)
+                format_type_with(&forall.ty, &names)
             )
         }
     }
@@ -35,37 +27,42 @@ pub fn format_type(ty: &Type) -> String {
     format_type_with(ty, &BTreeMap::new())
 }
 
-pub fn format_type_with(ty: &Type, names: &BTreeMap<usize, String>) -> String {
+pub fn format_type_with(ty: &Type, names: &BTreeMap<u32, String>) -> String {
     fn format_type(
         ty: &Type,
         is_top_level: bool,
         is_return: bool,
-        names: &BTreeMap<usize, String>,
+        names: &BTreeMap<u32, String>,
     ) -> String {
         match ty {
-            Type::Constructed(name, associated_types) => {
-                let ty_name = name
+            Type::Variable(variable) => names
+                .get(&variable.0)
+                .cloned()
+                .unwrap_or_else(|| String::from("_")),
+            Type::Constructed { bottom: true, .. } => String::from("!"),
+            Type::Constructed { id, params, .. } => {
+                let ty_name = id
                     .name
                     .map(|name| name.to_string())
                     .unwrap_or_else(|| String::from("<unnamed>"));
 
-                match name.format {
+                match id.format {
                     TypeNameFormat::Default => {
-                        let associated_types = associated_types
+                        let params = params
                             .iter()
                             .map(|ty| String::from(" ") + &format_type(ty, false, true, names))
                             .collect::<String>();
 
                         if is_top_level {
-                            format!("{}{}", ty_name, associated_types)
+                            format!("{}{}", ty_name, params)
                         } else {
-                            format!("({}{})", ty_name, associated_types)
+                            format!("({}{})", ty_name, params)
                         }
                     }
                     TypeNameFormat::Function => {
-                        let left = format_type(&associated_types[0], true, false, names);
+                        let left = format_type(&params[0], true, false, names);
 
-                        let right = format_type(&associated_types[1], true, true, names);
+                        let right = format_type(&params[1], true, true, names);
 
                         if is_top_level && is_return {
                             format!("{} {} {}", left, ty_name, right)
@@ -75,10 +72,6 @@ pub fn format_type_with(ty: &Type, names: &BTreeMap<usize, String>) -> String {
                     }
                 }
             }
-            Type::Variable(variable) => names
-                .get(variable)
-                .cloned()
-                .unwrap_or_else(|| String::from("_")),
         }
     }
 

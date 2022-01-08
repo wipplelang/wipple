@@ -182,7 +182,7 @@ fn eval_item(item: &Item, info: &mut Info) -> Result<Arc<Value>, Diverge> {
                         .inputs
                         .iter()
                         .map(|input| match &input.ty {
-                            TypeSchema::Monotype(ty) => Ok(ty),
+                            Scheme::Type(ty) => Ok(ty),
                             _ => Err(Diverge::new(
                                 &info.callstack,
                                 DivergeKind::Error(Error::from(
@@ -193,8 +193,8 @@ fn eval_item(item: &Item, info: &mut Info) -> Result<Arc<Value>, Diverge> {
                         .collect::<Result<Vec<_>, _>>()?;
 
                     let return_ty = match &item.ty {
-                        TypeSchema::Monotype(ty) => ty,
-                        TypeSchema::Polytype { .. } => {
+                        Scheme::Type(ty) => ty,
+                        Scheme::ForAll { .. } => {
                             return Err(Diverge::new(
                                 &info.callstack,
                                 DivergeKind::Error(Error::from(

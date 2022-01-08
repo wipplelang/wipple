@@ -85,7 +85,7 @@ fn annotations(item: &mut wipple_frontend::typecheck::Item) -> Vec<Annotation> {
         annotations.push(Annotation {
             span: info.span,
             declared_name: info.declared_name.map(|name| name.to_string()),
-            ty: format_type_schema(ty),
+            ty: format_type_scheme(ty),
         });
     });
 

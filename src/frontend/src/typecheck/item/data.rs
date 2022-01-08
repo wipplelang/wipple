@@ -16,7 +16,7 @@ impl DataItem {
 impl Item {
     pub fn data(
         compile_info: compile::ItemInfo,
-        ty: TypeSchema,
+        ty: Scheme,
         id: TypeId,
         fields: Vec<Item>,
     ) -> Self {

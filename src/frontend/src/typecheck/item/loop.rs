@@ -15,7 +15,7 @@ impl LoopItem {
 }
 
 impl Item {
-    pub fn r#loop(compile_info: compile::ItemInfo, ty: TypeSchema, body: Item) -> Self {
+    pub fn r#loop(compile_info: compile::ItemInfo, ty: Scheme, body: Item) -> Self {
         Item::new(compile_info, ty, ItemKind::Loop(LoopItem::new(body)))
     }
 }

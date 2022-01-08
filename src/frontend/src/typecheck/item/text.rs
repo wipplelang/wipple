@@ -16,7 +16,7 @@ impl Item {
     pub fn text(compile_info: compile::ItemInfo, value: InternedString) -> Self {
         Item::new(
             compile_info,
-            TypeSchema::Monotype(BUILTIN_TYPES.text.clone()),
+            Scheme::Type(BUILTIN_TYPES.text.clone()),
             ItemKind::Text(TextItem::new(value)),
         )
     }

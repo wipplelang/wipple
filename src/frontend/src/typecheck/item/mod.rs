@@ -40,12 +40,12 @@ use serde::{Deserialize, Serialize};
 pub struct Item {
     pub id: ItemId,
     pub compile_info: compile::ItemInfo,
-    pub ty: TypeSchema,
+    pub ty: Scheme,
     pub kind: ItemKind,
 }
 
 impl Item {
-    pub fn new(compile_info: compile::ItemInfo, ty: TypeSchema, kind: ItemKind) -> Self {
+    pub fn new(compile_info: compile::ItemInfo, ty: Scheme, kind: ItemKind) -> Self {
         Item {
             id: ItemId::new(),
             compile_info,
@@ -76,11 +76,8 @@ pub enum ItemKind {
 }
 
 impl Item {
-    pub fn traverse(&mut self, mut f: impl FnMut(&mut compile::ItemInfo, &mut TypeSchema)) {
-        pub fn traverse(
-            item: &mut Item,
-            f: &mut impl FnMut(&mut compile::ItemInfo, &mut TypeSchema),
-        ) {
+    pub fn traverse(&mut self, mut f: impl FnMut(&mut compile::ItemInfo, &mut Scheme)) {
+        pub fn traverse(item: &mut Item, f: &mut impl FnMut(&mut compile::ItemInfo, &mut Scheme)) {
             f(&mut item.compile_info, &mut item.ty);
 
             match &mut item.kind {

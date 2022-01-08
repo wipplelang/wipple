@@ -36,7 +36,7 @@ pub use text::*;
 pub use unit::*;
 pub use variable::*;
 
-use crate::{typecheck::TypeSchema, *};
+use crate::*;
 use serde::{Deserialize, Serialize};
 
 #[non_exhaustive]
@@ -45,9 +45,6 @@ pub struct Item {
     pub id: ItemId,
     pub info: ItemInfo,
     pub kind: ItemKind,
-
-    /// Unused in lowering, set during typechecking
-    pub ty: Option<TypeSchema>,
 }
 
 impl Item {
@@ -56,7 +53,6 @@ impl Item {
             id: ItemId::new(),
             info: ItemInfo::new(span),
             kind,
-            ty: None,
         }
     }
 }

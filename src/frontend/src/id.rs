@@ -41,4 +41,5 @@ id! {
     ItemId,
     TypeId,
     VariableId,
+    TraitId,
 }
