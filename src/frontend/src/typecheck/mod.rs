@@ -147,7 +147,7 @@ impl<'a> Typechecker<'a> {
         }
     }
 
-    fn typecheck_item(&mut self, item: &compile::Item, expected_ty: Option<Type>) -> Item {
+    fn typecheck_item(&mut self, item: &compile::Item) -> Item {
         let var = self.ctx.new_variable();
 
         let item = (|| match &item.kind {
@@ -157,23 +157,24 @@ impl<'a> Typechecker<'a> {
             compile::ItemKind::Text(text) => Item::text(item.info, text.value),
             compile::ItemKind::Block(block) => self.typecheck_block(item.info, &block.statements),
             compile::ItemKind::Apply(apply) => {
-                let inferred_input_item = self.typecheck_item(&apply.input, None);
+                let inferred_input_item = self.typecheck_item(&apply.input);
 
                 let inferred_input_ty = inferred_input_item.ty.instantiate(&mut self.ctx);
 
                 let (function_item, function_ty) = {
                     let function_ty = function_type(
-                        inferred_input_ty.clone(),
-                        expected_ty.unwrap_or_else(|| Type::Variable(self.ctx.new_variable())),
+                        Type::Variable(self.ctx.new_variable()),
+                        Type::Variable(self.ctx.new_variable()),
                     )
                     .apply(&self.ctx);
 
-                    let function_item = self.typecheck_item(&apply.function, None);
+                    let function_item = self.typecheck_item(&apply.function);
 
                     let inferred_function_ty = function_item.ty.instantiate(&mut self.ctx);
 
-                    if let Err(errors) = self.ctx.unify(&function_ty, &inferred_function_ty) {
-                        self.report_type_errors(&apply.function, errors, false);
+                    if let Err(errors) = self.ctx.unify(&inferred_function_ty, &function_ty) {
+                        println!("1");
+                        self.report_type_errors(&apply.function, errors);
                         return Item::error(item.info);
                     }
 
@@ -189,7 +190,8 @@ impl<'a> Typechecker<'a> {
                 let output_ty = function_associated_types.next().unwrap().apply(&self.ctx);
 
                 if let Err(errors) = self.ctx.unify(&inferred_input_ty, &input_ty) {
-                    self.report_type_errors(&apply.input, errors, true);
+                    println!("2");
+                    self.report_type_errors(&apply.input, errors);
                     return Item::error(item.info);
                 }
 
@@ -201,7 +203,7 @@ impl<'a> Typechecker<'a> {
                 )
             }
             compile::ItemKind::Initialize(initialize) => {
-                let value_item = self.typecheck_item(&initialize.value, None);
+                let value_item = self.typecheck_item(&initialize.value);
 
                 self.variables
                     .insert(initialize.variable, value_item.ty.clone());
@@ -228,7 +230,7 @@ impl<'a> Typechecker<'a> {
                 let previous_input = mem::take(&mut self.function_input);
                 let previous_return_ty = mem::take(&mut self.return_ty);
 
-                let body_item = self.typecheck_item(&function.body, None);
+                let body_item = self.typecheck_item(&function.body);
                 let body_ty = body_item.ty.instantiate(&mut self.ctx);
 
                 let input_var = mem::replace(&mut self.function_input, previous_input).unwrap();
@@ -248,14 +250,14 @@ impl<'a> Typechecker<'a> {
                 )
             }
             compile::ItemKind::FunctionInput(_) => {
-                self.function_input = Some(var);
+                self.function_input = Some(var.clone());
                 Item::function_input(item.info, Scheme::Type(Type::Variable(var)))
             }
             compile::ItemKind::External(external) => {
                 let inputs = external
                     .inputs
                     .iter()
-                    .map(|item| self.typecheck_item(item, None))
+                    .map(|item| self.typecheck_item(item))
                     .collect();
 
                 Item::external(
@@ -269,12 +271,12 @@ impl<'a> Typechecker<'a> {
             compile::ItemKind::Annotate(annotate) => {
                 let ty = self.convert_constructor(&annotate.constructor);
 
-                let inferred_item = self.typecheck_item(&annotate.item, Some(ty.clone()));
+                let inferred_item = self.typecheck_item(&annotate.item);
 
                 let inferred_ty = inferred_item.ty.instantiate(&mut self.ctx);
 
                 if let Err(errors) = self.ctx.unify(&ty, &inferred_ty) {
-                    self.report_type_errors(&annotate.item, errors, false);
+                    self.report_type_errors(&annotate.item, errors);
                     return Item::error(item.info);
                 }
 
@@ -301,11 +303,11 @@ impl<'a> Typechecker<'a> {
                     .map(|field| {
                         let (_, expected_ty) = field_tys.next().unwrap();
 
-                        let item = self.typecheck_item(field, None);
+                        let item = self.typecheck_item(field);
                         let ty = item.ty.instantiate(&mut self.ctx);
 
                         if let Err(errors) = self.ctx.unify(&expected_ty, &ty) {
-                            self.report_type_errors(field, errors, false);
+                            self.report_type_errors(field, errors);
                         }
 
                         item
@@ -327,7 +329,7 @@ impl<'a> Typechecker<'a> {
             compile::ItemKind::Loop(r#loop) => {
                 let previous_end_ty = mem::take(&mut self.end_ty);
 
-                let body_item = self.typecheck_item(&r#loop.body, None);
+                let body_item = self.typecheck_item(&r#loop.body);
 
                 let end_ty = mem::replace(&mut self.end_ty, previous_end_ty)
                     .unwrap_or_else(|| BUILTIN_TYPES.never.clone());
@@ -335,13 +337,13 @@ impl<'a> Typechecker<'a> {
                 Item::r#loop(item.info, Scheme::Type(end_ty), body_item)
             }
             compile::ItemKind::End(end) => {
-                let value_item = self.typecheck_item(&end.value, expected_ty);
+                let value_item = self.typecheck_item(&end.value);
                 let ty = value_item.ty.instantiate(&mut self.ctx);
 
                 match self.end_ty.as_ref() {
                     Some(end_ty) => {
                         if let Err(errors) = self.ctx.unify(end_ty, &ty) {
-                            self.report_type_errors(&end.value, errors, false);
+                            self.report_type_errors(&end.value, errors);
                             return Item::error(item.info);
                         }
                     }
@@ -355,7 +357,7 @@ impl<'a> Typechecker<'a> {
                 )
             }
             compile::ItemKind::Return(r#return) => {
-                let value_item = self.typecheck_item(&r#return.value, expected_ty);
+                let value_item = self.typecheck_item(&r#return.value);
                 let ty = value_item.ty.instantiate(&mut self.ctx);
 
                 match self.return_ty.as_mut() {
@@ -363,7 +365,7 @@ impl<'a> Typechecker<'a> {
                         let return_ty = return_ty.apply(&self.ctx);
 
                         if let Err(errors) = self.ctx.unify(&return_ty, &ty) {
-                            self.report_type_errors(&r#return.value, errors, false);
+                            self.report_type_errors(&r#return.value, errors);
                             return Item::error(item.info);
                         }
                     }
@@ -377,7 +379,7 @@ impl<'a> Typechecker<'a> {
                 )
             }
             compile::ItemKind::Field(field) => {
-                let value_item = self.typecheck_item(&field.value, None);
+                let value_item = self.typecheck_item(&field.value);
                 let value_ty = value_item.ty.instantiate(&mut self.ctx).apply(&self.ctx);
 
                 let value_ty_id = match value_ty {
@@ -451,7 +453,7 @@ impl<'a> Typechecker<'a> {
     ) -> Item {
         let statements = statements
             .iter()
-            .map(|statement| self.typecheck_item(statement, None))
+            .map(|statement| self.typecheck_item(statement))
             .collect::<Vec<_>>();
 
         let ty = statements
@@ -462,12 +464,7 @@ impl<'a> Typechecker<'a> {
         Item::block(compile_info, ty, statements)
     }
 
-    fn report_type_errors(
-        &mut self,
-        item: &compile::Item,
-        errors: Vec<UnificationError>,
-        reverse: bool,
-    ) {
+    fn report_type_errors(&mut self, item: &compile::Item, errors: Vec<UnificationError>) {
         for error in errors {
             let diagnostic = match error {
                 UnificationError::Recursive(_) => Diagnostic::new(
@@ -478,26 +475,18 @@ impl<'a> Typechecker<'a> {
                         "The type of this references itself",
                     )],
                 ),
-                UnificationError::Mismatch(found, expected) => {
-                    let (found, expected) = if reverse {
-                        (expected, found)
-                    } else {
-                        (found, expected)
-                    };
-
-                    Diagnostic::new(
-                        DiagnosticLevel::Error,
-                        "Mismatched types",
-                        vec![Note::primary(
-                            item.info.span,
-                            format!(
-                                "Expected {}, found {}",
-                                format_type(&expected),
-                                format_type(&found)
-                            ),
-                        )],
-                    )
-                }
+                UnificationError::Mismatch(found, expected) => Diagnostic::new(
+                    DiagnosticLevel::Error,
+                    "Mismatched types",
+                    vec![Note::primary(
+                        item.info.span,
+                        format!(
+                            "Expected {}, found {}",
+                            format_type(&expected),
+                            format_type(&found)
+                        ),
+                    )],
+                ),
             };
 
             self.diagnostics.add(diagnostic);

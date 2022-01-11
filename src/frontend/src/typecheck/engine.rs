@@ -1,5 +1,8 @@
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet};
+use std::{
+    collections::{HashMap, HashSet},
+    hash::{Hash, Hasher},
+};
 
 #[derive(Debug, Clone)]
 pub struct Context<Id> {
@@ -23,8 +26,24 @@ pub enum Type<Id> {
     },
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct TypeVariable(pub u32);
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TypeVariable {
+    pub index: u32,
+}
+
+impl PartialEq for TypeVariable {
+    fn eq(&self, other: &Self) -> bool {
+        self.index == other.index
+    }
+}
+
+impl Eq for TypeVariable {}
+
+impl Hash for TypeVariable {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.index.hash(state);
+    }
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ForAll<Id> {
@@ -53,8 +72,12 @@ impl<Id: Clone + Eq> Context<Id> {
     }
 
     pub fn new_variable(&mut self) -> TypeVariable {
-        let var = TypeVariable(self.next_var);
+        let var = TypeVariable {
+            index: self.next_var,
+        };
+
         self.next_var += 1;
+
         var
     }
 
@@ -68,7 +91,7 @@ impl<Id: Clone + Eq> Context<Id> {
 
         match (lhs, rhs) {
             (Type::Variable(var), ty) | (ty, Type::Variable(var)) => {
-                if ty.contains(var) {
+                if ty.contains(&var) {
                     Err(vec![UnificationError::Recursive(var)])
                 } else {
                     self.substitutions.insert(var, ty);
@@ -134,9 +157,9 @@ impl<Id: Clone + Eq> Scheme<Id> {
 }
 
 impl<Id: Clone + Eq> Type<Id> {
-    pub fn contains(&self, var: TypeVariable) -> bool {
+    pub fn contains(&self, var: &TypeVariable) -> bool {
         match self {
-            Type::Variable(v) => *v == var,
+            Type::Variable(v) => v == var,
             Type::Constructed { params, .. } => params.iter().any(|ty| ty.contains(var)),
         }
     }
@@ -147,7 +170,7 @@ impl<Id: Clone + Eq> Type<Id> {
                 if let Some(ty) = ctx.substitutions.get(var) {
                     ty.clone().apply(ctx)
                 } else {
-                    Type::Variable(*var)
+                    Type::Variable(var.clone())
                 }
             }
             Type::Constructed { id, params, bottom } => Type::Constructed {
@@ -185,7 +208,7 @@ impl<Id: Clone + Eq> Type<Id> {
         match self {
             Type::Variable(var) => {
                 let mut vars = HashSet::with_capacity(1);
-                vars.insert(*var);
+                vars.insert(var.clone());
                 vars
             }
             Type::Constructed { params, .. } => params.iter().flat_map(Self::vars).collect(),
@@ -198,10 +221,10 @@ impl<Id: Clone + Eq> ForAll<Id> {
         let mut substitutions = HashMap::new();
 
         for var in &self.vars {
-            substitutions.insert(*var, Type::Variable(ctx.new_variable()));
+            substitutions.insert(var, Type::Variable(ctx.new_variable()));
         }
 
-        fn apply<Id: Clone>(ty: &mut Type<Id>, substitutions: &HashMap<TypeVariable, Type<Id>>) {
+        fn apply<Id: Clone>(ty: &mut Type<Id>, substitutions: &HashMap<&TypeVariable, Type<Id>>) {
             match ty {
                 Type::Variable(var) => {
                     if let Some(substitution) = substitutions.get(var) {

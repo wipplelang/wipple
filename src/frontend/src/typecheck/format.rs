@@ -10,8 +10,8 @@ pub fn format_type_scheme(ty: &Scheme) -> String {
             }
 
             let mut names = BTreeMap::new();
-            for variable in forall.vars.iter().collect::<Vec<_>>().into_iter().rev() {
-                names.insert(variable.0, name_for_index(names.len()));
+            for var in forall.vars.iter().collect::<Vec<_>>().into_iter().rev() {
+                names.insert(var.index, name_for_index(names.len()));
             }
 
             format!(
@@ -35,8 +35,8 @@ pub fn format_type_with(ty: &Type, names: &BTreeMap<u32, String>) -> String {
         names: &BTreeMap<u32, String>,
     ) -> String {
         match ty {
-            Type::Variable(variable) => names
-                .get(&variable.0)
+            Type::Variable(var) => names
+                .get(&var.index)
                 .cloned()
                 .unwrap_or_else(|| String::from("_")),
             Type::Constructed { bottom: true, .. } => String::from("!"),
