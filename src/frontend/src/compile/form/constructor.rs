@@ -1,10 +1,11 @@
-use crate::{compile::*, *};
+use crate::{compile::*, typecheck::TypeVariable, *};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Constructor {
     Placeholder,
+    Parameter(TypeVariable),
     Never,
     Number,
     Text,

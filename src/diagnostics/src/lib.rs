@@ -53,6 +53,9 @@ pub struct Diagnostic {
     pub level: DiagnosticLevel,
     pub message: String,
     pub notes: Vec<Note>,
+
+    #[cfg(debug_assertions)]
+    pub trace: backtrace::Backtrace,
 }
 
 #[derive(Serialize)]
@@ -100,6 +103,9 @@ impl Diagnostic {
             level,
             message: message.to_string(),
             notes,
+
+            #[cfg(debug_assertions)]
+            trace: backtrace::Backtrace::new(),
         }
     }
 }
@@ -141,7 +147,10 @@ impl Diagnostics {
         self.diagnostics.push(diagnostic);
     }
 
-    pub fn into_console_friendly(self) -> (CodeMap, Vec<codemap_diagnostic::Diagnostic>) {
+    pub fn into_console_friendly(
+        self,
+        #[cfg(debug_assertions)] include_trace: bool,
+    ) -> (CodeMap, Vec<codemap_diagnostic::Diagnostic>) {
         let mut codemap = CodeMap::new();
         let mut diagnostics = Vec::new();
 
@@ -150,8 +159,19 @@ impl Diagnostics {
         for diagnostic in self.diagnostics {
             let diagnostic = codemap_diagnostic::Diagnostic {
                 level: diagnostic.level.into(),
+
+                #[cfg(debug_assertions)]
+                message: if include_trace {
+                    diagnostic.message + &format!("\n{:?}", diagnostic.trace)
+                } else {
+                    diagnostic.message
+                },
+
+                #[cfg(not(debug_assertions))]
                 message: diagnostic.message,
+
                 code: None,
+
                 spans: diagnostic
                     .notes
                     .into_iter()

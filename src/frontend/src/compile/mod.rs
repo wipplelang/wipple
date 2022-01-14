@@ -28,18 +28,23 @@ pub struct File {
 }
 
 pub fn lower(file: wipple_parser::File, info: &mut Info) -> Option<Arc<File>> {
-    let stack = Stack::file(FileInfo::new(file.path));
+    let stack = Stack::file(builtin_variables(), FileInfo::new(file.path));
 
     evaluate_attributes(file.attributes, &stack, info)?;
 
-    if stack.file_info.as_ref().unwrap().borrow().include_prelude {
-        // The prelude is always the first file loaded
-        let prelude = info.files.first().unwrap();
+    if let Stack::File(variables, file_info) = &stack {
+        if file_info.borrow().include_prelude {
+            let mut variables = variables.borrow_mut();
 
-        let mut variables = stack.variables.borrow_mut();
-        for (name, variable) in &prelude.variables {
-            variables.entry(*name).or_insert_with(|| variable.clone());
+            // The prelude is always the first file loaded
+            let prelude = info.files.first().unwrap();
+
+            for (name, variable) in &prelude.variables {
+                variables.entry(*name).or_insert_with(|| variable.clone());
+            }
         }
+    } else {
+        unreachable!();
     }
 
     let statements = file
@@ -49,12 +54,17 @@ pub fn lower(file: wipple_parser::File, info: &mut Info) -> Option<Arc<File>> {
         .map(|statement| statement.lower_to_item(&stack, info))
         .collect();
 
+    let variables = match stack {
+        Stack::File(variables, _) => variables,
+        _ => unreachable!(),
+    };
+
     let file = Arc::new(File {
         id: FileId::new(),
         name: file.path,
         span: file.span,
         statements,
-        variables: stack.variables.into_inner(),
+        variables: variables.into_inner(),
     });
 
     info.files.push(file.clone());

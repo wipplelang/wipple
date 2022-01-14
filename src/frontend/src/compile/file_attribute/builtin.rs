@@ -27,8 +27,8 @@ impl FileAttribute {
             let mut parent = Some(stack);
 
             while let Some(stack) = parent {
-                match &stack.file_info {
-                    Some(file_info) => {
+                match &stack {
+                    Stack::File(_, file_info) => {
                         let mut file_info = file_info.borrow_mut();
 
                         if !file_info.include_prelude {
@@ -44,7 +44,7 @@ impl FileAttribute {
                         file_info.include_prelude = false;
                         return Some(());
                     }
-                    None => parent = stack.parent,
+                    _ => parent = stack.parent(),
                 }
             }
 

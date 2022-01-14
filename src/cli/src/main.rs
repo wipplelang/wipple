@@ -50,6 +50,14 @@ struct SharedOptions {
 
     #[structopt(long)]
     cache: Option<PathBuf>,
+
+    #[cfg(debug_assertions)]
+    #[structopt(long)]
+    debug: bool,
+
+    #[cfg(debug_assertions)]
+    #[structopt(long)]
+    trace: bool,
 }
 
 fn main() -> anyhow::Result<()> {
@@ -133,11 +141,19 @@ fn compile(options: SharedOptions) -> anyhow::Result<Option<wipple_frontend::typ
         })
     };
 
-    let (codemap, diagnostics) = diagnostics.into_console_friendly();
+    let (codemap, diagnostics) = diagnostics.into_console_friendly(
+        #[cfg(debug_assertions)]
+        options.trace,
+    );
 
     if !diagnostics.is_empty() {
         let mut emitter = Emitter::stderr(ColorConfig::Auto, Some(&codemap));
         emitter.emit(&diagnostics);
+    }
+
+    #[cfg(debug_assertions)]
+    if options.debug {
+        eprintln!("{:#?}", item);
     }
 
     Ok(item)

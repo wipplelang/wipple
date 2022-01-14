@@ -146,13 +146,14 @@ fn eval_item(item: &Item, info: &mut Info) -> Result<Arc<Value>, Diverge> {
                 .insert(initialize.variable, value);
             Arc::new(Value::Unit)
         }
-        ItemKind::Variable(variable) => resolve(variable.variable, info),
+        ItemKind::Variable(variable) => resolve(variable.variable, info)
+            .unwrap_or_else(|| panic!("Variable {:?} not found in {:#?}", variable, info.scope)),
         ItemKind::Function(function) => Arc::new(Value::Function {
             body: Box::new(function.body.as_ref().clone()),
             captures: function
                 .captures
                 .iter()
-                .map(|&variable| (variable, resolve(variable, info)))
+                .filter_map(|&variable| Some((variable, resolve(variable, info)?)))
                 .collect(),
         }),
         ItemKind::FunctionInput(_) => info.function_input.as_ref().unwrap().clone(),
@@ -261,7 +262,7 @@ fn eval_item(item: &Item, info: &mut Info) -> Result<Arc<Value>, Diverge> {
     Ok(value)
 }
 
-fn resolve(variable: VariableId, info: &mut Info) -> Arc<Value> {
+fn resolve(variable: VariableId, info: &mut Info) -> Option<Arc<Value>> {
     let mut value = None;
     let mut scope = Some(info.scope.clone());
 
@@ -276,9 +277,5 @@ fn resolve(variable: VariableId, info: &mut Info) -> Arc<Value> {
         }
     }
 
-    if value.is_none() {
-        panic!("Variable {:?} not found in {:#?}", variable, info.scope);
-    }
-
-    value.unwrap()
+    value
 }

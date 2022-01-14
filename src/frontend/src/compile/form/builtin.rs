@@ -1,4 +1,4 @@
-use crate::{compile::*, *};
+use crate::{compile::*, typecheck::typechecker_context, *};
 use std::{
     collections::{btree_map::Entry, BTreeMap, HashMap},
     num::NonZeroUsize,
@@ -21,11 +21,13 @@ pub fn builtin_variables() -> HashMap<InternedString, Variable> {
 
     builtins! {
         "_" => Form::builtin_underscore,
+
+        "=>" => Form::builtin_type_parameter,
         ":" => Form::builtin_assign,
-        "::" => Form::builtin_annotate,
 
         "->" => Form::builtin_function,
-        "return" => Form::builtin_return,
+
+        "::" => Form::builtin_annotate,
 
         "@" => Form::builtin_field,
 
@@ -37,6 +39,7 @@ pub fn builtin_variables() -> HashMap<InternedString, Variable> {
 
         "loop" => Form::builtin_loop,
         "end" => Form::builtin_end,
+        "return" => Form::builtin_return,
 
         "Number" => Form::builtin_number_ty,
         "Text" => Form::builtin_text_ty,
@@ -93,12 +96,74 @@ impl Form {
         }
     }
 
+    fn builtin_type_parameter(span: Span, _: LowerContext, _: &mut Info) -> Option<Self> {
+        Some(Form::operator(
+            span,
+            Operator {
+                precedence: OperatorPrecedence::Assignment,
+                template: Template::new(
+                    Some(NonZeroUsize::new(2).unwrap()),
+                    move |context, exprs, _, stack, info| {
+                        let mut exprs = exprs.into_iter();
+
+                        let lhs = exprs.next().unwrap();
+                        let lhs_span = lhs.span();
+
+                        let lhs = match lhs {
+                            Expr::List(list) => list.items,
+                            _ => unreachable!(),
+                        };
+
+                        let name = match lhs.len() {
+                            1 => match lhs.into_iter().next().unwrap() {
+                                Expr::Name(name) => name.value,
+                                lhs => {
+                                    info.diagnostics.add(Diagnostic::new(
+                                        DiagnosticLevel::Error,
+                                        "Expected name for type parameter",
+                                        vec![Note::primary(lhs.span(), "Expected name here")],
+                                    ));
+
+                                    return None;
+                                }
+                            },
+                            _ => {
+                                info.diagnostics.add(Diagnostic::new(
+                                    DiagnosticLevel::Error,
+                                    "Expected name for type parameter",
+                                    vec![Note::primary(lhs_span, "Complex bindings are not supported; you must declare a type parameter with a simple name")],
+                                ));
+
+                                return None;
+                            }
+                        };
+
+                        let rhs = exprs.next().unwrap();
+
+                        let stack = stack.child_introduction(
+                            name,
+                            Variable::compile_time(move |_, _, _| {
+                                Some(Form::constructor(
+                                    lhs_span,
+                                    Constructor::Parameter(
+                                        typechecker_context().borrow_mut().new_variable(Some(name)),
+                                    ),
+                                ))
+                            }),
+                        );
+
+                        rhs.lower(context, &stack, info)
+                    },
+                ),
+            },
+        ))
+    }
+
     fn builtin_assign(span: Span, _: LowerContext, _: &mut Info) -> Option<Self> {
         Some(Form::operator(
             span,
             Operator {
-                precedence: OperatorPrecedence::new(9),
-                associativity: OperatorAssociativity::None,
+                precedence: OperatorPrecedence::Assignment,
                 template: Template::new(
                     Some(NonZeroUsize::new(2).unwrap()),
                     move |context, exprs, span, stack, info| {
@@ -183,12 +248,73 @@ impl Form {
         ))
     }
 
+    fn builtin_function(span: Span, _: LowerContext, _: &mut Info) -> Option<Self> {
+        Some(Form::operator(
+            span,
+            Operator {
+                precedence: OperatorPrecedence::Function,
+                template: Template::new(
+                    Some(NonZeroUsize::new(2).unwrap()),
+                    move |context, exprs, span, stack, info| {
+                        let mut exprs = exprs.into_iter();
+
+                        let lhs = exprs.next().unwrap();
+                        let lhs_span = lhs.span();
+
+                        let rhs = exprs.next().unwrap();
+                        let rhs_span = rhs.span();
+
+                        match context {
+                            LowerContext::Constructor => {
+                                let input_ty = lhs.lower_to_constructor(stack, info)?;
+                                let body_ty = rhs.lower_to_constructor(stack, info)?;
+
+                                Some(Form::constructor(
+                                    span,
+                                    Constructor::Function {
+                                        input: Box::new(input_ty),
+                                        output: Box::new(body_ty),
+                                    },
+                                ))
+                            }
+                            LowerContext::Item => {
+                                let binding = lhs.lower_to_binding(stack, info)?;
+
+                                let stack = stack.child_function();
+
+                                let body = Item::block(
+                                    rhs_span,
+                                    vec![
+                                        binding.assign(
+                                            lhs_span,
+                                            Form::item(lhs_span, Item::function_input(lhs_span)),
+                                            &stack,
+                                            info,
+                                        ),
+                                        rhs.lower_to_item(&stack, info),
+                                    ],
+                                );
+
+                                let captures = match stack {
+                                    Stack::Function(_, captures, _) => captures.into_inner(),
+                                    _ => unreachable!(),
+                                };
+
+                                Some(Form::item(span, Item::function(span, body, captures)))
+                            }
+                            _ => None,
+                        }
+                    },
+                ),
+            },
+        ))
+    }
+
     fn builtin_annotate(span: Span, _: LowerContext, _: &mut Info) -> Option<Self> {
         Some(Form::operator(
             span,
             Operator {
-                precedence: OperatorPrecedence::new(0),
-                associativity: OperatorAssociativity::Left,
+                precedence: OperatorPrecedence::Annotation,
                 template: Template::new(
                     Some(NonZeroUsize::new(2).unwrap()),
                     move |context, exprs, span, stack, info| {
@@ -283,88 +409,11 @@ impl Form {
         ))
     }
 
-    fn builtin_function(span: Span, _: LowerContext, _: &mut Info) -> Option<Self> {
-        Some(Form::operator(
-            span,
-            Operator {
-                precedence: OperatorPrecedence::new(8),
-                associativity: OperatorAssociativity::Right,
-                template: Template::new(
-                    Some(NonZeroUsize::new(2).unwrap()),
-                    move |context, exprs, span, stack, info| {
-                        let mut exprs = exprs.into_iter();
-
-                        let lhs = exprs.next().unwrap();
-                        let lhs_span = lhs.span();
-
-                        let rhs = exprs.next().unwrap();
-                        let rhs_span = rhs.span();
-
-                        match context {
-                            LowerContext::Constructor => {
-                                let input_ty = lhs.lower_to_constructor(stack, info)?;
-                                let body_ty = rhs.lower_to_constructor(stack, info)?;
-
-                                Some(Form::constructor(
-                                    span,
-                                    Constructor::Function {
-                                        input: Box::new(input_ty),
-                                        output: Box::new(body_ty),
-                                    },
-                                ))
-                            }
-                            LowerContext::Item => {
-                                let binding = lhs.lower_to_binding(stack, info)?;
-
-                                let stack = stack.child_function();
-
-                                let body = Item::block(
-                                    rhs_span,
-                                    vec![
-                                        binding.assign(
-                                            lhs_span,
-                                            Form::item(lhs_span, Item::function_input(lhs_span)),
-                                            &stack,
-                                            info,
-                                        ),
-                                        rhs.lower_to_item(&stack, info),
-                                    ],
-                                );
-
-                                let captures = Arc::try_unwrap(stack.captures.unwrap())
-                                    .unwrap_or_else(|_| unreachable!())
-                                    .into_inner();
-
-                                Some(Form::item(span, Item::function(span, body, captures)))
-                            }
-                            _ => None,
-                        }
-                    },
-                ),
-            },
-        ))
-    }
-
-    fn builtin_return(span: Span, _: LowerContext, _: &mut Info) -> Option<Self> {
-        Some(Form::template(
-            span,
-            Template::new(
-                Some(NonZeroUsize::new(1).unwrap()),
-                move |_, exprs, span, stack, info| {
-                    let item = exprs.into_iter().next().unwrap().lower_to_item(stack, info);
-
-                    Some(Form::item(span, Item::r#return(span, item)))
-                },
-            ),
-        ))
-    }
-
     fn builtin_field(span: Span, _: LowerContext, _: &mut Info) -> Option<Self> {
         Some(Form::operator(
             span,
             Operator {
-                precedence: OperatorPrecedence::new(7),
-                associativity: OperatorAssociativity::Left,
+                precedence: OperatorPrecedence::Field,
                 template: Template::new(
                     Some(NonZeroUsize::new(2).unwrap()),
                     move |_, exprs, span, stack, info| {
@@ -504,10 +553,11 @@ impl Form {
 
                     let file = project::load_file(&file, span, info)?;
 
-                    let mut variables = stack.variables.borrow_mut();
-                    for (name, variable) in &file.variables {
-                        variables.entry(*name).or_insert_with(|| variable.clone());
-                    }
+                    stack.with_variables(|variables| {
+                        for (name, variable) in &file.variables {
+                            variables.entry(*name).or_insert_with(|| variable.clone());
+                        }
+                    });
 
                     Some(Form::item(span, Item::unit(span)))
                 },
@@ -610,6 +660,20 @@ impl Form {
                 move |_, exprs, span, stack, info| {
                     let item = exprs.into_iter().next().unwrap().lower_to_item(stack, info);
                     Some(Form::item(span, Item::end(span, item)))
+                },
+            ),
+        ))
+    }
+
+    fn builtin_return(span: Span, _: LowerContext, _: &mut Info) -> Option<Self> {
+        Some(Form::template(
+            span,
+            Template::new(
+                Some(NonZeroUsize::new(1).unwrap()),
+                move |_, exprs, span, stack, info| {
+                    let item = exprs.into_iter().next().unwrap().lower_to_item(stack, info);
+
+                    Some(Form::item(span, Item::r#return(span, item)))
                 },
             ),
         ))

@@ -5,18 +5,22 @@ pub fn format_type_scheme(ty: &Scheme) -> String {
     match ty {
         Scheme::Type(ty) => format_type(ty),
         Scheme::ForAll(forall) => {
-            if forall.vars.is_empty() {
-                return format_type(&forall.ty);
-            }
-
             let mut names = BTreeMap::new();
-            for var in forall.vars.iter().collect::<Vec<_>>().into_iter().rev() {
-                names.insert(var.index, name_for_index(names.len()));
+            for var in &forall.vars {
+                names.insert(
+                    var.index,
+                    var.name
+                        .map(|name| name.to_string())
+                        .unwrap_or_else(|| name_for_index(names.len())),
+                );
             }
 
             format!(
-                "for {}-> {}",
-                names.values().map(|t| t.clone() + " ").collect::<String>(),
+                "{}{}",
+                names
+                    .values()
+                    .map(|t| t.clone() + " => ")
+                    .collect::<String>(),
                 format_type_with(&forall.ty, &names)
             )
         }
@@ -38,7 +42,7 @@ pub fn format_type_with(ty: &Type, names: &BTreeMap<u32, String>) -> String {
             Type::Variable(var) => names
                 .get(&var.index)
                 .cloned()
-                .unwrap_or_else(|| String::from("_")),
+                .unwrap_or_else(|| var.index.to_string()),
             Type::Constructed { bottom: true, .. } => String::from("!"),
             Type::Constructed { id, params, .. } => {
                 let ty_name = id

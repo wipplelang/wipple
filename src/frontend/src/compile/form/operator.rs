@@ -4,18 +4,26 @@ use serde::Serialize;
 #[derive(Debug, Clone, Serialize)]
 pub struct Operator {
     pub precedence: OperatorPrecedence,
-    pub associativity: OperatorAssociativity,
     pub template: Template,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize)]
-pub struct OperatorPrecedence(u8);
+#[repr(u8)]
+pub enum OperatorPrecedence {
+    Assignment = 9,
+    Function = 8,
+    Field = 7,
+    Annotation = 6,
+}
 
 impl OperatorPrecedence {
-    pub fn new(value: u8) -> Self {
-        debug_assert!(matches!(value, 0..=9));
-
-        OperatorPrecedence(value)
+    pub const fn associativity(&self) -> OperatorAssociativity {
+        match self {
+            OperatorPrecedence::Assignment => OperatorAssociativity::Right,
+            OperatorPrecedence::Function => OperatorAssociativity::Right,
+            OperatorPrecedence::Field => OperatorAssociativity::Left,
+            OperatorPrecedence::Annotation => OperatorAssociativity::Left,
+        }
     }
 }
 

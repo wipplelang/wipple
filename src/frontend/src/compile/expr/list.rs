@@ -130,6 +130,24 @@ impl ExprKind for ListExpr {
 
                                             return None;
                                         }
+                                        Constructor::Parameter(var) => {
+                                            let name =
+                                                var.name.map(|name| name.as_str()).unwrap_or("_");
+
+                                            info.diagnostics.add(Diagnostic::new(
+                                                DiagnosticLevel::Error,
+                                                format!(
+                                                    "Cannot use type '{}' as a constructor",
+                                                    name
+                                                ),
+                                                vec![Note::primary(
+                                                    span,
+                                                    format!("'{}' is not a concrete type and cannot be used to construct values directly", name),
+                                                )],
+                                            ));
+
+                                            return None;
+                                        }
                                         Constructor::Never
                                         | Constructor::Number
                                         | Constructor::Text
@@ -439,14 +457,16 @@ impl ListExpr {
             match operator.precedence.cmp(&max_operator.precedence) {
                 Ordering::Greater => replace!(),
                 Ordering::Equal => {
-                    if operator.associativity != max_operator.associativity {
+                    if operator.precedence.associativity()
+                        != max_operator.precedence.associativity()
+                    {
                         return Err(Error::AmbiguousAssociativity {
                             first: self.items[max_index].span(),
                             second: self.items[index].span(),
                         });
                     }
 
-                    match operator.associativity {
+                    match operator.precedence.associativity() {
                         OperatorAssociativity::Left => {
                             if index > max_index {
                                 replace!();

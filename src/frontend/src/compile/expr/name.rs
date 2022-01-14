@@ -56,39 +56,13 @@ impl NameExpr {
     pub(super) fn resolve(
         &self,
         context: LowerContext,
-        mut stack: &Stack,
+        stack: &Stack,
         info: &mut Info,
     ) -> Option<Option<Form>> {
-        let mut used = vec![info.used_variables.clone()];
-
-        loop {
-            macro_rules! parent {
-                () => {
-                    if let Some(parent) = stack.parent {
-                        stack = parent;
-                    } else {
-                        break Some(None);
-                    }
-                };
-            }
-
-            if let Some(variable) = stack.variables.borrow().get(&self.value) {
-                let form = variable.form(self.span, context, info)?;
-
-                if matches!(form.kind, FormKind::Item { .. }) {
-                    for list in used {
-                        list.borrow_mut().insert(variable.id);
-                    }
-                }
-
-                break Some(Some(form));
-            } else {
-                if let Some(captures) = &stack.captures {
-                    used.push(captures.clone());
-                }
-
-                parent!();
-            }
+        if let Some(variable) = stack.resolve(self.value, info) {
+            variable.form(self.span, context, info).map(Some)
+        } else {
+            Some(None)
         }
     }
 }

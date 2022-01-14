@@ -38,10 +38,9 @@ impl BindingKind for NameBinding {
 
         let variable_id = variable.id;
 
-        stack
-            .variables
-            .borrow_mut()
-            .insert(self.name, variable.clone());
+        stack.with_variables(|variables| {
+            variables.insert(self.name, variable.clone());
+        });
 
         info.declared_variables.push(variable);
 
