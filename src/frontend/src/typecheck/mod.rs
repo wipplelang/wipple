@@ -1,5 +1,3 @@
-#![allow(clippy::type_complexity)]
-
 pub mod engine;
 pub mod format;
 pub mod item;
@@ -211,21 +209,21 @@ impl<'a> Typechecker<'a> {
 
                 let input_var = self.function_inputs.pop().unwrap();
 
+                // Only generalize top-level functions
+                let should_generalize = self.function_inputs.is_empty();
+
                 let return_ty =
                     mem::replace(&mut self.return_ty, previous_return_ty).unwrap_or(body_ty);
 
-                let mut ty = function_type(Type::Variable(input_var), return_ty);
-                ty.apply(&self.ctx);
-                println!("{}", format_type(&ty));
-                let generalized_ty = ty.generalize(&self.ctx);
-                println!(
-                    "{}",
-                    format_type_scheme(&Scheme::ForAll(generalized_ty.clone()))
-                );
+                let ty = function_type(Type::Variable(input_var), return_ty);
 
                 Item::function(
                     item.info,
-                    Scheme::ForAll(generalized_ty),
+                    if should_generalize {
+                        Scheme::ForAll(ty.generalize(&self.ctx))
+                    } else {
+                        Scheme::Type(ty)
+                    },
                     body_item,
                     function.captures.clone(),
                 )
@@ -304,7 +302,10 @@ impl<'a> Typechecker<'a> {
                         data_decl_info.declared_name,
                         TypeNameFormat::Default,
                     ),
-                    params: Vec::new(), // TODO: Generics
+                    // TODO: Generics
+                    // NOTE: This represents the applied generic arguments (ie.
+                    // concrete types, not parameters)
+                    params: Vec::new(),
                     bottom: false,
                 });
 

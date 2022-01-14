@@ -42,7 +42,7 @@ pub fn format_type_with(ty: &Type, names: &BTreeMap<u32, String>) -> String {
             Type::Variable(var) => names
                 .get(&var.index)
                 .cloned()
-                .unwrap_or_else(|| var.index.to_string()),
+                .unwrap_or_else(|| String::from("_")),
             Type::Constructed { bottom: true, .. } => String::from("!"),
             Type::Constructed { id, params, .. } => {
                 let ty_name = id
