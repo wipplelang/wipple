@@ -1,42 +1,41 @@
 use crate::typecheck::*;
-use std::collections::BTreeMap;
 
 pub fn format_type_scheme(ty: &Scheme) -> String {
     match ty {
         Scheme::Type(ty) => format_type(ty),
         Scheme::ForAll(forall) => {
-            let mut names = BTreeMap::new();
+            let mut names = Vec::new();
             for var in &forall.vars {
-                names.insert(
+                names.push((
                     var.index,
                     var.name
                         .map(|name| name.to_string())
                         .unwrap_or_else(|| name_for_index(names.len())),
-                );
+                ));
             }
 
             format!(
                 "{}{}",
                 names
-                    .values()
-                    .map(|t| t.clone() + " => ")
+                    .iter()
+                    .map(|(_, t)| t.clone() + " => ")
                     .collect::<String>(),
-                format_type_with(&forall.ty, &names)
+                format_type_with(&forall.ty, &names.into_iter().collect())
             )
         }
     }
 }
 
 pub fn format_type(ty: &Type) -> String {
-    format_type_with(ty, &BTreeMap::new())
+    format_type_with(ty, &HashMap::new())
 }
 
-pub fn format_type_with(ty: &Type, names: &BTreeMap<u32, String>) -> String {
+pub fn format_type_with(ty: &Type, names: &HashMap<u32, String>) -> String {
     fn format_type(
         ty: &Type,
         is_top_level: bool,
         is_return: bool,
-        names: &BTreeMap<u32, String>,
+        names: &HashMap<u32, String>,
     ) -> String {
         match ty {
             Type::Variable(var) => names
