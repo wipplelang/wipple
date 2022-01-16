@@ -164,6 +164,13 @@ impl<Id: Clone + Eq> Scheme<Id> {
             Scheme::ForAll(forall) => forall.instantiate(ctx),
         }
     }
+
+    pub fn vars(&self) -> HashSet<TypeVariable> {
+        match self {
+            Scheme::Type(ty) => ty.vars(),
+            Scheme::ForAll(forall) => forall.ty.vars(),
+        }
+    }
 }
 
 impl<Id: Clone + Eq> Type<Id> {
