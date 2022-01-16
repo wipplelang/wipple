@@ -204,7 +204,7 @@ impl<'a> Typechecker<'a> {
             compile::ItemKind::Function(function) => {
                 let previous_return_ty = mem::take(&mut self.return_ty);
 
-                let mut body_item = self.typecheck_item(&function.body);
+                let body_item = self.typecheck_item(&function.body);
                 let body_ty = body_item.ty.instantiate(&mut self.ctx);
 
                 let input_var = self.function_inputs.pop().unwrap();
@@ -215,14 +215,10 @@ impl<'a> Typechecker<'a> {
                 let ty = function_type(Type::Variable(input_var), return_ty);
 
                 // Only generalize pure functions
-                let mut pure = true;
-                body_item.traverse(|item| {
-                    if let ItemKind::Variable(item) = &item.kind {
-                        if function.captures.contains(&item.variable) {
-                            pure = false;
-                        }
-                    }
-                });
+                let pure = !function
+                    .captures
+                    .iter()
+                    .any(|v| self.variables.contains_key(v));
 
                 Item::function(
                     item.info,
