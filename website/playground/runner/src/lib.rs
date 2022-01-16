@@ -77,15 +77,15 @@ fn annotations(item: &mut wipple_frontend::typecheck::Item) -> Vec<Annotation> {
 
     let mut annotations = Vec::new();
 
-    item.traverse(|info, ty| {
-        if info.span.file.as_str() != "playground" {
+    item.traverse(|item| {
+        if item.compile_info.span.file.as_str() != "playground" {
             return;
         }
 
         annotations.push(Annotation {
-            span: info.span,
-            declared_name: info.declared_name.map(|name| name.to_string()),
-            ty: format_type_scheme(ty),
+            span: item.compile_info.span,
+            declared_name: item.compile_info.declared_name.map(|name| name.to_string()),
+            ty: format_type_scheme(&item.ty),
         });
     });
 

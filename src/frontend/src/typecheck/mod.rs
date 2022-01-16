@@ -103,7 +103,7 @@ pub fn typecheck(info: compile::Info) -> (bool, Item) {
     let info = compile::ItemInfo::new(Span::new(InternedString::new("<root>"), Default::default()));
 
     let mut item = typechecker.typecheck_block(info, &block.statements);
-    item.traverse(|_, ty| ty.apply(&typechecker.ctx));
+    item.traverse(|item| item.ty.apply(&typechecker.ctx));
 
     (typechecker.well_typed, item)
 }
@@ -204,22 +204,29 @@ impl<'a> Typechecker<'a> {
             compile::ItemKind::Function(function) => {
                 let previous_return_ty = mem::take(&mut self.return_ty);
 
-                let body_item = self.typecheck_item(&function.body);
+                let mut body_item = self.typecheck_item(&function.body);
                 let body_ty = body_item.ty.instantiate(&mut self.ctx);
 
                 let input_var = self.function_inputs.pop().unwrap();
-
-                // Only generalize top-level functions
-                let should_generalize = self.function_inputs.is_empty();
 
                 let return_ty =
                     mem::replace(&mut self.return_ty, previous_return_ty).unwrap_or(body_ty);
 
                 let ty = function_type(Type::Variable(input_var), return_ty);
 
+                // Only generalize pure functions
+                let mut pure = true;
+                body_item.traverse(|item| {
+                    if let ItemKind::Variable(item) = &item.kind {
+                        if function.captures.contains(&item.variable) {
+                            pure = false;
+                        }
+                    }
+                });
+
                 Item::function(
                     item.info,
-                    if should_generalize {
+                    if pure {
                         Scheme::ForAll(ty.generalize(&self.ctx))
                     } else {
                         Scheme::Type(ty)

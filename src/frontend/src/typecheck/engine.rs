@@ -1,7 +1,6 @@
 use interned_string::InternedString;
 use serde::{Deserialize, Serialize};
 use std::{
-    borrow::Cow,
     collections::{HashMap, HashSet},
     hash::{Hash, Hasher},
 };
@@ -163,13 +162,6 @@ impl<Id: Clone + Eq> Scheme<Id> {
         match self {
             Scheme::Type(ty) => ty.clone(),
             Scheme::ForAll(forall) => forall.instantiate(ctx),
-        }
-    }
-
-    pub fn generalized_vars(&self) -> Cow<HashSet<TypeVariable>> {
-        match self {
-            Scheme::Type(_) => Cow::Owned(HashSet::new()),
-            Scheme::ForAll(forall) => Cow::Borrowed(&forall.vars),
         }
     }
 }

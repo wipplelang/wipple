@@ -76,9 +76,9 @@ pub enum ItemKind {
 }
 
 impl Item {
-    pub fn traverse(&mut self, mut f: impl FnMut(&mut compile::ItemInfo, &mut Scheme)) {
-        pub fn traverse(item: &mut Item, f: &mut impl FnMut(&mut compile::ItemInfo, &mut Scheme)) {
-            f(&mut item.compile_info, &mut item.ty);
+    pub fn traverse(&mut self, mut f: impl FnMut(&mut Item)) {
+        pub fn traverse(item: &mut Item, f: &mut impl FnMut(&mut Item)) {
+            f(item);
 
             match &mut item.kind {
                 ItemKind::Apply(apply) => {
@@ -95,33 +95,20 @@ impl Item {
                         traverse(field, f);
                     }
                 }
-                ItemKind::End(end) => {
-                    traverse(&mut end.value, f);
-                }
+                ItemKind::End(end) => traverse(&mut end.value, f),
                 ItemKind::Error(_) => {}
                 ItemKind::External(external) => {
                     for input in &mut external.inputs {
-                        traverse(input, f);
+                        traverse(input, f)
                     }
                 }
-                ItemKind::Field(field) => {
-                    traverse(&mut field.value, f);
-                }
-                ItemKind::Function(function) => {
-                    traverse(&mut function.body, f);
-                }
+                ItemKind::Field(field) => traverse(&mut field.value, f),
+                ItemKind::Function(function) => traverse(&mut function.body, f),
                 ItemKind::FunctionInput(_) => {}
-                ItemKind::Initialize(initialize) => {
-                    f(&mut initialize.binding_info, &mut initialize.value.ty);
-                    traverse(&mut initialize.value, f);
-                }
-                ItemKind::Loop(r#loop) => {
-                    traverse(&mut r#loop.body, f);
-                }
+                ItemKind::Initialize(initialize) => traverse(&mut initialize.value, f),
+                ItemKind::Loop(r#loop) => traverse(&mut r#loop.body, f),
                 ItemKind::Number(_) => {}
-                ItemKind::Return(r#return) => {
-                    traverse(&mut r#return.value, f);
-                }
+                ItemKind::Return(r#return) => traverse(&mut r#return.value, f),
                 ItemKind::Text(_) => {}
                 ItemKind::Unit(_) => {}
                 ItemKind::Variable(_) => {}
