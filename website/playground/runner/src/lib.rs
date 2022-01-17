@@ -38,11 +38,13 @@ pub fn run(code: &str) -> JsValue {
         let mut info = wipple_frontend::compile::Info::with_prelude(&mut diagnostics, &project);
         wipple_frontend::project::load_string("playground", Arc::from(code), &mut info)?;
 
-        let (well_typed, mut item) = wipple_frontend::typecheck::typecheck(info);
-        let annotations = annotations(&mut item);
+        let mut info = wipple_frontend::typecheck::typecheck(info);
+        wipple_frontend::passes::all(&mut info);
 
-        if well_typed {
-            if let Err((error, callstack)) = wipple_interpreter_backend::eval(&item) {
+        let annotations = annotations(&mut info.item);
+
+        if info.well_typed {
+            if let Err((error, callstack)) = wipple_interpreter_backend::eval(&info.item) {
                 let mut output = output.write().unwrap();
 
                 output.push(format!("Fatal error: {}", error));

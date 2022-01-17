@@ -13,7 +13,7 @@ pub struct Info<'a> {
     pub diagnostics: &'a mut Diagnostics,
     pub project: &'a Project,
     pub files: Vec<Arc<File>>,
-    pub declared_variables: Vec<Variable>,
+    pub declared_variables: HashMap<VariableId, ItemInfo>,
     pub used_variables: Arc<RefCell<HashSet<VariableId>>>,
     pub externals: HashMap<(String, String), Vec<Type>>,
 }

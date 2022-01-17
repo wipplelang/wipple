@@ -11,7 +11,7 @@ use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 use std::{
     cell::RefCell,
-    collections::{BTreeMap, HashMap},
+    collections::{BTreeMap, HashMap, HashSet},
     mem,
 };
 use wipple_diagnostics::{Diagnostic, DiagnosticLevel, Note};
@@ -90,7 +90,15 @@ pub fn function_type(input: Type, output: Type) -> Type {
     }
 }
 
-pub fn typecheck(info: compile::Info) -> (bool, Item) {
+pub struct Info<'a> {
+    pub diagnostics: &'a mut Diagnostics,
+    pub well_typed: bool,
+    pub item: Item,
+    pub declared_variables: HashMap<VariableId, compile::ItemInfo>,
+    pub used_variables: HashSet<VariableId>,
+}
+
+pub fn typecheck(info: compile::Info) -> Info {
     let block = compile::BlockItem::new(
         info.files
             .into_iter()
@@ -100,9 +108,10 @@ pub fn typecheck(info: compile::Info) -> (bool, Item) {
 
     let mut typechecker = Typechecker::new(info.diagnostics);
 
-    let info = compile::ItemInfo::new(Span::new(InternedString::new("<root>"), Default::default()));
+    let item_info =
+        compile::ItemInfo::new(Span::new(InternedString::new("<root>"), Default::default()));
 
-    let mut item = typechecker.typecheck_block(info, &block.statements);
+    let mut item = typechecker.typecheck_block(item_info, &block.statements);
 
     item.traverse(|item| {
         item.ty.apply(&typechecker.ctx);
@@ -121,7 +130,13 @@ pub fn typecheck(info: compile::Info) -> (bool, Item) {
         }
     });
 
-    (typechecker.well_typed, item)
+    Info {
+        well_typed: typechecker.well_typed,
+        item,
+        diagnostics: info.diagnostics,
+        declared_variables: info.declared_variables,
+        used_variables: Arc::try_unwrap(info.used_variables).unwrap().into_inner(),
+    }
 }
 
 pub(crate) fn typechecker_context() -> Arc<RefCell<Context>> {

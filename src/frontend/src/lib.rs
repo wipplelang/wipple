@@ -2,6 +2,7 @@ pub mod compile;
 pub mod id;
 pub mod project;
 pub mod typecheck;
+pub mod passes;
 
 pub use id::*;
 

@@ -183,7 +183,12 @@ impl Diagnostics {
                                     note.span.file.to_string(),
                                     files
                                         .get(&note.span.file)
-                                        .expect("Diagnostic references unknown file")
+                                        .unwrap_or_else(|| {
+                                            panic!(
+                                                "Diagnostic references unknown file: '{}'",
+                                                note.span.file
+                                            )
+                                        })
                                         .to_string(),
                                 );
 

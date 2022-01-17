@@ -42,10 +42,10 @@ impl BindingKind for NameBinding {
             variables.insert(self.name, variable.clone());
         });
 
-        info.declared_variables.push(variable);
-
         let mut binding_info = ItemInfo::new(self.span);
         binding_info.declared_name = Some(self.name);
+
+        info.declared_variables.insert(variable.id, binding_info);
 
         if let Some(runtime_item) = runtime_item {
             Item::initialize(span, binding_info, variable_id, runtime_item)
