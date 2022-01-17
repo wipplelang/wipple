@@ -112,23 +112,7 @@ pub fn typecheck(info: compile::Info) -> Info {
         compile::ItemInfo::new(Span::new(InternedString::new("<root>"), Default::default()));
 
     let mut item = typechecker.typecheck_block(item_info, &block.statements);
-
-    item.traverse(|item| {
-        item.ty.apply(&typechecker.ctx);
-
-        if !item.ty.vars().is_empty() {
-            typechecker.diagnostics.add(Diagnostic::new(
-                DiagnosticLevel::Error,
-                "Type annotations needed",
-                vec![Note::primary(
-                    item.compile_info.span,
-                    "Cannot determine the type of this; use '::' to add a type annotation",
-                )],
-            ));
-
-            typechecker.well_typed = false;
-        }
-    });
+    item.traverse(|item| item.ty.apply(&typechecker.ctx));
 
     Info {
         well_typed: typechecker.well_typed,

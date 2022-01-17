@@ -168,7 +168,7 @@ impl<Id: Clone + Eq> Scheme<Id> {
     pub fn vars(&self) -> HashSet<TypeVariable> {
         match self {
             Scheme::Type(ty) => ty.vars(),
-            Scheme::ForAll(forall) => forall.ty.vars(),
+            Scheme::ForAll(forall) => forall.ty.vars().difference(&forall.vars).cloned().collect(),
         }
     }
 }
