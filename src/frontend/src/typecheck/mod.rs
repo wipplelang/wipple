@@ -98,6 +98,12 @@ pub struct Info<'a> {
     pub used_variables: HashSet<VariableId>,
 }
 
+impl<'a> Info<'a> {
+    pub fn into_well_typed_item(self) -> Option<Item> {
+        self.well_typed.then(|| self.item)
+    }
+}
+
 pub fn typecheck(info: compile::Info) -> Info {
     let block = compile::BlockItem::new(
         info.files
@@ -113,6 +119,8 @@ pub fn typecheck(info: compile::Info) -> Info {
 
     let mut item = typechecker.typecheck_block(item_info, &block.statements);
     item.traverse(|item| item.ty.apply(&typechecker.ctx));
+
+    println!("{}", format_type_scheme(&item.ty));
 
     Info {
         well_typed: typechecker.well_typed,
@@ -171,10 +179,12 @@ impl<'a> Typechecker<'a> {
                 let function_item = self.typecheck_item(&apply.function);
                 let function_ty = function_item.ty.instantiate(&mut self.ctx);
 
+                println!("function ty: {}", format_type(&function_ty));
+
                 let input_item = self.typecheck_item(&apply.input);
                 let input_ty = input_item.ty.instantiate(&mut self.ctx);
 
-                let output_ty = Type::Variable(self.ctx.new_variable(None));
+                let output_ty = Type::Variable(self.ctx.new_variable());
 
                 if let Err(errors) = self
                     .ctx
@@ -219,8 +229,13 @@ impl<'a> Typechecker<'a> {
             compile::ItemKind::Function(function) => {
                 let previous_return_ty = mem::take(&mut self.return_ty);
 
+                let ignore = self.ctx.vars();
+                dbg!(&ignore);
+
                 let body_item = self.typecheck_item(&function.body);
                 let body_ty = body_item.ty.instantiate(&mut self.ctx);
+
+                println!("body_ty: {}", format_type(&body_ty));
 
                 let input_var = self.function_inputs.pop().unwrap();
 
@@ -229,27 +244,16 @@ impl<'a> Typechecker<'a> {
 
                 let ty = function_type(Type::Variable(input_var), return_ty);
 
-                // Only generalize pure functions
-                let pure = !function
-                    .captures
-                    .iter()
-                    .any(|v| self.variables.contains_key(v));
+                let generalized = ty.generalize(&self.ctx, &ignore);
 
-                Item::function(
-                    item.info,
-                    if pure {
-                        Scheme::ForAll(ty.generalize(&self.ctx))
-                    } else {
-                        Scheme::Type(ty)
-                    },
-                    body_item,
-                    function.captures.clone(),
-                )
+                println!("{}", format_type_scheme(&generalized));
+
+                Item::function(item.info, generalized, body_item, function.captures.clone())
             }
             compile::ItemKind::FunctionInput(_) => {
-                let var = self.ctx.new_variable(None);
+                let var = self.ctx.new_variable();
 
-                self.function_inputs.push(var.clone());
+                self.function_inputs.push(var);
                 Item::function_input(item.info, Scheme::Type(Type::Variable(var)))
             }
             compile::ItemKind::External(external) => {
@@ -261,7 +265,7 @@ impl<'a> Typechecker<'a> {
 
                 Item::external(
                     item.info,
-                    Scheme::Type(Type::Variable(self.ctx.new_variable(None))),
+                    Scheme::Type(Type::Variable(self.ctx.new_variable())),
                     external.namespace,
                     external.identifier,
                     inputs,
@@ -271,10 +275,9 @@ impl<'a> Typechecker<'a> {
                 let ty = self.convert_constructor(&annotate.constructor);
 
                 let inferred_item = self.typecheck_item(&annotate.item);
-
                 let inferred_ty = inferred_item.ty.instantiate(&mut self.ctx);
 
-                if let Err(errors) = self.ctx.unify(ty, inferred_ty) {
+                if let Err(errors) = self.ctx.unify(inferred_ty, ty) {
                     self.report_type_errors(&annotate.item, errors);
                     self.well_typed = false;
                     return Item::error(item.info);
@@ -497,8 +500,8 @@ impl<'a> Typechecker<'a> {
         use compile::Constructor;
 
         match constructor {
-            Constructor::Placeholder => Type::Variable(self.ctx.new_variable(None)),
-            Constructor::Parameter(var) => Type::Variable(var.clone()),
+            Constructor::Placeholder => Type::Variable(self.ctx.new_variable()),
+            Constructor::Parameter(var) => Type::Variable(*var),
             Constructor::Never => BUILTIN_TYPES.never.clone(),
             Constructor::Number => BUILTIN_TYPES.number.clone(),
             Constructor::Text => BUILTIN_TYPES.text.clone(),

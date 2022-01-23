@@ -130,9 +130,9 @@ impl ExprKind for ListExpr {
 
                                             return None;
                                         }
-                                        Constructor::Parameter(var) => {
+                                        Constructor::Parameter(_var) => {
                                             let name =
-                                                var.name.map(|name| name.as_str()).unwrap_or("_");
+                                                /* var.name.map(|name| name.as_str()).unwrap_or("_") */ "_";
 
                                             info.diagnostics.add(Diagnostic::new(
                                                 DiagnosticLevel::Error,

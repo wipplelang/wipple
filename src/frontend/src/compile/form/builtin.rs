@@ -146,7 +146,7 @@ impl Form {
                                 Some(Form::constructor(
                                     lhs_span,
                                     Constructor::Parameter(
-                                        typechecker_context().borrow_mut().new_variable(Some(name)),
+                                        typechecker_context().borrow_mut().new_variable(/* Some(name) */),
                                     ),
                                 ))
                             }),

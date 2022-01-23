@@ -43,8 +43,8 @@ pub fn run(code: &str) -> JsValue {
 
         let annotations = annotations(&mut info.item);
 
-        if info.well_typed {
-            if let Err((error, callstack)) = wipple_interpreter_backend::eval(&info.item) {
+        if let Some(item) = info.into_well_typed_item() {
+            if let Err((error, callstack)) = wipple_interpreter_backend::eval(&item) {
                 let mut output = output.write().unwrap();
 
                 output.push(format!("Fatal error: {}", error));

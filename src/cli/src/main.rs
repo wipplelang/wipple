@@ -139,7 +139,7 @@ fn compile(options: SharedOptions) -> anyhow::Result<Option<wipple_frontend::typ
         let mut info = wipple_frontend::typecheck::typecheck(info);
         wipple_frontend::passes::all(&mut info);
 
-        info.well_typed.then(|| info.item)
+        info.into_well_typed_item()
     };
 
     let (codemap, diagnostics) = diagnostics.into_console_friendly(
