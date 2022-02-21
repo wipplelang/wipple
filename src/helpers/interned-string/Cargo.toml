@@ -1,9 +1,0 @@
-[package]
-name = "interned-string"
-version = "0.0.0"
-edition = "2021"
-
-[dependencies]
-lasso = { version = "0.6", features = ["multi-threaded", "serialize"] }
-lazy_static = "1"
-serde = { version = "1", features = ["derive"] }

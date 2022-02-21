@@ -1,13 +1,5 @@
 [workspace]
 members = [
-    "src/backends/bundled/builder",
-    "src/backends/bundled/runner",
-    "src/backends/interpreter",
-    "src/backends/js",
-    "src/cli",
-    "src/diagnostics",
-    "src/frontend",
-    "src/helpers/interned-string",
-    "src/parser",
+    "compiler",
     "website/playground/runner",
 ]

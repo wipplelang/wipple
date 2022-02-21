@@ -1,8 +1,0 @@
-[package]
-name = "wipple_bundled_backend_builder"
-version = "0.0.0"
-edition = "2021"
-
-[dependencies]
-bincode = "1"
-wipple_frontend = { path = "../../../frontend" }

@@ -13,7 +13,4 @@ default = ["console_error_panic_hook"]
 console_error_panic_hook = { version = "0.1.6", optional = true }
 serde = { version = "1.0", features = ["derive"] }
 wasm-bindgen = { version = "0.2.73", features = ["serde-serialize"] }
-wipple_diagnostics = { path = "../../../src/diagnostics" }
-wipple_frontend = { path = "../../../src/frontend" }
-wipple_interpreter_backend = { path = "../../../src/backends/interpreter" }
-wipple_parser = { path = "../../../src/parser" }
+wipple = { path = "../../../compiler" }

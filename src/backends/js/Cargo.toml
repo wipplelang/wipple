@@ -1,9 +1,0 @@
-[package]
-name = "wipple_js_backend"
-version = "0.0.0"
-edition = "2021"
-
-[dependencies]
-resast = "0.4"
-resw = "0.5"
-wipple_frontend = { path = "../../frontend" }

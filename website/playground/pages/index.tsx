@@ -1,3 +1,4 @@
+import theme from "../helpers/theme.json";
 import { useEffect, useRef, useState } from "react";
 import SplitPane from "react-split-pane";
 import Editor, { useMonaco } from "@monaco-editor/react";
@@ -5,15 +6,8 @@ import type monaco from "monaco-editor";
 import { useRefState } from "../helpers/useRefState";
 
 interface RunResult {
-    annotations: Annotation[];
     output: string[];
     diagnostics: Diagnostic[];
-}
-
-interface Annotation {
-    span: Span;
-    declaredName?: string;
-    ty: string;
 }
 
 interface Span {
@@ -132,63 +126,22 @@ const Playground = () => {
         monaco.languages.setMonarchTokensProvider("wipple", {
             tokenizer: {
                 root: [
-                    [/'/, "delimiter"],
-                    [/[()\[\]{}]/, "@brackets"],
+                    [/\[:|:\]|[()\[\]{}]/, "@brackets"],
                     [/--.*/, "comment"],
-                    [/"[^"\\]*(\\.[^"\\]*)*"/s, "string"],
-                    [/[0-9]+(\.[0-9]+)?(?=[\n\t \(\)\[\]\{\}'"]|$)/, "number"],
-                    [/[`~!@#$%^&*-_=+\\|;:,<.>/?]+(?=[\n\t \(\)\[\]\{\}'"]|$)/, "operator"],
-                    [/[^\n\t \(\)\[\]\{\}'"]+/, "identifier"],
+                    [/:|::|->|=>/, "operator"],
+                    [/['\/]/, "delimiter"],
+                    [/_|when|data|template/, "keyword"],
+                    [/-?[0-9]+(\.[0-9]+)?/, "number"],
+                    [/"[^"\\]*(?:\\.[^"\\]*)*"/s, "string"],
+                    [/[A-Z][^\r\n\t \(\)\[\]\{\}'"/]*/, "entity.name.type"],
+                    [/[^\r\n\t \(\)\[\]\{\}'"/]+/, "identifier"],
                 ],
             },
         });
 
-        monaco.editor.defineTheme("wipple", {
-            base: "vs",
-            inherit: true,
-            rules: [
-                { token: "comment", foreground: "#408080", fontStyle: "italic" },
-                { token: "string", foreground: "#40a070" },
-                { token: "number", foreground: "#40a070" },
-                { token: "operator", foreground: "#0086b3" },
-            ],
-            colors: {},
-        });
+        monaco.editor.defineTheme("wipple", theme as any);
 
         monaco.editor.setTheme("wipple");
-
-        monaco.languages.registerHoverProvider("wipple", {
-            provideHover: (model, position) => {
-                const index = model.getOffsetAt(position);
-
-                // Find the annotation with the smallest span covering the cursor
-                const annotation = result.current?.annotations
-                    .filter(
-                        (annotation) =>
-                            index >= annotation.span.start && index <= annotation.span.end
-                    )
-                    .sort((a, b) => a.span.end - a.span.start - (b.span.end - b.span.start))[0];
-
-                if (!annotation) return undefined;
-
-                const startPos = model.getPositionAt(annotation.span.start);
-                const endPos = model.getPositionAt(annotation.span.end);
-
-                const value = annotation.declaredName
-                    ? `${annotation.declaredName} :: ${annotation.ty}`
-                    : annotation.ty;
-
-                return {
-                    range: new monaco.Range(
-                        startPos.lineNumber,
-                        startPos.column,
-                        endPos.lineNumber,
-                        endPos.column
-                    ),
-                    contents: [{ value: "```wipple\n" + value + "\n```" }],
-                };
-            },
-        });
 
         const model = editor.getModel()! as monaco.editor.ITextModel;
         setModel(model);
