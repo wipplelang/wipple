@@ -1,17 +1,13 @@
 use crate::{
     diagnostics::*,
-    helpers::InternedString,
+    helpers::{ConstantId, FileId, InternedString, TraitId, TypeId, VariableId},
     parser::{self, Span},
 };
-use std::{cell::RefCell, collections::HashMap};
-
-pub type TypeId = usize; // TODO
-pub type TraitId = usize; // TODO
-pub type VariableId = usize; // TODO
-pub type FileId = usize; // TODO
-pub type DataId = usize; // TODO
-pub type FunctionId = usize; // TODO
-pub type ConstantId = usize; // TODO
+use std::{
+    cell::RefCell,
+    collections::{HashMap, HashSet},
+    rc::Rc,
+};
 
 #[derive(Debug)]
 pub struct File {
@@ -23,8 +19,7 @@ pub struct File {
 
 #[derive(Debug, Default)]
 pub struct Declarations {
-    pub datas: HashMap<DataId, Data>,
-    pub functions: HashMap<FunctionId, Function>,
+    pub types: HashMap<TypeId, Type>,
     pub constants: HashMap<ConstantId, Constant>,
 }
 
@@ -36,32 +31,33 @@ pub struct Declaration {
 
 #[derive(Debug)]
 pub enum DeclarationKind {
-    Data(Data),
+    Data(Type),
     Function(Function),
     Constant(Constant),
 }
 
 #[derive(Debug)]
-pub struct Data {
+pub struct Type {
     pub parameters: Vec<TypeParameter>,
-    pub kind: DataKind,
+    pub kind: TypeKind,
 }
 
 #[derive(Debug)]
-pub enum DataKind {
+pub enum TypeKind {
     Marker,
-    Structure(Vec<DataField>, HashMap<InternedString, usize>),
-    Enumeration(Vec<DataVariant>, HashMap<InternedString, usize>),
+    Alias(TypeAnnotation),
+    Structure(Vec<TypeField>, HashMap<InternedString, usize>),
+    Enumeration(Vec<TypeVariant>, HashMap<InternedString, usize>),
 }
 
 #[derive(Debug)]
-pub struct DataField {
-    pub ty: Type,
+pub struct TypeField {
+    pub ty: TypeAnnotation,
 }
 
 #[derive(Debug)]
-pub struct DataVariant {
-    pub values: Vec<Type>,
+pub struct TypeVariant {
+    pub values: Vec<TypeAnnotation>,
 }
 
 #[derive(Debug)]
@@ -73,7 +69,8 @@ pub struct Function {
 
 #[derive(Debug)]
 pub struct Constant {
-    pub ty: Type,
+    pub ty: TypeAnnotation,
+    pub value: Rc<RefCell<Option<Expression>>>,
 }
 
 #[derive(Debug)]
@@ -91,17 +88,18 @@ pub struct Expression {
 #[derive(Debug)]
 pub enum ExpressionKind {
     Unit,
-    Function(FunctionId),
     Constant(ConstantId),
     Variable(VariableId),
     Text(InternedString),
     Number(f64),
+    Marker(TypeId),
     Block(Block),
     Call(Box<Expression>, Box<Expression>),
-    Closure(Pattern, Box<Expression>),
+    Function(Box<Expression>),
     When(Box<Expression>, Vec<Arm>),
-    Annotate(Box<Expression>, Type),
+    Annotate(Box<Expression>, TypeAnnotation),
     Initialize(VariableId, Box<Expression>),
+    FunctionInput,
     // TODO: Instantiation
 }
 
@@ -126,16 +124,16 @@ pub enum PatternKind {
 }
 
 #[derive(Debug)]
-pub struct Type {
+pub struct TypeAnnotation {
     pub span: Span,
-    pub kind: TypeKind,
+    pub kind: TypeAnnotationKind,
 }
 
 #[derive(Debug)]
-pub enum TypeKind {
+pub enum TypeAnnotationKind {
     Placeholder,
-    Named(TypeId, Vec<Type>),
-    Function(Box<Type>, Box<Type>),
+    Named(TypeId, Vec<TypeAnnotation>),
+    Function(Box<TypeAnnotation>, Box<TypeAnnotation>),
 }
 
 #[derive(Debug)]
@@ -158,7 +156,7 @@ pub enum Path {
     Member(VariableId, Vec<parser::PathComponent>),
 }
 
-pub fn compile(file: &parser::File, diagnostics: &mut Diagnostics) -> Option<File> {
+pub fn compile(file: parser::File, diagnostics: &mut Diagnostics) -> Option<File> {
     // TODO: Handle file attributes (ie. loading prelude)
     let scope = Scope::default();
 
@@ -166,7 +164,7 @@ pub fn compile(file: &parser::File, diagnostics: &mut Diagnostics) -> Option<Fil
 
     let block = compile_block(
         file.span,
-        &file.statements,
+        file.statements,
         &scope,
         &mut declarations,
         diagnostics,
@@ -185,20 +183,49 @@ pub fn compile(file: &parser::File, diagnostics: &mut Diagnostics) -> Option<Fil
 #[derive(Default)]
 struct Scope<'a> {
     parent: Option<&'a Scope<'a>>,
-    datas: RefCell<HashMap<InternedString, DataId>>,
-    functions: RefCell<HashMap<InternedString, FunctionId>>,
-    constants: RefCell<HashMap<InternedString, ConstantId>>,
-    variables: RefCell<HashMap<InternedString, VariableId>>,
+    values: RefCell<HashMap<InternedString, ScopeValue>>,
+    used_variables: Option<RefCell<HashSet<VariableId>>>,
 }
 
-#[derive(Debug)]
-struct Variable {
-    // TODO
+#[derive(Debug, Clone, Copy)]
+enum ScopeValue {
+    Type(TypeId),
+    Constant(ConstantId),
+    Variable(VariableId),
+}
+
+impl<'a> Scope<'a> {
+    fn get(&'a self, name: InternedString) -> Option<ScopeValue> {
+        let mut parent = Some(self);
+        let mut result = None;
+        let mut used_variables = Vec::new();
+
+        while let Some(scope) = parent {
+            if let Some(u) = &scope.used_variables {
+                used_variables.push(u);
+            }
+
+            if let Some(value) = scope.values.borrow().get(&name).cloned() {
+                result = Some(value);
+                break;
+            }
+
+            parent = scope.parent;
+        }
+
+        if let Some(ScopeValue::Variable(id)) = result {
+            for u in used_variables {
+                u.borrow_mut().insert(id);
+            }
+        }
+
+        result
+    }
 }
 
 fn compile_block(
     span: Span,
-    statements: &[parser::Statement],
+    statements: Vec<parser::Statement>,
     scope: &Scope,
     declarations: &mut Declarations,
     diagnostics: &mut Diagnostics,
@@ -209,7 +236,7 @@ fn compile_block(
     };
 
     let statements = statements
-        .iter()
+        .into_iter()
         .filter_map(|statement| compile_statement(statement, &scope, declarations, diagnostics))
         .flatten()
         .collect();
@@ -218,21 +245,15 @@ fn compile_block(
 }
 
 fn compile_statement(
-    statement: &parser::Statement,
+    statement: parser::Statement,
     scope: &Scope,
     declarations: &mut Declarations,
     diagnostics: &mut Diagnostics,
 ) -> Option<Option<Expression>> {
-    let defined_as_constant = |name| {
-        scope.datas.borrow().contains_key(name)
-            || scope.functions.borrow().contains_key(name)
-            || scope.constants.borrow().contains_key(name)
-    };
+    let defined = |name| scope.values.borrow().contains_key(&name);
 
-    let defined = |name| defined_as_constant(name) || scope.variables.borrow().contains_key(name);
-
-    match &statement.kind {
-        parser::StatementKind::Data(name, data) => {
+    match statement.kind {
+        parser::StatementKind::Type(name, ty) => {
             if defined(name) {
                 diagnostics.add(Diagnostic::error(
                     format!("`{name}` is already defined"),
@@ -245,13 +266,13 @@ fn compile_statement(
                 return None;
             }
 
-            if !data.parameters.is_empty() {
+            if !ty.parameters.is_empty() {
                 diagnostics.add(Diagnostic::error(
                     "type parameters are currently unsupported",
                     vec![Note::primary(
                         Span::join(
-                            data.parameters.first().unwrap().span,
-                            data.parameters.last().unwrap().span,
+                            ty.parameters.first().unwrap().span,
+                            ty.parameters.last().unwrap().span,
                         ),
                         "try removing these parameters",
                     )],
@@ -260,19 +281,22 @@ fn compile_statement(
                 return None;
             }
 
-            let id = DataId::default(); // FIXME: Generate fresh ID
-            scope.datas.borrow_mut().insert(*name, id);
+            let id = TypeId::new();
+            scope.values.borrow_mut().insert(name, ScopeValue::Type(id));
 
-            let data = Data {
+            let ty = Type {
                 parameters: Vec::new(),
-                kind: match &data.kind {
-                    parser::DataKind::Marker => DataKind::Marker,
-                    parser::DataKind::Structure(fields) => DataKind::Structure(
+                kind: match &ty.kind {
+                    parser::TypeKind::Marker => TypeKind::Marker,
+                    parser::TypeKind::Alias(alias) => {
+                        TypeKind::Alias(compile_type_annotation(alias, scope, diagnostics)?)
+                    }
+                    parser::TypeKind::Structure(fields) => TypeKind::Structure(
                         fields
                             .iter()
                             .map(|field| {
-                                Some(DataField {
-                                    ty: compile_type(&field.ty, scope, diagnostics)?,
+                                Some(TypeField {
+                                    ty: compile_type_annotation(&field.ty, scope, diagnostics)?,
                                 })
                             })
                             .collect::<Option<_>>()?,
@@ -282,15 +306,15 @@ fn compile_statement(
                             .map(|(index, field)| (field.name, index))
                             .collect(),
                     ),
-                    parser::DataKind::Enumeration(variants) => DataKind::Enumeration(
+                    parser::TypeKind::Enumeration(variants) => TypeKind::Enumeration(
                         variants
                             .iter()
                             .map(|variant| {
-                                Some(DataVariant {
+                                Some(TypeVariant {
                                     values: variant
                                         .values
                                         .iter()
-                                        .map(|ty| compile_type(ty, scope, diagnostics))
+                                        .map(|ty| compile_type_annotation(ty, scope, diagnostics))
                                         .collect::<Option<_>>()?,
                                 })
                             })
@@ -304,28 +328,71 @@ fn compile_statement(
                 },
             };
 
-            declarations.datas.insert(id, data);
+            declarations.types.insert(id, ty);
 
             Some(None)
         }
-        parser::StatementKind::Function(_, _) => None, // TODO
-        parser::StatementKind::Template(_, _) => None, // TODO
-        parser::StatementKind::Constant(_, _) => None, // TODO
-        parser::StatementKind::Assign(pattern, expr) => {
-            match &pattern.kind {
-                parser::PatternKind::Path(path) => {
-                    if !path.components.is_empty() {
-                        diagnostics.add(Diagnostic::error(
-                            "cannot assign to a path",
-                            vec![Note::primary(expr.span, "try assigning to a name instead")],
-                        ));
+        parser::StatementKind::Trait(_, _) => None, // TODO
+        parser::StatementKind::Constant(name, declaration) => {
+            if defined(name) {
+                diagnostics.add(Diagnostic::error(
+                    format!("`{name}` is already defined"),
+                    vec![Note::primary(
+                        statement.span,
+                        "try assigning to a different name",
+                    )],
+                ));
 
-                        return None;
-                    }
+                return None;
+            }
 
-                    let name = path.base;
+            if !declaration.parameters.is_empty() {
+                diagnostics.add(Diagnostic::error(
+                    "type parameters are currently unsupported",
+                    vec![Note::primary(
+                        Span::join(
+                            declaration.parameters.first().unwrap().span,
+                            declaration.parameters.last().unwrap().span,
+                        ),
+                        "try removing these parameters",
+                    )],
+                ));
 
-                    if defined_as_constant(&name) {
+                return None;
+            }
+
+            let constant = Constant {
+                ty: compile_type_annotation(&declaration.ty, scope, diagnostics)?,
+                value: Default::default(),
+            };
+
+            let id = ConstantId::new();
+            scope
+                .values
+                .borrow_mut()
+                .insert(name, ScopeValue::Constant(id));
+
+            declarations.constants.insert(id, constant);
+
+            Some(None)
+        }
+        parser::StatementKind::Implementation(_) => None, // TODO
+        parser::StatementKind::Assign(pattern, expr) => match &pattern.kind {
+            parser::PatternKind::Path(path) => {
+                if !path.components.is_empty() {
+                    diagnostics.add(Diagnostic::error(
+                        "cannot assign to a path",
+                        vec![Note::primary(expr.span, "try assigning to a name instead")],
+                    ));
+
+                    return None;
+                }
+
+                let name = path.base;
+                let mut associated_constant = None;
+
+                match scope.values.borrow().get(&name).cloned() {
+                    Some(ScopeValue::Type(_)) => {
                         diagnostics.add(Diagnostic::error(
                             format!("`{name}` is already defined"),
                             vec![Note::primary(
@@ -336,22 +403,56 @@ fn compile_statement(
 
                         return None;
                     }
+                    Some(ScopeValue::Constant(id)) => {
+                        let c = declarations.constants.get(&id).unwrap().value.clone();
 
-                    let value = compile_expr(expr, scope, declarations, diagnostics)?;
+                        if let Some(associated_constant) = c.borrow().as_ref() {
+                            diagnostics.add(Diagnostic::error(
+                                format!("constant `{name}` is already defined"),
+                                vec![
+                                    Note::primary(
+                                        statement.span,
+                                        "cannot assign to a constant more than once",
+                                    ),
+                                    Note::secondary(
+                                        associated_constant.span,
+                                        "first initialization",
+                                    ),
+                                ],
+                            ));
 
-                    let id = VariableId::default(); // FIXME: Generate fresh ID
-                    scope.variables.borrow_mut().insert(name, id);
+                            return None;
+                        }
 
-                    Some(Some(Expression {
-                        span: expr.span,
+                        associated_constant = Some(c);
+                    }
+                    _ => {}
+                }
+
+                let expr_span = expr.span;
+
+                let value = compile_expr(expr, scope, declarations, diagnostics)?;
+
+                Some(if let Some(associated_constant) = associated_constant {
+                    associated_constant.replace(Some(value));
+                    None
+                } else {
+                    let id = VariableId::new();
+                    scope
+                        .values
+                        .borrow_mut()
+                        .insert(name, ScopeValue::Variable(id));
+
+                    Some(Expression {
+                        span: expr_span,
                         kind: ExpressionKind::Initialize(id, Box::new(value)),
-                    }))
-                }
-                parser::PatternKind::Wildcard => {
-                    compile_expr(expr, scope, declarations, diagnostics).map(Some)
-                }
+                    })
+                })
             }
-        }
+            parser::PatternKind::Wildcard => {
+                compile_expr(expr, scope, declarations, diagnostics).map(Some)
+            }
+        },
         parser::StatementKind::Expression(expr) => {
             compile_expr(expr, scope, declarations, diagnostics).map(Some)
         }
@@ -359,15 +460,16 @@ fn compile_statement(
 }
 
 fn compile_expr(
-    expr: &parser::Expression,
+    expr: parser::Expression,
     scope: &Scope,
     declarations: &mut Declarations,
     diagnostics: &mut Diagnostics,
 ) -> Option<Expression> {
-    let kind = match &expr.kind {
+    let kind = match expr.kind {
         parser::ExpressionKind::Unit => ExpressionKind::Unit,
-        parser::ExpressionKind::Text(text) => ExpressionKind::Text(*text),
-        parser::ExpressionKind::Number(number) => ExpressionKind::Number(*number),
+        parser::ExpressionKind::Text(text) => ExpressionKind::Text(text),
+        parser::ExpressionKind::Number(number) => ExpressionKind::Number(number),
+        parser::ExpressionKind::FunctionInput => ExpressionKind::FunctionInput,
         parser::ExpressionKind::Path(path) => {
             if !path.components.is_empty() {
                 diagnostics.add(Diagnostic::error(
@@ -380,7 +482,7 @@ fn compile_expr(
 
             let name = path.base;
 
-            match resolve_value(expr.span, name, scope, diagnostics)? {
+            match resolve_value(expr.span, name, scope, declarations, diagnostics)? {
                 Some(value) => value,
                 None => {
                     diagnostics.add(Diagnostic::error(
@@ -404,7 +506,7 @@ fn compile_expr(
         }
         parser::ExpressionKind::Call(function, input) => {
             if let parser::ExpressionKind::Path(path) = &function.kind {
-                if let Some(_ty) = scope.datas.borrow().get(&path.base) {
+                if let Some(ScopeValue::Type(_ty)) = scope.values.borrow().get(&path.base) {
                     // TODO Handle instantiation (also for enum variants)
 
                     diagnostics.add(Diagnostic::error(
@@ -416,16 +518,52 @@ fn compile_expr(
                 }
             }
 
-            let function = compile_expr(function, scope, declarations, diagnostics)?;
-            let input = compile_expr(input, scope, declarations, diagnostics)?;
+            let function = compile_expr(*function, scope, declarations, diagnostics)?;
+            let input = compile_expr(*input, scope, declarations, diagnostics)?;
 
             ExpressionKind::Call(Box::new(function), Box::new(input))
         }
-        parser::ExpressionKind::Closure(input, body) => {
-            let input = compile_pattern(input, scope, diagnostics)?;
-            let body = compile_expr(body, scope, declarations, diagnostics)?;
+        parser::ExpressionKind::Function(input, body) => {
+            let scope = Scope {
+                parent: Some(scope),
+                used_variables: Some(Default::default()),
+                ..Default::default()
+            };
 
-            ExpressionKind::Closure(input, Box::new(body))
+            let mut block = Block {
+                span: body.span,
+                statements: Vec::with_capacity(2),
+            };
+
+            // Desugar function input pattern matching
+            let input_span = input.span;
+            if let Some(initialization) = compile_statement(
+                parser::Statement {
+                    span: input_span,
+                    kind: parser::StatementKind::Assign(
+                        input,
+                        parser::Expression {
+                            span: input_span,
+                            kind: parser::ExpressionKind::FunctionInput,
+                        },
+                    ),
+                },
+                &scope,
+                declarations,
+                diagnostics,
+            )? {
+                block.statements.push(initialization)
+            }
+
+            let body = compile_expr(*body, &scope, declarations, diagnostics)?;
+            block.statements.push(body);
+
+            block.statements.shrink_to_fit();
+
+            ExpressionKind::Function(Box::new(Expression {
+                span: expr.span,
+                kind: ExpressionKind::Block(block),
+            }))
         }
         parser::ExpressionKind::When(_, _) => return None, // TODO
         parser::ExpressionKind::Annotate(_, _) => return None, // TODO
@@ -437,10 +575,14 @@ fn compile_expr(
     })
 }
 
-fn compile_type(ty: &parser::Type, scope: &Scope, diagnostics: &mut Diagnostics) -> Option<Type> {
+fn compile_type_annotation(
+    ty: &parser::TypeAnnotation,
+    scope: &Scope,
+    diagnostics: &mut Diagnostics,
+) -> Option<TypeAnnotation> {
     let kind = match &ty.kind {
-        parser::TypeKind::Placeholder => TypeKind::Placeholder,
-        parser::TypeKind::Path(path, parameters) => {
+        parser::TypeAnnotationKind::Placeholder => TypeAnnotationKind::Placeholder,
+        parser::TypeAnnotationKind::Path(path, parameters) => {
             if !path.components.is_empty() {
                 diagnostics.add(Diagnostic::error(
                     "subpaths are currently unsupported",
@@ -466,37 +608,19 @@ fn compile_type(ty: &parser::Type, scope: &Scope, diagnostics: &mut Diagnostics)
 
             let parameters = parameters
                 .iter()
-                .map(|parameter| compile_type(parameter, scope, diagnostics))
+                .map(|parameter| compile_type_annotation(parameter, scope, diagnostics))
                 .collect::<Option<_>>()?;
 
-            TypeKind::Named(ty, parameters)
+            TypeAnnotationKind::Named(ty, parameters)
         }
-        parser::TypeKind::Function(input, output) => TypeKind::Function(
-            Box::new(compile_type(input, scope, diagnostics)?),
-            Box::new(compile_type(output, scope, diagnostics)?),
+        parser::TypeAnnotationKind::Function(input, output) => TypeAnnotationKind::Function(
+            Box::new(compile_type_annotation(input, scope, diagnostics)?),
+            Box::new(compile_type_annotation(output, scope, diagnostics)?),
         ),
     };
 
-    Some(Type {
+    Some(TypeAnnotation {
         span: ty.span,
-        kind,
-    })
-}
-
-fn compile_pattern(
-    pattern: &parser::Pattern,
-    scope: &Scope,
-    diagnostics: &mut Diagnostics,
-) -> Option<Pattern> {
-    let kind = match &pattern.kind {
-        parser::PatternKind::Path(path) => {
-            todo!();
-        }
-        parser::PatternKind::Wildcard => PatternKind::Wildcard,
-    };
-
-    Some(Pattern {
-        span: pattern.span,
         kind,
     })
 }
@@ -505,46 +629,60 @@ fn resolve_value(
     span: Span,
     name: InternedString,
     scope: &Scope,
+    declarations: &mut Declarations,
     diagnostics: &mut Diagnostics,
 ) -> Option<Option<ExpressionKind>> {
-    let mut parent = Some(scope);
-    let mut result = None;
-    while let Some(scope) = parent {
-        if scope.datas.borrow().get(&name).is_some() {
-            diagnostics.add(Diagnostic::error(
-                "cannot use data constructor as value",
-                vec![Note::primary(span, "try instantiating the data structure")],
-            ));
+    Some(match scope.get(name) {
+        Some(ScopeValue::Type(id)) => {
+            fn resolve(
+                span: Span,
+                id: TypeId,
+                declarations: &mut Declarations,
+                diagnostics: &mut Diagnostics,
+            ) -> Option<Option<ExpressionKind>> {
+                Some(match declarations.types.get(&id).unwrap().kind {
+                    TypeKind::Marker => Some(ExpressionKind::Marker(id)),
+                    TypeKind::Alias(TypeAnnotation {
+                        kind: TypeAnnotationKind::Named(alias_id, _),
+                        ..
+                    }) => {
+                        // TODO: Maybe perform this check earlier?
+                        if alias_id == id {
+                            diagnostics.add(Diagnostic::error(
+                                "cannot instantiate recursive type",
+                                vec![Note::primary(
+                                    span,
+                                    "this type references itself and cannot be constructed",
+                                )],
+                            ));
 
-            return None;
-        } else if let Some(function) = scope.functions.borrow().get(&name) {
-            result = Some(ExpressionKind::Function(*function));
-            break;
-        } else if let Some(constant) = scope.constants.borrow().get(&name) {
-            result = Some(ExpressionKind::Constant(*constant));
-            break;
-        } else if let Some(variable) = scope.variables.borrow().get(&name) {
-            result = Some(ExpressionKind::Variable(*variable));
-            break;
+                            return None;
+                        } else {
+                            resolve(span, alias_id, declarations, diagnostics)?
+                        }
+                    }
+                    _ => {
+                        diagnostics.add(Diagnostic::error(
+                            "cannot use data constructor as value",
+                            vec![Note::primary(span, "try instantiating the data structure")],
+                        ));
+
+                        return None;
+                    }
+                })
+            }
+
+            resolve(span, id, declarations, diagnostics)?
         }
-
-        parent = scope.parent;
-    }
-
-    Some(result)
+        Some(ScopeValue::Constant(id)) => Some(ExpressionKind::Constant(id)),
+        Some(ScopeValue::Variable(id)) => Some(ExpressionKind::Variable(id)),
+        None => None,
+    })
 }
 
-fn resolve_type(name: InternedString, scope: &Scope) -> Option<usize> {
-    let mut parent = Some(scope);
-    let mut result = None;
-    while let Some(scope) = parent {
-        if let Some(ty) = scope.datas.borrow().get(&name).copied() {
-            result = Some(ty);
-            break;
-        }
-
-        parent = scope.parent;
-    }
-
-    result
+fn resolve_type(name: InternedString, scope: &Scope) -> Option<TypeId> {
+    scope.get(name).and_then(|value| match value {
+        ScopeValue::Type(id) => Some(id),
+        _ => None,
+    })
 }

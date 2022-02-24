@@ -24,12 +24,20 @@ pub struct Statement {
 
 #[derive(Debug)]
 pub enum StatementKind {
-    Data(InternedString, DataDeclaration),
-    Function(InternedString, FunctionDeclaration),
-    Template(InternedString, TemplateDeclaration),
+    Type(InternedString, TypeDeclaration),
+    Trait(InternedString, TraitDeclaration),
     Constant(InternedString, ConstantDeclaration),
+    Implementation(Implementation),
     Assign(Pattern, Expression),
     Expression(Expression),
+}
+
+#[derive(Debug)]
+pub struct Implementation {
+    pub parameters: Vec<TypeParameter>,
+    pub trait_name: Path,
+    pub implementing_ty: TypeAnnotation,
+    pub body: Expression,
 }
 
 #[derive(Debug)]
@@ -41,14 +49,15 @@ pub struct Expression {
 #[derive(Debug)]
 pub enum ExpressionKind {
     Unit,
-    Path(Path),
     Text(InternedString),
     Number(f64),
+    FunctionInput,
+    Path(Path),
     Block(Vec<Statement>),
     Call(Box<Expression>, Box<Expression>),
-    Closure(Pattern, Box<Expression>),
+    Function(Pattern, Box<Expression>),
     When(Box<Expression>, Vec<Arm>),
-    Annotate(Box<Expression>, Type),
+    Annotate(Box<Expression>, TypeAnnotation),
 }
 
 #[derive(Debug)]
@@ -77,16 +86,16 @@ pub struct Arm {
 }
 
 #[derive(Debug)]
-pub struct Type {
+pub struct TypeAnnotation {
     pub span: Span,
-    pub kind: TypeKind,
+    pub kind: TypeAnnotationKind,
 }
 
 #[derive(Debug)]
-pub enum TypeKind {
+pub enum TypeAnnotationKind {
     Placeholder,
-    Path(Path, Vec<Type>),
-    Function(Box<Type>, Box<Type>),
+    Path(Path, Vec<TypeAnnotation>),
+    Function(Box<TypeAnnotation>, Box<TypeAnnotation>),
 }
 
 #[derive(Debug)]
@@ -114,14 +123,21 @@ pub enum PatternKind {
 }
 
 #[derive(Debug)]
-pub struct DataDeclaration {
+pub struct TypeDeclaration {
     pub parameters: Vec<TypeParameter>,
-    pub kind: DataKind,
+    pub kind: TypeKind,
 }
 
 #[derive(Debug)]
-pub enum DataKind {
+pub struct TraitDeclaration {
+    pub parameters: Vec<TypeParameter>,
+    pub ty: TypeAnnotation,
+}
+
+#[derive(Debug)]
+pub enum TypeKind {
     Marker,
+    Alias(TypeAnnotation),
     Structure(Vec<DataField>),
     Enumeration(Vec<DataVariant>),
 }
@@ -129,31 +145,19 @@ pub enum DataKind {
 #[derive(Debug)]
 pub struct DataField {
     pub name: InternedString,
-    pub ty: Type,
+    pub ty: TypeAnnotation,
 }
 
 #[derive(Debug)]
 pub struct DataVariant {
     pub name: InternedString,
-    pub values: Vec<Type>,
-}
-
-#[derive(Debug)]
-pub struct FunctionDeclaration {
-    pub parameters: Vec<TypeParameter>,
-    pub input: Pattern,
-    pub body: Expression,
-}
-
-#[derive(Debug)]
-pub struct TemplateDeclaration {
-    pub parameters: Vec<InternedString>,
-    pub body: Expression,
+    pub values: Vec<TypeAnnotation>,
 }
 
 #[derive(Debug)]
 pub struct ConstantDeclaration {
-    pub ty: Type,
+    pub parameters: Vec<TypeParameter>,
+    pub ty: TypeAnnotation,
 }
 
 pub use grammar::file;
@@ -291,7 +295,7 @@ peg::parser! {
             {
                 Expression {
                     span: Span::join(input.span, body.span),
-                    kind: ExpressionKind::Closure(input, Box::new(body)),
+                    kind: ExpressionKind::Function(input, Box::new(body)),
                 }
             }
             / expected!("function")
@@ -348,21 +352,21 @@ peg::parser! {
             }
             / expected!("type annotation")
 
-        rule r#type() -> Type
+        rule r#type() -> TypeAnnotation
             = placeholder_type()
-            / path_type()
             / function_type()
+            / path_type()
             / grouped_type()
             / expected!("type")
 
-        rule unparameterized_path_type() -> Type
+        rule unparameterized_path_type() -> TypeAnnotation
             = path:path()
             {
                 let (path, span) = path;
 
-                Type {
+                TypeAnnotation {
                     span,
-                    kind: TypeKind::Path(path, Vec::new()),
+                    kind: TypeAnnotationKind::Path(path, Vec::new()),
                 }
             }
             / placeholder_type()
@@ -370,32 +374,32 @@ peg::parser! {
             / grouped_type()
             / expected!("type")
 
-        rule non_function_type() -> Type
+        rule non_function_type() -> TypeAnnotation
             = placeholder_type()
             / path_type()
             / grouped_type()
             / expected!("type")
 
-        rule placeholder_type() -> Type
+        rule placeholder_type() -> TypeAnnotation
             = [(Token::Underscore, span)]
             {
-                Type {
+                TypeAnnotation {
                     span,
-                    kind: TypeKind::Placeholder,
+                    kind: TypeAnnotationKind::Placeholder,
                 }
             }
             / expected!("placeholder type")
 
-        rule path_type() -> Type
+        rule path_type() -> TypeAnnotation
             = path:path()
               parameters:(
                   path:path()
                   {
                       let (path, span) = path;
 
-                      Type {
+                      TypeAnnotation {
                           span,
-                          kind: TypeKind::Path(path, Vec::new())
+                          kind: TypeAnnotationKind::Path(path, Vec::new())
                       }
                   }
                   / parameters:unparameterized_path_type()
@@ -403,35 +407,35 @@ peg::parser! {
             {
                 let (path, path_span) = path;
 
-                Type {
+                TypeAnnotation {
                     span: Span::join(path_span, parameters.last().map(|ty| ty.span).unwrap_or(path_span)),
-                    kind: TypeKind::Path(path, parameters),
+                    kind: TypeAnnotationKind::Path(path, parameters),
                 }
             }
             / expected!("named type")
 
-        rule function_type() -> Type
+        rule function_type() -> TypeAnnotation
             = input:non_function_type()
               _
               [(Token::Arrow, _)]
               _
               output:r#type()
             {
-                Type {
+                TypeAnnotation {
                     span: Span::join(input.span, output.span),
-                    kind: TypeKind::Function(Box::new(input), Box::new(output)),
+                    kind: TypeAnnotationKind::Function(Box::new(input), Box::new(output)),
                 }
             }
             / expected!("function type")
 
-        rule grouped_type() -> Type
+        rule grouped_type() -> TypeAnnotation
             = [(Token::LeftParen, left_paren_span)]
               _
               ty:r#type()
               _
               [(Token::RightParen, right_paren_span)]
             {
-                Type {
+                TypeAnnotation {
                     span: Span::join(left_paren_span, right_paren_span),
                     kind: ty.kind,
                 }
@@ -456,38 +460,59 @@ peg::parser! {
             / expected!("statements")
 
         rule statement() -> Statement
-            = data_statement()
-            / template_statement()
-            / function_statement()
+            = type_alias_statement()
+            / type_statement()
+            / trait_statement()
             / constant_statement()
+            / implementation_statement()
             / assign_statement()
             / expression_statement()
             / expected!("statement")
 
-        rule data_statement() -> Statement
+        rule type_alias_statement() -> Statement
             = [(Token::Name(name), name_span)]
               [(Token::Colon, _)]
               parameters:type_parameter_introduction()?
-              [(Token::Data, data_span)]
+              [(Token::Type, _)]
+              ty:r#type()
+            {
+                Statement {
+                    span: Span::join(name_span, ty.span),
+                    kind: StatementKind::Type(
+                        name,
+                        TypeDeclaration {
+                            parameters: parameters.unwrap_or_default(),
+                            kind: TypeKind::Alias(ty),
+                        }
+                    ),
+                }
+            }
+            / expected!("type declaration")
+
+        rule type_statement() -> Statement
+            = [(Token::Name(name), name_span)]
+              [(Token::Colon, _)]
+              parameters:type_parameter_introduction()?
+              [(Token::Type, type_span)]
               kind:(
                   [(Token::Indent, _)]
-                  kind:data_kind()
+                  kind:type_kind()
                   [(Token::Dedent, dedent_span)]
                   { (kind, dedent_span) }
               )?
             {
                 Statement {
-                    span: Span::join(name_span, kind.as_ref().map(|(_, span)| *span).unwrap_or(data_span)),
-                    kind: StatementKind::Data(
+                    span: Span::join(name_span, kind.as_ref().map(|(_, span)| *span).unwrap_or(type_span)),
+                    kind: StatementKind::Type(
                         name,
-                        DataDeclaration {
+                        TypeDeclaration {
                             parameters: parameters.unwrap_or_default(),
-                            kind: kind.map(|(kind, _)| kind).unwrap_or(DataKind::Marker),
+                            kind: kind.map(|(kind, _)| kind).unwrap_or(TypeKind::Marker),
                         }
                     ),
                 }
             }
-            / expected!("data declaration")
+            / expected!("type declaration")
 
         rule type_parameter_introduction() -> Vec<TypeParameter>
             = parameters:type_parameter()+ [(Token::DoubleArrow, _)]
@@ -516,14 +541,14 @@ peg::parser! {
             }
             / expected!("type parameter")
 
-        rule data_kind() -> DataKind
-            = _ fields:(data_structure_field() ++ ([(Token::LineBreak, _)]+)) _
-              { DataKind::Structure(fields) }
-            / _ variants:(data_structure_variant() ++ ([(Token::LineBreak, _)]+)) _
-              { DataKind::Enumeration(variants) }
+        rule type_kind() -> TypeKind
+            = _ fields:(type_field() ++ ([(Token::LineBreak, _)]+)) _
+              { TypeKind::Structure(fields) }
+            / _ variants:(type_variant() ++ ([(Token::LineBreak, _)]+)) _
+              { TypeKind::Enumeration(variants) }
             / expected!("data structure fields or variants")
 
-        rule data_structure_field() -> DataField
+        rule type_field() -> DataField
             = [(Token::Name(name), _)] [(Token::DoubleColon, _)] ty:r#type()
             {
                 DataField {
@@ -533,7 +558,7 @@ peg::parser! {
             }
             / expected!("data structure field")
 
-        rule data_structure_variant() -> DataVariant
+        rule type_variant() -> DataVariant
             = [(Token::Name(name), _)] values:unparameterized_path_type()*
             {
                 DataVariant {
@@ -543,63 +568,62 @@ peg::parser! {
             }
             / expected!("data structure variant")
 
-        rule template_statement() -> Statement
+        rule trait_statement() -> Statement
             = [(Token::Name(name), name_span)]
               [(Token::Colon, _)]
-              [(Token::Template, _)]
-              parameters:(([(Token::Name(name), _)] { name }) ++ _)
-              _
-              [(Token::Arrow, _)]
-              _
-              body:compound_expression()
+              [(Token::Trait, _)]
+              [(Token::LeftParen, _)]
+              parameters:type_parameter_introduction()
+              ty:r#type()
+              [(Token::RightParen, right_paren_span)]
             {
                 Statement {
-                    span: Span::join(name_span, body.span),
-                    kind: StatementKind::Template(
+                    span: Span::join(name_span, right_paren_span),
+                    kind: StatementKind::Trait(
                         name,
-                        TemplateDeclaration {
-                            parameters,
-                            body,
-                        }
+                        TraitDeclaration { parameters, ty }
                     ),
                 }
-          }
-          / expected!("function declaration")
-
-        rule function_statement() -> Statement
-            = [(Token::Name(name), name_span)]
-            [(Token::Colon, _)]
-            parameters:type_parameter_introduction()?
-            input:pattern()
-            _
-            [(Token::Arrow, _)]
-            _
-            body:compound_expression()
-          {
-              Statement {
-                  span: Span::join(name_span, body.span),
-                  kind: StatementKind::Function(
-                      name,
-                      FunctionDeclaration {
-                          parameters: parameters.unwrap_or_default(),
-                          input,
-                          body,
-                      }
-                  ),
-              }
-          }
-          / expected!("function declaration")
+            }
+            / expected!("trait declaration")
 
         rule constant_statement() -> Statement
           = [(Token::Name(name), name_span)]
             [(Token::DoubleColon, _)]
+            parameters:type_parameter_introduction()?
             ty:r#type()
             {
                 Statement {
                     span: Span::join(name_span, ty.span),
-                    kind: StatementKind::Constant(name, ConstantDeclaration { ty }),
+                    kind: StatementKind::Constant(
+                        name,
+                        ConstantDeclaration {
+                            parameters: parameters.unwrap_or_default(),
+                            ty,
+                        },
+                    ),
                 }
             }
+            / expected!("constant declaration")
+
+        rule implementation_statement() -> Statement
+            = parameters:type_parameter_introduction()?
+              trait_name:path()
+              implementing_ty:r#type()
+              [(Token::Colon, _)]
+              body:compound_expression()
+              {
+                  Statement {
+                      span: Span::join(parameters.as_ref().map(|p| p.first().unwrap().span).unwrap_or(implementing_ty.span), body.span),
+                      kind: StatementKind::Implementation(Implementation {
+                          parameters: parameters.unwrap_or_default(),
+                          trait_name: trait_name.0,
+                          implementing_ty,
+                          body,
+                      }),
+                  }
+              }
+              / expected!("trait implementation declaration")
 
         rule assign_statement() -> Statement
             = pattern:pattern() _ [(Token::Colon, _)] _ value:compound_expression()

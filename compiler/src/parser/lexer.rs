@@ -52,11 +52,11 @@ pub enum Token {
     #[token("when")]
     When,
 
-    #[token("data")]
-    Data,
+    #[token("type")]
+    Type,
 
-    #[token("template")]
-    Template,
+    #[token("trait")]
+    Trait,
 
     #[regex(r#"[^\r\n\t \(\)\[\]\{\}'"/]+"#, |lex| InternedString::new(lex.slice()))]
     Name(InternedString),
@@ -108,10 +108,10 @@ impl fmt::Display for Token {
             Token::Quote => write!(f, "`'`"),
             Token::Slash => write!(f, "`/`"),
             Token::When => write!(f, "`when`"),
-            Token::Data => write!(f, "`data`"),
-            Token::Template => write!(f, "`template`"),
-            Token::Name(_) => write!(f, "identifier"),
-            Token::Text(_) => write!(f, "string"),
+            Token::Type => write!(f, "`type`"),
+            Token::Trait => write!(f, "`trait`"),
+            Token::Name(_) => write!(f, "name"),
+            Token::Text(_) => write!(f, "text"),
             Token::Number(_) => write!(f, "number"),
             Token::LineBreak => write!(f, "line break"),
             Token::Indent => write!(f, "indent"),
@@ -127,30 +127,46 @@ fn process_indentation(
     tokens: impl Iterator<Item = (Token, logos::Span)>,
 ) -> Vec<(Token, logos::Span)> {
     let mut current_indent_level = 0usize;
+    let mut current_paren_level = 0usize;
     let eof_span = code.len()..code.len();
 
     let mut result = Vec::new();
     for (token, span) in tokens {
         match token {
             Token::_IndentedLineBreak(indent_level) => {
-                match indent_level.cmp(&current_indent_level) {
-                    Ordering::Greater => {
-                        for _ in 0..(indent_level - current_indent_level) {
-                            result.push((Token::Indent, span.clone()));
+                if current_paren_level == 0 {
+                    match indent_level.cmp(&current_indent_level) {
+                        Ordering::Greater => {
+                            for _ in 0..(indent_level - current_indent_level) {
+                                result.push((Token::Indent, span.clone()));
+                            }
                         }
-                    }
-                    Ordering::Less => {
-                        for _ in 0..(current_indent_level - indent_level) {
-                            result.push((Token::Dedent, span.clone()));
+                        Ordering::Less => {
+                            for _ in 0..(current_indent_level - indent_level) {
+                                result.push((Token::Dedent, span.clone()));
+                            }
                         }
+                        Ordering::Equal => {}
                     }
-                    Ordering::Equal => {}
+
+                    current_indent_level = indent_level;
                 }
 
-                current_indent_level = indent_level;
                 result.push((Token::LineBreak, span));
             }
-            _ => result.push((token, span)),
+            _ => {
+                match token {
+                    Token::LeftParen => {
+                        current_paren_level += 1;
+                    }
+                    Token::RightParen => {
+                        current_paren_level = current_paren_level.saturating_sub(1);
+                    }
+                    _ => {}
+                }
+
+                result.push((token, span));
+            }
         }
     }
 

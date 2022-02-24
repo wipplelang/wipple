@@ -12,6 +12,8 @@ pub fn run(code: &str) -> JsValue {
     #[cfg(feature = "console_error_panic_hook")]
     console_error_panic_hook::set_once();
 
+    wipple::helpers::reset_ids();
+
     let (output, diagnostics) = wipple::compile("playground", code);
 
     let result = Result {
