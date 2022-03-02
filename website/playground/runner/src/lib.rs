@@ -84,14 +84,14 @@ fn annotations(file: &mut wipple::compile::File) -> Vec<Annotation> {
     for decl in declarations.variables.values() {
         annotations.push(Annotation {
             span: decl.span,
-            value: format!("{} :: {}", decl.name, format_ty!(&decl.ty)),
+            value: format!("{} :: {}", decl.name, format_ty!(&decl.value)),
         });
     }
 
     for decl in declarations.constants.values() {
         annotations.push(Annotation {
             span: decl.span,
-            value: format!("{} :: {}", decl.name, format_ty!(&decl.ty)),
+            value: format!("{} :: {}", decl.name, format_ty!(&decl.value.ty)),
         });
     }
 

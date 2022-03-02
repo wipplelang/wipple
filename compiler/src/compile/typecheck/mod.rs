@@ -10,7 +10,7 @@ use crate::{
 };
 use engine::*;
 use lazy_static::lazy_static;
-use std::{collections::HashMap, hash::Hash};
+use std::collections::HashMap;
 
 #[derive(Debug)]
 pub struct File {
@@ -21,14 +21,14 @@ pub struct File {
     pub declarations: Declarations,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Expression {
     pub span: Span,
     pub ty: Type,
     pub kind: ExpressionKind,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum ExpressionKind {
     Error,
     Marker,
@@ -44,45 +44,45 @@ pub enum ExpressionKind {
     FunctionInput,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Arm {
     pub span: Span,
     pub pattern: Pattern,
     pub body: Expression,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Pattern {
     pub span: Span,
     pub kind: PatternKind,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum PatternKind {
     Binding(VariableId),
     // TODO: Support complex paths (data fields, variants)
     Wildcard,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct TypeAnnotation {
     pub span: Span,
     pub kind: TypeAnnotationKind,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum TypeAnnotationKind {
     Placeholder,
     Named(TypeId, Vec<TypeAnnotation>),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct TypeParameter {
     pub span: Span,
     pub kind: TypeParameterKind,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum TypeParameterKind {
     Named(TypeId),
     Constrained(Vec<TraitId>, TypeId),
@@ -92,7 +92,7 @@ pub enum TypeParameterKind {
 pub struct Declarations {
     pub types: HashMap<TypeId, Declaration<()>>,
     pub traits: HashMap<TraitId, Declaration<()>>,
-    pub constants: HashMap<ConstantId, Declaration<Type>>,
+    pub constants: HashMap<ConstantId, Declaration<Expression>>,
     pub variables: HashMap<VariableId, Declaration<Type>>,
 }
 
@@ -100,7 +100,7 @@ pub struct Declarations {
 pub struct Declaration<T> {
     pub name: InternedString,
     pub span: Span,
-    pub ty: T,
+    pub value: T,
 }
 
 impl File {
@@ -150,7 +150,31 @@ pub fn typecheck(file: &lower::File, diagnostics: &mut Diagnostics) -> File {
         diagnostics,
     };
 
+    for (id, decl) in &typechecker.declarations.constants {
+        let expr = typechecker.typecheck_expr(decl.value.value.borrow().as_ref().unwrap());
+        typechecker.constants.insert(*id, expr);
+    }
+
     let (_, block) = typechecker.typecheck_block(&file.block);
+
+    // Only report missing types if there aren't already type errors
+    let no_type_errors = typechecker.well_typed;
+
+    let mut ensure_well_typed = |expr: &mut Expression| {
+        expr.ty.apply(&typechecker.ctx);
+
+        if no_type_errors && !expr.ty.vars().is_empty() {
+            typechecker.diagnostics.add(Diagnostic::error(
+                "cannot determine the type of this expression",
+                vec![Note::primary(
+                    expr.span,
+                    "try annotating the type with '::'",
+                )],
+            ));
+
+            typechecker.well_typed = false;
+        }
+    };
 
     let declarations = Declarations {
         types: file
@@ -161,7 +185,7 @@ pub fn typecheck(file: &lower::File, diagnostics: &mut Diagnostics) -> File {
                 let decl = Declaration {
                     name: decl.name,
                     span: decl.span,
-                    ty: (),
+                    value: (),
                 };
 
                 (id, decl)
@@ -175,7 +199,7 @@ pub fn typecheck(file: &lower::File, diagnostics: &mut Diagnostics) -> File {
                 let decl = Declaration {
                     name: decl.name,
                     span: decl.span,
-                    ty: (),
+                    value: (),
                 };
 
                 (id, decl)
@@ -186,10 +210,13 @@ pub fn typecheck(file: &lower::File, diagnostics: &mut Diagnostics) -> File {
             .constants
             .iter()
             .map(|(&id, decl)| {
+                let mut expr = typechecker.constants.remove(&id).unwrap();
+                ensure_well_typed(&mut expr);
+
                 let decl = Declaration {
                     name: decl.name,
                     span: decl.span,
-                    ty: typechecker.constants.get(&id).unwrap().ty.clone(),
+                    value: expr,
                 };
 
                 (id, decl)
@@ -200,10 +227,20 @@ pub fn typecheck(file: &lower::File, diagnostics: &mut Diagnostics) -> File {
             .variables
             .iter()
             .map(|(&id, decl)| {
+                let ty = typechecker.variables.get(&id).unwrap().clone();
+
+                let mut temp_expr = Expression {
+                    span: decl.span,
+                    ty,
+                    kind: ExpressionKind::Error, // unused
+                };
+
+                ensure_well_typed(&mut temp_expr);
+
                 let decl = Declaration {
                     name: decl.name,
                     span: decl.span,
-                    ty: typechecker.variables.get(&id).unwrap().clone(),
+                    value: temp_expr.ty,
                 };
 
                 (id, decl)
@@ -219,27 +256,7 @@ pub fn typecheck(file: &lower::File, diagnostics: &mut Diagnostics) -> File {
         declarations,
     };
 
-    // Only report missing types if there aren't already type errors
-    let no_type_errors = typechecker.well_typed;
-
-    file.traverse(|expr| {
-        expr.ty.apply(&typechecker.ctx);
-
-        if no_type_errors {
-            if let Type::Variable(_) = expr.ty {
-                typechecker.diagnostics.add(Diagnostic::error(
-                    "cannot determine the type of this expression",
-                    vec![Note::primary(
-                        expr.span,
-                        "try annotating the type with '::'",
-                    )],
-                ));
-
-                typechecker.well_typed = false;
-            }
-        }
-    });
-
+    file.traverse(ensure_well_typed);
     file.well_typed = typechecker.well_typed;
 
     file
@@ -303,9 +320,10 @@ impl<'a> Typechecker<'a> {
             }
             lower::ExpressionKind::Constant(id) => {
                 let constant = self.declarations.constants.get(id).unwrap();
-                let value = constant.value.value.take().expect("uninitialized constant");
+                let value = constant.value.value.borrow();
+                let value = value.as_ref().expect("uninitialized constant");
 
-                let value = self.typecheck_expr(&value);
+                let value = self.typecheck_expr(value);
                 let ty = value.ty.clone();
 
                 self.constants.insert(*id, value);
@@ -339,8 +357,8 @@ impl<'a> Typechecker<'a> {
                 let output_ty = Type::Variable(self.ctx.new_variable());
 
                 if let Err(errors) = self.ctx.unify(
-                    function.ty.clone(),
                     Type::Function(Box::new(input.ty.clone()), Box::new(output_ty.clone())),
+                    function.ty.clone(),
                 ) {
                     self.report_type_errors(expr, errors);
                     return error();
