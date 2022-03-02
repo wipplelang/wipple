@@ -296,6 +296,7 @@ impl<'a> Typechecker<'a> {
         };
 
         let (ty, kind) = match &expr.kind {
+            lower::ExpressionKind::Error => return error(),
             lower::ExpressionKind::Unit => (BUILTIN_TYPES.unit.clone(), ExpressionKind::Marker),
             lower::ExpressionKind::Marker(ty) => {
                 (self.convert_type_id(*ty), ExpressionKind::Marker)
@@ -429,6 +430,7 @@ impl<'a> Typechecker<'a> {
 
     fn convert_type_annotation(&mut self, annotation: &lower::TypeAnnotation) -> Type {
         match &annotation.kind {
+            lower::TypeAnnotationKind::Error => Type::Bottom,
             lower::TypeAnnotationKind::Placeholder => Type::Variable(self.ctx.new_variable()),
             lower::TypeAnnotationKind::Unit => BUILTIN_TYPES.unit.clone(),
             lower::TypeAnnotationKind::Named(id, params) => Type::Named(

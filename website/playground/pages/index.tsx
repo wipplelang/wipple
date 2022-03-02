@@ -1,3 +1,4 @@
+import theme from "../helpers/theme.json";
 import { useEffect, useRef, useState } from "react";
 import SplitPane from "react-split-pane";
 import Editor, { useMonaco } from "@monaco-editor/react";
@@ -138,11 +139,14 @@ const Playground = () => {
                     [/_|type|trait|when/, "keyword"],
                     [/-?[0-9]+(\.[0-9]+)?/, "number"],
                     [/"[^"\\]*(?:\\.[^"\\]*)*"/s, "string"],
-                    [/[A-Z][^\r\n\t \(\)\[\]\{\}'"/]*/, "entity.name.type"],
-                    [/[^\r\n\t \(\)\[\]\{\}'"/]+/, "identifier"],
+                    [/[A-Z][^\r\n\t \(\)\[\]\{\}'"/]*/, "type"],
+                    [/[^\r\n\t \(\)\[\]\{\}'"/]+/, "name"],
                 ],
             },
         });
+
+        monaco.editor.defineTheme("wipple", theme as any);
+        monaco.editor.setTheme("wipple");
 
         const getRange = (model: monaco.editor.ITextModel, span: Span) => {
             const startPos = model.getPositionAt(span.start);

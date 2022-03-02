@@ -77,6 +77,7 @@ pub struct Expression {
 
 #[derive(Debug, Clone)]
 pub enum ExpressionKind {
+    Error,
     Unit,
     Marker(TypeId),
     Constant(ConstantId),
@@ -91,6 +92,15 @@ pub enum ExpressionKind {
     Initialize(VariableId, Box<Expression>),
     FunctionInput,
     // TODO: Instantiation
+}
+
+impl Expression {
+    fn error(span: Span) -> Self {
+        Expression {
+            span,
+            kind: ExpressionKind::Error,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -121,10 +131,20 @@ pub struct TypeAnnotation {
 
 #[derive(Debug, Clone)]
 pub enum TypeAnnotationKind {
+    Error,
     Placeholder,
     Unit,
     Named(TypeId, Vec<TypeAnnotation>),
     Function(Box<TypeAnnotation>, Box<TypeAnnotation>),
+}
+
+impl TypeAnnotation {
+    fn error(span: Span) -> Self {
+        TypeAnnotation {
+            span,
+            kind: TypeAnnotationKind::Error,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -161,7 +181,7 @@ pub fn lower(file: parser::File, diagnostics: &mut Diagnostics) -> Option<File> 
         used_variables: Default::default(),
     };
 
-    let block = lower_block(file.statements, &scope, &mut info)?;
+    let block = lower_block(file.statements, &scope, &mut info);
 
     let mut all_constants_initialized = true;
     for constant in info.declarations.constants.values() {
@@ -270,26 +290,23 @@ fn lower_block(
     statements: Vec<parser::Statement>,
     scope: &Scope,
     info: &mut Info,
-) -> Option<Vec<Expression>> {
+) -> Vec<Expression> {
     let scope = Scope {
         parent: Some(scope),
         ..Default::default()
     };
 
-    let statements = statements
+    statements
         .into_iter()
         .filter_map(|statement| lower_statement(statement, &scope, info))
-        .flatten()
-        .collect();
-
-    Some(statements)
+        .collect()
 }
 
 fn lower_statement(
     statement: parser::Statement,
     scope: &Scope,
     info: &mut Info,
-) -> Option<Option<Expression>> {
+) -> Option<Expression> {
     let defined = |name| scope.values.borrow().contains_key(&name);
 
     match statement.kind {
@@ -326,14 +343,14 @@ fn lower_statement(
                 kind: match ty.kind {
                     parser::TypeKind::Marker => TypeKind::Marker,
                     parser::TypeKind::Alias(alias) => {
-                        TypeKind::Alias(lower_type_annotation(alias, scope, info)?)
+                        TypeKind::Alias(lower_type_annotation(alias, scope, info))
                     }
                     parser::TypeKind::Structure(fields) => {
                         let mut field_tys = Vec::with_capacity(fields.len());
                         let mut field_names = HashMap::with_capacity(fields.len());
                         for (index, field) in fields.into_iter().enumerate() {
                             field_tys.push(TypeField {
-                                ty: lower_type_annotation(field.ty, scope, info)?,
+                                ty: lower_type_annotation(field.ty, scope, info),
                             });
 
                             field_names.insert(field.name, index);
@@ -350,7 +367,7 @@ fn lower_statement(
                                     .values
                                     .into_iter()
                                     .map(|ty| lower_type_annotation(ty, scope, info))
-                                    .collect::<Option<_>>()?,
+                                    .collect(),
                             });
 
                             variant_names.insert(variant.name, index);
@@ -370,7 +387,7 @@ fn lower_statement(
                 },
             );
 
-            Some(None)
+            None
         }
         parser::StatementKind::Trait((span, name), declaration) => {
             if defined(name) {
@@ -404,7 +421,7 @@ fn lower_statement(
 
                 Trait {
                     parameters,
-                    ty: lower_type_annotation(declaration.ty, &scope, info)?,
+                    ty: lower_type_annotation(declaration.ty, &scope, info),
                 }
             };
 
@@ -423,7 +440,7 @@ fn lower_statement(
                 },
             );
 
-            Some(None)
+            None
         }
         parser::StatementKind::Constant((span, name), declaration) => {
             if defined(name) {
@@ -432,7 +449,7 @@ fn lower_statement(
                     vec![Note::primary(span, "try assigning to a different name")],
                 ));
 
-                return None;
+                return Some(Expression::error(span));
             }
 
             let constant = {
@@ -457,7 +474,7 @@ fn lower_statement(
 
                 Constant {
                     parameters,
-                    ty: lower_type_annotation(declaration.ty, &scope, info)?,
+                    ty: lower_type_annotation(declaration.ty, &scope, info),
                     value: Default::default(),
                 }
             };
@@ -477,7 +494,7 @@ fn lower_statement(
                 },
             );
 
-            Some(None)
+            None
         }
         parser::StatementKind::Implementation(_) => None, // TODO
         parser::StatementKind::Assign(pattern, expr) => match &pattern.kind {
@@ -539,9 +556,9 @@ fn lower_statement(
                     Some(ScopeValue::Variable(_)) | None => {}
                 }
 
-                let value = lower_expr(expr, scope, info)?;
+                let value = lower_expr(expr, scope, info);
 
-                Some(if let Some(associated_constant) = associated_constant {
+                if let Some(associated_constant) = associated_constant {
                     // TODO: Check that expression doesn't refer to local variables
                     associated_constant.replace(Some(value));
                     None
@@ -565,15 +582,15 @@ fn lower_statement(
                         span: statement.span,
                         kind: ExpressionKind::Initialize(id, Box::new(value)),
                     })
-                })
+                }
             }
-            parser::PatternKind::Wildcard => lower_expr(expr, scope, info).map(Some),
+            parser::PatternKind::Wildcard => Some(lower_expr(expr, scope, info)),
         },
-        parser::StatementKind::Expression(expr) => lower_expr(expr, scope, info).map(Some),
+        parser::StatementKind::Expression(expr) => Some(lower_expr(expr, scope, info)),
     }
 }
 
-fn lower_expr(expr: parser::Expression, scope: &Scope, info: &mut Info) -> Option<Expression> {
+fn lower_expr(expr: parser::Expression, scope: &Scope, info: &mut Info) -> Expression {
     let kind = match expr.kind {
         parser::ExpressionKind::Unit => ExpressionKind::Unit,
         parser::ExpressionKind::Text(text) => ExpressionKind::Text(text),
@@ -586,12 +603,12 @@ fn lower_expr(expr: parser::Expression, scope: &Scope, info: &mut Info) -> Optio
                     vec![Note::primary(expr.span, "try simplifying this expression")],
                 ));
 
-                return None;
+                return Expression::error(expr.span);
             }
 
             let name = path.base;
 
-            match resolve_value(expr.span, name, scope, info)? {
+            match resolve_value(expr.span, name, scope, info) {
                 Some(value) => value,
                 None => {
                     info.diagnostics.add(Diagnostic::error(
@@ -599,7 +616,7 @@ fn lower_expr(expr: parser::Expression, scope: &Scope, info: &mut Info) -> Optio
                         vec![Note::primary(expr.span, "no such variable")],
                     ));
 
-                    return None;
+                    return Expression::error(expr.span);
                 }
             }
         }
@@ -609,7 +626,7 @@ fn lower_expr(expr: parser::Expression, scope: &Scope, info: &mut Info) -> Optio
                 ..Default::default()
             };
 
-            let block = lower_block(statements, &scope, info)?;
+            let block = lower_block(statements, &scope, info);
 
             ExpressionKind::Block(block)
         }
@@ -623,12 +640,12 @@ fn lower_expr(expr: parser::Expression, scope: &Scope, info: &mut Info) -> Optio
                         vec![Note::primary(function.span, "try removing this expression")],
                     ));
 
-                    return None;
+                    return Expression::error(expr.span);
                 }
             }
 
-            let function = lower_expr(*function, scope, info)?;
-            let input = lower_expr(*input, scope, info)?;
+            let function = lower_expr(*function, scope, info);
+            let input = lower_expr(*input, scope, info);
 
             ExpressionKind::Call(Box::new(function), Box::new(input))
         }
@@ -639,11 +656,9 @@ fn lower_expr(expr: parser::Expression, scope: &Scope, info: &mut Info) -> Optio
                 ..Default::default()
             };
 
-            let mut block = Vec::with_capacity(2);
-
             // Desugar function input pattern matching
             let input_span = input.span;
-            if let Some(initialization) = lower_statement(
+            let initialization = lower_statement(
                 parser::Statement {
                     span: input_span,
                     kind: parser::StatementKind::Assign(
@@ -656,38 +671,35 @@ fn lower_expr(expr: parser::Expression, scope: &Scope, info: &mut Info) -> Optio
                 },
                 &scope,
                 info,
-            )? {
-                block.push(initialization)
-            }
+            );
 
-            let body = lower_expr(*body, &scope, info)?;
-            block.push(body);
+            let body = lower_expr(*body, &scope, info);
 
-            block.shrink_to_fit();
+            let block = initialization.into_iter().chain(Some(body)).collect();
 
             ExpressionKind::Function(Box::new(Expression {
                 span: expr.span,
                 kind: ExpressionKind::Block(block),
             }))
         }
-        parser::ExpressionKind::When(_, _) => return None, // TODO
+        parser::ExpressionKind::When(_, _) => return Expression::error(expr.span), // TODO
         parser::ExpressionKind::Annotate(expr, ty) => ExpressionKind::Annotate(
-            Box::new(lower_expr(*expr, scope, info)?),
-            lower_type_annotation(ty, scope, info)?,
+            Box::new(lower_expr(*expr, scope, info)),
+            lower_type_annotation(ty, scope, info),
         ),
     };
 
-    Some(Expression {
+    Expression {
         span: expr.span,
         kind,
-    })
+    }
 }
 
 fn lower_type_annotation(
     ty: parser::TypeAnnotation,
     scope: &Scope,
     info: &mut Info,
-) -> Option<TypeAnnotation> {
+) -> TypeAnnotation {
     let kind = match ty.kind {
         parser::TypeAnnotationKind::Placeholder => TypeAnnotationKind::Placeholder,
         parser::TypeAnnotationKind::Unit => TypeAnnotationKind::Unit,
@@ -698,7 +710,7 @@ fn lower_type_annotation(
                     vec![Note::primary(ty.span, "try simplifying this type")],
                 ));
 
-                return None;
+                return TypeAnnotation::error(ty.span);
             }
 
             let name = path.base;
@@ -711,27 +723,27 @@ fn lower_type_annotation(
                         vec![Note::primary(ty.span, "no such type")],
                     ));
 
-                    return None;
+                    return TypeAnnotation::error(ty.span);
                 }
             };
 
             let parameters = parameters
                 .into_iter()
                 .map(|parameter| lower_type_annotation(parameter, scope, info))
-                .collect::<Option<_>>()?;
+                .collect();
 
             TypeAnnotationKind::Named(ty, parameters)
         }
         parser::TypeAnnotationKind::Function(input, output) => TypeAnnotationKind::Function(
-            Box::new(lower_type_annotation(*input, scope, info)?),
-            Box::new(lower_type_annotation(*output, scope, info)?),
+            Box::new(lower_type_annotation(*input, scope, info)),
+            Box::new(lower_type_annotation(*output, scope, info)),
         ),
     };
 
-    Some(TypeAnnotation {
+    TypeAnnotation {
         span: ty.span,
         kind,
-    })
+    }
 }
 
 fn lower_type_parameter(
@@ -772,11 +784,11 @@ fn resolve_value(
     name: InternedString,
     scope: &Scope,
     info: &mut Info,
-) -> Option<Option<ExpressionKind>> {
-    Some(match scope.get(name) {
+) -> Option<ExpressionKind> {
+    match scope.get(name) {
         Some(ScopeValue::Type(id)) => {
-            fn resolve(span: Span, id: TypeId, info: &mut Info) -> Option<Option<ExpressionKind>> {
-                Some(match info.declarations.types.get(&id).unwrap().value.kind {
+            fn resolve(span: Span, id: TypeId, info: &mut Info) -> Option<ExpressionKind> {
+                match info.declarations.types.get(&id).unwrap().value.kind {
                     TypeKind::Marker => {
                         info.used_types.insert(id);
                         Some(ExpressionKind::Marker(id))
@@ -795,10 +807,10 @@ fn resolve_value(
                                 )],
                             ));
 
-                            return None;
+                            return Some(ExpressionKind::Error);
                         } else {
                             info.used_types.insert(id);
-                            resolve(span, alias_id, info)?
+                            resolve(span, alias_id, info)
                         }
                     }
                     _ => {
@@ -807,12 +819,12 @@ fn resolve_value(
                             vec![Note::primary(span, "try instantiating the type")],
                         ));
 
-                        return None;
+                        return Some(ExpressionKind::Error);
                     }
-                })
+                }
             }
 
-            resolve(span, id, info)?
+            resolve(span, id, info)
         }
         Some(ScopeValue::Trait(_)) => {
             info.diagnostics.add(Diagnostic::error(
@@ -823,7 +835,7 @@ fn resolve_value(
                 )],
             ));
 
-            return None;
+            return Some(ExpressionKind::Error);
         }
         Some(ScopeValue::Constant(id)) => {
             info.used_constants.insert(id);
@@ -834,7 +846,7 @@ fn resolve_value(
             Some(ExpressionKind::Variable(id))
         }
         None => None,
-    })
+    }
 }
 
 fn resolve_type(name: InternedString, scope: &Scope) -> Option<TypeId> {
