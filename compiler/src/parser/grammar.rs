@@ -2,7 +2,7 @@ use super::{lexer::Token, Span};
 use crate::helpers::InternedString;
 use std::collections::VecDeque;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct File {
     pub name: InternedString,
     pub span: Span,
@@ -10,29 +10,29 @@ pub struct File {
     pub statements: Vec<Statement>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct FileAttribute {
     pub span: Span,
     pub name: InternedString,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Statement {
     pub span: Span,
     pub kind: StatementKind,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum StatementKind {
-    Type(InternedString, TypeDeclaration),
-    Trait(InternedString, TraitDeclaration),
-    Constant(InternedString, ConstantDeclaration),
+    Type((Span, InternedString), TypeDeclaration),
+    Trait((Span, InternedString), TraitDeclaration),
+    Constant((Span, InternedString), ConstantDeclaration),
     Implementation(Implementation),
     Assign(Pattern, Expression),
     Expression(Expression),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Implementation {
     pub parameters: Vec<TypeParameter>,
     pub trait_name: Path,
@@ -40,13 +40,13 @@ pub struct Implementation {
     pub body: Expression,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Expression {
     pub span: Span,
     pub kind: ExpressionKind,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum ExpressionKind {
     Unit,
     Text(InternedString),
@@ -60,81 +60,77 @@ pub enum ExpressionKind {
     Annotate(Box<Expression>, TypeAnnotation),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Path {
     pub base: InternedString,
     pub components: Vec<PathComponent>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct PathComponent {
     pub span: Span,
     pub kind: PathComponentKind,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum PathComponentKind {
     Name(InternedString),
     Number(f64),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Arm {
     pub span: Span,
     pub pattern: Pattern,
     pub body: Expression,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct TypeAnnotation {
     pub span: Span,
     pub kind: TypeAnnotationKind,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum TypeAnnotationKind {
     Placeholder,
+    Unit,
     Path(Path, Vec<TypeAnnotation>),
     Function(Box<TypeAnnotation>, Box<TypeAnnotation>),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct TypeParameter {
     pub span: Span,
-    pub kind: TypeParameterKind,
+    pub constraints: Vec<(Span, InternedString)>,
+    pub name: InternedString,
 }
 
-#[derive(Debug)]
-pub enum TypeParameterKind {
-    Named(InternedString),
-    Constrained(Vec<InternedString>, InternedString),
-}
-
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Pattern {
     pub span: Span,
     pub kind: PatternKind,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum PatternKind {
     Path(Path),
     Wildcard,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct TypeDeclaration {
     pub parameters: Vec<TypeParameter>,
     pub kind: TypeKind,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct TraitDeclaration {
     pub parameters: Vec<TypeParameter>,
     pub ty: TypeAnnotation,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum TypeKind {
     Marker,
     Alias(TypeAnnotation),
@@ -142,19 +138,19 @@ pub enum TypeKind {
     Enumeration(Vec<DataVariant>),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct DataField {
     pub name: InternedString,
     pub ty: TypeAnnotation,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct DataVariant {
     pub name: InternedString,
     pub values: Vec<TypeAnnotation>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ConstantDeclaration {
     pub parameters: Vec<TypeParameter>,
     pub ty: TypeAnnotation,
@@ -355,6 +351,7 @@ peg::parser! {
         rule r#type() -> TypeAnnotation
             = placeholder_type()
             / function_type()
+            / unit_type()
             / path_type()
             / grouped_type()
             / expected!("type")
@@ -386,6 +383,16 @@ peg::parser! {
                 TypeAnnotation {
                     span,
                     kind: TypeAnnotationKind::Placeholder,
+                }
+            }
+            / expected!("placeholder type")
+
+        rule unit_type() -> TypeAnnotation
+            = [(Token::LeftParen, left_paren_span)] _ [(Token::RightParen, right_paren_span)]
+            {
+                TypeAnnotation {
+                    span: Span::join(left_paren_span, right_paren_span),
+                    kind: TypeAnnotationKind::Unit,
                 }
             }
             / expected!("placeholder type")
@@ -479,7 +486,7 @@ peg::parser! {
                 Statement {
                     span: Span::join(name_span, ty.span),
                     kind: StatementKind::Type(
-                        name,
+                        (name_span, name),
                         TypeDeclaration {
                             parameters: parameters.unwrap_or_default(),
                             kind: TypeKind::Alias(ty),
@@ -504,7 +511,7 @@ peg::parser! {
                 Statement {
                     span: Span::join(name_span, kind.as_ref().map(|(_, span)| *span).unwrap_or(type_span)),
                     kind: StatementKind::Type(
-                        name,
+                        (name_span, name),
                         TypeDeclaration {
                             parameters: parameters.unwrap_or_default(),
                             kind: kind.map(|(kind, _)| kind).unwrap_or(TypeKind::Marker),
@@ -522,21 +529,23 @@ peg::parser! {
         rule type_parameter() -> TypeParameter
             = [(Token::LeftParen, left_paren_span)]
               _
-              names:(([(Token::Name(name), _)] { name }) ++ _)
+              names:(([(Token::Name(name), span)] { (span, name) }) ++ _)
               _
               [(Token::RightParen, right_paren_span)]
               {
-                  let (name, traits) = names.split_last().unwrap();
+                  let (&name, traits) = names.split_last().unwrap();
 
                   TypeParameter {
                       span: Span::join(left_paren_span, right_paren_span),
-                      kind: TypeParameterKind::Constrained(traits.to_vec(), *name)
+                      constraints: traits.to_vec(),
+                      name: name.1,
                   }
               }
             / [(Token::Name(name), span)] {
                 TypeParameter {
                     span,
-                    kind: TypeParameterKind::Named(name)
+                    constraints: Vec::new(),
+                    name,
                 }
             }
             / expected!("type parameter")
@@ -580,7 +589,7 @@ peg::parser! {
                 Statement {
                     span: Span::join(name_span, right_paren_span),
                     kind: StatementKind::Trait(
-                        name,
+                        (name_span, name),
                         TraitDeclaration { parameters, ty }
                     ),
                 }
@@ -596,7 +605,7 @@ peg::parser! {
                 Statement {
                     span: Span::join(name_span, ty.span),
                     kind: StatementKind::Constant(
-                        name,
+                        (name_span, name),
                         ConstantDeclaration {
                             parameters: parameters.unwrap_or_default(),
                             ty,

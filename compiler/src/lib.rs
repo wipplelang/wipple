@@ -11,8 +11,8 @@ pub fn compile(file: &str, code: &str) -> (Option<compile::File>, diagnostics::D
     let mut diagnostics = diagnostics::Diagnostics::new();
     diagnostics.add_file(file, Arc::from(code));
 
-    let result = parser::parse(file, code, &mut diagnostics)
+    let file = parser::parse(file, code, &mut diagnostics)
         .and_then(|file| compile::compile(file, &mut diagnostics));
 
-    (result, diagnostics)
+    (file, diagnostics)
 }

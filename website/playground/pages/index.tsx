@@ -1,4 +1,3 @@
-import theme from "../helpers/theme.json";
 import { useEffect, useRef, useState } from "react";
 import SplitPane from "react-split-pane";
 import Editor, { useMonaco } from "@monaco-editor/react";
@@ -6,8 +5,14 @@ import type monaco from "monaco-editor";
 import { useRefState } from "../helpers/useRefState";
 
 interface RunResult {
+    annotations: Annotation[];
     output: string[];
     diagnostics: Diagnostic[];
+}
+
+interface Annotation {
+    span: Span;
+    value: string;
 }
 
 interface Span {
@@ -139,9 +144,40 @@ const Playground = () => {
             },
         });
 
-        monaco.editor.defineTheme("wipple", theme as any);
+        const getRange = (model: monaco.editor.ITextModel, span: Span) => {
+            const startPos = model.getPositionAt(span.start);
+            const endPos = model.getPositionAt(span.end);
 
-        monaco.editor.setTheme("wipple");
+            return new monaco.Range(
+                startPos.lineNumber,
+                startPos.column,
+                endPos.lineNumber,
+                endPos.column
+            );
+        };
+
+        const getAnnotation = (model: monaco.editor.ITextModel, position: monaco.IPosition) => {
+            const index = model.getOffsetAt(position);
+
+            // Find the annotation with the smallest span covering the cursor
+            return result.current?.annotations
+                .filter(
+                    (annotation) => index >= annotation.span.start && index <= annotation.span.end
+                )
+                .sort((a, b) => a.span.end - a.span.start - (b.span.end - b.span.start))[0];
+        };
+
+        monaco.languages.registerHoverProvider("wipple", {
+            provideHover: (model, position) => {
+                const annotation = getAnnotation(model, position);
+                if (!annotation) return undefined;
+
+                return {
+                    range: getRange(model, annotation.span),
+                    contents: [{ value: "```wipple\n" + annotation.value + "\n```" }],
+                };
+            },
+        });
 
         const model = editor.getModel()! as monaco.editor.ITextModel;
         setModel(model);
@@ -260,6 +296,7 @@ const Playground = () => {
                             },
                             tabSize: 2,
                             insertSpaces: false,
+                            "semanticHighlighting.enabled": true,
                         }}
                         onMount={initialize}
                     />
