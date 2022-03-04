@@ -18,7 +18,7 @@ macro_rules! ids {
                     })
                 }
 
-                pub fn reset() {
+                fn reset() {
                     [<NEXT_ $name:snake:upper>].with(|next_id| next_id.set(0))
                 }
             }
@@ -30,7 +30,7 @@ macro_rules! ids {
             }
         })*
 
-        pub fn reset_ids() {
+        pub(crate) fn reset_ids() {
             $($name::reset();)*
         }
     };
@@ -40,6 +40,5 @@ ids! {
     TypeId,
     TraitId,
     VariableId,
-    FileId,
     ConstantId,
 }

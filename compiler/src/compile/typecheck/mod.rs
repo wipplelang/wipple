@@ -7,17 +7,19 @@ use crate::{
     diagnostics::*,
     helpers::{ConstantId, InternedString, TraitId, TypeId, VariableId},
     parser::Span,
+    Compiler, FilePath, Loader,
 };
 use engine::*;
 use lazy_static::lazy_static;
-use std::collections::HashMap;
+use std::{
+    collections::{HashMap, HashSet},
+    mem,
+};
 
 #[derive(Debug)]
-pub struct File {
-    pub name: InternedString,
-    pub span: Span,
+pub struct Program {
     pub well_typed: bool,
-    pub block: Vec<Expression>,
+    pub body: Vec<Expression>,
     pub declarations: Declarations,
 }
 
@@ -40,6 +42,7 @@ pub enum ExpressionKind {
     Call(Box<Expression>, Box<Expression>),
     Function(Box<Expression>),
     When(Box<Expression>, Vec<Arm>),
+    External(InternedString, InternedString),
     Initialize(VariableId, Box<Expression>),
     FunctionInput,
 }
@@ -98,14 +101,15 @@ pub struct Declarations {
 
 #[derive(Debug, Clone)]
 pub struct Declaration<T> {
+    pub file: FilePath,
     pub name: InternedString,
     pub span: Span,
     pub value: T,
 }
 
-impl File {
+impl Program {
     pub fn traverse(&mut self, mut f: impl FnMut(&mut Expression)) {
-        for statement in &mut self.block {
+        for statement in &mut self.body {
             statement.traverse_inner(&mut f);
         }
     }
@@ -139,127 +143,174 @@ impl Expression {
     }
 }
 
-pub fn typecheck(file: &lower::File, diagnostics: &mut Diagnostics) -> File {
-    let mut typechecker = Typechecker {
-        well_typed: true,
-        ctx: Default::default(),
-        declarations: &file.declarations,
-        variables: Default::default(),
-        constants: Default::default(),
-        function_inputs: Default::default(),
-        diagnostics,
-    };
+impl<L: Loader> Compiler<L> {
+    pub fn typecheck(&mut self, mut files: Vec<lower::File>) -> Program {
+        let mut typechecker = Typechecker {
+            well_typed: true,
+            ctx: Default::default(),
+            variables: Default::default(),
+            constants: Default::default(),
+            function_inputs: Default::default(),
+            diagnostics: &mut self.diagnostics,
+            used_types: Default::default(),
+            used_traits: Default::default(),
+            used_constants: Default::default(),
+            used_variables: Default::default(),
+        };
 
-    for (id, decl) in &typechecker.declarations.constants {
-        let expr = typechecker.typecheck_expr(decl.value.value.borrow().as_ref().unwrap());
-        typechecker.constants.insert(*id, expr);
-    }
+        let mut body = Vec::new();
 
-    let (_, block) = typechecker.typecheck_block(&file.block);
+        for file in &mut files {
+            for (id, decl) in &file.declarations.constants {
+                if let lower::Declaration::Local(decl) = decl {
+                    let mut expr = typechecker
+                        .typecheck_expr(decl.value.value.borrow().as_ref().unwrap(), file);
 
-    // Only report missing types if there aren't already type errors
-    let no_type_errors = typechecker.well_typed;
+                    // TODO: Handle type parameters (`decl.value.parameters`)
+                    let ty = typechecker.convert_type_annotation(&decl.value.ty);
+                    if let Err(errors) = typechecker.ctx.unify(expr.ty.clone(), ty.clone()) {
+                        typechecker.report_type_errors(expr.span, errors, file);
+                    }
 
-    let mut ensure_well_typed = |expr: &mut Expression| {
-        expr.ty.apply(&typechecker.ctx);
+                    expr.ty = ty;
 
-        if no_type_errors && !expr.ty.vars().is_empty() {
-            typechecker.diagnostics.add(Diagnostic::error(
-                "cannot determine the type of this expression",
-                vec![Note::primary(
-                    expr.span,
-                    "try annotating the type with '::'",
-                )],
-            ));
+                    typechecker.constants.insert(*id, expr);
+                }
+            }
 
-            typechecker.well_typed = false;
+            let (_, block) = typechecker.typecheck_block(&mem::take(&mut file.block), file);
+
+            body.extend(block);
         }
-    };
 
-    let declarations = Declarations {
-        types: file
-            .declarations
-            .types
-            .iter()
-            .map(|(&id, decl)| {
-                let decl = Declaration {
-                    name: decl.name,
-                    span: decl.span,
-                    value: (),
-                };
+        // Only report missing types if there aren't already type errors
+        let no_type_errors = typechecker.well_typed;
 
-                (id, decl)
-            })
-            .collect(),
-        traits: file
-            .declarations
-            .traits
-            .iter()
-            .map(|(&id, decl)| {
-                let decl = Declaration {
-                    name: decl.name,
-                    span: decl.span,
-                    value: (),
-                };
+        let mut ensure_well_typed = |expr: &mut Expression| {
+            expr.ty.apply(&typechecker.ctx);
 
-                (id, decl)
-            })
-            .collect(),
-        constants: file
-            .declarations
-            .constants
-            .iter()
-            .map(|(&id, decl)| {
-                let mut expr = typechecker.constants.remove(&id).unwrap();
-                ensure_well_typed(&mut expr);
+            if no_type_errors && !expr.ty.vars().is_empty() {
+                typechecker.diagnostics.add(Diagnostic::error(
+                    "cannot determine the type of this expression",
+                    vec![Note::primary(
+                        expr.span,
+                        "try annotating the type with '::'",
+                    )],
+                ));
 
-                let decl = Declaration {
-                    name: decl.name,
-                    span: decl.span,
-                    value: expr,
-                };
+                typechecker.well_typed = false;
+            }
+        };
 
-                (id, decl)
-            })
-            .collect(),
-        variables: file
-            .declarations
-            .variables
-            .iter()
-            .map(|(&id, decl)| {
-                let ty = typechecker.variables.get(&id).unwrap().clone();
+        let mut declarations = Declarations::default();
 
-                let mut temp_expr = Expression {
-                    span: decl.span,
-                    ty,
-                    kind: ExpressionKind::Error, // unused
-                };
+        for file in files {
+            for (id, decl) in file.declarations.types {
+                if let lower::Declaration::Local(decl) = decl {
+                    declarations.types.insert(
+                        id,
+                        Declaration {
+                            file: file.path,
+                            name: decl.name,
+                            span: decl.span,
+                            value: (),
+                        },
+                    );
+                }
+            }
 
-                ensure_well_typed(&mut temp_expr);
+            for (id, decl) in file.declarations.traits {
+                if let lower::Declaration::Local(decl) = decl {
+                    declarations.traits.insert(
+                        id,
+                        Declaration {
+                            file: file.path,
+                            name: decl.name,
+                            span: decl.span,
+                            value: (),
+                        },
+                    );
+                }
+            }
 
-                let decl = Declaration {
-                    name: decl.name,
-                    span: decl.span,
-                    value: temp_expr.ty,
-                };
+            for (id, decl) in file.declarations.constants {
+                if let lower::Declaration::Local(decl) = decl {
+                    let mut expr = typechecker.constants.get(&id).unwrap().clone();
+                    ensure_well_typed(&mut expr);
 
-                (id, decl)
-            })
-            .collect(),
-    };
+                    declarations.constants.insert(
+                        id,
+                        Declaration {
+                            file: file.path,
+                            name: decl.name,
+                            span: decl.span,
+                            value: expr,
+                        },
+                    );
+                }
+            }
 
-    let mut file = File {
-        span: file.span,
-        name: file.name,
-        well_typed: true,
-        block,
-        declarations,
-    };
+            for (id, decl) in file.declarations.variables {
+                if let lower::Declaration::Local(decl) = decl {
+                    let ty = typechecker.variables.get(&id).unwrap().clone();
 
-    file.traverse(ensure_well_typed);
-    file.well_typed = typechecker.well_typed;
+                    let mut temp_expr = Expression {
+                        span: decl.span,
+                        ty,
+                        kind: ExpressionKind::Error, // unused
+                    };
 
-    file
+                    ensure_well_typed(&mut temp_expr);
+
+                    declarations.variables.insert(
+                        id,
+                        Declaration {
+                            file: file.path,
+                            name: decl.name,
+                            span: decl.span,
+                            value: temp_expr.ty,
+                        },
+                    );
+                }
+            }
+        }
+
+        let mut program = Program {
+            well_typed: true,
+            body,
+            declarations,
+        };
+
+        program.traverse(ensure_well_typed);
+        program.well_typed = typechecker.well_typed;
+
+        macro_rules! warn_unused {
+            ($($x:ident => ($name:literal, $used:ident),)*) => {
+                $(
+                    for (id, decl) in &program.declarations.$x {
+                        if !typechecker.$used.contains(id) {
+                            typechecker.diagnostics.add(Diagnostic::warning(
+                                format!("unused {}", $name),
+                                vec![Note::primary(
+                                    decl.span,
+                                    format!("`{}` is unused", decl.name),
+                                )],
+                            ))
+                        }
+                    }
+                )*
+            };
+        }
+
+        warn_unused!(
+            types => ("type", used_types),
+            traits => ("trait", used_traits),
+            constants => ("constant", used_constants),
+            variables => ("variable", used_variables),
+        );
+
+        program
+    }
 }
 
 macro_rules! builtin_types {
@@ -297,15 +348,18 @@ builtin_types! {
 struct Typechecker<'a> {
     well_typed: bool,
     ctx: Context,
-    declarations: &'a lower::Declarations,
     variables: HashMap<VariableId, Type>,
     constants: HashMap<ConstantId, Expression>, // TODO: SCHEMES
     function_inputs: Vec<TypeVariable>,
     diagnostics: &'a mut Diagnostics,
+    used_types: HashSet<TypeId>,
+    used_traits: HashSet<TraitId>,
+    used_constants: HashSet<ConstantId>,
+    used_variables: HashSet<VariableId>,
 }
 
 impl<'a> Typechecker<'a> {
-    fn typecheck_expr(&mut self, expr: &lower::Expression) -> Expression {
+    fn typecheck_expr(&mut self, expr: &lower::Expression, file: &lower::File) -> Expression {
         let error = || Expression {
             span: expr.span,
             ty: Type::Bottom,
@@ -313,20 +367,34 @@ impl<'a> Typechecker<'a> {
         };
 
         let (ty, kind) = match &expr.kind {
-            lower::ExpressionKind::Error => return error(),
+            lower::ExpressionKind::Error => {
+                self.well_typed = false; // signal that type errors should be suppressed
+                return error();
+            }
             lower::ExpressionKind::Unit => (BUILTIN_TYPES.unit.clone(), ExpressionKind::Marker),
             lower::ExpressionKind::Marker(ty) => {
-                (self.convert_type_id(*ty), ExpressionKind::Marker)
+                (self.convert_type_id(*ty, file), ExpressionKind::Marker)
             }
             lower::ExpressionKind::Constant(id) => {
-                let constant = self.declarations.constants.get(id).unwrap();
-                let value = constant.value.value.borrow();
-                let value = value.as_ref().expect("uninitialized constant");
+                let constant = file.declarations.constants.get(id).unwrap();
+                self.used_constants.insert(*id);
 
-                let value = self.typecheck_expr(value);
-                let ty = value.ty.clone();
+                let ty = match constant {
+                    lower::Declaration::Local(decl) => {
+                        let value = decl.value.value.borrow();
+                        let value = value.as_ref().expect("uninitialized constant");
 
-                self.constants.insert(*id, value);
+                        let value = self.typecheck_expr(value, file);
+                        let ty = value.ty.clone();
+
+                        self.constants.insert(*id, value);
+
+                        ty
+                    }
+                    lower::Declaration::Dependency(decl) => {
+                        self.constants.get(&decl.value).unwrap().ty.clone()
+                    }
+                };
 
                 (ty, ExpressionKind::Constant(*id))
             }
@@ -336,6 +404,8 @@ impl<'a> Typechecker<'a> {
                     .get(id)
                     .expect("uninitialized variable")
                     .clone();
+
+                self.used_variables.insert(*id);
 
                 (ty, ExpressionKind::Variable(*id))
             }
@@ -347,20 +417,20 @@ impl<'a> Typechecker<'a> {
                 ExpressionKind::Number(*number),
             ),
             lower::ExpressionKind::Block(statements) => {
-                let (ty, statements) = self.typecheck_block(statements);
+                let (ty, statements) = self.typecheck_block(statements, file);
                 (ty, ExpressionKind::Block(statements))
             }
             lower::ExpressionKind::Call(function, input) => {
-                let function = self.typecheck_expr(function);
-                let input = self.typecheck_expr(input);
+                let function = self.typecheck_expr(function, file);
+                let input = self.typecheck_expr(input, file);
 
                 let output_ty = Type::Variable(self.ctx.new_variable());
 
                 if let Err(errors) = self.ctx.unify(
-                    Type::Function(Box::new(input.ty.clone()), Box::new(output_ty.clone())),
                     function.ty.clone(),
+                    Type::Function(Box::new(input.ty.clone()), Box::new(output_ty.clone())),
                 ) {
-                    self.report_type_errors(expr, errors);
+                    self.report_type_errors(expr.span, errors, file);
                     return error();
                 }
 
@@ -370,7 +440,7 @@ impl<'a> Typechecker<'a> {
                 )
             }
             lower::ExpressionKind::Function(body) => {
-                let body = self.typecheck_expr(body);
+                let body = self.typecheck_expr(body, file);
 
                 let input_var = self
                     .function_inputs
@@ -386,19 +456,23 @@ impl<'a> Typechecker<'a> {
                 )
             }
             lower::ExpressionKind::When(_, _) => todo!(),
+            lower::ExpressionKind::External(namespace, identifier) => (
+                Type::Variable(self.ctx.new_variable()),
+                ExpressionKind::External(*namespace, *identifier),
+            ),
             lower::ExpressionKind::Annotate(expr, ty) => {
                 let ty = self.convert_type_annotation(ty);
-                let inferred_expr = self.typecheck_expr(expr);
+                let inferred_expr = self.typecheck_expr(expr, file);
 
                 if let Err(errors) = self.ctx.unify(inferred_expr.ty.clone(), ty) {
-                    self.report_type_errors(expr, errors);
+                    self.report_type_errors(expr.span, errors, file);
                     return error();
                 }
 
                 (inferred_expr.ty, inferred_expr.kind)
             }
             lower::ExpressionKind::Initialize(id, value) => {
-                let value = self.typecheck_expr(value);
+                let value = self.typecheck_expr(value, file);
                 self.variables.insert(*id, value.ty.clone());
 
                 (
@@ -421,10 +495,14 @@ impl<'a> Typechecker<'a> {
         }
     }
 
-    fn typecheck_block(&mut self, statements: &[lower::Expression]) -> (Type, Vec<Expression>) {
+    fn typecheck_block(
+        &mut self,
+        statements: &[lower::Expression],
+        file: &lower::File,
+    ) -> (Type, Vec<Expression>) {
         let statements = statements
             .iter()
-            .map(|statement| self.typecheck_expr(statement))
+            .map(|statement| self.typecheck_expr(statement, file))
             .collect::<Vec<_>>();
 
         let ty = statements
@@ -435,14 +513,18 @@ impl<'a> Typechecker<'a> {
         (ty, statements)
     }
 
-    fn convert_type_id(&mut self, id: TypeId) -> Type {
-        let declaration = self.declarations.types.get(&id).unwrap().clone();
+    fn convert_type_id(&mut self, id: TypeId, file: &lower::File) -> Type {
+        let decl = file.declarations.types.get(&id).unwrap().clone();
+        self.used_types.insert(id);
 
-        match declaration.value.kind {
-            lower::TypeKind::Marker
-            | lower::TypeKind::Structure(_, _)
-            | lower::TypeKind::Enumeration(_, _) => Type::Named(id, Vec::new()),
-            lower::TypeKind::Alias(annotation) => self.convert_type_annotation(&annotation),
+        match decl {
+            lower::Declaration::Local(decl) => match decl.value.kind {
+                lower::TypeKind::Marker
+                | lower::TypeKind::Structure(_, _)
+                | lower::TypeKind::Enumeration(_, _) => Type::Named(id, Vec::new()), // TODO: parameters
+                lower::TypeKind::Alias(annotation) => self.convert_type_annotation(&annotation),
+            },
+            lower::Declaration::Dependency(_) => Type::Named(id, Vec::new()), // TODO: parameters
         }
     }
 
@@ -465,7 +547,12 @@ impl<'a> Typechecker<'a> {
         }
     }
 
-    fn report_type_errors(&mut self, expr: &lower::Expression, errors: Vec<UnificationError>) {
+    fn report_type_errors(
+        &mut self,
+        span: Span,
+        errors: Vec<UnificationError>,
+        file: &lower::File,
+    ) {
         self.well_typed = false;
 
         for error in errors {
@@ -473,23 +560,20 @@ impl<'a> Typechecker<'a> {
                 UnificationError::Recursive(_) => Diagnostic::new(
                     DiagnosticLevel::Error,
                     "Recursive type",
-                    vec![Note::primary(
-                        expr.span,
-                        "The type of this references itself",
-                    )],
+                    vec![Note::primary(span, "The type of this references itself")],
                 ),
                 UnificationError::Mismatch(found, expected) => Diagnostic::new(
                     DiagnosticLevel::Error,
                     "Mismatched types",
                     vec![Note::primary(
-                        expr.span,
+                        span,
                         format!(
                             "Expected {}, found {}",
-                            format_type(&expected, &self.declarations.types, |decl| decl
-                                .name
+                            format_type(&expected, &file.declarations.types, |decl| decl
+                                .name()
                                 .as_str()),
-                            format_type(&found, &self.declarations.types, |decl| decl
-                                .name
+                            format_type(&found, &file.declarations.types, |decl| decl
+                                .name()
                                 .as_str())
                         ),
                     )],

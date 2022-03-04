@@ -1,18 +1,55 @@
+pub mod build;
 pub mod compile;
 pub mod diagnostics;
 pub mod helpers;
 pub mod parser;
 
-use std::sync::Arc;
+use diagnostics::*;
+use helpers::reset_ids;
+use helpers::InternedString;
+use serde::Serialize;
+use std::{borrow::Cow, fmt};
 
-pub fn compile(file: &str, code: &str) -> (Option<compile::File>, diagnostics::Diagnostics) {
-    let file = helpers::InternedString::new(file);
+pub trait Loader {
+    type Error: fmt::Display;
 
-    let mut diagnostics = diagnostics::Diagnostics::new();
-    diagnostics.add_file(file, Arc::from(code));
+    fn load(&self, path: FilePath) -> Result<Cow<'static, str>, Self::Error>;
+}
 
-    let file = parser::parse(file, code, &mut diagnostics)
-        .and_then(|file| compile::compile(file, &mut diagnostics));
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
+pub enum FilePath {
+    Path(InternedString),
+    Virtual(&'static str),
+    Prelude,
+}
 
-    (file, diagnostics)
+impl fmt::Display for FilePath {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            FilePath::Path(path) => f.write_str(path),
+            FilePath::Virtual(name) => f.write_str(name),
+            FilePath::Prelude => f.write_str("prelude"),
+        }
+    }
+}
+
+#[derive(Debug, Default)]
+pub struct Compiler<L: Loader> {
+    loader: L,
+    diagnostics: Diagnostics,
+}
+
+impl<L: Loader> Compiler<L> {
+    pub fn new(loader: L) -> Self {
+        reset_ids();
+
+        Compiler {
+            loader,
+            diagnostics: Default::default(),
+        }
+    }
+
+    pub fn finish(self) -> Diagnostics {
+        self.diagnostics
+    }
 }

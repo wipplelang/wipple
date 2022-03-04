@@ -49,6 +49,9 @@ pub enum Token {
     #[token("/")]
     Slash,
 
+    #[token("use")]
+    Use,
+
     #[token("when")]
     When,
 
@@ -57,6 +60,9 @@ pub enum Token {
 
     #[token("trait")]
     Trait,
+
+    #[token("external")]
+    External,
 
     #[regex(r#"[^\r\n\t \(\)\[\]\{\}'"/]+"#, |lex| InternedString::new(lex.slice()))]
     Name(InternedString),
@@ -107,9 +113,11 @@ impl fmt::Display for Token {
             Token::Underscore => write!(f, "`_`"),
             Token::Quote => write!(f, "`'`"),
             Token::Slash => write!(f, "`/`"),
+            Token::Use => write!(f, "`use`"),
             Token::When => write!(f, "`when`"),
             Token::Type => write!(f, "`type`"),
             Token::Trait => write!(f, "`trait`"),
+            Token::External => write!(f, "`external`"),
             Token::Name(_) => write!(f, "name"),
             Token::Text(_) => write!(f, "text"),
             Token::Number(_) => write!(f, "number"),

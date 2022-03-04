@@ -1,4 +1,4 @@
-use crate::{helpers::InternedString, parser::Span};
+use crate::{parser::Span, FilePath};
 use codemap::CodeMap;
 use serde::Serialize;
 use std::{
@@ -101,7 +101,7 @@ impl Note {
 
 #[derive(Debug, Default)]
 pub struct Diagnostics {
-    pub files: HashMap<InternedString, Arc<str>>,
+    pub files: HashMap<FilePath, Arc<str>>,
     pub diagnostics: Vec<Diagnostic>,
 }
 
@@ -110,12 +110,18 @@ impl Diagnostics {
         Default::default()
     }
 
-    pub fn add_file(&mut self, path: InternedString, code: Arc<str>) {
+    pub fn add_file(&mut self, path: FilePath, code: Arc<str>) {
         self.files.insert(path, code);
     }
 
     pub fn add(&mut self, diagnostic: Diagnostic) {
         self.diagnostics.push(diagnostic);
+    }
+
+    pub fn contains_errors(&self) -> bool {
+        self.diagnostics
+            .iter()
+            .any(|d| matches!(d.level, DiagnosticLevel::Error))
     }
 
     pub fn into_console_friendly(
@@ -147,17 +153,17 @@ impl Diagnostics {
                     .notes
                     .into_iter()
                     .map(|note| {
-                        let file = match tracked_files.entry(note.span.file) {
+                        let file = match tracked_files.entry(note.span.path) {
                             Entry::Occupied(entry) => entry.get().clone(),
                             Entry::Vacant(entry) => {
                                 let file = codemap.add_file(
-                                    note.span.file.to_string(),
+                                    note.span.path.to_string(),
                                     files
-                                        .get(&note.span.file)
+                                        .get(&note.span.path)
                                         .unwrap_or_else(|| {
                                             panic!(
                                                 "diagnostic references unknown file: '{}'",
-                                                note.span.file
+                                                note.span.path
                                             )
                                         })
                                         .to_string(),

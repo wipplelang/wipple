@@ -1,17 +1,24 @@
 use super::{lexer::Token, Span};
-use crate::helpers::InternedString;
+use crate::{helpers::InternedString, FilePath};
 use std::collections::VecDeque;
 
 #[derive(Debug, Clone)]
 pub struct File {
-    pub name: InternedString,
+    pub path: FilePath,
     pub span: Span,
     pub attributes: Vec<FileAttribute>,
+    pub dependencies: Vec<Dependency>,
     pub statements: Vec<Statement>,
 }
 
 #[derive(Debug, Clone)]
 pub struct FileAttribute {
+    pub span: Span,
+    pub name: InternedString,
+}
+
+#[derive(Debug, Clone)]
+pub struct Dependency {
     pub span: Span,
     pub name: InternedString,
 }
@@ -57,6 +64,7 @@ pub enum ExpressionKind {
     Call(Box<Expression>, Box<Expression>),
     Function(Pattern, Box<Expression>),
     When(Box<Expression>, Vec<Arm>),
+    External(InternedString, InternedString),
     Annotate(Box<Expression>, TypeAnnotation),
 }
 
@@ -160,13 +168,17 @@ pub use grammar::file;
 
 peg::parser! {
     pub(super) grammar grammar() for [(Token, Span)] {
-        pub rule file(name: InternedString, code: &str) -> File
-            = attributes:(file_attribute() ** _) statements:statements() ![_]
+        pub rule file(path: FilePath, code: &str) -> File
+            = attributes:(file_attribute() ** _)
+              dependencies:(use_dependency() ** _)
+              statements:statements()
+              ![_]
             {
                 File {
-                    name,
-                    span: Span::new(name, 0..code.len()),
+                    path,
+                    span: Span::new(path, 0..code.len()),
                     attributes,
+                    dependencies,
                     statements,
                 }
             }
@@ -185,6 +197,17 @@ peg::parser! {
                 }
             }
             / expected!("file attribute")
+
+        rule use_dependency() -> Dependency
+            = [(Token::Use, use_span)]
+              _
+              [(Token::Text(name), name_span)]
+            {
+                Dependency {
+                    span: Span::join(use_span, name_span),
+                    name,
+                }
+            }
 
         rule expression() -> Expression
             = path_expression()
@@ -283,6 +306,7 @@ peg::parser! {
         rule raw_compound_expression() -> Expression
             = function_expression()
             / when_expression()
+            / external_expression()
             / annotate_expression()
             / expected!("expression")
 
@@ -335,6 +359,19 @@ peg::parser! {
                 }
             }
             / expected!("'when' arm")
+
+        rule external_expression() -> Expression
+            = [(Token::External, external_span)]
+              _
+              [(Token::Text(namespace), _)]
+              _
+              [(Token::Text(identifier), identifier_span)]
+            {
+                Expression {
+                    span: Span::join(external_span, identifier_span),
+                    kind: ExpressionKind::External(namespace, identifier),
+                }
+            }
 
         rule annotate_expression() -> Expression
             = expr:non_annotate_expression()
