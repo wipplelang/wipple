@@ -132,10 +132,14 @@ fn build(options: Options) -> wipple_compiler::compile::Program {
         options.trace,
     );
 
-    let mut emitter =
-        codemap_diagnostic::Emitter::stderr(codemap_diagnostic::ColorConfig::Auto, Some(&codemap));
+    if !diagnostics.is_empty() {
+        let mut emitter = codemap_diagnostic::Emitter::stderr(
+            codemap_diagnostic::ColorConfig::Auto,
+            Some(&codemap),
+        );
 
-    emitter.emit(&diagnostics);
+        emitter.emit(&diagnostics);
+    }
 
     let program = match program {
         Some(program) if success => program,
