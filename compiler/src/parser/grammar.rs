@@ -57,14 +57,14 @@ pub struct Expression {
 pub enum ExpressionKind {
     Unit,
     Text(InternedString),
-    Number(f64),
+    Number(Decimal),
     FunctionInput,
     Path(Path),
     Block(Vec<Statement>),
     Call(Box<Expression>, Box<Expression>),
     Function(Pattern, Box<Expression>),
     When(Box<Expression>, Vec<Arm>),
-    External(InternedString, InternedString),
+    External(InternedString, InternedString, Vec<Expression>),
     Annotate(Box<Expression>, TypeAnnotation),
 }
 
@@ -83,7 +83,7 @@ pub struct PathComponent {
 #[derive(Debug, Clone)]
 pub enum PathComponentKind {
     Name(InternedString),
-    Number(f64),
+    Number(Decimal),
 }
 
 #[derive(Debug, Clone)]
@@ -165,6 +165,7 @@ pub struct ConstantDeclaration {
 }
 
 pub use grammar::file;
+use rust_decimal::Decimal;
 
 peg::parser! {
     pub(super) grammar grammar() for [(Token, Span)] {
@@ -366,10 +367,12 @@ peg::parser! {
               [(Token::Text(namespace), _)]
               _
               [(Token::Text(identifier), identifier_span)]
+              _
+              inputs:expression()+
             {
                 Expression {
                     span: Span::join(external_span, identifier_span),
-                    kind: ExpressionKind::External(namespace, identifier),
+                    kind: ExpressionKind::External(namespace, identifier, inputs),
                 }
             }
 

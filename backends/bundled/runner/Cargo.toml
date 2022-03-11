@@ -1,0 +1,12 @@
+[package]
+name = "wipple-bundled-runner"
+version = "0.0.0"
+edition = "2021"
+
+[[bin]]
+name = "wipple-runner"
+path = "src/main.rs"
+
+[dependencies]
+bincode = "1"
+wipple-interpreter-backend = { path = "../../interpreter" }

@@ -7,13 +7,13 @@ use wasm_bindgen::prelude::*;
 struct CompileResult {
     output: Vec<String>,
     annotations: Vec<Annotation>,
-    diagnostics: Vec<wipple::diagnostics::Diagnostic>,
+    diagnostics: Vec<wipple_compiler::diagnostics::Diagnostic>,
 }
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct Annotation {
-    span: wipple::parser::Span,
+    span: wipple_compiler::parser::Span,
     value: String,
 }
 
@@ -22,18 +22,35 @@ pub fn run(code: &str) -> JsValue {
     #[cfg(feature = "console_error_panic_hook")]
     console_error_panic_hook::set_once();
 
-    let mut compiler = wipple::Compiler::new(Loader { code });
-    let path = wipple::FilePath::Virtual("playground");
+    let mut compiler = wipple_compiler::Compiler::new(
+        Loader { code },
+        wipple_compiler::CompilerOptions::default(),
+    );
+
+    let path = wipple_compiler::FilePath::Virtual(wipple_compiler::helpers::InternedString::new(
+        "playground",
+    ));
+
     let mut program = compiler.build(path);
 
-    let output = program
-        .as_ref()
-        .map(|output| vec![format!("{output:#?}")])
-        .unwrap_or_default();
-
     let annotations = program.as_mut().map(annotations).unwrap_or_default();
-
     let diagnostics = compiler.finish();
+
+    let mut output = Vec::new();
+
+    if let Some(program) = program {
+        let result = {
+            let interpreter = wipple_interpreter_backend::Interpreter::new(Some(|text: &str| {
+                output.push(text.to_string())
+            }));
+
+            interpreter.eval(program)
+        };
+
+        if let Err((error, _)) = result {
+            output.push(format!("fatal error: {error}"));
+        }
+    }
 
     let result = CompileResult {
         output,
@@ -57,22 +74,27 @@ struct Loader<'a> {
     code: &'a str,
 }
 
-impl<'a> wipple::Loader for Loader<'a> {
+impl<'a> wipple_compiler::Loader for Loader<'a> {
     type Error = &'static str;
 
-    fn load(&self, path: wipple::FilePath) -> Result<Cow<'static, str>, Self::Error> {
+    fn load(&self, path: wipple_compiler::FilePath) -> Result<Cow<'static, str>, Self::Error> {
         match path {
-            wipple::FilePath::Virtual("playground") => Ok(Cow::Owned(self.code.to_string())),
-            wipple::FilePath::Prelude => Ok(Cow::Borrowed(include_str!(
+            wipple_compiler::FilePath::Path(_) => {
+                Err("imports are not supported in the playground")
+            }
+            wipple_compiler::FilePath::Virtual(s) if s.as_str() == "playground" => {
+                Ok(Cow::Owned(self.code.to_string()))
+            }
+            wipple_compiler::FilePath::Prelude => Ok(Cow::Borrowed(include_str!(
                 "../../../../support/prelude.wpl"
             ))),
-            _ => Err("imports are not supported in the playground"),
+            _ => unimplemented!(),
         }
     }
 }
 
-fn annotations(program: &mut wipple::compile::Program) -> Vec<Annotation> {
-    use wipple::compile::typecheck::ExpressionKind;
+fn annotations(program: &mut wipple_compiler::compile::Program) -> Vec<Annotation> {
+    use wipple_compiler::compile::typecheck::ExpressionKind;
 
     let mut annotations = Vec::new();
 
@@ -80,7 +102,7 @@ fn annotations(program: &mut wipple::compile::Program) -> Vec<Annotation> {
 
     macro_rules! format_ty {
         ($ty:expr) => {
-            wipple::compile::typecheck::format_type($ty, &declarations.types, |decl| {
+            wipple_compiler::compile::typecheck::format_type($ty, &declarations.types, |decl| {
                 decl.name.as_str()
             })
         };
@@ -155,6 +177,9 @@ fn annotations(program: &mut wipple::compile::Program) -> Vec<Annotation> {
     annotations
 }
 
-fn belongs_to_playground(span: wipple::parser::Span) -> bool {
-    matches!(span.path, wipple::FilePath::Virtual("playground"))
+fn belongs_to_playground(span: wipple_compiler::parser::Span) -> bool {
+    matches!(
+        span.path,
+        wipple_compiler::FilePath::Virtual(s) if s.as_str() == "playground"
+    )
 }

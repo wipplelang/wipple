@@ -1,5 +1,5 @@
 use crate::{
-    compile::Program,
+    compile::{self, Program},
     diagnostics::*,
     parser::{self, Span},
     Compiler, FilePath, Loader,
@@ -74,7 +74,7 @@ impl<L: Loader> Compiler<L> {
             })
         }
 
-        load(self, path, None, &mut info);
+        load(self, path, None, &mut info)?;
 
         let files = match toposort(&info.graph, None) {
             Ok(sorted) => sorted
@@ -106,7 +106,9 @@ impl<L: Loader> Compiler<L> {
 
         let mut lowered_files = Vec::new();
         let mut lowered_files_by_path = HashMap::new();
-        for (file, dependencies) in files.into_iter().rev() {
+        let last_index = files.len() - 1;
+        let mut success = true;
+        for (index, (file, dependencies)) in files.into_iter().rev().enumerate() {
             let dependencies = dependencies
                 .into_iter()
                 .map(|path| {
@@ -115,7 +117,24 @@ impl<L: Loader> Compiler<L> {
                     // 'files_by_path'
                     &lowered_files[*lowered_files_by_path.get(&path).unwrap()]
                 })
-                .collect::<Vec<_>>();
+                .collect::<Vec<&compile::lower::File>>();
+
+            let is_entrypoint = index == last_index;
+            if is_entrypoint {
+                for dependency in &dependencies {
+                    if !dependency.block.is_empty() {
+                        self.diagnostics.add(Diagnostic::error(
+                            format!("cannot import `{}`", dependency.path),
+                            vec![Note::primary(
+                                dependency.span,
+                                "dependencies must not contain executable statements",
+                            )],
+                        ));
+
+                        success = false;
+                    }
+                }
+            }
 
             let file = self.lower(file, dependencies);
 
@@ -124,6 +143,6 @@ impl<L: Loader> Compiler<L> {
             lowered_files.push(file);
         }
 
-        Some(self.typecheck(lowered_files))
+        success.then(|| self.typecheck(lowered_files))
     }
 }

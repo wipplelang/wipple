@@ -127,12 +127,16 @@ impl Diagnostics {
     pub fn into_console_friendly(
         self,
         #[cfg(debug_assertions)] include_trace: bool,
-    ) -> (CodeMap, Vec<codemap_diagnostic::Diagnostic>) {
+    ) -> (
+        CodeMap,
+        HashMap<FilePath, Arc<codemap::File>>,
+        Vec<codemap_diagnostic::Diagnostic>,
+    ) {
         let mut codemap = CodeMap::new();
         let mut diagnostics = Vec::new();
 
         let files = &self.files;
-        let mut tracked_files = HashMap::<_, Arc<codemap::File>>::new();
+        let mut tracked_files = HashMap::<FilePath, Arc<codemap::File>>::new();
         for diagnostic in self.diagnostics {
             let diagnostic = codemap_diagnostic::Diagnostic {
                 level: diagnostic.level.into(),
@@ -196,6 +200,6 @@ impl Diagnostics {
             (Some(a), Some(b)) => a.span.low().cmp(&b.span.low()),
         });
 
-        (codemap, diagnostics)
+        (codemap, tracked_files, diagnostics)
     }
 }

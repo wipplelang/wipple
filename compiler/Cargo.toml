@@ -1,5 +1,5 @@
 [package]
-name = "wipple"
+name = "wipple-compiler"
 version = "0.0.0"
 edition = "2021"
 
@@ -7,10 +7,12 @@ edition = "2021"
 backtrace = { version = "0.3", features = ["serde"] }
 codemap = "=0.1.2"
 codemap-diagnostic = "0.1"
+clap = { version = "3", features = ["derive"], optional = true }
 lasso = { version = "0.6", features = ["multi-threaded", "serialize"] }
 lazy_static = "1"
 logos = "0.12"
 paste = "1"
 peg = "0.8"
 petgraph = "0.6"
+rust_decimal = "1"
 serde = { version = "1", features = ["derive"] }

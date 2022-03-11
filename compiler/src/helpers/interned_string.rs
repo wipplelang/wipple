@@ -44,6 +44,12 @@ impl Borrow<str> for InternedString {
     }
 }
 
+impl From<String> for InternedString {
+    fn from(s: String) -> Self {
+        InternedString::new(s)
+    }
+}
+
 impl Serialize for InternedString {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where

@@ -1,0 +1,14 @@
+[package]
+name = "wipple-interpreter-backend"
+version = "0.0.0"
+edition = "2021"
+
+[dependencies]
+itertools = "0.10"
+lazy_static = "1"
+rust_decimal = "1"
+wipple-compiler = { path = "../../compiler" }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+libffi = { version = "3", features = ["system"] }
+libloading = "0.7"

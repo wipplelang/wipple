@@ -1,5 +1,6 @@
 use crate::helpers::InternedString;
 use logos::Logos;
+use rust_decimal::Decimal;
 use std::{cmp::Ordering, fmt};
 
 #[derive(Logos, Debug, Clone, Copy)]
@@ -71,7 +72,7 @@ pub enum Token {
     Text(InternedString),
 
     #[regex(r#"-?[0-9]+(\.[0-9]+)?"#, |lex| lex.slice().parse(), priority = 2)]
-    Number(f64),
+    Number(Decimal),
 
     #[regex(r#"[\r\n]+\t*"#, |lex| lex.slice().chars().filter(|&c| c == '\t').count())]
     _IndentedLineBreak(usize),

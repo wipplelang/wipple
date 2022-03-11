@@ -1,9 +1,13 @@
+mod builtins;
+
 use crate::{
     diagnostics::*,
     helpers::{ConstantId, InternedString, TraitId, TypeId, VariableId},
     parser::{self, Span},
     Compiler, FilePath, Loader,
 };
+use builtins::load_builtins;
+use rust_decimal::Decimal;
 use std::{
     cell::RefCell,
     collections::{HashMap, HashSet},
@@ -32,6 +36,7 @@ pub struct Declarations {
 pub enum Declaration<Id, T> {
     Local(DeclarationKind<T>),
     Dependency(DeclarationKind<Id>),
+    Builtin(DeclarationKind<T>),
 }
 
 #[derive(Debug, Clone)]
@@ -73,6 +78,7 @@ impl<Id: Eq + Hash, T> Declaration<Id, T> {
         match self {
             Declaration::Local(decl) => decl.name,
             Declaration::Dependency(decl) => decl.name,
+            Declaration::Builtin(decl) => decl.name,
         }
     }
 
@@ -80,6 +86,7 @@ impl<Id: Eq + Hash, T> Declaration<Id, T> {
         match self {
             Declaration::Local(decl) => decl.span,
             Declaration::Dependency(decl) => decl.span,
+            Declaration::Builtin(decl) => decl.span,
         }
     }
 }
@@ -96,6 +103,7 @@ pub enum TypeKind {
     Alias(TypeAnnotation),
     Structure(Vec<TypeField>, HashMap<InternedString, usize>),
     Enumeration(Vec<TypeVariant>, HashMap<InternedString, usize>),
+    Builtin(BuiltinType),
 }
 
 #[derive(Debug, Clone)]
@@ -106,6 +114,12 @@ pub struct TypeField {
 #[derive(Debug, Clone)]
 pub struct TypeVariant {
     pub values: Vec<TypeAnnotation>,
+}
+
+#[derive(Debug, Clone)]
+pub enum BuiltinType {
+    Number,
+    Text,
 }
 
 #[derive(Debug, Clone)]
@@ -135,12 +149,12 @@ pub enum ExpressionKind {
     Constant(ConstantId),
     Variable(VariableId),
     Text(InternedString),
-    Number(f64),
+    Number(Decimal),
     Block(Vec<Expression>),
     Call(Box<Expression>, Box<Expression>),
-    Function(Box<Expression>),
+    Function(Box<Expression>, HashSet<VariableId>),
     When(Box<Expression>, Vec<Arm>),
-    External(InternedString, InternedString),
+    External(InternedString, InternedString, Vec<Expression>),
     Annotate(Box<Expression>, TypeAnnotation),
     Initialize(VariableId, Box<Expression>),
     FunctionInput,
@@ -229,6 +243,8 @@ impl<L: Loader> Compiler<L> {
         let mut info = Info {
             declarations: Default::default(),
         };
+
+        load_builtins(&scope, &mut info);
 
         for dependency in dependencies {
             macro_rules! merge_dependency {
@@ -581,7 +597,9 @@ impl<L: Loader> Compiler<L> {
                         }
                         Some(ScopeValue::Constant(id)) => {
                             let c = match info.declarations.constants.get(&id).unwrap() {
-                                Declaration::Local(decl) => decl.value.value.clone(),
+                                Declaration::Local(decl) | Declaration::Builtin(decl) => {
+                                    decl.value.value.clone()
+                                }
                                 Declaration::Dependency(decl) => {
                                     self.diagnostics.add(Diagnostic::error(
                                         format!("constant `{name}` is defined in another file"),
@@ -750,14 +768,22 @@ impl<L: Loader> Compiler<L> {
 
                 let block = initialization.into_iter().chain(Some(body)).collect();
 
-                ExpressionKind::Function(Box::new(Expression {
-                    span: expr.span,
-                    kind: ExpressionKind::Block(block),
-                }))
+                ExpressionKind::Function(
+                    Box::new(Expression {
+                        span: expr.span,
+                        kind: ExpressionKind::Block(block),
+                    }),
+                    scope.used_variables.unwrap().take(),
+                )
             }
             parser::ExpressionKind::When(_, _) => return Expression::error(expr.span), // TODO
-            parser::ExpressionKind::External(namespace, identifier) => {
-                ExpressionKind::External(namespace, identifier)
+            parser::ExpressionKind::External(namespace, identifier, inputs) => {
+                let inputs = inputs
+                    .into_iter()
+                    .map(|expr| self.lower_expr(expr, scope, info))
+                    .collect();
+
+                ExpressionKind::External(namespace, identifier, inputs)
             }
             parser::ExpressionKind::Annotate(expr, ty) => ExpressionKind::Annotate(
                 Box::new(self.lower_expr(*expr, scope, info)),
@@ -869,36 +895,46 @@ impl<L: Loader> Compiler<L> {
                     info: &mut Info,
                 ) -> Option<ExpressionKind> {
                     match info.declarations.types.get(&id).unwrap() {
-                        Declaration::Local(decl) => match decl.value.kind {
-                            TypeKind::Marker => Some(ExpressionKind::Marker(id)),
-                            TypeKind::Alias(TypeAnnotation {
-                                kind: TypeAnnotationKind::Named(alias_id, _),
-                                ..
-                            }) => {
-                                // TODO: Maybe perform this check earlier?
-                                if alias_id == id {
+                        Declaration::Local(decl) | Declaration::Builtin(decl) => {
+                            match decl.value.kind {
+                                TypeKind::Marker => Some(ExpressionKind::Marker(id)),
+                                TypeKind::Alias(TypeAnnotation {
+                                    kind: TypeAnnotationKind::Named(alias_id, _),
+                                    ..
+                                }) => {
+                                    // TODO: Maybe perform this check earlier?
+                                    if alias_id == id {
+                                        compiler.diagnostics.add(Diagnostic::error(
+                                            "cannot instantiate recursive type",
+                                            vec![Note::primary(
+                                                span,
+                                                "this type references itself and cannot be constructed",
+                                            )],
+                                        ));
+
+                                        Some(ExpressionKind::Error)
+                                    } else {
+                                        resolve(compiler, span, alias_id, info)
+                                    }
+                                }
+                                TypeKind::Builtin(_) => {
                                     compiler.diagnostics.add(Diagnostic::error(
-                                        "cannot instantiate recursive type",
-                                        vec![Note::primary(
-                                            span,
-                                            "this type references itself and cannot be constructed",
-                                        )],
+                                        "cannot use builtin type as value",
+                                        vec![Note::primary(span, "try using a literal instead")],
                                     ));
 
                                     Some(ExpressionKind::Error)
-                                } else {
-                                    resolve(compiler, span, alias_id, info)
+                                }
+                                _ => {
+                                    compiler.diagnostics.add(Diagnostic::error(
+                                        "cannot use type as value",
+                                        vec![Note::primary(span, "try instantiating the type")],
+                                    ));
+
+                                    Some(ExpressionKind::Error)
                                 }
                             }
-                            _ => {
-                                compiler.diagnostics.add(Diagnostic::error(
-                                    "cannot use type as value",
-                                    vec![Note::primary(span, "try instantiating the type")],
-                                ));
-
-                                Some(ExpressionKind::Error)
-                            }
-                        },
+                        }
                         Declaration::Dependency(_) => Some(ExpressionKind::Marker(id)),
                     }
                 }

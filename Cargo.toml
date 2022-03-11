@@ -1,5 +1,9 @@
 [workspace]
 members = [
+    "backends/bundled/builder",
+    "backends/bundled/runner",
+    "backends/interpreter",
+    "cli",
     "compiler",
     "website/playground/runner",
 ]

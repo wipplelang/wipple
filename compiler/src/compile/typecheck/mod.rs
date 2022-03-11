@@ -1,6 +1,8 @@
 mod engine;
 
 pub use engine::Type;
+use rust_decimal::Decimal;
+use serde::{Deserialize, Serialize};
 
 use crate::{
     compile::lower,
@@ -16,51 +18,51 @@ use std::{
     mem,
 };
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Program {
     pub well_typed: bool,
     pub body: Vec<Expression>,
     pub declarations: Declarations,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Expression {
     pub span: Span,
     pub ty: Type,
     pub kind: ExpressionKind,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ExpressionKind {
     Error,
     Marker,
     Constant(ConstantId),
     Variable(VariableId),
     Text(InternedString),
-    Number(f64),
+    Number(Decimal),
     Block(Vec<Expression>),
     Call(Box<Expression>, Box<Expression>),
-    Function(Box<Expression>),
+    Function(Box<Expression>, HashSet<VariableId>),
     When(Box<Expression>, Vec<Arm>),
-    External(InternedString, InternedString),
+    External(InternedString, InternedString, Vec<Expression>),
     Initialize(VariableId, Box<Expression>),
     FunctionInput,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Arm {
     pub span: Span,
     pub pattern: Pattern,
     pub body: Expression,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Pattern {
     pub span: Span,
     pub kind: PatternKind,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum PatternKind {
     Binding(VariableId),
     // TODO: Support complex paths (data fields, variants)
@@ -91,7 +93,7 @@ pub enum TypeParameterKind {
     Constrained(Vec<TraitId>, TypeId),
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct Declarations {
     pub types: HashMap<TypeId, Declaration<()>>,
     pub traits: HashMap<TraitId, Declaration<()>>,
@@ -99,7 +101,7 @@ pub struct Declarations {
     pub variables: HashMap<VariableId, Declaration<Type>>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Declaration<T> {
     pub file: FilePath,
     pub name: InternedString,
@@ -135,7 +137,7 @@ impl Expression {
                 function.traverse_inner(f);
                 input.traverse_inner(f);
             }
-            Function(body) => body.traverse_inner(f),
+            Function(body, _) => body.traverse_inner(f),
             When(_, _) => todo!(),
             Initialize(_, value) => value.traverse_inner(f),
             _ => {}
@@ -284,30 +286,32 @@ impl<L: Loader> Compiler<L> {
         program.traverse(ensure_well_typed);
         program.well_typed = typechecker.well_typed;
 
-        macro_rules! warn_unused {
-            ($($x:ident => ($name:literal, $used:ident),)*) => {
-                $(
-                    for (id, decl) in &program.declarations.$x {
-                        if !typechecker.$used.contains(id) {
-                            typechecker.diagnostics.add(Diagnostic::warning(
-                                format!("unused {}", $name),
-                                vec![Note::primary(
-                                    decl.span,
-                                    format!("`{}` is unused", decl.name),
-                                )],
-                            ))
+        if self.options.warn_unused_variables {
+            macro_rules! warn_unused {
+                ($($x:ident => ($name:literal, $used:ident),)*) => {
+                    $(
+                        for (id, decl) in &program.declarations.$x {
+                            if !typechecker.$used.contains(id) {
+                                typechecker.diagnostics.add(Diagnostic::warning(
+                                    format!("unused {}", $name),
+                                    vec![Note::primary(
+                                        decl.span,
+                                        format!("`{}` is unused", decl.name),
+                                    )],
+                                ))
+                            }
                         }
-                    }
-                )*
-            };
-        }
+                    )*
+                };
+            }
 
-        warn_unused!(
-            types => ("type", used_types),
-            traits => ("trait", used_traits),
-            constants => ("constant", used_constants),
-            variables => ("variable", used_variables),
-        );
+            warn_unused!(
+                types => ("type", used_types),
+                traits => ("trait", used_traits),
+                constants => ("constant", used_constants),
+                variables => ("variable", used_variables),
+            );
+        }
 
         program
     }
@@ -315,18 +319,18 @@ impl<L: Loader> Compiler<L> {
 
 macro_rules! builtin_types {
     ($($x:ident => $name:literal),* $(,)?) => {
-        struct BuiltinTypes {
-            $($x: Type,)*
+        pub struct BuiltinTypes {
+            $(pub $x: Type,)*
         }
 
         lazy_static! {
-            static ref BUILTIN_TYPES: BuiltinTypes = BuiltinTypes {
+            pub static ref BUILTIN_TYPES: BuiltinTypes = BuiltinTypes {
                 $($x: Type::Named(TypeId::new(), Vec::new()),)*
             };
         }
 
         impl BuiltinTypes {
-            fn name(&self, id: TypeId) -> Option<&'static str> {
+            pub fn name(&self, id: TypeId) -> Option<&'static str> {
                 if false {
                     unreachable!()
                 } $(else if id == self.$x.id().unwrap() {
@@ -380,7 +384,7 @@ impl<'a> Typechecker<'a> {
                 self.used_constants.insert(*id);
 
                 let ty = match constant {
-                    lower::Declaration::Local(decl) => {
+                    lower::Declaration::Local(decl) | lower::Declaration::Builtin(decl) => {
                         let value = decl.value.value.borrow();
                         let value = value.as_ref().expect("uninitialized constant");
 
@@ -439,7 +443,7 @@ impl<'a> Typechecker<'a> {
                     ExpressionKind::Call(Box::new(function), Box::new(input)),
                 )
             }
-            lower::ExpressionKind::Function(body) => {
+            lower::ExpressionKind::Function(body, captures) => {
                 let body = self.typecheck_expr(body, file);
 
                 let input_var = self
@@ -452,14 +456,21 @@ impl<'a> Typechecker<'a> {
                         Box::new(Type::Variable(input_var)),
                         Box::new(body.ty.clone()),
                     ),
-                    ExpressionKind::Function(Box::new(body)),
+                    ExpressionKind::Function(Box::new(body), captures.clone()),
                 )
             }
             lower::ExpressionKind::When(_, _) => todo!(),
-            lower::ExpressionKind::External(namespace, identifier) => (
-                Type::Variable(self.ctx.new_variable()),
-                ExpressionKind::External(*namespace, *identifier),
-            ),
+            lower::ExpressionKind::External(namespace, identifier, inputs) => {
+                let inputs = inputs
+                    .iter()
+                    .map(|expr| self.typecheck_expr(expr, file))
+                    .collect();
+
+                (
+                    Type::Variable(self.ctx.new_variable()),
+                    ExpressionKind::External(*namespace, *identifier, inputs),
+                )
+            }
             lower::ExpressionKind::Annotate(expr, ty) => {
                 let ty = self.convert_type_annotation(ty);
                 let inferred_expr = self.typecheck_expr(expr, file);
@@ -518,12 +529,18 @@ impl<'a> Typechecker<'a> {
         self.used_types.insert(id);
 
         match decl {
-            lower::Declaration::Local(decl) => match decl.value.kind {
-                lower::TypeKind::Marker
-                | lower::TypeKind::Structure(_, _)
-                | lower::TypeKind::Enumeration(_, _) => Type::Named(id, Vec::new()), // TODO: parameters
-                lower::TypeKind::Alias(annotation) => self.convert_type_annotation(&annotation),
-            },
+            lower::Declaration::Local(decl) | lower::Declaration::Builtin(decl) => {
+                match decl.value.kind {
+                    lower::TypeKind::Marker
+                    | lower::TypeKind::Structure(_, _)
+                    | lower::TypeKind::Enumeration(_, _) => Type::Named(id, Vec::new()), // TODO: parameters
+                    lower::TypeKind::Alias(annotation) => self.convert_type_annotation(&annotation),
+                    lower::TypeKind::Builtin(ty) => match ty {
+                        lower::BuiltinType::Number => BUILTIN_TYPES.number.clone(),
+                        lower::BuiltinType::Text => BUILTIN_TYPES.text.clone(),
+                    },
+                }
+            }
             lower::Declaration::Dependency(_) => Type::Named(id, Vec::new()), // TODO: parameters
         }
     }
@@ -645,7 +662,7 @@ fn format_type_with<T>(
                     .get(id)
                     .map(name_extractor)
                     .or_else(|| BUILTIN_TYPES.name(*id))
-                    .expect("unregistered type");
+                    .unwrap_or_else(|| panic!("unregistered type {:?}", id));
 
                 let params = params
                     .iter()

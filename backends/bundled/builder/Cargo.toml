@@ -1,0 +1,8 @@
+[package]
+name = "wipple-bundled-backend"
+version = "0.0.0"
+edition = "2021"
+
+[dependencies]
+bincode = "1"
+wipple-compiler = { path = "../../../compiler" }
