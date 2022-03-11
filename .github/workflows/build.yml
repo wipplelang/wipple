@@ -5,7 +5,10 @@ on:
       - main
     paths:
       - .github/**
-      - src/**
+      - backends/**
+      - cli/**
+      - compiler/**
+      - support/**
 
 name: Build
 
