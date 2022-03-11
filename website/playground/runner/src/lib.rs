@@ -39,16 +39,19 @@ pub fn run(code: &str) -> JsValue {
     let mut output = Vec::new();
 
     if let Some(program) = program {
-        let result = {
-            let interpreter = wipple_interpreter_backend::Interpreter::new(Some(|text: &str| {
-                output.push(text.to_string())
-            }));
+        if !diagnostics.contains_errors() {
+            let result = {
+                let interpreter =
+                    wipple_interpreter_backend::Interpreter::new(Some(|text: &str| {
+                        output.push(text.to_string())
+                    }));
 
-            interpreter.eval(program)
-        };
+                interpreter.eval(program)
+            };
 
-        if let Err((error, _)) = result {
-            output.push(format!("fatal error: {error}"));
+            if let Err((error, _)) = result {
+                output.push(format!("fatal error: {error}"));
+            }
         }
     }
 
