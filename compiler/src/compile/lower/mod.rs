@@ -8,6 +8,7 @@ use crate::{
 };
 use builtins::load_builtins;
 use rust_decimal::Decimal;
+use serde::{Deserialize, Serialize};
 use std::{
     cell::RefCell,
     collections::{HashMap, HashSet},
@@ -151,7 +152,7 @@ pub enum ExpressionKind {
     Variable(VariableId),
     Text(InternedString),
     Number(Decimal),
-    Block(Vec<Expression>),
+    Block(Vec<Expression>, HashMap<InternedString, ScopeValue>),
     Call(Box<Expression>, Box<Expression>),
     Function(Box<Expression>, HashSet<VariableId>),
     When(Box<Expression>, Vec<Arm>),
@@ -319,7 +320,7 @@ struct Scope<'a> {
     used_variables: Option<RefCell<HashSet<VariableId>>>,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub enum ScopeValue {
     Type(TypeId),
     Trait(TraitId),
@@ -366,16 +367,18 @@ impl<L: Loader> Compiler<L> {
         statements: Vec<parser::Statement>,
         scope: &Scope,
         info: &mut Info,
-    ) -> Vec<Expression> {
+    ) -> (Vec<Expression>, HashMap<InternedString, ScopeValue>) {
         let scope = Scope {
             parent: Some(scope),
             ..Default::default()
         };
 
-        statements
+        let statements = statements
             .into_iter()
             .filter_map(|statement| self.lower_statement(statement, &scope, info))
-            .collect()
+            .collect();
+
+        (statements, scope.values.into_inner())
     }
 
     fn lower_statement(
@@ -722,9 +725,9 @@ impl<L: Loader> Compiler<L> {
                     ..Default::default()
                 };
 
-                let block = self.lower_block(statements, &scope, info);
+                let (block, declarations) = self.lower_block(statements, &scope, info);
 
-                ExpressionKind::Block(block)
+                ExpressionKind::Block(block, declarations)
             }
             parser::ExpressionKind::Call(function, input) => {
                 if let parser::ExpressionKind::Path(path) = &function.kind {
@@ -776,7 +779,7 @@ impl<L: Loader> Compiler<L> {
                 ExpressionKind::Function(
                     Box::new(Expression {
                         span: expr.span,
-                        kind: ExpressionKind::Block(block),
+                        kind: ExpressionKind::Block(block, scope.values.into_inner()),
                     }),
                     scope.used_variables.unwrap().take(),
                 )

@@ -18,11 +18,12 @@ use std::{
     mem,
 };
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Program {
     pub well_typed: bool,
     pub body: Vec<Expression>,
     pub declarations: Declarations,
+    pub top_level: HashMap<InternedString, lower::ScopeValue>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -40,7 +41,7 @@ pub enum ExpressionKind {
     Variable(VariableId),
     Text(InternedString),
     Number(Decimal),
-    Block(Vec<Expression>),
+    Block(Vec<Expression>, HashMap<InternedString, lower::ScopeValue>),
     Call(Box<Expression>, Box<Expression>),
     Function(Box<Expression>, HashSet<VariableId>),
     When(Box<Expression>, Vec<Arm>),
@@ -128,7 +129,7 @@ impl Expression {
         f(self);
 
         match &mut self.kind {
-            Block(statements) => {
+            Block(statements, _) => {
                 for statement in statements {
                     statement.traverse_inner(f);
                 }
@@ -202,8 +203,7 @@ impl<L: Loader> Compiler<L> {
         }
 
         let mut declarations = Declarations::default();
-
-        for mut file in files {
+        for file in &mut files {
             for (id, decl) in mem::take(&mut file.declarations.types) {
                 if let lower::Declaration::Local(decl) = decl {
                     declarations.types.insert(
@@ -237,10 +237,10 @@ impl<L: Loader> Compiler<L> {
                     let ty = typechecker.constants.get(&id).unwrap().clone();
 
                     let mut value =
-                        typechecker.typecheck_expr(&decl.value.value.take().unwrap(), &file);
+                        typechecker.typecheck_expr(&decl.value.value.take().unwrap(), file);
 
                     if let Err(errors) = typechecker.ctx.unify(ty.clone(), value.ty.clone()) {
-                        typechecker.report_type_errors(value.span, errors, &file);
+                        typechecker.report_type_errors(value.span, errors, file);
                     }
 
                     value.ty = ty;
@@ -283,10 +283,16 @@ impl<L: Loader> Compiler<L> {
             }
         }
 
+        let mut top_level = HashMap::new();
+        for file in &files {
+            top_level.extend(&file.exported);
+        }
+
         let mut program = Program {
             well_typed: true,
             body,
             declarations,
+            top_level,
         };
 
         program.traverse(|expr| ensure_well_typed!(expr));
@@ -414,9 +420,9 @@ impl<'a> Typechecker<'a> {
                 BUILTIN_TYPES.number.clone(),
                 ExpressionKind::Number(*number),
             ),
-            lower::ExpressionKind::Block(statements) => {
+            lower::ExpressionKind::Block(statements, declarations) => {
                 let (ty, statements) = self.typecheck_block(statements, file);
-                (ty, ExpressionKind::Block(statements))
+                (ty, ExpressionKind::Block(statements, declarations.clone()))
             }
             lower::ExpressionKind::Call(function, input) => {
                 let function = self.typecheck_expr(function, file);

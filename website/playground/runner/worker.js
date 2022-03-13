@@ -4,6 +4,11 @@ import("./pkg").then((r) => (runner = r));
 onmessage = (event) => {
     if (!runner) return;
 
-    const result = runner.run(event.data);
-    postMessage(result);
+    switch (event.data.type) {
+        case "run":
+            postMessage(runner.run(event.data.code));
+            break;
+        case "completions":
+            postMessage(runner.get_completions(event.data.position));
+    }
 };

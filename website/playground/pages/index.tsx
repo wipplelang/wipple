@@ -38,6 +38,11 @@ interface Note {
 
 type NoteLevel = "Primary" | "Secondary";
 
+interface Completion {
+    name: string;
+    kind: number;
+}
+
 const fontFamily = "'JetBrains Mono', monospace";
 
 const Playground = () => {
@@ -105,7 +110,7 @@ const Playground = () => {
                 setOutput(event.data.output);
             };
 
-            runner.current.postMessage(code);
+            runner.current.postMessage({ type: "run", code });
         }
     };
 
@@ -179,6 +184,36 @@ const Playground = () => {
                 return {
                     range: getRange(model, annotation.span),
                     contents: [{ value: "```wipple\n" + annotation.value + "\n```" }],
+                };
+            },
+        });
+
+        monaco.languages.registerCompletionItemProvider("wipple", {
+            provideCompletionItems: async (model, position) => {
+                if (!runner.current) {
+                    return { suggestions: [] };
+                }
+
+                const completions: Completion[] = await new Promise((resolve) => {
+                    runner.current!.onmessage = (event) => {
+                        resolve(event.data);
+                    };
+
+                    runner.current!.postMessage({
+                        type: "completions",
+                        position: model.getOffsetAt(position),
+                    });
+                });
+
+                return {
+                    suggestions: completions.map(
+                        (completion) =>
+                            ({
+                                label: completion.name,
+                                kind: completion.kind,
+                                insertText: completion.name,
+                            } as monaco.languages.CompletionItem)
+                    ),
                 };
             },
         });

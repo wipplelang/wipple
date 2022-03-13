@@ -134,7 +134,7 @@ impl<'a> Interpreter<'a> {
             }
             ExpressionKind::Number(number) => Rc::new(Value::Number(*number)),
             ExpressionKind::Text(text) => Rc::new(Value::Text(text.to_string())),
-            ExpressionKind::Block(statements) => {
+            ExpressionKind::Block(statements, _) => {
                 let parent = info.scope.clone();
                 let child = Scope::child(&parent);
                 info.scope = child;

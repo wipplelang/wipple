@@ -1,5 +1,6 @@
+use lazy_static::lazy_static;
 use serde::Serialize;
-use std::borrow::Cow;
+use std::{borrow::Cow, sync::Mutex};
 use wasm_bindgen::prelude::*;
 
 #[derive(Serialize)]
@@ -15,6 +16,10 @@ struct CompileResult {
 struct Annotation {
     span: wipple_compiler::parser::Span,
     value: String,
+}
+
+lazy_static! {
+    static ref PROGRAM: Mutex<Option<wipple_compiler::compile::Program>> = Default::default();
 }
 
 #[wasm_bindgen]
@@ -39,6 +44,8 @@ pub fn run(code: &str) -> JsValue {
     let mut output = Vec::new();
 
     if let Some(program) = program {
+        *PROGRAM.lock().unwrap() = Some(program.clone());
+
         if !diagnostics.contains_errors() {
             let result = {
                 let interpreter =
@@ -185,4 +192,57 @@ fn belongs_to_playground(span: wipple_compiler::parser::Span) -> bool {
         span.path,
         wipple_compiler::FilePath::Virtual(s) if s.as_str() == "playground"
     )
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct Completion {
+    name: String,
+    kind: usize,
+}
+
+#[wasm_bindgen]
+pub fn get_completions(position: usize) -> JsValue {
+    #[cfg(feature = "console_error_panic_hook")]
+    console_error_panic_hook::set_once();
+
+    let mut completions = Vec::new();
+
+    macro_rules! add_completions {
+        ($declarations:expr) => {{
+            use wipple_compiler::compile::lower::ScopeValue;
+
+            let declarations = $declarations;
+
+            completions.extend(declarations.iter().map(|(&name, value)| Completion {
+                name: name.to_string(),
+
+                // https://microsoft.github.io/monaco-editor/api/enums/monaco.languages.CompletionItemKind.html
+                kind: match value {
+                    ScopeValue::Type(_) => 6,
+                    ScopeValue::Trait(_) => 7,
+                    ScopeValue::Constant(_) => 14,
+                    ScopeValue::Variable(_) => 4,
+                },
+            }));
+        }};
+    }
+
+    if let Some(program) = PROGRAM.lock().unwrap().as_mut() {
+        add_completions!(&program.top_level);
+
+        program.traverse(|expr| {
+            if let wipple_compiler::compile::typecheck::ExpressionKind::Block(_, declarations) =
+                &expr.kind
+            {
+                if belongs_to_playground(expr.span)
+                    && position >= expr.span.start
+                    && position < expr.span.end
+                {
+                    add_completions!(declarations);
+                }
+            }
+        });
+    }
+
+    JsValue::from_serde(&completions).unwrap()
 }
