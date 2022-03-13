@@ -137,6 +137,7 @@ impl<L: Loader> Compiler<L> {
             }
 
             let file = self.lower(file, dependencies);
+            success &= file.complete;
 
             let index = lowered_files.len();
             lowered_files_by_path.insert(file.path, index);

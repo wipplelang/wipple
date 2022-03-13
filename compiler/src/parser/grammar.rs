@@ -363,11 +363,8 @@ peg::parser! {
 
         rule external_expression() -> Expression
             = [(Token::External, external_span)]
-              _
               [(Token::Text(namespace), _)]
-              _
               [(Token::Text(identifier), identifier_span)]
-              _
               inputs:expression()+
             {
                 Expression {

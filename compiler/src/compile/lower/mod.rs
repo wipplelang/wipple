@@ -19,6 +19,7 @@ use std::{
 pub struct File {
     pub path: FilePath,
     pub span: Span,
+    pub complete: bool,
     pub declarations: Declarations,
     pub exported: HashMap<InternedString, ScopeValue>,
     pub block: Vec<Expression>,
@@ -283,8 +284,9 @@ impl<L: Loader> Compiler<L> {
             .filter_map(|statement| self.lower_statement(statement, &scope, &mut info))
             .collect();
 
+        let mut all_constants_initialized = true;
         for constant in info.declarations.constants.values() {
-            if let Declaration::Local(decl) = constant {
+            if let Declaration::Local(decl) | Declaration::Builtin(decl) = constant {
                 if decl.value.value.borrow().is_none() {
                     self.diagnostics.add(Diagnostic::error(
                         "uninitialized constant",
@@ -293,6 +295,8 @@ impl<L: Loader> Compiler<L> {
                             format!("`{}` is never initialized with a value", decl.name),
                         )],
                     ));
+
+                    all_constants_initialized = false;
                 }
             }
         }
@@ -300,6 +304,7 @@ impl<L: Loader> Compiler<L> {
         File {
             path: file.path,
             span: file.span,
+            complete: all_constants_initialized,
             declarations: info.declarations,
             exported: scope.values.take(),
             block,

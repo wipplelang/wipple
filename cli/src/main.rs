@@ -141,14 +141,12 @@ fn build(options: Options) -> wipple_compiler::compile::Program {
         emitter.emit(&diagnostics);
     }
 
-    let program = match program {
-        Some(program) if success => program,
-        _ => process::exit(1),
-    };
-
     if options.debug {
         println!("{program:#?}");
     }
 
-    program
+    match program {
+        Some(program) if success => program,
+        _ => process::exit(1),
+    }
 }

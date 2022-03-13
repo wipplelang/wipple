@@ -1,8 +1,6 @@
 mod engine;
 
 pub use engine::Type;
-use rust_decimal::Decimal;
-use serde::{Deserialize, Serialize};
 
 use crate::{
     compile::lower,
@@ -13,6 +11,8 @@ use crate::{
 };
 use engine::*;
 use lazy_static::lazy_static;
+use rust_decimal::Decimal;
+use serde::{Deserialize, Serialize};
 use std::{
     collections::{HashMap, HashSet},
     mem,
@@ -140,6 +140,11 @@ impl Expression {
             Function(body, _) => body.traverse_inner(f),
             When(_, _) => todo!(),
             Initialize(_, value) => value.traverse_inner(f),
+            External(_, _, inputs) => {
+                for input in inputs {
+                    input.traverse_inner(f);
+                }
+            }
             _ => {}
         }
     }
@@ -163,51 +168,43 @@ impl<L: Loader> Compiler<L> {
         let mut body = Vec::new();
 
         for file in &mut files {
-            for (id, decl) in &file.declarations.constants {
-                if let lower::Declaration::Local(decl) = decl {
-                    let mut expr = typechecker
-                        .typecheck_expr(decl.value.value.borrow().as_ref().unwrap(), file);
-
-                    // TODO: Handle type parameters (`decl.value.parameters`)
+            for (&id, constant) in &file.declarations.constants {
+                if let lower::Declaration::Local(decl) | lower::Declaration::Builtin(decl) =
+                    constant
+                {
                     let ty = typechecker.convert_type_annotation(&decl.value.ty);
-                    if let Err(errors) = typechecker.ctx.unify(expr.ty.clone(), ty.clone()) {
-                        typechecker.report_type_errors(expr.span, errors, file);
-                    }
-
-                    expr.ty = ty;
-
-                    typechecker.constants.insert(*id, expr);
+                    typechecker.constants.insert(id, ty);
                 }
             }
 
             let (_, block) = typechecker.typecheck_block(&mem::take(&mut file.block), file);
-
             body.extend(block);
         }
 
-        // Only report missing types if there aren't already type errors
-        let no_type_errors = typechecker.well_typed;
+        macro_rules! ensure_well_typed {
+            ($expr:expr) => {{
+                let expr = $expr;
 
-        let mut ensure_well_typed = |expr: &mut Expression| {
-            expr.ty.apply(&typechecker.ctx);
+                expr.ty.apply(&typechecker.ctx);
 
-            if no_type_errors && !expr.ty.vars().is_empty() {
-                typechecker.diagnostics.add(Diagnostic::error(
-                    "cannot determine the type of this expression",
-                    vec![Note::primary(
-                        expr.span,
-                        "try annotating the type with '::'",
-                    )],
-                ));
+                if !expr.ty.vars().is_empty() {
+                    typechecker.well_typed = false;
 
-                typechecker.well_typed = false;
-            }
-        };
+                    typechecker.diagnostics.add(Diagnostic::error(
+                        "cannot determine the type of this expression",
+                        vec![Note::primary(
+                            expr.span,
+                            "try annotating the type with '::'",
+                        )],
+                    ));
+                }
+            }};
+        }
 
         let mut declarations = Declarations::default();
 
-        for file in files {
-            for (id, decl) in file.declarations.types {
+        for mut file in files {
+            for (id, decl) in mem::take(&mut file.declarations.types) {
                 if let lower::Declaration::Local(decl) = decl {
                     declarations.types.insert(
                         id,
@@ -221,7 +218,7 @@ impl<L: Loader> Compiler<L> {
                 }
             }
 
-            for (id, decl) in file.declarations.traits {
+            for (id, decl) in mem::take(&mut file.declarations.traits) {
                 if let lower::Declaration::Local(decl) = decl {
                     declarations.traits.insert(
                         id,
@@ -235,10 +232,19 @@ impl<L: Loader> Compiler<L> {
                 }
             }
 
-            for (id, decl) in file.declarations.constants {
-                if let lower::Declaration::Local(decl) = decl {
-                    let mut expr = typechecker.constants.get(&id).unwrap().clone();
-                    ensure_well_typed(&mut expr);
+            for (id, decl) in mem::take(&mut file.declarations.constants) {
+                if let lower::Declaration::Local(decl) | lower::Declaration::Builtin(decl) = decl {
+                    let ty = typechecker.constants.get(&id).unwrap().clone();
+
+                    let mut value =
+                        typechecker.typecheck_expr(&decl.value.value.take().unwrap(), &file);
+
+                    if let Err(errors) = typechecker.ctx.unify(ty.clone(), value.ty.clone()) {
+                        typechecker.report_type_errors(value.span, errors, &file);
+                    }
+
+                    value.ty = ty;
+                    value.traverse(|expr| ensure_well_typed!(expr));
 
                     declarations.constants.insert(
                         id,
@@ -246,13 +252,13 @@ impl<L: Loader> Compiler<L> {
                             file: file.path,
                             name: decl.name,
                             span: decl.span,
-                            value: expr,
+                            value,
                         },
                     );
                 }
             }
 
-            for (id, decl) in file.declarations.variables {
+            for (id, decl) in mem::take(&mut file.declarations.variables) {
                 if let lower::Declaration::Local(decl) = decl {
                     let ty = typechecker.variables.get(&id).unwrap().clone();
 
@@ -262,7 +268,7 @@ impl<L: Loader> Compiler<L> {
                         kind: ExpressionKind::Error, // unused
                     };
 
-                    ensure_well_typed(&mut temp_expr);
+                    ensure_well_typed!(&mut temp_expr);
 
                     declarations.variables.insert(
                         id,
@@ -283,7 +289,7 @@ impl<L: Loader> Compiler<L> {
             declarations,
         };
 
-        program.traverse(ensure_well_typed);
+        program.traverse(|expr| ensure_well_typed!(expr));
         program.well_typed = typechecker.well_typed;
 
         if self.options.warn_unused_variables {
@@ -353,7 +359,7 @@ struct Typechecker<'a> {
     well_typed: bool,
     ctx: Context,
     variables: HashMap<VariableId, Type>,
-    constants: HashMap<ConstantId, Expression>, // TODO: SCHEMES
+    constants: HashMap<ConstantId, Type>, // TODO: SCHEMES
     function_inputs: Vec<TypeVariable>,
     diagnostics: &'a mut Diagnostics,
     used_types: HashSet<TypeId>,
@@ -372,7 +378,7 @@ impl<'a> Typechecker<'a> {
 
         let (ty, kind) = match &expr.kind {
             lower::ExpressionKind::Error => {
-                self.well_typed = false; // signal that type errors should be suppressed
+                eprintln!("lowered expression is error");
                 return error();
             }
             lower::ExpressionKind::Unit => (BUILTIN_TYPES.unit.clone(), ExpressionKind::Marker),
@@ -380,25 +386,13 @@ impl<'a> Typechecker<'a> {
                 (self.convert_type_id(*ty, file), ExpressionKind::Marker)
             }
             lower::ExpressionKind::Constant(id) => {
-                let constant = file.declarations.constants.get(id).unwrap();
+                let ty = self
+                    .constants
+                    .get(id)
+                    .expect("uninitialized constant")
+                    .clone();
+
                 self.used_constants.insert(*id);
-
-                let ty = match constant {
-                    lower::Declaration::Local(decl) | lower::Declaration::Builtin(decl) => {
-                        let value = decl.value.value.borrow();
-                        let value = value.as_ref().expect("uninitialized constant");
-
-                        let value = self.typecheck_expr(value, file);
-                        let ty = value.ty.clone();
-
-                        self.constants.insert(*id, value);
-
-                        ty
-                    }
-                    lower::Declaration::Dependency(decl) => {
-                        self.constants.get(&decl.value).unwrap().ty.clone()
-                    }
-                };
 
                 (ty, ExpressionKind::Constant(*id))
             }
@@ -435,6 +429,7 @@ impl<'a> Typechecker<'a> {
                     Type::Function(Box::new(input.ty.clone()), Box::new(output_ty.clone())),
                 ) {
                     self.report_type_errors(expr.span, errors, file);
+                    eprintln!("type error #1");
                     return error();
                 }
 
@@ -477,6 +472,7 @@ impl<'a> Typechecker<'a> {
 
                 if let Err(errors) = self.ctx.unify(inferred_expr.ty.clone(), ty) {
                     self.report_type_errors(expr.span, errors, file);
+                    eprintln!("type error #2");
                     return error();
                 }
 
