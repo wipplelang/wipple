@@ -34,7 +34,7 @@ fn main() {
     let program = bincode::deserialize_from(bundle.as_slice()).expect("invalid bundle");
 
     let interpreter =
-        wipple_interpreter_backend::Interpreter::new(Some(|text: &_| println!("{}", text)));
+        wipple_interpreter_backend::Interpreter::handling_output(|text| println!("{}", text));
 
     if let Err((error, _)) = interpreter.eval(program) {
         eprintln!("fatal error: {}", error);

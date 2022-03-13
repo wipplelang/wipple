@@ -53,8 +53,9 @@ fn main() -> anyhow::Result<()> {
         Args::Run { options } => {
             let program = build(options);
 
-            let interpreter =
-                wipple_interpreter_backend::Interpreter::new(Some(|text: &_| println!("{}", text)));
+            let interpreter = wipple_interpreter_backend::Interpreter::handling_output(|text| {
+                println!("{}", text)
+            });
 
             if let Err((error, _)) = interpreter.eval(program) {
                 eprintln!("fatal error: {}", error);

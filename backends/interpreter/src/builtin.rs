@@ -71,7 +71,7 @@ fn builtin_show(
                 DivergeKind::Error(Error::from("Output not configured")),
             )
         })?
-        .borrow_mut()(text);
+        .borrow_mut()(text, *info.callstack.last().unwrap());
 
     Ok(Rc::new(Value::Marker))
 }

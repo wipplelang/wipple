@@ -62,13 +62,21 @@ impl Diverge {
 #[derive(Default)]
 pub struct Interpreter<'a> {
     #[allow(clippy::type_complexity)]
-    output: Option<Rc<RefCell<Box<dyn FnMut(&str) + 'a>>>>,
+    output: Option<Rc<RefCell<Box<dyn FnMut(&str, Span) + 'a>>>>,
 }
 
 impl<'a> Interpreter<'a> {
-    pub fn new(output: Option<impl FnMut(&str) + 'a>) -> Self {
+    pub fn handling_output(mut output: impl FnMut(&str) + 'a) -> Self {
+        Interpreter::handling_output_with_span(move |s, _| output(s))
+    }
+
+    pub fn ignoring_output() -> Self {
+        Interpreter { output: None }
+    }
+
+    pub fn handling_output_with_span(output: impl FnMut(&str, Span) + 'a) -> Self {
         Interpreter {
-            output: output.map(|output| Rc::new(RefCell::new(Box::new(output) as Box<_>))),
+            output: Some(Rc::new(RefCell::new(Box::new(output) as Box<_>))),
         }
     }
 

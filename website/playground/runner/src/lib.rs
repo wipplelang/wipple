@@ -6,7 +6,7 @@ use wasm_bindgen::prelude::*;
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct CompileResult {
-    output: Vec<String>,
+    output: Vec<(wipple_compiler::parser::Span, String)>,
     annotations: Vec<Annotation>,
     diagnostics: Vec<wipple_compiler::diagnostics::Diagnostic>,
 }
@@ -49,15 +49,16 @@ pub fn run(code: &str) -> JsValue {
         if !diagnostics.contains_errors() {
             let result = {
                 let interpreter =
-                    wipple_interpreter_backend::Interpreter::new(Some(|text: &str| {
-                        output.push(text.to_string())
-                    }));
+                    wipple_interpreter_backend::Interpreter::handling_output_with_span(
+                        |text, span| output.push((span, text.to_string())),
+                    );
 
                 interpreter.eval(program)
             };
 
-            if let Err((error, _)) = result {
-                output.push(format!("fatal error: {error}"));
+            if let Err((error, callstack)) = result {
+                let span = *callstack.last().unwrap();
+                output.push((span, format!("fatal error: {error}")));
             }
         }
     }
