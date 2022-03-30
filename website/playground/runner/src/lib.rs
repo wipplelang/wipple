@@ -105,7 +105,7 @@ impl<'a> wipple_compiler::Loader for Loader<'a> {
 }
 
 fn annotations(program: &mut wipple_compiler::compile::Program) -> Vec<Annotation> {
-    use wipple_compiler::compile::typecheck::ExpressionKind;
+    use wipple_compiler::compile::typecheck::{format_type_scheme, ExpressionKind, BUILTIN_TYPES};
 
     let mut annotations = Vec::new();
 
@@ -113,9 +113,25 @@ fn annotations(program: &mut wipple_compiler::compile::Program) -> Vec<Annotatio
 
     macro_rules! format_ty {
         ($ty:expr) => {
-            wipple_compiler::compile::typecheck::format_type($ty, &declarations.types, |decl| {
-                decl.name.as_str()
-            })
+            format_type_scheme(
+                $ty,
+                |name| {
+                    declarations
+                        .types
+                        .get(&name)
+                        .map(|decl| decl.name.to_string())
+                        .unwrap_or_else(|| BUILTIN_TYPES.name(name).unwrap().to_string())
+                        .to_string()
+                },
+                |param| {
+                    declarations
+                        .type_parameters
+                        .get(&param)
+                        .unwrap()
+                        .name
+                        .to_string()
+                },
+            )
         };
     }
 
@@ -124,7 +140,7 @@ fn annotations(program: &mut wipple_compiler::compile::Program) -> Vec<Annotatio
             return;
         }
 
-        let ty = format_ty!(&expr.ty);
+        let ty = format_ty!(&expr.scheme);
 
         let name = match expr.kind {
             ExpressionKind::Variable(id) => Some(declarations.variables.get(&id).unwrap().name),
@@ -152,17 +168,6 @@ fn annotations(program: &mut wipple_compiler::compile::Program) -> Vec<Annotatio
         });
     }
 
-    for decl in declarations.traits.values() {
-        if !belongs_to_playground(decl.span) {
-            continue;
-        }
-
-        annotations.push(Annotation {
-            span: decl.span,
-            value: format!("{} : trait", decl.name),
-        });
-    }
-
     for decl in declarations.variables.values() {
         if !belongs_to_playground(decl.span) {
             continue;
@@ -181,7 +186,7 @@ fn annotations(program: &mut wipple_compiler::compile::Program) -> Vec<Annotatio
 
         annotations.push(Annotation {
             span: decl.span,
-            value: format!("{} :: {}", decl.name, format_ty!(&decl.value.ty)),
+            value: format!("{} :: {}", decl.name, format_ty!(&decl.value.scheme)),
         });
     }
 
@@ -220,7 +225,8 @@ pub fn get_completions(position: usize) -> JsValue {
                 // https://microsoft.github.io/monaco-editor/api/enums/monaco.languages.CompletionItemKind.html
                 kind: match value {
                     ScopeValue::Type(_) => 6,
-                    ScopeValue::Trait(_) => 7,
+                    ScopeValue::TypeParameter(_) => 24,
+                    ScopeValue::Operator(_) => 11,
                     ScopeValue::Constant(_) => 14,
                     ScopeValue::Variable(_) => 4,
                 },

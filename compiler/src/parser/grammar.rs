@@ -1,6 +1,5 @@
 use super::{lexer::Token, Span};
 use crate::{helpers::InternedString, FilePath};
-use std::collections::VecDeque;
 
 #[derive(Debug, Clone)]
 pub struct File {
@@ -32,7 +31,6 @@ pub struct Statement {
 #[derive(Debug, Clone)]
 pub enum StatementKind {
     Type((Span, InternedString), TypeDeclaration),
-    Trait((Span, InternedString), TraitDeclaration),
     Constant((Span, InternedString), ConstantDeclaration),
     Implementation(Implementation),
     Assign(Pattern, Expression),
@@ -42,7 +40,7 @@ pub enum StatementKind {
 #[derive(Debug, Clone)]
 pub struct Implementation {
     pub parameters: Vec<TypeParameter>,
-    pub trait_name: Path,
+    pub trait_name: InternedString,
     pub implementing_ty: TypeAnnotation,
     pub body: Expression,
 }
@@ -56,34 +54,16 @@ pub struct Expression {
 #[derive(Debug, Clone)]
 pub enum ExpressionKind {
     Unit,
-    Text(InternedString),
+    Name(InternedString),
     Number(Decimal),
+    Text(InternedString),
     FunctionInput,
-    Path(Path),
     Block(Vec<Statement>),
-    Call(Box<Expression>, Box<Expression>),
+    List(Vec<Expression>),
     Function(Pattern, Box<Expression>),
     When(Box<Expression>, Vec<Arm>),
     External(InternedString, InternedString, Vec<Expression>),
     Annotate(Box<Expression>, TypeAnnotation),
-}
-
-#[derive(Debug, Clone)]
-pub struct Path {
-    pub base: InternedString,
-    pub components: Vec<PathComponent>,
-}
-
-#[derive(Debug, Clone)]
-pub struct PathComponent {
-    pub span: Span,
-    pub kind: PathComponentKind,
-}
-
-#[derive(Debug, Clone)]
-pub enum PathComponentKind {
-    Name(InternedString),
-    Number(Decimal),
 }
 
 #[derive(Debug, Clone)]
@@ -103,14 +83,13 @@ pub struct TypeAnnotation {
 pub enum TypeAnnotationKind {
     Placeholder,
     Unit,
-    Path(Path, Vec<TypeAnnotation>),
+    Named(InternedString, Vec<TypeAnnotation>),
     Function(Box<TypeAnnotation>, Box<TypeAnnotation>),
 }
 
 #[derive(Debug, Clone)]
 pub struct TypeParameter {
     pub span: Span,
-    pub constraints: Vec<(Span, InternedString)>,
     pub name: InternedString,
 }
 
@@ -122,7 +101,7 @@ pub struct Pattern {
 
 #[derive(Debug, Clone)]
 pub enum PatternKind {
-    Path(Path),
+    Name(InternedString),
     Wildcard,
 }
 
@@ -211,7 +190,7 @@ peg::parser! {
             }
 
         rule expression() -> Expression
-            = path_expression()
+            = name_expression()
             / number_expression()
             / text_expression()
             / grouped_expression()
@@ -219,48 +198,29 @@ peg::parser! {
             / expected!("expression")
 
         rule non_block_expression() -> Expression
-            = path_expression()
+            = name_expression()
             / number_expression()
             / text_expression()
             / grouped_expression()
             / expected!("expression")
 
         rule non_annotate_expression() -> Expression
-            = path_expression()
+            = name_expression()
             / number_expression()
             / text_expression()
             / grouped_expression()
             / block_expression()
             / expected!("expression")
 
-        rule path_expression() -> Expression
-            = path:path()
+        rule name_expression() -> Expression
+            = [(Token::Name(name), span)]
             {
-                let (path, span) = path;
-
                 Expression {
                     span,
-                    kind: ExpressionKind::Path(path),
+                    kind: ExpressionKind::Name(name),
                 }
             }
             / expected!("name")
-
-        rule path() -> (Path, Span)
-            = [(Token::Name(base), base_span)]
-              components:(
-                  [(Token::Slash, _)]
-                  component:(
-                        [(Token::Name(name), span)]
-                        { PathComponent { span, kind: PathComponentKind::Name(name) } }
-                      / [(Token::Number(number), span)]
-                        { PathComponent { span, kind: PathComponentKind::Number(number) } }
-                  )
-                  { component }
-              )*
-            {
-                let span = Span::join(base_span, components.last().map(|c| c.span).unwrap_or(base_span));
-                (Path { base, components }, span)
-            }
 
         rule text_expression() -> Expression
             = [(Token::Text(text), span)]
@@ -389,18 +349,16 @@ peg::parser! {
             = placeholder_type()
             / function_type()
             / unit_type()
-            / path_type()
+            / named_type()
             / grouped_type()
             / expected!("type")
 
         rule unparameterized_path_type() -> TypeAnnotation
-            = path:path()
+            = [(Token::Name(name), span)]
             {
-                let (path, span) = path;
-
                 TypeAnnotation {
                     span,
-                    kind: TypeAnnotationKind::Path(path, Vec::new()),
+                    kind: TypeAnnotationKind::Named(name, Vec::new()),
                 }
             }
             / placeholder_type()
@@ -410,7 +368,7 @@ peg::parser! {
 
         rule non_function_type() -> TypeAnnotation
             = placeholder_type()
-            / path_type()
+            / named_type()
             / grouped_type()
             / expected!("type")
 
@@ -434,26 +392,22 @@ peg::parser! {
             }
             / expected!("placeholder type")
 
-        rule path_type() -> TypeAnnotation
-            = path:path()
+        rule named_type() -> TypeAnnotation
+            = [(Token::Name(name), name_span)]
               parameters:(
-                  path:path()
+                  [(Token::Name(name), span)]
                   {
-                      let (path, span) = path;
-
                       TypeAnnotation {
                           span,
-                          kind: TypeAnnotationKind::Path(path, Vec::new())
+                          kind: TypeAnnotationKind::Named(name, Vec::new())
                       }
                   }
                   / parameters:unparameterized_path_type()
               )*
             {
-                let (path, path_span) = path;
-
                 TypeAnnotation {
-                    span: Span::join(path_span, parameters.last().map(|ty| ty.span).unwrap_or(path_span)),
-                    kind: TypeAnnotationKind::Path(path, parameters),
+                    span: Span::join(name_span, parameters.last().map(|ty| ty.span).unwrap_or(name_span)),
+                    kind: TypeAnnotationKind::Named(name, parameters),
                 }
             }
             / expected!("named type")
@@ -506,7 +460,6 @@ peg::parser! {
         rule statement() -> Statement
             = type_alias_statement()
             / type_statement()
-            / trait_statement()
             / constant_statement()
             / implementation_statement()
             / assign_statement()
@@ -564,24 +517,9 @@ peg::parser! {
             / expected!("type parameters")
 
         rule type_parameter() -> TypeParameter
-            = [(Token::LeftParen, left_paren_span)]
-              _
-              names:(([(Token::Name(name), span)] { (span, name) }) ++ _)
-              _
-              [(Token::RightParen, right_paren_span)]
-              {
-                  let (&name, traits) = names.split_last().unwrap();
-
-                  TypeParameter {
-                      span: Span::join(left_paren_span, right_paren_span),
-                      constraints: traits.to_vec(),
-                      name: name.1,
-                  }
-              }
-            / [(Token::Name(name), span)] {
+            = [(Token::Name(name), span)] {
                 TypeParameter {
                     span,
-                    constraints: Vec::new(),
                     name,
                 }
             }
@@ -614,25 +552,6 @@ peg::parser! {
             }
             / expected!("data structure variant")
 
-        rule trait_statement() -> Statement
-            = [(Token::Name(name), name_span)]
-              [(Token::Colon, _)]
-              [(Token::Trait, _)]
-              [(Token::LeftParen, _)]
-              parameters:type_parameter_introduction()
-              ty:r#type()
-              [(Token::RightParen, right_paren_span)]
-            {
-                Statement {
-                    span: Span::join(name_span, right_paren_span),
-                    kind: StatementKind::Trait(
-                        (name_span, name),
-                        TraitDeclaration { parameters, ty }
-                    ),
-                }
-            }
-            / expected!("trait declaration")
-
         rule constant_statement() -> Statement
           = [(Token::Name(name), name_span)]
             [(Token::DoubleColon, _)]
@@ -654,7 +573,7 @@ peg::parser! {
 
         rule implementation_statement() -> Statement
             = parameters:type_parameter_introduction()?
-              trait_name:path()
+              [(Token::Name(trait_name), _)]
               implementing_ty:r#type()
               [(Token::Colon, _)]
               body:compound_expression()
@@ -663,7 +582,7 @@ peg::parser! {
                       span: Span::join(parameters.as_ref().map(|p| p.first().unwrap().span).unwrap_or(implementing_ty.span), body.span),
                       kind: StatementKind::Implementation(Implementation {
                           parameters: parameters.unwrap_or_default(),
-                          trait_name: trait_name.0,
+                          trait_name,
                           implementing_ty,
                           body,
                       }),
@@ -692,18 +611,16 @@ peg::parser! {
             / expected!("expression")
 
         rule pattern() -> Pattern
-            = path_pattern()
+            = name_pattern()
             / wildcard_pattern()
             / expected!("pattern")
 
-        rule path_pattern() -> Pattern
-            = path:path()
+        rule name_pattern() -> Pattern
+            = [(Token::Name(name), span)]
             {
-                let (path, span) = path;
-
                 Pattern {
                     span,
-                    kind: PatternKind::Path(path),
+                    kind: PatternKind::Name(name),
                 }
             }
             / expected!("name")
@@ -731,14 +648,9 @@ fn parse_compound_expr(exprs: Vec<Expression>, span: impl FnOnce() -> Span) -> E
             kind: ExpressionKind::Unit,
         }
     } else {
-        // TODO: Operator parsing
-
-        let mut exprs = VecDeque::from(exprs);
-        let expr = exprs.pop_front().unwrap();
-
-        exprs.into_iter().fold(expr, |result, next| Expression {
-            span: Span::join(result.span, next.span),
-            kind: ExpressionKind::Call(Box::new(result), Box::new(next)),
-        })
+        Expression {
+            span: Span::join(exprs.first().unwrap().span, exprs.last().unwrap().span),
+            kind: ExpressionKind::List(exprs),
+        }
     }
 }

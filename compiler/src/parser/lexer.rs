@@ -47,9 +47,6 @@ pub enum Token {
     #[token("'")]
     Quote,
 
-    #[token("/")]
-    Slash,
-
     #[token("use")]
     Use,
 
@@ -113,7 +110,6 @@ impl fmt::Display for Token {
             Token::DoubleArrow => write!(f, "`=>`"),
             Token::Underscore => write!(f, "`_`"),
             Token::Quote => write!(f, "`'`"),
-            Token::Slash => write!(f, "`/`"),
             Token::Use => write!(f, "`use`"),
             Token::When => write!(f, "`when`"),
             Token::Type => write!(f, "`type`"),

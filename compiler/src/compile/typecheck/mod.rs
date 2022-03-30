@@ -1,11 +1,11 @@
 mod engine;
 
-pub use engine::Type;
+pub use engine::{Scheme, Type};
 
 use crate::{
     compile::lower,
     diagnostics::*,
-    helpers::{ConstantId, InternedString, TraitId, TypeId, VariableId},
+    helpers::{ConstantId, InternedString, TypeId, TypeParameterId, VariableId},
     parser::Span,
     Compiler, FilePath, Loader,
 };
@@ -29,7 +29,7 @@ pub struct Program {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Expression {
     pub span: Span,
-    pub ty: Type,
+    pub scheme: Scheme,
     pub kind: ExpressionKind,
 }
 
@@ -85,21 +85,15 @@ pub enum TypeAnnotationKind {
 #[derive(Debug, Clone)]
 pub struct TypeParameter {
     pub span: Span,
-    pub kind: TypeParameterKind,
-}
-
-#[derive(Debug, Clone)]
-pub enum TypeParameterKind {
-    Named(TypeId),
-    Constrained(Vec<TraitId>, TypeId),
+    pub id: TypeId,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct Declarations {
     pub types: HashMap<TypeId, Declaration<()>>,
-    pub traits: HashMap<TraitId, Declaration<()>>,
+    pub type_parameters: HashMap<TypeParameterId, Declaration<()>>,
     pub constants: HashMap<ConstantId, Declaration<Expression>>,
-    pub variables: HashMap<VariableId, Declaration<Type>>,
+    pub variables: HashMap<VariableId, Declaration<Scheme>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -161,7 +155,6 @@ impl<L: Loader> Compiler<L> {
             function_inputs: Default::default(),
             diagnostics: &mut self.diagnostics,
             used_types: Default::default(),
-            used_traits: Default::default(),
             used_constants: Default::default(),
             used_variables: Default::default(),
         };
@@ -173,8 +166,10 @@ impl<L: Loader> Compiler<L> {
                 if let lower::Declaration::Local(decl) | lower::Declaration::Builtin(decl) =
                     constant
                 {
-                    let ty = typechecker.convert_type_annotation(&decl.value.ty);
-                    typechecker.constants.insert(id, ty);
+                    let scheme = typechecker
+                        .convert_constant_type_annotation(&decl.value.ty, &decl.value.parameters);
+
+                    typechecker.constants.insert(id, scheme);
                 }
             }
 
@@ -186,9 +181,9 @@ impl<L: Loader> Compiler<L> {
             ($expr:expr) => {{
                 let expr = $expr;
 
-                expr.ty.apply(&typechecker.ctx);
+                expr.scheme.apply(&typechecker.ctx);
 
-                if !expr.ty.vars().is_empty() {
+                if !expr.scheme.vars().is_empty() {
                     typechecker.well_typed = false;
 
                     typechecker.diagnostics.add(Diagnostic::error(
@@ -204,7 +199,7 @@ impl<L: Loader> Compiler<L> {
 
         let mut declarations = Declarations::default();
         for file in &mut files {
-            for (id, decl) in mem::take(&mut file.declarations.types) {
+            for (id, decl) in file.declarations.types.clone() {
                 if let lower::Declaration::Local(decl) = decl {
                     declarations.types.insert(
                         id,
@@ -218,9 +213,9 @@ impl<L: Loader> Compiler<L> {
                 }
             }
 
-            for (id, decl) in mem::take(&mut file.declarations.traits) {
+            for (id, decl) in file.declarations.type_parameters.clone() {
                 if let lower::Declaration::Local(decl) = decl {
-                    declarations.traits.insert(
+                    declarations.type_parameters.insert(
                         id,
                         Declaration {
                             file: file.path,
@@ -232,18 +227,27 @@ impl<L: Loader> Compiler<L> {
                 }
             }
 
-            for (id, decl) in mem::take(&mut file.declarations.constants) {
+            for (id, decl) in file.declarations.constants.clone() {
                 if let lower::Declaration::Local(decl) | lower::Declaration::Builtin(decl) = decl {
-                    let ty = typechecker.constants.get(&id).unwrap().clone();
+                    let scheme = typechecker.constants.get(&id).unwrap().clone();
 
                     let mut value =
                         typechecker.typecheck_expr(&decl.value.value.take().unwrap(), file);
 
-                    if let Err(errors) = typechecker.ctx.unify(ty.clone(), value.ty.clone()) {
-                        typechecker.report_type_errors(value.span, errors, file);
+                    {
+                        let ty = match &scheme {
+                            Scheme::Type(ty) => ty.clone(),
+                            Scheme::ForAll(forall) => forall.ty.clone(),
+                        };
+
+                        let value_ty = value.scheme.instantiate(&mut typechecker.ctx);
+
+                        if let Err(errors) = typechecker.ctx.unify(value_ty, ty) {
+                            typechecker.report_type_errors(value.span, errors, file);
+                        }
                     }
 
-                    value.ty = ty;
+                    value.scheme = scheme;
                     value.traverse(|expr| ensure_well_typed!(expr));
 
                     declarations.constants.insert(
@@ -258,13 +262,13 @@ impl<L: Loader> Compiler<L> {
                 }
             }
 
-            for (id, decl) in mem::take(&mut file.declarations.variables) {
+            for (id, decl) in file.declarations.variables.clone() {
                 if let lower::Declaration::Local(decl) = decl {
                     let ty = typechecker.variables.get(&id).unwrap().clone();
 
                     let mut temp_expr = Expression {
                         span: decl.span,
-                        ty,
+                        scheme: ty,
                         kind: ExpressionKind::Error, // unused
                     };
 
@@ -276,7 +280,7 @@ impl<L: Loader> Compiler<L> {
                             file: file.path,
                             name: decl.name,
                             span: decl.span,
-                            value: temp_expr.ty,
+                            value: temp_expr.scheme,
                         },
                     );
                 }
@@ -298,6 +302,7 @@ impl<L: Loader> Compiler<L> {
         program.traverse(|expr| ensure_well_typed!(expr));
         program.well_typed = typechecker.well_typed;
 
+        // TODO: Make this the default (remove option)
         if self.options.warn_unused_variables {
             macro_rules! warn_unused {
                 ($($x:ident => ($name:literal, $used:ident),)*) => {
@@ -319,7 +324,6 @@ impl<L: Loader> Compiler<L> {
 
             warn_unused!(
                 types => ("type", used_types),
-                traits => ("trait", used_traits),
                 constants => ("constant", used_constants),
                 variables => ("variable", used_variables),
             );
@@ -364,12 +368,11 @@ builtin_types! {
 struct Typechecker<'a> {
     well_typed: bool,
     ctx: Context,
-    variables: HashMap<VariableId, Type>,
-    constants: HashMap<ConstantId, Type>, // TODO: SCHEMES
+    variables: HashMap<VariableId, Scheme>,
+    constants: HashMap<ConstantId, Scheme>,
     function_inputs: Vec<TypeVariable>,
     diagnostics: &'a mut Diagnostics,
     used_types: HashSet<TypeId>,
-    used_traits: HashSet<TraitId>,
     used_constants: HashSet<ConstantId>,
     used_variables: HashSet<VariableId>,
 }
@@ -378,21 +381,25 @@ impl<'a> Typechecker<'a> {
     fn typecheck_expr(&mut self, expr: &lower::Expression, file: &lower::File) -> Expression {
         let error = || Expression {
             span: expr.span,
-            ty: Type::Bottom,
+            scheme: Scheme::Type(Type::Bottom),
             kind: ExpressionKind::Error,
         };
 
         let (ty, kind) = match &expr.kind {
             lower::ExpressionKind::Error => {
-                eprintln!("lowered expression is error");
+                self.well_typed = false; // signal that the program contains errors
                 return error();
             }
-            lower::ExpressionKind::Unit => (BUILTIN_TYPES.unit.clone(), ExpressionKind::Marker),
-            lower::ExpressionKind::Marker(ty) => {
-                (self.convert_type_id(*ty, file), ExpressionKind::Marker)
-            }
+            lower::ExpressionKind::Unit => (
+                Scheme::Type(BUILTIN_TYPES.unit.clone()),
+                ExpressionKind::Marker,
+            ),
+            lower::ExpressionKind::Marker(ty) => (
+                Scheme::Type(self.convert_type_id(*ty, file)),
+                ExpressionKind::Marker,
+            ),
             lower::ExpressionKind::Constant(id) => {
-                let ty = self
+                let scheme = self
                     .constants
                     .get(id)
                     .expect("uninitialized constant")
@@ -400,7 +407,7 @@ impl<'a> Typechecker<'a> {
 
                 self.used_constants.insert(*id);
 
-                (ty, ExpressionKind::Constant(*id))
+                (scheme, ExpressionKind::Constant(*id))
             }
             lower::ExpressionKind::Variable(id) => {
                 let ty = self
@@ -413,15 +420,17 @@ impl<'a> Typechecker<'a> {
 
                 (ty, ExpressionKind::Variable(*id))
             }
-            lower::ExpressionKind::Text(text) => {
-                (BUILTIN_TYPES.text.clone(), ExpressionKind::Text(*text))
-            }
+            lower::ExpressionKind::Text(text) => (
+                Scheme::Type(BUILTIN_TYPES.text.clone()),
+                ExpressionKind::Text(*text),
+            ),
             lower::ExpressionKind::Number(number) => (
-                BUILTIN_TYPES.number.clone(),
+                Scheme::Type(BUILTIN_TYPES.number.clone()),
                 ExpressionKind::Number(*number),
             ),
             lower::ExpressionKind::Block(statements, declarations) => {
                 let (ty, statements) = self.typecheck_block(statements, file);
+
                 (ty, ExpressionKind::Block(statements, declarations.clone()))
             }
             lower::ExpressionKind::Call(function, input) => {
@@ -430,22 +439,26 @@ impl<'a> Typechecker<'a> {
 
                 let output_ty = Type::Variable(self.ctx.new_variable());
 
+                let function_ty = function.scheme.instantiate(&mut self.ctx);
+                let input_ty = input.scheme.instantiate(&mut self.ctx);
+
                 if let Err(errors) = self.ctx.unify(
-                    function.ty.clone(),
-                    Type::Function(Box::new(input.ty.clone()), Box::new(output_ty.clone())),
+                    function_ty,
+                    Type::Function(Box::new(input_ty), Box::new(output_ty.clone())),
                 ) {
                     self.report_type_errors(expr.span, errors, file);
-                    eprintln!("type error #1");
                     return error();
                 }
 
                 (
-                    output_ty,
+                    Scheme::Type(output_ty),
                     ExpressionKind::Call(Box::new(function), Box::new(input)),
                 )
             }
             lower::ExpressionKind::Function(body, captures) => {
                 let body = self.typecheck_expr(body, file);
+
+                let body_ty = body.scheme.instantiate(&mut self.ctx);
 
                 let input_var = self
                     .function_inputs
@@ -453,10 +466,10 @@ impl<'a> Typechecker<'a> {
                     .expect("function body does not refer to function input");
 
                 (
-                    Type::Function(
+                    Scheme::Type(Type::Function(
                         Box::new(Type::Variable(input_var)),
-                        Box::new(body.ty.clone()),
-                    ),
+                        Box::new(body_ty),
+                    )),
                     ExpressionKind::Function(Box::new(body), captures.clone()),
                 )
             }
@@ -468,7 +481,7 @@ impl<'a> Typechecker<'a> {
                     .collect();
 
                 (
-                    Type::Variable(self.ctx.new_variable()),
+                    Scheme::Type(Type::Variable(self.ctx.new_variable())),
                     ExpressionKind::External(*namespace, *identifier, inputs),
                 )
             }
@@ -476,20 +489,21 @@ impl<'a> Typechecker<'a> {
                 let ty = self.convert_type_annotation(ty);
                 let inferred_expr = self.typecheck_expr(expr, file);
 
-                if let Err(errors) = self.ctx.unify(inferred_expr.ty.clone(), ty) {
+                let inferred_expr_ty = inferred_expr.scheme.instantiate(&mut self.ctx);
+
+                if let Err(errors) = self.ctx.unify(inferred_expr_ty.clone(), ty) {
                     self.report_type_errors(expr.span, errors, file);
-                    eprintln!("type error #2");
                     return error();
                 }
 
-                (inferred_expr.ty, inferred_expr.kind)
+                (Scheme::Type(inferred_expr_ty), inferred_expr.kind)
             }
             lower::ExpressionKind::Initialize(id, value) => {
                 let value = self.typecheck_expr(value, file);
-                self.variables.insert(*id, value.ty.clone());
+                self.variables.insert(*id, value.scheme.clone());
 
                 (
-                    BUILTIN_TYPES.unit.clone(),
+                    Scheme::Type(BUILTIN_TYPES.unit.clone()),
                     ExpressionKind::Initialize(*id, Box::new(value)),
                 )
             }
@@ -497,13 +511,16 @@ impl<'a> Typechecker<'a> {
                 let var = self.ctx.new_variable();
                 self.function_inputs.push(var);
 
-                (Type::Variable(var), ExpressionKind::FunctionInput)
+                (
+                    Scheme::Type(Type::Variable(var)),
+                    ExpressionKind::FunctionInput,
+                )
             }
         };
 
         Expression {
             span: expr.span,
-            ty,
+            scheme: ty,
             kind,
         }
     }
@@ -512,7 +529,7 @@ impl<'a> Typechecker<'a> {
         &mut self,
         statements: &[lower::Expression],
         file: &lower::File,
-    ) -> (Type, Vec<Expression>) {
+    ) -> (Scheme, Vec<Expression>) {
         let statements = statements
             .iter()
             .map(|statement| self.typecheck_expr(statement, file))
@@ -520,8 +537,8 @@ impl<'a> Typechecker<'a> {
 
         let ty = statements
             .last()
-            .map(|statement| statement.ty.clone())
-            .unwrap_or_else(|| BUILTIN_TYPES.unit.clone());
+            .map(|statement| statement.scheme.clone())
+            .unwrap_or_else(|| Scheme::Type(BUILTIN_TYPES.unit.clone()));
 
         (ty, statements)
     }
@@ -559,10 +576,30 @@ impl<'a> Typechecker<'a> {
                     .map(|annotation| self.convert_type_annotation(annotation))
                     .collect(),
             ),
+            lower::TypeAnnotationKind::Parameter(id) => Type::Parameter(*id),
             lower::TypeAnnotationKind::Function(input, output) => Type::Function(
                 Box::new(self.convert_type_annotation(input)),
                 Box::new(self.convert_type_annotation(output)),
             ),
+        }
+    }
+
+    fn convert_constant_type_annotation(
+        &mut self,
+        annotation: &lower::TypeAnnotation,
+        parameters: &[lower::TypeParameter],
+    ) -> Scheme {
+        let ty = self.convert_type_annotation(annotation);
+
+        let params = parameters
+            .iter()
+            .map(|param| param.id)
+            .collect::<HashSet<_>>();
+
+        if params.is_empty() {
+            Scheme::Type(ty)
+        } else {
+            Scheme::ForAll(ForAll { params, ty })
         }
     }
 
@@ -574,26 +611,39 @@ impl<'a> Typechecker<'a> {
     ) {
         self.well_typed = false;
 
+        let type_names = |name| {
+            file.declarations
+                .types
+                .get(&name)
+                .map(|decl| decl.name().to_string())
+                .unwrap_or_else(|| BUILTIN_TYPES.name(name).unwrap().to_string())
+        };
+
+        let param_names = |param| {
+            file.declarations
+                .type_parameters
+                .get(&param)
+                .unwrap()
+                .name()
+                .to_string()
+        };
+
         for error in errors {
             let diagnostic = match error {
                 UnificationError::Recursive(_) => Diagnostic::new(
                     DiagnosticLevel::Error,
-                    "Recursive type",
-                    vec![Note::primary(span, "The type of this references itself")],
+                    "recursive type",
+                    vec![Note::primary(span, "the type of this references itself")],
                 ),
                 UnificationError::Mismatch(found, expected) => Diagnostic::new(
                     DiagnosticLevel::Error,
-                    "Mismatched types",
+                    "mismatched types",
                     vec![Note::primary(
                         span,
                         format!(
-                            "Expected {}, found {}",
-                            format_type(&expected, &file.declarations.types, |decl| decl
-                                .name()
-                                .as_str()),
-                            format_type(&found, &file.declarations.types, |decl| decl
-                                .name()
-                                .as_str())
+                            "expected {}, found {}",
+                            format_type(&expected, type_names, param_names),
+                            format_type(&found, type_names, param_names)
                         ),
                     )],
                 ),
@@ -604,73 +654,62 @@ impl<'a> Typechecker<'a> {
     }
 }
 
-pub fn format_type_scheme<T>(
+pub fn format_type_scheme(
     ty: &Scheme,
-    types: &HashMap<TypeId, T>,
-    name_extractor: impl Fn(&T) -> &str,
+    type_names: impl Fn(TypeId) -> String,
+    param_names: impl Fn(TypeParameterId) -> String,
 ) -> String {
     match ty {
-        Scheme::Type(ty) => format_type(ty, types, name_extractor),
+        Scheme::Type(ty) => format_type(ty, type_names, param_names),
         Scheme::ForAll(forall) => {
             let mut names = Vec::new();
-            for &var in &forall.vars {
-                names.push((var, name_for_index(names.len())));
+            for &var in &forall.params {
+                names.push(var);
             }
 
             format!(
-                "{}{}",
+                "{}=> {}",
                 names
                     .iter()
-                    .map(|(_, t)| t.clone() + " => ")
+                    .map(|param| param_names(*param) + " ")
                     .collect::<String>(),
-                format_type_with(
-                    &forall.ty,
-                    types,
-                    name_extractor,
-                    &names.into_iter().collect()
-                )
+                format_type_with(&forall.ty, type_names, param_names)
             )
         }
     }
 }
 
-pub fn format_type<T>(
+pub fn format_type(
     ty: &Type,
-    types: &HashMap<TypeId, T>,
-    name_extractor: impl Fn(&T) -> &str,
+    type_names: impl Fn(TypeId) -> String,
+    param_names: impl Fn(TypeParameterId) -> String,
 ) -> String {
-    format_type_with(ty, types, name_extractor, &HashMap::new())
+    format_type_with(ty, type_names, param_names)
 }
 
-fn format_type_with<T>(
+fn format_type_with(
     ty: &Type,
-    types: &HashMap<TypeId, T>,
-    name_extractor: impl Fn(&T) -> &str,
-    names: &HashMap<TypeVariable, String>,
+    type_names: impl Fn(TypeId) -> String,
+    param_names: impl Fn(TypeParameterId) -> String,
 ) -> String {
-    fn format_type<T>(
+    fn format_type(
         ty: &Type,
-        types: &HashMap<TypeId, T>,
-        name_extractor: &impl Fn(&T) -> &str,
+        type_names: &impl Fn(TypeId) -> String,
+        param_names: &impl Fn(TypeParameterId) -> String,
         is_top_level: bool,
         is_return: bool,
-        names: &HashMap<TypeVariable, String>,
     ) -> String {
         match ty {
-            Type::Variable(var) => names.get(var).cloned().unwrap_or_else(|| String::from("_")),
+            Type::Variable(var) => format!("{:?}", var), // String::from("_"),
+            Type::Parameter(param) => param_names(*param),
             Type::Bottom => String::from("!"),
             Type::Named(id, params) => {
-                let name = types
-                    .get(id)
-                    .map(name_extractor)
-                    .or_else(|| BUILTIN_TYPES.name(*id))
-                    .unwrap_or_else(|| panic!("unregistered type {:?}", id));
+                let name = type_names(*id);
 
                 let params = params
                     .iter()
                     .map(|ty| {
-                        String::from(" ")
-                            + &format_type(ty, types, name_extractor, false, true, names)
+                        String::from(" ") + &format_type(ty, type_names, param_names, false, true)
                     })
                     .collect::<String>();
 
@@ -681,8 +720,8 @@ fn format_type_with<T>(
                 }
             }
             Type::Function(input, output) => {
-                let input = format_type(input, types, name_extractor, true, false, names);
-                let output = format_type(output, types, name_extractor, true, true, names);
+                let input = format_type(input, type_names, param_names, true, false);
+                let output = format_type(output, type_names, param_names, true, true);
 
                 if is_top_level && is_return {
                     format!("{input} -> {output}")
@@ -693,18 +732,5 @@ fn format_type_with<T>(
         }
     }
 
-    format_type(ty, types, &name_extractor, true, true, names)
-}
-
-fn name_for_index(index: usize) -> String {
-    const LETTERS: [char; 26] = [
-        'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R',
-        'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
-    ];
-
-    LETTERS
-        .get(index)
-        .copied()
-        .map(String::from)
-        .unwrap_or_else(|| format!("T{}", index + 1))
+    format_type(ty, &type_names, &param_names, true, true)
 }

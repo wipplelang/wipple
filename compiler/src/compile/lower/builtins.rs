@@ -5,7 +5,7 @@ pub(super) fn load_builtins(scope: &Scope, info: &mut Info) {
     let mut scope_values = scope.values.borrow_mut();
 
     macro_rules! add {
-        ($decls:ident, $name:expr, $id:expr, $value:expr) => {{
+        ($decls:ident, $name:expr, $id:expr, $value:expr, $(,)?) => {{
             let name = InternedString::new($name);
             let id = $id;
 
@@ -29,7 +29,7 @@ pub(super) fn load_builtins(scope: &Scope, info: &mut Info) {
         Type {
             parameters: Vec::new(),
             kind: TypeKind::Builtin(BuiltinType::Number),
-        }
+        },
     );
 
     add!(
@@ -39,6 +39,6 @@ pub(super) fn load_builtins(scope: &Scope, info: &mut Info) {
         Type {
             parameters: Vec::new(),
             kind: TypeKind::Builtin(BuiltinType::Text),
-        }
+        },
     );
 }

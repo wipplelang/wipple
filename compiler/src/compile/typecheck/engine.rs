@@ -1,7 +1,9 @@
+use crate::helpers::{TypeId, TypeParameterId};
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet};
-
-use crate::helpers::TypeId;
+use std::{
+    borrow::Cow,
+    collections::{HashMap, HashSet},
+};
 
 #[derive(Debug, Clone, Default)]
 pub struct Context {
@@ -18,19 +20,18 @@ pub enum Scheme {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Type {
     Variable(TypeVariable),
+    Parameter(TypeParameterId),
     Named(TypeId, Vec<Type>),
     Function(Box<Type>, Box<Type>),
     Bottom,
 }
-
-impl Type {}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct TypeVariable(usize);
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ForAll {
-    pub vars: HashSet<TypeVariable>,
+    pub params: HashSet<TypeParameterId>,
     pub ty: Type,
 }
 
@@ -51,10 +52,6 @@ impl Context {
         var
     }
 
-    pub fn vars(&self) -> HashSet<TypeVariable> {
-        (0..self.next_var).map(TypeVariable).collect()
-    }
-
     pub fn unify(&mut self, mut lhs: Type, mut rhs: Type) -> Result<(), Vec<UnificationError>> {
         lhs.apply(self);
         rhs.apply(self);
@@ -68,6 +65,8 @@ impl Context {
                     Ok(())
                 }
             }
+            (Type::Parameter(_), _) => Ok(()),
+            (lhs, rhs @ Type::Parameter(_)) => Err(vec![UnificationError::Mismatch(lhs, rhs)]),
             (Type::Named(lhs_id, lhs_params), Type::Named(rhs_id, rhs_params)) => {
                 if lhs_id != rhs_id {
                     return Err(vec![UnificationError::Mismatch(
@@ -124,14 +123,52 @@ impl Scheme {
     pub fn instantiate(&self, ctx: &mut Context) -> Type {
         match self {
             Scheme::Type(ty) => ty.clone(),
-            Scheme::ForAll(forall) => forall.instantiate(ctx),
+            Scheme::ForAll(forall) => {
+                let mut substitutions = HashMap::new();
+
+                for param in &forall.params {
+                    substitutions.insert(param, Type::Variable(ctx.new_variable()));
+                }
+
+                fn apply(ty: &mut Type, substitutions: &HashMap<&TypeParameterId, Type>) {
+                    match ty {
+                        Type::Parameter(param) => {
+                            if let Some(substitution) = substitutions.get(param) {
+                                *ty = substitution.clone();
+                            }
+                        }
+                        Type::Named(_, params) => {
+                            for param in params {
+                                apply(param, substitutions);
+                            }
+                        }
+                        Type::Function(input, output) => {
+                            apply(input, substitutions);
+                            apply(output, substitutions);
+                        }
+                        Type::Variable(_) | Type::Bottom => {}
+                    }
+                }
+
+                let mut ty = forall.ty.clone();
+                apply(&mut ty, &substitutions);
+
+                ty
+            }
         }
     }
 
     pub fn vars(&self) -> HashSet<TypeVariable> {
         match self {
             Scheme::Type(ty) => ty.vars(),
-            Scheme::ForAll(forall) => forall.ty.vars().difference(&forall.vars).cloned().collect(),
+            Scheme::ForAll(forall) => forall.ty.vars(),
+        }
+    }
+
+    pub fn params(&self) -> Cow<HashSet<TypeParameterId>> {
+        match self {
+            Scheme::Type(ty) => Cow::Owned(ty.params()),
+            Scheme::ForAll(forall) => Cow::Borrowed(&forall.params),
         }
     }
 }
@@ -149,7 +186,7 @@ impl Type {
             Type::Variable(v) => v == var,
             Type::Named(_, params) => params.iter().any(|ty| ty.contains(var)),
             Type::Function(input, output) => input.contains(var) || output.contains(var),
-            Type::Bottom => false,
+            _ => false,
         }
     }
 
@@ -170,25 +207,26 @@ impl Type {
                 input.apply(ctx);
                 output.apply(ctx);
             }
-            Type::Bottom => {}
+            _ => {}
         }
     }
 
-    pub fn generalize(mut self, ctx: &Context, ignore: &HashSet<TypeVariable>) -> Scheme {
+    pub fn generalize(mut self, ctx: &Context, params: &HashSet<TypeParameterId>) -> Scheme {
         self.apply(ctx);
 
         let vars = self
-            .vars()
-            .difference(ignore)
+            .params()
+            .intersection(params)
             .cloned()
             .collect::<HashSet<_>>();
-
-        dbg!(&vars);
 
         if vars.is_empty() {
             Scheme::Type(self)
         } else {
-            Scheme::ForAll(ForAll { vars, ty: self })
+            Scheme::ForAll(ForAll {
+                params: vars,
+                ty: self,
+            })
         }
     }
 
@@ -205,69 +243,30 @@ impl Type {
                 vars.extend(output.vars());
                 vars
             }
-            Type::Bottom => HashSet::new(),
+            _ => HashSet::new(),
+        }
+    }
+
+    pub fn params(&self) -> HashSet<TypeParameterId> {
+        match self {
+            Type::Parameter(params) => {
+                let mut vars = HashSet::with_capacity(1);
+                vars.insert(*params);
+                vars
+            }
+            Type::Named(_, params) => params.iter().flat_map(Self::params).collect(),
+            Type::Function(input, output) => {
+                let mut params = input.params();
+                params.extend(output.params());
+                params
+            }
+            _ => HashSet::new(),
         }
     }
 }
 
 impl ForAll {
     pub fn apply(&mut self, ctx: &Context) {
-        fn apply(ty: &mut Type, ctx: &Context, vars: &HashSet<TypeVariable>) {
-            match ty {
-                Type::Variable(var) => {
-                    if !vars.contains(var) {
-                        if let Some(ty2) = ctx.substitutions.get(var) {
-                            *ty = ty2.clone();
-                            apply(ty, ctx, vars);
-                        }
-                    }
-                }
-                Type::Named(_, params) => {
-                    for param in params {
-                        apply(param, ctx, vars);
-                    }
-                }
-                Type::Function(input, output) => {
-                    apply(input, ctx, vars);
-                    apply(output, ctx, vars);
-                }
-                Type::Bottom => {}
-            }
-        }
-
-        apply(&mut self.ty, ctx, &self.vars)
-    }
-
-    pub fn instantiate(&self, ctx: &mut Context) -> Type {
-        let mut substitutions = HashMap::new();
-
-        for var in &self.vars {
-            substitutions.insert(var, Type::Variable(ctx.new_variable()));
-        }
-
-        fn apply(ty: &mut Type, substitutions: &HashMap<&TypeVariable, Type>) {
-            match ty {
-                Type::Variable(var) => {
-                    if let Some(substitution) = substitutions.get(var) {
-                        *ty = substitution.clone();
-                    }
-                }
-                Type::Named(_, params) => {
-                    for param in params {
-                        apply(param, substitutions);
-                    }
-                }
-                Type::Function(input, output) => {
-                    apply(input, substitutions);
-                    apply(output, substitutions);
-                }
-                Type::Bottom => {}
-            }
-        }
-
-        let mut ty = self.ty.clone();
-        apply(&mut ty, &substitutions);
-
-        ty
+        self.ty.apply(ctx);
     }
 }

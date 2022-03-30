@@ -40,8 +40,6 @@ struct Diverge {
 
 #[derive(Debug)]
 enum DivergeKind {
-    End(Rc<Value>),
-    Return(Rc<Value>),
     Error(String),
 }
 
@@ -93,7 +91,7 @@ impl<'a> Interpreter<'a> {
             self.eval_expr(&statement, &mut info)
                 .map_err(|diverge| match diverge.kind {
                     DivergeKind::Error(error) => (error, diverge.callstack),
-                    _ => unreachable!(),
+                    /* _ => unreachable!(), */
                 })?;
         }
 
@@ -171,10 +169,10 @@ impl<'a> Interpreter<'a> {
 
                     let value = match self.eval_expr(body, info) {
                         Ok(value)
-                        | Err(Diverge {
+                        /* | Err(Diverge {
                             kind: DivergeKind::Return(value),
                             ..
-                        }) => value,
+                        }) */ => value,
                         diverge => return diverge,
                     };
 
@@ -225,40 +223,32 @@ impl<'a> Interpreter<'a> {
 
                     #[cfg(not(target_arch = "wasm32"))]
                     {
+                        use wipple_compiler::compile::typecheck::Scheme;
+
                         let input_tys = inputs
                             .iter()
-                            .map(|input| {
-                                /*
-                                    match &input.ty {
-                                    Scheme::Type(ty) => Ok(ty),
-                                    _ => Err(Diverge::new(
-                                        &info.callstack,
-                                        DivergeKind::Error(Error::from(
-                                            "Unsupported external function input type",
-                                        )),
+                            .map(|input| match &input.scheme {
+                                Scheme::Type(scheme) => Ok(scheme),
+                                _ => Err(Diverge::new(
+                                    &info.callstack,
+                                    DivergeKind::Error(Error::from(
+                                        "Unsupported external function input type",
                                     )),
-                                }
-                                */
-
-                                // TODO: Disallow generics once implemented
-                                Ok(&input.ty)
+                                )),
                             })
                             .collect::<Result<Vec<_>, _>>()?;
 
-                        // let return_ty = match &expr.ty {
-                        //     Scheme::Type(ty) => ty,
-                        //     Scheme::ForAll { .. } => {
-                        //         return Err(Diverge::new(
-                        //             &info.callstack,
-                        //             DivergeKind::Error(Error::from(
-                        //                 "Unsupported external function return type",
-                        //             )),
-                        //         ));
-                        //     }
-                        // };
-
-                        // TODO: Disallow generics once implemented
-                        let return_ty = &expr.ty;
+                        let return_ty = match &expr.scheme {
+                            Scheme::Type(ty) => ty,
+                            Scheme::ForAll { .. } => {
+                                return Err(Diverge::new(
+                                    &info.callstack,
+                                    DivergeKind::Error(Error::from(
+                                        "Unsupported external function return type",
+                                    )),
+                                ));
+                            }
+                        };
 
                         let function = match ExternalFunction::new(
                             namespace, identifier, input_tys, return_ty,

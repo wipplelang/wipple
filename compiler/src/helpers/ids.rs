@@ -38,7 +38,8 @@ macro_rules! ids {
 
 ids! {
     TypeId,
-    TraitId,
+    TypeParameterId,
+    OperatorId,
     VariableId,
     ConstantId,
 }

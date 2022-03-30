@@ -1,8 +1,9 @@
 mod builtins;
+mod operators;
 
 use crate::{
     diagnostics::*,
-    helpers::{ConstantId, InternedString, TraitId, TypeId, VariableId},
+    helpers::{ConstantId, InternedString, OperatorId, TypeId, TypeParameterId, VariableId},
     parser::{self, Span},
     Compiler, FilePath, Loader,
 };
@@ -29,7 +30,8 @@ pub struct File {
 #[derive(Debug, Clone, Default)]
 pub struct Declarations {
     pub types: HashMap<TypeId, Declaration<TypeId, Type>>,
-    pub traits: HashMap<TraitId, Declaration<TraitId, Trait>>,
+    pub type_parameters: HashMap<TypeParameterId, Declaration<TypeParameterId, ()>>,
+    pub operators: HashMap<OperatorId, Declaration<OperatorId, Operator>>,
     pub constants: HashMap<ConstantId, Declaration<ConstantId, Constant>>,
     pub variables: HashMap<VariableId, Declaration<VariableId, ()>>,
 }
@@ -48,33 +50,6 @@ pub struct DeclarationKind<T> {
     pub value: T,
 }
 
-impl Declarations {
-    pub fn r#use(&mut self, file: &File) {
-        macro_rules! extend {
-            ($x:ident) => {
-                self.$x.extend(
-                    file
-                        .declarations
-                        .$x
-                        .iter()
-                        .map(|(&id, decl)| (id, Declaration::Dependency(DeclarationKind {
-                            name: decl.name(),
-                            span: decl.span(),
-                            value: id,
-                        }))),
-                )
-            };
-            ($($x:ident),* $(,)?) => {
-                $(
-                    extend!($x);
-                )*
-            }
-        }
-
-        extend!(types, traits, constants, variables);
-    }
-}
-
 impl<Id: Eq + Hash, T> Declaration<Id, T> {
     pub fn name(&self) -> InternedString {
         match self {
@@ -90,6 +65,40 @@ impl<Id: Eq + Hash, T> Declaration<Id, T> {
             Declaration::Dependency(decl) => decl.span,
             Declaration::Builtin(decl) => decl.span,
         }
+    }
+}
+
+pub trait CopyDeclaration {
+    /// Whether or not the declaration should be copied when `use`d
+    const COPY: bool;
+}
+
+impl CopyDeclaration for Declaration<TypeId, Type> {
+    const COPY: bool = false;
+}
+
+impl CopyDeclaration for Declaration<TypeParameterId, ()> {
+    const COPY: bool = false;
+}
+
+impl CopyDeclaration for Declaration<OperatorId, Operator> {
+    const COPY: bool = true;
+}
+
+impl CopyDeclaration for Declaration<ConstantId, Constant> {
+    const COPY: bool = false;
+}
+
+impl CopyDeclaration for Declaration<VariableId, ()> {
+    const COPY: bool = false;
+}
+
+impl<Id: Eq + Hash, T> Declaration<Id, T>
+where
+    Self: CopyDeclaration,
+{
+    pub fn should_copy(&self) -> bool {
+        Self::COPY
     }
 }
 
@@ -126,13 +135,34 @@ pub enum BuiltinType {
 
 #[derive(Debug, Clone)]
 pub struct Trait {
-    pub parameters: HashMap<TypeId, Vec<TraitId>>,
     pub ty: TypeAnnotation,
 }
 
 #[derive(Debug, Clone)]
+pub struct Operator {
+    pub precedence: OperatorPrecedence,
+    pub body: ConstantId,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize)]
+#[repr(u8)]
+pub enum OperatorPrecedence {
+    Assignment = 9,
+    Function = 8,
+    Field = 7,
+    Annotation = 6,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum OperatorAssociativity {
+    Left,
+    Right,
+    None,
+}
+
+#[derive(Debug, Clone)]
 pub struct Constant {
-    pub parameters: HashMap<TypeId, Vec<TraitId>>,
+    pub parameters: Vec<TypeParameter>,
     pub ty: TypeAnnotation,
     pub value: Rc<RefCell<Option<Expression>>>,
 }
@@ -204,6 +234,7 @@ pub enum TypeAnnotationKind {
     Placeholder,
     Unit,
     Named(TypeId, Vec<TypeAnnotation>),
+    Parameter(TypeParameterId),
     Function(Box<TypeAnnotation>, Box<TypeAnnotation>),
 }
 
@@ -216,24 +247,10 @@ impl TypeAnnotation {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TypeParameter {
     pub span: Span,
-    pub kind: TypeParameterKind,
-}
-
-#[derive(Debug, Clone)]
-pub enum TypeParameterKind {
-    Named(TypeId),
-    Constrained(Vec<TraitId>, TypeId),
-}
-
-#[derive(Debug, Clone)]
-pub enum Path {
-    Type(FilePath, TypeId),
-    Variable(FilePath, VariableId),
-    // Components are resolved during type checking
-    Member(VariableId, Vec<parser::PathComponent>),
+    pub id: TypeParameterId,
 }
 
 impl<L: Loader> Compiler<L> {
@@ -250,28 +267,26 @@ impl<L: Loader> Compiler<L> {
 
         for dependency in dependencies {
             macro_rules! merge_dependency {
-                ($($kind:ident => $value:path),* $(,)?) => {
+                ($($kind:ident),* $(,)?) => {
                     $(
                         for (&id, decl) in &dependency.declarations.$kind {
-                            info.declarations.$kind.insert(
-                                id,
+                            let decl = if decl.should_copy() {
+                                decl.clone()
+                            } else {
                                 Declaration::Dependency(DeclarationKind {
                                     name: decl.name(),
                                     span: decl.span(),
                                     value: id,
-                                }),
-                            );
+                                })
+                            };
+
+                            info.declarations.$kind.insert(id, decl);
                         }
                     )*
                 };
             }
 
-            merge_dependency! {
-                types => ScopeValue::Type,
-                traits => ScopeValue::Trait,
-                constants => ScopeValue::Constant,
-                variables => ScopeValue::Variable,
-            }
+            merge_dependency!(types, type_parameters, operators, constants, variables);
 
             scope
                 .values
@@ -323,7 +338,8 @@ struct Scope<'a> {
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub enum ScopeValue {
     Type(TypeId),
-    Trait(TraitId),
+    TypeParameter(TypeParameterId),
+    Operator(OperatorId),
     Constant(ConstantId),
     Variable(VariableId),
 }
@@ -469,59 +485,6 @@ impl<L: Loader> Compiler<L> {
 
                 None
             }
-            parser::StatementKind::Trait((span, name), declaration) => {
-                if defined(name) {
-                    self.diagnostics.add(Diagnostic::error(
-                        format!("`{name}` is already defined"),
-                        vec![Note::primary(span, "try assigning to a different name")],
-                    ));
-
-                    return None;
-                }
-
-                let r#trait = {
-                    let scope = Scope {
-                        parent: Some(scope),
-                        ..Default::default()
-                    };
-
-                    let parameters = declaration
-                        .parameters
-                        .into_iter()
-                        .map(|parameter| {
-                            let name = parameter.name;
-                            let parameter = self.lower_type_parameter(parameter, &scope)?;
-
-                            let id = TypeId::new();
-                            scope.values.borrow_mut().insert(name, ScopeValue::Type(id));
-
-                            Some((id, parameter))
-                        })
-                        .collect::<Option<_>>()?;
-
-                    Trait {
-                        parameters,
-                        ty: self.lower_type_annotation(declaration.ty, &scope, info),
-                    }
-                };
-
-                let id = TraitId::new();
-                scope
-                    .values
-                    .borrow_mut()
-                    .insert(name, ScopeValue::Trait(id));
-
-                info.declarations.traits.insert(
-                    id,
-                    Declaration::Local(DeclarationKind {
-                        name,
-                        span,
-                        value: r#trait,
-                    }),
-                );
-
-                None
-            }
             parser::StatementKind::Constant((span, name), declaration) => {
                 if defined(name) {
                     self.diagnostics.add(Diagnostic::error(
@@ -542,15 +505,28 @@ impl<L: Loader> Compiler<L> {
                         .parameters
                         .into_iter()
                         .map(|parameter| {
-                            let name = parameter.name;
-                            let parameter = self.lower_type_parameter(parameter, &scope)?;
+                            let id = TypeParameterId::new();
 
-                            let id = TypeId::new();
-                            scope.values.borrow_mut().insert(name, ScopeValue::Type(id));
+                            info.declarations.type_parameters.insert(
+                                id,
+                                Declaration::Local(DeclarationKind {
+                                    name: parameter.name,
+                                    span: parameter.span,
+                                    value: (),
+                                }),
+                            );
 
-                            Some((id, parameter))
+                            scope
+                                .values
+                                .borrow_mut()
+                                .insert(parameter.name, ScopeValue::TypeParameter(id));
+
+                            TypeParameter {
+                                span: parameter.span,
+                                id,
+                            }
                         })
-                        .collect::<Option<_>>()?;
+                        .collect();
 
                     Constant {
                         parameters,
@@ -578,21 +554,15 @@ impl<L: Loader> Compiler<L> {
             }
             parser::StatementKind::Implementation(_) => None, // TODO
             parser::StatementKind::Assign(pattern, expr) => match &pattern.kind {
-                parser::PatternKind::Path(path) => {
-                    if !path.components.is_empty() {
-                        self.diagnostics.add(Diagnostic::error(
-                            "cannot assign to a path",
-                            vec![Note::primary(expr.span, "try assigning to a name instead")],
-                        ));
-
-                        return None;
-                    }
-
-                    let name = path.base;
+                parser::PatternKind::Name(name) => {
                     let mut associated_constant = None;
 
-                    match scope.values.borrow().get(&name).cloned() {
-                        Some(ScopeValue::Type(_) | ScopeValue::Trait(_)) => {
+                    match scope.values.borrow().get(name).cloned() {
+                        Some(
+                            ScopeValue::Type(_)
+                            | ScopeValue::TypeParameter(_)
+                            | ScopeValue::Operator(_),
+                        ) => {
                             self.diagnostics.add(Diagnostic::error(
                                 format!("`{name}` is already defined"),
                                 vec![Note::primary(
@@ -661,12 +631,12 @@ impl<L: Loader> Compiler<L> {
                         scope
                             .values
                             .borrow_mut()
-                            .insert(name, ScopeValue::Variable(id));
+                            .insert(*name, ScopeValue::Variable(id));
 
                         info.declarations.variables.insert(
                             id,
                             Declaration::Local(DeclarationKind {
-                                name,
+                                name: *name,
                                 span: pattern.span,
                                 value: (),
                             }),
@@ -695,18 +665,7 @@ impl<L: Loader> Compiler<L> {
             parser::ExpressionKind::Text(text) => ExpressionKind::Text(text),
             parser::ExpressionKind::Number(number) => ExpressionKind::Number(number),
             parser::ExpressionKind::FunctionInput => ExpressionKind::FunctionInput,
-            parser::ExpressionKind::Path(path) => {
-                if !path.components.is_empty() {
-                    self.diagnostics.add(Diagnostic::error(
-                        "subpaths are currently unsupported",
-                        vec![Note::primary(expr.span, "try simplifying this expression")],
-                    ));
-
-                    return Expression::error(expr.span);
-                }
-
-                let name = path.base;
-
+            parser::ExpressionKind::Name(name) => {
                 match self.resolve_value(expr.span, name, scope, info) {
                     Some(value) => value,
                     None => {
@@ -729,25 +688,7 @@ impl<L: Loader> Compiler<L> {
 
                 ExpressionKind::Block(block, declarations)
             }
-            parser::ExpressionKind::Call(function, input) => {
-                if let parser::ExpressionKind::Path(path) = &function.kind {
-                    if let Some(ScopeValue::Type(_ty)) = scope.values.borrow().get(&path.base) {
-                        // TODO Handle instantiation (also for enum variants)
-
-                        self.diagnostics.add(Diagnostic::error(
-                            "instantiation is currently unsupported",
-                            vec![Note::primary(function.span, "try removing this expression")],
-                        ));
-
-                        return Expression::error(expr.span);
-                    }
-                }
-
-                let function = self.lower_expr(*function, scope, info);
-                let input = self.lower_expr(*input, scope, info);
-
-                ExpressionKind::Call(Box::new(function), Box::new(input))
-            }
+            parser::ExpressionKind::List(exprs) => self.lower_operators(exprs, scope, info).kind,
             parser::ExpressionKind::Function(input, body) => {
                 let scope = Scope {
                     parent: Some(scope),
@@ -814,36 +755,41 @@ impl<L: Loader> Compiler<L> {
         let kind = match ty.kind {
             parser::TypeAnnotationKind::Placeholder => TypeAnnotationKind::Placeholder,
             parser::TypeAnnotationKind::Unit => TypeAnnotationKind::Unit,
-            parser::TypeAnnotationKind::Path(path, parameters) => {
-                if !path.components.is_empty() {
-                    self.diagnostics.add(Diagnostic::error(
-                        "subpaths are currently unsupported",
-                        vec![Note::primary(ty.span, "try simplifying this type")],
-                    ));
+            parser::TypeAnnotationKind::Named(name, parameters) => {
+                match self.resolve_type(name, scope) {
+                    Some(Ok(ty)) => {
+                        let parameters = parameters
+                            .into_iter()
+                            .map(|parameter| self.lower_type_annotation(parameter, scope, info))
+                            .collect();
 
-                    return TypeAnnotation::error(ty.span);
-                }
+                        TypeAnnotationKind::Named(ty, parameters)
+                    }
+                    Some(Err(param)) => {
+                        if !parameters.is_empty() {
+                            self.diagnostics.add(Diagnostic::error(
+                                "type parameters cannot have parameters themselves",
+                                vec![Note::primary(
+                                    ty.span,
+                                    format!(
+                                        "try writing `{}` on its own, with no parameters",
+                                        name
+                                    ),
+                                )],
+                            ));
+                        }
 
-                let name = path.base;
-
-                let ty = match self.resolve_type(name, scope) {
-                    Some(ty) => ty,
+                        TypeAnnotationKind::Parameter(param)
+                    }
                     None => {
                         self.diagnostics.add(Diagnostic::error(
-                            format!("cannot find type `{}`", path.base),
+                            format!("cannot find type `{}`", name),
                             vec![Note::primary(ty.span, "no such type")],
                         ));
 
                         return TypeAnnotation::error(ty.span);
                     }
-                };
-
-                let parameters = parameters
-                    .into_iter()
-                    .map(|parameter| self.lower_type_annotation(parameter, scope, info))
-                    .collect();
-
-                TypeAnnotationKind::Named(ty, parameters)
+                }
             }
             parser::TypeAnnotationKind::Function(input, output) => TypeAnnotationKind::Function(
                 Box::new(self.lower_type_annotation(*input, scope, info)),
@@ -855,36 +801,6 @@ impl<L: Loader> Compiler<L> {
             span: ty.span,
             kind,
         }
-    }
-
-    fn lower_type_parameter(
-        &mut self,
-        parameter: parser::TypeParameter,
-        scope: &Scope,
-    ) -> Option<Vec<TraitId>> {
-        parameter
-            .constraints
-            .into_iter()
-            .map(|(span, constraint)| match scope.get(constraint) {
-                Some(ScopeValue::Trait(id)) => Some(id),
-                Some(_) => {
-                    self.diagnostics.add(Diagnostic::error(
-                        "invalid constraint",
-                        vec![Note::primary(span, "expected a trait")],
-                    ));
-
-                    None
-                }
-                None => {
-                    self.diagnostics.add(Diagnostic::error(
-                        format!("cannot find trait `{constraint}`"),
-                        vec![Note::primary(span, "no such trait")],
-                    ));
-
-                    None
-                }
-            })
-            .collect()
     }
 
     fn resolve_value(
@@ -949,12 +865,23 @@ impl<L: Loader> Compiler<L> {
 
                 resolve(self, span, id, info)
             }
-            Some(ScopeValue::Trait(_)) => {
+            Some(ScopeValue::TypeParameter(_)) => {
                 self.diagnostics.add(Diagnostic::error(
-                    "cannot use trait as value",
+                    "cannot use type parameter as value",
                     vec![Note::primary(
                         span,
-                        "try instantiating a type implementing this trait instead",
+                        "type parameters cannot be instantiated because the actual type is not known here",
+                    )],
+                ));
+
+                Some(ExpressionKind::Error)
+            }
+            Some(ScopeValue::Operator(_)) => {
+                self.diagnostics.add(Diagnostic::error(
+                    "cannot use operator as value",
+                    vec![Note::primary(
+                        span,
+                        "try adding inputs to the left and right sides of this operator",
                     )],
                 ));
 
@@ -966,9 +893,14 @@ impl<L: Loader> Compiler<L> {
         }
     }
 
-    fn resolve_type(&mut self, name: InternedString, scope: &Scope) -> Option<TypeId> {
+    fn resolve_type(
+        &mut self,
+        name: InternedString,
+        scope: &Scope,
+    ) -> Option<Result<TypeId, TypeParameterId>> {
         scope.get(name).and_then(|value| match value {
-            ScopeValue::Type(id) => Some(id),
+            ScopeValue::Type(id) => Some(Ok(id)),
+            ScopeValue::TypeParameter(id) => Some(Err(id)),
             _ => None,
         })
     }
