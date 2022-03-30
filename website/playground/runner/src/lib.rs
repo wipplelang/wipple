@@ -1,6 +1,6 @@
 use lazy_static::lazy_static;
 use serde::Serialize;
-use std::{borrow::Cow, sync::Mutex};
+use std::{borrow::Cow, cell::RefCell, sync::Mutex};
 use wasm_bindgen::prelude::*;
 
 #[derive(Serialize)]
@@ -135,27 +135,33 @@ fn annotations(program: &mut wipple_compiler::compile::Program) -> Vec<Annotatio
         };
     }
 
-    program.traverse(|expr| {
-        if !belongs_to_playground(expr.span) {
-            return;
-        }
+    macro_rules! add_annotation {
+        ($expr:expr) => {{
+            let expr = $expr;
 
-        let ty = format_ty!(&expr.scheme);
+            if !belongs_to_playground(expr.span) {
+                return;
+            }
 
-        let name = match expr.kind {
-            ExpressionKind::Variable(id) => Some(declarations.variables.get(&id).unwrap().name),
-            ExpressionKind::Constant(id) => Some(declarations.constants.get(&id).unwrap().name),
-            _ => None,
-        };
+            let ty = format_ty!(&expr.scheme);
 
-        annotations.push(Annotation {
-            span: expr.span,
-            value: match name {
-                Some(name) => format!("{name} :: {ty}"),
-                None => ty,
-            },
-        });
-    });
+            let name = match expr.kind {
+                ExpressionKind::Variable(id) => Some(declarations.variables.get(&id).unwrap().name),
+                ExpressionKind::Constant(id) => Some(declarations.constants.get(&id).unwrap().name),
+                _ => None,
+            };
+
+            annotations.push(Annotation {
+                span: expr.span,
+                value: match name {
+                    Some(name) => format!("{name} :: {ty}"),
+                    None => ty,
+                },
+            });
+        }};
+    }
+
+    program.traverse(|expr| add_annotation!(expr));
 
     for decl in declarations.types.values() {
         if !belongs_to_playground(decl.span) {
@@ -188,6 +194,8 @@ fn annotations(program: &mut wipple_compiler::compile::Program) -> Vec<Annotatio
             span: decl.span,
             value: format!("{} :: {}", decl.name, format_ty!(&decl.value.scheme)),
         });
+
+        decl.value.traverse(|expr| add_annotation!(expr));
     }
 
     annotations

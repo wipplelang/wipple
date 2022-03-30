@@ -107,41 +107,58 @@ pub struct Declaration<T> {
 impl Program {
     pub fn traverse(&mut self, mut f: impl FnMut(&mut Expression)) {
         for statement in &mut self.body {
-            statement.traverse_inner(&mut f);
+            statement.traverse_mut_inner(&mut f);
         }
     }
 }
 
-impl Expression {
-    pub fn traverse(&mut self, mut f: impl FnMut(&mut Expression)) {
-        self.traverse_inner(&mut f);
-    }
-
-    fn traverse_inner(&mut self, f: &mut impl FnMut(&mut Expression)) {
+macro_rules! traverse_impl {
+    ($f:expr, $expr:expr, $traverse:ident, &$($mut:tt)?) => {{
         use ExpressionKind::*;
 
-        f(self);
+        let f = $f;
+        let expr = $expr;
 
-        match &mut self.kind {
+        f(expr);
+
+        match &$($mut)? expr.kind {
             Block(statements, _) => {
                 for statement in statements {
-                    statement.traverse_inner(f);
+                    statement.$traverse(f);
                 }
             }
             Call(function, input) => {
-                function.traverse_inner(f);
-                input.traverse_inner(f);
+                function.$traverse(f);
+                input.$traverse(f);
             }
-            Function(body, _) => body.traverse_inner(f),
+            Function(body, _) => body.$traverse(f),
             When(_, _) => todo!(),
-            Initialize(_, value) => value.traverse_inner(f),
+            Initialize(_, value) => value.$traverse(f),
             External(_, _, inputs) => {
                 for input in inputs {
-                    input.traverse_inner(f);
+                    input.$traverse(f);
                 }
             }
             _ => {}
         }
+    }};
+}
+
+impl Expression {
+    pub fn traverse(&self, mut f: impl FnMut(&Expression)) {
+        self.traverse_inner(&mut f);
+    }
+
+    fn traverse_inner(&self, f: &mut impl FnMut(&Expression)) {
+        traverse_impl!(f, self, traverse_inner, &)
+    }
+
+    pub fn traverse_mut(&mut self, mut f: impl FnMut(&mut Expression)) {
+        self.traverse_mut_inner(&mut f);
+    }
+
+    fn traverse_mut_inner(&mut self, f: &mut impl FnMut(&mut Expression)) {
+        traverse_impl!(f, self, traverse_mut_inner, &mut)
     }
 }
 
@@ -248,7 +265,7 @@ impl<L: Loader> Compiler<L> {
                     }
 
                     value.scheme = scheme;
-                    value.traverse(|expr| ensure_well_typed!(expr));
+                    value.traverse_mut(|expr| ensure_well_typed!(expr));
 
                     declarations.constants.insert(
                         id,
@@ -635,7 +652,7 @@ impl<'a> Typechecker<'a> {
                 vec![Note::primary(
                     span,
                     format!(
-                        "expected {}, but found {}",
+                        "expected `{}`, but found `{}`",
                         format_type(&expected, type_names, param_names),
                         format_type(&actual, type_names, param_names)
                     ),
