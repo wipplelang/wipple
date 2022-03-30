@@ -52,62 +52,74 @@ impl Context {
         var
     }
 
-    pub fn unify(&mut self, mut lhs: Type, mut rhs: Type) -> Result<(), Vec<UnificationError>> {
-        lhs.apply(self);
-        rhs.apply(self);
+    pub fn unify(&mut self, mut actual: Type, mut expected: Type) -> Result<(), UnificationError> {
+        actual.apply(self);
+        expected.apply(self);
 
-        match (lhs, rhs) {
+        match (actual, expected) {
             (Type::Variable(var), ty) | (ty, Type::Variable(var)) => {
                 if ty.contains(&var) {
-                    Err(vec![UnificationError::Recursive(var)])
+                    Err(UnificationError::Recursive(var))
                 } else {
                     self.substitutions.insert(var, ty);
                     Ok(())
                 }
             }
             (Type::Parameter(_), _) => Ok(()),
-            (lhs, rhs @ Type::Parameter(_)) => Err(vec![UnificationError::Mismatch(lhs, rhs)]),
-            (Type::Named(lhs_id, lhs_params), Type::Named(rhs_id, rhs_params)) => {
-                if lhs_id != rhs_id {
-                    return Err(vec![UnificationError::Mismatch(
-                        Type::Named(lhs_id, lhs_params),
-                        Type::Named(rhs_id, rhs_params),
-                    )]);
+            (actual, expected @ Type::Parameter(_)) => {
+                Err(UnificationError::Mismatch(actual, expected))
+            }
+            (Type::Named(actual_id, actual_params), Type::Named(expected_id, expected_params)) => {
+                if actual_id != expected_id {
+                    return Err(UnificationError::Mismatch(
+                        Type::Named(actual_id, actual_params),
+                        Type::Named(expected_id, expected_params),
+                    ));
                 }
 
-                let mut errors = Vec::new();
-
-                for (lhs, rhs) in lhs_params.into_iter().zip(rhs_params) {
-                    if let Err(mut param_errors) = self.unify(lhs, rhs) {
-                        errors.append(&mut param_errors);
+                for (lhs, rhs) in actual_params
+                    .clone()
+                    .into_iter()
+                    .zip(expected_params.clone())
+                {
+                    if self.unify(lhs, rhs).is_err() {
+                        return Err(UnificationError::Mismatch(
+                            Type::Named(actual_id, actual_params),
+                            Type::Named(expected_id, expected_params),
+                        ));
                     }
                 }
 
-                if errors.is_empty() {
-                    Ok(())
-                } else {
-                    Err(errors)
-                }
+                Ok(())
             }
-            (Type::Function(lhs_input, lhs_output), Type::Function(rhs_input, rhs_output)) => {
-                let mut errors = Vec::new();
-
-                if let Err(mut input_errors) = self.unify(*lhs_input, *rhs_input) {
-                    errors.append(&mut input_errors);
+            (
+                Type::Function(actual_input, actual_output),
+                Type::Function(expected_input, expected_output),
+            ) => {
+                if self
+                    .unify((*actual_input).clone(), (*expected_input).clone())
+                    .is_err()
+                {
+                    return Err(UnificationError::Mismatch(
+                        Type::Function(actual_input, actual_output),
+                        Type::Function(expected_input, expected_output),
+                    ));
                 }
 
-                if let Err(mut output_errors) = self.unify(*lhs_output, *rhs_output) {
-                    errors.append(&mut output_errors);
+                if self
+                    .unify((*actual_output).clone(), (*expected_output).clone())
+                    .is_err()
+                {
+                    return Err(UnificationError::Mismatch(
+                        Type::Function(actual_input, actual_output),
+                        Type::Function(expected_input, expected_output),
+                    ));
                 }
 
-                if errors.is_empty() {
-                    Ok(())
-                } else {
-                    Err(errors)
-                }
+                Ok(())
             }
             (Type::Bottom, _) => Ok(()),
-            (lhs, rhs) => Err(vec![UnificationError::Mismatch(lhs, rhs)]),
+            (lhs, rhs) => Err(UnificationError::Mismatch(lhs, rhs)),
         }
     }
 }

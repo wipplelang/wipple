@@ -243,7 +243,7 @@ impl<L: Loader> Compiler<L> {
                         let value_ty = value.scheme.instantiate(&mut typechecker.ctx);
 
                         if let Err(errors) = typechecker.ctx.unify(value_ty, ty) {
-                            typechecker.report_type_errors(value.span, errors, file);
+                            typechecker.report_type_error(value.span, errors, file);
                         }
                     }
 
@@ -446,7 +446,7 @@ impl<'a> Typechecker<'a> {
                     function_ty,
                     Type::Function(Box::new(input_ty), Box::new(output_ty.clone())),
                 ) {
-                    self.report_type_errors(expr.span, errors, file);
+                    self.report_type_error(function.span, errors, file);
                     return error();
                 }
 
@@ -492,7 +492,7 @@ impl<'a> Typechecker<'a> {
                 let inferred_expr_ty = inferred_expr.scheme.instantiate(&mut self.ctx);
 
                 if let Err(errors) = self.ctx.unify(inferred_expr_ty.clone(), ty) {
-                    self.report_type_errors(expr.span, errors, file);
+                    self.report_type_error(expr.span, errors, file);
                     return error();
                 }
 
@@ -603,12 +603,7 @@ impl<'a> Typechecker<'a> {
         }
     }
 
-    fn report_type_errors(
-        &mut self,
-        span: Span,
-        errors: Vec<UnificationError>,
-        file: &lower::File,
-    ) {
+    fn report_type_error(&mut self, span: Span, error: UnificationError, file: &lower::File) {
         self.well_typed = false;
 
         let type_names = |name| {
@@ -628,29 +623,27 @@ impl<'a> Typechecker<'a> {
                 .to_string()
         };
 
-        for error in errors {
-            let diagnostic = match error {
-                UnificationError::Recursive(_) => Diagnostic::new(
-                    DiagnosticLevel::Error,
-                    "recursive type",
-                    vec![Note::primary(span, "the type of this references itself")],
-                ),
-                UnificationError::Mismatch(found, expected) => Diagnostic::new(
-                    DiagnosticLevel::Error,
-                    "mismatched types",
-                    vec![Note::primary(
-                        span,
-                        format!(
-                            "expected {}, found {}",
-                            format_type(&expected, type_names, param_names),
-                            format_type(&found, type_names, param_names)
-                        ),
-                    )],
-                ),
-            };
+        let diagnostic = match error {
+            UnificationError::Recursive(_) => Diagnostic::new(
+                DiagnosticLevel::Error,
+                "recursive type",
+                vec![Note::primary(span, "the type of this references itself")],
+            ),
+            UnificationError::Mismatch(actual, expected) => Diagnostic::new(
+                DiagnosticLevel::Error,
+                "mismatched types",
+                vec![Note::primary(
+                    span,
+                    format!(
+                        "expected {}, but found {}",
+                        format_type(&expected, type_names, param_names),
+                        format_type(&actual, type_names, param_names)
+                    ),
+                )],
+            ),
+        };
 
-            self.diagnostics.add(diagnostic);
-        }
+        self.diagnostics.add(diagnostic);
     }
 }
 
@@ -700,7 +693,7 @@ fn format_type_with(
         is_return: bool,
     ) -> String {
         match ty {
-            Type::Variable(var) => format!("{:?}", var), // String::from("_"),
+            Type::Variable(_) => String::from("_"),
             Type::Parameter(param) => param_names(*param),
             Type::Bottom => String::from("!"),
             Type::Named(id, params) => {
