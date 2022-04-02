@@ -1,13 +1,23 @@
 use super::*;
 use std::{cmp::Ordering, collections::VecDeque};
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize)]
+#[repr(u8)]
+pub enum OperatorPrecedence {
+    Addition = 1,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum OperatorAssociativity {
+    Left,
+    Right,
+    None,
+}
+
 impl OperatorPrecedence {
     pub const fn associativity(&self) -> OperatorAssociativity {
         match self {
-            OperatorPrecedence::Assignment => OperatorAssociativity::Right,
-            OperatorPrecedence::Function => OperatorAssociativity::Right,
-            OperatorPrecedence::Field => OperatorAssociativity::Left,
-            OperatorPrecedence::Annotation => OperatorAssociativity::Left,
+            OperatorPrecedence::Addition => OperatorAssociativity::Left,
         }
     }
 }
@@ -28,7 +38,7 @@ impl<L: Loader> Compiler<L> {
 
         for (index, expr) in list.iter().enumerate() {
             if let parser::ExpressionKind::Name(name) = expr.kind {
-                if let Some(ScopeValue::Operator(id)) = scope.get(name) {
+                if let Some(ScopeValue::Operator(id)) = scope.get(name, expr.span) {
                     let operator = match info.declarations.operators.get(&id).unwrap() {
                         Declaration::Local(decl) => &decl.value,
                         Declaration::Dependency(_) => {

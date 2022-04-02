@@ -487,7 +487,10 @@ impl<'a> Typechecker<'a> {
                         Box::new(Type::Variable(input_var)),
                         Box::new(body_ty),
                     )),
-                    ExpressionKind::Function(Box::new(body), captures.clone()),
+                    ExpressionKind::Function(
+                        Box::new(body),
+                        captures.iter().map(|(var, _)| *var).collect(),
+                    ),
                 )
             }
             lower::ExpressionKind::When(_, _) => todo!(),

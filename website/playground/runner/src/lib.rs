@@ -1,6 +1,6 @@
 use lazy_static::lazy_static;
 use serde::Serialize;
-use std::{borrow::Cow, cell::RefCell, sync::Mutex};
+use std::{borrow::Cow, sync::Mutex};
 use wasm_bindgen::prelude::*;
 
 #[derive(Serialize)]
@@ -236,7 +236,7 @@ pub fn get_completions(position: usize) -> JsValue {
                     ScopeValue::TypeParameter(_) => 24,
                     ScopeValue::Operator(_) => 11,
                     ScopeValue::Constant(_) => 14,
-                    ScopeValue::Variable(_) => 4,
+                    ScopeValue::Variable(_, _) => 4,
                 },
             }));
         }};

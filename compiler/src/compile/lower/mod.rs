@@ -8,14 +8,10 @@ use crate::{
     Compiler, FilePath, Loader,
 };
 use builtins::load_builtins;
+use operators::OperatorPrecedence;
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
-use std::{
-    cell::RefCell,
-    collections::{HashMap, HashSet},
-    hash::Hash,
-    rc::Rc,
-};
+use std::{cell::RefCell, collections::HashMap, hash::Hash, rc::Rc};
 
 #[derive(Debug, Clone)]
 pub struct File {
@@ -144,22 +140,6 @@ pub struct Operator {
     pub body: ConstantId,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize)]
-#[repr(u8)]
-pub enum OperatorPrecedence {
-    Assignment = 9,
-    Function = 8,
-    Field = 7,
-    Annotation = 6,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum OperatorAssociativity {
-    Left,
-    Right,
-    None,
-}
-
 #[derive(Debug, Clone)]
 pub struct Constant {
     pub parameters: Vec<TypeParameter>,
@@ -184,7 +164,7 @@ pub enum ExpressionKind {
     Number(Decimal),
     Block(Vec<Expression>, HashMap<InternedString, ScopeValue>),
     Call(Box<Expression>, Box<Expression>),
-    Function(Box<Expression>, HashSet<VariableId>),
+    Function(Box<Expression>, Vec<(VariableId, Span)>),
     When(Box<Expression>, Vec<Arm>),
     External(InternedString, InternedString, Vec<Expression>),
     Annotate(Box<Expression>, TypeAnnotation),
@@ -300,10 +280,10 @@ impl<L: Loader> Compiler<L> {
             .filter_map(|statement| self.lower_statement(statement, &scope, &mut info))
             .collect();
 
-        let mut all_constants_initialized = true;
+        let mut complete = true;
         for constant in info.declarations.constants.values() {
             if let Declaration::Local(decl) | Declaration::Builtin(decl) = constant {
-                if decl.value.value.borrow().is_none() {
+                if decl.value.value.borrow().as_ref().is_none() {
                     self.diagnostics.add(Diagnostic::error(
                         "uninitialized constant",
                         vec![Note::primary(
@@ -312,7 +292,7 @@ impl<L: Loader> Compiler<L> {
                         )],
                     ));
 
-                    all_constants_initialized = false;
+                    complete = false;
                 }
             }
         }
@@ -320,7 +300,7 @@ impl<L: Loader> Compiler<L> {
         File {
             path: file.path,
             span: file.span,
-            complete: all_constants_initialized,
+            complete,
             declarations: info.declarations,
             exported: scope.values.take(),
             block,
@@ -332,7 +312,14 @@ impl<L: Loader> Compiler<L> {
 struct Scope<'a> {
     parent: Option<&'a Scope<'a>>,
     values: RefCell<HashMap<InternedString, ScopeValue>>,
-    used_variables: Option<RefCell<HashSet<VariableId>>>,
+    used_variables: Option<RefCell<Vec<UsedVariable>>>,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct UsedVariable {
+    pub id: VariableId,
+    pub span: Span,
+    pub is_function_input: bool,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
@@ -341,11 +328,11 @@ pub enum ScopeValue {
     TypeParameter(TypeParameterId),
     Operator(OperatorId),
     Constant(ConstantId),
-    Variable(VariableId),
+    Variable(VariableId, bool),
 }
 
 impl<'a> Scope<'a> {
-    fn get(&'a self, name: InternedString) -> Option<ScopeValue> {
+    fn get(&'a self, name: InternedString, source_span: Span) -> Option<ScopeValue> {
         let mut parent = Some(self);
         let mut result = None;
         let mut used_variables = Vec::new();
@@ -363,13 +350,31 @@ impl<'a> Scope<'a> {
             parent = scope.parent;
         }
 
-        if let Some(ScopeValue::Variable(id)) = result {
+        if let Some(ScopeValue::Variable(id, is_function_input)) = result {
             for u in used_variables {
-                u.borrow_mut().insert(id);
+                u.borrow_mut().push(UsedVariable {
+                    id,
+                    span: source_span,
+                    is_function_input,
+                });
             }
         }
 
         result
+    }
+
+    fn variables_used_by_ancestors(&self) -> Vec<UsedVariable> {
+        let mut parent = self.parent;
+        let mut used_variables = Vec::new();
+        while let Some(scope) = parent {
+            if let Some(u) = &scope.used_variables {
+                used_variables.append(&mut u.clone().into_inner());
+            }
+
+            parent = scope.parent;
+        }
+
+        used_variables
     }
 }
 
@@ -413,7 +418,7 @@ impl<L: Loader> Compiler<L> {
                         vec![Note::primary(span, "try assigning to a different name")],
                     ));
 
-                    return None;
+                    return Some(Expression::error(statement.span));
                 }
 
                 if !ty.parameters.is_empty() {
@@ -428,7 +433,7 @@ impl<L: Loader> Compiler<L> {
                         )],
                     ));
 
-                    return None;
+                    return Some(Expression::error(statement.span));
                 }
 
                 let id = TypeId::new();
@@ -492,7 +497,7 @@ impl<L: Loader> Compiler<L> {
                         vec![Note::primary(span, "try assigning to a different name")],
                     ));
 
-                    return Some(Expression::error(span));
+                    return Some(Expression::error(statement.span));
                 }
 
                 let constant = {
@@ -571,7 +576,7 @@ impl<L: Loader> Compiler<L> {
                                 )],
                             ));
 
-                            return None;
+                            return Some(Expression::error(statement.span));
                         }
                         Some(ScopeValue::Constant(id)) => {
                             let c = match info.declarations.constants.get(&id).unwrap() {
@@ -593,7 +598,7 @@ impl<L: Loader> Compiler<L> {
                                         ],
                                     ));
 
-                                    return None;
+                                    return Some(Expression::error(statement.span));
                                 }
                             };
 
@@ -612,26 +617,47 @@ impl<L: Loader> Compiler<L> {
                                     ],
                                 ));
 
-                                return None;
+                                return Some(Expression::error(statement.span));
                             }
 
                             associated_constant = Some(c);
                         }
-                        Some(ScopeValue::Variable(_)) | None => {}
+                        Some(ScopeValue::Variable(_, _)) | None => {}
                     }
 
                     let value = self.lower_expr(expr, scope, info);
 
                     if let Some(associated_constant) = associated_constant {
-                        // TODO: Check that expression doesn't refer to local variables
+                        // Check that expression doesn't capture variables
+                        if let ExpressionKind::Function(_, captures) = &value.kind {
+                            if !captures.is_empty() {
+                                self.diagnostics.add(Diagnostic::error(
+                                    "expected constant value",
+                                    std::iter::once(Note::primary(
+                                        value.span,
+                                        "this value captures variables and cannot be used as a constant",
+                                    ))
+                                    .chain(
+                                        captures
+                                            .iter()
+                                            .map(|(_, span)| Note::secondary(*span, "captured variable")),
+                                    )
+                                    .collect(),
+                                ));
+                            }
+                        }
+
                         associated_constant.replace(Some(value));
                         None
                     } else {
                         let id = VariableId::new();
-                        scope
-                            .values
-                            .borrow_mut()
-                            .insert(*name, ScopeValue::Variable(id));
+                        scope.values.borrow_mut().insert(
+                            *name,
+                            ScopeValue::Variable(
+                                id,
+                                matches!(value.kind, ExpressionKind::FunctionInput),
+                            ),
+                        );
 
                         info.declarations.variables.insert(
                             id,
@@ -660,85 +686,98 @@ impl<L: Loader> Compiler<L> {
         scope: &Scope,
         info: &mut Info,
     ) -> Expression {
-        let kind = match expr.kind {
-            parser::ExpressionKind::Unit => ExpressionKind::Unit,
-            parser::ExpressionKind::Text(text) => ExpressionKind::Text(text),
-            parser::ExpressionKind::Number(number) => ExpressionKind::Number(number),
-            parser::ExpressionKind::FunctionInput => ExpressionKind::FunctionInput,
-            parser::ExpressionKind::Name(name) => {
-                match self.resolve_value(expr.span, name, scope, info) {
-                    Some(value) => value,
-                    None => {
-                        self.diagnostics.add(Diagnostic::error(
-                            format!("cannot find variable `{name}`"),
-                            vec![Note::primary(expr.span, "no such variable")],
-                        ));
+        let kind =
+            match expr.kind {
+                parser::ExpressionKind::Unit => ExpressionKind::Unit,
+                parser::ExpressionKind::Text(text) => ExpressionKind::Text(text),
+                parser::ExpressionKind::Number(number) => ExpressionKind::Number(number),
+                parser::ExpressionKind::FunctionInput => ExpressionKind::FunctionInput,
+                parser::ExpressionKind::Name(name) => {
+                    match self.resolve_value(expr.span, name, scope, info) {
+                        Some(value) => value,
+                        None => {
+                            self.diagnostics.add(Diagnostic::error(
+                                format!("cannot find variable `{name}`"),
+                                vec![Note::primary(expr.span, "no such variable")],
+                            ));
 
-                        return Expression::error(expr.span);
+                            return Expression::error(expr.span);
+                        }
                     }
                 }
-            }
-            parser::ExpressionKind::Block(statements) => {
-                let scope = Scope {
-                    parent: Some(scope),
-                    ..Default::default()
-                };
+                parser::ExpressionKind::Block(statements) => {
+                    let scope = Scope {
+                        parent: Some(scope),
+                        ..Default::default()
+                    };
 
-                let (block, declarations) = self.lower_block(statements, &scope, info);
+                    let (block, declarations) = self.lower_block(statements, &scope, info);
 
-                ExpressionKind::Block(block, declarations)
-            }
-            parser::ExpressionKind::List(exprs) => self.lower_operators(exprs, scope, info).kind,
-            parser::ExpressionKind::Function(input, body) => {
-                let scope = Scope {
-                    parent: Some(scope),
-                    used_variables: Some(Default::default()),
-                    ..Default::default()
-                };
+                    ExpressionKind::Block(block, declarations)
+                }
+                parser::ExpressionKind::List(exprs) => {
+                    self.lower_operators(exprs, scope, info).kind
+                }
+                parser::ExpressionKind::Function(input, body) => {
+                    let scope = Scope {
+                        parent: Some(scope),
+                        used_variables: Some(Default::default()),
+                        ..Default::default()
+                    };
 
-                // Desugar function input pattern matching
-                let input_span = input.span;
-                let initialization = self.lower_statement(
-                    parser::Statement {
-                        span: input_span,
-                        kind: parser::StatementKind::Assign(
-                            input,
-                            parser::Expression {
-                                span: input_span,
-                                kind: parser::ExpressionKind::FunctionInput,
-                            },
-                        ),
-                    },
-                    &scope,
-                    info,
-                );
+                    // Desugar function input pattern matching
+                    let input_span = input.span;
+                    let initialization = self.lower_statement(
+                        parser::Statement {
+                            span: input_span,
+                            kind: parser::StatementKind::Assign(
+                                input,
+                                parser::Expression {
+                                    span: input_span,
+                                    kind: parser::ExpressionKind::FunctionInput,
+                                },
+                            ),
+                        },
+                        &scope,
+                        info,
+                    );
 
-                let body = self.lower_expr(*body, &scope, info);
+                    let body = self.lower_expr(*body, &scope, info);
 
-                let block = initialization.into_iter().chain(Some(body)).collect();
+                    let block = initialization.into_iter().chain(Some(body)).collect();
 
-                ExpressionKind::Function(
-                    Box::new(Expression {
-                        span: expr.span,
-                        kind: ExpressionKind::Block(block, scope.values.into_inner()),
-                    }),
-                    scope.used_variables.unwrap().take(),
-                )
-            }
-            parser::ExpressionKind::When(_, _) => return Expression::error(expr.span), // TODO
-            parser::ExpressionKind::External(namespace, identifier, inputs) => {
-                let inputs = inputs
-                    .into_iter()
-                    .map(|expr| self.lower_expr(expr, scope, info))
-                    .collect();
+                    let captures =
+                        scope
+                            .variables_used_by_ancestors()
+                            .into_iter()
+                            .map(|var| (var.id, var.span))
+                            .chain(scope.used_variables.unwrap().take().into_iter().filter_map(
+                                |var| (!var.is_function_input).then(|| (var.id, var.span)),
+                            ))
+                            .collect();
 
-                ExpressionKind::External(namespace, identifier, inputs)
-            }
-            parser::ExpressionKind::Annotate(expr, ty) => ExpressionKind::Annotate(
-                Box::new(self.lower_expr(*expr, scope, info)),
-                self.lower_type_annotation(ty, scope, info),
-            ),
-        };
+                    ExpressionKind::Function(
+                        Box::new(Expression {
+                            span: expr.span,
+                            kind: ExpressionKind::Block(block, scope.values.into_inner()),
+                        }),
+                        captures,
+                    )
+                }
+                parser::ExpressionKind::When(_, _) => return Expression::error(expr.span), // TODO
+                parser::ExpressionKind::External(namespace, identifier, inputs) => {
+                    let inputs = inputs
+                        .into_iter()
+                        .map(|expr| self.lower_expr(expr, scope, info))
+                        .collect();
+
+                    ExpressionKind::External(namespace, identifier, inputs)
+                }
+                parser::ExpressionKind::Annotate(expr, ty) => ExpressionKind::Annotate(
+                    Box::new(self.lower_expr(*expr, scope, info)),
+                    self.lower_type_annotation(ty, scope, info),
+                ),
+            };
 
         Expression {
             span: expr.span,
@@ -756,7 +795,7 @@ impl<L: Loader> Compiler<L> {
             parser::TypeAnnotationKind::Placeholder => TypeAnnotationKind::Placeholder,
             parser::TypeAnnotationKind::Unit => TypeAnnotationKind::Unit,
             parser::TypeAnnotationKind::Named(name, parameters) => {
-                match self.resolve_type(name, scope) {
+                match self.resolve_type(ty.span, name, scope) {
                     Some(Ok(ty)) => {
                         let parameters = parameters
                             .into_iter()
@@ -810,7 +849,7 @@ impl<L: Loader> Compiler<L> {
         scope: &Scope,
         info: &mut Info,
     ) -> Option<ExpressionKind> {
-        match scope.get(name) {
+        match scope.get(name, span) {
             Some(ScopeValue::Type(id)) => {
                 fn resolve<L: Loader>(
                     compiler: &mut Compiler<L>,
@@ -888,17 +927,18 @@ impl<L: Loader> Compiler<L> {
                 Some(ExpressionKind::Error)
             }
             Some(ScopeValue::Constant(id)) => Some(ExpressionKind::Constant(id)),
-            Some(ScopeValue::Variable(id)) => Some(ExpressionKind::Variable(id)),
+            Some(ScopeValue::Variable(id, _)) => Some(ExpressionKind::Variable(id)),
             None => None,
         }
     }
 
     fn resolve_type(
         &mut self,
+        span: Span,
         name: InternedString,
         scope: &Scope,
     ) -> Option<Result<TypeId, TypeParameterId>> {
-        scope.get(name).and_then(|value| match value {
+        scope.get(name, span).and_then(|value| match value {
             ScopeValue::Type(id) => Some(Ok(id)),
             ScopeValue::TypeParameter(id) => Some(Err(id)),
             _ => None,
