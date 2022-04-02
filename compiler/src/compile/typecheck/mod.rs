@@ -43,10 +43,12 @@ pub enum ExpressionKind {
     Number(Decimal),
     Block(Vec<Expression>, HashMap<InternedString, lower::ScopeValue>),
     Call(Box<Expression>, Box<Expression>),
+    Member(Box<Expression>, usize),
     Function(Box<Expression>, HashSet<VariableId>),
     When(Box<Expression>, Vec<Arm>),
     External(InternedString, InternedString, Vec<Expression>),
     Initialize(VariableId, Box<Expression>),
+    Structure(Vec<Expression>),
     FunctionInput,
 }
 
@@ -68,18 +70,6 @@ pub enum PatternKind {
     Binding(VariableId),
     // TODO: Support complex paths (data fields, variants)
     Wildcard,
-}
-
-#[derive(Debug, Clone)]
-pub struct TypeAnnotation {
-    pub span: Span,
-    pub kind: TypeAnnotationKind,
-}
-
-#[derive(Debug, Clone)]
-pub enum TypeAnnotationKind {
-    Placeholder,
-    Named(TypeId, Vec<TypeAnnotation>),
 }
 
 #[derive(Debug, Clone)]
@@ -160,6 +150,18 @@ impl Expression {
     fn traverse_mut_inner(&mut self, f: &mut impl FnMut(&mut Expression)) {
         traverse_impl!(f, self, traverse_mut_inner, &mut)
     }
+
+    pub fn contains_error(&self) -> bool {
+        let mut contains_error = false;
+
+        self.traverse(|expr| {
+            if matches!(expr.kind, ExpressionKind::Error) {
+                contains_error = true;
+            }
+        });
+
+        contains_error
+    }
 }
 
 impl<L: Loader> Compiler<L> {
@@ -169,6 +171,7 @@ impl<L: Loader> Compiler<L> {
             ctx: Default::default(),
             variables: Default::default(),
             constants: Default::default(),
+            structures: Default::default(),
             function_inputs: Default::default(),
             diagnostics: &mut self.diagnostics,
             used_types: Default::default(),
@@ -179,14 +182,41 @@ impl<L: Loader> Compiler<L> {
         let mut body = Vec::new();
 
         for file in &mut files {
-            for (&id, constant) in &file.declarations.constants {
-                if let lower::Declaration::Local(decl) | lower::Declaration::Builtin(decl) =
-                    constant
-                {
+            for (&id, decl) in &file.declarations.constants {
+                if let lower::Declaration::Local(decl) | lower::Declaration::Builtin(decl) = decl {
                     let scheme = typechecker
                         .convert_constant_type_annotation(&decl.value.ty, &decl.value.parameters);
 
                     typechecker.constants.insert(id, scheme);
+                }
+            }
+
+            for (&id, decl) in &file.declarations.types {
+                if let lower::Declaration::Local(decl) | lower::Declaration::Builtin(decl) = decl {
+                    match &decl.value.kind {
+                        lower::TypeKind::Structure(fields, field_names) => {
+                            #[allow(clippy::map_entry)] // typechecker is borrowed twice otherwise
+                            if !typechecker.structures.contains_key(&id) {
+                                let fields = field_names
+                                    .iter()
+                                    .map(|(name, index)| {
+                                        (
+                                            *name,
+                                            (
+                                                *index,
+                                                typechecker
+                                                    .convert_type_annotation(&fields[*index].ty),
+                                            ),
+                                        )
+                                    })
+                                    .collect();
+
+                                typechecker.structures.insert(id, fields);
+                            }
+                        }
+                        lower::TypeKind::Enumeration(_, _) => todo!("enumerations"),
+                        _ => {}
+                    }
                 }
             }
 
@@ -203,13 +233,15 @@ impl<L: Loader> Compiler<L> {
                 if !expr.scheme.vars().is_empty() {
                     typechecker.well_typed = false;
 
-                    typechecker.diagnostics.add(Diagnostic::error(
-                        "cannot determine the type of this expression",
-                        vec![Note::primary(
-                            expr.span,
-                            "try annotating the type with '::'",
-                        )],
-                    ));
+                    if !expr.contains_error() {
+                        typechecker.diagnostics.add(Diagnostic::error(
+                            "cannot determine the type of this expression",
+                            vec![Note::primary(
+                                expr.span,
+                                "try annotating the type with '::'",
+                            )],
+                        ));
+                    }
                 }
             }};
         }
@@ -387,6 +419,8 @@ struct Typechecker<'a> {
     ctx: Context,
     variables: HashMap<VariableId, Scheme>,
     constants: HashMap<ConstantId, Scheme>,
+    structures: HashMap<TypeId, HashMap<InternedString, (usize, Type)>>,
+    // TODO: enumerations
     function_inputs: Vec<TypeVariable>,
     diagnostics: &'a mut Diagnostics,
     used_types: HashSet<TypeId>,
@@ -402,7 +436,7 @@ impl<'a> Typechecker<'a> {
             kind: ExpressionKind::Error,
         };
 
-        let (ty, kind) = match &expr.kind {
+        let (scheme, kind) = match &expr.kind {
             lower::ExpressionKind::Error => {
                 self.well_typed = false; // signal that the program contains errors
                 return error();
@@ -450,8 +484,48 @@ impl<'a> Typechecker<'a> {
 
                 (ty, ExpressionKind::Block(statements, declarations.clone()))
             }
-            lower::ExpressionKind::Call(function, input) => {
-                let function = self.typecheck_expr(function, file);
+            lower::ExpressionKind::CallOrMember(lhs, input, member_name) => {
+                let lhs = self.typecheck_expr(lhs, file);
+
+                if let Some(member_name) = member_name {
+                    let mut lhs_ty = lhs.scheme.instantiate(&mut self.ctx);
+                    lhs_ty.apply(&self.ctx);
+
+                    if let Type::Named(id, _) = lhs_ty {
+                        if let Some(members) = self.structures.get(&id) {
+                            match members.get(member_name) {
+                                Some((index, ty)) => {
+                                    return Expression {
+                                        span: expr.span,
+                                        scheme: Scheme::Type(ty.clone()),
+                                        kind: ExpressionKind::Member(Box::new(lhs), *index),
+                                    };
+                                }
+                                None => {
+                                    self.well_typed = false;
+
+                                    self.diagnostics.add(Diagnostic::error(
+                                        format!(
+                                            "type `{}` has no member `{}`",
+                                            file.declarations.types.get(&id).unwrap().name(),
+                                            member_name
+                                        ),
+                                        vec![Note::primary(expr.span, "invalid member")],
+                                    ));
+
+                                    return error();
+                                }
+                            }
+                        }
+                    } else {
+                        self.diagnostics.add(Diagnostic::error(
+                            format!("cannot find variable `{member_name}`"),
+                            vec![Note::primary(input.span, "no such variable")],
+                        ));
+                    }
+                }
+
+                let function = lhs;
                 let input = self.typecheck_expr(input, file);
 
                 let output_ty = Type::Variable(self.ctx.new_variable());
@@ -536,11 +610,107 @@ impl<'a> Typechecker<'a> {
                     ExpressionKind::FunctionInput,
                 )
             }
+            lower::ExpressionKind::Instantiate(ty, fields) => {
+                let fields_by_name = match self.structures.get(ty) {
+                    Some(structure) => structure.clone(),
+                    None => {
+                        self.diagnostics.add(Diagnostic::error(
+                            "only data types may be instantiated like this",
+                            vec![Note::primary(expr.span, "this is not a data type")],
+                        ));
+
+                        return error();
+                    }
+                };
+
+                let mut fields_by_index = fields_by_name.iter().collect::<Vec<_>>();
+                fields_by_index.sort_by_key(|(_, (index, _))| *index);
+
+                let mut unpopulated_fields = vec![None; fields_by_index.len()];
+                let mut extra_fields = Vec::new();
+
+                for (name, expr) in fields {
+                    let (index, ty) = match fields_by_name.get(name) {
+                        Some((index, ty)) => (*index, ty.clone()),
+                        None => {
+                            extra_fields.push(name);
+                            continue;
+                        }
+                    };
+
+                    let value = self.typecheck_expr(expr, file);
+                    let value_ty = value.scheme.instantiate(&mut self.ctx);
+
+                    if let Err(errors) = self.ctx.unify(value_ty, ty) {
+                        self.report_type_error(expr.span, errors, file);
+                        return error();
+                    }
+
+                    unpopulated_fields[index] = Some(value);
+                }
+
+                if !extra_fields.is_empty() {
+                    self.diagnostics.add(Diagnostic::error(
+                        "extra fields",
+                        vec![Note::primary(
+                            expr.span,
+                            format!(
+                                "try removing {}",
+                                extra_fields
+                                    .into_iter()
+                                    .map(|field| format!("`{}`", field))
+                                    .collect::<Vec<_>>()
+                                    .join(", ")
+                            ),
+                        )],
+                    ));
+
+                    return error();
+                }
+
+                let mut missing_fields = Vec::new();
+
+                let fields = unpopulated_fields
+                    .into_iter()
+                    .enumerate()
+                    .filter_map(|(index, field)| {
+                        if field.is_none() {
+                            missing_fields.push(*fields_by_index[index].0);
+                        }
+
+                        field
+                    })
+                    .collect::<Vec<_>>();
+
+                if !missing_fields.is_empty() {
+                    self.diagnostics.add(Diagnostic::error(
+                        "missing fields",
+                        vec![Note::primary(
+                            expr.span,
+                            format!(
+                                "try adding {}",
+                                missing_fields
+                                    .into_iter()
+                                    .map(|field| format!("`{}`", field))
+                                    .collect::<Vec<_>>()
+                                    .join(", ")
+                            ),
+                        )],
+                    ));
+
+                    return error();
+                }
+
+                (
+                    Scheme::Type(Type::Named(*ty, Vec::new())),
+                    ExpressionKind::Structure(fields),
+                )
+            }
         };
 
         Expression {
             span: expr.span,
-            scheme: ty,
+            scheme,
             kind,
         }
     }

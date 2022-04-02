@@ -163,14 +163,16 @@ pub enum ExpressionKind {
     Text(InternedString),
     Number(Decimal),
     Block(Vec<Expression>, HashMap<InternedString, ScopeValue>),
-    Call(Box<Expression>, Box<Expression>),
+    /// It's impossible to know whether this expression is a function call or a
+    /// member expression until the left-hand side is typechecked
+    CallOrMember(Box<Expression>, Box<Expression>, Option<InternedString>),
     Function(Box<Expression>, Vec<(VariableId, Span)>),
     When(Box<Expression>, Vec<Arm>),
     External(InternedString, InternedString, Vec<Expression>),
     Annotate(Box<Expression>, TypeAnnotation),
     Initialize(VariableId, Box<Expression>),
     FunctionInput,
-    // TODO: Instantiation
+    Instantiate(TypeId, Vec<(InternedString, Expression)>),
 }
 
 impl Expression {
@@ -239,9 +241,7 @@ impl<L: Loader> Compiler<L> {
 
         // TODO: Handle file attributes
 
-        let mut info = Info {
-            declarations: Default::default(),
-        };
+        let mut info = Info::default();
 
         load_builtins(&scope, &mut info);
 
@@ -378,8 +378,20 @@ impl<'a> Scope<'a> {
     }
 }
 
+#[derive(Default)]
 struct Info {
     declarations: Declarations,
+    suppress_name_resolution_errors: bool,
+}
+
+impl Info {
+    pub fn suppressing_name_resolution_errors<T>(&mut self, f: impl FnOnce(&mut Self) -> T) -> T {
+        let prev_suppress_name_resolution_errors = self.suppress_name_resolution_errors;
+        self.suppress_name_resolution_errors = true;
+        let result = f(self);
+        self.suppress_name_resolution_errors = prev_suppress_name_resolution_errors;
+        result
+    }
 }
 
 impl<L: Loader> Compiler<L> {
@@ -696,10 +708,12 @@ impl<L: Loader> Compiler<L> {
                     match self.resolve_value(expr.span, name, scope, info) {
                         Some(value) => value,
                         None => {
-                            self.diagnostics.add(Diagnostic::error(
-                                format!("cannot find variable `{name}`"),
-                                vec![Note::primary(expr.span, "no such variable")],
-                            ));
+                            if !info.suppress_name_resolution_errors {
+                                self.diagnostics.add(Diagnostic::error(
+                                    format!("cannot find variable `{name}`"),
+                                    vec![Note::primary(expr.span, "no such variable")],
+                                ));
+                            }
 
                             return Expression::error(expr.span);
                         }
@@ -716,7 +730,7 @@ impl<L: Loader> Compiler<L> {
                     ExpressionKind::Block(block, declarations)
                 }
                 parser::ExpressionKind::List(exprs) => {
-                    self.lower_operators(exprs, scope, info).kind
+                    self.lower_operators(expr.span, exprs, scope, info).kind
                 }
                 parser::ExpressionKind::Function(input, body) => {
                     let scope = Scope {
@@ -785,6 +799,43 @@ impl<L: Loader> Compiler<L> {
         }
     }
 
+    fn lower_instantiation(
+        &mut self,
+        ty_span: Span,
+        body_span: Span,
+        ty: Result<TypeId, TypeParameterId>,
+        fields: Vec<(InternedString, &parser::Expression)>,
+        scope: &Scope,
+        info: &mut Info,
+    ) -> Expression {
+        let span = Span::join(ty_span, body_span);
+
+        let ty = match ty {
+            Ok(ty) => ty,
+            Err(_) => {
+                self.diagnostics.add(Diagnostic::error(
+                    "cannot instantiate type parameter",
+                    vec![Note::primary(
+                        ty_span,
+                        "the actual type this represents is not known here",
+                    )],
+                ));
+
+                return Expression::error(span);
+            }
+        };
+
+        let fields = fields
+            .into_iter()
+            .map(|(name, value)| (name, self.lower_expr(value.clone(), scope, info)))
+            .collect();
+
+        Expression {
+            span,
+            kind: ExpressionKind::Instantiate(ty, fields),
+        }
+    }
+
     fn lower_type_annotation(
         &mut self,
         ty: parser::TypeAnnotation,
@@ -795,7 +846,7 @@ impl<L: Loader> Compiler<L> {
             parser::TypeAnnotationKind::Placeholder => TypeAnnotationKind::Placeholder,
             parser::TypeAnnotationKind::Unit => TypeAnnotationKind::Unit,
             parser::TypeAnnotationKind::Named(name, parameters) => {
-                match self.resolve_type(ty.span, name, scope) {
+                match self.resolve_type_annotation(ty.span, name, scope) {
                     Some(Ok(ty)) => {
                         let parameters = parameters
                             .into_iter()
@@ -806,6 +857,7 @@ impl<L: Loader> Compiler<L> {
                     }
                     Some(Err(param)) => {
                         if !parameters.is_empty() {
+                            // TODO: Higher-kinded types
                             self.diagnostics.add(Diagnostic::error(
                                 "type parameters cannot have parameters themselves",
                                 vec![Note::primary(
@@ -850,60 +902,7 @@ impl<L: Loader> Compiler<L> {
         info: &mut Info,
     ) -> Option<ExpressionKind> {
         match scope.get(name, span) {
-            Some(ScopeValue::Type(id)) => {
-                fn resolve<L: Loader>(
-                    compiler: &mut Compiler<L>,
-                    span: Span,
-                    id: TypeId,
-                    info: &mut Info,
-                ) -> Option<ExpressionKind> {
-                    match info.declarations.types.get(&id).unwrap() {
-                        Declaration::Local(decl) | Declaration::Builtin(decl) => {
-                            match decl.value.kind {
-                                TypeKind::Marker => Some(ExpressionKind::Marker(id)),
-                                TypeKind::Alias(TypeAnnotation {
-                                    kind: TypeAnnotationKind::Named(alias_id, _),
-                                    ..
-                                }) => {
-                                    // TODO: Maybe perform this check earlier?
-                                    if alias_id == id {
-                                        compiler.diagnostics.add(Diagnostic::error(
-                                            "cannot instantiate recursive type",
-                                            vec![Note::primary(
-                                                span,
-                                                "this type references itself and cannot be constructed",
-                                            )],
-                                        ));
-
-                                        Some(ExpressionKind::Error)
-                                    } else {
-                                        resolve(compiler, span, alias_id, info)
-                                    }
-                                }
-                                TypeKind::Builtin(_) => {
-                                    compiler.diagnostics.add(Diagnostic::error(
-                                        "cannot use builtin type as value",
-                                        vec![Note::primary(span, "try using a literal instead")],
-                                    ));
-
-                                    Some(ExpressionKind::Error)
-                                }
-                                _ => {
-                                    compiler.diagnostics.add(Diagnostic::error(
-                                        "cannot use type as value",
-                                        vec![Note::primary(span, "try instantiating the type")],
-                                    ));
-
-                                    Some(ExpressionKind::Error)
-                                }
-                            }
-                        }
-                        Declaration::Dependency(_) => Some(ExpressionKind::Marker(id)),
-                    }
-                }
-
-                resolve(self, span, id, info)
-            }
+            Some(ScopeValue::Type(id)) => self.resolve_type(span, id, info),
             Some(ScopeValue::TypeParameter(_)) => {
                 self.diagnostics.add(Diagnostic::error(
                     "cannot use type parameter as value",
@@ -932,7 +931,36 @@ impl<L: Loader> Compiler<L> {
         }
     }
 
-    fn resolve_type(
+    fn resolve_type(&mut self, span: Span, id: TypeId, info: &mut Info) -> Option<ExpressionKind> {
+        match info.declarations.types.get(&id).unwrap() {
+            Declaration::Local(decl) | Declaration::Builtin(decl) => match decl.value.kind {
+                TypeKind::Marker => Some(ExpressionKind::Marker(id)),
+                TypeKind::Alias(TypeAnnotation {
+                    kind: TypeAnnotationKind::Named(alias_id, _),
+                    ..
+                }) => self.resolve_type(span, alias_id, info),
+                TypeKind::Builtin(_) => {
+                    self.diagnostics.add(Diagnostic::error(
+                        "cannot use builtin type as value",
+                        vec![Note::primary(span, "try using a literal instead")],
+                    ));
+
+                    Some(ExpressionKind::Error)
+                }
+                _ => {
+                    self.diagnostics.add(Diagnostic::error(
+                        "cannot use type as value",
+                        vec![Note::primary(span, "try instantiating the type")],
+                    ));
+
+                    Some(ExpressionKind::Error)
+                }
+            },
+            Declaration::Dependency(_) => Some(ExpressionKind::Marker(id)),
+        }
+    }
+
+    fn resolve_type_annotation(
         &mut self,
         span: Span,
         name: InternedString,

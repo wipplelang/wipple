@@ -29,7 +29,7 @@ pub enum Value {
         body: Box<Expression>,
         captures: BTreeMap<VariableId, Rc<Value>>,
     },
-    Data(Vec<Rc<Value>>),
+    Structure(Vec<Rc<Value>>),
 }
 
 #[derive(Debug)]
@@ -184,6 +184,10 @@ impl<'a> Interpreter<'a> {
                 }
                 _ => unreachable!(),
             },
+            ExpressionKind::Member(value, index) => match self.eval_expr(value, info)?.as_ref() {
+                Value::Structure(structure) => structure[*index].clone(),
+                _ => unreachable!(),
+            },
             ExpressionKind::Initialize(variable, value) => {
                 let value = self.eval_expr(value, info)?;
                 info.scope.borrow_mut().variables.insert(*variable, value);
@@ -276,6 +280,12 @@ impl<'a> Interpreter<'a> {
                     }
                 }
             }
+            ExpressionKind::Structure(exprs) => Rc::new(Value::Structure(
+                exprs
+                    .iter()
+                    .map(|expr| self.eval_expr(expr, info))
+                    .collect::<Result<_, _>>()?,
+            )),
             ExpressionKind::FunctionInput => info.function_input.as_ref().unwrap().clone(),
         };
 
