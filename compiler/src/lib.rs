@@ -87,13 +87,11 @@ ids! {
 
 impl<L: Loader> Compiler<L> {
     pub fn new(loader: L, options: CompilerOptions) -> Self {
-        let mut ids = Ids::default();
-
         Compiler {
             loader,
             options,
             diagnostics: Default::default(),
-            ids,
+            ids: Default::default(),
         }
     }
 
