@@ -5,7 +5,6 @@ pub mod helpers;
 pub mod parser;
 
 use diagnostics::*;
-use helpers::reset_ids;
 use helpers::InternedString;
 use serde::{Deserialize, Serialize};
 use std::{borrow::Cow, fmt};
@@ -35,21 +34,66 @@ impl fmt::Display for FilePath {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct Compiler<L: Loader> {
     loader: L,
     options: CompilerOptions,
     diagnostics: Diagnostics,
+    ids: Ids,
+}
+
+macro_rules! ids {
+    ($($(#[$meta:meta])* $id:ident),* $(,)?) => {
+        paste::paste! {
+            #[derive(Debug, Default)]
+            struct Ids {
+                $([<next_ $id:snake>]: usize,)*
+            }
+
+            $(
+                $(#[$meta])*
+                #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, ::serde::Serialize, ::serde::Deserialize)]
+                pub struct $id(usize);
+            )*
+
+            impl Ids {
+                $(
+                    fn [<new_ $id:snake>](&mut self) -> $id {
+                        let id = self.[<next_ $id:snake>];
+                        self.[<next_ $id:snake>] += 1;
+                        $id(id)
+                    }
+                )*
+            }
+
+            impl<L: Loader> Compiler<L> {
+                $(
+                    fn [<new_ $id:snake>](&mut self) -> $id {
+                        self.ids.[<new_ $id:snake>]()
+                    }
+                )*
+            }
+        }
+    };
+}
+
+ids! {
+    TypeId,
+    TypeParameterId,
+    OperatorId,
+    VariableId,
+    ConstantId,
 }
 
 impl<L: Loader> Compiler<L> {
     pub fn new(loader: L, options: CompilerOptions) -> Self {
-        reset_ids(); // TODO: Make IDs local to Compiler
+        let mut ids = Ids::default();
 
         Compiler {
             loader,
             options,
             diagnostics: Default::default(),
+            ids,
         }
     }
 

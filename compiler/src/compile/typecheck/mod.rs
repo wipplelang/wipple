@@ -1,16 +1,12 @@
 mod engine;
 
-pub use engine::{Scheme, Type};
+pub use engine::{BuiltinType, Scheme, Type};
 
 use crate::{
-    compile::lower,
-    diagnostics::*,
-    helpers::{ConstantId, InternedString, TypeId, TypeParameterId, VariableId},
-    parser::Span,
-    Compiler, FilePath, Loader,
+    compile::lower, diagnostics::*, helpers::InternedString, parser::Span, Compiler, ConstantId,
+    FilePath, Loader, TypeId, TypeParameterId, VariableId,
 };
 use engine::*;
-use lazy_static::lazy_static;
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -173,7 +169,7 @@ impl<L: Loader> Compiler<L> {
             constants: Default::default(),
             structures: Default::default(),
             function_inputs: Default::default(),
-            diagnostics: &mut self.diagnostics,
+            compiler: self,
             used_types: Default::default(),
             used_constants: Default::default(),
             used_variables: Default::default(),
@@ -234,7 +230,7 @@ impl<L: Loader> Compiler<L> {
                     typechecker.well_typed = false;
 
                     if !expr.contains_error() {
-                        typechecker.diagnostics.add(Diagnostic::error(
+                        typechecker.compiler.diagnostics.add(Diagnostic::error(
                             "cannot determine the type of this expression",
                             vec![Note::primary(
                                 expr.span,
@@ -352,13 +348,13 @@ impl<L: Loader> Compiler<L> {
         program.well_typed = typechecker.well_typed;
 
         // TODO: Make this the default (remove option)
-        if self.options.warn_unused_variables {
+        if typechecker.compiler.options.warn_unused_variables {
             macro_rules! warn_unused {
                 ($($x:ident => ($name:literal, $used:ident),)*) => {
                     $(
                         for (id, decl) in &program.declarations.$x {
                             if !typechecker.$used.contains(id) {
-                                typechecker.diagnostics.add(Diagnostic::warning(
+                                typechecker.compiler.diagnostics.add(Diagnostic::warning(
                                     format!("unused {}", $name),
                                     vec![Note::primary(
                                         decl.span,
@@ -382,39 +378,7 @@ impl<L: Loader> Compiler<L> {
     }
 }
 
-macro_rules! builtin_types {
-    ($($x:ident => $name:literal),* $(,)?) => {
-        pub struct BuiltinTypes {
-            $(pub $x: Type,)*
-        }
-
-        lazy_static! {
-            pub static ref BUILTIN_TYPES: BuiltinTypes = BuiltinTypes {
-                $($x: Type::Named(TypeId::new(), Vec::new()),)*
-            };
-        }
-
-        impl BuiltinTypes {
-            pub fn name(&self, id: TypeId) -> Option<&'static str> {
-                if false {
-                    unreachable!()
-                } $(else if id == self.$x.id().unwrap() {
-                    Some($name)
-                })* else {
-                    None
-                }
-            }
-        }
-    };
-}
-
-builtin_types! {
-    unit => "()",
-    number => "Number",
-    text => "Text",
-}
-
-struct Typechecker<'a> {
+struct Typechecker<'a, L: Loader> {
     well_typed: bool,
     ctx: Context,
     variables: HashMap<VariableId, Scheme>,
@@ -422,13 +386,13 @@ struct Typechecker<'a> {
     structures: HashMap<TypeId, HashMap<InternedString, (usize, Type)>>,
     // TODO: enumerations
     function_inputs: Vec<TypeVariable>,
-    diagnostics: &'a mut Diagnostics,
+    compiler: &'a mut Compiler<L>,
     used_types: HashSet<TypeId>,
     used_constants: HashSet<ConstantId>,
     used_variables: HashSet<VariableId>,
 }
 
-impl<'a> Typechecker<'a> {
+impl<'a, L: Loader> Typechecker<'a, L> {
     fn typecheck_expr(&mut self, expr: &lower::Expression, file: &lower::File) -> Expression {
         let error = || Expression {
             span: expr.span,
@@ -442,7 +406,7 @@ impl<'a> Typechecker<'a> {
                 return error();
             }
             lower::ExpressionKind::Unit => (
-                Scheme::Type(BUILTIN_TYPES.unit.clone()),
+                Scheme::Type(Type::Builtin(BuiltinType::Unit)),
                 ExpressionKind::Marker,
             ),
             lower::ExpressionKind::Marker(ty) => (
@@ -472,11 +436,11 @@ impl<'a> Typechecker<'a> {
                 (ty, ExpressionKind::Variable(*id))
             }
             lower::ExpressionKind::Text(text) => (
-                Scheme::Type(BUILTIN_TYPES.text.clone()),
+                Scheme::Type(Type::Builtin(BuiltinType::Text)),
                 ExpressionKind::Text(*text),
             ),
             lower::ExpressionKind::Number(number) => (
-                Scheme::Type(BUILTIN_TYPES.number.clone()),
+                Scheme::Type(Type::Builtin(BuiltinType::Number)),
                 ExpressionKind::Number(*number),
             ),
             lower::ExpressionKind::Block(statements, declarations) => {
@@ -504,7 +468,7 @@ impl<'a> Typechecker<'a> {
                                 None => {
                                     self.well_typed = false;
 
-                                    self.diagnostics.add(Diagnostic::error(
+                                    self.compiler.diagnostics.add(Diagnostic::error(
                                         format!(
                                             "type `{}` has no member `{}`",
                                             file.declarations.types.get(&id).unwrap().name(),
@@ -518,7 +482,7 @@ impl<'a> Typechecker<'a> {
                             }
                         }
                     } else {
-                        self.diagnostics.add(Diagnostic::error(
+                        self.compiler.diagnostics.add(Diagnostic::error(
                             format!("cannot find variable `{member_name}`"),
                             vec![Note::primary(input.span, "no such variable")],
                         ));
@@ -597,7 +561,7 @@ impl<'a> Typechecker<'a> {
                 self.variables.insert(*id, value.scheme.clone());
 
                 (
-                    Scheme::Type(BUILTIN_TYPES.unit.clone()),
+                    Scheme::Type(Type::Builtin(BuiltinType::Unit)),
                     ExpressionKind::Initialize(*id, Box::new(value)),
                 )
             }
@@ -614,7 +578,7 @@ impl<'a> Typechecker<'a> {
                 let fields_by_name = match self.structures.get(ty) {
                     Some(structure) => structure.clone(),
                     None => {
-                        self.diagnostics.add(Diagnostic::error(
+                        self.compiler.diagnostics.add(Diagnostic::error(
                             "only data types may be instantiated like this",
                             vec![Note::primary(expr.span, "this is not a data type")],
                         ));
@@ -650,7 +614,7 @@ impl<'a> Typechecker<'a> {
                 }
 
                 if !extra_fields.is_empty() {
-                    self.diagnostics.add(Diagnostic::error(
+                    self.compiler.diagnostics.add(Diagnostic::error(
                         "extra fields",
                         vec![Note::primary(
                             expr.span,
@@ -683,7 +647,7 @@ impl<'a> Typechecker<'a> {
                     .collect::<Vec<_>>();
 
                 if !missing_fields.is_empty() {
-                    self.diagnostics.add(Diagnostic::error(
+                    self.compiler.diagnostics.add(Diagnostic::error(
                         "missing fields",
                         vec![Note::primary(
                             expr.span,
@@ -728,7 +692,7 @@ impl<'a> Typechecker<'a> {
         let ty = statements
             .last()
             .map(|statement| statement.scheme.clone())
-            .unwrap_or_else(|| Scheme::Type(BUILTIN_TYPES.unit.clone()));
+            .unwrap_or_else(|| Scheme::Type(Type::Builtin(BuiltinType::Unit)));
 
         (ty, statements)
     }
@@ -744,10 +708,6 @@ impl<'a> Typechecker<'a> {
                     | lower::TypeKind::Structure(_, _)
                     | lower::TypeKind::Enumeration(_, _) => Type::Named(id, Vec::new()), // TODO: parameters
                     lower::TypeKind::Alias(annotation) => self.convert_type_annotation(&annotation),
-                    lower::TypeKind::Builtin(ty) => match ty {
-                        lower::BuiltinType::Number => BUILTIN_TYPES.number.clone(),
-                        lower::BuiltinType::Text => BUILTIN_TYPES.text.clone(),
-                    },
                 }
             }
             lower::Declaration::Dependency(_) => Type::Named(id, Vec::new()), // TODO: parameters
@@ -758,7 +718,7 @@ impl<'a> Typechecker<'a> {
         match &annotation.kind {
             lower::TypeAnnotationKind::Error => Type::Bottom,
             lower::TypeAnnotationKind::Placeholder => Type::Variable(self.ctx.new_variable()),
-            lower::TypeAnnotationKind::Unit => BUILTIN_TYPES.unit.clone(),
+            lower::TypeAnnotationKind::Unit => Type::Builtin(BuiltinType::Unit),
             lower::TypeAnnotationKind::Named(id, params) => Type::Named(
                 *id,
                 params
@@ -767,6 +727,11 @@ impl<'a> Typechecker<'a> {
                     .collect(),
             ),
             lower::TypeAnnotationKind::Parameter(id) => Type::Parameter(*id),
+            lower::TypeAnnotationKind::Builtin(builtin) => Type::Builtin(match builtin {
+                lower::BuiltinType::Unit => BuiltinType::Unit,
+                lower::BuiltinType::Number => BuiltinType::Number,
+                lower::BuiltinType::Text => BuiltinType::Text,
+            }),
             lower::TypeAnnotationKind::Function(input, output) => Type::Function(
                 Box::new(self.convert_type_annotation(input)),
                 Box::new(self.convert_type_annotation(output)),
@@ -800,8 +765,9 @@ impl<'a> Typechecker<'a> {
             file.declarations
                 .types
                 .get(&name)
-                .map(|decl| decl.name().to_string())
-                .unwrap_or_else(|| BUILTIN_TYPES.name(name).unwrap().to_string())
+                .unwrap()
+                .name()
+                .to_string()
         };
 
         let param_names = |param| {
@@ -833,7 +799,7 @@ impl<'a> Typechecker<'a> {
             ),
         };
 
-        self.diagnostics.add(diagnostic);
+        self.compiler.diagnostics.add(diagnostic);
     }
 }
 
@@ -902,6 +868,11 @@ fn format_type_with(
                     format!("({name}{params})")
                 }
             }
+            Type::Builtin(ty) => match ty {
+                BuiltinType::Unit => String::from("()"),
+                BuiltinType::Text => String::from("Text"),
+                BuiltinType::Number => String::from("Number"),
+            },
             Type::Function(input, output) => {
                 let input = format_type(input, type_names, param_names, true, false);
                 let output = format_type(output, type_names, param_names, true, true);

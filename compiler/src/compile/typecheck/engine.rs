@@ -1,4 +1,4 @@
-use crate::helpers::{TypeId, TypeParameterId};
+use crate::{TypeId, TypeParameterId};
 use serde::{Deserialize, Serialize};
 use std::{
     borrow::Cow,
@@ -23,11 +23,19 @@ pub enum Type {
     Parameter(TypeParameterId),
     Named(TypeId, Vec<Type>),
     Function(Box<Type>, Box<Type>),
+    Builtin(BuiltinType),
     Bottom,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct TypeVariable(usize);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum BuiltinType {
+    Unit,
+    Text,
+    Number,
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ForAll {
@@ -77,12 +85,12 @@ impl Context {
                     ));
                 }
 
-                for (lhs, rhs) in actual_params
+                for (actual, expected) in actual_params
                     .clone()
                     .into_iter()
                     .zip(expected_params.clone())
                 {
-                    if self.unify(lhs, rhs).is_err() {
+                    if self.unify(actual, expected).is_err() {
                         return Err(UnificationError::Mismatch(
                             Type::Named(actual_id, actual_params),
                             Type::Named(expected_id, expected_params),
@@ -118,8 +126,18 @@ impl Context {
 
                 Ok(())
             }
+            (Type::Builtin(actual), Type::Builtin(expected)) => {
+                if actual == expected {
+                    Ok(())
+                } else {
+                    Err(UnificationError::Mismatch(
+                        Type::Builtin(actual),
+                        Type::Builtin(expected),
+                    ))
+                }
+            }
             (Type::Bottom, _) => Ok(()),
-            (lhs, rhs) => Err(UnificationError::Mismatch(lhs, rhs)),
+            (actual, expected) => Err(UnificationError::Mismatch(actual, expected)),
         }
     }
 }
@@ -158,7 +176,7 @@ impl Scheme {
                             apply(input, substitutions);
                             apply(output, substitutions);
                         }
-                        Type::Variable(_) | Type::Bottom => {}
+                        Type::Variable(_) | Type::Builtin(_) | Type::Bottom => {}
                     }
                 }
 

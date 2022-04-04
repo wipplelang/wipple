@@ -16,8 +16,8 @@ use wipple_compiler::{
         typecheck::{Declarations, Expression, ExpressionKind},
         Program,
     },
-    helpers::{ConstantId, VariableId},
     parser::Span,
+    ConstantId, VariableId,
 };
 
 #[derive(Debug)]

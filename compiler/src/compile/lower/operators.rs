@@ -64,32 +64,50 @@ impl<L: Loader> Compiler<L> {
                         parser::ExpressionKind::Block(statements),
                     ) = (&list[0].kind, &list[1].kind)
                     {
-                        if let Some(ty) =
-                            self.resolve_type_annotation(list[0].span, *ty_name, scope)
-                        {
-                            let fields = statements
-                                .iter()
-                                .filter_map(|s| match &s.kind {
-                                    parser::StatementKind::Assign(pattern, expr) => {
-                                        match &pattern.kind {
-                                            parser::PatternKind::Name(name) => Some((*name, expr)),
-                                            _ => None,
-                                        }
+                        let fields = statements
+                            .iter()
+                            .filter_map(|s| match &s.kind {
+                                parser::StatementKind::Assign(pattern, expr) => {
+                                    match &pattern.kind {
+                                        parser::PatternKind::Name(name) => Some((*name, expr)),
+                                        _ => None,
                                     }
-                                    _ => None,
-                                })
-                                .collect::<Vec<_>>();
+                                }
+                                _ => None,
+                            })
+                            .collect::<Vec<_>>();
 
-                            if fields.len() == statements.len() {
-                                return self.lower_instantiation(
-                                    list[0].span,
-                                    list[1].span,
-                                    ty,
-                                    fields,
-                                    scope,
-                                    info,
-                                );
+                        match scope.get(*ty_name, list[0].span) {
+                            Some(ScopeValue::Type(ty)) => {
+                                if fields.len() == statements.len() {
+                                    return self.lower_instantiation(
+                                        list[0].span,
+                                        list[1].span,
+                                        ty,
+                                        fields,
+                                        scope,
+                                        info,
+                                    );
+                                }
                             }
+                            Some(ScopeValue::TypeParameter(_)) => {
+                                self.diagnostics.add(Diagnostic::error(
+                                    "cannot instantiate type parameter",
+                                    vec![Note::primary(
+                                        list[0].span,
+                                        "the actual type this represents is not known here",
+                                    )],
+                                ));
+
+                                return Expression::error(span);
+                            }
+                            Some(ScopeValue::BuiltinType(_)) => {
+                                self.diagnostics.add(Diagnostic::error(
+                                    "cannot instantiate builtin type",
+                                    vec![Note::primary(list[0].span, "try usng a literal instead")],
+                                ));
+                            }
+                            _ => {}
                         }
                     }
 

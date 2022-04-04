@@ -3,11 +3,10 @@ mod operators;
 
 use crate::{
     diagnostics::*,
-    helpers::{ConstantId, InternedString, OperatorId, TypeId, TypeParameterId, VariableId},
+    helpers::InternedString,
     parser::{self, Span},
-    Compiler, FilePath, Loader,
+    Compiler, ConstantId, FilePath, Loader, OperatorId, TypeId, TypeParameterId, VariableId,
 };
-use builtins::load_builtins;
 use operators::OperatorPrecedence;
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
@@ -27,6 +26,7 @@ pub struct File {
 pub struct Declarations {
     pub types: HashMap<TypeId, Declaration<TypeId, Type>>,
     pub type_parameters: HashMap<TypeParameterId, Declaration<TypeParameterId, ()>>,
+    pub builtin_types: HashMap<BuiltinType, Declaration<BuiltinType, ()>>,
     pub operators: HashMap<OperatorId, Declaration<OperatorId, Operator>>,
     pub constants: HashMap<ConstantId, Declaration<ConstantId, Constant>>,
     pub variables: HashMap<VariableId, Declaration<VariableId, ()>>,
@@ -77,6 +77,10 @@ impl CopyDeclaration for Declaration<TypeParameterId, ()> {
     const COPY: bool = false;
 }
 
+impl CopyDeclaration for Declaration<BuiltinType, ()> {
+    const COPY: bool = false;
+}
+
 impl CopyDeclaration for Declaration<OperatorId, Operator> {
     const COPY: bool = true;
 }
@@ -110,7 +114,6 @@ pub enum TypeKind {
     Alias(TypeAnnotation),
     Structure(Vec<TypeField>, HashMap<InternedString, usize>),
     Enumeration(Vec<TypeVariant>, HashMap<InternedString, usize>),
-    Builtin(BuiltinType),
 }
 
 #[derive(Debug, Clone)]
@@ -123,8 +126,9 @@ pub struct TypeVariant {
     pub values: Vec<TypeAnnotation>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum BuiltinType {
+    Unit,
     Number,
     Text,
 }
@@ -217,6 +221,7 @@ pub enum TypeAnnotationKind {
     Unit,
     Named(TypeId, Vec<TypeAnnotation>),
     Parameter(TypeParameterId),
+    Builtin(BuiltinType),
     Function(Box<TypeAnnotation>, Box<TypeAnnotation>),
 }
 
@@ -243,7 +248,7 @@ impl<L: Loader> Compiler<L> {
 
         let mut info = Info::default();
 
-        load_builtins(&scope, &mut info);
+        self.load_builtins(&scope, &mut info);
 
         for dependency in dependencies {
             macro_rules! merge_dependency {
@@ -266,7 +271,14 @@ impl<L: Loader> Compiler<L> {
                 };
             }
 
-            merge_dependency!(types, type_parameters, operators, constants, variables);
+            merge_dependency!(
+                types,
+                type_parameters,
+                builtin_types,
+                operators,
+                constants,
+                variables,
+            );
 
             scope
                 .values
@@ -274,10 +286,12 @@ impl<L: Loader> Compiler<L> {
                 .extend(dependency.exported.clone());
         }
 
+        let file_scope = scope.child();
+
         let block = file
             .statements
             .into_iter()
-            .filter_map(|statement| self.lower_statement(statement, &scope, &mut info))
+            .filter_map(|statement| self.lower_statement(statement, &file_scope, &mut info))
             .collect();
 
         let mut complete = true;
@@ -302,7 +316,7 @@ impl<L: Loader> Compiler<L> {
             span: file.span,
             complete,
             declarations: info.declarations,
-            exported: scope.values.take(),
+            exported: file_scope.values.take(),
             block,
         }
     }
@@ -325,6 +339,7 @@ pub(crate) struct UsedVariable {
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub enum ScopeValue {
     Type(TypeId),
+    BuiltinType(BuiltinType),
     TypeParameter(TypeParameterId),
     Operator(OperatorId),
     Constant(ConstantId),
@@ -332,6 +347,13 @@ pub enum ScopeValue {
 }
 
 impl<'a> Scope<'a> {
+    fn child(&'a self) -> Scope<'a> {
+        Scope {
+            parent: Some(self),
+            ..Default::default()
+        }
+    }
+
     fn get(&'a self, name: InternedString, source_span: Span) -> Option<ScopeValue> {
         let mut parent = Some(self);
         let mut result = None;
@@ -401,10 +423,7 @@ impl<L: Loader> Compiler<L> {
         scope: &Scope,
         info: &mut Info,
     ) -> (Vec<Expression>, HashMap<InternedString, ScopeValue>) {
-        let scope = Scope {
-            parent: Some(scope),
-            ..Default::default()
-        };
+        let scope = scope.child();
 
         let statements = statements
             .into_iter()
@@ -448,7 +467,7 @@ impl<L: Loader> Compiler<L> {
                     return Some(Expression::error(statement.span));
                 }
 
-                let id = TypeId::new();
+                let id = self.new_type_id();
                 scope.values.borrow_mut().insert(name, ScopeValue::Type(id));
 
                 let ty = Type {
@@ -513,16 +532,13 @@ impl<L: Loader> Compiler<L> {
                 }
 
                 let constant = {
-                    let scope = Scope {
-                        parent: Some(scope),
-                        ..Default::default()
-                    };
+                    let scope = scope.child();
 
                     let parameters = declaration
                         .parameters
                         .into_iter()
                         .map(|parameter| {
-                            let id = TypeParameterId::new();
+                            let id = self.new_type_parameter_id();
 
                             info.declarations.type_parameters.insert(
                                 id,
@@ -552,7 +568,7 @@ impl<L: Loader> Compiler<L> {
                     }
                 };
 
-                let id = ConstantId::new();
+                let id = self.new_constant_id();
                 scope
                     .values
                     .borrow_mut()
@@ -577,6 +593,7 @@ impl<L: Loader> Compiler<L> {
                     match scope.values.borrow().get(name).cloned() {
                         Some(
                             ScopeValue::Type(_)
+                            | ScopeValue::BuiltinType(_)
                             | ScopeValue::TypeParameter(_)
                             | ScopeValue::Operator(_),
                         ) => {
@@ -662,7 +679,7 @@ impl<L: Loader> Compiler<L> {
                         associated_constant.replace(Some(value));
                         None
                     } else {
-                        let id = VariableId::new();
+                        let id = self.new_variable_id();
                         scope.values.borrow_mut().insert(
                             *name,
                             ScopeValue::Variable(
@@ -720,13 +737,8 @@ impl<L: Loader> Compiler<L> {
                     }
                 }
                 parser::ExpressionKind::Block(statements) => {
-                    let scope = Scope {
-                        parent: Some(scope),
-                        ..Default::default()
-                    };
-
+                    let scope = scope.child();
                     let (block, declarations) = self.lower_block(statements, &scope, info);
-
                     ExpressionKind::Block(block, declarations)
                 }
                 parser::ExpressionKind::List(exprs) => {
@@ -734,9 +746,8 @@ impl<L: Loader> Compiler<L> {
                 }
                 parser::ExpressionKind::Function(input, body) => {
                     let scope = Scope {
-                        parent: Some(scope),
                         used_variables: Some(Default::default()),
-                        ..Default::default()
+                        ..scope.child()
                     };
 
                     // Desugar function input pattern matching
@@ -803,27 +814,12 @@ impl<L: Loader> Compiler<L> {
         &mut self,
         ty_span: Span,
         body_span: Span,
-        ty: Result<TypeId, TypeParameterId>,
+        ty: TypeId,
         fields: Vec<(InternedString, &parser::Expression)>,
         scope: &Scope,
         info: &mut Info,
     ) -> Expression {
         let span = Span::join(ty_span, body_span);
-
-        let ty = match ty {
-            Ok(ty) => ty,
-            Err(_) => {
-                self.diagnostics.add(Diagnostic::error(
-                    "cannot instantiate type parameter",
-                    vec![Note::primary(
-                        ty_span,
-                        "the actual type this represents is not known here",
-                    )],
-                ));
-
-                return Expression::error(span);
-            }
-        };
 
         let fields = fields
             .into_iter()
@@ -846,8 +842,8 @@ impl<L: Loader> Compiler<L> {
             parser::TypeAnnotationKind::Placeholder => TypeAnnotationKind::Placeholder,
             parser::TypeAnnotationKind::Unit => TypeAnnotationKind::Unit,
             parser::TypeAnnotationKind::Named(name, parameters) => {
-                match self.resolve_type_annotation(ty.span, name, scope) {
-                    Some(Ok(ty)) => {
+                match scope.get(name, ty.span) {
+                    Some(ScopeValue::Type(ty)) => {
                         let parameters = parameters
                             .into_iter()
                             .map(|parameter| self.lower_type_annotation(parameter, scope, info))
@@ -855,7 +851,7 @@ impl<L: Loader> Compiler<L> {
 
                         TypeAnnotationKind::Named(ty, parameters)
                     }
-                    Some(Err(param)) => {
+                    Some(ScopeValue::TypeParameter(param)) => {
                         if !parameters.is_empty() {
                             // TODO: Higher-kinded types
                             self.diagnostics.add(Diagnostic::error(
@@ -872,7 +868,24 @@ impl<L: Loader> Compiler<L> {
 
                         TypeAnnotationKind::Parameter(param)
                     }
-                    None => {
+                    Some(ScopeValue::BuiltinType(builtin)) => {
+                        if !parameters.is_empty() {
+                            // TODO: parameters for `List`
+                            self.diagnostics.add(Diagnostic::error(
+                                "`{}` does not accept parameters",
+                                vec![Note::primary(
+                                    ty.span,
+                                    format!(
+                                        "try writing `{}` on its own, with no parameters",
+                                        name
+                                    ),
+                                )],
+                            ));
+                        }
+
+                        TypeAnnotationKind::Builtin(builtin)
+                    }
+                    _ => {
                         self.diagnostics.add(Diagnostic::error(
                             format!("cannot find type `{}`", name),
                             vec![Note::primary(ty.span, "no such type")],
@@ -903,6 +916,14 @@ impl<L: Loader> Compiler<L> {
     ) -> Option<ExpressionKind> {
         match scope.get(name, span) {
             Some(ScopeValue::Type(id)) => self.resolve_type(span, id, info),
+            Some(ScopeValue::BuiltinType(_)) => {
+                self.diagnostics.add(Diagnostic::error(
+                    "cannot use builtin type as value",
+                    vec![Note::primary(span, "try using a literal instead")],
+                ));
+
+                Some(ExpressionKind::Error)
+            }
             Some(ScopeValue::TypeParameter(_)) => {
                 self.diagnostics.add(Diagnostic::error(
                     "cannot use type parameter as value",
@@ -939,14 +960,6 @@ impl<L: Loader> Compiler<L> {
                     kind: TypeAnnotationKind::Named(alias_id, _),
                     ..
                 }) => self.resolve_type(span, alias_id, info),
-                TypeKind::Builtin(_) => {
-                    self.diagnostics.add(Diagnostic::error(
-                        "cannot use builtin type as value",
-                        vec![Note::primary(span, "try using a literal instead")],
-                    ));
-
-                    Some(ExpressionKind::Error)
-                }
                 _ => {
                     self.diagnostics.add(Diagnostic::error(
                         "cannot use type as value",
@@ -956,20 +969,7 @@ impl<L: Loader> Compiler<L> {
                     Some(ExpressionKind::Error)
                 }
             },
-            Declaration::Dependency(_) => Some(ExpressionKind::Marker(id)),
+            Declaration::Dependency(_) => unreachable!(),
         }
-    }
-
-    fn resolve_type_annotation(
-        &mut self,
-        span: Span,
-        name: InternedString,
-        scope: &Scope,
-    ) -> Option<Result<TypeId, TypeParameterId>> {
-        scope.get(name, span).and_then(|value| match value {
-            ScopeValue::Type(id) => Some(Ok(id)),
-            ScopeValue::TypeParameter(id) => Some(Err(id)),
-            _ => None,
-        })
     }
 }

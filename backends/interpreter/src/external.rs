@@ -3,7 +3,7 @@ use libffi::high::call::*;
 use libloading::{Library, Symbol};
 use rust_decimal::prelude::{FromPrimitive, ToPrimitive};
 use std::{ffi::CString, os::raw::c_char, rc::Rc};
-use wipple_compiler::compile::typecheck::{Type, BUILTIN_TYPES};
+use wipple_compiler::compile::typecheck::{BuiltinType, Type};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ExternalFunction<'a> {
@@ -26,21 +26,12 @@ impl<'a> ExternalFunction<'a> {
         inputs: Vec<&Type>,
         return_ty: &Type,
     ) -> Result<ExternalFunction<'a>, Error> {
-        macro_rules! type_id {
-            ($ty:expr) => {
-                match $ty.id() {
-                    Some(id) => id,
-                    _ => return Err(Error::from("expected primitive type")),
-                }
-            };
-        }
-
         let params = inputs
             .iter()
             .map(|ty| {
-                if type_id!(ty) == type_id!(BUILTIN_TYPES.number) {
+                if matches!(ty, Type::Builtin(BuiltinType::Number)) {
                     Ok(ExternalValueType::Number)
-                } else if type_id!(ty) == type_id!(BUILTIN_TYPES.text) {
+                } else if matches!(ty, Type::Builtin(BuiltinType::Text)) {
                     Ok(ExternalValueType::Text)
                 } else {
                     Err(Error::from("only `Number` and `Text` are supported here"))
@@ -48,11 +39,11 @@ impl<'a> ExternalFunction<'a> {
             })
             .collect::<Result<_, _>>()?;
 
-        let returns = if type_id!(return_ty) == type_id!(BUILTIN_TYPES.number) {
+        let returns = if matches!(return_ty, Type::Builtin(BuiltinType::Number)) {
             Some(ExternalValueType::Number)
-        } else if type_id!(return_ty) == type_id!(BUILTIN_TYPES.text) {
+        } else if matches!(return_ty, Type::Builtin(BuiltinType::Text)) {
             Some(ExternalValueType::Text)
-        } else if type_id!(return_ty) == type_id!(BUILTIN_TYPES.unit) {
+        } else if matches!(return_ty, Type::Builtin(BuiltinType::Unit)) {
             None
         } else {
             return Err(Error::from(

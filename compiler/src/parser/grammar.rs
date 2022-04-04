@@ -288,18 +288,18 @@ peg::parser! {
               _
               arms:(
                   (
-                      [(Token::Indent, _)]
+                      [(Token::LeftBrace, _)]
                       arms:arms()
-                      [(Token::Dedent, dedent_span)]
-                      { (arms, dedent_span) }
+                      [(Token::RightBrace, right_brace_span)]
+                      { (arms, right_brace_span) }
                   )
                   / ([(Token::LineBreak, _)]* / ![_]) { (Vec::new(), expr.span) }
               )
             {
-                let (arms, dedent_span) = arms;
+                let (arms, right_brace_span) = arms;
 
                 Expression {
-                    span: Span::join(when_span, dedent_span),
+                    span: Span::join(when_span, right_brace_span),
                     kind: ExpressionKind::When(Box::new(expr), arms),
                 }
             }
@@ -441,12 +441,12 @@ peg::parser! {
             / expected!("type")
 
         rule block_expression() -> Expression
-            = [(Token::Indent, indent_span)]
+            = [(Token::LeftBrace, left_brace_span)]
               statements:statements()
-              [(Token::Dedent, dedent_span)]
+              [(Token::RightBrace, right_brace_span)]
             {
                 Expression {
-                    span: Span::join(indent_span, dedent_span),
+                    span: Span::join(left_brace_span, right_brace_span),
                     kind: ExpressionKind::Block(statements)
                 }
             }
@@ -492,10 +492,10 @@ peg::parser! {
               parameters:type_parameter_introduction()?
               [(Token::Type, type_span)]
               kind:(
-                  [(Token::Indent, _)]
+                  [(Token::LeftBrace, _)]
                   kind:type_kind()
-                  [(Token::Dedent, dedent_span)]
-                  { (kind, dedent_span) }
+                  [(Token::RightBrace, right_brace_span)]
+                  { (kind, right_brace_span) }
               )?
             {
                 Statement {

@@ -1,7 +1,7 @@
 use crate::helpers::InternedString;
 use logos::Logos;
 use rust_decimal::Decimal;
-use std::{cmp::Ordering, fmt};
+use std::fmt;
 
 #[derive(Logos, Debug, Clone, Copy)]
 pub enum Token {
@@ -71,27 +71,25 @@ pub enum Token {
     #[regex(r#"-?[0-9]+(\.[0-9]+)?"#, |lex| lex.slice().parse(), priority = 2)]
     Number(Decimal),
 
-    #[regex(r#"[\r\n]+\t*"#, |lex| lex.slice().chars().filter(|&c| c == '\t').count())]
-    _IndentedLineBreak(usize),
+    #[regex(r#"[\r\n]+"#)]
+    LineBreak,
 
-    #[regex(r#" +"#, logos::skip)]
+    #[regex(r#"[ \t]+"#, logos::skip)]
     Space,
 
     #[regex(r#"--.*"#, logos::skip)]
     Comment,
-
-    LineBreak,
-    Indent,
-    Dedent,
 
     #[error]
     Error,
 }
 
 // TODO: Return iterator instead
-pub fn lex(code: &str) -> Vec<(Token, logos::Span)> {
-    process_indentation(code, logos::Lexer::new(code).spanned())
+pub fn lex(code: &str) -> impl Iterator<Item = (Token, logos::Span)> + '_ {
+    logos::Lexer::new(code).spanned()
 }
+
+// TODO: LINE BREAK TOKEN
 
 impl fmt::Display for Token {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -119,65 +117,8 @@ impl fmt::Display for Token {
             Token::Text(_) => write!(f, "text"),
             Token::Number(_) => write!(f, "number"),
             Token::LineBreak => write!(f, "line break"),
-            Token::Indent => write!(f, "indent"),
-            Token::Dedent => write!(f, "dedent"),
-            Token::Space | Token::Comment | Token::_IndentedLineBreak(_) => unreachable!(),
+            Token::Space | Token::Comment => unreachable!(),
             Token::Error => write!(f, "invalid token"),
         }
     }
-}
-
-fn process_indentation(
-    code: &str,
-    tokens: impl Iterator<Item = (Token, logos::Span)>,
-) -> Vec<(Token, logos::Span)> {
-    let mut current_indent_level = 0usize;
-    let mut current_paren_level = 0usize;
-    let eof_span = code.len()..code.len();
-
-    let mut result = Vec::new();
-    for (token, span) in tokens {
-        match token {
-            Token::_IndentedLineBreak(indent_level) => {
-                if current_paren_level == 0 {
-                    match indent_level.cmp(&current_indent_level) {
-                        Ordering::Greater => {
-                            for _ in 0..(indent_level - current_indent_level) {
-                                result.push((Token::Indent, span.clone()));
-                            }
-                        }
-                        Ordering::Less => {
-                            for _ in 0..(current_indent_level - indent_level) {
-                                result.push((Token::Dedent, span.clone()));
-                            }
-                        }
-                        Ordering::Equal => {}
-                    }
-
-                    current_indent_level = indent_level;
-                }
-
-                result.push((Token::LineBreak, span));
-            }
-            _ => {
-                match token {
-                    Token::LeftParen => {
-                        current_paren_level += 1;
-                    }
-                    Token::RightParen => {
-                        current_paren_level = current_paren_level.saturating_sub(1);
-                    }
-                    _ => {}
-                }
-
-                result.push((token, span));
-            }
-        }
-    }
-
-    for _ in 0..current_indent_level {
-        result.push((Token::Dedent, eof_span.clone()));
-    }
-
-    result
 }

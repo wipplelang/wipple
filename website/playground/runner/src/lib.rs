@@ -105,7 +105,7 @@ impl<'a> wipple_compiler::Loader for Loader<'a> {
 }
 
 fn annotations(program: &mut wipple_compiler::compile::Program) -> Vec<Annotation> {
-    use wipple_compiler::compile::typecheck::{format_type_scheme, ExpressionKind, BUILTIN_TYPES};
+    use wipple_compiler::compile::typecheck::{format_type_scheme, ExpressionKind};
 
     let mut annotations = Vec::new();
 
@@ -115,14 +115,7 @@ fn annotations(program: &mut wipple_compiler::compile::Program) -> Vec<Annotatio
         ($ty:expr) => {
             format_type_scheme(
                 $ty,
-                |name| {
-                    declarations
-                        .types
-                        .get(&name)
-                        .map(|decl| decl.name.to_string())
-                        .unwrap_or_else(|| BUILTIN_TYPES.name(name).unwrap().to_string())
-                        .to_string()
-                },
+                |name| declarations.types.get(&name).unwrap().name.to_string(),
                 |param| {
                     declarations
                         .type_parameters
@@ -232,7 +225,7 @@ pub fn get_completions(position: usize) -> JsValue {
 
                 // https://microsoft.github.io/monaco-editor/api/enums/monaco.languages.CompletionItemKind.html
                 kind: match value {
-                    ScopeValue::Type(_) => 6,
+                    ScopeValue::Type(_) | ScopeValue::BuiltinType(_) => 6,
                     ScopeValue::TypeParameter(_) => 24,
                     ScopeValue::Operator(_) => 11,
                     ScopeValue::Constant(_) => 14,
