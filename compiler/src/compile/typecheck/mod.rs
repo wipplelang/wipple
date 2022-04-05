@@ -481,11 +481,6 @@ impl<'a, L: Loader> Typechecker<'a, L> {
                                 }
                             }
                         }
-                    } else {
-                        self.compiler.diagnostics.add(Diagnostic::error(
-                            format!("cannot find variable `{member_name}`"),
-                            vec![Note::primary(input.span, "no such variable")],
-                        ));
                     }
                 }
 
