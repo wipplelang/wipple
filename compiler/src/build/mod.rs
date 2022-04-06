@@ -144,6 +144,6 @@ impl<L: Loader> Compiler<L> {
             lowered_files.push(file);
         }
 
-        success.then(|| self.typecheck(lowered_files))
+        success.then(|| self.typecheck(lowered_files)).flatten()
     }
 }

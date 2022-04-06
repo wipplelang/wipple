@@ -80,6 +80,7 @@ macro_rules! ids {
 ids! {
     TypeId,
     TypeParameterId,
+    TraitId,
     OperatorId,
     VariableId,
     ConstantId,

@@ -154,20 +154,20 @@ impl<'a> Interpreter<'a> {
 
                 value
             }
-            ExpressionKind::Call(function, input) => match self.eval_expr(function, info)?.as_ref()
-            {
-                Value::Function { body, captures } => {
-                    let input = self.eval_expr(input, info)?;
-                    info.function_input = Some(input);
+            ExpressionKind::Call(function, input) => {
+                match self.eval_expr(function, info)?.as_ref() {
+                    Value::Function { body, captures } => {
+                        let input = self.eval_expr(input, info)?;
+                        info.function_input = Some(input);
 
-                    let parent = info.scope.clone();
-                    let child = Scope::child(&parent);
-                    child.borrow_mut().variables.extend(captures.clone());
-                    info.scope = child;
+                        let parent = info.scope.clone();
+                        let child = Scope::child(&parent);
+                        child.borrow_mut().variables.extend(captures.clone());
+                        info.scope = child;
 
-                    info.callstack.push(expr.span);
+                        info.callstack.push(expr.span);
 
-                    let value = match self.eval_expr(body, info) {
+                        let value = match self.eval_expr(body, info) {
                         Ok(value)
                         /* | Err(Diverge {
                             kind: DivergeKind::Return(value),
@@ -176,18 +176,21 @@ impl<'a> Interpreter<'a> {
                         diverge => return diverge,
                     };
 
-                    info.scope = parent;
-                    info.function_input = None;
-                    info.callstack.pop();
+                        info.scope = parent;
+                        info.function_input = None;
+                        info.callstack.pop();
 
-                    value
+                        value
+                    }
+                    _ => unreachable!(),
                 }
-                _ => unreachable!(),
-            },
-            ExpressionKind::Member(value, index) => match self.eval_expr(value, info)?.as_ref() {
-                Value::Structure(structure) => structure[*index].clone(),
-                _ => unreachable!(),
-            },
+            }
+            ExpressionKind::Member(value, index) => {
+                match self.eval_expr(value, info)?.as_ref() {
+                    Value::Structure(structure) => structure[*index].clone(),
+                    _ => unreachable!(),
+                }
+            }
             ExpressionKind::Initialize(variable, value) => {
                 let value = self.eval_expr(value, info)?;
                 info.scope.borrow_mut().variables.insert(*variable, value);
@@ -286,7 +289,9 @@ impl<'a> Interpreter<'a> {
                     .map(|expr| self.eval_expr(expr, info))
                     .collect::<Result<_, _>>()?,
             )),
-            ExpressionKind::FunctionInput => info.function_input.as_ref().unwrap().clone(),
+            ExpressionKind::FunctionInput => {
+                info.function_input.as_ref().unwrap().clone()
+            }
         };
 
         Ok(value)

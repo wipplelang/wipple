@@ -5,7 +5,8 @@ use crate::{
     diagnostics::*,
     helpers::InternedString,
     parser::{self, Span},
-    Compiler, ConstantId, FilePath, Loader, OperatorId, TypeId, TypeParameterId, VariableId,
+    Compiler, ConstantId, FilePath, Loader, OperatorId, TraitId, TypeId, TypeParameterId,
+    VariableId,
 };
 use operators::OperatorPrecedence;
 use rust_decimal::Decimal;
@@ -26,6 +27,7 @@ pub struct File {
 pub struct Declarations {
     pub types: HashMap<TypeId, Declaration<TypeId, Type>>,
     pub type_parameters: HashMap<TypeParameterId, Declaration<TypeParameterId, ()>>,
+    pub traits: HashMap<TraitId, Declaration<TraitId, Trait>>,
     pub builtin_types: HashMap<BuiltinType, Declaration<BuiltinType, ()>>,
     pub operators: HashMap<OperatorId, Declaration<OperatorId, Operator>>,
     pub constants: HashMap<ConstantId, Declaration<ConstantId, Constant>>,
@@ -77,6 +79,10 @@ impl CopyDeclaration for Declaration<TypeParameterId, ()> {
     const COPY: bool = false;
 }
 
+impl CopyDeclaration for Declaration<TraitId, Trait> {
+    const COPY: bool = false;
+}
+
 impl CopyDeclaration for Declaration<BuiltinType, ()> {
     const COPY: bool = false;
 }
@@ -103,13 +109,7 @@ where
 }
 
 #[derive(Debug, Clone)]
-pub struct Type {
-    pub parameters: Vec<TypeParameter>,
-    pub kind: TypeKind,
-}
-
-#[derive(Debug, Clone)]
-pub enum TypeKind {
+pub enum Type {
     Marker,
     Alias(TypeAnnotation),
     Structure(Vec<TypeField>, HashMap<InternedString, usize>),
@@ -470,44 +470,41 @@ impl<L: Loader> Compiler<L> {
                 let id = self.new_type_id();
                 scope.values.borrow_mut().insert(name, ScopeValue::Type(id));
 
-                let ty = Type {
-                    parameters: Vec::new(),
-                    kind: match ty.kind {
-                        parser::TypeKind::Marker => TypeKind::Marker,
-                        parser::TypeKind::Alias(alias) => {
-                            TypeKind::Alias(self.lower_type_annotation(alias, scope, info))
+                let ty = match ty.kind {
+                    parser::TypeKind::Marker => Type::Marker,
+                    parser::TypeKind::Alias(alias) => {
+                        Type::Alias(self.lower_type_annotation(alias, scope, info))
+                    }
+                    parser::TypeKind::Structure(fields) => {
+                        let mut field_tys = Vec::with_capacity(fields.len());
+                        let mut field_names = HashMap::with_capacity(fields.len());
+                        for (index, field) in fields.into_iter().enumerate() {
+                            field_tys.push(TypeField {
+                                ty: self.lower_type_annotation(field.ty, scope, info),
+                            });
+
+                            field_names.insert(field.name, index);
                         }
-                        parser::TypeKind::Structure(fields) => {
-                            let mut field_tys = Vec::with_capacity(fields.len());
-                            let mut field_names = HashMap::with_capacity(fields.len());
-                            for (index, field) in fields.into_iter().enumerate() {
-                                field_tys.push(TypeField {
-                                    ty: self.lower_type_annotation(field.ty, scope, info),
-                                });
 
-                                field_names.insert(field.name, index);
-                            }
+                        Type::Structure(field_tys, field_names)
+                    }
+                    parser::TypeKind::Enumeration(variants) => {
+                        let mut variant_tys = Vec::with_capacity(variants.len());
+                        let mut variant_names = HashMap::with_capacity(variants.len());
+                        for (index, variant) in variants.into_iter().enumerate() {
+                            variant_tys.push(TypeVariant {
+                                values: variant
+                                    .values
+                                    .into_iter()
+                                    .map(|ty| self.lower_type_annotation(ty, scope, info))
+                                    .collect(),
+                            });
 
-                            TypeKind::Structure(field_tys, field_names)
+                            variant_names.insert(variant.name, index);
                         }
-                        parser::TypeKind::Enumeration(variants) => {
-                            let mut variant_tys = Vec::with_capacity(variants.len());
-                            let mut variant_names = HashMap::with_capacity(variants.len());
-                            for (index, variant) in variants.into_iter().enumerate() {
-                                variant_tys.push(TypeVariant {
-                                    values: variant
-                                        .values
-                                        .into_iter()
-                                        .map(|ty| self.lower_type_annotation(ty, scope, info))
-                                        .collect(),
-                                });
 
-                                variant_names.insert(variant.name, index);
-                            }
-
-                            TypeKind::Enumeration(variant_tys, variant_names)
-                        }
-                    },
+                        Type::Enumeration(variant_tys, variant_names)
+                    }
                 };
 
                 info.declarations.types.insert(
@@ -954,9 +951,9 @@ impl<L: Loader> Compiler<L> {
 
     fn resolve_type(&mut self, span: Span, id: TypeId, info: &mut Info) -> Option<ExpressionKind> {
         match info.declarations.types.get(&id).unwrap() {
-            Declaration::Local(decl) | Declaration::Builtin(decl) => match decl.value.kind {
-                TypeKind::Marker => Some(ExpressionKind::Marker(id)),
-                TypeKind::Alias(TypeAnnotation {
+            Declaration::Local(decl) | Declaration::Builtin(decl) => match decl.value {
+                Type::Marker => Some(ExpressionKind::Marker(id)),
+                Type::Alias(TypeAnnotation {
                     kind: TypeAnnotationKind::Named(alias_id, _),
                     ..
                 }) => self.resolve_type(span, alias_id, info),

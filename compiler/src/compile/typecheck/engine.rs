@@ -1,14 +1,47 @@
-use crate::{TypeId, TypeParameterId};
+use crate::{ConstantId, TraitId, TypeId, TypeParameterId};
 use serde::{Deserialize, Serialize};
 use std::{
     borrow::Cow,
     collections::{HashMap, HashSet},
 };
 
-#[derive(Debug, Clone, Default)]
-pub struct Context {
-    substitutions: HashMap<TypeVariable, Type>,
-    next_var: usize,
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum UnresolvedScheme {
+    Type(UnresolvedType),
+    ForAll(UnresolvedForAll),
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum UnresolvedType {
+    Variable(TypeVariable),
+    Parameter(TypeParameterId),
+    Trait(TraitId),
+    Named(TypeId),
+    Function(Box<UnresolvedType>, Box<UnresolvedType>),
+    Builtin(BuiltinType),
+    Bottom,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UnresolvedForAll {
+    pub params: HashSet<TypeParameterId>,
+    pub ty: UnresolvedType,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ResolvedType {
+    pub imp: Option<ConstantId>,
+    pub kind: ResolvedTypeKind,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum ResolvedTypeKind {
+    Variable(TypeVariable),
+    Parameter(TypeParameterId),
+    Named(TypeId),
+    Function(Box<ResolvedType>, Box<ResolvedType>),
+    Builtin(BuiltinType),
+    Bottom,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -21,10 +54,58 @@ pub enum Scheme {
 pub enum Type {
     Variable(TypeVariable),
     Parameter(TypeParameterId),
-    Named(TypeId, Vec<Type>),
+    Named(TypeId),
     Function(Box<Type>, Box<Type>),
     Builtin(BuiltinType),
     Bottom,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ForAll {
+    pub params: HashSet<TypeParameterId>,
+    pub ty: Type,
+}
+
+impl From<Scheme> for UnresolvedScheme {
+    fn from(scheme: Scheme) -> Self {
+        match scheme {
+            Scheme::Type(ty) => UnresolvedScheme::Type(ty.into()),
+            Scheme::ForAll(forall) => UnresolvedScheme::ForAll(UnresolvedForAll {
+                params: forall.params,
+                ty: forall.ty.into(),
+            }),
+        }
+    }
+}
+
+impl From<ResolvedType> for UnresolvedType {
+    fn from(ty: ResolvedType) -> Self {
+        match ty.kind {
+            ResolvedTypeKind::Variable(var) => UnresolvedType::Variable(var),
+            ResolvedTypeKind::Parameter(param) => UnresolvedType::Parameter(param),
+            ResolvedTypeKind::Named(name) => UnresolvedType::Named(name),
+            ResolvedTypeKind::Function(input, output) => {
+                UnresolvedType::Function(Box::new((*input).into()), Box::new((*output).into()))
+            }
+            ResolvedTypeKind::Builtin(builtin) => UnresolvedType::Builtin(builtin),
+            ResolvedTypeKind::Bottom => UnresolvedType::Bottom,
+        }
+    }
+}
+
+impl From<Type> for UnresolvedType {
+    fn from(ty: Type) -> Self {
+        match ty {
+            Type::Variable(var) => UnresolvedType::Variable(var),
+            Type::Parameter(param) => UnresolvedType::Parameter(param),
+            Type::Named(name) => UnresolvedType::Named(name),
+            Type::Function(input, output) => {
+                UnresolvedType::Function(Box::new((*input).into()), Box::new((*output).into()))
+            }
+            Type::Builtin(builtin) => UnresolvedType::Builtin(builtin),
+            Type::Bottom => UnresolvedType::Bottom,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
@@ -37,16 +118,30 @@ pub enum BuiltinType {
     Number,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ForAll {
-    pub params: HashSet<TypeParameterId>,
-    pub ty: Type,
+#[derive(Debug, Clone)]
+pub struct Implementation {
+    pub ty: UnresolvedType,
+    pub constant: ConstantId,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct Context {
+    next_var: usize,
+    substitutions: HashMap<TypeVariable, UnresolvedType>,
+    imps: HashMap<TraitId, Vec<Implementation>>,
 }
 
 #[derive(Debug, Clone)]
 pub enum UnificationError {
     Recursive(TypeVariable),
-    Mismatch(Type, Type),
+    Mismatch(UnresolvedType, UnresolvedType),
+    MissingImplementation(TraitId, UnresolvedType),
+}
+
+#[derive(Debug, Clone)]
+pub enum FinalizeError {
+    UnknownType,
+    UnresolvedTrait(TraitId),
 }
 
 impl Context {
@@ -60,123 +155,158 @@ impl Context {
         var
     }
 
-    pub fn unify(&mut self, mut actual: Type, mut expected: Type) -> Result<(), UnificationError> {
+    pub fn register(&mut self, tr: TraitId, imp: Implementation) {
+        self.imps.entry(tr).or_default().push(imp);
+    }
+
+    pub fn unify(
+        &mut self,
+        mut actual: UnresolvedType,
+        mut expected: UnresolvedType,
+    ) -> Result<ResolvedType, UnificationError> {
         actual.apply(self);
         expected.apply(self);
 
         match (actual, expected) {
-            (Type::Variable(var), ty) | (ty, Type::Variable(var)) => {
+            (UnresolvedType::Variable(var), ty) | (ty, UnresolvedType::Variable(var)) => {
                 if ty.contains(&var) {
                     Err(UnificationError::Recursive(var))
                 } else {
                     self.substitutions.insert(var, ty);
-                    Ok(())
+
+                    Ok(ResolvedType {
+                        imp: None,
+                        kind: ResolvedTypeKind::Variable(var),
+                    })
                 }
             }
-            (Type::Parameter(_), _) => Ok(()),
-            (actual, expected @ Type::Parameter(_)) => {
+            (UnresolvedType::Parameter(param), _) => Ok(ResolvedType {
+                imp: None,
+                kind: ResolvedTypeKind::Parameter(param),
+            }),
+            (actual, expected @ UnresolvedType::Parameter(_)) => {
                 Err(UnificationError::Mismatch(actual, expected))
             }
-            (Type::Named(actual_id, actual_params), Type::Named(expected_id, expected_params)) => {
-                if actual_id != expected_id {
-                    return Err(UnificationError::Mismatch(
-                        Type::Named(actual_id, actual_params),
-                        Type::Named(expected_id, expected_params),
-                    ));
-                }
+            (UnresolvedType::Trait(tr), ty) | (ty, UnresolvedType::Trait(tr)) => self
+                .imps
+                .get(&tr)
+                .cloned()
+                .and_then(|imps| {
+                    imps.iter().find_map(|imp| {
+                        let mut ctx = self.clone();
 
-                for (actual, expected) in actual_params
-                    .clone()
-                    .into_iter()
-                    .zip(expected_params.clone())
-                {
-                    if self.unify(actual, expected).is_err() {
-                        return Err(UnificationError::Mismatch(
-                            Type::Named(actual_id, actual_params),
-                            Type::Named(expected_id, expected_params),
-                        ));
-                    }
-                }
+                        match ctx.unify(ty.clone(), imp.ty.clone()) {
+                            Ok(ResolvedType { kind, .. }) => {
+                                *self = ctx;
 
-                Ok(())
-            }
-            (
-                Type::Function(actual_input, actual_output),
-                Type::Function(expected_input, expected_output),
-            ) => {
-                if self
-                    .unify((*actual_input).clone(), (*expected_input).clone())
-                    .is_err()
-                {
-                    return Err(UnificationError::Mismatch(
-                        Type::Function(actual_input, actual_output),
-                        Type::Function(expected_input, expected_output),
-                    ));
-                }
-
-                if self
-                    .unify((*actual_output).clone(), (*expected_output).clone())
-                    .is_err()
-                {
-                    return Err(UnificationError::Mismatch(
-                        Type::Function(actual_input, actual_output),
-                        Type::Function(expected_input, expected_output),
-                    ));
-                }
-
-                Ok(())
-            }
-            (Type::Builtin(actual), Type::Builtin(expected)) => {
-                if actual == expected {
-                    Ok(())
+                                Some(ResolvedType {
+                                    imp: Some(imp.constant),
+                                    kind,
+                                })
+                            }
+                            Err(_) => None,
+                        }
+                    })
+                })
+                .ok_or(UnificationError::MissingImplementation(tr, ty)),
+            (UnresolvedType::Named(actual_id), UnresolvedType::Named(expected_id)) => {
+                if actual_id == expected_id {
+                    Ok(ResolvedType {
+                        imp: None,
+                        kind: ResolvedTypeKind::Named(actual_id),
+                    })
                 } else {
                     Err(UnificationError::Mismatch(
-                        Type::Builtin(actual),
-                        Type::Builtin(expected),
+                        UnresolvedType::Named(actual_id),
+                        UnresolvedType::Named(expected_id),
                     ))
                 }
             }
-            (Type::Bottom, _) => Ok(()),
+            (
+                UnresolvedType::Function(actual_input, actual_output),
+                UnresolvedType::Function(expected_input, expected_output),
+            ) => {
+                let input = match self.unify((*actual_input).clone(), (*expected_input).clone()) {
+                    Ok(input) => input,
+                    Err(_) => {
+                        return Err(UnificationError::Mismatch(
+                            UnresolvedType::Function(actual_input, actual_output),
+                            UnresolvedType::Function(expected_input, expected_output),
+                        ))
+                    }
+                };
+
+                let output = match self.unify((*actual_output).clone(), (*expected_output).clone())
+                {
+                    Ok(output) => output,
+                    Err(_) => {
+                        return Err(UnificationError::Mismatch(
+                            UnresolvedType::Function(actual_input, actual_output),
+                            UnresolvedType::Function(expected_input, expected_output),
+                        ))
+                    }
+                };
+
+                Ok(ResolvedType {
+                    imp: None,
+                    kind: ResolvedTypeKind::Function(Box::new(input), Box::new(output)),
+                })
+            }
+            (UnresolvedType::Builtin(actual), UnresolvedType::Builtin(expected)) => {
+                if actual == expected {
+                    Ok(ResolvedType {
+                        imp: None,
+                        kind: ResolvedTypeKind::Builtin(actual),
+                    })
+                } else {
+                    Err(UnificationError::Mismatch(
+                        UnresolvedType::Builtin(actual),
+                        UnresolvedType::Builtin(expected),
+                    ))
+                }
+            }
+            (UnresolvedType::Bottom, _) => Ok(ResolvedType {
+                imp: None,
+                kind: ResolvedTypeKind::Bottom,
+            }),
             (actual, expected) => Err(UnificationError::Mismatch(actual, expected)),
         }
     }
 }
 
-impl Scheme {
+impl UnresolvedScheme {
     pub fn apply(&mut self, ctx: &Context) {
         match self {
-            Scheme::Type(ty) => ty.apply(ctx),
-            Scheme::ForAll(forall) => forall.apply(ctx),
+            UnresolvedScheme::Type(ty) => ty.apply(ctx),
+            UnresolvedScheme::ForAll(forall) => forall.apply(ctx),
         }
     }
 
-    pub fn instantiate(&self, ctx: &mut Context) -> Type {
+    pub fn instantiate(&self, ctx: &mut Context) -> UnresolvedType {
         match self {
-            Scheme::Type(ty) => ty.clone(),
-            Scheme::ForAll(forall) => {
+            UnresolvedScheme::Type(ty) => ty.clone(),
+            UnresolvedScheme::ForAll(forall) => {
                 let mut substitutions = HashMap::new();
 
                 for param in &forall.params {
-                    substitutions.insert(param, Type::Variable(ctx.new_variable()));
+                    substitutions.insert(param, UnresolvedType::Variable(ctx.new_variable()));
                 }
 
-                fn apply(ty: &mut Type, substitutions: &HashMap<&TypeParameterId, Type>) {
+                fn apply(
+                    ty: &mut UnresolvedType,
+                    substitutions: &HashMap<&TypeParameterId, UnresolvedType>,
+                ) {
                     match ty {
-                        Type::Parameter(param) => {
+                        UnresolvedType::Parameter(param) => {
                             if let Some(substitution) = substitutions.get(param) {
                                 *ty = substitution.clone();
                             }
                         }
-                        Type::Named(_, params) => {
-                            for param in params {
-                                apply(param, substitutions);
-                            }
-                        }
-                        Type::Function(input, output) => {
+                        UnresolvedType::Function(input, output) => {
                             apply(input, substitutions);
                             apply(output, substitutions);
                         }
-                        Type::Variable(_) | Type::Builtin(_) | Type::Bottom => {}
+                        _ => {}
                     }
                 }
 
@@ -190,50 +320,53 @@ impl Scheme {
 
     pub fn vars(&self) -> HashSet<TypeVariable> {
         match self {
-            Scheme::Type(ty) => ty.vars(),
-            Scheme::ForAll(forall) => forall.ty.vars(),
+            UnresolvedScheme::Type(ty) => ty.vars(),
+            UnresolvedScheme::ForAll(forall) => forall.ty.vars(),
         }
     }
 
     pub fn params(&self) -> Cow<HashSet<TypeParameterId>> {
         match self {
-            Scheme::Type(ty) => Cow::Owned(ty.params()),
-            Scheme::ForAll(forall) => Cow::Borrowed(&forall.params),
+            UnresolvedScheme::Type(ty) => Cow::Owned(ty.params()),
+            UnresolvedScheme::ForAll(forall) => Cow::Borrowed(&forall.params),
         }
+    }
+
+    pub fn finalize(mut self, ctx: &Context) -> Result<Scheme, FinalizeError> {
+        self.apply(ctx);
+
+        Ok(match self {
+            UnresolvedScheme::Type(ty) => Scheme::Type(ty.finalize(ctx)?),
+            UnresolvedScheme::ForAll(forall) => Scheme::ForAll(forall.finalize(ctx)?),
+        })
     }
 }
 
-impl Type {
+impl UnresolvedType {
     pub fn id(&self) -> Option<TypeId> {
         match self {
-            Type::Named(id, _) => Some(*id),
+            UnresolvedType::Named(id) => Some(*id),
             _ => None,
         }
     }
 
     pub fn contains(&self, var: &TypeVariable) -> bool {
         match self {
-            Type::Variable(v) => v == var,
-            Type::Named(_, params) => params.iter().any(|ty| ty.contains(var)),
-            Type::Function(input, output) => input.contains(var) || output.contains(var),
+            UnresolvedType::Variable(v) => v == var,
+            UnresolvedType::Function(input, output) => input.contains(var) || output.contains(var),
             _ => false,
         }
     }
 
     pub fn apply(&mut self, ctx: &Context) {
         match self {
-            Type::Variable(var) => {
+            UnresolvedType::Variable(var) => {
                 if let Some(ty) = ctx.substitutions.get(var) {
                     *self = ty.clone();
                     self.apply(ctx);
                 }
             }
-            Type::Named(_, params) => {
-                for param in params {
-                    param.apply(ctx);
-                }
-            }
-            Type::Function(input, output) => {
+            UnresolvedType::Function(input, output) => {
                 input.apply(ctx);
                 output.apply(ctx);
             }
@@ -241,7 +374,11 @@ impl Type {
         }
     }
 
-    pub fn generalize(mut self, ctx: &Context, params: &HashSet<TypeParameterId>) -> Scheme {
+    pub fn generalize(
+        mut self,
+        ctx: &Context,
+        params: &HashSet<TypeParameterId>,
+    ) -> UnresolvedScheme {
         self.apply(ctx);
 
         let vars = self
@@ -251,9 +388,9 @@ impl Type {
             .collect::<HashSet<_>>();
 
         if vars.is_empty() {
-            Scheme::Type(self)
+            UnresolvedScheme::Type(self)
         } else {
-            Scheme::ForAll(ForAll {
+            UnresolvedScheme::ForAll(UnresolvedForAll {
                 params: vars,
                 ty: self,
             })
@@ -262,13 +399,12 @@ impl Type {
 
     pub fn vars(&self) -> HashSet<TypeVariable> {
         match self {
-            Type::Variable(var) => {
+            UnresolvedType::Variable(var) => {
                 let mut vars = HashSet::with_capacity(1);
                 vars.insert(*var);
                 vars
             }
-            Type::Named(_, params) => params.iter().flat_map(Self::vars).collect(),
-            Type::Function(input, output) => {
+            UnresolvedType::Function(input, output) => {
                 let mut vars = input.vars();
                 vars.extend(output.vars());
                 vars
@@ -279,13 +415,12 @@ impl Type {
 
     pub fn params(&self) -> HashSet<TypeParameterId> {
         match self {
-            Type::Parameter(params) => {
+            UnresolvedType::Parameter(params) => {
                 let mut vars = HashSet::with_capacity(1);
                 vars.insert(*params);
                 vars
             }
-            Type::Named(_, params) => params.iter().flat_map(Self::params).collect(),
-            Type::Function(input, output) => {
+            UnresolvedType::Function(input, output) => {
                 let mut params = input.params();
                 params.extend(output.params());
                 params
@@ -293,10 +428,34 @@ impl Type {
             _ => HashSet::new(),
         }
     }
+
+    pub fn finalize(mut self, ctx: &Context) -> Result<Type, FinalizeError> {
+        self.apply(ctx);
+
+        match self {
+            UnresolvedType::Variable(_) => Err(FinalizeError::UnknownType),
+            UnresolvedType::Parameter(param) => Ok(Type::Parameter(param)),
+            UnresolvedType::Trait(tr) => Err(FinalizeError::UnresolvedTrait(tr)),
+            UnresolvedType::Named(name) => Ok(Type::Named(name)),
+            UnresolvedType::Function(input, output) => Ok(Type::Function(
+                Box::new(input.finalize(ctx)?),
+                Box::new(output.finalize(ctx)?),
+            )),
+            UnresolvedType::Builtin(builtin) => Ok(Type::Builtin(builtin)),
+            UnresolvedType::Bottom => Ok(Type::Bottom),
+        }
+    }
 }
 
-impl ForAll {
+impl UnresolvedForAll {
     pub fn apply(&mut self, ctx: &Context) {
         self.ty.apply(ctx);
+    }
+
+    pub fn finalize(self, ctx: &Context) -> Result<ForAll, FinalizeError> {
+        Ok(ForAll {
+            params: self.params,
+            ty: self.ty.finalize(ctx)?,
+        })
     }
 }

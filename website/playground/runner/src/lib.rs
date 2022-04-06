@@ -124,6 +124,7 @@ fn annotations(program: &mut wipple_compiler::compile::Program) -> Vec<Annotatio
                         .name
                         .to_string()
                 },
+                |tr| declarations.traits.get(&tr).unwrap().name.to_string(),
             )
         };
     }
@@ -136,11 +137,15 @@ fn annotations(program: &mut wipple_compiler::compile::Program) -> Vec<Annotatio
                 return;
             }
 
-            let ty = format_ty!(&expr.scheme);
+            let ty = format_ty!(&expr.scheme.clone().into());
 
             let name = match expr.kind {
-                ExpressionKind::Variable(id) => Some(declarations.variables.get(&id).unwrap().name),
-                ExpressionKind::Constant(id) => Some(declarations.constants.get(&id).unwrap().name),
+                ExpressionKind::Variable(id) => {
+                    Some(declarations.variables.get(&id).expect("foo").name)
+                }
+                ExpressionKind::Constant(id) => {
+                    Some(declarations.constants.get(&id).expect("bar").name)
+                }
                 _ => None,
             };
 
@@ -174,7 +179,11 @@ fn annotations(program: &mut wipple_compiler::compile::Program) -> Vec<Annotatio
 
         annotations.push(Annotation {
             span: decl.span,
-            value: format!("{} :: {}", decl.name, format_ty!(&decl.value)),
+            value: format!(
+                "{} :: {}",
+                decl.name,
+                format_ty!(&decl.value.clone().into())
+            ),
         });
     }
 
@@ -185,7 +194,11 @@ fn annotations(program: &mut wipple_compiler::compile::Program) -> Vec<Annotatio
 
         annotations.push(Annotation {
             span: decl.span,
-            value: format!("{} :: {}", decl.name, format_ty!(&decl.value.scheme)),
+            value: format!(
+                "{} :: {}",
+                decl.name,
+                format_ty!(&decl.value.scheme.clone().into())
+            ),
         });
 
         decl.value.traverse(|expr| add_annotation!(expr));
