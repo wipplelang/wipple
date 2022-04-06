@@ -82,11 +82,11 @@ const Playground = () => {
 
     const editorWidth = windowWidth - 32;
 
-    const [query, setQuery] = useRefState<URLSearchParams | null>(null);
-    useEffect(() => setQuery(new URLSearchParams(window.location.search)), []);
-
     const monaco = useMonaco();
     const [model, setModel] = useRefState<monaco.editor.ITextModel | null>(null);
+
+    const [query, setQuery] = useRefState<URLSearchParams | null>(null);
+    useEffect(() => setQuery(new URLSearchParams(window.location.search)), []);
 
     const [updateTrigger, triggerUpdate] = useState({});
     const [decorationIDs, setDecorationIDs] = useRefState<string[]>([]);
@@ -130,11 +130,9 @@ const Playground = () => {
 
         const code = model.current.getValue();
 
-        if (query.current) {
-            query.current.set("code", code);
-            const newURL = window.location.pathname + "?" + query.current.toString();
-            window.history.replaceState(null, "", newURL);
-        }
+        query.current!.set("code", code);
+        const newURL = window.location.pathname + "?" + query.current!.toString();
+        window.history.replaceState(null, "", newURL);
 
         if (runner.current) {
             runner.current.onmessage = (event) => {
@@ -329,23 +327,25 @@ const Playground = () => {
                     overflow: "visible",
                 }}
             >
-                <Editor
-                    width="100%"
-                    height={editorHeight}
-                    language="wipple"
-                    defaultValue={query.current?.get("code") || "-- Write your code here!"}
-                    options={{
-                        fontFamily,
-                        fontLigatures: true,
-                        fontSize: 16,
-                        minimap: {
-                            enabled: false,
-                        },
-                        tabSize: 2,
-                        "semanticHighlighting.enabled": true,
-                    }}
-                    onMount={initialize}
-                />
+                {query.current && (
+                    <Editor
+                        width="100%"
+                        height={editorHeight}
+                        language="wipple"
+                        defaultValue={query.current.get("code") || "-- Write your code here!"}
+                        options={{
+                            fontFamily,
+                            fontLigatures: true,
+                            fontSize: 16,
+                            minimap: {
+                                enabled: false,
+                            },
+                            tabSize: 2,
+                            "semanticHighlighting.enabled": true,
+                        }}
+                        onMount={initialize}
+                    />
+                )}
             </div>
 
             <div className="absolute bottom-0 left-0 right-0 flex-grow-0 p-4 text-center text-gray-400">
