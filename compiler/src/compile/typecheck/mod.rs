@@ -114,6 +114,7 @@ impl<L: Loader> Compiler<L> {
             variables: Default::default(),
             constants: Default::default(),
             structures: Default::default(),
+            traits: Default::default(),
             function_inputs: Default::default(),
             compiler: self,
             used_types: Default::default(),
@@ -162,11 +163,32 @@ impl<L: Loader> Compiler<L> {
                 }
             }
 
+            for (&id, decl) in &file.declarations.traits {
+                if let lower::Declaration::Local(decl) | lower::Declaration::Builtin(decl) = decl {
+                    let scheme = typechecker
+                        .convert_constant_type_annotation(&decl.value.ty, &decl.value.parameters);
+
+                    typechecker.traits.insert(id, scheme);
+                }
+            }
+
             for (&id, decl) in &file.declarations.instances {
                 if let lower::Declaration::Local(decl) | lower::Declaration::Builtin(decl) = decl {
-                    let value = typechecker.typecheck_expr(&decl.value.value, file);
+                    let mut value = typechecker.typecheck_expr(&decl.value.value, file);
 
-                    // TODO: Check that the instance type unifies with the trait type
+                    let trait_ty = typechecker
+                        .traits
+                        .get(&decl.value.tr)
+                        .unwrap()
+                        .clone()
+                        .instantiate(&mut typechecker.ctx);
+
+                    let value_ty = value.scheme.instantiate(&mut typechecker.ctx);
+
+                    match typechecker.ctx.unify(trait_ty, value_ty) {
+                        Ok(resolved_value_ty) => value.merge(resolved_value_ty),
+                        Err(errors) => typechecker.report_type_error(value.span, errors, file),
+                    };
 
                     typechecker.constants.insert(id, value.scheme.clone());
 
@@ -391,6 +413,7 @@ struct Typechecker<'a, L: Loader> {
     variables: HashMap<VariableId, UnresolvedScheme>,
     constants: HashMap<ConstantId, UnresolvedScheme>,
     structures: HashMap<TypeId, HashMap<InternedString, (usize, UnresolvedType)>>,
+    traits: HashMap<TraitId, UnresolvedScheme>,
     // TODO: enumerations
     function_inputs: Vec<TypeVariable>,
     compiler: &'a mut Compiler<L>,
