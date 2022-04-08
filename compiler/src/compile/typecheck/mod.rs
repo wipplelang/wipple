@@ -25,17 +25,17 @@ pub struct Program {
 }
 
 macro_rules! expr {
-    ($($prefix:ident)? $(, { $($t:tt)* })?) => {
+    ($vis:vis $($prefix:ident)? $(, { $($t:tt)* })?) => {
         paste::paste! {
             #[derive(Debug, Clone, Serialize, Deserialize)]
-            pub struct [<$($prefix)? Expression>] {
-                pub span: Span,
-                pub scheme: [<$($prefix)? Scheme>],
-                pub kind: [<$($prefix)? ExpressionKind>],
+            $vis struct [<$($prefix)? Expression>] {
+                $vis span: Span,
+                $vis scheme: [<$($prefix)? Scheme>],
+                $vis kind: [<$($prefix)? ExpressionKind>],
             }
 
             #[derive(Debug, Clone, Serialize, Deserialize)]
-            pub enum [<$($prefix)? ExpressionKind>] {
+            $vis enum [<$($prefix)? ExpressionKind>] {
                 Error,
                 Marker,
                 Constant(ConstantId),
@@ -58,20 +58,20 @@ macro_rules! expr {
             }
 
             #[derive(Debug, Clone, Serialize, Deserialize)]
-            pub struct [<$($prefix)? Arm>] {
-                pub span: Span,
-                pub pattern: [<$($prefix)? Pattern>],
-                pub body: UnresolvedExpression,
+            $vis struct [<$($prefix)? Arm>] {
+                $vis span: Span,
+                $vis pattern: [<$($prefix)? Pattern>],
+                $vis body: [<$($prefix)? Expression>],
             }
 
             #[derive(Debug, Clone, Serialize, Deserialize)]
-            pub struct [<$($prefix)? Pattern>] {
-                pub span: Span,
-                pub kind: [<$($prefix)? PatternKind>],
+            $vis struct [<$($prefix)? Pattern>] {
+                $vis span: Span,
+                $vis kind: [<$($prefix)? PatternKind>],
             }
 
             #[derive(Debug, Clone, Serialize, Deserialize)]
-            pub enum [<$($prefix)? PatternKind>] {
+            $vis enum [<$($prefix)? PatternKind>] {
                 Binding(VariableId),
                 // TODO: Support complex paths (data fields, variants)
                 Wildcard,
@@ -81,7 +81,7 @@ macro_rules! expr {
 }
 
 expr!(Unresolved, { Trait(TraitId) });
-expr!();
+expr!(pub);
 
 #[derive(Debug, Clone)]
 pub struct TypeParameter {
@@ -981,6 +981,7 @@ macro_rules! traverse_impl {
 macro_rules! traverse {
     ($($prefix:ident)?) => {
         paste::paste! {
+            #[allow(unused)]
             impl [<$($prefix)? Expression>] {
                 pub fn traverse(&self, mut f: impl FnMut(&Self)) {
                     self.traverse_inner(&mut f);
