@@ -1,16 +1,11 @@
 // See bottom of file for registration
 
-const wippleKeywords = {
-    keyword:
-        "_ and assert data end enum for get if loop mutable not or set! template test trait type unless! until use when when when! when? where while",
-    built_in:
-        "Block Compare Default Equal False List Name None Number Quote Some Text True doc format increment! show",
-};
-
 const wippleGrammar = (hljs) => ({
     name: "Wipple",
     aliases: ["wipple", "wpl"],
-    keywords: wippleKeywords,
+    keywords: {
+        keyword: "use when type trait instance where external",
+    },
     contains: [
         {
             className: "comment",
@@ -18,18 +13,15 @@ const wippleGrammar = (hljs) => ({
         },
         {
             className: "punctuation",
-            begin: /[()\[\]{}']/,
-            keywords: wippleKeywords,
+            begin: /\[:|:\]|[()\[\]{}']/,
         },
         {
             className: "built_in",
             begin: /[`~!@#$%^&*()\-_=+\\|;:,<.>/?]+(?=[ \t()\[\]{}']|$)/m,
-            keywords: wippleKeywords,
         },
         {
             className: "type",
             begin: /[A-Z][A-Za-z\-]*/,
-            keywords: wippleKeywords,
         },
         {
             className: "number",
