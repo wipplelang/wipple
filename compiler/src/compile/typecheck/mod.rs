@@ -825,7 +825,7 @@ impl<'a, L: Loader> Typechecker<'a, L> {
                 vec![Note::primary(
                     span,
                     format!(
-                        "could not find implementation for `{:?}` satisfying `{}`",
+                        "could not find implementation for `{:?}` of type `{}`",
                         trait_names(tr),
                         format_type(&ty, type_names, param_names, trait_names)
                     ),
