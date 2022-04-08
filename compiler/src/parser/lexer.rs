@@ -59,6 +59,9 @@ pub enum Token {
     #[token("trait")]
     Trait,
 
+    #[token("instance")]
+    Instance,
+
     #[token("external")]
     External,
 
@@ -112,6 +115,7 @@ impl fmt::Display for Token {
             Token::When => write!(f, "`when`"),
             Token::Type => write!(f, "`type`"),
             Token::Trait => write!(f, "`trait`"),
+            Token::Instance => write!(f, "`instance`"),
             Token::External => write!(f, "`external`"),
             Token::Name(_) => write!(f, "name"),
             Token::Text(_) => write!(f, "text"),

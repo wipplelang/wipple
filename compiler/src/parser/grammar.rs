@@ -31,18 +31,18 @@ pub struct Statement {
 #[derive(Debug, Clone)]
 pub enum StatementKind {
     Type((Span, InternedString), TypeDeclaration),
+    Trait((Span, InternedString), TraitDeclaration),
     Constant((Span, InternedString), ConstantDeclaration),
-    Implementation(Implementation),
+    Instance(Instance),
     Assign(Pattern, Expression),
     Expression(Expression),
 }
 
 #[derive(Debug, Clone)]
-pub struct Implementation {
-    pub parameters: Vec<TypeParameter>,
+pub struct Instance {
+    pub trait_span: Span,
     pub trait_name: InternedString,
-    pub implementing_ty: TypeAnnotation,
-    pub body: Expression,
+    pub value: Expression,
 }
 
 #[derive(Debug, Clone)]
@@ -460,6 +460,7 @@ peg::parser! {
         rule statement() -> Statement
             = type_alias_statement()
             / type_statement()
+            / trait_statement()
             / constant_statement()
             / implementation_statement()
             / assign_statement()
@@ -510,6 +511,26 @@ peg::parser! {
                 }
             }
             / expected!("type declaration")
+
+        rule trait_statement() -> Statement
+            = [(Token::Name(name), name_span)]
+              [(Token::Colon, _)]
+              parameters:type_parameter_introduction()
+              [(Token::Trait, _)]
+              ty:r#type()
+            {
+                Statement {
+                    span: Span::join(name_span, ty.span),
+                    kind: StatementKind::Trait(
+                        (name_span, name),
+                        TraitDeclaration {
+                            parameters,
+                            ty,
+                        }
+                    ),
+                }
+            }
+            / expected!("trait declaration")
 
         rule type_parameter_introduction() -> Vec<TypeParameter>
             = parameters:type_parameter()+ [(Token::DoubleArrow, _)]
@@ -572,19 +593,17 @@ peg::parser! {
             / expected!("constant declaration")
 
         rule implementation_statement() -> Statement
-            = parameters:type_parameter_introduction()?
-              [(Token::Name(trait_name), _)]
-              implementing_ty:r#type()
+            = [(Token::Instance, instance_span)]
+              [(Token::Name(trait_name), trait_span)]
               [(Token::Colon, _)]
-              body:compound_expression()
+              value:compound_expression()
               {
                   Statement {
-                      span: Span::join(parameters.as_ref().map(|p| p.first().unwrap().span).unwrap_or(implementing_ty.span), body.span),
-                      kind: StatementKind::Implementation(Implementation {
-                          parameters: parameters.unwrap_or_default(),
+                      span: Span::join(instance_span, value.span),
+                      kind: StatementKind::Instance(Instance {
+                          trait_span,
                           trait_name,
-                          implementing_ty,
-                          body,
+                          value,
                       }),
                   }
               }

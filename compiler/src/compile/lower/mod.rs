@@ -31,6 +31,7 @@ pub struct Declarations {
     pub builtin_types: HashMap<BuiltinType, Declaration<BuiltinType, ()>>,
     pub operators: HashMap<OperatorId, Declaration<OperatorId, Operator>>,
     pub constants: HashMap<ConstantId, Declaration<ConstantId, Constant>>,
+    pub instances: HashMap<ConstantId, Declaration<ConstantId, Instance>>,
     pub variables: HashMap<VariableId, Declaration<VariableId, ()>>,
 }
 
@@ -95,6 +96,10 @@ impl CopyDeclaration for Declaration<ConstantId, Constant> {
     const COPY: bool = false;
 }
 
+impl CopyDeclaration for Declaration<ConstantId, Instance> {
+    const COPY: bool = false;
+}
+
 impl CopyDeclaration for Declaration<VariableId, ()> {
     const COPY: bool = false;
 }
@@ -135,6 +140,7 @@ pub enum BuiltinType {
 
 #[derive(Debug, Clone)]
 pub struct Trait {
+    pub parameters: Vec<TypeParameter>,
     pub ty: TypeAnnotation,
 }
 
@@ -152,6 +158,12 @@ pub struct Constant {
 }
 
 #[derive(Debug, Clone)]
+pub struct Instance {
+    pub tr: TraitId,
+    pub value: Expression,
+}
+
+#[derive(Debug, Clone)]
 pub struct Expression {
     pub span: Span,
     pub kind: ExpressionKind,
@@ -163,13 +175,12 @@ pub enum ExpressionKind {
     Unit,
     Marker(TypeId),
     Constant(ConstantId),
+    Trait(TraitId),
     Variable(VariableId),
     Text(InternedString),
     Number(Decimal),
     Block(Vec<Expression>, HashMap<InternedString, ScopeValue>),
-    /// It's impossible to know whether this expression is a function call or a
-    /// member expression until the left-hand side is typechecked
-    CallOrMember(Box<Expression>, Box<Expression>, Option<InternedString>),
+    Call(Box<Expression>, Box<Expression>),
     Function(Box<Expression>, Vec<(VariableId, Span)>),
     When(Box<Expression>, Vec<Arm>),
     External(InternedString, InternedString, Vec<Expression>),
@@ -277,6 +288,7 @@ impl<L: Loader> Compiler<L> {
                 builtin_types,
                 operators,
                 constants,
+                instances,
                 variables,
             );
 
@@ -340,6 +352,7 @@ pub(crate) struct UsedVariable {
 pub enum ScopeValue {
     Type(TypeId),
     BuiltinType(BuiltinType),
+    Trait(TraitId),
     TypeParameter(TypeParameterId),
     Operator(OperatorId),
     Constant(ConstantId),
@@ -403,17 +416,6 @@ impl<'a> Scope<'a> {
 #[derive(Default)]
 struct Info {
     declarations: Declarations,
-    suppress_name_resolution_errors: bool,
-}
-
-impl Info {
-    pub fn suppressing_name_resolution_errors<T>(&mut self, f: impl FnOnce(&mut Self) -> T) -> T {
-        let prev_suppress_name_resolution_errors = self.suppress_name_resolution_errors;
-        self.suppress_name_resolution_errors = true;
-        let result = f(self);
-        self.suppress_name_resolution_errors = prev_suppress_name_resolution_errors;
-        result
-    }
 }
 
 impl<L: Loader> Compiler<L> {
@@ -518,6 +520,69 @@ impl<L: Loader> Compiler<L> {
 
                 None
             }
+            parser::StatementKind::Trait((span, name), declaration) => {
+                if defined(name) {
+                    self.diagnostics.add(Diagnostic::error(
+                        format!("`{name}` is already defined"),
+                        vec![Note::primary(span, "try assigning to a different name")],
+                    ));
+
+                    return Some(Expression::error(statement.span));
+                }
+
+                let tr = {
+                    let scope = scope.child();
+
+                    let parameters = declaration
+                        .parameters
+                        .into_iter()
+                        .map(|parameter| {
+                            let id = self.new_type_parameter_id();
+
+                            info.declarations.type_parameters.insert(
+                                id,
+                                Declaration::Local(DeclarationKind {
+                                    name: parameter.name,
+                                    span: parameter.span,
+                                    value: (),
+                                }),
+                            );
+
+                            scope
+                                .values
+                                .borrow_mut()
+                                .insert(parameter.name, ScopeValue::TypeParameter(id));
+
+                            TypeParameter {
+                                span: parameter.span,
+                                id,
+                            }
+                        })
+                        .collect();
+
+                    Trait {
+                        parameters,
+                        ty: self.lower_type_annotation(declaration.ty, &scope, info),
+                    }
+                };
+
+                let id = self.new_trait_id();
+                scope
+                    .values
+                    .borrow_mut()
+                    .insert(name, ScopeValue::Trait(id));
+
+                info.declarations.traits.insert(
+                    id,
+                    Declaration::Local(DeclarationKind {
+                        name,
+                        span,
+                        value: tr,
+                    }),
+                );
+
+                None
+            }
             parser::StatementKind::Constant((span, name), declaration) => {
                 if defined(name) {
                     self.diagnostics.add(Diagnostic::error(
@@ -582,7 +647,47 @@ impl<L: Loader> Compiler<L> {
 
                 None
             }
-            parser::StatementKind::Implementation(_) => None, // TODO
+            parser::StatementKind::Instance(instance) => {
+                let tr = match scope.get(instance.trait_name, instance.trait_span) {
+                    Some(ScopeValue::Trait(tr)) => tr,
+                    Some(_) => {
+                        self.diagnostics.add(Diagnostic::error(
+                            format!("`{}` is not a trait", instance.trait_name),
+                            vec![Note::primary(instance.trait_span, "expected a trait here")],
+                        ));
+
+                        return Some(Expression::error(statement.span));
+                    }
+                    None => {
+                        self.diagnostics.add(Diagnostic::error(
+                            format!("cannot find `{}`", instance.trait_name),
+                            vec![Note::primary(
+                                instance.trait_span,
+                                "this name is not defined",
+                            )],
+                        ));
+
+                        return Some(Expression::error(statement.span));
+                    }
+                };
+
+                let instance = Instance {
+                    tr,
+                    value: self.lower_expr(instance.value, scope, info),
+                };
+
+                let id = self.new_constant_id();
+                info.declarations.instances.insert(
+                    id,
+                    Declaration::Local(DeclarationKind {
+                        name: InternedString::new("instance"),
+                        span: statement.span,
+                        value: instance,
+                    }),
+                );
+
+                None
+            }
             parser::StatementKind::Assign(pattern, expr) => match &pattern.kind {
                 parser::PatternKind::Name(name) => {
                     let mut associated_constant = None;
@@ -591,6 +696,7 @@ impl<L: Loader> Compiler<L> {
                         Some(
                             ScopeValue::Type(_)
                             | ScopeValue::BuiltinType(_)
+                            | ScopeValue::Trait(_)
                             | ScopeValue::TypeParameter(_)
                             | ScopeValue::Operator(_),
                         ) => {
@@ -722,12 +828,10 @@ impl<L: Loader> Compiler<L> {
                     match self.resolve_value(expr.span, name, scope, info) {
                         Some(value) => value,
                         None => {
-                            if !info.suppress_name_resolution_errors {
-                                self.diagnostics.add(Diagnostic::error(
-                                    format!("cannot find variable `{name}`"),
-                                    vec![Note::primary(expr.span, "no such variable")],
-                                ));
-                            }
+                            self.diagnostics.add(Diagnostic::error(
+                                format!("cannot find `{name}`"),
+                                vec![Note::primary(expr.span, "this name is not defined")],
+                            ));
 
                             return Expression::error(expr.span);
                         }
@@ -921,6 +1025,7 @@ impl<L: Loader> Compiler<L> {
 
                 Some(ExpressionKind::Error)
             }
+            Some(ScopeValue::Trait(id)) => Some(ExpressionKind::Trait(id)),
             Some(ScopeValue::TypeParameter(_)) => {
                 self.diagnostics.add(Diagnostic::error(
                     "cannot use type parameter as value",

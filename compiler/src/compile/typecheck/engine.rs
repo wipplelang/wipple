@@ -30,7 +30,7 @@ pub struct UnresolvedForAll {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ResolvedType {
-    pub imp: Option<ConstantId>,
+    pub instance: Option<ConstantId>,
     pub kind: ResolvedTypeKind,
 }
 
@@ -52,7 +52,6 @@ pub enum Scheme {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Type {
-    Variable(TypeVariable),
     Parameter(TypeParameterId),
     Named(TypeId),
     Function(Box<Type>, Box<Type>),
@@ -96,7 +95,6 @@ impl From<ResolvedType> for UnresolvedType {
 impl From<Type> for UnresolvedType {
     fn from(ty: Type) -> Self {
         match ty {
-            Type::Variable(var) => UnresolvedType::Variable(var),
             Type::Parameter(param) => UnresolvedType::Parameter(param),
             Type::Named(name) => UnresolvedType::Named(name),
             Type::Function(input, output) => {
@@ -119,8 +117,8 @@ pub enum BuiltinType {
 }
 
 #[derive(Debug, Clone)]
-pub struct Implementation {
-    pub ty: UnresolvedType,
+pub struct Instance {
+    pub scheme: UnresolvedScheme,
     pub constant: ConstantId,
 }
 
@@ -128,14 +126,14 @@ pub struct Implementation {
 pub struct Context {
     next_var: usize,
     substitutions: HashMap<TypeVariable, UnresolvedType>,
-    imps: HashMap<TraitId, Vec<Implementation>>,
+    instances: HashMap<TraitId, Vec<Instance>>,
 }
 
 #[derive(Debug, Clone)]
 pub enum UnificationError {
     Recursive(TypeVariable),
     Mismatch(UnresolvedType, UnresolvedType),
-    MissingImplementation(TraitId, UnresolvedType),
+    MissingInstance(TraitId, UnresolvedType),
 }
 
 #[derive(Debug, Clone)]
@@ -155,8 +153,8 @@ impl Context {
         var
     }
 
-    pub fn register(&mut self, tr: TraitId, imp: Implementation) {
-        self.imps.entry(tr).or_default().push(imp);
+    pub fn register(&mut self, tr: TraitId, instance: Instance) {
+        self.instances.entry(tr).or_default().push(instance);
     }
 
     pub fn unify(
@@ -175,32 +173,34 @@ impl Context {
                     self.substitutions.insert(var, ty);
 
                     Ok(ResolvedType {
-                        imp: None,
+                        instance: None,
                         kind: ResolvedTypeKind::Variable(var),
                     })
                 }
             }
             (UnresolvedType::Parameter(param), _) => Ok(ResolvedType {
-                imp: None,
+                instance: None,
                 kind: ResolvedTypeKind::Parameter(param),
             }),
             (actual, expected @ UnresolvedType::Parameter(_)) => {
                 Err(UnificationError::Mismatch(actual, expected))
             }
             (UnresolvedType::Trait(tr), ty) | (ty, UnresolvedType::Trait(tr)) => self
-                .imps
+                .instances
                 .get(&tr)
                 .cloned()
-                .and_then(|imps| {
-                    imps.iter().find_map(|imp| {
+                .and_then(|instances| {
+                    instances.iter().find_map(|instance| {
                         let mut ctx = self.clone();
 
-                        match ctx.unify(ty.clone(), imp.ty.clone()) {
+                        let instance_ty = instance.scheme.clone().instantiate(&mut ctx);
+
+                        match ctx.unify(ty.clone(), instance_ty) {
                             Ok(ResolvedType { kind, .. }) => {
                                 *self = ctx;
 
                                 Some(ResolvedType {
-                                    imp: Some(imp.constant),
+                                    instance: Some(instance.constant),
                                     kind,
                                 })
                             }
@@ -208,11 +208,11 @@ impl Context {
                         }
                     })
                 })
-                .ok_or(UnificationError::MissingImplementation(tr, ty)),
+                .ok_or(UnificationError::MissingInstance(tr, ty)),
             (UnresolvedType::Named(actual_id), UnresolvedType::Named(expected_id)) => {
                 if actual_id == expected_id {
                     Ok(ResolvedType {
-                        imp: None,
+                        instance: None,
                         kind: ResolvedTypeKind::Named(actual_id),
                     })
                 } else {
@@ -248,14 +248,14 @@ impl Context {
                 };
 
                 Ok(ResolvedType {
-                    imp: None,
+                    instance: None,
                     kind: ResolvedTypeKind::Function(Box::new(input), Box::new(output)),
                 })
             }
             (UnresolvedType::Builtin(actual), UnresolvedType::Builtin(expected)) => {
                 if actual == expected {
                     Ok(ResolvedType {
-                        imp: None,
+                        instance: None,
                         kind: ResolvedTypeKind::Builtin(actual),
                     })
                 } else {
@@ -266,7 +266,7 @@ impl Context {
                 }
             }
             (UnresolvedType::Bottom, _) => Ok(ResolvedType {
-                imp: None,
+                instance: None,
                 kind: ResolvedTypeKind::Bottom,
             }),
             (actual, expected) => Err(UnificationError::Mismatch(actual, expected)),

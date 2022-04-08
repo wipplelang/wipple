@@ -116,23 +116,11 @@ impl<L: Loader> Compiler<L> {
 
                     list.into_iter()
                         .fold(self.lower_expr(first, scope, info), |result, next| {
-                            let span = Span::join(result.span, next.span);
-
-                            let member_name = match next.kind {
-                                parser::ExpressionKind::Name(name) => Some(name),
-                                _ => None,
-                            };
-
-                            let input = info.suppressing_name_resolution_errors(|info| {
-                                self.lower_expr(next, scope, info)
-                            });
-
                             Expression {
-                                span,
-                                kind: ExpressionKind::CallOrMember(
+                                span: Span::join(result.span, next.span),
+                                kind: ExpressionKind::Call(
                                     Box::new(result),
-                                    Box::new(input),
-                                    member_name,
+                                    Box::new(self.lower_expr(next, scope, info)),
                                 ),
                             }
                         })
@@ -233,10 +221,10 @@ impl<L: Loader> Compiler<L> {
                     } else {
                         Expression {
                             span: Span::join(lhs.first().unwrap().span, rhs.last().unwrap().span),
-                            kind: ExpressionKind::CallOrMember(
+                            kind: ExpressionKind::Call(
                                 Box::new(Expression {
                                     span: Span::join(lhs.first().unwrap().span, max_span),
-                                    kind: ExpressionKind::CallOrMember(
+                                    kind: ExpressionKind::Call(
                                         Box::new(Expression {
                                             span: max_span,
                                             kind: ExpressionKind::Constant(max_operator.body),
@@ -247,7 +235,6 @@ impl<L: Loader> Compiler<L> {
                                             scope,
                                             info,
                                         )),
-                                        None,
                                     ),
                                 }),
                                 Box::new(self.lower_operators(
@@ -256,7 +243,6 @@ impl<L: Loader> Compiler<L> {
                                     scope,
                                     info,
                                 )),
-                                None,
                             ),
                         }
                     }

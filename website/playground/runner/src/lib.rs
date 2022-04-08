@@ -172,6 +172,17 @@ fn annotations(program: &mut wipple_compiler::compile::Program) -> Vec<Annotatio
         });
     }
 
+    for decl in declarations.traits.values() {
+        if !belongs_to_playground(decl.span) {
+            continue;
+        }
+
+        annotations.push(Annotation {
+            span: decl.span,
+            value: format!("{} : trait", decl.name),
+        });
+    }
+
     for decl in declarations.variables.values() {
         if !belongs_to_playground(decl.span) {
             continue;
@@ -239,6 +250,7 @@ pub fn get_completions(position: usize) -> JsValue {
                 // https://microsoft.github.io/monaco-editor/api/enums/monaco.languages.CompletionItemKind.html
                 kind: match value {
                     ScopeValue::Type(_) | ScopeValue::BuiltinType(_) => 6,
+                    ScopeValue::Trait(_) => 7,
                     ScopeValue::TypeParameter(_) => 24,
                     ScopeValue::Operator(_) => 11,
                     ScopeValue::Constant(_) => 14,
