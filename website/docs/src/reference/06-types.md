@@ -6,22 +6,29 @@ Wipple has a powerful static type system that works similarly to Haskell's. In s
 42 :: Number -- "42 is a number"
 "Hello" :: Text
 '(1 2 3) :: List Number
-(x :: Number) -> x :: Number -> Number
+x -> x :: Number -> Number
 ```
 
-You can also create your own types with `data` and `enum`:
+You can also create your own types with `type`:
 
 ```wipple
-Name : data Text
+Name : type Text
 
-Person : data {
+Person : type {
     name :: Name
     age :: Number
 }
 
-Color : enum (Red Orange Yellow Green Blue Purple)
+Color : type {
+    Red
+    Orange
+    Yellow
+    Green
+    Blue
+    Purple
+}
 
-Maybe-Number : enum {
+Maybe-Number : type {
     Some Number
     None
 }
@@ -29,10 +36,10 @@ Maybe-Number : enum {
 
 By convention, variables representing types and variants of enums are capitalized.
 
-The `Maybe-Number` type above can be made more general using type functions, which are prefixed with `for`:
+The `Maybe-Number` type above can be made more general using type functions, which use a `=>` arrow:
 
 ```wipple
-Maybe : for A -> enum {
+Maybe : A => type {
     Some A
     None
 }
@@ -41,7 +48,8 @@ Maybe : for A -> enum {
 This also works on other values, like regular functions:
 
 ```wipple
-it :: for A -> A -> A : x -> x
+it :: A => A -> A
+it : x -> x
 ```
 
 By convention, generic types are named `A`, `B`, `C`, etc., but you should try to give a more specific name if applicable.
@@ -49,6 +57,6 @@ By convention, generic types are named `A`, `B`, `C`, etc., but you should try t
 Finally, you can use an underscore (`_`) to represent a placeholder type:
 
 ```wipple
-Identity : for A -> type (A -> A)
+Identity : A => -> type (A -> A)
 (x :: Number) -> x :: Identity _ -- inferred as Identity Number
 ```

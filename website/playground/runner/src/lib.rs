@@ -236,7 +236,9 @@ pub fn get_completions(position: usize) -> JsValue {
     #[cfg(feature = "console_error_panic_hook")]
     console_error_panic_hook::set_once();
 
-    let keywords = ["use", "when", "type", "trait", "instance", "external"];
+    let keywords = [
+        "use", "when", "type", "trait", "instance", "where", "external",
+    ];
 
     let mut completions = keywords
         .into_iter()

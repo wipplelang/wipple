@@ -1,24 +1,39 @@
 # Loops
 
-To repeatedly evaluate an expression, you can use `loop` combined with `end`:
+To repeatedly evaluate an expression, you can use `loop`. `loop` accepts a block evaluating to a `Flow` value, namely `Continue` or `End`:
 
 ```wipple
+Flow : A => type {
+    Continue
+    End A
+}
+
 ten : {
     n : mutable 0
-    loop (if (n = 10) (end n) (increment! n))
+    loop {
+        if (n = 10) {
+            End n
+        } {
+            increment! n
+            Continue
+        }
+    }
 }
 ```
-
-Calling `end` with a value exits the loop and returns that value.
 
 You can also use `while` and `until` to repeatedly evaluate a condition:
 
 ```wipple
-while : template condition body ->
-    loop (if condition (body :: .) (end .))
+while : condition body ~> loop {
+    if condition {
+        body
+        Continue
+    } {
+        End ()
+    }
+}
 
-until : template condition body ->
-    while (not condition) body
+until : condition body ~> while (not condition) body
 
 ten : {
     n : mutable 0

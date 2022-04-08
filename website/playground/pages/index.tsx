@@ -174,7 +174,7 @@ const Playground = () => {
                     [/--.*/, "comment"],
                     [/:|::|->|=>/, "operator"],
                     [/['\/]/, "delimiter"],
-                    [/_|use|when|type|trait|instance|external/, "keyword"],
+                    [/_|use|when|type|trait|instance|where|external/, "keyword"],
                     [/-?[0-9]+(\.[0-9]+)?/, "number"],
                     [/"[^"\\]*(?:\\.[^"\\]*)*"/s, "string"],
                     [/[A-Z][^\r\n\t \(\)\[\]\{\}'"/]*/, "type"],

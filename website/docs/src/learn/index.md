@@ -8,9 +8,7 @@ It's easy to get started with Wipple, no installation required. In fact, all you
 
 ![Wipple Playground](/learn/images/playground.png)
 
-The [Wipple Playground](https://playground.wipple.gramer.dev) is split into two panes. On the left is the **editor**, which you'll use to write code. On the right is the **console**, which will display the output of your program.
-
-The editor will automatically detect errors in your code and highlight them! Try pressing return a few times so your cursor is on a new line, type a random word (eg. `wipple`), and hover your mouse over the red squiggles. What happens?
+The playground consists of a code editor into which you can type. The editor will automatically detect errors in your code and highlight them! Try pressing return a few times so your cursor is on a new line, type a random word (eg. `wipple`), and hover your mouse over the red squiggles. What happens?
 
 By the way, any time you see text in `this font`, it represents code. You can copy and paste the code into the playground at any time to try things out on your own! Look for the <i class="fa fa-copy clip-button" title="Copy to clipboard" aria-label="Copy to clipboard"></i> button and click it to copy the code to your clipboard. Try it now!
 

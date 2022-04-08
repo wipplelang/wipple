@@ -108,12 +108,14 @@ pub enum PatternKind {
 #[derive(Debug, Clone)]
 pub struct TypeDeclaration {
     pub parameters: Vec<TypeParameter>,
+    pub bounds: Vec<Bound>,
     pub kind: TypeKind,
 }
 
 #[derive(Debug, Clone)]
 pub struct TraitDeclaration {
     pub parameters: Vec<TypeParameter>,
+    pub bounds: Vec<Bound>,
     pub ty: TypeAnnotation,
 }
 
@@ -140,7 +142,15 @@ pub struct DataVariant {
 #[derive(Debug, Clone)]
 pub struct ConstantDeclaration {
     pub parameters: Vec<TypeParameter>,
+    pub bounds: Vec<Bound>,
     pub ty: TypeAnnotation,
+}
+
+#[derive(Debug, Clone)]
+pub struct Bound {
+    pub span: Span,
+    pub trait_name: InternedString,
+    pub parameters: Vec<TypeAnnotation>,
 }
 
 pub use grammar::file;
@@ -474,12 +484,15 @@ peg::parser! {
               [(Token::Type, _)]
               ty:r#type()
             {
+                let (parameters, bounds) = parameters.unwrap_or_default();
+
                 Statement {
                     span: Span::join(name_span, ty.span),
                     kind: StatementKind::Type(
                         (name_span, name),
                         TypeDeclaration {
-                            parameters: parameters.unwrap_or_default(),
+                            parameters,
+                            bounds,
                             kind: TypeKind::Alias(ty),
                         }
                     ),
@@ -499,12 +512,15 @@ peg::parser! {
                   { (kind, right_brace_span) }
               )?
             {
+                let (parameters, bounds) = parameters.unwrap_or_default();
+
                 Statement {
                     span: Span::join(name_span, kind.as_ref().map(|(_, span)| *span).unwrap_or(type_span)),
                     kind: StatementKind::Type(
                         (name_span, name),
                         TypeDeclaration {
-                            parameters: parameters.unwrap_or_default(),
+                            parameters,
+                            bounds,
                             kind: kind.map(|(kind, _)| kind).unwrap_or(TypeKind::Marker),
                         }
                     ),
@@ -519,12 +535,15 @@ peg::parser! {
               [(Token::Trait, _)]
               ty:r#type()
             {
+                let (parameters, bounds) = parameters.unwrap_or_default();
+
                 Statement {
                     span: Span::join(name_span, ty.span),
                     kind: StatementKind::Trait(
                         (name_span, name),
                         TraitDeclaration {
-                            parameters: parameters.unwrap_or_default(),
+                            parameters,
+                            bounds,
                             ty,
                         }
                     ),
@@ -532,9 +551,11 @@ peg::parser! {
             }
             / expected!("trait declaration")
 
-        rule type_parameter_introduction() -> Vec<TypeParameter>
-            = parameters:type_parameter()+ [(Token::DoubleArrow, _)]
-            { parameters }
+        rule type_parameter_introduction() -> (Vec<TypeParameter>, Vec<Bound>)
+            = parameters:type_parameter()+
+              bounds:bounds()?
+              [(Token::DoubleArrow, _)]
+            { (parameters, bounds.unwrap_or_default()) }
             / expected!("type parameters")
 
         rule type_parameter() -> TypeParameter
@@ -545,6 +566,26 @@ peg::parser! {
                 }
             }
             / expected!("type parameter")
+
+        rule bounds() -> Vec<Bound>
+            = [(Token::Where, _)]
+              bounds:bound()+
+              { bounds }
+            / expected!("bounds")
+
+        rule bound() -> Bound
+            = [(Token::LeftParen, left_paren_span)]
+              [(Token::Name(trait_name), _)]
+              parameters:r#type()*
+              [(Token::RightParen, right_paren_span)]
+            {
+                Bound {
+                    span: Span::join(left_paren_span, right_paren_span),
+                    trait_name,
+                    parameters,
+                }
+            }
+            / expected!("bound")
 
         rule type_kind() -> TypeKind
             = _ fields:(type_field() ++ ([(Token::LineBreak, _)]+)) _
@@ -579,12 +620,15 @@ peg::parser! {
             parameters:type_parameter_introduction()?
             ty:r#type()
             {
+                let (parameters, bounds) = parameters.unwrap_or_default();
+
                 Statement {
                     span: Span::join(name_span, ty.span),
                     kind: StatementKind::Constant(
                         (name_span, name),
                         ConstantDeclaration {
-                            parameters: parameters.unwrap_or_default(),
+                            parameters,
+                            bounds,
                             ty,
                         },
                     ),

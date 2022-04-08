@@ -86,10 +86,10 @@ If you mismatch the types, Wipple will emit an error:
 
 ## Objects
 
-Wipple calls objects "data structures", which you can create using `data`:
+Wipple calls objects "types", which you can create using `type`:
 
 ```wipple
-Person : data {
+Person : type {
     name :: Text
     age :: Number
 }
@@ -129,10 +129,12 @@ console.log(add(1)(2)); // 3
 
 ## Methods
 
-Wipple doesn't allow you to add methods to an object (although you can store functions inside data structures like any other value). Instead, you can declare functions like this:
+Wipple doesn't allow you to add methods to an object (although you can store functions inside types like any other value). Instead, you can declare functions like this:
 
 ```wipple
-greet : person :: Person -> format ("Hello, _!") (person name)
+greet :: Person -> Text
+greet : person -> format ("Hello, _!") (person name)
+
 greet bob -- Hello, Bob!
 ```
 
@@ -189,24 +191,25 @@ greet(new Earth()); // Hello, world!
 
 ```wipple
 -- Greet is a trait that can be defined with a function returning text
-Greet : for A -> trait (A -> Text)
+Greet : A => trait A -> Text
 
 -- For any value where Greet is defined, return a greeting
-greet : for A where (Greet A) -> x :: A -> format "Hello, _!" (Greet x)
+greet :: A where (Greet A) => A -> Text
+greet : x -> format "Hello, _!" (Greet x)
 
 
-Person : data {
+Person : type {
     name :: Text
 }
 
 -- Greet for Person values is defined as the person's name
-Greet Person : p -> p name
+instance Greet : Person { name } -> name
 
 
-Earth : data
+Earth : type
 
 -- Greet for Earth values is defined as "world"
-Greet Earth : just "world"
+instance Greet : just "world"
 
 
 greet (Person { name : "Bob" }) -- Hello, Bob!

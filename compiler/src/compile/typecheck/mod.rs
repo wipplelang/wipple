@@ -845,22 +845,16 @@ impl<'a, L: Loader> Typechecker<'a, L> {
     fn report_finalize_error(&mut self, span: Span, error: FinalizeError, file: &lower::File) {
         self.well_typed = false;
 
-        let trait_names = |tr| {
-            file.declarations
-                .traits
-                .get(&tr)
-                .unwrap()
-                .name()
-                .to_string()
-        };
-
         let diagnostic = match error {
             FinalizeError::UnknownType => Diagnostic::error(
-                "cannot determine the type of this expression",
+                "could not determine the type of this expression",
                 vec![Note::primary(span, "try annotating the type with '::'")],
             ),
             FinalizeError::UnresolvedTrait(tr) => Diagnostic::error(
-                format!("cannot find a suitable instance for `{}`", trait_names(tr)),
+                format!(
+                    "could not find a suitable instance for `{}`",
+                    file.declarations.traits.get(&tr).unwrap().name()
+                ),
                 vec![Note::primary(
                     span,
                     "try annotating the type this trait should be with '::'",

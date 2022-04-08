@@ -1,9 +1,9 @@
 # Patterns and Logic
 
-Wipple has a concept of "patterns", which bind to one of many options for a piece of data. For example, we can define a `Maybe` enum:
+Wipple has a concept of "patterns", which bind to one of many options for a piece of data. For example, we can define a `Maybe` type:
 
 ```wipple
-Maybe : for A -> enum {
+Maybe : A => type {
     Some A
     None
 }
@@ -45,13 +45,17 @@ when grade {
 }
 ```
 
-Thanks to `when`, Wipple doesn't have regular booleans! Boolean logic is implemented using the `Boolean` enum:
+Thanks to `when`, Wipple doesn't have regular booleans! Boolean logic is implemented using the `Boolean` type:
 
 ```wipple
-Boolean : enum (True False)
+Boolean : type {
+    True
+    False
+}
+
 use Boolean
 
-if : template bool then else -> when bool {
+if : bool then else ~> when bool {
     True -> then
     False -> else
 }
@@ -74,7 +78,7 @@ area : when shape {
 }
 ```
 
-The cases you provide to `when` must be exhaustive (ie. they must cover all variants of the enum). To ignore some cases, or to handle multiple cases in one branch, you can use `_` and `or`:
+The cases you provide to `when` must be exhaustive (ie. they must cover all variants of the type). To ignore some cases, or to handle multiple cases in one branch, you can use `_` and `or`:
 
 ```wipple
 when color? {

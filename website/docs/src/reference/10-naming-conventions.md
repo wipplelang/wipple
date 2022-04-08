@@ -1,7 +1,7 @@
 # Naming Conventions
 
 -   Names in Wipple use `kebab-case`.
--   Regular variables are `lowercase`.
+-   Regular variables and constants are `lowercase`.
 -   Types, enum variants, and traits are `Uppercase`.
 -   Append `?` to `Boolean`s (eg. `valid?`), `Maybe`s and `Result`s (eg. `username?`), functions which return these values, and functions which conditionally execute their input (eg. `when?`).
 -   Append `!` to functions which mutate state (eg. `increment!`) or return different outputs given the same input (eg. `get!`). External output is considered to have no effect on the program's state (eg. `show`, `drive-motor`).

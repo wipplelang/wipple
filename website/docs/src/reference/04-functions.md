@@ -52,8 +52,7 @@ You can use `.` with any function! `x . f` is equivalent to `f x`. You can use t
 ```wipple
 minus : x -> n -> n - x
 
-3 . minus 2
-  . minus 1 -- 0
+3 . minus 2 . minus 1 -- 0
 ```
 
 By convention, functions that take a "receiving" argument should put the receiver last so that it can be used with `.` notation.
@@ -74,7 +73,7 @@ number? | increment -- Some 2
 
 Here are some builtin functions that come in handy when using the `.` and `|` operators:
 
-| Function | Type                     | Description                               |
-| -------- | ------------------------ | ----------------------------------------- |
-| `it`     | `for A -> A -> A`        | Returns its input                         |
-| `just`   | `for A B -> A -> B -> A` | Returns a function that ignores its input |
+| Function | Type                 | Description                               |
+| -------- | -------------------- | ----------------------------------------- |
+| `it`     | `A => A -> A`        | Returns its input                         |
+| `just`   | `A B => A -> B -> A` | Returns a function that ignores its input |
