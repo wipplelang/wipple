@@ -34,7 +34,14 @@ unwrap : Some x -> x -- unwrap :: for A -> Maybe A -> A
 On its own, this isn't very useful — why would you want your program to crash? To get around this, we can use Wipple's fundamental logic operation, `when`. You give `when` a bunch of functions, and it will call the one whose pattern matches the input:
 
 ```wipple
-Grade : enum (A B C D F)
+Grade : type {
+    A
+    B
+    C
+    D
+    F
+}
+
 use Grade
 
 when grade {

@@ -38,7 +38,7 @@ instance Default : None
 ...
 
 
-add-identity :: A where (Add A A B) (Default A) => A -> B
+add-identity :: A B where (Add A A B) (Default A) => A -> B
 add-identity : n -> n + Default
 
 add-identity 42 -- 42 + 0 = 42
