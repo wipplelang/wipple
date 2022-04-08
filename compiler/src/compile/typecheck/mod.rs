@@ -185,7 +185,7 @@ impl<L: Loader> Compiler<L> {
 
                     let value_ty = value.scheme.instantiate(&mut typechecker.ctx);
 
-                    match typechecker.ctx.unify(trait_ty, value_ty) {
+                    match typechecker.ctx.unify(value_ty, trait_ty) {
                         Ok(resolved_value_ty) => value.merge(resolved_value_ty),
                         Err(errors) => typechecker.report_type_error(value.span, errors, file),
                     };
@@ -854,10 +854,7 @@ impl<'a, L: Loader> Typechecker<'a, L> {
                 vec![Note::primary(span, "try annotating the type with '::'")],
             ),
             FinalizeError::UnresolvedTrait(tr) => Diagnostic::error(
-                format!(
-                    "cannot find a suitable implementation for `{}`",
-                    trait_names(tr)
-                ),
+                format!("cannot find a suitable instance for `{}`", trait_names(tr)),
                 vec![Note::primary(
                     span,
                     "try annotating the type this trait should be with '::'",
