@@ -248,6 +248,7 @@ impl TypeAnnotation {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct TypeParameter {
     pub span: Span,
+    pub name: InternedString,
     pub id: TypeParameterId,
 }
 
@@ -533,32 +534,7 @@ impl<L: Loader> Compiler<L> {
                 let tr = {
                     let scope = scope.child();
 
-                    let parameters = declaration
-                        .parameters
-                        .into_iter()
-                        .map(|parameter| {
-                            let id = self.new_type_parameter_id();
-
-                            info.declarations.type_parameters.insert(
-                                id,
-                                Declaration::Local(DeclarationKind {
-                                    name: parameter.name,
-                                    span: parameter.span,
-                                    value: (),
-                                }),
-                            );
-
-                            scope
-                                .values
-                                .borrow_mut()
-                                .insert(parameter.name, ScopeValue::TypeParameter(id));
-
-                            TypeParameter {
-                                span: parameter.span,
-                                id,
-                            }
-                        })
-                        .collect();
+                    let parameters = self.with_parameters(declaration.parameters, &scope, info);
 
                     Trait {
                         parameters,
@@ -596,32 +572,7 @@ impl<L: Loader> Compiler<L> {
                 let constant = {
                     let scope = scope.child();
 
-                    let parameters = declaration
-                        .parameters
-                        .into_iter()
-                        .map(|parameter| {
-                            let id = self.new_type_parameter_id();
-
-                            info.declarations.type_parameters.insert(
-                                id,
-                                Declaration::Local(DeclarationKind {
-                                    name: parameter.name,
-                                    span: parameter.span,
-                                    value: (),
-                                }),
-                            );
-
-                            scope
-                                .values
-                                .borrow_mut()
-                                .insert(parameter.name, ScopeValue::TypeParameter(id));
-
-                            TypeParameter {
-                                span: parameter.span,
-                                id,
-                            }
-                        })
-                        .collect();
+                    let parameters = self.with_parameters(declaration.parameters, &scope, info);
 
                     Constant {
                         parameters,
@@ -708,9 +659,14 @@ impl<L: Loader> Compiler<L> {
                             return Some(Expression::error(statement.span));
                         }
                         Some(ScopeValue::Constant(id)) => {
-                            let c = match info.declarations.constants.get(&id).unwrap() {
+                            let (parameters, c) = match info
+                                .declarations
+                                .constants
+                                .get(&id)
+                                .unwrap()
+                            {
                                 Declaration::Local(decl) | Declaration::Builtin(decl) => {
-                                    decl.value.value.clone()
+                                    (decl.value.parameters.clone(), decl.value.value.clone())
                                 }
                                 Declaration::Dependency(decl) => {
                                     self.diagnostics.add(Diagnostic::error(
@@ -749,14 +705,24 @@ impl<L: Loader> Compiler<L> {
                                 return Some(Expression::error(statement.span));
                             }
 
-                            associated_constant = Some(c);
+                            associated_constant = Some((parameters, c));
                         }
                         Some(ScopeValue::Variable(_, _)) | None => {}
                     }
 
-                    let value = self.lower_expr(expr, scope, info);
+                    if let Some((associated_parameters, associated_constant)) = associated_constant
+                    {
+                        let scope = scope.child();
 
-                    if let Some(associated_constant) = associated_constant {
+                        for parameter in associated_parameters {
+                            scope
+                                .values
+                                .borrow_mut()
+                                .insert(parameter.name, ScopeValue::TypeParameter(parameter.id));
+                        }
+
+                        let value = self.lower_expr(expr, &scope, info);
+
                         // Check that expression doesn't capture variables
                         if let ExpressionKind::Function(_, captures) = &value.kind {
                             if !captures.is_empty() {
@@ -779,6 +745,8 @@ impl<L: Loader> Compiler<L> {
                         associated_constant.replace(Some(value));
                         None
                     } else {
+                        let value = self.lower_expr(expr, scope, info);
+
                         let id = self.new_variable_id();
                         scope.values.borrow_mut().insert(
                             *name,
@@ -1070,5 +1038,39 @@ impl<L: Loader> Compiler<L> {
             },
             Declaration::Dependency(_) => unreachable!(),
         }
+    }
+
+    fn with_parameters(
+        &mut self,
+        parameters: Vec<parser::TypeParameter>,
+        scope: &Scope,
+        info: &mut Info,
+    ) -> Vec<TypeParameter> {
+        parameters
+            .into_iter()
+            .map(|parameter| {
+                let id = self.new_type_parameter_id();
+
+                info.declarations.type_parameters.insert(
+                    id,
+                    Declaration::Local(DeclarationKind {
+                        name: parameter.name,
+                        span: parameter.span,
+                        value: (),
+                    }),
+                );
+
+                scope
+                    .values
+                    .borrow_mut()
+                    .insert(parameter.name, ScopeValue::TypeParameter(id));
+
+                TypeParameter {
+                    span: parameter.span,
+                    name: parameter.name,
+                    id,
+                }
+            })
+            .collect()
     }
 }
