@@ -19,7 +19,7 @@ pub enum UnresolvedType {
     Named(TypeId),
     Function(Box<UnresolvedType>, Box<UnresolvedType>),
     Builtin(BuiltinType),
-    Bottom,
+    Bottom(bool),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -41,7 +41,7 @@ pub enum ResolvedTypeKind {
     Named(TypeId),
     Function(Box<ResolvedType>, Box<ResolvedType>),
     Builtin(BuiltinType),
-    Bottom,
+    Bottom(bool),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -56,7 +56,7 @@ pub enum Type {
     Named(TypeId),
     Function(Box<Type>, Box<Type>),
     Builtin(BuiltinType),
-    Bottom,
+    Bottom(bool),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -87,7 +87,7 @@ impl From<ResolvedType> for UnresolvedType {
                 UnresolvedType::Function(Box::new((*input).into()), Box::new((*output).into()))
             }
             ResolvedTypeKind::Builtin(builtin) => UnresolvedType::Builtin(builtin),
-            ResolvedTypeKind::Bottom => UnresolvedType::Bottom,
+            ResolvedTypeKind::Bottom(is_error) => UnresolvedType::Bottom(is_error),
         }
     }
 }
@@ -101,7 +101,7 @@ impl From<Type> for UnresolvedType {
                 UnresolvedType::Function(Box::new((*input).into()), Box::new((*output).into()))
             }
             Type::Builtin(builtin) => UnresolvedType::Builtin(builtin),
-            Type::Bottom => UnresolvedType::Bottom,
+            Type::Bottom(is_error) => UnresolvedType::Bottom(is_error),
         }
     }
 }
@@ -265,9 +265,9 @@ impl Context {
                     ))
                 }
             }
-            (UnresolvedType::Bottom, _) => Ok(ResolvedType {
+            (UnresolvedType::Bottom(is_error), _) => Ok(ResolvedType {
                 instance: None,
-                kind: ResolvedTypeKind::Bottom,
+                kind: ResolvedTypeKind::Bottom(is_error),
             }),
             (actual, expected) => Err(UnificationError::Mismatch(actual, expected)),
         }
@@ -358,6 +358,16 @@ impl UnresolvedType {
         }
     }
 
+    pub fn contains_error(&self) -> bool {
+        match self {
+            UnresolvedType::Function(input, output) => {
+                input.contains_error() || output.contains_error()
+            }
+            UnresolvedType::Bottom(is_error) => *is_error,
+            _ => false,
+        }
+    }
+
     pub fn apply(&mut self, ctx: &Context) {
         match self {
             UnresolvedType::Variable(var) => {
@@ -442,7 +452,7 @@ impl UnresolvedType {
                 Box::new(output.finalize(ctx)?),
             )),
             UnresolvedType::Builtin(builtin) => Ok(Type::Builtin(builtin)),
-            UnresolvedType::Bottom => Ok(Type::Bottom),
+            UnresolvedType::Bottom(is_error) => Ok(Type::Bottom(is_error)),
         }
     }
 }

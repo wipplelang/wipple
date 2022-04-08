@@ -282,7 +282,7 @@ impl<L: Loader> Compiler<L> {
                             typechecker.report_finalize_error(span, error, file);
                             Expression {
                                 span,
-                                scheme: Scheme::Type(Type::Bottom),
+                                scheme: Scheme::Type(Type::Bottom(true)),
                                 kind: ExpressionKind::Error,
                             }
                         }
@@ -430,7 +430,7 @@ impl<'a, L: Loader> Typechecker<'a, L> {
     ) -> UnresolvedExpression {
         let error = || UnresolvedExpression {
             span: expr.span,
-            scheme: UnresolvedScheme::Type(UnresolvedType::Bottom),
+            scheme: UnresolvedScheme::Type(UnresolvedType::Bottom(true)),
             kind: UnresolvedExpressionKind::Error,
         };
 
@@ -555,11 +555,11 @@ impl<'a, L: Loader> Typechecker<'a, L> {
             }
             lower::ExpressionKind::Annotate(expr, ty) => {
                 let ty = self.convert_type_annotation(ty);
-                let mut inferred_expr = self.typecheck_expr(expr, file);
+                let mut expr = self.typecheck_expr(expr, file);
 
-                let inferred_expr_ty = inferred_expr.scheme.instantiate(&mut self.ctx);
+                let expr_ty = expr.scheme.instantiate(&mut self.ctx);
 
-                let resolved_expr_ty = match self.ctx.unify(inferred_expr_ty.clone(), ty) {
+                let resolved_expr_ty = match self.ctx.unify(expr_ty, ty.clone()) {
                     Ok(ty) => ty,
                     Err(errors) => {
                         self.report_type_error(expr.span, errors, file);
@@ -567,9 +567,9 @@ impl<'a, L: Loader> Typechecker<'a, L> {
                     }
                 };
 
-                inferred_expr.merge(resolved_expr_ty);
+                expr.merge(resolved_expr_ty);
 
-                (UnresolvedScheme::Type(inferred_expr_ty), inferred_expr.kind)
+                (UnresolvedScheme::Type(ty), expr.kind)
             }
             lower::ExpressionKind::Initialize(id, value) => {
                 let value = self.typecheck_expr(value, file);
@@ -736,7 +736,7 @@ impl<'a, L: Loader> Typechecker<'a, L> {
 
     fn convert_type_annotation(&mut self, annotation: &lower::TypeAnnotation) -> UnresolvedType {
         match &annotation.kind {
-            lower::TypeAnnotationKind::Error => UnresolvedType::Bottom,
+            lower::TypeAnnotationKind::Error => UnresolvedType::Bottom(true),
             lower::TypeAnnotationKind::Placeholder => {
                 UnresolvedType::Variable(self.ctx.new_variable())
             }
@@ -776,6 +776,12 @@ impl<'a, L: Loader> Typechecker<'a, L> {
 
     fn report_type_error(&mut self, span: Span, error: UnificationError, file: &lower::File) {
         self.well_typed = false;
+
+        if let UnificationError::Mismatch(actual, expected) = &error {
+            if actual.contains_error() || expected.contains_error() {
+                return;
+            }
+        }
 
         let type_names = |name| {
             file.declarations
@@ -928,7 +934,7 @@ impl UnresolvedExpression {
                 ),
                 UnresolvedExpressionKind::FunctionInput => ExpressionKind::FunctionInput,
                 UnresolvedExpressionKind::Trait(id) => {
-                    return Err((self.span, FinalizeError::UnresolvedTrait(id)))
+                    return Err((self.span, FinalizeError::UnresolvedTrait(id)));
                 }
             },
         })
@@ -1068,7 +1074,7 @@ fn format_type_with(
             UnresolvedType::Variable(_) => String::from("_"),
             UnresolvedType::Parameter(param) => param_names(*param),
             UnresolvedType::Trait(tr) => trait_names(*tr),
-            UnresolvedType::Bottom => String::from("!"),
+            UnresolvedType::Bottom(_) => String::from("!"),
             UnresolvedType::Named(id) => {
                 let name = type_names(*id);
 
