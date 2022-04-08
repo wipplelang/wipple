@@ -236,7 +236,15 @@ pub fn get_completions(position: usize) -> JsValue {
     #[cfg(feature = "console_error_panic_hook")]
     console_error_panic_hook::set_once();
 
-    let mut completions = Vec::new();
+    let keywords = ["use", "when", "type", "trait", "instance", "external"];
+
+    let mut completions = keywords
+        .into_iter()
+        .map(|keyword| Completion {
+            name: keyword.to_string(),
+            kind: 17,
+        })
+        .collect::<Vec<_>>();
 
     macro_rules! add_completions {
         ($declarations:expr) => {{
