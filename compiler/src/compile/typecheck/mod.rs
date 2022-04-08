@@ -821,11 +821,11 @@ impl<'a, L: Loader> Typechecker<'a, L> {
                 )],
             ),
             UnificationError::MissingInstance(tr, ty) => Diagnostic::error(
-                "missing implementation",
+                "missing instance",
                 vec![Note::primary(
                     span,
                     format!(
-                        "could not find implementation for `{:?}` of type `{}`",
+                        "could not find instance of `{}` for type `{}`",
                         trait_names(tr),
                         format_type(&ty, type_names, param_names, trait_names)
                     ),
