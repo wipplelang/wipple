@@ -462,7 +462,7 @@ peg::parser! {
             / type_statement()
             / trait_statement()
             / constant_statement()
-            / implementation_statement()
+            / instance_statement()
             / assign_statement()
             / expression_statement()
             / expected!("statement")
@@ -515,7 +515,7 @@ peg::parser! {
         rule trait_statement() -> Statement
             = [(Token::Name(name), name_span)]
               [(Token::Colon, _)]
-              parameters:type_parameter_introduction()
+              parameters:type_parameter_introduction()?
               [(Token::Trait, _)]
               ty:r#type()
             {
@@ -524,7 +524,7 @@ peg::parser! {
                     kind: StatementKind::Trait(
                         (name_span, name),
                         TraitDeclaration {
-                            parameters,
+                            parameters: parameters.unwrap_or_default(),
                             ty,
                         }
                     ),
@@ -592,7 +592,7 @@ peg::parser! {
             }
             / expected!("constant declaration")
 
-        rule implementation_statement() -> Statement
+        rule instance_statement() -> Statement
             = [(Token::Instance, instance_span)]
               [(Token::Name(trait_name), trait_span)]
               [(Token::Colon, _)]
@@ -607,7 +607,7 @@ peg::parser! {
                       }),
                   }
               }
-              / expected!("trait implementation declaration")
+              / expected!("instance declaration")
 
         rule assign_statement() -> Statement
             = pattern:pattern() _ [(Token::Colon, _)] _ value:compound_expression()
