@@ -647,24 +647,21 @@ impl<L: Loader> Compiler<L> {
 
                 None
             }
-            parser::StatementKind::Instance(instance) => {
-                let tr = match scope.get(instance.trait_name, instance.trait_span) {
+            parser::StatementKind::Instance(decl) => {
+                let tr = match scope.get(decl.trait_name, decl.trait_span) {
                     Some(ScopeValue::Trait(tr)) => tr,
                     Some(_) => {
                         self.diagnostics.add(Diagnostic::error(
-                            format!("`{}` is not a trait", instance.trait_name),
-                            vec![Note::primary(instance.trait_span, "expected a trait here")],
+                            format!("`{}` is not a trait", decl.trait_name),
+                            vec![Note::primary(decl.trait_span, "expected a trait here")],
                         ));
 
                         return Some(Expression::error(statement.span));
                     }
                     None => {
                         self.diagnostics.add(Diagnostic::error(
-                            format!("cannot find `{}`", instance.trait_name),
-                            vec![Note::primary(
-                                instance.trait_span,
-                                "this name is not defined",
-                            )],
+                            format!("cannot find `{}`", decl.trait_name),
+                            vec![Note::primary(decl.trait_span, "this name is not defined")],
                         ));
 
                         return Some(Expression::error(statement.span));
@@ -673,14 +670,14 @@ impl<L: Loader> Compiler<L> {
 
                 let instance = Instance {
                     tr,
-                    value: self.lower_expr(instance.value, scope, info),
+                    value: self.lower_expr(decl.value, scope, info),
                 };
 
                 let id = self.new_constant_id();
                 info.declarations.instances.insert(
                     id,
                     Declaration::Local(DeclarationKind {
-                        name: InternedString::new("instance"),
+                        name: InternedString::from(format!("instance {}", decl.trait_name)),
                         span: statement.span,
                         value: instance,
                     }),
