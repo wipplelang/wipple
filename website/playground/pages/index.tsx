@@ -2,8 +2,8 @@ import theme from "../helpers/theme.json";
 import { useEffect, useRef, useState } from "react";
 import Editor, { Monaco, useMonaco } from "@monaco-editor/react";
 import type monaco from "monaco-editor";
+import Head from "next/head";
 import { useRefState } from "../helpers/useRefState";
-import { kill } from "process";
 
 interface RunResult {
     annotations: Annotation[];
@@ -298,65 +298,76 @@ const Playground = () => {
     }, [updateTrigger]);
 
     return (
-        <div className="bg-gray-50" style={{ height: windowHeight }}>
-            <div className="flex items-center justify-between p-4 pb-0" ref={header}>
-                <a href="https://wipple.gramer.dev">
-                    <img src="/images/logo.svg" alt="Wipple Playground" className="h-10" />
-                </a>
+        <>
+            <Head>
+                <link rel="preconnect" href="https://fonts.googleapis.com" />
+                <link rel="preconnect" href="https://fonts.gstatic.com" />
+                <link
+                    href="https://fonts.googleapis.com/css2?family=JetBrains+Mono&display=swap"
+                    rel="stylesheet"
+                />
+            </Head>
 
-                <div className="flex gap-4 text-gray-500">
-                    <a target="_blank" href="https://docs.wipple.gramer.dev/learn">
-                        Learn
+            <div className="bg-gray-50" style={{ height: windowHeight }}>
+                <div className="flex items-center justify-between p-4 pb-0" ref={header}>
+                    <a href="https://wipple.gramer.dev">
+                        <img src="/images/logo.svg" alt="Wipple Playground" className="h-10" />
                     </a>
 
-                    <a target="_blank" href="https://docs.wipple.gramer.dev">
-                        Docs
-                    </a>
+                    <div className="flex gap-4 text-gray-500">
+                        <a target="_blank" href="https://docs.wipple.gramer.dev/learn">
+                            Learn
+                        </a>
 
-                    <a target="_blank" href="https://github.com/wipplelang/wipple">
-                        GitHub
-                    </a>
+                        <a target="_blank" href="https://docs.wipple.gramer.dev">
+                            Docs
+                        </a>
+
+                        <a target="_blank" href="https://github.com/wipplelang/wipple">
+                            GitHub
+                        </a>
+                    </div>
+                </div>
+
+                <div
+                    className="m-4 mr-0 p-2 rounded-md bg-white"
+                    style={{
+                        top: headerHeight,
+                        width: editorWidth,
+                        overflow: "visible",
+                    }}
+                >
+                    {query.current && (
+                        <Editor
+                            width="100%"
+                            height={editorHeight}
+                            language="wipple"
+                            defaultValue={query.current.get("code") || "-- Write your code here!"}
+                            options={{
+                                fontFamily,
+                                fontLigatures: true,
+                                fontSize: 16,
+                                minimap: {
+                                    enabled: false,
+                                },
+                                tabSize: 2,
+                                "semanticHighlighting.enabled": true,
+                            }}
+                            onMount={initialize}
+                        />
+                    )}
+                </div>
+
+                <div className="absolute bottom-0 left-0 right-0 flex-grow-0 p-4 text-center text-gray-400">
+                    <div ref={footer} className="-mb-2">
+                        Made by{" "}
+                        <a target="_blank" href="https://gramer.dev" className="text-gray-500">
+                            Wilson Gramer
+                        </a>
+                    </div>
                 </div>
             </div>
-
-            <div
-                className="m-4 mr-0 p-2 rounded-md bg-white"
-                style={{
-                    top: headerHeight,
-                    width: editorWidth,
-                    overflow: "visible",
-                }}
-            >
-                {query.current && (
-                    <Editor
-                        width="100%"
-                        height={editorHeight}
-                        language="wipple"
-                        defaultValue={query.current.get("code") || "-- Write your code here!"}
-                        options={{
-                            fontFamily,
-                            fontLigatures: true,
-                            fontSize: 16,
-                            minimap: {
-                                enabled: false,
-                            },
-                            tabSize: 2,
-                            "semanticHighlighting.enabled": true,
-                        }}
-                        onMount={initialize}
-                    />
-                )}
-            </div>
-
-            <div className="absolute bottom-0 left-0 right-0 flex-grow-0 p-4 text-center text-gray-400">
-                <div ref={footer} className="-mb-2">
-                    Made by{" "}
-                    <a target="_blank" href="https://gramer.dev" className="text-gray-500">
-                        Wilson Gramer
-                    </a>
-                </div>
-            </div>
-        </div>
+        </>
     );
 };
 
