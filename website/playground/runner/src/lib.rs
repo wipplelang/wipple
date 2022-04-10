@@ -110,6 +110,7 @@ fn annotations(program: &mut wipple_compiler::compile::Program) -> Vec<Annotatio
     let mut annotations = Vec::new();
 
     let declarations = program.declarations.clone();
+    let trait_types = program.trait_types.clone();
 
     macro_rules! format_ty {
         ($ty:expr) => {
@@ -124,7 +125,11 @@ fn annotations(program: &mut wipple_compiler::compile::Program) -> Vec<Annotatio
                         .name
                         .to_string()
                 },
-                |tr| declarations.traits.get(&tr).unwrap().name.to_string(),
+                |var| {
+                    trait_types
+                        .get(&var)
+                        .map(|tr| declarations.traits.get(tr).unwrap().name.to_string())
+                },
             )
         };
     }
@@ -141,11 +146,9 @@ fn annotations(program: &mut wipple_compiler::compile::Program) -> Vec<Annotatio
 
             let name = match expr.kind {
                 ExpressionKind::Variable(id) => {
-                    Some(declarations.variables.get(&id).expect("foo").name)
+                    declarations.variables.get(&id).map(|decl| decl.name)
                 }
-                ExpressionKind::Constant(id) => {
-                    Some(declarations.constants.get(&id).expect("bar").name)
-                }
+                ExpressionKind::Constant(id) => Some(declarations.constants.get(&id).unwrap().name),
                 _ => None,
             };
 

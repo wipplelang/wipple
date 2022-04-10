@@ -10,10 +10,8 @@ use engine::*;
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use std::{
-    cell::RefCell,
     collections::{HashMap, HashSet},
     mem,
-    rc::Rc,
 };
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -21,17 +19,19 @@ pub struct Program {
     pub well_typed: bool,
     pub body: Vec<Expression>,
     pub declarations: Declarations,
+    pub trait_types: HashMap<TypeVariable, TraitId>,
     pub top_level: HashMap<InternedString, lower::ScopeValue>,
 }
 
 macro_rules! expr {
-    ($vis:vis $($prefix:ident)? $(, { $($t:tt)* })?) => {
+    ($vis:vis $($prefix:ident)? $(, { $($kinds:tt)* }, { $($props:tt)* })?) => {
         paste::paste! {
             #[derive(Debug, Clone, Serialize, Deserialize)]
             $vis struct [<$($prefix)? Expression>] {
                 $vis span: Span,
                 $vis scheme: [<$($prefix)? Scheme>],
                 $vis kind: [<$($prefix)? ExpressionKind>],
+                $($($props)*)?
             }
 
             #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -54,7 +54,7 @@ macro_rules! expr {
                 Initialize(VariableId, Box<[<$($prefix)? Expression>]>),
                 Structure(Vec<[<$($prefix)? Expression>]>),
                 FunctionInput,
-                $($($t)*)?
+                $($($kinds)*)?
             }
 
             #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -80,7 +80,7 @@ macro_rules! expr {
     };
 }
 
-expr!(Unresolved, { Trait(TraitId) });
+expr!(Unresolved, { Trait(TraitId) }, { pending_instance: Option<(TraitId, UnresolvedType)> });
 expr!(pub);
 
 #[derive(Debug, Clone)]
@@ -115,6 +115,7 @@ impl<L: Loader> Compiler<L> {
             constants: Default::default(),
             structures: Default::default(),
             traits: Default::default(),
+            trait_types: Default::default(),
             function_inputs: Default::default(),
             compiler: self,
             used_types: Default::default(),
@@ -174,7 +175,7 @@ impl<L: Loader> Compiler<L> {
 
             for (&id, decl) in &file.declarations.instances {
                 if let lower::Declaration::Local(decl) | lower::Declaration::Builtin(decl) = decl {
-                    let mut value = typechecker.typecheck_expr(&decl.value.value, file);
+                    let value = typechecker.typecheck_expr(&decl.value.value, file);
 
                     let trait_ty = typechecker
                         .traits
@@ -185,10 +186,9 @@ impl<L: Loader> Compiler<L> {
 
                     let value_ty = value.scheme.instantiate(&mut typechecker.ctx);
 
-                    match typechecker.ctx.unify(value_ty, trait_ty) {
-                        Ok(resolved_value_ty) => value.merge(resolved_value_ty),
-                        Err(errors) => typechecker.report_type_error(value.span, errors, file),
-                    };
+                    if let Err(errors) = typechecker.ctx.unify(value_ty, trait_ty) {
+                        typechecker.report_type_error(value.span, errors, file);
+                    }
 
                     typechecker.constants.insert(id, value.scheme.clone());
 
@@ -251,14 +251,13 @@ impl<L: Loader> Compiler<L> {
             }
 
             macro_rules! handle_constant {
-                ($id:expr, $decl:expr, $extract_value:expr) => {{
+                ($id:expr, $decl:ident, $value:expr) => {{
                     let id = $id;
-                    let decl = $decl;
+                    let value = $value;
 
                     let scheme = typechecker.constants.get(&id).unwrap().clone();
 
-                    let mut value =
-                        typechecker.typecheck_expr(&$extract_value(decl.value.value), file);
+                    let mut value = typechecker.typecheck_expr(&value, file);
 
                     {
                         let ty = match &scheme {
@@ -268,15 +267,14 @@ impl<L: Loader> Compiler<L> {
 
                         let value_ty = value.scheme.instantiate(&mut typechecker.ctx);
 
-                        match typechecker.ctx.unify(value_ty, ty) {
-                            Ok(resolved_value_ty) => value.merge(resolved_value_ty),
-                            Err(errors) => typechecker.report_type_error(value.span, errors, file),
-                        };
+                        if let Err(errors) = typechecker.ctx.unify(value_ty, ty) {
+                            typechecker.report_type_error(value.span, errors, file);
+                        }
                     }
 
                     value.scheme = scheme;
 
-                    let value = match value.finalize(&typechecker.ctx) {
+                    let value = match typechecker.finalize(value) {
                         Ok(value) => value,
                         Err((span, error)) => {
                             typechecker.report_finalize_error(span, error, file);
@@ -292,8 +290,8 @@ impl<L: Loader> Compiler<L> {
                         id,
                         Declaration {
                             file: file.path,
-                            name: decl.name,
-                            span: decl.span,
+                            name: $decl.name,
+                            span: $decl.span,
                             value,
                         },
                     );
@@ -302,43 +300,13 @@ impl<L: Loader> Compiler<L> {
 
             for (id, decl) in file.declarations.constants.clone() {
                 if let lower::Declaration::Local(decl) | lower::Declaration::Builtin(decl) = decl {
-                    handle_constant!(id, decl, |value: Rc<RefCell<Option<_>>>| value
-                        .take()
-                        .unwrap());
+                    handle_constant!(id, decl, decl.value.value.take().unwrap());
                 }
             }
 
             for (id, decl) in file.declarations.instances.clone() {
                 if let lower::Declaration::Local(decl) | lower::Declaration::Builtin(decl) = decl {
-                    handle_constant!(id, decl, |value| value);
-                }
-            }
-
-            for (id, decl) in file.declarations.variables.clone() {
-                if let lower::Declaration::Local(decl) = decl {
-                    let scheme = match typechecker
-                        .variables
-                        .get(&id)
-                        .unwrap()
-                        .clone()
-                        .finalize(&typechecker.ctx)
-                    {
-                        Ok(scheme) => scheme,
-                        Err(error) => {
-                            typechecker.report_finalize_error(decl.span, error, file);
-                            continue;
-                        }
-                    };
-
-                    declarations.variables.insert(
-                        id,
-                        Declaration {
-                            file: file.path,
-                            name: decl.name,
-                            span: decl.span,
-                            value: scheme,
-                        },
-                    );
+                    handle_constant!(id, decl, decl.value.value);
                 }
             }
         }
@@ -353,18 +321,37 @@ impl<L: Loader> Compiler<L> {
             .map(|(file, expr)| {
                 expr.clone()
                     .into_iter()
-                    .map(|expr| expr.finalize(&typechecker.ctx))
+                    .map(|expr| {
+                        let expr = typechecker.finalize(expr)?;
+
+                        if let ExpressionKind::Initialize(id, expr) = &expr.kind {
+                            let decl = file.declarations.variables.get(id).unwrap();
+
+                            declarations.variables.insert(
+                                *id,
+                                Declaration {
+                                    file: file.path,
+                                    name: decl.name(),
+                                    span: decl.span(),
+                                    value: expr.scheme.clone(),
+                                },
+                            );
+                        }
+
+                        Ok(expr)
+                    })
                     .collect::<Result<Vec<_>, _>>()
                     .map_err(|(span, error)| (span, error, file as &_))
             })
             .collect::<Result<Vec<_>, _>>()
-            .map(|body| body.into_iter().flatten().collect())
+            .map(|body| body.into_iter().flatten().collect::<Vec<_>>())
         {
             Ok(body) => {
                 let program = Program {
                     well_typed: typechecker.well_typed,
                     body,
                     declarations,
+                    trait_types: typechecker.trait_types.1,
                     top_level,
                 };
 
@@ -414,6 +401,10 @@ struct Typechecker<'a, L: Loader> {
     constants: HashMap<ConstantId, UnresolvedScheme>,
     structures: HashMap<TypeId, HashMap<InternedString, (usize, UnresolvedType)>>,
     traits: HashMap<TraitId, UnresolvedScheme>,
+    trait_types: (
+        HashMap<TraitId, TypeVariable>,
+        HashMap<TypeVariable, TraitId>,
+    ),
     // TODO: enumerations
     function_inputs: Vec<TypeVariable>,
     compiler: &'a mut Compiler<L>,
@@ -432,9 +423,10 @@ impl<'a, L: Loader> Typechecker<'a, L> {
             span: expr.span,
             scheme: UnresolvedScheme::Type(UnresolvedType::Bottom(true)),
             kind: UnresolvedExpressionKind::Error,
+            pending_instance: None,
         };
 
-        let (scheme, kind) = match &expr.kind {
+        let (scheme, kind, pending_instance) = match &expr.kind {
             lower::ExpressionKind::Error => {
                 self.well_typed = false; // signal that the program contains errors
                 return error();
@@ -442,10 +434,12 @@ impl<'a, L: Loader> Typechecker<'a, L> {
             lower::ExpressionKind::Unit => (
                 UnresolvedScheme::Type(UnresolvedType::Builtin(BuiltinType::Unit)),
                 UnresolvedExpressionKind::Marker,
+                None,
             ),
             lower::ExpressionKind::Marker(ty) => (
                 UnresolvedScheme::Type(self.convert_type_id(*ty, file)),
                 UnresolvedExpressionKind::Marker,
+                None,
             ),
             lower::ExpressionKind::Constant(id) => {
                 let scheme = self
@@ -456,12 +450,19 @@ impl<'a, L: Loader> Typechecker<'a, L> {
 
                 self.used_constants.insert(*id);
 
-                (scheme, UnresolvedExpressionKind::Constant(*id))
+                (scheme, UnresolvedExpressionKind::Constant(*id), None)
             }
-            lower::ExpressionKind::Trait(id) => (
-                UnresolvedScheme::Type(UnresolvedType::Trait(*id)),
-                UnresolvedExpressionKind::Trait(*id),
-            ),
+            lower::ExpressionKind::Trait(id) => {
+                let var = self.ctx.new_variable();
+                self.trait_types.0.insert(*id, var);
+                self.trait_types.1.insert(var, *id);
+
+                (
+                    UnresolvedScheme::Type(UnresolvedType::Variable(var)),
+                    UnresolvedExpressionKind::Trait(*id),
+                    None,
+                )
+            }
             lower::ExpressionKind::Variable(id) => {
                 let ty = self
                     .variables
@@ -471,15 +472,17 @@ impl<'a, L: Loader> Typechecker<'a, L> {
 
                 self.used_variables.insert(*id);
 
-                (ty, UnresolvedExpressionKind::Variable(*id))
+                (ty, UnresolvedExpressionKind::Variable(*id), None)
             }
             lower::ExpressionKind::Text(text) => (
                 UnresolvedScheme::Type(UnresolvedType::Builtin(BuiltinType::Text)),
                 UnresolvedExpressionKind::Text(*text),
+                None,
             ),
             lower::ExpressionKind::Number(number) => (
                 UnresolvedScheme::Type(UnresolvedType::Builtin(BuiltinType::Number)),
                 UnresolvedExpressionKind::Number(*number),
+                None,
             ),
             lower::ExpressionKind::Block(statements, declarations) => {
                 let (ty, statements) = self.typecheck_block(statements, file);
@@ -487,37 +490,30 @@ impl<'a, L: Loader> Typechecker<'a, L> {
                 (
                     ty,
                     UnresolvedExpressionKind::Block(statements, declarations.clone()),
+                    None,
                 )
             }
             lower::ExpressionKind::Call(lhs, input) => {
-                let mut function = self.typecheck_expr(lhs, file);
-                let mut input = self.typecheck_expr(input, file);
+                let function = self.typecheck_expr(lhs, file);
+                let input = self.typecheck_expr(input, file);
 
                 let output_ty = UnresolvedType::Variable(self.ctx.new_variable());
 
                 let function_ty = function.scheme.instantiate(&mut self.ctx);
                 let input_ty = input.scheme.instantiate(&mut self.ctx);
 
-                let resolved_func_ty = match self.ctx.unify(
+                if let Err(errors) = self.ctx.unify(
                     function_ty,
                     UnresolvedType::Function(Box::new(input_ty), Box::new(output_ty.clone())),
                 ) {
-                    Ok(ty) => ty,
-                    Err(errors) => {
-                        self.report_type_error(function.span, errors, file);
-                        return error();
-                    }
-                };
-
-                function.merge(resolved_func_ty.clone());
-
-                if let ResolvedTypeKind::Function(resolved_input_ty, _) = resolved_func_ty.kind {
-                    input.merge(*resolved_input_ty);
-                };
+                    self.report_type_error(function.span, errors, file);
+                    return error();
+                }
 
                 (
                     UnresolvedScheme::Type(output_ty),
                     UnresolvedExpressionKind::Call(Box::new(function), Box::new(input)),
+                    None,
                 )
             }
             lower::ExpressionKind::Function(body, captures) => {
@@ -539,6 +535,7 @@ impl<'a, L: Loader> Typechecker<'a, L> {
                         Box::new(body),
                         captures.iter().map(|(var, _)| *var).collect(),
                     ),
+                    None,
                 )
             }
             lower::ExpressionKind::When(_, _) => todo!(),
@@ -551,25 +548,21 @@ impl<'a, L: Loader> Typechecker<'a, L> {
                 (
                     UnresolvedScheme::Type(UnresolvedType::Variable(self.ctx.new_variable())),
                     UnresolvedExpressionKind::External(*namespace, *identifier, inputs),
+                    None,
                 )
             }
             lower::ExpressionKind::Annotate(expr, ty) => {
                 let ty = self.convert_type_annotation(ty);
-                let mut expr = self.typecheck_expr(expr, file);
+                let expr = self.typecheck_expr(expr, file);
 
                 let expr_ty = expr.scheme.instantiate(&mut self.ctx);
 
-                let resolved_expr_ty = match self.ctx.unify(expr_ty, ty.clone()) {
-                    Ok(ty) => ty,
-                    Err(errors) => {
-                        self.report_type_error(expr.span, errors, file);
-                        return error();
-                    }
-                };
+                if let Err(errors) = self.ctx.unify(expr_ty, ty.clone()) {
+                    self.report_type_error(expr.span, errors, file);
+                    return error();
+                }
 
-                expr.merge(resolved_expr_ty);
-
-                (UnresolvedScheme::Type(ty), expr.kind)
+                (UnresolvedScheme::Type(ty), expr.kind, None)
             }
             lower::ExpressionKind::Initialize(id, value) => {
                 let value = self.typecheck_expr(value, file);
@@ -578,6 +571,7 @@ impl<'a, L: Loader> Typechecker<'a, L> {
                 (
                     UnresolvedScheme::Type(UnresolvedType::Builtin(BuiltinType::Unit)),
                     UnresolvedExpressionKind::Initialize(*id, Box::new(value)),
+                    None,
                 )
             }
             lower::ExpressionKind::FunctionInput => {
@@ -587,6 +581,7 @@ impl<'a, L: Loader> Typechecker<'a, L> {
                 (
                     UnresolvedScheme::Type(UnresolvedType::Variable(var)),
                     UnresolvedExpressionKind::FunctionInput,
+                    None,
                 )
             }
             lower::ExpressionKind::Instantiate(ty, fields) => {
@@ -617,18 +612,13 @@ impl<'a, L: Loader> Typechecker<'a, L> {
                         }
                     };
 
-                    let mut value = self.typecheck_expr(expr, file);
+                    let value = self.typecheck_expr(expr, file);
                     let value_ty = value.scheme.instantiate(&mut self.ctx);
 
-                    let resolved_value_ty = match self.ctx.unify(value_ty, ty) {
-                        Ok(ty) => ty,
-                        Err(errors) => {
-                            self.report_type_error(expr.span, errors, file);
-                            return error();
-                        }
-                    };
-
-                    value.merge(resolved_value_ty);
+                    if let Err(errors) = self.ctx.unify(value_ty, ty) {
+                        self.report_type_error(expr.span, errors, file);
+                        return error();
+                    }
 
                     unpopulated_fields[index] = Some(value);
                 }
@@ -688,6 +678,7 @@ impl<'a, L: Loader> Typechecker<'a, L> {
                 (
                     UnresolvedScheme::Type(UnresolvedType::Named(*ty)), // TODO: parameters
                     UnresolvedExpressionKind::Structure(fields),
+                    None,
                 )
             }
         };
@@ -696,6 +687,7 @@ impl<'a, L: Loader> Typechecker<'a, L> {
             span: expr.span,
             scheme,
             kind,
+            pending_instance,
         }
     }
 
@@ -732,6 +724,78 @@ impl<'a, L: Loader> Typechecker<'a, L> {
             }
             lower::Declaration::Dependency(_) => UnresolvedType::Named(id), // TODO: parameters
         }
+    }
+
+    fn finalize(
+        &mut self,
+        expr: UnresolvedExpression,
+    ) -> Result<Expression, (Span, FinalizeError)> {
+        Ok(Expression {
+            span: expr.span,
+            kind: match expr.kind {
+                UnresolvedExpressionKind::Error => ExpressionKind::Error,
+                UnresolvedExpressionKind::Marker => ExpressionKind::Marker,
+                UnresolvedExpressionKind::Constant(constant) => ExpressionKind::Constant(constant),
+                UnresolvedExpressionKind::Variable(var) => ExpressionKind::Variable(var),
+                UnresolvedExpressionKind::Text(text) => ExpressionKind::Text(text),
+                UnresolvedExpressionKind::Number(number) => ExpressionKind::Number(number),
+                UnresolvedExpressionKind::Block(statements, scope) => ExpressionKind::Block(
+                    statements
+                        .into_iter()
+                        .map(|expr| self.finalize(expr))
+                        .collect::<Result<_, _>>()?,
+                    scope,
+                ),
+                UnresolvedExpressionKind::Call(func, input) => ExpressionKind::Call(
+                    Box::new(self.finalize(*func)?),
+                    Box::new(self.finalize(*input)?),
+                ),
+                UnresolvedExpressionKind::Member(expr, index) => {
+                    ExpressionKind::Member(Box::new(self.finalize(*expr)?), index)
+                }
+                UnresolvedExpressionKind::Function(body, captures) => {
+                    ExpressionKind::Function(Box::new(self.finalize(*body)?), captures)
+                }
+                UnresolvedExpressionKind::When(_, _) => todo!(),
+                UnresolvedExpressionKind::External(namespace, identifier, inputs) => {
+                    ExpressionKind::External(
+                        namespace,
+                        identifier,
+                        inputs
+                            .into_iter()
+                            .map(|expr| self.finalize(expr))
+                            .collect::<Result<_, _>>()?,
+                    )
+                }
+                UnresolvedExpressionKind::Initialize(variable, value) => {
+                    ExpressionKind::Initialize(variable, Box::new(self.finalize(*value)?))
+                }
+                UnresolvedExpressionKind::Structure(fields) => ExpressionKind::Structure(
+                    fields
+                        .into_iter()
+                        .map(|expr| self.finalize(expr))
+                        .collect::<Result<_, _>>()?,
+                ),
+                UnresolvedExpressionKind::FunctionInput => ExpressionKind::FunctionInput,
+                UnresolvedExpressionKind::Trait(id) => {
+                    let var = *self.trait_types.0.get(&id).unwrap();
+
+                    let mut ty = UnresolvedType::Variable(var);
+                    ty.apply(&self.ctx);
+
+                    match self.ctx.instance_for(id, ty) {
+                        Ok(instance) => ExpressionKind::Constant(instance),
+                        Err(error) => return Err((expr.span, error)),
+                    }
+                }
+            },
+            // the scheme must be resolved after the kind because the kind may
+            // be a trait, whose type is unified with the original type variable
+            scheme: expr
+                .scheme
+                .finalize(&self.ctx)
+                .map_err(|error| (expr.span, error))?,
+        })
     }
 
     fn convert_type_annotation(&mut self, annotation: &lower::TypeAnnotation) -> UnresolvedType {
@@ -773,15 +837,12 @@ impl<'a, L: Loader> Typechecker<'a, L> {
             UnresolvedScheme::ForAll(UnresolvedForAll { params, ty })
         }
     }
+}
 
-    fn report_type_error(&mut self, span: Span, error: UnificationError, file: &lower::File) {
-        self.well_typed = false;
-
-        if let UnificationError::Mismatch(actual, expected) = &error {
-            if actual.contains_error() || expected.contains_error() {
-                return;
-            }
-        }
+macro_rules! format_support {
+    ($typechecker:expr, $file:expr) => {{
+        let typechecker = $typechecker;
+        let file = $file;
 
         let type_names = |name| {
             file.declarations
@@ -801,14 +862,29 @@ impl<'a, L: Loader> Typechecker<'a, L> {
                 .to_string()
         };
 
-        let trait_names = |tr| {
-            file.declarations
-                .traits
-                .get(&tr)
-                .unwrap()
-                .name()
-                .to_string()
+        let trait_names = |var| {
+            typechecker
+                .trait_types
+                .1
+                .get(&var)
+                .map(|tr| file.declarations.traits.get(tr).unwrap().name().to_string())
         };
+
+        (type_names, param_names, trait_names)
+    }};
+}
+
+impl<'a, L: Loader> Typechecker<'a, L> {
+    fn report_type_error(&mut self, span: Span, error: UnificationError, file: &lower::File) {
+        self.well_typed = false;
+
+        if let UnificationError::Mismatch(actual, expected) = &error {
+            if actual.contains_error() || expected.contains_error() {
+                return;
+            }
+        }
+
+        let (type_names, param_names, trait_names) = format_support!(&self, file);
 
         let diagnostic = match error {
             UnificationError::Recursive(_) => Diagnostic::error(
@@ -826,17 +902,6 @@ impl<'a, L: Loader> Typechecker<'a, L> {
                     ),
                 )],
             ),
-            UnificationError::MissingInstance(tr, ty) => Diagnostic::error(
-                "missing instance",
-                vec![Note::primary(
-                    span,
-                    format!(
-                        "could not find instance of `{}` for type `{}`",
-                        trait_names(tr),
-                        format_type(&ty, type_names, param_names, trait_names)
-                    ),
-                )],
-            ),
         };
 
         self.compiler.diagnostics.add(diagnostic);
@@ -845,93 +910,27 @@ impl<'a, L: Loader> Typechecker<'a, L> {
     fn report_finalize_error(&mut self, span: Span, error: FinalizeError, file: &lower::File) {
         self.well_typed = false;
 
+        let (type_names, param_names, trait_names) = format_support!(&self, file);
+
         let diagnostic = match error {
             FinalizeError::UnknownType => Diagnostic::error(
                 "could not determine the type of this expression",
                 vec![Note::primary(span, "try annotating the type with '::'")],
             ),
-            FinalizeError::UnresolvedTrait(tr) => Diagnostic::error(
-                format!(
-                    "could not find a suitable instance for `{}`",
-                    file.declarations.traits.get(&tr).unwrap().name()
-                ),
+            FinalizeError::MissingInstance(tr, ty) => Diagnostic::error(
+                "missing instance",
                 vec![Note::primary(
                     span,
-                    "try annotating the type this trait should be with '::'",
+                    format!(
+                        "could not find instance of `{}` for type `{}`",
+                        file.declarations.traits.get(&tr).unwrap().name(),
+                        format_type(&ty, type_names, param_names, trait_names)
+                    ),
                 )],
             ),
         };
 
         self.compiler.diagnostics.add(diagnostic);
-    }
-}
-
-impl UnresolvedExpression {
-    fn merge(&mut self, ty: ResolvedType) {
-        if let Some(instance) = ty.instance {
-            self.kind = UnresolvedExpressionKind::Constant(instance);
-        }
-
-        self.scheme = UnresolvedScheme::Type(ty.into());
-    }
-
-    fn finalize(self, ctx: &Context) -> Result<Expression, (Span, FinalizeError)> {
-        Ok(Expression {
-            span: self.span,
-            scheme: self
-                .scheme
-                .finalize(ctx)
-                .map_err(|error| (self.span, error))?,
-            kind: match self.kind {
-                UnresolvedExpressionKind::Error => ExpressionKind::Error,
-                UnresolvedExpressionKind::Marker => ExpressionKind::Marker,
-                UnresolvedExpressionKind::Constant(constant) => ExpressionKind::Constant(constant),
-                UnresolvedExpressionKind::Variable(var) => ExpressionKind::Variable(var),
-                UnresolvedExpressionKind::Text(text) => ExpressionKind::Text(text),
-                UnresolvedExpressionKind::Number(number) => ExpressionKind::Number(number),
-                UnresolvedExpressionKind::Block(statements, scope) => ExpressionKind::Block(
-                    statements
-                        .into_iter()
-                        .map(|expr| expr.finalize(ctx))
-                        .collect::<Result<_, _>>()?,
-                    scope,
-                ),
-                UnresolvedExpressionKind::Call(func, input) => ExpressionKind::Call(
-                    Box::new(func.finalize(ctx)?),
-                    Box::new(input.finalize(ctx)?),
-                ),
-                UnresolvedExpressionKind::Member(expr, index) => {
-                    ExpressionKind::Member(Box::new(expr.finalize(ctx)?), index)
-                }
-                UnresolvedExpressionKind::Function(body, captures) => {
-                    ExpressionKind::Function(Box::new(body.finalize(ctx)?), captures)
-                }
-                UnresolvedExpressionKind::When(_, _) => todo!(),
-                UnresolvedExpressionKind::External(namespace, identifier, inputs) => {
-                    ExpressionKind::External(
-                        namespace,
-                        identifier,
-                        inputs
-                            .into_iter()
-                            .map(|expr| expr.finalize(ctx))
-                            .collect::<Result<_, _>>()?,
-                    )
-                }
-                UnresolvedExpressionKind::Initialize(variable, value) => {
-                    ExpressionKind::Initialize(variable, Box::new(value.finalize(ctx)?))
-                }
-                UnresolvedExpressionKind::Structure(fields) => ExpressionKind::Structure(
-                    fields
-                        .into_iter()
-                        .map(|expr| expr.finalize(ctx))
-                        .collect::<Result<_, _>>()?,
-                ),
-                UnresolvedExpressionKind::FunctionInput => ExpressionKind::FunctionInput,
-                UnresolvedExpressionKind::Trait(id) => {
-                    return Err((self.span, FinalizeError::UnresolvedTrait(id)));
-                }
-            },
-        })
     }
 }
 
@@ -1019,7 +1018,7 @@ pub fn format_type_scheme(
     ty: &UnresolvedScheme,
     type_names: impl Fn(TypeId) -> String,
     param_names: impl Fn(TypeParameterId) -> String,
-    trait_names: impl Fn(TraitId) -> String,
+    trait_names: impl Fn(TypeVariable) -> Option<String>,
 ) -> String {
     match ty {
         UnresolvedScheme::Type(ty) => format_type(ty, type_names, param_names, trait_names),
@@ -1045,7 +1044,7 @@ pub fn format_type(
     ty: &UnresolvedType,
     type_names: impl Fn(TypeId) -> String,
     param_names: impl Fn(TypeParameterId) -> String,
-    trait_names: impl Fn(TraitId) -> String,
+    trait_names: impl Fn(TypeVariable) -> Option<String>,
 ) -> String {
     format_type_with(ty, type_names, param_names, trait_names)
 }
@@ -1054,20 +1053,19 @@ fn format_type_with(
     ty: &UnresolvedType,
     type_names: impl Fn(TypeId) -> String,
     param_names: impl Fn(TypeParameterId) -> String,
-    trait_names: impl Fn(TraitId) -> String,
+    trait_names: impl Fn(TypeVariable) -> Option<String>,
 ) -> String {
     fn format_type(
         ty: &UnresolvedType,
         type_names: &impl Fn(TypeId) -> String,
         param_names: &impl Fn(TypeParameterId) -> String,
-        trait_names: &impl Fn(TraitId) -> String,
+        trait_names: &impl Fn(TypeVariable) -> Option<String>,
         is_top_level: bool,
         is_return: bool,
     ) -> String {
         match ty {
-            UnresolvedType::Variable(_) => String::from("_"),
+            UnresolvedType::Variable(var) => trait_names(*var).unwrap_or_else(|| String::from("_")),
             UnresolvedType::Parameter(param) => param_names(*param),
-            UnresolvedType::Trait(tr) => trait_names(*tr),
             UnresolvedType::Bottom(_) => String::from("!"),
             UnresolvedType::Named(id) => {
                 let name = type_names(*id);

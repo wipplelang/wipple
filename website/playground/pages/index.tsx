@@ -2,7 +2,6 @@ import theme from "../helpers/theme.json";
 import { useEffect, useRef, useState } from "react";
 import Editor, { Monaco, useMonaco } from "@monaco-editor/react";
 import type monaco from "monaco-editor";
-import Head from "next/head";
 import { useRefState } from "../helpers/useRefState";
 
 interface RunResult {
@@ -299,15 +298,6 @@ const Playground = () => {
 
     return (
         <>
-            <Head>
-                <link rel="preconnect" href="https://fonts.googleapis.com" />
-                <link rel="preconnect" href="https://fonts.gstatic.com" />
-                <link
-                    href="https://fonts.googleapis.com/css2?family=JetBrains+Mono&display=swap"
-                    rel="stylesheet"
-                />
-            </Head>
-
             <div className="bg-gray-50" style={{ height: windowHeight }}>
                 <div className="flex items-center justify-between p-4 pb-0" ref={header}>
                     <a href="https://wipple.gramer.dev">
