@@ -1,0 +1,58 @@
+# Functions
+
+Wipple is what's called a **functional** programming language. That means functions are used everywhere in Wipple code!
+
+You probably remember from math that a function _f(x) = 3x_ takes an input (_x_) and returns an output (_3x_). It works the same way in Wipple! You just write it a little differently:
+
+```wipple
+f : x -> 3 * x
+```
+
+The arrow is pronounced _"becomes"_, so the code above is read as _"f is when x becomes 3 times x"_. The process of _x_ becoming 3 times _x_ is a function!
+
+Let's create a function to add two numbers, `a` and `b`:
+
+```wipple
+add : a -> b -> a + b
+```
+
+Notice that functions only accept a single input. If you want multiple inputs, you need multiple functions (arrows)! The above code can be rewritten like so:
+
+```wipple
+add : a -> (b -> a + b)
+```
+
+Now how do we use functions? It's simple — just write the name of the function, followed by its inputs:
+
+```wipple
+add 1 2
+```
+
+And of course, we need to `show` the answer! (Guess what, `show` is a function too!)
+
+```wipple
+show (add 1 2)
+```
+
+If you're familiar with programming already, you might ask what happens if we only provide a single input. In Wipple, you just get back the inner function!
+
+```wipple
+add 1
+```
+
+Here, `a` is 1. What's `b`? We give `b` a value next:
+
+```wipple
+(add 1) 2
+```
+
+Notice this is the same code as before — `add 1 2`! Now for the super cool part — we can give `add 1` a name, and use it as its own function:
+
+```wipple
+increment : add 1
+show (increment 42)
+```
+
+You should see `43` on the screen!
+
+If you're confused, try hovering over parts of the program, and the playground will tell you what kind of code you're hovering over. For example, hovering over `increment` will show `increment :: Number -> Number`, indicating that it accepts a number and returns a number. Hovering will be explained in more detail in the next section!

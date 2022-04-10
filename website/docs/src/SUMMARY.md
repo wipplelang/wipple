@@ -6,6 +6,7 @@
     -   [Variables](learn/02-variables.md)
     -   [Text](learn/03-text.md)
     -   [So how does Wipple actually work?](learn/04-so-how-does-wipple-actually-work.md)
+    -   [Functions](learn/05-functions.md)
 -   [Quick Start](quick-start/index.md)
     -   [For JavaScript developers](quick-start/01-for-javascript-developers.md)
 -   [Language Reference](reference/index.md)

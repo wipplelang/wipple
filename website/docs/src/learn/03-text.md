@@ -8,4 +8,4 @@ show "Hello, world!"
 
 Notice how `"Hello, world!"` is in a different color than `show`. This indicates that we're dealing with text instead of variables or calculations. Just keep in mind that text is always written between quotation marks! `a` means the variable `a`, while `"a"` means the letter a.
 
-Try `show`-ing your name in the console!
+Try `show`-ing your name on the screen!

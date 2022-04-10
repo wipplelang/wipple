@@ -12,13 +12,13 @@ Alright, here's our first example:
 
 ## Computers do exactly what you tell them to do
 
-The problem is that you told the computer to add 2 and 2 together, but you didn't tell it what to do with the result! So the answer (`4`) is just discarded. Remember that computers always do exactly what you tell them to do, and never anything you don't. To fix this, we can add `show` to the front of our calculation, which instructs the computer to display it in the console:
+The problem is that you told the computer to add 2 and 2 together, but you didn't tell it what to do with the result! So the answer (`4`) is just discarded. Remember that computers always do exactly what you tell them to do, and never anything you don't. To fix this, we can add `show` to the front of our calculation, which instructs the computer to display it on the screen:
 
 ```wipple
 show (2 + 2)
 ```
 
-Hooray, now `4` appears in the console! Try changing the numbers and experiment with other symbols, and see what happens.
+Hooray, now `4` appears on the screen! Try changing the numbers and experiment with other symbols, and see what happens.
 
 ## Some more examples
 
