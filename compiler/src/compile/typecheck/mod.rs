@@ -324,19 +324,21 @@ impl<L: Loader> Compiler<L> {
                     .map(|expr| {
                         let expr = typechecker.finalize(expr)?;
 
-                        if let ExpressionKind::Initialize(id, expr) = &expr.kind {
-                            let decl = file.declarations.variables.get(id).unwrap();
+                        expr.traverse(|expr| {
+                            if let ExpressionKind::Initialize(id, expr) = &expr.kind {
+                                let decl = file.declarations.variables.get(id).unwrap();
 
-                            declarations.variables.insert(
-                                *id,
-                                Declaration {
-                                    file: file.path,
-                                    name: decl.name(),
-                                    span: decl.span(),
-                                    value: expr.scheme.clone(),
-                                },
-                            );
-                        }
+                                declarations.variables.insert(
+                                    *id,
+                                    Declaration {
+                                        file: file.path,
+                                        name: decl.name(),
+                                        span: decl.span(),
+                                        value: expr.scheme.clone(),
+                                    },
+                                );
+                            }
+                        });
 
                         Ok(expr)
                     })

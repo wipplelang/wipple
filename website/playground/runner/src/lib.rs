@@ -145,9 +145,7 @@ fn annotations(program: &mut wipple_compiler::compile::Program) -> Vec<Annotatio
             let ty = format_ty!(&expr.scheme.clone().into());
 
             let name = match expr.kind {
-                ExpressionKind::Variable(id) => {
-                    declarations.variables.get(&id).map(|decl| decl.name)
-                }
+                ExpressionKind::Variable(id) => Some(declarations.variables.get(&id).unwrap().name),
                 ExpressionKind::Constant(id) => Some(declarations.constants.get(&id).unwrap().name),
                 _ => None,
             };
