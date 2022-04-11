@@ -9,8 +9,26 @@ use std::{collections::HashMap, sync::Arc};
 
 type FileGraph = StableGraph<parser::File, ()>;
 
+pub enum Progress {
+    CollectingFiles,
+    Lowering {
+        path: FilePath,
+        current: usize,
+        total: usize,
+    },
+    Typechecking(compile::typecheck::Progress),
+}
+
 impl<L: Loader> Compiler<L> {
     pub fn build(&mut self, path: FilePath) -> Option<Program> {
+        self.build_with_progress(path, |_| {})
+    }
+
+    pub fn build_with_progress(
+        &mut self,
+        path: FilePath,
+        mut progress: impl FnMut(Progress),
+    ) -> Option<Program> {
         #[derive(Default)]
         struct Info {
             graph: FileGraph,
@@ -74,6 +92,8 @@ impl<L: Loader> Compiler<L> {
             })
         }
 
+        progress(Progress::CollectingFiles);
+
         load(self, path, None, &mut info)?;
 
         let files = match toposort(&info.graph, None) {
@@ -106,9 +126,16 @@ impl<L: Loader> Compiler<L> {
 
         let mut lowered_files = Vec::new();
         let mut lowered_files_by_path = HashMap::new();
-        let last_index = files.len() - 1;
+        let total_files = files.len();
+        let last_index = total_files - 1;
         let mut success = true;
         for (index, (file, dependencies)) in files.into_iter().rev().enumerate() {
+            progress(Progress::Lowering {
+                path: file.path,
+                current: index + 1,
+                total: total_files,
+            });
+
             let dependencies = dependencies
                 .into_iter()
                 .map(|path| {
@@ -144,6 +171,10 @@ impl<L: Loader> Compiler<L> {
             lowered_files.push(file);
         }
 
-        success.then(|| self.typecheck(lowered_files)).flatten()
+        success
+            .then(|| {
+                self.typecheck_with_progress(lowered_files, |p| progress(Progress::Typechecking(p)))
+            })
+            .flatten()
     }
 }

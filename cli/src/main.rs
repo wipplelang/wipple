@@ -117,6 +117,30 @@ fn build(options: Options) -> wipple_compiler::compile::Program {
         }
     }
 
+    let progress_bar =
+        indicatif::ProgressBar::new(0).with_style(indicatif::ProgressStyle::default_spinner());
+
+    let progress = |progress| {
+        use wipple_compiler::{build, compile::typecheck};
+
+        match progress {
+            build::Progress::CollectingFiles => progress_bar.set_message("Collecting files"),
+            build::Progress::Lowering {
+                path,
+                current,
+                total,
+            } => progress_bar.set_message(format!("({current}/{total}) Compiling {path}")),
+            build::Progress::Typechecking(progress) => match progress {
+                typecheck::Progress::Typechecking {
+                    path,
+                    current,
+                    total,
+                } => progress_bar.set_message(format!("({current}/{total}) Typechecking {path}")),
+                typecheck::Progress::Finalizing => progress_bar.set_message("Finalizing"),
+            },
+        }
+    };
+
     let loader = Loader {
         base: env::current_dir().unwrap(),
     };
@@ -124,9 +148,11 @@ fn build(options: Options) -> wipple_compiler::compile::Program {
     let mut compiler = wipple_compiler::Compiler::new(loader, options.compiler_options);
 
     let path = wipple_compiler::FilePath::Path(options.path.into());
-    let program = compiler.build(path);
+    let program = compiler.build_with_progress(path, progress);
     let diagnostics = compiler.finish();
     let success = !diagnostics.contains_errors();
+
+    progress_bar.finish_and_clear();
 
     let (codemap, _, diagnostics) = diagnostics.into_console_friendly(
         #[cfg(debug_assertions)]

@@ -514,7 +514,7 @@ impl<L: Loader> Compiler<L> {
                     id,
                     Declaration::Local(DeclarationKind {
                         name,
-                        span,
+                        span: statement.span,
                         value: ty,
                     }),
                 );
@@ -552,7 +552,7 @@ impl<L: Loader> Compiler<L> {
                     id,
                     Declaration::Local(DeclarationKind {
                         name,
-                        span,
+                        span: statement.span,
                         value: tr,
                     }),
                 );
@@ -591,7 +591,7 @@ impl<L: Loader> Compiler<L> {
                     id,
                     Declaration::Local(DeclarationKind {
                         name,
-                        span,
+                        span: statement.span,
                         value: constant,
                     }),
                 );

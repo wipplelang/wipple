@@ -28,14 +28,7 @@ pub struct UnresolvedForAll {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum Scheme {
-    Type(Type),
-    ForAll(ForAll),
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Type {
-    Parameter(TypeParameterId),
     Named(TypeId),
     Function(Box<Type>, Box<Type>),
     Builtin(BuiltinType),
@@ -48,22 +41,9 @@ pub struct ForAll {
     pub ty: Type,
 }
 
-impl From<Scheme> for UnresolvedScheme {
-    fn from(scheme: Scheme) -> Self {
-        match scheme {
-            Scheme::Type(ty) => UnresolvedScheme::Type(ty.into()),
-            Scheme::ForAll(forall) => UnresolvedScheme::ForAll(UnresolvedForAll {
-                params: forall.params,
-                ty: forall.ty.into(),
-            }),
-        }
-    }
-}
-
 impl From<Type> for UnresolvedType {
     fn from(ty: Type) -> Self {
         match ty {
-            Type::Parameter(param) => UnresolvedType::Parameter(param),
             Type::Named(name) => UnresolvedType::Named(name),
             Type::Function(input, output) => {
                 UnresolvedType::Function(Box::new((*input).into()), Box::new((*output).into()))
@@ -137,6 +117,7 @@ impl Context {
                 if ty.contains(&var) {
                     Err(UnificationError::Recursive(var))
                 } else {
+                    // eprintln!("unifying {:?} with {:?}", var, ty);
                     self.substitutions.insert(var, ty);
                     Ok(())
                 }
@@ -210,7 +191,8 @@ impl Context {
         for instance in instances {
             let mut ctx = self.clone();
 
-            let instance_ty = instance.scheme.clone().instantiate(&mut ctx);
+            let scheme = instance.scheme.clone();
+            let instance_ty = scheme.instantiate(&mut ctx);
 
             if ctx.unify(ty.clone(), instance_ty).is_ok() {
                 suitable_instances.push((ctx, instance.constant));
@@ -227,34 +209,51 @@ impl Context {
             _ => Err(FinalizeError::UnknownType),
         }
     }
+
+    pub fn create_instantiation(
+        &mut self,
+        scheme: &UnresolvedScheme,
+    ) -> HashMap<TypeParameterId, TypeVariable> {
+        let mut substitutions = HashMap::new();
+
+        if let UnresolvedScheme::ForAll(forall) = scheme {
+            for param in &forall.params {
+                substitutions.insert(*param, self.new_variable());
+            }
+        }
+
+        substitutions
+    }
 }
 
 impl UnresolvedScheme {
     pub fn apply(&mut self, ctx: &Context) {
         match self {
             UnresolvedScheme::Type(ty) => ty.apply(ctx),
-            UnresolvedScheme::ForAll(forall) => forall.apply(ctx),
+            UnresolvedScheme::ForAll(forall) => forall.ty.apply(ctx),
         }
     }
 
     pub fn instantiate(&self, ctx: &mut Context) -> UnresolvedType {
+        let substitutions = ctx.create_instantiation(self);
+        self.instantiate_with(&substitutions)
+    }
+
+    pub fn instantiate_with(
+        &self,
+        substitutions: &HashMap<TypeParameterId, TypeVariable>,
+    ) -> UnresolvedType {
         match self {
             UnresolvedScheme::Type(ty) => ty.clone(),
             UnresolvedScheme::ForAll(forall) => {
-                let mut substitutions = HashMap::new();
-
-                for param in &forall.params {
-                    substitutions.insert(param, UnresolvedType::Variable(ctx.new_variable()));
-                }
-
                 fn apply(
                     ty: &mut UnresolvedType,
-                    substitutions: &HashMap<&TypeParameterId, UnresolvedType>,
+                    substitutions: &HashMap<TypeParameterId, TypeVariable>,
                 ) {
                     match ty {
                         UnresolvedType::Parameter(param) => {
                             if let Some(substitution) = substitutions.get(param) {
-                                *ty = substitution.clone();
+                                *ty = UnresolvedType::Variable(*substitution);
                             }
                         }
                         UnresolvedType::Function(input, output) => {
@@ -266,7 +265,7 @@ impl UnresolvedScheme {
                 }
 
                 let mut ty = forall.ty.clone();
-                apply(&mut ty, &substitutions);
+                apply(&mut ty, substitutions);
 
                 ty
             }
@@ -287,12 +286,16 @@ impl UnresolvedScheme {
         }
     }
 
-    pub fn finalize(mut self, ctx: &Context) -> Result<Scheme, FinalizeError> {
+    pub fn finalize(
+        mut self,
+        ctx: &mut Context,
+        substitutions: &HashMap<TypeParameterId, TypeVariable>,
+    ) -> Result<Type, FinalizeError> {
         self.apply(ctx);
 
         Ok(match self {
-            UnresolvedScheme::Type(ty) => Scheme::Type(ty.finalize(ctx)?),
-            UnresolvedScheme::ForAll(forall) => Scheme::ForAll(forall.finalize(ctx)?),
+            UnresolvedScheme::Type(ty) => ty.finalize(ctx, substitutions)?,
+            UnresolvedScheme::ForAll(forall) => forall.ty.finalize(ctx, substitutions)?,
         })
     }
 }
@@ -339,29 +342,6 @@ impl UnresolvedType {
         }
     }
 
-    pub fn generalize(
-        mut self,
-        ctx: &Context,
-        params: &HashSet<TypeParameterId>,
-    ) -> UnresolvedScheme {
-        self.apply(ctx);
-
-        let vars = self
-            .params()
-            .intersection(params)
-            .cloned()
-            .collect::<HashSet<_>>();
-
-        if vars.is_empty() {
-            UnresolvedScheme::Type(self)
-        } else {
-            UnresolvedScheme::ForAll(UnresolvedForAll {
-                params: vars,
-                ty: self,
-            })
-        }
-    }
-
     pub fn vars(&self) -> HashSet<TypeVariable> {
         match self {
             UnresolvedType::Variable(var) => {
@@ -394,32 +374,33 @@ impl UnresolvedType {
         }
     }
 
-    pub fn finalize(mut self, ctx: &Context) -> Result<Type, FinalizeError> {
+    pub fn finalize(
+        mut self,
+        ctx: &Context,
+        substitutions: &HashMap<TypeParameterId, TypeVariable>,
+    ) -> Result<Type, FinalizeError> {
         self.apply(ctx);
 
         match self {
             UnresolvedType::Variable(_) => Err(FinalizeError::UnknownType),
-            UnresolvedType::Parameter(param) => Ok(Type::Parameter(param)),
+            UnresolvedType::Parameter(param) => substitutions
+                .get(&param)
+                .cloned()
+                .and_then(|var| {
+                    ctx.substitutions
+                        .get(&var)
+                        .cloned()
+                        .map(|ty| ty.finalize(ctx, substitutions))
+                })
+                .ok_or(FinalizeError::UnknownType)
+                .and_then(std::convert::identity),
             UnresolvedType::Named(name) => Ok(Type::Named(name)),
             UnresolvedType::Function(input, output) => Ok(Type::Function(
-                Box::new(input.finalize(ctx)?),
-                Box::new(output.finalize(ctx)?),
+                Box::new(input.finalize(ctx, substitutions)?),
+                Box::new(output.finalize(ctx, substitutions)?),
             )),
             UnresolvedType::Builtin(builtin) => Ok(Type::Builtin(builtin)),
             UnresolvedType::Bottom(is_error) => Ok(Type::Bottom(is_error)),
         }
-    }
-}
-
-impl UnresolvedForAll {
-    pub fn apply(&mut self, ctx: &Context) {
-        self.ty.apply(ctx);
-    }
-
-    pub fn finalize(self, ctx: &Context) -> Result<ForAll, FinalizeError> {
-        Ok(ForAll {
-            params: self.params,
-            ty: self.ty.finalize(ctx)?,
-        })
     }
 }

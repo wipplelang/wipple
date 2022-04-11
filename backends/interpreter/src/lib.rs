@@ -185,12 +185,10 @@ impl<'a> Interpreter<'a> {
                     _ => unreachable!(),
                 }
             }
-            ExpressionKind::Member(value, index) => {
-                match self.eval_expr(value, info)?.as_ref() {
-                    Value::Structure(structure) => structure[*index].clone(),
-                    _ => unreachable!(),
-                }
-            }
+            ExpressionKind::Member(value, index) => match self.eval_expr(value, info)?.as_ref() {
+                Value::Structure(structure) => structure[*index].clone(),
+                _ => unreachable!(),
+            },
             ExpressionKind::Initialize(variable, value) => {
                 let value = self.eval_expr(value, info)?;
                 info.scope.borrow_mut().variables.insert(*variable, value);
@@ -230,32 +228,8 @@ impl<'a> Interpreter<'a> {
 
                     #[cfg(not(target_arch = "wasm32"))]
                     {
-                        use wipple_compiler::compile::typecheck::Scheme;
-
-                        let input_tys = inputs
-                            .iter()
-                            .map(|input| match &input.scheme {
-                                Scheme::Type(scheme) => Ok(scheme),
-                                _ => Err(Diverge::new(
-                                    &info.callstack,
-                                    DivergeKind::Error(Error::from(
-                                        "Unsupported external function input type",
-                                    )),
-                                )),
-                            })
-                            .collect::<Result<Vec<_>, _>>()?;
-
-                        let return_ty = match &expr.scheme {
-                            Scheme::Type(ty) => ty,
-                            Scheme::ForAll { .. } => {
-                                return Err(Diverge::new(
-                                    &info.callstack,
-                                    DivergeKind::Error(Error::from(
-                                        "Unsupported external function return type",
-                                    )),
-                                ));
-                            }
-                        };
+                        let input_tys = inputs.iter().map(|input| &input.ty).collect::<Vec<_>>();
+                        let return_ty = &expr.ty;
 
                         let function = match ExternalFunction::new(
                             namespace, identifier, input_tys, return_ty,
@@ -289,9 +263,7 @@ impl<'a> Interpreter<'a> {
                     .map(|expr| self.eval_expr(expr, info))
                     .collect::<Result<_, _>>()?,
             )),
-            ExpressionKind::FunctionInput => {
-                info.function_input.as_ref().unwrap().clone()
-            }
+            ExpressionKind::FunctionInput => info.function_input.as_ref().unwrap().clone(),
         };
 
         Ok(value)

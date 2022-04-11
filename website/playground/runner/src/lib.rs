@@ -105,7 +105,7 @@ impl<'a> wipple_compiler::Loader for Loader<'a> {
 }
 
 fn annotations(program: &mut wipple_compiler::compile::Program) -> Vec<Annotation> {
-    use wipple_compiler::compile::typecheck::{format_type_scheme, ExpressionKind};
+    use wipple_compiler::compile::typecheck::{format_type, ExpressionKind};
 
     let mut annotations = Vec::new();
 
@@ -114,7 +114,7 @@ fn annotations(program: &mut wipple_compiler::compile::Program) -> Vec<Annotatio
 
     macro_rules! format_ty {
         ($ty:expr) => {
-            format_type_scheme(
+            format_type(
                 $ty,
                 |name| declarations.types.get(&name).unwrap().name.to_string(),
                 |param| {
@@ -142,11 +142,15 @@ fn annotations(program: &mut wipple_compiler::compile::Program) -> Vec<Annotatio
                 return;
             }
 
-            let ty = format_ty!(&expr.scheme.clone().into());
+            let ty = format_ty!(&expr.ty.clone().into());
 
             let name = match expr.kind {
-                ExpressionKind::Variable(id) => Some(declarations.variables.get(&id).unwrap().name),
-                ExpressionKind::Constant(id) => Some(declarations.constants.get(&id).unwrap().name),
+                ExpressionKind::Variable(id) => {
+                    declarations.variables.get(&id).map(|decl| decl.name)
+                }
+                ExpressionKind::Constant(id) => {
+                    declarations.constants.get(&id).map(|decl| decl.name)
+                }
                 _ => None,
             };
 
@@ -209,7 +213,7 @@ fn annotations(program: &mut wipple_compiler::compile::Program) -> Vec<Annotatio
             value: format!(
                 "{} :: {}",
                 decl.name,
-                format_ty!(&decl.value.scheme.clone().into())
+                format_ty!(&decl.value.ty.clone().into())
             ),
         });
 
