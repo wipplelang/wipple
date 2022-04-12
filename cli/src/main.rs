@@ -42,6 +42,9 @@ struct Options {
     #[clap(long)]
     trace: bool,
 
+    #[clap(long)]
+    no_progress: bool,
+
     #[clap(flatten)]
     compiler_options: wipple_compiler::CompilerOptions,
 }
@@ -117,27 +120,32 @@ fn build(options: Options) -> wipple_compiler::compile::Program {
         }
     }
 
-    let progress_bar =
-        indicatif::ProgressBar::new(0).with_style(indicatif::ProgressStyle::default_spinner());
+    let progress_bar = (!options.no_progress).then(|| {
+        indicatif::ProgressBar::new(0).with_style(indicatif::ProgressStyle::default_spinner())
+    });
 
     let progress = |progress| {
         use wipple_compiler::{build, compile::typecheck};
 
-        match progress {
-            build::Progress::CollectingFiles => progress_bar.set_message("Collecting files"),
-            build::Progress::Lowering {
-                path,
-                current,
-                total,
-            } => progress_bar.set_message(format!("({current}/{total}) Compiling {path}")),
-            build::Progress::Typechecking(progress) => match progress {
-                typecheck::Progress::Typechecking {
+        if let Some(progress_bar) = progress_bar.as_ref() {
+            match progress {
+                build::Progress::CollectingFiles => progress_bar.set_message("Collecting files"),
+                build::Progress::Lowering {
                     path,
                     current,
                     total,
-                } => progress_bar.set_message(format!("({current}/{total}) Typechecking {path}")),
-                typecheck::Progress::Finalizing => progress_bar.set_message("Finalizing"),
-            },
+                } => progress_bar.set_message(format!("({current}/{total}) Compiling {path}")),
+                build::Progress::Typechecking(progress) => match progress {
+                    typecheck::Progress::Typechecking {
+                        path,
+                        current,
+                        total,
+                    } => {
+                        progress_bar.set_message(format!("({current}/{total}) Typechecking {path}"))
+                    }
+                    typecheck::Progress::Finalizing => progress_bar.set_message("Finalizing"),
+                },
+            }
         }
     };
 
@@ -152,7 +160,9 @@ fn build(options: Options) -> wipple_compiler::compile::Program {
     let diagnostics = compiler.finish();
     let success = !diagnostics.contains_errors();
 
-    progress_bar.finish_and_clear();
+    if let Some(progress_bar) = progress_bar {
+        progress_bar.finish_and_clear();
+    }
 
     let (codemap, _, diagnostics) = diagnostics.into_console_friendly(
         #[cfg(debug_assertions)]

@@ -15,6 +15,7 @@ pub enum UnresolvedScheme {
 pub enum UnresolvedType {
     Variable(TypeVariable),
     Parameter(TypeParameterId),
+    Trait(TraitId),
     Named(TypeId),
     Function(Box<UnresolvedType>, Box<UnresolvedType>),
     Builtin(BuiltinType),
@@ -25,6 +26,22 @@ pub enum UnresolvedType {
 pub struct UnresolvedForAll {
     pub params: HashSet<TypeParameterId>,
     pub ty: UnresolvedType,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ResolvedType {
+    pub instance: Option<ConstantId>,
+    pub kind: ResolvedTypeKind,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum ResolvedTypeKind {
+    Variable(TypeVariable),
+    Parameter(TypeParameterId),
+    Named(TypeId),
+    Function(Box<ResolvedType>, Box<ResolvedType>),
+    Builtin(BuiltinType),
+    Bottom(bool),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -39,6 +56,21 @@ pub enum Type {
 pub struct ForAll {
     pub params: HashSet<TypeParameterId>,
     pub ty: Type,
+}
+
+impl From<ResolvedType> for UnresolvedType {
+    fn from(ty: ResolvedType) -> Self {
+        match ty.kind {
+            ResolvedTypeKind::Variable(var) => UnresolvedType::Variable(var),
+            ResolvedTypeKind::Parameter(param) => UnresolvedType::Parameter(param),
+            ResolvedTypeKind::Named(name) => UnresolvedType::Named(name),
+            ResolvedTypeKind::Function(input, output) => {
+                UnresolvedType::Function(Box::new((*input).into()), Box::new((*output).into()))
+            }
+            ResolvedTypeKind::Builtin(builtin) => UnresolvedType::Builtin(builtin),
+            ResolvedTypeKind::Bottom(is_error) => UnresolvedType::Bottom(is_error),
+        }
+    }
 }
 
 impl From<Type> for UnresolvedType {
@@ -81,12 +113,8 @@ pub struct Context {
 pub enum UnificationError {
     Recursive(TypeVariable),
     Mismatch(UnresolvedType, UnresolvedType),
-}
-
-#[derive(Debug, Clone)]
-pub enum FinalizeError {
-    UnknownType,
     MissingInstance(TraitId, UnresolvedType),
+    AmbiguousTrait(TraitId, Vec<UnresolvedType>),
 }
 
 impl Context {
@@ -108,7 +136,7 @@ impl Context {
         &mut self,
         mut actual: UnresolvedType,
         mut expected: UnresolvedType,
-    ) -> Result<(), UnificationError> {
+    ) -> Result<ResolvedType, UnificationError> {
         actual.apply(self);
         expected.apply(self);
 
@@ -117,18 +145,30 @@ impl Context {
                 if ty.contains(&var) {
                     Err(UnificationError::Recursive(var))
                 } else {
-                    // eprintln!("unifying {:?} with {:?}", var, ty);
                     self.substitutions.insert(var, ty);
-                    Ok(())
+
+                    Ok(ResolvedType {
+                        instance: None,
+                        kind: ResolvedTypeKind::Variable(var),
+                    })
                 }
             }
-            (UnresolvedType::Parameter(_), _) => Ok(()),
+            (UnresolvedType::Parameter(param), _) => Ok(ResolvedType {
+                instance: None,
+                kind: ResolvedTypeKind::Parameter(param),
+            }),
             (actual, expected @ UnresolvedType::Parameter(_)) => {
                 Err(UnificationError::Mismatch(actual, expected))
             }
+            (UnresolvedType::Trait(tr), ty) | (ty, UnresolvedType::Trait(tr)) => {
+                self.instance_for(tr, ty)
+            }
             (UnresolvedType::Named(actual_id), UnresolvedType::Named(expected_id)) => {
                 if actual_id == expected_id {
-                    Ok(())
+                    Ok(ResolvedType {
+                        instance: None,
+                        kind: ResolvedTypeKind::Named(actual_id),
+                    })
                 } else {
                     Err(UnificationError::Mismatch(
                         UnresolvedType::Named(actual_id),
@@ -140,31 +180,38 @@ impl Context {
                 UnresolvedType::Function(actual_input, actual_output),
                 UnresolvedType::Function(expected_input, expected_output),
             ) => {
-                if self
-                    .unify((*actual_input).clone(), (*expected_input).clone())
-                    .is_err()
-                {
-                    return Err(UnificationError::Mismatch(
-                        UnresolvedType::Function(actual_input, actual_output),
-                        UnresolvedType::Function(expected_input, expected_output),
-                    ));
-                }
+                let input = match self.unify((*actual_input).clone(), (*expected_input).clone()) {
+                    Ok(input) => input,
+                    Err(_) => {
+                        return Err(UnificationError::Mismatch(
+                            UnresolvedType::Function(actual_input, actual_output),
+                            UnresolvedType::Function(expected_input, expected_output),
+                        ))
+                    }
+                };
 
-                if self
-                    .unify((*actual_output).clone(), (*expected_output).clone())
-                    .is_err()
+                let output = match self.unify((*actual_output).clone(), (*expected_output).clone())
                 {
-                    return Err(UnificationError::Mismatch(
-                        UnresolvedType::Function(actual_input, actual_output),
-                        UnresolvedType::Function(expected_input, expected_output),
-                    ));
-                }
+                    Ok(output) => output,
+                    Err(_) => {
+                        return Err(UnificationError::Mismatch(
+                            UnresolvedType::Function(actual_input, actual_output),
+                            UnresolvedType::Function(expected_input, expected_output),
+                        ))
+                    }
+                };
 
-                Ok(())
+                Ok(ResolvedType {
+                    instance: None,
+                    kind: ResolvedTypeKind::Function(Box::new(input), Box::new(output)),
+                })
             }
             (UnresolvedType::Builtin(actual), UnresolvedType::Builtin(expected)) => {
                 if actual == expected {
-                    Ok(())
+                    Ok(ResolvedType {
+                        instance: None,
+                        kind: ResolvedTypeKind::Builtin(actual),
+                    })
                 } else {
                     Err(UnificationError::Mismatch(
                         UnresolvedType::Builtin(actual),
@@ -172,7 +219,10 @@ impl Context {
                     ))
                 }
             }
-            (UnresolvedType::Bottom(_), _) => Ok(()),
+            (UnresolvedType::Bottom(is_error), _) => Ok(ResolvedType {
+                instance: None,
+                kind: ResolvedTypeKind::Bottom(is_error),
+            }),
             (actual, expected) => Err(UnificationError::Mismatch(actual, expected)),
         }
     }
@@ -181,32 +231,43 @@ impl Context {
         &mut self,
         tr: TraitId,
         mut ty: UnresolvedType,
-    ) -> Result<ConstantId, FinalizeError> {
+    ) -> Result<ResolvedType, UnificationError> {
         ty.apply(self);
 
         let instances = self.instances.get(&tr).cloned().unwrap_or_default();
 
         let mut suitable_instances = Vec::new();
-
         for instance in instances {
             let mut ctx = self.clone();
 
-            let scheme = instance.scheme.clone();
-            let instance_ty = scheme.instantiate(&mut ctx);
+            // TODO: Monomorphize generic instances
+            let instance_ty = instance.scheme.clone().instantiate(self);
 
-            if ctx.unify(ty.clone(), instance_ty).is_ok() {
-                suitable_instances.push((ctx, instance.constant));
+            if let Ok(ResolvedType { kind, .. }) = ctx.unify(ty.clone(), instance_ty.clone()) {
+                suitable_instances.push((
+                    ctx,
+                    ResolvedType {
+                        instance: Some(instance.constant),
+                        kind,
+                    },
+                ));
             }
         }
 
         match suitable_instances.len() {
-            0 => Err(FinalizeError::MissingInstance(tr, ty)),
+            0 => Err(UnificationError::MissingInstance(tr, ty)),
             1 => {
                 let (ctx, instance) = suitable_instances.pop().unwrap();
                 *self = ctx;
                 Ok(instance)
             }
-            _ => Err(FinalizeError::UnknownType),
+            _ => Err(UnificationError::AmbiguousTrait(
+                tr,
+                suitable_instances
+                    .into_iter()
+                    .map(|ty| ty.1.into())
+                    .collect(),
+            )),
         }
     }
 
@@ -227,13 +288,6 @@ impl Context {
 }
 
 impl UnresolvedScheme {
-    pub fn apply(&mut self, ctx: &Context) {
-        match self {
-            UnresolvedScheme::Type(ty) => ty.apply(ctx),
-            UnresolvedScheme::ForAll(forall) => forall.ty.apply(ctx),
-        }
-    }
-
     pub fn instantiate(&self, ctx: &mut Context) -> UnresolvedType {
         let substitutions = ctx.create_instantiation(self);
         self.instantiate_with(&substitutions)
@@ -287,13 +341,11 @@ impl UnresolvedScheme {
     }
 
     pub fn finalize(
-        mut self,
+        self,
         ctx: &mut Context,
         substitutions: &HashMap<TypeParameterId, TypeVariable>,
-    ) -> Result<Type, FinalizeError> {
-        self.apply(ctx);
-
-        Ok(match self {
+    ) -> Option<Type> {
+        Some(match self {
             UnresolvedScheme::Type(ty) => ty.finalize(ctx, substitutions)?,
             UnresolvedScheme::ForAll(forall) => forall.ty.finalize(ctx, substitutions)?,
         })
@@ -378,29 +430,21 @@ impl UnresolvedType {
         mut self,
         ctx: &Context,
         substitutions: &HashMap<TypeParameterId, TypeVariable>,
-    ) -> Result<Type, FinalizeError> {
+    ) -> Option<Type> {
         self.apply(ctx);
 
         match self {
-            UnresolvedType::Variable(_) => Err(FinalizeError::UnknownType),
+            UnresolvedType::Variable(_) | UnresolvedType::Trait(_) => None,
             UnresolvedType::Parameter(param) => substitutions
                 .get(&param)
-                .cloned()
-                .and_then(|var| {
-                    ctx.substitutions
-                        .get(&var)
-                        .cloned()
-                        .map(|ty| ty.finalize(ctx, substitutions))
-                })
-                .ok_or(FinalizeError::UnknownType)
-                .and_then(std::convert::identity),
-            UnresolvedType::Named(name) => Ok(Type::Named(name)),
-            UnresolvedType::Function(input, output) => Ok(Type::Function(
+                .and_then(|var| UnresolvedType::Variable(*var).finalize(ctx, substitutions)),
+            UnresolvedType::Named(name) => Some(Type::Named(name)),
+            UnresolvedType::Function(input, output) => Some(Type::Function(
                 Box::new(input.finalize(ctx, substitutions)?),
                 Box::new(output.finalize(ctx, substitutions)?),
             )),
-            UnresolvedType::Builtin(builtin) => Ok(Type::Builtin(builtin)),
-            UnresolvedType::Bottom(is_error) => Ok(Type::Bottom(is_error)),
+            UnresolvedType::Builtin(builtin) => Some(Type::Builtin(builtin)),
+            UnresolvedType::Bottom(is_error) => Some(Type::Bottom(is_error)),
         }
     }
 }

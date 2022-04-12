@@ -153,8 +153,15 @@ pub struct Operator {
 #[derive(Debug, Clone)]
 pub struct Constant {
     pub parameters: Vec<TypeParameter>,
+    pub bounds: Vec<Bound>,
     pub ty: TypeAnnotation,
     pub value: Rc<RefCell<Option<Expression>>>,
+}
+
+#[derive(Debug, Clone)]
+pub struct Bound {
+    pub tr: TraitId,
+    pub parameters: Vec<TypeAnnotation>,
 }
 
 #[derive(Debug, Clone)]
@@ -574,8 +581,51 @@ impl<L: Loader> Compiler<L> {
 
                     let parameters = self.with_parameters(declaration.parameters, &scope, info);
 
+                    let bounds = declaration
+                        .bounds
+                        .into_iter()
+                        .map(|bound| {
+                            let tr = match scope.get(bound.trait_name, bound.trait_span) {
+                                Some(ScopeValue::Trait(tr)) => tr,
+                                Some(_) => {
+                                    self.diagnostics.add(Diagnostic::error(
+                                        format!("`{}` is not a trait", bound.trait_name),
+                                        vec![Note::primary(
+                                            bound.trait_span,
+                                            "expected a trait here",
+                                        )],
+                                    ));
+
+                                    return Err(Expression::error(statement.span));
+                                }
+                                None => {
+                                    self.diagnostics.add(Diagnostic::error(
+                                        format!("cannot find `{}`", bound.trait_name),
+                                        vec![Note::primary(
+                                            bound.trait_span,
+                                            "this name is not defined",
+                                        )],
+                                    ));
+
+                                    return Err(Expression::error(statement.span));
+                                }
+                            };
+
+                            Ok(Bound {
+                                tr,
+                                parameters: Default::default(), // TODO
+                            })
+                        })
+                        .collect::<Result<_, _>>();
+
+                    let bounds = match bounds {
+                        Ok(bounds) => bounds,
+                        Err(error) => return Some(error),
+                    };
+
                     Constant {
                         parameters,
+                        bounds,
                         ty: self.lower_type_annotation(declaration.ty, &scope, info),
                         value: Default::default(),
                     }

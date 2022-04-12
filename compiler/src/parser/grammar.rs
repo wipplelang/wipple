@@ -149,6 +149,7 @@ pub struct ConstantDeclaration {
 #[derive(Debug, Clone)]
 pub struct Bound {
     pub span: Span,
+    pub trait_span: Span,
     pub trait_name: InternedString,
     pub parameters: Vec<TypeAnnotation>,
 }
@@ -575,12 +576,13 @@ peg::parser! {
 
         rule bound() -> Bound
             = [(Token::LeftParen, left_paren_span)]
-              [(Token::Name(trait_name), _)]
+              [(Token::Name(trait_name), trait_span)]
               parameters:r#type()*
               [(Token::RightParen, right_paren_span)]
             {
                 Bound {
                     span: Span::join(left_paren_span, right_paren_span),
+                    trait_span,
                     trait_name,
                     parameters,
                 }

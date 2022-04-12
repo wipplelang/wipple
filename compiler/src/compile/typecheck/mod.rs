@@ -21,7 +21,6 @@ pub struct Program {
     pub well_typed: bool,
     pub body: Vec<Expression>,
     pub declarations: Declarations,
-    pub trait_types: HashMap<TypeVariable, TraitId>,
     pub top_level: HashMap<InternedString, lower::ScopeValue>,
 }
 
@@ -138,7 +137,6 @@ impl<L: Loader> Compiler<L> {
             constants: Default::default(),
             structures: Default::default(),
             traits: Default::default(),
-            trait_types: Default::default(),
             function_inputs: Default::default(),
             monomorphized: Default::default(),
             compiler: self,
@@ -160,11 +158,8 @@ impl<L: Loader> Compiler<L> {
 
             for (&id, decl) in &file.borrow().declarations.constants {
                 if let lower::Declaration::Local(decl) | lower::Declaration::Builtin(decl) = decl {
-                    let scheme = typechecker.convert_constant_type_annotation(
-                        decl.span,
-                        &decl.value.ty,
-                        &decl.value.parameters,
-                    );
+                    let scheme = typechecker
+                        .convert_constant_type_annotation(&decl.value.ty, &decl.value.parameters);
 
                     typechecker.constants.insert(id, scheme);
                 }
@@ -201,11 +196,8 @@ impl<L: Loader> Compiler<L> {
 
             for (&id, decl) in &file.borrow().declarations.traits {
                 if let lower::Declaration::Local(decl) | lower::Declaration::Builtin(decl) = decl {
-                    let scheme = typechecker.convert_constant_type_annotation(
-                        decl.span,
-                        &decl.value.ty,
-                        &decl.value.parameters,
-                    );
+                    let scheme = typechecker
+                        .convert_constant_type_annotation(&decl.value.ty, &decl.value.parameters);
 
                     typechecker.traits.insert(id, scheme);
                 }
@@ -222,7 +214,7 @@ impl<L: Loader> Compiler<L> {
                         .clone()
                         .instantiate(&mut typechecker.ctx);
 
-                    let value_ty = typechecker.monomorphize(&mut value, file);
+                    let value_ty = typechecker.monomorphize(&mut value);
 
                     if let Err(errors) = typechecker.ctx.unify(value_ty, trait_ty) {
                         typechecker.report_type_error(value.span, errors, &file.borrow());
@@ -307,7 +299,7 @@ impl<L: Loader> Compiler<L> {
                             UnresolvedScheme::ForAll(forall) => forall.ty.clone(),
                         };
 
-                        let value_ty = typechecker.monomorphize(&mut value, file);
+                        let value_ty = typechecker.monomorphize(&mut value);
 
                         if let Err(errors) = typechecker.ctx.unify(value_ty, constant_ty) {
                             typechecker.report_type_error(value.span, errors, &file.borrow());
@@ -320,8 +312,9 @@ impl<L: Loader> Compiler<L> {
                         UnresolvedScheme::Type(_) => {
                             let value = match typechecker.finalize(value, &Default::default()) {
                                 Ok(value) => value,
-                                Err((span, error)) => {
-                                    typechecker.report_finalize_error(span, error, &file.borrow());
+                                Err(span) => {
+                                    typechecker.report_finalize_error(span);
+
                                     Expression {
                                         span,
                                         ty: Type::Bottom(true),
@@ -368,14 +361,14 @@ impl<L: Loader> Compiler<L> {
             }
         }
 
-        for (new_id, (old_id, file, substitutions)) in mem::take(&mut typechecker.monomorphized) {
+        for (new_id, (old_id, substitutions)) in mem::take(&mut typechecker.monomorphized) {
             let decl = generic_constants.get(&old_id).unwrap().clone();
 
             // TODO: Check bounds here too (include with substitutions)
             let value = match typechecker.finalize(decl.value, &substitutions) {
                 Ok(value) => value,
-                Err((span, error)) => {
-                    typechecker.report_finalize_error(span, error, &file.borrow());
+                Err(span) => {
+                    typechecker.report_finalize_error(span);
                     Expression {
                         span,
                         ty: Type::Bottom(true),
@@ -430,14 +423,13 @@ impl<L: Loader> Compiler<L> {
                         Ok(expr)
                     })
                     .collect::<Result<Vec<_>, _>>()
-                    .map_err(|(span, error)| (span, error, file.clone()))
             })
             .collect::<Result<Vec<_>, _>>()
             .map(|body| body.into_iter().flatten().collect::<Vec<_>>())
         {
             Ok(body) => body,
-            Err((span, error, file)) => {
-                typechecker.report_finalize_error(span, error, &file.borrow());
+            Err(span) => {
+                typechecker.report_finalize_error(span);
                 return None;
             }
         };
@@ -446,7 +438,6 @@ impl<L: Loader> Compiler<L> {
             well_typed: typechecker.well_typed,
             body,
             declarations,
-            trait_types: typechecker.trait_types.1,
             top_level,
         };
 
@@ -488,21 +479,10 @@ struct Typechecker<'a, L: Loader> {
     variables: HashMap<VariableId, UnresolvedScheme>,
     constants: HashMap<ConstantId, UnresolvedScheme>,
     traits: HashMap<TraitId, UnresolvedScheme>,
-    trait_types: (
-        HashMap<TraitId, TypeVariable>,
-        HashMap<TypeVariable, TraitId>,
-    ),
     structures: HashMap<TypeId, HashMap<InternedString, (usize, UnresolvedType)>>,
     // TODO: enumerations
     function_inputs: Vec<TypeVariable>,
-    monomorphized: HashMap<
-        ConstantId,
-        (
-            ConstantId,
-            Rc<RefCell<lower::File>>,
-            HashMap<TypeParameterId, TypeVariable>,
-        ),
-    >,
+    monomorphized: HashMap<ConstantId, (ConstantId, HashMap<TypeParameterId, TypeVariable>)>,
     compiler: &'a mut Compiler<L>,
     used_types: HashSet<TypeId>,
     used_constants: HashSet<ConstantId>,
@@ -545,16 +525,10 @@ impl<'a, L: Loader> Typechecker<'a, L> {
 
                 (scheme, UnresolvedExpressionKind::Constant(*id))
             }
-            lower::ExpressionKind::Trait(id) => {
-                let var = self.ctx.new_variable();
-                self.trait_types.0.insert(*id, var);
-                self.trait_types.1.insert(var, *id);
-
-                (
-                    UnresolvedScheme::Type(UnresolvedType::Variable(var)),
-                    UnresolvedExpressionKind::Trait(*id),
-                )
-            }
+            lower::ExpressionKind::Trait(id) => (
+                UnresolvedScheme::Type(UnresolvedType::Trait(*id)),
+                UnresolvedExpressionKind::Trait(*id),
+            ),
             lower::ExpressionKind::Variable(id) => {
                 let ty = self
                     .variables
@@ -588,16 +562,25 @@ impl<'a, L: Loader> Typechecker<'a, L> {
 
                 let output_ty = UnresolvedType::Variable(self.ctx.new_variable());
 
-                let function_ty = self.monomorphize(&mut function, file);
-                let input_ty = self.monomorphize(&mut input, file);
+                let function_ty = self.monomorphize(&mut function);
+                let input_ty = self.monomorphize(&mut input);
 
-                if let Err(errors) = self.ctx.unify(
+                let resolved_func_ty = match self.ctx.unify(
                     function_ty,
                     UnresolvedType::Function(Box::new(input_ty), Box::new(output_ty.clone())),
                 ) {
-                    self.report_type_error(function.span, errors, &file.borrow());
-                    return error();
-                }
+                    Ok(ty) => ty,
+                    Err(errors) => {
+                        self.report_type_error(function.span, errors, &file.borrow());
+                        return error();
+                    }
+                };
+
+                function.merge(resolved_func_ty.clone());
+
+                if let ResolvedTypeKind::Function(resolved_input_ty, _) = resolved_func_ty.kind {
+                    input.merge(*resolved_input_ty);
+                };
 
                 (
                     UnresolvedScheme::Type(output_ty),
@@ -607,7 +590,7 @@ impl<'a, L: Loader> Typechecker<'a, L> {
             lower::ExpressionKind::Function(body, captures) => {
                 let mut body = self.typecheck_expr(body, file);
 
-                let body_ty = self.monomorphize(&mut body, file);
+                let body_ty = self.monomorphize(&mut body);
 
                 let input_var = self
                     .function_inputs
@@ -641,12 +624,17 @@ impl<'a, L: Loader> Typechecker<'a, L> {
                 let ty = self.convert_type_annotation(ty);
                 let mut expr = self.typecheck_expr(expr, file);
 
-                let expr_ty = self.monomorphize(&mut expr, file);
+                let expr_ty = self.monomorphize(&mut expr);
 
-                if let Err(errors) = self.ctx.unify(expr_ty, ty.clone()) {
-                    self.report_type_error(expr.span, errors, &file.borrow());
-                    return error();
-                }
+                let resolved_expr_ty = match self.ctx.unify(expr_ty, ty.clone()) {
+                    Ok(ty) => ty,
+                    Err(errors) => {
+                        self.report_type_error(expr.span, errors, &file.borrow());
+                        return error();
+                    }
+                };
+
+                expr.merge(resolved_expr_ty);
 
                 (UnresolvedScheme::Type(ty), expr.kind)
             }
@@ -697,12 +685,17 @@ impl<'a, L: Loader> Typechecker<'a, L> {
                     };
 
                     let mut value = self.typecheck_expr(expr, file);
-                    let value_ty = self.monomorphize(&mut value, file);
+                    let value_ty = self.monomorphize(&mut value);
 
-                    if let Err(errors) = self.ctx.unify(value_ty, ty) {
-                        self.report_type_error(expr.span, errors, &file.borrow());
-                        return error();
-                    }
+                    let resolved_value_ty = match self.ctx.unify(value_ty, ty) {
+                        Ok(ty) => ty,
+                        Err(errors) => {
+                            self.report_type_error(expr.span, errors, &file.borrow());
+                            return error();
+                        }
+                    };
+
+                    value.merge(resolved_value_ty);
 
                     unpopulated_fields[index] = Some(value);
                 }
@@ -808,24 +801,21 @@ impl<'a, L: Loader> Typechecker<'a, L> {
         }
     }
 
-    fn monomorphize(
-        &mut self,
-        expr: &mut UnresolvedExpression,
-        file: &Rc<RefCell<lower::File>>,
-    ) -> UnresolvedType {
+    fn monomorphize(&mut self, expr: &mut UnresolvedExpression) -> UnresolvedType {
         let substitutions = self.ctx.create_instantiation(&expr.scheme);
         let expr_ty = expr.scheme.instantiate_with(&substitutions);
 
-        if let UnresolvedExpressionKind::Constant(id) = expr.kind {
-            if let UnresolvedScheme::ForAll(_) = &expr.scheme {
-                let new_id = self.compiler.new_constant_id();
+        if let UnresolvedScheme::ForAll(_) = &expr.scheme {
+            let id = match expr.kind {
+                UnresolvedExpressionKind::Constant(id) => id,
+                _ => panic!("found non-constant expression with generic type"),
+            };
 
-                self.monomorphized
-                    .insert(new_id, (id, file.clone(), substitutions));
+            let new_id = self.compiler.new_constant_id();
+            self.monomorphized.insert(new_id, (id, substitutions));
 
-                expr.kind = UnresolvedExpressionKind::Constant(new_id);
-                expr.scheme = UnresolvedScheme::Type(expr_ty.clone());
-            }
+            expr.kind = UnresolvedExpressionKind::Constant(new_id);
+            expr.scheme = UnresolvedScheme::Type(expr_ty.clone());
         }
 
         expr_ty
@@ -835,7 +825,7 @@ impl<'a, L: Loader> Typechecker<'a, L> {
         &mut self,
         expr: UnresolvedExpression,
         substitutions: &HashMap<TypeParameterId, TypeVariable>,
-    ) -> Result<Expression, (Span, FinalizeError)> {
+    ) -> Result<Expression, Span> {
         Ok(Expression {
             span: expr.span,
             kind: match expr.kind {
@@ -887,24 +877,14 @@ impl<'a, L: Loader> Typechecker<'a, L> {
                         .collect::<Result<_, _>>()?,
                 ),
                 UnresolvedExpressionKind::FunctionInput => ExpressionKind::FunctionInput,
-                UnresolvedExpressionKind::Trait(id) => {
-                    let var = *self.trait_types.0.get(&id).unwrap();
-
-                    let mut ty = UnresolvedType::Variable(var);
-                    ty.apply(&self.ctx);
-
-                    match self.ctx.instance_for(id, ty) {
-                        Ok(instance) => ExpressionKind::Constant(instance),
-                        Err(error) => return Err((expr.span, error)),
-                    }
-                }
+                UnresolvedExpressionKind::Trait(_) => return Err(expr.span),
             },
             // the scheme must be resolved after the kind because the kind may
             // be a trait, whose type is unified with the original type variable
             ty: expr
                 .scheme
                 .finalize(&mut self.ctx, substitutions)
-                .map_err(|error| (expr.span, error))?,
+                .ok_or(expr.span)?,
         })
     }
 
@@ -931,7 +911,6 @@ impl<'a, L: Loader> Typechecker<'a, L> {
 
     fn convert_constant_type_annotation(
         &mut self,
-        span: Span,
         annotation: &lower::TypeAnnotation,
         parameters: &[lower::TypeParameter],
     ) -> UnresolvedScheme {
@@ -945,25 +924,20 @@ impl<'a, L: Loader> Typechecker<'a, L> {
         if params.is_empty() {
             UnresolvedScheme::Type(ty)
         } else {
-            if !matches!(annotation.kind, lower::TypeAnnotationKind::Function(_, _)) {
-                self.compiler.diagnostics.add(Diagnostic::error(
-                    "only functions may have type parameters",
-                    vec![Note::primary(
-                        span,
-                        "try removing the type parameters from this",
-                    )],
-                ));
-            }
-
             UnresolvedScheme::ForAll(UnresolvedForAll { params, ty })
         }
     }
 }
 
-macro_rules! format_support {
-    ($typechecker:expr, $file:expr) => {{
-        let typechecker = $typechecker;
-        let file = $file;
+impl<'a, L: Loader> Typechecker<'a, L> {
+    fn report_type_error(&mut self, span: Span, error: UnificationError, file: &lower::File) {
+        self.well_typed = false;
+
+        if let UnificationError::Mismatch(actual, expected) = &error {
+            if actual.contains_error() || expected.contains_error() {
+                return;
+            }
+        }
 
         let type_names = |name| {
             file.declarations
@@ -984,28 +958,13 @@ macro_rules! format_support {
         };
 
         let trait_names = |var| {
-            typechecker
-                .trait_types
-                .1
+            file.declarations
+                .traits
                 .get(&var)
-                .map(|tr| file.declarations.traits.get(tr).unwrap().name().to_string())
+                .unwrap()
+                .name()
+                .to_string()
         };
-
-        (type_names, param_names, trait_names)
-    }};
-}
-
-impl<'a, L: Loader> Typechecker<'a, L> {
-    fn report_type_error(&mut self, span: Span, error: UnificationError, file: &lower::File) {
-        self.well_typed = false;
-
-        if let UnificationError::Mismatch(actual, expected) = &error {
-            if actual.contains_error() || expected.contains_error() {
-                return;
-            }
-        }
-
-        let (type_names, param_names, trait_names) = format_support!(&self, file);
 
         let diagnostic = match error {
             UnificationError::Recursive(_) => Diagnostic::error(
@@ -1023,35 +982,43 @@ impl<'a, L: Loader> Typechecker<'a, L> {
                     ),
                 )],
             ),
-        };
-
-        self.compiler.diagnostics.add(diagnostic);
-    }
-
-    fn report_finalize_error(&mut self, span: Span, error: FinalizeError, file: &lower::File) {
-        self.well_typed = false;
-
-        let (type_names, param_names, trait_names) = format_support!(&self, file);
-
-        let diagnostic = match error {
-            FinalizeError::UnknownType => Diagnostic::error(
-                "could not determine the type of this expression",
-                vec![Note::primary(span, "try annotating the type with '::'")],
-            ),
-            FinalizeError::MissingInstance(tr, ty) => Diagnostic::error(
+            UnificationError::MissingInstance(tr, ty) => Diagnostic::error(
                 "missing instance",
                 vec![Note::primary(
                     span,
                     format!(
                         "could not find instance of `{}` for type `{}`",
-                        file.declarations.traits.get(&tr).unwrap().name(),
+                        trait_names(tr),
                         format_type(&ty, type_names, param_names, trait_names)
                     ),
                 )],
             ),
+            UnificationError::AmbiguousTrait(_, _) => Diagnostic::error(
+                "could not determine the type of this expression",
+                vec![Note::primary(span, "try annotating the type with '::'")],
+            ),
         };
 
         self.compiler.diagnostics.add(diagnostic);
+    }
+
+    fn report_finalize_error(&mut self, span: Span) {
+        self.well_typed = false;
+
+        self.compiler.diagnostics.add(Diagnostic::error(
+            "could not determine the type of this expression",
+            vec![Note::primary(span, "try annotating the type with '::'")],
+        ));
+    }
+}
+
+impl UnresolvedExpression {
+    fn merge(&mut self, ty: ResolvedType) {
+        if let Some(instance) = ty.instance {
+            self.kind = UnresolvedExpressionKind::Constant(instance);
+        }
+
+        self.scheme = UnresolvedScheme::Type(ty.into());
     }
 }
 
@@ -1139,7 +1106,7 @@ pub fn format_type_scheme(
     ty: &UnresolvedScheme,
     type_names: impl Fn(TypeId) -> String,
     param_names: impl Fn(TypeParameterId) -> String,
-    trait_names: impl Fn(TypeVariable) -> Option<String>,
+    trait_names: impl Fn(TraitId) -> String,
 ) -> String {
     match ty {
         UnresolvedScheme::Type(ty) => format_type(ty, type_names, param_names, trait_names),
@@ -1165,7 +1132,7 @@ pub fn format_type(
     ty: &UnresolvedType,
     type_names: impl Fn(TypeId) -> String,
     param_names: impl Fn(TypeParameterId) -> String,
-    trait_names: impl Fn(TypeVariable) -> Option<String>,
+    trait_names: impl Fn(TraitId) -> String,
 ) -> String {
     format_type_with(ty, type_names, param_names, trait_names)
 }
@@ -1174,19 +1141,20 @@ fn format_type_with(
     ty: &UnresolvedType,
     type_names: impl Fn(TypeId) -> String,
     param_names: impl Fn(TypeParameterId) -> String,
-    trait_names: impl Fn(TypeVariable) -> Option<String>,
+    trait_names: impl Fn(TraitId) -> String,
 ) -> String {
     fn format_type(
         ty: &UnresolvedType,
         type_names: &impl Fn(TypeId) -> String,
         param_names: &impl Fn(TypeParameterId) -> String,
-        trait_names: &impl Fn(TypeVariable) -> Option<String>,
+        trait_names: &impl Fn(TraitId) -> String,
         is_top_level: bool,
         is_return: bool,
     ) -> String {
         match ty {
-            UnresolvedType::Variable(var) => trait_names(*var).unwrap_or_else(|| String::from("_")),
+            UnresolvedType::Variable(_) => String::from("_"),
             UnresolvedType::Parameter(param) => param_names(*param),
+            UnresolvedType::Trait(id) => trait_names(*id),
             UnresolvedType::Bottom(_) => String::from("!"),
             UnresolvedType::Named(id) => {
                 let name = type_names(*id);
