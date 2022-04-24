@@ -167,6 +167,7 @@ pub struct Bound {
 #[derive(Debug, Clone)]
 pub struct Instance {
     pub tr: TraitId,
+    pub parameters: Vec<TypeAnnotation>,
     pub value: Expression,
 }
 
@@ -669,8 +670,30 @@ impl<L: Loader> Compiler<L> {
                     }
                 };
 
+                let parameters = decl
+                    .trait_parameters
+                    .into_iter()
+                    .map(|ty| self.lower_type_annotation(ty, scope, info))
+                    .collect();
+
+                if !decl.parameters.is_empty() {
+                    self.diagnostics.add(Diagnostic::error(
+                        "generic instance declarations are not currently supported",
+                        vec![Note::primary(
+                            Span::join(
+                                decl.parameters.first().unwrap().span,
+                                decl.parameters.last().unwrap().span,
+                            ),
+                            "try removing this",
+                        )],
+                    ));
+
+                    return Some(Expression::error(statement.span));
+                }
+
                 let instance = Instance {
                     tr,
+                    parameters,
                     value: self.lower_expr(decl.value, scope, info),
                 };
 

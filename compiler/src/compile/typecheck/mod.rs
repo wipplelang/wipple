@@ -1,3 +1,5 @@
+#![allow(clippy::type_complexity)]
+
 mod engine;
 
 pub use engine::{BuiltinType, Type};
@@ -93,7 +95,7 @@ pub struct TypeParameter {
 pub struct Declarations {
     pub types: HashMap<TypeId, Declaration<()>>,
     pub type_parameters: HashMap<TypeParameterId, Declaration<()>>,
-    pub traits: HashMap<TraitId, Declaration<()>>,
+    pub traits: HashMap<TraitId, Declaration<(UnresolvedScheme, Vec<TypeParameterId>)>>,
     pub constants: HashMap<ConstantId, Declaration<Expression>>,
     pub variables: HashMap<VariableId, Declaration<Type>>,
 }
@@ -161,7 +163,9 @@ impl<L: Loader> Compiler<L> {
                     let scheme = typechecker
                         .convert_constant_type_annotation(&decl.value.ty, &decl.value.parameters);
 
-                    typechecker.constants.insert(id, scheme);
+                    let bounds = decl.value.bounds.iter().map(|bound| todo!()).collect();
+
+                    typechecker.constants.insert(id, (scheme, bounds));
                 }
             }
 
@@ -199,7 +203,9 @@ impl<L: Loader> Compiler<L> {
                     let scheme = typechecker
                         .convert_constant_type_annotation(&decl.value.ty, &decl.value.parameters);
 
-                    typechecker.traits.insert(id, scheme);
+                    let params = decl.value.parameters.iter().map(|param| param.id).collect();
+
+                    typechecker.traits.insert(id, (scheme, params));
                 }
             }
 
@@ -207,20 +213,28 @@ impl<L: Loader> Compiler<L> {
                 if let lower::Declaration::Local(decl) | lower::Declaration::Builtin(decl) = decl {
                     let mut value = typechecker.typecheck_expr(&decl.value.value, file);
 
-                    let trait_ty = typechecker
-                        .traits
-                        .get(&decl.value.tr)
-                        .unwrap()
-                        .clone()
-                        .instantiate(&mut typechecker.ctx);
+                    let (mut trait_ty, params) =
+                        typechecker.traits.get(&decl.value.tr).unwrap().clone();
+
+                    let substitutions = params
+                        .into_iter()
+                        .zip(&decl.value.parameters)
+                        .map(|(param, ty)| (param, typechecker.convert_type_annotation(ty)))
+                        .collect();
+
+                    trait_ty.as_ty_mut().substitute_parameters(&substitutions);
 
                     let value_ty = typechecker.monomorphize(&mut value);
 
-                    if let Err(errors) = typechecker.ctx.unify(value_ty, trait_ty) {
+                    if let Err(errors) = typechecker.ctx.unify(value_ty, trait_ty.into_ty()) {
                         typechecker.report_type_error(value.span, errors, &file.borrow());
                     }
 
-                    typechecker.constants.insert(id, value.scheme.clone());
+                    let bounds = Vec::new(); // TODO: Generic instances
+
+                    typechecker
+                        .constants
+                        .insert(id, (value.scheme.clone(), bounds));
 
                     typechecker.ctx.register(
                         decl.value.tr,
@@ -272,13 +286,23 @@ impl<L: Loader> Compiler<L> {
 
             for (id, decl) in file.borrow().declarations.traits.clone() {
                 if let lower::Declaration::Local(decl) = decl {
+                    let ty = typechecker
+                        .convert_constant_type_annotation(&decl.value.ty, &decl.value.parameters);
+
+                    let parameters = decl
+                        .value
+                        .parameters
+                        .into_iter()
+                        .map(|param| param.id)
+                        .collect();
+
                     declarations.traits.insert(
                         id,
                         Declaration {
                             file: file.borrow().path,
                             name: decl.name,
                             span: decl.span,
-                            value: (),
+                            value: (ty, parameters),
                         },
                     );
                 }
@@ -289,7 +313,7 @@ impl<L: Loader> Compiler<L> {
                     let id = $id;
                     let value = $value;
 
-                    let constant_scheme = typechecker.constants.get(&id).unwrap().clone();
+                    let (constant_scheme, bounds) = typechecker.constants.get(&id).unwrap().clone();
 
                     let mut value = typechecker.typecheck_expr(&value, file);
 
@@ -340,7 +364,7 @@ impl<L: Loader> Compiler<L> {
                                     file: file.borrow().path,
                                     name: $decl.name,
                                     span: $decl.span,
-                                    value,
+                                    value: (value, bounds),
                                 },
                             );
                         }
@@ -364,8 +388,12 @@ impl<L: Loader> Compiler<L> {
         for (new_id, (old_id, substitutions)) in mem::take(&mut typechecker.monomorphized) {
             let decl = generic_constants.get(&old_id).unwrap().clone();
 
-            // TODO: Check bounds here too (include with substitutions)
-            let value = match typechecker.finalize(decl.value, &substitutions) {
+            let (value, bounds) = decl.value;
+            for _bound in bounds {
+                // TODO: Check bounds
+            }
+
+            let value = match typechecker.finalize(value, &substitutions) {
                 Ok(value) => value,
                 Err(span) => {
                     typechecker.report_finalize_error(span);
@@ -477,8 +505,8 @@ struct Typechecker<'a, L: Loader> {
     well_typed: bool,
     ctx: Context,
     variables: HashMap<VariableId, UnresolvedScheme>,
-    constants: HashMap<ConstantId, UnresolvedScheme>,
-    traits: HashMap<TraitId, UnresolvedScheme>,
+    constants: HashMap<ConstantId, (UnresolvedScheme, Vec<UnresolvedType>)>,
+    traits: HashMap<TraitId, (UnresolvedScheme, Vec<TypeParameterId>)>,
     structures: HashMap<TypeId, HashMap<InternedString, (usize, UnresolvedType)>>,
     // TODO: enumerations
     function_inputs: Vec<TypeVariable>,
@@ -515,7 +543,7 @@ impl<'a, L: Loader> Typechecker<'a, L> {
                 UnresolvedExpressionKind::Marker,
             ),
             lower::ExpressionKind::Constant(id) => {
-                let scheme = self
+                let (scheme, _) = self
                     .constants
                     .get(id)
                     .expect("uninitialized constant")
@@ -523,7 +551,18 @@ impl<'a, L: Loader> Typechecker<'a, L> {
 
                 self.used_constants.insert(*id);
 
-                (scheme, UnresolvedExpressionKind::Constant(*id))
+                let ty = match scheme {
+                    UnresolvedScheme::Type(ty) => ty,
+                    UnresolvedScheme::ForAll(_) => {
+                        // Generic constants are monomorphized, so this type isn't actually used
+                        UnresolvedType::Bottom(true)
+                    }
+                };
+
+                (
+                    UnresolvedScheme::Type(ty),
+                    UnresolvedExpressionKind::Constant(*id),
+                )
             }
             lower::ExpressionKind::Trait(id) => (
                 UnresolvedScheme::Type(UnresolvedType::Trait(*id)),
@@ -995,7 +1034,7 @@ impl<'a, L: Loader> Typechecker<'a, L> {
             ),
             UnificationError::AmbiguousTrait(_, _) => Diagnostic::error(
                 "could not determine the type of this expression",
-                vec![Note::primary(span, "try annotating the type with '::'")],
+                vec![Note::primary(span, "try annotating the type with `::`")],
             ),
         };
 
@@ -1007,7 +1046,7 @@ impl<'a, L: Loader> Typechecker<'a, L> {
 
         self.compiler.diagnostics.add(Diagnostic::error(
             "could not determine the type of this expression",
-            vec![Note::primary(span, "try annotating the type with '::'")],
+            vec![Note::primary(span, "try annotating the type with `::`")],
         ));
     }
 }

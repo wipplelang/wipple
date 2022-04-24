@@ -40,8 +40,11 @@ pub enum StatementKind {
 
 #[derive(Debug, Clone)]
 pub struct Instance {
+    pub parameters: Vec<TypeParameter>,
+    pub bounds: Vec<Bound>,
     pub trait_span: Span,
     pub trait_name: InternedString,
+    pub trait_parameters: Vec<TypeAnnotation>,
     pub value: Expression,
 }
 
@@ -639,16 +642,23 @@ peg::parser! {
             / expected!("constant declaration")
 
         rule instance_statement() -> Statement
-            = [(Token::Instance, instance_span)]
+            = parameters:type_parameter_introduction()?
+              [(Token::Instance, instance_span)]
               [(Token::Name(trait_name), trait_span)]
+              trait_parameters:r#type()*
               [(Token::Colon, _)]
               value:compound_expression()
               {
+                let (parameters, bounds) = parameters.unwrap_or_default();
+
                   Statement {
                       span: Span::join(instance_span, value.span),
                       kind: StatementKind::Instance(Instance {
+                          parameters,
+                          bounds,
                           trait_span,
                           trait_name,
+                          trait_parameters,
                           value,
                       }),
                   }

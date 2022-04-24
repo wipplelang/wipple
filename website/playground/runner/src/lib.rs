@@ -50,14 +50,27 @@ pub fn run(code: &str) -> JsValue {
             let result = {
                 let interpreter =
                     wipple_interpreter_backend::Interpreter::handling_output_with_span(
-                        |text, span| output.push((span, text.to_string())),
+                        |text, stack| {
+                            let span = stack
+                                .iter()
+                                .rev()
+                                .find(|&&span| belongs_to_playground(span))
+                                .unwrap();
+
+                            output.push((*span, text.to_string()))
+                        },
                     );
 
                 interpreter.eval(program)
             };
 
-            if let Err((error, callstack)) = result {
-                let span = *callstack.last().unwrap();
+            if let Err((error, stack)) = result {
+                let span = stack
+                    .into_iter()
+                    .rev()
+                    .find(|&span| belongs_to_playground(span))
+                    .unwrap();
+
                 output.push((span, format!("fatal error: {error}")));
             }
         }

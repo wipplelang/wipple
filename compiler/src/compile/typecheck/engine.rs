@@ -134,8 +134,25 @@ impl Context {
 
     pub fn unify(
         &mut self,
+        actual: UnresolvedType,
+        expected: UnresolvedType,
+    ) -> Result<ResolvedType, UnificationError> {
+        self.unify_internal(actual, expected, false)
+    }
+
+    pub fn unify_generic(
+        &mut self,
+        actual: UnresolvedType,
+        expected: UnresolvedType,
+    ) -> Result<ResolvedType, UnificationError> {
+        self.unify_internal(actual, expected, true)
+    }
+
+    fn unify_internal(
+        &mut self,
         mut actual: UnresolvedType,
         mut expected: UnresolvedType,
+        generic: bool,
     ) -> Result<ResolvedType, UnificationError> {
         actual.apply(self);
         expected.apply(self);
@@ -153,11 +170,24 @@ impl Context {
                     })
                 }
             }
-            (UnresolvedType::Parameter(param), _) => Ok(ResolvedType {
+            (UnresolvedType::Parameter(actual), UnresolvedType::Parameter(expected)) if generic => {
+                if actual == expected {
+                    Ok(ResolvedType {
+                        instance: None,
+                        kind: ResolvedTypeKind::Parameter(actual),
+                    })
+                } else {
+                    Err(UnificationError::Mismatch(
+                        UnresolvedType::Parameter(actual),
+                        UnresolvedType::Parameter(expected),
+                    ))
+                }
+            }
+            (UnresolvedType::Parameter(param), _) if !generic => Ok(ResolvedType {
                 instance: None,
                 kind: ResolvedTypeKind::Parameter(param),
             }),
-            (actual, expected @ UnresolvedType::Parameter(_)) => {
+            (actual, expected @ UnresolvedType::Parameter(_)) if !generic => {
                 Err(UnificationError::Mismatch(actual, expected))
             }
             (UnresolvedType::Trait(tr), ty) | (ty, UnresolvedType::Trait(tr)) => {
@@ -243,7 +273,9 @@ impl Context {
             // TODO: Monomorphize generic instances
             let instance_ty = instance.scheme.clone().instantiate(self);
 
-            if let Ok(ResolvedType { kind, .. }) = ctx.unify(ty.clone(), instance_ty.clone()) {
+            if let Ok(ResolvedType { kind, .. }) =
+                ctx.unify_generic(ty.clone(), instance_ty.clone())
+            {
                 suitable_instances.push((
                     ctx,
                     ResolvedType {
@@ -288,6 +320,27 @@ impl Context {
 }
 
 impl UnresolvedScheme {
+    pub fn into_ty(self) -> UnresolvedType {
+        match self {
+            UnresolvedScheme::Type(ty) => ty,
+            UnresolvedScheme::ForAll(forall) => forall.ty,
+        }
+    }
+
+    pub fn as_ty(&self) -> &UnresolvedType {
+        match self {
+            UnresolvedScheme::Type(ty) => ty,
+            UnresolvedScheme::ForAll(forall) => &forall.ty,
+        }
+    }
+
+    pub fn as_ty_mut(&mut self) -> &mut UnresolvedType {
+        match self {
+            UnresolvedScheme::Type(ty) => ty,
+            UnresolvedScheme::ForAll(forall) => &mut forall.ty,
+        }
+    }
+
     pub fn instantiate(&self, ctx: &mut Context) -> UnresolvedType {
         let substitutions = ctx.create_instantiation(self);
         self.instantiate_with(&substitutions)
@@ -389,6 +442,24 @@ impl UnresolvedType {
             UnresolvedType::Function(input, output) => {
                 input.apply(ctx);
                 output.apply(ctx);
+            }
+            _ => {}
+        }
+    }
+
+    pub fn substitute_parameters(
+        &mut self,
+        substitutions: &HashMap<TypeParameterId, UnresolvedType>,
+    ) {
+        match self {
+            UnresolvedType::Parameter(param) => {
+                if let Some(ty) = substitutions.get(param) {
+                    *self = ty.clone();
+                }
+            }
+            UnresolvedType::Function(input, output) => {
+                input.substitute_parameters(substitutions);
+                output.substitute_parameters(substitutions);
             }
             _ => {}
         }

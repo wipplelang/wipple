@@ -34,7 +34,7 @@ pub enum Value {
 
 #[derive(Debug)]
 struct Diverge {
-    pub callstack: Callstack,
+    pub stack: Vec<Span>,
     pub kind: DivergeKind,
 }
 
@@ -45,13 +45,11 @@ enum DivergeKind {
 
 type Error = String;
 
-type Callstack = Vec<Span>;
-
 impl Diverge {
     #[allow(clippy::ptr_arg)]
-    pub fn new(callstack: &Callstack, kind: DivergeKind) -> Self {
+    pub fn new(stack: &Vec<Span>, kind: DivergeKind) -> Self {
         Diverge {
-            callstack: callstack.clone(),
+            stack: stack.clone(),
             kind,
         }
     }
@@ -60,7 +58,7 @@ impl Diverge {
 #[derive(Default)]
 pub struct Interpreter<'a> {
     #[allow(clippy::type_complexity)]
-    output: Option<Rc<RefCell<Box<dyn FnMut(&str, Span) + 'a>>>>,
+    output: Option<Rc<RefCell<Box<dyn FnMut(&str, &[Span]) + 'a>>>>,
 }
 
 impl<'a> Interpreter<'a> {
@@ -72,25 +70,25 @@ impl<'a> Interpreter<'a> {
         Interpreter { output: None }
     }
 
-    pub fn handling_output_with_span(output: impl FnMut(&str, Span) + 'a) -> Self {
+    pub fn handling_output_with_span(output: impl FnMut(&str, &[Span]) + 'a) -> Self {
         Interpreter {
             output: Some(Rc::new(RefCell::new(Box::new(output) as Box<_>))),
         }
     }
 
-    pub fn eval(&self, program: Program) -> Result<(), (Error, Callstack)> {
+    pub fn eval(&self, program: Program) -> Result<(), (Error, Vec<Span>)> {
         let mut info = Info {
             declarations: program.declarations,
             scope: Default::default(),
             function_input: None,
             constants: Default::default(),
-            callstack: Vec::new(),
+            stack: Vec::new(),
         };
 
         for statement in program.body {
             self.eval_expr(&statement, &mut info)
                 .map_err(|diverge| match diverge.kind {
-                    DivergeKind::Error(error) => (error, diverge.callstack),
+                    DivergeKind::Error(error) => (error, diverge.stack),
                     /* _ => unreachable!(), */
                 })?;
         }
@@ -104,7 +102,7 @@ pub struct Info {
     scope: Rc<RefCell<Scope>>,
     function_input: Option<Rc<Value>>,
     constants: HashMap<ConstantId, Rc<Value>>,
-    callstack: Callstack,
+    stack: Vec<Span>,
 }
 
 #[derive(Debug, Default)]
@@ -124,6 +122,8 @@ impl Scope {
 
 impl<'a> Interpreter<'a> {
     fn eval_expr(&self, expr: &Expression, info: &mut Info) -> Result<Rc<Value>, Diverge> {
+        info.stack.push(expr.span);
+
         let value = match &expr.kind {
             ExpressionKind::Error => panic!("program is not well-typed"),
             ExpressionKind::Marker => Rc::new(Value::Marker),
@@ -165,8 +165,6 @@ impl<'a> Interpreter<'a> {
                         child.borrow_mut().variables.extend(captures.clone());
                         info.scope = child;
 
-                        info.callstack.push(expr.span);
-
                         let value = match self.eval_expr(body, info) {
                         Ok(value)
                         /* | Err(Diverge {
@@ -178,7 +176,6 @@ impl<'a> Interpreter<'a> {
 
                         info.scope = parent;
                         info.function_input = None;
-                        info.callstack.pop();
 
                         value
                     }
@@ -219,7 +216,7 @@ impl<'a> Interpreter<'a> {
                     #[cfg(target_arch = "wasm32")]
                     {
                         return Err(Diverge::new(
-                            &info.callstack,
+                            &info.stack,
                             DivergeKind::Error(Error::from(
                                 "external functions are unsupported in the playground",
                             )),
@@ -237,7 +234,7 @@ impl<'a> Interpreter<'a> {
                             Ok(function) => function,
                             Err(error) => {
                                 return Err(Diverge::new(
-                                    &info.callstack,
+                                    &info.stack,
                                     DivergeKind::Error(format!(
                                         "unsupported external function type: {}",
                                         error
@@ -251,9 +248,9 @@ impl<'a> Interpreter<'a> {
                             .map(|input| self.eval_expr(input, info))
                             .collect::<Result<Vec<_>, _>>()?;
 
-                        function.call_with(inputs).map_err(|error| {
-                            Diverge::new(&info.callstack, DivergeKind::Error(error))
-                        })?
+                        function
+                            .call_with(inputs)
+                            .map_err(|error| Diverge::new(&info.stack, DivergeKind::Error(error)))?
                     }
                 }
             }
@@ -265,6 +262,8 @@ impl<'a> Interpreter<'a> {
             )),
             ExpressionKind::FunctionInput => info.function_input.as_ref().unwrap().clone(),
         };
+
+        info.stack.pop();
 
         Ok(value)
     }

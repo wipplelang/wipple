@@ -130,7 +130,7 @@ const Playground = () => {
         const code = model.current.getValue();
 
         query.current!.set("code", code);
-        const newURL = window.location.pathname + "?" + query.current!.toString();
+        const newURL = window.location.pathname + (code ? "?" + query.current!.toString() : "");
         window.history.replaceState(null, "", newURL);
 
         if (runner.current) {
@@ -149,6 +149,8 @@ const Playground = () => {
         editor: monaco.editor.IStandaloneCodeEditor,
         monaco: typeof import("monaco-editor")
     ) => {
+        editor.focus();
+
         monaco.languages.register({ id: "wipple" });
 
         monaco.languages.setLanguageConfiguration("wipple", {
@@ -273,7 +275,7 @@ const Playground = () => {
         };
 
         const markers =
-            result?.diagnostics.flatMap((diagnostic) => {
+            result?.diagnostics?.flatMap((diagnostic) => {
                 diagnostic.notes[0].message = `${diagnostic.message}\n${diagnostic.notes[0].message}`;
 
                 return diagnostic.notes.map((note) => {
@@ -328,23 +330,40 @@ const Playground = () => {
                     }}
                 >
                     {query.current && (
-                        <Editor
-                            width="100%"
-                            height={editorHeight}
-                            language="wipple"
-                            defaultValue={query.current.get("code") || "-- Write your code here!"}
-                            options={{
-                                fontFamily,
-                                fontLigatures: true,
-                                fontSize: 16,
-                                minimap: {
-                                    enabled: false,
-                                },
-                                tabSize: 2,
-                                "semanticHighlighting.enabled": true,
-                            }}
-                            onMount={initialize}
-                        />
+                        <div className="relative w-full">
+                            <Editor
+                                width="100%"
+                                className="absolute inset-0"
+                                height={editorHeight}
+                                language="wipple"
+                                defaultValue={query.current.get("code") ?? undefined}
+                                options={{
+                                    fontFamily,
+                                    fontLigatures: true,
+                                    fontSize: 16,
+                                    minimap: {
+                                        enabled: false,
+                                    },
+                                    tabSize: 2,
+                                    "semanticHighlighting.enabled": true,
+                                }}
+                                onMount={initialize}
+                            />
+
+                            {!query.current.get("code") && (
+                                <div
+                                    className="absolute inset-0 pointer-events-none"
+                                    style={{
+                                        fontFamily,
+                                        fontStyle: "italic",
+                                        color: theme.rules[0].foreground,
+                                        marginLeft: 76,
+                                    }}
+                                >
+                                    Write your code here!
+                                </div>
+                            )}
+                        </div>
                     )}
                 </div>
 

@@ -11,7 +11,7 @@ pub(crate) fn call(
 ) -> Result<Rc<Value>, Diverge> {
     let builtin = BUILTINS.get(identifier).ok_or_else(|| {
         Diverge::new(
-            &info.callstack,
+            &info.stack,
             DivergeKind::Error(format!("Unknown builtin function '{}'", identifier)),
         )
     })?;
@@ -67,11 +67,11 @@ fn builtin_show(
         .as_ref()
         .ok_or_else(|| {
             Diverge::new(
-                &info.callstack,
+                &info.stack,
                 DivergeKind::Error(Error::from("Output not configured")),
             )
         })?
-        .borrow_mut()(text, *info.callstack.last().unwrap());
+        .borrow_mut()(text, &info.stack);
 
     Ok(Rc::new(Value::Marker))
 }
