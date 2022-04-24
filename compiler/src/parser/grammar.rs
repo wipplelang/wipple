@@ -367,7 +367,7 @@ peg::parser! {
             / grouped_type()
             / expected!("type")
 
-        rule unparameterized_path_type() -> TypeAnnotation
+        rule unparameterized_named_type() -> TypeAnnotation
             = [(Token::Name(name), span)]
             {
                 TypeAnnotation {
@@ -377,6 +377,7 @@ peg::parser! {
             }
             / placeholder_type()
             / function_type()
+            / unit_type()
             / grouped_type()
             / expected!("type")
 
@@ -416,7 +417,7 @@ peg::parser! {
                           kind: TypeAnnotationKind::Named(name, Vec::new())
                       }
                   }
-                  / parameters:unparameterized_path_type()
+                  / parameters:unparameterized_named_type()
               )*
             {
                 TypeAnnotation {
@@ -610,7 +611,7 @@ peg::parser! {
             / expected!("data structure field")
 
         rule type_variant() -> DataVariant
-            = [(Token::Name(name), _)] values:unparameterized_path_type()*
+            = [(Token::Name(name), _)] values:unparameterized_named_type()*
             {
                 DataVariant {
                     name,
@@ -645,7 +646,7 @@ peg::parser! {
             = parameters:type_parameter_introduction()?
               [(Token::Instance, instance_span)]
               [(Token::Name(trait_name), trait_span)]
-              trait_parameters:r#type()*
+              trait_parameters:unparameterized_named_type()*
               [(Token::Colon, _)]
               value:compound_expression()
               {

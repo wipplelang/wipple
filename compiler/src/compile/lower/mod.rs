@@ -1011,7 +1011,7 @@ impl<L: Loader> Compiler<L> {
                         if !parameters.is_empty() {
                             // TODO: parameters for `List`
                             self.diagnostics.add(Diagnostic::error(
-                                "`{}` does not accept parameters",
+                                format!("`{}` does not accept parameters", name),
                                 vec![Note::primary(
                                     ty.span,
                                     format!(
