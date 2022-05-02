@@ -128,7 +128,8 @@ impl Context {
         var
     }
 
-    pub fn register(&mut self, tr: TraitId, instance: Instance) {
+    pub fn register(&mut self, tr: TraitId, mut instance: Instance) {
+        instance.scheme.as_ty_mut().apply(self);
         self.instances.entry(tr).or_default().push(instance);
     }
 

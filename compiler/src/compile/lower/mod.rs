@@ -612,10 +612,13 @@ impl<L: Loader> Compiler<L> {
                                 }
                             };
 
-                            Ok(Bound {
-                                tr,
-                                parameters: Default::default(), // TODO
-                            })
+                            let parameters = bound
+                                .parameters
+                                .into_iter()
+                                .map(|ty| self.lower_type_annotation(ty, &scope, info))
+                                .collect();
+
+                            Ok(Bound { tr, parameters })
                         })
                         .collect::<Result<_, _>>();
 

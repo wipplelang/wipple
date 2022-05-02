@@ -158,22 +158,11 @@ impl<L: Loader> Compiler<L> {
                 total: total_files,
             });
 
-            for (&id, decl) in &file.borrow().declarations.constants {
-                if let lower::Declaration::Local(decl) | lower::Declaration::Builtin(decl) = decl {
-                    let scheme = typechecker
-                        .convert_constant_type_annotation(&decl.value.ty, &decl.value.parameters);
-
-                    let bounds = decl.value.bounds.iter().map(|bound| todo!()).collect();
-
-                    typechecker.constants.insert(id, (scheme, bounds));
-                }
-            }
-
             for (&id, decl) in &file.borrow().declarations.types {
                 if let lower::Declaration::Local(decl) | lower::Declaration::Builtin(decl) = decl {
                     match &decl.value {
                         lower::Type::Structure(fields, field_names) => {
-                            #[allow(clippy::map_entry)] // typechecker is borrowed twice otherwise
+                            #[allow(clippy::map_entry)] // `typechecker` is borrowed twice otherwise
                             if !typechecker.structures.contains_key(&id) {
                                 let fields = field_names
                                     .iter()
@@ -206,6 +195,39 @@ impl<L: Loader> Compiler<L> {
                     let params = decl.value.parameters.iter().map(|param| param.id).collect();
 
                     typechecker.traits.insert(id, (scheme, params));
+                }
+            }
+
+            for (&id, decl) in &file.borrow().declarations.constants {
+                if let lower::Declaration::Local(decl) | lower::Declaration::Builtin(decl) = decl {
+                    let scheme = typechecker
+                        .convert_constant_type_annotation(&decl.value.ty, &decl.value.parameters);
+
+                    let bounds = decl
+                        .value
+                        .bounds
+                        .iter()
+                        .map(|bound| {
+                            let (original_scheme, params) =
+                                typechecker.traits.get(&bound.tr).unwrap().clone();
+
+                            let mut trait_scheme = original_scheme.clone();
+
+                            let substitutions = params
+                                .into_iter()
+                                .zip(&bound.parameters)
+                                .map(|(param, ty)| (param, typechecker.convert_type_annotation(ty)))
+                                .collect();
+
+                            trait_scheme
+                                .as_ty_mut()
+                                .substitute_parameters(&substitutions);
+
+                            (bound.tr, original_scheme, trait_scheme.into_ty())
+                        })
+                        .collect();
+
+                    typechecker.constants.insert(id, (scheme, bounds));
                 }
             }
 
@@ -255,6 +277,7 @@ impl<L: Loader> Compiler<L> {
 
         let mut declarations = Declarations::default();
         let mut generic_constants = HashMap::new();
+        let mut bound_constants = Vec::new();
         for file in &files {
             for (id, decl) in file.borrow().declarations.types.clone() {
                 if let lower::Declaration::Local(decl) = decl {
@@ -315,6 +338,9 @@ impl<L: Loader> Compiler<L> {
 
                     let (constant_scheme, bounds) = typechecker.constants.get(&id).unwrap().clone();
 
+                    // FIXME: Instances cannot be resolved because the type of expressions within
+                    // `value` aren't completely known until `value_ty` is unified with `constant_ty`
+                    // below. We need to check instances after expressions are typechecked!!!
                     let mut value = typechecker.typecheck_expr(&value, file);
 
                     {
@@ -328,9 +354,19 @@ impl<L: Loader> Compiler<L> {
                         if let Err(errors) = typechecker.ctx.unify(value_ty, constant_ty) {
                             typechecker.report_type_error(value.span, errors, &file.borrow());
                         }
-                    };
+                    }
 
                     value.scheme = constant_scheme;
+
+                    for (tr, original_scheme, mut ty) in bounds {
+                        // Prevent the type parameters from being resolved
+                        ty.apply(&typechecker.ctx);
+                        let scheme = UnresolvedScheme::Type(ty);
+
+                        let constant = typechecker.compiler.new_constant_id();
+                        bound_constants.push((tr, original_scheme, constant));
+                        typechecker.ctx.register(tr, Instance { scheme, constant });
+                    }
 
                     match value.scheme {
                         UnresolvedScheme::Type(_) => {
@@ -364,7 +400,7 @@ impl<L: Loader> Compiler<L> {
                                     file: file.borrow().path,
                                     name: $decl.name,
                                     span: $decl.span,
-                                    value: (value, bounds),
+                                    value,
                                 },
                             );
                         }
@@ -388,12 +424,7 @@ impl<L: Loader> Compiler<L> {
         for (new_id, (old_id, substitutions)) in mem::take(&mut typechecker.monomorphized) {
             let decl = generic_constants.get(&old_id).unwrap().clone();
 
-            let (value, bounds) = decl.value;
-            for _bound in bounds {
-                // TODO: Check bounds
-            }
-
-            let value = match typechecker.finalize(value, &substitutions) {
+            let value = match typechecker.finalize(decl.value, &substitutions) {
                 Ok(value) => value,
                 Err(span) => {
                     typechecker.report_finalize_error(span);
@@ -415,6 +446,11 @@ impl<L: Loader> Compiler<L> {
                 },
             );
         }
+
+        // TODO: Check bounds
+        // for (tr, bound, constant) in bound_constants {
+        //     // ...
+        // }
 
         let mut top_level = HashMap::new();
         for file in &files {
@@ -505,7 +541,13 @@ struct Typechecker<'a, L: Loader> {
     well_typed: bool,
     ctx: Context,
     variables: HashMap<VariableId, UnresolvedScheme>,
-    constants: HashMap<ConstantId, (UnresolvedScheme, Vec<UnresolvedType>)>,
+    constants: HashMap<
+        ConstantId,
+        (
+            UnresolvedScheme,
+            Vec<(TraitId, UnresolvedScheme, UnresolvedType)>,
+        ),
+    >,
     traits: HashMap<TraitId, (UnresolvedScheme, Vec<TypeParameterId>)>,
     structures: HashMap<TypeId, HashMap<InternedString, (usize, UnresolvedType)>>,
     // TODO: enumerations
