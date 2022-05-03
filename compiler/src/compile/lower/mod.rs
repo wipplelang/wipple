@@ -160,6 +160,7 @@ pub struct Constant {
 
 #[derive(Debug, Clone)]
 pub struct Bound {
+    pub span: Span,
     pub tr: TraitId,
     pub parameters: Vec<TypeAnnotation>,
 }
@@ -618,7 +619,11 @@ impl<L: Loader> Compiler<L> {
                                 .map(|ty| self.lower_type_annotation(ty, &scope, info))
                                 .collect();
 
-                            Ok(Bound { tr, parameters })
+                            Ok(Bound {
+                                span: bound.span,
+                                tr,
+                                parameters,
+                            })
                         })
                         .collect::<Result<_, _>>();
 

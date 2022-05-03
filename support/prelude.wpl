@@ -1,2 +1,15 @@
-show :: Text -> ()
-show : text -> external "builtin" "show" text
+it :: A => A -> A
+it : x -> x
+
+
+just :: A B => A -> B -> A
+just : x -> _ -> x
+
+
+Show : A => trait (A -> Text)
+
+instance Show Text : it
+
+
+show :: A where (Show A) => A -> ()
+show : x -> external "builtin" "show" (Show x)

@@ -137,7 +137,6 @@ fn annotations(program: &mut wipple_compiler::compile::Program) -> Vec<Annotatio
                         .name
                         .to_string()
                 },
-                |tr| declarations.traits.get(&tr).unwrap().name.to_string(),
             )
         };
     }

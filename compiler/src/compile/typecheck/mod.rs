@@ -149,6 +149,8 @@ impl<L: Loader> Compiler<L> {
 
         let total_files = files.len();
 
+        // Typecheck expressions in the program and collect constraints
+
         let mut body = Vec::new();
 
         for (index, file) in files.iter_mut().enumerate() {
@@ -208,10 +210,8 @@ impl<L: Loader> Compiler<L> {
                         .bounds
                         .iter()
                         .map(|bound| {
-                            let (original_scheme, params) =
+                            let (mut trait_scheme, params) =
                                 typechecker.traits.get(&bound.tr).unwrap().clone();
-
-                            let mut trait_scheme = original_scheme.clone();
 
                             let substitutions = params
                                 .into_iter()
@@ -223,7 +223,7 @@ impl<L: Loader> Compiler<L> {
                                 .as_ty_mut()
                                 .substitute_parameters(&substitutions);
 
-                            (bound.tr, original_scheme, trait_scheme.into_ty())
+                            (bound.span, bound.tr, trait_scheme.into_ty())
                         })
                         .collect();
 
@@ -276,8 +276,8 @@ impl<L: Loader> Compiler<L> {
         }
 
         let mut declarations = Declarations::default();
+        let mut pending_constants = Vec::new();
         let mut generic_constants = HashMap::new();
-        let mut bound_constants = Vec::new();
         for file in &files {
             for (id, decl) in file.borrow().declarations.types.clone() {
                 if let lower::Declaration::Local(decl) = decl {
@@ -337,71 +337,44 @@ impl<L: Loader> Compiler<L> {
                     let value = $value;
 
                     let (constant_scheme, bounds) = typechecker.constants.get(&id).unwrap().clone();
-
-                    // FIXME: Instances cannot be resolved because the type of expressions within
-                    // `value` aren't completely known until `value_ty` is unified with `constant_ty`
-                    // below. We need to check instances after expressions are typechecked!!!
                     let mut value = typechecker.typecheck_expr(&value, file);
 
-                    {
-                        let constant_ty = match &constant_scheme {
-                            UnresolvedScheme::Type(ty) => ty.clone(),
-                            UnresolvedScheme::ForAll(forall) => forall.ty.clone(),
-                        };
+                    let constant_ty = constant_scheme.clone().into_ty();
+                    let value_ty = typechecker.monomorphize(&mut value);
 
-                        let value_ty = typechecker.monomorphize(&mut value);
-
-                        if let Err(errors) = typechecker.ctx.unify(value_ty, constant_ty) {
-                            typechecker.report_type_error(value.span, errors, &file.borrow());
-                        }
+                    if let Err(errors) = typechecker.ctx.unify(constant_ty, value_ty) {
+                        typechecker.report_type_error(value.span, errors, &file.borrow());
                     }
 
                     value.scheme = constant_scheme;
 
-                    for (tr, original_scheme, mut ty) in bounds {
-                        // Prevent the type parameters from being resolved
-                        ty.apply(&typechecker.ctx);
-                        let scheme = UnresolvedScheme::Type(ty);
-
-                        let constant = typechecker.compiler.new_constant_id();
-                        bound_constants.push((tr, original_scheme, constant));
-                        typechecker.ctx.register(tr, Instance { scheme, constant });
-                    }
-
                     match value.scheme {
                         UnresolvedScheme::Type(_) => {
-                            let value = match typechecker.finalize(value, &Default::default()) {
-                                Ok(value) => value,
-                                Err(span) => {
-                                    typechecker.report_finalize_error(span);
-
-                                    Expression {
-                                        span,
-                                        ty: Type::Bottom(true),
-                                        kind: ExpressionKind::Error,
-                                    }
-                                }
-                            };
-
-                            declarations.constants.insert(
+                            pending_constants.push((
                                 id,
-                                Declaration {
+                                value,
+                                file,
+                                Box::new(move |value| Declaration {
                                     file: file.borrow().path,
                                     name: $decl.name,
                                     span: $decl.span,
                                     value,
-                                },
-                            );
+                                }) as Box<dyn FnOnce(_) -> _>,
+                            ));
                         }
                         UnresolvedScheme::ForAll(_) => {
                             generic_constants.insert(
                                 id,
-                                Declaration {
-                                    file: file.borrow().path,
-                                    name: $decl.name,
-                                    span: $decl.span,
-                                    value,
-                                },
+                                (
+                                    file,
+                                    Declaration {
+                                        file: file.borrow().path,
+                                        name: $decl.name,
+                                        span: $decl.span,
+                                        value,
+                                    },
+                                    bounds,
+                                ),
                             );
                         }
                     }
@@ -421,13 +394,17 @@ impl<L: Loader> Compiler<L> {
             }
         }
 
-        for (new_id, (old_id, substitutions)) in mem::take(&mut typechecker.monomorphized) {
-            let decl = generic_constants.get(&old_id).unwrap().clone();
+        // Finalize the types of all values in the program, resolving traits and
+        // raising an error for unresolved type variables
 
-            let value = match typechecker.finalize(decl.value, &substitutions) {
+        progress(Progress::Finalizing);
+
+        for (id, value, file, decl) in pending_constants {
+            let value = match typechecker.finalize(value, &Default::default()) {
                 Ok(value) => value,
-                Err(span) => {
-                    typechecker.report_finalize_error(span);
+                Err((span, error)) => {
+                    typechecker.report_type_error(span, error, &file.borrow());
+
                     Expression {
                         span,
                         ty: Type::Bottom(true),
@@ -435,6 +412,78 @@ impl<L: Loader> Compiler<L> {
                     }
                 }
             };
+
+            declarations.constants.insert(id, decl(value));
+        }
+
+        for (new_id, (old_id, substitutions)) in mem::take(&mut typechecker.monomorphized) {
+            let (file, decl, bounds) = generic_constants.get(&old_id).unwrap().clone();
+
+            let mut prev_ctx = typechecker.ctx.clone();
+
+            // Check bounds
+            for (bound_span, tr, mut ty) in bounds {
+                ty.apply(&typechecker.ctx);
+
+                let id = typechecker.compiler.new_constant_id();
+
+                // TODO: Support generic instances (ie. monomorphize these)
+                typechecker.ctx.register(
+                    tr,
+                    Instance {
+                        scheme: UnresolvedScheme::Type(ty.clone()),
+                        constant: id,
+                    },
+                );
+
+                ty.substitute_parameters(&substitutions);
+
+                let value = match typechecker.ctx.instance_for(tr, ty) {
+                    Ok(instance) => {
+                        Expression {
+                            span: bound_span,
+                            // This type is never actually checked because it's
+                            // generated after typechecking
+                            ty: Type::Bottom(true),
+                            kind: ExpressionKind::Constant(instance),
+                        }
+                    }
+                    Err(error) => {
+                        typechecker.report_type_error(bound_span, error, &file.borrow());
+
+                        Expression {
+                            span: bound_span,
+                            ty: Type::Bottom(true),
+                            kind: ExpressionKind::Error,
+                        }
+                    }
+                };
+
+                declarations.constants.insert(
+                    id,
+                    Declaration {
+                        file: bound_span.path,
+                        name: InternedString::new("forwarded instance for bound"),
+                        span: bound_span,
+                        value,
+                    },
+                );
+            }
+
+            let value = match typechecker.finalize(decl.value, &substitutions) {
+                Ok(value) => value,
+                Err((span, error)) => {
+                    typechecker.report_type_error(span, error, &file.borrow());
+
+                    Expression {
+                        span,
+                        ty: Type::Bottom(true),
+                        kind: ExpressionKind::Error,
+                    }
+                }
+            };
+
+            typechecker.ctx = prev_ctx;
 
             declarations.constants.insert(
                 new_id,
@@ -447,25 +496,21 @@ impl<L: Loader> Compiler<L> {
             );
         }
 
-        // TODO: Check bounds
-        // for (tr, bound, constant) in bound_constants {
-        //     // ...
-        // }
-
         let mut top_level = HashMap::new();
         for file in &files {
             top_level.extend(&file.borrow().exported);
         }
 
-        progress(Progress::Finalizing);
-
         let body = match body
             .iter()
-            .map(|(file, expr)| {
-                expr.clone()
-                    .into_iter()
+            .map(|(file, exprs)| {
+                exprs
+                    .iter()
+                    .cloned()
                     .map(|expr| {
-                        let expr = typechecker.finalize(expr, &Default::default())?;
+                        let expr = typechecker
+                            .finalize(expr, &Default::default())
+                            .map_err(|(span, error)| (span, error, file))?;
 
                         expr.traverse(|expr| {
                             if let ExpressionKind::Initialize(id, expr) = &expr.kind {
@@ -492,11 +537,13 @@ impl<L: Loader> Compiler<L> {
             .map(|body| body.into_iter().flatten().collect::<Vec<_>>())
         {
             Ok(body) => body,
-            Err(span) => {
-                typechecker.report_finalize_error(span);
+            Err((span, error, file)) => {
+                typechecker.report_type_error(span, error, &file.borrow());
                 return None;
             }
         };
+
+        // Build the final program
 
         let program = Program {
             well_typed: typechecker.well_typed,
@@ -541,18 +588,12 @@ struct Typechecker<'a, L: Loader> {
     well_typed: bool,
     ctx: Context,
     variables: HashMap<VariableId, UnresolvedScheme>,
-    constants: HashMap<
-        ConstantId,
-        (
-            UnresolvedScheme,
-            Vec<(TraitId, UnresolvedScheme, UnresolvedType)>,
-        ),
-    >,
+    constants: HashMap<ConstantId, (UnresolvedScheme, Vec<(Span, TraitId, UnresolvedType)>)>,
     traits: HashMap<TraitId, (UnresolvedScheme, Vec<TypeParameterId>)>,
     structures: HashMap<TypeId, HashMap<InternedString, (usize, UnresolvedType)>>,
     // TODO: enumerations
     function_inputs: Vec<TypeVariable>,
-    monomorphized: HashMap<ConstantId, (ConstantId, HashMap<TypeParameterId, TypeVariable>)>,
+    monomorphized: HashMap<ConstantId, (ConstantId, HashMap<TypeParameterId, UnresolvedType>)>,
     compiler: &'a mut Compiler<L>,
     used_types: HashSet<TypeId>,
     used_constants: HashSet<ConstantId>,
@@ -593,21 +634,10 @@ impl<'a, L: Loader> Typechecker<'a, L> {
 
                 self.used_constants.insert(*id);
 
-                let ty = match scheme {
-                    UnresolvedScheme::Type(ty) => ty,
-                    UnresolvedScheme::ForAll(_) => {
-                        // Generic constants are monomorphized, so this type isn't actually used
-                        UnresolvedType::Bottom(true)
-                    }
-                };
-
-                (
-                    UnresolvedScheme::Type(ty),
-                    UnresolvedExpressionKind::Constant(*id),
-                )
+                (scheme, UnresolvedExpressionKind::Constant(*id))
             }
             lower::ExpressionKind::Trait(id) => (
-                UnresolvedScheme::Type(UnresolvedType::Trait(*id)),
+                UnresolvedScheme::Type(UnresolvedType::Variable(self.ctx.new_variable())),
                 UnresolvedExpressionKind::Trait(*id),
             ),
             lower::ExpressionKind::Variable(id) => {
@@ -646,7 +676,7 @@ impl<'a, L: Loader> Typechecker<'a, L> {
                 let function_ty = self.monomorphize(&mut function);
                 let input_ty = self.monomorphize(&mut input);
 
-                let resolved_func_ty = match self.ctx.unify(
+                match self.ctx.unify(
                     function_ty,
                     UnresolvedType::Function(Box::new(input_ty), Box::new(output_ty.clone())),
                 ) {
@@ -655,12 +685,6 @@ impl<'a, L: Loader> Typechecker<'a, L> {
                         self.report_type_error(function.span, errors, &file.borrow());
                         return error();
                     }
-                };
-
-                function.merge(resolved_func_ty.clone());
-
-                if let ResolvedTypeKind::Function(resolved_input_ty, _) = resolved_func_ty.kind {
-                    input.merge(*resolved_input_ty);
                 };
 
                 (
@@ -707,15 +731,13 @@ impl<'a, L: Loader> Typechecker<'a, L> {
 
                 let expr_ty = self.monomorphize(&mut expr);
 
-                let resolved_expr_ty = match self.ctx.unify(expr_ty, ty.clone()) {
+                match self.ctx.unify(expr_ty, ty.clone()) {
                     Ok(ty) => ty,
                     Err(errors) => {
                         self.report_type_error(expr.span, errors, &file.borrow());
                         return error();
                     }
                 };
-
-                expr.merge(resolved_expr_ty);
 
                 (UnresolvedScheme::Type(ty), expr.kind)
             }
@@ -768,15 +790,13 @@ impl<'a, L: Loader> Typechecker<'a, L> {
                     let mut value = self.typecheck_expr(expr, file);
                     let value_ty = self.monomorphize(&mut value);
 
-                    let resolved_value_ty = match self.ctx.unify(value_ty, ty) {
+                    match self.ctx.unify(value_ty, ty) {
                         Ok(ty) => ty,
                         Err(errors) => {
                             self.report_type_error(expr.span, errors, &file.borrow());
                             return error();
                         }
                     };
-
-                    value.merge(resolved_value_ty);
 
                     unpopulated_fields[index] = Some(value);
                 }
@@ -883,30 +903,33 @@ impl<'a, L: Loader> Typechecker<'a, L> {
     }
 
     fn monomorphize(&mut self, expr: &mut UnresolvedExpression) -> UnresolvedType {
-        let substitutions = self.ctx.create_instantiation(&expr.scheme);
-        let expr_ty = expr.scheme.instantiate_with(&substitutions);
+        match &expr.scheme {
+            UnresolvedScheme::ForAll(_) => {
+                let substitutions = self.ctx.create_instantiation(&expr.scheme);
+                let expr_ty = expr.scheme.instantiate_with(&substitutions);
 
-        if let UnresolvedScheme::ForAll(_) = &expr.scheme {
-            let id = match expr.kind {
-                UnresolvedExpressionKind::Constant(id) => id,
-                _ => panic!("found non-constant expression with generic type"),
-            };
+                let old_id = match expr.kind {
+                    UnresolvedExpressionKind::Constant(id) => id,
+                    _ => panic!("found non-constant expression with generic type"),
+                };
 
-            let new_id = self.compiler.new_constant_id();
-            self.monomorphized.insert(new_id, (id, substitutions));
+                let new_id = self.compiler.new_constant_id();
+                self.monomorphized.insert(new_id, (old_id, substitutions));
 
-            expr.kind = UnresolvedExpressionKind::Constant(new_id);
-            expr.scheme = UnresolvedScheme::Type(expr_ty.clone());
+                expr.kind = UnresolvedExpressionKind::Constant(new_id);
+                expr.scheme = UnresolvedScheme::Type(expr_ty.clone());
+
+                expr_ty
+            }
+            UnresolvedScheme::Type(ty) => ty.clone(),
         }
-
-        expr_ty
     }
 
     fn finalize(
         &mut self,
         expr: UnresolvedExpression,
-        substitutions: &HashMap<TypeParameterId, TypeVariable>,
-    ) -> Result<Expression, Span> {
+        substitutions: &HashMap<TypeParameterId, UnresolvedType>,
+    ) -> Result<Expression, (Span, TypeError)> {
         Ok(Expression {
             span: expr.span,
             kind: match expr.kind {
@@ -958,14 +981,28 @@ impl<'a, L: Loader> Typechecker<'a, L> {
                         .collect::<Result<_, _>>()?,
                 ),
                 UnresolvedExpressionKind::FunctionInput => ExpressionKind::FunctionInput,
-                UnresolvedExpressionKind::Trait(_) => return Err(expr.span),
+                UnresolvedExpressionKind::Trait(tr) => {
+                    let ty = match expr.scheme {
+                        UnresolvedScheme::Type(UnresolvedType::Variable(var)) => {
+                            UnresolvedType::Variable(var)
+                        }
+                        _ => unreachable!(),
+                    };
+
+                    let instance = self
+                        .ctx
+                        .instance_for(tr, ty)
+                        .map_err(|error| (expr.span, error))?;
+
+                    ExpressionKind::Constant(instance)
+                }
             },
             // the scheme must be resolved after the kind because the kind may
             // be a trait, whose type is unified with the original type variable
             ty: expr
                 .scheme
                 .finalize(&mut self.ctx, substitutions)
-                .ok_or(expr.span)?,
+                .ok_or((expr.span, TypeError::UnresolvedType))?,
         })
     }
 
@@ -1008,13 +1045,11 @@ impl<'a, L: Loader> Typechecker<'a, L> {
             UnresolvedScheme::ForAll(UnresolvedForAll { params, ty })
         }
     }
-}
 
-impl<'a, L: Loader> Typechecker<'a, L> {
-    fn report_type_error(&mut self, span: Span, error: UnificationError, file: &lower::File) {
+    fn report_type_error(&mut self, span: Span, error: TypeError, file: &lower::File) {
         self.well_typed = false;
 
-        if let UnificationError::Mismatch(actual, expected) = &error {
+        if let TypeError::Mismatch(actual, expected) = &error {
             if actual.contains_error() || expected.contains_error() {
                 return;
             }
@@ -1048,58 +1083,55 @@ impl<'a, L: Loader> Typechecker<'a, L> {
         };
 
         let diagnostic = match error {
-            UnificationError::Recursive(_) => Diagnostic::error(
+            TypeError::Recursive(_) => Diagnostic::error(
                 "recursive type",
                 vec![Note::primary(span, "the type of this references itself")],
             ),
-            UnificationError::Mismatch(actual, expected) => Diagnostic::error(
+            TypeError::Mismatch(actual, expected) => Diagnostic::error(
                 "mismatched types",
                 vec![Note::primary(
                     span,
                     format!(
                         "expected `{}`, but found `{}`",
-                        format_type(&expected, type_names, param_names, trait_names),
-                        format_type(&actual, type_names, param_names, trait_names)
+                        format_type(&expected, type_names, param_names),
+                        format_type(&actual, type_names, param_names)
                     ),
                 )],
             ),
-            UnificationError::MissingInstance(tr, ty) => Diagnostic::error(
+            TypeError::MissingInstance(tr, ty) => Diagnostic::error(
                 "missing instance",
                 vec![Note::primary(
                     span,
                     format!(
                         "could not find instance of `{}` for type `{}`",
                         trait_names(tr),
-                        format_type(&ty, type_names, param_names, trait_names)
+                        format_type(&ty, type_names, param_names)
                     ),
                 )],
             ),
-            UnificationError::AmbiguousTrait(_, _) => Diagnostic::error(
+            TypeError::AmbiguousTrait(_, candidates) => Diagnostic::error(
+                "could not determine the type of this expression",
+                std::iter::once(Note::primary(span, "try annotating the type with `::`"))
+                    .chain(candidates.into_iter().map(|(instance, ty)| {
+                        // FIXME: obtain span of instance
+                        Note::secondary(
+                            span,
+                            format!(
+                                "instance {:?} of type {} could apply",
+                                instance,
+                                format_type(&ty, type_names, param_names)
+                            ),
+                        )
+                    }))
+                    .collect(),
+            ),
+            TypeError::UnresolvedType => Diagnostic::error(
                 "could not determine the type of this expression",
                 vec![Note::primary(span, "try annotating the type with `::`")],
             ),
         };
 
         self.compiler.diagnostics.add(diagnostic);
-    }
-
-    fn report_finalize_error(&mut self, span: Span) {
-        self.well_typed = false;
-
-        self.compiler.diagnostics.add(Diagnostic::error(
-            "could not determine the type of this expression",
-            vec![Note::primary(span, "try annotating the type with `::`")],
-        ));
-    }
-}
-
-impl UnresolvedExpression {
-    fn merge(&mut self, ty: ResolvedType) {
-        if let Some(instance) = ty.instance {
-            self.kind = UnresolvedExpressionKind::Constant(instance);
-        }
-
-        self.scheme = UnresolvedScheme::Type(ty.into());
     }
 }
 
@@ -1187,10 +1219,9 @@ pub fn format_type_scheme(
     ty: &UnresolvedScheme,
     type_names: impl Fn(TypeId) -> String,
     param_names: impl Fn(TypeParameterId) -> String,
-    trait_names: impl Fn(TraitId) -> String,
 ) -> String {
     match ty {
-        UnresolvedScheme::Type(ty) => format_type(ty, type_names, param_names, trait_names),
+        UnresolvedScheme::Type(ty) => format_type(ty, type_names, param_names),
         UnresolvedScheme::ForAll(forall) => {
             let mut names = Vec::new();
             for &var in &forall.params {
@@ -1203,7 +1234,7 @@ pub fn format_type_scheme(
                     .iter()
                     .map(|param| param_names(*param) + " ")
                     .collect::<String>(),
-                format_type_with(&forall.ty, type_names, param_names, trait_names)
+                format_type_with(&forall.ty, type_names, param_names)
             )
         }
     }
@@ -1213,29 +1244,25 @@ pub fn format_type(
     ty: &UnresolvedType,
     type_names: impl Fn(TypeId) -> String,
     param_names: impl Fn(TypeParameterId) -> String,
-    trait_names: impl Fn(TraitId) -> String,
 ) -> String {
-    format_type_with(ty, type_names, param_names, trait_names)
+    format_type_with(ty, type_names, param_names)
 }
 
 fn format_type_with(
     ty: &UnresolvedType,
     type_names: impl Fn(TypeId) -> String,
     param_names: impl Fn(TypeParameterId) -> String,
-    trait_names: impl Fn(TraitId) -> String,
 ) -> String {
     fn format_type(
         ty: &UnresolvedType,
         type_names: &impl Fn(TypeId) -> String,
         param_names: &impl Fn(TypeParameterId) -> String,
-        trait_names: &impl Fn(TraitId) -> String,
         is_top_level: bool,
         is_return: bool,
     ) -> String {
         match ty {
             UnresolvedType::Variable(_) => String::from("_"),
             UnresolvedType::Parameter(param) => param_names(*param),
-            UnresolvedType::Trait(id) => trait_names(*id),
             UnresolvedType::Bottom(_) => String::from("!"),
             UnresolvedType::Named(id) => {
                 let name = type_names(*id);
@@ -1252,8 +1279,8 @@ fn format_type_with(
                 BuiltinType::Number => String::from("Number"),
             },
             UnresolvedType::Function(input, output) => {
-                let input = format_type(input, type_names, param_names, trait_names, true, false);
-                let output = format_type(output, type_names, param_names, trait_names, true, true);
+                let input = format_type(input, type_names, param_names, true, false);
+                let output = format_type(output, type_names, param_names, true, true);
 
                 if is_top_level && is_return {
                     format!("{input} -> {output}")
@@ -1264,5 +1291,5 @@ fn format_type_with(
         }
     }
 
-    format_type(ty, &type_names, &param_names, &trait_names, true, true)
+    format_type(ty, &type_names, &param_names, true, true)
 }
