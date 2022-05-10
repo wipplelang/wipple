@@ -5,8 +5,8 @@ use crate::{
     diagnostics::*,
     helpers::InternedString,
     parser::{self, Span},
-    Compiler, ConstantId, FilePath, Loader, OperatorId, TraitId, TypeId, TypeParameterId,
-    VariableId,
+    Compiler, ConstantId, FilePath, GenericConstantId, Loader, OperatorId, TraitId, TypeId,
+    TypeParameterId, VariableId,
 };
 use operators::OperatorPrecedence;
 use rust_decimal::Decimal;
@@ -30,7 +30,7 @@ pub struct Declarations {
     pub traits: HashMap<TraitId, Declaration<TraitId, Trait>>,
     pub builtin_types: HashMap<BuiltinType, Declaration<BuiltinType, ()>>,
     pub operators: HashMap<OperatorId, Declaration<OperatorId, Operator>>,
-    pub constants: HashMap<ConstantId, Declaration<ConstantId, Constant>>,
+    pub constants: HashMap<GenericConstantId, Declaration<GenericConstantId, Constant>>,
     pub instances: HashMap<ConstantId, Declaration<ConstantId, Instance>>,
     pub variables: HashMap<VariableId, Declaration<VariableId, ()>>,
 }
@@ -92,7 +92,7 @@ impl CopyDeclaration for Declaration<OperatorId, Operator> {
     const COPY: bool = true;
 }
 
-impl CopyDeclaration for Declaration<ConstantId, Constant> {
+impl CopyDeclaration for Declaration<GenericConstantId, Constant> {
     const COPY: bool = false;
 }
 
@@ -147,7 +147,7 @@ pub struct Trait {
 #[derive(Debug, Clone)]
 pub struct Operator {
     pub precedence: OperatorPrecedence,
-    pub body: ConstantId,
+    pub body: GenericConstantId,
 }
 
 #[derive(Debug, Clone)]
@@ -183,7 +183,7 @@ pub enum ExpressionKind {
     Error,
     Unit,
     Marker(TypeId),
-    Constant(ConstantId),
+    Constant(GenericConstantId),
     Trait(TraitId),
     Variable(VariableId),
     Text(InternedString),
@@ -295,6 +295,7 @@ impl<L: Loader> Compiler<L> {
             merge_dependency!(
                 types,
                 type_parameters,
+                traits,
                 builtin_types,
                 operators,
                 constants,
@@ -365,7 +366,7 @@ pub enum ScopeValue {
     Trait(TraitId),
     TypeParameter(TypeParameterId),
     Operator(OperatorId),
-    Constant(ConstantId),
+    Constant(GenericConstantId),
     Variable(VariableId, bool),
 }
 
@@ -640,7 +641,7 @@ impl<L: Loader> Compiler<L> {
                     }
                 };
 
-                let id = self.new_constant_id();
+                let id = self.new_generic_constant_id();
                 scope
                     .values
                     .borrow_mut()
@@ -709,7 +710,7 @@ impl<L: Loader> Compiler<L> {
                 info.declarations.instances.insert(
                     id,
                     Declaration::Local(DeclarationKind {
-                        name: InternedString::from(format!("instance {}", decl.trait_name)),
+                        name: InternedString::new("instance"),
                         span: statement.span,
                         value: instance,
                     }),

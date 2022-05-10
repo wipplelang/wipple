@@ -131,7 +131,14 @@ impl<'a> Interpreter<'a> {
                 if let Some(value) = info.constants.get(constant) {
                     value.clone()
                 } else {
-                    let expr = info.declarations.constants.remove(constant).unwrap().value;
+                    let expr = info
+                        .declarations
+                        .constants
+                        .get(constant)
+                        .unwrap()
+                        .value
+                        .clone();
+
                     let value = self.eval_expr(&expr, info)?;
                     info.constants.insert(*constant, value.clone());
 

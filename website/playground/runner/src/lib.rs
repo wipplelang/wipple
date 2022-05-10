@@ -128,11 +128,11 @@ fn annotations(program: &mut wipple_compiler::compile::Program) -> Vec<Annotatio
         ($ty:expr) => {
             format_type(
                 $ty,
-                |name| declarations.types.get(&name).unwrap().name.to_string(),
-                |param| {
+                |id| declarations.types.get(&id).unwrap().name.to_string(),
+                |id| {
                     declarations
                         .type_parameters
-                        .get(&param)
+                        .get(&id)
                         .unwrap()
                         .name
                         .to_string()
@@ -171,7 +171,7 @@ fn annotations(program: &mut wipple_compiler::compile::Program) -> Vec<Annotatio
         }};
     }
 
-    program.traverse(|expr| add_annotation!(expr));
+    program.traverse_mut(|expr| add_annotation!(expr));
 
     for decl in declarations.types.values() {
         if !belongs_to_playground(decl.span) {
@@ -285,7 +285,7 @@ pub fn get_completions(position: usize) -> JsValue {
     if let Some(program) = PROGRAM.lock().unwrap().as_mut() {
         add_completions!(&program.top_level);
 
-        program.traverse(|expr| {
+        program.traverse_mut(|expr| {
             if let wipple_compiler::compile::typecheck::ExpressionKind::Block(_, declarations) =
                 &expr.kind
             {

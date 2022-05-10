@@ -77,14 +77,15 @@ macro_rules! ids {
     };
 }
 
-ids! {
+ids!(
+    ConstantId,
+    GenericConstantId,
+    OperatorId,
+    TraitId,
     TypeId,
     TypeParameterId,
-    TraitId,
-    OperatorId,
     VariableId,
-    ConstantId,
-}
+);
 
 impl<L: Loader> Compiler<L> {
     pub fn new(loader: L, options: CompilerOptions) -> Self {

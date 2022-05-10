@@ -48,6 +48,7 @@ lazy_static! {
 
         builtins! {
             "show" => builtin_show,
+            "number-to-text" => builtin_number_to_text,
         }
     };
 }
@@ -74,4 +75,17 @@ fn builtin_show(
         .borrow_mut()(text, &info.stack);
 
     Ok(Rc::new(Value::Marker))
+}
+
+fn builtin_number_to_text(
+    _: &Interpreter,
+    (number,): (Rc<Value>,),
+    _: &Info,
+) -> Result<Rc<Value>, Diverge> {
+    let number = match number.as_ref() {
+        Value::Number(number) => number,
+        _ => unreachable!(),
+    };
+
+    Ok(Rc::new(Value::Text(number.to_string())))
 }

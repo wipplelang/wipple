@@ -1,15 +1,8 @@
+#![allow(clippy::single_match)]
+
 use crate::{ConstantId, TraitId, TypeId, TypeParameterId};
 use serde::{Deserialize, Serialize};
-use std::{
-    borrow::Cow,
-    collections::{HashMap, HashSet},
-};
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum UnresolvedScheme {
-    Type(UnresolvedType),
-    ForAll(UnresolvedForAll),
-}
+use std::collections::{HashMap, HashSet};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum UnresolvedType {
@@ -18,7 +11,7 @@ pub enum UnresolvedType {
     Named(TypeId),
     Function(Box<UnresolvedType>, Box<UnresolvedType>),
     Builtin(BuiltinType),
-    Bottom(bool),
+    Bottom(BottomTypeReason),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -32,7 +25,7 @@ pub enum Type {
     Named(TypeId),
     Function(Box<Type>, Box<Type>),
     Builtin(BuiltinType),
-    Bottom(bool),
+    Bottom(BottomTypeReason),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -49,13 +42,13 @@ impl From<Type> for UnresolvedType {
                 UnresolvedType::Function(Box::new((*input).into()), Box::new((*output).into()))
             }
             Type::Builtin(builtin) => UnresolvedType::Builtin(builtin),
-            Type::Bottom(is_error) => UnresolvedType::Bottom(is_error),
+            Type::Bottom(reason) => UnresolvedType::Bottom(reason),
         }
     }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
-pub struct TypeVariable(usize);
+pub struct TypeVariable(pub usize);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum BuiltinType {
@@ -64,17 +57,25 @@ pub enum BuiltinType {
     Number,
 }
 
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+pub enum BottomTypeReason {
+    Annotated,
+    Error,
+    Internal,
+}
+
 #[derive(Debug, Clone)]
 pub struct Instance {
-    pub scheme: UnresolvedScheme,
+    pub ty: UnresolvedType,
     pub constant: ConstantId,
+    pub from_bound: bool,
 }
 
 #[derive(Debug, Clone, Default)]
 pub struct Context {
-    next_var: usize,
-    substitutions: HashMap<TypeVariable, UnresolvedType>,
-    instances: HashMap<TraitId, Vec<Instance>>,
+    pub next_var: usize,
+    pub substitutions: HashMap<TypeVariable, UnresolvedType>,
+    pub instances: HashMap<TraitId, Vec<Instance>>,
 }
 
 #[derive(Debug, Clone)]
@@ -98,7 +99,7 @@ impl Context {
     }
 
     pub fn register(&mut self, tr: TraitId, mut instance: Instance) {
-        instance.scheme.as_ty_mut().apply(self);
+        instance.ty.apply(self);
         self.instances.entry(tr).or_default().push(instance);
     }
 
@@ -214,134 +215,84 @@ impl Context {
 
         let instances = self.instances.get(&tr).cloned().unwrap_or_default();
 
-        let mut suitable_instances = Vec::new();
+        let mut bound_instances = Vec::new();
+        let mut defined_instances = Vec::new();
         for instance in instances {
             let mut ctx = self.clone();
 
             // TODO: Support generic instances
-            let instance_ty = instance.scheme.clone().instantiate(self);
+            instance.ty.clone().instantiate(self);
 
-            if ctx.unify_generic(ty.clone(), instance_ty.clone()).is_ok() {
-                suitable_instances.push((ctx, instance.constant, instance_ty));
+            if ctx.unify_generic(ty.clone(), instance.ty.clone()).is_ok() {
+                let info = (ctx, instance.constant, instance.ty);
+
+                if instance.from_bound {
+                    bound_instances.push(info);
+                } else {
+                    defined_instances.push(info);
+                }
             }
         }
 
-        match &suitable_instances.len() {
-            0 => Err(TypeError::MissingInstance(tr, ty)),
-            1 => {
-                let (ctx, instance, _) = suitable_instances.pop().unwrap();
-                *self = ctx;
-                Ok(instance)
-            }
-            _ => Err(TypeError::AmbiguousTrait(
-                tr,
-                suitable_instances
-                    .into_iter()
-                    .map(|(_, instance, ty)| (instance, ty))
-                    .collect(),
-            )),
+        macro_rules! find_instance {
+            ($instances:ident) => {
+                match &$instances.len() {
+                    0 => {}
+                    1 => {
+                        let (ctx, instance, _) = $instances.pop().unwrap();
+                        *self = ctx;
+                        return Ok(instance);
+                    }
+                    _ => {
+                        return Err(TypeError::AmbiguousTrait(
+                            tr,
+                            $instances
+                                .into_iter()
+                                .map(|(_, instance, ty)| (instance, ty))
+                                .collect(),
+                        ))
+                    }
+                };
+            };
         }
+
+        find_instance!(bound_instances);
+        find_instance!(defined_instances);
+
+        Err(TypeError::MissingInstance(tr, ty))
     }
 
     pub fn create_instantiation(
         &mut self,
-        scheme: &UnresolvedScheme,
+        ty: &mut UnresolvedType,
     ) -> HashMap<TypeParameterId, UnresolvedType> {
+        ty.apply(self);
+
         let mut substitutions = HashMap::new();
 
-        if let UnresolvedScheme::ForAll(forall) = scheme {
-            for param in &forall.params {
-                substitutions.insert(*param, UnresolvedType::Variable(self.new_variable()));
+        fn create(
+            ctx: &mut Context,
+            ty: &mut UnresolvedType,
+            substitutions: &mut HashMap<TypeParameterId, UnresolvedType>,
+        ) {
+            if let UnresolvedType::Parameter(param) = ty {
+                substitutions
+                    .entry(*param)
+                    .or_insert_with(|| UnresolvedType::Variable(ctx.new_variable()));
+            }
+
+            match ty {
+                UnresolvedType::Function(input, output) => {
+                    create(ctx, input, substitutions);
+                    create(ctx, output, substitutions);
+                }
+                _ => {}
             }
         }
+
+        create(self, ty, &mut substitutions);
 
         substitutions
-    }
-}
-
-impl UnresolvedScheme {
-    pub fn into_ty(self) -> UnresolvedType {
-        match self {
-            UnresolvedScheme::Type(ty) => ty,
-            UnresolvedScheme::ForAll(forall) => forall.ty,
-        }
-    }
-
-    pub fn as_ty(&self) -> &UnresolvedType {
-        match self {
-            UnresolvedScheme::Type(ty) => ty,
-            UnresolvedScheme::ForAll(forall) => &forall.ty,
-        }
-    }
-
-    pub fn as_ty_mut(&mut self) -> &mut UnresolvedType {
-        match self {
-            UnresolvedScheme::Type(ty) => ty,
-            UnresolvedScheme::ForAll(forall) => &mut forall.ty,
-        }
-    }
-
-    pub fn instantiate(&self, ctx: &mut Context) -> UnresolvedType {
-        let substitutions = ctx.create_instantiation(self);
-        self.instantiate_with(&substitutions)
-    }
-
-    pub fn instantiate_with(
-        &self,
-        substitutions: &HashMap<TypeParameterId, UnresolvedType>,
-    ) -> UnresolvedType {
-        match self {
-            UnresolvedScheme::Type(ty) => ty.clone(),
-            UnresolvedScheme::ForAll(forall) => {
-                fn apply(
-                    ty: &mut UnresolvedType,
-                    substitutions: &HashMap<TypeParameterId, UnresolvedType>,
-                ) {
-                    match ty {
-                        UnresolvedType::Parameter(param) => {
-                            if let Some(substitution) = substitutions.get(param) {
-                                *ty = substitution.clone();
-                            }
-                        }
-                        UnresolvedType::Function(input, output) => {
-                            apply(input, substitutions);
-                            apply(output, substitutions);
-                        }
-                        _ => {}
-                    }
-                }
-
-                let mut ty = forall.ty.clone();
-                apply(&mut ty, substitutions);
-
-                ty
-            }
-        }
-    }
-
-    pub fn vars(&self) -> HashSet<TypeVariable> {
-        match self {
-            UnresolvedScheme::Type(ty) => ty.vars(),
-            UnresolvedScheme::ForAll(forall) => forall.ty.vars(),
-        }
-    }
-
-    pub fn params(&self) -> Cow<HashSet<TypeParameterId>> {
-        match self {
-            UnresolvedScheme::Type(ty) => Cow::Owned(ty.params()),
-            UnresolvedScheme::ForAll(forall) => Cow::Borrowed(&forall.params),
-        }
-    }
-
-    pub fn finalize(
-        self,
-        ctx: &mut Context,
-        substitutions: &HashMap<TypeParameterId, UnresolvedType>,
-    ) -> Option<Type> {
-        Some(match self {
-            UnresolvedScheme::Type(ty) => ty.finalize(ctx, substitutions)?,
-            UnresolvedScheme::ForAll(forall) => forall.ty.finalize(ctx, substitutions)?,
-        })
     }
 }
 
@@ -366,7 +317,7 @@ impl UnresolvedType {
             UnresolvedType::Function(input, output) => {
                 input.contains_error() || output.contains_error()
             }
-            UnresolvedType::Bottom(is_error) => *is_error,
+            UnresolvedType::Bottom(BottomTypeReason::Error) => true,
             _ => false,
         }
     }
@@ -387,10 +338,12 @@ impl UnresolvedType {
         }
     }
 
-    pub fn substitute_parameters(
-        &mut self,
-        substitutions: &HashMap<TypeParameterId, UnresolvedType>,
-    ) {
+    pub fn instantiate(&mut self, ctx: &mut Context) {
+        let substitutions = ctx.create_instantiation(self);
+        self.instantiate_with(&substitutions);
+    }
+
+    pub fn instantiate_with(&mut self, substitutions: &HashMap<TypeParameterId, UnresolvedType>) {
         match self {
             UnresolvedType::Parameter(param) => {
                 if let Some(ty) = substitutions.get(param) {
@@ -398,8 +351,8 @@ impl UnresolvedType {
                 }
             }
             UnresolvedType::Function(input, output) => {
-                input.substitute_parameters(substitutions);
-                output.substitute_parameters(substitutions);
+                input.instantiate_with(substitutions);
+                output.instantiate_with(substitutions);
             }
             _ => {}
         }
@@ -437,23 +390,16 @@ impl UnresolvedType {
         }
     }
 
-    pub fn finalize(
-        mut self,
-        ctx: &Context,
-        substitutions: &HashMap<TypeParameterId, UnresolvedType>,
-    ) -> Option<Type> {
+    pub fn finalize(mut self, ctx: &Context) -> Option<Type> {
         self.apply(ctx);
 
         match self {
             UnresolvedType::Variable(_) => None,
-            UnresolvedType::Parameter(param) => substitutions
-                .get(&param)
-                .cloned()
-                .and_then(|ty| ty.finalize(ctx, substitutions)),
+            UnresolvedType::Parameter(_) => panic!("cannot finalize generic type"),
             UnresolvedType::Named(name) => Some(Type::Named(name)),
             UnresolvedType::Function(input, output) => Some(Type::Function(
-                Box::new(input.finalize(ctx, substitutions)?),
-                Box::new(output.finalize(ctx, substitutions)?),
+                Box::new(input.finalize(ctx)?),
+                Box::new(output.finalize(ctx)?),
             )),
             UnresolvedType::Builtin(builtin) => Some(Type::Builtin(builtin)),
             UnresolvedType::Bottom(is_error) => Some(Type::Bottom(is_error)),
