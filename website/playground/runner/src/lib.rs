@@ -155,9 +155,10 @@ fn annotations(program: &mut wipple_compiler::compile::Program) -> Vec<Annotatio
                 ExpressionKind::Variable(id) => {
                     declarations.variables.get(&id).map(|decl| decl.name)
                 }
-                ExpressionKind::Constant(id) => {
-                    declarations.constants.get(&id).map(|decl| decl.name)
-                }
+                ExpressionKind::Constant(id) => declarations
+                    .monomorphized_constants
+                    .get(&id)
+                    .map(|decl| decl.name),
                 _ => None,
             };
 
@@ -195,22 +196,7 @@ fn annotations(program: &mut wipple_compiler::compile::Program) -> Vec<Annotatio
         });
     }
 
-    for decl in declarations.variables.values() {
-        if !belongs_to_playground(decl.span) {
-            continue;
-        }
-
-        annotations.push(Annotation {
-            span: decl.span,
-            value: format!(
-                "{} :: {}",
-                decl.name,
-                format_ty!(&decl.value.clone().into())
-            ),
-        });
-    }
-
-    for decl in declarations.constants.values() {
+    for decl in &declarations.generic_constants {
         if !belongs_to_playground(decl.span) {
             continue;
         }
@@ -225,6 +211,21 @@ fn annotations(program: &mut wipple_compiler::compile::Program) -> Vec<Annotatio
         });
 
         decl.value.traverse(|expr| add_annotation!(expr));
+    }
+
+    for decl in declarations.variables.values() {
+        if !belongs_to_playground(decl.span) {
+            continue;
+        }
+
+        annotations.push(Annotation {
+            span: decl.span,
+            value: format!(
+                "{} :: {}",
+                decl.name,
+                format_ty!(&decl.value.clone().into())
+            ),
+        });
     }
 
     annotations

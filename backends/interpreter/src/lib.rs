@@ -133,9 +133,9 @@ impl<'a> Interpreter<'a> {
                 } else {
                     let expr = info
                         .declarations
-                        .constants
+                        .monomorphized_constants
                         .get(constant)
-                        .unwrap()
+                        .unwrap_or_else(|| panic!("constant {:?} not registered", constant))
                         .value
                         .clone();
 

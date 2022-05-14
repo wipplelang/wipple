@@ -151,7 +151,7 @@ impl<L: Loader> Compiler<L> {
                 for dependency in &dependencies {
                     if !dependency.block.is_empty() {
                         self.diagnostics.add(Diagnostic::error(
-                            format!("cannot import `{}`", dependency.path),
+                            format!("cannot import `{}`", dependency.span.path),
                             vec![Note::primary(
                                 dependency.span,
                                 "dependencies must not contain executable statements",
@@ -167,7 +167,7 @@ impl<L: Loader> Compiler<L> {
             success &= file.complete;
 
             let index = lowered_files.len();
-            lowered_files_by_path.insert(file.path, index);
+            lowered_files_by_path.insert(file.span.path, index);
             lowered_files.push(file);
         }
 

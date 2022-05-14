@@ -28,27 +28,22 @@ impl<'a> ExternalFunction<'a> {
     ) -> Result<ExternalFunction<'a>, Error> {
         let params = inputs
             .iter()
-            .map(|ty| {
-                if matches!(ty, Type::Builtin(BuiltinType::Number)) {
-                    Ok(ExternalValueType::Number)
-                } else if matches!(ty, Type::Builtin(BuiltinType::Text)) {
-                    Ok(ExternalValueType::Text)
-                } else {
-                    Err(Error::from("only `Number` and `Text` are supported here"))
-                }
+            .map(|ty| match ty {
+                Type::Builtin(BuiltinType::Number) => Ok(ExternalValueType::Number),
+                Type::Builtin(BuiltinType::Text) => Ok(ExternalValueType::Text),
+                _ => Err(Error::from("only `Number` and `Text` are supported here")),
             })
             .collect::<Result<_, _>>()?;
 
-        let returns = if matches!(return_ty, Type::Builtin(BuiltinType::Number)) {
-            Some(ExternalValueType::Number)
-        } else if matches!(return_ty, Type::Builtin(BuiltinType::Text)) {
-            Some(ExternalValueType::Text)
-        } else if matches!(return_ty, Type::Builtin(BuiltinType::Unit)) {
-            None
-        } else {
-            return Err(Error::from(
-                "only `Number`, `Text` and `()` are supported here",
-            ));
+        let returns = match return_ty {
+            Type::Builtin(BuiltinType::Number) => Some(ExternalValueType::Number),
+            Type::Builtin(BuiltinType::Text) => Some(ExternalValueType::Text),
+            Type::Builtin(BuiltinType::Unit) => None,
+            _ => {
+                return Err(Error::from(
+                    "only `Number`, `Text` and `()` are supported here",
+                ));
+            }
         };
 
         Ok(ExternalFunction {

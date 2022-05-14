@@ -5,17 +5,21 @@ use crate::{
     diagnostics::*,
     helpers::InternedString,
     parser::{self, Span},
-    Compiler, ConstantId, FilePath, GenericConstantId, Loader, OperatorId, TraitId, TypeId,
-    TypeParameterId, VariableId,
+    Compiler, FilePath, GenericConstantId, Loader, OperatorId, TraitId, TypeId, TypeParameterId,
+    VariableId,
 };
 use operators::OperatorPrecedence;
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
-use std::{cell::RefCell, collections::HashMap, hash::Hash, rc::Rc};
+use std::{
+    cell::RefCell,
+    collections::{BTreeMap, HashMap},
+    hash::Hash,
+    rc::Rc,
+};
 
 #[derive(Debug, Clone)]
 pub struct File {
-    pub path: FilePath,
     pub span: Span,
     pub complete: bool,
     pub declarations: Declarations,
@@ -25,14 +29,14 @@ pub struct File {
 
 #[derive(Debug, Clone, Default)]
 pub struct Declarations {
-    pub types: HashMap<TypeId, Declaration<TypeId, Type>>,
-    pub type_parameters: HashMap<TypeParameterId, Declaration<TypeParameterId, ()>>,
-    pub traits: HashMap<TraitId, Declaration<TraitId, Trait>>,
-    pub builtin_types: HashMap<BuiltinType, Declaration<BuiltinType, ()>>,
-    pub operators: HashMap<OperatorId, Declaration<OperatorId, Operator>>,
-    pub constants: HashMap<GenericConstantId, Declaration<GenericConstantId, Constant>>,
-    pub instances: HashMap<ConstantId, Declaration<ConstantId, Instance>>,
-    pub variables: HashMap<VariableId, Declaration<VariableId, ()>>,
+    pub types: BTreeMap<TypeId, Declaration<TypeId, Type>>,
+    pub type_parameters: BTreeMap<TypeParameterId, Declaration<TypeParameterId, ()>>,
+    pub traits: BTreeMap<TraitId, Declaration<TraitId, Trait>>,
+    pub builtin_types: BTreeMap<BuiltinType, Declaration<BuiltinType, ()>>,
+    pub operators: BTreeMap<OperatorId, Declaration<OperatorId, Operator>>,
+    pub constants: BTreeMap<GenericConstantId, Declaration<GenericConstantId, Constant>>,
+    pub instances: BTreeMap<GenericConstantId, Declaration<GenericConstantId, Instance>>,
+    pub variables: BTreeMap<VariableId, Declaration<VariableId, ()>>,
 }
 
 #[derive(Debug, Clone)]
@@ -96,7 +100,7 @@ impl CopyDeclaration for Declaration<GenericConstantId, Constant> {
     const COPY: bool = false;
 }
 
-impl CopyDeclaration for Declaration<ConstantId, Instance> {
+impl CopyDeclaration for Declaration<GenericConstantId, Instance> {
     const COPY: bool = false;
 }
 
@@ -131,7 +135,7 @@ pub struct TypeVariant {
     pub values: Vec<TypeAnnotation>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub enum BuiltinType {
     Unit,
     Number,
@@ -238,7 +242,6 @@ pub struct TypeAnnotation {
 pub enum TypeAnnotationKind {
     Error,
     Placeholder,
-    Unit,
     Named(TypeId, Vec<TypeAnnotation>),
     Parameter(TypeParameterId),
     Builtin(BuiltinType),
@@ -335,7 +338,6 @@ impl<L: Loader> Compiler<L> {
         }
 
         File {
-            path: file.path,
             span: file.span,
             complete,
             declarations: info.declarations,
@@ -706,7 +708,7 @@ impl<L: Loader> Compiler<L> {
                     value: self.lower_expr(decl.value, scope, info),
                 };
 
-                let id = self.new_constant_id();
+                let id = self.new_generic_constant_id();
                 info.declarations.instances.insert(
                     id,
                     Declaration::Local(DeclarationKind {
@@ -988,7 +990,7 @@ impl<L: Loader> Compiler<L> {
     ) -> TypeAnnotation {
         let kind = match ty.kind {
             parser::TypeAnnotationKind::Placeholder => TypeAnnotationKind::Placeholder,
-            parser::TypeAnnotationKind::Unit => TypeAnnotationKind::Unit,
+            parser::TypeAnnotationKind::Unit => TypeAnnotationKind::Builtin(BuiltinType::Unit),
             parser::TypeAnnotationKind::Named(name, parameters) => {
                 match scope.get(name, ty.span) {
                     Some(ScopeValue::Type(ty)) => {
