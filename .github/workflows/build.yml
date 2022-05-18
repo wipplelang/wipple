@@ -54,16 +54,6 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      - uses: actions/cache@v2
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ${{ matrix.os }}-${{ matrix.target }}-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ matrix.os }}-${{ matrix.target }}
-
       - run: .github/scripts/build.sh ${{ matrix.target }} ${{ matrix.compiler }}
 
       - uses: svenstaro/upload-release-action@v2

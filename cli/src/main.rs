@@ -17,11 +17,11 @@ use std::{
 enum Args {
     Run {
         #[clap(flatten)]
-        options: Options,
+        options: BuildOptions,
     },
     Bundle {
         #[clap(flatten)]
-        options: Options,
+        options: BuildOptions,
 
         #[clap(short)]
         output: PathBuf,
@@ -31,30 +31,15 @@ enum Args {
     },
 }
 
-#[derive(Parser)]
-struct Options {
-    path: String,
-
-    #[clap(long)]
-    debug: bool,
-
-    #[cfg(debug_assertions)]
-    #[clap(long)]
-    trace: bool,
-
-    #[clap(long)]
-    no_progress: bool,
-
-    #[clap(flatten)]
-    compiler_options: wipple_compiler::CompilerOptions,
-}
-
 fn main() -> anyhow::Result<()> {
     let args = Args::parse();
 
     match args {
         Args::Run { options } => {
-            let program = build(options);
+            let program = match build(options) {
+                Some(program) => program,
+                None => process::exit(1),
+            };
 
             let interpreter = wipple_interpreter_backend::Interpreter::handling_output(|text| {
                 println!("{}", text)
@@ -73,7 +58,10 @@ fn main() -> anyhow::Result<()> {
                 .and_then(|file| file.bytes().collect::<Result<Vec<_>, _>>())
                 .map_err(|error| anyhow::Error::msg(format!("could not load runner: {error}")))?;
 
-            let program = build(options);
+            let program = match build(options) {
+                Some(program) => program,
+                None => process::exit(1),
+            };
 
             let exe = wipple_bundled_backend::bundle(program, runner);
 
@@ -94,7 +82,25 @@ fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-fn build(options: Options) -> wipple_compiler::compile::Program {
+#[derive(Parser)]
+pub struct BuildOptions {
+    path: String,
+
+    #[clap(long)]
+    debug: bool,
+
+    #[cfg(debug_assertions)]
+    #[clap(long)]
+    trace: bool,
+
+    #[clap(long)]
+    no_progress: bool,
+
+    #[clap(flatten)]
+    compiler_options: wipple_compiler::CompilerOptions,
+}
+
+pub fn build(options: BuildOptions) -> Option<wipple_compiler::compile::Program> {
     struct Loader {
         base: PathBuf,
     }
@@ -182,8 +188,9 @@ fn build(options: Options) -> wipple_compiler::compile::Program {
         println!("{program:#?}");
     }
 
-    match program {
-        Some(program) if success => program,
-        _ => process::exit(1),
+    if success {
+        program
+    } else {
+        None
     }
 }

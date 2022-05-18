@@ -1,0 +1,28 @@
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - .github/**
+      - backends/**
+      - cli/**
+      - compiler/**
+      - support/**
+      - test/**
+
+name: Test
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - run: .github/scripts/test.sh
+
+      - uses: mikepenz/action-junit-report@v3
+        if: always()
+        with:
+          check_name: Wipple Test Report
+          require_tests: true
+          fail_on_failure: true

@@ -1,0 +1,12 @@
+code: |
+  x :: Number
+  x : "42"
+
+output: |
+
+diagnostics: |
+  error: mismatched types
+   --> test:1:1
+    |
+  1 | x :: Number
+    | ^^^^^^^^^^^ expected `Number`, but found `Text`

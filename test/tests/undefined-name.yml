@@ -1,0 +1,11 @@
+code: |
+  foo
+
+output: |
+
+diagnostics: |
+  error: cannot find `foo`f
+   --> test:1:1
+    |
+  1 | foo
+    | ^^^ this name is not defined

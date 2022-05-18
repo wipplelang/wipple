@@ -341,7 +341,7 @@ impl<L: Loader> Compiler<L> {
 
         let prev_bound_instances = typechecker.bound_instances.clone();
 
-        for (id, constant) in typechecker.generic_constants.clone() {
+        for constant in typechecker.generic_constants.clone().into_values() {
             let mut body = typechecker.typecheck_expr(&constant.decl.value, &constant.file, false);
 
             if let Err(error) = typechecker.ctx.unify(body.ty.clone(), constant.generic_ty) {
