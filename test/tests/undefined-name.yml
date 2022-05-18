@@ -4,7 +4,7 @@ code: |
 output: |
 
 diagnostics: |
-  error: cannot find `foo`f
+  error: cannot find `foo`ffdsfs
    --> test:1:1
     |
   1 | foo
