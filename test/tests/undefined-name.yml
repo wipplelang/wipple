@@ -1,11 +1,11 @@
 code: |
-  foo
+    foo
 
 output: |
 
 diagnostics: |
-  error: cannot find `foo`
-   --> test:1:1
-    |
-  1 | foo
-    | ^^^ this name is not defined
+    error: cannot find `foo`
+     --> test:1:1
+      |
+    1 | foo
+      | ^^^ this name is not defined

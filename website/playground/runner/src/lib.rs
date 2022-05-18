@@ -145,7 +145,7 @@ fn annotations(program: &mut wipple_compiler::compile::Program) -> Vec<Annotatio
         ($expr:expr) => {{
             let expr = $expr;
 
-            if !belongs_to_playground(expr.span) {
+            if !belongs_to_playground(expr.ty.span) {
                 return;
             }
 
@@ -163,7 +163,7 @@ fn annotations(program: &mut wipple_compiler::compile::Program) -> Vec<Annotatio
             };
 
             annotations.push(Annotation {
-                span: expr.span,
+                span: expr.ty.span,
                 value: match name {
                     Some(name) => format!("{name} :: {ty}"),
                     None => ty,
@@ -290,9 +290,9 @@ pub fn get_completions(position: usize) -> JsValue {
             if let wipple_compiler::compile::typecheck::ExpressionKind::Block(_, declarations) =
                 &expr.kind
             {
-                if belongs_to_playground(expr.span)
-                    && position >= expr.span.start
-                    && position < expr.span.end
+                if belongs_to_playground(expr.ty.span)
+                    && position >= expr.ty.span.start
+                    && position < expr.ty.span.end
                 {
                     add_completions!(declarations);
                 }

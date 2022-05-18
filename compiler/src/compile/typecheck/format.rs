@@ -1,4 +1,4 @@
-use super::engine::{BuiltinType, UnresolvedType};
+use super::engine::{BuiltinType, UnresolvedType, UnresolvedTypeKind};
 use crate::{TypeId, TypeParameterId};
 
 pub fn format_type(
@@ -21,11 +21,11 @@ fn format_type_with(
         is_top_level: bool,
         is_return: bool,
     ) -> String {
-        match ty {
-            UnresolvedType::Variable(id) => format!("{{{}}}", id.0), // String::from("_"),
-            UnresolvedType::Parameter(param) => param_names(*param),
-            UnresolvedType::Bottom(_) => String::from("!"),
-            UnresolvedType::Named(id) => {
+        match &ty.kind {
+            UnresolvedTypeKind::Variable(id) => format!("{{{}}}", id.0), // String::from("_"),
+            UnresolvedTypeKind::Parameter(param) => param_names(param.id),
+            UnresolvedTypeKind::Bottom(_) => String::from("!"),
+            UnresolvedTypeKind::Named(id) => {
                 let name = type_names(*id);
 
                 if is_top_level {
@@ -34,12 +34,12 @@ fn format_type_with(
                     format!("({name})")
                 }
             }
-            UnresolvedType::Builtin(ty) => match ty {
+            UnresolvedTypeKind::Builtin(ty) => match ty {
                 BuiltinType::Unit => String::from("()"),
                 BuiltinType::Text => String::from("Text"),
                 BuiltinType::Number => String::from("Number"),
             },
-            UnresolvedType::Function(input, output) => {
+            UnresolvedTypeKind::Function(input, output) => {
                 let input = format_type(input, type_names, param_names, true, false);
                 let output = format_type(output, type_names, param_names, true, true);
 
@@ -66,7 +66,7 @@ fn format_type_with(
             "{}=> {}",
             names
                 .iter()
-                .map(|param| param_names(*param) + " ")
+                .map(|param| param_names(param.id) + " ")
                 .collect::<String>(),
             formatted
         )

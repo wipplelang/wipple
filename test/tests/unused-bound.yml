@@ -1,0 +1,14 @@
+code: |
+    T : A => trait (A -> Text)
+
+    foo :: A where (T A) => A -> A
+    foo : x -> x
+
+    A : type
+    instance T A : just "A"
+
+    foo A
+
+output: |
+
+diagnostics: |

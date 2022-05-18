@@ -17,7 +17,15 @@ pub struct Diagnostic {
     pub trace: backtrace::Backtrace,
 }
 
-#[derive(Debug, Serialize)]
+impl PartialEq for Diagnostic {
+    fn eq(&self, other: &Self) -> bool {
+        self.level == other.level && self.message == other.message && self.notes == other.notes
+    }
+}
+
+impl Eq for Diagnostic {}
+
+#[derive(Debug, Serialize, PartialEq, Eq)]
 pub enum DiagnosticLevel {
     Note,
     Warning,
@@ -34,14 +42,14 @@ impl From<DiagnosticLevel> for codemap_diagnostic::Level {
     }
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, PartialEq, Eq)]
 pub struct Note {
     pub level: NoteLevel,
     pub span: Span,
     pub message: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, PartialEq, Eq)]
 pub enum NoteLevel {
     Primary,
     Secondary,
@@ -125,13 +133,15 @@ impl Diagnostics {
     }
 
     pub fn into_console_friendly(
-        self,
+        mut self,
         #[cfg(debug_assertions)] include_trace: bool,
     ) -> (
         CodeMap,
         HashMap<FilePath, Arc<codemap::File>>,
         Vec<codemap_diagnostic::Diagnostic>,
     ) {
+        self.diagnostics.dedup();
+
         let mut codemap = CodeMap::new();
         let mut diagnostics = Vec::new();
 

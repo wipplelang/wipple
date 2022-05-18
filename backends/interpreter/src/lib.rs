@@ -122,7 +122,7 @@ impl Scope {
 
 impl<'a> Interpreter<'a> {
     fn eval_expr(&self, expr: &Expression, info: &mut Info) -> Result<Rc<Value>, Diverge> {
-        info.stack.push(expr.span);
+        info.stack.push(expr.ty.span);
 
         let value = match &expr.kind {
             ExpressionKind::Error => panic!("program is not well-typed"),

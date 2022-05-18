@@ -3,6 +3,7 @@ use colored::Colorize;
 use serde::Deserialize;
 use std::{
     borrow::Cow,
+    cell::RefCell,
     fs,
     io::{self, Write},
     path::PathBuf,
@@ -213,22 +214,22 @@ fn run(test_case: &TestCase) -> anyhow::Result<TestResult> {
     let success = !diagnostics.contains_errors();
 
     let output = {
-        let mut buf = Vec::new();
+        let buf = RefCell::new(Vec::new());
 
         if success {
             if let Some(program) = program {
                 let interpreter =
                     wipple_interpreter_backend::Interpreter::handling_output(|text| {
-                        println!("{}", text)
+                        writeln!(buf.borrow_mut(), "{}", text).unwrap()
                     });
 
                 if let Err((error, _)) = interpreter.eval(program) {
-                    writeln!(buf, "fatal error: {}", error)?;
+                    writeln!(buf.borrow_mut(), "fatal error: {}", error)?;
                 }
             }
         }
 
-        String::from_utf8(buf).unwrap()
+        String::from_utf8(buf.into_inner()).unwrap()
     };
 
     let diagnostics = {

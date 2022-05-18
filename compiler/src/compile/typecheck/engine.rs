@@ -1,14 +1,19 @@
 #![allow(clippy::single_match)]
 
-use crate::{GenericConstantId, TraitId, TypeId, TypeParameterId};
-use backtrace::Backtrace;
+use crate::{parser::Span, GenericConstantId, TraitId, TypeId, TypeParameterId};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum UnresolvedType {
+pub struct UnresolvedType {
+    pub span: Span,
+    pub kind: UnresolvedTypeKind,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum UnresolvedTypeKind {
     Variable(TypeVariable),
-    Parameter(TypeParameterId),
+    Parameter(TypeParameter),
     Named(TypeId),
     Function(Box<UnresolvedType>, Box<UnresolvedType>),
     Builtin(BuiltinType),
@@ -17,15 +22,47 @@ pub enum UnresolvedType {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UnresolvedForAll {
-    pub params: BTreeSet<TypeParameterId>,
+    pub params: BTreeSet<TypeParameter>,
     pub ty: UnresolvedType,
 }
 
-pub type GenericSubstitutions = BTreeMap<TypeParameterId, UnresolvedType>;
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+pub struct TypeParameter {
+    pub span: Span,
+    pub id: TypeParameterId,
+}
+
+impl PartialEq for TypeParameter {
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id
+    }
+}
+
+impl Eq for TypeParameter {}
+
+impl PartialOrd for TypeParameter {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        self.id.partial_cmp(&other.id)
+    }
+}
+
+impl Ord for TypeParameter {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.id.cmp(&other.id)
+    }
+}
+
+pub type GenericSubstitutions = BTreeMap<TypeParameter, UnresolvedType>;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum Type {
-    Parameter(TypeParameterId),
+pub struct Type {
+    pub span: Span,
+    pub kind: TypeKind,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum TypeKind {
+    Parameter(TypeParameter),
     Named(TypeId),
     Function(Box<Type>, Box<Type>),
     Builtin(BuiltinType),
@@ -40,14 +77,18 @@ pub struct ForAll {
 
 impl From<Type> for UnresolvedType {
     fn from(ty: Type) -> Self {
-        match ty {
-            Type::Parameter(param) => UnresolvedType::Parameter(param),
-            Type::Named(name) => UnresolvedType::Named(name),
-            Type::Function(input, output) => {
-                UnresolvedType::Function(Box::new((*input).into()), Box::new((*output).into()))
-            }
-            Type::Builtin(builtin) => UnresolvedType::Builtin(builtin),
-            Type::Bottom(reason) => UnresolvedType::Bottom(reason),
+        UnresolvedType {
+            span: ty.span,
+            kind: match ty.kind {
+                TypeKind::Parameter(param) => UnresolvedTypeKind::Parameter(param),
+                TypeKind::Named(name) => UnresolvedTypeKind::Named(name),
+                TypeKind::Function(input, output) => UnresolvedTypeKind::Function(
+                    Box::new((*input).into()),
+                    Box::new((*output).into()),
+                ),
+                TypeKind::Builtin(builtin) => UnresolvedTypeKind::Builtin(builtin),
+                TypeKind::Bottom(reason) => UnresolvedTypeKind::Bottom(reason),
+            },
         }
     }
 }
@@ -76,9 +117,15 @@ pub struct Context {
 }
 
 #[derive(Debug, Clone)]
-pub enum TypeError {
+pub struct TypeError {
+    pub span: Span,
+    pub kind: TypeErrorKind,
+}
+
+#[derive(Debug, Clone)]
+pub enum TypeErrorKind {
     Recursive(TypeVariable),
-    Mismatch(UnresolvedType, UnresolvedType, Backtrace),
+    Mismatch(UnresolvedType, UnresolvedType),
     MissingInstance(TraitId, UnresolvedType),
     AmbiguousTrait(TraitId, Vec<GenericConstantId>),
     UnresolvedType,
@@ -120,113 +167,146 @@ impl Context {
         actual.apply(self);
         expected.apply(self);
 
-        match (actual, expected) {
-            (ty, UnresolvedType::Variable(var)) | (UnresolvedType::Variable(var), ty) => {
-                if let UnresolvedType::Variable(other) = ty {
+        match (&actual.kind, &expected.kind) {
+            (kind, UnresolvedTypeKind::Variable(var)) => {
+                if let UnresolvedTypeKind::Variable(other) = kind {
                     if var == other {
                         return Ok(());
                     }
                 }
 
-                if ty.contains(&var) {
-                    Err(TypeError::Recursive(var))
+                if actual.contains(var) {
+                    Err(TypeError {
+                        span: actual.span,
+                        kind: TypeErrorKind::Recursive(*var),
+                    })
                 } else {
-                    self.substitutions.insert(var, ty);
+                    self.substitutions.insert(*var, actual);
                     Ok(())
                 }
             }
-            (UnresolvedType::Parameter(actual), UnresolvedType::Parameter(expected)) if generic => {
-                if actual == expected {
-                    Ok(())
-                } else {
-                    Err(TypeError::Mismatch(
-                        UnresolvedType::Parameter(actual),
-                        UnresolvedType::Parameter(expected),
-                        Backtrace::new(),
-                    ))
+            (UnresolvedTypeKind::Variable(var), kind) => {
+                if let UnresolvedTypeKind::Variable(other) = kind {
+                    if var == other {
+                        return Ok(());
+                    }
                 }
-            }
-            (UnresolvedType::Parameter(_), _) if !generic => Ok(()),
-            (actual, expected @ UnresolvedType::Parameter(_)) if !generic => {
-                Err(TypeError::Mismatch(actual, expected, Backtrace::new()))
-            }
-            (UnresolvedType::Named(actual_id), UnresolvedType::Named(expected_id)) => {
-                if actual_id == expected_id {
-                    Ok(())
+
+                if expected.contains(var) {
+                    Err(TypeError {
+                        span: expected.span,
+                        kind: TypeErrorKind::Recursive(*var),
+                    })
                 } else {
-                    Err(TypeError::Mismatch(
-                        UnresolvedType::Named(actual_id),
-                        UnresolvedType::Named(expected_id),
-                        Backtrace::new(),
-                    ))
+                    self.substitutions.insert(*var, expected);
+                    Ok(())
                 }
             }
             (
-                UnresolvedType::Function(actual_input, actual_output),
-                UnresolvedType::Function(expected_input, expected_output),
+                UnresolvedTypeKind::Parameter(actual_param),
+                UnresolvedTypeKind::Parameter(expected_param),
+            ) if generic => {
+                if actual_param == expected_param {
+                    Ok(())
+                } else {
+                    Err(TypeError {
+                        span: actual.span,
+                        kind: TypeErrorKind::Mismatch(actual, expected),
+                    })
+                }
+            }
+            (_, UnresolvedTypeKind::Parameter(_)) if !generic => Ok(()),
+            (UnresolvedTypeKind::Parameter(_), _) if !generic => Err(TypeError {
+                span: actual.span,
+                kind: TypeErrorKind::Mismatch(actual, expected),
+            }),
+            (UnresolvedTypeKind::Named(actual_id), UnresolvedTypeKind::Named(expected_id)) => {
+                if actual_id == expected_id {
+                    Ok(())
+                } else {
+                    Err(TypeError {
+                        span: actual.span,
+                        kind: TypeErrorKind::Mismatch(actual, expected),
+                    })
+                }
+            }
+            (
+                UnresolvedTypeKind::Function(actual_input, actual_output),
+                UnresolvedTypeKind::Function(expected_input, expected_output),
             ) => {
-                self.unify_internal((*actual_input).clone(), (*expected_input).clone(), generic)?;
+                self.unify_internal(
+                    (**actual_input).clone(),
+                    (**expected_input).clone(),
+                    generic,
+                )?;
 
                 self.unify_internal(
-                    (*actual_output).clone(),
-                    (*expected_output).clone(),
+                    (**actual_output).clone(),
+                    (**expected_output).clone(),
                     generic,
                 )?;
 
                 Ok(())
             }
-            (UnresolvedType::Builtin(actual), UnresolvedType::Builtin(expected)) => {
-                if actual == expected {
+            (
+                UnresolvedTypeKind::Builtin(actual_builtin),
+                UnresolvedTypeKind::Builtin(expected_builtin),
+            ) => {
+                if actual_builtin == expected_builtin {
                     Ok(())
                 } else {
-                    Err(TypeError::Mismatch(
-                        UnresolvedType::Builtin(actual),
-                        UnresolvedType::Builtin(expected),
-                        Backtrace::new(),
-                    ))
+                    Err(TypeError {
+                        span: actual.span,
+                        kind: TypeErrorKind::Mismatch(actual, expected),
+                    })
                 }
             }
-            (UnresolvedType::Bottom(_), _) => Ok(()),
-            (actual, expected) => Err(TypeError::Mismatch(actual, expected, Backtrace::new())),
+            (UnresolvedTypeKind::Bottom(_), _) => Ok(()),
+            _ => Err(TypeError {
+                span: actual.span,
+                kind: TypeErrorKind::Mismatch(actual, expected),
+            }),
         }
     }
 }
 
 impl UnresolvedType {
     pub fn id(&self) -> Option<TypeId> {
-        match self {
-            UnresolvedType::Named(id) => Some(*id),
+        match &self.kind {
+            UnresolvedTypeKind::Named(id) => Some(*id),
             _ => None,
         }
     }
 
     pub fn contains(&self, var: &TypeVariable) -> bool {
-        match self {
-            UnresolvedType::Variable(v) => v == var,
-            UnresolvedType::Function(input, output) => input.contains(var) || output.contains(var),
+        match &self.kind {
+            UnresolvedTypeKind::Variable(v) => v == var,
+            UnresolvedTypeKind::Function(input, output) => {
+                input.contains(var) || output.contains(var)
+            }
             _ => false,
         }
     }
 
     pub fn contains_error(&self) -> bool {
-        match self {
-            UnresolvedType::Function(input, output) => {
+        match &self.kind {
+            UnresolvedTypeKind::Function(input, output) => {
                 input.contains_error() || output.contains_error()
             }
-            UnresolvedType::Bottom(BottomTypeReason::Error) => true,
+            UnresolvedTypeKind::Bottom(BottomTypeReason::Error) => true,
             _ => false,
         }
     }
 
     pub fn apply(&mut self, ctx: &Context) {
-        match self {
-            UnresolvedType::Variable(var) => {
+        match &mut self.kind {
+            UnresolvedTypeKind::Variable(var) => {
                 if let Some(ty) = ctx.substitutions.get(var) {
                     *self = ty.clone();
                     self.apply(ctx);
                 }
             }
-            UnresolvedType::Function(input, output) => {
+            UnresolvedTypeKind::Function(input, output) => {
                 input.apply(ctx);
                 output.apply(ctx);
             }
@@ -235,14 +315,14 @@ impl UnresolvedType {
     }
 
     pub fn instantiate_with(&mut self, substitutions: &GenericSubstitutions) {
-        match self {
-            UnresolvedType::Parameter(param) => {
+        match &mut self.kind {
+            UnresolvedTypeKind::Parameter(param) => {
                 *self = substitutions
                     .get(param)
                     .unwrap_or_else(|| panic!("missing parameter {:?} in substitution", param))
                     .clone();
             }
-            UnresolvedType::Function(input, output) => {
+            UnresolvedTypeKind::Function(input, output) => {
                 input.instantiate_with(substitutions);
                 output.instantiate_with(substitutions);
             }
@@ -251,9 +331,9 @@ impl UnresolvedType {
     }
 
     pub fn vars(&self) -> BTreeSet<TypeVariable> {
-        match self {
-            UnresolvedType::Variable(var) => BTreeSet::from([*var]),
-            UnresolvedType::Function(input, output) => {
+        match &self.kind {
+            UnresolvedTypeKind::Variable(var) => BTreeSet::from([*var]),
+            UnresolvedTypeKind::Function(input, output) => {
                 let mut vars = input.vars();
                 vars.extend(output.vars());
                 vars
@@ -262,10 +342,10 @@ impl UnresolvedType {
         }
     }
 
-    pub fn params(&self) -> BTreeSet<TypeParameterId> {
-        match self {
-            UnresolvedType::Parameter(param) => BTreeSet::from([*param]),
-            UnresolvedType::Function(input, output) => {
+    pub fn params(&self) -> BTreeSet<TypeParameter> {
+        match &self.kind {
+            UnresolvedTypeKind::Parameter(param) => BTreeSet::from([*param]),
+            UnresolvedTypeKind::Function(input, output) => {
                 let mut params = input.params();
                 params.extend(output.params());
                 params
@@ -277,22 +357,25 @@ impl UnresolvedType {
     pub fn finalize(mut self, ctx: &Context, generic: bool) -> Option<Type> {
         self.apply(ctx);
 
-        match self {
-            UnresolvedType::Variable(_) => None,
-            UnresolvedType::Parameter(param) => {
-                if generic {
-                    Some(Type::Parameter(param))
-                } else {
-                    panic!("cannot finalize type parameter in non-generic context")
+        Some(Type {
+            span: self.span,
+            kind: match self.kind {
+                UnresolvedTypeKind::Variable(_) => return None,
+                UnresolvedTypeKind::Parameter(param) => {
+                    if generic {
+                        TypeKind::Parameter(param)
+                    } else {
+                        panic!("cannot finalize type parameter in non-generic context")
+                    }
                 }
-            }
-            UnresolvedType::Named(name) => Some(Type::Named(name)),
-            UnresolvedType::Function(input, output) => Some(Type::Function(
-                Box::new(input.finalize(ctx, generic)?),
-                Box::new(output.finalize(ctx, generic)?),
-            )),
-            UnresolvedType::Builtin(builtin) => Some(Type::Builtin(builtin)),
-            UnresolvedType::Bottom(is_error) => Some(Type::Bottom(is_error)),
-        }
+                UnresolvedTypeKind::Named(name) => TypeKind::Named(name),
+                UnresolvedTypeKind::Function(input, output) => TypeKind::Function(
+                    Box::new(input.finalize(ctx, generic)?),
+                    Box::new(output.finalize(ctx, generic)?),
+                ),
+                UnresolvedTypeKind::Builtin(builtin) => TypeKind::Builtin(builtin),
+                UnresolvedTypeKind::Bottom(is_error) => TypeKind::Bottom(is_error),
+            },
+        })
     }
 }
