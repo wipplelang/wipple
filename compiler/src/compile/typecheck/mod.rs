@@ -1181,20 +1181,18 @@ impl<'a, L: Loader> Typechecker<'a, L> {
                     ),
                 )],
             ),
-            TypeErrorKind::AmbiguousTrait(_, candidates) => {
-                Diagnostic::error(
-                    "could not determine the type of this expression",
-                    std::iter::once(Note::primary(
-                        error.span,
-                        "try annotating the type with `::`",
-                    ))
-                    .chain(candidates.into_iter().map(|instance| {
-                        // FIXME: obtain span of instance
-                        Note::secondary(error.span, format!("instance {:?} could apply", instance,))
-                    }))
-                    .collect(),
-                )
-            }
+            TypeErrorKind::AmbiguousTrait(_, candidates) => Diagnostic::error(
+                "could not determine the type of this expression",
+                std::iter::once(Note::primary(
+                    error.span,
+                    "try annotating the type with `::`",
+                ))
+                .chain(candidates.into_iter().map(|instance| {
+                    let instance = self.generic_constants.get(&instance).unwrap();
+                    Note::secondary(instance.decl.span, "this instance could apply")
+                }))
+                .collect(),
+            ),
             TypeErrorKind::UnresolvedType => Diagnostic::error(
                 "could not determine the type of this expression",
                 vec![Note::primary(
