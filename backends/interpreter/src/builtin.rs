@@ -49,6 +49,7 @@ lazy_static! {
         builtins! {
             "show" => builtin_show,
             "number-to-text" => builtin_number_to_text,
+            "add-numbers" => builtin_add_numbers,
         }
     };
 }
@@ -88,4 +89,22 @@ fn builtin_number_to_text(
     };
 
     Ok(Rc::new(Value::Text(number.to_string())))
+}
+
+fn builtin_add_numbers(
+    _: &Interpreter,
+    (lhs, rhs): (Rc<Value>, Rc<Value>),
+    _: &Info,
+) -> Result<Rc<Value>, Diverge> {
+    let lhs = match lhs.as_ref() {
+        Value::Number(number) => number,
+        _ => unreachable!(),
+    };
+
+    let rhs = match rhs.as_ref() {
+        Value::Number(number) => number,
+        _ => unreachable!(),
+    };
+
+    Ok(Rc::new(Value::Number(lhs + rhs)))
 }

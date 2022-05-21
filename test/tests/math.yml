@@ -1,0 +1,7 @@
+code: |
+    show (Add 1 2)
+
+output: |
+    3
+
+diagnostics: |
