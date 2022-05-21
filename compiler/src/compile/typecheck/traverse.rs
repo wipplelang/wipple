@@ -69,18 +69,6 @@ macro_rules! traverse {
                 fn traverse_mut_inner(&mut self, f: &mut impl FnMut(&mut Self)) {
                     traverse_impl!([<$prefix ExpressionKind>], f, self, traverse_mut_inner, &mut)
                 }
-
-                pub fn contains_error(&self) -> bool {
-                    let mut contains_error = false;
-
-                    self.traverse(|expr| {
-                        if matches!(expr.kind, [<$prefix ExpressionKind>]::Error) {
-                            contains_error = true;
-                        }
-                    });
-
-                    contains_error
-                }
             }
         }
     };

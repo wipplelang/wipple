@@ -3,7 +3,7 @@ use libffi::high::call::*;
 use libloading::{Library, Symbol};
 use rust_decimal::prelude::{FromPrimitive, ToPrimitive};
 use std::{ffi::CString, os::raw::c_char, rc::Rc};
-use wipple_compiler::compile::typecheck::{BuiltinType, Type, TypeKind};
+use wipple_compiler::compile::typecheck::{BuiltinType, Type};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ExternalFunction<'a> {
@@ -28,17 +28,17 @@ impl<'a> ExternalFunction<'a> {
     ) -> Result<ExternalFunction<'a>, Error> {
         let params = inputs
             .iter()
-            .map(|ty| match &ty.kind {
-                TypeKind::Builtin(BuiltinType::Number) => Ok(ExternalValueType::Number),
-                TypeKind::Builtin(BuiltinType::Text) => Ok(ExternalValueType::Text),
+            .map(|ty| match ty {
+                Type::Builtin(BuiltinType::Number) => Ok(ExternalValueType::Number),
+                Type::Builtin(BuiltinType::Text) => Ok(ExternalValueType::Text),
                 _ => Err(Error::from("only `Number` and `Text` are supported here")),
             })
             .collect::<Result<_, _>>()?;
 
-        let returns = match &return_ty.kind {
-            TypeKind::Builtin(BuiltinType::Number) => Some(ExternalValueType::Number),
-            TypeKind::Builtin(BuiltinType::Text) => Some(ExternalValueType::Text),
-            TypeKind::Builtin(BuiltinType::Unit) => None,
+        let returns = match return_ty {
+            Type::Builtin(BuiltinType::Number) => Some(ExternalValueType::Number),
+            Type::Builtin(BuiltinType::Text) => Some(ExternalValueType::Text),
+            Type::Builtin(BuiltinType::Unit) => None,
             _ => {
                 return Err(Error::from(
                     "only `Number`, `Text` and `()` are supported here",
