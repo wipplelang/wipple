@@ -8,8 +8,9 @@ pub use engine::{BuiltinType, Type, TypeKind};
 pub use format::format_type;
 
 use crate::{
-    compile::lower, diagnostics::*, helpers::InternedString, parser::Span, Compiler, ConstantId,
-    FilePath, GenericConstantId, Loader, TraitId, TypeId, TypeParameterId, VariableId,
+    compile::lower, diagnostics::*, helpers::InternedString, parser::Span, Compiler, FilePath,
+    GenericConstantId, Loader, MonomorphizedConstantId, TraitId, TypeId, TypeParameterId,
+    VariableId,
 };
 use engine::*;
 use rust_decimal::Decimal;
@@ -25,16 +26,16 @@ use std::{
 pub struct Program {
     pub well_typed: bool,
     pub body: Vec<Expression>,
-    pub declarations: Declarations,
+    pub declarations: Declarations<Expression, Type>,
     pub top_level: HashMap<InternedString, lower::ScopeValue>,
 }
 
 macro_rules! expr {
-    ($vis:vis, $prefix:literal, { $($kinds:tt)* }) => {
+    ($vis:vis, $prefix:literal, $type:ident, { $($kinds:tt)* }) => {
         paste::paste! {
             #[derive(Debug, Clone, Serialize, Deserialize)]
             $vis struct [<$prefix Expression>] {
-                $vis ty: [<$prefix Type>],
+                $vis ty: $type,
                 $vis kind: [<$prefix ExpressionKind>],
             }
 
@@ -42,7 +43,6 @@ macro_rules! expr {
             $vis enum [<$prefix ExpressionKind>] {
                 Error,
                 Marker,
-                Constant(ConstantId),
                 Variable(VariableId),
                 Text(InternedString),
                 Number(Decimal),
@@ -84,20 +84,40 @@ macro_rules! expr {
     };
 }
 
-expr!(, "Unresolved", {
+expr!(, "Unresolved", UnresolvedType, {
     Trait(TraitId),
+    Constant(GenericConstantId),
 });
 
-expr!(pub, "", {});
+expr!(, "Monomorphized", UnresolvedType, {
+    Constant(MonomorphizedConstantId),
+});
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct Declarations {
+expr!(pub, "", Type, {
+    Constant(MonomorphizedConstantId),
+});
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Declarations<Expr, Ty> {
     pub types: BTreeMap<TypeId, Declaration<()>>,
     pub type_parameters: BTreeMap<TypeParameterId, Declaration<()>>,
     pub traits: BTreeMap<TraitId, Declaration<(UnresolvedType, Vec<TypeParameterId>)>>,
-    pub generic_constants: Vec<Declaration<Expression>>,
-    pub monomorphized_constants: BTreeMap<ConstantId, Declaration<Expression>>,
-    pub variables: BTreeMap<VariableId, Declaration<Type>>,
+    pub generic_constants: Vec<Declaration<Expr>>,
+    pub monomorphized_constants: BTreeMap<MonomorphizedConstantId, Declaration<Expr>>,
+    pub variables: BTreeMap<VariableId, Declaration<Ty>>,
+}
+
+impl<Expr, Ty> Default for Declarations<Expr, Ty> {
+    fn default() -> Self {
+        Self {
+            types: Default::default(),
+            type_parameters: Default::default(),
+            traits: Default::default(),
+            generic_constants: Default::default(),
+            monomorphized_constants: Default::default(),
+            variables: Default::default(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -142,6 +162,7 @@ impl<L: Loader> Compiler<L> {
             declared_instances: Default::default(),
             bound_instances: Default::default(),
             function_inputs: Default::default(),
+            declarations: Default::default(),
             compiler: self,
         };
 
@@ -149,11 +170,10 @@ impl<L: Loader> Compiler<L> {
 
         // Copy declarations
 
-        let mut declarations = Declarations::default();
         for file in &files {
             for (id, decl) in file.borrow().declarations.types.clone() {
                 if let lower::Declaration::Local(decl) = decl {
-                    declarations.types.insert(
+                    typechecker.declarations.types.insert(
                         id,
                         Declaration {
                             name: decl.name,
@@ -166,7 +186,7 @@ impl<L: Loader> Compiler<L> {
 
             for (id, decl) in file.borrow().declarations.type_parameters.clone() {
                 if let lower::Declaration::Local(decl) = decl {
-                    declarations.type_parameters.insert(
+                    typechecker.declarations.type_parameters.insert(
                         id,
                         Declaration {
                             name: decl.name,
@@ -188,7 +208,7 @@ impl<L: Loader> Compiler<L> {
                         .map(|param| param.id)
                         .collect();
 
-                    declarations.traits.insert(
+                    typechecker.declarations.traits.insert(
                         id,
                         Declaration {
                             name: decl.name,
@@ -346,7 +366,7 @@ impl<L: Loader> Compiler<L> {
             let mut body = typechecker.typecheck_expr(&constant.decl.value, &constant.file, false);
 
             if let Err(error) = typechecker.ctx.unify(body.ty.clone(), constant.generic_ty) {
-                typechecker.report_type_error(error, &constant.file.borrow());
+                typechecker.report_type_error(error);
             }
 
             body.traverse_mut(|expr| expr.ty.apply(&typechecker.ctx));
@@ -354,7 +374,7 @@ impl<L: Loader> Compiler<L> {
             // Register dummy generic instances so finalization works -- these
             // constants will never actually be used
             for (tr, ty) in constant.bounds {
-                let dummy_id = typechecker.compiler.new_constant_id();
+                let dummy_id = typechecker.compiler.new_monomorphized_constant_id();
 
                 typechecker.monomorphized_constants.insert(
                     dummy_id,
@@ -383,26 +403,29 @@ impl<L: Loader> Compiler<L> {
             }
 
             let body_span = body.ty.span;
-            let body = match typechecker.finalize(body, true, &constant.file) {
+            let body = match typechecker.monomorphize(body) {
                 Ok(expr) => expr,
                 Err(error) => {
-                    typechecker.report_type_error(error, &constant.file.borrow());
+                    typechecker.report_type_error(error);
 
-                    Expression {
-                        ty: Type {
+                    MonomorphizedExpression {
+                        ty: UnresolvedType {
                             span: body_span,
-                            kind: TypeKind::Bottom(BottomTypeReason::Error),
+                            kind: UnresolvedTypeKind::Bottom(BottomTypeReason::Error),
                         },
-                        kind: ExpressionKind::Error,
+                        kind: MonomorphizedExpressionKind::Error,
                     }
                 }
             };
 
-            declarations.generic_constants.push(Declaration {
-                name: constant.decl.name,
-                span: constant.decl.span,
-                value: body,
-            });
+            typechecker
+                .declarations
+                .generic_constants
+                .push(Declaration {
+                    name: constant.decl.name,
+                    span: constant.decl.span,
+                    value: body,
+                });
         }
 
         typechecker.bound_instances = prev_bound_instances;
@@ -424,16 +447,14 @@ impl<L: Loader> Compiler<L> {
                     .iter()
                     .cloned()
                     .map(|expr| {
-                        let expr = typechecker
-                            .finalize(expr, false, file)
-                            .map_err(|error| (error, file))?;
+                        let expr = typechecker.monomorphize(expr)?;
 
                         expr.traverse(|expr| {
-                            if let ExpressionKind::Initialize(id, expr) = &expr.kind {
+                            if let MonomorphizedExpressionKind::Initialize(id, expr) = &expr.kind {
                                 let file = file.borrow();
                                 let decl = file.declarations.variables.get(id).unwrap();
 
-                                declarations.variables.insert(
+                                typechecker.declarations.variables.insert(
                                     *id,
                                     Declaration {
                                         name: decl.name(),
@@ -452,8 +473,8 @@ impl<L: Loader> Compiler<L> {
             .map(|body| body.into_iter().flatten().collect::<Vec<_>>())
         {
             Ok(body) => body,
-            Err((error, file)) => {
-                typechecker.report_type_error(error, &file.borrow());
+            Err(error) => {
+                typechecker.report_type_error(error);
                 return None;
             }
         };
@@ -477,46 +498,129 @@ impl<L: Loader> Compiler<L> {
 
                 already_checked.insert(id);
 
-                for (tr, mut ty) in constant.bounds.clone() {
-                    ty.apply(&typechecker.ctx);
+                let mut ty = constant.decl.value.ty.clone();
+                ty.apply(&typechecker.ctx);
 
-                    let instance_id = match typechecker.instance_for(tr, ty) {
-                        Ok(id) => id,
+                if ty.params().is_empty() {
+                    for (tr, mut ty) in constant.bounds.clone() {
+                        ty.apply(&typechecker.ctx);
+
+                        let instance_id = match typechecker.instance_for(tr, ty.clone()) {
+                            Ok(id) => id,
+                            Err(error) => {
+                                typechecker.report_type_error(error);
+                                continue;
+                            }
+                        };
+
+                        typechecker
+                            .bound_instances
+                            .entry(tr)
+                            .or_default()
+                            .push(instance_id);
+                    }
+
+                    let body = match typechecker.monomorphize(constant.decl.value.clone()) {
+                        Ok(value) => value,
                         Err(error) => {
-                            typechecker.report_type_error(error, &constant.file.borrow());
+                            typechecker.report_type_error(error);
                             continue;
                         }
                     };
 
-                    typechecker
-                        .bound_instances
-                        .entry(tr)
-                        .or_default()
-                        .push(instance_id);
+                    typechecker.declarations.monomorphized_constants.insert(
+                        id,
+                        Declaration {
+                            name: constant.decl.name,
+                            span: constant.decl.span,
+                            value: body,
+                        },
+                    );
                 }
-
-                let body = match typechecker.finalize(
-                    constant.decl.value.clone(),
-                    true, // constants monomorphized inside generic constants won't be used anyway
-                    &constant.file,
-                ) {
-                    Ok(value) => value,
-                    Err(error) => {
-                        typechecker.report_type_error(error, &constant.file.borrow());
-                        continue;
-                    }
-                };
-
-                declarations.monomorphized_constants.insert(
-                    id,
-                    Declaration {
-                        name: constant.decl.name,
-                        span: constant.decl.span,
-                        value: body,
-                    },
-                );
             }
         }
+
+        // Finalize values
+
+        let declarations = match (|| {
+            Ok(Declarations {
+                types: typechecker.declarations.types.clone(),
+                type_parameters: typechecker.declarations.type_parameters.clone(),
+                traits: typechecker.declarations.traits.clone(),
+                generic_constants: typechecker
+                    .declarations
+                    .generic_constants
+                    .clone()
+                    .into_iter()
+                    .map(|decl| {
+                        Ok(Declaration {
+                            name: decl.name,
+                            span: decl.span,
+                            value: typechecker.finalize(decl.value, true)?,
+                        })
+                    })
+                    .collect::<Result<_, _>>()?,
+                monomorphized_constants: typechecker
+                    .declarations
+                    .monomorphized_constants
+                    .clone()
+                    .into_iter()
+                    .map(|(id, decl)| {
+                        // FIXME: Filter out generic constants if this crashes
+
+                        Ok((
+                            id,
+                            Declaration {
+                                name: decl.name,
+                                span: decl.span,
+                                value: typechecker.finalize(decl.value, false)?,
+                            },
+                        ))
+                    })
+                    .collect::<Result<_, _>>()?,
+                variables: typechecker
+                    .declarations
+                    .variables
+                    .clone()
+                    .into_iter()
+                    .map(|(id, decl)| {
+                        let span = decl.value.span;
+
+                        Ok((
+                            id,
+                            Declaration {
+                                name: decl.name,
+                                span: decl.span,
+                                value: decl.value.finalize(&typechecker.ctx, true).ok_or(
+                                    TypeError {
+                                        span,
+                                        kind: TypeErrorKind::UnresolvedType,
+                                    },
+                                )?,
+                            },
+                        ))
+                    })
+                    .collect::<Result<_, _>>()?,
+            })
+        })() {
+            Ok(declarations) => declarations,
+            Err(error) => {
+                typechecker.report_type_error(error);
+                Declarations::default()
+            }
+        };
+
+        let body = match body
+            .into_iter()
+            .map(|expr| typechecker.finalize(expr, false))
+            .collect::<Result<_, _>>()
+        {
+            Ok(declarations) => declarations,
+            Err(error) => {
+                typechecker.report_type_error(error);
+                Vec::new()
+            }
+        };
 
         // Build the final program
 
@@ -547,10 +651,11 @@ struct Typechecker<'a, L: Loader> {
     structures: BTreeMap<TypeId, HashMap<InternedString, (usize, UnresolvedType)>>,
     // TODO: enumerations
     generic_constants: BTreeMap<GenericConstantId, Constant<lower::Expression, UnresolvedType>>,
-    monomorphized_constants: BTreeMap<ConstantId, Constant<UnresolvedExpression, ()>>,
+    monomorphized_constants: BTreeMap<MonomorphizedConstantId, Constant<UnresolvedExpression, ()>>,
     declared_instances: BTreeMap<TraitId, Vec<GenericConstantId>>,
-    bound_instances: BTreeMap<TraitId, Vec<ConstantId>>,
+    bound_instances: BTreeMap<TraitId, Vec<MonomorphizedConstantId>>,
     function_inputs: Vec<(Span, TypeVariable)>,
+    declarations: Declarations<MonomorphizedExpression, UnresolvedType>,
     compiler: &'a mut Compiler<L>,
 }
 
@@ -585,10 +690,13 @@ impl<'a, L: Loader> Typechecker<'a, L> {
                 self.convert_type_id(expr.span, *ty, &file.borrow()),
                 UnresolvedExpressionKind::Marker,
             ),
-            lower::ExpressionKind::Constant(id) => {
-                let (monomorphized_id, ty) = self.monomorphize_constant(id);
-                (ty, UnresolvedExpressionKind::Constant(monomorphized_id))
-            }
+            lower::ExpressionKind::Constant(id) => (
+                UnresolvedType {
+                    span: expr.span,
+                    kind: UnresolvedTypeKind::Variable(self.ctx.new_variable()),
+                },
+                UnresolvedExpressionKind::Constant(*id),
+            ),
             lower::ExpressionKind::Trait(id) => (
                 UnresolvedType {
                     span: expr.span,
@@ -650,7 +758,7 @@ impl<'a, L: Loader> Typechecker<'a, L> {
                     Ok(ty) => ty,
                     Err(errors) => {
                         if !suppress_errors {
-                            self.report_type_error(errors, &file.borrow());
+                            self.report_type_error(errors);
                         }
 
                         return error_expr();
@@ -710,7 +818,7 @@ impl<'a, L: Loader> Typechecker<'a, L> {
                     Ok(ty) => ty,
                     Err(error) => {
                         if !suppress_errors {
-                            self.report_type_error(error, &file.borrow());
+                            self.report_type_error(error);
                         }
 
                         return error_expr();
@@ -777,7 +885,7 @@ impl<'a, L: Loader> Typechecker<'a, L> {
                         Ok(ty) => ty,
                         Err(errors) => {
                             if !suppress_errors {
-                                self.report_type_error(errors, &file.borrow());
+                                self.report_type_error(errors);
                             }
 
                             return error_expr();
@@ -897,8 +1005,11 @@ impl<'a, L: Loader> Typechecker<'a, L> {
         }
     }
 
-    fn monomorphize_constant(&mut self, id: &GenericConstantId) -> (ConstantId, UnresolvedType) {
-        let mut constant = self.generic_constants.get(id).unwrap().clone();
+    fn monomorphize_constant(
+        &mut self,
+        id: GenericConstantId,
+    ) -> (MonomorphizedConstantId, UnresolvedType) {
+        let mut constant = self.generic_constants.get(&id).unwrap().clone();
 
         let body = constant.decl.value;
         let mut body = self.typecheck_expr(&body, &constant.file, true);
@@ -941,7 +1052,7 @@ impl<'a, L: Loader> Typechecker<'a, L> {
 
         let ty = body.ty.clone();
 
-        let monomorphized_id = self.compiler.new_constant_id();
+        let monomorphized_id = self.compiler.new_monomorphized_constant_id();
 
         self.monomorphized_constants.insert(
             monomorphized_id,
@@ -960,67 +1071,141 @@ impl<'a, L: Loader> Typechecker<'a, L> {
         (monomorphized_id, ty)
     }
 
-    fn finalize(
+    fn monomorphize(
         &mut self,
         expr: UnresolvedExpression,
+    ) -> Result<MonomorphizedExpression, TypeError> {
+        Ok(MonomorphizedExpression {
+            ty: expr.ty.clone(),
+            kind: match expr.kind {
+                UnresolvedExpressionKind::Error => MonomorphizedExpressionKind::Error,
+                UnresolvedExpressionKind::Marker => MonomorphizedExpressionKind::Marker,
+                UnresolvedExpressionKind::Constant(id) => {
+                    let (monomorphized_id, ty) = self.monomorphize_constant(id);
+
+                    if let Err(error) = self.ctx.unify(ty, expr.ty.clone()) {
+                        self.report_type_error(error);
+                    }
+
+                    MonomorphizedExpressionKind::Constant(monomorphized_id)
+                }
+                UnresolvedExpressionKind::Variable(var) => {
+                    MonomorphizedExpressionKind::Variable(var)
+                }
+                UnresolvedExpressionKind::Text(text) => MonomorphizedExpressionKind::Text(text),
+                UnresolvedExpressionKind::Number(number) => {
+                    MonomorphizedExpressionKind::Number(number)
+                }
+                UnresolvedExpressionKind::Block(statements, scope) => {
+                    MonomorphizedExpressionKind::Block(
+                        statements
+                            .into_iter()
+                            .map(|expr| self.monomorphize(expr))
+                            .collect::<Result<_, _>>()?,
+                        scope,
+                    )
+                }
+                UnresolvedExpressionKind::Call(func, input) => MonomorphizedExpressionKind::Call(
+                    Box::new(self.monomorphize(*func)?),
+                    Box::new(self.monomorphize(*input)?),
+                ),
+                UnresolvedExpressionKind::Member(expr, index) => {
+                    MonomorphizedExpressionKind::Member(Box::new(self.monomorphize(*expr)?), index)
+                }
+                UnresolvedExpressionKind::Function(body, captures) => {
+                    MonomorphizedExpressionKind::Function(
+                        Box::new(self.monomorphize(*body)?),
+                        captures,
+                    )
+                }
+                UnresolvedExpressionKind::When(_, _) => todo!(),
+                UnresolvedExpressionKind::External(namespace, identifier, inputs) => {
+                    MonomorphizedExpressionKind::External(
+                        namespace,
+                        identifier,
+                        inputs
+                            .into_iter()
+                            .map(|expr| self.monomorphize(expr))
+                            .collect::<Result<_, _>>()?,
+                    )
+                }
+                UnresolvedExpressionKind::Initialize(variable, value) => {
+                    MonomorphizedExpressionKind::Initialize(
+                        variable,
+                        Box::new(self.monomorphize(*value)?),
+                    )
+                }
+                UnresolvedExpressionKind::Structure(fields) => {
+                    MonomorphizedExpressionKind::Structure(
+                        fields
+                            .into_iter()
+                            .map(|expr| self.monomorphize(expr))
+                            .collect::<Result<_, _>>()?,
+                    )
+                }
+                UnresolvedExpressionKind::FunctionInput => {
+                    MonomorphizedExpressionKind::FunctionInput
+                }
+                UnresolvedExpressionKind::Trait(tr) => {
+                    MonomorphizedExpressionKind::Constant(self.instance_for(tr, expr.ty.clone())?)
+                }
+            },
+        })
+    }
+
+    fn finalize(
+        &mut self,
+        expr: MonomorphizedExpression,
         generic: bool,
-        file: &Rc<RefCell<lower::File>>,
     ) -> Result<Expression, TypeError> {
         let expr_span = expr.ty.span;
 
         Ok(Expression {
             kind: match expr.kind {
-                UnresolvedExpressionKind::Error => ExpressionKind::Error,
-                UnresolvedExpressionKind::Marker => ExpressionKind::Marker,
-                UnresolvedExpressionKind::Constant(id) => ExpressionKind::Constant(id),
-                UnresolvedExpressionKind::Variable(var) => ExpressionKind::Variable(var),
-                UnresolvedExpressionKind::Text(text) => ExpressionKind::Text(text),
-                UnresolvedExpressionKind::Number(number) => ExpressionKind::Number(number),
-                UnresolvedExpressionKind::Block(statements, scope) => ExpressionKind::Block(
+                MonomorphizedExpressionKind::Error => ExpressionKind::Error,
+                MonomorphizedExpressionKind::Marker => ExpressionKind::Marker,
+                MonomorphizedExpressionKind::Constant(id) => ExpressionKind::Constant(id),
+                MonomorphizedExpressionKind::Variable(var) => ExpressionKind::Variable(var),
+                MonomorphizedExpressionKind::Text(text) => ExpressionKind::Text(text),
+                MonomorphizedExpressionKind::Number(number) => ExpressionKind::Number(number),
+                MonomorphizedExpressionKind::Block(statements, scope) => ExpressionKind::Block(
                     statements
                         .into_iter()
-                        .map(|expr| self.finalize(expr, generic, file))
+                        .map(|expr| self.finalize(expr, generic))
                         .collect::<Result<_, _>>()?,
                     scope,
                 ),
-                UnresolvedExpressionKind::Call(func, input) => ExpressionKind::Call(
-                    Box::new(self.finalize(*func, generic, file)?),
-                    Box::new(self.finalize(*input, generic, file)?),
+                MonomorphizedExpressionKind::Call(func, input) => ExpressionKind::Call(
+                    Box::new(self.finalize(*func, generic)?),
+                    Box::new(self.finalize(*input, generic)?),
                 ),
-                UnresolvedExpressionKind::Member(expr, index) => {
-                    ExpressionKind::Member(Box::new(self.finalize(*expr, generic, file)?), index)
+                MonomorphizedExpressionKind::Member(expr, index) => {
+                    ExpressionKind::Member(Box::new(self.finalize(*expr, generic)?), index)
                 }
-                UnresolvedExpressionKind::Function(body, captures) => ExpressionKind::Function(
-                    Box::new(self.finalize(*body, generic, file)?),
-                    captures,
-                ),
-                UnresolvedExpressionKind::When(_, _) => todo!(),
-                UnresolvedExpressionKind::External(namespace, identifier, inputs) => {
+                MonomorphizedExpressionKind::Function(body, captures) => {
+                    ExpressionKind::Function(Box::new(self.finalize(*body, generic)?), captures)
+                }
+                MonomorphizedExpressionKind::When(_, _) => todo!(),
+                MonomorphizedExpressionKind::External(namespace, identifier, inputs) => {
                     ExpressionKind::External(
                         namespace,
                         identifier,
                         inputs
                             .into_iter()
-                            .map(|expr| self.finalize(expr, generic, file))
+                            .map(|expr| self.finalize(expr, generic))
                             .collect::<Result<_, _>>()?,
                     )
                 }
-                UnresolvedExpressionKind::Initialize(variable, value) => {
-                    ExpressionKind::Initialize(
-                        variable,
-                        Box::new(self.finalize(*value, generic, file)?),
-                    )
+                MonomorphizedExpressionKind::Initialize(variable, value) => {
+                    ExpressionKind::Initialize(variable, Box::new(self.finalize(*value, generic)?))
                 }
-                UnresolvedExpressionKind::Structure(fields) => ExpressionKind::Structure(
+                MonomorphizedExpressionKind::Structure(fields) => ExpressionKind::Structure(
                     fields
                         .into_iter()
-                        .map(|expr| self.finalize(expr, generic, file))
+                        .map(|expr| self.finalize(expr, generic))
                         .collect::<Result<_, _>>()?,
                 ),
-                UnresolvedExpressionKind::FunctionInput => ExpressionKind::FunctionInput,
-                UnresolvedExpressionKind::Trait(tr) => {
-                    ExpressionKind::Constant(self.instance_for(tr, expr.ty.clone())?)
-                }
+                MonomorphizedExpressionKind::FunctionInput => ExpressionKind::FunctionInput,
             },
             // The type must be resolved after the kind because the kind may be
             // a trait, whose type is unified with the original type variable
@@ -1035,7 +1220,7 @@ impl<'a, L: Loader> Typechecker<'a, L> {
         &mut self,
         tr: TraitId,
         mut ty: UnresolvedType,
-    ) -> Result<ConstantId, TypeError> {
+    ) -> Result<MonomorphizedConstantId, TypeError> {
         ty.apply(&self.ctx);
 
         let bound_instances = self.bound_instances.get(&tr).cloned().unwrap_or_default();
@@ -1084,7 +1269,7 @@ impl<'a, L: Loader> Typechecker<'a, L> {
                 let (ctx, instance) = candidates.pop().unwrap();
                 self.ctx = ctx;
 
-                let (monomorphized_id, _) = self.monomorphize_constant(&instance);
+                let (monomorphized_id, _) = self.monomorphize_constant(instance);
                 Ok(monomorphized_id)
             }
             _ => Err(TypeError {
@@ -1132,7 +1317,7 @@ impl<'a, L: Loader> Typechecker<'a, L> {
         }
     }
 
-    fn report_type_error(&mut self, error: TypeError, file: &lower::File) {
+    fn report_type_error(&mut self, error: TypeError) {
         self.well_typed = false;
 
         if let TypeErrorKind::Mismatch(actual, expected) = &error.kind {
@@ -1143,7 +1328,7 @@ impl<'a, L: Loader> Typechecker<'a, L> {
 
         macro_rules! getter {
             ($x:ident) => {
-                |id| file.declarations.$x.get(&id).unwrap().name().to_string()
+                |id| self.declarations.$x.get(&id).unwrap().name.to_string()
             };
         }
 

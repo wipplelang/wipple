@@ -1,4 +1,7 @@
-use super::{Expression, ExpressionKind, Program, UnresolvedExpression, UnresolvedExpressionKind};
+use super::{
+    Expression, ExpressionKind, MonomorphizedExpression, MonomorphizedExpressionKind, Program,
+    UnresolvedExpression, UnresolvedExpressionKind,
+};
 
 impl Program {
     pub fn traverse(&self, mut f: impl FnMut(&Expression)) {
@@ -84,4 +87,5 @@ macro_rules! traverse {
 }
 
 traverse!("Unresolved");
+traverse!("Monomorphized");
 traverse!("");

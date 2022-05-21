@@ -86,6 +86,7 @@ fn main() -> anyhow::Result<()> {
 pub struct BuildOptions {
     path: String,
 
+    #[cfg(debug_assertions)]
     #[clap(long)]
     debug: bool,
 
@@ -184,8 +185,9 @@ pub fn build(options: BuildOptions) -> Option<wipple_compiler::compile::Program>
         emitter.emit(&diagnostics);
     }
 
+    #[cfg(debug_assertions)]
     if options.debug {
-        println!("{program:#?}");
+        println!("{:#?}", program);
     }
 
     if success {

@@ -15,6 +15,14 @@ struct Args {
 
     #[clap(long)]
     junit: bool,
+
+    #[cfg(debug_assertions)]
+    #[clap(long)]
+    debug: bool,
+
+    #[cfg(debug_assertions)]
+    #[clap(long)]
+    trace: bool,
 }
 
 fn main() -> anyhow::Result<()> {
@@ -24,9 +32,7 @@ fn main() -> anyhow::Result<()> {
     let mut fail_count = 0usize;
     let mut results = Vec::new();
 
-    for entry in fs::read_dir(args.path)? {
-        let path = entry?.path();
-
+    let mut run_path = |path: PathBuf| -> anyhow::Result<()> {
         let test_name = path.with_extension("");
         let test_name = test_name
             .file_name()
@@ -38,23 +44,29 @@ fn main() -> anyhow::Result<()> {
 
         let file = fs::File::open(&path)?;
         let test_case = serde_yaml::from_reader(file)?;
-        let result = run(&test_case)?;
+        let result = run(
+            &test_case,
+            #[cfg(debug_assertions)]
+            args.debug,
+            #[cfg(debug_assertions)]
+            args.trace,
+        )?;
 
         if result.passed() {
             pass_count += 1;
 
             eprintln!(
                 "\r{} {}",
-                " PASS ".black().on_bright_green(),
-                test_name.bold()
+                " PASS ".bright_white().on_bright_green(),
+                path.to_string_lossy().bold()
             );
         } else {
             fail_count += 1;
 
             eprintln!(
                 "\r{} {}",
-                " FAIL ".black().on_bright_red(),
-                test_name.bold()
+                " FAIL ".bright_white().on_bright_red(),
+                path.to_string_lossy().bold()
             );
 
             if !result.output_diff.is_empty() {
@@ -71,6 +83,17 @@ fn main() -> anyhow::Result<()> {
         }
 
         results.push((test_name, path, result));
+
+        Ok(())
+    };
+
+    if args.path.is_file() {
+        run_path(args.path)?;
+    } else {
+        for entry in fs::read_dir(args.path)? {
+            let path = entry?.path();
+            run_path(path)?;
+        }
     }
 
     eprintln!(
@@ -179,7 +202,11 @@ impl TestResult {
     }
 }
 
-fn run(test_case: &TestCase) -> anyhow::Result<TestResult> {
+fn run(
+    test_case: &TestCase,
+    #[cfg(debug_assertions)] debug: bool,
+    #[cfg(debug_assertions)] trace: bool,
+) -> anyhow::Result<TestResult> {
     struct Loader {
         code: String,
     }
@@ -213,6 +240,11 @@ fn run(test_case: &TestCase) -> anyhow::Result<TestResult> {
     let diagnostics = compiler.finish();
     let success = !diagnostics.contains_errors();
 
+    #[cfg(debug_assertions)]
+    if debug {
+        println!("{:#?}", program);
+    }
+
     let output = {
         let buf = RefCell::new(Vec::new());
 
@@ -237,7 +269,7 @@ fn run(test_case: &TestCase) -> anyhow::Result<TestResult> {
         {
             let (codemap, _, diagnostics) = diagnostics.into_console_friendly(
                 #[cfg(debug_assertions)]
-                false,
+                trace,
             );
 
             let mut emitter = codemap_diagnostic::Emitter::new(Box::new(&mut buf), Some(&codemap));

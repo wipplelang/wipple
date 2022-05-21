@@ -13,11 +13,11 @@ use std::{
 };
 use wipple_compiler::{
     compile::{
-        typecheck::{Declarations, Expression, ExpressionKind},
+        typecheck::{Declarations, Expression, ExpressionKind, Type},
         Program,
     },
     parser::Span,
-    ConstantId, VariableId,
+    MonomorphizedConstantId, VariableId,
 };
 
 #[derive(Debug)]
@@ -98,10 +98,10 @@ impl<'a> Interpreter<'a> {
 }
 
 pub struct Info {
-    declarations: Declarations,
+    declarations: Declarations<Expression, Type>,
     scope: Rc<RefCell<Scope>>,
     function_input: Option<Rc<Value>>,
-    constants: HashMap<ConstantId, Rc<Value>>,
+    constants: HashMap<MonomorphizedConstantId, Rc<Value>>,
     stack: Vec<Span>,
 }
 

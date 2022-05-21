@@ -78,8 +78,8 @@ macro_rules! ids {
 }
 
 ids!(
-    ConstantId,
     GenericConstantId,
+    MonomorphizedConstantId,
     OperatorId,
     TraitId,
     TypeId,
