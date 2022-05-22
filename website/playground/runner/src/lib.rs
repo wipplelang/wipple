@@ -149,7 +149,7 @@ fn annotations(program: &mut wipple_compiler::compile::Program) -> Vec<Annotatio
                 return;
             }
 
-            let ty = format_ty!(&expr.ty.clone().into());
+            let ty = format_ty!(expr.ty.clone());
 
             let name = match expr.kind {
                 ExpressionKind::Variable(id) => {
@@ -203,11 +203,7 @@ fn annotations(program: &mut wipple_compiler::compile::Program) -> Vec<Annotatio
 
         annotations.push(Annotation {
             span: decl.span,
-            value: format!(
-                "{} :: {}",
-                decl.name,
-                format_ty!(&decl.value.ty.clone().into())
-            ),
+            value: format!("{} :: {}", decl.name, format_ty!(decl.value.ty.clone())),
         });
 
         decl.value.traverse(|expr| add_annotation!(expr));
@@ -220,11 +216,7 @@ fn annotations(program: &mut wipple_compiler::compile::Program) -> Vec<Annotatio
 
         annotations.push(Annotation {
             span: decl.span,
-            value: format!(
-                "{} :: {}",
-                decl.name,
-                format_ty!(&decl.value.clone().into())
-            ),
+            value: format!("{} :: {}", decl.name, format_ty!(decl.value.clone())),
         });
     }
 

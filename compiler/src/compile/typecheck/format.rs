@@ -2,7 +2,7 @@ use super::engine::{BuiltinType, UnresolvedType};
 use crate::{TypeId, TypeParameterId};
 
 pub fn format_type(
-    ty: &UnresolvedType,
+    ty: impl Into<UnresolvedType>,
     type_names: impl Fn(TypeId) -> String,
     param_names: impl Fn(TypeParameterId) -> String,
 ) -> String {
@@ -10,12 +10,14 @@ pub fn format_type(
 }
 
 fn format_type_with(
-    ty: &UnresolvedType,
+    ty: impl Into<UnresolvedType>,
     type_names: impl Fn(TypeId) -> String,
     param_names: impl Fn(TypeParameterId) -> String,
 ) -> String {
+    let ty = ty.into();
+
     fn format_type(
-        ty: &UnresolvedType,
+        ty: UnresolvedType,
         type_names: &impl Fn(TypeId) -> String,
         param_names: &impl Fn(TypeParameterId) -> String,
         is_top_level: bool,
@@ -23,10 +25,10 @@ fn format_type_with(
     ) -> String {
         match ty {
             UnresolvedType::Variable(_) => String::from("_"),
-            UnresolvedType::Parameter(param) => param_names(*param),
+            UnresolvedType::Parameter(param) => param_names(param),
             UnresolvedType::Bottom(_) => String::from("!"),
             UnresolvedType::Named(id) => {
-                let name = type_names(*id);
+                let name = type_names(id);
 
                 if is_top_level {
                     name
@@ -40,8 +42,8 @@ fn format_type_with(
                 BuiltinType::Number => String::from("Number"),
             },
             UnresolvedType::Function(input, output) => {
-                let input = format_type(input, type_names, param_names, true, false);
-                let output = format_type(output, type_names, param_names, true, true);
+                let input = format_type(*input, type_names, param_names, true, false);
+                let output = format_type(*output, type_names, param_names, true, true);
 
                 if is_top_level && is_return {
                     format!("{input} -> {output}")
@@ -52,12 +54,12 @@ fn format_type_with(
         }
     }
 
-    let formatted = format_type(ty, &type_names, &param_names, true, true);
-
     let mut names = Vec::new();
     for param in ty.params() {
         names.push(param);
     }
+
+    let formatted = format_type(ty, &type_names, &param_names, true, true);
 
     if names.is_empty() {
         formatted

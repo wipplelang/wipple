@@ -845,6 +845,15 @@ impl<L: Loader> Compiler<L> {
                         scope.function_inputs.borrow_mut().insert(id);
                     }
 
+                    info.declarations.variables.insert(
+                        id,
+                        Declaration::Local(DeclarationKind {
+                            name: InternedString::new("<destructured>"),
+                            span: pattern.span,
+                            value: (),
+                        }),
+                    );
+
                     let mut exprs = vec![Expression {
                         span: statement.span,
                         kind: ExpressionKind::Initialize(id, Box::new(value)),
