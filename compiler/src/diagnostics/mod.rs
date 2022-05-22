@@ -1,4 +1,4 @@
-use crate::{parser::Span, FilePath};
+use crate::{parse::Span, FilePath};
 use codemap::CodeMap;
 use serde::Serialize;
 use std::{

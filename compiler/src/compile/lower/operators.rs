@@ -26,7 +26,7 @@ impl<L: Loader> Compiler<L> {
     pub(super) fn lower_operators(
         &mut self,
         span: Span,
-        mut list: Vec<parser::Expression>,
+        mut list: Vec<parse::Expression>,
         scope: &Scope,
         info: &mut Info,
     ) -> Expression {
@@ -43,7 +43,7 @@ impl<L: Loader> Compiler<L> {
                 let mut operators = Vec::new();
 
                 for (index, expr) in list.iter().enumerate() {
-                    if let parser::ExpressionKind::Name(name) = expr.kind {
+                    if let parse::ExpressionKind::Name(name) = expr.kind {
                         if let Some(ScopeValue::Operator(id)) = scope.get(name, expr.span) {
                             let operator = match info.declarations.operators.get(&id).unwrap() {
                                 Declaration::Local(decl) => &decl.value,
@@ -60,16 +60,16 @@ impl<L: Loader> Compiler<L> {
 
                 if operators.is_empty() {
                     if let (
-                        parser::ExpressionKind::Name(ty_name),
-                        parser::ExpressionKind::Block(statements),
+                        parse::ExpressionKind::Name(ty_name),
+                        parse::ExpressionKind::Block(statements),
                     ) = (&list[0].kind, &list[1].kind)
                     {
                         let fields = statements
                             .iter()
                             .filter_map(|s| match &s.kind {
-                                parser::StatementKind::Assign(pattern, expr) => {
+                                parse::StatementKind::Assign(pattern, expr) => {
                                     match &pattern.kind {
-                                        parser::PatternKind::Name(name) => Some((*name, expr)),
+                                        parse::PatternKind::Name(name) => Some((*name, expr)),
                                         _ => None,
                                     }
                                 }

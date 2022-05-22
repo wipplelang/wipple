@@ -1,0 +1,29 @@
+code: |
+    Person : type {
+        name :: Text
+    }
+
+
+    alice : Person { name : "Alice" }
+    { name } : alice
+    show name
+
+
+    get-name :: Person -> Text
+    get-name : { name } -> name
+
+    bob : Person { name : "Bob" }
+    show (get-name bob)
+
+
+    instance Show Person : { name } -> name
+
+    charlie : Person { name : "Charlie" }
+    show charlie
+
+output: |
+    Alice
+    Bob
+    Charlie
+
+diagnostics: |

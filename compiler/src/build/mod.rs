@@ -1,13 +1,13 @@
 use crate::{
     compile::{self, Program},
     diagnostics::*,
-    parser::{self, Span},
+    parse::{self, Span},
     Compiler, FilePath, Loader,
 };
 use petgraph::{algo::toposort, graph::NodeIndex, stable_graph::StableGraph, EdgeDirection};
 use std::{collections::HashMap, sync::Arc};
 
-type FileGraph = StableGraph<parser::File, ()>;
+type FileGraph = StableGraph<parse::File, ()>;
 
 pub enum Progress {
     CollectingFiles,

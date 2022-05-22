@@ -8,7 +8,7 @@ pub use engine::{BuiltinType, Type};
 pub use format::format_type;
 
 use crate::{
-    compile::lower, diagnostics::*, helpers::InternedString, parser::Span, Compiler, FilePath,
+    compile::lower, diagnostics::*, helpers::InternedString, parse::Span, Compiler, FilePath,
     GenericConstantId, Loader, MonomorphizedConstantId, TraitId, TypeId, TypeParameterId,
     VariableId,
 };
@@ -51,7 +51,6 @@ macro_rules! expr {
                     HashMap<InternedString, lower::ScopeValue>,
                 ),
                 Call(Box<[<$prefix Expression>]>, Box<[<$prefix Expression>]>),
-                Member(Box<[<$prefix Expression>]>, usize),
                 Function(Box<[<$prefix Expression>]>, BTreeSet<VariableId>),
                 When(Box<[<$prefix Expression>]>, Vec<[<$prefix Arm>]>),
                 External(InternedString, InternedString, Vec<[<$prefix Expression>]>),
@@ -88,15 +87,18 @@ expr!(, "Unresolved", UnresolvedType, {
     Error,
     Trait(TraitId),
     Constant(GenericConstantId),
+    Member(Box<UnresolvedExpression>, InternedString),
 });
 
 expr!(, "Monomorphized", UnresolvedType, {
     Error,
     Constant(MonomorphizedConstantId),
+    Member(Box<MonomorphizedExpression>, usize),
 });
 
 expr!(pub, "", Type, {
     Constant(MonomorphizedConstantId),
+    Member(Box<Expression>, usize),
 });
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -452,16 +454,17 @@ impl<L: Loader> Compiler<L> {
                         expr.traverse(|expr| {
                             if let MonomorphizedExpressionKind::Initialize(id, expr) = &expr.kind {
                                 let file = file.borrow();
-                                let decl = file.declarations.variables.get(id).unwrap();
 
-                                typechecker.declarations.variables.insert(
-                                    *id,
-                                    Declaration {
-                                        name: decl.name(),
-                                        span: decl.span(),
-                                        value: expr.ty.clone(),
-                                    },
-                                );
+                                if let Some(decl) = file.declarations.variables.get(id) {
+                                    typechecker.declarations.variables.insert(
+                                        *id,
+                                        Declaration {
+                                            name: decl.name(),
+                                            span: decl.span(),
+                                            value: expr.ty.clone(),
+                                        },
+                                    );
+                                }
                             }
                         });
 
@@ -918,6 +921,14 @@ impl<'a, L: Loader> Typechecker<'a, L> {
                     UnresolvedExpressionKind::Structure(fields),
                 )
             }
+            lower::ExpressionKind::Member(expr, name) => {
+                let expr = self.typecheck_expr(expr, file, suppress_errors);
+
+                (
+                    UnresolvedType::Variable(self.ctx.new_variable()),
+                    UnresolvedExpressionKind::Member(Box::new(expr), *name),
+                )
+            }
         };
 
         UnresolvedExpression {
@@ -1034,79 +1045,129 @@ impl<'a, L: Loader> Typechecker<'a, L> {
         Ok(MonomorphizedExpression {
             span: expr.span,
             ty: expr.ty.clone(),
-            kind: match expr.kind {
-                UnresolvedExpressionKind::Error => MonomorphizedExpressionKind::Error,
-                UnresolvedExpressionKind::Marker => MonomorphizedExpressionKind::Marker,
-                UnresolvedExpressionKind::Constant(id) => {
-                    let (monomorphized_id, ty) = self.monomorphize_constant(id, expr.span);
+            kind: (|| {
+                Ok(match expr.kind {
+                    UnresolvedExpressionKind::Error => MonomorphizedExpressionKind::Error,
+                    UnresolvedExpressionKind::Marker => MonomorphizedExpressionKind::Marker,
+                    UnresolvedExpressionKind::Constant(id) => {
+                        let (monomorphized_id, ty) = self.monomorphize_constant(id, expr.span);
 
-                    if let Err(error) = self.ctx.unify(ty, expr.ty.clone()) {
-                        self.report_type_error(error, expr.span);
+                        if let Err(error) = self.ctx.unify(ty, expr.ty.clone()) {
+                            self.report_type_error(error, expr.span);
+                        }
+
+                        MonomorphizedExpressionKind::Constant(monomorphized_id)
                     }
+                    UnresolvedExpressionKind::Variable(var) => {
+                        MonomorphizedExpressionKind::Variable(var)
+                    }
+                    UnresolvedExpressionKind::Text(text) => MonomorphizedExpressionKind::Text(text),
+                    UnresolvedExpressionKind::Number(number) => {
+                        MonomorphizedExpressionKind::Number(number)
+                    }
+                    UnresolvedExpressionKind::Block(statements, scope) => {
+                        MonomorphizedExpressionKind::Block(
+                            statements
+                                .into_iter()
+                                .map(|expr| self.monomorphize(expr))
+                                .collect::<Result<_, _>>()?,
+                            scope,
+                        )
+                    }
+                    UnresolvedExpressionKind::Call(func, input) => {
+                        MonomorphizedExpressionKind::Call(
+                            Box::new(self.monomorphize(*func)?),
+                            Box::new(self.monomorphize(*input)?),
+                        )
+                    }
+                    UnresolvedExpressionKind::Member(value, name) => {
+                        let mut ty = value.ty.clone();
+                        ty.apply(&self.ctx);
 
-                    MonomorphizedExpressionKind::Constant(monomorphized_id)
-                }
-                UnresolvedExpressionKind::Variable(var) => {
-                    MonomorphizedExpressionKind::Variable(var)
-                }
-                UnresolvedExpressionKind::Text(text) => MonomorphizedExpressionKind::Text(text),
-                UnresolvedExpressionKind::Number(number) => {
-                    MonomorphizedExpressionKind::Number(number)
-                }
-                UnresolvedExpressionKind::Block(statements, scope) => {
-                    MonomorphizedExpressionKind::Block(
-                        statements
-                            .into_iter()
-                            .map(|expr| self.monomorphize(expr))
-                            .collect::<Result<_, _>>()?,
-                        scope,
-                    )
-                }
-                UnresolvedExpressionKind::Call(func, input) => MonomorphizedExpressionKind::Call(
-                    Box::new(self.monomorphize(*func)?),
-                    Box::new(self.monomorphize(*input)?),
-                ),
-                UnresolvedExpressionKind::Member(expr, index) => {
-                    MonomorphizedExpressionKind::Member(Box::new(self.monomorphize(*expr)?), index)
-                }
-                UnresolvedExpressionKind::Function(body, captures) => {
-                    MonomorphizedExpressionKind::Function(
-                        Box::new(self.monomorphize(*body)?),
-                        captures,
-                    )
-                }
-                UnresolvedExpressionKind::When(_, _) => todo!(),
-                UnresolvedExpressionKind::External(namespace, identifier, inputs) => {
-                    MonomorphizedExpressionKind::External(
-                        namespace,
-                        identifier,
-                        inputs
-                            .into_iter()
-                            .map(|expr| self.monomorphize(expr))
-                            .collect::<Result<_, _>>()?,
-                    )
-                }
-                UnresolvedExpressionKind::Initialize(variable, value) => {
-                    MonomorphizedExpressionKind::Initialize(
-                        variable,
-                        Box::new(self.monomorphize(*value)?),
-                    )
-                }
-                UnresolvedExpressionKind::Structure(fields) => {
-                    MonomorphizedExpressionKind::Structure(
-                        fields
-                            .into_iter()
-                            .map(|expr| self.monomorphize(expr))
-                            .collect::<Result<_, _>>()?,
-                    )
-                }
-                UnresolvedExpressionKind::FunctionInput => {
-                    MonomorphizedExpressionKind::FunctionInput
-                }
-                UnresolvedExpressionKind::Trait(tr) => MonomorphizedExpressionKind::Constant(
-                    self.instance_for(tr, expr.ty.clone(), expr.span)?,
-                ),
-            },
+                        let id = match ty {
+                            UnresolvedType::Named(ty) => ty,
+                            _ => {
+                                self.compiler.diagnostics.add(Diagnostic::error(
+                                    format!("cannot access member '{}' of this value", name),
+                                    vec![Note::primary(expr.span, "value is not a data structure")],
+                                ));
+
+                                return Ok(MonomorphizedExpressionKind::Error);
+                            }
+                        };
+
+                        let structure = match self.structures.get(&id) {
+                            Some(ty) => ty,
+                            None => {
+                                self.compiler.diagnostics.add(Diagnostic::error(
+                                    format!("cannot access member '{}' of this value", name),
+                                    vec![Note::primary(expr.span, "value is not a data structure")],
+                                ));
+
+                                return Ok(MonomorphizedExpressionKind::Error);
+                            }
+                        };
+
+                        let (&index, member_ty) = match structure.get(&name) {
+                            Some((index, ty)) => (index, ty),
+                            None => {
+                                self.compiler.diagnostics.add(Diagnostic::error(
+                                    format!("value has no member named '{}'", name),
+                                    vec![Note::primary(expr.span, "no such member")],
+                                ));
+
+                                return Ok(MonomorphizedExpressionKind::Error);
+                            }
+                        };
+
+                        if let Err(error) = self.ctx.unify(member_ty.clone(), expr.ty.clone()) {
+                            self.report_type_error(error, expr.span);
+                        }
+
+                        MonomorphizedExpressionKind::Member(
+                            Box::new(self.monomorphize(*value)?),
+                            index,
+                        )
+                    }
+                    UnresolvedExpressionKind::Function(body, captures) => {
+                        MonomorphizedExpressionKind::Function(
+                            Box::new(self.monomorphize(*body)?),
+                            captures,
+                        )
+                    }
+                    UnresolvedExpressionKind::When(_, _) => todo!(),
+                    UnresolvedExpressionKind::External(namespace, identifier, inputs) => {
+                        MonomorphizedExpressionKind::External(
+                            namespace,
+                            identifier,
+                            inputs
+                                .into_iter()
+                                .map(|expr| self.monomorphize(expr))
+                                .collect::<Result<_, _>>()?,
+                        )
+                    }
+                    UnresolvedExpressionKind::Initialize(variable, value) => {
+                        MonomorphizedExpressionKind::Initialize(
+                            variable,
+                            Box::new(self.monomorphize(*value)?),
+                        )
+                    }
+                    UnresolvedExpressionKind::Structure(fields) => {
+                        MonomorphizedExpressionKind::Structure(
+                            fields
+                                .into_iter()
+                                .map(|expr| self.monomorphize(expr))
+                                .collect::<Result<_, _>>()?,
+                        )
+                    }
+                    UnresolvedExpressionKind::FunctionInput => {
+                        MonomorphizedExpressionKind::FunctionInput
+                    }
+                    UnresolvedExpressionKind::Trait(tr) => MonomorphizedExpressionKind::Constant(
+                        self.instance_for(tr, expr.ty.clone(), expr.span)?,
+                    ),
+                })
+            })()?,
         })
     }
 

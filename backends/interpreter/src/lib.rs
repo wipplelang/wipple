@@ -16,7 +16,7 @@ use wipple_compiler::{
         typecheck::{Declarations, Expression, ExpressionKind, Type},
         Program,
     },
-    parser::Span,
+    parse::Span,
     MonomorphizedConstantId, VariableId,
 };
 

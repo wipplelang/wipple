@@ -1,5 +1,5 @@
 use super::{lexer::Token, Span};
-use crate::{helpers::InternedString, FilePath};
+use crate::{helpers::InternedString, FilePath, VariableId};
 
 #[derive(Debug, Clone)]
 pub struct File {
@@ -60,13 +60,16 @@ pub enum ExpressionKind {
     Name(InternedString),
     Number(Decimal),
     Text(InternedString),
-    FunctionInput,
     Block(Vec<Statement>),
     List(Vec<Expression>),
     Function(Pattern, Box<Expression>),
     When(Box<Expression>, Vec<Arm>),
     External(InternedString, InternedString, Vec<Expression>),
     Annotate(Box<Expression>, TypeAnnotation),
+
+    FunctionInput,
+    Variable(VariableId),
+    Member(Box<Expression>, InternedString),
 }
 
 #[derive(Debug, Clone)]
@@ -106,6 +109,7 @@ pub struct Pattern {
 pub enum PatternKind {
     Name(InternedString),
     Wildcard,
+    Destructure(Vec<(Span, InternedString)>),
 }
 
 #[derive(Debug, Clone)]
@@ -689,6 +693,7 @@ peg::parser! {
         rule pattern() -> Pattern
             = name_pattern()
             / wildcard_pattern()
+            / destructure_pattern()
             / expected!("pattern")
 
         rule name_pattern() -> Pattern
@@ -710,6 +715,17 @@ peg::parser! {
                 }
             }
             / expected!("'_'")
+
+        rule destructure_pattern() -> Pattern
+            = [(Token::LeftBrace, left_brace_span)]
+              names:([(Token::Name(name), name_span)] { (name_span, name) })*
+              [(Token::RightBrace, right_brace_span)]
+            {
+                Pattern {
+                    span: Span::join(left_brace_span, right_brace_span),
+                    kind: PatternKind::Destructure(names),
+                }
+            }
 
         rule _()
             = quiet! { [(Token::LineBreak, _)]* }

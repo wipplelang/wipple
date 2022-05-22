@@ -4,7 +4,7 @@ mod operators;
 use crate::{
     diagnostics::*,
     helpers::InternedString,
-    parser::{self, Span},
+    parse::{self, Span},
     Compiler, FilePath, GenericConstantId, Loader, OperatorId, TraitId, TypeId, TypeParameterId,
     VariableId,
 };
@@ -13,7 +13,7 @@ use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use std::{
     cell::RefCell,
-    collections::{BTreeMap, HashMap},
+    collections::{BTreeMap, BTreeSet, HashMap},
     hash::Hash,
     rc::Rc,
 };
@@ -200,6 +200,7 @@ pub enum ExpressionKind {
     Annotate(Box<Expression>, TypeAnnotation),
     Initialize(VariableId, Box<Expression>),
     FunctionInput,
+    Member(Box<Expression>, InternedString),
     Instantiate(TypeId, Vec<(InternedString, Expression)>),
 }
 
@@ -265,7 +266,7 @@ pub struct TypeParameter {
 }
 
 impl<L: Loader> Compiler<L> {
-    pub fn lower(&mut self, file: parser::File, dependencies: Vec<&File>) -> File {
+    pub fn lower(&mut self, file: parse::File, dependencies: Vec<&File>) -> File {
         let scope = Scope::default();
 
         // TODO: Handle file attributes
@@ -317,7 +318,7 @@ impl<L: Loader> Compiler<L> {
         let block = file
             .statements
             .into_iter()
-            .filter_map(|statement| self.lower_statement(statement, &file_scope, &mut info))
+            .flat_map(|statement| self.lower_statement(statement, &file_scope, &mut info))
             .collect();
 
         let mut complete = true;
@@ -351,14 +352,8 @@ impl<L: Loader> Compiler<L> {
 struct Scope<'a> {
     parent: Option<&'a Scope<'a>>,
     values: RefCell<HashMap<InternedString, ScopeValue>>,
-    used_variables: Option<RefCell<Vec<UsedVariable>>>,
-}
-
-#[derive(Debug, Clone, Copy)]
-pub(crate) struct UsedVariable {
-    pub id: VariableId,
-    pub span: Span,
-    pub is_function_input: bool,
+    used_variables: Option<RefCell<Vec<(VariableId, Span)>>>,
+    function_inputs: RefCell<BTreeSet<VariableId>>,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
@@ -369,7 +364,7 @@ pub enum ScopeValue {
     TypeParameter(TypeParameterId),
     Operator(OperatorId),
     Constant(GenericConstantId),
-    Variable(VariableId, bool),
+    Variable(VariableId),
 }
 
 impl<'a> Scope<'a> {
@@ -398,20 +393,16 @@ impl<'a> Scope<'a> {
             parent = scope.parent;
         }
 
-        if let Some(ScopeValue::Variable(id, is_function_input)) = result {
+        if let Some(ScopeValue::Variable(id)) = result {
             for u in used_variables {
-                u.borrow_mut().push(UsedVariable {
-                    id,
-                    span: source_span,
-                    is_function_input,
-                });
+                u.borrow_mut().push((id, source_span));
             }
         }
 
         result
     }
 
-    fn variables_used_by_ancestors(&self) -> Vec<UsedVariable> {
+    fn variables_used_by_ancestors(&self) -> Vec<(VariableId, Span)> {
         let mut parent = self.parent;
         let mut used_variables = Vec::new();
         while let Some(scope) = parent {
@@ -434,7 +425,7 @@ struct Info {
 impl<L: Loader> Compiler<L> {
     fn lower_block(
         &mut self,
-        statements: Vec<parser::Statement>,
+        statements: Vec<parse::Statement>,
         scope: &Scope,
         info: &mut Info,
     ) -> (Vec<Expression>, HashMap<InternedString, ScopeValue>) {
@@ -442,7 +433,7 @@ impl<L: Loader> Compiler<L> {
 
         let statements = statements
             .into_iter()
-            .filter_map(|statement| self.lower_statement(statement, &scope, info))
+            .flat_map(|statement| self.lower_statement(statement, &scope, info))
             .collect();
 
         (statements, scope.values.into_inner())
@@ -450,21 +441,21 @@ impl<L: Loader> Compiler<L> {
 
     fn lower_statement(
         &mut self,
-        statement: parser::Statement,
+        statement: parse::Statement,
         scope: &Scope,
         info: &mut Info,
-    ) -> Option<Expression> {
+    ) -> Vec<Expression> {
         let defined = |name| scope.values.borrow().contains_key(&name);
 
         match statement.kind {
-            parser::StatementKind::Type((span, name), ty) => {
+            parse::StatementKind::Type((span, name), ty) => {
                 if defined(name) {
                     self.diagnostics.add(Diagnostic::error(
                         format!("`{name}` is already defined"),
                         vec![Note::primary(span, "try assigning to a different name")],
                     ));
 
-                    return Some(Expression::error(statement.span));
+                    return vec![Expression::error(statement.span)];
                 }
 
                 if !ty.parameters.is_empty() {
@@ -479,18 +470,18 @@ impl<L: Loader> Compiler<L> {
                         )],
                     ));
 
-                    return Some(Expression::error(statement.span));
+                    return vec![Expression::error(statement.span)];
                 }
 
                 let id = self.new_type_id();
                 scope.values.borrow_mut().insert(name, ScopeValue::Type(id));
 
                 let ty = match ty.kind {
-                    parser::TypeKind::Marker => Type::Marker,
-                    parser::TypeKind::Alias(alias) => {
+                    parse::TypeKind::Marker => Type::Marker,
+                    parse::TypeKind::Alias(alias) => {
                         Type::Alias(self.lower_type_annotation(alias, scope, info))
                     }
-                    parser::TypeKind::Structure(fields) => {
+                    parse::TypeKind::Structure(fields) => {
                         let mut field_tys = Vec::with_capacity(fields.len());
                         let mut field_names = HashMap::with_capacity(fields.len());
                         for (index, field) in fields.into_iter().enumerate() {
@@ -503,7 +494,7 @@ impl<L: Loader> Compiler<L> {
 
                         Type::Structure(field_tys, field_names)
                     }
-                    parser::TypeKind::Enumeration(variants) => {
+                    parse::TypeKind::Enumeration(variants) => {
                         let mut variant_tys = Vec::with_capacity(variants.len());
                         let mut variant_names = HashMap::with_capacity(variants.len());
                         for (index, variant) in variants.into_iter().enumerate() {
@@ -531,16 +522,16 @@ impl<L: Loader> Compiler<L> {
                     }),
                 );
 
-                None
+                Vec::new()
             }
-            parser::StatementKind::Trait((span, name), declaration) => {
+            parse::StatementKind::Trait((span, name), declaration) => {
                 if defined(name) {
                     self.diagnostics.add(Diagnostic::error(
                         format!("`{name}` is already defined"),
                         vec![Note::primary(span, "try assigning to a different name")],
                     ));
 
-                    return Some(Expression::error(statement.span));
+                    return vec![Expression::error(statement.span)];
                 }
 
                 let tr = {
@@ -569,16 +560,16 @@ impl<L: Loader> Compiler<L> {
                     }),
                 );
 
-                None
+                Vec::new()
             }
-            parser::StatementKind::Constant((span, name), declaration) => {
+            parse::StatementKind::Constant((span, name), declaration) => {
                 if defined(name) {
                     self.diagnostics.add(Diagnostic::error(
                         format!("`{name}` is already defined"),
                         vec![Note::primary(span, "try assigning to a different name")],
                     ));
 
-                    return Some(Expression::error(statement.span));
+                    return vec![Expression::error(statement.span)];
                 }
 
                 let constant = {
@@ -601,7 +592,7 @@ impl<L: Loader> Compiler<L> {
                                         )],
                                     ));
 
-                                    return Err(Expression::error(statement.span));
+                                    return Err(vec![Expression::error(statement.span)]);
                                 }
                                 None => {
                                     self.diagnostics.add(Diagnostic::error(
@@ -612,7 +603,7 @@ impl<L: Loader> Compiler<L> {
                                         )],
                                     ));
 
-                                    return Err(Expression::error(statement.span));
+                                    return Err(vec![Expression::error(statement.span)]);
                                 }
                             };
 
@@ -632,7 +623,7 @@ impl<L: Loader> Compiler<L> {
 
                     let bounds = match bounds {
                         Ok(bounds) => bounds,
-                        Err(error) => return Some(error),
+                        Err(error) => return error,
                     };
 
                     Constant {
@@ -658,9 +649,9 @@ impl<L: Loader> Compiler<L> {
                     }),
                 );
 
-                None
+                Vec::new()
             }
-            parser::StatementKind::Instance(decl) => {
+            parse::StatementKind::Instance(decl) => {
                 let tr = match scope.get(decl.trait_name, decl.trait_span) {
                     Some(ScopeValue::Trait(tr)) => tr,
                     Some(_) => {
@@ -669,7 +660,7 @@ impl<L: Loader> Compiler<L> {
                             vec![Note::primary(decl.trait_span, "expected a trait here")],
                         ));
 
-                        return Some(Expression::error(statement.span));
+                        return vec![Expression::error(statement.span)];
                     }
                     None => {
                         self.diagnostics.add(Diagnostic::error(
@@ -677,7 +668,7 @@ impl<L: Loader> Compiler<L> {
                             vec![Note::primary(decl.trait_span, "this name is not defined")],
                         ));
 
-                        return Some(Expression::error(statement.span));
+                        return vec![Expression::error(statement.span)];
                     }
                 };
 
@@ -699,13 +690,16 @@ impl<L: Loader> Compiler<L> {
                         )],
                     ));
 
-                    return Some(Expression::error(statement.span));
+                    return vec![Expression::error(statement.span)];
                 }
+
+                let value = self.lower_expr(decl.value, scope, info);
+                self.validate_constant(&value);
 
                 let instance = Instance {
                     tr,
                     parameters,
-                    value: self.lower_expr(decl.value, scope, info),
+                    value,
                 };
 
                 let id = self.new_generic_constant_id();
@@ -718,10 +712,10 @@ impl<L: Loader> Compiler<L> {
                     }),
                 );
 
-                None
+                Vec::new()
             }
-            parser::StatementKind::Assign(pattern, expr) => match &pattern.kind {
-                parser::PatternKind::Name(name) => {
+            parse::StatementKind::Assign(pattern, expr) => match &pattern.kind {
+                parse::PatternKind::Name(name) => {
                     let mut associated_constant = None;
 
                     match scope.values.borrow().get(name).cloned() {
@@ -740,7 +734,7 @@ impl<L: Loader> Compiler<L> {
                                 )],
                             ));
 
-                            return Some(Expression::error(statement.span));
+                            return vec![Expression::error(statement.span)];
                         }
                         Some(ScopeValue::Constant(id)) => {
                             let (parameters, c) = match info
@@ -767,7 +761,7 @@ impl<L: Loader> Compiler<L> {
                                         ],
                                     ));
 
-                                    return Some(Expression::error(statement.span));
+                                    return vec![Expression::error(statement.span)];
                                 }
                             };
 
@@ -786,12 +780,12 @@ impl<L: Loader> Compiler<L> {
                                     ],
                                 ));
 
-                                return Some(Expression::error(statement.span));
+                                return vec![Expression::error(statement.span)];
                             }
 
                             associated_constant = Some((parameters, c));
                         }
-                        Some(ScopeValue::Variable(_, _)) | None => {}
+                        Some(ScopeValue::Variable(_)) | None => {}
                     }
 
                     if let Some((associated_parameters, associated_constant)) = associated_constant
@@ -806,39 +800,22 @@ impl<L: Loader> Compiler<L> {
                         }
 
                         let value = self.lower_expr(expr, &scope, info);
-
-                        // Check that expression doesn't capture variables
-                        if let ExpressionKind::Function(_, captures) = &value.kind {
-                            if !captures.is_empty() {
-                                self.diagnostics.add(Diagnostic::error(
-                                    "expected constant value",
-                                    std::iter::once(Note::primary(
-                                        value.span,
-                                        "this value captures variables and cannot be used as a constant",
-                                    ))
-                                    .chain(
-                                        captures
-                                            .iter()
-                                            .map(|(_, span)| Note::secondary(*span, "captured variable")),
-                                    )
-                                    .collect(),
-                                ));
-                            }
-                        }
+                        self.validate_constant(&value);
 
                         associated_constant.replace(Some(value));
-                        None
+                        Vec::new()
                     } else {
                         let value = self.lower_expr(expr, scope, info);
 
                         let id = self.new_variable_id();
-                        scope.values.borrow_mut().insert(
-                            *name,
-                            ScopeValue::Variable(
-                                id,
-                                matches!(value.kind, ExpressionKind::FunctionInput),
-                            ),
-                        );
+                        scope
+                            .values
+                            .borrow_mut()
+                            .insert(*name, ScopeValue::Variable(id));
+
+                        if matches!(value.kind, ExpressionKind::FunctionInput) {
+                            scope.function_inputs.borrow_mut().insert(id);
+                        }
 
                         info.declarations.variables.insert(
                             id,
@@ -849,110 +826,194 @@ impl<L: Loader> Compiler<L> {
                             }),
                         );
 
-                        Some(Expression {
+                        vec![Expression {
                             span: statement.span,
                             kind: ExpressionKind::Initialize(id, Box::new(value)),
-                        })
+                        }]
                     }
                 }
-                parser::PatternKind::Wildcard => Some(self.lower_expr(expr, scope, info)),
+                parse::PatternKind::Destructure(names) => {
+                    let value = self.lower_expr(expr, scope, info);
+                    let value_span = value.span;
+
+                    let id = self.new_variable_id();
+
+                    let value_is_function_input =
+                        matches!(value.kind, ExpressionKind::FunctionInput);
+
+                    if value_is_function_input {
+                        scope.function_inputs.borrow_mut().insert(id);
+                    }
+
+                    let mut exprs = vec![Expression {
+                        span: statement.span,
+                        kind: ExpressionKind::Initialize(id, Box::new(value)),
+                    }];
+
+                    for (span, name) in names.iter().copied() {
+                        let statement = parse::Statement {
+                            span,
+                            kind: parse::StatementKind::Assign(
+                                parse::Pattern {
+                                    span,
+                                    kind: parse::PatternKind::Name(name),
+                                },
+                                parse::Expression {
+                                    span: value_span,
+                                    kind: parse::ExpressionKind::Member(
+                                        Box::new(parse::Expression {
+                                            span: value_span,
+                                            kind: parse::ExpressionKind::Variable(id),
+                                        }),
+                                        name,
+                                    ),
+                                },
+                            ),
+                        };
+
+                        let mut assignment = self.lower_statement(statement, scope, info);
+
+                        if value_is_function_input {
+                            // HACK: Extract the assigned variable IDs from the statement
+                            for statement in &assignment {
+                                if let ExpressionKind::Initialize(id, _) = &statement.kind {
+                                    scope.function_inputs.borrow_mut().insert(*id);
+                                }
+                            }
+                        }
+
+                        exprs.append(&mut assignment);
+                    }
+
+                    exprs
+                }
+                parse::PatternKind::Wildcard => vec![self.lower_expr(expr, scope, info)],
             },
-            parser::StatementKind::Expression(expr) => Some(self.lower_expr(expr, scope, info)),
+            parse::StatementKind::Expression(expr) => {
+                vec![self.lower_expr(expr, scope, info)]
+            }
+        }
+    }
+
+    fn validate_constant(&mut self, value: &Expression) {
+        // Check that expression doesn't capture variables
+        if let ExpressionKind::Function(_, captures) = &value.kind {
+            if !captures.is_empty() {
+                self.diagnostics.add(Diagnostic::error(
+                    "expected constant value",
+                    std::iter::once(Note::primary(
+                        value.span,
+                        "this value captures variables and cannot be used as a constant",
+                    ))
+                    .chain(
+                        captures
+                            .iter()
+                            .map(|(_, span)| Note::secondary(*span, "captured variable")),
+                    )
+                    .collect(),
+                ));
+            }
         }
     }
 
     fn lower_expr(
         &mut self,
-        expr: parser::Expression,
+        expr: parse::Expression,
         scope: &Scope,
         info: &mut Info,
     ) -> Expression {
-        let kind =
-            match expr.kind {
-                parser::ExpressionKind::Unit => ExpressionKind::Unit,
-                parser::ExpressionKind::Text(text) => ExpressionKind::Text(text),
-                parser::ExpressionKind::Number(number) => ExpressionKind::Number(number),
-                parser::ExpressionKind::FunctionInput => ExpressionKind::FunctionInput,
-                parser::ExpressionKind::Name(name) => {
-                    match self.resolve_value(expr.span, name, scope, info) {
-                        Some(value) => value,
-                        None => {
-                            self.diagnostics.add(Diagnostic::error(
-                                format!("cannot find `{name}`"),
-                                vec![Note::primary(expr.span, "this name is not defined")],
-                            ));
+        let kind = match expr.kind {
+            parse::ExpressionKind::Unit => ExpressionKind::Unit,
+            parse::ExpressionKind::Text(text) => ExpressionKind::Text(text),
+            parse::ExpressionKind::Number(number) => ExpressionKind::Number(number),
+            parse::ExpressionKind::Name(name) => {
+                match self.resolve_value(expr.span, name, scope, info) {
+                    Some(value) => value,
+                    None => {
+                        self.diagnostics.add(Diagnostic::error(
+                            format!("cannot find `{name}`"),
+                            vec![Note::primary(expr.span, "this name is not defined")],
+                        ));
 
-                            return Expression::error(expr.span);
-                        }
+                        return Expression::error(expr.span);
                     }
                 }
-                parser::ExpressionKind::Block(statements) => {
-                    let scope = scope.child();
-                    let (block, declarations) = self.lower_block(statements, &scope, info);
-                    ExpressionKind::Block(block, declarations)
-                }
-                parser::ExpressionKind::List(exprs) => {
-                    self.lower_operators(expr.span, exprs, scope, info).kind
-                }
-                parser::ExpressionKind::Function(input, body) => {
-                    let scope = Scope {
-                        used_variables: Some(Default::default()),
-                        ..scope.child()
-                    };
+            }
+            parse::ExpressionKind::Block(statements) => {
+                let scope = scope.child();
+                let (block, declarations) = self.lower_block(statements, &scope, info);
+                ExpressionKind::Block(block, declarations)
+            }
+            parse::ExpressionKind::List(exprs) => {
+                self.lower_operators(expr.span, exprs, scope, info).kind
+            }
+            parse::ExpressionKind::Function(input, body) => {
+                let scope = Scope {
+                    used_variables: Some(Default::default()),
+                    ..scope.child()
+                };
 
-                    // Desugar function input pattern matching
-                    let input_span = input.span;
-                    let initialization = self.lower_statement(
-                        parser::Statement {
-                            span: input_span,
-                            kind: parser::StatementKind::Assign(
-                                input,
-                                parser::Expression {
-                                    span: input_span,
-                                    kind: parser::ExpressionKind::FunctionInput,
-                                },
-                            ),
+                // Desugar function input pattern matching
+                let input_span = input.span;
+                let initialization = self.lower_statement(
+                    parse::Statement {
+                        span: input_span,
+                        kind: parse::StatementKind::Assign(
+                            input,
+                            parse::Expression {
+                                span: input_span,
+                                kind: parse::ExpressionKind::FunctionInput,
+                            },
+                        ),
+                    },
+                    &scope,
+                    info,
+                );
+
+                let body = self.lower_expr(*body, &scope, info);
+
+                let block = initialization
+                    .into_iter()
+                    .chain(std::iter::once(body))
+                    .collect();
+
+                let captures = scope
+                    .variables_used_by_ancestors()
+                    .into_iter()
+                    .chain(scope.used_variables.unwrap().take().into_iter().filter_map(
+                        |(var, span)| {
+                            (!scope.function_inputs.borrow().contains(&var)).then(|| (var, span))
                         },
-                        &scope,
-                        info,
-                    );
+                    ))
+                    .collect();
 
-                    let body = self.lower_expr(*body, &scope, info);
+                ExpressionKind::Function(
+                    Box::new(Expression {
+                        span: expr.span,
+                        kind: ExpressionKind::Block(block, scope.values.into_inner()),
+                    }),
+                    captures,
+                )
+            }
+            parse::ExpressionKind::When(_, _) => return Expression::error(expr.span), // TODO
+            parse::ExpressionKind::External(namespace, identifier, inputs) => {
+                let inputs = inputs
+                    .into_iter()
+                    .map(|expr| self.lower_expr(expr, scope, info))
+                    .collect();
 
-                    let block = initialization.into_iter().chain(Some(body)).collect();
-
-                    let captures =
-                        scope
-                            .variables_used_by_ancestors()
-                            .into_iter()
-                            .map(|var| (var.id, var.span))
-                            .chain(scope.used_variables.unwrap().take().into_iter().filter_map(
-                                |var| (!var.is_function_input).then(|| (var.id, var.span)),
-                            ))
-                            .collect();
-
-                    ExpressionKind::Function(
-                        Box::new(Expression {
-                            span: expr.span,
-                            kind: ExpressionKind::Block(block, scope.values.into_inner()),
-                        }),
-                        captures,
-                    )
-                }
-                parser::ExpressionKind::When(_, _) => return Expression::error(expr.span), // TODO
-                parser::ExpressionKind::External(namespace, identifier, inputs) => {
-                    let inputs = inputs
-                        .into_iter()
-                        .map(|expr| self.lower_expr(expr, scope, info))
-                        .collect();
-
-                    ExpressionKind::External(namespace, identifier, inputs)
-                }
-                parser::ExpressionKind::Annotate(expr, ty) => ExpressionKind::Annotate(
-                    Box::new(self.lower_expr(*expr, scope, info)),
-                    self.lower_type_annotation(ty, scope, info),
-                ),
-            };
+                ExpressionKind::External(namespace, identifier, inputs)
+            }
+            parse::ExpressionKind::Annotate(expr, ty) => ExpressionKind::Annotate(
+                Box::new(self.lower_expr(*expr, scope, info)),
+                self.lower_type_annotation(ty, scope, info),
+            ),
+            parse::ExpressionKind::FunctionInput => ExpressionKind::FunctionInput,
+            parse::ExpressionKind::Variable(id) => ExpressionKind::Variable(id),
+            parse::ExpressionKind::Member(expr, name) => {
+                ExpressionKind::Member(Box::new(self.lower_expr(*expr, scope, info)), name)
+            }
+        };
 
         Expression {
             span: expr.span,
@@ -965,7 +1026,7 @@ impl<L: Loader> Compiler<L> {
         ty_span: Span,
         body_span: Span,
         ty: TypeId,
-        fields: Vec<(InternedString, &parser::Expression)>,
+        fields: Vec<(InternedString, &parse::Expression)>,
         scope: &Scope,
         info: &mut Info,
     ) -> Expression {
@@ -984,14 +1045,14 @@ impl<L: Loader> Compiler<L> {
 
     fn lower_type_annotation(
         &mut self,
-        ty: parser::TypeAnnotation,
+        ty: parse::TypeAnnotation,
         scope: &Scope,
         info: &mut Info,
     ) -> TypeAnnotation {
         let kind = match ty.kind {
-            parser::TypeAnnotationKind::Placeholder => TypeAnnotationKind::Placeholder,
-            parser::TypeAnnotationKind::Unit => TypeAnnotationKind::Builtin(BuiltinType::Unit),
-            parser::TypeAnnotationKind::Named(name, parameters) => {
+            parse::TypeAnnotationKind::Placeholder => TypeAnnotationKind::Placeholder,
+            parse::TypeAnnotationKind::Unit => TypeAnnotationKind::Builtin(BuiltinType::Unit),
+            parse::TypeAnnotationKind::Named(name, parameters) => {
                 match scope.get(name, ty.span) {
                     Some(ScopeValue::Type(ty)) => {
                         let parameters = parameters
@@ -1045,7 +1106,7 @@ impl<L: Loader> Compiler<L> {
                     }
                 }
             }
-            parser::TypeAnnotationKind::Function(input, output) => TypeAnnotationKind::Function(
+            parse::TypeAnnotationKind::Function(input, output) => TypeAnnotationKind::Function(
                 Box::new(self.lower_type_annotation(*input, scope, info)),
                 Box::new(self.lower_type_annotation(*output, scope, info)),
             ),
@@ -1098,7 +1159,7 @@ impl<L: Loader> Compiler<L> {
                 Some(ExpressionKind::Error)
             }
             Some(ScopeValue::Constant(id)) => Some(ExpressionKind::Constant(id)),
-            Some(ScopeValue::Variable(id, _)) => Some(ExpressionKind::Variable(id)),
+            Some(ScopeValue::Variable(id)) => Some(ExpressionKind::Variable(id)),
             None => None,
         }
     }
@@ -1126,7 +1187,7 @@ impl<L: Loader> Compiler<L> {
 
     fn with_parameters(
         &mut self,
-        parameters: Vec<parser::TypeParameter>,
+        parameters: Vec<parse::TypeParameter>,
         scope: &Scope,
         info: &mut Info,
     ) -> Vec<TypeParameter> {

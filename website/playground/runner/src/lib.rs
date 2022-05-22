@@ -6,7 +6,7 @@ use wasm_bindgen::prelude::*;
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct CompileResult {
-    output: Vec<(wipple_compiler::parser::Span, String)>,
+    output: Vec<(wipple_compiler::parse::Span, String)>,
     annotations: Vec<Annotation>,
     diagnostics: Vec<wipple_compiler::diagnostics::Diagnostic>,
 }
@@ -14,7 +14,7 @@ struct CompileResult {
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct Annotation {
-    span: wipple_compiler::parser::Span,
+    span: wipple_compiler::parse::Span,
     value: String,
 }
 
@@ -231,7 +231,7 @@ fn annotations(program: &mut wipple_compiler::compile::Program) -> Vec<Annotatio
     annotations
 }
 
-fn belongs_to_playground(span: wipple_compiler::parser::Span) -> bool {
+fn belongs_to_playground(span: wipple_compiler::parse::Span) -> bool {
     matches!(
         span.path,
         wipple_compiler::FilePath::Virtual(s) if s.as_str() == "playground"
@@ -277,7 +277,7 @@ pub fn get_completions(position: usize) -> JsValue {
                     ScopeValue::TypeParameter(_) => 24,
                     ScopeValue::Operator(_) => 11,
                     ScopeValue::Constant(_) => 14,
-                    ScopeValue::Variable(_, _) => 4,
+                    ScopeValue::Variable(_) => 4,
                 },
             }));
         }};

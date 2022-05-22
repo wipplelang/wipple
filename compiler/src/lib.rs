@@ -2,7 +2,7 @@ pub mod build;
 pub mod compile;
 pub mod diagnostics;
 pub mod helpers;
-pub mod parser;
+pub mod parse;
 
 use diagnostics::*;
 use helpers::InternedString;
