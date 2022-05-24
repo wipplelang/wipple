@@ -1,5 +1,7 @@
 #![allow(clippy::type_complexity)]
 
+mod builtins;
+
 use crate::{
     diagnostics::*,
     helpers::InternedString,
@@ -14,6 +16,7 @@ use std::{
     rc::Rc,
 };
 
+#[derive(Debug)]
 pub struct File {
     pub path: FilePath,
     pub span: Span,
@@ -21,6 +24,7 @@ pub struct File {
     pub dependencies: Vec<Dependency>,
 }
 
+#[derive(Debug)]
 pub struct Dependency {
     pub span: Span,
     pub name: InternedString,
@@ -47,12 +51,15 @@ pub struct Node {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum NodeKind {
     Error,
+    Unit,
     Name(InternedString),
     Text(InternedString),
     Number(Decimal),
-    List(Vec<Node>),
+    Call(Box<Node>, Box<Node>),
     Block(Vec<Node>),
     Use(InternedString),
+    Assign(Box<Node>, Box<Node>),
+    Template(Vec<InternedString>, Box<Node>),
     // TODO: Assign, declarations, etc.
 }
 
@@ -71,8 +78,7 @@ impl<L: Loader> Compiler<L> {
         };
 
         let scope = Scope::default();
-
-        // TODO: Load builtins
+        builtins::load_builtins(&mut expander, &scope);
 
         let statements = expander.expand_block(file.statements, &scope);
 
@@ -133,33 +139,50 @@ impl<'a> Scope<'a> {
 }
 
 struct Template<L: Loader> {
-    name: InternedString,
     span: Span,
-    inputs: Vec<InternedString>,
     body: TemplateBody<L>,
 }
 
 impl<L: Loader> Clone for Template<L> {
     fn clone(&self) -> Self {
         Self {
-            name: self.name,
             span: self.span,
-            inputs: self.inputs.clone(),
             body: self.body.clone(),
         }
     }
 }
 
 enum TemplateBody<L: Loader> {
-    Node(Node),
-    Builtin(Rc<dyn Fn(&mut Expander<L>, Span, Vec<Node>, &Scope) -> Node>),
+    Syntax(Vec<InternedString>, Node),
+    Function(Rc<dyn Fn(&mut Expander<L>, Span, Vec<Node>, &Scope) -> Node>),
 }
 
 impl<L: Loader> Clone for TemplateBody<L> {
     fn clone(&self) -> Self {
         match self {
-            TemplateBody::Node(node) => TemplateBody::Node(node.clone()),
-            TemplateBody::Builtin(expand) => TemplateBody::Builtin(expand.clone()),
+            TemplateBody::Syntax(inputs, node) => {
+                TemplateBody::Syntax(inputs.clone(), node.clone())
+            }
+            TemplateBody::Function(expand) => TemplateBody::Function(expand.clone()),
+        }
+    }
+}
+
+impl<L: Loader> Template<L> {
+    fn syntax(span: Span, inputs: Vec<InternedString>, node: Node) -> Self {
+        Template {
+            span,
+            body: TemplateBody::Syntax(inputs, node),
+        }
+    }
+
+    fn function(
+        span: Span,
+        f: impl Fn(&mut Expander<L>, Span, Vec<Node>, &Scope) -> Node + 'static,
+    ) -> Self {
+        Template {
+            span,
+            body: TemplateBody::Function(Rc::new(f)),
         }
     }
 }
@@ -167,14 +190,13 @@ impl<L: Loader> Clone for TemplateBody<L> {
 #[derive(Debug, Clone, Copy)]
 struct Operator {
     pub precedence: OperatorPrecedence,
-    pub associativity: OperatorAssociativity,
     pub template: TemplateId,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 #[repr(u8)]
 enum OperatorPrecedence {
-    Addition = 1,
+    Assignment = 9,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -187,7 +209,7 @@ pub enum OperatorAssociativity {
 impl OperatorPrecedence {
     pub fn associativity(&self) -> OperatorAssociativity {
         match self {
-            OperatorPrecedence::Addition => OperatorAssociativity::Left,
+            OperatorPrecedence::Assignment => OperatorAssociativity::None,
         }
     }
 }
@@ -243,89 +265,116 @@ impl<L: Loader> Expander<'_, L> {
     }
 
     fn expand_list(&mut self, list_span: Span, mut exprs: Vec<parse::Expr>, scope: &Scope) -> Node {
-        if exprs.is_empty() {
-            return Node {
+        match exprs.len() {
+            0 => Node {
                 span: list_span,
-                kind: NodeKind::List(Vec::new()),
-            };
-        }
+                kind: NodeKind::Unit,
+            },
+            1 => {
+                let expr = exprs.pop().unwrap();
 
-        let mut operators = VecDeque::new();
-        for (index, expr) in exprs.iter().enumerate() {
-            if let parse::ExprKind::Name(name) = &expr.kind {
-                if let Some(ScopeValue::Operator(operator)) = scope.get(*name) {
-                    operators.push_back((index, expr.span, operator))
+                if let parse::ExprKind::Name(name) = &expr.kind {
+                    if let Some(ScopeValue::Template(template)) = scope.get(*name) {
+                        let inputs = exprs
+                            .into_iter()
+                            .skip(1)
+                            .map(|expr| self.expand_expr(expr, scope))
+                            .collect();
+
+                        return self.expand_template(list_span, template, inputs, scope);
+                    }
                 }
-            }
-        }
 
-        if operators.is_empty() {
-            if let parse::ExprKind::Name(name) = &exprs.first().unwrap().kind {
-                if let Some(ScopeValue::Template(template)) = scope.get(*name) {
-                    let inputs = exprs
+                self.expand_expr(expr, scope)
+            }
+            _ => {
+                let mut operators = VecDeque::new();
+                for (index, expr) in exprs.iter().enumerate() {
+                    if let parse::ExprKind::Name(name) = &expr.kind {
+                        if let Some(ScopeValue::Operator(operator)) = scope.get(*name) {
+                            operators.push_back((index, expr.span, operator))
+                        }
+                    }
+                }
+
+                if operators.is_empty() {
+                    let mut exprs = VecDeque::from(exprs);
+                    let first = exprs.pop_front().unwrap();
+
+                    if let parse::ExprKind::Name(name) = &first.kind {
+                        if let Some(ScopeValue::Template(template)) = scope.get(*name) {
+                            let inputs = exprs
+                                .into_iter()
+                                .map(|expr| self.expand_expr(expr, scope))
+                                .collect();
+
+                            return self.expand_template(list_span, template, inputs, scope);
+                        }
+                    }
+
+                    exprs
                         .into_iter()
-                        .skip(1)
-                        .map(|expr| self.expand_expr(expr, scope))
-                        .collect();
+                        .fold(self.expand_expr(first, scope), |result, next| Node {
+                            span: Span::join(result.span, next.span),
+                            kind: NodeKind::Call(
+                                Box::new(result),
+                                Box::new(self.expand_expr(next, scope)),
+                            ),
+                        })
+                } else {
+                    let (mut max_index, mut max_span, mut max_operator) =
+                        operators.pop_front().unwrap();
 
-                    return self.expand_template(list_span, template, inputs, scope);
-                }
-            }
-
-            todo!()
-        } else {
-            let (mut max_index, mut max_span, mut max_operator) = operators.pop_front().unwrap();
-
-            for (index, span, operator) in operators {
-                macro_rules! replace {
-                    () => {{
-                        max_index = index;
-                        max_span = span;
-                        max_operator = operator;
-                    }};
-                }
-
-                match operator.precedence.cmp(&max_operator.precedence) {
-                    Ordering::Greater => replace!(),
-                    Ordering::Less => continue,
-                    Ordering::Equal => {
-                        if operator.precedence.associativity()
-                            != max_operator.precedence.associativity()
-                        {
-                            self.compiler.diagnostics.add(Diagnostic::new(
-                                DiagnosticLevel::Error,
-                                "operator ambiguity",
-                                vec![
-                                    Note::primary(
-                                        exprs[max_index].span,
-                                        "ambiguous whether to parse this operator first...",
-                                    ),
-                                    Note::primary(exprs[index].span, "...or this one"),
-                                ],
-                            ));
-
-                            return Node {
-                                span: list_span,
-                                kind: NodeKind::Error,
-                            };
+                    for (index, span, operator) in operators {
+                        macro_rules! replace {
+                            () => {{
+                                max_index = index;
+                                max_span = span;
+                                max_operator = operator;
+                            }};
                         }
 
-                        match operator.precedence.associativity() {
-                            OperatorAssociativity::Left => {
-                                if index > max_index {
-                                    replace!();
+                        match operator.precedence.cmp(&max_operator.precedence) {
+                            Ordering::Greater => replace!(),
+                            Ordering::Less => continue,
+                            Ordering::Equal => {
+                                if operator.precedence.associativity()
+                                    != max_operator.precedence.associativity()
+                                {
+                                    self.compiler.diagnostics.add(Diagnostic::new(
+                                        DiagnosticLevel::Error,
+                                        "operator ambiguity",
+                                        vec![
+                                            Note::primary(
+                                                exprs[max_index].span,
+                                                "ambiguous whether to parse this operator first...",
+                                            ),
+                                            Note::primary(exprs[index].span, "...or this one"),
+                                        ],
+                                    ));
+
+                                    return Node {
+                                        span: list_span,
+                                        kind: NodeKind::Error,
+                                    };
                                 }
-                            }
-                            OperatorAssociativity::Right => {
-                                if index < max_index {
-                                    replace!()
-                                }
-                            }
-                            OperatorAssociativity::None => {
-                                self.compiler.diagnostics.add(Diagnostic::new(
-                                    DiagnosticLevel::Error,
-                                    "operator ambiguity",
-                                    vec![
+
+                                match operator.precedence.associativity() {
+                                    OperatorAssociativity::Left => {
+                                        if index > max_index {
+                                            replace!();
+                                        }
+                                    }
+                                    OperatorAssociativity::Right => {
+                                        if index < max_index {
+                                            replace!()
+                                        }
+                                    }
+                                    OperatorAssociativity::None => {
+                                        self.compiler.diagnostics.add(Diagnostic::new(
+                                            DiagnosticLevel::Error,
+                                            "operator ambiguity",
+                                            vec![
                                         Note::primary(
                                             exprs[index].span,
                                             "only one of this operator may be provided at a time",
@@ -335,60 +384,68 @@ impl<L: Loader> Expander<'_, L> {
                                             "first use of this operator",
                                         ),
                                     ],
-                                ));
+                                        ));
 
-                                return Node {
-                                    span: list_span,
-                                    kind: NodeKind::Error,
-                                };
+                                        return Node {
+                                            span: list_span,
+                                            kind: NodeKind::Error,
+                                        };
+                                    }
+                                }
                             }
                         }
                     }
+
+                    let rhs = exprs.split_off(max_index + 1);
+                    let mut lhs = exprs;
+                    lhs.pop().unwrap();
+
+                    if rhs.is_empty() {
+                        self.compiler.diagnostics.add(Diagnostic::new(
+                            DiagnosticLevel::Error,
+                            "expected values on right side of operator",
+                            vec![Note::primary(
+                                max_span,
+                                "try providing a value to the right of this",
+                            )],
+                        ));
+
+                        Node {
+                            span: list_span,
+                            kind: NodeKind::Error,
+                        }
+                    } else if lhs.is_empty() {
+                        self.compiler.diagnostics.add(Diagnostic::new(
+                            DiagnosticLevel::Error,
+                            "expected values on left side of operator",
+                            vec![Note::primary(
+                                max_span,
+                                "try providing a value to the left of this",
+                            )],
+                        ));
+
+                        Node {
+                            span: list_span,
+                            kind: NodeKind::Error,
+                        }
+                    } else {
+                        let span = Span::join(lhs.first().unwrap().span, rhs.last().unwrap().span);
+
+                        let lhs = self.expand_list(
+                            Span::join(lhs.first().unwrap().span, max_span),
+                            lhs,
+                            scope,
+                        );
+
+                        let rhs = self.expand_list(
+                            Span::join(max_span, rhs.last().unwrap().span),
+                            rhs,
+                            scope,
+                        );
+
+                        self.expand_template(span, max_operator.template, vec![lhs, rhs], scope)
+                    }
                 }
-            }
-
-            let rhs = exprs.split_off(max_index + 1);
-            let mut lhs = exprs;
-            lhs.pop().unwrap();
-
-            if rhs.is_empty() {
-                self.compiler.diagnostics.add(Diagnostic::new(
-                    DiagnosticLevel::Error,
-                    "expected values on right side of operator",
-                    vec![Note::primary(
-                        max_span,
-                        "try providing a value to the right of this",
-                    )],
-                ));
-
-                Node {
-                    span: list_span,
-                    kind: NodeKind::Error,
-                }
-            } else if lhs.is_empty() {
-                self.compiler.diagnostics.add(Diagnostic::new(
-                    DiagnosticLevel::Error,
-                    "expected values on left side of operator",
-                    vec![Note::primary(
-                        max_span,
-                        "try providing a value to the left of this",
-                    )],
-                ));
-
-                Node {
-                    span: list_span,
-                    kind: NodeKind::Error,
-                }
-            } else {
-                let span = Span::join(lhs.first().unwrap().span, rhs.last().unwrap().span);
-
-                let lhs =
-                    self.expand_list(Span::join(lhs.first().unwrap().span, max_span), lhs, scope);
-
-                let rhs =
-                    self.expand_list(Span::join(max_span, rhs.last().unwrap().span), rhs, scope);
-
-                self.expand_template(span, max_operator.template, vec![lhs, rhs], scope)
             }
         }
     }
@@ -408,8 +465,8 @@ impl<L: Loader> Expander<'_, L> {
             .clone();
 
         match &template.body {
-            TemplateBody::Node(_) => todo!("syntax templates"),
-            TemplateBody::Builtin(expand) => expand(self, span, exprs, scope),
+            TemplateBody::Syntax(_, _) => todo!("syntax templates"),
+            TemplateBody::Function(expand) => expand(self, span, exprs, scope),
         }
     }
 }

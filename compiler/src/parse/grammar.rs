@@ -185,6 +185,8 @@ impl<'src> Parser<'_, 'src> {
             }
         };
 
+        statements.pop();
+
         (!error).then(|| (statements, end_span))
     }
 

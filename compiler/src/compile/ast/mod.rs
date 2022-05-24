@@ -164,7 +164,14 @@ pub struct Bound {
 }
 
 impl<L: Loader> Compiler<L> {
-    pub fn build_ast(&mut self, _file: expand::File) -> File {
-        todo!()
+    pub fn build_ast(&mut self, file: expand::File) -> File {
+        // TODO
+        File {
+            path: file.path,
+            span: file.span,
+            attributes: Default::default(),
+            dependencies: Default::default(),
+            statements: Default::default(),
+        }
     }
 }
