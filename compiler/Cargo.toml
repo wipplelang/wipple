@@ -8,11 +8,13 @@ backtrace = { version = "0.3", features = ["serde"] }
 codemap = "=0.1.2"
 codemap-diagnostic = "0.1"
 clap = { version = "3", features = ["derive"], optional = true }
+indexmap = "1"
 lasso = { version = "0.6", features = ["multi-threaded", "serialize"] }
 lazy_static = "1"
 logos = "0.12"
 paste = "1"
 peg = "0.8"
-petgraph = "0.6"
+regex = "1"
 rust_decimal = "1"
+rustc_lexer = "0.1"
 serde = { version = "1", features = ["derive"] }

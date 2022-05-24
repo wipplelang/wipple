@@ -132,11 +132,11 @@ pub fn build(options: BuildOptions) -> Option<wipple_compiler::compile::Program>
     });
 
     let progress = |progress| {
-        use wipple_compiler::{build, compile::typecheck};
+        use wipple_compiler::compile::{build, typecheck};
 
         if let Some(progress_bar) = progress_bar.as_ref() {
             match progress {
-                build::Progress::CollectingFiles => progress_bar.set_message("Collecting files"),
+                build::Progress::Resolving => progress_bar.set_message("Resolving file tree"),
                 build::Progress::Lowering {
                     path,
                     current,

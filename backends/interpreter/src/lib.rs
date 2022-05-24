@@ -1,3 +1,5 @@
+#![allow(clippy::type_complexity)]
+
 mod builtin;
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -46,18 +48,13 @@ enum DivergeKind {
 type Error = String;
 
 impl Diverge {
-    #[allow(clippy::ptr_arg)]
-    pub fn new(stack: &Vec<Span>, kind: DivergeKind) -> Self {
-        Diverge {
-            stack: stack.clone(),
-            kind,
-        }
+    pub fn new(stack: Vec<Span>, kind: DivergeKind) -> Self {
+        Diverge { stack, kind }
     }
 }
 
 #[derive(Default)]
 pub struct Interpreter<'a> {
-    #[allow(clippy::type_complexity)]
     output: Option<Rc<RefCell<Box<dyn FnMut(&str, &[Span]) + 'a>>>>,
 }
 
@@ -240,7 +237,7 @@ impl<'a> Interpreter<'a> {
                             Ok(function) => function,
                             Err(error) => {
                                 return Err(Diverge::new(
-                                    &info.stack,
+                                    info.stack.clone(),
                                     DivergeKind::Error(format!(
                                         "unsupported external function type: {}",
                                         error
@@ -254,9 +251,9 @@ impl<'a> Interpreter<'a> {
                             .map(|input| self.eval_expr(input, info))
                             .collect::<Result<Vec<_>, _>>()?;
 
-                        function
-                            .call_with(inputs)
-                            .map_err(|error| Diverge::new(&info.stack, DivergeKind::Error(error)))?
+                        function.call_with(inputs).map_err(|error| {
+                            Diverge::new(info.stack.clone(), DivergeKind::Error(error))
+                        })?
                     }
                 }
             }

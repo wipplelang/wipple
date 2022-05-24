@@ -1,4 +1,3 @@
-pub mod build;
 pub mod compile;
 pub mod diagnostics;
 pub mod helpers;
@@ -80,7 +79,7 @@ macro_rules! ids {
 ids!(
     GenericConstantId,
     MonomorphizedConstantId,
-    OperatorId,
+    TemplateId,
     TraitId,
     TypeId,
     TypeParameterId,
