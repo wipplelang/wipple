@@ -219,7 +219,7 @@ impl<'a> Interpreter<'a> {
                     #[cfg(target_arch = "wasm32")]
                     {
                         return Err(Diverge::new(
-                            &info.stack,
+                            info.stack.clone(),
                             DivergeKind::Error(Error::from(
                                 "external functions are unsupported in the playground",
                             )),

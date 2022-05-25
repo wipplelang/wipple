@@ -44,23 +44,32 @@ impl<L: Loader> Default for Info<L> {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Node {
-    span: Span,
-    kind: NodeKind,
+    pub span: Span,
+    pub kind: NodeKind,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum NodeKind {
     Error,
+    TemplateDeclaration,
+    UseDeclaration,
     Unit,
+    Underscore,
     Name(InternedString),
     Text(InternedString),
     Number(Decimal),
-    Call(Box<Node>, Box<Node>),
+    List(Vec<Node>),
     Block(Vec<Node>),
-    Use(InternedString),
     Assign(Box<Node>, Box<Node>),
     Template(Vec<InternedString>, Box<Node>),
-    // TODO: Assign, declarations, etc.
+    Function(Box<Node>, Box<Node>),
+    External(Box<Node>, Box<Node>, Vec<Node>),
+    Annotate(Box<Node>, Box<Node>),
+    Type(Vec<Node>),
+    Trait(Box<Node>),
+    TypeFunction(Box<Node>, Box<Node>),
+    WhereClause(Box<Node>, Box<Node>),
+    Instance(Box<Node>, Vec<Node>),
 }
 
 impl<L: Loader> Compiler<L> {
@@ -79,6 +88,18 @@ impl<L: Loader> Compiler<L> {
 
         let scope = Scope::default();
         builtins::load_builtins(&mut expander, &scope);
+
+        // TODO: Respect `[: no-prelude :]` instead of checking the path
+        if file.path != FilePath::Prelude {
+            let prelude_scope =
+                (expander.load)(expander.compiler, FilePath::Prelude, expander.info)
+                    .expect("failed to load prelude");
+
+            scope
+                .values
+                .borrow_mut()
+                .extend(prelude_scope.values.clone().into_inner());
+        }
 
         let statements = expander.expand_block(file.statements, &scope);
 
@@ -194,9 +215,12 @@ struct Operator {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-#[repr(u8)]
 enum OperatorPrecedence {
-    Assignment = 9,
+    Function,
+    Where,
+    TypeFunction,
+    Annotation,
+    Assignment,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -209,6 +233,10 @@ pub enum OperatorAssociativity {
 impl OperatorPrecedence {
     pub fn associativity(&self) -> OperatorAssociativity {
         match self {
+            OperatorPrecedence::Function => OperatorAssociativity::Right,
+            OperatorPrecedence::Where => OperatorAssociativity::None,
+            OperatorPrecedence::TypeFunction => OperatorAssociativity::None,
+            OperatorPrecedence::Annotation => OperatorAssociativity::Left,
             OperatorPrecedence::Assignment => OperatorAssociativity::None,
         }
     }
@@ -217,6 +245,10 @@ impl OperatorPrecedence {
 impl<L: Loader> Expander<'_, L> {
     fn expand_expr(&mut self, expr: parse::Expr, scope: &Scope) -> Node {
         match expr.kind {
+            parse::ExprKind::Underscore => Node {
+                span: expr.span,
+                kind: NodeKind::Underscore,
+            },
             parse::ExprKind::Name(name) => Node {
                 span: expr.span,
                 kind: NodeKind::Name(name),
@@ -243,23 +275,24 @@ impl<L: Loader> Expander<'_, L> {
     }
 
     fn expand_block(&mut self, statements: Vec<parse::Statement>, scope: &Scope) -> Vec<Node> {
-        let scope = Scope {
-            parent: Some(scope),
-            ..Default::default()
-        };
+        let scope = scope.child();
 
         statements
             .into_iter()
-            .map(|statement| {
+            .filter_map(|statement| {
                 let exprs = statement
                     .lines
                     .into_iter()
                     .flat_map(|line| line.exprs)
                     .collect::<Vec<_>>();
 
+                if exprs.is_empty() {
+                    return None;
+                }
+
                 let span = Span::join(exprs.first().unwrap().span, exprs.last().unwrap().span);
 
-                self.expand_list(span, exprs, &scope)
+                Some(self.expand_list(span, exprs, &scope))
             })
             .collect()
     }
@@ -298,13 +331,11 @@ impl<L: Loader> Expander<'_, L> {
                 }
 
                 if operators.is_empty() {
-                    let mut exprs = VecDeque::from(exprs);
-                    let first = exprs.pop_front().unwrap();
-
-                    if let parse::ExprKind::Name(name) = &first.kind {
+                    if let parse::ExprKind::Name(name) = &exprs.first().unwrap().kind {
                         if let Some(ScopeValue::Template(template)) = scope.get(*name) {
                             let inputs = exprs
                                 .into_iter()
+                                .skip(1)
                                 .map(|expr| self.expand_expr(expr, scope))
                                 .collect();
 
@@ -312,15 +343,15 @@ impl<L: Loader> Expander<'_, L> {
                         }
                     }
 
-                    exprs
-                        .into_iter()
-                        .fold(self.expand_expr(first, scope), |result, next| Node {
-                            span: Span::join(result.span, next.span),
-                            kind: NodeKind::Call(
-                                Box::new(result),
-                                Box::new(self.expand_expr(next, scope)),
-                            ),
-                        })
+                    Node {
+                        span: list_span,
+                        kind: NodeKind::List(
+                            exprs
+                                .into_iter()
+                                .map(|expr| self.expand_expr(expr, scope))
+                                .collect(),
+                        ),
+                    }
                 } else {
                     let (mut max_index, mut max_span, mut max_operator) =
                         operators.pop_front().unwrap();
@@ -432,13 +463,13 @@ impl<L: Loader> Expander<'_, L> {
                         let span = Span::join(lhs.first().unwrap().span, rhs.last().unwrap().span);
 
                         let lhs = self.expand_list(
-                            Span::join(lhs.first().unwrap().span, max_span),
+                            Span::join(lhs.first().unwrap().span, lhs.last().unwrap().span),
                             lhs,
                             scope,
                         );
 
                         let rhs = self.expand_list(
-                            Span::join(max_span, rhs.last().unwrap().span),
+                            Span::join(rhs.first().unwrap().span, rhs.last().unwrap().span),
                             rhs,
                             scope,
                         );

@@ -25,6 +25,7 @@ pub struct Expr {
 
 #[derive(Debug, Clone)]
 pub enum ExprKind {
+    Underscore,
     Name(InternedString),
     Text(InternedString),
     Number(Decimal),
@@ -185,8 +186,6 @@ impl<'src> Parser<'_, 'src> {
             }
         };
 
-        statements.pop();
-
         (!error).then(|| (statements, end_span))
     }
 
@@ -231,6 +230,7 @@ impl<'src> Parser<'_, 'src> {
         }
 
         parse_each!(
+            try_parse_underscore,
             try_parse_name,
             try_parse_text,
             try_parse_number,
@@ -238,6 +238,20 @@ impl<'src> Parser<'_, 'src> {
             try_parse_list,
             try_parse_block,
         )
+    }
+
+    pub fn try_parse_underscore(&mut self) -> Result<Expr, ParseError> {
+        let (span, token) = self.peek();
+
+        match token {
+            Some(Token::Underscore) => {
+                self.consume();
+
+                Ok(Expr::new(span, ExprKind::Underscore))
+            }
+            Some(_) => Err(ParseError::WrongTokenType),
+            None => Err(ParseError::EndOfFile),
+        }
     }
 
     pub fn try_parse_name(&mut self) -> Result<Expr, ParseError> {

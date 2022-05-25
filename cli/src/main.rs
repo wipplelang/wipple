@@ -94,9 +94,6 @@ pub struct BuildOptions {
     #[clap(long)]
     trace: bool,
 
-    #[clap(long)]
-    no_progress: bool,
-
     #[clap(flatten)]
     compiler_options: wipple_compiler::CompilerOptions,
 }
@@ -127,9 +124,13 @@ pub fn build(options: BuildOptions) -> Option<wipple_compiler::compile::Program>
         }
     }
 
-    let progress_bar = (!options.no_progress).then(|| {
-        indicatif::ProgressBar::new(0).with_style(indicatif::ProgressStyle::default_spinner())
-    });
+    #[cfg(debug_assertions)]
+    let progress_bar = None::<indicatif::ProgressBar>;
+
+    #[cfg(not(debug_assertions))]
+    let progress_bar = Some(
+        indicatif::ProgressBar::new(0).with_style(indicatif::ProgressStyle::default_spinner()),
+    );
 
     let progress = |progress| {
         use wipple_compiler::compile::{build, typecheck};
@@ -187,7 +188,7 @@ pub fn build(options: BuildOptions) -> Option<wipple_compiler::compile::Program>
 
     #[cfg(debug_assertions)]
     if options.debug {
-        println!("{:#?}", program);
+        eprintln!("{:#?}", program);
     }
 
     if success {

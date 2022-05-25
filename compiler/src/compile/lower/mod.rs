@@ -1,11 +1,9 @@
 mod builtins;
-mod operators;
 
 use crate::{
     compile::ast, diagnostics::*, helpers::InternedString, parse::Span, Compiler, FilePath,
     GenericConstantId, Loader, TemplateId, TraitId, TypeId, TypeParameterId, VariableId,
 };
-use operators::OperatorPrecedence;
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -88,10 +86,6 @@ impl CopyDeclaration for Declaration<BuiltinType, ()> {
     const COPY: bool = false;
 }
 
-impl CopyDeclaration for Declaration<TemplateId, Operator> {
-    const COPY: bool = true;
-}
-
 impl CopyDeclaration for Declaration<GenericConstantId, Constant> {
     const COPY: bool = false;
 }
@@ -142,12 +136,6 @@ pub enum BuiltinType {
 pub struct Trait {
     pub parameters: Vec<TypeParameter>,
     pub ty: TypeAnnotation,
-}
-
-#[derive(Debug, Clone)]
-pub struct Operator {
-    pub precedence: OperatorPrecedence,
-    pub body: GenericConstantId,
 }
 
 #[derive(Debug, Clone)]
@@ -710,6 +698,7 @@ impl<L: Loader> Compiler<L> {
                 Vec::new()
             }
             ast::StatementKind::Assign(pattern, expr) => match &pattern.kind {
+                ast::PatternKind::Error => vec![Expression::error(statement.span)],
                 ast::PatternKind::Name(name) => {
                     let mut associated_constant = None;
 
@@ -894,7 +883,14 @@ impl<L: Loader> Compiler<L> {
                 ast::PatternKind::Wildcard => vec![self.lower_expr(expr, scope, info)],
             },
             ast::StatementKind::Expression(expr) => {
-                vec![self.lower_expr(expr, scope, info)]
+                vec![self.lower_expr(
+                    ast::Expression {
+                        span: statement.span,
+                        kind: expr,
+                    },
+                    scope,
+                    info,
+                )]
             }
         }
     }
@@ -922,6 +918,7 @@ impl<L: Loader> Compiler<L> {
 
     fn lower_expr(&mut self, expr: ast::Expression, scope: &Scope, info: &mut Info) -> Expression {
         let kind = match expr.kind {
+            ast::ExpressionKind::Error => ExpressionKind::Error,
             ast::ExpressionKind::Unit => ExpressionKind::Unit,
             ast::ExpressionKind::Text(text) => ExpressionKind::Text(text),
             ast::ExpressionKind::Number(number) => ExpressionKind::Number(number),
@@ -943,7 +940,65 @@ impl<L: Loader> Compiler<L> {
                 let (block, declarations) = self.lower_block(statements, &scope, info);
                 ExpressionKind::Block(block, declarations)
             }
-            ast::ExpressionKind::List(exprs) => self.lower_list(expr.span, exprs, scope, info).kind,
+            ast::ExpressionKind::Call(function, input) => {
+                if let (
+                    ast::ExpressionKind::Name(ty_name),
+                    ast::ExpressionKind::Block(statements),
+                ) = (&function.kind, &input.kind)
+                {
+                    let fields = statements
+                        .iter()
+                        .filter_map(|s| match &s.kind {
+                            ast::StatementKind::Assign(pattern, expr) => match &pattern.kind {
+                                ast::PatternKind::Name(name) => Some((*name, expr)),
+                                _ => None,
+                            },
+                            _ => None,
+                        })
+                        .collect::<Vec<_>>();
+
+                    match scope.get(*ty_name, function.span) {
+                        Some(ScopeValue::Type(ty)) if fields.len() == statements.len() => {
+                            let fields = fields
+                                .into_iter()
+                                .map(|(name, value)| {
+                                    (name, self.lower_expr(value.clone(), scope, info))
+                                })
+                                .collect();
+
+                            ExpressionKind::Instantiate(ty, fields)
+                        }
+                        Some(ScopeValue::TypeParameter(_)) => {
+                            self.diagnostics.add(Diagnostic::error(
+                                "cannot instantiate type parameter",
+                                vec![Note::primary(
+                                    function.span,
+                                    "the actual type this represents is not known here",
+                                )],
+                            ));
+
+                            ExpressionKind::Error
+                        }
+                        Some(ScopeValue::BuiltinType(_)) => {
+                            self.diagnostics.add(Diagnostic::error(
+                                "cannot instantiate builtin type",
+                                vec![Note::primary(function.span, "try usng a literal instead")],
+                            ));
+
+                            ExpressionKind::Error
+                        }
+                        _ => ExpressionKind::Call(
+                            Box::new(self.lower_expr(*function, scope, info)),
+                            Box::new(self.lower_expr(*input, scope, info)),
+                        ),
+                    }
+                } else {
+                    ExpressionKind::Call(
+                        Box::new(self.lower_expr(*function, scope, info)),
+                        Box::new(self.lower_expr(*input, scope, info)),
+                    )
+                }
+            }
             ast::ExpressionKind::Function(input, body) => {
                 let scope = Scope {
                     used_variables: Some(Default::default()),
@@ -1018,28 +1073,6 @@ impl<L: Loader> Compiler<L> {
         }
     }
 
-    fn lower_instantiation(
-        &mut self,
-        ty_span: Span,
-        body_span: Span,
-        ty: TypeId,
-        fields: Vec<(InternedString, &ast::Expression)>,
-        scope: &Scope,
-        info: &mut Info,
-    ) -> Expression {
-        let span = Span::join(ty_span, body_span);
-
-        let fields = fields
-            .into_iter()
-            .map(|(name, value)| (name, self.lower_expr(value.clone(), scope, info)))
-            .collect();
-
-        Expression {
-            span,
-            kind: ExpressionKind::Instantiate(ty, fields),
-        }
-    }
-
     fn lower_type_annotation(
         &mut self,
         ty: ast::TypeAnnotation,
@@ -1047,6 +1080,7 @@ impl<L: Loader> Compiler<L> {
         info: &mut Info,
     ) -> TypeAnnotation {
         let kind = match ty.kind {
+            ast::TypeAnnotationKind::Error => TypeAnnotationKind::Error,
             ast::TypeAnnotationKind::Placeholder => TypeAnnotationKind::Placeholder,
             ast::TypeAnnotationKind::Unit => TypeAnnotationKind::Builtin(BuiltinType::Unit),
             ast::TypeAnnotationKind::Named(name, parameters) => {

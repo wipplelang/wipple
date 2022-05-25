@@ -8,12 +8,13 @@ use crate::{
     parse::Span,
     FilePath, Loader,
 };
+use std::collections::VecDeque;
 
 pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope) {
     let builtin_span = Span::new(FilePath::_Builtin, 0..0);
     let mut scope_values = scope.values.borrow_mut();
 
-    // ':' operator
+    // `:` operator
 
     let id = expander.compiler.new_template_id();
 
@@ -53,7 +54,7 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
 
                 Node {
                     span,
-                    kind: NodeKind::Unit,
+                    kind: NodeKind::TemplateDeclaration,
                 }
             } else {
                 Node {
@@ -64,7 +65,107 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
         }),
     );
 
-    // 'use' template
+    // `->` operator
+
+    let id = expander.compiler.new_template_id();
+
+    scope_values.insert(
+        InternedString::new("->"),
+        ScopeValue::Operator(Operator {
+            precedence: OperatorPrecedence::Function,
+            template: id,
+        }),
+    );
+
+    expander.info.templates.insert(
+        id,
+        Template::function(builtin_span, |_, span, mut inputs, _| {
+            let rhs = inputs.pop().unwrap();
+            let lhs = inputs.pop().unwrap();
+
+            Node {
+                span,
+                kind: NodeKind::Function(Box::new(lhs), Box::new(rhs)),
+            }
+        }),
+    );
+
+    // `=>` operator
+
+    let id = expander.compiler.new_template_id();
+
+    scope_values.insert(
+        InternedString::new("=>"),
+        ScopeValue::Operator(Operator {
+            precedence: OperatorPrecedence::TypeFunction,
+            template: id,
+        }),
+    );
+
+    expander.info.templates.insert(
+        id,
+        Template::function(builtin_span, |_, span, mut inputs, _| {
+            let rhs = inputs.pop().unwrap();
+            let lhs = inputs.pop().unwrap();
+
+            Node {
+                span,
+                kind: NodeKind::TypeFunction(Box::new(lhs), Box::new(rhs)),
+            }
+        }),
+    );
+
+    // `where` operator
+
+    let id = expander.compiler.new_template_id();
+
+    scope_values.insert(
+        InternedString::new("where"),
+        ScopeValue::Operator(Operator {
+            precedence: OperatorPrecedence::Where,
+            template: id,
+        }),
+    );
+
+    expander.info.templates.insert(
+        id,
+        Template::function(builtin_span, |_, span, mut inputs, _| {
+            let rhs = inputs.pop().unwrap();
+            let lhs = inputs.pop().unwrap();
+
+            Node {
+                span,
+                kind: NodeKind::WhereClause(Box::new(lhs), Box::new(rhs)),
+            }
+        }),
+    );
+
+    // `::` operator
+
+    let id = expander.compiler.new_template_id();
+
+    scope_values.insert(
+        InternedString::new("::"),
+        ScopeValue::Operator(Operator {
+            precedence: OperatorPrecedence::Annotation,
+            template: id,
+        }),
+    );
+
+    expander.info.templates.insert(
+        id,
+        Template::function(builtin_span, |_, span, mut inputs, _| {
+            let rhs = inputs.pop().unwrap();
+            let lhs = inputs.pop().unwrap();
+
+            Node {
+                span,
+                kind: NodeKind::Annotate(Box::new(lhs), Box::new(rhs)),
+            }
+        }),
+    );
+
+    // `use` template
 
     let id = expander.compiler.new_template_id();
 
@@ -75,8 +176,8 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
         Template::function(builtin_span, |expander, span, mut inputs, scope| {
             if inputs.len() != 1 {
                 expander.compiler.diagnostics.add(Diagnostic::error(
-                    "expected 1 input to template 'use'",
-                    vec![Note::primary(span, "try removing some of these inputs")],
+                    "expected 1 input to template `use`",
+                    vec![Note::primary(span, "`use` only accepts a file path or URL")],
                 ));
 
                 return Node {
@@ -92,7 +193,7 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
                 _ => {
                     expander.compiler.diagnostics.add(Diagnostic::error(
                         "expected text here",
-                        vec![Note::primary(span, "'use' only accepts a file path or URL")],
+                        vec![Note::primary(span, "`use` only accepts a file path or URL")],
                     ));
 
                     return Node {
@@ -113,7 +214,161 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
 
             Node {
                 span,
-                kind: NodeKind::Unit,
+                kind: NodeKind::UseDeclaration,
+            }
+        }),
+    );
+
+    // `external` template
+
+    let id = expander.compiler.new_template_id();
+
+    scope_values.insert(InternedString::new("external"), ScopeValue::Template(id));
+
+    expander.info.templates.insert(
+        id,
+        Template::function(builtin_span, |expander, span, inputs, _| {
+            if inputs.len() < 2 {
+                expander.compiler.diagnostics.add(Diagnostic::error(
+                    "expected at least 2 inputs to template `external`",
+                    vec![Note::primary(
+                        span,
+                        "`external` requires a namespace and identifier",
+                    )],
+                ));
+
+                return Node {
+                    span,
+                    kind: NodeKind::Error,
+                };
+            }
+
+            let mut inputs = VecDeque::from(inputs);
+
+            let namespace = inputs.pop_front().unwrap();
+            let identifier = inputs.pop_front().unwrap();
+            let inputs = Vec::from(inputs);
+
+            Node {
+                span,
+                kind: NodeKind::External(Box::new(namespace), Box::new(identifier), inputs),
+            }
+        }),
+    );
+
+    // `type` template
+
+    let id = expander.compiler.new_template_id();
+
+    scope_values.insert(InternedString::new("type"), ScopeValue::Template(id));
+
+    expander.info.templates.insert(
+        id,
+        Template::function(builtin_span, |expander, span, mut inputs, _| {
+            if inputs.len() != 1 {
+                expander.compiler.diagnostics.add(Diagnostic::error(
+                    "expected 1 input to template `type`",
+                    vec![Note::primary(
+                        span,
+                        "`type` requires a block denoting the type's fields or variants",
+                    )],
+                ));
+
+                return Node {
+                    span,
+                    kind: NodeKind::Error,
+                };
+            }
+
+            let block = inputs.pop().unwrap();
+
+            let fields = match block.kind {
+                NodeKind::Block(statements) => statements,
+                _ => {
+                    expander.compiler.diagnostics.add(Diagnostic::error(
+                        "expected a block here",
+                        vec![Note::primary(
+                            block.span,
+                            "`type` requires a block denoting the type's fields or variants",
+                        )],
+                    ));
+
+                    return Node {
+                        span,
+                        kind: NodeKind::Error,
+                    };
+                }
+            };
+
+            Node {
+                span,
+                kind: NodeKind::Type(fields),
+            }
+        }),
+    );
+
+    // `trait` template
+
+    let id = expander.compiler.new_template_id();
+
+    scope_values.insert(InternedString::new("trait"), ScopeValue::Template(id));
+
+    expander.info.templates.insert(
+        id,
+        Template::function(builtin_span, |expander, span, mut inputs, _| {
+            if inputs.len() != 1 {
+                expander.compiler.diagnostics.add(Diagnostic::error(
+                    "expected 1 input to template `trait`",
+                    vec![Note::primary(span, "`trait` requires a type")],
+                ));
+
+                return Node {
+                    span,
+                    kind: NodeKind::Error,
+                };
+            }
+
+            let ty = inputs.pop().unwrap();
+
+            Node {
+                span,
+                kind: NodeKind::Trait(Box::new(ty)),
+            }
+        }),
+    );
+
+    // `instance` template
+
+    let id = expander.compiler.new_template_id();
+
+    scope_values.insert(InternedString::new("instance"), ScopeValue::Template(id));
+
+    expander.info.templates.insert(
+        id,
+        Template::function(builtin_span, |expander, span, inputs, _| {
+            if inputs.is_empty() {
+                expander.compiler.diagnostics.add(Diagnostic::error(
+                    "expected at least 1 input to template `instance`",
+                    vec![Note::primary(
+                        span,
+                        "`instance` requires the name of a trait and its parameters",
+                    )],
+                ));
+
+                return Node {
+                    span,
+                    kind: NodeKind::Error,
+                };
+            }
+
+            let mut inputs = VecDeque::from(inputs);
+
+            let trait_name = inputs.pop_front().unwrap();
+            let parameters = Vec::from(inputs);
+
+            Node {
+                span,
+                kind: NodeKind::Instance(Box::new(trait_name), parameters),
             }
         }),
     );

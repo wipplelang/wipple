@@ -30,6 +30,9 @@ pub enum Token<'src> {
     #[token("}")]
     RightBrace,
 
+    #[token("_")]
+    Underscore,
+
     #[regex(r#"\n+"#)]
     LineBreak,
 
@@ -67,6 +70,7 @@ impl<'src> fmt::Display for Token<'src> {
             Token::RightExprBracket => write!(f, "`]`"),
             Token::LeftBrace => write!(f, "`{{`"),
             Token::RightBrace => write!(f, "`}}`"),
+            Token::Underscore => write!(f, "`_`"),
             Token::LineBreak => write!(f, "line break"),
             Token::Indent(_) => write!(f, "indent"),
             Token::Space => unreachable!(),
