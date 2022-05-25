@@ -65,7 +65,7 @@ pub enum NodeKind {
     Function(Box<Node>, Box<Node>),
     External(Box<Node>, Box<Node>, Vec<Node>),
     Annotate(Box<Node>, Box<Node>),
-    Type(Vec<Node>),
+    Type(Option<Vec<Node>>),
     Trait(Box<Node>),
     TypeFunction(Box<Node>, Box<Node>),
     WhereClause(Box<Node>, Box<Node>),

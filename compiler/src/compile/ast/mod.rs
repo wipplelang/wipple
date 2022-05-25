@@ -739,7 +739,16 @@ impl<L: Loader> Compiler<L> {
         }
     }
 
-    fn build_type_declaration(&mut self, span: Span, fields: Vec<Node>) -> Option<TypeKind> {
+    fn build_type_declaration(
+        &mut self,
+        span: Span,
+        fields: Option<Vec<Node>>,
+    ) -> Option<TypeKind> {
+        let fields = match fields {
+            Some(fields) => fields,
+            None => return Some(TypeKind::Marker),
+        };
+
         if fields.is_empty() {
             self.diagnostics.add(Diagnostic::error(
                 "type must not be empty",

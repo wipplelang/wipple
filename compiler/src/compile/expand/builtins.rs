@@ -265,12 +265,16 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
     expander.info.templates.insert(
         id,
         Template::function(builtin_span, |expander, span, mut inputs, _| {
+            if inputs.is_empty() {
+                return Node { span, kind: NodeKind::Type(None) }
+            }
+
             if inputs.len() != 1 {
                 expander.compiler.diagnostics.add(Diagnostic::error(
-                    "expected 1 input to template `type`",
+                    "expected 0 or 1 inputs to template `type`",
                     vec![Note::primary(
                         span,
-                        "`type` requires a block denoting the type's fields or variants",
+                        "`type` may be used standalone, or with a block denoting the type's fields or variants",
                     )],
                 ));
 
@@ -302,7 +306,7 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
 
             Node {
                 span,
-                kind: NodeKind::Type(fields),
+                kind: NodeKind::Type(Some(fields)),
             }
         }),
     );
