@@ -1,4 +1,4 @@
-#![allow(clippy::type_complexity)]
+#![allow(clippy::type_complexity, clippy::collapsible_match)]
 
 mod builtins;
 
@@ -21,6 +21,7 @@ pub struct File {
     pub path: FilePath,
     pub span: Span,
     pub statements: Vec<Node>,
+    pub exported: HashMap<InternedString, ScopeValue>,
     pub dependencies: Vec<Dependency>,
 }
 
@@ -51,17 +52,16 @@ pub struct Node {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum NodeKind {
     Error,
-    TemplateDeclaration,
-    UseDeclaration,
-    Unit,
+    Empty,
     Underscore,
     Name(InternedString),
     Text(InternedString),
     Number(Decimal),
     List(Vec<Node>),
-    Block(Vec<Node>),
+    Block(Vec<Node>, HashMap<InternedString, ScopeValue>),
     Assign(Box<Node>, Box<Node>),
     Template(Vec<InternedString>, Box<Node>),
+    Operator(OperatorPrecedence, Vec<InternedString>, Box<Node>),
     Function(Box<Node>, Box<Node>),
     External(Box<Node>, Box<Node>, Vec<Node>),
     Annotate(Box<Node>, Box<Node>),
@@ -101,13 +101,14 @@ impl<L: Loader> Compiler<L> {
                 .extend(prelude_scope.values.clone().into_inner());
         }
 
-        let statements = expander.expand_block(file.statements, &scope);
+        let (statements, exported) = expander.expand_block(file.statements, &scope);
 
         (
             File {
                 path: file.path,
                 span: file.span,
                 statements,
+                exported,
                 dependencies: expander.dependencies,
             },
             scope,
@@ -128,8 +129,8 @@ pub struct Scope<'a> {
     values: RefCell<HashMap<InternedString, ScopeValue>>,
 }
 
-#[derive(Debug, Clone, Copy)]
-enum ScopeValue {
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ScopeValue {
     Operator(Operator),
     Template(TemplateId),
 }
@@ -208,14 +209,16 @@ impl<L: Loader> Template<L> {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
-struct Operator {
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Operator {
     pub precedence: OperatorPrecedence,
     pub template: TemplateId,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-enum OperatorPrecedence {
+pub enum OperatorPrecedence {
+    Addition,
+    Multiplication,
     Function,
     Where,
     TypeFunction,
@@ -233,6 +236,8 @@ pub enum OperatorAssociativity {
 impl OperatorPrecedence {
     pub fn associativity(&self) -> OperatorAssociativity {
         match self {
+            OperatorPrecedence::Addition => OperatorAssociativity::Left,
+            OperatorPrecedence::Multiplication => OperatorAssociativity::Left,
             OperatorPrecedence::Function => OperatorAssociativity::Right,
             OperatorPrecedence::Where => OperatorAssociativity::None,
             OperatorPrecedence::TypeFunction => OperatorAssociativity::None,
@@ -267,17 +272,25 @@ impl<L: Loader> Expander<'_, L> {
                 list.into_iter().flat_map(|line| line.exprs).collect(),
                 scope,
             ),
-            parse::ExprKind::Block(statements) => Node {
-                span: expr.span,
-                kind: NodeKind::Block(self.expand_block(statements, scope)),
-            },
+            parse::ExprKind::Block(statements) => {
+                let (statements, scope) = self.expand_block(statements, scope);
+
+                Node {
+                    span: expr.span,
+                    kind: NodeKind::Block(statements, scope),
+                }
+            }
         }
     }
 
-    fn expand_block(&mut self, statements: Vec<parse::Statement>, scope: &Scope) -> Vec<Node> {
+    fn expand_block(
+        &mut self,
+        statements: Vec<parse::Statement>,
+        scope: &Scope,
+    ) -> (Vec<Node>, HashMap<InternedString, ScopeValue>) {
         let scope = scope.child();
 
-        statements
+        let statements = statements
             .into_iter()
             .filter_map(|statement| {
                 let exprs = statement
@@ -294,14 +307,16 @@ impl<L: Loader> Expander<'_, L> {
 
                 Some(self.expand_list(span, exprs, &scope))
             })
-            .collect()
+            .collect();
+
+        (statements, scope.values.into_inner())
     }
 
     fn expand_list(&mut self, list_span: Span, mut exprs: Vec<parse::Expr>, scope: &Scope) -> Node {
         match exprs.len() {
             0 => Node {
                 span: list_span,
-                kind: NodeKind::Unit,
+                kind: NodeKind::Empty,
             },
             1 => {
                 let expr = exprs.pop().unwrap();
@@ -495,8 +510,103 @@ impl<L: Loader> Expander<'_, L> {
             .expect("template not registered")
             .clone();
 
-        match &template.body {
-            TemplateBody::Syntax(_, _) => todo!("syntax templates"),
+        match template.body {
+            TemplateBody::Syntax(inputs, mut body) => {
+                if exprs.len() != inputs.len() {
+                    self.compiler.diagnostics.add(Diagnostic::error(
+                        format!(
+                            "template expects {} inputs, but only {} were given",
+                            inputs.len(),
+                            exprs.len(),
+                        ),
+                        vec![Note::primary(
+                            span,
+                            if exprs.len() > inputs.len() {
+                                "try removing some of these inputs"
+                            } else {
+                                "try adding some inputs"
+                            },
+                        )],
+                    ));
+
+                    return Node {
+                        span,
+                        kind: NodeKind::Error,
+                    };
+                }
+
+                fn replace(node: &mut Node, map: &HashMap<InternedString, Node>) {
+                    match &mut node.kind {
+                        NodeKind::Name(name) => {
+                            if let Some(replacement) = map.get(name) {
+                                *node = replacement.clone();
+                            }
+                        }
+                        NodeKind::List(nodes) => {
+                            for node in nodes {
+                                replace(node, map);
+                            }
+                        }
+                        NodeKind::Block(statements, _) => {
+                            for statement in statements {
+                                replace(statement, map);
+                            }
+                        }
+                        NodeKind::Assign(lhs, rhs) => {
+                            replace(lhs, map);
+                            replace(rhs, map);
+                        }
+                        NodeKind::Template(_, node) => replace(node, map),
+                        NodeKind::Function(lhs, rhs) => {
+                            replace(lhs, map);
+                            replace(rhs, map);
+                        }
+                        NodeKind::External(namespace, identifier, inputs) => {
+                            replace(namespace, map);
+                            replace(identifier, map);
+
+                            for input in inputs {
+                                replace(input, map);
+                            }
+                        }
+                        NodeKind::Annotate(lhs, rhs) => {
+                            replace(lhs, map);
+                            replace(rhs, map);
+                        }
+                        NodeKind::Type(fields) => {
+                            if let Some(fields) = fields {
+                                for field in fields {
+                                    replace(field, map);
+                                }
+                            }
+                        }
+                        NodeKind::Trait(node) => replace(node, map),
+                        NodeKind::TypeFunction(lhs, rhs) => {
+                            replace(lhs, map);
+                            replace(rhs, map);
+                        }
+                        NodeKind::WhereClause(lhs, rhs) => {
+                            replace(lhs, map);
+                            replace(rhs, map);
+                        }
+                        NodeKind::Instance(tr, params) => {
+                            replace(tr, map);
+
+                            for param in params {
+                                replace(param, map);
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+
+                replace(
+                    &mut body,
+                    &inputs.into_iter().zip(exprs).collect::<HashMap<_, _>>(),
+                );
+
+                body
+            }
             TemplateBody::Function(expand) => expand(self, span, exprs, scope),
         }
     }

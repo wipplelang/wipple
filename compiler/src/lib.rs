@@ -36,6 +36,7 @@ impl fmt::Display for FilePath {
 #[derive(Debug)]
 pub struct Compiler<L: Loader> {
     loader: L,
+    #[allow(unused)]
     options: CompilerOptions,
     diagnostics: Diagnostics,
     ids: Ids,

@@ -387,7 +387,7 @@ impl<L: Loader> Compiler<L> {
             span: node.span,
             kind: (|| match node.kind {
                 NodeKind::Error => ExpressionKind::Error,
-                NodeKind::Unit => ExpressionKind::Unit,
+                NodeKind::Empty => ExpressionKind::Unit,
                 NodeKind::Name(name) => ExpressionKind::Name(name),
                 NodeKind::Text(text) => ExpressionKind::Text(text),
                 NodeKind::Number(number) => ExpressionKind::Number(number),
@@ -405,7 +405,7 @@ impl<L: Loader> Compiler<L> {
                         })
                         .kind
                 }
-                NodeKind::Block(statements) => ExpressionKind::Block(
+                NodeKind::Block(statements, _) => ExpressionKind::Block(
                     statements
                         .into_iter()
                         .map(|node| self.build_statement(node))
@@ -480,7 +480,7 @@ impl<L: Loader> Compiler<L> {
                 NodeKind::Error => PatternKind::Error,
                 NodeKind::Underscore => PatternKind::Wildcard,
                 NodeKind::Name(name) => PatternKind::Name(name),
-                NodeKind::Block(mut statements) => {
+                NodeKind::Block(mut statements, _) => {
                     // TODO: Support renaming destructured fields
                     if statements.len() > 1 {
                         self.diagnostics.add(Diagnostic::error(
@@ -557,7 +557,7 @@ impl<L: Loader> Compiler<L> {
         TypeAnnotation {
             span: node.span,
             kind: match node.kind {
-                NodeKind::Unit => TypeAnnotationKind::Unit,
+                NodeKind::Empty => TypeAnnotationKind::Unit,
                 NodeKind::Underscore => TypeAnnotationKind::Placeholder,
                 NodeKind::Name(name) => TypeAnnotationKind::Named(name, Vec::new()), // TODO: Parameters
                 NodeKind::Function(input, output) => TypeAnnotationKind::Function(
