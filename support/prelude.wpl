@@ -22,6 +22,7 @@ show : x -> external "builtin" "show" (Show x)
 Add : Left Right Sum => trait (Left -> Right -> Sum)
 + : addition operator (a b ~> Add a b)
 instance Add Number Number Number : a -> b -> external "builtin" "add" a b
+instance Add Text Text Text : a -> b -> format "__" a b
 
 Subtract : Left Right Difference => trait (Left -> Right -> Difference)
 - : addition operator (a b ~> Subtract a b)
