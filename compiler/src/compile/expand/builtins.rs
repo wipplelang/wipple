@@ -294,6 +294,7 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
                     "addition" => OperatorPrecedence::Addition,
                     "multiplication" => OperatorPrecedence::Multiplication,
                     "power" => OperatorPrecedence::Power,
+                    "dot" => OperatorPrecedence::Dot,
                     "function" => OperatorPrecedence::Function,
                     _ => {
                         expander.compiler.diagnostics.add(Diagnostic::error(
@@ -550,6 +551,59 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
             Node {
                 span,
                 kind: NodeKind::Instance(Box::new(trait_name), parameters),
+            }
+        }),
+    );
+
+    // `format` template
+
+    let id = expander.compiler.new_template_id();
+
+    scope_values.insert(InternedString::new("format"), ScopeValue::Template(id));
+
+    expander.info.templates.insert(
+        id,
+        Template::function(builtin_span, |expander, span, inputs, _| {
+            if inputs.is_empty() {
+                expander.compiler.diagnostics.add(Diagnostic::error(
+                    "expected at least 1 input to template `format`",
+                    vec![Note::primary(
+                        span,
+                        "`instance` requires text containing `_` placeholders",
+                    )],
+                ));
+
+                return Node {
+                    span,
+                    kind: NodeKind::Error,
+                };
+            }
+
+            let mut inputs = VecDeque::from(inputs);
+
+            let format_text = match inputs.pop_front().unwrap().kind {
+                NodeKind::Text(text) => text,
+                _ => {
+                    expander.compiler.diagnostics.add(Diagnostic::error(
+                        "expected text",
+                        vec![Note::primary(
+                            span,
+                            "`instance` requires text containing `_` placeholders",
+                        )],
+                    ));
+
+                    return Node {
+                        span,
+                        kind: NodeKind::Error,
+                    };
+                }
+            };
+
+            let inputs = Vec::from(inputs);
+
+            Node {
+                span,
+                kind: todo!(),
             }
         }),
     );

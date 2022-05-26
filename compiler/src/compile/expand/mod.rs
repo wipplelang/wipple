@@ -214,9 +214,9 @@ pub struct Operator {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum OperatorPrecedence {
-    Addition,
-    Multiplication,
     Power,
+    Multiplication,
+    Addition,
     Dot,
     Function,
     Where,
