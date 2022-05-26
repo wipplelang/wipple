@@ -1,10 +1,12 @@
--- Helper functions --
+-- Functional programming --
 
 it :: A => A -> A
 it : x -> x
 
 just :: A B => A -> B -> A
 just : x -> _ -> x
+
+. : dot operator (x f ~> f x)
 
 -- Output --
 
@@ -36,7 +38,3 @@ instance Divide Number Number Number : a -> b -> external "builtin" "divide" a b
 Power : Left Right Power => trait (Left -> Right -> Power)
 ^ : power operator (a b ~> Power a b)
 instance Power Number Number Number : a -> b -> external "builtin" "power" a b
-
--- Functional programming --
-
-. : dot operator (x f ~> f x)
