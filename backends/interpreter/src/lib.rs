@@ -31,7 +31,7 @@ pub enum Value {
         body: Box<Expression>,
         captures: BTreeMap<VariableId, Rc<Value>>,
     },
-    Structure(Vec<Rc<Value>>),
+    List(Vec<Rc<Value>>),
 }
 
 #[derive(Debug)]
@@ -186,7 +186,7 @@ impl<'a> Interpreter<'a> {
                 }
             }
             ExpressionKind::Member(value, index) => match self.eval_expr(value, info)?.as_ref() {
-                Value::Structure(structure) => structure[*index].clone(),
+                Value::List(structure) => structure[*index].clone(),
                 _ => unreachable!(),
             },
             ExpressionKind::Initialize(variable, value) => {
@@ -257,13 +257,19 @@ impl<'a> Interpreter<'a> {
                     }
                 }
             }
-            ExpressionKind::Structure(exprs) => Rc::new(Value::Structure(
+            ExpressionKind::Structure(exprs) => Rc::new(Value::List(
                 exprs
                     .iter()
                     .map(|expr| self.eval_expr(expr, info))
                     .collect::<Result<_, _>>()?,
             )),
             ExpressionKind::FunctionInput => info.function_input.as_ref().unwrap().clone(),
+            ExpressionKind::ListLiteral(exprs) => Rc::new(Value::List(
+                exprs
+                    .iter()
+                    .map(|expr| self.eval_expr(expr, info))
+                    .collect::<Result<_, _>>()?,
+            )),
         };
 
         info.stack.pop();

@@ -68,6 +68,7 @@ pub enum ExpressionKind {
     FunctionInput,
     Variable(VariableId),
     Member(Box<Expression>, InternedString),
+    ListLiteral(Vec<Expression>),
 }
 
 #[derive(Debug, Clone)]
@@ -353,7 +354,15 @@ impl<L: Loader> Compiler<L> {
                 NodeKind::Annotate(expr, ty) => {
                     let name = match expr.kind {
                         NodeKind::Name(name) => (expr.span, name),
-                        _ => return StatementKind::Expression(self.build_expression(*expr).kind),
+                        _ => {
+                            return StatementKind::Expression(
+                                self.build_expression(Node {
+                                    span: node.span,
+                                    kind: NodeKind::Annotate(expr, ty),
+                                })
+                                .kind,
+                            )
+                        }
                     };
 
                     let (parameters, bounds, ty) = match ty.kind {
@@ -460,6 +469,12 @@ impl<L: Loader> Compiler<L> {
                 NodeKind::Annotate(value, ty) => ExpressionKind::Annotate(
                     Box::new(self.build_expression(*value)),
                     self.build_type_annotation(*ty),
+                ),
+                NodeKind::ListLiteral(items) => ExpressionKind::ListLiteral(
+                    items
+                        .into_iter()
+                        .map(|node| self.build_expression(node))
+                        .collect(),
                 ),
                 _ => {
                     self.diagnostics.add(Diagnostic::error(

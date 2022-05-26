@@ -27,8 +27,15 @@ fn format_type_with(
             UnresolvedType::Variable(_) => String::from("_"),
             UnresolvedType::Parameter(param) => param_names(param),
             UnresolvedType::Bottom(_) => String::from("!"),
-            UnresolvedType::Named(id) => {
-                let name = type_names(id);
+            UnresolvedType::Named(id, params) => {
+                let name = std::iter::once(type_names(id))
+                    .chain(params.into_iter().map(|param| {
+                        format!(
+                            " {}",
+                            format_type(param, type_names, param_names, false, false)
+                        )
+                    }))
+                    .collect::<String>();
 
                 if is_top_level {
                     name
@@ -40,6 +47,15 @@ fn format_type_with(
                 BuiltinType::Unit => String::from("()"),
                 BuiltinType::Text => String::from("Text"),
                 BuiltinType::Number => String::from("Number"),
+                BuiltinType::List(ty) => {
+                    let ty = format_type(*ty, type_names, param_names, false, false);
+
+                    if is_top_level {
+                        format!("List {}", ty)
+                    } else {
+                        format!("(List {})", ty)
+                    }
+                }
             },
             UnresolvedType::Function(input, output) => {
                 let input = format_type(*input, type_names, param_names, true, false);

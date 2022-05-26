@@ -554,4 +554,111 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
             }
         }),
     );
+
+    // `format` template
+
+    let id = expander.compiler.new_template_id();
+
+    scope_values.insert(InternedString::new("format"), ScopeValue::Template(id));
+
+    expander.info.templates.insert(
+        id,
+        Template::function(builtin_span, move |expander, span, inputs, _| {
+            if inputs.is_empty() {
+                expander.compiler.diagnostics.add(Diagnostic::error(
+                    "expected at least 1 input to template `format`",
+                    vec![Note::primary(
+                        span,
+                        "`instance` requires text containing `_` placeholders",
+                    )],
+                ));
+
+                return Node {
+                    span,
+                    kind: NodeKind::Error,
+                };
+            }
+
+            let mut inputs = VecDeque::from(inputs);
+
+            let format_text = inputs.pop_front().unwrap();
+
+            if let NodeKind::Text(text) = format_text.kind {
+                let placeholder_count = text.split('_').count() - 1;
+
+                if placeholder_count != inputs.len() {
+                    expander.compiler.diagnostics.add(Diagnostic::error(
+                        "wrong number of inputs to `format` text",
+                        vec![Note::primary(
+                            span,
+                            format!(
+                                "text contains {} placeholders, but {} inputs were provided",
+                                placeholder_count,
+                                inputs.len()
+                            ),
+                        )],
+                    ));
+                }
+            } else {
+                expander.compiler.diagnostics.add(Diagnostic::error(
+                    "expected text",
+                    vec![Note::primary(
+                        span,
+                        "`instance` requires text containing `_` placeholders",
+                    )],
+                ));
+
+                return Node {
+                    span,
+                    kind: NodeKind::Error,
+                };
+            };
+
+            Node {
+                span,
+                kind: NodeKind::Annotate(
+                    Box::new(Node {
+                        span,
+                        kind: NodeKind::External(
+                            Box::new(Node {
+                                span: builtin_span,
+                                kind: NodeKind::Text(InternedString::new("builtin")),
+                            }),
+                            Box::new(Node {
+                                span: builtin_span,
+                                kind: NodeKind::Text(InternedString::new("format")),
+                            }),
+                            vec![
+                                format_text,
+                                Node {
+                                    span: builtin_span,
+                                    kind: NodeKind::ListLiteral(
+                                        inputs
+                                            .into_iter()
+                                            .map(|input| Node {
+                                                span: input.span,
+                                                kind: NodeKind::List(vec![
+                                                    Node {
+                                                        span: builtin_span,
+                                                        kind: NodeKind::Name(InternedString::new(
+                                                            "Show",
+                                                        )),
+                                                    },
+                                                    input,
+                                                ]),
+                                            })
+                                            .collect(),
+                                    ),
+                                },
+                            ],
+                        ),
+                    }),
+                    Box::new(Node {
+                        span: builtin_span,
+                        kind: NodeKind::Name(InternedString::new("Text")),
+                    }),
+                ),
+            }
+        }),
+    );
 }

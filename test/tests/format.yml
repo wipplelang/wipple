@@ -1,0 +1,14 @@
+code: |
+    Person : type {
+      name :: Text
+    }
+
+    instance Show Person : { name } -> name
+
+    bob : Person { name : "Bob" }
+    show (format "Hello, _!" bob)
+
+output: |
+    Hello, Bob!
+
+diagnostics: |

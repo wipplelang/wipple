@@ -57,6 +57,7 @@ macro_rules! expr {
                 Initialize(VariableId, Box<[<$prefix Expression>]>),
                 Structure(Vec<[<$prefix Expression>]>),
                 FunctionInput,
+                ListLiteral(Vec<[<$prefix Expression>]>),
                 $($kinds)*
             }
 
@@ -445,7 +446,7 @@ impl<L: Loader> Compiler<L> {
 
         let mut top_level = HashMap::new();
         for file in &files {
-            top_level.extend(&file.borrow().exported);
+            top_level.extend(file.borrow().exported.clone());
         }
 
         let body = match body
@@ -794,15 +795,12 @@ impl<'a, L: Loader> Typechecker<'a, L> {
                 let ty = self.convert_type_annotation(ty);
                 let value = self.typecheck_expr(expr, file, suppress_errors);
 
-                match self.ctx.unify(value.ty, ty.clone()) {
-                    Ok(ty) => ty,
-                    Err(error) => {
-                        if !suppress_errors {
-                            self.report_type_error(error, value.span);
-                        }
-
-                        return UnresolvedExpression::error(expr.span);
+                if let Err(error) = self.ctx.unify(value.ty, ty.clone()) {
+                    if !suppress_errors {
+                        self.report_type_error(error, value.span);
                     }
+
+                    return UnresolvedExpression::error(expr.span);
                 };
 
                 UnresolvedExpression {
@@ -929,7 +927,7 @@ impl<'a, L: Loader> Typechecker<'a, L> {
 
                 UnresolvedExpression {
                     span: expr.span,
-                    ty: UnresolvedType::Named(*ty), // TODO: parameters
+                    ty: UnresolvedType::Named(*ty, Vec::new()), // TODO: parameters
                     kind: UnresolvedExpressionKind::Structure(fields),
                 }
             }
@@ -940,6 +938,32 @@ impl<'a, L: Loader> Typechecker<'a, L> {
                     span: expr.span,
                     ty: UnresolvedType::Variable(self.ctx.new_variable()),
                     kind: UnresolvedExpressionKind::Member(Box::new(value), *name),
+                }
+            }
+            lower::ExpressionKind::ListLiteral(items) => {
+                let items = items
+                    .iter()
+                    .map(|expr| self.typecheck_expr(expr, file, suppress_errors))
+                    .collect::<Vec<_>>();
+
+                let ty = if let Some(item) = items.first() {
+                    item.ty.clone()
+                } else {
+                    UnresolvedType::Bottom(BottomTypeReason::Annotated)
+                };
+
+                for item in &items {
+                    if let Err(error) = self.ctx.unify(item.ty.clone(), ty.clone()) {
+                        if !suppress_errors {
+                            self.report_type_error(error, item.span);
+                        }
+                    };
+                }
+
+                UnresolvedExpression {
+                    span: expr.span,
+                    ty,
+                    kind: UnresolvedExpressionKind::ListLiteral(items),
                 }
             }
         }
@@ -972,11 +996,11 @@ impl<'a, L: Loader> Typechecker<'a, L> {
                 match decl.value {
                     lower::Type::Marker
                     | lower::Type::Structure(_, _)
-                    | lower::Type::Enumeration(_, _) => UnresolvedType::Named(id), // TODO: parameters
+                    | lower::Type::Enumeration(_, _) => UnresolvedType::Named(id, Vec::new()), // TODO: parameters
                     lower::Type::Alias(annotation) => self.convert_type_annotation(&annotation),
                 }
             }
-            lower::Declaration::Dependency(_) => UnresolvedType::Named(id), // TODO: parameters
+            lower::Declaration::Dependency(_) => UnresolvedType::Named(id, Vec::new()), // TODO: parameters
         }
     }
 
@@ -1092,7 +1116,7 @@ impl<'a, L: Loader> Typechecker<'a, L> {
                         ty.apply(&self.ctx);
 
                         let id = match ty {
-                            UnresolvedType::Named(ty) => ty,
+                            UnresolvedType::Named(ty, _) => ty,
                             _ => {
                                 self.compiler.diagnostics.add(Diagnostic::error(
                                     format!("cannot access member '{}' of this value", name),
@@ -1173,6 +1197,14 @@ impl<'a, L: Loader> Typechecker<'a, L> {
                     UnresolvedExpressionKind::Trait(tr) => MonomorphizedExpressionKind::Constant(
                         self.instance_for(tr, expr.ty.clone(), expr.span)?,
                     ),
+                    UnresolvedExpressionKind::ListLiteral(items) => {
+                        MonomorphizedExpressionKind::ListLiteral(
+                            items
+                                .into_iter()
+                                .map(|expr| self.monomorphize(expr))
+                                .collect::<Result<_, _>>()?,
+                        )
+                    }
                 })
             })()?,
         })
@@ -1230,6 +1262,12 @@ impl<'a, L: Loader> Typechecker<'a, L> {
                         .collect::<Result<_, _>>()?,
                 ),
                 MonomorphizedExpressionKind::FunctionInput => ExpressionKind::FunctionInput,
+                MonomorphizedExpressionKind::ListLiteral(items) => ExpressionKind::ListLiteral(
+                    items
+                        .into_iter()
+                        .map(|expr| self.finalize(expr, generic))
+                        .collect::<Result<_, _>>()?,
+                ),
             },
             // The type must be resolved after the kind because the kind may be
             // a trait, whose type is unified with the original type variable
@@ -1331,13 +1369,102 @@ impl<'a, L: Loader> Typechecker<'a, L> {
             lower::TypeAnnotationKind::Placeholder => {
                 UnresolvedType::Variable(self.ctx.new_variable())
             }
-            lower::TypeAnnotationKind::Named(id, _params) => UnresolvedType::Named(*id), // TODO: parameters
-            lower::TypeAnnotationKind::Parameter(id) => UnresolvedType::Parameter(*id),
-            lower::TypeAnnotationKind::Builtin(builtin) => UnresolvedType::Builtin(match builtin {
-                lower::BuiltinType::Unit => BuiltinType::Unit,
-                lower::BuiltinType::Number => BuiltinType::Number,
-                lower::BuiltinType::Text => BuiltinType::Text,
-            }),
+            lower::TypeAnnotationKind::Named(id, params) => UnresolvedType::Named(
+                *id,
+                params
+                    .iter()
+                    .map(|param| self.convert_type_annotation(param))
+                    .collect(),
+            ),
+            lower::TypeAnnotationKind::Parameter(id, params) => {
+                if !params.is_empty() {
+                    // TODO: Higher-kinded types
+                    self.compiler.diagnostics.add(Diagnostic::error(
+                        "higher-kinded types are not yet supported",
+                        vec![Note::primary(
+                            annotation.span,
+                            "try writing this on its own, with no parameters",
+                        )],
+                    ));
+                }
+
+                UnresolvedType::Parameter(*id)
+            }
+            lower::TypeAnnotationKind::Builtin(builtin, parameters) => {
+                UnresolvedType::Builtin(match builtin {
+                    lower::BuiltinType::Unit => {
+                        if !parameters.is_empty() {
+                            self.compiler.diagnostics.add(Diagnostic::error(
+                                "`()` does not accept parameters",
+                                vec![Note::primary(
+                                    annotation.span,
+                                    "try removing these parameters",
+                                )],
+                            ));
+                        }
+
+                        BuiltinType::Unit
+                    }
+                    lower::BuiltinType::Number => {
+                        if !parameters.is_empty() {
+                            self.compiler.diagnostics.add(Diagnostic::error(
+                                "`Number` does not accept parameters",
+                                vec![Note::primary(
+                                    annotation.span,
+                                    "try removing these parameters",
+                                )],
+                            ));
+                        }
+
+                        BuiltinType::Number
+                    }
+                    lower::BuiltinType::Text => {
+                        if !parameters.is_empty() {
+                            self.compiler.diagnostics.add(Diagnostic::error(
+                                "`Text` does not accept parameters",
+                                vec![Note::primary(
+                                    annotation.span,
+                                    "try removing these parameters",
+                                )],
+                            ));
+                        }
+
+                        BuiltinType::Text
+                    }
+                    lower::BuiltinType::List => {
+                        if parameters.is_empty() {
+                            self.compiler.diagnostics.add(Diagnostic::error(
+                                "`List` accepts 1 parameter, but none were provided",
+                                vec![Note::primary(
+                                    annotation.span,
+                                    "try adding `_` here to infer the type of `Element`",
+                                )],
+                            ));
+
+                            BuiltinType::List(Box::new(UnresolvedType::Bottom(
+                                BottomTypeReason::Error,
+                            )))
+                        } else {
+                            if parameters.len() > 1 {
+                                self.compiler.diagnostics.add(Diagnostic::error(
+                                    format!(
+                                        "`List` accepts 1 parameter, but {} were provided",
+                                        parameters.len()
+                                    ),
+                                    vec![Note::primary(
+                                        annotation.span,
+                                        "try removing some of these",
+                                    )],
+                                ));
+                            }
+
+                            BuiltinType::List(Box::new(
+                                self.convert_type_annotation(parameters.first().unwrap()),
+                            ))
+                        }
+                    }
+                })
+            }
             lower::TypeAnnotationKind::Function(input, output) => UnresolvedType::Function(
                 Box::new(self.convert_type_annotation(input)),
                 Box::new(self.convert_type_annotation(output)),

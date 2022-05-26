@@ -47,7 +47,7 @@ pub struct DeclarationKind<T> {
     pub value: T,
 }
 
-impl<Id: Eq + Hash, T> Declaration<Id, T> {
+impl<Id, T> Declaration<Id, T> {
     pub fn name(&self) -> InternedString {
         match self {
             Declaration::Local(decl) => decl.name,
@@ -98,7 +98,7 @@ impl CopyDeclaration for Declaration<VariableId, ()> {
     const COPY: bool = false;
 }
 
-impl<Id: Eq + Hash, T> Declaration<Id, T>
+impl<Id, T> Declaration<Id, T>
 where
     Self: CopyDeclaration,
 {
@@ -130,6 +130,7 @@ pub enum BuiltinType {
     Unit,
     Number,
     Text,
+    List,
 }
 
 #[derive(Debug, Clone)]
@@ -186,6 +187,7 @@ pub enum ExpressionKind {
     FunctionInput,
     Member(Box<Expression>, InternedString),
     Instantiate(TypeId, Vec<(InternedString, Expression)>),
+    ListLiteral(Vec<Expression>),
 }
 
 impl Expression {
@@ -217,19 +219,27 @@ pub enum PatternKind {
     Wildcard,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TypeAnnotation {
     pub span: Span,
     pub kind: TypeAnnotationKind,
 }
 
-#[derive(Debug, Clone)]
+impl PartialEq for TypeAnnotation {
+    fn eq(&self, other: &Self) -> bool {
+        self.kind == other.kind
+    }
+}
+
+impl Eq for TypeAnnotation {}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum TypeAnnotationKind {
     Error,
     Placeholder,
     Named(TypeId, Vec<TypeAnnotation>),
-    Parameter(TypeParameterId),
-    Builtin(BuiltinType),
+    Parameter(TypeParameterId, Vec<TypeAnnotation>),
+    Builtin(BuiltinType, Vec<TypeAnnotation>),
     Function(Box<TypeAnnotation>, Box<TypeAnnotation>),
 }
 
@@ -339,7 +349,7 @@ struct Scope<'a> {
     function_inputs: RefCell<BTreeSet<VariableId>>,
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ScopeValue {
     Type(TypeId),
     BuiltinType(BuiltinType),
@@ -1049,12 +1059,14 @@ impl<L: Loader> Compiler<L> {
             }
             ast::ExpressionKind::When(_, _) => return Expression::error(expr.span), // TODO
             ast::ExpressionKind::External(namespace, identifier, inputs) => {
-                let inputs = inputs
-                    .into_iter()
-                    .map(|expr| self.lower_expr(expr, scope, info))
-                    .collect();
-
-                ExpressionKind::External(namespace, identifier, inputs)
+                ExpressionKind::External(
+                    namespace,
+                    identifier,
+                    inputs
+                        .into_iter()
+                        .map(|expr| self.lower_expr(expr, scope, info))
+                        .collect(),
+                )
             }
             ast::ExpressionKind::Annotate(expr, ty) => ExpressionKind::Annotate(
                 Box::new(self.lower_expr(*expr, scope, info)),
@@ -1065,6 +1077,12 @@ impl<L: Loader> Compiler<L> {
             ast::ExpressionKind::Member(expr, name) => {
                 ExpressionKind::Member(Box::new(self.lower_expr(*expr, scope, info)), name)
             }
+            ast::ExpressionKind::ListLiteral(items) => ExpressionKind::ListLiteral(
+                items
+                    .into_iter()
+                    .map(|expr| self.lower_expr(expr, scope, info))
+                    .collect(),
+            ),
         };
 
         Expression {
@@ -1082,50 +1100,22 @@ impl<L: Loader> Compiler<L> {
         let kind = match ty.kind {
             ast::TypeAnnotationKind::Error => TypeAnnotationKind::Error,
             ast::TypeAnnotationKind::Placeholder => TypeAnnotationKind::Placeholder,
-            ast::TypeAnnotationKind::Unit => TypeAnnotationKind::Builtin(BuiltinType::Unit),
+            ast::TypeAnnotationKind::Unit => {
+                TypeAnnotationKind::Builtin(BuiltinType::Unit, Vec::new())
+            }
             ast::TypeAnnotationKind::Named(name, parameters) => {
+                let parameters = parameters
+                    .into_iter()
+                    .map(|parameter| self.lower_type_annotation(parameter, scope, info))
+                    .collect();
+
                 match scope.get(name, ty.span) {
-                    Some(ScopeValue::Type(ty)) => {
-                        let parameters = parameters
-                            .into_iter()
-                            .map(|parameter| self.lower_type_annotation(parameter, scope, info))
-                            .collect();
-
-                        TypeAnnotationKind::Named(ty, parameters)
-                    }
+                    Some(ScopeValue::Type(ty)) => TypeAnnotationKind::Named(ty, parameters),
                     Some(ScopeValue::TypeParameter(param)) => {
-                        if !parameters.is_empty() {
-                            // TODO: Higher-kinded types
-                            self.diagnostics.add(Diagnostic::error(
-                                "type parameters cannot have parameters themselves",
-                                vec![Note::primary(
-                                    ty.span,
-                                    format!(
-                                        "try writing `{}` on its own, with no parameters",
-                                        name
-                                    ),
-                                )],
-                            ));
-                        }
-
-                        TypeAnnotationKind::Parameter(param)
+                        TypeAnnotationKind::Parameter(param, parameters)
                     }
                     Some(ScopeValue::BuiltinType(builtin)) => {
-                        if !parameters.is_empty() {
-                            // TODO: parameters for `List`
-                            self.diagnostics.add(Diagnostic::error(
-                                format!("`{}` does not accept parameters", name),
-                                vec![Note::primary(
-                                    ty.span,
-                                    format!(
-                                        "try writing `{}` on its own, with no parameters",
-                                        name
-                                    ),
-                                )],
-                            ));
-                        }
-
-                        TypeAnnotationKind::Builtin(builtin)
+                        TypeAnnotationKind::Builtin(builtin, parameters)
                     }
                     _ => {
                         self.diagnostics.add(Diagnostic::error(

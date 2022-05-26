@@ -69,6 +69,7 @@ pub enum NodeKind {
     TypeFunction(Box<Node>, Box<Node>),
     WhereClause(Box<Node>, Box<Node>),
     Instance(Box<Node>, Vec<Node>),
+    ListLiteral(Vec<Node>),
 }
 
 impl<L: Loader> Compiler<L> {

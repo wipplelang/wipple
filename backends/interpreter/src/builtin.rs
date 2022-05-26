@@ -49,6 +49,7 @@ lazy_static! {
 
         builtins! {
             "show" => builtin_show,
+            "format" => builtin_format,
             "number-to-text" => builtin_number_to_text,
             "add" => builtin_add,
             "subtract" => builtin_subtract,
@@ -81,6 +82,43 @@ fn builtin_show(
         .borrow_mut()(text, &info.stack);
 
     Ok(Rc::new(Value::Marker))
+}
+
+fn builtin_format(
+    _: &Interpreter,
+    (text, inputs): (Rc<Value>, Rc<Value>),
+    _: &Info,
+) -> Result<Rc<Value>, Diverge> {
+    let text = match text.as_ref() {
+        Value::Text(text) => text,
+        _ => unreachable!(),
+    };
+
+    let inputs = match inputs.as_ref() {
+        Value::List(list) => list
+            .iter()
+            .map(|input| match input.as_ref() {
+                Value::Text(text) => text.as_str(),
+                _ => unreachable!(),
+            })
+            .collect::<Vec<_>>(),
+        _ => unreachable!(),
+    };
+
+    let formatted = if text.is_empty() {
+        String::new()
+    } else {
+        let mut text = text.split('_').collect::<Vec<_>>();
+        let last = text.pop().unwrap();
+
+        text.into_iter()
+            .zip(inputs)
+            .map(|(part, value)| part.to_string() + value)
+            .chain(std::iter::once(last.to_string()))
+            .collect()
+    };
+
+    Ok(Rc::new(Value::Text(formatted)))
 }
 
 fn builtin_number_to_text(

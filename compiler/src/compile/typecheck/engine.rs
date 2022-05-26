@@ -8,9 +8,9 @@ use std::collections::{BTreeMap, BTreeSet};
 pub enum UnresolvedType {
     Variable(TypeVariable),
     Parameter(TypeParameterId),
-    Named(TypeId),
+    Named(TypeId, Vec<UnresolvedType>),
     Function(Box<UnresolvedType>, Box<UnresolvedType>),
-    Builtin(BuiltinType),
+    Builtin(BuiltinType<Box<UnresolvedType>>),
     Bottom(BottomTypeReason),
 }
 
@@ -25,9 +25,9 @@ pub type GenericSubstitutions = BTreeMap<TypeParameterId, UnresolvedType>;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Type {
     Parameter(TypeParameterId),
-    Named(TypeId),
+    Named(TypeId, Vec<Type>),
     Function(Box<Type>, Box<Type>),
-    Builtin(BuiltinType),
+    Builtin(BuiltinType<Box<Type>>),
     Bottom(BottomTypeReason),
 }
 
@@ -41,11 +41,18 @@ impl From<Type> for UnresolvedType {
     fn from(ty: Type) -> Self {
         match ty {
             Type::Parameter(param) => UnresolvedType::Parameter(param),
-            Type::Named(name) => UnresolvedType::Named(name),
+            Type::Named(name, params) => {
+                UnresolvedType::Named(name, params.into_iter().map(|param| param.into()).collect())
+            }
             Type::Function(input, output) => {
                 UnresolvedType::Function(Box::new((*input).into()), Box::new((*output).into()))
             }
-            Type::Builtin(builtin) => UnresolvedType::Builtin(builtin),
+            Type::Builtin(builtin) => UnresolvedType::Builtin(match builtin {
+                BuiltinType::Unit => BuiltinType::Unit,
+                BuiltinType::Text => BuiltinType::Text,
+                BuiltinType::Number => BuiltinType::Number,
+                BuiltinType::List(ty) => BuiltinType::List(Box::new((*ty).into())),
+            }),
             Type::Bottom(reason) => UnresolvedType::Bottom(reason),
         }
     }
@@ -54,11 +61,12 @@ impl From<Type> for UnresolvedType {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct TypeVariable(pub usize);
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum BuiltinType {
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum BuiltinType<Ty> {
     Unit,
     Text,
     Number,
+    List(Ty),
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
@@ -153,13 +161,20 @@ impl Context {
                 UnresolvedType::Parameter(actual),
                 expected,
             )),
-            (UnresolvedType::Named(actual_id), UnresolvedType::Named(expected_id)) => {
+            (
+                UnresolvedType::Named(actual_id, actual_params),
+                UnresolvedType::Named(expected_id, expected_params),
+            ) => {
                 if actual_id == expected_id {
+                    for (actual, expected) in actual_params.into_iter().zip(expected_params) {
+                        self.unify_internal(actual, expected, generic)?;
+                    }
+
                     Ok(())
                 } else {
                     Err(TypeError::Mismatch(
-                        UnresolvedType::Named(actual_id),
-                        UnresolvedType::Named(expected_id),
+                        UnresolvedType::Named(actual_id, actual_params),
+                        UnresolvedType::Named(expected_id, expected_params),
                     ))
                 }
             }
@@ -180,16 +195,18 @@ impl Context {
             (
                 UnresolvedType::Builtin(actual_builtin),
                 UnresolvedType::Builtin(expected_builtin),
-            ) => {
-                if actual_builtin == expected_builtin {
-                    Ok(())
-                } else {
-                    Err(TypeError::Mismatch(
-                        UnresolvedType::Builtin(actual_builtin),
-                        UnresolvedType::Builtin(expected_builtin),
-                    ))
+            ) => match (actual_builtin, expected_builtin) {
+                (BuiltinType::Unit, BuiltinType::Unit) => Ok(()),
+                (BuiltinType::Text, BuiltinType::Text) => Ok(()),
+                (BuiltinType::Number, BuiltinType::Number) => Ok(()),
+                (BuiltinType::List(actual_element), BuiltinType::List(expected_element)) => {
+                    self.unify_internal(*actual_element, *expected_element, generic)
                 }
-            }
+                (actual_builtin, expected_builtin) => Err(TypeError::Mismatch(
+                    UnresolvedType::Builtin(actual_builtin),
+                    UnresolvedType::Builtin(expected_builtin),
+                )),
+            },
             (UnresolvedType::Bottom(_), _) => Ok(()),
             (actual, expected) => Err(TypeError::Mismatch(actual, expected)),
         }
@@ -199,7 +216,7 @@ impl Context {
 impl UnresolvedType {
     pub fn id(&self) -> Option<TypeId> {
         match self {
-            UnresolvedType::Named(id) => Some(*id),
+            UnresolvedType::Named(id, _) => Some(*id),
             _ => None,
         }
     }
@@ -290,12 +307,23 @@ impl UnresolvedType {
                     panic!("cannot finalize type parameter in non-generic context")
                 }
             }
-            UnresolvedType::Named(name) => Type::Named(name),
+            UnresolvedType::Named(name, params) => Type::Named(
+                name,
+                params
+                    .into_iter()
+                    .map(|param| param.finalize(ctx, generic))
+                    .collect::<Option<_>>()?,
+            ),
             UnresolvedType::Function(input, output) => Type::Function(
                 Box::new(input.finalize(ctx, generic)?),
                 Box::new(output.finalize(ctx, generic)?),
             ),
-            UnresolvedType::Builtin(builtin) => Type::Builtin(builtin),
+            UnresolvedType::Builtin(builtin) => Type::Builtin(match builtin {
+                BuiltinType::Unit => BuiltinType::Unit,
+                BuiltinType::Text => BuiltinType::Text,
+                BuiltinType::Number => BuiltinType::Number,
+                BuiltinType::List(ty) => BuiltinType::List(Box::new(ty.finalize(ctx, generic)?)),
+            }),
             UnresolvedType::Bottom(is_error) => Type::Bottom(is_error),
         })
     }
