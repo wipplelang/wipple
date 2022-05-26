@@ -14,6 +14,10 @@
   <a href="https://github.com/wipplelang/wipple/actions/workflows/build.yml">
     <img src="https://github.com/wipplelang/wipple/actions/workflows/build.yml/badge.svg" alt="Build">
   </a>
+
+  <a href="https://github.com/wipplelang/wipple/actions/workflows/tests.yml">
+    <img src="https://github.com/wipplelang/wipple/actions/workflows/tests.yml/badge.svg" alt="Tests">
+  </a>
 </p>
 
 ## Install

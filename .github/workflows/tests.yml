@@ -9,7 +9,7 @@ on:
       - support/**
       - test/**
 
-name: Test
+name: Tests
 
 jobs:
   test:
