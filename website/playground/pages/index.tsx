@@ -345,6 +345,7 @@ const Playground = () => {
                                         enabled: false,
                                     },
                                     tabSize: 2,
+                                    insertSpaces: false,
                                     "semanticHighlighting.enabled": true,
                                 }}
                                 onMount={initialize}

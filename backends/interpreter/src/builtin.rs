@@ -11,8 +11,8 @@ pub(crate) fn call(
 ) -> Result<Rc<Value>, Diverge> {
     let builtin = BUILTINS.get(identifier).ok_or_else(|| {
         Diverge::new(
-            &info.stack,
-            DivergeKind::Error(format!("Unknown builtin function '{}'", identifier)),
+            info.stack.clone(),
+            DivergeKind::Error(format!("unknown builtin function '{}'", identifier)),
         )
     })?;
 
@@ -36,7 +36,7 @@ lazy_static! {
                                 inputs
                                     .into_iter()
                                     .collect_tuple()
-                                    .expect("Wrong number of inputs to builtin function"),
+                                    .expect("wrong number of inputs to builtin function"),
                                 info
                             )
                         });
@@ -69,8 +69,8 @@ fn builtin_show(
         .as_ref()
         .ok_or_else(|| {
             Diverge::new(
-                &info.stack,
-                DivergeKind::Error(Error::from("Output not configured")),
+                info.stack.clone(),
+                DivergeKind::Error(Error::from("output not configured")),
             )
         })?
         .borrow_mut()(text, &info.stack);

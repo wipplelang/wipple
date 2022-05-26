@@ -1,14 +1,9 @@
 mod builtins;
-mod operators;
 
 use crate::{
-    diagnostics::*,
-    helpers::InternedString,
-    parse::{self, Span},
-    Compiler, FilePath, GenericConstantId, Loader, OperatorId, TraitId, TypeId, TypeParameterId,
-    VariableId,
+    compile::ast, diagnostics::*, helpers::InternedString, parse::Span, Compiler, FilePath,
+    GenericConstantId, Loader, TemplateId, TraitId, TypeId, TypeParameterId, VariableId,
 };
-use operators::OperatorPrecedence;
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -33,7 +28,6 @@ pub struct Declarations {
     pub type_parameters: BTreeMap<TypeParameterId, Declaration<TypeParameterId, ()>>,
     pub traits: BTreeMap<TraitId, Declaration<TraitId, Trait>>,
     pub builtin_types: BTreeMap<BuiltinType, Declaration<BuiltinType, ()>>,
-    pub operators: BTreeMap<OperatorId, Declaration<OperatorId, Operator>>,
     pub constants: BTreeMap<GenericConstantId, Declaration<GenericConstantId, Constant>>,
     pub instances: BTreeMap<GenericConstantId, Declaration<GenericConstantId, Instance>>,
     pub variables: BTreeMap<VariableId, Declaration<VariableId, ()>>,
@@ -92,10 +86,6 @@ impl CopyDeclaration for Declaration<BuiltinType, ()> {
     const COPY: bool = false;
 }
 
-impl CopyDeclaration for Declaration<OperatorId, Operator> {
-    const COPY: bool = true;
-}
-
 impl CopyDeclaration for Declaration<GenericConstantId, Constant> {
     const COPY: bool = false;
 }
@@ -146,12 +136,6 @@ pub enum BuiltinType {
 pub struct Trait {
     pub parameters: Vec<TypeParameter>,
     pub ty: TypeAnnotation,
-}
-
-#[derive(Debug, Clone)]
-pub struct Operator {
-    pub precedence: OperatorPrecedence,
-    pub body: GenericConstantId,
 }
 
 #[derive(Debug, Clone)]
@@ -266,7 +250,7 @@ pub struct TypeParameter {
 }
 
 impl<L: Loader> Compiler<L> {
-    pub fn lower(&mut self, file: parse::File, dependencies: Vec<&File>) -> File {
+    pub fn lower(&mut self, file: ast::File, dependencies: Vec<Rc<File>>) -> File {
         let scope = Scope::default();
 
         // TODO: Handle file attributes
@@ -301,7 +285,6 @@ impl<L: Loader> Compiler<L> {
                 type_parameters,
                 traits,
                 builtin_types,
-                operators,
                 constants,
                 instances,
                 variables,
@@ -362,7 +345,7 @@ pub enum ScopeValue {
     BuiltinType(BuiltinType),
     Trait(TraitId),
     TypeParameter(TypeParameterId),
-    Operator(OperatorId),
+    Operator(TemplateId),
     Constant(GenericConstantId),
     Variable(VariableId),
 }
@@ -425,7 +408,7 @@ struct Info {
 impl<L: Loader> Compiler<L> {
     fn lower_block(
         &mut self,
-        statements: Vec<parse::Statement>,
+        statements: Vec<ast::Statement>,
         scope: &Scope,
         info: &mut Info,
     ) -> (Vec<Expression>, HashMap<InternedString, ScopeValue>) {
@@ -441,14 +424,14 @@ impl<L: Loader> Compiler<L> {
 
     fn lower_statement(
         &mut self,
-        statement: parse::Statement,
+        statement: ast::Statement,
         scope: &Scope,
         info: &mut Info,
     ) -> Vec<Expression> {
         let defined = |name| scope.values.borrow().contains_key(&name);
 
         match statement.kind {
-            parse::StatementKind::Type((span, name), ty) => {
+            ast::StatementKind::Type((span, name), ty) => {
                 if defined(name) {
                     self.diagnostics.add(Diagnostic::error(
                         format!("`{name}` is already defined"),
@@ -477,11 +460,11 @@ impl<L: Loader> Compiler<L> {
                 scope.values.borrow_mut().insert(name, ScopeValue::Type(id));
 
                 let ty = match ty.kind {
-                    parse::TypeKind::Marker => Type::Marker,
-                    parse::TypeKind::Alias(alias) => {
+                    ast::TypeKind::Marker => Type::Marker,
+                    ast::TypeKind::Alias(alias) => {
                         Type::Alias(self.lower_type_annotation(alias, scope, info))
                     }
-                    parse::TypeKind::Structure(fields) => {
+                    ast::TypeKind::Structure(fields) => {
                         let mut field_tys = Vec::with_capacity(fields.len());
                         let mut field_names = HashMap::with_capacity(fields.len());
                         for (index, field) in fields.into_iter().enumerate() {
@@ -494,7 +477,7 @@ impl<L: Loader> Compiler<L> {
 
                         Type::Structure(field_tys, field_names)
                     }
-                    parse::TypeKind::Enumeration(variants) => {
+                    ast::TypeKind::Enumeration(variants) => {
                         let mut variant_tys = Vec::with_capacity(variants.len());
                         let mut variant_names = HashMap::with_capacity(variants.len());
                         for (index, variant) in variants.into_iter().enumerate() {
@@ -524,7 +507,7 @@ impl<L: Loader> Compiler<L> {
 
                 Vec::new()
             }
-            parse::StatementKind::Trait((span, name), declaration) => {
+            ast::StatementKind::Trait((span, name), declaration) => {
                 if defined(name) {
                     self.diagnostics.add(Diagnostic::error(
                         format!("`{name}` is already defined"),
@@ -562,7 +545,7 @@ impl<L: Loader> Compiler<L> {
 
                 Vec::new()
             }
-            parse::StatementKind::Constant((span, name), declaration) => {
+            ast::StatementKind::Constant((span, name), declaration) => {
                 if defined(name) {
                     self.diagnostics.add(Diagnostic::error(
                         format!("`{name}` is already defined"),
@@ -651,7 +634,7 @@ impl<L: Loader> Compiler<L> {
 
                 Vec::new()
             }
-            parse::StatementKind::Instance(decl) => {
+            ast::StatementKind::Instance(decl) => {
                 let tr = match scope.get(decl.trait_name, decl.trait_span) {
                     Some(ScopeValue::Trait(tr)) => tr,
                     Some(_) => {
@@ -714,8 +697,9 @@ impl<L: Loader> Compiler<L> {
 
                 Vec::new()
             }
-            parse::StatementKind::Assign(pattern, expr) => match &pattern.kind {
-                parse::PatternKind::Name(name) => {
+            ast::StatementKind::Assign(pattern, expr) => match &pattern.kind {
+                ast::PatternKind::Error => vec![Expression::error(statement.span)],
+                ast::PatternKind::Name(name) => {
                     let mut associated_constant = None;
 
                     match scope.values.borrow().get(name).cloned() {
@@ -832,7 +816,7 @@ impl<L: Loader> Compiler<L> {
                         }]
                     }
                 }
-                parse::PatternKind::Destructure(names) => {
+                ast::PatternKind::Destructure(names) => {
                     let value = self.lower_expr(expr, scope, info);
                     let value_span = value.span;
 
@@ -860,19 +844,19 @@ impl<L: Loader> Compiler<L> {
                     }];
 
                     for (span, name) in names.iter().copied() {
-                        let statement = parse::Statement {
+                        let statement = ast::Statement {
                             span,
-                            kind: parse::StatementKind::Assign(
-                                parse::Pattern {
+                            kind: ast::StatementKind::Assign(
+                                ast::Pattern {
                                     span,
-                                    kind: parse::PatternKind::Name(name),
+                                    kind: ast::PatternKind::Name(name),
                                 },
-                                parse::Expression {
+                                ast::Expression {
                                     span: value_span,
-                                    kind: parse::ExpressionKind::Member(
-                                        Box::new(parse::Expression {
+                                    kind: ast::ExpressionKind::Member(
+                                        Box::new(ast::Expression {
                                             span: value_span,
-                                            kind: parse::ExpressionKind::Variable(id),
+                                            kind: ast::ExpressionKind::Variable(id),
                                         }),
                                         name,
                                     ),
@@ -896,10 +880,17 @@ impl<L: Loader> Compiler<L> {
 
                     exprs
                 }
-                parse::PatternKind::Wildcard => vec![self.lower_expr(expr, scope, info)],
+                ast::PatternKind::Wildcard => vec![self.lower_expr(expr, scope, info)],
             },
-            parse::StatementKind::Expression(expr) => {
-                vec![self.lower_expr(expr, scope, info)]
+            ast::StatementKind::Expression(expr) => {
+                vec![self.lower_expr(
+                    ast::Expression {
+                        span: statement.span,
+                        kind: expr,
+                    },
+                    scope,
+                    info,
+                )]
             }
         }
     }
@@ -925,17 +916,13 @@ impl<L: Loader> Compiler<L> {
         }
     }
 
-    fn lower_expr(
-        &mut self,
-        expr: parse::Expression,
-        scope: &Scope,
-        info: &mut Info,
-    ) -> Expression {
+    fn lower_expr(&mut self, expr: ast::Expression, scope: &Scope, info: &mut Info) -> Expression {
         let kind = match expr.kind {
-            parse::ExpressionKind::Unit => ExpressionKind::Unit,
-            parse::ExpressionKind::Text(text) => ExpressionKind::Text(text),
-            parse::ExpressionKind::Number(number) => ExpressionKind::Number(number),
-            parse::ExpressionKind::Name(name) => {
+            ast::ExpressionKind::Error => ExpressionKind::Error,
+            ast::ExpressionKind::Unit => ExpressionKind::Unit,
+            ast::ExpressionKind::Text(text) => ExpressionKind::Text(text),
+            ast::ExpressionKind::Number(number) => ExpressionKind::Number(number),
+            ast::ExpressionKind::Name(name) => {
                 match self.resolve_value(expr.span, name, scope, info) {
                     Some(value) => value,
                     None => {
@@ -948,15 +935,71 @@ impl<L: Loader> Compiler<L> {
                     }
                 }
             }
-            parse::ExpressionKind::Block(statements) => {
+            ast::ExpressionKind::Block(statements) => {
                 let scope = scope.child();
                 let (block, declarations) = self.lower_block(statements, &scope, info);
                 ExpressionKind::Block(block, declarations)
             }
-            parse::ExpressionKind::List(exprs) => {
-                self.lower_operators(expr.span, exprs, scope, info).kind
+            ast::ExpressionKind::Call(function, input) => {
+                if let (
+                    ast::ExpressionKind::Name(ty_name),
+                    ast::ExpressionKind::Block(statements),
+                ) = (&function.kind, &input.kind)
+                {
+                    let fields = statements
+                        .iter()
+                        .filter_map(|s| match &s.kind {
+                            ast::StatementKind::Assign(pattern, expr) => match &pattern.kind {
+                                ast::PatternKind::Name(name) => Some((*name, expr)),
+                                _ => None,
+                            },
+                            _ => None,
+                        })
+                        .collect::<Vec<_>>();
+
+                    match scope.get(*ty_name, function.span) {
+                        Some(ScopeValue::Type(ty)) if fields.len() == statements.len() => {
+                            let fields = fields
+                                .into_iter()
+                                .map(|(name, value)| {
+                                    (name, self.lower_expr(value.clone(), scope, info))
+                                })
+                                .collect();
+
+                            ExpressionKind::Instantiate(ty, fields)
+                        }
+                        Some(ScopeValue::TypeParameter(_)) => {
+                            self.diagnostics.add(Diagnostic::error(
+                                "cannot instantiate type parameter",
+                                vec![Note::primary(
+                                    function.span,
+                                    "the actual type this represents is not known here",
+                                )],
+                            ));
+
+                            ExpressionKind::Error
+                        }
+                        Some(ScopeValue::BuiltinType(_)) => {
+                            self.diagnostics.add(Diagnostic::error(
+                                "cannot instantiate builtin type",
+                                vec![Note::primary(function.span, "try usng a literal instead")],
+                            ));
+
+                            ExpressionKind::Error
+                        }
+                        _ => ExpressionKind::Call(
+                            Box::new(self.lower_expr(*function, scope, info)),
+                            Box::new(self.lower_expr(*input, scope, info)),
+                        ),
+                    }
+                } else {
+                    ExpressionKind::Call(
+                        Box::new(self.lower_expr(*function, scope, info)),
+                        Box::new(self.lower_expr(*input, scope, info)),
+                    )
+                }
             }
-            parse::ExpressionKind::Function(input, body) => {
+            ast::ExpressionKind::Function(input, body) => {
                 let scope = Scope {
                     used_variables: Some(Default::default()),
                     ..scope.child()
@@ -965,13 +1008,13 @@ impl<L: Loader> Compiler<L> {
                 // Desugar function input pattern matching
                 let input_span = input.span;
                 let initialization = self.lower_statement(
-                    parse::Statement {
+                    ast::Statement {
                         span: input_span,
-                        kind: parse::StatementKind::Assign(
+                        kind: ast::StatementKind::Assign(
                             input,
-                            parse::Expression {
+                            ast::Expression {
                                 span: input_span,
-                                kind: parse::ExpressionKind::FunctionInput,
+                                kind: ast::ExpressionKind::FunctionInput,
                             },
                         ),
                     },
@@ -1004,8 +1047,8 @@ impl<L: Loader> Compiler<L> {
                     captures,
                 )
             }
-            parse::ExpressionKind::When(_, _) => return Expression::error(expr.span), // TODO
-            parse::ExpressionKind::External(namespace, identifier, inputs) => {
+            ast::ExpressionKind::When(_, _) => return Expression::error(expr.span), // TODO
+            ast::ExpressionKind::External(namespace, identifier, inputs) => {
                 let inputs = inputs
                     .into_iter()
                     .map(|expr| self.lower_expr(expr, scope, info))
@@ -1013,13 +1056,13 @@ impl<L: Loader> Compiler<L> {
 
                 ExpressionKind::External(namespace, identifier, inputs)
             }
-            parse::ExpressionKind::Annotate(expr, ty) => ExpressionKind::Annotate(
+            ast::ExpressionKind::Annotate(expr, ty) => ExpressionKind::Annotate(
                 Box::new(self.lower_expr(*expr, scope, info)),
                 self.lower_type_annotation(ty, scope, info),
             ),
-            parse::ExpressionKind::FunctionInput => ExpressionKind::FunctionInput,
-            parse::ExpressionKind::Variable(id) => ExpressionKind::Variable(id),
-            parse::ExpressionKind::Member(expr, name) => {
+            ast::ExpressionKind::FunctionInput => ExpressionKind::FunctionInput,
+            ast::ExpressionKind::Variable(id) => ExpressionKind::Variable(id),
+            ast::ExpressionKind::Member(expr, name) => {
                 ExpressionKind::Member(Box::new(self.lower_expr(*expr, scope, info)), name)
             }
         };
@@ -1030,38 +1073,17 @@ impl<L: Loader> Compiler<L> {
         }
     }
 
-    fn lower_instantiation(
-        &mut self,
-        ty_span: Span,
-        body_span: Span,
-        ty: TypeId,
-        fields: Vec<(InternedString, &parse::Expression)>,
-        scope: &Scope,
-        info: &mut Info,
-    ) -> Expression {
-        let span = Span::join(ty_span, body_span);
-
-        let fields = fields
-            .into_iter()
-            .map(|(name, value)| (name, self.lower_expr(value.clone(), scope, info)))
-            .collect();
-
-        Expression {
-            span,
-            kind: ExpressionKind::Instantiate(ty, fields),
-        }
-    }
-
     fn lower_type_annotation(
         &mut self,
-        ty: parse::TypeAnnotation,
+        ty: ast::TypeAnnotation,
         scope: &Scope,
         info: &mut Info,
     ) -> TypeAnnotation {
         let kind = match ty.kind {
-            parse::TypeAnnotationKind::Placeholder => TypeAnnotationKind::Placeholder,
-            parse::TypeAnnotationKind::Unit => TypeAnnotationKind::Builtin(BuiltinType::Unit),
-            parse::TypeAnnotationKind::Named(name, parameters) => {
+            ast::TypeAnnotationKind::Error => TypeAnnotationKind::Error,
+            ast::TypeAnnotationKind::Placeholder => TypeAnnotationKind::Placeholder,
+            ast::TypeAnnotationKind::Unit => TypeAnnotationKind::Builtin(BuiltinType::Unit),
+            ast::TypeAnnotationKind::Named(name, parameters) => {
                 match scope.get(name, ty.span) {
                     Some(ScopeValue::Type(ty)) => {
                         let parameters = parameters
@@ -1115,7 +1137,7 @@ impl<L: Loader> Compiler<L> {
                     }
                 }
             }
-            parse::TypeAnnotationKind::Function(input, output) => TypeAnnotationKind::Function(
+            ast::TypeAnnotationKind::Function(input, output) => TypeAnnotationKind::Function(
                 Box::new(self.lower_type_annotation(*input, scope, info)),
                 Box::new(self.lower_type_annotation(*output, scope, info)),
             ),
@@ -1196,7 +1218,7 @@ impl<L: Loader> Compiler<L> {
 
     fn with_parameters(
         &mut self,
-        parameters: Vec<parse::TypeParameter>,
+        parameters: Vec<ast::TypeParameter>,
         scope: &Scope,
         info: &mut Info,
     ) -> Vec<TypeParameter> {

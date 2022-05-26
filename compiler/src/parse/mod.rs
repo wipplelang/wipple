@@ -4,45 +4,31 @@ mod span;
 
 pub use grammar::*;
 pub use lexer::*;
+use logos::Lexer;
 pub use span::*;
 
-use crate::{diagnostics::*, Compiler, FilePath, Loader};
+use crate::{helpers::InternedString, Compiler, FilePath, Loader};
 
 impl<L: Loader> Compiler<L> {
-    pub fn parse(&mut self, file: FilePath, code: &str) -> Option<File> {
-        let tokens = lex(code)
-            .into_iter()
-            .map(|(token, span)| (token, Span::new(file, span)))
-            .collect::<Vec<_>>();
+    pub fn parse_v2(&mut self, file: FilePath, code: &str) -> Option<File> {
+        let (shebang, code) = match grammar::parse_shebang(code) {
+            Some((shebang, code)) => (Some(shebang), code),
+            None => (None, code),
+        };
 
-        let result = grammar::file(&tokens, file, code);
+        let mut parser = Parser {
+            lexer: Lexer::new(code).spanned().peekable(),
+            len: code.len(),
+            offset: shebang.map(|s| "#!".len() + s.len()).unwrap_or(0),
+            file,
+            diagnostics: &mut self.diagnostics,
+        };
 
-        match result {
-            Ok(statements) => Some(statements),
-            Err(error) => {
-                let (token, span) = (error.location > 0)
-                    .then(|| error.location)
-                    .and_then(|location| tokens.get(location))
-                    .map(|(token, span)| (Some(*token), *span))
-                    .unwrap_or_else(|| (None, Span::new(file, 0..0)));
-
-                self.diagnostics.add(Diagnostic::error(
-                    "syntax error",
-                    vec![Note::primary(
-                        span,
-                        format!(
-                            "unexpected {}; expected {}",
-                            token
-                                .map(|token| token.to_string())
-                                .as_deref()
-                                .unwrap_or("token"),
-                            error.expected
-                        ),
-                    )],
-                ));
-
-                None
-            }
-        }
+        parser.parse_file().map(|statements| File {
+            path: file,
+            span: parser.file_span(),
+            shebang: shebang.map(InternedString::new),
+            statements,
+        })
     }
 }

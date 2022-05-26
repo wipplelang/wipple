@@ -1,4 +1,3 @@
-pub mod build;
 pub mod compile;
 pub mod diagnostics;
 pub mod helpers;
@@ -37,6 +36,7 @@ impl fmt::Display for FilePath {
 #[derive(Debug)]
 pub struct Compiler<L: Loader> {
     loader: L,
+    #[allow(unused)]
     options: CompilerOptions,
     diagnostics: Diagnostics,
     ids: Ids,
@@ -80,7 +80,7 @@ macro_rules! ids {
 ids!(
     GenericConstantId,
     MonomorphizedConstantId,
-    OperatorId,
+    TemplateId,
     TraitId,
     TypeId,
     TypeParameterId,
