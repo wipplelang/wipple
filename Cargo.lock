@@ -969,6 +969,7 @@ dependencies = [
  "lazy_static",
  "libffi",
  "libloading",
+ "num-traits",
  "rust_decimal",
  "wipple-compiler",
 ]

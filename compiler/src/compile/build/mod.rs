@@ -1,7 +1,11 @@
 #![allow(clippy::type_complexity)]
 
 use crate::{
-    compile::{self, expand, lower, Program},
+    compile::{
+        self,
+        expand::{self, ScopeValues},
+        lower, Program,
+    },
     diagnostics::*,
     parse::Span,
     Compiler, FilePath, Loader,
@@ -33,9 +37,9 @@ impl<L: Loader> Compiler<L> {
             compiler: &mut Compiler<L>,
             path: FilePath,
             source_span: Option<Span>,
-            cache: &RefCell<IndexMap<FilePath, (Rc<lower::File>, Rc<expand::Scope<'static>>)>>,
+            cache: &RefCell<IndexMap<FilePath, (Rc<lower::File>, Rc<ScopeValues>)>>,
             info: &mut expand::Info<L>,
-        ) -> Option<(Rc<lower::File>, Rc<expand::Scope<'static>>)> {
+        ) -> Option<(Rc<lower::File>, Rc<ScopeValues>)> {
             if let Some(cached) = cache.borrow().get(&path) {
                 return Some(cached.clone());
             }

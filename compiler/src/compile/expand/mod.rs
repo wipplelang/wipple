@@ -21,7 +21,6 @@ pub struct File {
     pub path: FilePath,
     pub span: Span,
     pub statements: Vec<Node>,
-    pub exported: HashMap<InternedString, ScopeValue>,
     pub dependencies: Vec<Dependency>,
 }
 
@@ -58,7 +57,7 @@ pub enum NodeKind {
     Text(InternedString),
     Number(Decimal),
     List(Vec<Node>),
-    Block(Vec<Node>, HashMap<InternedString, ScopeValue>),
+    Block(Vec<Node>, ScopeValues),
     Assign(Box<Node>, Box<Node>),
     Template(Vec<InternedString>, Box<Node>),
     Operator(OperatorPrecedence, Vec<InternedString>, Box<Node>),
@@ -77,8 +76,8 @@ impl<L: Loader> Compiler<L> {
         &mut self,
         file: parse::File,
         info: &mut Info<L>,
-        load: impl Fn(&mut Self, FilePath, &mut Info<L>) -> Option<Rc<Scope<'static>>>,
-    ) -> (File, Scope<'static>) {
+        load: impl Fn(&mut Self, FilePath, &mut Info<L>) -> Option<Rc<ScopeValues>>,
+    ) -> (File, ScopeValues) {
         let mut expander = Expander {
             compiler: self,
             info,
@@ -95,10 +94,7 @@ impl<L: Loader> Compiler<L> {
                 (expander.load)(expander.compiler, FilePath::Prelude, expander.info)
                     .expect("failed to load prelude");
 
-            scope
-                .values
-                .borrow_mut()
-                .extend(prelude_scope.values.clone().into_inner());
+            scope.values.borrow_mut().extend((*prelude_scope).clone());
         }
 
         let (statements, exported) = expander.expand_block(file.statements, &scope);
@@ -108,10 +104,9 @@ impl<L: Loader> Compiler<L> {
                 path: file.path,
                 span: file.span,
                 statements,
-                exported,
                 dependencies: expander.dependencies,
             },
-            scope,
+            exported,
         )
     }
 }
@@ -120,14 +115,16 @@ struct Expander<'a, L: Loader> {
     compiler: &'a mut Compiler<L>,
     info: &'a mut Info<L>,
     dependencies: Vec<Dependency>,
-    load: &'a dyn Fn(&mut Compiler<L>, FilePath, &mut Info<L>) -> Option<Rc<Scope<'static>>>,
+    load: &'a dyn Fn(&mut Compiler<L>, FilePath, &mut Info<L>) -> Option<Rc<ScopeValues>>,
 }
 
 #[derive(Debug, Clone, Default)]
 pub struct Scope<'a> {
     parent: Option<&'a Scope<'a>>,
-    values: RefCell<HashMap<InternedString, ScopeValue>>,
+    values: RefCell<ScopeValues>,
 }
+
+pub type ScopeValues = HashMap<InternedString, ScopeValue>;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ScopeValue {
@@ -219,6 +216,7 @@ pub struct Operator {
 pub enum OperatorPrecedence {
     Addition,
     Multiplication,
+    Power,
     Function,
     Where,
     TypeFunction,
@@ -238,6 +236,7 @@ impl OperatorPrecedence {
         match self {
             OperatorPrecedence::Addition => OperatorAssociativity::Left,
             OperatorPrecedence::Multiplication => OperatorAssociativity::Left,
+            OperatorPrecedence::Power => OperatorAssociativity::Right,
             OperatorPrecedence::Function => OperatorAssociativity::Right,
             OperatorPrecedence::Where => OperatorAssociativity::None,
             OperatorPrecedence::TypeFunction => OperatorAssociativity::None,
@@ -287,7 +286,7 @@ impl<L: Loader> Expander<'_, L> {
         &mut self,
         statements: Vec<parse::Statement>,
         scope: &Scope,
-    ) -> (Vec<Node>, HashMap<InternedString, ScopeValue>) {
+    ) -> (Vec<Node>, ScopeValues) {
         let scope = scope.child();
 
         let statements = statements

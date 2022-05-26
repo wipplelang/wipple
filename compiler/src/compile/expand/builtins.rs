@@ -293,6 +293,7 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
                 NodeKind::Name(name) => match name.as_str() {
                     "addition" => OperatorPrecedence::Addition,
                     "multiplication" => OperatorPrecedence::Multiplication,
+                    "power" => OperatorPrecedence::Power,
                     "function" => OperatorPrecedence::Function,
                     _ => {
                         expander.compiler.diagnostics.add(Diagnostic::error(
@@ -382,13 +383,10 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
                 }
             };
 
-            if let Some(imported_scope) =
+            if let Some(exported) =
                 (expander.load)(expander.compiler, FilePath::Path(path), expander.info)
             {
-                scope
-                    .values
-                    .borrow_mut()
-                    .extend(imported_scope.values.clone().into_inner());
+                scope.values.borrow_mut().extend((*exported).clone());
             }
 
             Node {

@@ -1,7 +1,13 @@
 code: |
-    show (Add 1 2)
+    show (1 + 2)
+    show (4 - 1)
+    show (3 * 5)
+    show (10 / 4)
 
 output: |
     3
+    3
+    15
+    2.50
 
 diagnostics: |

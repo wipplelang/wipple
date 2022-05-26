@@ -1,6 +1,7 @@
 use crate::*;
 use itertools::Itertools;
 use lazy_static::lazy_static;
+use num_traits::pow::Pow;
 use std::collections::HashMap;
 
 pub(crate) fn call(
@@ -49,7 +50,11 @@ lazy_static! {
         builtins! {
             "show" => builtin_show,
             "number-to-text" => builtin_number_to_text,
-            "add-numbers" => builtin_add_numbers,
+            "add" => builtin_add,
+            "subtract" => builtin_subtract,
+            "multiply" => builtin_multiply,
+            "divide" => builtin_divide,
+            "power" => builtin_power,
         }
     };
 }
@@ -91,10 +96,40 @@ fn builtin_number_to_text(
     Ok(Rc::new(Value::Text(number.to_string())))
 }
 
-fn builtin_add_numbers(
+macro_rules! builtin_math {
+    ($($f:ident => $op:tt),* $(,)?) => {
+        $(
+            fn $f(
+                _: &Interpreter,
+                (lhs, rhs): (Rc<Value>, Rc<Value>),
+                _: &Info,
+            ) -> Result<Rc<Value>, Diverge> {
+                let lhs = match lhs.as_ref() {
+                    Value::Number(number) => number,
+                    _ => unreachable!(),
+                };
+
+                let rhs = match rhs.as_ref() {
+                    Value::Number(number) => number,
+                    _ => unreachable!(),
+                };
+
+                Ok(Rc::new(Value::Number(lhs $op rhs)))
+            }
+        )*
+    };
+}
+
+builtin_math!(
+    builtin_add => +,
+    builtin_subtract => -,
+    builtin_multiply => *,
+);
+
+fn builtin_divide(
     _: &Interpreter,
     (lhs, rhs): (Rc<Value>, Rc<Value>),
-    _: &Info,
+    info: &Info,
 ) -> Result<Rc<Value>, Diverge> {
     let lhs = match lhs.as_ref() {
         Value::Number(number) => number,
@@ -106,5 +141,39 @@ fn builtin_add_numbers(
         _ => unreachable!(),
     };
 
-    Ok(Rc::new(Value::Number(lhs + rhs)))
+    if rhs.is_zero() {
+        return Err(Diverge::new(
+            info.stack.clone(),
+            DivergeKind::Error(String::from("division by zero is undefined")),
+        ));
+    }
+
+    Ok(Rc::new(Value::Number(lhs / rhs)))
+}
+
+fn builtin_power(
+    _: &Interpreter,
+    (lhs, rhs): (Rc<Value>, Rc<Value>),
+    info: &Info,
+) -> Result<Rc<Value>, Diverge> {
+    let lhs = match lhs.as_ref() {
+        Value::Number(number) => number,
+        _ => unreachable!(),
+    };
+
+    let rhs = match rhs.as_ref() {
+        Value::Number(number) => number,
+        _ => unreachable!(),
+    };
+
+    if lhs.is_zero() && rhs.is_zero() {
+        return Err(Diverge::new(
+            info.stack.clone(),
+            DivergeKind::Error(String::from(
+                "raising zero to the power of zero is undefined",
+            )),
+        ));
+    }
+
+    Ok(Rc::new(Value::Number(lhs.pow(*rhs))))
 }

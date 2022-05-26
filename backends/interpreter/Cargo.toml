@@ -6,7 +6,8 @@ edition = "2021"
 [dependencies]
 itertools = "0.10"
 lazy_static = "1"
-rust_decimal = "1"
+num-traits = "0.2"
+rust_decimal = { version = "1", features = ["maths"] }
 wipple-compiler = { path = "../../compiler" }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
