@@ -17,6 +17,12 @@ instance Show Number : n -> external "builtin" "number-to-text" n
 show :: S where (Show S) => S -> ()
 show : x -> external "builtin" "show" (Show x)
 
+-- Utilities --
+
+Default : A => trait A
+instance Default Number : 0
+instance Default Text : ""
+
 -- Math --
 
 Add : Left Right Sum => trait (Left -> Right -> Sum)

@@ -1,0 +1,23 @@
+code: |
+    Grade : type {
+        A
+        B
+        C
+        D
+        F
+    }
+
+    Grade A
+
+
+    Maybe-Number : type {
+        Some Number
+        None
+    }
+
+    Maybe-Number Some 42
+    Maybe-Number None
+
+output: |
+
+diagnostics: |
