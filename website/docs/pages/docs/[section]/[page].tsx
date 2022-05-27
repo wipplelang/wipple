@@ -51,10 +51,6 @@ const Page: NextPage<Props> = (props) => {
                 onClose={() => setDrawerOpen(false)}
             >
                 <div className="w-72 h-full p-5">
-                    <div className="mb-6">
-                        <a href="/">Home</a>
-                    </div>
-
                     {sections.map((section) => (
                         <div key={section.path} className="mb-6">
                             <h2 className="text-sm uppercase text-gray-500">{section.title}</h2>
@@ -64,7 +60,9 @@ const Page: NextPage<Props> = (props) => {
                                     <li
                                         key={page.path}
                                         className={`mt-2 ${
-                                            page.path == props.path ? "font-bold" : ""
+                                            path.parse(page.path).base == props.path
+                                                ? "font-bold"
+                                                : ""
                                         }`}
                                     >
                                         <a href={`/docs/${page.path}`}>{page.title}</a>
@@ -119,8 +117,13 @@ const Page: NextPage<Props> = (props) => {
                     <div className="flex-1">
                         {props.previous && (
                             <a href={`/docs/${props.previous.path}`}>
-                                <div className="p-4 border-2 rounded-md border-sky-100 text-sky-500">
-                                    <ArrowBackIcon className="block -ml-1 mb-2" />
+                                <div
+                                    className="p-4 rounded-md border-sky-100 text-sky-500"
+                                    style={{ borderWidth: 1 }}
+                                >
+                                    <div>
+                                        <ArrowBackIcon className="-ml-1 mb-2" />
+                                    </div>
                                     {props.previous.title}
                                 </div>
                             </a>
@@ -130,8 +133,13 @@ const Page: NextPage<Props> = (props) => {
                     <div className="flex-1">
                         {props.next && (
                             <a href={`/docs/${props.next.path}`}>
-                                <div className="text-right p-4 border-2 rounded-md border-sky-100 text-sky-500">
-                                    <ArrowForwardIcon className="block ml-auto -mr-1 mb-2" />
+                                <div
+                                    className="text-right p-4 rounded-md border-sky-100 text-sky-500"
+                                    style={{ borderWidth: 1 }}
+                                >
+                                    <div className="ml-auto">
+                                        <ArrowForwardIcon className="-mr-1 mb-2" />
+                                    </div>
                                     {props.next.title}
                                 </div>
                             </a>

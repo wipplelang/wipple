@@ -26,18 +26,23 @@ const CodePreview = (props: Props) => {
 
     return (
         <div>
-            <pre className={`${props.children.props.className} mb-0`}>
+            <pre
+                className={`${props.children.props.className} mb-0 bg-inherit border-gray-200`}
+                style={{ borderWidth: 1 }}
+            >
                 <code>{code}</code>
             </pre>
 
-            <div className="border-gray-50">
-                <p className="mx-3 my-0 text-right">
-                    <a href={playgroundLink} className="no-underline text-gray-600 text-sm">
-                        <PlayArrowIcon className="h-5 -mt-0.5" />
-                        Run in Playground
-                    </a>
-                </p>
-            </div>
+            <p className="mx-3 my-0 text-right">
+                <a
+                    target="_blank"
+                    href={playgroundLink}
+                    className="no-underline text-gray-600 text-sm"
+                >
+                    <PlayArrowIcon className="h-5 -mt-0.5" />
+                    Run in Playground
+                </a>
+            </p>
         </div>
     );
 };
