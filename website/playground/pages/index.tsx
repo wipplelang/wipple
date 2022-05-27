@@ -307,12 +307,15 @@ const Playground = () => {
                     </a>
 
                     <div className="flex gap-4 text-gray-500">
-                        <a target="_blank" href="https://docs.wipple.gramer.dev/learn">
+                        <a target="_blank" href="https://wipple.gramer.dev">
                             Learn
                         </a>
 
-                        <a target="_blank" href="https://docs.wipple.gramer.dev">
-                            Docs
+                        <a
+                            target="_blank"
+                            href="https://wipple.gramer.dev/docs/introduction/00-welcome"
+                        >
+                            Documentation
                         </a>
 
                         <a target="_blank" href="https://github.com/wipplelang/wipple">

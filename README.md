@@ -20,13 +20,9 @@
   </a>
 </p>
 
-## Install
-
-Installation instructions available at [wipple.gramer.dev](https://wipple.gramer.dev).
-
 ## Documentation
 
-Documentation available at [docs.wipple.gramer.dev](https://docs.wipple.gramer.dev).
+Documentation is available at [wipple.gramer.dev](https://wipple.gramer.dev).
 
 ## Contributing
 

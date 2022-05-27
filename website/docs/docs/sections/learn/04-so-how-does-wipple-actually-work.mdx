@@ -1,0 +1,54 @@
+Now that we're familiar with the Wipple Playground, we can start learning how to write some "real" Wipple code. Keep the playground open so you can follow along when you see any code examples!
+
+## So how does Wipple actually work?
+
+Imagine you're having a conversation with another person. In order to understand one another, you both have to be speaking the same language. The job of a language is to provide rules on what words you can use, what they mean, and what happens when they are used together in different ways. "I love Wipple" is a valid sentence in English, but [Jabberwocky](https://www.poetryfoundation.org/poems/42916/jabberwocky) is nonsense!
+
+Wipple is really two things — the **syntax**, which provides the rules on what's valid to type in, and the **semantics**, which provides the rules on what actually happens when you run your program. Every piece of valid syntax has its own semantics.
+
+Let's go back to the playground and try out a simple example:
+
+```wipple
+sum : 1 + 2
+show sum
+```
+
+There are a couple of things happening here. First the text you type is **parsed** into a format the computer can understand (kind of like how when we hear the world "cookie", we think about the smell of fresh cookies baking in the oven). The format looks something like this:
+
+-   The name `sum`
+-   The `:` symbol
+-   The number `1`
+-   The `+` symbol
+-   The number `2`
+-   and so on.
+
+These individual items are called **tokens**. The computer then uses these tokens to build up a list of **instructions** to execute — for example, `1 + 2` is converted to an "add" instruction. Pretty cool!
+
+Wait a moment, how does the computer know that `1 + 2` means "add"? Well, it contains a big table of all the names and symbols in the program and what they mean. It works just like a dictionary, where each word has a definition.
+
+<table>
+    <tbody>
+        <tr>
+            <td>**Name**</td>
+            <td>**Meaning**</td>
+        </tr>
+        <tr>
+            <td>`sum`</td>
+            <td>The result of `1 + 2`</td>
+        </tr>
+        <tr>
+            <td>`+`</td>
+            <td>Code to add two numbers</td>
+        </tr>
+        <tr>
+            <td>`show`</td>
+            <td>Code to display things on the screen</td>
+        </tr>
+    </tbody>
+</table>
+
+That's why referring to any old name doesn't work in Wipple — you have to use a name that's in the table.
+
+There's one more special name in Wipple — the `:` symbol. It adds new entries into the table, allowing you to define your own names!
+
+Now that we have a better understanding of what's actually going on when you write Wipple code, we can start looking at one of the foundational Wipple concepts: the function. Take a quick break, and then click the arrow to go to the next page!

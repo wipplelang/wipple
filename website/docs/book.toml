@@ -1,9 +1,0 @@
-[book]
-authors = ["Wilson Gramer"]
-language = "en"
-multilingual = false
-src = "src"
-title = "Wipple Documentation"
-
-[output.html]
-additional-css = ["theme/custom.css"]

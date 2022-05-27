@@ -1,0 +1,51 @@
+- title: Introduction
+  path: introduction
+  pages:
+    - title: Welcome to Wipple!
+      path: introduction/00-welcome
+
+- title: Learn Wipple
+  path: learn
+  pages:
+    - title: The Wipple Playground
+      path: learn/00-playground
+    - title: Math
+      path: learn/01-math
+    - title: Variables
+      path: learn/02-variables
+    - title: Text
+      path: learn/03-text
+    - title: So how does Wipple actually work?
+      path: learn/04-so-how-does-wipple-actually-work
+    - title: Functions
+      path: learn/05-functions
+
+- title: Quick Start
+  path: quick-start
+  pages:
+    - title: For JavaScript developers
+      path: quick-start/00-for-javascript-developers
+
+- title: Reference
+  path: reference
+  pages:
+    - title: Syntax
+      path: reference/00-syntax
+    - title: Variables
+      path: reference/01-variables
+    - title: Patterns and logic
+      path: reference/02-patterns-and-logic
+    - title: Functions
+      path: reference/03-functions
+    - title: Loops
+      path: reference/04-loops
+    - title: Types
+      path: reference/05-types
+    - title: Traits
+      path: reference/06-traits
+    - title: Quoting
+      path: reference/07-quoting
+    - title: Templates
+      path: reference/08-templates
+    - title: Naming conventions
+      path: reference/09-naming-conventions
