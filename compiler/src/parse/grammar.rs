@@ -29,8 +29,8 @@ pub enum ExprKind {
     Name(InternedString),
     Text(InternedString),
     Number(Decimal),
-    Quote(Box<Expr>),
     List(Vec<ListLine>),
+    ListLiteral(Vec<ListLine>),
     Block(Vec<Statement>),
 }
 
@@ -234,8 +234,8 @@ impl<'src> Parser<'_, 'src> {
             try_parse_name,
             try_parse_text,
             try_parse_number,
-            try_parse_quote,
             try_parse_list,
+            try_parse_list_literal,
             try_parse_block,
         )
     }
@@ -330,26 +330,6 @@ impl<'src> Parser<'_, 'src> {
         }
     }
 
-    pub fn try_parse_quote(&mut self) -> Result<Expr, ParseError> {
-        let (span, token) = self.peek();
-
-        match token {
-            Some(Token::Quote) => {
-                self.consume();
-
-                match self.parse_expr() {
-                    Some(expr) => Ok(Expr::new(
-                        span.with_end(expr.span.end),
-                        ExprKind::Quote(Box::new(expr)),
-                    )),
-                    None => Err(ParseError::InvalidExpr),
-                }
-            }
-            Some(_) => Err(ParseError::WrongTokenType),
-            None => Err(ParseError::EndOfFile),
-        }
-    }
-
     pub fn try_parse_list(&mut self) -> Result<Expr, ParseError> {
         let (span, token) = self.peek();
 
@@ -361,6 +341,27 @@ impl<'src> Parser<'_, 'src> {
                     Ok(Expr::new(
                         span.with_end(end_span.end),
                         ExprKind::List(lines),
+                    ))
+                } else {
+                    Err(ParseError::InvalidExpr)
+                }
+            }
+            Some(_) => Err(ParseError::WrongTokenType),
+            None => Err(ParseError::EndOfFile),
+        }
+    }
+
+    pub fn try_parse_list_literal(&mut self) -> Result<Expr, ParseError> {
+        let (span, token) = self.peek();
+
+        match token {
+            Some(Token::QuotedLeftParenthesis) => {
+                self.consume();
+
+                if let Some((lines, end_span)) = self.parse_list_contents(Token::RightParenthesis) {
+                    Ok(Expr::new(
+                        span.with_end(end_span.end),
+                        ExprKind::ListLiteral(lines),
                     ))
                 } else {
                     Err(ParseError::InvalidExpr)

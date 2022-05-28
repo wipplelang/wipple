@@ -962,7 +962,7 @@ impl<'a, L: Loader> Typechecker<'a, L> {
 
                 UnresolvedExpression {
                     span: expr.span,
-                    ty,
+                    ty: UnresolvedType::Builtin(BuiltinType::List(Box::new(ty))),
                     kind: UnresolvedExpressionKind::ListLiteral(items),
                 }
             }

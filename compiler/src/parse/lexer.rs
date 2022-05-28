@@ -3,11 +3,11 @@ use std::fmt;
 
 #[derive(Logos, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Token<'src> {
-    #[token("'")]
-    Quote,
-
     #[token("(")]
     LeftParenthesis,
+
+    #[token("'(")]
+    QuotedLeftParenthesis,
 
     #[token(")")]
     RightParenthesis,
@@ -45,7 +45,7 @@ pub enum Token<'src> {
     #[regex(r#"--.*"#, |lex| &lex.slice()[2..], priority = 2)]
     Comment(&'src str),
 
-    #[regex(r#"[^\n\t \(\)\[\]\{\}'"]+"#, |lex| lex.slice())]
+    #[regex(r#"[^\n\t \(\)\[\]\{\}"]+"#, |lex| lex.slice())]
     Name(&'src str),
 
     #[regex(r#""[^"\\]*(?s:\\.[^"\\]*)*""#, |lex| &lex.slice()[1..(lex.slice().len() - 1)])]
@@ -61,8 +61,8 @@ pub enum Token<'src> {
 impl<'src> fmt::Display for Token<'src> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Token::Quote => write!(f, "'"),
             Token::LeftParenthesis => write!(f, "`(`"),
+            Token::QuotedLeftParenthesis => write!(f, "`'(`"),
             Token::RightParenthesis => write!(f, "`)`"),
             Token::LeftFileBracket => write!(f, "`[:`"),
             Token::RightFileBracket => write!(f, "`:]`"),

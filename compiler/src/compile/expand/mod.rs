@@ -268,12 +268,20 @@ impl<L: Loader> Expander<'_, L> {
                 span: expr.span,
                 kind: NodeKind::Number(number),
             },
-            parse::ExprKind::Quote(_) => todo!("literals"),
             parse::ExprKind::List(list) => self.expand_list(
                 expr.span,
                 list.into_iter().flat_map(|line| line.exprs).collect(),
                 scope,
             ),
+            parse::ExprKind::ListLiteral(list) => Node {
+                span: expr.span,
+                kind: NodeKind::ListLiteral(
+                    list.into_iter()
+                        .flat_map(|line| line.exprs)
+                        .map(|expr| self.expand_expr(expr, scope))
+                        .collect(),
+                ),
+            },
             parse::ExprKind::Block(statements) => {
                 let (statements, scope) = self.expand_block(statements, scope);
 

@@ -1,0 +1,17 @@
+code: |
+    list :: List Number
+    list : '(1 2 3)
+
+    -- dict :: Dictionary Text Number
+    -- dict : #(
+    --     "one" 1
+    --     "two" 2
+    --     "three" 3
+    -- )
+
+    -- set :: Set Number
+    -- set : $(1 2 3)
+
+output: |
+
+diagnostics: |

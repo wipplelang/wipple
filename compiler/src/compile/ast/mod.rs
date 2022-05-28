@@ -579,6 +579,25 @@ impl<L: Loader> Compiler<L> {
                     Box::new(self.build_type_annotation(*input)),
                     Box::new(self.build_type_annotation(*output)),
                 ),
+                NodeKind::List(nodes) => {
+                    let mut nodes = nodes.into_iter();
+                    let ty = nodes.next().unwrap();
+
+                    match ty.kind {
+                        NodeKind::Name(name) => TypeAnnotationKind::Named(
+                            name,
+                            nodes.map(|node| self.build_type_annotation(node)).collect(),
+                        ),
+                        _ => {
+                            self.diagnostics.add(Diagnostic::error(
+                                "expected type",
+                                vec![Note::primary(ty.span, "this is not a type")],
+                            ));
+
+                            TypeAnnotationKind::Error
+                        }
+                    }
+                }
                 _ => {
                     self.diagnostics.add(Diagnostic::error(
                         "expected type",
