@@ -32,7 +32,7 @@ fn format_type_with(
                     .chain(params.into_iter().map(|param| {
                         format!(
                             " {}",
-                            format_type(param, type_names, param_names, false, false)
+                            format_type(param, type_names, param_names, true, false)
                         )
                     }))
                     .collect::<String>();
@@ -48,7 +48,7 @@ fn format_type_with(
                 BuiltinType::Text => String::from("Text"),
                 BuiltinType::Number => String::from("Number"),
                 BuiltinType::List(ty) => {
-                    let ty = format_type(*ty, type_names, param_names, false, false);
+                    let ty = format_type(*ty, type_names, param_names, true, false);
 
                     if is_top_level {
                         format!("List {}", ty)

@@ -1,0 +1,31 @@
+code: |
+    Idle : type
+    Hovering : type
+
+    Drone : State => type
+
+
+    my-drone :: Drone Idle
+    my-drone : Drone
+
+
+    take-off :: Drone Idle -> Drone Hovering
+    take-off : just Drone
+
+    land :: Drone Hovering -> Drone Idle
+    land : just Drone
+
+
+    my-drone . take-off . land -- works!
+
+    my-drone . land -- cannot land because drone is already idle
+
+
+output: |
+
+diagnostics: |
+    error: mismatched types
+      --> test:20:1
+       |
+    20 | my-drone . land -- cannot land because drone is already idle
+       | ^^^^^^^^ expected `Drone Hovering`, but found `Drone Idle`
