@@ -19,6 +19,10 @@
       path: 01-learn/04-so-how-does-wipple-actually-work
     - title: Functions
       path: 01-learn/05-functions
+    - title: Types
+      path: 01-learn/06-types
+    - title: Type functions
+      path: 01-learn/07-type-functions
 
 - title: Quick Start
   path: 02-quick-start

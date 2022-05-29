@@ -1,0 +1,54 @@
+## Types
+
+Wipple has a powerful system to detect bugs in your code, called the **type system**. The type system assigns every value in your program a **type**, which represents the "kind of thing" each value is.
+
+Just like `:` is used to assign a name a value, the `::` symbol (pronounced _"is a"_) is used to assign a value a type. Here's a simple example:
+
+```wipple
+42 :: Number -- "42 is a Number"
+"hello" :: Text -- "'hello' is a Text"
+```
+
+Let's see what happens if we make a mistake:
+
+```wipple
+42 :: Text
+```
+
+You should see a red squiggle — hover over it and you should see `expected Text, but found Number`. Why? Well, we've told Wipple that `42` is supposed to be `Text`, but Wipple determined that `42` is a `Number`. Since these types don't match, Wipple issues an error.
+
+We can extend this idea to functions, too!
+
+```wipple
+increment : (a -> a + 1) :: (Number -> Number)
+```
+
+Now watch what happens if we make a mistake:
+
+```wipple
+increment "2"
+```
+
+Wipple catches the bug and tells us that we're supposed to provide a `Number`!
+
+What's the type of a function like `add` that accepts two inputs? Remember that `add` is really two functions, each accepting an input. This means `add` has the type `Number -> (Number -> Number)`!
+
+To make it a bit clearer, you can write the name of the function on its own line above the variable, omitting the parentheses:
+
+```wipple
+add :: Number -> Number -> Number
+add : a -> b -> a + b
+```
+
+Don't worry if this all sounds complicated — you usually don't even have to write the type of your variables! Wipple uses **type inference** to figure out what the types are for you. For example, let's say we have a function named `greet`:
+
+```wipple
+greet : name -> format "Hello, _!" name
+greeting : greet "world"
+```
+
+Try hovering over `greeting` — you should see `greeting :: Text`! Wipple was able to determine that `greet` has type `Text -> Text` based on its usage.
+
+One last note — what's the type of `show`? `show` accepts `Text`, sure, but it doesn't produce any result. Wipple has a special type for functions that produce no result: the empty list `()`. So the type of `show` is `show :: Text -> ()`! If you aren't convinced, try assigning `show "hello"` to a variable and see what the type of the variable is.
+
+On the next page, we'll take an even deeper dive into types!

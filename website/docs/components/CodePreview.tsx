@@ -33,16 +33,18 @@ const CodePreview = (props: Props) => {
                 <code>{code}</code>
             </pre>
 
-            <p className="mx-3 my-0 text-right">
-                <a
-                    target="_blank"
-                    href={playgroundLink}
-                    className="no-underline text-gray-600 text-sm"
-                >
-                    <PlayArrowIcon className="h-5 -mt-0.5" />
-                    Run in Playground
-                </a>
-            </p>
+            {props.children.props.className.includes("wipple") && (
+                <p className="mx-3 my-0 text-right">
+                    <a
+                        target="_blank"
+                        href={playgroundLink}
+                        className="no-underline text-gray-600 text-sm"
+                    >
+                        <PlayArrowIcon className="h-5 -mt-0.5" />
+                        Run in Playground
+                    </a>
+                </p>
+            )}
         </div>
     );
 };
