@@ -14,7 +14,7 @@ Show : A => trait (A -> Text)
 instance Show Text : it
 instance Show Number : n -> external "builtin" "number-to-text" n
 
-show :: S where (Show S) => S -> ()
+show :: A where (Show A) => A -> ()
 show : x -> external "builtin" "show" (Show x)
 
 -- Utilities --

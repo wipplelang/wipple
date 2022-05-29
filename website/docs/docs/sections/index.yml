@@ -23,6 +23,10 @@
       path: 01-learn/06-types
     - title: Type functions
       path: 01-learn/07-type-functions
+    - title: Structures
+      path: 01-learn/08-structures
+    - title: Traits
+      path: 01-learn/09-traits
 
 - title: Quick Start
   path: 02-quick-start
