@@ -71,7 +71,7 @@ pub trait CopyDeclaration {
 }
 
 impl CopyDeclaration for Declaration<TypeId, Type> {
-    const COPY: bool = false;
+    const COPY: bool = true;
 }
 
 impl CopyDeclaration for Declaration<TypeParameterId, ()> {
@@ -108,7 +108,14 @@ where
 }
 
 #[derive(Debug, Clone)]
-pub enum Type {
+pub struct Type {
+    pub kind: TypeKind,
+    pub params: Vec<TypeParameter>,
+    pub bounds: Vec<Bound>,
+}
+
+#[derive(Debug, Clone)]
+pub enum TypeKind {
     Marker,
     Alias(TypeAnnotation),
     Structure(Vec<TypeField>, HashMap<InternedString, usize>),
@@ -451,29 +458,92 @@ impl<L: Loader> Compiler<L> {
                     return vec![Expression::error(statement.span)];
                 }
 
-                if !ty.parameters.is_empty() {
-                    self.diagnostics.add(Diagnostic::error(
-                        "type parameters are currently unsupported",
-                        vec![Note::primary(
-                            Span::join(
-                                ty.parameters.first().unwrap().span,
-                                ty.parameters.last().unwrap().span,
-                            ),
-                            "try removing these parameters",
-                        )],
-                    ));
-
-                    return vec![Expression::error(statement.span)];
-                }
-
                 let id = self.new_type_id();
                 scope.values.borrow_mut().insert(name, ScopeValue::Type(id));
 
+                let params = ty
+                    .parameters
+                    .into_iter()
+                    .map(|param| {
+                        let id = self.new_type_parameter_id();
+
+                        scope
+                            .values
+                            .borrow_mut()
+                            .insert(param.name, ScopeValue::TypeParameter(id));
+
+                        info.declarations.type_parameters.insert(
+                            id,
+                            Declaration::Local(DeclarationKind {
+                                name: param.name,
+                                span: param.span,
+                                value: (),
+                            }),
+                        );
+
+                        TypeParameter {
+                            span: param.span,
+                            name: param.name,
+                            id,
+                        }
+                    })
+                    .collect();
+
+                let bounds = ty
+                    .bounds
+                    .into_iter()
+                    .flat_map(|bound| {
+                        let tr = match scope.get(bound.trait_name, bound.trait_span) {
+                            Some(value) => match value {
+                                ScopeValue::Trait(tr) => tr,
+                                _ => {
+                                    self.diagnostics.add(Diagnostic::error(
+                                        format!("`{}` is not a trait", bound.trait_name),
+                                        vec![Note::primary(
+                                            bound.trait_span,
+                                            "expected a trait here",
+                                        )],
+                                    ));
+
+                                    return None;
+                                }
+                            },
+                            None => {
+                                self.diagnostics.add(Diagnostic::error(
+                                    format!("cannot find `{}`", bound.trait_name),
+                                    vec![Note::primary(
+                                        bound.trait_span,
+                                        "this name is not defined",
+                                    )],
+                                ));
+
+                                return None;
+                            }
+                        };
+
+                        Some(Bound {
+                            span,
+                            tr,
+                            parameters: bound
+                                .parameters
+                                .into_iter()
+                                .map(|param| self.lower_type_annotation(param, scope, info))
+                                .collect(),
+                        })
+                    })
+                    .collect();
+
                 let ty = match ty.kind {
-                    ast::TypeKind::Marker => Type::Marker,
-                    ast::TypeKind::Alias(alias) => {
-                        Type::Alias(self.lower_type_annotation(alias, scope, info))
-                    }
+                    ast::TypeKind::Marker => Type {
+                        kind: TypeKind::Marker,
+                        params,
+                        bounds,
+                    },
+                    ast::TypeKind::Alias(alias) => Type {
+                        kind: TypeKind::Alias(self.lower_type_annotation(alias, scope, info)),
+                        params,
+                        bounds,
+                    },
                     ast::TypeKind::Structure(fields) => {
                         let mut field_tys = Vec::with_capacity(fields.len());
                         let mut field_names = HashMap::with_capacity(fields.len());
@@ -485,7 +555,11 @@ impl<L: Loader> Compiler<L> {
                             field_names.insert(field.name, index);
                         }
 
-                        Type::Structure(field_tys, field_names)
+                        Type {
+                            kind: TypeKind::Structure(field_tys, field_names),
+                            params,
+                            bounds,
+                        }
                     }
                     ast::TypeKind::Enumeration(variants) => {
                         let mut variant_tys = Vec::with_capacity(variants.len());
@@ -502,7 +576,11 @@ impl<L: Loader> Compiler<L> {
                             variant_names.insert(variant.name, index);
                         }
 
-                        Type::Enumeration(variant_tys, variant_names)
+                        Type {
+                            kind: TypeKind::Enumeration(variant_tys, variant_names),
+                            params,
+                            bounds,
+                        }
                     }
                 };
 
@@ -1187,9 +1265,9 @@ impl<L: Loader> Compiler<L> {
 
     fn resolve_type(&mut self, span: Span, id: TypeId, info: &mut Info) -> Option<ExpressionKind> {
         match info.declarations.types.get(&id).unwrap() {
-            Declaration::Local(decl) | Declaration::Builtin(decl) => match decl.value {
-                Type::Marker => Some(ExpressionKind::Marker(id)),
-                Type::Alias(TypeAnnotation {
+            Declaration::Local(decl) | Declaration::Builtin(decl) => match decl.value.kind {
+                TypeKind::Marker => Some(ExpressionKind::Marker(id)),
+                TypeKind::Alias(TypeAnnotation {
                     kind: TypeAnnotationKind::Named(alias_id, _),
                     ..
                 }) => self.resolve_type(span, alias_id, info),

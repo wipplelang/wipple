@@ -41,8 +41,8 @@ impl From<Type> for UnresolvedType {
     fn from(ty: Type) -> Self {
         match ty {
             Type::Parameter(param) => UnresolvedType::Parameter(param),
-            Type::Named(name, params) => {
-                UnresolvedType::Named(name, params.into_iter().map(|param| param.into()).collect())
+            Type::Named(id, params) => {
+                UnresolvedType::Named(id, params.into_iter().map(|param| param.into()).collect())
             }
             Type::Function(input, output) => {
                 UnresolvedType::Function(Box::new((*input).into()), Box::new((*output).into()))
@@ -166,8 +166,19 @@ impl Context {
                 UnresolvedType::Named(expected_id, expected_params),
             ) => {
                 if actual_id == expected_id {
-                    for (actual, expected) in actual_params.into_iter().zip(expected_params) {
-                        self.unify_internal(actual, expected, generic)?;
+                    for (actual, expected) in actual_params.iter().zip(&expected_params) {
+                        if let Err(error) =
+                            self.unify_internal(actual.clone(), expected.clone(), generic)
+                        {
+                            return Err(if let TypeError::Mismatch(_, _) = error {
+                                TypeError::Mismatch(
+                                    UnresolvedType::Named(actual_id, actual_params),
+                                    UnresolvedType::Named(expected_id, expected_params),
+                                )
+                            } else {
+                                error
+                            });
+                        }
                     }
 
                     Ok(())
@@ -182,13 +193,33 @@ impl Context {
                 UnresolvedType::Function(actual_input, actual_output),
                 UnresolvedType::Function(expected_input, expected_output),
             ) => {
-                self.unify_internal((*actual_input).clone(), (*expected_input).clone(), generic)?;
+                if let Err(error) =
+                    self.unify_internal((*actual_input).clone(), (*expected_input).clone(), generic)
+                {
+                    return Err(if let TypeError::Mismatch(_, _) = error {
+                        TypeError::Mismatch(
+                            UnresolvedType::Function(actual_input, actual_output),
+                            UnresolvedType::Function(expected_input, expected_output),
+                        )
+                    } else {
+                        error
+                    });
+                }
 
-                self.unify_internal(
+                if let Err(error) = self.unify_internal(
                     (*actual_output).clone(),
                     (*expected_output).clone(),
                     generic,
-                )?;
+                ) {
+                    return Err(if let TypeError::Mismatch(_, _) = error {
+                        TypeError::Mismatch(
+                            UnresolvedType::Function(actual_input, actual_output),
+                            UnresolvedType::Function(expected_input, expected_output),
+                        )
+                    } else {
+                        error
+                    });
+                }
 
                 Ok(())
             }
@@ -200,7 +231,22 @@ impl Context {
                 (BuiltinType::Text, BuiltinType::Text) => Ok(()),
                 (BuiltinType::Number, BuiltinType::Number) => Ok(()),
                 (BuiltinType::List(actual_element), BuiltinType::List(expected_element)) => {
-                    self.unify_internal(*actual_element, *expected_element, generic)
+                    if let Err(error) = self.unify_internal(
+                        (*actual_element).clone(),
+                        (*expected_element).clone(),
+                        generic,
+                    ) {
+                        return Err(if let TypeError::Mismatch(_, _) = error {
+                            TypeError::Mismatch(
+                                UnresolvedType::Builtin(BuiltinType::List(actual_element)),
+                                UnresolvedType::Builtin(BuiltinType::List(expected_element)),
+                            )
+                        } else {
+                            error
+                        });
+                    }
+
+                    Ok(())
                 }
                 (actual_builtin, expected_builtin) => Err(TypeError::Mismatch(
                     UnresolvedType::Builtin(actual_builtin),
@@ -225,6 +271,7 @@ impl UnresolvedType {
         match self {
             UnresolvedType::Variable(v) => v == var,
             UnresolvedType::Function(input, output) => input.contains(var) || output.contains(var),
+            UnresolvedType::Named(_, params) => params.iter().any(|param| param.contains(var)),
             _ => false,
         }
     }
@@ -235,6 +282,7 @@ impl UnresolvedType {
                 input.contains_error() || output.contains_error()
             }
             UnresolvedType::Bottom(BottomTypeReason::Error) => true,
+            UnresolvedType::Named(_, params) => params.iter().any(|param| param.contains_error()),
             _ => false,
         }
     }
@@ -250,6 +298,11 @@ impl UnresolvedType {
             UnresolvedType::Function(input, output) => {
                 input.apply(ctx);
                 output.apply(ctx);
+            }
+            UnresolvedType::Named(_, params) => {
+                for param in params {
+                    param.apply(ctx);
+                }
             }
             _ => {}
         }
@@ -267,6 +320,11 @@ impl UnresolvedType {
                 input.instantiate_with(substitutions);
                 output.instantiate_with(substitutions);
             }
+            UnresolvedType::Named(_, params) => {
+                for param in params {
+                    param.instantiate_with(substitutions);
+                }
+            }
             _ => {}
         }
     }
@@ -279,6 +337,7 @@ impl UnresolvedType {
                 vars.extend(output.vars());
                 vars
             }
+            UnresolvedType::Named(_, params) => params.iter().flat_map(|ty| ty.vars()).collect(),
             _ => BTreeSet::new(),
         }
     }
@@ -291,6 +350,7 @@ impl UnresolvedType {
                 params.extend(output.params());
                 params
             }
+            UnresolvedType::Named(_, params) => params.iter().flat_map(|ty| ty.params()).collect(),
             _ => BTreeSet::new(),
         }
     }
@@ -307,8 +367,8 @@ impl UnresolvedType {
                     panic!("cannot finalize type parameter in non-generic context")
                 }
             }
-            UnresolvedType::Named(name, params) => Type::Named(
-                name,
+            UnresolvedType::Named(id, params) => Type::Named(
+                id,
                 params
                     .into_iter()
                     .map(|param| param.finalize(ctx, generic))

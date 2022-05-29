@@ -1,0 +1,14 @@
+code: |
+    Container : A where (Show A) => type {
+        inner :: A
+    }
+
+    c : Container { inner : "Hello, world!" }
+
+    { inner } : c
+    show inner
+
+output: |
+    Hello, world!
+
+diagnostics: |

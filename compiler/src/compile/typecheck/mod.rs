@@ -170,10 +170,11 @@ impl<L: Loader> Compiler<L> {
             well_typed: true,
             ctx: Default::default(),
             variables: Default::default(),
-            structures: Default::default(),
             traits: Default::default(),
+            types: Default::default(),
             generic_constants: Default::default(),
             monomorphized_constants: Default::default(),
+            queued_type_bounds: Default::default(),
             declared_instances: Default::default(),
             bound_instances: Default::default(),
             function_inputs: Default::default(),
@@ -247,10 +248,32 @@ impl<L: Loader> Compiler<L> {
 
             for (&id, decl) in &file.borrow().declarations.types {
                 if let lower::Declaration::Local(decl) | lower::Declaration::Builtin(decl) = decl {
-                    match &decl.value {
-                        lower::Type::Structure(fields, field_names) => {
+                    let params = decl.value.params.iter().map(|param| param.id).collect();
+
+                    let bounds = decl
+                        .value
+                        .bounds
+                        .iter()
+                        .map(|bound| {
+                            let mut tr = typechecker.traits.get(&bound.tr).unwrap().clone();
+
+                            let substitutions = tr
+                                .params
+                                .into_iter()
+                                .zip(&bound.parameters)
+                                .map(|(param, ty)| (param, typechecker.convert_type_annotation(ty)))
+                                .collect();
+
+                            tr.ty.instantiate_with(&substitutions);
+
+                            (bound.tr, tr.ty, bound.span)
+                        })
+                        .collect();
+
+                    match &decl.value.kind {
+                        lower::TypeKind::Structure(fields, field_names) => {
                             #[allow(clippy::map_entry)] // `typechecker` is borrowed twice otherwise
-                            if !typechecker.structures.contains_key(&id) {
+                            if !typechecker.types.contains_key(&id) {
                                 let fields = field_names
                                     .iter()
                                     .map(|(name, index)| {
@@ -265,20 +288,45 @@ impl<L: Loader> Compiler<L> {
                                     })
                                     .collect();
 
-                                typechecker.structures.insert(id, fields);
+                                typechecker.types.insert(
+                                    id,
+                                    TypeDefinition {
+                                        kind: TypeDefinitionKind::Structure(fields),
+                                        params,
+                                        bounds,
+                                    },
+                                );
                             }
                         }
-                        lower::Type::Enumeration(_, _) => todo!("enumerations"),
-                        _ => {}
+                        lower::TypeKind::Enumeration(_, _) => todo!("enumerations"),
+                        lower::TypeKind::Marker => {
+                            typechecker.types.insert(
+                                id,
+                                TypeDefinition {
+                                    kind: TypeDefinitionKind::Marker,
+                                    params,
+                                    bounds,
+                                },
+                            );
+                        }
+                        lower::TypeKind::Alias(_) => {}
                     }
                 }
             }
 
             for (&id, decl) in &file.borrow().declarations.traits {
                 if let lower::Declaration::Local(decl) | lower::Declaration::Builtin(decl) = decl {
-                    let scheme = typechecker.convert_type_annotation(&decl.value.ty);
+                    let ty = typechecker.convert_type_annotation(&decl.value.ty);
                     let params = decl.value.parameters.iter().map(|param| param.id).collect();
-                    typechecker.traits.insert(id, (scheme, params));
+
+                    typechecker.traits.insert(
+                        id,
+                        TraitDefinition {
+                            ty,
+                            params,
+                            bounds: Vec::new(), // TODO: Traits with bounds
+                        },
+                    );
                 }
             }
 
@@ -292,18 +340,18 @@ impl<L: Loader> Compiler<L> {
                         .bounds
                         .iter()
                         .map(|bound| {
-                            let (mut trait_ty, params) =
-                                typechecker.traits.get(&bound.tr).unwrap().clone();
+                            let mut tr = typechecker.traits.get(&bound.tr).unwrap().clone();
 
-                            let substitutions = params
+                            let substitutions = tr
+                                .params
                                 .into_iter()
                                 .zip(&bound.parameters)
                                 .map(|(param, ty)| (param, typechecker.convert_type_annotation(ty)))
                                 .collect();
 
-                            trait_ty.instantiate_with(&substitutions);
+                            tr.ty.instantiate_with(&substitutions);
 
-                            (bound.tr, trait_ty, bound.span)
+                            (bound.tr, tr.ty, bound.span)
                         })
                         .collect::<Vec<_>>();
 
@@ -327,16 +375,16 @@ impl<L: Loader> Compiler<L> {
                 if let lower::Declaration::Local(decl) | lower::Declaration::Builtin(decl) = decl {
                     let value = decl.value.value.clone();
 
-                    let (mut trait_ty, params) =
-                        typechecker.traits.get(&decl.value.tr).unwrap().clone();
+                    let mut tr = typechecker.traits.get(&decl.value.tr).unwrap().clone();
 
-                    let substitutions = params
+                    let substitutions = tr
+                        .params
                         .into_iter()
                         .zip(&decl.value.parameters)
                         .map(|(param, ty)| (param, typechecker.convert_type_annotation(ty)))
                         .collect();
 
-                    trait_ty.instantiate_with(&substitutions);
+                    tr.ty.instantiate_with(&substitutions);
 
                     let generic_instance_id = typechecker.compiler.new_generic_constant_id();
 
@@ -355,7 +403,7 @@ impl<L: Loader> Compiler<L> {
                                 span: decl.span,
                                 value,
                             },
-                            generic_ty: trait_ty,
+                            generic_ty: tr.ty,
                             bounds: Vec::new(), // TODO: Generic instances
                         },
                     );
@@ -447,6 +495,24 @@ impl<L: Loader> Compiler<L> {
         let mut top_level = HashMap::new();
         for file in &files {
             top_level.extend(file.borrow().exported.clone());
+        }
+
+        for (tr, mut ty, span) in typechecker.queued_type_bounds.clone() {
+            ty.apply(&typechecker.ctx);
+
+            let instance_id = match typechecker.instance_for(tr, ty.clone(), span) {
+                Ok(id) => id,
+                Err(error) => {
+                    typechecker.report_type_error(error, span);
+                    continue;
+                }
+            };
+
+            typechecker
+                .bound_instances
+                .entry(tr)
+                .or_default()
+                .push(instance_id);
         }
 
         let body = match body
@@ -648,16 +714,37 @@ struct Constant<T, Ty> {
     bounds: Vec<Bound>,
 }
 
+#[derive(Debug, Clone)]
+struct TraitDefinition {
+    ty: UnresolvedType,
+    params: Vec<TypeParameterId>,
+    bounds: Vec<Bound>,
+}
+
+#[derive(Debug, Clone)]
+struct TypeDefinition {
+    kind: TypeDefinitionKind,
+    params: Vec<TypeParameterId>,
+    bounds: Vec<Bound>,
+}
+
+#[derive(Debug, Clone)]
+enum TypeDefinitionKind {
+    Marker,
+    Structure(HashMap<InternedString, (usize, UnresolvedType)>),
+    // Enumeration(..), // TODO
+}
+
 struct Typechecker<'a, L: Loader> {
     well_typed: bool,
     ctx: Context,
     variables: BTreeMap<VariableId, UnresolvedType>,
-    traits: BTreeMap<TraitId, (UnresolvedType, Vec<TypeParameterId>)>,
-    structures: BTreeMap<TypeId, HashMap<InternedString, (usize, UnresolvedType)>>,
-    // TODO: enumerations
+    traits: BTreeMap<TraitId, TraitDefinition>,
+    types: BTreeMap<TypeId, TypeDefinition>,
     generic_constants: BTreeMap<GenericConstantId, Constant<lower::Expression, UnresolvedType>>,
     monomorphized_constants:
         BTreeMap<MonomorphizedConstantId, (Span, Constant<UnresolvedExpression, ()>)>,
+    queued_type_bounds: Vec<Bound>,
     declared_instances: BTreeMap<TraitId, Vec<GenericConstantId>>,
     bound_instances: BTreeMap<TraitId, Vec<MonomorphizedConstantId>>,
     function_inputs: Vec<TypeVariable>,
@@ -682,11 +769,33 @@ impl<'a, L: Loader> Typechecker<'a, L> {
                 ty: UnresolvedType::Builtin(BuiltinType::Unit),
                 kind: UnresolvedExpressionKind::Marker,
             },
-            lower::ExpressionKind::Marker(ty) => UnresolvedExpression {
-                span: expr.span,
-                ty: self.convert_type_id(*ty, &file.borrow()),
-                kind: UnresolvedExpressionKind::Marker,
-            },
+            lower::ExpressionKind::Marker(id) => {
+                let mut marker = self.types.get(id).unwrap().clone();
+
+                let mut ty = UnresolvedType::Named(
+                    *id,
+                    marker
+                        .params
+                        .into_iter()
+                        .map(UnresolvedType::Parameter)
+                        .collect(),
+                );
+
+                let mut substitutions = BTreeMap::new();
+                self.add_substitutions(&mut ty, &mut substitutions);
+
+                for (_, ty, _) in &mut marker.bounds {
+                    self.add_substitutions(ty, &mut substitutions);
+                }
+
+                self.queued_type_bounds.append(&mut marker.bounds);
+
+                UnresolvedExpression {
+                    span: expr.span,
+                    ty,
+                    kind: UnresolvedExpressionKind::Marker,
+                }
+            }
             lower::ExpressionKind::Constant(id) => UnresolvedExpression {
                 span: expr.span,
                 ty: UnresolvedType::Variable(self.ctx.new_variable()),
@@ -829,27 +938,54 @@ impl<'a, L: Loader> Typechecker<'a, L> {
                     kind: UnresolvedExpressionKind::FunctionInput,
                 }
             }
-            lower::ExpressionKind::Instantiate(ty, fields) => {
-                let fields_by_name = match self.structures.get(ty) {
+            lower::ExpressionKind::Instantiate(id, fields) => {
+                let mut structure = match self.types.get(id) {
                     Some(structure) => structure.clone(),
                     None => {
                         self.compiler.diagnostics.add(Diagnostic::error(
-                            "only data types may be instantiated like this",
-                            vec![Note::primary(expr.span, "this is not a data type")],
+                            "only structures may be instantiated like this",
+                            vec![Note::primary(expr.span, "this is not a structure type")],
                         ));
 
                         return UnresolvedExpression::error(expr.span);
                     }
                 };
 
-                let mut fields_by_index = fields_by_name.iter().collect::<Vec<_>>();
+                let mut structure_fields = match &structure.kind {
+                    TypeDefinitionKind::Structure(fields) => fields.clone(),
+                    _ => unreachable!(), // or do we need to display an error like above?
+                };
+
+                let mut ty = UnresolvedType::Named(
+                    *id,
+                    structure
+                        .params
+                        .into_iter()
+                        .map(UnresolvedType::Parameter)
+                        .collect(),
+                );
+
+                let mut substitutions = BTreeMap::new();
+                self.add_substitutions(&mut ty, &mut substitutions);
+
+                for (_, ty, _) in &mut structure.bounds {
+                    self.add_substitutions(ty, &mut substitutions);
+                }
+
+                self.queued_type_bounds.append(&mut structure.bounds);
+
+                for (_, ty) in structure_fields.values_mut() {
+                    self.add_substitutions(ty, &mut substitutions);
+                }
+
+                let mut fields_by_index = structure_fields.iter().collect::<Vec<_>>();
                 fields_by_index.sort_by_key(|(_, (index, _))| *index);
 
                 let mut unpopulated_fields = vec![None; fields_by_index.len()];
                 let mut extra_fields = Vec::new();
 
                 for (name, expr) in fields {
-                    let (index, ty) = match fields_by_name.get(name) {
+                    let (index, ty) = match structure_fields.get(name) {
                         Some((index, ty)) => (*index, ty.clone()),
                         None => {
                             extra_fields.push(name);
@@ -927,7 +1063,7 @@ impl<'a, L: Loader> Typechecker<'a, L> {
 
                 UnresolvedExpression {
                     span: expr.span,
-                    ty: UnresolvedType::Named(*ty, Vec::new()), // TODO: parameters
+                    ty,
                     kind: UnresolvedExpressionKind::Structure(fields),
                 }
             }
@@ -988,22 +1124,6 @@ impl<'a, L: Loader> Typechecker<'a, L> {
         (ty, statements)
     }
 
-    fn convert_type_id(&mut self, id: TypeId, file: &lower::File) -> UnresolvedType {
-        let decl = file.declarations.types.get(&id).unwrap().clone();
-
-        match decl {
-            lower::Declaration::Local(decl) | lower::Declaration::Builtin(decl) => {
-                match decl.value {
-                    lower::Type::Marker
-                    | lower::Type::Structure(_, _)
-                    | lower::Type::Enumeration(_, _) => UnresolvedType::Named(id, Vec::new()), // TODO: parameters
-                    lower::Type::Alias(annotation) => self.convert_type_annotation(&annotation),
-                }
-            }
-            lower::Declaration::Dependency(_) => UnresolvedType::Named(id, Vec::new()), // TODO: parameters
-        }
-    }
-
     fn monomorphize_constant(
         &mut self,
         id: GenericConstantId,
@@ -1027,22 +1147,11 @@ impl<'a, L: Loader> Typechecker<'a, L> {
         }
 
         let mut substitutions = BTreeMap::new();
-        let mut add_substitutions = |ty: &mut UnresolvedType| {
-            ty.apply(&self.ctx);
 
-            for param in ty.params() {
-                substitutions
-                    .entry(param)
-                    .or_insert_with(|| UnresolvedType::Variable(self.ctx.new_variable()));
-            }
-
-            ty.instantiate_with(&substitutions);
-        };
-
-        body.traverse_mut(|expr| add_substitutions(&mut expr.ty));
+        body.traverse_mut(|expr| self.add_substitutions(&mut expr.ty, &mut substitutions));
 
         for (_, ty, _) in &mut constant.bounds {
-            add_substitutions(ty);
+            self.add_substitutions(ty, &mut substitutions);
         }
 
         let ty = body.ty.clone();
@@ -1115,8 +1224,8 @@ impl<'a, L: Loader> Typechecker<'a, L> {
                         let mut ty = value.ty.clone();
                         ty.apply(&self.ctx);
 
-                        let id = match ty {
-                            UnresolvedType::Named(ty, _) => ty,
+                        let (id, params) = match ty {
+                            UnresolvedType::Named(id, params) => (id, params),
                             _ => {
                                 self.compiler.diagnostics.add(Diagnostic::error(
                                     format!("cannot access member '{}' of this value", name),
@@ -1127,7 +1236,7 @@ impl<'a, L: Loader> Typechecker<'a, L> {
                             }
                         };
 
-                        let structure = match self.structures.get(&id) {
+                        let structure = match self.types.get(&id) {
                             Some(ty) => ty,
                             None => {
                                 self.compiler.diagnostics.add(Diagnostic::error(
@@ -1139,8 +1248,13 @@ impl<'a, L: Loader> Typechecker<'a, L> {
                             }
                         };
 
-                        let (&index, member_ty) = match structure.get(&name) {
-                            Some((index, ty)) => (index, ty),
+                        let structure_fields = match &structure.kind {
+                            TypeDefinitionKind::Structure(fields) => fields.clone(),
+                            _ => unreachable!(), // or do we need to display an error like above?
+                        };
+
+                        let (index, mut member_ty) = match structure_fields.get(&name) {
+                            Some((index, ty)) => (*index, ty.clone()),
                             None => {
                                 self.compiler.diagnostics.add(Diagnostic::error(
                                     format!("value has no member named '{}'", name),
@@ -1151,7 +1265,16 @@ impl<'a, L: Loader> Typechecker<'a, L> {
                             }
                         };
 
-                        if let Err(error) = self.ctx.unify(member_ty.clone(), expr.ty.clone()) {
+                        let substitutions = structure
+                            .params
+                            .iter()
+                            .copied()
+                            .zip(params)
+                            .collect::<BTreeMap<_, _>>();
+
+                        member_ty.instantiate_with(&substitutions);
+
+                        if let Err(error) = self.ctx.unify(member_ty, expr.ty.clone()) {
                             self.report_type_error(error, expr.span);
                         }
 
@@ -1208,6 +1331,22 @@ impl<'a, L: Loader> Typechecker<'a, L> {
                 })
             })()?,
         })
+    }
+
+    fn add_substitutions(
+        &mut self,
+        ty: &mut UnresolvedType,
+        substitutions: &mut BTreeMap<TypeParameterId, UnresolvedType>,
+    ) {
+        ty.apply(&self.ctx);
+
+        for param in ty.params() {
+            substitutions
+                .entry(param)
+                .or_insert_with(|| UnresolvedType::Variable(self.ctx.new_variable()));
+        }
+
+        ty.instantiate_with(substitutions);
     }
 
     fn finalize(
