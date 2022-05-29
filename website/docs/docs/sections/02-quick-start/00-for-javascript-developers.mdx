@@ -191,7 +191,7 @@ greet(new Earth()); // Hello, world!
 
 ```wipple
 -- Greet is a trait that can be defined with a function returning text
-Greet : A => trait A -> Text
+Greet : A => trait (A -> Text)
 
 -- For any value where Greet is defined, return a greeting
 greet :: A where (Greet A) => A -> Text
@@ -203,15 +203,15 @@ Person : type {
 }
 
 -- Greet for Person values is defined as the person's name
-instance Greet : Person { name } -> name
+instance Greet Person : { name } -> name
 
 
 Earth : type
 
 -- Greet for Earth values is defined as "world"
-instance Greet : just "world"
+instance Greet Earth : just "world"
 
 
-greet (Person { name : "Bob" }) -- Hello, Bob!
-greet Earth -- Hello, world!
+show (greet (Person { name : "Bob" })) -- Hello, Bob!
+show (greet Earth) -- Hello, world!
 ```
