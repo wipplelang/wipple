@@ -195,16 +195,14 @@ export const getStaticProps: GetStaticProps<Props, Params> = async ({ params }) 
     };
 };
 
-export const getStaticPaths: GetStaticPaths<Params> = () => {
-    return {
-        paths: sections.flatMap((section) =>
-            section.pages.map((page) => ({
-                params: {
-                    section: section.path,
-                    page: path.parse(page.path).base,
-                },
-            }))
-        ),
-        fallback: false,
-    };
-};
+export const getStaticPaths: GetStaticPaths<Params> = () => ({
+    paths: sections.flatMap((section) =>
+        section.pages.map((page) => ({
+            params: {
+                section: section.path,
+                page: path.parse(page.path).base,
+            },
+        }))
+    ),
+    fallback: false,
+});

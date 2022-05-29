@@ -1,51 +1,51 @@
 - title: Introduction
-  path: introduction
+  path: 00-introduction
   pages:
     - title: Welcome to Wipple!
-      path: introduction/00-welcome
+      path: 00-introduction/00-welcome
 
 - title: Learn Wipple
-  path: learn
+  path: 01-learn
   pages:
     - title: The Wipple Playground
-      path: learn/00-playground
+      path: 01-learn/00-the-wipple-playground
     - title: Math
-      path: learn/01-math
+      path: 01-learn/01-math
     - title: Variables
-      path: learn/02-variables
+      path: 01-learn/02-variables
     - title: Text
-      path: learn/03-text
+      path: 01-learn/03-text
     - title: So how does Wipple actually work?
-      path: learn/04-so-how-does-wipple-actually-work
+      path: 01-learn/04-so-how-does-wipple-actually-work
     - title: Functions
-      path: learn/05-functions
+      path: 01-learn/05-functions
 
 - title: Quick Start
-  path: quick-start
+  path: 02-quick-start
   pages:
     - title: For JavaScript developers
-      path: quick-start/00-for-javascript-developers
+      path: 02-quick-start/00-for-javascript-developers
 
 - title: Reference
-  path: reference
+  path: 03-reference
   pages:
     - title: Syntax
-      path: reference/00-syntax
+      path: 03-reference/00-syntax
     - title: Variables
-      path: reference/01-variables
+      path: 03-reference/01-variables
     - title: Patterns and logic
-      path: reference/02-patterns-and-logic
+      path: 03-reference/02-patterns-and-logic
     - title: Functions
-      path: reference/03-functions
+      path: 03-reference/03-functions
     - title: Loops
-      path: reference/04-loops
+      path: 03-reference/04-loops
     - title: Types
-      path: reference/05-types
+      path: 03-reference/05-types
     - title: Traits
-      path: reference/06-traits
+      path: 03-reference/06-traits
     - title: Quoting
-      path: reference/07-quoting
+      path: 03-reference/07-quoting
     - title: Templates
-      path: reference/08-templates
+      path: 03-reference/08-templates
     - title: Naming conventions
-      path: reference/09-naming-conventions
+      path: 03-reference/09-naming-conventions

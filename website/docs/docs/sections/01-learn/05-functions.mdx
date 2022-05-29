@@ -56,3 +56,16 @@ show (increment 42)
 You should see `43` on the screen!
 
 If you're confused, try hovering over parts of the program, and the playground will tell you what kind of code you're hovering over. For example, hovering over `increment` will show `increment :: Number -> Number`, indicating that it accepts a number and returns a number. Hovering will be explained in more detail in the next section!
+
+<br />
+
+Before we move on, let's introduce one more function, named `format`. `format` accepts a piece of text containing `_`s, and replaces all of the `_`s with the inputs you provide. We can use `format` to build our own `greet` function!
+
+```wipple
+greet : name -> format "Hello, _!" name
+
+show (greet "Alice")
+show (greet "Bob")
+```
+
+Try `greet`-ing yourself!

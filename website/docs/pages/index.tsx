@@ -65,7 +65,7 @@ const Home: NextPage = () => {
                             </a>
 
                             <a
-                                href="/docs/introduction/00-welcome"
+                                href="/docs/00-introduction/00-welcome"
                                 className="font-bold py-2 px-4 rounded bg-white"
                             >
                                 Documentation
