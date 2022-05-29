@@ -1,4 +1,4 @@
--- Functional programming --
+-- -- Functional programming --
 
 it :: A => A -> A
 it : x -> x

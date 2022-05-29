@@ -1,0 +1,32 @@
+code: |
+    -- Greet is a trait that can be defined with a function returning text
+    Greet : A => trait (A -> Text)
+
+    -- For any value where Greet is defined, return a greeting
+    greet :: A where (Greet A) => A -> Text
+    greet : x -> format "Hello, _!" (Greet x)
+
+
+    Person : type {
+        name :: Text
+    }
+
+    -- Greet for Person values is defined as the person's name
+    instance Greet Person : { name } -> name
+
+
+    Earth : type
+
+    -- Greet for Earth values is defined as "world"
+    instance Greet Earth : just "world"
+
+
+    show (greet (Person { name : "Bob" })) -- Hello, Bob!
+    show (greet Earth) -- Hello, world!
+
+
+output: |
+    Hello, Bob!
+    Hello, world!
+
+diagnostics: |

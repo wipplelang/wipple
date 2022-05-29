@@ -637,15 +637,26 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
                                             .into_iter()
                                             .map(|input| Node {
                                                 span: input.span,
-                                                kind: NodeKind::List(vec![
-                                                    Node {
+                                                kind: NodeKind::Annotate(
+                                                    Box::new(Node {
+                                                        span: input.span,
+                                                        kind: NodeKind::List(vec![
+                                                            Node {
+                                                                span: builtin_span,
+                                                                kind: NodeKind::Name(
+                                                                    InternedString::new("Show"),
+                                                                ),
+                                                            },
+                                                            input,
+                                                        ]),
+                                                    }),
+                                                    Box::new(Node {
                                                         span: builtin_span,
                                                         kind: NodeKind::Name(InternedString::new(
-                                                            "Show",
+                                                            "Text",
                                                         )),
-                                                    },
-                                                    input,
-                                                ]),
+                                                    }),
+                                                ),
                                             })
                                             .collect(),
                                     ),

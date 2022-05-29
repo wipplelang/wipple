@@ -319,14 +319,9 @@ impl<L: Loader> Compiler<L> {
                     let ty = typechecker.convert_type_annotation(&decl.value.ty);
                     let params = decl.value.parameters.iter().map(|param| param.id).collect();
 
-                    typechecker.traits.insert(
-                        id,
-                        TraitDefinition {
-                            ty,
-                            params,
-                            bounds: Vec::new(), // TODO: Traits with bounds
-                        },
-                    );
+                    typechecker
+                        .traits
+                        .insert(id, TraitDefinition { ty, params });
                 }
             }
 
@@ -415,16 +410,32 @@ impl<L: Loader> Compiler<L> {
             body.push((file.clone(), block));
         }
 
+        for (tr, mut ty, span) in typechecker.queued_type_bounds.clone() {
+            ty.apply(&typechecker.ctx);
+
+            let instance_id = match typechecker.instance_for(tr, ty.clone(), span) {
+                Ok(id) => id,
+                Err(error) => {
+                    typechecker.report_type_error(error, span);
+                    continue;
+                }
+            };
+
+            typechecker
+                .bound_instances
+                .entry(tr)
+                .or_default()
+                .push(instance_id);
+        }
+
         let prev_bound_instances = typechecker.bound_instances.clone();
 
         for constant in typechecker.generic_constants.clone().into_values() {
-            let mut body = typechecker.typecheck_expr(&constant.decl.value, &constant.file, false);
+            let body = typechecker.typecheck_expr(&constant.decl.value, &constant.file, false);
 
             if let Err(error) = typechecker.ctx.unify(body.ty.clone(), constant.generic_ty) {
                 typechecker.report_type_error(error, body.span);
             }
-
-            body.traverse_mut(|expr| expr.ty.apply(&typechecker.ctx));
 
             // Register dummy generic instances so finalization works -- these
             // constants will never actually be used
@@ -495,24 +506,6 @@ impl<L: Loader> Compiler<L> {
         let mut top_level = HashMap::new();
         for file in &files {
             top_level.extend(file.borrow().exported.clone());
-        }
-
-        for (tr, mut ty, span) in typechecker.queued_type_bounds.clone() {
-            ty.apply(&typechecker.ctx);
-
-            let instance_id = match typechecker.instance_for(tr, ty.clone(), span) {
-                Ok(id) => id,
-                Err(error) => {
-                    typechecker.report_type_error(error, span);
-                    continue;
-                }
-            };
-
-            typechecker
-                .bound_instances
-                .entry(tr)
-                .or_default()
-                .push(instance_id);
         }
 
         let body = match body
@@ -624,7 +617,7 @@ impl<L: Loader> Compiler<L> {
                             name: decl.name,
                             span: decl.span,
                             value: typechecker
-                                .finalize(decl.value, true)
+                                .finalize_generic(decl.value.clone())
                                 .map_err(|error| (error, decl.span))?,
                         })
                     })
@@ -641,7 +634,7 @@ impl<L: Loader> Compiler<L> {
                                 name: decl.name,
                                 span: decl.span,
                                 value: typechecker
-                                    .finalize(decl.value, false)
+                                    .finalize(decl.value)
                                     .map_err(|error| (error, decl.span))?,
                             },
                         ))
@@ -679,10 +672,7 @@ impl<L: Loader> Compiler<L> {
             .into_iter()
             .map(|expr| {
                 let span = expr.span;
-
-                typechecker
-                    .finalize(expr, false)
-                    .map_err(|error| (error, span))
+                typechecker.finalize(expr).map_err(|error| (error, span))
             })
             .collect::<Result<_, _>>()
         {
@@ -718,7 +708,7 @@ struct Constant<T, Ty> {
 struct TraitDefinition {
     ty: UnresolvedType,
     params: Vec<TypeParameterId>,
-    bounds: Vec<Bound>,
+    // bounds: Vec<Bound>, // TODO
 }
 
 #[derive(Debug, Clone)]
@@ -1083,18 +1073,19 @@ impl<'a, L: Loader> Typechecker<'a, L> {
                     .collect::<Vec<_>>();
 
                 let ty = if let Some(item) = items.first() {
-                    item.ty.clone()
+                    let ty = item.ty.clone();
+                    for item in items.iter().skip(1) {
+                        if let Err(error) = self.ctx.unify(ty.clone(), item.ty.clone()) {
+                            if !suppress_errors {
+                                self.report_type_error(error, item.span);
+                            }
+                        };
+                    }
+
+                    ty
                 } else {
                     UnresolvedType::Bottom(BottomTypeReason::Annotated)
                 };
-
-                for item in &items {
-                    if let Err(error) = self.ctx.unify(item.ty.clone(), ty.clone()) {
-                        if !suppress_errors {
-                            self.report_type_error(error, item.span);
-                        }
-                    };
-                }
 
                 UnresolvedExpression {
                     span: expr.span,
@@ -1192,7 +1183,7 @@ impl<'a, L: Loader> Typechecker<'a, L> {
                     UnresolvedExpressionKind::Constant(id) => {
                         let (monomorphized_id, ty) = self.monomorphize_constant(id, expr.span);
 
-                        if let Err(error) = self.ctx.unify(ty, expr.ty.clone()) {
+                        if let Err(error) = self.ctx.unify(ty, expr.ty) {
                             self.report_type_error(error, expr.span);
                         }
 
@@ -1215,10 +1206,12 @@ impl<'a, L: Loader> Typechecker<'a, L> {
                         )
                     }
                     UnresolvedExpressionKind::Call(func, input) => {
-                        MonomorphizedExpressionKind::Call(
-                            Box::new(self.monomorphize(*func)?),
-                            Box::new(self.monomorphize(*input)?),
-                        )
+                        // Monomorphize in reverse order so that inner traits
+                        // are resolved first, eg. in the case of `T2 (T1 x)`
+                        let input = self.monomorphize(*input)?;
+                        let func = self.monomorphize(*func)?;
+
+                        MonomorphizedExpressionKind::Call(Box::new(func), Box::new(input))
                     }
                     UnresolvedExpressionKind::Member(value, name) => {
                         let mut ty = value.ty.clone();
@@ -1274,7 +1267,7 @@ impl<'a, L: Loader> Typechecker<'a, L> {
 
                         member_ty.instantiate_with(&substitutions);
 
-                        if let Err(error) = self.ctx.unify(member_ty, expr.ty.clone()) {
+                        if let Err(error) = self.ctx.unify(member_ty, expr.ty) {
                             self.report_type_error(error, expr.span);
                         }
 
@@ -1349,13 +1342,25 @@ impl<'a, L: Loader> Typechecker<'a, L> {
         ty.instantiate_with(substitutions);
     }
 
-    fn finalize(
+    fn finalize(&mut self, expr: MonomorphizedExpression) -> Result<Expression, TypeError> {
+        self.finalize_internal(expr, false)
+    }
+
+    fn finalize_generic(&mut self, expr: MonomorphizedExpression) -> Result<Expression, TypeError> {
+        self.finalize_internal(expr, true)
+    }
+
+    fn finalize_internal(
         &mut self,
         expr: MonomorphizedExpression,
         generic: bool,
     ) -> Result<Expression, TypeError> {
         Ok(Expression {
             span: expr.span,
+            ty: expr
+                .ty
+                .finalize(&self.ctx, generic)
+                .ok_or(TypeError::UnresolvedType)?,
             kind: match expr.kind {
                 MonomorphizedExpressionKind::Error => return Err(TypeError::ErrorExpression),
                 MonomorphizedExpressionKind::Marker => ExpressionKind::Marker,
@@ -1366,20 +1371,21 @@ impl<'a, L: Loader> Typechecker<'a, L> {
                 MonomorphizedExpressionKind::Block(statements, scope) => ExpressionKind::Block(
                     statements
                         .into_iter()
-                        .map(|expr| self.finalize(expr, generic))
+                        .map(|expr| self.finalize_internal(expr, generic))
                         .collect::<Result<_, _>>()?,
                     scope,
                 ),
                 MonomorphizedExpressionKind::Call(func, input) => ExpressionKind::Call(
-                    Box::new(self.finalize(*func, generic)?),
-                    Box::new(self.finalize(*input, generic)?),
+                    Box::new(self.finalize_internal(*func, generic)?),
+                    Box::new(self.finalize_internal(*input, generic)?),
                 ),
                 MonomorphizedExpressionKind::Member(expr, index) => {
-                    ExpressionKind::Member(Box::new(self.finalize(*expr, generic)?), index)
+                    ExpressionKind::Member(Box::new(self.finalize_internal(*expr, generic)?), index)
                 }
-                MonomorphizedExpressionKind::Function(body, captures) => {
-                    ExpressionKind::Function(Box::new(self.finalize(*body, generic)?), captures)
-                }
+                MonomorphizedExpressionKind::Function(body, captures) => ExpressionKind::Function(
+                    Box::new(self.finalize_internal(*body, generic)?),
+                    captures,
+                ),
                 MonomorphizedExpressionKind::When(_, _) => todo!(),
                 MonomorphizedExpressionKind::External(namespace, identifier, inputs) => {
                     ExpressionKind::External(
@@ -1387,33 +1393,30 @@ impl<'a, L: Loader> Typechecker<'a, L> {
                         identifier,
                         inputs
                             .into_iter()
-                            .map(|expr| self.finalize(expr, generic))
+                            .map(|expr| self.finalize_internal(expr, generic))
                             .collect::<Result<_, _>>()?,
                     )
                 }
                 MonomorphizedExpressionKind::Initialize(variable, value) => {
-                    ExpressionKind::Initialize(variable, Box::new(self.finalize(*value, generic)?))
+                    ExpressionKind::Initialize(
+                        variable,
+                        Box::new(self.finalize_internal(*value, generic)?),
+                    )
                 }
                 MonomorphizedExpressionKind::Structure(fields) => ExpressionKind::Structure(
                     fields
                         .into_iter()
-                        .map(|expr| self.finalize(expr, generic))
+                        .map(|expr| self.finalize_internal(expr, generic))
                         .collect::<Result<_, _>>()?,
                 ),
                 MonomorphizedExpressionKind::FunctionInput => ExpressionKind::FunctionInput,
                 MonomorphizedExpressionKind::ListLiteral(items) => ExpressionKind::ListLiteral(
                     items
                         .into_iter()
-                        .map(|expr| self.finalize(expr, generic))
+                        .map(|expr| self.finalize_internal(expr, generic))
                         .collect::<Result<_, _>>()?,
                 ),
             },
-            // The type must be resolved after the kind because the kind may be
-            // a trait, whose type is unified with the original type variable
-            ty: expr
-                .ty
-                .finalize(&self.ctx, generic)
-                .ok_or(TypeError::UnresolvedType)?,
         })
     }
 
@@ -1468,7 +1471,12 @@ impl<'a, L: Loader> Typechecker<'a, L> {
                 let (ctx, instance) = candidates.pop().unwrap();
                 self.ctx = ctx;
 
-                let (monomorphized_id, _) = self.monomorphize_constant(instance, span);
+                let (monomorphized_id, instance_ty) = self.monomorphize_constant(instance, span);
+
+                self.ctx
+                    .unify(ty, instance_ty)
+                    .expect("type wasn't unified above");
+
                 Ok(monomorphized_id)
             }
             _ => Err(TypeError::AmbiguousTrait(

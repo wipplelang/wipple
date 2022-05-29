@@ -174,12 +174,8 @@ impl Diagnostics {
                                     note.span.path.to_string(),
                                     files
                                         .get(&note.span.path)
-                                        .unwrap_or_else(|| {
-                                            panic!(
-                                                "diagnostic references unknown file: '{}'",
-                                                note.span.path
-                                            )
-                                        })
+                                        .map(|s| &**s)
+                                        .unwrap_or("<unknown>")
                                         .to_string(),
                                 );
 

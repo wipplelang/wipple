@@ -108,7 +108,15 @@ impl Context {
         actual: UnresolvedType,
         expected: UnresolvedType,
     ) -> Result<(), TypeError> {
-        self.unify_internal(actual, expected, false)
+        self.unify_internal(actual, expected, false, true)
+    }
+
+    pub fn unify_except_parameters(
+        &mut self,
+        actual: UnresolvedType,
+        expected: UnresolvedType,
+    ) -> Result<(), TypeError> {
+        self.unify_internal(actual, expected, false, false)
     }
 
     pub fn unify_generic(
@@ -116,7 +124,7 @@ impl Context {
         actual: UnresolvedType,
         expected: UnresolvedType,
     ) -> Result<(), TypeError> {
-        self.unify_internal(actual, expected, true)
+        self.unify_internal(actual, expected, true, true)
     }
 
     fn unify_internal(
@@ -124,6 +132,7 @@ impl Context {
         mut actual: UnresolvedType,
         mut expected: UnresolvedType,
         generic: bool,
+        unify_parameters: bool,
     ) -> Result<(), TypeError> {
         actual.apply(self);
         expected.apply(self);
@@ -139,7 +148,10 @@ impl Context {
                 if ty.contains(&var) {
                     Err(TypeError::Recursive(var))
                 } else {
-                    self.substitutions.insert(var, ty);
+                    if generic || !matches!(ty, UnresolvedType::Parameter(_)) || unify_parameters {
+                        self.substitutions.insert(var, ty);
+                    }
+
                     Ok(())
                 }
             }
@@ -167,9 +179,12 @@ impl Context {
             ) => {
                 if actual_id == expected_id {
                     for (actual, expected) in actual_params.iter().zip(&expected_params) {
-                        if let Err(error) =
-                            self.unify_internal(actual.clone(), expected.clone(), generic)
-                        {
+                        if let Err(error) = self.unify_internal(
+                            actual.clone(),
+                            expected.clone(),
+                            generic,
+                            unify_parameters,
+                        ) {
                             return Err(if let TypeError::Mismatch(_, _) = error {
                                 TypeError::Mismatch(
                                     UnresolvedType::Named(actual_id, actual_params),
@@ -193,9 +208,12 @@ impl Context {
                 UnresolvedType::Function(actual_input, actual_output),
                 UnresolvedType::Function(expected_input, expected_output),
             ) => {
-                if let Err(error) =
-                    self.unify_internal((*actual_input).clone(), (*expected_input).clone(), generic)
-                {
+                if let Err(error) = self.unify_internal(
+                    (*actual_input).clone(),
+                    (*expected_input).clone(),
+                    generic,
+                    unify_parameters,
+                ) {
                     return Err(if let TypeError::Mismatch(_, _) = error {
                         TypeError::Mismatch(
                             UnresolvedType::Function(actual_input, actual_output),
@@ -210,6 +228,7 @@ impl Context {
                     (*actual_output).clone(),
                     (*expected_output).clone(),
                     generic,
+                    unify_parameters,
                 ) {
                     return Err(if let TypeError::Mismatch(_, _) = error {
                         TypeError::Mismatch(
@@ -235,6 +254,7 @@ impl Context {
                         (*actual_element).clone(),
                         (*expected_element).clone(),
                         generic,
+                        unify_parameters,
                     ) {
                         return Err(if let TypeError::Mismatch(_, _) = error {
                             TypeError::Mismatch(

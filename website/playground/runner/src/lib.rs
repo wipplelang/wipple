@@ -128,13 +128,20 @@ fn annotations(program: &mut wipple_compiler::compile::Program) -> Vec<Annotatio
         ($ty:expr) => {
             format_type(
                 $ty,
-                |id| declarations.types.get(&id).unwrap().name.to_string(),
+                |id| {
+                    declarations
+                        .types
+                        .get(&id)
+                        .map(|decl| decl.name.as_str())
+                        .unwrap_or("<unknown>")
+                        .to_string()
+                },
                 |id| {
                     declarations
                         .type_parameters
                         .get(&id)
-                        .unwrap()
-                        .name
+                        .map(|decl| decl.name.as_str())
+                        .unwrap_or("<unknown>")
                         .to_string()
                 },
             )

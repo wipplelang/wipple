@@ -44,6 +44,16 @@ macro_rules! traverse_impl {
                     input.$traverse(f);
                 }
             }
+            Structure(fields) => {
+                for field in fields {
+                    field.$traverse(f);
+                }
+            }
+            ListLiteral(items) => {
+                for item in items {
+                    item.$traverse(f);
+                }
+            }
             _ => {}
         }
     }};
