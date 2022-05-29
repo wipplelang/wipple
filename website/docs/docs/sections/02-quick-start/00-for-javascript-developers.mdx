@@ -81,7 +81,7 @@ Wipple is a strongly-typed language, which means that your code is verified at c
 If you mismatch the types, Wipple will emit an error:
 
 ```wipple
-42 :: Text -- Mismatched types: Expected Text, found Number
+42 :: Text -- mismatched types: expected `Text`, but found `Number`
 ```
 
 #### Objects
@@ -102,6 +102,12 @@ bob : Person {
     name : "Bob"
     age : 35
 }
+```
+
+And you can use destructuring to get the inner values:
+
+```wipple
+{ name age } : bob
 ```
 
 #### Functions
@@ -133,7 +139,7 @@ Wipple doesn't allow you to add methods to an object (although you can store fun
 
 ```wipple
 greet :: Person -> Text
-greet : person -> format ("Hello, _!") (person name)
+greet : { name } -> format ("Hello, _!") name
 
 greet bob -- Hello, Bob!
 ```
