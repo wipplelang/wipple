@@ -1582,7 +1582,7 @@ impl<'a, L: Loader> Typechecker<'a, L> {
         file: &lower::File,
     ) {
         expr.traverse(|expr| {
-            if let MonomorphizedExpressionKind::Initialize(id, _) = &expr.kind {
+            if let MonomorphizedExpressionKind::Initialize(id, value) = &expr.kind {
                 let decl = file.declarations.variables.get(id).unwrap();
 
                 self.declarations.variables.insert(
@@ -1590,7 +1590,7 @@ impl<'a, L: Loader> Typechecker<'a, L> {
                     Declaration {
                         name: decl.name,
                         span: decl.span,
-                        value: expr.ty.clone(),
+                        value: value.ty.clone(),
                     },
                 );
             }
