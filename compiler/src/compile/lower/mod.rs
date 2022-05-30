@@ -1050,8 +1050,11 @@ impl<L: Loader> Compiler<L> {
                                             inputs.len(),
                                         ),
                                         vec![Note::primary(
-                                            Span::join(inputs[2].span, inputs.last().unwrap().span),
-                                            if expected_input_count > inputs.len() {
+                                            Span::join(
+                                                inputs.first().unwrap().span,
+                                                inputs.last().unwrap().span,
+                                            ),
+                                            if inputs.len() > expected_input_count {
                                                 "try removing some of these values"
                                             } else {
                                                 "try adding some values"
