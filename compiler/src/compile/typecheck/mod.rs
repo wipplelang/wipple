@@ -219,12 +219,7 @@ impl<L: Loader> Compiler<L> {
 
                 let ty = typechecker.convert_type_annotation(&decl.value.ty);
 
-                let parameters = decl
-                    .value
-                    .parameters
-                    .into_iter()
-                    .map(|param| param.id)
-                    .collect();
+                let parameters = decl.value.parameters;
 
                 typechecker.declarations.traits.insert(
                     id,
@@ -252,7 +247,7 @@ impl<L: Loader> Compiler<L> {
                     continue;
                 }
 
-                let params = decl.value.params.iter().map(|param| param.id).collect();
+                let params = decl.value.params.clone();
 
                 let bounds = decl
                     .value
@@ -301,20 +296,22 @@ impl<L: Loader> Compiler<L> {
                             );
                         }
                         lower::TypeKind::Enumeration(variants, _) => {
-                            let variants = variants
+                            let variant_tys = variants
                                 .iter()
-                                .map(|ty| {
-                                    ty.values
-                                        .iter()
-                                        .map(|ty| typechecker.convert_type_annotation(ty))
-                                        .collect()
+                                .map(|(id, tys)| {
+                                    (
+                                        *id,
+                                        tys.iter()
+                                            .map(|ty| typechecker.convert_type_annotation(ty))
+                                            .collect(),
+                                    )
                                 })
                                 .collect();
 
                             typechecker.types.insert(
                                 id,
                                 TypeDefinition {
-                                    kind: TypeDefinitionKind::Enumeration(variants),
+                                    kind: TypeDefinitionKind::Enumeration(variant_tys),
                                     params,
                                     bounds,
                                 },
@@ -340,7 +337,7 @@ impl<L: Loader> Compiler<L> {
                 }
 
                 let ty = typechecker.convert_type_annotation(&decl.value.ty);
-                let params = decl.value.parameters.iter().map(|param| param.id).collect();
+                let params = decl.value.parameters.clone();
 
                 typechecker
                     .traits
@@ -746,7 +743,7 @@ struct TypeDefinition {
 enum TypeDefinitionKind {
     Marker,
     Structure(HashMap<InternedString, (usize, UnresolvedType)>),
-    Enumeration(Vec<Vec<UnresolvedType>>),
+    Enumeration(Vec<(GenericConstantId, Vec<UnresolvedType>)>),
 }
 
 struct Typechecker<'a, L: Loader> {
@@ -1110,8 +1107,11 @@ impl<'a, L: Loader> Typechecker<'a, L> {
             lower::ExpressionKind::Variant(id, index, values) => {
                 let mut enumeration = self.types.get(id).unwrap().clone();
 
-                let mut variant_tys = match &enumeration.kind {
-                    TypeDefinitionKind::Enumeration(variants) => variants[*index].clone(),
+                let (mut variant_constructor, variant_tys) = match &enumeration.kind {
+                    TypeDefinitionKind::Enumeration(variants) => {
+                        let (id, tys) = &variants[*index];
+                        (self.generic_constants.get(id).unwrap().clone(), tys.clone())
+                    }
                     _ => unreachable!(), // or do we need to display an error like above?
                 };
 
@@ -1127,15 +1127,11 @@ impl<'a, L: Loader> Typechecker<'a, L> {
                 let mut substitutions = BTreeMap::new();
                 self.add_substitutions(&mut ty, &mut substitutions);
 
-                for (_, ty, _) in &mut enumeration.bounds {
+                for (_, ty, _) in &mut variant_constructor.bounds {
                     self.add_substitutions(ty, &mut substitutions);
                 }
 
                 self.queued_type_bounds.append(&mut enumeration.bounds);
-
-                for ty in &mut variant_tys {
-                    self.add_substitutions(ty, &mut substitutions);
-                }
 
                 let values = values
                     .iter()
@@ -1143,15 +1139,12 @@ impl<'a, L: Loader> Typechecker<'a, L> {
                     .map(|(expr, ty)| {
                         let value = self.typecheck_expr(expr, file, suppress_errors);
 
-                        match self.ctx.unify(value.ty.clone(), ty) {
-                            Ok(ty) => ty,
-                            Err(errors) => {
-                                if !suppress_errors {
-                                    self.report_type_error(errors, expr.span);
-                                }
-
-                                return UnresolvedExpression::error(expr.span);
+                        if let Err(errors) = self.ctx.unify(value.ty.clone(), ty) {
+                            if !suppress_errors {
+                                self.report_type_error(errors, expr.span);
                             }
+
+                            return UnresolvedExpression::error(expr.span);
                         };
 
                         value
@@ -1583,7 +1576,10 @@ impl<'a, L: Loader> Typechecker<'a, L> {
     ) {
         expr.traverse(|expr| {
             if let MonomorphizedExpressionKind::Initialize(id, value) = &expr.kind {
-                let decl = file.declarations.variables.get(id).unwrap();
+                let decl = match file.declarations.variables.get(id) {
+                    Some(decl) => decl,
+                    None => return,
+                };
 
                 self.declarations.variables.insert(
                     *id,
@@ -1610,20 +1606,7 @@ impl<'a, L: Loader> Typechecker<'a, L> {
                     .map(|param| self.convert_type_annotation(param))
                     .collect(),
             ),
-            lower::TypeAnnotationKind::Parameter(id, params) => {
-                if !params.is_empty() {
-                    // TODO: Higher-kinded types
-                    self.compiler.diagnostics.add(Diagnostic::error(
-                        "higher-kinded types are not yet supported",
-                        vec![Note::primary(
-                            annotation.span,
-                            "try writing this on its own, with no parameters",
-                        )],
-                    ));
-                }
-
-                UnresolvedType::Parameter(*id)
-            }
+            lower::TypeAnnotationKind::Parameter(id) => UnresolvedType::Parameter(*id),
             lower::TypeAnnotationKind::Builtin(builtin, parameters) => {
                 UnresolvedType::Builtin(match builtin {
                     lower::BuiltinType::Unit => {

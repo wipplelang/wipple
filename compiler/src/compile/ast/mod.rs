@@ -143,6 +143,7 @@ pub struct DataField {
 #[derive(Debug, Clone)]
 pub struct DataVariant {
     pub name: InternedString,
+    pub span: Span,
     pub values: Vec<TypeAnnotation>,
 }
 
@@ -868,8 +869,8 @@ impl<L: Loader> Compiler<L> {
 
         let mut kind = match fields.next().unwrap() {
             FieldKind::Field((_, name), ty) => TypeKind::Structure(vec![DataField { name, ty }]),
-            FieldKind::Variant((_, name), values) => {
-                TypeKind::Enumeration(vec![DataVariant { name, values }])
+            FieldKind::Variant((span, name), values) => {
+                TypeKind::Enumeration(vec![DataVariant { name, span, values }])
             }
         };
 
@@ -905,7 +906,7 @@ impl<L: Loader> Compiler<L> {
                         _ => unreachable!(),
                     };
 
-                    variants.push(DataVariant { name, values });
+                    variants.push(DataVariant { name, span, values });
                 }
             }
         }

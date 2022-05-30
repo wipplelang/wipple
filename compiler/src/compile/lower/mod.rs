@@ -43,7 +43,7 @@ pub struct Declaration<T> {
 #[derive(Debug, Clone)]
 pub struct Type {
     pub kind: TypeKind,
-    pub params: Vec<TypeParameter>,
+    pub params: Vec<TypeParameterId>,
     pub bounds: Vec<Bound>,
 }
 
@@ -51,17 +51,15 @@ pub struct Type {
 pub enum TypeKind {
     Marker,
     Structure(Vec<TypeField>, HashMap<InternedString, usize>),
-    Enumeration(Vec<TypeVariant>, HashMap<InternedString, usize>),
+    Enumeration(
+        Vec<(GenericConstantId, Vec<TypeAnnotation>)>,
+        HashMap<InternedString, usize>,
+    ),
 }
 
 #[derive(Debug, Clone)]
 pub struct TypeField {
     pub ty: TypeAnnotation,
-}
-
-#[derive(Debug, Clone)]
-pub struct TypeVariant {
-    pub values: Vec<TypeAnnotation>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
@@ -74,13 +72,13 @@ pub enum BuiltinType {
 
 #[derive(Debug, Clone)]
 pub struct Trait {
-    pub parameters: Vec<TypeParameter>,
+    pub parameters: Vec<TypeParameterId>,
     pub ty: TypeAnnotation,
 }
 
 #[derive(Debug, Clone)]
 pub struct Constant {
-    pub parameters: Vec<TypeParameter>,
+    pub parameters: Vec<TypeParameterId>,
     pub bounds: Vec<Bound>,
     pub ty: TypeAnnotation,
     pub value: Rc<RefCell<Option<Expression>>>,
@@ -178,7 +176,7 @@ pub enum TypeAnnotationKind {
     Error,
     Placeholder,
     Named(TypeId, Vec<TypeAnnotation>),
-    Parameter(TypeParameterId, Vec<TypeAnnotation>),
+    Parameter(TypeParameterId),
     Builtin(BuiltinType, Vec<TypeAnnotation>),
     Function(Box<TypeAnnotation>, Box<TypeAnnotation>),
 }
@@ -190,13 +188,6 @@ impl TypeAnnotation {
             kind: TypeAnnotationKind::Error,
         }
     }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct TypeParameter {
-    pub span: Span,
-    pub name: InternedString,
-    pub id: TypeParameterId,
 }
 
 impl<L: Loader> Compiler<L> {
@@ -382,7 +373,7 @@ impl<L: Loader> Compiler<L> {
                 let id = self.new_type_id();
                 scope.values.borrow_mut().insert(name, ScopeValue::Type(id));
 
-                let params = ty
+                let parameters = ty
                     .parameters
                     .into_iter()
                     .map(|param| {
@@ -402,11 +393,7 @@ impl<L: Loader> Compiler<L> {
                             },
                         );
 
-                        TypeParameter {
-                            span: param.span,
-                            name: param.name,
-                            id,
-                        }
+                        id
                     })
                     .collect();
 
@@ -457,7 +444,7 @@ impl<L: Loader> Compiler<L> {
                 let ty = match ty.kind {
                     ast::TypeKind::Marker => Type {
                         kind: TypeKind::Marker,
-                        params,
+                        params: parameters,
                         bounds,
                     },
                     ast::TypeKind::Structure(fields) => {
@@ -473,7 +460,7 @@ impl<L: Loader> Compiler<L> {
 
                         Type {
                             kind: TypeKind::Structure(field_tys, field_names),
-                            params,
+                            params: parameters,
                             bounds,
                         }
                     }
@@ -481,20 +468,155 @@ impl<L: Loader> Compiler<L> {
                         let mut variant_tys = Vec::with_capacity(variants.len());
                         let mut variant_names = HashMap::with_capacity(variants.len());
                         for (index, variant) in variants.into_iter().enumerate() {
-                            variant_tys.push(TypeVariant {
-                                values: variant
-                                    .values
-                                    .into_iter()
-                                    .map(|ty| self.lower_type_annotation(ty, scope, info))
-                                    .collect(),
-                            });
+                            let tys = variant
+                                .values
+                                .into_iter()
+                                .map(|ty| {
+                                    (
+                                        self.lower_type_annotation(ty, scope, info),
+                                        self.new_variable_id(),
+                                    )
+                                })
+                                .collect::<Vec<_>>();
 
+                            let constructor_ty = tys.clone().into_iter().fold(
+                                TypeAnnotation {
+                                    span: variant.span,
+                                    kind: TypeAnnotationKind::Named(
+                                        id,
+                                        parameters
+                                            .iter()
+                                            .map(|_| TypeAnnotation {
+                                                span,
+                                                kind: TypeAnnotationKind::Placeholder,
+                                            })
+                                            .collect(),
+                                    ),
+                                },
+                                |result, next| TypeAnnotation {
+                                    span: Span::join(result.span, next.0.span),
+                                    kind: TypeAnnotationKind::Function(
+                                        Box::new(next.0),
+                                        Box::new(result),
+                                    ),
+                                },
+                            );
+
+                            let constructor_id = self.new_generic_constant_id();
+
+                            let initial = Expression {
+                                span: Span::join(
+                                    variant.span,
+                                    tys.last().map(|ty| ty.0.span).unwrap_or(variant.span),
+                                ),
+                                kind: ExpressionKind::Annotate(
+                                    Box::new(Expression {
+                                        span: Span::join(
+                                            variant.span,
+                                            tys.last().map(|ty| ty.0.span).unwrap_or(variant.span),
+                                        ),
+                                        kind: ExpressionKind::Variant(
+                                            id,
+                                            index,
+                                            tys.iter()
+                                                .map(|(ty, var)| Expression {
+                                                    span: ty.span,
+                                                    kind: ExpressionKind::Variable(*var),
+                                                })
+                                                .collect(),
+                                        ),
+                                    }),
+                                    TypeAnnotation {
+                                        span,
+                                        kind: TypeAnnotationKind::Named(
+                                            id,
+                                            parameters
+                                                .iter()
+                                                .map(|id| {
+                                                    let param = info
+                                                        .declarations
+                                                        .type_parameters
+                                                        .get(id)
+                                                        .unwrap();
+
+                                                    TypeAnnotation {
+                                                        span: param.span,
+                                                        kind: TypeAnnotationKind::Parameter(*id),
+                                                    }
+                                                })
+                                                .collect(),
+                                        ),
+                                    },
+                                ),
+                            };
+
+                            let constructor = tys
+                                .iter()
+                                .fold(initial, |result, (ty, var)| {
+                                    let ty_span = ty.span;
+
+                                    Expression {
+                                        span: Span::join(result.span, ty.span),
+                                        kind: ExpressionKind::Function(
+                                            Box::new(Expression {
+                                                span: Span::join(result.span, ty.span),
+                                                kind: ExpressionKind::Block(
+                                                    vec![Expression {
+                                                        span: ty.span,
+                                                        kind: ExpressionKind::Initialize(
+                                                            *var,
+                                                            Box::new(Expression {
+                                                                span: ty.span,
+                                                                kind: ExpressionKind::Annotate(
+                                                                    Box::new(Expression {
+                                                                        span: ty.span,
+                                                                        kind: ExpressionKind::FunctionInput,
+                                                                    }),
+                                                                    ty.clone(),
+                                                                ),
+                                                            }),
+                                                        ),
+                                                    }],
+                                                    Default::default(),
+                                                ),
+                                            }),
+                                            vec![(*var, ty_span)],
+                                        ),
+                                    }
+                                });
+
+                            info.declarations.constants.insert(
+                                constructor_id,
+                                Declaration {
+                                    name,
+                                    span,
+                                    value: Constant {
+                                        parameters: parameters.clone(),
+                                        bounds: bounds.clone(),
+                                        ty: constructor_ty,
+                                        value: Rc::new(RefCell::new(Some(constructor))),
+                                    },
+                                },
+                            );
+
+                            variant_tys.push((constructor_id, tys));
                             variant_names.insert(variant.name, index);
                         }
 
                         Type {
-                            kind: TypeKind::Enumeration(variant_tys, variant_names),
-                            params,
+                            kind: TypeKind::Enumeration(
+                                variant_tys
+                                    .into_iter()
+                                    .map(|(constructor_id, tys)| {
+                                        (
+                                            constructor_id,
+                                            tys.into_iter().map(|(ty, _)| ty).collect(),
+                                        )
+                                    })
+                                    .collect(),
+                                variant_names,
+                            ),
+                            params: parameters,
                             bounds,
                         }
                     }
@@ -756,11 +878,13 @@ impl<L: Loader> Compiler<L> {
                     {
                         let scope = scope.child();
 
-                        for parameter in associated_parameters {
+                        for id in associated_parameters {
+                            let parameter = info.declarations.type_parameters.get(&id).unwrap();
+
                             scope
                                 .values
                                 .borrow_mut()
-                                .insert(parameter.name, ScopeValue::TypeParameter(parameter.id));
+                                .insert(parameter.name, ScopeValue::TypeParameter(id));
                         }
 
                         let value = self.lower_expr(expr, &scope, info);
@@ -995,15 +1119,9 @@ impl<L: Loader> Compiler<L> {
                                 ExpressionKind::Instantiate(id, fields)
                             }
                             ast::ExpressionKind::Name(name) => {
-                                let (variant_types, variants) = match info
-                                    .declarations
-                                    .types
-                                    .get(&id)
-                                    .unwrap()
-                                    .value
-                                    .kind
-                                    .clone()
-                                {
+                                let ty_decl = info.declarations.types.get(&id).unwrap();
+
+                                let (variant_types, variants) = match &ty_decl.value.kind {
                                     TypeKind::Enumeration(types, variants) => (types, variants),
                                     _ => {
                                         self.diagnostics.add(Diagnostic::error(
@@ -1034,43 +1152,7 @@ impl<L: Loader> Compiler<L> {
                                     }
                                 };
 
-                                let mut inputs = inputs.into_iter();
-
-                                let variant_span = inputs.next().unwrap().span;
-
-                                let inputs = inputs
-                                    .map(|expr| self.lower_expr(expr, scope, info))
-                                    .collect::<Vec<_>>();
-
-                                let expected_input_count = variant_types[index].values.len();
-
-                                if inputs.len() != expected_input_count {
-                                    self.diagnostics.add(Diagnostic::error(
-                                        format!(
-                                            "variant expects {} inputs, but only {} were given",
-                                            expected_input_count,
-                                            inputs.len(),
-                                        ),
-                                        vec![Note::primary(
-                                            Span::join(
-                                                variant_span,
-                                                inputs
-                                                    .last()
-                                                    .map(|expr| expr.span)
-                                                    .unwrap_or(variant_span),
-                                            ),
-                                            if inputs.len() > expected_input_count {
-                                                "try removing some of these values"
-                                            } else {
-                                                "try adding some values"
-                                            },
-                                        )],
-                                    ));
-
-                                    return Expression::error(expr.span);
-                                }
-
-                                ExpressionKind::Variant(id, index, inputs)
+                                ExpressionKind::Constant(variant_types[index].0)
                             }
                             _ => function_call!(*function, inputs).kind,
                         },
@@ -1201,7 +1283,18 @@ impl<L: Loader> Compiler<L> {
                 match scope.get(name, ty.span) {
                     Some(ScopeValue::Type(ty)) => TypeAnnotationKind::Named(ty, parameters),
                     Some(ScopeValue::TypeParameter(param)) => {
-                        TypeAnnotationKind::Parameter(param, parameters)
+                        if !parameters.is_empty() {
+                            // TODO: Higher-kinded types
+                            self.diagnostics.add(Diagnostic::error(
+                                "higher-kinded types are not yet supported",
+                                vec![Note::primary(
+                                    ty.span,
+                                    "try writing this on its own, with no parameters",
+                                )],
+                            ));
+                        }
+
+                        TypeAnnotationKind::Parameter(param)
                     }
                     Some(ScopeValue::BuiltinType(builtin)) => {
                         TypeAnnotationKind::Builtin(builtin, parameters)
@@ -1291,7 +1384,7 @@ impl<L: Loader> Compiler<L> {
         parameters: Vec<ast::TypeParameter>,
         scope: &Scope,
         info: &mut Info,
-    ) -> Vec<TypeParameter> {
+    ) -> Vec<TypeParameterId> {
         parameters
             .into_iter()
             .map(|parameter| {
@@ -1311,11 +1404,7 @@ impl<L: Loader> Compiler<L> {
                     .borrow_mut()
                     .insert(parameter.name, ScopeValue::TypeParameter(id));
 
-                TypeParameter {
-                    span: parameter.span,
-                    name: parameter.name,
-                    id,
-                }
+                id
             })
             .collect()
     }
