@@ -49,6 +49,11 @@ macro_rules! traverse_impl {
                     field.$traverse(f);
                 }
             }
+            Variant(_, values) => {
+                for value in values {
+                    value.$traverse(f);
+                }
+            }
             ListLiteral(items) => {
                 for item in items {
                     item.$traverse(f);

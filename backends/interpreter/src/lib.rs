@@ -32,6 +32,7 @@ pub enum Value {
         captures: BTreeMap<VariableId, Rc<Value>>,
     },
     List(Vec<Rc<Value>>),
+    Variant(usize, Vec<Rc<Value>>),
 }
 
 #[derive(Debug)]
@@ -258,6 +259,13 @@ impl<'a> Interpreter<'a> {
                 }
             }
             ExpressionKind::Structure(exprs) => Rc::new(Value::List(
+                exprs
+                    .iter()
+                    .map(|expr| self.eval_expr(expr, info))
+                    .collect::<Result<_, _>>()?,
+            )),
+            ExpressionKind::Variant(index, exprs) => Rc::new(Value::Variant(
+                *index,
                 exprs
                     .iter()
                     .map(|expr| self.eval_expr(expr, info))

@@ -24,87 +24,20 @@ pub struct File {
 
 #[derive(Debug, Clone, Default)]
 pub struct Declarations {
-    pub types: BTreeMap<TypeId, Declaration<TypeId, Type>>,
-    pub type_parameters: BTreeMap<TypeParameterId, Declaration<TypeParameterId, ()>>,
-    pub traits: BTreeMap<TraitId, Declaration<TraitId, Trait>>,
-    pub builtin_types: BTreeMap<BuiltinType, Declaration<BuiltinType, ()>>,
-    pub constants: BTreeMap<GenericConstantId, Declaration<GenericConstantId, Constant>>,
-    pub instances: BTreeMap<GenericConstantId, Declaration<GenericConstantId, Instance>>,
-    pub variables: BTreeMap<VariableId, Declaration<VariableId, ()>>,
+    pub types: BTreeMap<TypeId, Declaration<Type>>,
+    pub type_parameters: BTreeMap<TypeParameterId, Declaration<()>>,
+    pub traits: BTreeMap<TraitId, Declaration<Trait>>,
+    pub builtin_types: BTreeMap<BuiltinType, Declaration<()>>,
+    pub constants: BTreeMap<GenericConstantId, Declaration<Constant>>,
+    pub instances: BTreeMap<GenericConstantId, Declaration<Instance>>,
+    pub variables: BTreeMap<VariableId, Declaration<()>>,
 }
 
 #[derive(Debug, Clone)]
-pub enum Declaration<Id, T> {
-    Local(DeclarationKind<T>),
-    Dependency(DeclarationKind<Id>),
-    Builtin(DeclarationKind<T>),
-}
-
-#[derive(Debug, Clone)]
-pub struct DeclarationKind<T> {
+pub struct Declaration<T> {
     pub name: InternedString,
     pub span: Span,
     pub value: T,
-}
-
-impl<Id, T> Declaration<Id, T> {
-    pub fn name(&self) -> InternedString {
-        match self {
-            Declaration::Local(decl) => decl.name,
-            Declaration::Dependency(decl) => decl.name,
-            Declaration::Builtin(decl) => decl.name,
-        }
-    }
-
-    pub fn span(&self) -> Span {
-        match self {
-            Declaration::Local(decl) => decl.span,
-            Declaration::Dependency(decl) => decl.span,
-            Declaration::Builtin(decl) => decl.span,
-        }
-    }
-}
-
-pub trait CopyDeclaration {
-    /// Whether or not the declaration should be copied when `use`d
-    const COPY: bool;
-}
-
-impl CopyDeclaration for Declaration<TypeId, Type> {
-    const COPY: bool = true;
-}
-
-impl CopyDeclaration for Declaration<TypeParameterId, ()> {
-    const COPY: bool = false;
-}
-
-impl CopyDeclaration for Declaration<TraitId, Trait> {
-    const COPY: bool = false;
-}
-
-impl CopyDeclaration for Declaration<BuiltinType, ()> {
-    const COPY: bool = false;
-}
-
-impl CopyDeclaration for Declaration<GenericConstantId, Constant> {
-    const COPY: bool = false;
-}
-
-impl CopyDeclaration for Declaration<GenericConstantId, Instance> {
-    const COPY: bool = false;
-}
-
-impl CopyDeclaration for Declaration<VariableId, ()> {
-    const COPY: bool = false;
-}
-
-impl<Id, T> Declaration<Id, T>
-where
-    Self: CopyDeclaration,
-{
-    pub fn should_copy(&self) -> bool {
-        Self::COPY
-    }
 }
 
 #[derive(Debug, Clone)]
@@ -117,7 +50,6 @@ pub struct Type {
 #[derive(Debug, Clone)]
 pub enum TypeKind {
     Marker,
-    Alias(TypeAnnotation),
     Structure(Vec<TypeField>, HashMap<InternedString, usize>),
     Enumeration(Vec<TypeVariant>, HashMap<InternedString, usize>),
 }
@@ -195,6 +127,7 @@ pub enum ExpressionKind {
     Member(Box<Expression>, InternedString),
     Instantiate(TypeId, Vec<(InternedString, Expression)>),
     ListLiteral(Vec<Expression>),
+    Variant(TypeId, usize, Vec<Expression>),
 }
 
 impl Expression {
@@ -280,19 +213,9 @@ impl<L: Loader> Compiler<L> {
             macro_rules! merge_dependency {
                 ($($kind:ident),* $(,)?) => {
                     $(
-                        for (&id, decl) in &dependency.declarations.$kind {
-                            let decl = if decl.should_copy() {
-                                decl.clone()
-                            } else {
-                                Declaration::Dependency(DeclarationKind {
-                                    name: decl.name(),
-                                    span: decl.span(),
-                                    value: id,
-                                })
-                            };
-
-                            info.declarations.$kind.insert(id, decl);
-                        }
+                        info.declarations
+                            .$kind
+                            .extend(dependency.declarations.$kind.clone());
                     )*
                 };
             }
@@ -323,18 +246,16 @@ impl<L: Loader> Compiler<L> {
 
         let mut complete = true;
         for constant in info.declarations.constants.values() {
-            if let Declaration::Local(decl) | Declaration::Builtin(decl) = constant {
-                if decl.value.value.borrow().as_ref().is_none() {
-                    self.diagnostics.add(Diagnostic::error(
-                        "uninitialized constant",
-                        vec![Note::primary(
-                            decl.span,
-                            format!("`{}` is never initialized with a value", decl.name),
-                        )],
-                    ));
+            if constant.value.value.borrow().as_ref().is_none() {
+                self.diagnostics.add(Diagnostic::error(
+                    "uninitialized constant",
+                    vec![Note::primary(
+                        constant.span,
+                        format!("`{}` is never initialized with a value", constant.name),
+                    )],
+                ));
 
-                    complete = false;
-                }
+                complete = false;
             }
         }
 
@@ -474,11 +395,11 @@ impl<L: Loader> Compiler<L> {
 
                         info.declarations.type_parameters.insert(
                             id,
-                            Declaration::Local(DeclarationKind {
+                            Declaration {
                                 name: param.name,
                                 span: param.span,
                                 value: (),
-                            }),
+                            },
                         );
 
                         TypeParameter {
@@ -539,11 +460,6 @@ impl<L: Loader> Compiler<L> {
                         params,
                         bounds,
                     },
-                    ast::TypeKind::Alias(alias) => Type {
-                        kind: TypeKind::Alias(self.lower_type_annotation(alias, scope, info)),
-                        params,
-                        bounds,
-                    },
                     ast::TypeKind::Structure(fields) => {
                         let mut field_tys = Vec::with_capacity(fields.len());
                         let mut field_names = HashMap::with_capacity(fields.len());
@@ -586,11 +502,11 @@ impl<L: Loader> Compiler<L> {
 
                 info.declarations.types.insert(
                     id,
-                    Declaration::Local(DeclarationKind {
+                    Declaration {
                         name,
                         span: statement.span,
                         value: ty,
-                    }),
+                    },
                 );
 
                 Vec::new()
@@ -624,11 +540,11 @@ impl<L: Loader> Compiler<L> {
 
                 info.declarations.traits.insert(
                     id,
-                    Declaration::Local(DeclarationKind {
+                    Declaration {
                         name,
                         span: statement.span,
                         value: tr,
-                    }),
+                    },
                 );
 
                 Vec::new()
@@ -713,11 +629,11 @@ impl<L: Loader> Compiler<L> {
 
                 info.declarations.constants.insert(
                     id,
-                    Declaration::Local(DeclarationKind {
+                    Declaration {
                         name,
                         span: statement.span,
                         value: constant,
-                    }),
+                    },
                 );
 
                 Vec::new()
@@ -776,11 +692,11 @@ impl<L: Loader> Compiler<L> {
                 let id = self.new_generic_constant_id();
                 info.declarations.instances.insert(
                     id,
-                    Declaration::Local(DeclarationKind {
+                    Declaration {
                         name: InternedString::new("instance"),
                         span: statement.span,
                         value: instance,
-                    }),
+                    },
                 );
 
                 Vec::new()
@@ -809,33 +725,9 @@ impl<L: Loader> Compiler<L> {
                             return vec![Expression::error(statement.span)];
                         }
                         Some(ScopeValue::Constant(id)) => {
-                            let (parameters, c) = match info
-                                .declarations
-                                .constants
-                                .get(&id)
-                                .unwrap()
-                            {
-                                Declaration::Local(decl) | Declaration::Builtin(decl) => {
-                                    (decl.value.parameters.clone(), decl.value.value.clone())
-                                }
-                                Declaration::Dependency(decl) => {
-                                    self.diagnostics.add(Diagnostic::error(
-                                        format!("constant `{name}` is defined in another file"),
-                                        vec![
-                                            Note::primary(
-                                                statement.span,
-                                                "constants must be initialized in the same file in which they are declared",
-                                            ),
-                                            Note::secondary(
-                                                decl.span,
-                                                "declaration here",
-                                            ),
-                                        ],
-                                    ));
-
-                                    return vec![Expression::error(statement.span)];
-                                }
-                            };
+                            let decl = info.declarations.constants.get(&id).unwrap();
+                            let (parameters, c) =
+                                (decl.value.parameters.clone(), decl.value.value.clone());
 
                             if let Some(associated_constant) = c.borrow().as_ref() {
                                 self.diagnostics.add(Diagnostic::error(
@@ -891,11 +783,11 @@ impl<L: Loader> Compiler<L> {
 
                         info.declarations.variables.insert(
                             id,
-                            Declaration::Local(DeclarationKind {
+                            Declaration {
                                 name: *name,
                                 span: pattern.span,
                                 value: (),
-                            }),
+                            },
                         );
 
                         vec![Expression {
@@ -919,11 +811,11 @@ impl<L: Loader> Compiler<L> {
 
                     info.declarations.variables.insert(
                         id,
-                        Declaration::Local(DeclarationKind {
+                        Declaration {
                             name: InternedString::new("<destructured>"),
                             span: pattern.span,
                             value: (),
-                        }),
+                        },
                     );
 
                     let mut exprs = vec![Expression {
@@ -1005,6 +897,22 @@ impl<L: Loader> Compiler<L> {
     }
 
     fn lower_expr(&mut self, expr: ast::Expression, scope: &Scope, info: &mut Info) -> Expression {
+        macro_rules! function_call {
+            ($function:expr, $inputs:expr) => {
+                $inputs
+                    .into_iter()
+                    .fold(self.lower_expr($function, scope, info), |result, next| {
+                        Expression {
+                            span: Span::join(result.span, next.span),
+                            kind: ExpressionKind::Call(
+                                Box::new(result),
+                                Box::new(self.lower_expr(next, scope, info)),
+                            ),
+                        }
+                    })
+            };
+        }
+
         let kind = match expr.kind {
             ast::ExpressionKind::Error => ExpressionKind::Error,
             ast::ExpressionKind::Unit => ExpressionKind::Unit,
@@ -1028,34 +936,136 @@ impl<L: Loader> Compiler<L> {
                 let (block, declarations) = self.lower_block(statements, &scope, info);
                 ExpressionKind::Block(block, declarations)
             }
-            ast::ExpressionKind::Call(function, input) => {
-                if let (
-                    ast::ExpressionKind::Name(ty_name),
-                    ast::ExpressionKind::Block(statements),
-                ) = (&function.kind, &input.kind)
-                {
-                    let fields = statements
-                        .iter()
-                        .filter_map(|s| match &s.kind {
-                            ast::StatementKind::Assign(pattern, expr) => match &pattern.kind {
-                                ast::PatternKind::Name(name) => Some((*name, expr)),
-                                _ => None,
-                            },
-                            _ => None,
-                        })
-                        .collect::<Vec<_>>();
+            ast::ExpressionKind::Call(function, inputs) => match &function.kind {
+                ast::ExpressionKind::Name(ty_name) => {
+                    let input = inputs.first().unwrap();
 
                     match scope.get(*ty_name, function.span) {
-                        Some(ScopeValue::Type(ty)) if fields.len() == statements.len() => {
-                            let fields = fields
+                        Some(ScopeValue::Type(id)) => match &input.kind {
+                            ast::ExpressionKind::Block(statements) => {
+                                if inputs.len() > 1 {
+                                    self.diagnostics.add(Diagnostic::error(
+                                        "too many inputs in structure instantiation",
+                                        vec![Note::primary(
+                                            Span::join(
+                                                inputs.first().unwrap().span,
+                                                inputs.last().unwrap().span,
+                                            ),
+                                            "this structure requires a single block containing its fields",
+                                        )],
+                                    ));
+                                }
+
+                                let fields = statements
+                                .iter()
+                                .filter_map(|s| match &s.kind {
+                                    ast::StatementKind::Assign(pattern, expr) => match &pattern.kind {
+                                        ast::PatternKind::Name(name) => Some((*name, expr)),
+                                        _ => None,
+                                    },
+                                    _ => {
+                                        self.diagnostics.add(Diagnostic::error(
+                                            "structure instantiation may not contain executable statements",
+                                            vec![Note::primary(
+                                                s.span,
+                                                "try removing this",
+                                            )]
+                                        ));
+
+                                        None
+                                    }
+                                })
+                                .collect::<Vec<_>>()
                                 .into_iter()
                                 .map(|(name, value)| {
                                     (name, self.lower_expr(value.clone(), scope, info))
                                 })
                                 .collect();
 
-                            ExpressionKind::Instantiate(ty, fields)
-                        }
+                                let ty = &info.declarations.types.get(&id).unwrap().value;
+                                if !matches!(ty.kind, TypeKind::Structure(_, _)) {
+                                    self.diagnostics.add(Diagnostic::error(
+                                        "only structures may be instantiated like this",
+                                        vec![Note::primary(function.span, "not a structure")],
+                                    ));
+
+                                    return Expression::error(expr.span);
+                                }
+
+                                ExpressionKind::Instantiate(id, fields)
+                            }
+                            ast::ExpressionKind::Name(name) => {
+                                let (variant_types, variants) = match info
+                                    .declarations
+                                    .types
+                                    .get(&id)
+                                    .unwrap()
+                                    .value
+                                    .kind
+                                    .clone()
+                                {
+                                    TypeKind::Enumeration(types, variants) => (types, variants),
+                                    _ => {
+                                        self.diagnostics.add(Diagnostic::error(
+                                            "only enumerations may be instantiated like this",
+                                            vec![Note::primary(
+                                                function.span,
+                                                "not an enumeration",
+                                            )],
+                                        ));
+
+                                        return Expression::error(expr.span);
+                                    }
+                                };
+
+                                let index = match variants.get(name) {
+                                    Some(index) => *index,
+                                    None => {
+                                        self.diagnostics.add(Diagnostic::error(
+                                            format!(
+                                                "enumeration `{}` does not declare a variant named `{}`",
+                                                ty_name,
+                                                name
+                                            ),
+                                            vec![Note::primary(input.span, "no such variant")],
+                                        ));
+
+                                        return Expression::error(expr.span);
+                                    }
+                                };
+
+                                let inputs = inputs
+                                    .iter()
+                                    .skip(1)
+                                    .map(|expr| self.lower_expr(expr.clone(), scope, info))
+                                    .collect::<Vec<_>>();
+
+                                let expected_input_count = variant_types[index].values.len();
+
+                                if inputs.len() != expected_input_count {
+                                    self.diagnostics.add(Diagnostic::error(
+                                        format!(
+                                            "variant expects {} inputs, but only {} were given",
+                                            expected_input_count,
+                                            inputs.len(),
+                                        ),
+                                        vec![Note::primary(
+                                            Span::join(inputs[2].span, inputs.last().unwrap().span),
+                                            if expected_input_count > inputs.len() {
+                                                "try removing some of these values"
+                                            } else {
+                                                "try adding some values"
+                                            },
+                                        )],
+                                    ));
+
+                                    return Expression::error(expr.span);
+                                }
+
+                                ExpressionKind::Variant(id, index, inputs)
+                            }
+                            _ => function_call!(*function, inputs).kind,
+                        },
                         Some(ScopeValue::TypeParameter(_)) => {
                             self.diagnostics.add(Diagnostic::error(
                                 "cannot instantiate type parameter",
@@ -1075,18 +1085,11 @@ impl<L: Loader> Compiler<L> {
 
                             ExpressionKind::Error
                         }
-                        _ => ExpressionKind::Call(
-                            Box::new(self.lower_expr(*function, scope, info)),
-                            Box::new(self.lower_expr(*input, scope, info)),
-                        ),
+                        _ => function_call!(*function, inputs).kind,
                     }
-                } else {
-                    ExpressionKind::Call(
-                        Box::new(self.lower_expr(*function, scope, info)),
-                        Box::new(self.lower_expr(*input, scope, info)),
-                    )
                 }
-            }
+                _ => function_call!(*function, inputs).kind,
+            },
             ast::ExpressionKind::Function(input, body) => {
                 let scope = Scope {
                     used_variables: Some(Default::default()),
@@ -1225,7 +1228,19 @@ impl<L: Loader> Compiler<L> {
         info: &mut Info,
     ) -> Option<ExpressionKind> {
         match scope.get(name, span) {
-            Some(ScopeValue::Type(id)) => self.resolve_type(span, id, info),
+            Some(ScopeValue::Type(id)) => {
+                match info.declarations.types.get(&id).unwrap().value.kind {
+                    TypeKind::Marker => Some(ExpressionKind::Marker(id)),
+                    _ => {
+                        self.diagnostics.add(Diagnostic::error(
+                            "cannot use type as value",
+                            vec![Note::primary(span, "try instantiating the type")],
+                        ));
+
+                        Some(ExpressionKind::Error)
+                    }
+                }
+            }
             Some(ScopeValue::BuiltinType(_)) => {
                 self.diagnostics.add(Diagnostic::error(
                     "cannot use builtin type as value",
@@ -1263,27 +1278,6 @@ impl<L: Loader> Compiler<L> {
         }
     }
 
-    fn resolve_type(&mut self, span: Span, id: TypeId, info: &mut Info) -> Option<ExpressionKind> {
-        match info.declarations.types.get(&id).unwrap() {
-            Declaration::Local(decl) | Declaration::Builtin(decl) => match decl.value.kind {
-                TypeKind::Marker => Some(ExpressionKind::Marker(id)),
-                TypeKind::Alias(TypeAnnotation {
-                    kind: TypeAnnotationKind::Named(alias_id, _),
-                    ..
-                }) => self.resolve_type(span, alias_id, info),
-                _ => {
-                    self.diagnostics.add(Diagnostic::error(
-                        "cannot use type as value",
-                        vec![Note::primary(span, "try instantiating the type")],
-                    ));
-
-                    Some(ExpressionKind::Error)
-                }
-            },
-            Declaration::Dependency(_) => unreachable!(),
-        }
-    }
-
     fn with_parameters(
         &mut self,
         parameters: Vec<ast::TypeParameter>,
@@ -1297,11 +1291,11 @@ impl<L: Loader> Compiler<L> {
 
                 info.declarations.type_parameters.insert(
                     id,
-                    Declaration::Local(DeclarationKind {
+                    Declaration {
                         name: parameter.name,
                         span: parameter.span,
                         value: (),
-                    }),
+                    },
                 );
 
                 scope

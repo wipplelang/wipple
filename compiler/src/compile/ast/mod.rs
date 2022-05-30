@@ -60,7 +60,7 @@ pub enum ExpressionKind {
     Number(Decimal),
     Text(InternedString),
     Block(Vec<Statement>),
-    Call(Box<Expression>, Box<Expression>),
+    Call(Box<Expression>, Vec<Expression>),
     Function(Pattern, Box<Expression>),
     When(Box<Expression>, Vec<Arm>),
     External(InternedString, InternedString, Vec<Expression>),
@@ -130,7 +130,6 @@ pub struct TraitDeclaration {
 #[derive(Debug, Clone)]
 pub enum TypeKind {
     Marker,
-    Alias(TypeAnnotation),
     Structure(Vec<DataField>),
     Enumeration(Vec<DataVariant>),
 }
@@ -402,17 +401,11 @@ impl<L: Loader> Compiler<L> {
                 NodeKind::Number(number) => ExpressionKind::Number(number),
                 NodeKind::List(exprs) => {
                     let mut exprs = exprs.into_iter();
-                    let first = exprs.next().unwrap();
 
-                    exprs
-                        .fold(self.build_expression(first), |result, next| Expression {
-                            span: Span::join(result.span, next.span),
-                            kind: ExpressionKind::Call(
-                                Box::new(result),
-                                Box::new(self.build_expression(next)),
-                            ),
-                        })
-                        .kind
+                    ExpressionKind::Call(
+                        Box::new(self.build_expression(exprs.next().unwrap())),
+                        exprs.map(|expr| self.build_expression(expr)).collect(),
+                    )
                 }
                 NodeKind::Block(statements, _) => ExpressionKind::Block(
                     statements

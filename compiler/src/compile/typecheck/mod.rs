@@ -56,6 +56,7 @@ macro_rules! expr {
                 External(InternedString, InternedString, Vec<[<$prefix Expression>]>),
                 Initialize(VariableId, Box<[<$prefix Expression>]>),
                 Structure(Vec<[<$prefix Expression>]>),
+                Variant(usize, Vec<[<$prefix Expression>]>),
                 FunctionInput,
                 ListLiteral(Vec<[<$prefix Expression>]>),
                 $($kinds)*
@@ -188,51 +189,51 @@ impl<L: Loader> Compiler<L> {
 
         for file in &files {
             for (id, decl) in file.borrow().declarations.types.clone() {
-                if let lower::Declaration::Local(decl) = decl {
-                    typechecker.declarations.types.insert(
-                        id,
-                        Declaration {
-                            name: decl.name,
-                            span: decl.span,
-                            value: (),
-                        },
-                    );
-                }
+                typechecker
+                    .declarations
+                    .types
+                    .entry(id)
+                    .or_insert(Declaration {
+                        name: decl.name,
+                        span: decl.span,
+                        value: (),
+                    });
             }
 
             for (id, decl) in file.borrow().declarations.type_parameters.clone() {
-                if let lower::Declaration::Local(decl) = decl {
-                    typechecker.declarations.type_parameters.insert(
-                        id,
-                        Declaration {
-                            name: decl.name,
-                            span: decl.span,
-                            value: (),
-                        },
-                    );
-                }
+                typechecker
+                    .declarations
+                    .type_parameters
+                    .entry(id)
+                    .or_insert(Declaration {
+                        name: decl.name,
+                        span: decl.span,
+                        value: (),
+                    });
             }
 
             for (id, decl) in file.borrow().declarations.traits.clone() {
-                if let lower::Declaration::Local(decl) = decl {
-                    let ty = typechecker.convert_type_annotation(&decl.value.ty);
-
-                    let parameters = decl
-                        .value
-                        .parameters
-                        .into_iter()
-                        .map(|param| param.id)
-                        .collect();
-
-                    typechecker.declarations.traits.insert(
-                        id,
-                        Declaration {
-                            name: decl.name,
-                            span: decl.span,
-                            value: (ty, parameters),
-                        },
-                    );
+                if typechecker.declarations.traits.contains_key(&id) {
+                    continue;
                 }
+
+                let ty = typechecker.convert_type_annotation(&decl.value.ty);
+
+                let parameters = decl
+                    .value
+                    .parameters
+                    .into_iter()
+                    .map(|param| param.id)
+                    .collect();
+
+                typechecker.declarations.traits.insert(
+                    id,
+                    Declaration {
+                        name: decl.name,
+                        span: decl.span,
+                        value: (ty, parameters),
+                    },
+                );
             }
         }
 
@@ -247,58 +248,78 @@ impl<L: Loader> Compiler<L> {
             });
 
             for (&id, decl) in &file.borrow().declarations.types {
-                if let lower::Declaration::Local(decl) | lower::Declaration::Builtin(decl) = decl {
-                    let params = decl.value.params.iter().map(|param| param.id).collect();
+                if typechecker.types.contains_key(&id) {
+                    continue;
+                }
 
-                    let bounds = decl
-                        .value
-                        .bounds
-                        .iter()
-                        .map(|bound| {
-                            let mut tr = typechecker.traits.get(&bound.tr).unwrap().clone();
+                let params = decl.value.params.iter().map(|param| param.id).collect();
 
-                            let substitutions = tr
-                                .params
-                                .into_iter()
-                                .zip(&bound.parameters)
-                                .map(|(param, ty)| (param, typechecker.convert_type_annotation(ty)))
-                                .collect();
+                let bounds = decl
+                    .value
+                    .bounds
+                    .iter()
+                    .map(|bound| {
+                        let mut tr = typechecker.traits.get(&bound.tr).unwrap().clone();
 
-                            tr.ty.instantiate_with(&substitutions);
+                        let substitutions = tr
+                            .params
+                            .into_iter()
+                            .zip(&bound.parameters)
+                            .map(|(param, ty)| (param, typechecker.convert_type_annotation(ty)))
+                            .collect();
 
-                            (bound.tr, tr.ty, bound.span)
-                        })
-                        .collect();
+                        tr.ty.instantiate_with(&substitutions);
 
+                        (bound.tr, tr.ty, bound.span)
+                    })
+                    .collect();
+
+                #[allow(clippy::map_entry)] // `typechecker` is borrowed twice otherwise
+                if !typechecker.types.contains_key(&id) {
                     match &decl.value.kind {
                         lower::TypeKind::Structure(fields, field_names) => {
-                            #[allow(clippy::map_entry)] // `typechecker` is borrowed twice otherwise
-                            if !typechecker.types.contains_key(&id) {
-                                let fields = field_names
-                                    .iter()
-                                    .map(|(name, index)| {
+                            let fields = field_names
+                                .iter()
+                                .map(|(name, index)| {
+                                    (
+                                        *name,
                                         (
-                                            *name,
-                                            (
-                                                *index,
-                                                typechecker
-                                                    .convert_type_annotation(&fields[*index].ty),
-                                            ),
-                                        )
-                                    })
-                                    .collect();
+                                            *index,
+                                            typechecker.convert_type_annotation(&fields[*index].ty),
+                                        ),
+                                    )
+                                })
+                                .collect();
 
-                                typechecker.types.insert(
-                                    id,
-                                    TypeDefinition {
-                                        kind: TypeDefinitionKind::Structure(fields),
-                                        params,
-                                        bounds,
-                                    },
-                                );
-                            }
+                            typechecker.types.insert(
+                                id,
+                                TypeDefinition {
+                                    kind: TypeDefinitionKind::Structure(fields),
+                                    params,
+                                    bounds,
+                                },
+                            );
                         }
-                        lower::TypeKind::Enumeration(_, _) => todo!("enumerations"),
+                        lower::TypeKind::Enumeration(variants, _) => {
+                            let variants = variants
+                                .iter()
+                                .map(|ty| {
+                                    ty.values
+                                        .iter()
+                                        .map(|ty| typechecker.convert_type_annotation(ty))
+                                        .collect()
+                                })
+                                .collect();
+
+                            typechecker.types.insert(
+                                id,
+                                TypeDefinition {
+                                    kind: TypeDefinitionKind::Enumeration(variants),
+                                    params,
+                                    bounds,
+                                },
+                            );
+                        }
                         lower::TypeKind::Marker => {
                             typechecker.types.insert(
                                 id,
@@ -309,100 +330,103 @@ impl<L: Loader> Compiler<L> {
                                 },
                             );
                         }
-                        lower::TypeKind::Alias(_) => {}
                     }
                 }
             }
 
             for (&id, decl) in &file.borrow().declarations.traits {
-                if let lower::Declaration::Local(decl) | lower::Declaration::Builtin(decl) = decl {
-                    let ty = typechecker.convert_type_annotation(&decl.value.ty);
-                    let params = decl.value.parameters.iter().map(|param| param.id).collect();
-
-                    typechecker
-                        .traits
-                        .insert(id, TraitDefinition { ty, params });
+                if typechecker.traits.contains_key(&id) {
+                    continue;
                 }
+
+                let ty = typechecker.convert_type_annotation(&decl.value.ty);
+                let params = decl.value.parameters.iter().map(|param| param.id).collect();
+
+                typechecker
+                    .traits
+                    .insert(id, TraitDefinition { ty, params });
             }
 
             for (&id, decl) in &file.borrow().declarations.constants {
-                if let lower::Declaration::Local(decl) | lower::Declaration::Builtin(decl) = decl {
-                    let value = decl.value.value.borrow().as_ref().unwrap().clone();
-                    let generic_ty = typechecker.convert_type_annotation(&decl.value.ty);
-
-                    let bounds = decl
-                        .value
-                        .bounds
-                        .iter()
-                        .map(|bound| {
-                            let mut tr = typechecker.traits.get(&bound.tr).unwrap().clone();
-
-                            let substitutions = tr
-                                .params
-                                .into_iter()
-                                .zip(&bound.parameters)
-                                .map(|(param, ty)| (param, typechecker.convert_type_annotation(ty)))
-                                .collect();
-
-                            tr.ty.instantiate_with(&substitutions);
-
-                            (bound.tr, tr.ty, bound.span)
-                        })
-                        .collect::<Vec<_>>();
-
-                    typechecker.generic_constants.insert(
-                        id,
-                        Constant {
-                            file: file.clone(),
-                            decl: Declaration {
-                                name: decl.name,
-                                span: decl.span,
-                                value,
-                            },
-                            generic_ty,
-                            bounds,
-                        },
-                    );
+                if typechecker.generic_constants.contains_key(&id) {
+                    continue;
                 }
+
+                let value = decl.value.value.borrow().as_ref().unwrap().clone();
+                let generic_ty = typechecker.convert_type_annotation(&decl.value.ty);
+
+                let bounds = decl
+                    .value
+                    .bounds
+                    .iter()
+                    .map(|bound| {
+                        let mut tr = typechecker.traits.get(&bound.tr).unwrap().clone();
+
+                        let substitutions = tr
+                            .params
+                            .into_iter()
+                            .zip(&bound.parameters)
+                            .map(|(param, ty)| (param, typechecker.convert_type_annotation(ty)))
+                            .collect();
+
+                        tr.ty.instantiate_with(&substitutions);
+
+                        (bound.tr, tr.ty, bound.span)
+                    })
+                    .collect::<Vec<_>>();
+
+                typechecker.generic_constants.insert(
+                    id,
+                    Constant {
+                        file: file.clone(),
+                        decl: Declaration {
+                            name: decl.name,
+                            span: decl.span,
+                            value,
+                        },
+                        generic_ty,
+                        bounds,
+                    },
+                );
             }
 
-            for decl in file.borrow().declarations.instances.values() {
-                if let lower::Declaration::Local(decl) | lower::Declaration::Builtin(decl) = decl {
-                    let value = decl.value.value.clone();
-
-                    let mut tr = typechecker.traits.get(&decl.value.tr).unwrap().clone();
-
-                    let substitutions = tr
-                        .params
-                        .into_iter()
-                        .zip(&decl.value.parameters)
-                        .map(|(param, ty)| (param, typechecker.convert_type_annotation(ty)))
-                        .collect();
-
-                    tr.ty.instantiate_with(&substitutions);
-
-                    let generic_instance_id = typechecker.compiler.new_generic_constant_id();
-
-                    typechecker
-                        .declared_instances
-                        .entry(decl.value.tr)
-                        .or_default()
-                        .push(generic_instance_id);
-
-                    typechecker.generic_constants.insert(
-                        generic_instance_id,
-                        Constant {
-                            file: file.clone(),
-                            decl: Declaration {
-                                name: decl.name,
-                                span: decl.span,
-                                value,
-                            },
-                            generic_ty: tr.ty,
-                            bounds: Vec::new(), // TODO: Generic instances
-                        },
-                    );
+            for (id, decl) in file.borrow().declarations.instances.clone() {
+                if typechecker.generic_constants.contains_key(&id) {
+                    continue;
                 }
+
+                let value = decl.value.value.clone();
+
+                let mut tr = typechecker.traits.get(&decl.value.tr).unwrap().clone();
+
+                let substitutions = tr
+                    .params
+                    .into_iter()
+                    .zip(&decl.value.parameters)
+                    .map(|(param, ty)| (param, typechecker.convert_type_annotation(ty)))
+                    .collect();
+
+                tr.ty.instantiate_with(&substitutions);
+
+                typechecker
+                    .declared_instances
+                    .entry(decl.value.tr)
+                    .or_default()
+                    .push(id);
+
+                typechecker.generic_constants.insert(
+                    id,
+                    Constant {
+                        file: file.clone(),
+                        decl: Declaration {
+                            name: decl.name,
+                            span: decl.span,
+                            value,
+                        },
+                        generic_ty: tr.ty,
+                        bounds: Vec::new(), // TODO: Generic instances
+                    },
+                );
             }
 
             let block = mem::take(&mut file.borrow_mut().block);
@@ -722,7 +746,7 @@ struct TypeDefinition {
 enum TypeDefinitionKind {
     Marker,
     Structure(HashMap<InternedString, (usize, UnresolvedType)>),
-    // Enumeration(..), // TODO
+    Enumeration(Vec<Vec<UnresolvedType>>),
 }
 
 struct Typechecker<'a, L: Loader> {
@@ -929,17 +953,7 @@ impl<'a, L: Loader> Typechecker<'a, L> {
                 }
             }
             lower::ExpressionKind::Instantiate(id, fields) => {
-                let mut structure = match self.types.get(id) {
-                    Some(structure) => structure.clone(),
-                    None => {
-                        self.compiler.diagnostics.add(Diagnostic::error(
-                            "only structures may be instantiated like this",
-                            vec![Note::primary(expr.span, "this is not a structure type")],
-                        ));
-
-                        return UnresolvedExpression::error(expr.span);
-                    }
-                };
+                let mut structure = self.types.get(id).unwrap().clone();
 
                 let mut structure_fields = match &structure.kind {
                     TypeDefinitionKind::Structure(fields) => fields.clone(),
@@ -1091,6 +1105,63 @@ impl<'a, L: Loader> Typechecker<'a, L> {
                     span: expr.span,
                     ty: UnresolvedType::Builtin(BuiltinType::List(Box::new(ty))),
                     kind: UnresolvedExpressionKind::ListLiteral(items),
+                }
+            }
+            lower::ExpressionKind::Variant(id, index, values) => {
+                let mut enumeration = self.types.get(id).unwrap().clone();
+
+                let mut variant_tys = match &enumeration.kind {
+                    TypeDefinitionKind::Enumeration(variants) => variants[*index].clone(),
+                    _ => unreachable!(), // or do we need to display an error like above?
+                };
+
+                let mut ty = UnresolvedType::Named(
+                    *id,
+                    enumeration
+                        .params
+                        .into_iter()
+                        .map(UnresolvedType::Parameter)
+                        .collect(),
+                );
+
+                let mut substitutions = BTreeMap::new();
+                self.add_substitutions(&mut ty, &mut substitutions);
+
+                for (_, ty, _) in &mut enumeration.bounds {
+                    self.add_substitutions(ty, &mut substitutions);
+                }
+
+                self.queued_type_bounds.append(&mut enumeration.bounds);
+
+                for ty in &mut variant_tys {
+                    self.add_substitutions(ty, &mut substitutions);
+                }
+
+                let values = values
+                    .into_iter()
+                    .zip(variant_tys)
+                    .map(|(expr, ty)| {
+                        let value = self.typecheck_expr(expr, file, suppress_errors);
+
+                        match self.ctx.unify(value.ty.clone(), ty) {
+                            Ok(ty) => ty,
+                            Err(errors) => {
+                                if !suppress_errors {
+                                    self.report_type_error(errors, expr.span);
+                                }
+
+                                return UnresolvedExpression::error(expr.span);
+                            }
+                        };
+
+                        value
+                    })
+                    .collect();
+
+                UnresolvedExpression {
+                    span: expr.span,
+                    ty,
+                    kind: UnresolvedExpressionKind::Variant(*index, values),
                 }
             }
         }
@@ -1307,6 +1378,15 @@ impl<'a, L: Loader> Typechecker<'a, L> {
                                 .collect::<Result<_, _>>()?,
                         )
                     }
+                    UnresolvedExpressionKind::Variant(index, values) => {
+                        MonomorphizedExpressionKind::Variant(
+                            index,
+                            values
+                                .into_iter()
+                                .map(|expr| self.monomorphize(expr))
+                                .collect::<Result<_, _>>()?,
+                        )
+                    }
                     UnresolvedExpressionKind::FunctionInput => {
                         MonomorphizedExpressionKind::FunctionInput
                     }
@@ -1409,6 +1489,13 @@ impl<'a, L: Loader> Typechecker<'a, L> {
                         .map(|expr| self.finalize_internal(expr, generic))
                         .collect::<Result<_, _>>()?,
                 ),
+                MonomorphizedExpressionKind::Variant(index, values) => ExpressionKind::Variant(
+                    index,
+                    values
+                        .into_iter()
+                        .map(|expr| self.finalize_internal(expr, generic))
+                        .collect::<Result<_, _>>()?,
+                ),
                 MonomorphizedExpressionKind::FunctionInput => ExpressionKind::FunctionInput,
                 MonomorphizedExpressionKind::ListLiteral(items) => ExpressionKind::ListLiteral(
                     items
@@ -1501,8 +1588,8 @@ impl<'a, L: Loader> Typechecker<'a, L> {
                 self.declarations.variables.insert(
                     *id,
                     Declaration {
-                        name: decl.name(),
-                        span: decl.span(),
+                        name: decl.name,
+                        span: decl.span,
                         value: expr.ty.clone(),
                     },
                 );

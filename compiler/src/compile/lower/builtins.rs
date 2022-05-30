@@ -13,11 +13,11 @@ impl<L: Loader> Compiler<L> {
 
                 info.declarations.$decls.insert(
                     id,
-                    Declaration::Builtin(DeclarationKind {
+                    Declaration {
                         name,
                         span: builtin_span,
                         value: $value,
-                    }),
+                    },
                 );
 
                 scope_values.insert(name, $scope_value(id));
