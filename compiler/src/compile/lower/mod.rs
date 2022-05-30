@@ -471,125 +471,90 @@ impl<L: Loader> Compiler<L> {
                             let tys = variant
                                 .values
                                 .into_iter()
-                                .map(|ty| {
-                                    (
-                                        self.lower_type_annotation(ty, scope, info),
-                                        self.new_variable_id(),
-                                    )
-                                })
+                                .map(|ty| self.lower_type_annotation(ty, scope, info))
                                 .collect::<Vec<_>>();
 
-                            let constructor_ty = tys.clone().into_iter().fold(
+                            let constructor_id = self.new_generic_constant_id();
+
+                            let constructor_ty = tys.iter().fold(
                                 TypeAnnotation {
                                     span: variant.span,
                                     kind: TypeAnnotationKind::Named(
                                         id,
                                         parameters
                                             .iter()
-                                            .map(|_| TypeAnnotation {
+                                            .map(|param| TypeAnnotation {
                                                 span,
-                                                kind: TypeAnnotationKind::Placeholder,
+                                                kind: TypeAnnotationKind::Parameter(*param),
                                             })
                                             .collect(),
                                     ),
                                 },
                                 |result, next| TypeAnnotation {
-                                    span: Span::join(result.span, next.0.span),
+                                    span: variant.span,
                                     kind: TypeAnnotationKind::Function(
-                                        Box::new(next.0),
+                                        Box::new(next.clone()),
                                         Box::new(result),
                                     ),
                                 },
                             );
 
-                            let constructor_id = self.new_generic_constant_id();
+                            let variables = tys
+                                .iter()
+                                .map(|_| self.new_variable_id())
+                                .collect::<Vec<_>>();
 
-                            let initial = Expression {
-                                span: Span::join(
-                                    variant.span,
-                                    tys.last().map(|ty| ty.0.span).unwrap_or(variant.span),
-                                ),
-                                kind: ExpressionKind::Annotate(
-                                    Box::new(Expression {
-                                        span: Span::join(
-                                            variant.span,
-                                            tys.last().map(|ty| ty.0.span).unwrap_or(variant.span),
-                                        ),
-                                        kind: ExpressionKind::Variant(
-                                            id,
-                                            index,
-                                            tys.iter()
-                                                .map(|(ty, var)| Expression {
-                                                    span: ty.span,
-                                                    kind: ExpressionKind::Variable(*var),
-                                                })
-                                                .collect(),
-                                        ),
-                                    }),
-                                    TypeAnnotation {
-                                        span,
-                                        kind: TypeAnnotationKind::Named(
-                                            id,
-                                            parameters
-                                                .iter()
-                                                .map(|id| {
-                                                    let param = info
-                                                        .declarations
-                                                        .type_parameters
-                                                        .get(id)
-                                                        .unwrap();
-
-                                                    TypeAnnotation {
-                                                        span: param.span,
-                                                        kind: TypeAnnotationKind::Parameter(*id),
-                                                    }
-                                                })
-                                                .collect(),
-                                        ),
-                                    },
+                            let result = Expression {
+                                span: variant.span,
+                                kind: ExpressionKind::Variant(
+                                    id,
+                                    index,
+                                    variables
+                                        .iter()
+                                        .map(|var| Expression {
+                                            span: variant.span,
+                                            kind: ExpressionKind::Variable(*var),
+                                        })
+                                        .collect(),
                                 ),
                             };
 
-                            let constructor = tys
-                                .iter()
-                                .fold(initial, |result, (ty, var)| {
-                                    let ty_span = ty.span;
-
-                                    Expression {
-                                        span: Span::join(result.span, ty.span),
-                                        kind: ExpressionKind::Function(
-                                            Box::new(Expression {
-                                                span: Span::join(result.span, ty.span),
-                                                kind: ExpressionKind::Block(
-                                                    vec![Expression {
-                                                        span: ty.span,
+                            let constructor =
+                                variables.iter().fold(result, |result, &var| Expression {
+                                    span: variant.span,
+                                    kind: ExpressionKind::Function(
+                                        Box::new(Expression {
+                                            span: variant.span,
+                                            kind: ExpressionKind::Block(
+                                                vec![
+                                                    Expression {
+                                                        span: variant.span,
                                                         kind: ExpressionKind::Initialize(
-                                                            *var,
+                                                            var,
                                                             Box::new(Expression {
-                                                                span: ty.span,
-                                                                kind: ExpressionKind::Annotate(
-                                                                    Box::new(Expression {
-                                                                        span: ty.span,
-                                                                        kind: ExpressionKind::FunctionInput,
-                                                                    }),
-                                                                    ty.clone(),
-                                                                ),
+                                                                span: variant.span,
+                                                                kind: ExpressionKind::FunctionInput,
                                                             }),
                                                         ),
-                                                    }],
-                                                    Default::default(),
-                                                ),
-                                            }),
-                                            vec![(*var, ty_span)],
-                                        ),
-                                    }
+                                                    },
+                                                    result,
+                                                ],
+                                                Default::default(),
+                                            ),
+                                        }),
+                                        vec![(var, variant.span)],
+                                    ),
                                 });
+
+                            dbg!(&constructor_ty);
+                            dbg!(&constructor);
+                            eprintln!("****");
 
                             info.declarations.constants.insert(
                                 constructor_id,
                                 Declaration {
-                                    name,
-                                    span,
+                                    name: variant.name,
+                                    span: variant.span,
                                     value: Constant {
                                         parameters: parameters.clone(),
                                         bounds: bounds.clone(),
@@ -604,18 +569,7 @@ impl<L: Loader> Compiler<L> {
                         }
 
                         Type {
-                            kind: TypeKind::Enumeration(
-                                variant_tys
-                                    .into_iter()
-                                    .map(|(constructor_id, tys)| {
-                                        (
-                                            constructor_id,
-                                            tys.into_iter().map(|(ty, _)| ty).collect(),
-                                        )
-                                    })
-                                    .collect(),
-                                variant_names,
-                            ),
+                            kind: TypeKind::Enumeration(variant_tys, variant_names),
                             params: parameters,
                             bounds,
                         }
@@ -1025,14 +979,12 @@ impl<L: Loader> Compiler<L> {
             ($function:expr, $inputs:expr) => {
                 $inputs
                     .into_iter()
-                    .fold(self.lower_expr($function, scope, info), |result, next| {
-                        Expression {
-                            span: Span::join(result.span, next.span),
-                            kind: ExpressionKind::Call(
-                                Box::new(result),
-                                Box::new(self.lower_expr(next, scope, info)),
-                            ),
-                        }
+                    .fold($function, |result, next| Expression {
+                        span: Span::join(result.span, next.span),
+                        kind: ExpressionKind::Call(
+                            Box::new(result),
+                            Box::new(self.lower_expr(next, scope, info)),
+                        ),
                     })
             };
         }
@@ -1152,9 +1104,18 @@ impl<L: Loader> Compiler<L> {
                                     }
                                 };
 
-                                ExpressionKind::Constant(variant_types[index].0)
+                                function_call!(
+                                    Expression {
+                                        span: expr.span,
+                                        kind: ExpressionKind::Constant(variant_types[index].0)
+                                    },
+                                    inputs.into_iter().skip(1)
+                                )
+                                .kind
                             }
-                            _ => function_call!(*function, inputs).kind,
+                            _ => {
+                                function_call!(self.lower_expr(*function, scope, info), inputs).kind
+                            }
                         },
                         Some(ScopeValue::TypeParameter(_)) => {
                             self.diagnostics.add(Diagnostic::error(
@@ -1175,10 +1136,10 @@ impl<L: Loader> Compiler<L> {
 
                             ExpressionKind::Error
                         }
-                        _ => function_call!(*function, inputs).kind,
+                        _ => function_call!(self.lower_expr(*function, scope, info), inputs).kind,
                     }
                 }
-                _ => function_call!(*function, inputs).kind,
+                _ => function_call!(self.lower_expr(*function, scope, info), inputs).kind,
             },
             ast::ExpressionKind::Function(input, body) => {
                 let scope = Scope {
