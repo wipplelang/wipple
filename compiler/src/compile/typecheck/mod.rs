@@ -1138,7 +1138,7 @@ impl<'a, L: Loader> Typechecker<'a, L> {
                 }
 
                 let values = values
-                    .into_iter()
+                    .iter()
                     .zip(variant_tys)
                     .map(|(expr, ty)| {
                         let value = self.typecheck_expr(expr, file, suppress_errors);

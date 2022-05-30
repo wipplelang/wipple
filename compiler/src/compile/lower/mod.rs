@@ -1034,10 +1034,12 @@ impl<L: Loader> Compiler<L> {
                                     }
                                 };
 
+                                let mut inputs = inputs.into_iter();
+
+                                let variant_span = inputs.next().unwrap().span;
+
                                 let inputs = inputs
-                                    .iter()
-                                    .skip(1)
-                                    .map(|expr| self.lower_expr(expr.clone(), scope, info))
+                                    .map(|expr| self.lower_expr(expr, scope, info))
                                     .collect::<Vec<_>>();
 
                                 let expected_input_count = variant_types[index].values.len();
@@ -1051,8 +1053,11 @@ impl<L: Loader> Compiler<L> {
                                         ),
                                         vec![Note::primary(
                                             Span::join(
-                                                inputs.first().unwrap().span,
-                                                inputs.last().unwrap().span,
+                                                variant_span,
+                                                inputs
+                                                    .last()
+                                                    .map(|expr| expr.span)
+                                                    .unwrap_or(variant_span),
                                             ),
                                             if inputs.len() > expected_input_count {
                                                 "try removing some of these values"
