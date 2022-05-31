@@ -189,7 +189,9 @@ impl<'a> Interpreter<'a> {
             }
             ExpressionKind::Initialize(pattern, value) => {
                 let value = self.eval_expr(value, info)?;
-                self.eval_pattern(pattern, value, info)?;
+
+                let matches = self.eval_pattern(pattern, value, info)?;
+                assert!(matches, "no matches for pattern in initialization");
 
                 Rc::new(Value::Marker)
             }
