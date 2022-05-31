@@ -356,10 +356,7 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
         id,
         Template::function(builtin_span, |expander, span, mut inputs, scope| {
             if inputs.len() != 1 {
-                expander.compiler.diagnostics.add(Diagnostic::error(
-                    "expected 1 input to template `use`",
-                    vec![Note::primary(span, "`use` only accepts a file path or URL")],
-                ));
+                expander.report_wrong_template_arity("use", span, inputs.len(), 1);
 
                 return Node {
                     span,
@@ -369,30 +366,23 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
 
             let input = inputs.pop().unwrap();
 
-            let path = match input.kind {
-                NodeKind::Text(text) => text,
-                _ => {
-                    expander.compiler.diagnostics.add(Diagnostic::error(
-                        "expected text here",
-                        vec![Note::primary(span, "`use` only accepts a file path or URL")],
-                    ));
+            match input.kind {
+                NodeKind::Text(path) => {
+                    if let Some(exported) =
+                        (expander.load)(expander.compiler, FilePath::Path(path), expander.info)
+                    {
+                        scope.values.borrow_mut().extend((*exported).clone());
+                    }
 
-                    return Node {
+                    Node {
                         span,
-                        kind: NodeKind::Error,
-                    };
+                        kind: NodeKind::Empty,
+                    }
                 }
-            };
-
-            if let Some(exported) =
-                (expander.load)(expander.compiler, FilePath::Path(path), expander.info)
-            {
-                scope.values.borrow_mut().extend((*exported).clone());
-            }
-
-            Node {
-                span,
-                kind: NodeKind::Empty,
+                _ => Node {
+                    span,
+                    kind: NodeKind::Use(Box::new(input)),
+                },
             }
         }),
     );

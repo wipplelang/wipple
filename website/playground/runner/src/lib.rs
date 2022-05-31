@@ -165,7 +165,7 @@ fn annotations(program: &mut wipple_compiler::compile::Program) -> Vec<Annotatio
                 ExpressionKind::Constant(id) => declarations
                     .monomorphized_constants
                     .get(&id)
-                    .map(|decl| decl.name),
+                    .map(|((), decl)| decl.name),
                 _ => None,
             };
 
@@ -203,7 +203,7 @@ fn annotations(program: &mut wipple_compiler::compile::Program) -> Vec<Annotatio
         });
     }
 
-    for decl in &declarations.generic_constants {
+    for ((), decl) in &declarations.generic_constants {
         if !belongs_to_playground(decl.span) {
             continue;
         }

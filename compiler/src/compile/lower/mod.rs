@@ -120,9 +120,8 @@ pub enum ExpressionKind {
     When(Box<Expression>, Vec<Arm>),
     External(InternedString, InternedString, Vec<Expression>),
     Annotate(Box<Expression>, TypeAnnotation),
-    Initialize(VariableId, Box<Expression>),
+    Initialize(Pattern, Box<Expression>),
     FunctionInput,
-    Member(Box<Expression>, InternedString),
     Instantiate(TypeId, Vec<(InternedString, Expression)>),
     ListLiteral(Vec<Expression>),
     Variant(TypeId, usize, Vec<Expression>),
@@ -152,9 +151,22 @@ pub struct Pattern {
 
 #[derive(Debug, Clone)]
 pub enum PatternKind {
-    Binding(VariableId),
-    // TODO: Support complex paths (data fields, variants)
     Wildcard,
+    Variable(VariableId),
+    Destructure(HashMap<InternedString, Pattern>),
+}
+
+impl Pattern {
+    fn variables(&self) -> BTreeSet<VariableId> {
+        match &self.kind {
+            PatternKind::Wildcard => BTreeSet::new(),
+            PatternKind::Variable(var) => BTreeSet::from([*var]),
+            PatternKind::Destructure(fields) => fields
+                .values()
+                .flat_map(|pattern| pattern.variables())
+                .collect(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -356,7 +368,7 @@ impl<L: Loader> Compiler<L> {
         statement: ast::Statement,
         scope: &Scope,
         info: &mut Info,
-    ) -> Vec<Expression> {
+    ) -> Option<Expression> {
         let defined = |name| scope.values.borrow().contains_key(&name);
 
         match statement.kind {
@@ -367,7 +379,7 @@ impl<L: Loader> Compiler<L> {
                         vec![Note::primary(span, "try assigning to a different name")],
                     ));
 
-                    return vec![Expression::error(statement.span)];
+                    return Some(Expression::error(statement.span));
                 }
 
                 let id = self.new_type_id();
@@ -501,7 +513,7 @@ impl<L: Loader> Compiler<L> {
 
                             let variables = tys
                                 .iter()
-                                .map(|_| self.new_variable_id())
+                                .map(|ty| (ty.span, self.new_variable_id()))
                                 .collect::<Vec<_>>();
 
                             let result = Expression {
@@ -511,8 +523,8 @@ impl<L: Loader> Compiler<L> {
                                     index,
                                     variables
                                         .iter()
-                                        .map(|var| Expression {
-                                            span: variant.span,
+                                        .map(|(span, var)| Expression {
+                                            span: *span,
                                             kind: ExpressionKind::Variable(*var),
                                         })
                                         .collect(),
@@ -520,17 +532,22 @@ impl<L: Loader> Compiler<L> {
                             };
 
                             let constructor =
-                                variables.iter().fold(result, |result, &var| Expression {
-                                    span: variant.span,
-                                    kind: ExpressionKind::Function(
-                                        Box::new(Expression {
-                                            span: variant.span,
-                                            kind: ExpressionKind::Block(
-                                                vec![
+                                variables
+                                    .iter()
+                                    .fold(result, |result, (span, var)| Expression {
+                                        span: variant.span,
+                                        kind: ExpressionKind::Function(
+                                            Box::new(Expression {
+                                                span: variant.span,
+                                                kind: ExpressionKind::Block(
+                                                    vec![
                                                     Expression {
                                                         span: variant.span,
                                                         kind: ExpressionKind::Initialize(
-                                                            var,
+                                                            Pattern {
+                                                                span: *span,
+                                                                kind: PatternKind::Variable(*var),
+                                                            },
                                                             Box::new(Expression {
                                                                 span: variant.span,
                                                                 kind: ExpressionKind::FunctionInput,
@@ -539,16 +556,12 @@ impl<L: Loader> Compiler<L> {
                                                     },
                                                     result,
                                                 ],
-                                                Default::default(),
-                                            ),
-                                        }),
-                                        vec![(var, variant.span)],
-                                    ),
-                                });
-
-                            dbg!(&constructor_ty);
-                            dbg!(&constructor);
-                            eprintln!("****");
+                                                    Default::default(),
+                                                ),
+                                            }),
+                                            vec![(*var, variant.span)],
+                                        ),
+                                    });
 
                             info.declarations.constants.insert(
                                 constructor_id,
@@ -585,7 +598,7 @@ impl<L: Loader> Compiler<L> {
                     },
                 );
 
-                Vec::new()
+                None
             }
             ast::StatementKind::Trait((span, name), declaration) => {
                 if defined(name) {
@@ -594,7 +607,7 @@ impl<L: Loader> Compiler<L> {
                         vec![Note::primary(span, "try assigning to a different name")],
                     ));
 
-                    return vec![Expression::error(statement.span)];
+                    return Some(Expression::error(statement.span));
                 }
 
                 let tr = {
@@ -623,7 +636,7 @@ impl<L: Loader> Compiler<L> {
                     },
                 );
 
-                Vec::new()
+                None
             }
             ast::StatementKind::Constant((span, name), declaration) => {
                 if defined(name) {
@@ -632,7 +645,7 @@ impl<L: Loader> Compiler<L> {
                         vec![Note::primary(span, "try assigning to a different name")],
                     ));
 
-                    return vec![Expression::error(statement.span)];
+                    return Some(Expression::error(statement.span));
                 }
 
                 let constant = {
@@ -655,7 +668,7 @@ impl<L: Loader> Compiler<L> {
                                         )],
                                     ));
 
-                                    return Err(vec![Expression::error(statement.span)]);
+                                    return Err(Expression::error(statement.span));
                                 }
                                 None => {
                                     self.diagnostics.add(Diagnostic::error(
@@ -666,7 +679,7 @@ impl<L: Loader> Compiler<L> {
                                         )],
                                     ));
 
-                                    return Err(vec![Expression::error(statement.span)]);
+                                    return Err(Expression::error(statement.span));
                                 }
                             };
 
@@ -686,7 +699,7 @@ impl<L: Loader> Compiler<L> {
 
                     let bounds = match bounds {
                         Ok(bounds) => bounds,
-                        Err(error) => return error,
+                        Err(error) => return Some(error),
                     };
 
                     Constant {
@@ -712,7 +725,7 @@ impl<L: Loader> Compiler<L> {
                     },
                 );
 
-                Vec::new()
+                None
             }
             ast::StatementKind::Instance(decl) => {
                 let tr = match scope.get(decl.trait_name, decl.trait_span) {
@@ -723,7 +736,7 @@ impl<L: Loader> Compiler<L> {
                             vec![Note::primary(decl.trait_span, "expected a trait here")],
                         ));
 
-                        return vec![Expression::error(statement.span)];
+                        return Some(Expression::error(statement.span));
                     }
                     None => {
                         self.diagnostics.add(Diagnostic::error(
@@ -731,7 +744,7 @@ impl<L: Loader> Compiler<L> {
                             vec![Note::primary(decl.trait_span, "this name is not defined")],
                         ));
 
-                        return vec![Expression::error(statement.span)];
+                        return Some(Expression::error(statement.span));
                     }
                 };
 
@@ -753,7 +766,7 @@ impl<L: Loader> Compiler<L> {
                         )],
                     ));
 
-                    return vec![Expression::error(statement.span)];
+                    return Some(Expression::error(statement.span));
                 }
 
                 let value = self.lower_expr(decl.value, scope, info);
@@ -775,10 +788,10 @@ impl<L: Loader> Compiler<L> {
                     },
                 );
 
-                Vec::new()
+                None
             }
             ast::StatementKind::Assign(pattern, expr) => match &pattern.kind {
-                ast::PatternKind::Error => vec![Expression::error(statement.span)],
+                ast::PatternKind::Error => Some(Expression::error(statement.span)),
                 ast::PatternKind::Name(name) => {
                     let mut associated_constant = None;
 
@@ -798,7 +811,7 @@ impl<L: Loader> Compiler<L> {
                                 )],
                             ));
 
-                            return vec![Expression::error(statement.span)];
+                            return Some(Expression::error(statement.span));
                         }
                         Some(ScopeValue::Constant(id)) => {
                             let decl = info.declarations.constants.get(&id).unwrap();
@@ -820,7 +833,7 @@ impl<L: Loader> Compiler<L> {
                                     ],
                                 ));
 
-                                return vec![Expression::error(statement.span)];
+                                return Some(Expression::error(statement.span));
                             }
 
                             associated_constant = Some((parameters, c));
@@ -845,7 +858,7 @@ impl<L: Loader> Compiler<L> {
                         self.validate_constant(&value);
 
                         associated_constant.replace(Some(value));
-                        Vec::new()
+                        None
                     } else {
                         let value = self.lower_expr(expr, scope, info);
 
@@ -868,88 +881,116 @@ impl<L: Loader> Compiler<L> {
                             },
                         );
 
-                        vec![Expression {
+                        Some(Expression {
                             span: statement.span,
-                            kind: ExpressionKind::Initialize(id, Box::new(value)),
-                        }]
+                            kind: ExpressionKind::Initialize(
+                                Pattern {
+                                    span: pattern.span,
+                                    kind: PatternKind::Variable(id),
+                                },
+                                Box::new(value),
+                            ),
+                        })
                     }
                 }
                 ast::PatternKind::Destructure(names) => {
                     let value = self.lower_expr(expr, scope, info);
-                    let value_span = value.span;
 
-                    let id = self.new_variable_id();
+                    let ids = names
+                        .iter()
+                        .map(|(span, name)| {
+                            let id = self.new_variable_id();
 
-                    let value_is_function_input =
-                        matches!(value.kind, ExpressionKind::FunctionInput);
+                            scope
+                                .values
+                                .borrow_mut()
+                                .insert(*name, ScopeValue::Variable(id));
 
-                    if value_is_function_input {
-                        scope.function_inputs.borrow_mut().insert(id);
+                            (
+                                *name,
+                                Pattern {
+                                    span: *span,
+                                    kind: PatternKind::Variable(id),
+                                },
+                            )
+                        })
+                        .collect::<HashMap<_, _>>();
+
+                    let pattern = Pattern {
+                        span: pattern.span,
+                        kind: PatternKind::Destructure(ids),
+                    };
+
+                    if matches!(value.kind, ExpressionKind::FunctionInput) {
+                        scope
+                            .function_inputs
+                            .borrow_mut()
+                            .extend(pattern.variables());
                     }
 
-                    info.declarations.variables.insert(
-                        id,
-                        Declaration {
-                            name: InternedString::new("<destructured>"),
-                            span: pattern.span,
-                            value: (),
-                        },
-                    );
-
-                    let mut exprs = vec![Expression {
+                    Some(Expression {
                         span: statement.span,
-                        kind: ExpressionKind::Initialize(id, Box::new(value)),
-                    }];
-
-                    for (span, name) in names.iter().copied() {
-                        let statement = ast::Statement {
-                            span,
-                            kind: ast::StatementKind::Assign(
-                                ast::Pattern {
-                                    span,
-                                    kind: ast::PatternKind::Name(name),
-                                },
-                                ast::Expression {
-                                    span: value_span,
-                                    kind: ast::ExpressionKind::Member(
-                                        Box::new(ast::Expression {
-                                            span: value_span,
-                                            kind: ast::ExpressionKind::Variable(id),
-                                        }),
-                                        name,
-                                    ),
-                                },
-                            ),
-                        };
-
-                        let mut assignment = self.lower_statement(statement, scope, info);
-
-                        if value_is_function_input {
-                            // HACK: Extract the assigned variable IDs from the statement
-                            for statement in &assignment {
-                                if let ExpressionKind::Initialize(id, _) = &statement.kind {
-                                    scope.function_inputs.borrow_mut().insert(*id);
-                                }
-                            }
-                        }
-
-                        exprs.append(&mut assignment);
-                    }
-
-                    exprs
+                        kind: ExpressionKind::Initialize(pattern, Box::new(value)),
+                    })
                 }
-                ast::PatternKind::Wildcard => vec![self.lower_expr(expr, scope, info)],
+                ast::PatternKind::Wildcard => Some(self.lower_expr(expr, scope, info)),
             },
-            ast::StatementKind::Expression(expr) => {
-                vec![self.lower_expr(
-                    ast::Expression {
-                        span: statement.span,
-                        kind: expr,
-                    },
-                    scope,
-                    info,
-                )]
+            ast::StatementKind::Use((span, name)) => {
+                let ty = match scope.get(name, span) {
+                    Some(ScopeValue::Type(ty)) => ty,
+                    Some(_) => {
+                        self.diagnostics.add(Diagnostic::error(
+                            format!("`{}` is not a type", name),
+                            vec![Note::primary(span, "expected a type here")],
+                        ));
+
+                        return Some(Expression::error(statement.span));
+                    }
+                    None => {
+                        self.diagnostics.add(Diagnostic::error(
+                            format!("cannot find `{}`", name),
+                            vec![Note::primary(span, "this name is not defined")],
+                        ));
+
+                        return Some(Expression::error(statement.span));
+                    }
+                };
+
+                let (constructors, names) =
+                    match &info.declarations.types.get(&ty).unwrap().value.kind {
+                        TypeKind::Enumeration(constructors, names) => (constructors, names),
+                        _ => {
+                            self.diagnostics.add(Diagnostic::error(
+                                "only enumerations may be `use`d",
+                                vec![Note::primary(
+                                    span,
+                                    format!("`{}` is not an enumeration", name),
+                                )],
+                            ));
+
+                            return Some(Expression::error(statement.span));
+                        }
+                    };
+
+                for (name, index) in names {
+                    let (constructor, _) = constructors[*index];
+
+                    scope
+                        .values
+                        .borrow_mut()
+                        .insert(*name, ScopeValue::Constant(constructor));
+                }
+
+                None
             }
+            ast::StatementKind::Expression(expr) => Some(self.lower_expr(
+                ast::Expression {
+                    span: statement.span,
+                    kind: expr,
+                },
+                scope,
+                info,
+            )),
         }
     }
 
@@ -1039,6 +1080,7 @@ impl<L: Loader> Compiler<L> {
                                         ast::PatternKind::Name(name) => Some((*name, expr)),
                                         _ => None,
                                     },
+                                    // TODO: 'use' inside instantiation
                                     _ => {
                                         self.diagnostics.add(Diagnostic::error(
                                             "structure instantiation may not contain executable statements",
@@ -1205,10 +1247,6 @@ impl<L: Loader> Compiler<L> {
                 self.lower_type_annotation(ty, scope, info),
             ),
             ast::ExpressionKind::FunctionInput => ExpressionKind::FunctionInput,
-            ast::ExpressionKind::Variable(id) => ExpressionKind::Variable(id),
-            ast::ExpressionKind::Member(expr, name) => {
-                ExpressionKind::Member(Box::new(self.lower_expr(*expr, scope, info)), name)
-            }
             ast::ExpressionKind::ListLiteral(items) => ExpressionKind::ListLiteral(
                 items
                     .into_iter()

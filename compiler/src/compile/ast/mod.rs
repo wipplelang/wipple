@@ -3,7 +3,7 @@ use crate::{
     diagnostics::*,
     helpers::InternedString,
     parse::Span,
-    Compiler, FilePath, Loader, VariableId,
+    Compiler, FilePath, Loader,
 };
 use rust_decimal::Decimal;
 
@@ -33,6 +33,7 @@ pub enum StatementKind {
     Constant((Span, InternedString), ConstantDeclaration),
     Instance(Instance),
     Assign(Pattern, Expression),
+    Use((Span, InternedString)),
     Expression(ExpressionKind),
 }
 
@@ -66,8 +67,6 @@ pub enum ExpressionKind {
     External(InternedString, InternedString, Vec<Expression>),
     Annotate(Box<Expression>, TypeAnnotation),
     FunctionInput,
-    Variable(VariableId),
-    Member(Box<Expression>, InternedString),
     ListLiteral(Vec<Expression>),
 }
 
@@ -108,8 +107,8 @@ pub struct Pattern {
 #[derive(Debug, Clone)]
 pub enum PatternKind {
     Error,
-    Name(InternedString),
     Wildcard,
+    Name(InternedString),
     Destructure(Vec<(Span, InternedString)>),
 }
 
@@ -385,6 +384,21 @@ impl<L: Loader> Compiler<L> {
                             ty,
                         },
                     )
+                }
+                NodeKind::Use(expr) => {
+                    let name = match expr.kind {
+                        NodeKind::Name(name) => name,
+                        _ => {
+                            self.diagnostics.add(Diagnostic::error(
+                                "`use` expects a path to a file or a name of a type",
+                                vec![Note::primary(expr.span, "expected a path or type here")],
+                            ));
+
+                            return StatementKind::Expression(ExpressionKind::Error);
+                        }
+                    };
+
+                    StatementKind::Use((expr.span, name))
                 }
                 _ => StatementKind::Expression(self.build_expression(node).kind),
             })(),

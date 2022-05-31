@@ -70,6 +70,7 @@ pub enum NodeKind {
     WhereClause(Box<Node>, Box<Node>),
     Instance(Box<Node>, Vec<Node>),
     ListLiteral(Vec<Node>),
+    Use(Box<Node>),
 }
 
 impl<L: Loader> Compiler<L> {
@@ -339,7 +340,7 @@ impl<L: Loader> Expander<'_, L> {
                             .map(|expr| self.expand_expr(expr, scope))
                             .collect();
 
-                        return self.expand_template(list_span, template, inputs, scope);
+                        return self.expand_template(*name, list_span, template, inputs, scope);
                     }
                 }
 
@@ -350,41 +351,40 @@ impl<L: Loader> Expander<'_, L> {
                 for (index, expr) in exprs.iter().enumerate() {
                     if let parse::ExprKind::Name(name) = &expr.kind {
                         if let Some(ScopeValue::Operator(operator)) = scope.get(*name) {
-                            operators.push_back((index, expr.span, operator))
+                            operators.push_back((index, *name, expr.span, operator))
                         }
                     }
                 }
 
                 if operators.is_empty() {
-                    if let parse::ExprKind::Name(name) = &exprs.first().unwrap().kind {
-                        if let Some(ScopeValue::Template(template)) = scope.get(*name) {
-                            let inputs = exprs
-                                .into_iter()
-                                .skip(1)
-                                .map(|expr| self.expand_expr(expr, scope))
-                                .collect();
+                    let mut exprs = exprs.into_iter();
+                    let first = exprs.next().unwrap();
 
-                            return self.expand_template(list_span, template, inputs, scope);
+                    if let parse::ExprKind::Name(name) = first.kind {
+                        if let Some(ScopeValue::Template(template)) = scope.get(name) {
+                            let inputs = exprs.map(|expr| self.expand_expr(expr, scope)).collect();
+                            return self.expand_template(name, list_span, template, inputs, scope);
                         }
                     }
 
                     Node {
                         span: list_span,
                         kind: NodeKind::List(
-                            exprs
-                                .into_iter()
+                            std::iter::once(first)
+                                .chain(exprs)
                                 .map(|expr| self.expand_expr(expr, scope))
                                 .collect(),
                         ),
                     }
                 } else {
-                    let (mut max_index, mut max_span, mut max_operator) =
+                    let (mut max_index, mut max_name, mut max_span, mut max_operator) =
                         operators.pop_front().unwrap();
 
-                    for (index, span, operator) in operators {
+                    for (index, name, span, operator) in operators {
                         macro_rules! replace {
                             () => {{
                                 max_index = index;
+                                max_name = name;
                                 max_span = span;
                                 max_operator = operator;
                             }};
@@ -499,7 +499,13 @@ impl<L: Loader> Expander<'_, L> {
                             scope,
                         );
 
-                        self.expand_template(span, max_operator.template, vec![lhs, rhs], scope)
+                        self.expand_template(
+                            max_name,
+                            span,
+                            max_operator.template,
+                            vec![lhs, rhs],
+                            scope,
+                        )
                     }
                 }
             }
@@ -508,6 +514,7 @@ impl<L: Loader> Expander<'_, L> {
 
     fn expand_template(
         &mut self,
+        name: InternedString,
         span: Span,
         template: TemplateId,
         exprs: Vec<Node>,
@@ -523,21 +530,7 @@ impl<L: Loader> Expander<'_, L> {
         match template.body {
             TemplateBody::Syntax(inputs, mut body) => {
                 if exprs.len() != inputs.len() {
-                    self.compiler.diagnostics.add(Diagnostic::error(
-                        format!(
-                            "template expects {} inputs, but only {} were given",
-                            inputs.len(),
-                            exprs.len(),
-                        ),
-                        vec![Note::primary(
-                            span,
-                            if exprs.len() > inputs.len() {
-                                "try removing some of these inputs"
-                            } else {
-                                "try adding some inputs"
-                            },
-                        )],
-                    ));
+                    self.report_wrong_template_arity(&name, span, exprs.len(), inputs.len());
 
                     return Node {
                         span,
@@ -619,5 +612,28 @@ impl<L: Loader> Expander<'_, L> {
             }
             TemplateBody::Function(expand) => expand(self, span, exprs, scope),
         }
+    }
+
+    fn report_wrong_template_arity(
+        &mut self,
+        template_name: &str,
+        span: Span,
+        actual: usize,
+        expected: usize,
+    ) {
+        self.compiler.diagnostics.add(Diagnostic::error(
+            format!(
+                "template `{}` expects {} inputs, but only {} were given",
+                template_name, expected, actual,
+            ),
+            vec![Note::primary(
+                span,
+                if actual > expected {
+                    "try removing some of these inputs"
+                } else {
+                    "try adding some inputs"
+                },
+            )],
+        ));
     }
 }

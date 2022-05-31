@@ -15,7 +15,7 @@ use std::{
 };
 use wipple_compiler::{
     compile::{
-        typecheck::{Declarations, Expression, ExpressionKind, Type},
+        typecheck::{Declarations, Expression, ExpressionKind, Pattern, PatternKind, Type},
         Program,
     },
     parse::Span,
@@ -133,6 +133,7 @@ impl<'a> Interpreter<'a> {
                         .monomorphized_constants
                         .get(constant)
                         .unwrap_or_else(|| panic!("constant {:?} not registered", constant))
+                        .1
                         .value
                         .clone();
 
@@ -186,13 +187,10 @@ impl<'a> Interpreter<'a> {
                     _ => unreachable!(),
                 }
             }
-            ExpressionKind::Member(value, index) => match self.eval_expr(value, info)?.as_ref() {
-                Value::List(structure) => structure[*index].clone(),
-                _ => unreachable!(),
-            },
-            ExpressionKind::Initialize(variable, value) => {
+            ExpressionKind::Initialize(pattern, value) => {
                 let value = self.eval_expr(value, info)?;
-                info.scope.borrow_mut().variables.insert(*variable, value);
+                self.eval_pattern(pattern, value, info)?;
+
                 Rc::new(Value::Marker)
             }
             ExpressionKind::Variable(variable) => {
@@ -283,6 +281,37 @@ impl<'a> Interpreter<'a> {
         info.stack.pop();
 
         Ok(value)
+    }
+
+    fn eval_pattern(
+        &self,
+        pattern: &Pattern,
+        value: Rc<Value>,
+        info: &mut Info,
+    ) -> Result<bool, Diverge> {
+        match &pattern.kind {
+            PatternKind::Wildcard => Ok(true),
+            PatternKind::Variable(var) => {
+                info.scope.borrow_mut().variables.insert(*var, value);
+                Ok(true)
+            }
+            PatternKind::Destructure(fields) => {
+                let structure = match value.as_ref() {
+                    Value::List(values) => values,
+                    _ => unreachable!(),
+                };
+
+                for (index, pattern) in fields {
+                    let value = structure[*index].clone();
+
+                    if !self.eval_pattern(pattern, value, info)? {
+                        return Ok(false);
+                    }
+                }
+
+                Ok(true)
+            }
+        }
     }
 
     fn resolve(&self, variable: VariableId, info: &mut Info) -> Option<Rc<Value>> {
