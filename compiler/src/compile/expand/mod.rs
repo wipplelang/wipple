@@ -57,7 +57,7 @@ pub enum NodeKind {
     Text(InternedString),
     Number(Decimal),
     List(Vec<Node>),
-    Block(Vec<Node>, ScopeValues),
+    Block(Vec<Node>),
     Assign(Box<Node>, Box<Node>),
     Template(Vec<InternedString>, Box<Node>),
     Operator(OperatorPrecedence, Vec<InternedString>, Box<Node>),
@@ -71,6 +71,7 @@ pub enum NodeKind {
     Instance(Box<Node>, Vec<Node>),
     ListLiteral(Vec<Node>),
     Use(Box<Node>),
+    When(Box<Node>, Vec<Node>),
 }
 
 impl<L: Loader> Compiler<L> {
@@ -284,11 +285,11 @@ impl<L: Loader> Expander<'_, L> {
                 ),
             },
             parse::ExprKind::Block(statements) => {
-                let (statements, scope) = self.expand_block(statements, scope);
+                let (statements, _) = self.expand_block(statements, scope);
 
                 Node {
                     span: expr.span,
-                    kind: NodeKind::Block(statements, scope),
+                    kind: NodeKind::Block(statements),
                 }
             }
         }
@@ -550,7 +551,7 @@ impl<L: Loader> Expander<'_, L> {
                                 replace(node, map);
                             }
                         }
-                        NodeKind::Block(statements, _) => {
+                        NodeKind::Block(statements) => {
                             for statement in statements {
                                 replace(statement, map);
                             }
@@ -597,6 +598,13 @@ impl<L: Loader> Expander<'_, L> {
 
                             for param in params {
                                 replace(param, map);
+                            }
+                        }
+                        NodeKind::When(input, arms) => {
+                            replace(input, map);
+
+                            for arm in arms {
+                                replace(arm, map);
                             }
                         }
                         _ => {}

@@ -455,13 +455,13 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
             let block = inputs.pop().unwrap();
 
             let fields = match block.kind {
-                NodeKind::Block(statements, _) => statements,
+                NodeKind::Block(statements) => statements,
                 _ => {
                     expander.compiler.diagnostics.add(Diagnostic::error(
                         "expected a block here",
                         vec![Note::primary(
                             block.span,
-                            "`type` requires a block denoting the type's fields or variants",
+                            "`when` requires a block containing functions",
                         )],
                     ));
 
@@ -659,6 +659,58 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
                         kind: NodeKind::Name(InternedString::new("Text")),
                     }),
                 ),
+            }
+        }),
+    );
+
+    // `when` template
+
+    let id = expander.compiler.new_template_id();
+
+    scope_values.insert(InternedString::new("when"), ScopeValue::Template(id));
+
+    expander.info.templates.insert(
+        id,
+        Template::function(builtin_span, |expander, span, mut inputs, _| {
+            if inputs.len() != 2 {
+                expander.compiler.diagnostics.add(Diagnostic::error(
+                    "expected 2 inputs to template `when`",
+                    vec![Note::primary(
+                        span,
+                        "`when` accepts a value to match and a block containing functions",
+                    )],
+                ));
+
+                return Node {
+                    span,
+                    kind: NodeKind::Error,
+                };
+            }
+
+            let block = inputs.pop().unwrap();
+            let input = inputs.pop().unwrap();
+
+            let block = match block.kind {
+                NodeKind::Block(statements) => statements,
+                _ => {
+                    expander.compiler.diagnostics.add(Diagnostic::error(
+                        "expected a block here",
+                        vec![Note::primary(
+                            block.span,
+                            "`type` requires a block denoting the type's fields or variants",
+                        )],
+                    ));
+
+                    return Node {
+                        span,
+                        kind: NodeKind::Error,
+                    };
+                }
+            };
+
+            Node {
+                span,
+                kind: NodeKind::When(Box::new(input), block),
             }
         }),
     );

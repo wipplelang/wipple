@@ -422,7 +422,7 @@ impl<L: Loader> Compiler<L> {
                         exprs.map(|expr| self.build_expression(expr)).collect(),
                     )
                 }
-                NodeKind::Block(statements, _) => ExpressionKind::Block(
+                NodeKind::Block(statements) => ExpressionKind::Block(
                     statements
                         .into_iter()
                         .map(|node| self.build_statement(node))
@@ -484,6 +484,34 @@ impl<L: Loader> Compiler<L> {
                         .map(|node| self.build_expression(node))
                         .collect(),
                 ),
+                NodeKind::When(input, block) => {
+                    let input = self.build_expression(*input);
+
+                    let arms = block
+                        .into_iter()
+                        .filter_map(|node| {
+                            let expr = self.build_expression(node);
+
+                            match expr.kind {
+                                ExpressionKind::Function(pattern, body) => Some(Arm {
+                                    span: expr.span,
+                                    pattern,
+                                    body: *body,
+                                }),
+                                _ => {
+                                    self.diagnostics.add(Diagnostic::error(
+                                        "expected function",
+                                        vec![Note::primary(expr.span, "this is not a function")],
+                                    ));
+
+                                    None
+                                }
+                            }
+                        })
+                        .collect();
+
+                    ExpressionKind::When(Box::new(input), arms)
+                }
                 _ => {
                     self.diagnostics.add(Diagnostic::error(
                         "expected expression",
@@ -503,7 +531,7 @@ impl<L: Loader> Compiler<L> {
                 NodeKind::Error => PatternKind::Error,
                 NodeKind::Underscore => PatternKind::Wildcard,
                 NodeKind::Name(name) => PatternKind::Name(name),
-                NodeKind::Block(mut statements, _) => {
+                NodeKind::Block(mut statements) => {
                     // TODO: Support renaming destructured fields
                     if statements.len() > 1 {
                         self.diagnostics.add(Diagnostic::error(

@@ -922,7 +922,35 @@ impl<'a, L: Loader> Typechecker<'a, L> {
                     ),
                 }
             }
-            lower::ExpressionKind::When(_, _) => todo!(),
+            lower::ExpressionKind::When(input, arms) => {
+                let input = self.typecheck_expr(input, file, suppress_errors);
+
+                let arms = arms
+                    .iter()
+                    .map(|arm| self.typecheck_arm(arm, file, suppress_errors))
+                    .collect::<Vec<_>>();
+
+                let ty = if let Some(arm) = arms.first() {
+                    let ty = arm.body.ty.clone();
+                    for arm in arms.iter().skip(1) {
+                        if let Err(error) = self.ctx.unify(ty.clone(), arm.body.ty.clone()) {
+                            if !suppress_errors {
+                                self.report_type_error(error, arm.span);
+                            }
+                        };
+                    }
+
+                    ty
+                } else {
+                    UnresolvedType::Bottom(BottomTypeReason::Annotated)
+                };
+
+                UnresolvedExpression {
+                    span: expr.span,
+                    ty,
+                    kind: UnresolvedExpressionKind::When(Box::new(input), arms),
+                }
+            }
             lower::ExpressionKind::External(namespace, identifier, inputs) => {
                 let inputs = inputs
                     .iter()
@@ -1185,6 +1213,19 @@ impl<'a, L: Loader> Typechecker<'a, L> {
         (ty, statements)
     }
 
+    fn typecheck_arm(
+        &mut self,
+        arm: &lower::Arm,
+        file: &Rc<RefCell<lower::File>>,
+        suppress_errors: bool,
+    ) -> UnresolvedArm {
+        UnresolvedArm {
+            span: arm.span,
+            pattern: self.convert_pattern(&arm.pattern),
+            body: self.typecheck_expr(&arm.body, file, suppress_errors),
+        }
+    }
+
     fn monomorphize_constant(
         &mut self,
         id: GenericConstantId,
@@ -1237,6 +1278,20 @@ impl<'a, L: Loader> Typechecker<'a, L> {
         );
 
         (monomorphized_id, ty)
+    }
+
+    fn monomorphize_arm(
+        &mut self,
+        arm: UnresolvedArm,
+        ty: UnresolvedType,
+    ) -> Result<MonomorphizedArm, TypeError> {
+        Ok(MonomorphizedArm {
+            span: arm.span,
+            pattern: self
+                .resolve_pattern(arm.pattern, ty)
+                .ok_or(TypeError::ErrorExpression)?,
+            body: self.monomorphize(arm.body)?,
+        })
     }
 
     fn resolve_pattern(
@@ -1446,7 +1501,16 @@ impl<'a, L: Loader> Typechecker<'a, L> {
                             captures,
                         )
                     }
-                    UnresolvedExpressionKind::When(_, _) => todo!(),
+                    UnresolvedExpressionKind::When(input, arms) => {
+                        let input = self.monomorphize(*input)?;
+
+                        let arms = arms
+                            .into_iter()
+                            .map(|arm| self.monomorphize_arm(arm, input.ty.clone()))
+                            .collect::<Result<_, _>>()?;
+
+                        MonomorphizedExpressionKind::When(Box::new(input), arms)
+                    }
                     UnresolvedExpressionKind::External(namespace, identifier, inputs) => {
                         MonomorphizedExpressionKind::External(
                             namespace,
@@ -1569,7 +1633,18 @@ impl<'a, L: Loader> Typechecker<'a, L> {
                         captures,
                     )
                 }
-                MonomorphizedExpressionKind::When(_, _) => todo!(),
+                MonomorphizedExpressionKind::When(input, arms) => ExpressionKind::When(
+                    Box::new(self.finalize_internal(*input, generic, file)?),
+                    arms.into_iter()
+                        .map(|arm| {
+                            Ok(Arm {
+                                span: arm.span,
+                                pattern: arm.pattern,
+                                body: self.finalize_internal(arm.body, generic, file)?,
+                            })
+                        })
+                        .collect::<Result<_, _>>()?,
+                ),
                 MonomorphizedExpressionKind::External(namespace, identifier, inputs) => {
                     ExpressionKind::External(
                         namespace,

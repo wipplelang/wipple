@@ -212,7 +212,25 @@ impl<'a> Interpreter<'a> {
                     .filter_map(|&variable| Some((variable, self.resolve(variable, info)?)))
                     .collect(),
             }),
-            ExpressionKind::When(_, _) => todo!(),
+            ExpressionKind::When(input, arms) => {
+                let input = self.eval_expr(input, info)?;
+
+                let parent = info.scope.clone();
+                let child = Scope::child(&parent);
+                info.scope = child;
+
+                let mut value = None;
+                for arm in arms {
+                    if self.eval_pattern(&arm.pattern, input.clone(), info)? {
+                        value = Some(self.eval_expr(&arm.body, info)?);
+                        break;
+                    }
+                }
+
+                info.scope = parent;
+
+                value.expect("no patterns matched input")
+            }
             ExpressionKind::External(namespace, identifier, inputs) => {
                 if namespace.as_str() == "builtin" {
                     let inputs = inputs

@@ -1,0 +1,19 @@
+code: |
+    Boolean : type {
+        True
+        False
+    }
+
+    use Boolean
+
+    x? : True
+
+    show (when x? {
+        True -> "Yay!"
+        False -> "Uh oh"
+    })
+
+output: |
+    Yay!
+
+diagnostics: |

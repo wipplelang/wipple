@@ -8,7 +8,7 @@ use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use std::{
     cell::RefCell,
-    collections::{BTreeMap, BTreeSet, HashMap},
+    collections::{BTreeMap, HashMap},
     hash::Hash,
     rc::Rc,
 };
@@ -155,23 +155,6 @@ pub enum PatternKind {
     Variable(VariableId),
     Destructure(HashMap<InternedString, Pattern>),
     Variant(TypeId, usize, Vec<Pattern>),
-}
-
-impl Pattern {
-    fn variables(&self) -> BTreeSet<VariableId> {
-        match &self.kind {
-            PatternKind::Error | PatternKind::Wildcard => BTreeSet::new(),
-            PatternKind::Variable(var) => BTreeSet::from([*var]),
-            PatternKind::Destructure(fields) => fields
-                .values()
-                .flat_map(|pattern| pattern.variables())
-                .collect(),
-            PatternKind::Variant(_, _, values) => values
-                .iter()
-                .flat_map(|pattern| pattern.variables())
-                .collect(),
-        }
-    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -1131,16 +1114,9 @@ impl<L: Loader> Compiler<L> {
                 };
 
                 let pattern = self.lower_pattern(input, &scope, info);
-                let input_variables = pattern.variables();
 
                 let body = self.lower_expr(*body, &scope, info);
-
-                let captures = scope
-                    .variables_used_by_ancestors()
-                    .into_iter()
-                    .chain(scope.used_variables.unwrap().take())
-                    .filter(|(var, _)| !input_variables.contains(var))
-                    .collect();
+                let captures = scope.variables_used_by_ancestors();
 
                 ExpressionKind::Function(
                     pattern,
@@ -1151,7 +1127,16 @@ impl<L: Loader> Compiler<L> {
                     captures,
                 )
             }
-            ast::ExpressionKind::When(_, _) => return Expression::error(expr.span), // TODO
+            ast::ExpressionKind::When(input, arms) => ExpressionKind::When(
+                Box::new(self.lower_expr(*input, scope, info)),
+                arms.into_iter()
+                    .map(|arm| Arm {
+                        span: arm.span,
+                        pattern: self.lower_pattern(arm.pattern, scope, info),
+                        body: self.lower_expr(arm.body, scope, info),
+                    })
+                    .collect(),
+            ),
             ast::ExpressionKind::External(namespace, identifier, inputs) => {
                 ExpressionKind::External(
                     namespace,
@@ -1243,25 +1228,30 @@ impl<L: Loader> Compiler<L> {
         let kind = (|| match pattern.kind {
             ast::PatternKind::Error => PatternKind::Error,
             ast::PatternKind::Wildcard => PatternKind::Wildcard,
-            ast::PatternKind::Name(name) => {
-                let var = self.new_variable_id();
+            ast::PatternKind::Name(name) => match scope.get(name, pattern.span) {
+                Some(ScopeValue::Constant(_, Some((ty, variant)))) => {
+                    PatternKind::Variant(ty, variant, Vec::new())
+                }
+                _ => {
+                    let var = self.new_variable_id();
 
-                scope
-                    .values
-                    .borrow_mut()
-                    .insert(name, ScopeValue::Variable(var));
+                    scope
+                        .values
+                        .borrow_mut()
+                        .insert(name, ScopeValue::Variable(var));
 
-                info.declarations.variables.insert(
-                    var,
-                    Declaration {
-                        name,
-                        span: pattern.span,
-                        value: (),
-                    },
-                );
+                    info.declarations.variables.insert(
+                        var,
+                        Declaration {
+                            name,
+                            span: pattern.span,
+                            value: (),
+                        },
+                    );
 
-                PatternKind::Variable(var)
-            }
+                    PatternKind::Variable(var)
+                }
+            },
             ast::PatternKind::Destructure(fields) => PatternKind::Destructure(
                 fields
                     .into_iter()
@@ -1295,21 +1285,6 @@ impl<L: Loader> Compiler<L> {
 
                 let mut values = values.into_iter();
 
-                let second = match values.next() {
-                    Some(value) => value,
-                    None => {
-                        self.diagnostics.add(Diagnostic::error(
-                            "incomplete pattern",
-                            vec![Note::primary(
-                                name_span,
-                                "expected a variant name after this",
-                            )],
-                        ));
-
-                        return PatternKind::Error;
-                    }
-                };
-
                 match first {
                     ScopeValue::Type(ty) => {
                         let variants = match &info.declarations.types.get(&ty).unwrap().value.kind {
@@ -1320,6 +1295,21 @@ impl<L: Loader> Compiler<L> {
                                     vec![Note::primary(
                                         name_span,
                                         "only enumeration types may be used in patterns",
+                                    )],
+                                ));
+
+                                return PatternKind::Error;
+                            }
+                        };
+
+                        let second = match values.next() {
+                            Some(value) => value,
+                            None => {
+                                self.diagnostics.add(Diagnostic::error(
+                                    "incomplete pattern",
+                                    vec![Note::primary(
+                                        name_span,
+                                        "expected a variant name after this",
                                     )],
                                 ));
 
@@ -1368,8 +1358,7 @@ impl<L: Loader> Compiler<L> {
                     ScopeValue::Constant(_, Some((ty, variant))) => PatternKind::Variant(
                         ty,
                         variant,
-                        std::iter::once(second)
-                            .chain(values)
+                        values
                             .map(|value| self.lower_pattern(value, scope, info))
                             .collect(),
                     ),

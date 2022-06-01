@@ -37,7 +37,13 @@ macro_rules! traverse_impl {
                 input.$traverse(f);
             }
             Function(_, body, _) => body.$traverse(f),
-            When(_, _) => todo!(),
+            When(input, arms) => {
+                input.$traverse(f);
+
+                for arm in arms {
+                    arm.body.$traverse(f);
+                }
+            },
             Initialize(_, value) => value.$traverse(f),
             External(_, _, inputs) => {
                 for input in inputs {
