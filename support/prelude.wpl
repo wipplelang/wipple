@@ -63,4 +63,5 @@ if : bool then else ~> when bool {
 not :: Boolean -> Boolean
 not : bool -> if bool False True
 
--- TODO: `and` and `or` operators
+and : conjunction operator (a b ~> if a b False)
+or : disjunction operator (a b ~> if a True b)

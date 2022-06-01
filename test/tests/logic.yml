@@ -1,0 +1,9 @@
+code: |
+    show (if (True and False) "a" "b")
+    show (if (True or False) "a" "b")
+
+output: |
+    b
+    a
+
+diagnostics: |

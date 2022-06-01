@@ -291,6 +291,8 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
 
             let precedence = match lhs.kind {
                 NodeKind::Name(name) => match name.as_str() {
+                    "conjunction" => OperatorPrecedence::Conjunction,
+                    "disjunction" => OperatorPrecedence::Disjunction,
                     "addition" => OperatorPrecedence::Addition,
                     "multiplication" => OperatorPrecedence::Multiplication,
                     "power" => OperatorPrecedence::Power,
