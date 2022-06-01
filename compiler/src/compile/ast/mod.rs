@@ -109,6 +109,7 @@ pub enum PatternKind {
     Wildcard,
     Name(InternedString),
     Destructure(Vec<(Span, InternedString)>),
+    Variant((Span, InternedString), Vec<Pattern>),
 }
 
 #[derive(Debug, Clone)]
@@ -559,6 +560,30 @@ impl<L: Loader> Compiler<L> {
                             PatternKind::Error
                         }
                     }
+                }
+                NodeKind::List(nodes) => {
+                    let mut nodes = nodes.into_iter();
+
+                    let name = nodes.next().unwrap();
+                    let name_span = name.span;
+                    let name = match name.kind {
+                        NodeKind::Name(name) => name,
+                        _ => {
+                            self.diagnostics.add(Diagnostic::error(
+                                "expected variant name",
+                                vec![Note::primary(
+                                    node.span,
+                                    "only variants may be used in this kind of pattern",
+                                )],
+                            ));
+
+                            return PatternKind::Error;
+                        }
+                    };
+
+                    let rest = nodes.map(|node| self.build_pattern(node)).collect();
+
+                    PatternKind::Variant((name_span, name), rest)
                 }
                 _ => {
                     self.diagnostics.add(Diagnostic::error(

@@ -154,6 +154,7 @@ pub enum PatternKind {
     Wildcard,
     Variable(VariableId),
     Destructure(HashMap<InternedString, Pattern>),
+    Variant(TypeId, usize, Vec<Pattern>),
 }
 
 impl Pattern {
@@ -163,6 +164,10 @@ impl Pattern {
             PatternKind::Variable(var) => BTreeSet::from([*var]),
             PatternKind::Destructure(fields) => fields
                 .values()
+                .flat_map(|pattern| pattern.variables())
+                .collect(),
+            PatternKind::Variant(_, _, values) => values
+                .iter()
                 .flat_map(|pattern| pattern.variables())
                 .collect(),
         }
@@ -286,7 +291,7 @@ pub enum ScopeValue {
     Trait(TraitId),
     TypeParameter(TypeParameterId),
     Operator(TemplateId),
-    Constant(GenericConstantId),
+    Constant(GenericConstantId, Option<(TypeId, usize)>),
     Variable(VariableId),
 }
 
@@ -696,7 +701,7 @@ impl<L: Loader> Compiler<L> {
                 scope
                     .values
                     .borrow_mut()
-                    .insert(name, ScopeValue::Constant(id));
+                    .insert(name, ScopeValue::Constant(id, None));
 
                 info.declarations.constants.insert(
                     id,
@@ -772,141 +777,95 @@ impl<L: Loader> Compiler<L> {
 
                 None
             }
-            ast::StatementKind::Assign(pattern, expr) => match &pattern.kind {
-                ast::PatternKind::Error => Some(Expression::error(statement.span)),
-                ast::PatternKind::Name(name) => {
-                    let mut associated_constant = None;
+            ast::StatementKind::Assign(pattern, expr) => {
+                macro_rules! assign_pattern {
+                    () => {{
+                        let pattern = self.lower_pattern(pattern, scope, info);
+                        let value = self.lower_expr(expr, scope, info);
 
-                    match scope.values.borrow().get(name).cloned() {
-                        Some(
-                            ScopeValue::Type(_)
-                            | ScopeValue::BuiltinType(_)
-                            | ScopeValue::Trait(_)
-                            | ScopeValue::TypeParameter(_)
-                            | ScopeValue::Operator(_),
-                        ) => {
-                            self.diagnostics.add(Diagnostic::error(
-                                format!("`{name}` is already defined"),
-                                vec![Note::primary(
-                                    statement.span,
-                                    "try assigning to a different name",
-                                )],
-                            ));
+                        Some(Expression {
+                            span: statement.span,
+                            kind: ExpressionKind::Initialize(pattern, Box::new(value)),
+                        })
+                    }};
+                }
 
-                            return Some(Expression::error(statement.span));
-                        }
-                        Some(ScopeValue::Constant(id)) => {
-                            let decl = info.declarations.constants.get(&id).unwrap();
-                            let (parameters, c) =
-                                (decl.value.parameters.clone(), decl.value.value.clone());
+                match &pattern.kind {
+                    ast::PatternKind::Name(name) => {
+                        let mut associated_constant = None;
 
-                            if let Some(associated_constant) = c.borrow().as_ref() {
+                        match scope.values.borrow().get(name).cloned() {
+                            Some(
+                                ScopeValue::Type(_)
+                                | ScopeValue::BuiltinType(_)
+                                | ScopeValue::Trait(_)
+                                | ScopeValue::TypeParameter(_)
+                                | ScopeValue::Operator(_),
+                            ) => {
                                 self.diagnostics.add(Diagnostic::error(
-                                    format!("constant `{name}` is already defined"),
-                                    vec![
-                                        Note::primary(
-                                            statement.span,
-                                            "cannot assign to a constant more than once",
-                                        ),
-                                        Note::secondary(
-                                            associated_constant.span,
-                                            "first initialization",
-                                        ),
-                                    ],
+                                    format!("`{name}` is already defined"),
+                                    vec![Note::primary(
+                                        statement.span,
+                                        "try assigning to a different name",
+                                    )],
                                 ));
 
                                 return Some(Expression::error(statement.span));
                             }
+                            Some(ScopeValue::Constant(id, _)) => {
+                                let decl = info.declarations.constants.get(&id).unwrap();
+                                let (parameters, c) =
+                                    (decl.value.parameters.clone(), decl.value.value.clone());
 
-                            associated_constant = Some((parameters, c));
+                                if let Some(associated_constant) = c.borrow().as_ref() {
+                                    self.diagnostics.add(Diagnostic::error(
+                                        format!("constant `{name}` is already defined"),
+                                        vec![
+                                            Note::primary(
+                                                statement.span,
+                                                "cannot assign to a constant more than once",
+                                            ),
+                                            Note::secondary(
+                                                associated_constant.span,
+                                                "first initialization",
+                                            ),
+                                        ],
+                                    ));
+
+                                    return Some(Expression::error(statement.span));
+                                }
+
+                                associated_constant = Some((parameters, c));
+                            }
+                            Some(ScopeValue::Variable(_)) | None => {}
                         }
-                        Some(ScopeValue::Variable(_)) | None => {}
-                    }
 
-                    if let Some((associated_parameters, associated_constant)) = associated_constant
-                    {
-                        let scope = scope.child();
+                        if let Some((associated_parameters, associated_constant)) =
+                            associated_constant
+                        {
+                            let scope = scope.child();
 
-                        for id in associated_parameters {
-                            let parameter = info.declarations.type_parameters.get(&id).unwrap();
+                            for id in associated_parameters {
+                                let parameter = info.declarations.type_parameters.get(&id).unwrap();
 
-                            scope
-                                .values
-                                .borrow_mut()
-                                .insert(parameter.name, ScopeValue::TypeParameter(id));
+                                scope
+                                    .values
+                                    .borrow_mut()
+                                    .insert(parameter.name, ScopeValue::TypeParameter(id));
+                            }
+
+                            let value = self.lower_expr(expr, &scope, info);
+                            self.validate_constant(&value);
+
+                            associated_constant.replace(Some(value));
+                            None
+                        } else {
+                            assign_pattern!()
                         }
-
-                        let value = self.lower_expr(expr, &scope, info);
-                        self.validate_constant(&value);
-
-                        associated_constant.replace(Some(value));
-                        None
-                    } else {
-                        let value = self.lower_expr(expr, scope, info);
-
-                        let id = self.new_variable_id();
-
-                        scope
-                            .values
-                            .borrow_mut()
-                            .insert(*name, ScopeValue::Variable(id));
-
-                        info.declarations.variables.insert(
-                            id,
-                            Declaration {
-                                name: *name,
-                                span: pattern.span,
-                                value: (),
-                            },
-                        );
-
-                        Some(Expression {
-                            span: statement.span,
-                            kind: ExpressionKind::Initialize(
-                                Pattern {
-                                    span: pattern.span,
-                                    kind: PatternKind::Variable(id),
-                                },
-                                Box::new(value),
-                            ),
-                        })
                     }
+                    _ => assign_pattern!(),
                 }
-                ast::PatternKind::Destructure(names) => {
-                    let value = self.lower_expr(expr, scope, info);
-
-                    let ids = names
-                        .iter()
-                        .map(|(span, name)| {
-                            let id = self.new_variable_id();
-
-                            scope
-                                .values
-                                .borrow_mut()
-                                .insert(*name, ScopeValue::Variable(id));
-
-                            (
-                                *name,
-                                Pattern {
-                                    span: *span,
-                                    kind: PatternKind::Variable(id),
-                                },
-                            )
-                        })
-                        .collect::<HashMap<_, _>>();
-
-                    let pattern = Pattern {
-                        span: pattern.span,
-                        kind: PatternKind::Destructure(ids),
-                    };
-
-                    Some(Expression {
-                        span: statement.span,
-                        kind: ExpressionKind::Initialize(pattern, Box::new(value)),
-                    })
-                }
-                ast::PatternKind::Wildcard => Some(self.lower_expr(expr, scope, info)),
-            },
+            }
             ast::StatementKind::Use((span, name)) => {
                 let ty = match scope.get(name, span) {
                     Some(ScopeValue::Type(ty)) => ty,
@@ -950,7 +909,7 @@ impl<L: Loader> Compiler<L> {
                     scope
                         .values
                         .borrow_mut()
-                        .insert(*name, ScopeValue::Constant(constructor));
+                        .insert(*name, ScopeValue::Constant(constructor, Some((ty, *index))));
                 }
 
                 None
@@ -1046,41 +1005,41 @@ impl<L: Loader> Compiler<L> {
                                 }
 
                                 let fields = statements
-                                .iter()
-                                .filter_map(|s| match &s.kind {
-                                    ast::StatementKind::Assign(pattern, expr) => match &pattern.kind {
-                                        ast::PatternKind::Name(name) => Some((*name, expr)),
+                                    .iter()
+                                    .filter_map(|s| match &s.kind {
+                                        ast::StatementKind::Assign(pattern, expr) => match &pattern.kind {
+                                            ast::PatternKind::Name(name) => Some((*name, expr)),
+                                            _ => {
+                                                self.diagnostics.add(Diagnostic::error(
+                                                    "structure instantiation may not contain complex patterns",
+                                                    vec![Note::primary(
+                                                        s.span,
+                                                        "try splitting this pattern into multiple names",
+                                                    )]
+                                                ));
+
+                                                None
+                                            },
+                                        },
+                                        // TODO: 'use' inside instantiation
                                         _ => {
                                             self.diagnostics.add(Diagnostic::error(
-                                                "structure instantiation may not contain complex patterns",
+                                                "structure instantiation may not contain executable statements",
                                                 vec![Note::primary(
                                                     s.span,
-                                                    "try splitting this pattern into multiple names",
+                                                    "try removing this",
                                                 )]
                                             ));
 
                                             None
-                                        },
-                                    },
-                                    // TODO: 'use' inside instantiation
-                                    _ => {
-                                        self.diagnostics.add(Diagnostic::error(
-                                            "structure instantiation may not contain executable statements",
-                                            vec![Note::primary(
-                                                s.span,
-                                                "try removing this",
-                                            )]
-                                        ));
-
-                                        None
-                                    }
-                                })
-                                .collect::<Vec<_>>()
-                                .into_iter()
-                                .map(|(name, value)| {
-                                    (name, self.lower_expr(value.clone(), scope, info))
-                                })
-                                .collect();
+                                        }
+                                    })
+                                    .collect::<Vec<_>>()
+                                    .into_iter()
+                                    .map(|(name, value)| {
+                                        (name, self.lower_expr(value.clone(), scope, info))
+                                    })
+                                    .collect();
 
                                 let ty = &info.declarations.types.get(&id).unwrap().value;
                                 if !matches!(ty.kind, TypeKind::Structure(_, _)) {
@@ -1281,7 +1240,7 @@ impl<L: Loader> Compiler<L> {
     }
 
     fn lower_pattern(&mut self, pattern: ast::Pattern, scope: &Scope, info: &mut Info) -> Pattern {
-        let kind = match pattern.kind {
+        let kind = (|| match pattern.kind {
             ast::PatternKind::Error => PatternKind::Error,
             ast::PatternKind::Wildcard => PatternKind::Wildcard,
             ast::PatternKind::Name(name) => {
@@ -1321,7 +1280,110 @@ impl<L: Loader> Compiler<L> {
                     })
                     .collect(),
             ),
-        };
+            ast::PatternKind::Variant((name_span, name), values) => {
+                let first = match scope.get(name, pattern.span) {
+                    Some(name) => name,
+                    None => {
+                        self.diagnostics.add(Diagnostic::error(
+                            format!("cannot find `{}`", name),
+                            vec![Note::primary(name_span, "this name is not defined")],
+                        ));
+
+                        return PatternKind::Error;
+                    }
+                };
+
+                let mut values = values.into_iter();
+
+                let second = match values.next() {
+                    Some(value) => value,
+                    None => {
+                        self.diagnostics.add(Diagnostic::error(
+                            "incomplete pattern",
+                            vec![Note::primary(
+                                name_span,
+                                "expected a variant name after this",
+                            )],
+                        ));
+
+                        return PatternKind::Error;
+                    }
+                };
+
+                match first {
+                    ScopeValue::Type(ty) => {
+                        let variants = match &info.declarations.types.get(&ty).unwrap().value.kind {
+                            TypeKind::Enumeration(_, variants) => variants,
+                            _ => {
+                                self.diagnostics.add(Diagnostic::error(
+                                    format!("cannot use `{}` in pattern", name),
+                                    vec![Note::primary(
+                                        name_span,
+                                        "only enumeration types may be used in patterns",
+                                    )],
+                                ));
+
+                                return PatternKind::Error;
+                            }
+                        };
+
+                        let variant_name = match second.kind {
+                            ast::PatternKind::Name(name) => name,
+                            _ => {
+                                self.diagnostics.add(Diagnostic::error(
+                                    "invalid pattern",
+                                    vec![Note::primary(
+                                        second.span,
+                                        "expected a variant name here",
+                                    )],
+                                ));
+
+                                return PatternKind::Error;
+                            }
+                        };
+
+                        let variant = match variants.get(&variant_name) {
+                            Some(variant) => *variant,
+                            None => {
+                                self.diagnostics.add(Diagnostic::error(
+                                    format!(
+                                        "enumeration `{}` does not declare a variant named `{}`",
+                                        name, variant_name
+                                    ),
+                                    vec![Note::primary(second.span, "no such variant")],
+                                ));
+
+                                return PatternKind::Error;
+                            }
+                        };
+
+                        PatternKind::Variant(
+                            ty,
+                            variant,
+                            values
+                                .map(|value| self.lower_pattern(value, scope, info))
+                                .collect(),
+                        )
+                    }
+                    ScopeValue::Constant(_, Some((ty, variant))) => PatternKind::Variant(
+                        ty,
+                        variant,
+                        std::iter::once(second)
+                            .chain(values)
+                            .map(|value| self.lower_pattern(value, scope, info))
+                            .collect(),
+                    ),
+                    _ => {
+                        self.diagnostics.add(Diagnostic::error(
+                            format!("cannot use `{}` in pattern", name),
+                            vec![Note::primary(name_span, "expected a type or variant here")],
+                        ));
+
+                        PatternKind::Error
+                    }
+                }
+            }
+        })();
 
         Pattern {
             span: pattern.span,
@@ -1381,7 +1443,7 @@ impl<L: Loader> Compiler<L> {
 
                 Some(ExpressionKind::Error)
             }
-            Some(ScopeValue::Constant(id)) => Some(ExpressionKind::Constant(id)),
+            Some(ScopeValue::Constant(id, _)) => Some(ExpressionKind::Constant(id)),
             Some(ScopeValue::Variable(id)) => Some(ExpressionKind::Variable(id)),
             None => None,
         }

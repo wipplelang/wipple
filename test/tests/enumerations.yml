@@ -1,0 +1,14 @@
+code: |
+    Container : A => type {
+        Value A
+    }
+
+    c : Container Value "Hello, world!"
+
+    Container Value x : c
+    show x
+
+output: |
+    Hello, world!
+
+diagnostics: |

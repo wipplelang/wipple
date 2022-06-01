@@ -317,6 +317,24 @@ impl<'a> Interpreter<'a> {
 
                 Ok(true)
             }
+            PatternKind::Variant(index, patterns) => {
+                let (value_index, values) = match value.as_ref() {
+                    Value::Variant(index, values) => (index, values),
+                    _ => unreachable!(),
+                };
+
+                if index != value_index {
+                    return Ok(false);
+                }
+
+                for (pattern, value) in patterns.iter().zip(values) {
+                    if !self.eval_pattern(pattern, value.clone(), info)? {
+                        return Ok(false);
+                    }
+                }
+
+                Ok(true)
+            }
         }
     }
 

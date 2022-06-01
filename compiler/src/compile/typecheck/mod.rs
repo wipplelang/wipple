@@ -108,10 +108,12 @@ expr!(pub, "", Type, Pattern, {
 pattern!(, "Unresolved", {
     Error,
     Destructure(HashMap<InternedString, UnresolvedPattern>),
+    Variant(TypeId, usize, Vec<UnresolvedPattern>),
 });
 
 pattern!(pub, "", {
     Destructure(BTreeMap<usize, Pattern>),
+    Variant(usize, Vec<Pattern>)
 });
 
 impl UnresolvedExpression {
@@ -131,6 +133,10 @@ impl Pattern {
             PatternKind::Variable(id) => BTreeSet::from([*id]),
             PatternKind::Destructure(patterns) => patterns
                 .values()
+                .flat_map(|pattern| pattern.variables())
+                .collect(),
+            PatternKind::Variant(_, values) => values
+                .iter()
                 .flat_map(|pattern| pattern.variables())
                 .collect(),
         }
@@ -1238,6 +1244,8 @@ impl<'a, L: Loader> Typechecker<'a, L> {
         pattern: UnresolvedPattern,
         mut ty: UnresolvedType,
     ) -> Option<Pattern> {
+        ty.apply(&self.ctx);
+
         let kind = (|| match pattern.kind {
             UnresolvedPatternKind::Error => None,
             UnresolvedPatternKind::Wildcard => Some(PatternKind::Wildcard),
@@ -1246,8 +1254,6 @@ impl<'a, L: Loader> Typechecker<'a, L> {
                 Some(PatternKind::Variable(var))
             }
             UnresolvedPatternKind::Destructure(fields) => {
-                ty.apply(&self.ctx);
-
                 let (id, params) = match ty {
                     UnresolvedType::Named(id, params) => (id, params),
                     _ => {
@@ -1308,6 +1314,57 @@ impl<'a, L: Loader> Typechecker<'a, L> {
                     .collect();
 
                 Some(PatternKind::Destructure(fields))
+            }
+            UnresolvedPatternKind::Variant(variant_ty, variant, values) => {
+                let (id, params) = match ty {
+                    UnresolvedType::Named(id, params) => (id, params),
+                    _ => {
+                        self.compiler.diagnostics.add(Diagnostic::error(
+                            "cannot apply pattern to this value",
+                            vec![Note::primary(pattern.span, "value is not an enumeration")],
+                        ));
+
+                        return None;
+                    }
+                };
+
+                debug_assert!(id == variant_ty);
+
+                let enumeration = match self.types.get(&id) {
+                    Some(ty) => ty,
+                    None => {
+                        self.compiler.diagnostics.add(Diagnostic::error(
+                            "cannot apply pattern to this value",
+                            vec![Note::primary(pattern.span, "value is not an enumeration")],
+                        ));
+
+                        return None;
+                    }
+                };
+
+                let (_, variant_tys) = match &enumeration.kind {
+                    TypeDefinitionKind::Enumeration(variants) => variants[variant].clone(),
+                    _ => unreachable!(), // or do we need to display an error like above?
+                };
+
+                let substitutions = enumeration
+                    .params
+                    .iter()
+                    .copied()
+                    .zip(params)
+                    .collect::<BTreeMap<_, _>>();
+
+                Some(PatternKind::Variant(
+                    variant,
+                    values
+                        .into_iter()
+                        .zip(variant_tys)
+                        .map(|(pattern, mut variant_ty)| {
+                            variant_ty.instantiate_with(&substitutions);
+                            self.resolve_pattern(pattern, variant_ty)
+                        })
+                        .collect::<Option<_>>()?,
+                ))
             }
         })()?;
 
@@ -1746,6 +1803,14 @@ impl<'a, L: Loader> Typechecker<'a, L> {
                 fields
                     .iter()
                     .map(|(name, pattern)| (*name, self.convert_pattern(pattern)))
+                    .collect(),
+            ),
+            lower::PatternKind::Variant(ty, variant, values) => UnresolvedPatternKind::Variant(
+                *ty,
+                *variant,
+                values
+                    .iter()
+                    .map(|pattern| self.convert_pattern(pattern))
                     .collect(),
             ),
         };

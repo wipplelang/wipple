@@ -275,7 +275,7 @@ pub fn get_completions(position: usize) -> JsValue {
                     ScopeValue::Trait(_) => 7,
                     ScopeValue::TypeParameter(_) => 24,
                     ScopeValue::Operator(_) => 11,
-                    ScopeValue::Constant(_) => 14,
+                    ScopeValue::Constant(_, _) => 14,
                     ScopeValue::Variable(_) => 4,
                 },
             }));
