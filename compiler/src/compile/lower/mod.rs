@@ -116,12 +116,11 @@ pub enum ExpressionKind {
     Number(Decimal),
     Block(Vec<Expression>, HashMap<InternedString, ScopeValue>),
     Call(Box<Expression>, Box<Expression>),
-    Function(Box<Expression>, Vec<(VariableId, Span)>),
+    Function(Pattern, Box<Expression>, Vec<(VariableId, Span)>),
     When(Box<Expression>, Vec<Arm>),
     External(InternedString, InternedString, Vec<Expression>),
     Annotate(Box<Expression>, TypeAnnotation),
     Initialize(Pattern, Box<Expression>),
-    FunctionInput,
     Instantiate(TypeId, Vec<(InternedString, Expression)>),
     ListLiteral(Vec<Expression>),
     Variant(TypeId, usize, Vec<Expression>),
@@ -151,6 +150,7 @@ pub struct Pattern {
 
 #[derive(Debug, Clone)]
 pub enum PatternKind {
+    Error,
     Wildcard,
     Variable(VariableId),
     Destructure(HashMap<InternedString, Pattern>),
@@ -159,7 +159,7 @@ pub enum PatternKind {
 impl Pattern {
     fn variables(&self) -> BTreeSet<VariableId> {
         match &self.kind {
-            PatternKind::Wildcard => BTreeSet::new(),
+            PatternKind::Error | PatternKind::Wildcard => BTreeSet::new(),
             PatternKind::Variable(var) => BTreeSet::from([*var]),
             PatternKind::Destructure(fields) => fields
                 .values()
@@ -277,7 +277,6 @@ struct Scope<'a> {
     parent: Option<&'a Scope<'a>>,
     values: RefCell<HashMap<InternedString, ScopeValue>>,
     used_variables: Option<RefCell<Vec<(VariableId, Span)>>>,
-    function_inputs: RefCell<BTreeSet<VariableId>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -537,29 +536,12 @@ impl<L: Loader> Compiler<L> {
                                     .fold(result, |result, (span, var)| Expression {
                                         span: variant.span,
                                         kind: ExpressionKind::Function(
-                                            Box::new(Expression {
-                                                span: variant.span,
-                                                kind: ExpressionKind::Block(
-                                                    vec![
-                                                    Expression {
-                                                        span: variant.span,
-                                                        kind: ExpressionKind::Initialize(
-                                                            Pattern {
-                                                                span: *span,
-                                                                kind: PatternKind::Variable(*var),
-                                                            },
-                                                            Box::new(Expression {
-                                                                span: variant.span,
-                                                                kind: ExpressionKind::FunctionInput,
-                                                            }),
-                                                        ),
-                                                    },
-                                                    result,
-                                                ],
-                                                    Default::default(),
-                                                ),
-                                            }),
-                                            vec![(*var, variant.span)],
+                                            Pattern {
+                                                span: *span,
+                                                kind: PatternKind::Variable(*var),
+                                            },
+                                            Box::new(result),
+                                            Vec::new(), // FIXME: the function should capture the preceding variables
                                         ),
                                     });
 
@@ -863,14 +845,11 @@ impl<L: Loader> Compiler<L> {
                         let value = self.lower_expr(expr, scope, info);
 
                         let id = self.new_variable_id();
+
                         scope
                             .values
                             .borrow_mut()
                             .insert(*name, ScopeValue::Variable(id));
-
-                        if matches!(value.kind, ExpressionKind::FunctionInput) {
-                            scope.function_inputs.borrow_mut().insert(id);
-                        }
 
                         info.declarations.variables.insert(
                             id,
@@ -920,13 +899,6 @@ impl<L: Loader> Compiler<L> {
                         span: pattern.span,
                         kind: PatternKind::Destructure(ids),
                     };
-
-                    if matches!(value.kind, ExpressionKind::FunctionInput) {
-                        scope
-                            .function_inputs
-                            .borrow_mut()
-                            .extend(pattern.variables());
-                    }
 
                     Some(Expression {
                         span: statement.span,
@@ -996,7 +968,7 @@ impl<L: Loader> Compiler<L> {
 
     fn validate_constant(&mut self, value: &Expression) {
         // Check that expression doesn't capture variables
-        if let ExpressionKind::Function(_, captures) = &value.kind {
+        if let ExpressionKind::Function(_, _, captures) = &value.kind {
             if !captures.is_empty() {
                 self.diagnostics.add(Diagnostic::error(
                     "expected constant value",
@@ -1078,7 +1050,17 @@ impl<L: Loader> Compiler<L> {
                                 .filter_map(|s| match &s.kind {
                                     ast::StatementKind::Assign(pattern, expr) => match &pattern.kind {
                                         ast::PatternKind::Name(name) => Some((*name, expr)),
-                                        _ => None,
+                                        _ => {
+                                            self.diagnostics.add(Diagnostic::error(
+                                                "structure instantiation may not contain complex patterns",
+                                                vec![Note::primary(
+                                                    s.span,
+                                                    "try splitting this pattern into multiple names",
+                                                )]
+                                            ));
+
+                                            None
+                                        },
                                     },
                                     // TODO: 'use' inside instantiation
                                     _ => {
@@ -1189,44 +1171,23 @@ impl<L: Loader> Compiler<L> {
                     ..scope.child()
                 };
 
-                // Desugar function input pattern matching
-                let input_span = input.span;
-                let initialization = self.lower_statement(
-                    ast::Statement {
-                        span: input_span,
-                        kind: ast::StatementKind::Assign(
-                            input,
-                            ast::Expression {
-                                span: input_span,
-                                kind: ast::ExpressionKind::FunctionInput,
-                            },
-                        ),
-                    },
-                    &scope,
-                    info,
-                );
+                let pattern = self.lower_pattern(input, &scope, info);
+                let input_variables = pattern.variables();
 
                 let body = self.lower_expr(*body, &scope, info);
-
-                let block = initialization
-                    .into_iter()
-                    .chain(std::iter::once(body))
-                    .collect();
 
                 let captures = scope
                     .variables_used_by_ancestors()
                     .into_iter()
-                    .chain(scope.used_variables.unwrap().take().into_iter().filter_map(
-                        |(var, span)| {
-                            (!scope.function_inputs.borrow().contains(&var)).then(|| (var, span))
-                        },
-                    ))
+                    .chain(scope.used_variables.unwrap().take())
+                    .filter(|(var, _)| !input_variables.contains(var))
                     .collect();
 
                 ExpressionKind::Function(
+                    pattern,
                     Box::new(Expression {
                         span: expr.span,
-                        kind: ExpressionKind::Block(block, scope.values.into_inner()),
+                        kind: ExpressionKind::Block(vec![body], scope.values.into_inner()),
                     }),
                     captures,
                 )
@@ -1246,7 +1207,6 @@ impl<L: Loader> Compiler<L> {
                 Box::new(self.lower_expr(*expr, scope, info)),
                 self.lower_type_annotation(ty, scope, info),
             ),
-            ast::ExpressionKind::FunctionInput => ExpressionKind::FunctionInput,
             ast::ExpressionKind::ListLiteral(items) => ExpressionKind::ListLiteral(
                 items
                     .into_iter()
@@ -1316,6 +1276,55 @@ impl<L: Loader> Compiler<L> {
 
         TypeAnnotation {
             span: ty.span,
+            kind,
+        }
+    }
+
+    fn lower_pattern(&mut self, pattern: ast::Pattern, scope: &Scope, info: &mut Info) -> Pattern {
+        let kind = match pattern.kind {
+            ast::PatternKind::Error => PatternKind::Error,
+            ast::PatternKind::Wildcard => PatternKind::Wildcard,
+            ast::PatternKind::Name(name) => {
+                let var = self.new_variable_id();
+
+                scope
+                    .values
+                    .borrow_mut()
+                    .insert(name, ScopeValue::Variable(var));
+
+                info.declarations.variables.insert(
+                    var,
+                    Declaration {
+                        name,
+                        span: pattern.span,
+                        value: (),
+                    },
+                );
+
+                PatternKind::Variable(var)
+            }
+            ast::PatternKind::Destructure(fields) => PatternKind::Destructure(
+                fields
+                    .into_iter()
+                    .map(|(span, name)| {
+                        (
+                            name,
+                            self.lower_pattern(
+                                ast::Pattern {
+                                    span,
+                                    kind: ast::PatternKind::Name(name),
+                                },
+                                scope,
+                                info,
+                            ),
+                        )
+                    })
+                    .collect(),
+            ),
+        };
+
+        Pattern {
+            span: pattern.span,
             kind,
         }
     }

@@ -36,7 +36,7 @@ macro_rules! traverse_impl {
                 function.$traverse(f);
                 input.$traverse(f);
             }
-            Function(body, _) => body.$traverse(f),
+            Function(_, body, _) => body.$traverse(f),
             When(_, _) => todo!(),
             Initialize(_, value) => value.$traverse(f),
             External(_, _, inputs) => {

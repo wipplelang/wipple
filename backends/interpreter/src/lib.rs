@@ -28,6 +28,7 @@ pub enum Value {
     Text(String),
     Number(Decimal),
     Function {
+        pattern: Pattern,
         body: Box<Expression>,
         captures: BTreeMap<VariableId, Rc<Value>>,
     },
@@ -78,7 +79,6 @@ impl<'a> Interpreter<'a> {
         let mut info = Info {
             declarations: program.declarations,
             scope: Default::default(),
-            function_input: None,
             constants: Default::default(),
             stack: Vec::new(),
         };
@@ -98,7 +98,6 @@ impl<'a> Interpreter<'a> {
 pub struct Info {
     declarations: Declarations<Expression, Type>,
     scope: Rc<RefCell<Scope>>,
-    function_input: Option<Rc<Value>>,
     constants: HashMap<MonomorphizedConstantId, Rc<Value>>,
     stack: Vec<Span>,
 }
@@ -161,26 +160,31 @@ impl<'a> Interpreter<'a> {
             }
             ExpressionKind::Call(function, input) => {
                 match self.eval_expr(function, info)?.as_ref() {
-                    Value::Function { body, captures } => {
+                    Value::Function {
+                        pattern,
+                        body,
+                        captures,
+                    } => {
                         let input = self.eval_expr(input, info)?;
-                        info.function_input = Some(input);
 
                         let parent = info.scope.clone();
                         let child = Scope::child(&parent);
                         child.borrow_mut().variables.extend(captures.clone());
                         info.scope = child;
 
+                        let matches = self.eval_pattern(pattern, input, info)?;
+                        assert!(matches, "no matches for pattern in initialization");
+
                         let value = match self.eval_expr(body, info) {
-                        Ok(value)
-                        /* | Err(Diverge {
-                            kind: DivergeKind::Return(value),
-                            ..
-                        }) */ => value,
-                        diverge => return diverge,
-                    };
+                            Ok(value)
+                            /* | Err(Diverge {
+                                kind: DivergeKind::Return(value),
+                                ..
+                            }) */ => value,
+                            diverge => return diverge,
+                        };
 
                         info.scope = parent;
-                        info.function_input = None;
 
                         value
                     }
@@ -200,7 +204,8 @@ impl<'a> Interpreter<'a> {
                     panic!("variable {:?} not found in {:#?}", variable, info.scope)
                 })
             }
-            ExpressionKind::Function(body, captures) => Rc::new(Value::Function {
+            ExpressionKind::Function(pattern, body, captures) => Rc::new(Value::Function {
+                pattern: pattern.clone(),
                 body: Box::new(body.as_ref().clone()),
                 captures: captures
                     .iter()
@@ -271,7 +276,6 @@ impl<'a> Interpreter<'a> {
                     .map(|expr| self.eval_expr(expr, info))
                     .collect::<Result<_, _>>()?,
             )),
-            ExpressionKind::FunctionInput => info.function_input.as_ref().unwrap().clone(),
             ExpressionKind::ListLiteral(exprs) => Rc::new(Value::List(
                 exprs
                     .iter()

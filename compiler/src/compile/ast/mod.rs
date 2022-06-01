@@ -66,7 +66,6 @@ pub enum ExpressionKind {
     When(Box<Expression>, Vec<Arm>),
     External(InternedString, InternedString, Vec<Expression>),
     Annotate(Box<Expression>, TypeAnnotation),
-    FunctionInput,
     ListLiteral(Vec<Expression>),
 }
 

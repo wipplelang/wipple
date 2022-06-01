@@ -51,13 +51,12 @@ macro_rules! expr {
                     HashMap<InternedString, lower::ScopeValue>,
                 ),
                 Call(Box<[<$prefix Expression>]>, Box<[<$prefix Expression>]>),
-                Function(Box<[<$prefix Expression>]>, BTreeSet<VariableId>),
+                Function($pattern, Box<[<$prefix Expression>]>, BTreeSet<VariableId>),
                 When(Box<[<$prefix Expression>]>, Vec<[<$prefix Arm>]>),
                 External(InternedString, InternedString, Vec<[<$prefix Expression>]>),
                 Initialize($pattern, Box<[<$prefix Expression>]>),
                 Structure(Vec<[<$prefix Expression>]>),
                 Variant(usize, Vec<[<$prefix Expression>]>),
-                FunctionInput,
                 ListLiteral(Vec<[<$prefix Expression>]>),
                 $($kinds)*
             }
@@ -203,7 +202,6 @@ impl<L: Loader> Compiler<L> {
             queued_type_bounds: Default::default(),
             declared_instances: Default::default(),
             bound_instances: Default::default(),
-            function_inputs: Default::default(),
             declarations: Default::default(),
             compiler: self,
         };
@@ -790,7 +788,6 @@ struct Typechecker<'a, L: Loader> {
     queued_type_bounds: Vec<Bound>,
     declared_instances: BTreeMap<TraitId, Vec<GenericConstantId>>,
     bound_instances: BTreeMap<TraitId, Vec<MonomorphizedConstantId>>,
-    function_inputs: Vec<TypeVariable>,
     declarations: Declarations<MonomorphizedExpression, UnresolvedType, Rc<RefCell<lower::File>>>,
     compiler: &'a mut Compiler<L>,
 }
@@ -902,21 +899,18 @@ impl<'a, L: Loader> Typechecker<'a, L> {
                     kind: UnresolvedExpressionKind::Call(Box::new(function), Box::new(input)),
                 }
             }
-            lower::ExpressionKind::Function(body, captures) => {
+            lower::ExpressionKind::Function(pattern, body, captures) => {
+                let pattern = self.convert_pattern(pattern);
                 let body = self.typecheck_expr(body, file, suppress_errors);
-
-                let input_var = self
-                    .function_inputs
-                    .pop()
-                    .expect("function body does not refer to function input");
 
                 UnresolvedExpression {
                     span: expr.span,
                     ty: UnresolvedType::Function(
-                        Box::new(UnresolvedType::Variable(input_var)),
+                        Box::new(UnresolvedType::Variable(self.ctx.new_variable())),
                         Box::new(body.ty.clone()),
                     ),
                     kind: UnresolvedExpressionKind::Function(
+                        pattern,
                         Box::new(body),
                         captures.iter().map(|(var, _)| *var).collect(),
                     ),
@@ -962,16 +956,6 @@ impl<'a, L: Loader> Typechecker<'a, L> {
                     span: expr.span,
                     ty: UnresolvedType::Builtin(BuiltinType::Unit),
                     kind: UnresolvedExpressionKind::Initialize(pattern, Box::new(value)),
-                }
-            }
-            lower::ExpressionKind::FunctionInput => {
-                let var = self.ctx.new_variable();
-                self.function_inputs.push(var);
-
-                UnresolvedExpression {
-                    span: expr.span,
-                    ty: UnresolvedType::Variable(var),
-                    kind: UnresolvedExpressionKind::FunctionInput,
                 }
             }
             lower::ExpressionKind::Instantiate(id, fields) => {
@@ -1335,8 +1319,10 @@ impl<'a, L: Loader> Typechecker<'a, L> {
 
     fn monomorphize(
         &mut self,
-        expr: UnresolvedExpression,
+        mut expr: UnresolvedExpression,
     ) -> Result<MonomorphizedExpression, TypeError> {
+        expr.ty.apply(&self.ctx);
+
         Ok(MonomorphizedExpression {
             span: expr.span,
             ty: expr.ty.clone(),
@@ -1387,8 +1373,18 @@ impl<'a, L: Loader> Typechecker<'a, L> {
 
                         MonomorphizedExpressionKind::Call(Box::new(func), Box::new(input))
                     }
-                    UnresolvedExpressionKind::Function(body, captures) => {
+                    UnresolvedExpressionKind::Function(pattern, body, captures) => {
+                        let input_ty = match expr.ty {
+                            UnresolvedType::Function(input, _) => *input,
+                            _ => unreachable!(),
+                        };
+
+                        let pattern = self
+                            .resolve_pattern(pattern, input_ty)
+                            .ok_or(TypeError::ErrorExpression)?;
+
                         MonomorphizedExpressionKind::Function(
+                            pattern,
                             Box::new(self.monomorphize(*body)?),
                             captures,
                         )
@@ -1430,9 +1426,6 @@ impl<'a, L: Loader> Typechecker<'a, L> {
                                 .map(|expr| self.monomorphize(expr))
                                 .collect::<Result<_, _>>()?,
                         )
-                    }
-                    UnresolvedExpressionKind::FunctionInput => {
-                        MonomorphizedExpressionKind::FunctionInput
                     }
                     UnresolvedExpressionKind::Trait(tr) => MonomorphizedExpressionKind::Constant(
                         self.instance_for(tr, expr.ty.clone(), expr.span)?,
@@ -1512,10 +1505,13 @@ impl<'a, L: Loader> Typechecker<'a, L> {
                     Box::new(self.finalize_internal(*func, generic, file)?),
                     Box::new(self.finalize_internal(*input, generic, file)?),
                 ),
-                MonomorphizedExpressionKind::Function(body, captures) => ExpressionKind::Function(
-                    Box::new(self.finalize_internal(*body, generic, file)?),
-                    captures,
-                ),
+                MonomorphizedExpressionKind::Function(pattern, body, captures) => {
+                    ExpressionKind::Function(
+                        pattern,
+                        Box::new(self.finalize_internal(*body, generic, file)?),
+                        captures,
+                    )
+                }
                 MonomorphizedExpressionKind::When(_, _) => todo!(),
                 MonomorphizedExpressionKind::External(namespace, identifier, inputs) => {
                     ExpressionKind::External(
@@ -1566,7 +1562,6 @@ impl<'a, L: Loader> Typechecker<'a, L> {
                         .map(|expr| self.finalize_internal(expr, generic, file))
                         .collect::<Result<_, _>>()?,
                 ),
-                MonomorphizedExpressionKind::FunctionInput => ExpressionKind::FunctionInput,
                 MonomorphizedExpressionKind::ListLiteral(items) => ExpressionKind::ListLiteral(
                     items
                         .into_iter()
@@ -1744,6 +1739,7 @@ impl<'a, L: Loader> Typechecker<'a, L> {
 
     fn convert_pattern(&mut self, pattern: &lower::Pattern) -> UnresolvedPattern {
         let kind = match &pattern.kind {
+            lower::PatternKind::Error => UnresolvedPatternKind::Error,
             lower::PatternKind::Wildcard => UnresolvedPatternKind::Wildcard,
             lower::PatternKind::Variable(var) => UnresolvedPatternKind::Variable(*var),
             lower::PatternKind::Destructure(fields) => UnresolvedPatternKind::Destructure(
