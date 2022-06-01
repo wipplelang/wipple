@@ -107,6 +107,7 @@ pub struct Pattern {
 pub enum PatternKind {
     Error,
     Wildcard,
+    Unit,
     Name(InternedString),
     Destructure(Vec<(Span, InternedString)>),
     Variant((Span, InternedString), Vec<Pattern>),
@@ -613,6 +614,7 @@ impl<L: Loader> Compiler<L> {
 
                     PatternKind::Variant((name_span, name), rest)
                 }
+                NodeKind::Empty => PatternKind::Unit,
                 _ => {
                     self.diagnostics.add(Diagnostic::error(
                         "expected pattern",

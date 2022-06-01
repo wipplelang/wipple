@@ -152,6 +152,7 @@ pub struct Pattern {
 pub enum PatternKind {
     Error,
     Wildcard,
+    Unit,
     Variable(VariableId),
     Destructure(HashMap<InternedString, Pattern>),
     Variant(TypeId, usize, Vec<Pattern>),
@@ -1228,6 +1229,7 @@ impl<L: Loader> Compiler<L> {
         let kind = (|| match pattern.kind {
             ast::PatternKind::Error => PatternKind::Error,
             ast::PatternKind::Wildcard => PatternKind::Wildcard,
+            ast::PatternKind::Unit => PatternKind::Unit,
             ast::PatternKind::Name(name) => match scope.get(name, pattern.span) {
                 Some(ScopeValue::Constant(_, Some((ty, variant)))) => {
                     PatternKind::Variant(ty, variant, Vec::new())

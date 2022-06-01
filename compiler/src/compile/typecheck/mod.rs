@@ -107,6 +107,7 @@ expr!(pub, "", Type, Pattern, {
 
 pattern!(, "Unresolved", {
     Error,
+    Unit,
     Destructure(HashMap<InternedString, UnresolvedPattern>),
     Variant(TypeId, usize, Vec<UnresolvedPattern>),
 });
@@ -1303,7 +1304,9 @@ impl<'a, L: Loader> Typechecker<'a, L> {
 
         let kind = (|| match pattern.kind {
             UnresolvedPatternKind::Error => None,
-            UnresolvedPatternKind::Wildcard => Some(PatternKind::Wildcard),
+            UnresolvedPatternKind::Wildcard | UnresolvedPatternKind::Unit => {
+                Some(PatternKind::Wildcard)
+            }
             UnresolvedPatternKind::Variable(var) => {
                 self.variables.insert(var, ty.clone());
                 Some(PatternKind::Variable(var))
@@ -1888,6 +1891,7 @@ impl<'a, L: Loader> Typechecker<'a, L> {
         let kind = match &pattern.kind {
             lower::PatternKind::Error => UnresolvedPatternKind::Error,
             lower::PatternKind::Wildcard => UnresolvedPatternKind::Wildcard,
+            lower::PatternKind::Unit => UnresolvedPatternKind::Unit,
             lower::PatternKind::Variable(var) => UnresolvedPatternKind::Variable(*var),
             lower::PatternKind::Destructure(fields) => UnresolvedPatternKind::Destructure(
                 fields
