@@ -7,9 +7,9 @@ output: |
 
 diagnostics: |
     error: missing instance
-      --> prelude:86:17
+      --> prelude:94:17
        |
-    86 | show :: A where (Show A) => A -> ()
+    94 | show :: A where (Show A) => A -> ()
        |                 ^^^^^^^^ could not find instance of `Show` for type `Foo -> Text`
     error: missing instance
       --> test:3:1

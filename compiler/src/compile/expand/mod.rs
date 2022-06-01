@@ -217,11 +217,12 @@ pub struct Operator {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum OperatorPrecedence {
-    Conjunction,
-    Disjunction,
     Power,
     Multiplication,
     Addition,
+    Equality,
+    Conjunction,
+    Disjunction,
     Dot,
     Function,
     Where,
@@ -242,6 +243,7 @@ impl OperatorPrecedence {
         match self {
             OperatorPrecedence::Conjunction => OperatorAssociativity::Left,
             OperatorPrecedence::Disjunction => OperatorAssociativity::Left,
+            OperatorPrecedence::Equality => OperatorAssociativity::Left,
             OperatorPrecedence::Addition => OperatorAssociativity::Left,
             OperatorPrecedence::Multiplication => OperatorAssociativity::Left,
             OperatorPrecedence::Power => OperatorAssociativity::Right,

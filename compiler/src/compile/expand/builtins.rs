@@ -291,13 +291,13 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
 
             let precedence = match lhs.kind {
                 NodeKind::Name(name) => match name.as_str() {
+                    "power" => OperatorPrecedence::Power,
+                    "multiplication" => OperatorPrecedence::Multiplication,
+                    "addition" => OperatorPrecedence::Addition,
+                    "equality" => OperatorPrecedence::Equality,
                     "conjunction" => OperatorPrecedence::Conjunction,
                     "disjunction" => OperatorPrecedence::Disjunction,
-                    "addition" => OperatorPrecedence::Addition,
-                    "multiplication" => OperatorPrecedence::Multiplication,
-                    "power" => OperatorPrecedence::Power,
                     "dot" => OperatorPrecedence::Dot,
-                    "function" => OperatorPrecedence::Function,
                     _ => {
                         expander.compiler.diagnostics.add(Diagnostic::error(
                             "invalid precedence name",

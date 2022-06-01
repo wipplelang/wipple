@@ -56,6 +56,8 @@ lazy_static! {
             "multiply" => builtin_multiply,
             "divide" => builtin_divide,
             "power" => builtin_power,
+            "number-equality" => builtin_number_equality,
+            "text-equality" => builtin_text_equality,
         }
     };
 }
@@ -214,4 +216,44 @@ fn builtin_power(
     }
 
     Ok(Rc::new(Value::Number(lhs.pow(*rhs))))
+}
+
+fn builtin_number_equality(
+    _: &Interpreter,
+    (lhs, rhs): (Rc<Value>, Rc<Value>),
+    _: &Info,
+) -> Result<Rc<Value>, Diverge> {
+    let lhs = match lhs.as_ref() {
+        Value::Number(number) => number,
+        _ => unreachable!(),
+    };
+
+    let rhs = match rhs.as_ref() {
+        Value::Number(number) => number,
+        _ => unreachable!(),
+    };
+
+    let index = if lhs == rhs { 1 } else { 0 };
+
+    Ok(Rc::new(Value::Variant(index, Vec::new())))
+}
+
+fn builtin_text_equality(
+    _: &Interpreter,
+    (lhs, rhs): (Rc<Value>, Rc<Value>),
+    _: &Info,
+) -> Result<Rc<Value>, Diverge> {
+    let lhs = match lhs.as_ref() {
+        Value::Text(text) => text,
+        _ => unreachable!(),
+    };
+
+    let rhs = match rhs.as_ref() {
+        Value::Text(text) => text,
+        _ => unreachable!(),
+    };
+
+    let index = if lhs == rhs { 1 } else { 0 };
+
+    Ok(Rc::new(Value::Variant(index, Vec::new())))
 }
