@@ -1371,7 +1371,7 @@ impl<'a, L: Loader> Typechecker<'a, L> {
                 Some(PatternKind::Destructure(fields))
             }
             UnresolvedPatternKind::Variant(variant_ty, variant, values) => {
-                let (id, params) = match ty {
+                let (id, params) = match &ty {
                     UnresolvedType::Named(id, params) => (id, params),
                     _ => {
                         self.compiler.diagnostics.add(Diagnostic::error(
@@ -1383,9 +1383,7 @@ impl<'a, L: Loader> Typechecker<'a, L> {
                     }
                 };
 
-                debug_assert!(id == variant_ty);
-
-                let enumeration = match self.types.get(&id) {
+                let enumeration = match self.types.get(id) {
                     Some(ty) => ty,
                     None => {
                         self.compiler.diagnostics.add(Diagnostic::error(
@@ -1397,7 +1395,7 @@ impl<'a, L: Loader> Typechecker<'a, L> {
                     }
                 };
 
-                let (_, variant_tys) = match &enumeration.kind {
+                let (_, mut variant_tys) = match &enumeration.kind {
                     TypeDefinitionKind::Enumeration(variants) => variants[variant].clone(),
                     _ => unreachable!(), // or do we need to display an error like above?
                 };
@@ -1406,20 +1404,37 @@ impl<'a, L: Loader> Typechecker<'a, L> {
                     .params
                     .iter()
                     .copied()
-                    .zip(params)
+                    .zip(params.iter().cloned())
                     .collect::<BTreeMap<_, _>>();
 
-                Some(PatternKind::Variant(
+                for ty in &mut variant_tys {
+                    ty.instantiate_with(&substitutions);
+                }
+
+                if let Err(error) = self.ctx.unify(
+                    UnresolvedType::Named(
+                        variant_ty,
+                        enumeration
+                            .params
+                            .iter()
+                            .map(|param| substitutions.get(param).unwrap().clone())
+                            .collect(),
+                    ),
+                    ty,
+                ) {
+                    self.report_type_error(error, pattern.span);
+                }
+
+                let pattern = PatternKind::Variant(
                     variant,
                     values
                         .into_iter()
                         .zip(variant_tys)
-                        .map(|(pattern, mut variant_ty)| {
-                            variant_ty.instantiate_with(&substitutions);
-                            self.resolve_pattern(pattern, variant_ty)
-                        })
+                        .map(|(pattern, variant_ty)| self.resolve_pattern(pattern, variant_ty))
                         .collect::<Option<_>>()?,
-                ))
+                );
+
+                Some(pattern)
             }
         })()?;
 
