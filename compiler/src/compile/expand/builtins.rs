@@ -331,7 +331,7 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
                 _ => {
                     expander.compiler.diagnostics.add(Diagnostic::error(
                         "expected template on right-hand side of operator declaration",
-                        vec![Note::primary(lhs.span, "expected a template here")],
+                        vec![Note::primary(rhs.span, "expected a template here")],
                     ));
 
                     return Node {
