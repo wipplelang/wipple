@@ -40,6 +40,20 @@ instance Default Number : 0
 instance Default Text : ""
 instance Default Boolean : False
 
+Maybe : A => type {
+	Some A
+	None
+}
+
+use Maybe
+
+Result : Success Failure => type {
+	OK Success
+	Error Failure
+}
+
+use Result
+
 -- Math --
 
 Add : Left Right Sum => trait (Left -> Right -> Sum)
