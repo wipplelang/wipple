@@ -935,7 +935,7 @@ impl<'a, L: Loader> Typechecker<'a, L> {
                     for arm in arms.iter().skip(1) {
                         if let Err(error) = self.ctx.unify(ty.clone(), arm.body.ty.clone()) {
                             if !suppress_errors {
-                                self.report_type_error(error, arm.span);
+                                self.report_type_error(error, arm.body.span);
                             }
                         };
                     }

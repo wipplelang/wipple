@@ -1,0 +1,14 @@
+code: |
+    when True {
+        True -> 42
+        False -> "hi"
+    }
+
+output: |
+
+diagnostics: |
+    error: mismatched types
+     --> test:3:14
+      |
+    3 |     False -> "hi"
+      |              ^^^^ expected `Text`, but found `Number`
