@@ -12,5 +12,6 @@ body {
 pre,
 code {
     font-family: 'JetBrains Mono', monospace;
+    font-variant-ligatures: none;
     color: #24292e !important;
 }

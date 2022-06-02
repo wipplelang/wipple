@@ -27,6 +27,8 @@
       path: 01-learn/08-structures
     - title: Traits
       path: 01-learn/09-traits
+    - title: Logic
+      path: 01-learn/10-logic
 
 - title: Quick Start
   path: 02-quick-start
