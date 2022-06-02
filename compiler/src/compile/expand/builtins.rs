@@ -294,7 +294,7 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
                     "power" => OperatorPrecedence::Power,
                     "multiplication" => OperatorPrecedence::Multiplication,
                     "addition" => OperatorPrecedence::Addition,
-                    "equality" => OperatorPrecedence::Equality,
+                    "comparison" => OperatorPrecedence::Comparison,
                     "conjunction" => OperatorPrecedence::Conjunction,
                     "disjunction" => OperatorPrecedence::Disjunction,
                     "dot" => OperatorPrecedence::Dot,

@@ -34,12 +34,23 @@ or : disjunction operator (a b ~> Or a (() -> b))
 instance Or Boolean Boolean Boolean : a? -> b? -> if a? True (b? ())
 
 Equal : A => trait (A -> A -> Boolean)
-= : equality operator (a b ~> Equal a b)
-/= : equality operator (a b ~> not (a = b))
+= : comparison operator (a b ~> Equal a b)
+/= : comparison operator (a b ~> not (a = b))
 instance Equal Number : a -> b -> external "builtin" "number-equality" a b
 instance Equal Text : a -> b -> external "builtin" "text-equality" a b
 instance Equal () : () -> () -> True
 instance Equal Boolean : a? -> b? -> a? and b? or not a? and not b?
+
+Less-Than : A => trait (A -> A -> Boolean)
+< : comparison operator (a b ~> Less-Than a b)
+instance Less-Than Number : a -> b -> external "builtin" "number-less-than" a b
+
+Greater-Than : A => trait (A -> A -> Boolean)
+> : comparison operator (a b ~> Greater-Than a b)
+instance Greater-Than Number : a -> b -> external "builtin" "number-greater-than" a b
+
+<= : comparison operator (a b ~> a < b or a = b)
+>= : comparison operator (a b ~> a > b or a = b)
 
 -- Utilities --
 

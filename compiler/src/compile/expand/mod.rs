@@ -220,7 +220,7 @@ pub enum OperatorPrecedence {
     Power,
     Multiplication,
     Addition,
-    Equality,
+    Comparison,
     Conjunction,
     Disjunction,
     Dot,
@@ -243,7 +243,7 @@ impl OperatorPrecedence {
         match self {
             OperatorPrecedence::Conjunction => OperatorAssociativity::Left,
             OperatorPrecedence::Disjunction => OperatorAssociativity::Left,
-            OperatorPrecedence::Equality => OperatorAssociativity::Left,
+            OperatorPrecedence::Comparison => OperatorAssociativity::Left,
             OperatorPrecedence::Addition => OperatorAssociativity::Left,
             OperatorPrecedence::Multiplication => OperatorAssociativity::Left,
             OperatorPrecedence::Power => OperatorAssociativity::Right,

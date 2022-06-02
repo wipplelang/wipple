@@ -7,6 +7,10 @@ code: |
     show (True = True)
     show (False = False)
     show (True = False)
+    show (2 > 1)
+    show (1 >= 1)
+    show (4 < 3)
+    show (5 <= 6)
 
 output: |
     True
@@ -17,5 +21,9 @@ output: |
     True
     True
     False
+    True
+    True
+    False
+    True
 
 diagnostics: |

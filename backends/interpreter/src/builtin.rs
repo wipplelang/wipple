@@ -58,6 +58,8 @@ lazy_static! {
             "power" => builtin_power,
             "number-equality" => builtin_number_equality,
             "text-equality" => builtin_text_equality,
+            "number-less-than" => builtin_number_less_than,
+            "number-greater-than" => builtin_number_greater_than,
         }
     };
 }
@@ -254,6 +256,46 @@ fn builtin_text_equality(
     };
 
     let index = if lhs == rhs { 1 } else { 0 };
+
+    Ok(Rc::new(Value::Variant(index, Vec::new())))
+}
+
+fn builtin_number_less_than(
+    _: &Interpreter,
+    (lhs, rhs): (Rc<Value>, Rc<Value>),
+    _: &Info,
+) -> Result<Rc<Value>, Diverge> {
+    let lhs = match lhs.as_ref() {
+        Value::Number(number) => number,
+        _ => unreachable!(),
+    };
+
+    let rhs = match rhs.as_ref() {
+        Value::Number(number) => number,
+        _ => unreachable!(),
+    };
+
+    let index = if lhs < rhs { 1 } else { 0 };
+
+    Ok(Rc::new(Value::Variant(index, Vec::new())))
+}
+
+fn builtin_number_greater_than(
+    _: &Interpreter,
+    (lhs, rhs): (Rc<Value>, Rc<Value>),
+    _: &Info,
+) -> Result<Rc<Value>, Diverge> {
+    let lhs = match lhs.as_ref() {
+        Value::Number(number) => number,
+        _ => unreachable!(),
+    };
+
+    let rhs = match rhs.as_ref() {
+        Value::Number(number) => number,
+        _ => unreachable!(),
+    };
+
+    let index = if lhs > rhs { 1 } else { 0 };
 
     Ok(Rc::new(Value::Variant(index, Vec::new())))
 }
