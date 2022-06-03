@@ -497,6 +497,7 @@ impl<L: Loader> Compiler<L> {
                     dummy_id,
                     (
                         span,
+                        typechecker.compiler.new_generic_constant_id(),
                         Constant {
                             file: constant.file.clone(),
                             decl: Declaration {
@@ -524,7 +525,7 @@ impl<L: Loader> Compiler<L> {
             }
 
             let body_span = body.span;
-            let body = match typechecker.monomorphize(body) {
+            let body = match typechecker.monomorphize(body, None) {
                 Ok(expr) => expr,
                 Err(error) => {
                     typechecker.report_type_error(error, body_span);
@@ -569,7 +570,7 @@ impl<L: Loader> Compiler<L> {
                         let span = expr.span;
 
                         let expr = typechecker
-                            .monomorphize(expr)
+                            .monomorphize(expr, None)
                             .map_err(|error| (error, span))?;
 
                         Ok((file.clone(), expr))
@@ -598,7 +599,7 @@ impl<L: Loader> Compiler<L> {
                 break;
             }
 
-            for (id, (span, constant)) in typechecker.monomorphized_constants.clone() {
+            for (id, (span, generic_id, constant)) in typechecker.monomorphized_constants.clone() {
                 if already_checked.contains(&id) {
                     continue;
                 }
@@ -627,7 +628,9 @@ impl<L: Loader> Compiler<L> {
                             .push(instance_id);
                     }
 
-                    let body = match typechecker.monomorphize(constant.decl.value.clone()) {
+                    let body = match typechecker
+                        .monomorphize(constant.decl.value.clone(), Some((generic_id, id)))
+                    {
                         Ok(value) => value,
                         Err(error) => {
                             typechecker.report_type_error(error, span);
@@ -790,8 +793,10 @@ struct Typechecker<'a, L: Loader> {
     traits: BTreeMap<TraitId, TraitDefinition>,
     types: BTreeMap<TypeId, TypeDefinition>,
     generic_constants: BTreeMap<GenericConstantId, Constant<lower::Expression, UnresolvedType>>,
-    monomorphized_constants:
-        BTreeMap<MonomorphizedConstantId, (Span, Constant<UnresolvedExpression, ()>)>,
+    monomorphized_constants: BTreeMap<
+        MonomorphizedConstantId,
+        (Span, GenericConstantId, Constant<UnresolvedExpression, ()>),
+    >,
     queued_type_bounds: Vec<Bound>,
     declared_instances: BTreeMap<TraitId, Vec<GenericConstantId>>,
     bound_instances: BTreeMap<TraitId, Vec<MonomorphizedConstantId>>,
@@ -1265,6 +1270,7 @@ impl<'a, L: Loader> Typechecker<'a, L> {
             monomorphized_id,
             (
                 span,
+                id,
                 Constant {
                     file: constant.file,
                     decl: Declaration {
@@ -1285,13 +1291,14 @@ impl<'a, L: Loader> Typechecker<'a, L> {
         &mut self,
         arm: UnresolvedArm,
         ty: UnresolvedType,
+        inside_generic_constant: Option<(GenericConstantId, MonomorphizedConstantId)>,
     ) -> Result<MonomorphizedArm, TypeError> {
         Ok(MonomorphizedArm {
             span: arm.span,
             pattern: self
                 .resolve_pattern(arm.pattern, ty)
                 .ok_or(TypeError::ErrorExpression)?,
-            body: self.monomorphize(arm.body)?,
+            body: self.monomorphize(arm.body, inside_generic_constant)?,
         })
     }
 
@@ -1450,6 +1457,7 @@ impl<'a, L: Loader> Typechecker<'a, L> {
     fn monomorphize(
         &mut self,
         mut expr: UnresolvedExpression,
+        inside_generic_constant: Option<(GenericConstantId, MonomorphizedConstantId)>,
     ) -> Result<MonomorphizedExpression, TypeError> {
         expr.ty.apply(&self.ctx);
 
@@ -1461,6 +1469,16 @@ impl<'a, L: Loader> Typechecker<'a, L> {
                     UnresolvedExpressionKind::Error => MonomorphizedExpressionKind::Error,
                     UnresolvedExpressionKind::Marker => MonomorphizedExpressionKind::Marker,
                     UnresolvedExpressionKind::Constant(id) => {
+                        if let Some((inside_generic_id, inside_monomorphized_id)) =
+                            inside_generic_constant
+                        {
+                            if inside_generic_id == id {
+                                return Ok(MonomorphizedExpressionKind::Constant(
+                                    inside_monomorphized_id,
+                                ));
+                            }
+                        }
+
                         let (monomorphized_id, ty) = self.monomorphize_constant(id, expr.span);
 
                         if let Err(error) = self.ctx.unify(ty, expr.ty) {
@@ -1490,7 +1508,7 @@ impl<'a, L: Loader> Typechecker<'a, L> {
                         MonomorphizedExpressionKind::Block(
                             statements
                                 .into_iter()
-                                .map(|expr| self.monomorphize(expr))
+                                .map(|expr| self.monomorphize(expr, inside_generic_constant))
                                 .collect::<Result<_, _>>()?,
                             scope,
                         )
@@ -1498,8 +1516,8 @@ impl<'a, L: Loader> Typechecker<'a, L> {
                     UnresolvedExpressionKind::Call(func, input) => {
                         // Monomorphize in reverse order so that inner traits
                         // are resolved first, eg. in the case of `T2 (T1 x)`
-                        let input = self.monomorphize(*input)?;
-                        let func = self.monomorphize(*func)?;
+                        let input = self.monomorphize(*input, inside_generic_constant)?;
+                        let func = self.monomorphize(*func, inside_generic_constant)?;
 
                         MonomorphizedExpressionKind::Call(Box::new(func), Box::new(input))
                     }
@@ -1515,16 +1533,22 @@ impl<'a, L: Loader> Typechecker<'a, L> {
 
                         MonomorphizedExpressionKind::Function(
                             pattern,
-                            Box::new(self.monomorphize(*body)?),
+                            Box::new(self.monomorphize(*body, inside_generic_constant)?),
                             captures,
                         )
                     }
                     UnresolvedExpressionKind::When(input, arms) => {
-                        let input = self.monomorphize(*input)?;
+                        let input = self.monomorphize(*input, inside_generic_constant)?;
 
                         let arms = arms
                             .into_iter()
-                            .map(|arm| self.monomorphize_arm(arm, input.ty.clone()))
+                            .map(|arm| {
+                                self.monomorphize_arm(
+                                    arm,
+                                    input.ty.clone(),
+                                    inside_generic_constant,
+                                )
+                            })
                             .collect::<Result<_, _>>()?;
 
                         MonomorphizedExpressionKind::When(Box::new(input), arms)
@@ -1535,13 +1559,13 @@ impl<'a, L: Loader> Typechecker<'a, L> {
                             identifier,
                             inputs
                                 .into_iter()
-                                .map(|expr| self.monomorphize(expr))
+                                .map(|expr| self.monomorphize(expr, inside_generic_constant))
                                 .collect::<Result<_, _>>()?,
                         )
                     }
                     UnresolvedExpressionKind::Initialize(pattern, value) => {
                         // Resolve the right-hand side first
-                        let value = self.monomorphize(*value)?;
+                        let value = self.monomorphize(*value, inside_generic_constant)?;
 
                         let pattern = self
                             .resolve_pattern(pattern, value.ty.clone())
@@ -1553,7 +1577,7 @@ impl<'a, L: Loader> Typechecker<'a, L> {
                         MonomorphizedExpressionKind::Structure(
                             fields
                                 .into_iter()
-                                .map(|expr| self.monomorphize(expr))
+                                .map(|expr| self.monomorphize(expr, inside_generic_constant))
                                 .collect::<Result<_, _>>()?,
                         )
                     }
@@ -1562,7 +1586,7 @@ impl<'a, L: Loader> Typechecker<'a, L> {
                             index,
                             values
                                 .into_iter()
-                                .map(|expr| self.monomorphize(expr))
+                                .map(|expr| self.monomorphize(expr, inside_generic_constant))
                                 .collect::<Result<_, _>>()?,
                         )
                     }
@@ -1573,7 +1597,7 @@ impl<'a, L: Loader> Typechecker<'a, L> {
                         MonomorphizedExpressionKind::ListLiteral(
                             items
                                 .into_iter()
-                                .map(|expr| self.monomorphize(expr))
+                                .map(|expr| self.monomorphize(expr, inside_generic_constant))
                                 .collect::<Result<_, _>>()?,
                         )
                     }
@@ -1733,7 +1757,7 @@ impl<'a, L: Loader> Typechecker<'a, L> {
         let bound_instances = self.bound_instances.get(&tr).cloned().unwrap_or_default();
 
         for instance in bound_instances.into_iter().rev() {
-            let (_, constant) = self.monomorphized_constants.get(&instance).unwrap();
+            let (_, _, constant) = self.monomorphized_constants.get(&instance).unwrap();
 
             let mut ctx = self.ctx.clone();
 

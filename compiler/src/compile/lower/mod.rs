@@ -764,8 +764,8 @@ impl<L: Loader> Compiler<L> {
             ast::StatementKind::Assign(pattern, expr) => {
                 macro_rules! assign_pattern {
                     () => {{
-                        let pattern = self.lower_pattern(pattern, scope, info);
                         let value = self.lower_expr(expr, scope, info);
+                        let pattern = self.lower_pattern(pattern, scope, info);
 
                         Some(Expression {
                             span: statement.span,
