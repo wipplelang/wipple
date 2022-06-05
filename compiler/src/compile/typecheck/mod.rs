@@ -429,11 +429,31 @@ impl<L: Loader> Compiler<L> {
                 let substitutions = tr
                     .params
                     .into_iter()
-                    .zip(&decl.value.parameters)
+                    .zip(&decl.value.trait_params)
                     .map(|(param, ty)| (param, typechecker.convert_type_annotation(ty)))
                     .collect();
 
                 tr.ty.instantiate_with(&substitutions);
+
+                let bounds = decl
+                    .value
+                    .bounds
+                    .iter()
+                    .map(|bound| {
+                        let mut tr = typechecker.traits.get(&bound.tr).unwrap().clone();
+
+                        let substitutions = tr
+                            .params
+                            .into_iter()
+                            .zip(&bound.parameters)
+                            .map(|(param, ty)| (param, typechecker.convert_type_annotation(ty)))
+                            .collect();
+
+                        tr.ty.instantiate_with(&substitutions);
+
+                        (bound.tr, tr.ty, bound.span)
+                    })
+                    .collect::<Vec<_>>();
 
                 typechecker
                     .declared_instances
@@ -451,7 +471,7 @@ impl<L: Loader> Compiler<L> {
                             value,
                         },
                         generic_ty: tr.ty,
-                        bounds: Vec::new(), // TODO: Generic instances
+                        bounds,
                     },
                 );
             }
@@ -464,7 +484,7 @@ impl<L: Loader> Compiler<L> {
         for (tr, mut ty, span) in typechecker.queued_type_bounds.clone() {
             ty.apply(&typechecker.ctx);
 
-            let instance_id = match typechecker.instance_for(tr, ty.clone(), span) {
+            let instance_id = match typechecker.instance_for(tr, ty.clone()) {
                 Ok(id) => id,
                 Err(error) => {
                     typechecker.report_type_error(error, span);
@@ -480,6 +500,7 @@ impl<L: Loader> Compiler<L> {
         }
 
         let prev_bound_instances = typechecker.bound_instances.clone();
+        let prev_monomorphized_constants = typechecker.monomorphized_constants.clone();
 
         for constant in typechecker.generic_constants.clone().into_values() {
             let body = typechecker.typecheck_expr(&constant.decl.value, &constant.file, false);
@@ -491,30 +512,23 @@ impl<L: Loader> Compiler<L> {
             // Register dummy generic instances so finalization works -- these
             // constants will never actually be used
             for (tr, ty, span) in constant.bounds {
-                let dummy_id = typechecker.compiler.new_monomorphized_constant_id();
+                let dummy_id = typechecker.compiler.new_generic_constant_id();
 
-                typechecker.monomorphized_constants.insert(
+                typechecker.generic_constants.insert(
                     dummy_id,
-                    (
-                        span,
-                        typechecker.compiler.new_generic_constant_id(),
-                        Constant {
-                            file: constant.file.clone(),
-                            decl: Declaration {
-                                name: constant.decl.name,
-                                span,
-                                value: UnresolvedExpression {
-                                    span: constant.decl.value.span,
-                                    ty,
-                                    kind: UnresolvedExpressionKind::Error,
-                                },
+                    Constant {
+                        file: constant.file.clone(),
+                        decl: Declaration {
+                            name: InternedString::new("dummy instance"),
+                            span,
+                            value: lower::Expression {
+                                span: constant.decl.value.span,
+                                kind: lower::ExpressionKind::Error,
                             },
-                            generic_ty: (),
-                            // TODO: Generic instances (do we even need to add
-                            // bounds here?)
-                            bounds: Default::default(),
                         },
-                    ),
+                        generic_ty: ty,
+                        bounds: Vec::new(),
+                    },
                 );
 
                 typechecker
@@ -549,6 +563,7 @@ impl<L: Loader> Compiler<L> {
         }
 
         typechecker.bound_instances = prev_bound_instances;
+        typechecker.monomorphized_constants = prev_monomorphized_constants;
 
         // Finalize the types of all values in the program, resolving traits and
         // raising an error for unresolved type variables
@@ -609,47 +624,45 @@ impl<L: Loader> Compiler<L> {
                 let mut ty = constant.decl.value.ty.clone();
                 ty.apply(&typechecker.ctx);
 
-                if ty.params().is_empty() {
-                    for (tr, mut ty, span) in constant.bounds.clone() {
-                        ty.apply(&typechecker.ctx);
+                for (tr, mut ty, span) in constant.bounds.clone() {
+                    ty.apply(&typechecker.ctx);
 
-                        let instance_id = match typechecker.instance_for(tr, ty.clone(), span) {
-                            Ok(id) => id,
-                            Err(error) => {
-                                typechecker.report_type_error(error, span);
-                                continue;
-                            }
-                        };
-
-                        typechecker
-                            .bound_instances
-                            .entry(tr)
-                            .or_default()
-                            .push(instance_id);
-                    }
-
-                    let body = match typechecker
-                        .monomorphize(constant.decl.value.clone(), Some((generic_id, id)))
-                    {
-                        Ok(value) => value,
+                    let instance_id = match typechecker.instance_for(tr, ty.clone()) {
+                        Ok(id) => id,
                         Err(error) => {
                             typechecker.report_type_error(error, span);
                             continue;
                         }
                     };
 
-                    typechecker.declarations.monomorphized_constants.insert(
-                        id,
-                        (
-                            constant.file,
-                            Declaration {
-                                name: constant.decl.name,
-                                span,
-                                value: body,
-                            },
-                        ),
-                    );
+                    typechecker
+                        .bound_instances
+                        .entry(tr)
+                        .or_default()
+                        .push(instance_id);
                 }
+
+                let body = match typechecker
+                    .monomorphize(constant.decl.value.clone(), Some((generic_id, id)))
+                {
+                    Ok(value) => value,
+                    Err(error) => {
+                        typechecker.report_type_error(error, span);
+                        continue;
+                    }
+                };
+
+                typechecker.declarations.monomorphized_constants.insert(
+                    id,
+                    (
+                        constant.file,
+                        Declaration {
+                            name: constant.decl.name,
+                            span,
+                            value: body,
+                        },
+                    ),
+                );
             }
         }
 
@@ -731,6 +744,7 @@ impl<L: Loader> Compiler<L> {
             .into_iter()
             .map(|(file, expr)| {
                 let span = expr.span;
+
                 typechecker
                     .finalize(expr, &file)
                     .map_err(|error| (error, span))
@@ -799,7 +813,7 @@ struct Typechecker<'a, L: Loader> {
     >,
     queued_type_bounds: Vec<Bound>,
     declared_instances: BTreeMap<TraitId, Vec<GenericConstantId>>,
-    bound_instances: BTreeMap<TraitId, Vec<MonomorphizedConstantId>>,
+    bound_instances: BTreeMap<TraitId, Vec<GenericConstantId>>,
     declarations: Declarations<MonomorphizedExpression, UnresolvedType, Rc<RefCell<lower::File>>>,
     compiler: &'a mut Compiler<L>,
 }
@@ -1238,21 +1252,13 @@ impl<'a, L: Loader> Typechecker<'a, L> {
         span: Span,
     ) -> (MonomorphizedConstantId, UnresolvedType) {
         let mut constant = self.generic_constants.get(&id).unwrap().clone();
-
         let body = constant.decl.value;
+
         let mut body = self.typecheck_expr(&body, &constant.file, true);
 
-        if self
-            .ctx
+        self.ctx
             .unify(body.ty.clone(), constant.generic_ty)
-            .is_err()
-        {
-            body = UnresolvedExpression {
-                span: body.span,
-                ty: UnresolvedType::Bottom(BottomTypeReason::Error),
-                kind: UnresolvedExpressionKind::Error,
-            }
-        }
+            .expect("failed to unify constant body with its generic type");
 
         let mut substitutions = BTreeMap::new();
 
@@ -1590,9 +1596,18 @@ impl<'a, L: Loader> Typechecker<'a, L> {
                                 .collect::<Result<_, _>>()?,
                         )
                     }
-                    UnresolvedExpressionKind::Trait(tr) => MonomorphizedExpressionKind::Constant(
-                        self.instance_for(tr, expr.ty.clone(), expr.span)?,
-                    ),
+                    UnresolvedExpressionKind::Trait(tr) => {
+                        let instance = self.instance_for(tr, expr.ty.clone())?;
+
+                        let (monomorphized_instance, ty) =
+                            self.monomorphize_constant(instance, expr.span);
+
+                        if let Err(error) = self.ctx.unify(ty, expr.ty.clone()) {
+                            self.report_type_error(error, expr.span);
+                        }
+
+                        MonomorphizedExpressionKind::Constant(monomorphized_instance)
+                    }
                     UnresolvedExpressionKind::ListLiteral(items) => {
                         MonomorphizedExpressionKind::ListLiteral(
                             items
@@ -1750,69 +1765,64 @@ impl<'a, L: Loader> Typechecker<'a, L> {
         &mut self,
         tr: TraitId,
         mut ty: UnresolvedType,
-        span: Span,
-    ) -> Result<MonomorphizedConstantId, TypeError> {
+    ) -> Result<GenericConstantId, TypeError> {
         ty.apply(&self.ctx);
 
-        let bound_instances = self.bound_instances.get(&tr).cloned().unwrap_or_default();
+        macro_rules! find_instance {
+            ($instances:expr, $unify:ident, $transform:expr,) => {{
+                let instances = $instances;
 
-        for instance in bound_instances.into_iter().rev() {
-            let (_, _, constant) = self.monomorphized_constants.get(&instance).unwrap();
+                let mut candidates = Vec::new();
 
-            let mut ctx = self.ctx.clone();
+                for id in instances {
+                    let instance = self.generic_constants.get(&id).unwrap().clone();
+                    let instance_ty = $transform(instance.generic_ty);
 
-            if ctx
-                .unify_generic(ty.clone(), constant.decl.value.ty.clone())
-                .is_ok()
-            {
-                self.ctx = ctx;
-                return Ok(instance);
-            }
+                    let mut ctx = self.ctx.clone();
+                    if ctx.$unify(ty.clone(), instance_ty).is_ok() {
+                        candidates.push((ctx, id));
+                    }
+                }
+
+                candidates.dedup_by_key(|(_, id)| *id);
+
+                match candidates.len() {
+                    0 => {}
+                    1 => {
+                        let (ctx, id) = candidates.pop().unwrap();
+                        self.ctx = ctx;
+
+                        return Ok(id);
+                    }
+                    _ => {
+                        return Err(TypeError::AmbiguousTrait(
+                            tr,
+                            candidates.into_iter().map(|(_, id)| id).collect(),
+                        ));
+                    }
+                }
+            }};
         }
 
-        let declared_instances = self
-            .declared_instances
-            .get(&tr)
-            .cloned()
-            .unwrap_or_default();
+        find_instance!(
+            self.bound_instances.get(&tr).cloned().unwrap_or_default(),
+            unify_generic,
+            |ty| ty,
+        );
 
-        let mut candidates = Vec::new();
+        find_instance!(
+            self.declared_instances
+                .get(&tr)
+                .cloned()
+                .unwrap_or_default(),
+            unify,
+            |mut ty| {
+                self.add_substitutions(&mut ty, &mut BTreeMap::new());
+                ty
+            },
+        );
 
-        for instance in declared_instances {
-            let constant = self.generic_constants.get(&instance).unwrap().clone();
-
-            let mut ctx = self.ctx.clone();
-
-            if ctx
-                .unify_generic(ty.clone(), constant.generic_ty.clone())
-                .is_ok()
-            {
-                candidates.push((ctx, instance));
-            }
-        }
-
-        match candidates.len() {
-            0 => Err(TypeError::MissingInstance(tr, ty)),
-            1 => {
-                let (ctx, instance) = candidates.pop().unwrap();
-                self.ctx = ctx;
-
-                let (monomorphized_id, instance_ty) = self.monomorphize_constant(instance, span);
-
-                self.ctx
-                    .unify(ty, instance_ty)
-                    .expect("type wasn't unified above");
-
-                Ok(monomorphized_id)
-            }
-            _ => Err(TypeError::AmbiguousTrait(
-                tr,
-                candidates
-                    .into_iter()
-                    .map(|(_, instance)| instance)
-                    .collect(),
-            )),
-        }
+        Err(TypeError::MissingInstance(tr, ty))
     }
 
     fn convert_type_annotation(&mut self, annotation: &lower::TypeAnnotation) -> UnresolvedType {
@@ -1942,12 +1952,6 @@ impl<'a, L: Loader> Typechecker<'a, L> {
     fn report_type_error(&mut self, error: TypeError, span: Span) {
         self.well_typed = false;
 
-        if let TypeError::Mismatch(actual, expected) = &error {
-            if actual.contains_error() || expected.contains_error() {
-                return;
-            }
-        }
-
         macro_rules! getter {
             ($x:ident) => {
                 |id| self.declarations.$x.get(&id).unwrap().name.to_string()
@@ -1989,9 +1993,12 @@ impl<'a, L: Loader> Typechecker<'a, L> {
             TypeError::AmbiguousTrait(_, candidates) => Diagnostic::error(
                 "could not determine the type of this expression",
                 std::iter::once(Note::primary(span, "try annotating the type with `::`"))
-                    .chain(candidates.into_iter().map(|instance| {
-                        let instance = self.generic_constants.get(&instance).unwrap();
-                        Note::secondary(instance.decl.span, "this instance could apply")
+                    .chain(candidates.into_iter().map(|id| {
+                        let instance = self.generic_constants.get(&id).unwrap();
+                        Note::secondary(
+                            instance.decl.span,
+                            format!("this instance ({:?}) could apply", id),
+                        )
                     }))
                     .collect(),
             ),

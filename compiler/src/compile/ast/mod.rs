@@ -180,41 +180,49 @@ impl<L: Loader> Compiler<L> {
             span: node.span,
             kind: (|| match node.kind {
                 NodeKind::Assign(pattern, value) => match pattern.kind {
-                    NodeKind::Instance(trait_name, trait_parameters) => {
-                        let trait_span = trait_name.span;
-                        let trait_name = match trait_name.kind {
-                            NodeKind::Error => {
-                                return StatementKind::Expression(ExpressionKind::Error)
+                    NodeKind::TypeFunction(lhs, rhs) => {
+                        let (params, bounds) = match self.build_type_function(*lhs) {
+                            Some((params, bounds)) => (params, bounds),
+                            None => return StatementKind::Expression(ExpressionKind::Error),
+                        };
+
+                        match rhs.kind {
+                            NodeKind::Instance(trait_name, trait_parameters) => {
+                                match self.build_instance(
+                                    params,
+                                    bounds,
+                                    *trait_name,
+                                    trait_parameters,
+                                    *value,
+                                ) {
+                                    Some(instance) => StatementKind::Instance(instance),
+                                    None => StatementKind::Expression(ExpressionKind::Error),
+                                }
                             }
-                            NodeKind::Name(name) => name,
                             _ => {
                                 self.diagnostics.add(Diagnostic::error(
-                                    "expected trait name",
+                                    "expected instance here",
                                     vec![Note::primary(
-                                        trait_name.span,
-                                        "`instance` requires the name of a trait",
+                                        rhs.span,
+                                        "try adding `instance` to the left-hand side of `:`",
                                     )],
                                 ));
 
-                                return StatementKind::Expression(ExpressionKind::Error);
+                                StatementKind::Expression(ExpressionKind::Error)
                             }
-                        };
-
-                        let trait_parameters = trait_parameters
-                            .into_iter()
-                            .map(|node| self.build_type_annotation(node))
-                            .collect();
-
-                        let value = self.build_expression(*value);
-
-                        StatementKind::Instance(Instance {
-                            parameters: Vec::new(), // TODO: Generic instances
-                            bounds: Vec::new(),
-                            trait_span,
-                            trait_name,
+                        }
+                    }
+                    NodeKind::Instance(trait_name, trait_parameters) => {
+                        match self.build_instance(
+                            Vec::new(),
+                            Vec::new(),
+                            *trait_name,
                             trait_parameters,
-                            value,
-                        })
+                            *value,
+                        ) {
+                            Some(instance) => StatementKind::Instance(instance),
+                            None => StatementKind::Expression(ExpressionKind::Error),
+                        }
                     }
                     _ => {
                         let pattern = self.build_pattern(*pattern);
@@ -404,6 +412,48 @@ impl<L: Loader> Compiler<L> {
                 _ => StatementKind::Expression(self.build_expression(node).kind),
             })(),
         }
+    }
+
+    fn build_instance(
+        &mut self,
+        parameters: Vec<TypeParameter>,
+        bounds: Vec<Bound>,
+        trait_name: Node,
+        trait_parameters: Vec<Node>,
+        value: Node,
+    ) -> Option<Instance> {
+        let trait_span = trait_name.span;
+        let trait_name = match trait_name.kind {
+            NodeKind::Error => return None,
+            NodeKind::Name(name) => name,
+            _ => {
+                self.diagnostics.add(Diagnostic::error(
+                    "expected trait name",
+                    vec![Note::primary(
+                        trait_name.span,
+                        "`instance` requires the name of a trait",
+                    )],
+                ));
+
+                return None;
+            }
+        };
+
+        let trait_parameters = trait_parameters
+            .into_iter()
+            .map(|node| self.build_type_annotation(node))
+            .collect();
+
+        let value = self.build_expression(value);
+
+        Some(Instance {
+            parameters,
+            bounds,
+            trait_span,
+            trait_name,
+            trait_parameters,
+            value,
+        })
     }
 
     fn build_expression(&mut self, node: Node) -> Expression {

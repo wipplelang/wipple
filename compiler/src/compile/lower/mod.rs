@@ -93,8 +93,10 @@ pub struct Bound {
 
 #[derive(Debug, Clone)]
 pub struct Instance {
+    pub params: Vec<TypeParameterId>,
+    pub bounds: Vec<Bound>,
     pub tr: TraitId,
-    pub parameters: Vec<TypeAnnotation>,
+    pub trait_params: Vec<TypeAnnotation>,
     pub value: Expression,
 }
 
@@ -699,54 +701,96 @@ impl<L: Loader> Compiler<L> {
                 None
             }
             ast::StatementKind::Instance(decl) => {
-                let tr = match scope.get(decl.trait_name, decl.trait_span) {
-                    Some(ScopeValue::Trait(tr)) => tr,
-                    Some(_) => {
-                        self.diagnostics.add(Diagnostic::error(
-                            format!("`{}` is not a trait", decl.trait_name),
-                            vec![Note::primary(decl.trait_span, "expected a trait here")],
-                        ));
+                let instance = {
+                    let scope = scope.child();
 
-                        return Some(Expression::error(statement.span));
+                    let params = self.with_parameters(decl.parameters, &scope, info);
+
+                    let bounds = decl
+                        .bounds
+                        .into_iter()
+                        .map(|bound| {
+                            let tr = match scope.get(bound.trait_name, bound.trait_span) {
+                                Some(ScopeValue::Trait(tr)) => tr,
+                                Some(_) => {
+                                    self.diagnostics.add(Diagnostic::error(
+                                        format!("`{}` is not a trait", bound.trait_name),
+                                        vec![Note::primary(
+                                            bound.trait_span,
+                                            "expected a trait here",
+                                        )],
+                                    ));
+
+                                    return Err(Expression::error(statement.span));
+                                }
+                                None => {
+                                    self.diagnostics.add(Diagnostic::error(
+                                        format!("cannot find `{}`", bound.trait_name),
+                                        vec![Note::primary(
+                                            bound.trait_span,
+                                            "this name is not defined",
+                                        )],
+                                    ));
+
+                                    return Err(Expression::error(statement.span));
+                                }
+                            };
+
+                            let parameters = bound
+                                .parameters
+                                .into_iter()
+                                .map(|ty| self.lower_type_annotation(ty, &scope, info))
+                                .collect();
+
+                            Ok(Bound {
+                                span: bound.span,
+                                tr,
+                                parameters,
+                            })
+                        })
+                        .collect::<Result<_, _>>();
+
+                    let bounds = match bounds {
+                        Ok(bounds) => bounds,
+                        Err(error) => return Some(error),
+                    };
+
+                    let tr = match scope.get(decl.trait_name, decl.trait_span) {
+                        Some(ScopeValue::Trait(tr)) => tr,
+                        Some(_) => {
+                            self.diagnostics.add(Diagnostic::error(
+                                format!("`{}` is not a trait", decl.trait_name),
+                                vec![Note::primary(decl.trait_span, "expected a trait here")],
+                            ));
+
+                            return Some(Expression::error(statement.span));
+                        }
+                        None => {
+                            self.diagnostics.add(Diagnostic::error(
+                                format!("cannot find `{}`", decl.trait_name),
+                                vec![Note::primary(decl.trait_span, "this name is not defined")],
+                            ));
+
+                            return Some(Expression::error(statement.span));
+                        }
+                    };
+
+                    let trait_params = decl
+                        .trait_parameters
+                        .into_iter()
+                        .map(|ty| self.lower_type_annotation(ty, &scope, info))
+                        .collect();
+
+                    let value = self.lower_expr(decl.value, &scope, info);
+                    self.validate_constant(&value);
+
+                    Instance {
+                        params,
+                        bounds,
+                        tr,
+                        trait_params,
+                        value,
                     }
-                    None => {
-                        self.diagnostics.add(Diagnostic::error(
-                            format!("cannot find `{}`", decl.trait_name),
-                            vec![Note::primary(decl.trait_span, "this name is not defined")],
-                        ));
-
-                        return Some(Expression::error(statement.span));
-                    }
-                };
-
-                let parameters = decl
-                    .trait_parameters
-                    .into_iter()
-                    .map(|ty| self.lower_type_annotation(ty, scope, info))
-                    .collect();
-
-                if !decl.parameters.is_empty() {
-                    self.diagnostics.add(Diagnostic::error(
-                        "generic instance declarations are not currently supported",
-                        vec![Note::primary(
-                            Span::join(
-                                decl.parameters.first().unwrap().span,
-                                decl.parameters.last().unwrap().span,
-                            ),
-                            "try removing this",
-                        )],
-                    ));
-
-                    return Some(Expression::error(statement.span));
-                }
-
-                let value = self.lower_expr(decl.value, scope, info);
-                self.validate_constant(&value);
-
-                let instance = Instance {
-                    tr,
-                    parameters,
-                    value,
                 };
 
                 let id = self.new_generic_constant_id();
