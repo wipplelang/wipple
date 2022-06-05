@@ -1839,81 +1839,89 @@ impl<'a, L: Loader> Typechecker<'a, L> {
                     .collect(),
             ),
             lower::TypeAnnotationKind::Parameter(id) => UnresolvedType::Parameter(*id),
-            lower::TypeAnnotationKind::Builtin(builtin, parameters) => {
-                UnresolvedType::Builtin(match builtin {
-                    lower::BuiltinType::Unit => {
-                        if !parameters.is_empty() {
+            lower::TypeAnnotationKind::Builtin(builtin, parameters) => match builtin {
+                lower::BuiltinType::Never => {
+                    if !parameters.is_empty() {
+                        self.compiler.diagnostics.add(Diagnostic::error(
+                            "`!` does not accept parameters",
+                            vec![Note::primary(
+                                annotation.span,
+                                "try removing these parameters",
+                            )],
+                        ));
+                    }
+
+                    UnresolvedType::Bottom(BottomTypeReason::Annotated)
+                }
+                lower::BuiltinType::Unit => {
+                    if !parameters.is_empty() {
+                        self.compiler.diagnostics.add(Diagnostic::error(
+                            "`()` does not accept parameters",
+                            vec![Note::primary(
+                                annotation.span,
+                                "try removing these parameters",
+                            )],
+                        ));
+                    }
+
+                    UnresolvedType::Builtin(BuiltinType::Unit)
+                }
+                lower::BuiltinType::Number => {
+                    if !parameters.is_empty() {
+                        self.compiler.diagnostics.add(Diagnostic::error(
+                            "`Number` does not accept parameters",
+                            vec![Note::primary(
+                                annotation.span,
+                                "try removing these parameters",
+                            )],
+                        ));
+                    }
+
+                    UnresolvedType::Builtin(BuiltinType::Number)
+                }
+                lower::BuiltinType::Text => {
+                    if !parameters.is_empty() {
+                        self.compiler.diagnostics.add(Diagnostic::error(
+                            "`Text` does not accept parameters",
+                            vec![Note::primary(
+                                annotation.span,
+                                "try removing these parameters",
+                            )],
+                        ));
+                    }
+
+                    UnresolvedType::Builtin(BuiltinType::Text)
+                }
+                lower::BuiltinType::List => {
+                    if parameters.is_empty() {
+                        self.compiler.diagnostics.add(Diagnostic::error(
+                            "`List` accepts 1 parameter, but none were provided",
+                            vec![Note::primary(
+                                annotation.span,
+                                "try adding `_` here to infer the type of `Element`",
+                            )],
+                        ));
+
+                        UnresolvedType::Builtin(BuiltinType::List(Box::new(
+                            UnresolvedType::Bottom(BottomTypeReason::Error),
+                        )))
+                    } else {
+                        if parameters.len() > 1 {
                             self.compiler.diagnostics.add(Diagnostic::error(
-                                "`()` does not accept parameters",
-                                vec![Note::primary(
-                                    annotation.span,
-                                    "try removing these parameters",
-                                )],
+                                format!(
+                                    "`List` accepts 1 parameter, but {} were provided",
+                                    parameters.len()
+                                ),
+                                vec![Note::primary(annotation.span, "try removing some of these")],
                             ));
                         }
 
-                        BuiltinType::Unit
+                        UnresolvedType::Builtin(BuiltinType::List(Box::new(
+                            self.convert_type_annotation(parameters.first().unwrap()),
+                        )))
                     }
-                    lower::BuiltinType::Number => {
-                        if !parameters.is_empty() {
-                            self.compiler.diagnostics.add(Diagnostic::error(
-                                "`Number` does not accept parameters",
-                                vec![Note::primary(
-                                    annotation.span,
-                                    "try removing these parameters",
-                                )],
-                            ));
-                        }
-
-                        BuiltinType::Number
-                    }
-                    lower::BuiltinType::Text => {
-                        if !parameters.is_empty() {
-                            self.compiler.diagnostics.add(Diagnostic::error(
-                                "`Text` does not accept parameters",
-                                vec![Note::primary(
-                                    annotation.span,
-                                    "try removing these parameters",
-                                )],
-                            ));
-                        }
-
-                        BuiltinType::Text
-                    }
-                    lower::BuiltinType::List => {
-                        if parameters.is_empty() {
-                            self.compiler.diagnostics.add(Diagnostic::error(
-                                "`List` accepts 1 parameter, but none were provided",
-                                vec![Note::primary(
-                                    annotation.span,
-                                    "try adding `_` here to infer the type of `Element`",
-                                )],
-                            ));
-
-                            BuiltinType::List(Box::new(UnresolvedType::Bottom(
-                                BottomTypeReason::Error,
-                            )))
-                        } else {
-                            if parameters.len() > 1 {
-                                self.compiler.diagnostics.add(Diagnostic::error(
-                                    format!(
-                                        "`List` accepts 1 parameter, but {} were provided",
-                                        parameters.len()
-                                    ),
-                                    vec![Note::primary(
-                                        annotation.span,
-                                        "try removing some of these",
-                                    )],
-                                ));
-                            }
-
-                            BuiltinType::List(Box::new(
-                                self.convert_type_annotation(parameters.first().unwrap()),
-                            ))
-                        }
-                    }
-                })
-            }
+                }
+            },
             lower::TypeAnnotationKind::Function(input, output) => UnresolvedType::Function(
                 Box::new(self.convert_type_annotation(input)),
                 Box::new(self.convert_type_annotation(output)),

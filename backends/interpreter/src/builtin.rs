@@ -48,6 +48,7 @@ lazy_static! {
         }
 
         builtins! {
+            "crash" => builtin_crash,
             "show" => builtin_show,
             "format" => builtin_format,
             "number-to-text" => builtin_number_to_text,
@@ -62,6 +63,22 @@ lazy_static! {
             "number-greater-than" => builtin_number_greater_than,
         }
     };
+}
+
+fn builtin_crash(
+    _: &Interpreter,
+    (text,): (Rc<Value>,),
+    info: &Info,
+) -> Result<Rc<Value>, Diverge> {
+    let text = match text.as_ref() {
+        Value::Text(text) => text,
+        _ => unreachable!(),
+    };
+
+    Err(Diverge::new(
+        info.stack.clone(),
+        DivergeKind::Error(text.clone()),
+    ))
 }
 
 fn builtin_show(

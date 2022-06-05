@@ -47,5 +47,13 @@ impl<L: Loader> Compiler<L> {
             ScopeValue::BuiltinType,
             (),
         );
+
+        add!(
+            builtin_types,
+            "!",
+            BuiltinType::Never,
+            ScopeValue::BuiltinType,
+            (),
+        );
     }
 }

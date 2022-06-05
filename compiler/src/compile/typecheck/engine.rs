@@ -364,12 +364,14 @@ impl UnresolvedType {
                 Box::new(input.finalize(ctx, generic)?),
                 Box::new(output.finalize(ctx, generic)?),
             ),
-            UnresolvedType::Builtin(builtin) => Type::Builtin(match builtin {
-                BuiltinType::Unit => BuiltinType::Unit,
-                BuiltinType::Text => BuiltinType::Text,
-                BuiltinType::Number => BuiltinType::Number,
-                BuiltinType::List(ty) => BuiltinType::List(Box::new(ty.finalize(ctx, generic)?)),
-            }),
+            UnresolvedType::Builtin(builtin) => match builtin {
+                BuiltinType::Unit => Type::Builtin(BuiltinType::Unit),
+                BuiltinType::Text => Type::Builtin(BuiltinType::Text),
+                BuiltinType::Number => Type::Builtin(BuiltinType::Number),
+                BuiltinType::List(ty) => {
+                    Type::Builtin(BuiltinType::List(Box::new(ty.finalize(ctx, generic)?)))
+                }
+            },
             UnresolvedType::Bottom(is_error) => Type::Bottom(is_error),
         })
     }
