@@ -15,9 +15,11 @@ import remarkMath from "remark-math";
 import remarkGfm from "remark-gfm";
 import rehypeKatex from "rehype-katex";
 import remarkSmartypants from "remark-smartypants";
+import Head from "next/head";
 
 interface Props {
     page: any;
+    title: string;
     path: string;
     previous: Page | null;
     next: Page | null;
@@ -45,6 +47,10 @@ const Page: NextPage<Props> = (props) => {
 
     return (
         <div>
+            <Head>
+                <title>{props.title} — Wipple</title>
+            </Head>
+
             <Drawer
                 variant={showSidebarInline ? "permanent" : "temporary"}
                 open={drawerIsOpen}
@@ -188,6 +194,7 @@ export const getStaticProps: GetStaticProps<Props, Params> = async ({ params }) 
     return {
         props: {
             page: mdx,
+            title: page.title,
             path: path.parse(page.path).base,
             previous,
             next,
