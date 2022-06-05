@@ -36,26 +36,32 @@
     - title: For JavaScript developers
       path: 02-quick-start/00-for-javascript-developers
 
+- title: Advanced Wipple
+  path: 03-advanced
+  pages:
+    - title: Generics
+      path: 03-advanced/01-generics
+
 - title: Reference
-  path: 03-reference
+  path: 04-reference
   pages:
     - title: Syntax
-      path: 03-reference/00-syntax
+      path: 04-reference/00-syntax
     - title: Variables
-      path: 03-reference/01-variables
+      path: 04-reference/01-variables
     - title: Patterns and logic
-      path: 03-reference/02-patterns-and-logic
+      path: 04-reference/02-patterns-and-logic
     - title: Functions
-      path: 03-reference/03-functions
+      path: 04-reference/03-functions
     - title: Loops
-      path: 03-reference/04-loops
+      path: 04-reference/04-loops
     - title: Types
-      path: 03-reference/05-types
+      path: 04-reference/05-types
     - title: Traits
-      path: 03-reference/06-traits
+      path: 04-reference/06-traits
     - title: Quoting
-      path: 03-reference/07-quoting
+      path: 04-reference/07-quoting
     - title: Templates
-      path: 03-reference/08-templates
+      path: 04-reference/08-templates
     - title: Naming conventions
-      path: 03-reference/09-naming-conventions
+      path: 04-reference/09-naming-conventions

@@ -4,11 +4,12 @@
 
 pre {
     font-family: "JetBrains Mono", monospace;
+    font-variant-ligatures: none;
 }
 
 .editor-output-decoration {
     margin-left: 1.5rem;
-    color: gray !important;
+    color: #6e7781 !important;
 }
 
 /******** GOOGLE FONTS ********/

@@ -342,7 +342,7 @@ const Playground = () => {
                                 defaultValue={query.current.get("code") ?? undefined}
                                 options={{
                                     fontFamily,
-                                    fontLigatures: true,
+                                    fontLigatures: false,
                                     fontSize: 16,
                                     minimap: {
                                         enabled: false,
