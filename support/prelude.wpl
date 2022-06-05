@@ -52,19 +52,37 @@ instance Greater-Than Number : a -> b -> external "builtin" "number-greater-than
 <= : comparison operator (a b ~> a < b or a = b)
 >= : comparison operator (a b ~> a > b or a = b)
 
+-- Output --
+
+Show : A => trait (A -> Text)
+instance Show Text : it
+instance Show Number : n -> external "builtin" "number-to-text" n
+instance Show Boolean : x? -> if x? "True" "False"
+
+show :: A where (Show A) => A -> ()
+show : x -> external "builtin" "show" (Show x)
+
 -- Utilities --
+
+crash :: Text -> !
+crash : message -> external "builtin" "crash" message
 
 Default : A => trait A
 instance Default Number : 0
 instance Default Text : ""
 instance Default Boolean : False
 
-Maybe : A => type {
-	Some A
+Maybe : Value => type {
+	Some Value
 	None
 }
 
 use Maybe
+
+Value where (Show Value) => instance Show (Maybe Value) : x? -> when x? {
+	Some x -> format "Some _" (Show x)
+	None -> "None"
+}
 
 Result : Success Failure => type {
 	OK Success
@@ -73,11 +91,53 @@ Result : Success Failure => type {
 
 use Result
 
+Success Failure where (Show Success) (Show Failure) =>
+	instance Show (Result Success Failure) :
+		x? -> when x? {
+		OK x -> format "OK _" (Show x)
+		Error e -> format "Error _" (Show e)
+	}
+
+-- TODO: Use higher-kinded types
+Expect : Container Value => trait (Text -> Container -> Value)
+
+Value => instance Expect (Maybe Value) Value : message -> x? -> when x? {
+	Some x -> x
+	None -> crash message
+}
+
+Success Failure where (Show Failure) =>
+	instance Expect (Result Success Failure) Success :
+		message -> x? -> when x? {
+			OK x -> x
+			Error e -> crash (format "_: _" message e)
+		}
+
+Unwrap-Message : Container => trait (Container -> Text)
+
+Value => instance Unwrap-Message (Maybe Value) :
+	just "called `unwrap` on `None`"
+
+Success Failure => instance Unwrap-Message (Result Success Failure) :
+	just "called `unwrap` on `Error`"
+
+-- TODO: Use higher-kinded types
+expect :: Container Value where (Expect Container Value) =>
+	Text -> Container -> Value
+expect : Expect
+
+-- TODO: Use higher-kinded types
+unwrap :: Container Value
+	where (Expect Container Value) (Unwrap-Message Container) =>
+	Container -> Value
+unwrap : x? -> expect (Unwrap-Message x?) x?
+
 -- Math --
 
 Add : Left Right Sum => trait (Left -> Right -> Sum)
 + : addition operator (a b ~> Add a b)
 instance Add Number Number Number : a -> b -> external "builtin" "add" a b
+instance Add Text Text Text : a -> b -> format "__" a b
 
 Subtract : Left Right Difference => trait (Left -> Right -> Difference)
 - : addition operator (a b ~> Subtract a b)
@@ -94,15 +154,3 @@ instance Divide Number Number Number : a -> b -> external "builtin" "divide" a b
 Power : Left Right Power => trait (Left -> Right -> Power)
 ^ : power operator (a b ~> Power a b)
 instance Power Number Number Number : a -> b -> external "builtin" "power" a b
-
--- Output --
-
-Show : A => trait (A -> Text)
-instance Show Text : it
-instance Show Number : n -> external "builtin" "number-to-text" n
-instance Show Boolean : x? -> if x? "True" "False"
-
-show :: A where (Show A) => A -> ()
-show : x -> external "builtin" "show" (Show x)
-
-instance Add Text Text Text : a -> b -> format "__" a b
