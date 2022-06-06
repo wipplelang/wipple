@@ -7,7 +7,7 @@ use std::{
     sync::Arc,
 };
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct Diagnostic {
     pub level: DiagnosticLevel,
     pub message: String,
@@ -25,7 +25,7 @@ impl PartialEq for Diagnostic {
 
 impl Eq for Diagnostic {}
 
-#[derive(Debug, Serialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq)]
 pub enum DiagnosticLevel {
     Note,
     Warning,
@@ -42,14 +42,14 @@ impl From<DiagnosticLevel> for codemap_diagnostic::Level {
     }
 }
 
-#[derive(Debug, Serialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 pub struct Note {
     pub level: NoteLevel,
     pub span: Span,
     pub message: String,
 }
 
-#[derive(Debug, Serialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq)]
 pub enum NoteLevel {
     Primary,
     Secondary,

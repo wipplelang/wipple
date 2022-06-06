@@ -1,0 +1,71 @@
+{
+    "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+    "name": "Wipple",
+    "patterns": [
+        {
+            "name": "punctuation.attribute.file.begin.wipple",
+            "match": "\\[:"
+        },
+        {
+            "name": "punctuation.attribute.file.end.wipple",
+            "match": ":\\]"
+        },
+        {
+            "name": "punctuation.attribute.begin.wipple",
+            "match": "\\["
+        },
+        {
+            "name": "punctuation.attribute.end.wipple",
+            "match": "\\]"
+        },
+        {
+            "name": "punctuation.list.begin.wipple",
+            "match": "\\("
+        },
+        {
+            "name": "punctuation.list.end.wipple",
+            "match": "\\)"
+        },
+        {
+            "name": "punctuation.block.begin.wipple",
+            "match": "\\{"
+        },
+        {
+            "name": "punctuation.block.end.wipple",
+            "match": "\\}"
+        },
+        {
+            "name": "punctuation.quote.wipple",
+            "match": "'"
+        },
+        {
+            "name": "comment.wipple",
+            "match": "--.*"
+        },
+        {
+            "name": "keyword.operator.wipple",
+            "match": "[`~!@#$%^&*_\\-+=\\\\|:;<,>.?/]+"
+        },
+        {
+            "name": "keyword.wipple",
+            "match": "\\b(_|use|when|type|trait|instance|where|external)\\b"
+        },
+        {
+            "name": "constant.numeric.wipple",
+            "match": "\\b-?[0-9]+(\\.[0-9]+)?\\b"
+        },
+        {
+            "name": "entity.name.type.wipple",
+            "match": "[A-Z][^\\r\\n\\t \\(\\)\\[\\]\\{\\}'\"/]*"
+        },
+        {
+            "name": "variable.name.wipple",
+            "match": "[^\\r\\n\\t \\(\\)\\[\\]\\{\\}'\"]+"
+        },
+        {
+            "name": "string.wipple",
+            "match": "\"[^\"\\\\]*(?:\\.[^\"\\\\]*)*\""
+        }
+    ],
+    "scopeName": "source.wipple"
+}

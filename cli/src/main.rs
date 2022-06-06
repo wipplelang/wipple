@@ -29,6 +29,7 @@ enum Args {
         #[clap(long)]
         runner: PathBuf,
     },
+    Lsp,
 }
 
 fn main() -> anyhow::Result<()> {
@@ -77,6 +78,7 @@ fn main() -> anyhow::Result<()> {
                 Ok(())
             })?;
         }
+        Args::Lsp => wipple_lsp_backend::start()?,
     }
 
     Ok(())
