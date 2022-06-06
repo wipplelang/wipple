@@ -98,7 +98,7 @@ fn main_loop(connection: Connection, params: serde_json::Value) -> anyhow::Resul
                             annotations.swap_remove(0)
                         });
 
-                        annotation.map(|annotation| dbg!(Hover {
+                        annotation.map(|annotation| Hover {
                             contents: HoverContents::Markup(MarkupContent {
                                 kind: MarkupKind::Markdown,
                                 value: format!("```wipple\n{}\n```", annotation.value),
@@ -107,7 +107,7 @@ fn main_loop(connection: Connection, params: serde_json::Value) -> anyhow::Resul
                                 start: convert_offset(annotation.span.start, &document.borrow().contents),
                                 end: convert_offset(annotation.span.end, &document.borrow().contents),
                             }),
-                        }))
+                        })
                     }
                 });
             }

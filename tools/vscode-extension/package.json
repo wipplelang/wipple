@@ -2,7 +2,7 @@
     "name": "wipple",
     "displayName": "Wipple",
     "description": "Wipple language support",
-    "version": "0.0.1",
+    "version": "0.1.0",
     "publisher": "wilsongramer",
     "main": "./dist/extension.js",
     "scripts": {
