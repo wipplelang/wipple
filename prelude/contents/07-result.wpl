@@ -1,0 +1,23 @@
+Result : Success Failure => type {
+	OK Success
+	Error Failure
+}
+
+use Result
+
+Success Failure where (Show Success) (Show Failure) =>
+	instance Show (Result Success Failure) :
+		x? -> when x? {
+		OK x -> format "OK _" (Show x)
+		Error e -> format "Error _" (Show e)
+	}
+
+Success Failure where (Show Failure) =>
+	instance Expect (Result Success Failure) Success :
+		message -> x? -> when x? {
+			OK x -> x
+			Error e -> crash (format "_: _" message e)
+		}
+
+Success Failure => instance Unwrap-Message (Result Success Failure) :
+	just "called `unwrap` on `Error`"

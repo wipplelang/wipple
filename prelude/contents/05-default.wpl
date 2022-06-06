@@ -1,0 +1,4 @@
+Default : A => trait A
+instance Default Number : 0
+instance Default Text : ""
+instance Default Boolean : False

@@ -1,0 +1,2 @@
+crash :: Text -> !
+crash : message -> external "builtin" "crash" message

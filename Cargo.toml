@@ -5,6 +5,7 @@ members = [
     "backends/interpreter",
     "cli",
     "compiler",
+    "prelude",
     "test",
     "website/playground/runner",
 ]

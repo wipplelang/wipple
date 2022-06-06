@@ -219,9 +219,7 @@ fn run(
                 wipple_compiler::FilePath::Virtual(path) if path.as_str() == "test" => {
                     Ok(Cow::Owned(self.code.clone()))
                 }
-                wipple_compiler::FilePath::Prelude => {
-                    Ok(Cow::Borrowed(include_str!("../../support/prelude.wpl")))
-                }
+                wipple_compiler::FilePath::Prelude => Ok(Cow::Borrowed(wipple_prelude::PRELUDE)),
                 _ => unimplemented!(),
             }
         }

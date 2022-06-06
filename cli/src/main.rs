@@ -116,9 +116,7 @@ pub fn build(options: BuildOptions) -> Option<wipple_compiler::compile::Program>
                 wipple_compiler::FilePath::Virtual(_) => {
                     Err(anyhow::Error::msg("virtual paths are not supported"))
                 }
-                wipple_compiler::FilePath::Prelude => {
-                    Ok(Cow::Borrowed(include_str!("../../support/prelude.wpl")))
-                }
+                wipple_compiler::FilePath::Prelude => Ok(Cow::Borrowed(wipple_prelude::PRELUDE)),
                 _ => unimplemented!(),
             }
         }

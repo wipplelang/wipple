@@ -16,3 +16,4 @@ serde = { version = "1.0", features = ["derive"] }
 wasm-bindgen = { version = "0.2", features = ["serde-serialize"] }
 wipple-compiler = { path = "../../../compiler" }
 wipple-interpreter-backend = { path = "../../../backends/interpreter" }
+wipple-prelude = { path = "../../../prelude" }
