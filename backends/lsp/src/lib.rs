@@ -2,17 +2,7 @@
 
 mod macros;
 
-use lsp_server::{Connection, ExtractError, Message, Notification, Response};
-use lsp_types::{
-    notification::{
-        DidChangeTextDocument, DidCloseTextDocument, DidOpenTextDocument, Notification as _,
-        PublishDiagnostics,
-    },
-    request::HoverRequest,
-    DiagnosticSeverity, Hover, HoverContents, HoverProviderCapability, InitializeParams,
-    MarkupContent, MarkupKind, PublishDiagnosticsParams, ServerCapabilities,
-    TextDocumentSyncCapability, TextDocumentSyncKind,
-};
+use lsp_types::notification::Notification as _;
 use std::{borrow::Cow, cell::RefCell, collections::HashMap};
 
 #[derive(Debug)]
@@ -26,6 +16,11 @@ struct Document {
 struct Info {
     diagnostics: Vec<wipple_compiler::diagnostics::Diagnostic>,
     annotations: Vec<Annotation>,
+    completions: Vec<(
+        Option<wipple_compiler::parse::Span>,
+        String,
+        lsp_types::CompletionItemKind,
+    )>,
 }
 
 #[derive(Debug, Clone)]
@@ -35,12 +30,16 @@ struct Annotation {
 }
 
 pub fn start() -> anyhow::Result<()> {
-    let (connection, io_threads) = Connection::stdio();
+    let (connection, io_threads) = lsp_server::Connection::stdio();
 
-    let server_capabilities = serde_json::to_value(&ServerCapabilities {
-        hover_provider: Some(HoverProviderCapability::Simple(true)),
-        text_document_sync: Some(TextDocumentSyncCapability::Kind(
-            TextDocumentSyncKind::INCREMENTAL,
+    let server_capabilities = serde_json::to_value(&lsp_types::ServerCapabilities {
+        completion_provider: Some(lsp_types::CompletionOptions {
+            resolve_provider: Some(true),
+            ..Default::default()
+        }),
+        hover_provider: Some(lsp_types::HoverProviderCapability::Simple(true)),
+        text_document_sync: Some(lsp_types::TextDocumentSyncCapability::Kind(
+            lsp_types::TextDocumentSyncKind::INCREMENTAL,
         )),
         ..Default::default()
     })
@@ -53,81 +52,136 @@ pub fn start() -> anyhow::Result<()> {
     Ok(())
 }
 
-fn main_loop(connection: Connection, params: serde_json::Value) -> anyhow::Result<()> {
-    let _params: InitializeParams = serde_json::from_value(params).unwrap();
+fn main_loop(connection: lsp_server::Connection, params: serde_json::Value) -> anyhow::Result<()> {
+    let _params: lsp_types::InitializeParams = serde_json::from_value(params).unwrap();
 
     let mut documents = HashMap::<String, RefCell<Document>>::new();
 
     for msg in &connection.receiver {
         match msg {
-            Message::Request(mut req) => {
+            lsp_server::Message::Request(mut req) => {
                 if connection.handle_shutdown(&req)? {
                     return Ok(());
                 }
 
-                match_req!(connection, req, {
-                    HoverRequest(id, params) => {
-                        let document = documents
-                            .get(params.text_document_position_params.text_document.uri.as_str())
-                            .unwrap();
+                match_req!(
+                    connection,
+                    match req {
+                        lsp_types::request::Completion(id, params) => {
+                            let document = documents
+                                .get(params.text_document_position.text_document.uri.as_str())
+                                .unwrap();
 
-                        let position = convert_position(
-                            params.text_document_position_params.position,
-                            &document.borrow().line_index
-                        );
+                            let position = convert_position(
+                                params.text_document_position.position,
+                                &document.borrow().line_index,
+                            );
 
-                        // Find the annotation with the smallest span covering the cursor
+                            // Find all blocks surrounding the cursor position
 
-                        let mut annotations = document
-                            .borrow()
-                            .info
-                            .annotations
-                            .iter()
-                            .filter(|annotation| {
-                                (annotation.span.start..annotation.span.end)
-                                    .contains(&position)
+                            document
+                                .borrow()
+                                .info
+                                .completions
+                                .iter()
+                                .filter_map(|(span, name, kind)| {
+                                    span.map(|span| (span.start..span.end).contains(&position))
+                                        .unwrap_or(true)
+                                        .then(|| (name.clone(), *kind))
+                                })
+                                .map(|(name, kind)| lsp_types::CompletionItem {
+                                    label: name,
+                                    kind: Some(kind),
+                                    ..Default::default()
+                                })
+                                .collect::<Vec<_>>()
+                        }
+                        lsp_types::request::HoverRequest(id, params) => {
+                            let document = documents
+                                .get(
+                                    params
+                                        .text_document_position_params
+                                        .text_document
+                                        .uri
+                                        .as_str(),
+                                )
+                                .unwrap();
+
+                            let position = convert_position(
+                                params.text_document_position_params.position,
+                                &document.borrow().line_index,
+                            );
+
+                            // Find the annotation with the smallest span covering the cursor
+
+                            let mut annotations = document
+                                .borrow()
+                                .info
+                                .annotations
+                                .iter()
+                                .filter(|annotation| {
+                                    (annotation.span.start..annotation.span.end).contains(&position)
+                                })
+                                .cloned()
+                                .collect::<Vec<_>>();
+
+                            annotations.sort_by_key(|annotation| {
+                                annotation.span.end - annotation.span.start
+                            });
+
+                            let annotation =
+                                (!annotations.is_empty()).then(|| annotations.swap_remove(0));
+
+                            annotation.map(|annotation| lsp_types::Hover {
+                                contents: lsp_types::HoverContents::Markup(
+                                    lsp_types::MarkupContent {
+                                        kind: lsp_types::MarkupKind::Markdown,
+                                        value: format!("```wipple\n{}\n```", annotation.value),
+                                    },
+                                ),
+                                range: Some(lsp_types::Range {
+                                    start: convert_offset(
+                                        annotation.span.start,
+                                        &document.borrow().contents,
+                                    ),
+                                    end: convert_offset(
+                                        annotation.span.end,
+                                        &document.borrow().contents,
+                                    ),
+                                }),
                             })
-                            .cloned()
-                            .collect::<Vec<_>>();
-
-                        annotations.sort_by_key(|annotation| {
-                            annotation.span.end - annotation.span.start
-                        });
-
-                        let annotation = (!annotations.is_empty()).then(|| {
-                            annotations.swap_remove(0)
-                        });
-
-                        annotation.map(|annotation| Hover {
-                            contents: HoverContents::Markup(MarkupContent {
-                                kind: MarkupKind::Markdown,
-                                value: format!("```wipple\n{}\n```", annotation.value),
-                            }),
-                            range: Some(lsp_types::Range {
-                                start: convert_offset(annotation.span.start, &document.borrow().contents),
-                                end: convert_offset(annotation.span.end, &document.borrow().contents),
-                            }),
-                        })
+                        }
                     }
-                });
+                );
             }
-            Message::Notification(mut notif) => {
-                match_notif!(notif, {
-                    DidOpenTextDocument(params) => {
+            lsp_server::Message::Notification(mut notif) => {
+                match_notif!(match notif {
+                    lsp_types::notification::DidOpenTextDocument(params) => {
                         let line_index = build_line_index(&params.text_document.text);
 
                         let info = build(params.text_document.uri.as_str(), &documents);
 
-                        documents.insert(params.text_document.uri.to_string(), RefCell::new(Document {
+                        let document = Document {
                             contents: params.text_document.text,
                             line_index,
                             info,
-                        }));
+                        };
+
+                        connection.sender.send(lsp_server::Message::Notification(
+                            diagnostic_notifications(
+                                params.text_document.uri.clone(),
+                                &document.info,
+                                &document.contents,
+                            ),
+                        ))?;
+
+                        documents
+                            .insert(params.text_document.uri.to_string(), RefCell::new(document));
                     }
-                    DidCloseTextDocument(params) => {
+                    lsp_types::notification::DidCloseTextDocument(params) => {
                         documents.remove(params.text_document.uri.as_str());
                     }
-                    DidChangeTextDocument(params) => {
+                    lsp_types::notification::DidChangeTextDocument(params) => {
                         let document = documents.get(params.text_document.uri.as_str()).unwrap();
 
                         {
@@ -146,61 +200,19 @@ fn main_loop(connection: Connection, params: serde_json::Value) -> anyhow::Resul
 
                         let info = build(params.text_document.uri.as_str(), &documents);
 
-                        let diagnostics_notification = Notification::new(
-                            String::from(PublishDiagnostics::METHOD),
-                            PublishDiagnosticsParams {
-                                uri: params.text_document.uri,
-                                diagnostics: info
-                                    .diagnostics
-                                    .iter()
-                                    .cloned()
-                                    .flat_map(|mut diagnostic| {
-                                        let first = diagnostic.notes.first_mut().unwrap();
-                                        first.message = format!("{}\n{}", diagnostic.message, first.message);
-
-                                        let severity = match diagnostic.level {
-                                            wipple_compiler::diagnostics::DiagnosticLevel::Note => {
-                                                DiagnosticSeverity::INFORMATION
-                                            }
-                                            wipple_compiler::diagnostics::DiagnosticLevel::Warning => {
-                                                DiagnosticSeverity::WARNING
-                                            }
-                                            wipple_compiler::diagnostics::DiagnosticLevel::Error => {
-                                                DiagnosticSeverity::ERROR
-                                            }
-                                        };
-
-                                        diagnostic
-                                            .notes
-                                            .into_iter()
-                                            .map(move |note| lsp_types::Diagnostic {
-                                                range: lsp_types::Range {
-                                                    start: convert_offset(note.span.start, &document.borrow().contents),
-                                                    end: convert_offset(note.span.end, &document.borrow().contents),
-                                                },
-                                                severity: Some(match note.level {
-                                                    wipple_compiler::diagnostics::NoteLevel::Primary => severity,
-                                                    wipple_compiler::diagnostics::NoteLevel::Secondary => {
-                                                        DiagnosticSeverity::INFORMATION
-                                                    }
-                                                }),
-                                                source: Some(String::from("wipple")),
-                                                message: note.message,
-                                                ..Default::default()
-                                            })
-                                    })
-                                    .collect(),
-                                version: None,
-                            },
-                        );
+                        connection.sender.send(lsp_server::Message::Notification(
+                            diagnostic_notifications(
+                                params.text_document.uri,
+                                &info,
+                                &document.borrow().contents,
+                            ),
+                        ))?;
 
                         document.borrow_mut().info = info;
-
-                        connection.sender.send(Message::Notification(diagnostics_notification))?;
                     }
                 });
             }
-            Message::Response(_) => {}
+            lsp_server::Message::Response(_) => {}
         }
     }
     Ok(())
@@ -236,14 +248,13 @@ fn build(path: &str, documents: &HashMap<String, RefCell<Document>>) -> Info {
     let loader = Loader { documents };
     let mut compiler = wipple_compiler::Compiler::new(loader, Default::default());
 
-    let program = compiler.build(wipple_compiler::FilePath::Path(
-        wipple_compiler::helpers::InternedString::new(path),
-    ));
+    let path = wipple_compiler::helpers::InternedString::new(path);
+    let program = compiler.build(wipple_compiler::FilePath::Path(path));
 
     let belongs_to_file = |span: wipple_compiler::parse::Span| {
         matches!(
             span.path,
-            wipple_compiler::FilePath::Path(p) if p.as_str() == path,
+            wipple_compiler::FilePath::Path(p) if p == path,
         )
     };
 
@@ -260,6 +271,7 @@ fn build(path: &str, documents: &HashMap<String, RefCell<Document>>) -> Info {
             })
             .collect(),
         annotations: program
+            .as_ref()
             .map(|program| {
                 use wipple_compiler::compile::typecheck::{format_type, ExpressionKind};
 
@@ -373,6 +385,60 @@ fn build(path: &str, documents: &HashMap<String, RefCell<Document>>) -> Info {
                 annotations
             })
             .unwrap_or_default(),
+        completions: program
+            .as_ref()
+            .map(|program| {
+                use lsp_types::CompletionItemKind;
+
+                let mut completions = [
+                    "use", "when", "type", "trait", "instance", "where", "external",
+                ]
+                .into_iter()
+                .map(|keyword| (None, keyword.to_string(), CompletionItemKind::KEYWORD))
+                .collect::<Vec<_>>();
+
+                macro_rules! add_completions {
+                    ($span:expr, $declarations:expr) => {{
+                        use wipple_compiler::compile::lower::ScopeValue;
+
+                        let declarations = $declarations;
+
+                        completions.extend(declarations.iter().map(|(&name, value)| {
+                            (
+                                $span,
+                                name.to_string(),
+                                match value {
+                                    ScopeValue::Type(_) | ScopeValue::BuiltinType(_) => {
+                                        CompletionItemKind::CLASS
+                                    }
+                                    ScopeValue::Trait(_) => CompletionItemKind::INTERFACE,
+                                    ScopeValue::TypeParameter(_) => {
+                                        CompletionItemKind::TYPE_PARAMETER
+                                    }
+                                    ScopeValue::Operator(_) => CompletionItemKind::OPERATOR,
+                                    ScopeValue::Constant(_, _) => CompletionItemKind::CONSTANT,
+                                    ScopeValue::Variable(_) => CompletionItemKind::VARIABLE,
+                                },
+                            )
+                        }));
+                    }};
+                }
+
+                add_completions!(None, &program.top_level);
+
+                program.traverse(|expr| {
+                    use wipple_compiler::compile::typecheck::ExpressionKind;
+
+                    if let ExpressionKind::Block(_, declarations) = &expr.kind {
+                        add_completions!(Some(expr.span), declarations);
+                    }
+                });
+
+                completions.reverse();
+
+                completions
+            })
+            .unwrap_or_default(),
     }
 }
 
@@ -401,4 +467,58 @@ fn convert_offset(offset: usize, contents: &str) -> lsp_types::Position {
         line: (line - 1) as u32,
         character: (column - 1) as u32,
     }
+}
+
+fn diagnostic_notifications(
+    uri: lsp_types::Url,
+    info: &Info,
+    contents: &str,
+) -> lsp_server::Notification {
+    lsp_server::Notification::new(
+        String::from(lsp_types::notification::PublishDiagnostics::METHOD),
+        lsp_types::PublishDiagnosticsParams {
+            uri,
+            diagnostics: info
+                .diagnostics
+                .iter()
+                .cloned()
+                .flat_map(|mut diagnostic| {
+                    let first = diagnostic.notes.first_mut().unwrap();
+                    first.message = format!("{}\n{}", diagnostic.message, first.message);
+
+                    let severity = match diagnostic.level {
+                        wipple_compiler::diagnostics::DiagnosticLevel::Note => {
+                            lsp_types::DiagnosticSeverity::INFORMATION
+                        }
+                        wipple_compiler::diagnostics::DiagnosticLevel::Warning => {
+                            lsp_types::DiagnosticSeverity::WARNING
+                        }
+                        wipple_compiler::diagnostics::DiagnosticLevel::Error => {
+                            lsp_types::DiagnosticSeverity::ERROR
+                        }
+                    };
+
+                    diagnostic
+                        .notes
+                        .into_iter()
+                        .map(move |note| lsp_types::Diagnostic {
+                            range: lsp_types::Range {
+                                start: convert_offset(note.span.start, contents),
+                                end: convert_offset(note.span.end, contents),
+                            },
+                            severity: Some(match note.level {
+                                wipple_compiler::diagnostics::NoteLevel::Primary => severity,
+                                wipple_compiler::diagnostics::NoteLevel::Secondary => {
+                                    lsp_types::DiagnosticSeverity::INFORMATION
+                                }
+                            }),
+                            source: Some(String::from("wipple")),
+                            message: note.message,
+                            ..Default::default()
+                        })
+                })
+                .collect(),
+            version: None,
+        },
+    )
 }
