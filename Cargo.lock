@@ -335,36 +335,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "idna"
-version = "0.2.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "418a0a6fab821475f634efe3ccc45c013f742efe03d853e8d3355d5cb850ecf8"
-dependencies = [
- "matches",
- "unicode-bidi",
- "unicode-normalization",
-]
-
-[[package]]
-name = "include_dir"
-version = "0.7.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "482a2e29200b7eed25d7fdbd14423326760b7f6658d21a4cf12d55a50713c69f"
-dependencies = [
- "include_dir_macros",
-]
-
-[[package]]
-name = "include_dir_macros"
-version = "0.7.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5e074c19deab2501407c91ba1860fa3d6820bfde307db6d8cb851b55a10be89b"
-dependencies = [
- "proc-macro2",
- "quote",
-]
-
-[[package]]
 name = "indexmap"
 version = "1.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1108,7 +1078,6 @@ dependencies = [
  "wipple-compiler",
  "wipple-interpreter-backend",
  "wipple-lsp-backend",
- "wipple-prelude",
 ]
 
 [[package]]
@@ -1168,14 +1137,6 @@ dependencies = [
  "wasm-bindgen",
  "wipple-compiler",
  "wipple-interpreter-backend",
- "wipple-prelude",
-]
-
-[[package]]
-name = "wipple-prelude"
-version = "0.0.0"
-dependencies = [
- "include_dir",
 ]
 
 [[package]]
@@ -1193,7 +1154,6 @@ dependencies = [
  "similar",
  "wipple-compiler",
  "wipple-interpreter-backend",
- "wipple-prelude",
 ]
 
 [[package]]

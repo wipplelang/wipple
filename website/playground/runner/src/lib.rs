@@ -109,7 +109,9 @@ impl<'a> wipple_compiler::Loader for Loader<'a> {
             wipple_compiler::FilePath::Virtual(s) if s.as_str() == "playground" => {
                 Ok(Cow::Owned(self.code.to_string()))
             }
-            wipple_compiler::FilePath::Prelude => Ok(Cow::Borrowed(wipple_prelude::PRELUDE)),
+            wipple_compiler::FilePath::Prelude => Ok(Cow::Borrowed(include_str!(
+                "../../../../support/prelude.wpl"
+            ))),
             _ => unimplemented!(),
         }
     }

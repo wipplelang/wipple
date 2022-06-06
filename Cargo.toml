@@ -6,7 +6,6 @@ members = [
     "backends/lsp",
     "cli",
     "compiler",
-    "prelude",
     "test",
     "website/playground/runner",
 ]

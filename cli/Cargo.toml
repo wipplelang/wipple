@@ -17,4 +17,3 @@ wipple-bundled-backend = { path = "../backends/bundled/builder" }
 wipple-compiler = { path = "../compiler", features = ["clap"] }
 wipple-interpreter-backend = { path = "../backends/interpreter" }
 wipple-lsp-backend = { path = "../backends/lsp" }
-wipple-prelude = { path = "../prelude" }
