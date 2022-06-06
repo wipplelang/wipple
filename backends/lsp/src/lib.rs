@@ -225,7 +225,9 @@ fn build(path: &str, documents: &HashMap<String, RefCell<Document>>) -> Info {
                 wipple_compiler::FilePath::Virtual(_) => {
                     Err(anyhow::Error::msg("virtual paths are not supported"))
                 }
-                wipple_compiler::FilePath::Prelude => Ok(Cow::Borrowed(wipple_prelude::PRELUDE)),
+                wipple_compiler::FilePath::Prelude => {
+                    Ok(Cow::Borrowed(include_str!("../../../support/prelude.wpl")))
+                }
                 _ => unimplemented!(),
             }
         }

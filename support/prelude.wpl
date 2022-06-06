@@ -67,6 +67,10 @@ show : x -> external "builtin" "show" (Show x)
 crash :: Text -> !
 crash : message -> external "builtin" "crash" message
 
+-- Placeholder value: this works because constants are lazily evaluated
+... :: !
+... : crash "not yet implemented"
+
 Default : A => trait A
 instance Default Number : 0
 instance Default Text : ""
