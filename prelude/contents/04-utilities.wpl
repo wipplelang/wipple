@@ -1,2 +1,6 @@
 crash :: Text -> !
 crash : message -> external "builtin" "crash" message
+
+-- Placeholder value: this works because constants are lazily evaluated
+... :: !
+... : crash "not yet implemented"
