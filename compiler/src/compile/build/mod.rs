@@ -95,8 +95,12 @@ impl<L: Loader> Compiler<L> {
             .into_inner()
             .into_values()
             .map(|(file, _)| Rc::try_unwrap(file).unwrap())
-            .collect();
+            .collect::<Vec<_>>();
 
-        self.typecheck_with_progress(lowered_files, |p| progress(Progress::Typechecking(p)))
+        if lowered_files.iter().all(|file| file.complete) {
+            self.typecheck_with_progress(lowered_files, |p| progress(Progress::Typechecking(p)))
+        } else {
+            None
+        }
     }
 }
