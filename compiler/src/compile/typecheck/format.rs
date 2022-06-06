@@ -23,14 +23,12 @@ fn format_type_with(
         is_top_level: bool,
         is_return: bool,
     ) -> String {
-        match ty {
-            UnresolvedType::Variable(_) => String::from("_"),
-            UnresolvedType::Parameter(param) => param_names(param),
-            UnresolvedType::Bottom(_) => String::from("!"),
-            UnresolvedType::Named(id, params) => {
+        macro_rules! format_named_type {
+            ($name:expr, $params:expr) => {{
+                let params = $params;
                 let has_params = !params.is_empty();
 
-                let name = std::iter::once(type_names(id))
+                let name = std::iter::once(String::from($name))
                     .chain(params.into_iter().map(|param| {
                         format!(
                             " {}",
@@ -42,22 +40,22 @@ fn format_type_with(
                 if is_top_level || !has_params {
                     name
                 } else {
-                    format!("({name})")
+                    format!("({})", name)
                 }
-            }
-            UnresolvedType::Builtin(ty) => match ty {
-                BuiltinType::Unit => String::from("()"),
-                BuiltinType::Text => String::from("Text"),
-                BuiltinType::Number => String::from("Number"),
-                BuiltinType::List(ty) => {
-                    let ty = format_type(*ty, type_names, param_names, false, false);
+            }};
+        }
 
-                    if is_top_level {
-                        format!("List {}", ty)
-                    } else {
-                        format!("(List {})", ty)
-                    }
-                }
+        match ty {
+            UnresolvedType::Variable(_) => String::from("_"),
+            UnresolvedType::Parameter(param) => param_names(param),
+            UnresolvedType::Bottom(_) => String::from("!"),
+            UnresolvedType::Named(id, params) => format_named_type!(type_names(id), params),
+            UnresolvedType::Builtin(ty) => match ty {
+                BuiltinType::Unit => format_named_type!("()", Vec::new()),
+                BuiltinType::Text => format_named_type!("Text", Vec::new()),
+                BuiltinType::Number => format_named_type!("Number", Vec::new()),
+                BuiltinType::List(ty) => format_named_type!("List", vec![*ty]),
+                BuiltinType::Mutable(ty) => format_named_type!("Mutable", vec![*ty]),
             },
             UnresolvedType::Function(input, output) => {
                 let input = format_type(*input, type_names, param_names, true, false);

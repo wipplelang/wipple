@@ -69,6 +69,7 @@ pub enum BuiltinType {
     Number,
     Text,
     List,
+    Mutable,
 }
 
 #[derive(Debug, Clone)]

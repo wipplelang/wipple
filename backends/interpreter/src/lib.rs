@@ -34,6 +34,7 @@ pub enum Value {
     },
     List(Vec<Rc<Value>>),
     Variant(usize, Vec<Rc<Value>>),
+    Mutable(RefCell<Rc<Value>>),
 }
 
 #[derive(Debug)]

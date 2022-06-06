@@ -1921,6 +1921,35 @@ impl<'a, L: Loader> Typechecker<'a, L> {
                         )))
                     }
                 }
+                lower::BuiltinType::Mutable => {
+                    if parameters.is_empty() {
+                        self.compiler.diagnostics.add(Diagnostic::error(
+                            "`Mutable` accepts 1 parameter, but none were provided",
+                            vec![Note::primary(
+                                annotation.span,
+                                "try adding `_` here to infer the type of `Value`",
+                            )],
+                        ));
+
+                        UnresolvedType::Builtin(BuiltinType::List(Box::new(
+                            UnresolvedType::Bottom(BottomTypeReason::Error),
+                        )))
+                    } else {
+                        if parameters.len() > 1 {
+                            self.compiler.diagnostics.add(Diagnostic::error(
+                                format!(
+                                    "`Mutable` accepts 1 parameter, but {} were provided",
+                                    parameters.len()
+                                ),
+                                vec![Note::primary(annotation.span, "try removing some of these")],
+                            ));
+                        }
+
+                        UnresolvedType::Builtin(BuiltinType::Mutable(Box::new(
+                            self.convert_type_annotation(parameters.first().unwrap()),
+                        )))
+                    }
+                }
             },
             lower::TypeAnnotationKind::Function(input, output) => UnresolvedType::Function(
                 Box::new(self.convert_type_annotation(input)),

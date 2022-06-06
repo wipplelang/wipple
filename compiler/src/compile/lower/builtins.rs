@@ -26,6 +26,14 @@ impl<L: Loader> Compiler<L> {
 
         add!(
             builtin_types,
+            "!",
+            BuiltinType::Never,
+            ScopeValue::BuiltinType,
+            (),
+        );
+
+        add!(
+            builtin_types,
             "Number",
             BuiltinType::Number,
             ScopeValue::BuiltinType,
@@ -50,10 +58,10 @@ impl<L: Loader> Compiler<L> {
 
         add!(
             builtin_types,
-            "!",
-            BuiltinType::Never,
+            "Mutable",
+            BuiltinType::Mutable,
             ScopeValue::BuiltinType,
-            (),
+            ()
         );
     }
 }

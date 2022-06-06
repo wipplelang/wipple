@@ -36,6 +36,7 @@ impl From<Type> for UnresolvedType {
                 BuiltinType::Text => BuiltinType::Text,
                 BuiltinType::Number => BuiltinType::Number,
                 BuiltinType::List(ty) => BuiltinType::List(Box::new((*ty).into())),
+                BuiltinType::Mutable(ty) => BuiltinType::Mutable(Box::new((*ty).into())),
             }),
             Type::Bottom(reason) => UnresolvedType::Bottom(reason),
         }
@@ -51,6 +52,7 @@ pub enum BuiltinType<Ty> {
     Text,
     Number,
     List(Ty),
+    Mutable(Ty),
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
@@ -216,7 +218,8 @@ impl Context {
                 (BuiltinType::Unit, BuiltinType::Unit) => Ok(()),
                 (BuiltinType::Text, BuiltinType::Text) => Ok(()),
                 (BuiltinType::Number, BuiltinType::Number) => Ok(()),
-                (BuiltinType::List(actual_element), BuiltinType::List(expected_element)) => {
+                (BuiltinType::List(actual_element), BuiltinType::List(expected_element))
+                | (BuiltinType::Mutable(actual_element), BuiltinType::Mutable(expected_element)) => {
                     if let Err(error) = self.unify_internal(
                         (*actual_element).clone(),
                         (*expected_element).clone(),
@@ -258,6 +261,10 @@ impl UnresolvedType {
             UnresolvedType::Variable(v) => v == var,
             UnresolvedType::Function(input, output) => input.contains(var) || output.contains(var),
             UnresolvedType::Named(_, params) => params.iter().any(|param| param.contains(var)),
+            UnresolvedType::Builtin(ty) => match ty {
+                BuiltinType::List(ty) | BuiltinType::Mutable(ty) => ty.contains(var),
+                _ => false,
+            },
             _ => false,
         }
     }
@@ -269,6 +276,10 @@ impl UnresolvedType {
             }
             UnresolvedType::Bottom(BottomTypeReason::Error) => true,
             UnresolvedType::Named(_, params) => params.iter().any(|param| param.contains_error()),
+            UnresolvedType::Builtin(ty) => match ty {
+                BuiltinType::List(ty) | BuiltinType::Mutable(ty) => ty.contains_error(),
+                _ => false,
+            },
             _ => false,
         }
     }
@@ -290,6 +301,10 @@ impl UnresolvedType {
                     param.apply(ctx);
                 }
             }
+            UnresolvedType::Builtin(ty) => match ty {
+                BuiltinType::List(ty) | BuiltinType::Mutable(ty) => ty.apply(ctx),
+                _ => {}
+            },
             _ => {}
         }
     }
@@ -311,20 +326,13 @@ impl UnresolvedType {
                     param.instantiate_with(substitutions);
                 }
             }
+            UnresolvedType::Builtin(ty) => match ty {
+                BuiltinType::List(ty) | BuiltinType::Mutable(ty) => {
+                    ty.instantiate_with(substitutions)
+                }
+                _ => {}
+            },
             _ => {}
-        }
-    }
-
-    pub fn vars(&self) -> BTreeSet<TypeVariable> {
-        match self {
-            UnresolvedType::Variable(var) => BTreeSet::from([*var]),
-            UnresolvedType::Function(input, output) => {
-                let mut vars = input.vars();
-                vars.extend(output.vars());
-                vars
-            }
-            UnresolvedType::Named(_, params) => params.iter().flat_map(|ty| ty.vars()).collect(),
-            _ => BTreeSet::new(),
         }
     }
 
@@ -337,6 +345,10 @@ impl UnresolvedType {
                 params
             }
             UnresolvedType::Named(_, params) => params.iter().flat_map(|ty| ty.params()).collect(),
+            UnresolvedType::Builtin(ty) => match ty {
+                BuiltinType::List(ty) | BuiltinType::Mutable(ty) => ty.params(),
+                _ => BTreeSet::new(),
+            },
             _ => BTreeSet::new(),
         }
     }
@@ -370,6 +382,9 @@ impl UnresolvedType {
                 BuiltinType::Number => Type::Builtin(BuiltinType::Number),
                 BuiltinType::List(ty) => {
                     Type::Builtin(BuiltinType::List(Box::new(ty.finalize(ctx, generic)?)))
+                }
+                BuiltinType::Mutable(ty) => {
+                    Type::Builtin(BuiltinType::Mutable(Box::new(ty.finalize(ctx, generic)?)))
                 }
             },
             UnresolvedType::Bottom(is_error) => Type::Bottom(is_error),

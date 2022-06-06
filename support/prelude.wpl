@@ -158,3 +158,17 @@ instance Divide Number Number Number : a -> b -> external "builtin" "divide" a b
 Power : Left Right Power => trait (Left -> Right -> Power)
 ^ : power operator (a b ~> Power a b)
 instance Power Number Number Number : a -> b -> external "builtin" "power" a b
+
+-- Mutability --
+
+mutable :: A => A -> Mutable A
+mutable : x -> external "builtin" "make-mutable" x
+
+get :: A => Mutable A -> A
+get : m -> external "builtin" "get-mutable" m
+
+set! :: A => A -> Mutable A -> ()
+set! : x -> m -> external "builtin" "set-mutable" m x
+
+swap! :: A => Mutable A -> Mutable A -> ()
+swap! : a -> b -> external "builtin" "swap-mutable" a b
