@@ -44,7 +44,6 @@ pub struct Declaration<T> {
 pub struct Type {
     pub kind: TypeKind,
     pub params: Vec<TypeParameterId>,
-    pub bounds: Vec<Bound>,
 }
 
 #[derive(Debug, Clone)]
@@ -401,55 +400,24 @@ impl<L> Compiler<L> {
                     })
                     .collect();
 
-                let bounds = ty
-                    .bounds
-                    .into_iter()
-                    .flat_map(|bound| {
-                        let tr = match scope.get(bound.trait_name, bound.trait_span) {
-                            Some(value) => match value {
-                                ScopeValue::Trait(tr) => tr,
-                                _ => {
-                                    self.diagnostics.add(Diagnostic::error(
-                                        format!("`{}` is not a trait", bound.trait_name),
-                                        vec![Note::primary(
-                                            bound.trait_span,
-                                            "expected a trait here",
-                                        )],
-                                    ));
-
-                                    return None;
-                                }
-                            },
-                            None => {
-                                self.diagnostics.add(Diagnostic::error(
-                                    format!("cannot find `{}`", bound.trait_name),
-                                    vec![Note::primary(
-                                        bound.trait_span,
-                                        "this name is not defined",
-                                    )],
-                                ));
-
-                                return None;
-                            }
-                        };
-
-                        Some(Bound {
-                            span,
-                            tr,
-                            parameters: bound
-                                .parameters
-                                .into_iter()
-                                .map(|param| self.lower_type_annotation(param, scope, info))
-                                .collect(),
-                        })
-                    })
-                    .collect();
+                if !ty.bounds.is_empty() {
+                    self.diagnostics.add(Diagnostic::error(
+                        "bounds are not allowed on types",
+                        vec![Note::primary(
+                            ty.bounds
+                                .first()
+                                .unwrap()
+                                .span
+                                .with_end(ty.bounds.last().unwrap().span.end),
+                            "try moving these to the respective functions instead",
+                        )],
+                    ));
+                }
 
                 let ty = match ty.kind {
                     ast::TypeKind::Marker => Type {
                         kind: TypeKind::Marker,
                         params: parameters,
-                        bounds,
                     },
                     ast::TypeKind::Structure(fields) => {
                         let mut field_tys = Vec::with_capacity(fields.len());
@@ -465,7 +433,6 @@ impl<L> Compiler<L> {
                         Type {
                             kind: TypeKind::Structure(field_tys, field_names),
                             params: parameters,
-                            bounds,
                         }
                     }
                     ast::TypeKind::Enumeration(variants) => {
@@ -558,7 +525,7 @@ impl<L> Compiler<L> {
                                     span: variant.span,
                                     value: Constant {
                                         parameters: parameters.clone(),
-                                        bounds: bounds.clone(),
+                                        bounds: Vec::new(),
                                         ty: constructor_ty,
                                         value: Rc::new(RefCell::new(Some(constructor))),
                                     },
@@ -572,7 +539,6 @@ impl<L> Compiler<L> {
                         Type {
                             kind: TypeKind::Enumeration(variant_tys, variant_names),
                             params: parameters,
-                            bounds,
                         }
                     }
                 };

@@ -1,5 +1,5 @@
 code: |
-    Container : A where (Show A) => type {
+    Container : A => type {
         inner :: A
     }
 

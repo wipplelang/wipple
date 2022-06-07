@@ -188,7 +188,6 @@ impl<L> Compiler<L> {
             types: Default::default(),
             generic_constants: Default::default(),
             monomorphized_constants: Default::default(),
-            queued_type_bounds: Default::default(),
             declared_instances: Default::default(),
             bound_instances: Default::default(),
             declarations: Default::default(),
@@ -261,26 +260,6 @@ impl<L> Compiler<L> {
 
                 let params = decl.value.params.clone();
 
-                let bounds = decl
-                    .value
-                    .bounds
-                    .iter()
-                    .map(|bound| {
-                        let mut tr = typechecker.traits.get(&bound.tr).unwrap().clone();
-
-                        let substitutions = tr
-                            .params
-                            .into_iter()
-                            .zip(&bound.parameters)
-                            .map(|(param, ty)| (param, typechecker.convert_type_annotation(ty)))
-                            .collect();
-
-                        tr.ty.instantiate_with(&substitutions);
-
-                        (bound.tr, tr.ty, bound.span)
-                    })
-                    .collect();
-
                 #[allow(clippy::map_entry)] // `typechecker` is borrowed twice otherwise
                 if !typechecker.types.contains_key(&id) {
                     match &decl.value.kind {
@@ -303,7 +282,6 @@ impl<L> Compiler<L> {
                                 TypeDefinition {
                                     kind: TypeDefinitionKind::Structure(fields),
                                     params,
-                                    bounds,
                                 },
                             );
                         }
@@ -325,7 +303,6 @@ impl<L> Compiler<L> {
                                 TypeDefinition {
                                     kind: TypeDefinitionKind::Enumeration(variant_tys),
                                     params,
-                                    bounds,
                                 },
                             );
                         }
@@ -335,7 +312,6 @@ impl<L> Compiler<L> {
                                 TypeDefinition {
                                     kind: TypeDefinitionKind::Marker,
                                     params,
-                                    bounds,
                                 },
                             );
                         }
@@ -461,24 +437,6 @@ impl<L> Compiler<L> {
             let block = mem::take(&mut file.borrow_mut().block);
             let (_, block) = typechecker.typecheck_block(&block, file, false);
             body.push((file.clone(), block));
-        }
-
-        for (tr, mut ty, span) in typechecker.queued_type_bounds.clone() {
-            ty.apply(&typechecker.ctx);
-
-            let instance_id = match typechecker.instance_for(tr, ty.clone()) {
-                Ok(id) => id,
-                Err(error) => {
-                    typechecker.report_type_error(error, span);
-                    continue;
-                }
-            };
-
-            typechecker
-                .bound_instances
-                .entry(tr)
-                .or_default()
-                .push(instance_id);
         }
 
         let prev_bound_instances = typechecker.bound_instances.clone();
@@ -777,7 +735,6 @@ struct TraitDefinition {
 struct TypeDefinition {
     kind: TypeDefinitionKind,
     params: Vec<TypeParameterId>,
-    bounds: Vec<Bound>,
 }
 
 #[derive(Debug, Clone)]
@@ -798,7 +755,6 @@ struct Typechecker<'a, L> {
         MonomorphizedConstantId,
         (Span, GenericConstantId, Constant<UnresolvedExpression, ()>),
     >,
-    queued_type_bounds: Vec<Bound>,
     declared_instances: BTreeMap<TraitId, Vec<GenericConstantId>>,
     bound_instances: BTreeMap<TraitId, Vec<GenericConstantId>>,
     declarations: Declarations<MonomorphizedExpression, UnresolvedType, Rc<RefCell<lower::File>>>,
@@ -823,7 +779,7 @@ impl<'a, L> Typechecker<'a, L> {
                 kind: UnresolvedExpressionKind::Marker,
             },
             lower::ExpressionKind::Marker(id) => {
-                let mut marker = self.types.get(id).unwrap().clone();
+                let marker = self.types.get(id).unwrap().clone();
 
                 let mut ty = UnresolvedType::Named(
                     *id,
@@ -836,12 +792,6 @@ impl<'a, L> Typechecker<'a, L> {
 
                 let mut substitutions = BTreeMap::new();
                 self.add_substitutions(&mut ty, &mut substitutions);
-
-                for (_, ty, _) in &mut marker.bounds {
-                    self.add_substitutions(ty, &mut substitutions);
-                }
-
-                self.queued_type_bounds.append(&mut marker.bounds);
 
                 UnresolvedExpression {
                     span: expr.span,
@@ -1000,7 +950,7 @@ impl<'a, L> Typechecker<'a, L> {
                 }
             }
             lower::ExpressionKind::Instantiate(id, fields) => {
-                let mut structure = self.types.get(id).unwrap().clone();
+                let structure = self.types.get(id).unwrap().clone();
 
                 let mut structure_fields = match &structure.kind {
                     TypeDefinitionKind::Structure(fields) => fields.clone(),
@@ -1018,12 +968,6 @@ impl<'a, L> Typechecker<'a, L> {
 
                 let mut substitutions = BTreeMap::new();
                 self.add_substitutions(&mut ty, &mut substitutions);
-
-                for (_, ty, _) in &mut structure.bounds {
-                    self.add_substitutions(ty, &mut substitutions);
-                }
-
-                self.queued_type_bounds.append(&mut structure.bounds);
 
                 for (_, ty) in structure_fields.values_mut() {
                     self.add_substitutions(ty, &mut substitutions);
@@ -1146,7 +1090,7 @@ impl<'a, L> Typechecker<'a, L> {
                 }
             }
             lower::ExpressionKind::Variant(id, index, values) => {
-                let mut enumeration = self.types.get(id).unwrap().clone();
+                let enumeration = self.types.get(id).unwrap().clone();
 
                 let (mut variant_constructor, variant_tys) = match &enumeration.kind {
                     TypeDefinitionKind::Enumeration(variants) => {
@@ -1171,8 +1115,6 @@ impl<'a, L> Typechecker<'a, L> {
                 for (_, ty, _) in &mut variant_constructor.bounds {
                     self.add_substitutions(ty, &mut substitutions);
                 }
-
-                self.queued_type_bounds.append(&mut enumeration.bounds);
 
                 let values = values
                     .iter()
