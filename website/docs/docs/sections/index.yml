@@ -41,6 +41,8 @@
   pages:
     - title: Generics
       path: 03-advanced/01-generics
+    - title: Mutability
+      path: 03-advanced/02-mutability
 
 - title: Reference
   path: 04-reference

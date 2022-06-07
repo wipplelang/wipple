@@ -64,7 +64,6 @@ lazy_static! {
             "make-mutable" => builtin_make_mutable,
             "get-mutable" => builtin_get_mutable,
             "set-mutable" => builtin_set_mutable,
-            "swap-mutable" => builtin_swap_mutable,
         }
     };
 }
@@ -353,26 +352,6 @@ fn builtin_set_mutable(
     };
 
     *value.borrow_mut() = new_value;
-
-    Ok(Rc::new(Value::Marker))
-}
-
-fn builtin_swap_mutable(
-    _: &Interpreter,
-    (lhs, rhs): (Rc<Value>, Rc<Value>),
-    _: &Info,
-) -> Result<Rc<Value>, Diverge> {
-    let lhs = match lhs.as_ref() {
-        Value::Mutable(value) => value,
-        _ => unreachable!(),
-    };
-
-    let rhs = match rhs.as_ref() {
-        Value::Mutable(value) => value,
-        _ => unreachable!(),
-    };
-
-    lhs.swap(rhs);
 
     Ok(Rc::new(Value::Marker))
 }

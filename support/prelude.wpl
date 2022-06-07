@@ -171,4 +171,14 @@ set! :: A => A -> Mutable A -> ()
 set! : x -> m -> external "builtin" "set-mutable" m x
 
 swap! :: A => Mutable A -> Mutable A -> ()
-swap! : a -> b -> external "builtin" "swap-mutable" a b
+swap! : a -> b -> {
+	temp : get a
+	a . set! b
+	b . set! temp
+}
+
+add! :: Left Right where (Add Left Right Left) => Right -> Mutable Left -> ()
+add! : x -> m -> m . set! (get m + x)
+
+increment! :: A where (Add A Number A) => Mutable A -> ()
+increment! : add! 1
