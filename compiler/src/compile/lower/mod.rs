@@ -505,7 +505,20 @@ impl<L> Compiler<L> {
 
                             let variables = tys
                                 .iter()
-                                .map(|ty| (ty.span, self.new_variable_id()))
+                                .map(|ty| {
+                                    let var = self.new_variable_id();
+
+                                    info.declarations.variables.insert(
+                                        var,
+                                        Declaration {
+                                            name,
+                                            span: ty.span,
+                                            value: (),
+                                        },
+                                    );
+
+                                    (ty.span, var)
+                                })
                                 .collect::<Vec<_>>();
 
                             let result = Expression {

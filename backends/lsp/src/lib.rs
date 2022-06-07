@@ -322,7 +322,7 @@ fn build(path: &str, documents: &HashMap<String, RefCell<Document>>) -> Info {
                 }};
             }
 
-            program.traverse(|expr| add_annotation!(expr));
+            program.traverse_body(|expr| add_annotation!(expr));
 
             for decl in declarations.types.values() {
                 if !belongs_to_file(decl.span) {
@@ -413,7 +413,7 @@ fn build(path: &str, documents: &HashMap<String, RefCell<Document>>) -> Info {
 
             add_completions!(None, &program.top_level);
 
-            program.traverse(|expr| {
+            program.traverse_body(|expr| {
                 use wipple_compiler::compile::typecheck::ExpressionKind;
 
                 if let ExpressionKind::Block(_, declarations) = &expr.kind {
@@ -428,6 +428,7 @@ fn build(path: &str, documents: &HashMap<String, RefCell<Document>>) -> Info {
         .unwrap_or_default();
 
     if let Some(program) = program {
+        compiler.lint(&program);
         compiler.optimize(program);
     }
 

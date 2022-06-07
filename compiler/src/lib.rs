@@ -1,6 +1,7 @@
 pub mod compile;
 pub mod diagnostics;
 pub mod helpers;
+pub mod lint;
 pub mod optimize;
 pub mod parse;
 

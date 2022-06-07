@@ -126,23 +126,6 @@ impl UnresolvedExpression {
     }
 }
 
-impl Pattern {
-    fn variables(&self) -> BTreeSet<VariableId> {
-        match &self.kind {
-            PatternKind::Wildcard => BTreeSet::new(),
-            PatternKind::Variable(id) => BTreeSet::from([*id]),
-            PatternKind::Destructure(patterns) => patterns
-                .values()
-                .flat_map(|pattern| pattern.variables())
-                .collect(),
-            PatternKind::Variant(_, values) => values
-                .iter()
-                .flat_map(|pattern| pattern.variables())
-                .collect(),
-        }
-    }
-}
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Declarations<Expr, Ty, File = ()> {
     pub types: BTreeMap<TypeId, Declaration<()>>,
@@ -538,7 +521,7 @@ impl<L> Compiler<L> {
             }
 
             let body_span = body.span;
-            let body = match typechecker.monomorphize(body, None) {
+            let body = match typechecker.monomorphize(body, &constant.file, None) {
                 Ok(expr) => expr,
                 Err(error) => {
                     typechecker.report_type_error(error, body_span);
@@ -584,7 +567,7 @@ impl<L> Compiler<L> {
                         let span = expr.span;
 
                         let expr = typechecker
-                            .monomorphize(expr, None)
+                            .monomorphize(expr, file, None)
                             .map_err(|error| (error, span))?;
 
                         Ok((file.clone(), expr))
@@ -641,9 +624,11 @@ impl<L> Compiler<L> {
                         .push(instance_id);
                 }
 
-                let body = match typechecker
-                    .monomorphize(constant.decl.value.clone(), Some((generic_id, id)))
-                {
+                let body = match typechecker.monomorphize(
+                    constant.decl.value.clone(),
+                    &constant.file,
+                    Some((generic_id, id)),
+                ) {
                     Ok(value) => value,
                     Err(error) => {
                         typechecker.report_type_error(error, span);
@@ -722,8 +707,11 @@ impl<L> Compiler<L> {
                             Declaration {
                                 name: decl.name,
                                 span: decl.span,
-                                value: decl
-                                    .value
+                                value: typechecker
+                                    .variables
+                                    .get(&id)
+                                    .unwrap()
+                                    .clone()
                                     .finalize(&typechecker.ctx, true)
                                     .ok_or((TypeError::UnresolvedType, decl.span))?,
                             },
@@ -1296,14 +1284,15 @@ impl<'a, L> Typechecker<'a, L> {
         &mut self,
         arm: UnresolvedArm,
         ty: UnresolvedType,
+        file: &Rc<RefCell<lower::File>>,
         inside_generic_constant: Option<(GenericConstantId, MonomorphizedConstantId)>,
     ) -> Result<MonomorphizedArm, TypeError> {
         Ok(MonomorphizedArm {
             span: arm.span,
             pattern: self
-                .resolve_pattern(arm.pattern, ty)
+                .resolve_pattern(arm.pattern, ty, file)
                 .ok_or(TypeError::ErrorExpression)?,
-            body: self.monomorphize(arm.body, inside_generic_constant)?,
+            body: self.monomorphize(arm.body, file, inside_generic_constant)?,
         })
     }
 
@@ -1311,6 +1300,7 @@ impl<'a, L> Typechecker<'a, L> {
         &mut self,
         pattern: UnresolvedPattern,
         mut ty: UnresolvedType,
+        file: &Rc<RefCell<lower::File>>,
     ) -> Option<Pattern> {
         ty.apply(&self.ctx);
 
@@ -1321,6 +1311,24 @@ impl<'a, L> Typechecker<'a, L> {
             }
             UnresolvedPatternKind::Variable(var) => {
                 self.variables.insert(var, ty.clone());
+
+                let decl = file
+                    .borrow()
+                    .declarations
+                    .variables
+                    .get(&var)
+                    .unwrap()
+                    .clone();
+
+                self.declarations.variables.insert(
+                    var,
+                    Declaration {
+                        name: decl.name,
+                        span: decl.span,
+                        value: ty.clone(),
+                    },
+                );
+
                 Some(PatternKind::Variable(var))
             }
             UnresolvedPatternKind::Destructure(fields) => {
@@ -1377,7 +1385,7 @@ impl<'a, L> Typechecker<'a, L> {
 
                         member_ty.instantiate_with(&substitutions);
 
-                        let pattern = self.resolve_pattern(pattern, member_ty)?;
+                        let pattern = self.resolve_pattern(pattern, member_ty, file)?;
 
                         Some((index, pattern))
                     })
@@ -1445,7 +1453,9 @@ impl<'a, L> Typechecker<'a, L> {
                     values
                         .into_iter()
                         .zip(variant_tys)
-                        .map(|(pattern, variant_ty)| self.resolve_pattern(pattern, variant_ty))
+                        .map(|(pattern, variant_ty)| {
+                            self.resolve_pattern(pattern, variant_ty, file)
+                        })
                         .collect::<Option<_>>()?,
                 );
 
@@ -1462,6 +1472,7 @@ impl<'a, L> Typechecker<'a, L> {
     fn monomorphize(
         &mut self,
         mut expr: UnresolvedExpression,
+        file: &Rc<RefCell<lower::File>>,
         inside_generic_constant: Option<(GenericConstantId, MonomorphizedConstantId)>,
     ) -> Result<MonomorphizedExpression, TypeError> {
         expr.ty.apply(&self.ctx);
@@ -1513,7 +1524,7 @@ impl<'a, L> Typechecker<'a, L> {
                         MonomorphizedExpressionKind::Block(
                             statements
                                 .into_iter()
-                                .map(|expr| self.monomorphize(expr, inside_generic_constant))
+                                .map(|expr| self.monomorphize(expr, file, inside_generic_constant))
                                 .collect::<Result<_, _>>()?,
                             scope,
                         )
@@ -1521,8 +1532,8 @@ impl<'a, L> Typechecker<'a, L> {
                     UnresolvedExpressionKind::Call(func, input) => {
                         // Monomorphize in reverse order so that inner traits
                         // are resolved first, eg. in the case of `T2 (T1 x)`
-                        let input = self.monomorphize(*input, inside_generic_constant)?;
-                        let func = self.monomorphize(*func, inside_generic_constant)?;
+                        let input = self.monomorphize(*input, file, inside_generic_constant)?;
+                        let func = self.monomorphize(*func, file, inside_generic_constant)?;
 
                         MonomorphizedExpressionKind::Call(Box::new(func), Box::new(input))
                     }
@@ -1533,17 +1544,17 @@ impl<'a, L> Typechecker<'a, L> {
                         };
 
                         let pattern = self
-                            .resolve_pattern(pattern, input_ty)
+                            .resolve_pattern(pattern, input_ty, file)
                             .ok_or(TypeError::ErrorExpression)?;
 
                         MonomorphizedExpressionKind::Function(
                             pattern,
-                            Box::new(self.monomorphize(*body, inside_generic_constant)?),
+                            Box::new(self.monomorphize(*body, file, inside_generic_constant)?),
                             captures,
                         )
                     }
                     UnresolvedExpressionKind::When(input, arms) => {
-                        let input = self.monomorphize(*input, inside_generic_constant)?;
+                        let input = self.monomorphize(*input, file, inside_generic_constant)?;
 
                         let arms = arms
                             .into_iter()
@@ -1551,6 +1562,7 @@ impl<'a, L> Typechecker<'a, L> {
                                 self.monomorphize_arm(
                                     arm,
                                     input.ty.clone(),
+                                    file,
                                     inside_generic_constant,
                                 )
                             })
@@ -1564,16 +1576,16 @@ impl<'a, L> Typechecker<'a, L> {
                             identifier,
                             inputs
                                 .into_iter()
-                                .map(|expr| self.monomorphize(expr, inside_generic_constant))
+                                .map(|expr| self.monomorphize(expr, file, inside_generic_constant))
                                 .collect::<Result<_, _>>()?,
                         )
                     }
                     UnresolvedExpressionKind::Initialize(pattern, value) => {
                         // Resolve the right-hand side first
-                        let value = self.monomorphize(*value, inside_generic_constant)?;
+                        let value = self.monomorphize(*value, file, inside_generic_constant)?;
 
                         let pattern = self
-                            .resolve_pattern(pattern, value.ty.clone())
+                            .resolve_pattern(pattern, value.ty.clone(), file)
                             .ok_or(TypeError::ErrorExpression)?;
 
                         MonomorphizedExpressionKind::Initialize(pattern, Box::new(value))
@@ -1582,7 +1594,7 @@ impl<'a, L> Typechecker<'a, L> {
                         MonomorphizedExpressionKind::Structure(
                             fields
                                 .into_iter()
-                                .map(|expr| self.monomorphize(expr, inside_generic_constant))
+                                .map(|expr| self.monomorphize(expr, file, inside_generic_constant))
                                 .collect::<Result<_, _>>()?,
                         )
                     }
@@ -1591,7 +1603,7 @@ impl<'a, L> Typechecker<'a, L> {
                             index,
                             values
                                 .into_iter()
-                                .map(|expr| self.monomorphize(expr, inside_generic_constant))
+                                .map(|expr| self.monomorphize(expr, file, inside_generic_constant))
                                 .collect::<Result<_, _>>()?,
                         )
                     }
@@ -1611,7 +1623,7 @@ impl<'a, L> Typechecker<'a, L> {
                         MonomorphizedExpressionKind::ListLiteral(
                             items
                                 .into_iter()
-                                .map(|expr| self.monomorphize(expr, inside_generic_constant))
+                                .map(|expr| self.monomorphize(expr, file, inside_generic_constant))
                                 .collect::<Result<_, _>>()?,
                         )
                     }
@@ -1712,26 +1724,6 @@ impl<'a, L> Typechecker<'a, L> {
                     )
                 }
                 MonomorphizedExpressionKind::Initialize(pattern, value) => {
-                    {
-                        let file = file.borrow();
-
-                        for var in pattern.variables() {
-                            let decl = match file.declarations.variables.get(&var) {
-                                Some(decl) => decl,
-                                None => continue,
-                            };
-
-                            self.declarations.variables.insert(
-                                var,
-                                Declaration {
-                                    name: decl.name,
-                                    span: decl.span,
-                                    value: value.ty.clone(),
-                                },
-                            );
-                        }
-                    }
-
                     ExpressionKind::Initialize(
                         pattern,
                         Box::new(self.finalize_internal(*value, generic, file)?),

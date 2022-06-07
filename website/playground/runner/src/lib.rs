@@ -37,7 +37,11 @@ pub fn run(code: &str) -> JsValue {
 
     let annotations = program.as_mut().map(annotations).unwrap_or_default();
 
-    let program = program.map(|program| (program.clone(), compiler.optimize(program)));
+    let program = program.map(|program| {
+        compiler.lint(&program);
+        (program.clone(), compiler.optimize(program))
+    });
+
     let diagnostics = compiler.finish();
 
     let mut output = Vec::new();
@@ -178,7 +182,7 @@ fn annotations(program: &mut wipple_compiler::compile::Program) -> Vec<Annotatio
         }};
     }
 
-    program.traverse_mut(|expr| add_annotation!(expr));
+    program.traverse_body_mut(|expr| add_annotation!(expr));
 
     for decl in declarations.types.values() {
         if !belongs_to_playground(decl.span) {
@@ -284,7 +288,7 @@ pub fn get_completions(position: usize) -> JsValue {
     if let Some(program) = PROGRAM.lock().unwrap().as_mut() {
         add_completions!(&program.top_level);
 
-        program.traverse_mut(|expr| {
+        program.traverse_body_mut(|expr| {
             if let wipple_compiler::compile::typecheck::ExpressionKind::Block(_, declarations) =
                 &expr.kind
             {

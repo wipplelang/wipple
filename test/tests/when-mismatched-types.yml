@@ -7,6 +7,14 @@ code: |
 output: |
 
 diagnostics: |
+    warning: statement doesn't do anything
+     --> test:1:1
+      |
+    1 | / when True {
+    2 | |     True -> 42
+    3 | |     False -> "hi"
+    4 | | }
+      | |_^ try removing this statement
     error: mismatched types
      --> test:3:14
       |

@@ -165,7 +165,10 @@ pub fn build(options: BuildOptions) -> Option<wipple_compiler::optimize::Program
     let path = wipple_compiler::FilePath::Path(options.path.into());
     let program = compiler.build_with_progress(path, progress);
 
-    let program = program.map(|program| compiler.optimize(program));
+    let program = program.map(|program| {
+        compiler.lint(&program);
+        compiler.optimize(program)
+    });
 
     let diagnostics = compiler.finish();
     let success = !diagnostics.contains_errors();

@@ -4,13 +4,13 @@ use super::{
 };
 
 impl Program {
-    pub fn traverse(&self, mut f: impl FnMut(&Expression)) {
+    pub fn traverse_body(&self, mut f: impl FnMut(&Expression)) {
         for statement in &self.body {
             statement.traverse_inner(&mut f);
         }
     }
 
-    pub fn traverse_mut(&mut self, mut f: impl FnMut(&mut Expression)) {
+    pub fn traverse_body_mut(&mut self, mut f: impl FnMut(&mut Expression)) {
         for statement in &mut self.body {
             statement.traverse_mut_inner(&mut f);
         }
