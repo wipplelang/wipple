@@ -6,6 +6,7 @@ pub fn compile(program: wipple_compiler::optimize::Program) -> String {
         program
             .constants
             .into_iter()
+            .rev()
             .map(|(id, expr)| ProgramPart::Stmt(compile_constant(id, expr)))
             .chain(
                 program
@@ -17,7 +18,7 @@ pub fn compile(program: wipple_compiler::optimize::Program) -> String {
             .collect(),
     );
 
-    let builtins = String::from(include_str!("./builtins.js"));
+    let builtins = String::from(include_str!("./builtin.js"));
 
     let mut s = resw::write_str::WriteString::new();
     let mut writer = resw::Writer::new(&mut s);
@@ -37,7 +38,29 @@ fn compile_constant(
     }])
 }
 
-fn compile_pattern(
+fn compile_pattern_checks(
+    pattern: &wipple_compiler::optimize::Pattern,
+    value: Expr<'static>,
+) -> Expr<'static> {
+    use wipple_compiler::optimize::PatternKind;
+
+    match &pattern.kind {
+        PatternKind::Wildcard | PatternKind::Variable(_) | PatternKind::Destructure(_) => {
+            Expr::Lit(Lit::Boolean(true))
+        }
+        PatternKind::Variant(variant, _) => Expr::Binary(BinaryExpr {
+            operator: BinaryOp::StrictEqual,
+            left: Box::new(Expr::Member(MemberExpr {
+                object: Box::new(value.clone()),
+                property: Box::new(Expr::Lit(Lit::Number(Cow::Borrowed("0")))),
+                computed: true,
+            })),
+            right: Box::new(Expr::Lit(Lit::Number(Cow::Owned(variant.to_string())))),
+        }),
+    }
+}
+
+fn compile_pattern_initialization(
     pattern: wipple_compiler::optimize::Pattern,
     value: Expr<'static>,
 ) -> Vec<Stmt<'static>> {
@@ -72,17 +95,15 @@ fn compile_pattern(
                 }
             }
             PatternKind::Variant(_, values) => {
-                for pattern in values {
+                for (index, pattern) in values.into_iter().enumerate() {
                     compile_pattern(
                         pattern,
                         Expr::Member(MemberExpr {
                             object: Box::new(value.clone()),
-                            property: Box::new(Expr::Lit(Lit::String(
-                                resast::expr::StringLit::Double(Cow::Borrowed(
-                                    mangle_variant_values(),
-                                )),
-                            ))),
-                            computed: false,
+                            property: Box::new(Expr::Lit(Lit::Number(Cow::Owned(
+                                (index + 1).to_string(),
+                            )))),
+                            computed: true,
                         }),
                         result,
                     )
@@ -101,7 +122,7 @@ fn compile_statement(statement: wipple_compiler::optimize::Expression) -> Vec<St
 
     match statement.kind {
         ExpressionKind::Initialize(pattern, value) => {
-            compile_pattern(pattern, compile_expression(*value))
+            compile_pattern_initialization(pattern, compile_expression(*value))
         }
         _ => vec![Stmt::Expr(compile_expression(statement))],
     }
@@ -163,19 +184,44 @@ fn compile_expression(expr: wipple_compiler::optimize::Expression) -> Expr<'stat
             id: None,
             params: vec![FuncArg::Pat(Pat::Ident(mangle_function_input()))],
             body: ArrowFuncBody::FuncBody(FuncBody(
-                compile_pattern(pattern, Expr::Ident(mangle_function_input()))
+                compile_pattern_initialization(pattern, Expr::Ident(mangle_function_input()))
                     .into_iter()
                     .map(ProgramPart::Stmt)
-                    .chain(std::iter::once(ProgramPart::Stmt(Stmt::Expr(
+                    .chain(std::iter::once(ProgramPart::Stmt(Stmt::Return(Some(
                         compile_expression(*body),
-                    ))))
+                    )))))
                     .collect(),
             )),
             expression: true,
             generator: false,
             is_async: false,
         }),
-        ExpressionKind::When(_, _) => todo!(),
+        ExpressionKind::When(expr, arms) => {
+            let expr = compile_expression(*expr);
+
+            let statements = arms
+                .into_iter()
+                .map(|arm| {
+                    ProgramPart::Stmt(Stmt::If(IfStmt {
+                        test: compile_pattern_checks(&arm.pattern, expr.clone()),
+                        consequent: Box::new(Stmt::Return(Some(compile_expression(arm.body)))),
+                        alternate: None,
+                    }))
+                })
+                .collect();
+
+            Expr::Call(CallExpr {
+                callee: Box::new(Expr::ArrowFunc(ArrowFuncExpr {
+                    id: None,
+                    params: Vec::new(),
+                    body: ArrowFuncBody::FuncBody(FuncBody(statements)),
+                    expression: true,
+                    generator: false,
+                    is_async: false,
+                })),
+                arguments: Vec::new(),
+            })
+        }
         ExpressionKind::External(namespace, identifier, inputs, _) => Expr::Call(CallExpr {
             callee: Box::new(Expr::Member(MemberExpr {
                 object: Box::new(Expr::Member(MemberExpr {
@@ -228,12 +274,4 @@ fn mangle_function_input() -> Ident<'static> {
 
 fn mangle_externals() -> Ident<'static> {
     Ident::from("$wippleExternals")
-}
-
-fn mangle_variant() -> &'static str {
-    "$wippleVariant"
-}
-
-fn mangle_variant_values() -> &'static str {
-    "$wippleValues"
 }
