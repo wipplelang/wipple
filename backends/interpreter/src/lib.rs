@@ -14,10 +14,7 @@ use std::{
     rc::Rc,
 };
 use wipple_compiler::{
-    compile::{
-        typecheck::{Declarations, Expression, ExpressionKind, Pattern, PatternKind, Type},
-        Program,
-    },
+    optimize::{Expression, ExpressionKind, Pattern, PatternKind, Program},
     parse::Span,
     MonomorphizedConstantId, VariableId,
 };
@@ -78,9 +75,9 @@ impl<'a> Interpreter<'a> {
 
     pub fn eval(&self, program: Program) -> Result<(), (Error, Vec<Span>)> {
         let mut info = Info {
-            declarations: program.declarations,
+            constants: program.constants,
             scope: Default::default(),
-            constants: Default::default(),
+            initialized_constants: Default::default(),
             stack: Vec::new(),
         };
 
@@ -97,9 +94,9 @@ impl<'a> Interpreter<'a> {
 }
 
 pub struct Info {
-    declarations: Declarations<Expression, Type>,
+    constants: BTreeMap<MonomorphizedConstantId, Expression>,
     scope: Rc<RefCell<Scope>>,
-    constants: HashMap<MonomorphizedConstantId, Rc<Value>>,
+    initialized_constants: HashMap<MonomorphizedConstantId, Rc<Value>>,
     stack: Vec<Span>,
 }
 
@@ -120,32 +117,31 @@ impl Scope {
 
 impl<'a> Interpreter<'a> {
     fn eval_expr(&self, expr: &Expression, info: &mut Info) -> Result<Rc<Value>, Diverge> {
-        info.stack.push(expr.span);
+        if let Some(span) = expr.span {
+            info.stack.push(span);
+        }
 
         let value = match &expr.kind {
             ExpressionKind::Marker => Rc::new(Value::Marker),
             ExpressionKind::Constant(constant) => {
-                if let Some(value) = info.constants.get(constant) {
+                if let Some(value) = info.initialized_constants.get(constant) {
                     value.clone()
                 } else {
                     let expr = info
-                        .declarations
-                        .monomorphized_constants
+                        .constants
                         .get(constant)
                         .unwrap_or_else(|| panic!("constant {:?} not registered", constant))
-                        .1
-                        .value
                         .clone();
 
                     let value = self.eval_expr(&expr, info)?;
-                    info.constants.insert(*constant, value.clone());
+                    info.initialized_constants.insert(*constant, value.clone());
 
                     value
                 }
             }
             ExpressionKind::Number(number) => Rc::new(Value::Number(*number)),
             ExpressionKind::Text(text) => Rc::new(Value::Text(text.to_string())),
-            ExpressionKind::Block(statements, _) => {
+            ExpressionKind::Block(statements) => {
                 let parent = info.scope.clone();
                 let child = Scope::child(&parent);
                 info.scope = child;
@@ -232,11 +228,11 @@ impl<'a> Interpreter<'a> {
 
                 value.expect("no patterns matched input")
             }
-            ExpressionKind::External(namespace, identifier, inputs) => {
+            ExpressionKind::External(namespace, identifier, inputs, return_ty) => {
                 if namespace.as_str() == "builtin" {
                     let inputs = inputs
                         .iter()
-                        .map(|input| self.eval_expr(input, info))
+                        .map(|(input, _)| self.eval_expr(input, info))
                         .collect::<Result<Vec<_>, _>>()?;
 
                     builtin::call(self, identifier, inputs, info)?
@@ -253,8 +249,7 @@ impl<'a> Interpreter<'a> {
 
                     #[cfg(not(target_arch = "wasm32"))]
                     {
-                        let input_tys = inputs.iter().map(|input| &input.ty).collect::<Vec<_>>();
-                        let return_ty = &expr.ty;
+                        let input_tys = inputs.iter().map(|(_, ty)| ty).collect::<Vec<_>>();
 
                         let function = match ExternalFunction::new(
                             namespace, identifier, input_tys, return_ty,
@@ -273,7 +268,7 @@ impl<'a> Interpreter<'a> {
 
                         let inputs = inputs
                             .iter()
-                            .map(|input| self.eval_expr(input, info))
+                            .map(|(input, _)| self.eval_expr(input, info))
                             .collect::<Result<Vec<_>, _>>()?;
 
                         function.call_with(inputs).map_err(|error| {

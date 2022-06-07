@@ -231,12 +231,15 @@ fn run(
         code: test_case.code.clone(),
     };
 
-    let mut compiler = wipple_compiler::Compiler::new(loader, Default::default());
+    let mut compiler = wipple_compiler::Compiler::new(loader);
 
     let path =
         wipple_compiler::FilePath::Virtual(wipple_compiler::helpers::InternedString::new("test"));
 
-    let program = compiler.build(path);
+    let program = compiler
+        .build(path)
+        .map(|program| compiler.optimize(program));
+
     let diagnostics = compiler.finish();
     let success = !diagnostics.contains_errors();
 

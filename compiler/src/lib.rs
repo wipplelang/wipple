@@ -1,6 +1,7 @@
 pub mod compile;
 pub mod diagnostics;
 pub mod helpers;
+pub mod optimize;
 pub mod parse;
 
 use diagnostics::*;
@@ -34,10 +35,8 @@ impl fmt::Display for FilePath {
 }
 
 #[derive(Debug)]
-pub struct Compiler<L: Loader> {
+pub struct Compiler<L> {
     loader: L,
-    #[allow(unused)]
-    options: CompilerOptions,
     diagnostics: Diagnostics,
     ids: Ids,
 }
@@ -66,7 +65,7 @@ macro_rules! ids {
                 )*
             }
 
-            impl<L: Loader> Compiler<L> {
+            impl<L> Compiler<L> {
                 $(
                     fn [<new_ $id:snake>](&mut self) -> $id {
                         self.ids.[<new_ $id:snake>]()
@@ -87,11 +86,10 @@ ids!(
     VariableId,
 );
 
-impl<L: Loader> Compiler<L> {
-    pub fn new(loader: L, options: CompilerOptions) -> Self {
+impl<L> Compiler<L> {
+    pub fn new(loader: L) -> Self {
         Compiler {
             loader,
-            options,
             diagnostics: Default::default(),
             ids: Default::default(),
         }
@@ -99,21 +97,5 @@ impl<L: Loader> Compiler<L> {
 
     pub fn finish(self) -> Diagnostics {
         self.diagnostics
-    }
-}
-
-#[derive(Debug)]
-#[cfg_attr(feature = "clap", derive(clap::Parser))]
-pub struct CompilerOptions {
-    #[cfg_attr(feature = "clap", clap(long))]
-    pub warn_unused_variables: bool,
-}
-
-#[allow(clippy::derivable_impls)]
-impl Default for CompilerOptions {
-    fn default() -> Self {
-        CompilerOptions {
-            warn_unused_variables: false,
-        }
     }
 }

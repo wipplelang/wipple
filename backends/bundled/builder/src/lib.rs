@@ -1,4 +1,4 @@
-use wipple_compiler::compile::Program;
+use wipple_compiler::optimize::Program;
 
 pub fn bundle(program: Program, mut runner: Vec<u8>) -> Vec<u8> {
     let mut data = bincode::serialize(&program).unwrap();

@@ -9,8 +9,7 @@ pub use format::format_type;
 
 use crate::{
     compile::lower, diagnostics::*, helpers::InternedString, parse::Span, Compiler, FilePath,
-    GenericConstantId, Loader, MonomorphizedConstantId, TraitId, TypeId, TypeParameterId,
-    VariableId,
+    GenericConstantId, MonomorphizedConstantId, TraitId, TypeId, TypeParameterId, VariableId,
 };
 use engine::*;
 use rust_decimal::Decimal;
@@ -183,7 +182,7 @@ pub enum Progress {
     Finalizing,
 }
 
-impl<L: Loader> Compiler<L> {
+impl<L> Compiler<L> {
     pub fn typecheck(&mut self, files: Vec<lower::File>) -> Option<Program> {
         self.typecheck_with_progress(files, |_| {})
     }
@@ -800,7 +799,7 @@ enum TypeDefinitionKind {
     Enumeration(Vec<(GenericConstantId, Vec<UnresolvedType>)>),
 }
 
-struct Typechecker<'a, L: Loader> {
+struct Typechecker<'a, L> {
     well_typed: bool,
     ctx: Context,
     variables: BTreeMap<VariableId, UnresolvedType>,
@@ -818,7 +817,7 @@ struct Typechecker<'a, L: Loader> {
     compiler: &'a mut Compiler<L>,
 }
 
-impl<'a, L: Loader> Typechecker<'a, L> {
+impl<'a, L> Typechecker<'a, L> {
     fn typecheck_expr(
         &mut self,
         expr: &lower::Expression,

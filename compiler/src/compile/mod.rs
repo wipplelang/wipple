@@ -4,4 +4,4 @@ pub mod expand;
 pub mod lower;
 pub mod typecheck;
 
-pub use typecheck::Program;
+pub use typecheck::{Arm, Expression, ExpressionKind, Pattern, PatternKind, Program};

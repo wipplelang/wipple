@@ -1,6 +1,6 @@
 use super::*;
 
-impl<L: Loader> Compiler<L> {
+impl<L> Compiler<L> {
     pub(super) fn load_builtins(&mut self, scope: &Scope, info: &mut Info) {
         let builtin_span = Span::new(FilePath::_Builtin, 0..0);
 

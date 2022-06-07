@@ -3,7 +3,7 @@ use crate::{
     diagnostics::*,
     helpers::InternedString,
     parse::Span,
-    Compiler, FilePath, Loader,
+    Compiler, FilePath,
 };
 use rust_decimal::Decimal;
 
@@ -162,7 +162,7 @@ pub struct Bound {
     pub parameters: Vec<TypeAnnotation>,
 }
 
-impl<L: Loader> Compiler<L> {
+impl<L> Compiler<L> {
     pub fn build_ast(&mut self, file: expand::File) -> File {
         File {
             path: file.path,

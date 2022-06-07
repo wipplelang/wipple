@@ -27,10 +27,7 @@ pub fn run(code: &str) -> JsValue {
     #[cfg(feature = "console_error_panic_hook")]
     console_error_panic_hook::set_once();
 
-    let mut compiler = wipple_compiler::Compiler::new(
-        Loader { code },
-        wipple_compiler::CompilerOptions::default(),
-    );
+    let mut compiler = wipple_compiler::Compiler::new(Loader { code });
 
     let path = wipple_compiler::FilePath::Virtual(wipple_compiler::helpers::InternedString::new(
         "playground",
@@ -39,12 +36,14 @@ pub fn run(code: &str) -> JsValue {
     let mut program = compiler.build(path);
 
     let annotations = program.as_mut().map(annotations).unwrap_or_default();
+
+    let program = program.map(|program| (program.clone(), compiler.optimize(program)));
     let diagnostics = compiler.finish();
 
     let mut output = Vec::new();
 
-    if let Some(program) = program {
-        *PROGRAM.lock().unwrap() = Some(program.clone());
+    if let Some((program, optimized_program)) = program {
+        *PROGRAM.lock().unwrap() = Some(program);
 
         if !diagnostics.contains_errors() {
             let result = {
@@ -61,7 +60,7 @@ pub fn run(code: &str) -> JsValue {
                         },
                     );
 
-                interpreter.eval(program)
+                interpreter.eval(optimized_program)
             };
 
             if let Err((error, stack)) = result {

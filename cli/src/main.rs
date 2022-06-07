@@ -95,12 +95,9 @@ pub struct BuildOptions {
     #[cfg(debug_assertions)]
     #[clap(long)]
     trace: bool,
-
-    #[clap(flatten)]
-    compiler_options: wipple_compiler::CompilerOptions,
 }
 
-pub fn build(options: BuildOptions) -> Option<wipple_compiler::compile::Program> {
+pub fn build(options: BuildOptions) -> Option<wipple_compiler::optimize::Program> {
     struct Loader {
         base: PathBuf,
     }
@@ -163,10 +160,13 @@ pub fn build(options: BuildOptions) -> Option<wipple_compiler::compile::Program>
         base: env::current_dir().unwrap(),
     };
 
-    let mut compiler = wipple_compiler::Compiler::new(loader, options.compiler_options);
+    let mut compiler = wipple_compiler::Compiler::new(loader);
 
     let path = wipple_compiler::FilePath::Path(options.path.into());
     let program = compiler.build_with_progress(path, progress);
+
+    let program = program.map(|program| compiler.optimize(program));
+
     let diagnostics = compiler.finish();
     let success = !diagnostics.contains_errors();
 
@@ -193,9 +193,5 @@ pub fn build(options: BuildOptions) -> Option<wipple_compiler::compile::Program>
         eprintln!("{:#?}", program);
     }
 
-    if success {
-        program
-    } else {
-        None
-    }
+    success.then(|| program).flatten()
 }

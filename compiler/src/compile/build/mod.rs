@@ -63,7 +63,7 @@ impl<L: Loader> Compiler<L> {
                 .diagnostics
                 .add_file(path, Arc::from(code.as_ref()));
 
-            let file = compiler.parse_v2(path, &code)?;
+            let file = compiler.parse(path, &code)?;
 
             let dependencies: RefCell<Vec<Rc<lower::File>>> = Default::default();
 

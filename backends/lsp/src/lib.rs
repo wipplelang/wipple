@@ -246,7 +246,7 @@ fn build(path: &str, documents: &HashMap<String, RefCell<Document>>) -> Info {
     }
 
     let loader = Loader { documents };
-    let mut compiler = wipple_compiler::Compiler::new(loader, Default::default());
+    let mut compiler = wipple_compiler::Compiler::new(loader);
 
     let path = wipple_compiler::helpers::InternedString::new(path);
     let program = compiler.build(wipple_compiler::FilePath::Path(path));
@@ -257,6 +257,179 @@ fn build(path: &str, documents: &HashMap<String, RefCell<Document>>) -> Info {
             wipple_compiler::FilePath::Path(p) if p == path,
         )
     };
+
+    let annotations = program
+        .as_ref()
+        .map(|program| {
+            use wipple_compiler::compile::typecheck::{format_type, ExpressionKind};
+
+            let mut annotations = Vec::new();
+
+            let declarations = program.declarations.clone();
+
+            macro_rules! format_ty {
+                ($ty:expr) => {
+                    format_type(
+                        $ty,
+                        |id| {
+                            declarations
+                                .types
+                                .get(&id)
+                                .map(|decl| decl.name.as_str())
+                                .unwrap_or("<unknown>")
+                                .to_string()
+                        },
+                        |id| {
+                            declarations
+                                .type_parameters
+                                .get(&id)
+                                .map(|decl| decl.name.as_str())
+                                .unwrap_or("<unknown>")
+                                .to_string()
+                        },
+                    )
+                };
+            }
+
+            macro_rules! add_annotation {
+                ($expr:expr) => {{
+                    let expr = $expr;
+
+                    if !belongs_to_file(expr.span) {
+                        return;
+                    }
+
+                    let ty = format_ty!(expr.ty.clone());
+
+                    let name = match expr.kind {
+                        ExpressionKind::Variable(id) => {
+                            declarations.variables.get(&id).map(|decl| decl.name)
+                        }
+                        ExpressionKind::Constant(id) => declarations
+                            .monomorphized_constants
+                            .get(&id)
+                            .map(|((), decl)| decl.name),
+                        _ => None,
+                    };
+
+                    annotations.push(Annotation {
+                        span: expr.span,
+                        value: match name {
+                            Some(name) => format!("{name} :: {ty}"),
+                            None => ty,
+                        },
+                    });
+                }};
+            }
+
+            program.traverse(|expr| add_annotation!(expr));
+
+            for decl in declarations.types.values() {
+                if !belongs_to_file(decl.span) {
+                    continue;
+                }
+
+                annotations.push(Annotation {
+                    span: decl.span,
+                    value: format!("{} : type", decl.name),
+                });
+            }
+
+            for decl in declarations.traits.values() {
+                if !belongs_to_file(decl.span) {
+                    continue;
+                }
+
+                annotations.push(Annotation {
+                    span: decl.span,
+                    value: format!("{} : trait", decl.name),
+                });
+            }
+
+            for ((), decl) in &declarations.generic_constants {
+                if !belongs_to_file(decl.span) {
+                    continue;
+                }
+
+                annotations.push(Annotation {
+                    span: decl.span,
+                    value: format!("{} :: {}", decl.name, format_ty!(decl.value.ty.clone())),
+                });
+
+                decl.value.traverse(|expr| add_annotation!(expr));
+            }
+
+            for decl in declarations.variables.values() {
+                if !belongs_to_file(decl.span) {
+                    continue;
+                }
+
+                annotations.push(Annotation {
+                    span: decl.span,
+                    value: format!("{} :: {}", decl.name, format_ty!(decl.value.clone())),
+                });
+            }
+
+            annotations
+        })
+        .unwrap_or_default();
+
+    let completions = program
+        .as_ref()
+        .map(|program| {
+            use lsp_types::CompletionItemKind;
+
+            let mut completions = [
+                "use", "when", "type", "trait", "instance", "where", "external",
+            ]
+            .into_iter()
+            .map(|keyword| (None, keyword.to_string(), CompletionItemKind::KEYWORD))
+            .collect::<Vec<_>>();
+
+            macro_rules! add_completions {
+                ($span:expr, $declarations:expr) => {{
+                    use wipple_compiler::compile::lower::ScopeValue;
+
+                    let declarations = $declarations;
+
+                    completions.extend(declarations.iter().map(|(&name, value)| {
+                        (
+                            $span,
+                            name.to_string(),
+                            match value {
+                                ScopeValue::Type(_) | ScopeValue::BuiltinType(_) => {
+                                    CompletionItemKind::CLASS
+                                }
+                                ScopeValue::Trait(_) => CompletionItemKind::INTERFACE,
+                                ScopeValue::TypeParameter(_) => CompletionItemKind::TYPE_PARAMETER,
+                                ScopeValue::Operator(_) => CompletionItemKind::OPERATOR,
+                                ScopeValue::Constant(_, _) => CompletionItemKind::CONSTANT,
+                                ScopeValue::Variable(_) => CompletionItemKind::VARIABLE,
+                            },
+                        )
+                    }));
+                }};
+            }
+
+            add_completions!(None, &program.top_level);
+
+            program.traverse(|expr| {
+                use wipple_compiler::compile::typecheck::ExpressionKind;
+
+                if let ExpressionKind::Block(_, declarations) = &expr.kind {
+                    add_completions!(Some(expr.span), declarations);
+                }
+            });
+
+            completions.reverse();
+
+            completions
+        })
+        .unwrap_or_default();
+
+    if let Some(program) = program {
+        compiler.optimize(program);
+    }
 
     Info {
         diagnostics: compiler
@@ -270,175 +443,8 @@ fn build(path: &str, documents: &HashMap<String, RefCell<Document>>) -> Info {
                     .all(|note| belongs_to_file(note.span))
             })
             .collect(),
-        annotations: program
-            .as_ref()
-            .map(|program| {
-                use wipple_compiler::compile::typecheck::{format_type, ExpressionKind};
-
-                let mut annotations = Vec::new();
-
-                let declarations = program.declarations.clone();
-
-                macro_rules! format_ty {
-                    ($ty:expr) => {
-                        format_type(
-                            $ty,
-                            |id| {
-                                declarations
-                                    .types
-                                    .get(&id)
-                                    .map(|decl| decl.name.as_str())
-                                    .unwrap_or("<unknown>")
-                                    .to_string()
-                            },
-                            |id| {
-                                declarations
-                                    .type_parameters
-                                    .get(&id)
-                                    .map(|decl| decl.name.as_str())
-                                    .unwrap_or("<unknown>")
-                                    .to_string()
-                            },
-                        )
-                    };
-                }
-
-                macro_rules! add_annotation {
-                    ($expr:expr) => {{
-                        let expr = $expr;
-
-                        if !belongs_to_file(expr.span) {
-                            return;
-                        }
-
-                        let ty = format_ty!(expr.ty.clone());
-
-                        let name = match expr.kind {
-                            ExpressionKind::Variable(id) => {
-                                declarations.variables.get(&id).map(|decl| decl.name)
-                            }
-                            ExpressionKind::Constant(id) => declarations
-                                .monomorphized_constants
-                                .get(&id)
-                                .map(|((), decl)| decl.name),
-                            _ => None,
-                        };
-
-                        annotations.push(Annotation {
-                            span: expr.span,
-                            value: match name {
-                                Some(name) => format!("{name} :: {ty}"),
-                                None => ty,
-                            },
-                        });
-                    }};
-                }
-
-                program.traverse(|expr| add_annotation!(expr));
-
-                for decl in declarations.types.values() {
-                    if !belongs_to_file(decl.span) {
-                        continue;
-                    }
-
-                    annotations.push(Annotation {
-                        span: decl.span,
-                        value: format!("{} : type", decl.name),
-                    });
-                }
-
-                for decl in declarations.traits.values() {
-                    if !belongs_to_file(decl.span) {
-                        continue;
-                    }
-
-                    annotations.push(Annotation {
-                        span: decl.span,
-                        value: format!("{} : trait", decl.name),
-                    });
-                }
-
-                for ((), decl) in &declarations.generic_constants {
-                    if !belongs_to_file(decl.span) {
-                        continue;
-                    }
-
-                    annotations.push(Annotation {
-                        span: decl.span,
-                        value: format!("{} :: {}", decl.name, format_ty!(decl.value.ty.clone())),
-                    });
-
-                    decl.value.traverse(|expr| add_annotation!(expr));
-                }
-
-                for decl in declarations.variables.values() {
-                    if !belongs_to_file(decl.span) {
-                        continue;
-                    }
-
-                    annotations.push(Annotation {
-                        span: decl.span,
-                        value: format!("{} :: {}", decl.name, format_ty!(decl.value.clone())),
-                    });
-                }
-
-                annotations
-            })
-            .unwrap_or_default(),
-        completions: program
-            .as_ref()
-            .map(|program| {
-                use lsp_types::CompletionItemKind;
-
-                let mut completions = [
-                    "use", "when", "type", "trait", "instance", "where", "external",
-                ]
-                .into_iter()
-                .map(|keyword| (None, keyword.to_string(), CompletionItemKind::KEYWORD))
-                .collect::<Vec<_>>();
-
-                macro_rules! add_completions {
-                    ($span:expr, $declarations:expr) => {{
-                        use wipple_compiler::compile::lower::ScopeValue;
-
-                        let declarations = $declarations;
-
-                        completions.extend(declarations.iter().map(|(&name, value)| {
-                            (
-                                $span,
-                                name.to_string(),
-                                match value {
-                                    ScopeValue::Type(_) | ScopeValue::BuiltinType(_) => {
-                                        CompletionItemKind::CLASS
-                                    }
-                                    ScopeValue::Trait(_) => CompletionItemKind::INTERFACE,
-                                    ScopeValue::TypeParameter(_) => {
-                                        CompletionItemKind::TYPE_PARAMETER
-                                    }
-                                    ScopeValue::Operator(_) => CompletionItemKind::OPERATOR,
-                                    ScopeValue::Constant(_, _) => CompletionItemKind::CONSTANT,
-                                    ScopeValue::Variable(_) => CompletionItemKind::VARIABLE,
-                                },
-                            )
-                        }));
-                    }};
-                }
-
-                add_completions!(None, &program.top_level);
-
-                program.traverse(|expr| {
-                    use wipple_compiler::compile::typecheck::ExpressionKind;
-
-                    if let ExpressionKind::Block(_, declarations) = &expr.kind {
-                        add_completions!(Some(expr.span), declarations);
-                    }
-                });
-
-                completions.reverse();
-
-                completions
-            })
-            .unwrap_or_default(),
+        annotations,
+        completions,
     }
 }
 

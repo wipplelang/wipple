@@ -5,11 +5,11 @@ use crate::{
     diagnostics::*,
     helpers::InternedString,
     parse::Span,
-    FilePath, Loader,
+    FilePath,
 };
 use std::collections::VecDeque;
 
-pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope) {
+pub(super) fn load_builtins<L>(expander: &mut Expander<L>, scope: &Scope) {
     let builtin_span = Span::new(FilePath::_Builtin, 0..0);
     let mut scope_values = scope.values.borrow_mut();
 
@@ -62,7 +62,7 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
 
                     Node {
                         span,
-                        kind: NodeKind::Empty,
+                        kind: NodeKind::Assignment,
                     }
                 }
                 NodeKind::Operator(precedence, inputs, body) => {
@@ -98,7 +98,7 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
 
                     Node {
                         span,
-                        kind: NodeKind::Empty,
+                        kind: NodeKind::Assignment,
                     }
                 }
                 _ => Node {

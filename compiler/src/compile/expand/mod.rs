@@ -6,7 +6,7 @@ use crate::{
     diagnostics::*,
     helpers::InternedString,
     parse::{self, Span},
-    Compiler, FilePath, Loader, TemplateId,
+    Compiler, FilePath, TemplateId,
 };
 use rust_decimal::Decimal;
 use std::{
@@ -30,11 +30,11 @@ pub struct Dependency {
     pub name: InternedString,
 }
 
-pub struct Info<L: Loader> {
+pub struct Info<L> {
     templates: BTreeMap<TemplateId, Template<L>>,
 }
 
-impl<L: Loader> Default for Info<L> {
+impl<L> Default for Info<L> {
     fn default() -> Self {
         Info {
             templates: Default::default(),
@@ -51,6 +51,7 @@ pub struct Node {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum NodeKind {
     Error,
+    Assignment,
     Empty,
     Underscore,
     Name(InternedString),
@@ -74,7 +75,7 @@ pub enum NodeKind {
     When(Box<Node>, Vec<Node>),
 }
 
-impl<L: Loader> Compiler<L> {
+impl<L> Compiler<L> {
     pub fn expand(
         &mut self,
         file: parse::File,
@@ -114,7 +115,7 @@ impl<L: Loader> Compiler<L> {
     }
 }
 
-struct Expander<'a, L: Loader> {
+struct Expander<'a, L> {
     compiler: &'a mut Compiler<L>,
     info: &'a mut Info<L>,
     dependencies: Vec<Dependency>,
@@ -160,12 +161,12 @@ impl<'a> Scope<'a> {
     }
 }
 
-struct Template<L: Loader> {
+struct Template<L> {
     span: Span,
     body: TemplateBody<L>,
 }
 
-impl<L: Loader> Clone for Template<L> {
+impl<L> Clone for Template<L> {
     fn clone(&self) -> Self {
         Self {
             span: self.span,
@@ -174,12 +175,12 @@ impl<L: Loader> Clone for Template<L> {
     }
 }
 
-enum TemplateBody<L: Loader> {
+enum TemplateBody<L> {
     Syntax(Vec<InternedString>, Node),
     Function(Rc<dyn Fn(&mut Expander<L>, Span, Vec<Node>, &Scope) -> Node>),
 }
 
-impl<L: Loader> Clone for TemplateBody<L> {
+impl<L> Clone for TemplateBody<L> {
     fn clone(&self) -> Self {
         match self {
             TemplateBody::Syntax(inputs, node) => {
@@ -190,7 +191,7 @@ impl<L: Loader> Clone for TemplateBody<L> {
     }
 }
 
-impl<L: Loader> Template<L> {
+impl<L> Template<L> {
     fn syntax(span: Span, inputs: Vec<InternedString>, node: Node) -> Self {
         Template {
             span,
@@ -257,7 +258,7 @@ impl OperatorPrecedence {
     }
 }
 
-impl<L: Loader> Expander<'_, L> {
+impl<L> Expander<'_, L> {
     fn expand_expr(&mut self, expr: parse::Expr, scope: &Scope) -> Node {
         match expr.kind {
             parse::ExprKind::Underscore => Node {
@@ -323,7 +324,8 @@ impl<L: Loader> Expander<'_, L> {
 
                 let span = Span::join(exprs.first().unwrap().span, exprs.last().unwrap().span);
 
-                Some(self.expand_list(span, exprs, &scope))
+                let node = self.expand_list(span, exprs, &scope);
+                (!matches!(node.kind, NodeKind::Assignment)).then(|| node)
             })
             .collect();
 

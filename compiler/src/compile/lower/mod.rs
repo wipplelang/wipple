@@ -2,7 +2,7 @@ mod builtins;
 
 use crate::{
     compile::ast, diagnostics::*, helpers::InternedString, parse::Span, Compiler, FilePath,
-    GenericConstantId, Loader, TemplateId, TraitId, TypeId, TypeParameterId, VariableId,
+    GenericConstantId, TemplateId, TraitId, TypeId, TypeParameterId, VariableId,
 };
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
@@ -195,7 +195,7 @@ impl TypeAnnotation {
     }
 }
 
-impl<L: Loader> Compiler<L> {
+impl<L> Compiler<L> {
     pub fn lower(&mut self, file: ast::File, dependencies: Vec<Rc<File>>) -> File {
         let scope = Scope::default();
 
@@ -338,7 +338,7 @@ struct Info {
     declarations: Declarations,
 }
 
-impl<L: Loader> Compiler<L> {
+impl<L> Compiler<L> {
     fn lower_block(
         &mut self,
         statements: Vec<ast::Statement>,

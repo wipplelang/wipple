@@ -7,10 +7,10 @@ pub use lexer::*;
 use logos::Lexer;
 pub use span::*;
 
-use crate::{helpers::InternedString, Compiler, FilePath, Loader};
+use crate::{helpers::InternedString, Compiler, FilePath};
 
-impl<L: Loader> Compiler<L> {
-    pub fn parse_v2(&mut self, file: FilePath, code: &str) -> Option<File> {
+impl<L> Compiler<L> {
+    pub fn parse(&mut self, file: FilePath, code: &str) -> Option<File> {
         let (shebang, code) = match grammar::parse_shebang(code) {
             Some((shebang, code)) => (Some(shebang), code),
             None => (None, code),
