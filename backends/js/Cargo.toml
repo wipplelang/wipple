@@ -1,0 +1,10 @@
+[package]
+name = "wipple-js-backend"
+version = "0.0.0"
+edition = "2021"
+
+[dependencies]
+replace_with = "0.1"
+resast = "0.4"
+resw = "0.5"
+wipple-compiler = { path = "../../compiler" }

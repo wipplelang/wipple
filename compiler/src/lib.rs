@@ -53,7 +53,7 @@ macro_rules! ids {
             $(
                 $(#[$meta])*
                 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, ::serde::Serialize, ::serde::Deserialize)]
-                pub struct $id(usize);
+                pub struct $id(pub usize);
             )*
 
             impl Ids {

@@ -3,6 +3,7 @@ members = [
     "backends/bundled/builder",
     "backends/bundled/runner",
     "backends/interpreter",
+    "backends/js",
     "backends/lsp",
     "cli",
     "compiler",

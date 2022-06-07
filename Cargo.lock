@@ -693,6 +693,39 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "49b3de9ec5dc0a3417da371aab17d729997c15010e7fd24ff707773a33bddb64"
 
 [[package]]
+name = "replace_with"
+version = "0.1.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e3a8614ee435691de62bcffcf4a66d91b3594bf1428a5722e79103249a095690"
+
+[[package]]
+name = "resast"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "273826a2b71cf97b320906fa4db27ae82e90309d9f3f605dc556b9a7a59eddb5"
+
+[[package]]
+name = "ress"
+version = "0.11.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "72942115a328eb4535866570b2f146128579713a78764b3cdaffdf4679ddd1c7"
+dependencies = [
+ "log",
+ "unicode-xid",
+]
+
+[[package]]
+name = "resw"
+version = "0.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "06584bef78f8dcab480c4f1e8db24ff5efb087e02e10ecf986969afc4d3cd0b0"
+dependencies = [
+ "log",
+ "resast",
+ "ress",
+]
+
+[[package]]
 name = "rust_decimal"
 version = "1.24.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1088,6 +1121,7 @@ dependencies = [
  "wipple-bundled-backend",
  "wipple-compiler",
  "wipple-interpreter-backend",
+ "wipple-js-backend",
  "wipple-lsp-backend",
 ]
 
@@ -1121,6 +1155,16 @@ dependencies = [
  "libloading",
  "num-traits",
  "rust_decimal",
+ "wipple-compiler",
+]
+
+[[package]]
+name = "wipple-js-backend"
+version = "0.0.0"
+dependencies = [
+ "replace_with",
+ "resast",
+ "resw",
  "wipple-compiler",
 ]
 

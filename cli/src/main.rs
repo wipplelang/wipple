@@ -1,4 +1,4 @@
-use clap::Parser;
+use clap::{ArgEnum, Parser};
 use std::{
     borrow::Cow,
     env, fs,
@@ -18,6 +18,13 @@ enum Args {
     Run {
         #[clap(flatten)]
         options: BuildOptions,
+    },
+    Build {
+        #[clap(flatten)]
+        options: BuildOptions,
+
+        #[clap(arg_enum, long)]
+        target: BuildTarget,
     },
     Bundle {
         #[clap(flatten)]
@@ -49,6 +56,16 @@ fn main() -> anyhow::Result<()> {
             if let Err((error, _)) = interpreter.eval(program) {
                 eprintln!("fatal error: {}", error);
             }
+        }
+        Args::Build { options, target } => {
+            let program = match build(options) {
+                Some(program) => program,
+                None => process::exit(1),
+            };
+
+            let code = codegen(program, target);
+
+            print!("{}", code);
         }
         Args::Bundle {
             options,
@@ -197,4 +214,15 @@ pub fn build(options: BuildOptions) -> Option<wipple_compiler::optimize::Program
     }
 
     success.then(|| program).flatten()
+}
+
+#[derive(ArgEnum, Clone, Copy, PartialEq, Eq)]
+enum BuildTarget {
+    Js,
+}
+
+fn codegen(program: wipple_compiler::optimize::Program, target: BuildTarget) -> String {
+    match target {
+        BuildTarget::Js => wipple_js_backend::compile(program),
+    }
 }
