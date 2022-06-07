@@ -8,7 +8,7 @@ pub(crate) fn call(
     interpreter: &Interpreter,
     identifier: &str,
     inputs: Vec<Rc<Value>>,
-    info: &Info,
+    info: &mut Info,
 ) -> Result<Rc<Value>, Diverge> {
     let builtin = BUILTINS.get(identifier).ok_or_else(|| {
         Diverge::new(
@@ -20,7 +20,7 @@ pub(crate) fn call(
     builtin(interpreter, inputs, info)
 }
 
-type BuiltinFunction = fn(&Interpreter, Vec<Rc<Value>>, &Info) -> Result<Rc<Value>, Diverge>;
+type BuiltinFunction = fn(&Interpreter, Vec<Rc<Value>>, &mut Info) -> Result<Rc<Value>, Diverge>;
 
 lazy_static! {
     static ref BUILTINS: HashMap<&'static str, BuiltinFunction> = {
@@ -64,6 +64,7 @@ lazy_static! {
             "make-mutable" => builtin_make_mutable,
             "get-mutable" => builtin_get_mutable,
             "set-mutable" => builtin_set_mutable,
+            "loop" => builtin_loop,
         }
     };
 }
@@ -71,7 +72,7 @@ lazy_static! {
 fn builtin_crash(
     _: &Interpreter,
     (text,): (Rc<Value>,),
-    info: &Info,
+    info: &mut Info,
 ) -> Result<Rc<Value>, Diverge> {
     let text = match text.as_ref() {
         Value::Text(text) => text,
@@ -87,7 +88,7 @@ fn builtin_crash(
 fn builtin_show(
     interpreter: &Interpreter,
     (text,): (Rc<Value>,),
-    info: &Info,
+    info: &mut Info,
 ) -> Result<Rc<Value>, Diverge> {
     let text = match text.as_ref() {
         Value::Text(text) => text,
@@ -191,7 +192,7 @@ builtin_math!(
 fn builtin_divide(
     _: &Interpreter,
     (lhs, rhs): (Rc<Value>, Rc<Value>),
-    info: &Info,
+    info: &mut Info,
 ) -> Result<Rc<Value>, Diverge> {
     let lhs = match lhs.as_ref() {
         Value::Number(number) => number,
@@ -216,7 +217,7 @@ fn builtin_divide(
 fn builtin_power(
     _: &Interpreter,
     (lhs, rhs): (Rc<Value>, Rc<Value>),
-    info: &Info,
+    info: &mut Info,
 ) -> Result<Rc<Value>, Diverge> {
     let lhs = match lhs.as_ref() {
         Value::Number(number) => number,
@@ -354,4 +355,32 @@ fn builtin_set_mutable(
     *value.borrow_mut() = new_value;
 
     Ok(Rc::new(Value::Marker))
+}
+
+fn builtin_loop(
+    interpreter: &Interpreter,
+    (func,): (Rc<Value>,),
+    info: &mut Info,
+) -> Result<Rc<Value>, Diverge> {
+    let (pattern, body, captures) = match func.as_ref() {
+        Value::Function {
+            pattern,
+            body,
+            captures,
+        } => (pattern, body, captures),
+        _ => unreachable!(),
+    };
+
+    let input = Rc::new(Value::Marker);
+
+    Ok(loop {
+        match interpreter
+            .call_function(pattern, body, captures, input.clone(), info)?
+            .as_ref()
+        {
+            Value::Variant(0, _) => continue,
+            Value::Variant(1, values) => break values[0].clone(),
+            _ => unreachable!(),
+        }
+    })
 }

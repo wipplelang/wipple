@@ -182,3 +182,34 @@ add! : x -> m -> m . set! (get m + x)
 
 increment! :: A where (Add A Number A) => Mutable A -> ()
 increment! : add! 1
+
+-- Loops --
+
+Control-Flow : A => type {
+	Continue
+	Break A
+}
+
+use Control-Flow
+
+-- [private]
+loop-impl :: A => (() -> Control-Flow A) -> A
+loop-impl : f -> external "builtin" "loop" f
+
+loop : body ~> loop-impl (() -> body)
+
+forever : body ~> loop {
+	body :: ()
+	Control-Flow Continue :: Control-Flow !
+}
+
+while : condition body ~> loop {
+	if condition {
+		body
+		Continue
+	} {
+		Break ()
+	}
+}
+
+unless : condition body ~> while (not condition) body

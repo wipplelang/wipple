@@ -163,27 +163,7 @@ impl<'a> Interpreter<'a> {
                         captures,
                     } => {
                         let input = self.eval_expr(input, info)?;
-
-                        let parent = info.scope.clone();
-                        let child = Scope::child(&parent);
-                        child.borrow_mut().variables.extend(captures.clone());
-                        info.scope = child;
-
-                        let matches = self.eval_pattern(pattern, input, info)?;
-                        assert!(matches, "no matches for pattern in initialization");
-
-                        let value = match self.eval_expr(body, info) {
-                            Ok(value)
-                            /* | Err(Diverge {
-                                kind: DivergeKind::Return(value),
-                                ..
-                            }) */ => value,
-                            diverge => return diverge,
-                        };
-
-                        info.scope = parent;
-
-                        value
+                        self.call_function(pattern, body, captures, input, info)?
                     }
                     _ => unreachable!(),
                 }
@@ -299,6 +279,36 @@ impl<'a> Interpreter<'a> {
         };
 
         info.stack.pop();
+
+        Ok(value)
+    }
+
+    fn call_function(
+        &self,
+        pattern: &Pattern,
+        body: &Expression,
+        captures: &BTreeMap<VariableId, Rc<Value>>,
+        input: Rc<Value>,
+        info: &mut Info,
+    ) -> Result<Rc<Value>, Diverge> {
+        let parent = info.scope.clone();
+        let child = Scope::child(&parent);
+        child.borrow_mut().variables.extend(captures.clone());
+        info.scope = child;
+
+        let matches = self.eval_pattern(pattern, input, info)?;
+        assert!(matches, "no matches for pattern in initialization");
+
+        let value = match self.eval_expr(body, info) {
+            Ok(value)
+            /* | Err(Diverge {
+                kind: DivergeKind::Return(value),
+                ..
+            }) */ => value,
+            diverge => return diverge,
+        };
+
+        info.scope = parent;
 
         Ok(value)
     }
