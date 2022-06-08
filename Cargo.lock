@@ -1121,8 +1121,8 @@ dependencies = [
  "wipple-bundled-backend",
  "wipple-compiler",
  "wipple-interpreter-backend",
- "wipple-js-backend",
  "wipple-lsp-backend",
+ "wipple-node-backend",
 ]
 
 [[package]]
@@ -1159,16 +1159,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "wipple-js-backend"
-version = "0.0.0"
-dependencies = [
- "replace_with",
- "resast",
- "resw",
- "wipple-compiler",
-]
-
-[[package]]
 name = "wipple-lsp-backend"
 version = "0.0.0"
 dependencies = [
@@ -1178,6 +1168,16 @@ dependencies = [
  "lsp-types",
  "serde",
  "serde_json",
+ "wipple-compiler",
+]
+
+[[package]]
+name = "wipple-node-backend"
+version = "0.0.0"
+dependencies = [
+ "replace_with",
+ "resast",
+ "resw",
  "wipple-compiler",
 ]
 

@@ -7,7 +7,7 @@ globalThis.$wippleExternals.builtin = {
         console.error(`fatal error: ${msg}`);
         process.exit(1);
     },
-    show: console.log,
+    print: process.stdout.write,
     format: (text, inputs) => {
         if (text.length === 0) {
             return "";
@@ -41,25 +41,28 @@ globalThis.$wippleExternals.builtin = {
 
         return Math.pow(a, b);
     },
-    "number-equality": (a, b) => ({
-        $wippleVariant: a === b ? 1 : 0,
-        $wippleValues: [],
-    }),
-    "text-equality": (a, b) => ({
-        $wippleVariant: a === b ? 1 : 0,
-        $wippleValues: [],
-    }),
-    "number-less-than": (a, b) => ({
-        $wippleVariant: a < b ? 1 : 0,
-        $wippleValues: [],
-    }),
-    "number-greater-than": (a, b) => ({
-        $wippleVariant: a > b ? 1 : 0,
-        $wippleValues: [],
-    }),
+    "number-equality": (a, b) => [a === b ? 1 : 0, []],
+    "text-equality": (a, b) => [a === b ? 1 : 0, []],
+    "number-less-than": (a, b) => [a < b ? 1 : 0, []],
+    "number-greater-than": (a, b) => [a > b ? 1 : 0, []],
     "make-mutable": (x) => ({ $wippleMutable: x }),
     "get-mutable": (m) => m.$wippleMutable,
     "set-mutable": (m, x) => {
         m.$wippleMutable = x;
+    },
+    loop: (f) => {
+        let result;
+        while (true) {
+            const next = f(null);
+
+            if (next[0] === 0) {
+                continue;
+            } else {
+                result = next[1];
+                break;
+            }
+        }
+
+        return result;
     },
 };

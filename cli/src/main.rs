@@ -2,7 +2,7 @@ use clap::{ArgEnum, Parser};
 use std::{
     borrow::Cow,
     env, fs,
-    io::{Read, Write},
+    io::{self, Read, Write},
     os::unix::prelude::PermissionsExt,
     path::PathBuf,
     process,
@@ -50,7 +50,8 @@ fn main() -> anyhow::Result<()> {
             };
 
             let interpreter = wipple_interpreter_backend::Interpreter::handling_output(|text| {
-                println!("{}", text)
+                print!("{}", text);
+                io::stdout().flush().unwrap();
             });
 
             if let Err((error, _)) = interpreter.eval(program) {
@@ -218,11 +219,11 @@ pub fn build(options: BuildOptions) -> Option<wipple_compiler::optimize::Program
 
 #[derive(ArgEnum, Clone, Copy, PartialEq, Eq)]
 enum BuildTarget {
-    Js,
+    Node,
 }
 
 fn codegen(program: wipple_compiler::optimize::Program, target: BuildTarget) -> String {
     match target {
-        BuildTarget::Js => wipple_js_backend::compile(program),
+        BuildTarget::Node => wipple_node_backend::compile(program),
     }
 }

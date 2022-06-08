@@ -50,7 +50,7 @@ lazy_static! {
 
         builtins! {
             "crash" => builtin_crash,
-            "show" => builtin_show,
+            "print" => builtin_print,
             "format" => builtin_format,
             "number-to-text" => builtin_number_to_text,
             "add" => builtin_add,
@@ -89,7 +89,7 @@ fn builtin_crash(
     ))
 }
 
-fn builtin_show(
+fn builtin_print(
     interpreter: &Interpreter,
     (text,): (Rc<Value>,),
     info: &mut Info,

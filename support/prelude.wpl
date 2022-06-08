@@ -56,13 +56,16 @@ instance Greater-Than Number : a -> b -> external "builtin" "number-greater-than
 
 -- Output --
 
+print :: Text -> ()
+print : text -> external "builtin" "print" text
+
 Show : A => trait (A -> Text)
 instance Show Text : it
 instance Show Number : n -> external "builtin" "number-to-text" n
 instance Show Boolean : x? -> if x? "True" "False"
 
 show :: A where (Show A) => A -> ()
-show : x -> external "builtin" "show" (Show x)
+show : x -> print (format "_\n" x)
 
 -- Utilities --
 
@@ -282,3 +285,9 @@ instance Iterate Range Number : range -> {
 		}
 	}
 }
+
+to : dot operator (min' max' ~> Range {
+	min : min'
+	max : max'
+	step : 1
+})
