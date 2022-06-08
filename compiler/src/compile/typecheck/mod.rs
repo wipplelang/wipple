@@ -1248,9 +1248,17 @@ impl<'a, L> Typechecker<'a, L> {
 
         let kind = (|| match pattern.kind {
             UnresolvedPatternKind::Error => None,
-            UnresolvedPatternKind::Wildcard | UnresolvedPatternKind::Unit => {
+            UnresolvedPatternKind::Unit => {
+                if let Err(error) = self
+                    .ctx
+                    .unify(UnresolvedType::Builtin(BuiltinType::Unit), ty)
+                {
+                    self.report_type_error(error, pattern.span);
+                }
+
                 Some(PatternKind::Wildcard)
             }
+            UnresolvedPatternKind::Wildcard => Some(PatternKind::Wildcard),
             UnresolvedPatternKind::Variable(var) => {
                 self.variables.insert(var, ty.clone());
 
