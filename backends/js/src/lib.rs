@@ -180,7 +180,7 @@ fn compile_expression(expr: wipple_compiler::optimize::Expression) -> Expr<'stat
             callee: Box::new(compile_expression(*func)),
             arguments: vec![compile_expression(*input)],
         }),
-        ExpressionKind::Function(pattern, body, _) => Expr::ArrowFunc(ArrowFuncExpr {
+        ExpressionKind::Function(pattern, body) => Expr::ArrowFunc(ArrowFuncExpr {
             id: None,
             params: vec![FuncArg::Pat(Pat::Ident(mangle_function_input()))],
             body: ArrowFuncBody::FuncBody(FuncBody(

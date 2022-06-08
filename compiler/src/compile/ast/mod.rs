@@ -111,6 +111,7 @@ pub enum PatternKind {
     Name(InternedString),
     Destructure(Vec<(Span, InternedString)>),
     Variant((Span, InternedString), Vec<Pattern>),
+    Annotate(Box<Pattern>, TypeAnnotation),
 }
 
 #[derive(Debug, Clone)]
@@ -665,6 +666,12 @@ impl<L> Compiler<L> {
                     PatternKind::Variant((name_span, name), rest)
                 }
                 NodeKind::Empty => PatternKind::Unit,
+                NodeKind::Annotate(node, ty) => {
+                    let inner = self.build_pattern(*node);
+                    let ty = self.build_type_annotation(*ty);
+
+                    PatternKind::Annotate(Box::new(inner), ty)
+                }
                 _ => {
                     self.diagnostics.add(Diagnostic::error(
                         "expected pattern",

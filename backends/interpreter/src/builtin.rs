@@ -417,12 +417,12 @@ fn builtin_loop(
     (func,): (Rc<Value>,),
     info: &mut Info,
 ) -> Result<Rc<Value>, Diverge> {
-    let (pattern, body, captures) = match func.as_ref() {
+    let (pattern, body, scope) = match func.as_ref() {
         Value::Function {
             pattern,
             body,
-            captures,
-        } => (pattern, body, captures),
+            scope,
+        } => (pattern, body, scope),
         _ => unreachable!(),
     };
 
@@ -430,7 +430,7 @@ fn builtin_loop(
 
     Ok(loop {
         match interpreter
-            .call_function(pattern, body, captures, input.clone(), info)?
+            .call_function(pattern, body, scope.clone(), input.clone(), info)?
             .as_ref()
         {
             Value::Variant(0, _) => continue,

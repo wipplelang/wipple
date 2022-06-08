@@ -6,7 +6,7 @@ use crate::{
 };
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 
 mod no_ops;
 mod tail_calls;
@@ -32,7 +32,7 @@ pub enum ExpressionKind {
     Number(Decimal),
     Block(Vec<Expression>),
     Call(Box<Expression>, Box<Expression>),
-    Function(Pattern, Box<Expression>, BTreeSet<VariableId>),
+    Function(Pattern, Box<Expression>),
     When(Box<Expression>, Vec<Arm>),
     External(
         InternedString,
@@ -107,8 +107,8 @@ impl From<compile::Expression> for Expression {
                 compile::ExpressionKind::Call(func, input) => {
                     ExpressionKind::Call(Box::new((*func).into()), Box::new((*input).into()))
                 }
-                compile::ExpressionKind::Function(pattern, body, captures) => {
-                    ExpressionKind::Function(pattern.into(), Box::new((*body).into()), captures)
+                compile::ExpressionKind::Function(pattern, body) => {
+                    ExpressionKind::Function(pattern.into(), Box::new((*body).into()))
                 }
                 compile::ExpressionKind::When(input, arms) => ExpressionKind::When(
                     Box::new((*input).into()),
@@ -205,7 +205,7 @@ impl Expression {
                 func.traverse_inner(f);
                 input.traverse_inner(f);
             }
-            ExpressionKind::Function(_, body, _) => {
+            ExpressionKind::Function(_, body) => {
                 body.traverse_inner(f);
             }
             ExpressionKind::When(input, arms) => {

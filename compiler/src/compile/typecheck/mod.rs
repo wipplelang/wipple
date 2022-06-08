@@ -50,7 +50,7 @@ macro_rules! expr {
                     HashMap<InternedString, lower::ScopeValue>,
                 ),
                 Call(Box<[<$prefix Expression>]>, Box<[<$prefix Expression>]>),
-                Function($pattern, Box<[<$prefix Expression>]>, BTreeSet<VariableId>),
+                Function($pattern, Box<[<$prefix Expression>]>),
                 When(Box<[<$prefix Expression>]>, Vec<[<$prefix Arm>]>),
                 External(InternedString, InternedString, Vec<[<$prefix Expression>]>),
                 Initialize($pattern, Box<[<$prefix Expression>]>),
@@ -109,6 +109,7 @@ pattern!(, "Unresolved", {
     Unit,
     Destructure(HashMap<InternedString, UnresolvedPattern>),
     Variant(TypeId, usize, Vec<UnresolvedPattern>),
+    Annotate(Box<UnresolvedPattern>, UnresolvedType),
 });
 
 pattern!(pub, "", {
@@ -862,7 +863,7 @@ impl<'a, L> Typechecker<'a, L> {
                     kind: UnresolvedExpressionKind::Call(Box::new(function), Box::new(input)),
                 }
             }
-            lower::ExpressionKind::Function(pattern, body, captures) => {
+            lower::ExpressionKind::Function(pattern, body) => {
                 let pattern = self.convert_pattern(pattern);
                 let body = self.typecheck_expr(body, file, suppress_errors);
 
@@ -872,11 +873,7 @@ impl<'a, L> Typechecker<'a, L> {
                         Box::new(UnresolvedType::Variable(self.ctx.new_variable())),
                         Box::new(body.ty.clone()),
                     ),
-                    kind: UnresolvedExpressionKind::Function(
-                        pattern,
-                        Box::new(body),
-                        captures.iter().map(|(var, _)| *var).collect(),
-                    ),
+                    kind: UnresolvedExpressionKind::Function(pattern, Box::new(body)),
                 }
             }
             lower::ExpressionKind::When(input, arms) => {
@@ -1411,6 +1408,13 @@ impl<'a, L> Typechecker<'a, L> {
 
                 Some(pattern)
             }
+            UnresolvedPatternKind::Annotate(inner, inner_ty) => {
+                if let Err(error) = self.ctx.unify(inner_ty, ty.clone()) {
+                    self.report_type_error(error, pattern.span);
+                }
+
+                Some(self.resolve_pattern(*inner, ty, file)?.kind)
+            }
         })()?;
 
         Some(Pattern {
@@ -1487,7 +1491,7 @@ impl<'a, L> Typechecker<'a, L> {
 
                         MonomorphizedExpressionKind::Call(Box::new(func), Box::new(input))
                     }
-                    UnresolvedExpressionKind::Function(pattern, body, captures) => {
+                    UnresolvedExpressionKind::Function(pattern, body) => {
                         let input_ty = match expr.ty {
                             UnresolvedType::Function(input, _) => *input,
                             _ => unreachable!(),
@@ -1500,7 +1504,6 @@ impl<'a, L> Typechecker<'a, L> {
                         MonomorphizedExpressionKind::Function(
                             pattern,
                             Box::new(self.monomorphize(*body, file, inside_generic_constant)?),
-                            captures,
                         )
                     }
                     UnresolvedExpressionKind::When(input, arms) => {
@@ -1644,13 +1647,10 @@ impl<'a, L> Typechecker<'a, L> {
                     Box::new(self.finalize_internal(*func, generic, file)?),
                     Box::new(self.finalize_internal(*input, generic, file)?),
                 ),
-                MonomorphizedExpressionKind::Function(pattern, body, captures) => {
-                    ExpressionKind::Function(
-                        pattern,
-                        Box::new(self.finalize_internal(*body, generic, file)?),
-                        captures,
-                    )
-                }
+                MonomorphizedExpressionKind::Function(pattern, body) => ExpressionKind::Function(
+                    pattern,
+                    Box::new(self.finalize_internal(*body, generic, file)?),
+                ),
                 MonomorphizedExpressionKind::When(input, arms) => ExpressionKind::When(
                     Box::new(self.finalize_internal(*input, generic, file)?),
                     arms.into_iter()
@@ -1918,6 +1918,10 @@ impl<'a, L> Typechecker<'a, L> {
                     .iter()
                     .map(|pattern| self.convert_pattern(pattern))
                     .collect(),
+            ),
+            lower::PatternKind::Annotate(inner, ty) => UnresolvedPatternKind::Annotate(
+                Box::new(self.convert_pattern(inner)),
+                self.convert_type_annotation(ty),
             ),
         };
 

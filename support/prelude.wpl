@@ -22,6 +22,8 @@ if : bool then else ~> when bool {
 	True -> then
 }
 
+if? : bool then ~> if bool then ()
+
 not :: Boolean -> Boolean
 not : bool -> if bool False True
 
@@ -222,3 +224,61 @@ while : condition body ~> loop {
 }
 
 unless : condition body ~> while (not condition) body
+
+-- Iterators --
+
+Iterator : Element => type {
+	next :: () -> Maybe Element
+}
+
+Iterate : Container Element => trait (Container -> Iterator Element)
+
+-- TODO: Use higher-kinded types
+each :: Container Element where (Iterate Container Element) => ((Element) -> ()) -> Container -> ()
+each : f -> container -> {
+	{ next } : Iterate container
+
+	loop {
+		when (next ()) {
+			Some x -> {
+				f x
+				Continue
+			}
+			None -> Break ()
+		}
+	}
+}
+
+Range : type {
+	min :: Number
+	max :: Number
+	step :: Number
+}
+
+instance Iterate Range Number : range -> {
+	range : mutable range
+	{ min max step } : get range
+	current : mutable min
+
+	if? (max < min) {
+		crash "`max` must be greater than `min`"
+	}
+
+	if? (step < 0) {
+		crash "`step` must be positive"
+	}
+
+	Iterator {
+		next : () -> {
+			{ max step } : get range
+
+			if ((get current) >= max) {
+				None
+			} {
+				n : get current
+				current . add! step
+				Some n
+			}
+		}
+	}
+}

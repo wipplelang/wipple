@@ -11,6 +11,7 @@ use rust_decimal::Decimal;
 use std::{
     cell::RefCell,
     collections::{BTreeMap, HashMap},
+    mem,
     rc::Rc,
 };
 use wipple_compiler::{
@@ -27,7 +28,7 @@ pub enum Value {
     Function {
         pattern: Pattern,
         body: Box<Expression>,
-        captures: BTreeMap<VariableId, Rc<Value>>,
+        scope: Rc<RefCell<Scope>>,
     },
     List(Vec<Rc<Value>>),
     Variant(usize, Vec<Rc<Value>>),
@@ -101,7 +102,7 @@ pub struct Info {
 }
 
 #[derive(Debug, Default)]
-struct Scope {
+pub struct Scope {
     variables: BTreeMap<VariableId, Rc<Value>>,
     parent: Option<Rc<RefCell<Scope>>>,
 }
@@ -160,10 +161,10 @@ impl<'a> Interpreter<'a> {
                     Value::Function {
                         pattern,
                         body,
-                        captures,
+                        scope,
                     } => {
                         let input = self.eval_expr(input, info)?;
-                        self.call_function(pattern, body, captures, input, info)?
+                        self.call_function(pattern, body, scope.clone(), input, info)?
                     }
                     _ => unreachable!(),
                 }
@@ -181,13 +182,10 @@ impl<'a> Interpreter<'a> {
                     panic!("variable {:?} not found in {:#?}", variable, info.scope)
                 })
             }
-            ExpressionKind::Function(pattern, body, captures) => Rc::new(Value::Function {
+            ExpressionKind::Function(pattern, body) => Rc::new(Value::Function {
                 pattern: pattern.clone(),
                 body: Box::new(body.as_ref().clone()),
-                captures: captures
-                    .iter()
-                    .filter_map(|&variable| Some((variable, self.resolve(variable, info)?)))
-                    .collect(),
+                scope: info.scope.clone(),
             }),
             ExpressionKind::When(input, arms) => {
                 let input = self.eval_expr(input, info)?;
@@ -287,14 +285,11 @@ impl<'a> Interpreter<'a> {
         &self,
         pattern: &Pattern,
         body: &Expression,
-        captures: &BTreeMap<VariableId, Rc<Value>>,
+        scope: Rc<RefCell<Scope>>,
         input: Rc<Value>,
         info: &mut Info,
     ) -> Result<Rc<Value>, Diverge> {
-        let parent = info.scope.clone();
-        let child = Scope::child(&parent);
-        child.borrow_mut().variables.extend(captures.clone());
-        info.scope = child;
+        let parent = mem::replace(&mut info.scope, scope);
 
         let matches = self.eval_pattern(pattern, input, info)?;
         assert!(matches, "no matches for pattern in initialization");

@@ -119,7 +119,7 @@ pub enum ExpressionKind {
     Number(Decimal),
     Block(Vec<Expression>, HashMap<InternedString, ScopeValue>),
     Call(Box<Expression>, Box<Expression>),
-    Function(Pattern, Box<Expression>, Vec<(VariableId, Span)>),
+    Function(Pattern, Box<Expression>),
     When(Box<Expression>, Vec<Arm>),
     External(InternedString, InternedString, Vec<Expression>),
     Annotate(Box<Expression>, TypeAnnotation),
@@ -159,6 +159,7 @@ pub enum PatternKind {
     Variable(VariableId),
     Destructure(HashMap<InternedString, Pattern>),
     Variant(TypeId, usize, Vec<Pattern>),
+    Annotate(Box<Pattern>, TypeAnnotation),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -268,7 +269,6 @@ impl<L> Compiler<L> {
 struct Scope<'a> {
     parent: Option<&'a Scope<'a>>,
     values: RefCell<HashMap<InternedString, ScopeValue>>,
-    used_variables: Option<RefCell<Vec<(VariableId, Span)>>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -290,16 +290,11 @@ impl<'a> Scope<'a> {
         }
     }
 
-    fn get(&'a self, name: InternedString, source_span: Span) -> Option<ScopeValue> {
+    fn get(&'a self, name: InternedString) -> Option<ScopeValue> {
         let mut parent = Some(self);
         let mut result = None;
-        let mut used_variables = Vec::new();
 
         while let Some(scope) = parent {
-            if let Some(u) = &scope.used_variables {
-                used_variables.push(u);
-            }
-
             if let Some(value) = scope.values.borrow().get(&name).cloned() {
                 result = Some(value);
                 break;
@@ -308,27 +303,7 @@ impl<'a> Scope<'a> {
             parent = scope.parent;
         }
 
-        if let Some(ScopeValue::Variable(id)) = result {
-            for u in used_variables {
-                u.borrow_mut().push((id, source_span));
-            }
-        }
-
         result
-    }
-
-    fn variables_used_by_ancestors(&self) -> Vec<(VariableId, Span)> {
-        let mut parent = self.parent;
-        let mut used_variables = Vec::new();
-        while let Some(scope) = parent {
-            if let Some(u) = &scope.used_variables {
-                used_variables.append(&mut u.clone().into_inner());
-            }
-
-            parent = scope.parent;
-        }
-
-        used_variables
     }
 }
 
@@ -514,7 +489,6 @@ impl<L> Compiler<L> {
                                                 kind: PatternKind::Variable(*var),
                                             },
                                             Box::new(result),
-                                            Vec::new(), // FIXME: the function should capture the preceding variables
                                         ),
                                     });
 
@@ -611,7 +585,7 @@ impl<L> Compiler<L> {
                         .bounds
                         .into_iter()
                         .map(|bound| {
-                            let tr = match scope.get(bound.trait_name, bound.trait_span) {
+                            let tr = match scope.get(bound.trait_name) {
                                 Some(ScopeValue::Trait(tr)) => tr,
                                 Some(_) => {
                                     self.diagnostics.add(Diagnostic::error(
@@ -691,7 +665,7 @@ impl<L> Compiler<L> {
                         .bounds
                         .into_iter()
                         .map(|bound| {
-                            let tr = match scope.get(bound.trait_name, bound.trait_span) {
+                            let tr = match scope.get(bound.trait_name) {
                                 Some(ScopeValue::Trait(tr)) => tr,
                                 Some(_) => {
                                     self.diagnostics.add(Diagnostic::error(
@@ -736,7 +710,7 @@ impl<L> Compiler<L> {
                         Err(error) => return Some(error),
                     };
 
-                    let tr = match scope.get(decl.trait_name, decl.trait_span) {
+                    let tr = match scope.get(decl.trait_name) {
                         Some(ScopeValue::Trait(tr)) => tr,
                         Some(_) => {
                             self.diagnostics.add(Diagnostic::error(
@@ -763,7 +737,6 @@ impl<L> Compiler<L> {
                         .collect();
 
                     let value = self.lower_expr(decl.value, &scope, info);
-                    self.validate_constant(&value);
 
                     Instance {
                         params,
@@ -864,8 +837,6 @@ impl<L> Compiler<L> {
                             }
 
                             let value = self.lower_expr(expr, &scope, info);
-                            self.validate_constant(&value);
-
                             associated_constant.replace(Some(value));
                             None
                         } else {
@@ -876,7 +847,7 @@ impl<L> Compiler<L> {
                 }
             }
             ast::StatementKind::Use((span, name)) => {
-                let ty = match scope.get(name, span) {
+                let ty = match scope.get(name) {
                     Some(ScopeValue::Type(ty)) => ty,
                     Some(_) => {
                         self.diagnostics.add(Diagnostic::error(
@@ -934,27 +905,6 @@ impl<L> Compiler<L> {
         }
     }
 
-    fn validate_constant(&mut self, value: &Expression) {
-        // Check that expression doesn't capture variables
-        if let ExpressionKind::Function(_, _, captures) = &value.kind {
-            if !captures.is_empty() {
-                self.diagnostics.add(Diagnostic::error(
-                    "expected constant value",
-                    std::iter::once(Note::primary(
-                        value.span,
-                        "this value captures variables and cannot be used as a constant",
-                    ))
-                    .chain(
-                        captures
-                            .iter()
-                            .map(|(_, span)| Note::secondary(*span, "captured variable")),
-                    )
-                    .collect(),
-                ));
-            }
-        }
-    }
-
     fn lower_expr(&mut self, expr: ast::Expression, scope: &Scope, info: &mut Info) -> Expression {
         macro_rules! function_call {
             ($function:expr, $inputs:expr) => {
@@ -997,7 +947,7 @@ impl<L> Compiler<L> {
                 ast::ExpressionKind::Name(ty_name) => {
                     let input = inputs.first().unwrap();
 
-                    match scope.get(*ty_name, function.span) {
+                    match scope.get(*ty_name) {
                         Some(ScopeValue::Type(id)) => match &input.kind {
                             ast::ExpressionKind::Block(statements) => {
                                 if inputs.len() > 1 {
@@ -1134,15 +1084,11 @@ impl<L> Compiler<L> {
                 _ => function_call!(self.lower_expr(*function, scope, info), inputs).kind,
             },
             ast::ExpressionKind::Function(input, body) => {
-                let scope = Scope {
-                    used_variables: Some(Default::default()),
-                    ..scope.child()
-                };
+                let scope = scope.child();
 
                 let pattern = self.lower_pattern(input, &scope, info);
 
                 let body = self.lower_expr(*body, &scope, info);
-                let captures = scope.variables_used_by_ancestors();
 
                 ExpressionKind::Function(
                     pattern,
@@ -1150,7 +1096,6 @@ impl<L> Compiler<L> {
                         span: expr.span,
                         kind: ExpressionKind::Block(vec![body], scope.values.into_inner()),
                     }),
-                    captures,
                 )
             }
             ast::ExpressionKind::When(input, arms) => ExpressionKind::When(
@@ -1209,7 +1154,7 @@ impl<L> Compiler<L> {
                     .map(|parameter| self.lower_type_annotation(parameter, scope, info))
                     .collect();
 
-                match scope.get(name, ty.span) {
+                match scope.get(name) {
                     Some(ScopeValue::Type(ty)) => TypeAnnotationKind::Named(ty, parameters),
                     Some(ScopeValue::TypeParameter(param)) => {
                         if !parameters.is_empty() {
@@ -1255,7 +1200,7 @@ impl<L> Compiler<L> {
             ast::PatternKind::Error => PatternKind::Error,
             ast::PatternKind::Wildcard => PatternKind::Wildcard,
             ast::PatternKind::Unit => PatternKind::Unit,
-            ast::PatternKind::Name(name) => match scope.get(name, pattern.span) {
+            ast::PatternKind::Name(name) => match scope.get(name) {
                 Some(ScopeValue::Constant(_, Some((ty, variant)))) => {
                     PatternKind::Variant(ty, variant, Vec::new())
                 }
@@ -1298,7 +1243,7 @@ impl<L> Compiler<L> {
                     .collect(),
             ),
             ast::PatternKind::Variant((name_span, name), values) => {
-                let first = match scope.get(name, pattern.span) {
+                let first = match scope.get(name) {
                     Some(name) => name,
                     None => {
                         self.diagnostics.add(Diagnostic::error(
@@ -1399,6 +1344,10 @@ impl<L> Compiler<L> {
                     }
                 }
             }
+            ast::PatternKind::Annotate(inner_pattern, ty) => PatternKind::Annotate(
+                Box::new(self.lower_pattern(*inner_pattern, scope, info)),
+                self.lower_type_annotation(ty, scope, info),
+            ),
         })();
 
         Pattern {
@@ -1414,7 +1363,7 @@ impl<L> Compiler<L> {
         scope: &Scope,
         info: &mut Info,
     ) -> Option<ExpressionKind> {
-        match scope.get(name, span) {
+        match scope.get(name) {
             Some(ScopeValue::Type(id)) => {
                 match info.declarations.types.get(&id).unwrap().value.kind {
                     TypeKind::Marker => Some(ExpressionKind::Marker(id)),
