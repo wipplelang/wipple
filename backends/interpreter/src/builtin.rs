@@ -2,6 +2,7 @@ use crate::*;
 use itertools::Itertools;
 use lazy_static::lazy_static;
 use num_traits::pow::Pow;
+use rust_decimal::MathematicalOps;
 use std::collections::HashMap;
 
 pub(crate) fn call(
@@ -65,6 +66,9 @@ lazy_static! {
             "get-mutable" => builtin_get_mutable,
             "set-mutable" => builtin_set_mutable,
             "loop" => builtin_loop,
+            "floor" => builtin_floor,
+            "ceil" => builtin_ceil,
+            "sqrt" => builtin_sqrt,
         }
     };
 }
@@ -239,6 +243,57 @@ fn builtin_power(
     }
 
     Ok(Rc::new(Value::Number(lhs.pow(*rhs))))
+}
+
+fn builtin_floor(
+    _: &Interpreter,
+    (value,): (Rc<Value>,),
+    _: &mut Info,
+) -> Result<Rc<Value>, Diverge> {
+    let number = match value.as_ref() {
+        Value::Number(number) => number,
+        _ => unreachable!(),
+    };
+
+    Ok(Rc::new(Value::Number(number.floor())))
+}
+
+fn builtin_ceil(
+    _: &Interpreter,
+    (value,): (Rc<Value>,),
+    _: &mut Info,
+) -> Result<Rc<Value>, Diverge> {
+    let number = match value.as_ref() {
+        Value::Number(number) => number,
+        _ => unreachable!(),
+    };
+
+    Ok(Rc::new(Value::Number(number.ceil())))
+}
+
+fn builtin_sqrt(
+    _: &Interpreter,
+    (value,): (Rc<Value>,),
+    info: &mut Info,
+) -> Result<Rc<Value>, Diverge> {
+    let number = match value.as_ref() {
+        Value::Number(number) => number,
+        _ => unreachable!(),
+    };
+
+    let sqrt = match number.sqrt() {
+        Some(sqrt) => sqrt,
+        None => {
+            return Err(Diverge::new(
+                info.stack.clone(),
+                DivergeKind::Error(String::from(
+                    "the square root of a negative number is undefined",
+                )),
+            ))
+        }
+    };
+
+    Ok(Rc::new(Value::Number(sqrt)))
 }
 
 fn builtin_number_equality(

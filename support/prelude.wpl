@@ -159,6 +159,15 @@ Power : Left Right Power => trait (Left -> Right -> Power)
 ^ : power operator (a b ~> Power a b)
 instance Power Number Number Number : a -> b -> external "builtin" "power" a b
 
+floor :: Number -> Number
+floor : n -> external "builtin" "floor" n
+
+ceil :: Number -> Number
+ceil : n -> external "builtin" "ceil" n
+
+sqrt :: Number -> Number
+sqrt : n -> external "builtin" "sqrt" n
+
 -- Mutability --
 
 mutable :: A => A -> Mutable A
