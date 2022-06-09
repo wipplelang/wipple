@@ -198,10 +198,9 @@ impl TypeAnnotation {
 impl<L> Compiler<L> {
     pub fn lower(&mut self, file: ast::File, dependencies: Vec<Rc<File>>) -> File {
         let scope = Scope::default();
+        let mut info = Info::default();
 
         // TODO: Handle file attributes
-
-        let mut info = Info::default();
 
         self.load_builtins(&scope, &mut info);
 
@@ -232,12 +231,10 @@ impl<L> Compiler<L> {
                 .extend(dependency.exported.clone());
         }
 
-        let file_scope = scope.child();
-
         let block = file
             .statements
             .into_iter()
-            .flat_map(|statement| self.lower_statement(statement, &file_scope, &mut info))
+            .flat_map(|statement| self.lower_statement(statement, &scope, &mut info))
             .collect();
 
         let mut complete = true;
@@ -259,7 +256,7 @@ impl<L> Compiler<L> {
             span: file.span,
             complete,
             declarations: info.declarations,
-            exported: file_scope.values.take(),
+            exported: scope.values.take(),
             block,
         }
     }

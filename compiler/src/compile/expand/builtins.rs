@@ -62,7 +62,7 @@ pub(super) fn load_builtins<L>(expander: &mut Expander<L>, scope: &Scope) {
 
                     Node {
                         span,
-                        kind: NodeKind::Assignment,
+                        kind: NodeKind::Placeholder,
                     }
                 }
                 NodeKind::Operator(precedence, inputs, body) => {
@@ -98,7 +98,7 @@ pub(super) fn load_builtins<L>(expander: &mut Expander<L>, scope: &Scope) {
 
                     Node {
                         span,
-                        kind: NodeKind::Assignment,
+                        kind: NodeKind::Placeholder,
                     }
                 }
                 _ => Node {
@@ -378,7 +378,7 @@ pub(super) fn load_builtins<L>(expander: &mut Expander<L>, scope: &Scope) {
 
                     Node {
                         span,
-                        kind: NodeKind::Empty,
+                        kind: NodeKind::Placeholder,
                     }
                 }
                 _ => Node {

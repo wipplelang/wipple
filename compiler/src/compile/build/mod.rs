@@ -11,10 +11,16 @@ use crate::{
     Compiler, FilePath, Loader,
 };
 use indexmap::IndexMap;
-use std::{cell::RefCell, rc::Rc, sync::Arc};
+use std::{
+    cell::{Cell, RefCell},
+    rc::Rc,
+    sync::Arc,
+};
 
 pub enum Progress {
-    Resolving,
+    Resolving {
+        count: usize,
+    },
     Lowering {
         path: FilePath,
         current: usize,
@@ -33,18 +39,25 @@ impl<L: Loader> Compiler<L> {
         path: FilePath,
         mut progress: impl FnMut(Progress),
     ) -> Option<Program> {
+        #[allow(clippy::too_many_arguments)]
         fn load<L: Loader>(
             compiler: &mut Compiler<L>,
             path: FilePath,
+            source_path: Option<FilePath>,
             source_span: Option<Span>,
             cache: &RefCell<IndexMap<FilePath, (Rc<lower::File>, Rc<ScopeValues>)>>,
             info: &mut expand::Info<L>,
+            progress: &mut impl FnMut(Progress),
+            count: Rc<Cell<usize>>,
         ) -> Option<(Rc<lower::File>, Rc<ScopeValues>)> {
+            count.set(count.get() + 1);
+            progress(Progress::Resolving { count: count.get() });
+
             if let Some(cached) = cache.borrow().get(&path) {
                 return Some(cached.clone());
             }
 
-            let code = match compiler.loader.load(path) {
+            let (path, code) = match compiler.loader.load(path, source_path) {
                 Ok(code) => code,
                 Err(error) => {
                     compiler.diagnostics.add(Diagnostic::error(
@@ -67,8 +80,18 @@ impl<L: Loader> Compiler<L> {
 
             let dependencies: RefCell<Vec<Rc<lower::File>>> = Default::default();
 
-            let (file, scope) = compiler.expand(file, info, |compiler, path, info| {
-                load(compiler, path, source_span, cache, info).map(|(file, scope)| {
+            let (file, scope) = compiler.expand(file, info, |compiler, new_path, info| {
+                load(
+                    compiler,
+                    new_path,
+                    Some(path),
+                    source_span,
+                    cache,
+                    info,
+                    progress,
+                    count.clone(),
+                )
+                .map(|(file, scope)| {
                     dependencies.borrow_mut().push(file);
                     scope
                 })
@@ -86,10 +109,17 @@ impl<L: Loader> Compiler<L> {
             )
         }
 
-        progress(Progress::Resolving);
-
         let cache = Default::default();
-        load(self, path, None, &cache, &mut expand::Info::default())?;
+        load(
+            self,
+            path,
+            None,
+            None,
+            &cache,
+            &mut expand::Info::default(),
+            &mut progress,
+            Default::default(),
+        )?;
 
         let lowered_files = cache
             .into_inner()

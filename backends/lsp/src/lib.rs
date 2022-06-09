@@ -226,20 +226,28 @@ fn build(path: &str, documents: &HashMap<String, RefCell<Document>>) -> Info {
     impl<'a> wipple_compiler::Loader for Loader<'a> {
         type Error = anyhow::Error;
 
-        fn load(&self, path: wipple_compiler::FilePath) -> Result<Cow<'static, str>, Self::Error> {
+        fn load(
+            &self,
+            path: wipple_compiler::FilePath,
+            current: Option<wipple_compiler::FilePath>,
+        ) -> Result<(wipple_compiler::FilePath, Cow<'static, str>), Self::Error> {
             match path {
-                wipple_compiler::FilePath::Path(path) => Ok(Cow::Owned(
-                    self.documents
-                        .get(path.as_str())
-                        .map(|document| document.borrow().contents.clone())
-                        .unwrap_or_default(),
+                wipple_compiler::FilePath::Path(path) => Ok((
+                    wipple_compiler::FilePath::Path(path),
+                    Cow::Owned(
+                        self.documents
+                            .get(path.as_str())
+                            .map(|document| document.borrow().contents.clone())
+                            .unwrap_or_default(),
+                    ),
                 )),
                 wipple_compiler::FilePath::Virtual(_) => {
                     Err(anyhow::Error::msg("virtual paths are not supported"))
                 }
-                wipple_compiler::FilePath::Prelude => {
-                    Ok(Cow::Borrowed(include_str!("../../../support/prelude.wpl")))
-                }
+                wipple_compiler::FilePath::Prelude => Ok((
+                    wipple_compiler::FilePath::Prelude,
+                    Cow::Borrowed(include_str!("../../../support/prelude.wpl")),
+                )),
                 _ => unimplemented!(),
             }
         }

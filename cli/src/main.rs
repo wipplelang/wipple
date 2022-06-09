@@ -6,7 +6,9 @@ use std::{
     os::unix::prelude::PermissionsExt,
     path::PathBuf,
     process,
+    str::FromStr,
 };
+use url::Url;
 
 #[derive(Parser)]
 #[clap(
@@ -116,26 +118,70 @@ pub struct BuildOptions {
 }
 
 pub fn build(options: BuildOptions) -> Option<wipple_compiler::optimize::Program> {
+    use wipple_compiler::{helpers::InternedString, FilePath};
+
     struct Loader {
-        base: PathBuf,
+        base: String,
     }
 
     impl wipple_compiler::Loader for Loader {
         type Error = anyhow::Error;
 
-        fn load(&self, path: wipple_compiler::FilePath) -> Result<Cow<'static, str>, Self::Error> {
+        fn load(
+            &self,
+            path: FilePath,
+            current: Option<FilePath>,
+        ) -> Result<(FilePath, Cow<'static, str>), Self::Error> {
             match path {
-                wipple_compiler::FilePath::Path(path) => {
-                    let path = self.base.join(path.as_str());
-                    let code = fs::read_to_string(path)?;
-                    Ok(Cow::Owned(code))
+                FilePath::Path(path) => {
+                    let (path, code) = match Url::from_str(&path) {
+                        Ok(url) => (FilePath::Path(path), download(url)?),
+                        Err(_) => {
+                            let base = match current {
+                                Some(FilePath::Path(path)) => path.as_str(),
+                                Some(_) => panic!("cannot load file from virtual path or prelude"),
+                                None => &self.base,
+                            };
+
+                            let parsed_path = PathBuf::from(path.as_str());
+
+                            if parsed_path.is_relative() {
+                                match Url::from_str(base) {
+                                    Ok(base) => {
+                                        let url = base.join(path.as_str())?;
+
+                                        (
+                                            FilePath::Path(InternedString::from(url.to_string())),
+                                            download(url)?,
+                                        )
+                                    }
+                                    Err(_) => {
+                                        let path = PathBuf::from(&self.base)
+                                            .parent()
+                                            .unwrap()
+                                            .join(parsed_path);
+
+                                        (
+                                            FilePath::Path(InternedString::new(
+                                                path.to_str().unwrap(),
+                                            )),
+                                            fs::read_to_string(path)?,
+                                        )
+                                    }
+                                }
+                            } else {
+                                (FilePath::Path(path), fs::read_to_string(parsed_path)?)
+                            }
+                        }
+                    };
+
+                    Ok((path, Cow::Owned(code)))
                 }
-                wipple_compiler::FilePath::Virtual(_) => {
-                    Err(anyhow::Error::msg("virtual paths are not supported"))
-                }
-                wipple_compiler::FilePath::Prelude => {
-                    Ok(Cow::Borrowed(include_str!("../../support/prelude.wpl")))
-                }
+                FilePath::Virtual(_) => Err(anyhow::Error::msg("virtual paths are not supported")),
+                FilePath::Prelude => Ok((
+                    FilePath::Prelude,
+                    Cow::Borrowed(include_str!("../../support/prelude.wpl")),
+                )),
                 _ => unimplemented!(),
             }
         }
@@ -154,7 +200,9 @@ pub fn build(options: BuildOptions) -> Option<wipple_compiler::optimize::Program
 
         if let Some(progress_bar) = progress_bar.as_ref() {
             match progress {
-                build::Progress::Resolving => progress_bar.set_message("Resolving file tree"),
+                build::Progress::Resolving { count } => {
+                    progress_bar.set_message(format!("Resolving {} files", count))
+                }
                 build::Progress::Lowering {
                     path,
                     current,
@@ -175,7 +223,7 @@ pub fn build(options: BuildOptions) -> Option<wipple_compiler::optimize::Program
     };
 
     let loader = Loader {
-        base: env::current_dir().unwrap(),
+        base: env::current_dir().unwrap().to_string_lossy().into_owned(),
     };
 
     let mut compiler = wipple_compiler::Compiler::new(loader);
@@ -215,6 +263,10 @@ pub fn build(options: BuildOptions) -> Option<wipple_compiler::optimize::Program
     }
 
     success.then(|| program).flatten()
+}
+
+fn download(url: Url) -> anyhow::Result<String> {
+    Ok(reqwest::blocking::get(url)?.text()?)
 }
 
 #[derive(ArgEnum, Clone, Copy, PartialEq, Eq)]

@@ -13,6 +13,8 @@ clap = { version = "3", features = ["derive"] }
 codemap = "=0.1.2"
 codemap-diagnostic = "0.1"
 indicatif = "0.16"
+url = "2"
+reqwest = { version = "0.11", features = ["blocking"] }
 wipple-bundled-backend = { path = "../backends/bundled/builder" }
 wipple-compiler = { path = "../compiler", features = ["clap"] }
 wipple-interpreter-backend = { path = "../backends/interpreter" }

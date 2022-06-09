@@ -13,7 +13,11 @@ use std::{borrow::Cow, fmt};
 pub trait Loader {
     type Error: fmt::Display;
 
-    fn load(&self, path: FilePath) -> Result<Cow<'static, str>, Self::Error>;
+    fn load(
+        &self,
+        path: FilePath,
+        current: Option<FilePath>,
+    ) -> Result<(FilePath, Cow<'static, str>), Self::Error>;
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]

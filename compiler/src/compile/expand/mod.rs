@@ -51,7 +51,7 @@ pub struct Node {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum NodeKind {
     Error,
-    Assignment,
+    Placeholder,
     Empty,
     Underscore,
     Name(InternedString),
@@ -80,13 +80,13 @@ impl<L> Compiler<L> {
         &mut self,
         file: parse::File,
         info: &mut Info<L>,
-        load: impl Fn(&mut Self, FilePath, &mut Info<L>) -> Option<Rc<ScopeValues>>,
+        mut load: impl FnMut(&mut Self, FilePath, &mut Info<L>) -> Option<Rc<ScopeValues>>,
     ) -> (File, ScopeValues) {
         let mut expander = Expander {
             compiler: self,
             info,
             dependencies: Default::default(),
-            load: &load,
+            load: &mut load,
         };
 
         let scope = Scope::default();
@@ -119,7 +119,7 @@ struct Expander<'a, L> {
     compiler: &'a mut Compiler<L>,
     info: &'a mut Info<L>,
     dependencies: Vec<Dependency>,
-    load: &'a dyn Fn(&mut Compiler<L>, FilePath, &mut Info<L>) -> Option<Rc<ScopeValues>>,
+    load: &'a mut dyn FnMut(&mut Compiler<L>, FilePath, &mut Info<L>) -> Option<Rc<ScopeValues>>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -325,7 +325,7 @@ impl<L> Expander<'_, L> {
                 let span = Span::join(exprs.first().unwrap().span, exprs.last().unwrap().span);
 
                 let node = self.expand_list(span, exprs, &scope);
-                (!matches!(node.kind, NodeKind::Assignment)).then(|| node)
+                (!matches!(node.kind, NodeKind::Placeholder)).then(|| node)
             })
             .collect();
 
