@@ -111,8 +111,8 @@ instance Default Text : ""
 instance Default Boolean : False
 
 Maybe : Value => type {
-	Some Value
 	None
+	Some Value
 }
 
 use Maybe
@@ -256,6 +256,23 @@ while : condition body ~> loop {
 }
 
 unless : condition body ~> while (not condition) body
+
+-- Lists --
+
+first :: A => List A -> Maybe A
+first : list -> external "builtin" "list-first" list
+
+last :: A => List A -> Maybe A
+last : list -> external "builtin" "list-last" list
+
+initial :: A => List A -> List A
+initial : list -> external "builtin" "list-initial" list
+
+tail :: A => List A -> List A
+tail : list -> external "builtin" "list-tail" list
+
+at :: A => Number -> List A -> Maybe A
+at : index -> list -> external "builtin" "list-at" list index
 
 -- Iterators --
 

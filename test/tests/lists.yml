@@ -1,0 +1,17 @@
+code: |
+    list : '(1 2 3)
+
+    show (list . first)
+    show (list . last)
+    show (list . initial . last)
+    show (list . tail . first)
+    show (list . at 1)
+
+output: |
+    Some 1
+    Some 3
+    Some 2
+    Some 2
+    Some 2
+
+diagnostics: |

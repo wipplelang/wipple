@@ -1,7 +1,7 @@
 use crate::*;
 use itertools::Itertools;
 use lazy_static::lazy_static;
-use num_traits::pow::Pow;
+use num_traits::{pow::Pow, ToPrimitive};
 use rust_decimal::MathematicalOps;
 use std::collections::HashMap;
 
@@ -67,6 +67,11 @@ lazy_static! {
             "floor" => builtin_floor,
             "ceil" => builtin_ceil,
             "sqrt" => builtin_sqrt,
+            "list-first" => builtin_list_first,
+            "list-last" => builtin_list_last,
+            "list-initial" => builtin_list_initial,
+            "list-tail" => builtin_list_tail,
+            "list-at" => builtin_list_at,
         }
     };
 }
@@ -400,4 +405,93 @@ fn builtin_loop(
             _ => unreachable!(),
         }
     })
+}
+
+fn builtin_list_first(
+    _: &Interpreter,
+    (list,): (Rc<Value>,),
+    _: &Info,
+) -> Result<Rc<Value>, Diverge> {
+    let list = match list.as_ref() {
+        Value::List(list) => list,
+        _ => unreachable!(),
+    };
+
+    Ok(Rc::new(match list.first() {
+        None => Value::Variant(0, Vec::new()),
+        Some(first) => Value::Variant(1, vec![first.clone()]),
+    }))
+}
+
+fn builtin_list_last(
+    _: &Interpreter,
+    (list,): (Rc<Value>,),
+    _: &Info,
+) -> Result<Rc<Value>, Diverge> {
+    let list = match list.as_ref() {
+        Value::List(list) => list,
+        _ => unreachable!(),
+    };
+
+    Ok(Rc::new(match list.last() {
+        None => Value::Variant(0, Vec::new()),
+        Some(first) => Value::Variant(1, vec![first.clone()]),
+    }))
+}
+
+fn builtin_list_initial(
+    _: &Interpreter,
+    (list,): (Rc<Value>,),
+    _: &Info,
+) -> Result<Rc<Value>, Diverge> {
+    let list = match list.as_ref() {
+        Value::List(list) => list,
+        _ => unreachable!(),
+    };
+
+    Ok(Rc::new(Value::List(list[0..(list.len() - 1)].to_vec())))
+}
+
+fn builtin_list_tail(
+    _: &Interpreter,
+    (list,): (Rc<Value>,),
+    _: &Info,
+) -> Result<Rc<Value>, Diverge> {
+    let list = match list.as_ref() {
+        Value::List(list) => list,
+        _ => unreachable!(),
+    };
+
+    Ok(Rc::new(Value::List(list[1..list.len()].to_vec())))
+}
+
+fn builtin_list_at(
+    _: &Interpreter,
+    (list, index): (Rc<Value>, Rc<Value>),
+    info: &Info,
+) -> Result<Rc<Value>, Diverge> {
+    let list = match list.as_ref() {
+        Value::List(list) => list,
+        _ => unreachable!(),
+    };
+
+    let index = match index.as_ref() {
+        Value::Number(number) => number,
+        _ => unreachable!(),
+    };
+
+    let index = match index.to_usize() {
+        Some(index) => index,
+        None => {
+            return Err(Diverge::new(
+                info.stack.clone(),
+                DivergeKind::Error(String::from("list index must be an integer")),
+            ))
+        }
+    };
+
+    Ok(Rc::new(match list.get(index) {
+        None => Value::Variant(0, Vec::new()),
+        Some(value) => Value::Variant(1, vec![value.clone()]),
+    }))
 }
