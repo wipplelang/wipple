@@ -332,19 +332,8 @@ impl<L> Compiler<L> {
         scope: &Scope,
         info: &mut Info,
     ) -> Option<Expression> {
-        let defined = |name| scope.values.borrow().contains_key(&name);
-
         match statement.kind {
             ast::StatementKind::Type((span, name), ty) => {
-                if defined(name) {
-                    self.diagnostics.add(Diagnostic::error(
-                        format!("`{name}` is already defined"),
-                        vec![Note::primary(span, "try assigning to a different name")],
-                    ));
-
-                    return Some(Expression::error(statement.span));
-                }
-
                 let id = self.new_type_id();
                 scope.values.borrow_mut().insert(name, ScopeValue::Type(id));
 
@@ -525,16 +514,7 @@ impl<L> Compiler<L> {
 
                 None
             }
-            ast::StatementKind::Trait((span, name), declaration) => {
-                if defined(name) {
-                    self.diagnostics.add(Diagnostic::error(
-                        format!("`{name}` is already defined"),
-                        vec![Note::primary(span, "try assigning to a different name")],
-                    ));
-
-                    return Some(Expression::error(statement.span));
-                }
-
+            ast::StatementKind::Trait((_span, name), declaration) => {
                 let tr = {
                     let scope = scope.child();
 
@@ -563,16 +543,7 @@ impl<L> Compiler<L> {
 
                 None
             }
-            ast::StatementKind::Constant((span, name), declaration) => {
-                if defined(name) {
-                    self.diagnostics.add(Diagnostic::error(
-                        format!("`{name}` is already defined"),
-                        vec![Note::primary(span, "try assigning to a different name")],
-                    ));
-
-                    return Some(Expression::error(statement.span));
-                }
-
+            ast::StatementKind::Constant((_span, name), declaration) => {
                 let constant = {
                     let scope = scope.child();
 
@@ -773,50 +744,32 @@ impl<L> Compiler<L> {
                     ast::PatternKind::Name(name) => {
                         let mut associated_constant = None;
 
-                        match scope.values.borrow().get(name).cloned() {
-                            Some(
-                                ScopeValue::Type(_)
-                                | ScopeValue::BuiltinType(_)
-                                | ScopeValue::Trait(_)
-                                | ScopeValue::TypeParameter(_)
-                                | ScopeValue::Operator(_),
-                            ) => {
+                        if let Some(ScopeValue::Constant(id, _)) =
+                            scope.values.borrow().get(name).cloned()
+                        {
+                            let decl = info.declarations.constants.get(&id).unwrap();
+                            let (parameters, c) =
+                                (decl.value.parameters.clone(), decl.value.value.clone());
+
+                            if let Some(associated_constant) = c.borrow().as_ref() {
                                 self.diagnostics.add(Diagnostic::error(
-                                    format!("`{name}` is already defined"),
-                                    vec![Note::primary(
-                                        statement.span,
-                                        "try assigning to a different name",
-                                    )],
+                                    format!("constant `{name}` is already defined"),
+                                    vec![
+                                        Note::primary(
+                                            statement.span,
+                                            "cannot assign to a constant more than once",
+                                        ),
+                                        Note::secondary(
+                                            associated_constant.span,
+                                            "first initialization",
+                                        ),
+                                    ],
                                 ));
 
                                 return Some(Expression::error(statement.span));
                             }
-                            Some(ScopeValue::Constant(id, _)) => {
-                                let decl = info.declarations.constants.get(&id).unwrap();
-                                let (parameters, c) =
-                                    (decl.value.parameters.clone(), decl.value.value.clone());
 
-                                if let Some(associated_constant) = c.borrow().as_ref() {
-                                    self.diagnostics.add(Diagnostic::error(
-                                        format!("constant `{name}` is already defined"),
-                                        vec![
-                                            Note::primary(
-                                                statement.span,
-                                                "cannot assign to a constant more than once",
-                                            ),
-                                            Note::secondary(
-                                                associated_constant.span,
-                                                "first initialization",
-                                            ),
-                                        ],
-                                    ));
-
-                                    return Some(Expression::error(statement.span));
-                                }
-
-                                associated_constant = Some((parameters, c));
-                            }
-                            Some(ScopeValue::Variable(_)) | None => {}
+                            associated_constant = Some((parameters, c));
                         }
 
                         if let Some((associated_parameters, associated_constant)) =

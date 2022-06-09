@@ -214,14 +214,20 @@ fn run(
     impl wipple_compiler::Loader for Loader {
         type Error = anyhow::Error;
 
-        fn load(&self, path: wipple_compiler::FilePath) -> Result<Cow<'static, str>, Self::Error> {
+        fn load(
+            &self,
+            path: wipple_compiler::FilePath,
+            _: Option<wipple_compiler::FilePath>,
+        ) -> Result<(wipple_compiler::FilePath, Cow<'static, str>), Self::Error> {
             match path {
-                wipple_compiler::FilePath::Virtual(path) if path.as_str() == "test" => {
-                    Ok(Cow::Owned(self.code.clone()))
-                }
-                wipple_compiler::FilePath::Prelude => {
-                    Ok(Cow::Borrowed(include_str!("../../support/prelude.wpl")))
-                }
+                wipple_compiler::FilePath::Virtual(path) if path.as_str() == "test" => Ok((
+                    wipple_compiler::FilePath::Virtual(path),
+                    Cow::Owned(self.code.clone()),
+                )),
+                wipple_compiler::FilePath::Prelude => Ok((
+                    wipple_compiler::FilePath::Prelude,
+                    Cow::Borrowed(include_str!("../../support/prelude.wpl")),
+                )),
                 _ => unimplemented!(),
             }
         }
@@ -255,11 +261,11 @@ fn run(
             if let Some(program) = program {
                 let interpreter =
                     wipple_interpreter_backend::Interpreter::handling_output(|text| {
-                        writeln!(buf.borrow_mut(), "{}", text).unwrap()
+                        write!(buf.borrow_mut(), "{}", text).unwrap()
                     });
 
                 if let Err((error, _)) = interpreter.eval(program) {
-                    writeln!(buf.borrow_mut(), "fatal error: {}", error)?;
+                    write!(buf.borrow_mut(), "fatal error: {}", error)?;
                 }
             }
         }

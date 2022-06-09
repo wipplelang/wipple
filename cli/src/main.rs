@@ -1,4 +1,4 @@
-use clap::{ArgEnum, Parser};
+use clap::Parser;
 use std::{
     borrow::Cow,
     env, fs,
@@ -21,13 +21,6 @@ enum Args {
         #[clap(flatten)]
         options: BuildOptions,
     },
-    Build {
-        #[clap(flatten)]
-        options: BuildOptions,
-
-        #[clap(arg_enum, long)]
-        target: BuildTarget,
-    },
     Bundle {
         #[clap(flatten)]
         options: BuildOptions,
@@ -38,7 +31,6 @@ enum Args {
         #[clap(long)]
         runner: PathBuf,
     },
-    Lsp,
 }
 
 fn main() -> anyhow::Result<()> {
@@ -59,16 +51,6 @@ fn main() -> anyhow::Result<()> {
             if let Err((error, _)) = interpreter.eval(program) {
                 eprintln!("fatal error: {}", error);
             }
-        }
-        Args::Build { options, target } => {
-            let program = match build(options) {
-                Some(program) => program,
-                None => process::exit(1),
-            };
-
-            let code = codegen(program, target);
-
-            print!("{}", code);
         }
         Args::Bundle {
             options,
@@ -98,7 +80,6 @@ fn main() -> anyhow::Result<()> {
                 Ok(())
             })?;
         }
-        Args::Lsp => wipple_lsp_backend::start()?,
     }
 
     Ok(())
@@ -267,15 +248,4 @@ pub fn build(options: BuildOptions) -> Option<wipple_compiler::optimize::Program
 
 fn download(url: Url) -> anyhow::Result<String> {
     Ok(reqwest::blocking::get(url)?.text()?)
-}
-
-#[derive(ArgEnum, Clone, Copy, PartialEq, Eq)]
-enum BuildTarget {
-    Node,
-}
-
-fn codegen(program: wipple_compiler::optimize::Program, target: BuildTarget) -> String {
-    match target {
-        BuildTarget::Node => wipple_node_backend::compile(program),
-    }
 }

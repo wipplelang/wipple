@@ -58,10 +58,8 @@ lazy_static! {
             "multiply" => builtin_multiply,
             "divide" => builtin_divide,
             "power" => builtin_power,
-            "number-equality" => builtin_number_equality,
             "text-equality" => builtin_text_equality,
-            "number-less-than" => builtin_number_less_than,
-            "number-greater-than" => builtin_number_greater_than,
+            "number-ordering" => builtin_number_ordering,
             "make-mutable" => builtin_make_mutable,
             "get-mutable" => builtin_get_mutable,
             "set-mutable" => builtin_set_mutable,
@@ -296,26 +294,6 @@ fn builtin_sqrt(
     Ok(Rc::new(Value::Number(sqrt)))
 }
 
-fn builtin_number_equality(
-    _: &Interpreter,
-    (lhs, rhs): (Rc<Value>, Rc<Value>),
-    _: &Info,
-) -> Result<Rc<Value>, Diverge> {
-    let lhs = match lhs.as_ref() {
-        Value::Number(number) => number,
-        _ => unreachable!(),
-    };
-
-    let rhs = match rhs.as_ref() {
-        Value::Number(number) => number,
-        _ => unreachable!(),
-    };
-
-    let index = if lhs == rhs { 1 } else { 0 };
-
-    Ok(Rc::new(Value::Variant(index, Vec::new())))
-}
-
 fn builtin_text_equality(
     _: &Interpreter,
     (lhs, rhs): (Rc<Value>, Rc<Value>),
@@ -336,7 +314,7 @@ fn builtin_text_equality(
     Ok(Rc::new(Value::Variant(index, Vec::new())))
 }
 
-fn builtin_number_less_than(
+fn builtin_number_ordering(
     _: &Interpreter,
     (lhs, rhs): (Rc<Value>, Rc<Value>),
     _: &Info,
@@ -351,27 +329,11 @@ fn builtin_number_less_than(
         _ => unreachable!(),
     };
 
-    let index = if lhs < rhs { 1 } else { 0 };
-
-    Ok(Rc::new(Value::Variant(index, Vec::new())))
-}
-
-fn builtin_number_greater_than(
-    _: &Interpreter,
-    (lhs, rhs): (Rc<Value>, Rc<Value>),
-    _: &Info,
-) -> Result<Rc<Value>, Diverge> {
-    let lhs = match lhs.as_ref() {
-        Value::Number(number) => number,
-        _ => unreachable!(),
+    let index = match lhs.cmp(rhs) {
+        std::cmp::Ordering::Less => 0,
+        std::cmp::Ordering::Equal => 1,
+        std::cmp::Ordering::Greater => 2,
     };
-
-    let rhs = match rhs.as_ref() {
-        Value::Number(number) => number,
-        _ => unreachable!(),
-    };
-
-    let index = if lhs > rhs { 1 } else { 0 };
 
     Ok(Rc::new(Value::Variant(index, Vec::new())))
 }
