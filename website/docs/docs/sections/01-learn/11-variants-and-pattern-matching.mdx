@@ -1,0 +1,85 @@
+## Variants and pattern matching
+
+In the last section, we learned how to use the `if` function to make a choice in our program. Now, we'll take a look at the `when` function, which is like a more powerful version of `if`!
+
+`when` allows you to make a choice out of many possibilities at once. For example, let's say we have a number we want to describe:
+
+```wipple
+describe : n -> when n {
+    1 -> "one"
+    2 -> "two"
+    3 -> "three"
+    _ -> "number must be between 1 and 3"
+}
+
+show (describe 2)
+```
+
+As you can see, `when` accepts an input and a bunch of functions to choose from. On the left-hand side of the `->`, we provide a number, and on the right-hand side, a value that `when` will pick if the input matches the number. This concept is aptly called "pattern matching"!
+
+You can also use pattern matching on text:
+
+```wipple
+report-card : grade -> when grade {
+    "A" -> "top of the class"
+    "B" -> "good work"
+    "C" -> "getting there"
+    _ -> "need to study"
+}
+
+show (report-card "A")
+```
+
+Pattern matching on text is common in other languages where the text is used to represent the type of data we're dealing with. But what happens if we provide a piece of text we don't know how to deal with?
+
+```wipple
+show (report-card "E")
+```
+
+Here, providing a grade of "E" gives us "need to study", but "E" isn't a grade! In most languages, you would crash the program when receiving an input you don't know how to deal with:
+
+```wipple
+report-card : grade -> when grade {
+    "A" -> "top of the class"
+    "B" -> "good work"
+    "C" -> "getting there"
+    "D" or "F" -> "need to study"
+    _ -> crash "invalid grade"
+}
+```
+
+In Wipple, we can do better. Wipple's type system allows us to define a fixed set of possibilities using a `type`!
+
+```wipple
+Grade : type {
+    A
+    B
+    C
+    D
+    F
+}
+
+report-card : grade -> when grade {
+    Grade A -> "top of the class"
+    Grade B -> "good work"
+    Grade C -> "getting there"
+    Grade D or Grade F -> "need to study"
+}
+```
+
+Hover over `report-card`, and you'll notice it now has a type of `Grade -> Text`. Now, it's impossible to provide a `Grade E` — try it!
+
+```wipple
+show (report-card (Grade E))
+```
+
+By the way, if you want to avoid writing `Grade` every time, you can write `use Grade` and then refer to `A` through `F` directly:
+
+```wipple
+use Grade
+show (report-card A)
+```
+
+Types that provide a fixed set of possibilities are called **enumerations** (or "enums" for short), and each possibility is called a **variant**. Try making some of your own enums!
+
+Wipple's enums have one more trick up their sleeve... go to the next section when you're ready!

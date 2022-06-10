@@ -29,6 +29,10 @@
       path: 01-learn/09-traits
     - title: Logic
       path: 01-learn/10-logic
+    - title: Variants and pattern matching
+      path: 01-learn/11-variants-and-pattern-matching
+    - title: Maybe and Result
+      path: 01-learn/12-maybe-and-result
 
 - title: Quick Start
   path: 02-quick-start
