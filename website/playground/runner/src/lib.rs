@@ -107,12 +107,8 @@ impl<'a> wipple_compiler::Loader for Loader<'a> {
     fn load(
         &self,
         path: wipple_compiler::FilePath,
-        current: Option<wipple_compiler::FilePath>,
+        _current: Option<wipple_compiler::FilePath>,
     ) -> Result<(wipple_compiler::FilePath, Cow<'static, str>), Self::Error> {
-        if current.is_some() {
-            unimplemented!();
-        }
-
         match path {
             wipple_compiler::FilePath::Path(_) => {
                 Err("imports are not supported in the playground")
