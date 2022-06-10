@@ -44,6 +44,7 @@ pub enum ExpressionKind {
     Structure(Vec<Expression>),
     Variant(usize, Vec<Expression>),
     ListLiteral(Vec<Expression>),
+    Return(Box<Expression>),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -141,6 +142,9 @@ impl From<compile::Expression> for Expression {
                     ExpressionKind::ListLiteral(values.into_iter().map(From::from).collect())
                 }
                 compile::ExpressionKind::Constant(constant) => ExpressionKind::Constant(constant),
+                compile::ExpressionKind::Return(value) => {
+                    ExpressionKind::Return(Box::new((*value).into()))
+                }
             },
         }
     }
@@ -237,6 +241,9 @@ impl Expression {
                 for value in values {
                     value.traverse_inner(f);
                 }
+            }
+            ExpressionKind::Return(value) => {
+                value.traverse_inner(f);
             }
             _ => {}
         }

@@ -73,6 +73,7 @@ pub enum NodeKind {
     ListLiteral(Vec<Node>),
     Use(Box<Node>),
     When(Box<Node>, Vec<Node>),
+    Return(Box<Node>),
 }
 
 impl<L> Compiler<L> {

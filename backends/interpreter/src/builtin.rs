@@ -72,8 +72,35 @@ lazy_static! {
             "list-initial" => builtin_list_initial,
             "list-tail" => builtin_list_tail,
             "list-at" => builtin_list_at,
+            "list-append" => builtin_list_append,
+            "list-insert" => builtin_list_insert,
+            "list-remove" => builtin_list_remove,
         }
     };
+}
+
+fn r#false() -> Rc<Value> {
+    Rc::new(Value::Variant(0, Vec::new()))
+}
+
+fn r#true() -> Rc<Value> {
+    Rc::new(Value::Variant(1, Vec::new()))
+}
+
+fn none() -> Rc<Value> {
+    Rc::new(Value::Variant(0, Vec::new()))
+}
+
+fn some(value: Rc<Value>) -> Rc<Value> {
+    Rc::new(Value::Variant(1, vec![value]))
+}
+
+fn ok(value: Rc<Value>) -> Rc<Value> {
+    Rc::new(Value::Variant(0, vec![value]))
+}
+
+fn error(value: Rc<Value>) -> Rc<Value> {
+    Rc::new(Value::Variant(1, vec![value]))
 }
 
 fn builtin_crash(
@@ -314,9 +341,7 @@ fn builtin_text_equality(
         _ => unreachable!(),
     };
 
-    let index = if lhs == rhs { 1 } else { 0 };
-
-    Ok(Rc::new(Value::Variant(index, Vec::new())))
+    Ok(if lhs == rhs { r#true() } else { r#false() })
 }
 
 fn builtin_number_ordering(
@@ -417,10 +442,10 @@ fn builtin_list_first(
         _ => unreachable!(),
     };
 
-    Ok(Rc::new(match list.first() {
-        None => Value::Variant(0, Vec::new()),
-        Some(first) => Value::Variant(1, vec![first.clone()]),
-    }))
+    Ok(match list.first() {
+        None => none(),
+        Some(first) => some(first.clone()),
+    })
 }
 
 fn builtin_list_last(
@@ -433,10 +458,10 @@ fn builtin_list_last(
         _ => unreachable!(),
     };
 
-    Ok(Rc::new(match list.last() {
-        None => Value::Variant(0, Vec::new()),
-        Some(first) => Value::Variant(1, vec![first.clone()]),
-    }))
+    Ok(match list.last() {
+        None => none(),
+        Some(last) => some(last.clone()),
+    })
 }
 
 fn builtin_list_initial(
@@ -468,7 +493,7 @@ fn builtin_list_tail(
 fn builtin_list_at(
     _: &Interpreter,
     (list, index): (Rc<Value>, Rc<Value>),
-    info: &Info,
+    _: &Info,
 ) -> Result<Rc<Value>, Diverge> {
     let list = match list.as_ref() {
         Value::List(list) => list,
@@ -482,16 +507,74 @@ fn builtin_list_at(
 
     let index = match index.to_usize() {
         Some(index) => index,
-        None => {
-            return Err(Diverge::new(
-                info.stack.clone(),
-                DivergeKind::Error(String::from("list index must be an integer")),
-            ))
-        }
+        None => return Ok(error(Rc::new(Value::Marker))),
     };
 
-    Ok(Rc::new(match list.get(index) {
-        None => Value::Variant(0, Vec::new()),
-        Some(value) => Value::Variant(1, vec![value.clone()]),
-    }))
+    Ok(match list.get(index) {
+        Some(value) => ok(value.clone()),
+        None => error(Rc::new(Value::Marker)),
+    })
+}
+
+fn builtin_list_append(
+    _: &Interpreter,
+    (list, value): (Rc<Value>, Rc<Value>),
+    _: &Info,
+) -> Result<Rc<Value>, Diverge> {
+    let mut list = match list.as_ref() {
+        Value::List(list) => list.clone(),
+        _ => unreachable!(),
+    };
+
+    list.push(value);
+
+    Ok(Rc::new(Value::List(list)))
+}
+
+fn builtin_list_insert(
+    _: &Interpreter,
+    (list, index, value): (Rc<Value>, Rc<Value>, Rc<Value>),
+    _: &Info,
+) -> Result<Rc<Value>, Diverge> {
+    let mut list = match list.as_ref() {
+        Value::List(list) => list.clone(),
+        _ => unreachable!(),
+    };
+
+    let index = match index.as_ref() {
+        Value::Number(number) => number,
+        _ => unreachable!(),
+    };
+
+    let index = match index.to_usize() {
+        Some(index) if !(0..list.len()).contains(&index) => index,
+        _ => return Ok(error(Rc::new(Value::Marker))),
+    };
+
+    list.insert(index, value);
+
+    Ok(ok(Rc::new(Value::List(list))))
+}
+
+fn builtin_list_remove(
+    _: &Interpreter,
+    (list, index): (Rc<Value>, Rc<Value>),
+    _: &Info,
+) -> Result<Rc<Value>, Diverge> {
+    let mut list = match list.as_ref() {
+        Value::List(list) => list.clone(),
+        _ => unreachable!(),
+    };
+
+    let index = match index.as_ref() {
+        Value::Number(number) => number,
+        _ => unreachable!(),
+    };
+
+    let index = match index.to_usize() {
+        Some(index) if !(0..list.len()).contains(&index) => index,
+        _ => return Ok(error(Rc::new(Value::Marker))),
+    };
+
+    Ok(ok(list.remove(index)))
 }

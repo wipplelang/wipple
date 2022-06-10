@@ -12,6 +12,6 @@ output: |
     Some 3
     Some 2
     Some 2
-    Some 2
+    OK 2
 
 diagnostics: |

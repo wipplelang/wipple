@@ -129,6 +129,24 @@ Result : Success Failure => type {
 
 use Result
 
+Try : Value Success Failure => trait (Value -> Result Success Failure)
+
+None-Error : type
+
+instance Show None-Error : just "found `None`"
+
+A => instance Try (Maybe A) A None-Error : x? -> when x? {
+	Some x -> OK x
+	None -> Error None-Error
+}
+
+Success Failure => instance Try (Result Success Failure) Success Failure : it
+
+try : x? ~> when (Try x?) {
+	OK x -> x
+	Error e -> return (Error e)
+}
+
 Success Failure where (Show Success) (Show Failure) =>
 	instance Show (Result Success Failure) :
 		x? -> when x? {
@@ -235,15 +253,11 @@ Control-Flow : A => type {
 
 use Control-Flow
 
--- [private]
-loop-impl :: A => (() -> Control-Flow A) -> A
-loop-impl : f -> external "builtin" "loop" f
-
-loop : body ~> loop-impl (() -> body)
+loop : body ~> external "builtin" "loop" (() -> (body :: Control-Flow _))
 
 forever : body ~> loop {
 	body :: ()
-	Control-Flow Continue :: Control-Flow !
+	Continue :: Control-Flow !
 }
 
 while : condition body ~> loop {
@@ -271,8 +285,38 @@ initial : list -> external "builtin" "list-initial" list
 tail :: A => List A -> List A
 tail : list -> external "builtin" "list-tail" list
 
-at :: A => Number -> List A -> Maybe A
+Index-Error : type
+
+instance Show Index-Error : just "invalid index"
+
+at :: A => Number -> List A -> Result A Index-Error
 at : index -> list -> external "builtin" "list-at" list index
+
+append :: A => A -> List A -> List A
+append : new -> list -> external "builtin" "list-append" list new
+
+append! :: A => A -> Mutable (List A) -> ()
+append! : new -> list -> list . set! (list . get . append new)
+
+insert :: A => Number -> A -> List A -> Result (List A) Index-Error
+insert : index -> new -> list -> external "builtin" "list-insert" list index new
+
+insert! :: A => Number -> A -> Mutable (List A) -> Result () Index-Error
+insert! : index -> new -> list -> {
+	new-list : try (list . get . insert index new)
+	list . set! new-list
+	OK ()
+}
+
+remove :: A => Number -> List A -> Result (List A) Index-Error
+remove : index -> list -> external "builtin" "list-remove" list index
+
+remove! :: A => Number -> Mutable (List A) -> Result () Index-Error
+remove! : index -> list -> {
+	new-list : try (list . get . remove index)
+	list . set! new-list
+	OK ()
+}
 
 -- Iterators --
 

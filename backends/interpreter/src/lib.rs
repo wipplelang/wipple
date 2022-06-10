@@ -44,6 +44,7 @@ struct Diverge {
 #[derive(Debug)]
 enum DivergeKind {
     Error(String),
+    Return(Rc<Value>),
 }
 
 type Error = String;
@@ -86,7 +87,7 @@ impl<'a> Interpreter<'a> {
             self.eval_expr(&statement, &mut info)
                 .map_err(|diverge| match diverge.kind {
                     DivergeKind::Error(error) => (error, diverge.stack),
-                    /* _ => unreachable!(), */
+                    _ => unreachable!(),
                 })?;
         }
 
@@ -274,6 +275,10 @@ impl<'a> Interpreter<'a> {
                     .map(|expr| self.eval_expr(expr, info))
                     .collect::<Result<_, _>>()?,
             )),
+            ExpressionKind::Return(value) => {
+                let value = self.eval_expr(value, info)?;
+                return Err(Diverge::new(info.stack.clone(), DivergeKind::Return(value)));
+            }
         };
 
         info.stack.pop();
@@ -296,10 +301,10 @@ impl<'a> Interpreter<'a> {
 
         let value = match self.eval_expr(body, info) {
             Ok(value)
-            /* | Err(Diverge {
+            | Err(Diverge {
                 kind: DivergeKind::Return(value),
                 ..
-            }) */ => value,
+            }) => value,
             diverge => return diverge,
         };
 

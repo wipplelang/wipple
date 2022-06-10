@@ -65,6 +65,9 @@ macro_rules! traverse_impl {
                     item.$traverse(f);
                 }
             }
+            Return(value) => {
+                value.$traverse(f);
+            }
             _ => {}
         }
     }};

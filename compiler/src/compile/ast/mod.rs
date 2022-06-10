@@ -67,6 +67,7 @@ pub enum ExpressionKind {
     External(InternedString, InternedString, Vec<Expression>),
     Annotate(Box<Expression>, TypeAnnotation),
     ListLiteral(Vec<Expression>),
+    Return(Box<Expression>),
 }
 
 #[derive(Debug, Clone)]
@@ -563,6 +564,9 @@ impl<L> Compiler<L> {
                         .collect();
 
                     ExpressionKind::When(Box::new(input), arms)
+                }
+                NodeKind::Return(value) => {
+                    ExpressionKind::Return(Box::new(self.build_expression(*value)))
                 }
                 _ => {
                     self.diagnostics.add(Diagnostic::error(

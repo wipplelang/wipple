@@ -57,6 +57,7 @@ macro_rules! expr {
                 Structure(Vec<[<$prefix Expression>]>),
                 Variant(usize, Vec<[<$prefix Expression>]>),
                 ListLiteral(Vec<[<$prefix Expression>]>),
+                Return(Box<[<$prefix Expression>]>),
                 $($kinds)*
             }
 
@@ -185,6 +186,7 @@ impl<L> Compiler<L> {
             well_typed: true,
             ctx: Default::default(),
             variables: Default::default(),
+            return_tys: Default::default(),
             traits: Default::default(),
             types: Default::default(),
             generic_constants: Default::default(),
@@ -749,6 +751,7 @@ struct Typechecker<'a, L> {
     well_typed: bool,
     ctx: Context,
     variables: BTreeMap<VariableId, UnresolvedType>,
+    return_tys: Vec<Option<UnresolvedType>>,
     traits: BTreeMap<TraitId, TraitDefinition>,
     types: BTreeMap<TypeId, TypeDefinition>,
     generic_constants: BTreeMap<GenericConstantId, Constant<lower::Expression, UnresolvedType>>,
@@ -865,13 +868,30 @@ impl<'a, L> Typechecker<'a, L> {
             }
             lower::ExpressionKind::Function(pattern, body) => {
                 let pattern = self.convert_pattern(pattern);
+
+                self.return_tys.push(None);
+
                 let body = self.typecheck_expr(body, file, suppress_errors);
+
+                let return_ty = self
+                    .return_tys
+                    .pop()
+                    .unwrap()
+                    .unwrap_or_else(|| UnresolvedType::Variable(self.ctx.new_variable()));
+
+                if let Err(errors) = self.ctx.unify(body.ty.clone(), return_ty.clone()) {
+                    if !suppress_errors {
+                        self.report_type_error(errors, expr.span);
+                    }
+
+                    return UnresolvedExpression::error(expr.span);
+                };
 
                 UnresolvedExpression {
                     span: expr.span,
                     ty: UnresolvedType::Function(
                         Box::new(UnresolvedType::Variable(self.ctx.new_variable())),
-                        Box::new(body.ty.clone()),
+                        Box::new(return_ty),
                     ),
                     kind: UnresolvedExpressionKind::Function(pattern, Box::new(body)),
                 }
@@ -1137,6 +1157,42 @@ impl<'a, L> Typechecker<'a, L> {
                     kind: UnresolvedExpressionKind::Variant(*index, values),
                 }
             }
+            lower::ExpressionKind::Return(value) => {
+                let value = self.typecheck_expr(value, file, suppress_errors);
+
+                let return_ty = match self.return_tys.last_mut() {
+                    Some(ty) => ty,
+                    None => {
+                        self.compiler.diagnostics.add(Diagnostic::error(
+                            "cannot use `return` outside a function",
+                            vec![Note::primary(
+                                expr.span,
+                                "try using the value directly instead",
+                            )],
+                        ));
+
+                        return UnresolvedExpression::error(expr.span);
+                    }
+                };
+
+                if let Some(return_ty) = return_ty {
+                    if let Err(errors) = self.ctx.unify(return_ty.clone(), value.ty.clone()) {
+                        if !suppress_errors {
+                            self.report_type_error(errors, expr.span);
+                        }
+
+                        return UnresolvedExpression::error(expr.span);
+                    }
+                } else {
+                    *return_ty = Some(value.ty.clone());
+                }
+
+                UnresolvedExpression {
+                    span: expr.span,
+                    ty: UnresolvedType::Bottom(BottomTypeReason::Annotated),
+                    kind: UnresolvedExpressionKind::Return(Box::new(value)),
+                }
+            }
         }
     }
 
@@ -1248,7 +1304,7 @@ impl<'a, L> Typechecker<'a, L> {
             UnresolvedPatternKind::Unit => {
                 if let Err(error) = self
                     .ctx
-                    .unify(UnresolvedType::Builtin(BuiltinType::Unit), ty)
+                    .unify(ty, UnresolvedType::Builtin(BuiltinType::Unit))
                 {
                     self.report_type_error(error, pattern.span);
                 }
@@ -1382,6 +1438,7 @@ impl<'a, L> Typechecker<'a, L> {
                 }
 
                 if let Err(error) = self.ctx.unify(
+                    ty,
                     UnresolvedType::Named(
                         variant_ty,
                         enumeration
@@ -1390,7 +1447,6 @@ impl<'a, L> Typechecker<'a, L> {
                             .map(|param| substitutions.get(param).unwrap().clone())
                             .collect(),
                     ),
-                    ty,
                 ) {
                     self.report_type_error(error, pattern.span);
                 }
@@ -1409,7 +1465,7 @@ impl<'a, L> Typechecker<'a, L> {
                 Some(pattern)
             }
             UnresolvedPatternKind::Annotate(inner, inner_ty) => {
-                if let Err(error) = self.ctx.unify(inner_ty, ty.clone()) {
+                if let Err(error) = self.ctx.unify(ty.clone(), inner_ty) {
                     self.report_type_error(error, pattern.span);
                 }
 
@@ -1464,7 +1520,7 @@ impl<'a, L> Typechecker<'a, L> {
                             .expect("uninitialized variable")
                             .clone();
 
-                        if let Err(error) = self.ctx.unify(ty, expr.ty) {
+                        if let Err(error) = self.ctx.unify(expr.ty, ty) {
                             self.report_type_error(error, expr.span);
                         }
 
@@ -1580,6 +1636,9 @@ impl<'a, L> Typechecker<'a, L> {
                                 .collect::<Result<_, _>>()?,
                         )
                     }
+                    UnresolvedExpressionKind::Return(value) => MonomorphizedExpressionKind::Return(
+                        Box::new(self.monomorphize(*value, file, inside_generic_constant)?),
+                    ),
                 })
             })()?,
         })
@@ -1698,6 +1757,9 @@ impl<'a, L> Typechecker<'a, L> {
                         .map(|expr| self.finalize_internal(expr, generic, file))
                         .collect::<Result<_, _>>()?,
                 ),
+                MonomorphizedExpressionKind::Return(value) => {
+                    ExpressionKind::Return(Box::new(self.finalize_internal(*value, generic, file)?))
+                }
             },
         })
     }

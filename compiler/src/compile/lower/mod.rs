@@ -127,6 +127,7 @@ pub enum ExpressionKind {
     Instantiate(TypeId, Vec<(InternedString, Expression)>),
     ListLiteral(Vec<Expression>),
     Variant(TypeId, usize, Vec<Expression>),
+    Return(Box<Expression>),
 }
 
 impl Expression {
@@ -1078,6 +1079,9 @@ impl<L> Compiler<L> {
                     .map(|expr| self.lower_expr(expr, scope, info))
                     .collect(),
             ),
+            ast::ExpressionKind::Return(value) => {
+                ExpressionKind::Return(Box::new(self.lower_expr(*value, scope, info)))
+            }
         };
 
         Expression {

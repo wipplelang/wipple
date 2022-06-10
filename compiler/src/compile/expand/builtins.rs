@@ -716,4 +716,37 @@ pub(super) fn load_builtins<L>(expander: &mut Expander<L>, scope: &Scope) {
             }
         }),
     );
+
+    // `return` template
+
+    let id = expander.compiler.new_template_id();
+
+    scope_values.insert(InternedString::new("return"), ScopeValue::Template(id));
+
+    expander.info.templates.insert(
+        id,
+        Template::function(builtin_span, |expander, span, mut inputs, _| {
+            if inputs.len() != 1 {
+                expander.compiler.diagnostics.add(Diagnostic::error(
+                    "expected 1 inputs to template `return`",
+                    vec![Note::primary(
+                        span,
+                        "`return` accepts a value to exit a function early with",
+                    )],
+                ));
+
+                return Node {
+                    span,
+                    kind: NodeKind::Error,
+                };
+            }
+
+            let value = inputs.pop().unwrap();
+
+            Node {
+                span,
+                kind: NodeKind::Return(Box::new(value)),
+            }
+        }),
+    );
 }
