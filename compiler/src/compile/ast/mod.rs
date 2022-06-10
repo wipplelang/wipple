@@ -109,6 +109,8 @@ pub enum PatternKind {
     Error,
     Wildcard,
     Unit,
+    Number(Decimal),
+    Text(InternedString),
     Name(InternedString),
     Destructure(Vec<(Span, InternedString)>),
     Variant((Span, InternedString), Vec<Pattern>),
@@ -670,6 +672,8 @@ impl<L> Compiler<L> {
                     PatternKind::Variant((name_span, name), rest)
                 }
                 NodeKind::Empty => PatternKind::Unit,
+                NodeKind::Number(number) => PatternKind::Number(number),
+                NodeKind::Text(text) => PatternKind::Text(text),
                 NodeKind::Annotate(node, ty) => {
                     let inner = self.build_pattern(*node);
                     let ty = self.build_type_annotation(*ty);

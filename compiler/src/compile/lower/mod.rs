@@ -157,6 +157,8 @@ pub enum PatternKind {
     Error,
     Wildcard,
     Unit,
+    Number(Decimal),
+    Text(InternedString),
     Variable(VariableId),
     Destructure(HashMap<InternedString, Pattern>),
     Variant(TypeId, usize, Vec<Pattern>),
@@ -1154,6 +1156,8 @@ impl<L> Compiler<L> {
             ast::PatternKind::Error => PatternKind::Error,
             ast::PatternKind::Wildcard => PatternKind::Wildcard,
             ast::PatternKind::Unit => PatternKind::Unit,
+            ast::PatternKind::Number(number) => PatternKind::Number(number),
+            ast::PatternKind::Text(text) => PatternKind::Text(text),
             ast::PatternKind::Name(name) => match scope.get(name) {
                 Some(ScopeValue::Constant(_, Some((ty, variant)))) => {
                     PatternKind::Variant(ty, variant, Vec::new())

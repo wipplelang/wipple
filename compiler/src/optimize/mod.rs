@@ -56,6 +56,8 @@ pub struct Pattern {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum PatternKind {
     Wildcard,
+    Number(Decimal),
+    Text(InternedString),
     Variable(VariableId),
     Destructure(BTreeMap<usize, Pattern>),
     Variant(usize, Vec<Pattern>),
@@ -156,6 +158,8 @@ impl From<compile::Pattern> for Pattern {
             span: Some(pattern.span),
             kind: match pattern.kind {
                 compile::PatternKind::Wildcard => PatternKind::Wildcard,
+                compile::PatternKind::Number(number) => PatternKind::Number(number),
+                compile::PatternKind::Text(text) => PatternKind::Text(text),
                 compile::PatternKind::Variable(var) => PatternKind::Variable(var),
                 compile::PatternKind::Destructure(fields) => PatternKind::Destructure(
                     fields

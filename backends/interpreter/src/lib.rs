@@ -321,6 +321,22 @@ impl<'a> Interpreter<'a> {
     ) -> Result<bool, Diverge> {
         match &pattern.kind {
             PatternKind::Wildcard => Ok(true),
+            PatternKind::Number(number) => {
+                let input = match value.as_ref() {
+                    Value::Number(number) => number,
+                    _ => unreachable!(),
+                };
+
+                Ok(input == number)
+            }
+            PatternKind::Text(text) => {
+                let input = match value.as_ref() {
+                    Value::Text(text) => text,
+                    _ => unreachable!(),
+                };
+
+                Ok(input.as_str() == text.as_str())
+            }
             PatternKind::Variable(var) => {
                 info.scope.borrow_mut().variables.insert(*var, value);
                 Ok(true)

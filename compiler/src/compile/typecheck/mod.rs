@@ -83,6 +83,8 @@ macro_rules! pattern {
             #[derive(Debug, Clone, Serialize, Deserialize)]
             $vis enum [<$prefix PatternKind>] {
                 Wildcard,
+                Number(Decimal),
+                Text(InternedString),
                 Variable(VariableId),
                 $($kinds)*
             }
@@ -1311,6 +1313,26 @@ impl<'a, L> Typechecker<'a, L> {
 
                 Some(PatternKind::Wildcard)
             }
+            UnresolvedPatternKind::Number(number) => {
+                if let Err(error) = self
+                    .ctx
+                    .unify(ty, UnresolvedType::Builtin(BuiltinType::Number))
+                {
+                    self.report_type_error(error, pattern.span);
+                }
+
+                Some(PatternKind::Number(number))
+            }
+            UnresolvedPatternKind::Text(text) => {
+                if let Err(error) = self
+                    .ctx
+                    .unify(ty, UnresolvedType::Builtin(BuiltinType::Text))
+                {
+                    self.report_type_error(error, pattern.span);
+                }
+
+                Some(PatternKind::Text(text))
+            }
             UnresolvedPatternKind::Wildcard => Some(PatternKind::Wildcard),
             UnresolvedPatternKind::Variable(var) => {
                 self.variables.insert(var, ty.clone());
@@ -1966,6 +1988,8 @@ impl<'a, L> Typechecker<'a, L> {
             lower::PatternKind::Error => UnresolvedPatternKind::Error,
             lower::PatternKind::Wildcard => UnresolvedPatternKind::Wildcard,
             lower::PatternKind::Unit => UnresolvedPatternKind::Unit,
+            lower::PatternKind::Number(number) => UnresolvedPatternKind::Number(*number),
+            lower::PatternKind::Text(text) => UnresolvedPatternKind::Text(*text),
             lower::PatternKind::Variable(var) => UnresolvedPatternKind::Variable(*var),
             lower::PatternKind::Destructure(fields) => UnresolvedPatternKind::Destructure(
                 fields
