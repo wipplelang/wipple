@@ -253,7 +253,11 @@ Control-Flow : A => type {
 
 use Control-Flow
 
-loop : body ~> external "builtin" "loop" (() -> (body :: Control-Flow _))
+-- [private]
+loop-impl :: A => (() -> Control-Flow A) -> A
+loop-impl : body -> external "builtin" "loop" body
+
+loop : body ~> loop-impl (() -> body)
 
 forever : body ~> loop {
 	body :: ()
@@ -326,6 +330,22 @@ Iterator : Element => type {
 
 Iterate : Container Element => trait (Container -> Iterator Element)
 
+A => instance Iterate (List A) A : list -> {
+	index : mutable 0
+
+	Iterator {
+		next : () -> {
+			when (list . at (get index)) {
+				OK element -> {
+					increment! index
+					Some element
+				}
+				Error _ -> None
+			}
+		}
+	}
+}
+
 -- TODO: Use higher-kinded types
 each :: Container Element where (Iterate Container Element) => ((Element) -> ()) -> Container -> ()
 each : f -> container -> {
@@ -340,4 +360,41 @@ each : f -> container -> {
 			None -> Break ()
 		}
 	}
+}
+
+-- TODO: Use higher-kinded types
+Collect : Element Container => trait (Iterator Element -> Container)
+
+-- TODO: Use higher-kinded types
+collect :: Input Element Output where (Iterate Input Element) (Collect Element Output) => Input -> Output
+collect : input -> Collect (Iterate input)
+
+Element => instance Collect Element (List Element) : { next } -> {
+	list : mutable '()
+	loop {
+		when (next ()) {
+			Some x -> {
+				list . append! x
+				Continue
+			}
+			None -> Break ()
+		}
+	}
+
+	get list
+}
+
+Element => instance Collect Text Text : { next } -> {
+	text : mutable ""
+	loop {
+		when (next ()) {
+			Some x -> {
+				text . add! x
+				Continue
+			}
+			None -> Break ()
+		}
+	}
+
+	get text
 }

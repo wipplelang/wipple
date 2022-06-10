@@ -1085,20 +1085,20 @@ impl<'a, L> Typechecker<'a, L> {
                     .map(|expr| self.typecheck_expr(expr, file, suppress_errors))
                     .collect::<Vec<_>>();
 
-                let ty = if let Some(item) = items.first() {
-                    let ty = item.ty.clone();
-                    for item in items.iter().skip(1) {
-                        if let Err(error) = self.ctx.unify(ty.clone(), item.ty.clone()) {
-                            if !suppress_errors {
-                                self.report_type_error(error, item.span);
-                            }
-                        };
-                    }
+                let mut item_tys = items.iter().map(|item| (item.span, item.ty.clone()));
 
-                    ty
-                } else {
-                    UnresolvedType::Bottom(BottomTypeReason::Annotated)
-                };
+                let ty = item_tys
+                    .next()
+                    .map(|(_, ty)| ty)
+                    .unwrap_or_else(|| UnresolvedType::Variable(self.ctx.new_variable()));
+
+                for (span, item_ty) in item_tys {
+                    if let Err(error) = self.ctx.unify(item_ty, ty.clone()) {
+                        if !suppress_errors {
+                            self.report_type_error(error, span);
+                        }
+                    };
+                }
 
                 UnresolvedExpression {
                     span: expr.span,
