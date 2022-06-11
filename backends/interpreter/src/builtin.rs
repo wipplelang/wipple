@@ -8,9 +8,9 @@ use std::collections::HashMap;
 pub(crate) fn call(
     interpreter: &Interpreter,
     identifier: &str,
-    inputs: Vec<Rc<Value>>,
+    inputs: Vec<Value>,
     info: &mut Info,
-) -> Result<Rc<Value>, Diverge> {
+) -> Result<Value, Diverge> {
     let builtin = BUILTINS.get(identifier).ok_or_else(|| {
         Diverge::new(
             info.stack.clone(),
@@ -21,7 +21,7 @@ pub(crate) fn call(
     builtin(interpreter, inputs, info)
 }
 
-type BuiltinFunction = fn(&Interpreter, Vec<Rc<Value>>, &mut Info) -> Result<Rc<Value>, Diverge>;
+type BuiltinFunction = fn(&Interpreter, Vec<Value>, &mut Info) -> Result<Value, Diverge>;
 
 lazy_static! {
     static ref BUILTINS: HashMap<&'static str, BuiltinFunction> = {
@@ -79,52 +79,48 @@ lazy_static! {
     };
 }
 
-fn r#false() -> Rc<Value> {
-    Rc::new(Value::Variant(0, Vec::new()))
+fn r#false() -> Value {
+    Value::Variant(0, im::Vector::new())
 }
 
-fn r#true() -> Rc<Value> {
-    Rc::new(Value::Variant(1, Vec::new()))
+fn r#true() -> Value {
+    Value::Variant(1, im::Vector::new())
 }
 
-fn none() -> Rc<Value> {
-    Rc::new(Value::Variant(0, Vec::new()))
+fn none() -> Value {
+    Value::Variant(0, im::Vector::new())
 }
 
-fn some(value: Rc<Value>) -> Rc<Value> {
-    Rc::new(Value::Variant(1, vec![value]))
+fn some(value: Value) -> Value {
+    Value::Variant(1, im::vector![value])
 }
 
-fn ok(value: Rc<Value>) -> Rc<Value> {
-    Rc::new(Value::Variant(0, vec![value]))
+fn ok(value: Value) -> Value {
+    Value::Variant(0, im::vector![value])
 }
 
-fn error(value: Rc<Value>) -> Rc<Value> {
-    Rc::new(Value::Variant(1, vec![value]))
+fn error(value: Value) -> Value {
+    Value::Variant(1, im::vector![value])
 }
 
-fn builtin_crash(
-    _: &Interpreter,
-    (text,): (Rc<Value>,),
-    info: &mut Info,
-) -> Result<Rc<Value>, Diverge> {
-    let text = match text.as_ref() {
+fn builtin_crash(_: &Interpreter, (text,): (Value,), info: &mut Info) -> Result<Value, Diverge> {
+    let text = match text {
         Value::Text(text) => text,
         _ => unreachable!(),
     };
 
     Err(Diverge::new(
         info.stack.clone(),
-        DivergeKind::Error(text.clone()),
+        DivergeKind::Error(text.to_string()),
     ))
 }
 
 fn builtin_print(
     interpreter: &Interpreter,
-    (text,): (Rc<Value>,),
+    (text,): (Value,),
     info: &mut Info,
-) -> Result<Rc<Value>, Diverge> {
-    let text = match text.as_ref() {
+) -> Result<Value, Diverge> {
+    let text = match text {
         Value::Text(text) => text,
         _ => unreachable!(),
     };
@@ -138,26 +134,26 @@ fn builtin_print(
                 DivergeKind::Error(Error::from("output not configured")),
             )
         })?
-        .borrow_mut()(text, &info.stack);
+        .borrow_mut()(&text, &info.stack);
 
-    Ok(Rc::new(Value::Marker))
+    Ok(Value::Marker)
 }
 
 fn builtin_format(
     _: &Interpreter,
-    (text, inputs): (Rc<Value>, Rc<Value>),
+    (text, inputs): (Value, Value),
     _: &Info,
-) -> Result<Rc<Value>, Diverge> {
-    let text = match text.as_ref() {
+) -> Result<Value, Diverge> {
+    let text = match text {
         Value::Text(text) => text,
         _ => unreachable!(),
     };
 
-    let inputs = match inputs.as_ref() {
+    let inputs = match inputs {
         Value::List(list) => list
-            .iter()
-            .map(|input| match input.as_ref() {
-                Value::Text(text) => text.as_str(),
+            .into_iter()
+            .map(|input| match input {
+                Value::Text(text) => text,
                 _ => unreachable!(),
             })
             .collect::<Vec<_>>(),
@@ -172,25 +168,25 @@ fn builtin_format(
 
         text.into_iter()
             .zip(inputs)
-            .map(|(part, value)| part.to_string() + value)
+            .map(|(part, value)| part.to_string() + value.as_ref())
             .chain(std::iter::once(last.to_string()))
             .collect()
     };
 
-    Ok(Rc::new(Value::Text(formatted)))
+    Ok(Value::Text(Rc::from(formatted)))
 }
 
 fn builtin_number_to_text(
     _: &Interpreter,
-    (number,): (Rc<Value>,),
+    (number,): (Value,),
     _: &Info,
-) -> Result<Rc<Value>, Diverge> {
-    let number = match number.as_ref() {
+) -> Result<Value, Diverge> {
+    let number = match number {
         Value::Number(number) => number,
         _ => unreachable!(),
     };
 
-    Ok(Rc::new(Value::Text(number.to_string())))
+    Ok(Value::Text(Rc::from(number.to_string())))
 }
 
 macro_rules! builtin_math {
@@ -198,20 +194,20 @@ macro_rules! builtin_math {
         $(
             fn $f(
                 _: &Interpreter,
-                (lhs, rhs): (Rc<Value>, Rc<Value>),
+                (lhs, rhs): (Value, Value),
                 _: &Info,
-            ) -> Result<Rc<Value>, Diverge> {
-                let lhs = match lhs.as_ref() {
+            ) -> Result<Value, Diverge> {
+                let lhs = match lhs {
                     Value::Number(number) => number,
                     _ => unreachable!(),
                 };
 
-                let rhs = match rhs.as_ref() {
+                let rhs = match rhs {
                     Value::Number(number) => number,
                     _ => unreachable!(),
                 };
 
-                Ok(Rc::new(Value::Number(lhs $op rhs)))
+                Ok(Value::Number(lhs $op rhs))
             }
         )*
     };
@@ -225,15 +221,15 @@ builtin_math!(
 
 fn builtin_divide(
     _: &Interpreter,
-    (lhs, rhs): (Rc<Value>, Rc<Value>),
+    (lhs, rhs): (Value, Value),
     info: &mut Info,
-) -> Result<Rc<Value>, Diverge> {
-    let lhs = match lhs.as_ref() {
+) -> Result<Value, Diverge> {
+    let lhs = match lhs {
         Value::Number(number) => number,
         _ => unreachable!(),
     };
 
-    let rhs = match rhs.as_ref() {
+    let rhs = match rhs {
         Value::Number(number) => number,
         _ => unreachable!(),
     };
@@ -245,20 +241,20 @@ fn builtin_divide(
         ));
     }
 
-    Ok(Rc::new(Value::Number(lhs / rhs)))
+    Ok(Value::Number(lhs / rhs))
 }
 
 fn builtin_power(
     _: &Interpreter,
-    (lhs, rhs): (Rc<Value>, Rc<Value>),
+    (lhs, rhs): (Value, Value),
     info: &mut Info,
-) -> Result<Rc<Value>, Diverge> {
-    let lhs = match lhs.as_ref() {
+) -> Result<Value, Diverge> {
+    let lhs = match lhs {
         Value::Number(number) => number,
         _ => unreachable!(),
     };
 
-    let rhs = match rhs.as_ref() {
+    let rhs = match rhs {
         Value::Number(number) => number,
         _ => unreachable!(),
     };
@@ -272,41 +268,29 @@ fn builtin_power(
         ));
     }
 
-    Ok(Rc::new(Value::Number(lhs.pow(*rhs))))
+    Ok(Value::Number(lhs.pow(rhs)))
 }
 
-fn builtin_floor(
-    _: &Interpreter,
-    (value,): (Rc<Value>,),
-    _: &mut Info,
-) -> Result<Rc<Value>, Diverge> {
-    let number = match value.as_ref() {
+fn builtin_floor(_: &Interpreter, (value,): (Value,), _: &mut Info) -> Result<Value, Diverge> {
+    let number = match value {
         Value::Number(number) => number,
         _ => unreachable!(),
     };
 
-    Ok(Rc::new(Value::Number(number.floor())))
+    Ok(Value::Number(number.floor()))
 }
 
-fn builtin_ceil(
-    _: &Interpreter,
-    (value,): (Rc<Value>,),
-    _: &mut Info,
-) -> Result<Rc<Value>, Diverge> {
-    let number = match value.as_ref() {
+fn builtin_ceil(_: &Interpreter, (value,): (Value,), _: &mut Info) -> Result<Value, Diverge> {
+    let number = match value {
         Value::Number(number) => number,
         _ => unreachable!(),
     };
 
-    Ok(Rc::new(Value::Number(number.ceil())))
+    Ok(Value::Number(number.ceil()))
 }
 
-fn builtin_sqrt(
-    _: &Interpreter,
-    (value,): (Rc<Value>,),
-    info: &mut Info,
-) -> Result<Rc<Value>, Diverge> {
-    let number = match value.as_ref() {
+fn builtin_sqrt(_: &Interpreter, (value,): (Value,), info: &mut Info) -> Result<Value, Diverge> {
+    let number = match value {
         Value::Number(number) => number,
         _ => unreachable!(),
     };
@@ -323,20 +307,20 @@ fn builtin_sqrt(
         }
     };
 
-    Ok(Rc::new(Value::Number(sqrt)))
+    Ok(Value::Number(sqrt))
 }
 
 fn builtin_text_equality(
     _: &Interpreter,
-    (lhs, rhs): (Rc<Value>, Rc<Value>),
+    (lhs, rhs): (Value, Value),
     _: &Info,
-) -> Result<Rc<Value>, Diverge> {
-    let lhs = match lhs.as_ref() {
+) -> Result<Value, Diverge> {
+    let lhs = match lhs {
         Value::Text(text) => text,
         _ => unreachable!(),
     };
 
-    let rhs = match rhs.as_ref() {
+    let rhs = match rhs {
         Value::Text(text) => text,
         _ => unreachable!(),
     };
@@ -346,85 +330,68 @@ fn builtin_text_equality(
 
 fn builtin_number_ordering(
     _: &Interpreter,
-    (lhs, rhs): (Rc<Value>, Rc<Value>),
+    (lhs, rhs): (Value, Value),
     _: &Info,
-) -> Result<Rc<Value>, Diverge> {
-    let lhs = match lhs.as_ref() {
+) -> Result<Value, Diverge> {
+    let lhs = match lhs {
         Value::Number(number) => number,
         _ => unreachable!(),
     };
 
-    let rhs = match rhs.as_ref() {
+    let rhs = match rhs {
         Value::Number(number) => number,
         _ => unreachable!(),
     };
 
-    let index = match lhs.cmp(rhs) {
+    let index = match lhs.cmp(&rhs) {
         std::cmp::Ordering::Less => 0,
         std::cmp::Ordering::Equal => 1,
         std::cmp::Ordering::Greater => 2,
     };
 
-    Ok(Rc::new(Value::Variant(index, Vec::new())))
+    Ok(Value::Variant(index, im::Vector::new()))
 }
 
-fn builtin_make_mutable(
-    _: &Interpreter,
-    (value,): (Rc<Value>,),
-    _: &Info,
-) -> Result<Rc<Value>, Diverge> {
-    Ok(Rc::new(Value::Mutable(RefCell::new(value))))
+fn builtin_make_mutable(_: &Interpreter, (value,): (Value,), _: &Info) -> Result<Value, Diverge> {
+    Ok(Value::Mutable(Rc::new(RefCell::new(value))))
 }
 
-fn builtin_get_mutable(
-    _: &Interpreter,
-    (value,): (Rc<Value>,),
-    _: &Info,
-) -> Result<Rc<Value>, Diverge> {
-    let value = match value.as_ref() {
-        Value::Mutable(value) => value,
+fn builtin_get_mutable(_: &Interpreter, (value,): (Value,), _: &Info) -> Result<Value, Diverge> {
+    let value = match value {
+        Value::Mutable(value) => value.borrow().clone(),
         _ => unreachable!(),
     };
 
-    Ok(value.borrow().clone())
+    Ok(value)
 }
 
 fn builtin_set_mutable(
     _: &Interpreter,
-    (value, new_value): (Rc<Value>, Rc<Value>),
+    (value, new_value): (Value, Value),
     _: &Info,
-) -> Result<Rc<Value>, Diverge> {
-    let value = match value.as_ref() {
+) -> Result<Value, Diverge> {
+    let value = match value {
         Value::Mutable(value) => value,
         _ => unreachable!(),
     };
 
     *value.borrow_mut() = new_value;
 
-    Ok(Rc::new(Value::Marker))
+    Ok(Value::Marker)
 }
 
 fn builtin_loop(
     interpreter: &Interpreter,
-    (func,): (Rc<Value>,),
+    (func,): (Value,),
     info: &mut Info,
-) -> Result<Rc<Value>, Diverge> {
-    let (pattern, body, scope) = match func.as_ref() {
-        Value::Function {
-            pattern,
-            body,
-            scope,
-        } => (pattern, body, scope),
+) -> Result<Value, Diverge> {
+    let function = match func {
+        Value::Function(function) => function,
         _ => unreachable!(),
     };
 
-    let input = Rc::new(Value::Marker);
-
     Ok(loop {
-        match interpreter
-            .call_function(pattern, body, scope.clone(), input.clone(), info)?
-            .as_ref()
-        {
+        match interpreter.call_function(function.as_ref(), Value::Marker, info)? {
             Value::Variant(0, _) => continue,
             Value::Variant(1, values) => break values[0].clone(),
             _ => unreachable!(),
@@ -432,148 +399,132 @@ fn builtin_loop(
     })
 }
 
-fn builtin_list_first(
-    _: &Interpreter,
-    (list,): (Rc<Value>,),
-    _: &Info,
-) -> Result<Rc<Value>, Diverge> {
-    let list = match list.as_ref() {
+fn builtin_list_first(_: &Interpreter, (list,): (Value,), _: &Info) -> Result<Value, Diverge> {
+    let list = match list {
         Value::List(list) => list,
         _ => unreachable!(),
     };
 
-    Ok(match list.first() {
+    Ok(match list.front() {
         None => none(),
         Some(first) => some(first.clone()),
     })
 }
 
-fn builtin_list_last(
-    _: &Interpreter,
-    (list,): (Rc<Value>,),
-    _: &Info,
-) -> Result<Rc<Value>, Diverge> {
-    let list = match list.as_ref() {
+fn builtin_list_last(_: &Interpreter, (list,): (Value,), _: &Info) -> Result<Value, Diverge> {
+    let list = match list {
         Value::List(list) => list,
         _ => unreachable!(),
     };
 
-    Ok(match list.last() {
+    Ok(match list.back() {
         None => none(),
         Some(last) => some(last.clone()),
     })
 }
 
-fn builtin_list_initial(
-    _: &Interpreter,
-    (list,): (Rc<Value>,),
-    _: &Info,
-) -> Result<Rc<Value>, Diverge> {
-    let list = match list.as_ref() {
+fn builtin_list_initial(_: &Interpreter, (list,): (Value,), _: &Info) -> Result<Value, Diverge> {
+    let mut list = match list {
         Value::List(list) => list,
         _ => unreachable!(),
     };
 
-    Ok(Rc::new(Value::List(list[0..(list.len() - 1)].to_vec())))
+    Ok(Value::List(list.slice(0..(list.len() - 1))))
 }
 
-fn builtin_list_tail(
-    _: &Interpreter,
-    (list,): (Rc<Value>,),
-    _: &Info,
-) -> Result<Rc<Value>, Diverge> {
-    let list = match list.as_ref() {
+fn builtin_list_tail(_: &Interpreter, (list,): (Value,), _: &Info) -> Result<Value, Diverge> {
+    let mut list = match list {
         Value::List(list) => list,
         _ => unreachable!(),
     };
 
-    Ok(Rc::new(Value::List(list[1..list.len()].to_vec())))
+    Ok(Value::List(list.slice(1..list.len())))
 }
 
 fn builtin_list_at(
     _: &Interpreter,
-    (list, index): (Rc<Value>, Rc<Value>),
+    (list, index): (Value, Value),
     _: &Info,
-) -> Result<Rc<Value>, Diverge> {
-    let list = match list.as_ref() {
+) -> Result<Value, Diverge> {
+    let list = match list {
         Value::List(list) => list,
         _ => unreachable!(),
     };
 
-    let index = match index.as_ref() {
+    let index = match index {
         Value::Number(number) => number,
         _ => unreachable!(),
     };
 
     let index = match index.to_usize() {
         Some(index) => index,
-        None => return Ok(error(Rc::new(Value::Marker))),
+        None => return Ok(error(Value::Marker)),
     };
 
     Ok(match list.get(index) {
         Some(value) => ok(value.clone()),
-        None => error(Rc::new(Value::Marker)),
+        None => error(Value::Marker),
     })
 }
 
 fn builtin_list_append(
     _: &Interpreter,
-    (list, value): (Rc<Value>, Rc<Value>),
+    (list, value): (Value, Value),
     _: &Info,
-) -> Result<Rc<Value>, Diverge> {
-    let mut list = match list.as_ref() {
-        Value::List(list) => list.clone(),
+) -> Result<Value, Diverge> {
+    let mut list = match list {
+        Value::List(list) => list,
         _ => unreachable!(),
     };
 
-    list.push(value);
+    list.push_back(value);
 
-    Ok(Rc::new(Value::List(list)))
+    Ok(Value::List(list))
 }
 
 fn builtin_list_insert(
     _: &Interpreter,
-    (list, index, value): (Rc<Value>, Rc<Value>, Rc<Value>),
+    (list, index, value): (Value, Value, Value),
     _: &Info,
-) -> Result<Rc<Value>, Diverge> {
-    let mut list = match list.as_ref() {
-        Value::List(list) => list.clone(),
+) -> Result<Value, Diverge> {
+    let mut list = match list {
+        Value::List(list) => list,
         _ => unreachable!(),
     };
 
-    let index = match index.as_ref() {
+    let index = match index {
         Value::Number(number) => number,
         _ => unreachable!(),
     };
 
     let index = match index.to_usize() {
         Some(index) if !(0..list.len()).contains(&index) => index,
-        _ => return Ok(error(Rc::new(Value::Marker))),
+        _ => return Ok(error(Value::Marker)),
     };
 
     list.insert(index, value);
 
-    Ok(ok(Rc::new(Value::List(list))))
+    Ok(ok(Value::List(list)))
 }
 
 fn builtin_list_remove(
     _: &Interpreter,
-    (list, index): (Rc<Value>, Rc<Value>),
+    (list, index): (Value, Value),
     _: &Info,
-) -> Result<Rc<Value>, Diverge> {
-    let mut list = match list.as_ref() {
-        Value::List(list) => list.clone(),
+) -> Result<Value, Diverge> {
+    let mut list = match list {
+        Value::List(list) => list,
         _ => unreachable!(),
     };
 
-    let index = match index.as_ref() {
+    let index = match index {
         Value::Number(number) => number,
         _ => unreachable!(),
     };
 
     let index = match index.to_usize() {
         Some(index) if !(0..list.len()).contains(&index) => index,
-        _ => return Ok(error(Rc::new(Value::Marker))),
+        _ => return Ok(error(Value::Marker)),
     };
 
     Ok(ok(list.remove(index)))

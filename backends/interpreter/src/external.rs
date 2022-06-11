@@ -54,7 +54,7 @@ impl<'a> ExternalFunction<'a> {
         })
     }
 
-    pub fn call_with(&self, inputs: Vec<Rc<Value>>) -> Result<Rc<Value>, Error> {
+    pub fn call_with(&self, inputs: Vec<Value>) -> Result<Value, Error> {
         unsafe {
             let lib = Library::new(&self.namespace)
                 .map_err(|error| format!("error loading external namespace: {}", error))?;
@@ -79,8 +79,8 @@ impl<'a> ExternalFunction<'a> {
                 .zip(&self.params)
                 .map(|(input, ty)| match ty {
                     ExternalValueType::Number => {
-                        let number = match input.as_ref() {
-                            Value::Number(number) => *number,
+                        let number = match input {
+                            Value::Number(number) => number,
                             _ => unreachable!(),
                         };
 
@@ -91,12 +91,12 @@ impl<'a> ExternalFunction<'a> {
                         Ok::<_, Error>(ExternalValueHolder::F64(float))
                     }
                     ExternalValueType::Text => {
-                        let text = match input.as_ref() {
-                            Value::Text(text) => text.clone(),
+                        let text = match input {
+                            Value::Text(text) => text,
                             _ => unreachable!(),
                         };
 
-                        let string = CString::new(text).map_err(|error| {
+                        let string = CString::new(text.as_ref()).map_err(|error| {
                             format!(
                                 "error converting Wipple value to external value: {}",
                                 error
@@ -122,17 +122,15 @@ impl<'a> ExternalFunction<'a> {
             let result = match self.returns {
                 Some(ExternalValueType::Number) => {
                     let result = call::<f64>(ptr, &args);
-                    Rc::new(Value::Number(Decimal::from_f64(result).unwrap()))
+                    Value::Number(Decimal::from_f64(result).unwrap())
                 }
                 Some(ExternalValueType::Text) => {
                     let result = call::<*mut c_char>(ptr, &args);
-                    Rc::new(Value::Text(
-                        CString::from_raw(result).to_string_lossy().into_owned(),
-                    ))
+                    Value::Text(Rc::from(CString::from_raw(result).to_string_lossy()))
                 }
                 None => {
                     call::<()>(ptr, &args);
-                    Rc::new(Value::Marker)
+                    Value::Marker
                 }
             };
 

@@ -20,19 +20,22 @@ use wipple_compiler::{
     MonomorphizedConstantId, VariableId,
 };
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Value {
     Marker,
-    Text(String),
+    Text(Rc<str>),
     Number(Decimal),
-    Function {
-        pattern: Pattern,
-        body: Box<Expression>,
-        scope: Rc<RefCell<Scope>>,
-    },
-    List(Vec<Rc<Value>>),
-    Variant(usize, Vec<Rc<Value>>),
-    Mutable(RefCell<Rc<Value>>),
+    Function(Rc<Function>),
+    List(im::Vector<Value>),
+    Variant(usize, im::Vector<Value>),
+    Mutable(Rc<RefCell<Value>>),
+}
+
+#[derive(Debug)]
+pub struct Function {
+    pub pattern: Pattern,
+    pub body: Box<Expression>,
+    pub scope: Rc<RefCell<Scope>>,
 }
 
 #[derive(Debug)]
@@ -44,7 +47,7 @@ struct Diverge {
 #[derive(Debug)]
 enum DivergeKind {
     Error(String),
-    Return(Rc<Value>),
+    Return(Value),
 }
 
 type Error = String;
@@ -98,13 +101,13 @@ impl<'a> Interpreter<'a> {
 pub struct Info {
     constants: BTreeMap<MonomorphizedConstantId, Expression>,
     scope: Rc<RefCell<Scope>>,
-    initialized_constants: HashMap<MonomorphizedConstantId, Rc<Value>>,
+    initialized_constants: HashMap<MonomorphizedConstantId, Value>,
     stack: Vec<Span>,
 }
 
 #[derive(Debug, Default)]
 pub struct Scope {
-    variables: BTreeMap<VariableId, Rc<Value>>,
+    variables: BTreeMap<VariableId, Value>,
     parent: Option<Rc<RefCell<Scope>>>,
 }
 
@@ -118,13 +121,13 @@ impl Scope {
 }
 
 impl<'a> Interpreter<'a> {
-    fn eval_expr(&self, expr: &Expression, info: &mut Info) -> Result<Rc<Value>, Diverge> {
+    fn eval_expr(&self, expr: &Expression, info: &mut Info) -> Result<Value, Diverge> {
         if let Some(span) = expr.span {
             info.stack.push(span);
         }
 
         let value = match &expr.kind {
-            ExpressionKind::Marker => Rc::new(Value::Marker),
+            ExpressionKind::Marker => Value::Marker,
             ExpressionKind::Constant(constant) => {
                 if let Some(value) = info.initialized_constants.get(constant) {
                     value.clone()
@@ -141,14 +144,14 @@ impl<'a> Interpreter<'a> {
                     value
                 }
             }
-            ExpressionKind::Number(number) => Rc::new(Value::Number(*number)),
-            ExpressionKind::Text(text) => Rc::new(Value::Text(text.to_string())),
+            ExpressionKind::Number(number) => Value::Number(*number),
+            ExpressionKind::Text(text) => Value::Text(Rc::from(text.as_str())),
             ExpressionKind::Block(statements) => {
                 let parent = info.scope.clone();
                 let child = Scope::child(&parent);
                 info.scope = child;
 
-                let mut value = Rc::new(Value::Marker);
+                let mut value = Value::Marker;
                 for statement in statements {
                     value = self.eval_expr(statement, info)?;
                 }
@@ -157,37 +160,31 @@ impl<'a> Interpreter<'a> {
 
                 value
             }
-            ExpressionKind::Call(function, input) => {
-                match self.eval_expr(function, info)?.as_ref() {
-                    Value::Function {
-                        pattern,
-                        body,
-                        scope,
-                    } => {
-                        let input = self.eval_expr(input, info)?;
-                        self.call_function(pattern, body, scope.clone(), input, info)?
-                    }
-                    _ => unreachable!(),
+            ExpressionKind::Call(function, input) => match self.eval_expr(function, info)? {
+                Value::Function(func) => {
+                    let input = self.eval_expr(input, info)?;
+                    self.call_function(&func, input, info)?
                 }
-            }
+                _ => unreachable!(),
+            },
             ExpressionKind::Initialize(pattern, value) => {
                 let value = self.eval_expr(value, info)?;
 
                 let matches = self.eval_pattern(pattern, value, info)?;
                 assert!(matches, "no matches for pattern in initialization");
 
-                Rc::new(Value::Marker)
+                Value::Marker
             }
             ExpressionKind::Variable(variable) => {
                 self.resolve(*variable, info).unwrap_or_else(|| {
                     panic!("variable {:?} not found in {:#?}", variable, info.scope)
                 })
             }
-            ExpressionKind::Function(pattern, body) => Rc::new(Value::Function {
+            ExpressionKind::Function(pattern, body) => Value::Function(Rc::new(Function {
                 pattern: pattern.clone(),
                 body: Box::new(body.as_ref().clone()),
                 scope: info.scope.clone(),
-            }),
+            })),
             ExpressionKind::When(input, arms) => {
                 let input = self.eval_expr(input, info)?;
 
@@ -256,25 +253,25 @@ impl<'a> Interpreter<'a> {
                     }
                 }
             }
-            ExpressionKind::Structure(exprs) => Rc::new(Value::List(
+            ExpressionKind::Structure(exprs) => Value::List(
                 exprs
                     .iter()
                     .map(|expr| self.eval_expr(expr, info))
                     .collect::<Result<_, _>>()?,
-            )),
-            ExpressionKind::Variant(index, exprs) => Rc::new(Value::Variant(
+            ),
+            ExpressionKind::Variant(index, exprs) => Value::Variant(
                 *index,
                 exprs
                     .iter()
                     .map(|expr| self.eval_expr(expr, info))
                     .collect::<Result<_, _>>()?,
-            )),
-            ExpressionKind::ListLiteral(exprs) => Rc::new(Value::List(
+            ),
+            ExpressionKind::ListLiteral(exprs) => Value::List(
                 exprs
                     .iter()
                     .map(|expr| self.eval_expr(expr, info))
                     .collect::<Result<_, _>>()?,
-            )),
+            ),
             ExpressionKind::Return(value) => {
                 let value = self.eval_expr(value, info)?;
                 return Err(Diverge::new(info.stack.clone(), DivergeKind::Return(value)));
@@ -288,18 +285,16 @@ impl<'a> Interpreter<'a> {
 
     fn call_function(
         &self,
-        pattern: &Pattern,
-        body: &Expression,
-        scope: Rc<RefCell<Scope>>,
-        input: Rc<Value>,
+        function: &Function,
+        input: Value,
         info: &mut Info,
-    ) -> Result<Rc<Value>, Diverge> {
-        let parent = mem::replace(&mut info.scope, scope);
+    ) -> Result<Value, Diverge> {
+        let parent = mem::replace(&mut info.scope, function.scope.clone());
 
-        let matches = self.eval_pattern(pattern, input, info)?;
+        let matches = self.eval_pattern(&function.pattern, input, info)?;
         assert!(matches, "no matches for pattern in initialization");
 
-        let value = match self.eval_expr(body, info) {
+        let value = match self.eval_expr(&function.body, info) {
             Ok(value)
             | Err(Diverge {
                 kind: DivergeKind::Return(value),
@@ -316,33 +311,33 @@ impl<'a> Interpreter<'a> {
     fn eval_pattern(
         &self,
         pattern: &Pattern,
-        value: Rc<Value>,
+        value: Value,
         info: &mut Info,
     ) -> Result<bool, Diverge> {
         match &pattern.kind {
             PatternKind::Wildcard => Ok(true),
             PatternKind::Number(number) => {
-                let input = match value.as_ref() {
+                let input = match value {
                     Value::Number(number) => number,
                     _ => unreachable!(),
                 };
 
-                Ok(input == number)
+                Ok(input == *number)
             }
             PatternKind::Text(text) => {
-                let input = match value.as_ref() {
+                let input = match value {
                     Value::Text(text) => text,
                     _ => unreachable!(),
                 };
 
-                Ok(input.as_str() == text.as_str())
+                Ok(input.as_ref() == text.as_str())
             }
             PatternKind::Variable(var) => {
                 info.scope.borrow_mut().variables.insert(*var, value);
                 Ok(true)
             }
             PatternKind::Destructure(fields) => {
-                let structure = match value.as_ref() {
+                let structure = match value {
                     Value::List(values) => values,
                     _ => unreachable!(),
                 };
@@ -358,12 +353,12 @@ impl<'a> Interpreter<'a> {
                 Ok(true)
             }
             PatternKind::Variant(index, patterns) => {
-                let (value_index, values) = match value.as_ref() {
+                let (value_index, values) = match value {
                     Value::Variant(index, values) => (index, values),
                     _ => unreachable!(),
                 };
 
-                if index != value_index {
+                if *index != value_index {
                     return Ok(false);
                 }
 
@@ -378,7 +373,7 @@ impl<'a> Interpreter<'a> {
         }
     }
 
-    fn resolve(&self, variable: VariableId, info: &mut Info) -> Option<Rc<Value>> {
+    fn resolve(&self, variable: VariableId, info: &mut Info) -> Option<Value> {
         let mut value = None;
         let mut scope = Some(info.scope.clone());
 
