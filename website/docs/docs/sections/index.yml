@@ -33,6 +33,8 @@
       path: 01-learn/11-enumerations-and-pattern-matching
     - title: Maybe and Result
       path: 01-learn/12-maybe-and-result
+    - title: Working with lists
+      path: 01-learn/13-working-with-lists
 
 - title: Quick Start
   path: 02-quick-start
