@@ -1,6 +1,7 @@
 use super::{
-    Expression, ExpressionKind, MonomorphizedExpression, MonomorphizedExpressionKind, Program,
-    UnresolvedExpression, UnresolvedExpressionKind,
+    Expression, ExpressionKind, MonomorphizedExpression, MonomorphizedExpressionKind,
+    MonomorphizedPatternKind, PatternKind, Program, UnresolvedExpression, UnresolvedExpressionKind,
+    UnresolvedPatternKind,
 };
 
 impl Program {
@@ -18,57 +19,63 @@ impl Program {
 }
 
 macro_rules! traverse_impl {
-    ($kind:ident, $f:expr, $expr:expr, $traverse:ident, &$($mut:tt)?) => {{
-        use $kind::*;
+    ($prefix:literal, $f:expr, $expr:expr, $traverse:ident, &$($mut:tt)?) => {{
+        paste::paste! {
+            use [<$prefix ExpressionKind>]::*;
 
-        let f = $f;
-        let expr = $expr;
+            let f = $f;
+            let expr = $expr;
 
-        f(expr);
+            f(expr);
 
-        match &$($mut)? expr.kind {
-            Block(statements, _) => {
-                for statement in statements {
-                    statement.$traverse(f);
+            match &$($mut)? expr.kind {
+                Block(statements, _) => {
+                    for statement in statements {
+                        statement.$traverse(f);
+                    }
                 }
-            }
-            Call(function, input) => {
-                function.$traverse(f);
-                input.$traverse(f);
-            }
-            Function(_, body) => body.$traverse(f),
-            When(input, arms) => {
-                input.$traverse(f);
-
-                for arm in arms {
-                    arm.body.$traverse(f);
-                }
-            },
-            Initialize(_, value) => value.$traverse(f),
-            External(_, _, inputs) => {
-                for input in inputs {
+                Call(function, input) => {
+                    function.$traverse(f);
                     input.$traverse(f);
                 }
-            }
-            Structure(fields) => {
-                for field in fields {
-                    field.$traverse(f);
+                Function(_, body) => body.$traverse(f),
+                When(input, arms) => {
+                    input.$traverse(f);
+
+                    for arm in arms {
+                        if let [<$prefix PatternKind>]::Where(_, condition) = &$($mut)? arm.pattern.kind {
+                            condition.$traverse(f);
+                        }
+
+                        arm.body.$traverse(f);
+                    }
+                },
+                Initialize(_, value) => value.$traverse(f),
+                External(_, _, inputs) => {
+                    for input in inputs {
+                        input.$traverse(f);
+                    }
                 }
-            }
-            Variant(_, values) => {
-                for value in values {
+                Structure(fields) => {
+                    for field in fields {
+                        field.$traverse(f);
+                    }
+                }
+                Variant(_, values) => {
+                    for value in values {
+                        value.$traverse(f);
+                    }
+                }
+                ListLiteral(items) => {
+                    for item in items {
+                        item.$traverse(f);
+                    }
+                }
+                Return(value) => {
                     value.$traverse(f);
                 }
+                _ => {}
             }
-            ListLiteral(items) => {
-                for item in items {
-                    item.$traverse(f);
-                }
-            }
-            Return(value) => {
-                value.$traverse(f);
-            }
-            _ => {}
         }
     }};
 }
@@ -83,7 +90,7 @@ macro_rules! traverse {
                 }
 
                 fn traverse_inner(&self, f: &mut impl FnMut(&Self)) {
-                    traverse_impl!([<$prefix ExpressionKind>], f, self, traverse_inner, &)
+                    traverse_impl!($prefix, f, self, traverse_inner, &)
                 }
 
                 pub fn traverse_mut(&mut self, mut f: impl FnMut(&mut Self)) {
@@ -91,7 +98,7 @@ macro_rules! traverse {
                 }
 
                 fn traverse_mut_inner(&mut self, f: &mut impl FnMut(&mut Self)) {
-                    traverse_impl!([<$prefix ExpressionKind>], f, self, traverse_mut_inner, &mut)
+                    traverse_impl!($prefix, f, self, traverse_mut_inner, &mut)
                 }
             }
         }
