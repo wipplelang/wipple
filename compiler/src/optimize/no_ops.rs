@@ -73,10 +73,11 @@ fn is_no_op(expr: &Expression) -> bool {
         ExpressionKind::When(input, arms) => {
             is_no_op(input)
                 && arms.iter().all(|arm| {
-                    matches!(
-                        &arm.pattern.kind,
-                        PatternKind::Where(_, condition) if is_no_op(condition)
-                    ) && is_no_op(&arm.body)
+                    is_no_op(&arm.body)
+                        && match &arm.pattern.kind {
+                            PatternKind::Where(_, condition) => is_no_op(condition),
+                            _ => true,
+                        }
                 })
         }
     }
