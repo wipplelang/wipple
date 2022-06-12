@@ -1603,7 +1603,7 @@ impl<'a, L> Typechecker<'a, L> {
                     condition.ty.clone(),
                     UnresolvedType::Named(boolean_ty, Vec::new()),
                 ) {
-                    self.report_type_error(error, pattern.span);
+                    self.report_type_error(error, condition.span);
                 }
 
                 Some(MonomorphizedPatternKind::Where(
