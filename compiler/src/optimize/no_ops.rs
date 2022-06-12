@@ -1,6 +1,6 @@
 use crate::{
     diagnostics::*,
-    optimize::{Expression, ExpressionKind, Program},
+    optimize::{Expression, ExpressionKind, PatternKind, Program},
     Compiler,
 };
 use std::mem;
@@ -34,7 +34,7 @@ impl<L> Compiler<L> {
             None => return,
         };
 
-        let last_is_no_op = is_no_op_statement(&last);
+        let last_is_no_op = is_no_op(&last);
         if check_last && last_is_no_op {
             warn_no_op(&last);
         }
@@ -42,7 +42,7 @@ impl<L> Compiler<L> {
         *statements = s
             .into_iter()
             .filter(|statement| {
-                let is_no_op = is_no_op_statement(statement);
+                let is_no_op = is_no_op(statement);
                 if is_no_op {
                     warn_no_op(statement);
                 }
@@ -54,7 +54,7 @@ impl<L> Compiler<L> {
     }
 }
 
-fn is_no_op_statement(expr: &Expression) -> bool {
+fn is_no_op(expr: &Expression) -> bool {
     match &expr.kind {
         ExpressionKind::Marker
         | ExpressionKind::Variable(_)
@@ -69,9 +69,15 @@ fn is_no_op_statement(expr: &Expression) -> bool {
         ExpressionKind::Block(values)
         | ExpressionKind::Structure(values)
         | ExpressionKind::Variant(_, values)
-        | ExpressionKind::ListLiteral(values) => values.iter().all(is_no_op_statement),
+        | ExpressionKind::ListLiteral(values) => values.iter().all(is_no_op),
         ExpressionKind::When(input, arms) => {
-            is_no_op_statement(input) && arms.iter().all(|arm| is_no_op_statement(&arm.body))
+            is_no_op(input)
+                && arms.iter().all(|arm| {
+                    matches!(
+                        &arm.pattern.kind,
+                        PatternKind::Where(_, condition) if is_no_op(condition)
+                    ) && is_no_op(&arm.body)
+                })
         }
     }
 }
