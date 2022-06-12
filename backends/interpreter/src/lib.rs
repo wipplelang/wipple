@@ -377,6 +377,16 @@ impl<'a> Interpreter<'a> {
                     self.eval_pattern(rhs, value, info)
                 }
             }
+            PatternKind::Where(pattern, condition) => {
+                if !self.eval_pattern(pattern, value, info)? {
+                    return Ok(false);
+                }
+
+                match self.eval_expr(condition, info)? {
+                    Value::Variant(index, _) => Ok(index != 0),
+                    _ => unreachable!(),
+                }
+            }
         }
     }
 

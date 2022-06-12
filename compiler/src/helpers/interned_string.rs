@@ -1,7 +1,7 @@
 use lasso::ThreadedRodeo;
 use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
-use std::{borrow::Borrow, fmt, ops::Deref};
+use std::{fmt, ops::Deref};
 
 lazy_static! {
     static ref INTERNER: ThreadedRodeo = Default::default();
@@ -34,12 +34,6 @@ impl Deref for InternedString {
 
 impl AsRef<str> for InternedString {
     fn as_ref(&self) -> &'static str {
-        self.as_str()
-    }
-}
-
-impl Borrow<str> for InternedString {
-    fn borrow(&self) -> &'static str {
         self.as_str()
     }
 }

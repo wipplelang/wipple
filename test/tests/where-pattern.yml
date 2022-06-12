@@ -1,0 +1,18 @@
+code: |
+    Either : A B => type {
+        Left A
+        Right B
+    }
+
+    use Either
+
+    show (when (Left 2 :: Either _ Number) {
+        Left n where n = 0 or n = 1 -> "oh no"
+        Left n where n = 2 -> "yay"
+        _ -> "oh no"
+    })
+
+output: |
+    yay
+
+diagnostics: |

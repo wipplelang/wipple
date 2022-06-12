@@ -66,6 +66,7 @@ pub enum BuiltinType {
     Never,
     Unit,
     Number,
+    Boolean,
     Text,
     List,
     Mutable,
@@ -164,6 +165,7 @@ pub enum PatternKind {
     Variant(TypeId, usize, Vec<Pattern>),
     Annotate(Box<Pattern>, TypeAnnotation),
     Or(Box<Pattern>, Box<Pattern>),
+    Where(Box<Pattern>, Box<Expression>),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -1310,6 +1312,10 @@ impl<L> Compiler<L> {
             ast::PatternKind::Or(lhs, rhs) => PatternKind::Or(
                 Box::new(self.lower_pattern(*lhs, scope, info)),
                 Box::new(self.lower_pattern(*rhs, scope, info)),
+            ),
+            ast::PatternKind::Where(pattern, condition) => PatternKind::Where(
+                Box::new(self.lower_pattern(*pattern, scope, info)),
+                Box::new(self.lower_expr(*condition, scope, info)),
             ),
         })();
 

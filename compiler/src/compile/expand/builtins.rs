@@ -179,7 +179,7 @@ pub(super) fn load_builtins<L>(expander: &mut Expander<L>, scope: &Scope) {
 
             Node {
                 span,
-                kind: NodeKind::WhereClause(Box::new(lhs), Box::new(rhs)),
+                kind: NodeKind::Where(Box::new(lhs), Box::new(rhs)),
             }
         }),
     );

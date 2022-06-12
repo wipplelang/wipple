@@ -68,7 +68,7 @@ pub enum NodeKind {
     Type(Option<Vec<Node>>),
     Trait(Box<Node>),
     TypeFunction(Box<Node>, Box<Node>),
-    WhereClause(Box<Node>, Box<Node>),
+    Where(Box<Node>, Box<Node>),
     Instance(Box<Node>, Vec<Node>),
     ListLiteral(Vec<Node>),
     Use(Box<Node>),
@@ -227,8 +227,8 @@ pub enum OperatorPrecedence {
     Conjunction,
     Disjunction,
     Dot,
-    Function,
     Where,
+    Function,
     TypeFunction,
     Annotation,
     Assignment,
@@ -251,8 +251,8 @@ impl OperatorPrecedence {
             OperatorPrecedence::Multiplication => OperatorAssociativity::Left,
             OperatorPrecedence::Power => OperatorAssociativity::Right,
             OperatorPrecedence::Dot => OperatorAssociativity::Left,
-            OperatorPrecedence::Function => OperatorAssociativity::Right,
             OperatorPrecedence::Where => OperatorAssociativity::None,
+            OperatorPrecedence::Function => OperatorAssociativity::Right,
             OperatorPrecedence::TypeFunction => OperatorAssociativity::None,
             OperatorPrecedence::Annotation => OperatorAssociativity::Left,
             OperatorPrecedence::Assignment => OperatorAssociativity::None,
@@ -599,7 +599,7 @@ impl<L> Expander<'_, L> {
                             replace(lhs, map);
                             replace(rhs, map);
                         }
-                        NodeKind::WhereClause(lhs, rhs) => {
+                        NodeKind::Where(lhs, rhs) => {
                             replace(lhs, map);
                             replace(rhs, map);
                         }
@@ -616,6 +616,13 @@ impl<L> Expander<'_, L> {
                             for arm in arms {
                                 replace(arm, map);
                             }
+                        }
+                        NodeKind::Return(value) => {
+                            replace(value, map);
+                        }
+                        NodeKind::Or(lhs, rhs) => {
+                            replace(lhs, map);
+                            replace(rhs, map);
                         }
                         _ => {}
                     }

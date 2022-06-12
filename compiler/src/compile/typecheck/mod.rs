@@ -30,7 +30,7 @@ pub struct Program {
 }
 
 macro_rules! expr {
-    ($vis:vis, $prefix:literal, $type:ident, $pattern:ident, { $($kinds:tt)* }) => {
+    ($vis:vis, $prefix:literal, $type:ident, { $($kinds:tt)* }) => {
         paste::paste! {
             #[derive(Debug, Clone, Serialize, Deserialize)]
             $vis struct [<$prefix Expression>] {
@@ -50,10 +50,10 @@ macro_rules! expr {
                     HashMap<InternedString, lower::ScopeValue>,
                 ),
                 Call(Box<[<$prefix Expression>]>, Box<[<$prefix Expression>]>),
-                Function($pattern, Box<[<$prefix Expression>]>),
+                Function([<$prefix Pattern>], Box<[<$prefix Expression>]>),
                 When(Box<[<$prefix Expression>]>, Vec<[<$prefix Arm>]>),
                 External(InternedString, InternedString, Vec<[<$prefix Expression>]>),
-                Initialize($pattern, Box<[<$prefix Expression>]>),
+                Initialize([<$prefix Pattern>], Box<[<$prefix Expression>]>),
                 Structure(Vec<[<$prefix Expression>]>),
                 Variant(usize, Vec<[<$prefix Expression>]>),
                 ListLiteral(Vec<[<$prefix Expression>]>),
@@ -64,7 +64,7 @@ macro_rules! expr {
             #[derive(Debug, Clone, Serialize, Deserialize)]
             $vis struct [<$prefix Arm>] {
                 $vis span: Span,
-                $vis pattern: $pattern,
+                $vis pattern: [<$prefix Pattern>],
                 $vis body: [<$prefix Expression>],
             }
         }
@@ -87,24 +87,25 @@ macro_rules! pattern {
                 Text(InternedString),
                 Variable(VariableId),
                 Or(Box<[<$prefix Pattern>]>, Box<[<$prefix Pattern>]>),
+                Where(Box<[<$prefix Pattern>]>, Box<[<$prefix Expression>]>),
                 $($kinds)*
             }
         }
     };
 }
 
-expr!(, "Unresolved", UnresolvedType, UnresolvedPattern, {
+expr!(, "Unresolved", UnresolvedType, {
     Error,
     Trait(TraitId),
     Constant(GenericConstantId),
 });
 
-expr!(, "Monomorphized", UnresolvedType, Pattern, {
+expr!(, "Monomorphized", UnresolvedType, {
     Error,
     Constant(MonomorphizedConstantId),
 });
 
-expr!(pub, "", Type, Pattern, {
+expr!(pub, "", Type, {
     Constant(MonomorphizedConstantId),
 });
 
@@ -114,6 +115,11 @@ pattern!(, "Unresolved", {
     Destructure(HashMap<InternedString, UnresolvedPattern>),
     Variant(TypeId, usize, Vec<UnresolvedPattern>),
     Annotate(Box<UnresolvedPattern>, UnresolvedType),
+});
+
+pattern!(, "Monomorphized", {
+    Destructure(BTreeMap<usize, MonomorphizedPattern>),
+    Variant(usize, Vec<MonomorphizedPattern>),
 });
 
 pattern!(pub, "", {
@@ -870,7 +876,7 @@ impl<'a, L> Typechecker<'a, L> {
                 }
             }
             lower::ExpressionKind::Function(pattern, body) => {
-                let pattern = self.convert_pattern(pattern);
+                let pattern = self.typecheck_pattern(pattern, file, suppress_errors);
 
                 self.return_tys.push(None);
 
@@ -961,7 +967,7 @@ impl<'a, L> Typechecker<'a, L> {
             lower::ExpressionKind::Initialize(pattern, value) => {
                 let value = self.typecheck_expr(value, file, suppress_errors);
 
-                let pattern = self.convert_pattern(pattern);
+                let pattern = self.typecheck_pattern(pattern, file, suppress_errors);
 
                 UnresolvedExpression {
                     span: expr.span,
@@ -1226,8 +1232,60 @@ impl<'a, L> Typechecker<'a, L> {
     ) -> UnresolvedArm {
         UnresolvedArm {
             span: arm.span,
-            pattern: self.convert_pattern(&arm.pattern),
+            pattern: self.typecheck_pattern(&arm.pattern, file, suppress_errors),
             body: self.typecheck_expr(&arm.body, file, suppress_errors),
+        }
+    }
+
+    fn typecheck_pattern(
+        &mut self,
+        pattern: &lower::Pattern,
+        file: &Rc<RefCell<lower::File>>,
+        suppress_errors: bool,
+    ) -> UnresolvedPattern {
+        let kind = match &pattern.kind {
+            lower::PatternKind::Error => UnresolvedPatternKind::Error,
+            lower::PatternKind::Wildcard => UnresolvedPatternKind::Wildcard,
+            lower::PatternKind::Unit => UnresolvedPatternKind::Unit,
+            lower::PatternKind::Number(number) => UnresolvedPatternKind::Number(*number),
+            lower::PatternKind::Text(text) => UnresolvedPatternKind::Text(*text),
+            lower::PatternKind::Variable(var) => UnresolvedPatternKind::Variable(*var),
+            lower::PatternKind::Destructure(fields) => UnresolvedPatternKind::Destructure(
+                fields
+                    .iter()
+                    .map(|(name, pattern)| {
+                        (
+                            *name,
+                            self.typecheck_pattern(pattern, file, suppress_errors),
+                        )
+                    })
+                    .collect(),
+            ),
+            lower::PatternKind::Variant(ty, variant, values) => UnresolvedPatternKind::Variant(
+                *ty,
+                *variant,
+                values
+                    .iter()
+                    .map(|pattern| self.typecheck_pattern(pattern, file, suppress_errors))
+                    .collect(),
+            ),
+            lower::PatternKind::Annotate(inner, ty) => UnresolvedPatternKind::Annotate(
+                Box::new(self.typecheck_pattern(inner, file, suppress_errors)),
+                self.convert_type_annotation(ty),
+            ),
+            lower::PatternKind::Or(lhs, rhs) => UnresolvedPatternKind::Or(
+                Box::new(self.typecheck_pattern(lhs, file, suppress_errors)),
+                Box::new(self.typecheck_pattern(rhs, file, suppress_errors)),
+            ),
+            lower::PatternKind::Where(pattern, condition) => UnresolvedPatternKind::Where(
+                Box::new(self.typecheck_pattern(pattern, file, suppress_errors)),
+                Box::new(self.typecheck_expr(condition, file, suppress_errors)),
+            ),
+        };
+
+        UnresolvedPattern {
+            span: pattern.span,
+            kind,
         }
     }
 
@@ -1288,18 +1346,19 @@ impl<'a, L> Typechecker<'a, L> {
         Ok(MonomorphizedArm {
             span: arm.span,
             pattern: self
-                .resolve_pattern(arm.pattern, ty, file)
+                .monomorphize_pattern(arm.pattern, ty, file, inside_generic_constant)
                 .ok_or(TypeError::ErrorExpression)?,
             body: self.monomorphize(arm.body, file, inside_generic_constant)?,
         })
     }
 
-    fn resolve_pattern(
+    fn monomorphize_pattern(
         &mut self,
         pattern: UnresolvedPattern,
         mut ty: UnresolvedType,
         file: &Rc<RefCell<lower::File>>,
-    ) -> Option<Pattern> {
+        inside_generic_constant: Option<(GenericConstantId, MonomorphizedConstantId)>,
+    ) -> Option<MonomorphizedPattern> {
         ty.apply(&self.ctx);
 
         let kind = (|| match pattern.kind {
@@ -1312,7 +1371,7 @@ impl<'a, L> Typechecker<'a, L> {
                     self.report_type_error(error, pattern.span);
                 }
 
-                Some(PatternKind::Wildcard)
+                Some(MonomorphizedPatternKind::Wildcard)
             }
             UnresolvedPatternKind::Number(number) => {
                 if let Err(error) = self
@@ -1322,7 +1381,7 @@ impl<'a, L> Typechecker<'a, L> {
                     self.report_type_error(error, pattern.span);
                 }
 
-                Some(PatternKind::Number(number))
+                Some(MonomorphizedPatternKind::Number(number))
             }
             UnresolvedPatternKind::Text(text) => {
                 if let Err(error) = self
@@ -1332,9 +1391,9 @@ impl<'a, L> Typechecker<'a, L> {
                     self.report_type_error(error, pattern.span);
                 }
 
-                Some(PatternKind::Text(text))
+                Some(MonomorphizedPatternKind::Text(text))
             }
-            UnresolvedPatternKind::Wildcard => Some(PatternKind::Wildcard),
+            UnresolvedPatternKind::Wildcard => Some(MonomorphizedPatternKind::Wildcard),
             UnresolvedPatternKind::Variable(var) => {
                 self.variables.insert(var, ty.clone());
 
@@ -1355,7 +1414,7 @@ impl<'a, L> Typechecker<'a, L> {
                     },
                 );
 
-                Some(PatternKind::Variable(var))
+                Some(MonomorphizedPatternKind::Variable(var))
             }
             UnresolvedPatternKind::Destructure(fields) => {
                 let (id, params) = match ty {
@@ -1411,13 +1470,18 @@ impl<'a, L> Typechecker<'a, L> {
 
                         member_ty.instantiate_with(&substitutions);
 
-                        let pattern = self.resolve_pattern(pattern, member_ty, file)?;
+                        let pattern = self.monomorphize_pattern(
+                            pattern,
+                            member_ty,
+                            file,
+                            inside_generic_constant,
+                        )?;
 
                         Some((index, pattern))
                     })
                     .collect();
 
-                Some(PatternKind::Destructure(fields))
+                Some(MonomorphizedPatternKind::Destructure(fields))
             }
             UnresolvedPatternKind::Variant(variant_ty, variant, values) => {
                 let (id, params) = match &ty {
@@ -1474,13 +1538,18 @@ impl<'a, L> Typechecker<'a, L> {
                     self.report_type_error(error, pattern.span);
                 }
 
-                let pattern = PatternKind::Variant(
+                let pattern = MonomorphizedPatternKind::Variant(
                     variant,
                     values
                         .into_iter()
                         .zip(variant_tys)
                         .map(|(pattern, variant_ty)| {
-                            self.resolve_pattern(pattern, variant_ty, file)
+                            self.monomorphize_pattern(
+                                pattern,
+                                variant_ty,
+                                file,
+                                inside_generic_constant,
+                            )
                         })
                         .collect::<Option<_>>()?,
                 );
@@ -1492,15 +1561,59 @@ impl<'a, L> Typechecker<'a, L> {
                     self.report_type_error(error, pattern.span);
                 }
 
-                Some(self.resolve_pattern(*inner, ty, file)?.kind)
+                Some(
+                    self.monomorphize_pattern(*inner, ty, file, inside_generic_constant)?
+                        .kind,
+                )
             }
-            UnresolvedPatternKind::Or(lhs, rhs) => Some(PatternKind::Or(
-                Box::new(self.resolve_pattern(*lhs, ty.clone(), file)?),
-                Box::new(self.resolve_pattern(*rhs, ty, file)?),
+            UnresolvedPatternKind::Or(lhs, rhs) => Some(MonomorphizedPatternKind::Or(
+                Box::new(self.monomorphize_pattern(
+                    *lhs,
+                    ty.clone(),
+                    file,
+                    inside_generic_constant,
+                )?),
+                Box::new(self.monomorphize_pattern(*rhs, ty, file, inside_generic_constant)?),
             )),
+            UnresolvedPatternKind::Where(pattern, condition) => {
+                let pattern =
+                    self.monomorphize_pattern(*pattern, ty, file, inside_generic_constant)?;
+
+                let condition_span = condition.span;
+                let condition = match self.monomorphize(*condition, file, inside_generic_constant) {
+                    Ok(expr) => expr,
+                    Err(error) => {
+                        self.report_type_error(error, condition_span);
+                        return None;
+                    }
+                };
+
+                // HACK: Use '[language]' attribute instead
+                let boolean_ty = match file
+                    .borrow()
+                    .exported
+                    .get(&InternedString::new("Boolean"))
+                    .unwrap()
+                {
+                    lower::ScopeValue::Type(id) => *id,
+                    _ => panic!("another value is named `Boolean`"),
+                };
+
+                if let Err(error) = self.ctx.unify(
+                    condition.ty.clone(),
+                    UnresolvedType::Named(boolean_ty, Vec::new()),
+                ) {
+                    self.report_type_error(error, pattern.span);
+                }
+
+                Some(MonomorphizedPatternKind::Where(
+                    Box::new(pattern),
+                    Box::new(condition),
+                ))
+            }
         })()?;
 
-        Some(Pattern {
+        Some(MonomorphizedPattern {
             span: pattern.span,
             kind,
         })
@@ -1581,7 +1694,7 @@ impl<'a, L> Typechecker<'a, L> {
                         };
 
                         let pattern = self
-                            .resolve_pattern(pattern, input_ty, file)
+                            .monomorphize_pattern(pattern, input_ty, file, inside_generic_constant)
                             .ok_or(TypeError::ErrorExpression)?;
 
                         MonomorphizedExpressionKind::Function(
@@ -1621,7 +1734,12 @@ impl<'a, L> Typechecker<'a, L> {
                         let value = self.monomorphize(*value, file, inside_generic_constant)?;
 
                         let pattern = self
-                            .resolve_pattern(pattern, value.ty.clone(), file)
+                            .monomorphize_pattern(
+                                pattern,
+                                value.ty.clone(),
+                                file,
+                                inside_generic_constant,
+                            )
                             .ok_or(TypeError::ErrorExpression)?;
 
                         MonomorphizedExpressionKind::Initialize(pattern, Box::new(value))
@@ -1734,7 +1852,7 @@ impl<'a, L> Typechecker<'a, L> {
                     Box::new(self.finalize_internal(*input, generic, file)?),
                 ),
                 MonomorphizedExpressionKind::Function(pattern, body) => ExpressionKind::Function(
-                    pattern,
+                    self.finalize_pattern(pattern, generic, file)?,
                     Box::new(self.finalize_internal(*body, generic, file)?),
                 ),
                 MonomorphizedExpressionKind::When(input, arms) => ExpressionKind::When(
@@ -1743,7 +1861,7 @@ impl<'a, L> Typechecker<'a, L> {
                         .map(|arm| {
                             Ok(Arm {
                                 span: arm.span,
-                                pattern: arm.pattern,
+                                pattern: self.finalize_pattern(arm.pattern, generic, file)?,
                                 body: self.finalize_internal(arm.body, generic, file)?,
                             })
                         })
@@ -1761,7 +1879,7 @@ impl<'a, L> Typechecker<'a, L> {
                 }
                 MonomorphizedExpressionKind::Initialize(pattern, value) => {
                     ExpressionKind::Initialize(
-                        pattern,
+                        self.finalize_pattern(pattern, generic, file)?,
                         Box::new(self.finalize_internal(*value, generic, file)?),
                     )
                 }
@@ -1787,6 +1905,46 @@ impl<'a, L> Typechecker<'a, L> {
                 MonomorphizedExpressionKind::Return(value) => {
                     ExpressionKind::Return(Box::new(self.finalize_internal(*value, generic, file)?))
                 }
+            },
+        })
+    }
+
+    fn finalize_pattern(
+        &mut self,
+        pattern: MonomorphizedPattern,
+        generic: bool,
+        file: &Rc<RefCell<lower::File>>,
+    ) -> Result<Pattern, TypeError> {
+        Ok(Pattern {
+            span: pattern.span,
+            kind: match pattern.kind {
+                MonomorphizedPatternKind::Wildcard => PatternKind::Wildcard,
+                MonomorphizedPatternKind::Number(number) => PatternKind::Number(number),
+                MonomorphizedPatternKind::Text(text) => PatternKind::Text(text),
+                MonomorphizedPatternKind::Variable(var) => PatternKind::Variable(var),
+                MonomorphizedPatternKind::Destructure(fields) => PatternKind::Destructure(
+                    fields
+                        .into_iter()
+                        .map(|(index, field)| {
+                            Ok((index, self.finalize_pattern(field, generic, file)?))
+                        })
+                        .collect::<Result<_, _>>()?,
+                ),
+                MonomorphizedPatternKind::Variant(index, values) => PatternKind::Variant(
+                    index,
+                    values
+                        .into_iter()
+                        .map(|value| self.finalize_pattern(value, generic, file))
+                        .collect::<Result<_, _>>()?,
+                ),
+                MonomorphizedPatternKind::Or(lhs, rhs) => PatternKind::Or(
+                    Box::new(self.finalize_pattern(*lhs, generic, file)?),
+                    Box::new(self.finalize_pattern(*rhs, generic, file)?),
+                ),
+                MonomorphizedPatternKind::Where(pattern, condition) => PatternKind::Where(
+                    Box::new(self.finalize_pattern(*pattern, generic, file)?),
+                    Box::new(self.finalize_internal(*condition, generic, file)?),
+                ),
             },
         })
     }
@@ -1922,6 +2080,19 @@ impl<'a, L> Typechecker<'a, L> {
 
                     UnresolvedType::Builtin(BuiltinType::Text)
                 }
+                lower::BuiltinType::Boolean => {
+                    if !parameters.is_empty() {
+                        self.compiler.diagnostics.add(Diagnostic::error(
+                            "`Boolean` does not accept parameters",
+                            vec![Note::primary(
+                                annotation.span,
+                                "try removing these parameters",
+                            )],
+                        ));
+                    }
+
+                    UnresolvedType::Builtin(BuiltinType::Number)
+                }
                 lower::BuiltinType::List => {
                     if parameters.is_empty() {
                         self.compiler.diagnostics.add(Diagnostic::error(
@@ -1985,44 +2156,6 @@ impl<'a, L> Typechecker<'a, L> {
                 Box::new(self.convert_type_annotation(input)),
                 Box::new(self.convert_type_annotation(output)),
             ),
-        }
-    }
-
-    fn convert_pattern(&mut self, pattern: &lower::Pattern) -> UnresolvedPattern {
-        let kind = match &pattern.kind {
-            lower::PatternKind::Error => UnresolvedPatternKind::Error,
-            lower::PatternKind::Wildcard => UnresolvedPatternKind::Wildcard,
-            lower::PatternKind::Unit => UnresolvedPatternKind::Unit,
-            lower::PatternKind::Number(number) => UnresolvedPatternKind::Number(*number),
-            lower::PatternKind::Text(text) => UnresolvedPatternKind::Text(*text),
-            lower::PatternKind::Variable(var) => UnresolvedPatternKind::Variable(*var),
-            lower::PatternKind::Destructure(fields) => UnresolvedPatternKind::Destructure(
-                fields
-                    .iter()
-                    .map(|(name, pattern)| (*name, self.convert_pattern(pattern)))
-                    .collect(),
-            ),
-            lower::PatternKind::Variant(ty, variant, values) => UnresolvedPatternKind::Variant(
-                *ty,
-                *variant,
-                values
-                    .iter()
-                    .map(|pattern| self.convert_pattern(pattern))
-                    .collect(),
-            ),
-            lower::PatternKind::Annotate(inner, ty) => UnresolvedPatternKind::Annotate(
-                Box::new(self.convert_pattern(inner)),
-                self.convert_type_annotation(ty),
-            ),
-            lower::PatternKind::Or(lhs, rhs) => UnresolvedPatternKind::Or(
-                Box::new(self.convert_pattern(lhs)),
-                Box::new(self.convert_pattern(rhs)),
-            ),
-        };
-
-        UnresolvedPattern {
-            span: pattern.span,
-            kind,
         }
     }
 

@@ -116,6 +116,7 @@ pub enum PatternKind {
     Variant((Span, InternedString), Vec<Pattern>),
     Annotate(Box<Pattern>, TypeAnnotation),
     Or(Box<Pattern>, Box<Pattern>),
+    Where(Box<Pattern>, Box<Expression>),
 }
 
 #[derive(Debug, Clone)]
@@ -710,6 +711,10 @@ impl<L> Compiler<L> {
                     Box::new(self.build_pattern(*lhs)),
                     Box::new(self.build_pattern(*rhs)),
                 ),
+                NodeKind::Where(pattern, condition) => PatternKind::Where(
+                    Box::new(self.build_pattern(*pattern)),
+                    Box::new(self.build_expression(*condition)),
+                ),
                 _ => {
                     self.diagnostics.add(Diagnostic::error(
                         "expected pattern",
@@ -832,7 +837,7 @@ impl<L> Compiler<L> {
                 Vec::new(),
             )),
             NodeKind::List(tys) => Some((build_parameter_list!(tys)?, Vec::new())),
-            NodeKind::WhereClause(lhs, bounds) => {
+            NodeKind::Where(lhs, bounds) => {
                 let tys = match lhs.kind {
                     NodeKind::Error => return None,
                     NodeKind::Name(name) => vec![TypeParameter {

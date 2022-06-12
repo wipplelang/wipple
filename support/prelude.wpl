@@ -333,6 +333,9 @@ Iterate : Context Container Element => trait (Container -> Iterator Context Elem
 
 Context Element => instance Iterate Context (Iterator Context Element) Element : it
 
+-- reduce :: Context Container Element Result where (Iterate Context Container Element) => (Element -> Result -> Result) -> Container -> Iterator Context Result
+-- reduce : TODO
+
 -- TODO: Use higher-kinded types
 filter :: Context Container Element where (Iterate Context Container Element) => (Element -> Boolean) -> Container -> Iterator Context Element
 filter : include? -> container -> {

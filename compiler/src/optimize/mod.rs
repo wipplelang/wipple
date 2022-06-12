@@ -62,6 +62,7 @@ pub enum PatternKind {
     Destructure(BTreeMap<usize, Pattern>),
     Variant(usize, Vec<Pattern>),
     Or(Box<Pattern>, Box<Pattern>),
+    Where(Box<Pattern>, Box<Expression>),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -173,6 +174,9 @@ impl From<compile::Pattern> for Pattern {
                 }
                 compile::PatternKind::Or(lhs, rhs) => {
                     PatternKind::Or(Box::new((*lhs).into()), Box::new((*rhs).into()))
+                }
+                compile::PatternKind::Where(pattern, condition) => {
+                    PatternKind::Where(Box::new((*pattern).into()), Box::new((*condition).into()))
                 }
             },
         }

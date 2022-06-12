@@ -50,6 +50,14 @@ impl<L> Compiler<L> {
 
         add!(
             builtin_types,
+            "Boolean",
+            BuiltinType::Boolean,
+            ScopeValue::BuiltinType,
+            (),
+        );
+
+        add!(
+            builtin_types,
             "List",
             BuiltinType::List,
             ScopeValue::BuiltinType,
