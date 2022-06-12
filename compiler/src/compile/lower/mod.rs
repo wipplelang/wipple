@@ -163,6 +163,7 @@ pub enum PatternKind {
     Destructure(HashMap<InternedString, Pattern>),
     Variant(TypeId, usize, Vec<Pattern>),
     Annotate(Box<Pattern>, TypeAnnotation),
+    Or(Box<Pattern>, Box<Pattern>),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -1305,6 +1306,10 @@ impl<L> Compiler<L> {
             ast::PatternKind::Annotate(inner_pattern, ty) => PatternKind::Annotate(
                 Box::new(self.lower_pattern(*inner_pattern, scope, info)),
                 self.lower_type_annotation(ty, scope, info),
+            ),
+            ast::PatternKind::Or(lhs, rhs) => PatternKind::Or(
+                Box::new(self.lower_pattern(*lhs, scope, info)),
+                Box::new(self.lower_pattern(*rhs, scope, info)),
             ),
         })();
 

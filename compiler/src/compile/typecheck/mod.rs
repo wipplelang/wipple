@@ -86,6 +86,7 @@ macro_rules! pattern {
                 Number(Decimal),
                 Text(InternedString),
                 Variable(VariableId),
+                Or(Box<[<$prefix Pattern>]>, Box<[<$prefix Pattern>]>),
                 $($kinds)*
             }
         }
@@ -1493,6 +1494,10 @@ impl<'a, L> Typechecker<'a, L> {
 
                 Some(self.resolve_pattern(*inner, ty, file)?.kind)
             }
+            UnresolvedPatternKind::Or(lhs, rhs) => Some(PatternKind::Or(
+                Box::new(self.resolve_pattern(*lhs, ty.clone(), file)?),
+                Box::new(self.resolve_pattern(*rhs, ty, file)?),
+            )),
         })()?;
 
         Some(Pattern {
@@ -2008,6 +2013,10 @@ impl<'a, L> Typechecker<'a, L> {
             lower::PatternKind::Annotate(inner, ty) => UnresolvedPatternKind::Annotate(
                 Box::new(self.convert_pattern(inner)),
                 self.convert_type_annotation(ty),
+            ),
+            lower::PatternKind::Or(lhs, rhs) => UnresolvedPatternKind::Or(
+                Box::new(self.convert_pattern(lhs)),
+                Box::new(self.convert_pattern(rhs)),
             ),
         };
 

@@ -1,0 +1,10 @@
+code: |
+    show (when 3 {
+        1 -> "oh no"
+        2 or 3 -> "yay"
+    })
+
+output: |
+    yay
+
+diagnostics: |

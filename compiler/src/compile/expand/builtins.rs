@@ -348,6 +348,31 @@ pub(super) fn load_builtins<L>(expander: &mut Expander<L>, scope: &Scope) {
         }),
     );
 
+    // `or` operator
+
+    let id = expander.compiler.new_template_id();
+
+    scope_values.insert(
+        InternedString::new("or"),
+        ScopeValue::Operator(Operator {
+            precedence: OperatorPrecedence::Disjunction,
+            template: id,
+        }),
+    );
+
+    expander.info.templates.insert(
+        id,
+        Template::function(builtin_span, |_, span, mut inputs, _| {
+            let rhs = inputs.pop().unwrap();
+            let lhs = inputs.pop().unwrap();
+
+            Node {
+                span,
+                kind: NodeKind::Or(Box::new(lhs), Box::new(rhs)),
+            }
+        }),
+    );
+
     // `use` template
 
     let id = expander.compiler.new_template_id();

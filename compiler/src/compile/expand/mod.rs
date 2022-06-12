@@ -74,6 +74,7 @@ pub enum NodeKind {
     Use(Box<Node>),
     When(Box<Node>, Vec<Node>),
     Return(Box<Node>),
+    Or(Box<Node>, Box<Node>),
 }
 
 impl<L> Compiler<L> {

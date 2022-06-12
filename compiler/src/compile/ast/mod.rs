@@ -115,6 +115,7 @@ pub enum PatternKind {
     Destructure(Vec<(Span, InternedString)>),
     Variant((Span, InternedString), Vec<Pattern>),
     Annotate(Box<Pattern>, TypeAnnotation),
+    Or(Box<Pattern>, Box<Pattern>),
 }
 
 #[derive(Debug, Clone)]
@@ -570,6 +571,31 @@ impl<L> Compiler<L> {
                 NodeKind::Return(value) => {
                     ExpressionKind::Return(Box::new(self.build_expression(*value)))
                 }
+                NodeKind::Or(lhs, rhs) => {
+                    // Use the `Or` trait defined in the prelude
+
+                    let rhs = self.build_expression(*rhs);
+
+                    ExpressionKind::Call(
+                        Box::new(Expression {
+                            span: Span::new(FilePath::_Builtin, 0..0),
+                            kind: ExpressionKind::Name(InternedString::new("Or")),
+                        }),
+                        vec![
+                            self.build_expression(*lhs),
+                            Expression {
+                                span: rhs.span,
+                                kind: ExpressionKind::Function(
+                                    Pattern {
+                                        span: Span::new(FilePath::_Builtin, 0..0),
+                                        kind: PatternKind::Unit,
+                                    },
+                                    Box::new(rhs),
+                                ),
+                            },
+                        ],
+                    )
+                }
                 _ => {
                     self.diagnostics.add(Diagnostic::error(
                         "expected expression",
@@ -680,6 +706,10 @@ impl<L> Compiler<L> {
 
                     PatternKind::Annotate(Box::new(inner), ty)
                 }
+                NodeKind::Or(lhs, rhs) => PatternKind::Or(
+                    Box::new(self.build_pattern(*lhs)),
+                    Box::new(self.build_pattern(*rhs)),
+                ),
                 _ => {
                     self.diagnostics.add(Diagnostic::error(
                         "expected pattern",

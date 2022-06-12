@@ -370,6 +370,13 @@ impl<'a> Interpreter<'a> {
 
                 Ok(true)
             }
+            PatternKind::Or(lhs, rhs) => {
+                if self.eval_pattern(lhs, value.clone(), info)? {
+                    Ok(true)
+                } else {
+                    self.eval_pattern(rhs, value, info)
+                }
+            }
         }
     }
 

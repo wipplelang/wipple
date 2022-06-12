@@ -61,6 +61,7 @@ pub enum PatternKind {
     Variable(VariableId),
     Destructure(BTreeMap<usize, Pattern>),
     Variant(usize, Vec<Pattern>),
+    Or(Box<Pattern>, Box<Pattern>),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -169,6 +170,9 @@ impl From<compile::Pattern> for Pattern {
                 ),
                 compile::PatternKind::Variant(index, values) => {
                     PatternKind::Variant(index, values.into_iter().map(From::from).collect())
+                }
+                compile::PatternKind::Or(lhs, rhs) => {
+                    PatternKind::Or(Box::new((*lhs).into()), Box::new((*rhs).into()))
                 }
             },
         }
