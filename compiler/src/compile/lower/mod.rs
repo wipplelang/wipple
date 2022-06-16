@@ -215,7 +215,12 @@ impl TypeAnnotation {
 impl<L> Compiler<L> {
     pub fn lower(&mut self, file: ast::File, dependencies: Vec<Rc<File>>) -> File {
         let scope = Scope::default();
-        let mut info = Info::default();
+
+        let mut info = Info {
+            file: file.path,
+            declarations: Default::default(),
+            global_attributes: Default::default(),
+        };
 
         // TODO: Handle file attributes
 
@@ -242,7 +247,7 @@ impl<L> Compiler<L> {
                 variables,
             );
 
-            info.global_attributes = dependency.global_attributes.clone();
+            info.global_attributes.merge(&dependency.global_attributes);
 
             scope
                 .values
@@ -279,6 +284,13 @@ impl<L> Compiler<L> {
             exported: scope.values.take(),
             block,
         }
+    }
+}
+
+impl GlobalAttributes {
+    fn merge(&mut self, other: &Self) {
+        // This is OK because language items may only be set in the prelude
+        self.language_items = other.language_items.clone();
     }
 }
 
@@ -324,8 +336,8 @@ impl<'a> Scope<'a> {
     }
 }
 
-#[derive(Default)]
 struct Info {
+    file: FilePath,
     declarations: Declarations,
     global_attributes: GlobalAttributes,
 }
@@ -884,6 +896,15 @@ impl<L> Compiler<L> {
         for (span, name, value) in statement.attributes {
             match name.as_str() {
                 "language" => {
+                    if !matches!(info.file, FilePath::Prelude) {
+                        self.diagnostics.add(Diagnostic::error(
+                            "`language` attribute may only be used in the prelude",
+                            vec![Note::primary(value.span, "cannot use `language` here")],
+                        ));
+
+                        continue;
+                    }
+
                     let item = match value.kind {
                         ast::AttributeValueKind::Text(text) => text,
                         _ => {
@@ -923,9 +944,9 @@ impl<L> Compiler<L> {
                                 ));
 
                                 continue;
-                            } else {
-                                info.global_attributes.language_items.boolean = Some(type_id);
                             }
+
+                            info.global_attributes.language_items.boolean = Some(type_id);
                         }
                         _ => {
                             self.diagnostics.add(Diagnostic::error(
