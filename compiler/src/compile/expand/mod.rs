@@ -20,26 +20,28 @@ use std::{
 pub struct File {
     pub path: FilePath,
     pub span: Span,
-    pub statements: Vec<Node>,
+    pub statements: Vec<Statement>,
     pub dependencies: Vec<Dependency>,
 }
 
-#[derive(Debug)]
-pub struct Dependency {
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Statement {
+    pub attributes: Attributes,
+    pub node: Node,
+}
+
+pub type Attributes = Vec<(Span, InternedString, AttributeValue)>;
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AttributeValue {
     pub span: Span,
-    pub name: InternedString,
+    pub kind: AttributeValueKind,
 }
 
-pub struct Info<L> {
-    templates: BTreeMap<TemplateId, Template<L>>,
-}
-
-impl<L> Default for Info<L> {
-    fn default() -> Self {
-        Info {
-            templates: Default::default(),
-        }
-    }
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum AttributeValueKind {
+    Text(InternedString),
+    Number(Decimal),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -58,23 +60,41 @@ pub enum NodeKind {
     Text(InternedString),
     Number(Decimal),
     List(Vec<Node>),
-    Block(Vec<Node>),
+    Block(Vec<Statement>),
     Assign(Box<Node>, Box<Node>),
     Template(Vec<InternedString>, Box<Node>),
     Operator(OperatorPrecedence, Vec<InternedString>, Box<Node>),
     Function(Box<Node>, Box<Node>),
     External(Box<Node>, Box<Node>, Vec<Node>),
     Annotate(Box<Node>, Box<Node>),
-    Type(Option<Vec<Node>>),
+    Type(Option<Vec<Statement>>),
     Trait(Box<Node>),
     TypeFunction(Box<Node>, Box<Node>),
     Where(Box<Node>, Box<Node>),
     Instance(Box<Node>, Vec<Node>),
     ListLiteral(Vec<Node>),
     Use(Box<Node>),
-    When(Box<Node>, Vec<Node>),
+    When(Box<Node>, Vec<Statement>),
     Return(Box<Node>),
     Or(Box<Node>, Box<Node>),
+}
+
+#[derive(Debug)]
+pub struct Dependency {
+    pub span: Span,
+    pub name: InternedString,
+}
+
+pub struct Info<L> {
+    templates: BTreeMap<TemplateId, Template<L>>,
+}
+
+impl<L> Default for Info<L> {
+    fn default() -> Self {
+        Info {
+            templates: Default::default(),
+        }
+    }
 }
 
 impl<L> Compiler<L> {
@@ -308,26 +328,202 @@ impl<L> Expander<'_, L> {
         &mut self,
         statements: Vec<parse::Statement>,
         scope: &Scope,
-    ) -> (Vec<Node>, ScopeValues) {
+    ) -> (Vec<Statement>, ScopeValues) {
         let scope = scope.child();
 
         let statements = statements
             .into_iter()
             .filter_map(|statement| {
-                let exprs = statement
-                    .lines
-                    .into_iter()
-                    .flat_map(|line| line.exprs)
+                let mut lines = statement.lines.into_iter();
+
+                let (attributes, first_exprs) = match lines.next() {
+                    Some(line) => (line.attributes, line.exprs),
+                    None => return None,
+                };
+
+                let exprs = std::iter::once(first_exprs)
+                    .chain(lines.map(|line| {
+                        for attribute in line.attributes {
+                            self.compiler.diagnostics.add(Diagnostic::new(
+                                DiagnosticLevel::Error,
+                                "unexpected attribute",
+                                vec![Note::primary(
+                                    attribute.span,
+                                    "try placing this attribute before the statement",
+                                )],
+                            ));
+                        }
+
+                        line.exprs
+                    }))
+                    .flatten()
                     .collect::<Vec<_>>();
 
                 if exprs.is_empty() {
+                    for attribute in attributes {
+                        self.compiler.diagnostics.add(Diagnostic::new(
+                            DiagnosticLevel::Error,
+                            "unexpected attribute",
+                            vec![Note::primary(
+                                attribute.span,
+                                "try adding an expression after this attribute",
+                            )],
+                        ));
+                    }
+
                     return None;
                 }
 
                 let span = Span::join(exprs.first().unwrap().span, exprs.last().unwrap().span);
 
-                let node = self.expand_list(span, exprs, &scope);
-                (!matches!(node.kind, NodeKind::Placeholder)).then(|| node)
+                let mut node = self.expand_list(span, exprs, &scope);
+
+                let mut attribute_values = Vec::new();
+                'attributes: for attribute in attributes.into_iter().rev() {
+                    match attribute.kind {
+                        parse::ExprKind::Name(name) => {
+                            if let Some(ScopeValue::Template(template)) = scope.get(name) {
+                                node = self.expand_template(
+                                    name,
+                                    attribute.span,
+                                    template,
+                                    vec![node],
+                                    &scope,
+                                );
+                            }
+                        }
+                        parse::ExprKind::List(lines) => {
+                            let exprs = lines
+                                .into_iter()
+                                .flat_map(|line| line.exprs)
+                                .collect::<Vec<_>>();
+
+                            for expr in &exprs {
+                                if let parse::ExprKind::Name(name) = expr.kind {
+                                    if name.as_str() != ":" {
+                                        if let Some(ScopeValue::Operator(_)) = scope.get(name) {
+                                            self.compiler.diagnostics.add(Diagnostic::new(
+                                                DiagnosticLevel::Error,
+                                                "unexpected operator",
+                                                vec![Note::primary(
+                                                    attribute.span,
+                                                    "only the `:` operator is allowed within attributes",
+                                                )],
+                                            ));
+
+                                            continue 'attributes;
+                                        }
+                                    }
+                                }
+                            }
+
+                            match self.expand_list(attribute.span, exprs.clone(), &scope).kind {
+                                NodeKind::Assign(lhs, rhs) => {
+                                    let name = match lhs.kind {
+                                        NodeKind::Name(name) => name,
+                                        _ => {
+                                            self.compiler.diagnostics.add(Diagnostic::new(
+                                                DiagnosticLevel::Error,
+                                                "expected name in attribute",
+                                                vec![Note::primary(
+                                                    lhs.span,
+                                                    "expected name here",
+                                                )],
+                                            ));
+
+                                            continue 'attributes;
+                                        }
+                                    };
+
+                                    let value = AttributeValue {
+                                        span: rhs.span,
+                                        kind: match rhs.kind {
+                                            NodeKind::Text(text) => AttributeValueKind::Text(text),
+                                            NodeKind::Number(number) => AttributeValueKind::Number(number),
+                                            _ => {
+                                                self.compiler.diagnostics.add(Diagnostic::new(
+                                                    DiagnosticLevel::Error,
+                                                    "expected number or text in attribute value",
+                                                    vec![Note::primary(
+                                                        lhs.span,
+                                                        "expected number or text here",
+                                                    )],
+                                                ));
+
+                                                continue 'attributes;
+                                            }
+                                        },
+                                    };
+
+                                    attribute_values.push((attribute.span, name, value));
+                                },
+                                _ => {
+                                    let mut exprs = exprs.into_iter();
+
+                                    let first = exprs.next().unwrap();
+                                    let name = match first.kind {
+                                        parse::ExprKind::Name(name) => name,
+                                        _ => {
+                                            self.compiler.diagnostics.add(Diagnostic::new(
+                                                DiagnosticLevel::Error,
+                                                "expected name in attribute",
+                                                vec![Note::primary(
+                                                    attribute.span,
+                                                    "expected name of template here",
+                                                )],
+                                            ));
+
+                                            continue 'attributes;
+                                        }
+                                    };
+
+                                    let template = match scope.get(name) {
+                                        Some(ScopeValue::Template(template)) => template,
+                                        Some(ScopeValue::Operator(_)) => {
+                                            unreachable!("operators trigger an error above");
+                                        },
+                                        None => {
+                                            self.compiler.diagnostics.add(Diagnostic::error(
+                                                format!("cannot find template `{}`", name),
+                                                vec![Note::primary(first.span, "no such template")],
+                                            ));
+
+                                            continue 'attributes;
+                                        }
+                                    };
+
+                                    let inputs = exprs
+                                        .map(|expr| self.expand_expr(expr, &scope))
+                                        .chain(std::iter::once(node))
+                                        .collect::<Vec<_>>();
+
+                                    node = self.expand_template(
+                                        name,
+                                        attribute.span,
+                                        template,
+                                        inputs,
+                                        &scope,
+                                    );
+                                },
+                            }
+                        }
+                        _ => {
+                            self.compiler.diagnostics.add(Diagnostic::new(
+                                DiagnosticLevel::Error,
+                                "invalid attribute",
+                                vec![Note::primary(
+                                    attribute.span,
+                                    "expected a call to a template here",
+                                )],
+                            ));
+                        }
+                    }
+                }
+
+                (!matches!(node.kind, NodeKind::Placeholder)).then(|| Statement {
+                    attributes: attribute_values,
+                    node,
+                })
             })
             .collect();
 
@@ -442,15 +638,15 @@ impl<L> Expander<'_, L> {
                                             DiagnosticLevel::Error,
                                             "operator ambiguity",
                                             vec![
-                                        Note::primary(
-                                            exprs[index].span,
-                                            "only one of this operator may be provided at a time",
-                                        ),
-                                        Note::secondary(
-                                            exprs[max_index].span,
-                                            "first use of this operator",
-                                        ),
-                                    ],
+                                                Note::primary(
+                                                    exprs[index].span,
+                                                    "only one of this operator may be provided at a time",
+                                                ),
+                                                Note::secondary(
+                                                    exprs[max_index].span,
+                                                    "first use of this operator",
+                                                ),
+                                            ],
                                         ));
 
                                         return Node {
@@ -563,7 +759,7 @@ impl<L> Expander<'_, L> {
                         }
                         NodeKind::Block(statements) => {
                             for statement in statements {
-                                replace(statement, map);
+                                replace(&mut statement.node, map);
                             }
                         }
                         NodeKind::Assign(lhs, rhs) => {
@@ -590,7 +786,7 @@ impl<L> Expander<'_, L> {
                         NodeKind::Type(fields) => {
                             if let Some(fields) = fields {
                                 for field in fields {
-                                    replace(field, map);
+                                    replace(&mut field.node, map);
                                 }
                             }
                         }
@@ -614,7 +810,7 @@ impl<L> Expander<'_, L> {
                             replace(input, map);
 
                             for arm in arms {
-                                replace(arm, map);
+                                replace(&mut arm.node, map);
                             }
                         }
                         NodeKind::Return(value) => {

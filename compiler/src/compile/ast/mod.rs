@@ -7,6 +7,8 @@ use crate::{
 };
 use rust_decimal::Decimal;
 
+pub use expand::{AttributeValue, AttributeValueKind, Attributes};
+
 #[derive(Debug, Clone)]
 pub struct File {
     pub path: FilePath,
@@ -23,6 +25,7 @@ pub struct FileAttribute {
 #[derive(Debug, Clone)]
 pub struct Statement {
     pub span: Span,
+    pub attributes: Attributes,
     pub kind: StatementKind,
 }
 
@@ -73,6 +76,7 @@ pub enum ExpressionKind {
 #[derive(Debug, Clone)]
 pub struct Arm {
     pub span: Span,
+    pub attributes: Attributes,
     pub pattern: Pattern,
     pub body: Expression,
 }
@@ -143,6 +147,7 @@ pub enum TypeKind {
 #[derive(Debug, Clone)]
 pub struct DataField {
     pub name: InternedString,
+    pub attributes: Attributes,
     pub ty: TypeAnnotation,
 }
 
@@ -150,6 +155,7 @@ pub struct DataField {
 pub struct DataVariant {
     pub name: InternedString,
     pub span: Span,
+    pub attributes: Attributes,
     pub values: Vec<TypeAnnotation>,
 }
 
@@ -181,10 +187,11 @@ impl<L> Compiler<L> {
         }
     }
 
-    fn build_statement(&mut self, node: Node) -> Statement {
+    fn build_statement(&mut self, statement: expand::Statement) -> Statement {
         Statement {
-            span: node.span,
-            kind: (|| match node.kind {
+            span: statement.node.span,
+            attributes: statement.attributes,
+            kind: (|| match statement.node.kind {
                 NodeKind::Assign(pattern, value) => match pattern.kind {
                     NodeKind::TypeFunction(lhs, rhs) => {
                         let (params, bounds) = match self.build_type_function(*lhs) {
@@ -371,7 +378,7 @@ impl<L> Compiler<L> {
                         _ => {
                             return StatementKind::Expression(
                                 self.build_expression(Node {
-                                    span: node.span,
+                                    span: statement.node.span,
                                     kind: NodeKind::Annotate(expr, ty),
                                 })
                                 .kind,
@@ -415,7 +422,7 @@ impl<L> Compiler<L> {
 
                     StatementKind::Use((expr.span, name))
                 }
-                _ => StatementKind::Expression(self.build_expression(node).kind),
+                _ => StatementKind::Expression(self.build_expression(statement.node).kind),
             })(),
         }
     }
@@ -546,12 +553,13 @@ impl<L> Compiler<L> {
 
                     let arms = block
                         .into_iter()
-                        .filter_map(|node| {
-                            let expr = self.build_expression(node);
+                        .filter_map(|statement| {
+                            let expr = self.build_expression(statement.node);
 
                             match expr.kind {
                                 ExpressionKind::Function(pattern, body) => Some(Arm {
                                     span: expr.span,
+                                    attributes: statement.attributes,
                                     pattern,
                                     body: *body,
                                 }),
@@ -635,7 +643,14 @@ impl<L> Compiler<L> {
                         None => return PatternKind::Destructure(Vec::new()),
                     };
 
-                    match statement.kind {
+                    for (span, _, _) in statement.attributes {
+                        self.diagnostics.add(Diagnostic::error(
+                            "attributes are not supported inside patterns",
+                            vec![Note::primary(span, "try removing this")],
+                        ));
+                    }
+
+                    match statement.node.kind {
                         NodeKind::Error => PatternKind::Error,
                         NodeKind::List(nodes) => PatternKind::Destructure(
                             nodes
@@ -662,7 +677,7 @@ impl<L> Compiler<L> {
                                 .collect(),
                         ),
                         NodeKind::Name(name) => {
-                            PatternKind::Destructure(vec![(statement.span, name)])
+                            PatternKind::Destructure(vec![(statement.node.span, name)])
                         }
                         _ => {
                             self.diagnostics.add(Diagnostic::error(
@@ -938,7 +953,7 @@ impl<L> Compiler<L> {
     fn build_type_declaration(
         &mut self,
         span: Span,
-        fields: Option<Vec<Node>>,
+        fields: Option<Vec<expand::Statement>>,
     ) -> Option<TypeKind> {
         let fields = match fields {
             Some(fields) => fields,
@@ -957,19 +972,31 @@ impl<L> Compiler<L> {
             return None;
         }
 
+        struct Field {
+            span: Span,
+            attributes: Attributes,
+            name: InternedString,
+            kind: FieldKind,
+        }
+
         enum FieldKind {
-            Field((Span, InternedString), TypeAnnotation),
-            Variant((Span, InternedString), Vec<TypeAnnotation>),
+            Field(TypeAnnotation),
+            Variant(Vec<TypeAnnotation>),
         }
 
         let mut fields = match fields
             .into_iter()
             .map(|field| {
-                let span = field.span;
+                let span = field.node.span;
 
-                match field.kind {
+                match field.node.kind {
                     NodeKind::Error => None,
-                    NodeKind::Name(name) => Some(FieldKind::Variant((span, name), Vec::new())),
+                    NodeKind::Name(name) => Some(Field {
+                        span,
+                        attributes: field.attributes,
+                        name,
+                        kind: FieldKind::Variant(Vec::new()),
+                    }),
                     NodeKind::List(nodes) => {
                         let mut nodes = nodes.into_iter();
 
@@ -994,7 +1021,12 @@ impl<L> Compiler<L> {
                             .map(|node| self.build_type_annotation(node))
                             .collect::<Vec<_>>();
 
-                        Some(FieldKind::Variant((name_span, name), tys))
+                        Some(Field {
+                            span: name_span,
+                            attributes: field.attributes,
+                            name,
+                            kind: FieldKind::Variant(tys),
+                        })
                     }
                     NodeKind::Annotate(name, ty) => {
                         let name = match name.kind {
@@ -1014,7 +1046,12 @@ impl<L> Compiler<L> {
 
                         let ty = self.build_type_annotation(*ty);
 
-                        Some(FieldKind::Field((span, name), ty))
+                        Some(Field {
+                            span,
+                            attributes: field.attributes,
+                            name,
+                            kind: FieldKind::Field(ty),
+                        })
                     }
                     _ => {
                         self.diagnostics.add(Diagnostic::error(
@@ -1035,22 +1072,31 @@ impl<L> Compiler<L> {
             _ => return None,
         };
 
-        let mut kind = match fields.next().unwrap() {
-            FieldKind::Field((_, name), ty) => TypeKind::Structure(vec![DataField { name, ty }]),
-            FieldKind::Variant((span, name), values) => {
-                TypeKind::Enumeration(vec![DataVariant { name, span, values }])
-            }
+        let first = fields.next().unwrap();
+
+        let mut kind = match first.kind {
+            FieldKind::Field(ty) => TypeKind::Structure(vec![DataField {
+                name: first.name,
+                attributes: first.attributes,
+                ty,
+            }]),
+            FieldKind::Variant(values) => TypeKind::Enumeration(vec![DataVariant {
+                name: first.name,
+                span: first.span,
+                attributes: first.attributes,
+                values,
+            }]),
         };
 
         for field in fields {
-            match field {
-                FieldKind::Field((span, name), ty) => {
+            match field.kind {
+                FieldKind::Field(ty) => {
                     let fields = match &mut kind {
                         TypeKind::Structure(fields) => fields,
                         TypeKind::Enumeration(_) => {
                             self.diagnostics.add(Diagnostic::error(
                                 "expected field, found variant",
-                                vec![Note::primary(span, "expected a field here")],
+                                vec![Note::primary(field.span, "expected a field here")],
                             ));
 
                             continue;
@@ -1058,14 +1104,18 @@ impl<L> Compiler<L> {
                         _ => unreachable!(),
                     };
 
-                    fields.push(DataField { name, ty });
+                    fields.push(DataField {
+                        name: field.name,
+                        attributes: field.attributes,
+                        ty,
+                    });
                 }
-                FieldKind::Variant((span, name), values) => {
+                FieldKind::Variant(values) => {
                     let variants = match &mut kind {
                         TypeKind::Structure(_) => {
                             self.diagnostics.add(Diagnostic::error(
                                 "expected variant, found field",
-                                vec![Note::primary(span, "expected a variant here")],
+                                vec![Note::primary(field.span, "expected a variant here")],
                             ));
 
                             continue;
@@ -1074,7 +1124,12 @@ impl<L> Compiler<L> {
                         _ => unreachable!(),
                     };
 
-                    variants.push(DataVariant { name, span, values });
+                    variants.push(DataVariant {
+                        name: field.name,
+                        span: field.span,
+                        attributes: field.attributes,
+                        values,
+                    });
                 }
             }
         }

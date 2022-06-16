@@ -1588,16 +1588,12 @@ impl<'a, L> Typechecker<'a, L> {
                     }
                 };
 
-                // HACK: Use '[language]' attribute instead
-                let boolean_ty = match file
+                let boolean_ty = file
                     .borrow()
-                    .exported
-                    .get(&InternedString::new("Boolean"))
-                    .unwrap()
-                {
-                    lower::ScopeValue::Type(id) => *id,
-                    _ => panic!("another value is named `Boolean`"),
-                };
+                    .global_attributes
+                    .language_items
+                    .boolean
+                    .expect("`boolean` language item is not defined");
 
                 if let Err(error) = self.ctx.unify(
                     condition.ty.clone(),

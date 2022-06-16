@@ -19,10 +19,10 @@ pub enum Token<'src> {
     RightFileBracket,
 
     #[token("[")]
-    LeftExprBracket,
+    LeftAttrBracket,
 
     #[token("]")]
-    RightExprBracket,
+    RightAttrBracket,
 
     #[token("{")]
     LeftBrace,
@@ -66,8 +66,8 @@ impl<'src> fmt::Display for Token<'src> {
             Token::RightParenthesis => write!(f, "`)`"),
             Token::LeftFileBracket => write!(f, "`[:`"),
             Token::RightFileBracket => write!(f, "`:]`"),
-            Token::LeftExprBracket => write!(f, "`[`"),
-            Token::RightExprBracket => write!(f, "`]`"),
+            Token::LeftAttrBracket => write!(f, "`[`"),
+            Token::RightAttrBracket => write!(f, "`]`"),
             Token::LeftBrace => write!(f, "`{{`"),
             Token::RightBrace => write!(f, "`}}`"),
             Token::Underscore => write!(f, "`_`"),

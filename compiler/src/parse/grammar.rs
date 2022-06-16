@@ -43,6 +43,7 @@ pub struct Statement {
 
 #[derive(Debug, Clone)]
 pub struct ListLine {
+    pub attributes: Vec<Expr>,
     pub exprs: Vec<Expr>,
     pub comment: Option<InternedString>,
 }
@@ -112,7 +113,8 @@ impl<'src> Parser<'_, 'src> {
             };
 
             // Consume expressions
-            let (exprs, parsed_end_token, end_span, comment) = (|| {
+            let (attributes, exprs, parsed_end_token, end_span, comment) = (|| {
+                let mut attributes = Vec::new();
                 let mut exprs = Vec::new();
                 let mut comment = None;
                 loop {
@@ -121,7 +123,7 @@ impl<'src> Parser<'_, 'src> {
                     match (token, end_token) {
                         (Some(Token::LineBreak), _) => {
                             self.consume();
-                            return (exprs, token, None, comment);
+                            return (attributes, exprs, token, None, comment);
                         }
                         (Some(Token::Comment(c)), _) => {
                             self.consume();
@@ -129,18 +131,24 @@ impl<'src> Parser<'_, 'src> {
                         }
                         (None, _) => {
                             self.consume();
-                            return (exprs, token, Some(span), comment);
+                            return (attributes, exprs, token, Some(span), comment);
                         }
                         (Some(token), Some(end_token)) if token == end_token => {
                             self.consume();
-                            return (exprs, Some(token), Some(span), comment);
+                            return (attributes, exprs, Some(token), Some(span), comment);
                         }
                         _ => {
-                            if let Some(expr) = self.parse_expr() {
+                            if let Some(attribute) = self.try_parse_attribute() {
+                                attributes.push(attribute);
+
+                                while let (_, Some(Token::LineBreak)) = self.peek() {
+                                    self.consume();
+                                }
+                            } else if let Some(expr) = self.parse_expr() {
                                 exprs.push(expr);
                             } else {
                                 error = true;
-                                return (exprs, token, None, comment);
+                                return (attributes, exprs, token, None, comment);
                             }
                         }
                     }
@@ -175,11 +183,11 @@ impl<'src> Parser<'_, 'src> {
                 })
             }
 
-            statements
-                .last_mut()
-                .unwrap()
-                .lines
-                .push(ListLine { exprs, comment });
+            statements.last_mut().unwrap().lines.push(ListLine {
+                attributes,
+                exprs,
+                comment,
+            });
 
             if let Some(end_span) = end_span {
                 break end_span;
@@ -187,6 +195,19 @@ impl<'src> Parser<'_, 'src> {
         };
 
         (!error).then(|| (statements, end_span))
+    }
+
+    pub fn try_parse_attribute(&mut self) -> Option<Expr> {
+        let (span, token) = self.peek();
+
+        if !matches!(token, Some(Token::LeftAttrBracket)) {
+            return None;
+        }
+
+        self.consume();
+
+        self.parse_list_contents(Token::RightAttrBracket)
+            .map(|(lines, end_span)| Expr::new(span.with_end(end_span.end), ExprKind::List(lines)))
     }
 
     pub fn parse_expr(&mut self) -> Option<Expr> {
@@ -418,7 +439,11 @@ impl<'src> Parser<'_, 'src> {
                 }
             })();
 
-            lines.push(ListLine { exprs, comment });
+            lines.push(ListLine {
+                attributes: Vec::new(),
+                exprs,
+                comment,
+            });
 
             if let Some(end_span) = end_span {
                 break (token, end_span);

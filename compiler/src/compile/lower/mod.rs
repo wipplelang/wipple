@@ -18,6 +18,7 @@ pub struct File {
     pub span: Span,
     pub complete: bool,
     pub declarations: Declarations,
+    pub global_attributes: GlobalAttributes,
     pub exported: HashMap<InternedString, ScopeValue>,
     pub block: Vec<Expression>,
 }
@@ -100,6 +101,16 @@ pub struct Instance {
     pub tr: TraitId,
     pub trait_params: Vec<TypeAnnotation>,
     pub value: Expression,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct GlobalAttributes {
+    pub language_items: LanguageItems,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct LanguageItems {
+    pub boolean: Option<TypeId>,
 }
 
 #[derive(Debug, Clone)]
@@ -231,6 +242,8 @@ impl<L> Compiler<L> {
                 variables,
             );
 
+            info.global_attributes = dependency.global_attributes.clone();
+
             scope
                 .values
                 .borrow_mut()
@@ -262,6 +275,7 @@ impl<L> Compiler<L> {
             span: file.span,
             complete,
             declarations: info.declarations,
+            global_attributes: info.global_attributes,
             exported: scope.values.take(),
             block,
         }
@@ -313,6 +327,7 @@ impl<'a> Scope<'a> {
 #[derive(Default)]
 struct Info {
     declarations: Declarations,
+    global_attributes: GlobalAttributes,
 }
 
 impl<L> Compiler<L> {
@@ -338,7 +353,7 @@ impl<L> Compiler<L> {
         scope: &Scope,
         info: &mut Info,
     ) -> Option<Expression> {
-        match statement.kind {
+        let (scope_value, expr) = match statement.kind {
             ast::StatementKind::Type((span, name), ty) => {
                 let id = self.new_type_id();
                 scope.values.borrow_mut().insert(name, ScopeValue::Type(id));
@@ -518,7 +533,7 @@ impl<L> Compiler<L> {
                     },
                 );
 
-                None
+                (Some(ScopeValue::Type(id)), None)
             }
             ast::StatementKind::Trait((_span, name), declaration) => {
                 let tr = {
@@ -547,7 +562,7 @@ impl<L> Compiler<L> {
                     },
                 );
 
-                None
+                (Some(ScopeValue::Trait(id)), None)
             }
             ast::StatementKind::Constant((_span, name), declaration) => {
                 let constant = {
@@ -627,7 +642,7 @@ impl<L> Compiler<L> {
                     },
                 );
 
-                None
+                (Some(ScopeValue::Constant(id, None)), None)
             }
             ast::StatementKind::Instance(decl) => {
                 let instance = {
@@ -731,7 +746,7 @@ impl<L> Compiler<L> {
                     },
                 );
 
-                None
+                (Some(ScopeValue::Constant(id, None)), None)
             }
             ast::StatementKind::Assign(pattern, expr) => {
                 macro_rules! assign_pattern {
@@ -739,10 +754,13 @@ impl<L> Compiler<L> {
                         let value = self.lower_expr(expr, scope, info);
                         let pattern = self.lower_pattern(pattern, scope, info);
 
-                        Some(Expression {
-                            span: statement.span,
-                            kind: ExpressionKind::Initialize(pattern, Box::new(value)),
-                        })
+                        (
+                            None,
+                            Some(Expression {
+                                span: statement.span,
+                                kind: ExpressionKind::Initialize(pattern, Box::new(value)),
+                            }),
+                        )
                     }};
                 }
 
@@ -794,7 +812,7 @@ impl<L> Compiler<L> {
 
                             let value = self.lower_expr(expr, &scope, info);
                             associated_constant.replace(Some(value));
-                            None
+                            (None, None)
                         } else {
                             assign_pattern!()
                         }
@@ -848,17 +866,85 @@ impl<L> Compiler<L> {
                         .insert(*name, ScopeValue::Constant(constructor, Some((ty, *index))));
                 }
 
-                None
+                (None, None)
             }
-            ast::StatementKind::Expression(expr) => Some(self.lower_expr(
-                ast::Expression {
-                    span: statement.span,
-                    kind: expr,
-                },
-                scope,
-                info,
-            )),
+            ast::StatementKind::Expression(expr) => (
+                None,
+                Some(self.lower_expr(
+                    ast::Expression {
+                        span: statement.span,
+                        kind: expr,
+                    },
+                    scope,
+                    info,
+                )),
+            ),
+        };
+
+        for (span, name, value) in statement.attributes {
+            match name.as_str() {
+                "language" => {
+                    let item = match value.kind {
+                        ast::AttributeValueKind::Text(text) => text,
+                        _ => {
+                            self.diagnostics.add(Diagnostic::error(
+                                "`language` attribute expects a text value",
+                                vec![Note::primary(value.span, "expected text here")],
+                            ));
+
+                            continue;
+                        }
+                    };
+
+                    match item.as_str() {
+                        "boolean" => {
+                            let type_id = match scope_value {
+                                Some(ScopeValue::Type(id)) => id,
+                                _ => {
+                                    self.diagnostics.add(Diagnostic::error(
+                                        "`boolean` language item requires a type",
+                                        vec![Note::primary(
+                                            span,
+                                            "this attribute is not applied to a type",
+                                        )],
+                                    ));
+
+                                    continue;
+                                }
+                            };
+
+                            if info.global_attributes.language_items.boolean.is_some() {
+                                self.diagnostics.add(Diagnostic::error(
+                                    "`boolean` language item is already set",
+                                    vec![Note::primary(
+                                        span,
+                                        "this attribute cannot be applied more than once",
+                                    )],
+                                ));
+
+                                continue;
+                            } else {
+                                info.global_attributes.language_items.boolean = Some(type_id);
+                            }
+                        }
+                        _ => {
+                            self.diagnostics.add(Diagnostic::error(
+                                "unknown `language` item",
+                                vec![Note::primary(value.span, "no such item")],
+                            ));
+
+                            continue;
+                        }
+                    }
+                }
+                name => self.diagnostics.add(Diagnostic::error(
+                    format!("cannot find attribute `{}`", name),
+                    vec![Note::primary(span, "unknown attribute")],
+                )),
+            }
         }
+
+        expr
     }
 
     fn lower_expr(&mut self, expr: ast::Expression, scope: &Scope, info: &mut Info) -> Expression {
