@@ -1588,18 +1588,21 @@ impl<'a, L> Typechecker<'a, L> {
                     }
                 };
 
-                let boolean_ty = file
-                    .borrow()
-                    .global_attributes
-                    .language_items
-                    .boolean
-                    .expect("`boolean` language item is not defined");
-
-                if let Err(error) = self.ctx.unify(
-                    condition.ty.clone(),
-                    UnresolvedType::Named(boolean_ty, Vec::new()),
-                ) {
-                    self.report_type_error(error, condition.span);
+                if let Some(boolean_ty) = file.borrow().global_attributes.language_items.boolean {
+                    if let Err(error) = self.ctx.unify(
+                        condition.ty.clone(),
+                        UnresolvedType::Named(boolean_ty, Vec::new()),
+                    ) {
+                        self.report_type_error(error, condition.span);
+                    }
+                } else {
+                    self.compiler.diagnostics.add(Diagnostic::error(
+                        "cannot find `boolean` language item",
+                        vec![Note::primary(
+                            condition_span,
+                            "typechecking this condition requires the `boolean` language item",
+                        )],
+                    ))
                 }
 
                 Some(MonomorphizedPatternKind::Where(

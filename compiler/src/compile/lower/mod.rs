@@ -1,8 +1,12 @@
 mod builtins;
 
 use crate::{
-    compile::ast, diagnostics::*, helpers::InternedString, parse::Span, Compiler, FilePath,
-    GenericConstantId, TemplateId, TraitId, TypeId, TypeParameterId, VariableId,
+    compile::{ast, expand},
+    diagnostics::*,
+    helpers::InternedString,
+    parse::Span,
+    Compiler, FilePath, GenericConstantId, TemplateId, TraitId, TypeId, TypeParameterId,
+    VariableId,
 };
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
@@ -18,7 +22,7 @@ pub struct File {
     pub span: Span,
     pub complete: bool,
     pub declarations: Declarations,
-    pub global_attributes: GlobalAttributes,
+    pub global_attributes: FileAttributes,
     pub exported: HashMap<InternedString, ScopeValue>,
     pub block: Vec<Expression>,
 }
@@ -104,7 +108,7 @@ pub struct Instance {
 }
 
 #[derive(Debug, Clone, Default)]
-pub struct GlobalAttributes {
+pub struct FileAttributes {
     pub language_items: LanguageItems,
 }
 
@@ -219,7 +223,7 @@ impl<L> Compiler<L> {
         let mut info = Info {
             file: file.path,
             declarations: Default::default(),
-            global_attributes: Default::default(),
+            attributes: Default::default(),
         };
 
         // TODO: Handle file attributes
@@ -247,7 +251,7 @@ impl<L> Compiler<L> {
                 variables,
             );
 
-            info.global_attributes.merge(&dependency.global_attributes);
+            info.attributes.merge(&dependency.global_attributes);
 
             scope
                 .values
@@ -280,14 +284,14 @@ impl<L> Compiler<L> {
             span: file.span,
             complete,
             declarations: info.declarations,
-            global_attributes: info.global_attributes,
+            global_attributes: info.attributes,
             exported: scope.values.take(),
             block,
         }
     }
 }
 
-impl GlobalAttributes {
+impl FileAttributes {
     fn merge(&mut self, other: &Self) {
         // This is OK because language items may only be set in the prelude
         self.language_items = other.language_items.clone();
@@ -339,7 +343,7 @@ impl<'a> Scope<'a> {
 struct Info {
     file: FilePath,
     declarations: Declarations,
-    global_attributes: GlobalAttributes,
+    attributes: FileAttributes,
 }
 
 impl<L> Compiler<L> {
@@ -893,77 +897,54 @@ impl<L> Compiler<L> {
             ),
         };
 
-        for (span, name, value) in statement.attributes {
-            match name.as_str() {
-                "language" => {
-                    if !matches!(info.file, FilePath::Prelude) {
-                        self.diagnostics.add(Diagnostic::error(
-                            "`language` attribute may only be used in the prelude",
-                            vec![Note::primary(value.span, "cannot use `language` here")],
-                        ));
+        (|| {
+            if let Some(language_item) = statement.attributes.language_item {
+                if !matches!(info.file, FilePath::Prelude) {
+                    self.diagnostics.add(Diagnostic::error(
+                        "`language` attribute may only be used in the prelude",
+                        vec![Note::primary(
+                            statement.span,
+                            "cannot use this attribute here",
+                        )],
+                    ));
 
-                        continue;
-                    }
+                    return;
+                }
 
-                    let item = match value.kind {
-                        ast::AttributeValueKind::Text(text) => text,
-                        _ => {
-                            self.diagnostics.add(Diagnostic::error(
-                                "`language` attribute expects a text value",
-                                vec![Note::primary(value.span, "expected text here")],
-                            ));
-
-                            continue;
-                        }
-                    };
-
-                    match item.as_str() {
-                        "boolean" => {
-                            let type_id = match scope_value {
-                                Some(ScopeValue::Type(id)) => id,
-                                _ => {
-                                    self.diagnostics.add(Diagnostic::error(
-                                        "`boolean` language item requires a type",
-                                        vec![Note::primary(
-                                            span,
-                                            "this attribute is not applied to a type",
-                                        )],
-                                    ));
-
-                                    continue;
-                                }
-                            };
-
-                            if info.global_attributes.language_items.boolean.is_some() {
+                match language_item {
+                    expand::LanguageItem::Boolean => {
+                        let ty = match scope_value {
+                            Some(ScopeValue::Type(id)) => id,
+                            _ => {
                                 self.diagnostics.add(Diagnostic::error(
-                                    "`boolean` language item is already set",
+                                    "`boolean` language item expects a type",
                                     vec![Note::primary(
-                                        span,
-                                        "this attribute cannot be applied more than once",
+                                        statement.span,
+                                        "expected type declaration here",
                                     )],
                                 ));
 
-                                continue;
+                                return;
                             }
+                        };
 
-                            info.global_attributes.language_items.boolean = Some(type_id);
-                        }
-                        _ => {
+                        if info.attributes.language_items.boolean.is_some() {
                             self.diagnostics.add(Diagnostic::error(
-                                "unknown `language` item",
-                                vec![Note::primary(value.span, "no such item")],
+                                "`language` item may only be defined once",
+                                vec![Note::primary(
+                                    statement.span,
+                                    "`language` item already defined elsewhere",
+                                )],
                             ));
 
-                            continue;
+                            return;
                         }
+
+                        info.attributes.language_items.boolean = Some(ty);
                     }
                 }
-                name => self.diagnostics.add(Diagnostic::error(
-                    format!("cannot find attribute `{}`", name),
-                    vec![Note::primary(span, "unknown attribute")],
-                )),
             }
-        }
+        })();
 
         expr
     }

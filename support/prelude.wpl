@@ -11,7 +11,7 @@ just : x -> _ -> x
 
 -- Logic --
 
-[language : "boolean"]
+[language "boolean"]
 Boolean : type {
 	False
 	True

@@ -15,6 +15,7 @@ use std::{
     collections::{BTreeMap, HashMap, VecDeque},
     rc::Rc,
 };
+use strum::EnumString;
 
 #[derive(Debug)]
 pub struct File {
@@ -26,22 +27,19 @@ pub struct File {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Statement {
-    pub attributes: Attributes,
+    pub attributes: StatementAttributes,
     pub node: Node,
 }
 
-pub type Attributes = Vec<(Span, InternedString, AttributeValue)>;
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct AttributeValue {
-    pub span: Span,
-    pub kind: AttributeValueKind,
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct StatementAttributes {
+    pub language_item: Option<LanguageItem>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum AttributeValueKind {
-    Text(InternedString),
-    Number(Decimal),
+#[derive(Debug, Clone, Copy, PartialEq, Eq, EnumString)]
+#[strum(serialize_all = "kebab-case")]
+pub enum LanguageItem {
+    Boolean,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -199,7 +197,17 @@ impl<L> Clone for Template<L> {
 
 enum TemplateBody<L> {
     Syntax(Vec<InternedString>, Node),
-    Function(Rc<dyn Fn(&mut Expander<L>, Span, Vec<Node>, &Scope) -> Node>),
+    Function(
+        Rc<
+            dyn Fn(
+                &mut Expander<L>,
+                Span,
+                Vec<Node>,
+                Option<&mut StatementAttributes>,
+                &Scope,
+            ) -> Node,
+        >,
+    ),
 }
 
 impl<L> Clone for TemplateBody<L> {
@@ -223,7 +231,8 @@ impl<L> Template<L> {
 
     fn function(
         span: Span,
-        f: impl Fn(&mut Expander<L>, Span, Vec<Node>, &Scope) -> Node + 'static,
+        f: impl Fn(&mut Expander<L>, Span, Vec<Node>, Option<&mut StatementAttributes>, &Scope) -> Node
+            + 'static,
     ) -> Self {
         Template {
             span,
@@ -336,7 +345,7 @@ impl<L> Expander<'_, L> {
             .filter_map(|statement| {
                 let mut lines = statement.lines.into_iter();
 
-                let (attributes, first_exprs) = match lines.next() {
+                let (first_attributes, first_exprs) = match lines.next() {
                     Some(line) => (line.attributes, line.exprs),
                     None => return None,
                 };
@@ -360,7 +369,7 @@ impl<L> Expander<'_, L> {
                     .collect::<Vec<_>>();
 
                 if exprs.is_empty() {
-                    for attribute in attributes {
+                    for attribute in first_attributes {
                         self.compiler.diagnostics.add(Diagnostic::new(
                             DiagnosticLevel::Error,
                             "unexpected attribute",
@@ -378,8 +387,8 @@ impl<L> Expander<'_, L> {
 
                 let mut node = self.expand_list(span, exprs, &scope);
 
-                let mut attribute_values = Vec::new();
-                'attributes: for attribute in attributes.into_iter().rev() {
+                let mut attributes = StatementAttributes::default();
+                'attributes: for attribute in first_attributes.into_iter().rev() {
                     match attribute.kind {
                         parse::ExprKind::Name(name) => {
                             if let Some(ScopeValue::Template(template)) = scope.get(name) {
@@ -388,6 +397,7 @@ impl<L> Expander<'_, L> {
                                     attribute.span,
                                     template,
                                     vec![node],
+                                    Some(&mut attributes),
                                     &scope,
                                 );
                             }
@@ -400,112 +410,68 @@ impl<L> Expander<'_, L> {
 
                             for expr in &exprs {
                                 if let parse::ExprKind::Name(name) = expr.kind {
-                                    if name.as_str() != ":" {
-                                        if let Some(ScopeValue::Operator(_)) = scope.get(name) {
-                                            self.compiler.diagnostics.add(Diagnostic::new(
-                                                DiagnosticLevel::Error,
-                                                "unexpected operator",
-                                                vec![Note::primary(
-                                                    attribute.span,
-                                                    "only the `:` operator is allowed within attributes",
-                                                )],
-                                            ));
+                                    if let Some(ScopeValue::Operator(_)) = scope.get(name) {
+                                        self.compiler.diagnostics.add(Diagnostic::new(
+                                            DiagnosticLevel::Error,
+                                            "unexpected operator",
+                                            vec![Note::primary(
+                                                attribute.span,
+                                                "operators aren't allowed within attributes",
+                                            )],
+                                        ));
 
-                                            continue 'attributes;
-                                        }
+                                        continue 'attributes;
                                     }
                                 }
                             }
 
-                            match self.expand_list(attribute.span, exprs.clone(), &scope).kind {
-                                NodeKind::Assign(lhs, rhs) => {
-                                    let name = match lhs.kind {
-                                        NodeKind::Name(name) => name,
-                                        _ => {
-                                            self.compiler.diagnostics.add(Diagnostic::new(
-                                                DiagnosticLevel::Error,
-                                                "expected name in attribute",
-                                                vec![Note::primary(
-                                                    lhs.span,
-                                                    "expected name here",
-                                                )],
-                                            ));
+                            let mut exprs = exprs.into_iter();
 
-                                            continue 'attributes;
-                                        }
-                                    };
-
-                                    let value = AttributeValue {
-                                        span: rhs.span,
-                                        kind: match rhs.kind {
-                                            NodeKind::Text(text) => AttributeValueKind::Text(text),
-                                            NodeKind::Number(number) => AttributeValueKind::Number(number),
-                                            _ => {
-                                                self.compiler.diagnostics.add(Diagnostic::new(
-                                                    DiagnosticLevel::Error,
-                                                    "expected number or text in attribute value",
-                                                    vec![Note::primary(
-                                                        lhs.span,
-                                                        "expected number or text here",
-                                                    )],
-                                                ));
-
-                                                continue 'attributes;
-                                            }
-                                        },
-                                    };
-
-                                    attribute_values.push((attribute.span, name, value));
-                                },
+                            let first = exprs.next().unwrap();
+                            let name = match first.kind {
+                                parse::ExprKind::Name(name) => name,
                                 _ => {
-                                    let mut exprs = exprs.into_iter();
+                                    self.compiler.diagnostics.add(Diagnostic::new(
+                                        DiagnosticLevel::Error,
+                                        "expected name in attribute",
+                                        vec![Note::primary(
+                                            attribute.span,
+                                            "expected name of template here",
+                                        )],
+                                    ));
 
-                                    let first = exprs.next().unwrap();
-                                    let name = match first.kind {
-                                        parse::ExprKind::Name(name) => name,
-                                        _ => {
-                                            self.compiler.diagnostics.add(Diagnostic::new(
-                                                DiagnosticLevel::Error,
-                                                "expected name in attribute",
-                                                vec![Note::primary(
-                                                    attribute.span,
-                                                    "expected name of template here",
-                                                )],
-                                            ));
+                                    continue 'attributes;
+                                }
+                            };
 
-                                            continue 'attributes;
-                                        }
-                                    };
+                            let template = match scope.get(name) {
+                                Some(ScopeValue::Template(template)) => template,
+                                Some(ScopeValue::Operator(_)) => {
+                                    unreachable!("operators trigger an error above");
+                                }
+                                None => {
+                                    self.compiler.diagnostics.add(Diagnostic::error(
+                                        format!("cannot find template `{}`", name),
+                                        vec![Note::primary(first.span, "no such template")],
+                                    ));
 
-                                    let template = match scope.get(name) {
-                                        Some(ScopeValue::Template(template)) => template,
-                                        Some(ScopeValue::Operator(_)) => {
-                                            unreachable!("operators trigger an error above");
-                                        },
-                                        None => {
-                                            self.compiler.diagnostics.add(Diagnostic::error(
-                                                format!("cannot find template `{}`", name),
-                                                vec![Note::primary(first.span, "no such template")],
-                                            ));
+                                    continue 'attributes;
+                                }
+                            };
 
-                                            continue 'attributes;
-                                        }
-                                    };
+                            let inputs = exprs
+                                .map(|expr| self.expand_expr(expr, &scope))
+                                .chain(std::iter::once(node))
+                                .collect::<Vec<_>>();
 
-                                    let inputs = exprs
-                                        .map(|expr| self.expand_expr(expr, &scope))
-                                        .chain(std::iter::once(node))
-                                        .collect::<Vec<_>>();
-
-                                    node = self.expand_template(
-                                        name,
-                                        attribute.span,
-                                        template,
-                                        inputs,
-                                        &scope,
-                                    );
-                                },
-                            }
+                            node = self.expand_template(
+                                name,
+                                attribute.span,
+                                template,
+                                inputs,
+                                Some(&mut attributes),
+                                &scope,
+                            );
                         }
                         _ => {
                             self.compiler.diagnostics.add(Diagnostic::new(
@@ -520,10 +486,8 @@ impl<L> Expander<'_, L> {
                     }
                 }
 
-                (!matches!(node.kind, NodeKind::Placeholder)).then(|| Statement {
-                    attributes: attribute_values,
-                    node,
-                })
+                (!matches!(node.kind, NodeKind::Placeholder))
+                    .then(|| Statement { attributes, node })
             })
             .collect();
 
@@ -547,7 +511,8 @@ impl<L> Expander<'_, L> {
                             .map(|expr| self.expand_expr(expr, scope))
                             .collect();
 
-                        return self.expand_template(*name, list_span, template, inputs, scope);
+                        return self
+                            .expand_template(*name, list_span, template, inputs, None, scope);
                     }
                 }
 
@@ -570,7 +535,8 @@ impl<L> Expander<'_, L> {
                     if let parse::ExprKind::Name(name) = first.kind {
                         if let Some(ScopeValue::Template(template)) = scope.get(name) {
                             let inputs = exprs.map(|expr| self.expand_expr(expr, scope)).collect();
-                            return self.expand_template(name, list_span, template, inputs, scope);
+                            return self
+                                .expand_template(name, list_span, template, inputs, None, scope);
                         }
                     }
 
@@ -711,6 +677,7 @@ impl<L> Expander<'_, L> {
                             span,
                             max_operator.template,
                             vec![lhs, rhs],
+                            None,
                             scope,
                         )
                     }
@@ -725,6 +692,7 @@ impl<L> Expander<'_, L> {
         span: Span,
         template: TemplateId,
         exprs: Vec<Node>,
+        attributes: Option<&mut StatementAttributes>,
         scope: &Scope,
     ) -> Node {
         let template = self
@@ -831,7 +799,7 @@ impl<L> Expander<'_, L> {
 
                 body
             }
-            TemplateBody::Function(expand) => expand(self, span, exprs, scope),
+            TemplateBody::Function(expand) => expand(self, span, exprs, attributes, scope),
         }
     }
 

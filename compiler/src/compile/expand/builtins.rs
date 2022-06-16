@@ -1,13 +1,14 @@
 use crate::{
     compile::expand::{
-        Expander, Node, NodeKind, Operator, OperatorPrecedence, Scope, ScopeValue, Template,
+        Expander, LanguageItem, Node, NodeKind, Operator, OperatorPrecedence, Scope, ScopeValue,
+        Template,
     },
     diagnostics::*,
     helpers::InternedString,
     parse::Span,
     FilePath,
 };
-use std::collections::VecDeque;
+use std::{collections::VecDeque, str::FromStr};
 
 pub(super) fn load_builtins<L>(expander: &mut Expander<L>, scope: &Scope) {
     let builtin_span = Span::new(FilePath::_Builtin, 0..0);
@@ -27,7 +28,7 @@ pub(super) fn load_builtins<L>(expander: &mut Expander<L>, scope: &Scope) {
 
     expander.info.templates.insert(
         id,
-        Template::function(builtin_span, |expander, span, mut inputs, scope| {
+        Template::function(builtin_span, |expander, span, mut inputs, _, scope| {
             let rhs = inputs.pop().unwrap();
             let lhs = inputs.pop().unwrap();
 
@@ -123,7 +124,7 @@ pub(super) fn load_builtins<L>(expander: &mut Expander<L>, scope: &Scope) {
 
     expander.info.templates.insert(
         id,
-        Template::function(builtin_span, |_, span, mut inputs, _| {
+        Template::function(builtin_span, |_, span, mut inputs, _, _| {
             let rhs = inputs.pop().unwrap();
             let lhs = inputs.pop().unwrap();
 
@@ -148,7 +149,7 @@ pub(super) fn load_builtins<L>(expander: &mut Expander<L>, scope: &Scope) {
 
     expander.info.templates.insert(
         id,
-        Template::function(builtin_span, |_, span, mut inputs, _| {
+        Template::function(builtin_span, |_, span, mut inputs, _, _| {
             let rhs = inputs.pop().unwrap();
             let lhs = inputs.pop().unwrap();
 
@@ -173,7 +174,7 @@ pub(super) fn load_builtins<L>(expander: &mut Expander<L>, scope: &Scope) {
 
     expander.info.templates.insert(
         id,
-        Template::function(builtin_span, |_, span, mut inputs, _| {
+        Template::function(builtin_span, |_, span, mut inputs, _, _| {
             let rhs = inputs.pop().unwrap();
             let lhs = inputs.pop().unwrap();
 
@@ -198,7 +199,7 @@ pub(super) fn load_builtins<L>(expander: &mut Expander<L>, scope: &Scope) {
 
     expander.info.templates.insert(
         id,
-        Template::function(builtin_span, |_, span, mut inputs, _| {
+        Template::function(builtin_span, |_, span, mut inputs, _, _| {
             let rhs = inputs.pop().unwrap();
             let lhs = inputs.pop().unwrap();
 
@@ -223,7 +224,7 @@ pub(super) fn load_builtins<L>(expander: &mut Expander<L>, scope: &Scope) {
 
     expander.info.templates.insert(
         id,
-        Template::function(builtin_span, |expander, span, mut inputs, _| {
+        Template::function(builtin_span, |expander, span, mut inputs, _, _| {
             let rhs = inputs.pop().unwrap();
             let lhs = inputs.pop().unwrap();
 
@@ -285,7 +286,7 @@ pub(super) fn load_builtins<L>(expander: &mut Expander<L>, scope: &Scope) {
 
     expander.info.templates.insert(
         id,
-        Template::function(builtin_span, |expander, span, mut inputs, _| {
+        Template::function(builtin_span, |expander, span, mut inputs, _, _| {
             let rhs = inputs.pop().unwrap();
             let lhs = inputs.pop().unwrap();
 
@@ -362,7 +363,7 @@ pub(super) fn load_builtins<L>(expander: &mut Expander<L>, scope: &Scope) {
 
     expander.info.templates.insert(
         id,
-        Template::function(builtin_span, |_, span, mut inputs, _| {
+        Template::function(builtin_span, |_, span, mut inputs, _, _| {
             let rhs = inputs.pop().unwrap();
             let lhs = inputs.pop().unwrap();
 
@@ -381,7 +382,7 @@ pub(super) fn load_builtins<L>(expander: &mut Expander<L>, scope: &Scope) {
 
     expander.info.templates.insert(
         id,
-        Template::function(builtin_span, |expander, span, mut inputs, scope| {
+        Template::function(builtin_span, |expander, span, mut inputs, _, scope| {
             if inputs.len() != 1 {
                 expander.report_wrong_template_arity("use", span, inputs.len(), 1);
 
@@ -422,7 +423,7 @@ pub(super) fn load_builtins<L>(expander: &mut Expander<L>, scope: &Scope) {
 
     expander.info.templates.insert(
         id,
-        Template::function(builtin_span, |expander, span, inputs, _| {
+        Template::function(builtin_span, |expander, span, inputs, _, _| {
             if inputs.len() < 2 {
                 expander.compiler.diagnostics.add(Diagnostic::error(
                     "expected at least 2 inputs to template `external`",
@@ -459,7 +460,7 @@ pub(super) fn load_builtins<L>(expander: &mut Expander<L>, scope: &Scope) {
 
     expander.info.templates.insert(
         id,
-        Template::function(builtin_span, |expander, span, mut inputs, _| {
+        Template::function(builtin_span, |expander, span, mut inputs, _, _| {
             if inputs.is_empty() {
                 return Node { span, kind: NodeKind::Type(None) }
             }
@@ -514,7 +515,7 @@ pub(super) fn load_builtins<L>(expander: &mut Expander<L>, scope: &Scope) {
 
     expander.info.templates.insert(
         id,
-        Template::function(builtin_span, |expander, span, mut inputs, _| {
+        Template::function(builtin_span, |expander, span, mut inputs, _, _| {
             if inputs.len() != 1 {
                 expander.compiler.diagnostics.add(Diagnostic::error(
                     "expected 1 input to template `trait`",
@@ -544,7 +545,7 @@ pub(super) fn load_builtins<L>(expander: &mut Expander<L>, scope: &Scope) {
 
     expander.info.templates.insert(
         id,
-        Template::function(builtin_span, |expander, span, inputs, _| {
+        Template::function(builtin_span, |expander, span, inputs, _, _| {
             if inputs.is_empty() {
                 expander.compiler.diagnostics.add(Diagnostic::error(
                     "expected at least 1 input to template `instance`",
@@ -580,7 +581,7 @@ pub(super) fn load_builtins<L>(expander: &mut Expander<L>, scope: &Scope) {
 
     expander.info.templates.insert(
         id,
-        Template::function(builtin_span, move |expander, span, inputs, _| {
+        Template::function(builtin_span, move |expander, span, inputs, _, _| {
             if inputs.is_empty() {
                 expander.compiler.diagnostics.add(Diagnostic::error(
                     "expected at least 1 input to template `format`",
@@ -698,7 +699,7 @@ pub(super) fn load_builtins<L>(expander: &mut Expander<L>, scope: &Scope) {
 
     expander.info.templates.insert(
         id,
-        Template::function(builtin_span, |expander, span, mut inputs, _| {
+        Template::function(builtin_span, |expander, span, mut inputs, _, _| {
             if inputs.len() != 2 {
                 expander.compiler.diagnostics.add(Diagnostic::error(
                     "expected 2 inputs to template `when`",
@@ -750,7 +751,7 @@ pub(super) fn load_builtins<L>(expander: &mut Expander<L>, scope: &Scope) {
 
     expander.info.templates.insert(
         id,
-        Template::function(builtin_span, |expander, span, mut inputs, _| {
+        Template::function(builtin_span, |expander, span, mut inputs, _, _| {
             if inputs.len() != 1 {
                 expander.compiler.diagnostics.add(Diagnostic::error(
                     "expected 1 inputs to template `return`",
@@ -772,6 +773,96 @@ pub(super) fn load_builtins<L>(expander: &mut Expander<L>, scope: &Scope) {
                 span,
                 kind: NodeKind::Return(Box::new(value)),
             }
+        }),
+    );
+
+    // `language` attribute
+
+    let id = expander.compiler.new_template_id();
+
+    scope_values.insert(InternedString::new("language"), ScopeValue::Template(id));
+
+    expander.info.templates.insert(
+        id,
+        Template::function(builtin_span, |expander, span, mut inputs, attributes, _| {
+            if inputs.len() != 2 {
+                expander.compiler.diagnostics.add(Diagnostic::error(
+                    "expected 2 inputs to template `language`",
+                    vec![Note::primary(
+                        span,
+                        "`language` accepts the name of a language item and a declaration",
+                    )],
+                ));
+
+                return Node {
+                    span,
+                    kind: NodeKind::Error,
+                };
+            }
+
+            let node = inputs.pop().unwrap();
+            let item = inputs.pop().unwrap();
+
+            let name = match item.kind {
+                NodeKind::Text(text) => text,
+                _ => {
+                    expander.compiler.diagnostics.add(Diagnostic::error(
+                        "`language` expects a text value",
+                        vec![Note::primary(item.span, "expected text here")],
+                    ));
+
+                    return node;
+                }
+            };
+
+            let language_item = match LanguageItem::from_str(&name) {
+                Ok(item) => item,
+                Err(_) => {
+                    expander.compiler.diagnostics.add(Diagnostic::error(
+                        "invalid `language` item",
+                        vec![Note::primary(
+                            item.span,
+                            "expected a valid `language` item here",
+                        )],
+                    ));
+
+                    return node;
+                }
+            };
+
+            let attributes = match attributes {
+                Some(attributes) => attributes,
+                None => {
+                    expander.compiler.diagnostics.add(Diagnostic::error(
+                        "`language` may only be used as an attribute",
+                        vec![Note::primary(
+                            span,
+                            format!(
+                                r#"try putting this between brackets: (`[language "{}"]`)"#,
+                                name
+                            ),
+                        )],
+                    ));
+
+                    return node;
+                }
+            };
+
+            if attributes.language_item.is_some() {
+                expander.compiler.diagnostics.add(Diagnostic::error(
+                    "`language` item is already set for this statement",
+                    vec![Note::primary(
+                        span,
+                        "cannot use more than one `language` item per statement",
+                    )],
+                ));
+
+                return node;
+            }
+
+            attributes.language_item = Some(language_item);
+
+            node
         }),
     );
 }

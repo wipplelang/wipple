@@ -7,7 +7,7 @@ use crate::{
 };
 use rust_decimal::Decimal;
 
-pub use expand::{AttributeValue, AttributeValueKind, Attributes};
+pub use crate::compile::expand::StatementAttributes;
 
 #[derive(Debug, Clone)]
 pub struct File {
@@ -25,7 +25,7 @@ pub struct FileAttribute {
 #[derive(Debug, Clone)]
 pub struct Statement {
     pub span: Span,
-    pub attributes: Attributes,
+    pub attributes: StatementAttributes,
     pub kind: StatementKind,
 }
 
@@ -76,7 +76,7 @@ pub enum ExpressionKind {
 #[derive(Debug, Clone)]
 pub struct Arm {
     pub span: Span,
-    pub attributes: Attributes,
+    pub attributes: StatementAttributes,
     pub pattern: Pattern,
     pub body: Expression,
 }
@@ -147,7 +147,7 @@ pub enum TypeKind {
 #[derive(Debug, Clone)]
 pub struct DataField {
     pub name: InternedString,
-    pub attributes: Attributes,
+    pub attributes: StatementAttributes,
     pub ty: TypeAnnotation,
 }
 
@@ -155,7 +155,7 @@ pub struct DataField {
 pub struct DataVariant {
     pub name: InternedString,
     pub span: Span,
-    pub attributes: Attributes,
+    pub attributes: StatementAttributes,
     pub values: Vec<TypeAnnotation>,
 }
 
@@ -643,10 +643,10 @@ impl<L> Compiler<L> {
                         None => return PatternKind::Destructure(Vec::new()),
                     };
 
-                    for (span, _, _) in statement.attributes {
+                    if statement.attributes != StatementAttributes::default() {
                         self.diagnostics.add(Diagnostic::error(
                             "attributes are not supported inside patterns",
-                            vec![Note::primary(span, "try removing this")],
+                            vec![Note::primary(statement.node.span, "try removing this")],
                         ));
                     }
 
@@ -974,7 +974,7 @@ impl<L> Compiler<L> {
 
         struct Field {
             span: Span,
-            attributes: Attributes,
+            attributes: StatementAttributes,
             name: InternedString,
             kind: FieldKind,
         }
