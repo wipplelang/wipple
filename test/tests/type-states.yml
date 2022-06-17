@@ -30,7 +30,7 @@ diagnostics: |
     20 | my-drone . land -- cannot land because drone is already idle
        |            ^^^^ expected `Drone Idle -> _`, but found `Drone Hovering -> Drone Idle`
     error: could not determine the type of this expression
-      --> prelude:9:26
+      --> prelude:11:26
        |
-    9  | . : dot operator (x f ~> f x)
+    11 | . : dot operator (x f ~> f x)
        |                          ^^^ try annotating the type with `::`

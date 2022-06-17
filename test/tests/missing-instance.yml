@@ -7,12 +7,12 @@ output: |
 
 diagnostics: |
     error: missing instance
-      --> prelude:96:17
-       |
-    96 | show :: A where (Show A) => A -> ()
-       |                 ^^^^^^^^ could not find instance of `Show` for type `Foo -> Text`
+       --> prelude:107:17
+        |
+    107 | show :: A where (Show A) => A -> ()
+        |                 ^^^^^^^^ could not find instance of `Show` for type `Foo -> Text`
     error: missing instance
-      --> test:3:1
-       |
-    3  | show Foo
-       | ^^^^ could not find instance of `Show` for type `Foo -> Text`
+       --> test:3:1
+        |
+    3   | show Foo
+        | ^^^^ could not find instance of `Show` for type `Foo -> Text`

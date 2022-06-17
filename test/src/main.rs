@@ -215,7 +215,7 @@ fn run(
         type Error = anyhow::Error;
 
         fn load(
-            &self,
+            &mut self,
             path: wipple_compiler::FilePath,
             _: Option<wipple_compiler::FilePath>,
         ) -> Result<(wipple_compiler::FilePath, Cow<'static, str>), Self::Error> {
@@ -246,7 +246,7 @@ fn run(
         .build(path)
         .map(|program| compiler.optimize(program));
 
-    let diagnostics = compiler.finish();
+    let (_, diagnostics) = compiler.finish();
     let success = !diagnostics.contains_errors();
 
     #[cfg(debug_assertions)]
@@ -276,7 +276,7 @@ fn run(
     let diagnostics = {
         let mut buf = Vec::new();
         {
-            let (codemap, _, diagnostics) = diagnostics.into_console_friendly(
+            let (codemap, diagnostics) = diagnostics.into_console_friendly(
                 #[cfg(debug_assertions)]
                 trace,
             );

@@ -1,14 +1,14 @@
 use clap::Parser;
+use regex::Regex;
 use std::{
-    borrow::Cow,
     env, fs,
     io::{self, Read, Write},
     os::unix::prelude::PermissionsExt,
     path::PathBuf,
-    process,
+    process::ExitCode,
     str::FromStr,
 };
-use url::Url;
+use wipple_compiler::Compiler;
 
 #[derive(Parser)]
 #[clap(
@@ -20,6 +20,13 @@ enum Args {
     Run {
         #[clap(flatten)]
         options: BuildOptions,
+    },
+    Doc {
+        #[clap(flatten)]
+        options: BuildOptions,
+
+        #[clap(long)]
+        filter: Option<String>,
     },
     Bundle {
         #[clap(flatten)]
@@ -33,14 +40,24 @@ enum Args {
     },
 }
 
-fn main() -> anyhow::Result<()> {
+fn main() -> ExitCode {
+    match run() {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(error) => {
+            eprintln!("{error}");
+            ExitCode::FAILURE
+        }
+    }
+}
+
+fn run() -> anyhow::Result<()> {
     let args = Args::parse();
 
     match args {
         Args::Run { options } => {
-            let program = match build(options) {
+            let (program, _) = match build_and_optimize(options) {
                 Some(program) => program,
-                None => process::exit(1),
+                None => return Err(anyhow::Error::msg("failed to build")),
             };
 
             let interpreter = wipple_interpreter_backend::Interpreter::handling_output(|text| {
@@ -52,6 +69,25 @@ fn main() -> anyhow::Result<()> {
                 eprintln!("fatal error: {}", error);
             }
         }
+        Args::Doc { options, filter } => {
+            let filter = filter.as_deref().map(Regex::from_str).transpose()?;
+
+            let (program, codemap) = match build(options) {
+                Some(program) => program,
+                None => return Err(anyhow::Error::msg("failed to build")),
+            };
+
+            let doc = match filter {
+                Some(filter) => {
+                    wipple_compiler::doc::Documentation::with_filter(program, codemap, |path| {
+                        filter.is_match(path.as_str())
+                    })
+                }
+                None => wipple_compiler::doc::Documentation::new(program, codemap),
+            };
+
+            serde_json::to_writer(io::stdout(), &doc).unwrap();
+        }
         Args::Bundle {
             options,
             runner,
@@ -61,9 +97,9 @@ fn main() -> anyhow::Result<()> {
                 .and_then(|file| file.bytes().collect::<Result<Vec<_>, _>>())
                 .map_err(|error| anyhow::Error::msg(format!("could not load runner: {error}")))?;
 
-            let program = match build(options) {
+            let (program, _) = match build_and_optimize(options) {
                 Some(program) => program,
-                None => process::exit(1),
+                None => return Err(anyhow::Error::msg("failed to build")),
             };
 
             let exe = wipple_bundled_backend::bundle(program, runner);
@@ -86,7 +122,7 @@ fn main() -> anyhow::Result<()> {
 }
 
 #[derive(Parser)]
-pub struct BuildOptions {
+struct BuildOptions {
     path: String,
 
     #[cfg(debug_assertions)]
@@ -98,18 +134,23 @@ pub struct BuildOptions {
     trace: bool,
 }
 
-pub fn build(options: BuildOptions) -> Option<wipple_compiler::optimize::Program> {
+mod loader {
+    use reqwest::Url;
+    use std::{borrow::Cow, collections::HashMap, fs, path::PathBuf, str::FromStr};
     use wipple_compiler::{helpers::InternedString, FilePath};
 
-    struct Loader {
-        base: String,
+    pub type SourceMap = HashMap<wipple_compiler::FilePath, Cow<'static, str>>;
+
+    pub struct Loader {
+        pub base: String,
+        pub source_map: SourceMap,
     }
 
     impl wipple_compiler::Loader for Loader {
         type Error = anyhow::Error;
 
         fn load(
-            &self,
+            &mut self,
             path: FilePath,
             current: Option<FilePath>,
         ) -> Result<(FilePath, Cow<'static, str>), Self::Error> {
@@ -156,18 +197,46 @@ pub fn build(options: BuildOptions) -> Option<wipple_compiler::optimize::Program
                         }
                     };
 
+                    // FIXME: Return a stable reference to the code inside the
+                    // source map instead of cloning
+                    self.source_map.insert(path, Cow::Owned(code.clone()));
+
                     Ok((path, Cow::Owned(code)))
                 }
                 FilePath::Virtual(_) => Err(anyhow::Error::msg("virtual paths are not supported")),
-                FilePath::Prelude => Ok((
-                    FilePath::Prelude,
-                    Cow::Borrowed(include_str!("../../support/prelude.wpl")),
-                )),
+                FilePath::Prelude => {
+                    let code = include_str!("../../support/prelude.wpl");
+                    self.source_map.insert(path, Cow::Borrowed(code));
+
+                    Ok((FilePath::Prelude, Cow::Borrowed(code)))
+                }
                 _ => unimplemented!(),
             }
         }
     }
 
+    fn download(url: Url) -> anyhow::Result<String> {
+        Ok(reqwest::blocking::get(url)?.text()?)
+    }
+}
+
+fn build(options: BuildOptions) -> Option<(wipple_compiler::compile::Program, loader::SourceMap)> {
+    build_with_passes(options, |_, program| program)
+}
+
+fn build_and_optimize(
+    options: BuildOptions,
+) -> Option<(wipple_compiler::optimize::Program, loader::SourceMap)> {
+    build_with_passes(options, |compiler, program| {
+        compiler.lint(&program);
+        compiler.optimize(program)
+    })
+}
+
+fn build_with_passes<P: std::fmt::Debug>(
+    options: BuildOptions,
+    passes: impl FnOnce(&mut Compiler<loader::Loader>, wipple_compiler::compile::Program) -> P,
+) -> Option<(P, loader::SourceMap)> {
     #[cfg(debug_assertions)]
     let progress_bar = None::<indicatif::ProgressBar>;
 
@@ -203,28 +272,26 @@ pub fn build(options: BuildOptions) -> Option<wipple_compiler::optimize::Program
         }
     };
 
-    let loader = Loader {
+    let loader = loader::Loader {
         base: env::current_dir().unwrap().to_string_lossy().into_owned(),
+        source_map: Default::default(),
     };
 
-    let mut compiler = wipple_compiler::Compiler::new(loader);
+    let mut compiler = Compiler::new(loader);
 
     let path = wipple_compiler::FilePath::Path(options.path.into());
     let program = compiler.build_with_progress(path, progress);
 
-    let program = program.map(|program| {
-        compiler.lint(&program);
-        compiler.optimize(program)
-    });
+    let program = program.map(|program| passes(&mut compiler, program));
 
-    let diagnostics = compiler.finish();
+    let (loader, diagnostics) = compiler.finish();
     let success = !diagnostics.contains_errors();
 
     if let Some(progress_bar) = progress_bar {
         progress_bar.finish_and_clear();
     }
 
-    let (codemap, _, diagnostics) = diagnostics.into_console_friendly(
+    let (codemap, diagnostics) = diagnostics.into_console_friendly(
         #[cfg(debug_assertions)]
         options.trace,
     );
@@ -243,9 +310,7 @@ pub fn build(options: BuildOptions) -> Option<wipple_compiler::optimize::Program
         eprintln!("{:#?}", program);
     }
 
-    success.then(|| program).flatten()
-}
-
-fn download(url: Url) -> anyhow::Result<String> {
-    Ok(reqwest::blocking::get(url)?.text()?)
+    success
+        .then(|| program.map(|program| (program, loader.source_map)))
+        .flatten()
 }

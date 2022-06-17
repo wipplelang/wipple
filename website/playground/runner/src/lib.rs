@@ -43,7 +43,7 @@ pub fn run(code: &str) -> JsValue {
         (program.clone(), compiler.optimize(program))
     });
 
-    let diagnostics = compiler.finish();
+    let (_, diagnostics) = compiler.finish();
 
     let mut output = Vec::new();
 
@@ -106,7 +106,7 @@ impl<'a> wipple_compiler::Loader for Loader<'a> {
     type Error = &'static str;
 
     fn load(
-        &self,
+        &mut self,
         path: wipple_compiler::FilePath,
         _current: Option<wipple_compiler::FilePath>,
     ) -> Result<(wipple_compiler::FilePath, Cow<'static, str>), Self::Error> {
@@ -142,7 +142,8 @@ fn annotations(program: &mut wipple_compiler::compile::Program) -> Vec<Annotatio
                     declarations
                         .types
                         .get(&id)
-                        .map(|decl| decl.name.as_str())
+                        .and_then(|decl| decl.name)
+                        .as_deref()
                         .unwrap_or("<unknown>")
                         .to_string()
                 },
@@ -150,7 +151,8 @@ fn annotations(program: &mut wipple_compiler::compile::Program) -> Vec<Annotatio
                     declarations
                         .type_parameters
                         .get(&id)
-                        .map(|decl| decl.name.as_str())
+                        .and_then(|decl| decl.name)
+                        .as_deref()
                         .unwrap_or("<unknown>")
                         .to_string()
                 },
@@ -169,13 +171,14 @@ fn annotations(program: &mut wipple_compiler::compile::Program) -> Vec<Annotatio
             let ty = format_ty!(expr.ty.clone());
 
             let name = match expr.kind {
-                ExpressionKind::Variable(id) => {
-                    declarations.variables.get(&id).map(|decl| decl.name)
-                }
+                ExpressionKind::Variable(id) => declarations
+                    .variables
+                    .get(&id)
+                    .map(|decl| decl.name.unwrap().to_string()),
                 ExpressionKind::Constant(id) => declarations
                     .monomorphized_constants
                     .get(&id)
-                    .map(|((), decl)| decl.name),
+                    .map(|((), decl)| decl.name.unwrap().to_string()),
                 _ => None,
             };
 
@@ -183,7 +186,7 @@ fn annotations(program: &mut wipple_compiler::compile::Program) -> Vec<Annotatio
                 span: expr.span,
                 value: match name {
                     Some(name) => format!("{name} :: {ty}"),
-                    None => ty,
+                    None => ty.to_string(),
                 },
             });
         }};
@@ -198,7 +201,7 @@ fn annotations(program: &mut wipple_compiler::compile::Program) -> Vec<Annotatio
 
         annotations.push(Annotation {
             span: decl.span,
-            value: format!("{} : type", decl.name),
+            value: format!("{} : type", decl.name.unwrap()),
         });
     }
 
@@ -209,7 +212,7 @@ fn annotations(program: &mut wipple_compiler::compile::Program) -> Vec<Annotatio
 
         annotations.push(Annotation {
             span: decl.span,
-            value: format!("{} : trait", decl.name),
+            value: format!("{} : trait", decl.name.unwrap()),
         });
     }
 
@@ -218,14 +221,13 @@ fn annotations(program: &mut wipple_compiler::compile::Program) -> Vec<Annotatio
             continue;
         }
 
-        annotations.push(Annotation {
-            span: constant.decl.span,
-            value: format!(
-                "{} :: {}",
-                constant.decl.name,
-                format_ty!(constant.decl.value.ty.clone())
-            ),
-        });
+        // Ignore instances, which are unnamed
+        if let Some(name) = constant.decl.name {
+            annotations.push(Annotation {
+                span: constant.decl.span,
+                value: format!("{} :: {}", name, format_ty!(constant.decl.value.ty.clone())),
+            });
+        }
 
         constant.decl.value.traverse(|expr| add_annotation!(expr));
     }
@@ -237,7 +239,11 @@ fn annotations(program: &mut wipple_compiler::compile::Program) -> Vec<Annotatio
 
         annotations.push(Annotation {
             span: decl.span,
-            value: format!("{} :: {}", decl.name, format_ty!(decl.value.clone())),
+            value: format!(
+                "{} :: {}",
+                decl.name.unwrap(),
+                format_ty!(decl.value.clone())
+            ),
         });
     }
 

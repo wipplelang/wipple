@@ -30,7 +30,10 @@ impl<L> Compiler<L> {
                     "unused variable",
                     vec![Note::primary(
                         decl.span,
-                        format!("`{}` is never used", decl.name),
+                        format!(
+                            "`{}` is never used",
+                            decl.name.expect("variables always have names")
+                        ),
                     )],
                 ))
             });

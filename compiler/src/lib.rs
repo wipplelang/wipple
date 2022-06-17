@@ -1,5 +1,6 @@
 pub mod compile;
 pub mod diagnostics;
+pub mod doc;
 pub mod helpers;
 pub mod lint;
 pub mod optimize;
@@ -14,7 +15,7 @@ pub trait Loader {
     type Error: fmt::Display;
 
     fn load(
-        &self,
+        &mut self,
         path: FilePath,
         current: Option<FilePath>,
     ) -> Result<(FilePath, Cow<'static, str>), Self::Error>;
@@ -28,14 +29,20 @@ pub enum FilePath {
     _Builtin,
 }
 
+impl FilePath {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            FilePath::Path(path) => path.as_str(),
+            FilePath::Virtual(name) => name.as_str(),
+            FilePath::Prelude => "prelude",
+            FilePath::_Builtin => "builtin",
+        }
+    }
+}
+
 impl fmt::Display for FilePath {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            FilePath::Path(path) => f.write_str(path),
-            FilePath::Virtual(name) => f.write_str(name),
-            FilePath::Prelude => f.write_str("prelude"),
-            FilePath::_Builtin => f.write_str("builtin"),
-        }
+        f.write_str(self.as_str())
     }
 }
 
@@ -101,7 +108,7 @@ impl<L> Compiler<L> {
         }
     }
 
-    pub fn finish(self) -> Diagnostics {
-        self.diagnostics
+    pub fn finish(self) -> (L, Diagnostics) {
+        (self.loader, self.diagnostics)
     }
 }

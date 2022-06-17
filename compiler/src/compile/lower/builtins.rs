@@ -16,7 +16,7 @@ impl<L> Compiler<L> {
                 info.declarations.$decls.insert(
                     id,
                     Declaration {
-                        name,
+                        name: Some(name),
                         span: builtin_span,
                         value: $value,
                     },

@@ -162,7 +162,7 @@ impl<Expr, Ty, File> Default for Declarations<Expr, Ty, File> {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Declaration<T> {
-    pub name: InternedString,
+    pub name: Option<InternedString>,
     pub span: Span,
     pub value: T,
 }
@@ -505,7 +505,7 @@ impl<L> Compiler<L> {
                     Constant {
                         file: constant.file.clone(),
                         decl: Declaration {
-                            name: InternedString::new("dummy instance"),
+                            name: None,
                             span,
                             value: lower::Expression {
                                 span: constant.decl.value.span,
@@ -2234,7 +2234,15 @@ impl<'a, L> Typechecker<'a, L> {
 
         macro_rules! getter {
             ($x:ident) => {
-                |id| self.declarations.$x.get(&id).unwrap().name.to_string()
+                |id| {
+                    self.declarations
+                        .$x
+                        .get(&id)
+                        .unwrap()
+                        .name
+                        .map_or("<unknown>", |name| name.as_str())
+                        .to_string()
+                }
             };
         }
 

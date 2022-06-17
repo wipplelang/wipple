@@ -41,7 +41,7 @@ pub struct Declarations {
 
 #[derive(Debug, Clone)]
 pub struct Declaration<T> {
-    pub name: InternedString,
+    pub name: Option<InternedString>,
     pub span: Span,
     pub value: T,
 }
@@ -283,7 +283,10 @@ impl<L> Compiler<L> {
                     "uninitialized constant",
                     vec![Note::primary(
                         constant.span,
-                        format!("`{}` is never initialized with a value", constant.name),
+                        format!(
+                            "`{}` is never initialized with a value",
+                            constant.name.unwrap()
+                        ),
                     )],
                 ));
 
@@ -399,7 +402,7 @@ impl<L> Compiler<L> {
                         info.declarations.type_parameters.insert(
                             id,
                             Declaration {
-                                name: param.name,
+                                name: Some(param.name),
                                 span: param.span,
                                 value: (),
                             },
@@ -490,7 +493,7 @@ impl<L> Compiler<L> {
                                     info.declarations.variables.insert(
                                         var,
                                         Declaration {
-                                            name,
+                                            name: Some(name),
                                             span: ty.span,
                                             value: (),
                                         },
@@ -532,7 +535,7 @@ impl<L> Compiler<L> {
                             info.declarations.constants.insert(
                                 constructor_id,
                                 Declaration {
-                                    name: variant.name,
+                                    name: Some(variant.name),
                                     span: variant.span,
                                     value: Constant {
                                         parameters: parameters.clone(),
@@ -549,6 +552,7 @@ impl<L> Compiler<L> {
                                 constructor: constructor_id,
                                 tys,
                             });
+
                             variant_names.insert(variant.name, index);
                         }
 
@@ -563,7 +567,7 @@ impl<L> Compiler<L> {
                 info.declarations.types.insert(
                     id,
                     Declaration {
-                        name,
+                        name: Some(name),
                         span: statement.span,
                         value: ty,
                     },
@@ -593,7 +597,7 @@ impl<L> Compiler<L> {
                 info.declarations.traits.insert(
                     id,
                     Declaration {
-                        name,
+                        name: Some(name),
                         span: statement.span,
                         value: tr,
                     },
@@ -674,7 +678,7 @@ impl<L> Compiler<L> {
                 info.declarations.constants.insert(
                     id,
                     Declaration {
-                        name,
+                        name: Some(name),
                         span: statement.span,
                         value: constant,
                     },
@@ -778,7 +782,7 @@ impl<L> Compiler<L> {
                 info.declarations.instances.insert(
                     id,
                     Declaration {
-                        name: InternedString::new("instance"),
+                        name: None,
                         span: statement.span,
                         value: instance,
                     },
@@ -845,7 +849,7 @@ impl<L> Compiler<L> {
                                 scope
                                     .values
                                     .borrow_mut()
-                                    .insert(parameter.name, ScopeValue::TypeParameter(id));
+                                    .insert(parameter.name.unwrap(), ScopeValue::TypeParameter(id));
                             }
 
                             let value = self.lower_expr(expr, &scope, info);
@@ -1299,7 +1303,7 @@ impl<L> Compiler<L> {
                     info.declarations.variables.insert(
                         var,
                         Declaration {
-                            name,
+                            name: Some(name),
                             span: pattern.span,
                             value: (),
                         },
@@ -1520,7 +1524,7 @@ impl<L> Compiler<L> {
                 info.declarations.type_parameters.insert(
                     id,
                     Declaration {
-                        name: parameter.name,
+                        name: Some(parameter.name),
                         span: parameter.span,
                         value: (),
                     },

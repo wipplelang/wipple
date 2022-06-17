@@ -1,5 +1,4 @@
 use crate::{parse::Span, FilePath};
-use codemap::CodeMap;
 use serde::Serialize;
 use std::{
     cmp::Ordering,
@@ -135,14 +134,10 @@ impl Diagnostics {
     pub fn into_console_friendly(
         mut self,
         #[cfg(debug_assertions)] include_trace: bool,
-    ) -> (
-        CodeMap,
-        HashMap<FilePath, Arc<codemap::File>>,
-        Vec<codemap_diagnostic::Diagnostic>,
-    ) {
+    ) -> (codemap::CodeMap, Vec<codemap_diagnostic::Diagnostic>) {
         self.diagnostics.dedup();
 
-        let mut codemap = CodeMap::new();
+        let mut codemap = codemap::CodeMap::new();
         let mut diagnostics = Vec::new();
 
         let files = &self.files;
@@ -206,6 +201,6 @@ impl Diagnostics {
             (Some(a), Some(b)) => a.span.low().cmp(&b.span.low()),
         });
 
-        (codemap, tracked_files, diagnostics)
+        (codemap, diagnostics)
     }
 }
