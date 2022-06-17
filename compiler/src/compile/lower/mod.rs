@@ -5,15 +5,16 @@ use crate::{
     diagnostics::*,
     helpers::InternedString,
     parse::Span,
-    Compiler, FilePath, GenericConstantId, TemplateId, TraitId, TypeId, TypeParameterId,
-    VariableId,
+    BuiltinTypeId, Compiler, FilePath, GenericConstantId, TemplateId, TraitId, TypeId,
+    TypeParameterId, VariableId,
 };
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use std::{
     cell::RefCell,
-    collections::{BTreeMap, HashMap},
+    collections::{BTreeMap, HashMap, VecDeque},
     hash::Hash,
+    mem,
     rc::Rc,
 };
 
@@ -32,7 +33,7 @@ pub struct Declarations {
     pub types: BTreeMap<TypeId, Declaration<Type>>,
     pub type_parameters: BTreeMap<TypeParameterId, Declaration<()>>,
     pub traits: BTreeMap<TraitId, Declaration<Trait>>,
-    pub builtin_types: BTreeMap<BuiltinType, Declaration<()>>,
+    pub builtin_types: BTreeMap<BuiltinTypeId, Declaration<BuiltinType>>,
     pub constants: BTreeMap<GenericConstantId, Declaration<Constant>>,
     pub instances: BTreeMap<GenericConstantId, Declaration<Instance>>,
     pub variables: BTreeMap<VariableId, Declaration<()>>,
@@ -45,29 +46,45 @@ pub struct Declaration<T> {
     pub value: T,
 }
 
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct DeclarationAttributes {
+    pub doc: VecDeque<InternedString>,
+}
+
 #[derive(Debug, Clone)]
 pub struct Type {
     pub kind: TypeKind,
     pub params: Vec<TypeParameterId>,
+    pub attributes: DeclarationAttributes,
 }
 
 #[derive(Debug, Clone)]
 pub enum TypeKind {
     Marker,
     Structure(Vec<TypeField>, HashMap<InternedString, usize>),
-    Enumeration(
-        Vec<(GenericConstantId, Vec<TypeAnnotation>)>,
-        HashMap<InternedString, usize>,
-    ),
+    Enumeration(Vec<TypeVariant>, HashMap<InternedString, usize>),
 }
 
 #[derive(Debug, Clone)]
 pub struct TypeField {
     pub ty: TypeAnnotation,
+    pub attributes: DeclarationAttributes,
+}
+
+#[derive(Debug, Clone)]
+pub struct TypeVariant {
+    pub constructor: GenericConstantId,
+    pub tys: Vec<TypeAnnotation>,
+}
+
+#[derive(Debug, Clone)]
+pub struct BuiltinType {
+    pub kind: BuiltinTypeKind,
+    pub attributes: DeclarationAttributes,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
-pub enum BuiltinType {
+pub enum BuiltinTypeKind {
     Never,
     Unit,
     Number,
@@ -81,6 +98,7 @@ pub enum BuiltinType {
 pub struct Trait {
     pub parameters: Vec<TypeParameterId>,
     pub ty: TypeAnnotation,
+    pub attributes: DeclarationAttributes,
 }
 
 #[derive(Debug, Clone)]
@@ -89,6 +107,7 @@ pub struct Constant {
     pub bounds: Vec<Bound>,
     pub ty: TypeAnnotation,
     pub value: Rc<RefCell<Option<Expression>>>,
+    pub attributes: DeclarationAttributes,
 }
 
 #[derive(Debug, Clone)]
@@ -183,27 +202,19 @@ pub enum PatternKind {
     Where(Box<Pattern>, Box<Expression>),
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
 pub struct TypeAnnotation {
     pub span: Span,
     pub kind: TypeAnnotationKind,
 }
 
-impl PartialEq for TypeAnnotation {
-    fn eq(&self, other: &Self) -> bool {
-        self.kind == other.kind
-    }
-}
-
-impl Eq for TypeAnnotation {}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
 pub enum TypeAnnotationKind {
     Error,
     Placeholder,
     Named(TypeId, Vec<TypeAnnotation>),
     Parameter(TypeParameterId),
-    Builtin(BuiltinType, Vec<TypeAnnotation>),
+    Builtin(BuiltinTypeId, Vec<TypeAnnotation>),
     Function(Box<TypeAnnotation>, Box<TypeAnnotation>),
 }
 
@@ -307,7 +318,7 @@ struct Scope<'a> {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ScopeValue {
     Type(TypeId),
-    BuiltinType(BuiltinType),
+    BuiltinType(BuiltinTypeId),
     Trait(TraitId),
     TypeParameter(TypeParameterId),
     Operator(TemplateId),
@@ -365,7 +376,7 @@ impl<L> Compiler<L> {
 
     fn lower_statement(
         &mut self,
-        statement: ast::Statement,
+        mut statement: ast::Statement,
         scope: &Scope,
         info: &mut Info,
     ) -> Option<Expression> {
@@ -416,13 +427,15 @@ impl<L> Compiler<L> {
                     ast::TypeKind::Marker => Type {
                         kind: TypeKind::Marker,
                         params: parameters,
+                        attributes: self.lower_decl_attributes(&mut statement.attributes),
                     },
                     ast::TypeKind::Structure(fields) => {
                         let mut field_tys = Vec::with_capacity(fields.len());
                         let mut field_names = HashMap::with_capacity(fields.len());
-                        for (index, field) in fields.into_iter().enumerate() {
+                        for (index, mut field) in fields.into_iter().enumerate() {
                             field_tys.push(TypeField {
                                 ty: self.lower_type_annotation(field.ty, scope, info),
+                                attributes: self.lower_decl_attributes(&mut field.attributes),
                             });
 
                             field_names.insert(field.name, index);
@@ -431,12 +444,13 @@ impl<L> Compiler<L> {
                         Type {
                             kind: TypeKind::Structure(field_tys, field_names),
                             params: parameters,
+                            attributes: self.lower_decl_attributes(&mut statement.attributes),
                         }
                     }
                     ast::TypeKind::Enumeration(variants) => {
                         let mut variant_tys = Vec::with_capacity(variants.len());
                         let mut variant_names = HashMap::with_capacity(variants.len());
-                        for (index, variant) in variants.into_iter().enumerate() {
+                        for (index, mut variant) in variants.into_iter().enumerate() {
                             let tys = variant
                                 .values
                                 .into_iter()
@@ -525,17 +539,23 @@ impl<L> Compiler<L> {
                                         bounds: Vec::new(),
                                         ty: constructor_ty,
                                         value: Rc::new(RefCell::new(Some(constructor))),
+                                        attributes: self
+                                            .lower_decl_attributes(&mut variant.attributes),
                                     },
                                 },
                             );
 
-                            variant_tys.push((constructor_id, tys));
+                            variant_tys.push(TypeVariant {
+                                constructor: constructor_id,
+                                tys,
+                            });
                             variant_names.insert(variant.name, index);
                         }
 
                         Type {
                             kind: TypeKind::Enumeration(variant_tys, variant_names),
                             params: parameters,
+                            attributes: self.lower_decl_attributes(&mut statement.attributes),
                         }
                     }
                 };
@@ -560,6 +580,7 @@ impl<L> Compiler<L> {
                     Trait {
                         parameters,
                         ty: self.lower_type_annotation(declaration.ty, &scope, info),
+                        attributes: self.lower_decl_attributes(&mut statement.attributes),
                     }
                 };
 
@@ -640,6 +661,7 @@ impl<L> Compiler<L> {
                         bounds,
                         ty: self.lower_type_annotation(declaration.ty, &scope, info),
                         value: Default::default(),
+                        attributes: self.lower_decl_attributes(&mut statement.attributes),
                     }
                 };
 
@@ -874,12 +896,12 @@ impl<L> Compiler<L> {
                     };
 
                 for (name, index) in names {
-                    let (constructor, _) = constructors[*index];
+                    let variant = constructors[*index].constructor;
 
                     scope
                         .values
                         .borrow_mut()
-                        .insert(*name, ScopeValue::Constant(constructor, Some((ty, *index))));
+                        .insert(*name, ScopeValue::Constant(variant, Some((ty, *index))));
                 }
 
                 (None, None)
@@ -947,6 +969,17 @@ impl<L> Compiler<L> {
         })();
 
         expr
+    }
+
+    fn lower_decl_attributes(
+        &mut self,
+        statement_attributes: &mut ast::StatementAttributes,
+    ) -> DeclarationAttributes {
+        // TODO: Raise errors for misused attributes
+
+        DeclarationAttributes {
+            doc: mem::take(&mut statement_attributes.doc),
+        }
     }
 
     fn lower_expr(&mut self, expr: ast::Expression, scope: &Scope, info: &mut Info) -> Expression {
@@ -1093,7 +1126,9 @@ impl<L> Compiler<L> {
                                 function_call!(
                                     Expression {
                                         span: expr.span,
-                                        kind: ExpressionKind::Constant(variant_types[index].0)
+                                        kind: ExpressionKind::Constant(
+                                            variant_types[index].constructor
+                                        )
                                     },
                                     inputs.into_iter().skip(1)
                                 )
@@ -1193,7 +1228,7 @@ impl<L> Compiler<L> {
             ast::TypeAnnotationKind::Error => TypeAnnotationKind::Error,
             ast::TypeAnnotationKind::Placeholder => TypeAnnotationKind::Placeholder,
             ast::TypeAnnotationKind::Unit => {
-                TypeAnnotationKind::Builtin(BuiltinType::Unit, Vec::new())
+                TypeAnnotationKind::Builtin(BuiltinTypeId(0), Vec::new())
             }
             ast::TypeAnnotationKind::Named(name, parameters) => {
                 let parameters = parameters

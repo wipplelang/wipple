@@ -40,6 +40,7 @@ type NoteLevel = "Primary" | "Secondary";
 interface Completion {
     name: string;
     kind: number;
+    doc?: string;
 }
 
 const fontFamily = "'JetBrains Mono', monospace";
@@ -228,12 +229,13 @@ const Playground = () => {
                 });
 
                 return {
-                    suggestions: completions.map(
+                    suggestions: completions?.map(
                         (completion) =>
                             ({
                                 label: completion.name,
                                 kind: completion.kind,
                                 insertText: completion.name,
+                                documentation: completion.doc,
                             } as monaco.languages.CompletionItem)
                     ),
                 };

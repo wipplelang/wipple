@@ -1,6 +1,7 @@
+use itertools::Itertools;
 use lazy_static::lazy_static;
 use serde::Serialize;
-use std::{borrow::Cow, sync::Mutex};
+use std::{borrow::Cow, collections::HashMap, sync::Mutex};
 use wasm_bindgen::prelude::*;
 
 #[derive(Serialize)]
@@ -212,17 +213,21 @@ fn annotations(program: &mut wipple_compiler::compile::Program) -> Vec<Annotatio
         });
     }
 
-    for ((), decl) in &declarations.generic_constants {
-        if !belongs_to_playground(decl.span) {
+    for constant in declarations.generic_constants.values() {
+        if !belongs_to_playground(constant.decl.span) {
             continue;
         }
 
         annotations.push(Annotation {
-            span: decl.span,
-            value: format!("{} :: {}", decl.name, format_ty!(decl.value.ty.clone())),
+            span: constant.decl.span,
+            value: format!(
+                "{} :: {}",
+                constant.decl.name,
+                format_ty!(constant.decl.value.ty.clone())
+            ),
         });
 
-        decl.value.traverse(|expr| add_annotation!(expr));
+        constant.decl.value.traverse(|expr| add_annotation!(expr));
     }
 
     for decl in declarations.variables.values() {
@@ -250,6 +255,7 @@ fn belongs_to_playground(span: wipple_compiler::parse::Span) -> bool {
 struct Completion {
     name: String,
     kind: usize,
+    doc: Option<String>,
 }
 
 #[wasm_bindgen]
@@ -258,51 +264,102 @@ pub fn get_completions(position: usize) -> JsValue {
     console_error_panic_hook::set_once();
 
     let keywords = [
-        "use", "when", "type", "trait", "instance", "where", "external",
+        (
+            "use",
+            "Make the contents of another file available in this file.",
+        ),
+        ("when", "Make a decision out of several choices."),
+        (
+            "type",
+            "Declare a new type that represents data in your program.",
+        ),
+        (
+            "trait",
+            "Declare a new trait that represents functionality shared between types.",
+        ),
+        ("instance", "Add a relationship between types via a trait."),
+        ("where", "Specify additional bounds or conditions."),
+        (
+            "external",
+            "Call a function implemented in an external library.",
+        ),
     ];
 
     let mut completions = keywords
         .into_iter()
-        .map(|keyword| Completion {
+        .map(|(keyword, doc)| Completion {
             name: keyword.to_string(),
             kind: 17,
+            doc: Some(doc.to_string()),
         })
         .collect::<Vec<_>>();
 
-    macro_rules! add_completions {
-        ($declarations:expr) => {{
-            use wipple_compiler::compile::lower::ScopeValue;
+    fn add_completions(
+        program: &mut wipple_compiler::compile::Program,
+        declarations: HashMap<
+            wipple_compiler::helpers::InternedString,
+            wipple_compiler::compile::lower::ScopeValue,
+        >,
+        completions: &mut Vec<Completion>,
+    ) {
+        use wipple_compiler::compile::lower::ScopeValue;
 
-            let declarations = $declarations;
+        completions.extend(declarations.into_iter().map(|(name, value)| {
+            fn join<'a>(
+                doc: impl IntoIterator<Item = &'a wipple_compiler::helpers::InternedString>,
+            ) -> String {
+                Itertools::intersperse(doc.into_iter().map(|s| s.as_str()), "\n").collect()
+            }
 
-            completions.extend(declarations.iter().map(|(&name, value)| Completion {
+            // https://microsoft.github.io/monaco-editor/api/enums/monaco.languages.CompletionItemKind.html
+            let (kind, doc) = match value {
+                ScopeValue::Type(id) => {
+                    let ty = program.declarations.types.get(&id).unwrap();
+                    (6, Some(join(&ty.value.attributes.doc)))
+                }
+                ScopeValue::BuiltinType(_) => (6, None),
+                ScopeValue::Trait(id) => {
+                    let tr = program.declarations.traits.get(&id).unwrap();
+                    (7, Some(join(&tr.value.attributes.doc)))
+                }
+                ScopeValue::TypeParameter(_) => (24, None),
+                ScopeValue::Operator(_) => (11, None),
+                ScopeValue::Constant(id, _) => {
+                    let constant = program.declarations.generic_constants.get(&id).unwrap();
+                    (
+                        14,
+                        constant
+                            .attributes
+                            .as_ref()
+                            .map(|attributes| join(&attributes.doc)),
+                    )
+                }
+                ScopeValue::Variable(_) => (4, None),
+            };
+
+            Completion {
                 name: name.to_string(),
-
-                // https://microsoft.github.io/monaco-editor/api/enums/monaco.languages.CompletionItemKind.html
-                kind: match value {
-                    ScopeValue::Type(_) | ScopeValue::BuiltinType(_) => 6,
-                    ScopeValue::Trait(_) => 7,
-                    ScopeValue::TypeParameter(_) => 24,
-                    ScopeValue::Operator(_) => 11,
-                    ScopeValue::Constant(_, _) => 14,
-                    ScopeValue::Variable(_) => 4,
-                },
-            }));
-        }};
+                kind,
+                doc,
+            }
+        }));
     }
 
     if let Some(program) = PROGRAM.lock().unwrap().as_mut() {
-        add_completions!(&program.top_level);
+        add_completions(program, program.top_level.clone(), &mut completions);
 
+        let mut declarations = Vec::new();
         program.traverse_body_mut(|expr| {
-            if let wipple_compiler::compile::typecheck::ExpressionKind::Block(_, declarations) =
-                &expr.kind
+            if let wipple_compiler::compile::typecheck::ExpressionKind::Block(
+                _,
+                block_declarations,
+            ) = &expr.kind
             {
                 if belongs_to_playground(expr.span)
                     && position >= expr.span.start
                     && position < expr.span.end
                 {
-                    add_completions!(declarations);
+                    declarations.push(block_declarations.clone());
                 }
             }
         });

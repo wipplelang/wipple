@@ -139,10 +139,10 @@ impl UnresolvedExpression {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Declarations<Expr, Ty, File = ()> {
-    pub types: BTreeMap<TypeId, Declaration<()>>,
+    pub types: BTreeMap<TypeId, Declaration<TypeDeclaration>>,
     pub type_parameters: BTreeMap<TypeParameterId, Declaration<()>>,
-    pub traits: BTreeMap<TraitId, Declaration<(UnresolvedType, Vec<TypeParameterId>)>>,
-    pub generic_constants: Vec<(File, Declaration<Expr>)>,
+    pub traits: BTreeMap<TraitId, Declaration<TraitDeclaration>>,
+    pub generic_constants: BTreeMap<GenericConstantId, GenericConstantDeclaration<Expr, File>>,
     pub monomorphized_constants: BTreeMap<MonomorphizedConstantId, (File, Declaration<Expr>)>,
     pub variables: BTreeMap<VariableId, Declaration<Ty>>,
 }
@@ -165,6 +165,25 @@ pub struct Declaration<T> {
     pub name: InternedString,
     pub span: Span,
     pub value: T,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TypeDeclaration {
+    pub attributes: lower::DeclarationAttributes,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TraitDeclaration {
+    pub ty: UnresolvedType,
+    pub params: Vec<TypeParameterId>,
+    pub attributes: lower::DeclarationAttributes,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GenericConstantDeclaration<Expr, File> {
+    pub file: File,
+    pub decl: Declaration<Expr>,
+    pub attributes: Option<lower::DeclarationAttributes>,
 }
 
 pub enum Progress {
@@ -219,7 +238,9 @@ impl<L> Compiler<L> {
                     .or_insert(Declaration {
                         name: decl.name,
                         span: decl.span,
-                        value: (),
+                        value: TypeDeclaration {
+                            attributes: decl.value.attributes,
+                        },
                     });
             }
 
@@ -240,16 +261,20 @@ impl<L> Compiler<L> {
                     continue;
                 }
 
-                let ty = typechecker.convert_type_annotation(&decl.value.ty);
+                let ty = typechecker.convert_type_annotation(&decl.value.ty, file);
 
-                let parameters = decl.value.parameters;
+                let params = decl.value.parameters;
 
                 typechecker.declarations.traits.insert(
                     id,
                     Declaration {
                         name: decl.name,
                         span: decl.span,
-                        value: (ty, parameters),
+                        value: TraitDeclaration {
+                            ty,
+                            params,
+                            attributes: decl.value.attributes,
+                        },
                     },
                 );
             }
@@ -283,7 +308,8 @@ impl<L> Compiler<L> {
                                         *name,
                                         (
                                             *index,
-                                            typechecker.convert_type_annotation(&fields[*index].ty),
+                                            typechecker
+                                                .convert_type_annotation(&fields[*index].ty, file),
                                         ),
                                     )
                                 })
@@ -300,11 +326,13 @@ impl<L> Compiler<L> {
                         lower::TypeKind::Enumeration(variants, _) => {
                             let variant_tys = variants
                                 .iter()
-                                .map(|(id, tys)| {
+                                .map(|variant| {
                                     (
-                                        *id,
-                                        tys.iter()
-                                            .map(|ty| typechecker.convert_type_annotation(ty))
+                                        variant.constructor,
+                                        variant
+                                            .tys
+                                            .iter()
+                                            .map(|ty| typechecker.convert_type_annotation(ty, file))
                                             .collect(),
                                     )
                                 })
@@ -336,7 +364,7 @@ impl<L> Compiler<L> {
                     continue;
                 }
 
-                let ty = typechecker.convert_type_annotation(&decl.value.ty);
+                let ty = typechecker.convert_type_annotation(&decl.value.ty, file);
                 let params = decl.value.parameters.clone();
 
                 typechecker
@@ -350,7 +378,7 @@ impl<L> Compiler<L> {
                 }
 
                 let value = decl.value.value.borrow().as_ref().unwrap().clone();
-                let generic_ty = typechecker.convert_type_annotation(&decl.value.ty);
+                let generic_ty = typechecker.convert_type_annotation(&decl.value.ty, file);
 
                 let bounds = decl
                     .value
@@ -363,7 +391,9 @@ impl<L> Compiler<L> {
                             .params
                             .into_iter()
                             .zip(&bound.parameters)
-                            .map(|(param, ty)| (param, typechecker.convert_type_annotation(ty)))
+                            .map(|(param, ty)| {
+                                (param, typechecker.convert_type_annotation(ty, file))
+                            })
                             .collect();
 
                         tr.ty.instantiate_with(&substitutions);
@@ -383,6 +413,7 @@ impl<L> Compiler<L> {
                         },
                         generic_ty,
                         bounds,
+                        attributes: Some(decl.value.attributes.clone()),
                     },
                 );
             }
@@ -400,7 +431,7 @@ impl<L> Compiler<L> {
                     .params
                     .into_iter()
                     .zip(&decl.value.trait_params)
-                    .map(|(param, ty)| (param, typechecker.convert_type_annotation(ty)))
+                    .map(|(param, ty)| (param, typechecker.convert_type_annotation(ty, file)))
                     .collect();
 
                 tr.ty.instantiate_with(&substitutions);
@@ -416,7 +447,9 @@ impl<L> Compiler<L> {
                             .params
                             .into_iter()
                             .zip(&bound.parameters)
-                            .map(|(param, ty)| (param, typechecker.convert_type_annotation(ty)))
+                            .map(|(param, ty)| {
+                                (param, typechecker.convert_type_annotation(ty, file))
+                            })
                             .collect();
 
                         tr.ty.instantiate_with(&substitutions);
@@ -442,6 +475,7 @@ impl<L> Compiler<L> {
                         },
                         generic_ty: tr.ty,
                         bounds,
+                        attributes: None,
                     },
                 );
             }
@@ -454,7 +488,7 @@ impl<L> Compiler<L> {
         let prev_bound_instances = typechecker.bound_instances.clone();
         let prev_monomorphized_constants = typechecker.monomorphized_constants.clone();
 
-        for constant in typechecker.generic_constants.clone().into_values() {
+        for (id, constant) in typechecker.generic_constants.clone() {
             let body = typechecker.typecheck_expr(&constant.decl.value, &constant.file, false);
 
             if let Err(error) = typechecker.ctx.unify(body.ty.clone(), constant.generic_ty) {
@@ -480,6 +514,7 @@ impl<L> Compiler<L> {
                         },
                         generic_ty: ty,
                         bounds: Vec::new(),
+                        attributes: None,
                     },
                 );
 
@@ -504,14 +539,18 @@ impl<L> Compiler<L> {
                 }
             };
 
-            typechecker.declarations.generic_constants.push((
-                constant.file,
-                Declaration {
-                    name: constant.decl.name,
-                    span: constant.decl.span,
-                    value: body,
+            typechecker.declarations.generic_constants.insert(
+                id,
+                GenericConstantDeclaration {
+                    file: constant.file,
+                    decl: Declaration {
+                        name: constant.decl.name,
+                        span: constant.decl.span,
+                        value: body,
+                    },
+                    attributes: constant.attributes,
                 },
-            ));
+            );
         }
 
         typechecker.bound_instances = prev_bound_instances;
@@ -632,15 +671,22 @@ impl<L> Compiler<L> {
                     .generic_constants
                     .clone()
                     .into_iter()
-                    .map(|(file, decl)| {
+                    .map(|(id, constant)| {
                         Ok((
-                            (),
-                            Declaration {
-                                name: decl.name,
-                                span: decl.span,
-                                value: typechecker
-                                    .finalize_generic(decl.value.clone(), &file)
-                                    .map_err(|error| (error, decl.span))?,
+                            id,
+                            GenericConstantDeclaration {
+                                file: (),
+                                decl: Declaration {
+                                    name: constant.decl.name,
+                                    span: constant.decl.span,
+                                    value: typechecker
+                                        .finalize_generic(
+                                            constant.decl.value.clone(),
+                                            &constant.file,
+                                        )
+                                        .map_err(|error| (error, constant.decl.span))?,
+                                },
+                                attributes: constant.attributes,
                             },
                         ))
                     })
@@ -729,11 +775,12 @@ impl<L> Compiler<L> {
 type Bound = (TraitId, UnresolvedType, Span);
 
 #[derive(Debug, Clone)]
-struct Constant<T, Ty> {
+struct Constant<T, Ty, Attrs = ()> {
     file: Rc<RefCell<lower::File>>,
     decl: Declaration<T>,
     generic_ty: Ty,
     bounds: Vec<Bound>,
+    attributes: Option<Attrs>,
 }
 
 #[derive(Debug, Clone)]
@@ -763,7 +810,10 @@ struct Typechecker<'a, L> {
     return_tys: Vec<Option<UnresolvedType>>,
     traits: BTreeMap<TraitId, TraitDefinition>,
     types: BTreeMap<TypeId, TypeDefinition>,
-    generic_constants: BTreeMap<GenericConstantId, Constant<lower::Expression, UnresolvedType>>,
+    generic_constants: BTreeMap<
+        GenericConstantId,
+        Constant<lower::Expression, UnresolvedType, lower::DeclarationAttributes>,
+    >,
     monomorphized_constants: BTreeMap<
         MonomorphizedConstantId,
         (Span, GenericConstantId, Constant<UnresolvedExpression, ()>),
@@ -947,7 +997,7 @@ impl<'a, L> Typechecker<'a, L> {
                 }
             }
             lower::ExpressionKind::Annotate(expr, ty) => {
-                let ty = self.convert_type_annotation(ty);
+                let ty = self.convert_type_annotation(ty, file);
                 let value = self.typecheck_expr(expr, file, suppress_errors);
 
                 if let Err(error) = self.ctx.unify(value.ty, ty.clone()) {
@@ -1271,7 +1321,7 @@ impl<'a, L> Typechecker<'a, L> {
             ),
             lower::PatternKind::Annotate(inner, ty) => UnresolvedPatternKind::Annotate(
                 Box::new(self.typecheck_pattern(inner, file, suppress_errors)),
-                self.convert_type_annotation(ty),
+                self.convert_type_annotation(ty, file),
             ),
             lower::PatternKind::Or(lhs, rhs) => UnresolvedPatternKind::Or(
                 Box::new(self.typecheck_pattern(lhs, file, suppress_errors)),
@@ -1329,6 +1379,7 @@ impl<'a, L> Typechecker<'a, L> {
                     },
                     generic_ty: (),
                     bounds: constant.bounds,
+                    attributes: None,
                 },
             ),
         );
@@ -2012,7 +2063,11 @@ impl<'a, L> Typechecker<'a, L> {
         Err(TypeError::MissingInstance(tr, ty))
     }
 
-    fn convert_type_annotation(&mut self, annotation: &lower::TypeAnnotation) -> UnresolvedType {
+    fn convert_type_annotation(
+        &mut self,
+        annotation: &lower::TypeAnnotation,
+        file: &Rc<RefCell<lower::File>>,
+    ) -> UnresolvedType {
         match &annotation.kind {
             lower::TypeAnnotationKind::Error => UnresolvedType::Bottom(BottomTypeReason::Error),
             lower::TypeAnnotationKind::Placeholder => {
@@ -2022,138 +2077,154 @@ impl<'a, L> Typechecker<'a, L> {
                 *id,
                 params
                     .iter()
-                    .map(|param| self.convert_type_annotation(param))
+                    .map(|param| self.convert_type_annotation(param, file))
                     .collect(),
             ),
             lower::TypeAnnotationKind::Parameter(id) => UnresolvedType::Parameter(*id),
-            lower::TypeAnnotationKind::Builtin(builtin, parameters) => match builtin {
-                lower::BuiltinType::Never => {
-                    if !parameters.is_empty() {
-                        self.compiler.diagnostics.add(Diagnostic::error(
-                            "`!` does not accept parameters",
-                            vec![Note::primary(
-                                annotation.span,
-                                "try removing these parameters",
-                            )],
-                        ));
-                    }
+            lower::TypeAnnotationKind::Builtin(id, parameters) => {
+                let builtin_ty = file
+                    .borrow()
+                    .declarations
+                    .builtin_types
+                    .get(id)
+                    .unwrap()
+                    .clone();
 
-                    UnresolvedType::Bottom(BottomTypeReason::Annotated)
-                }
-                lower::BuiltinType::Unit => {
-                    if !parameters.is_empty() {
-                        self.compiler.diagnostics.add(Diagnostic::error(
-                            "`()` does not accept parameters",
-                            vec![Note::primary(
-                                annotation.span,
-                                "try removing these parameters",
-                            )],
-                        ));
-                    }
-
-                    UnresolvedType::Builtin(BuiltinType::Unit)
-                }
-                lower::BuiltinType::Number => {
-                    if !parameters.is_empty() {
-                        self.compiler.diagnostics.add(Diagnostic::error(
-                            "`Number` does not accept parameters",
-                            vec![Note::primary(
-                                annotation.span,
-                                "try removing these parameters",
-                            )],
-                        ));
-                    }
-
-                    UnresolvedType::Builtin(BuiltinType::Number)
-                }
-                lower::BuiltinType::Text => {
-                    if !parameters.is_empty() {
-                        self.compiler.diagnostics.add(Diagnostic::error(
-                            "`Text` does not accept parameters",
-                            vec![Note::primary(
-                                annotation.span,
-                                "try removing these parameters",
-                            )],
-                        ));
-                    }
-
-                    UnresolvedType::Builtin(BuiltinType::Text)
-                }
-                lower::BuiltinType::Boolean => {
-                    if !parameters.is_empty() {
-                        self.compiler.diagnostics.add(Diagnostic::error(
-                            "`Boolean` does not accept parameters",
-                            vec![Note::primary(
-                                annotation.span,
-                                "try removing these parameters",
-                            )],
-                        ));
-                    }
-
-                    UnresolvedType::Builtin(BuiltinType::Number)
-                }
-                lower::BuiltinType::List => {
-                    if parameters.is_empty() {
-                        self.compiler.diagnostics.add(Diagnostic::error(
-                            "`List` accepts 1 parameter, but none were provided",
-                            vec![Note::primary(
-                                annotation.span,
-                                "try adding `_` here to infer the type of `Element`",
-                            )],
-                        ));
-
-                        UnresolvedType::Builtin(BuiltinType::List(Box::new(
-                            UnresolvedType::Bottom(BottomTypeReason::Error),
-                        )))
-                    } else {
-                        if parameters.len() > 1 {
+                match builtin_ty.value.kind {
+                    lower::BuiltinTypeKind::Never => {
+                        if !parameters.is_empty() {
                             self.compiler.diagnostics.add(Diagnostic::error(
-                                format!(
-                                    "`List` accepts 1 parameter, but {} were provided",
-                                    parameters.len()
-                                ),
-                                vec![Note::primary(annotation.span, "try removing some of these")],
+                                "`!` does not accept parameters",
+                                vec![Note::primary(
+                                    annotation.span,
+                                    "try removing these parameters",
+                                )],
                             ));
                         }
 
-                        UnresolvedType::Builtin(BuiltinType::List(Box::new(
-                            self.convert_type_annotation(parameters.first().unwrap()),
-                        )))
+                        UnresolvedType::Bottom(BottomTypeReason::Annotated)
                     }
-                }
-                lower::BuiltinType::Mutable => {
-                    if parameters.is_empty() {
-                        self.compiler.diagnostics.add(Diagnostic::error(
-                            "`Mutable` accepts 1 parameter, but none were provided",
-                            vec![Note::primary(
-                                annotation.span,
-                                "try adding `_` here to infer the type of `Value`",
-                            )],
-                        ));
-
-                        UnresolvedType::Builtin(BuiltinType::List(Box::new(
-                            UnresolvedType::Bottom(BottomTypeReason::Error),
-                        )))
-                    } else {
-                        if parameters.len() > 1 {
+                    lower::BuiltinTypeKind::Unit => {
+                        if !parameters.is_empty() {
                             self.compiler.diagnostics.add(Diagnostic::error(
-                                format!(
-                                    "`Mutable` accepts 1 parameter, but {} were provided",
-                                    parameters.len()
-                                ),
-                                vec![Note::primary(annotation.span, "try removing some of these")],
+                                "`()` does not accept parameters",
+                                vec![Note::primary(
+                                    annotation.span,
+                                    "try removing these parameters",
+                                )],
                             ));
                         }
 
-                        UnresolvedType::Builtin(BuiltinType::Mutable(Box::new(
-                            self.convert_type_annotation(parameters.first().unwrap()),
-                        )))
+                        UnresolvedType::Builtin(BuiltinType::Unit)
+                    }
+                    lower::BuiltinTypeKind::Number => {
+                        if !parameters.is_empty() {
+                            self.compiler.diagnostics.add(Diagnostic::error(
+                                "`Number` does not accept parameters",
+                                vec![Note::primary(
+                                    annotation.span,
+                                    "try removing these parameters",
+                                )],
+                            ));
+                        }
+
+                        UnresolvedType::Builtin(BuiltinType::Number)
+                    }
+                    lower::BuiltinTypeKind::Text => {
+                        if !parameters.is_empty() {
+                            self.compiler.diagnostics.add(Diagnostic::error(
+                                "`Text` does not accept parameters",
+                                vec![Note::primary(
+                                    annotation.span,
+                                    "try removing these parameters",
+                                )],
+                            ));
+                        }
+
+                        UnresolvedType::Builtin(BuiltinType::Text)
+                    }
+                    lower::BuiltinTypeKind::Boolean => {
+                        if !parameters.is_empty() {
+                            self.compiler.diagnostics.add(Diagnostic::error(
+                                "`Boolean` does not accept parameters",
+                                vec![Note::primary(
+                                    annotation.span,
+                                    "try removing these parameters",
+                                )],
+                            ));
+                        }
+
+                        UnresolvedType::Builtin(BuiltinType::Number)
+                    }
+                    lower::BuiltinTypeKind::List => {
+                        if parameters.is_empty() {
+                            self.compiler.diagnostics.add(Diagnostic::error(
+                                "`List` accepts 1 parameter, but none were provided",
+                                vec![Note::primary(
+                                    annotation.span,
+                                    "try adding `_` here to infer the type of `Element`",
+                                )],
+                            ));
+
+                            UnresolvedType::Builtin(BuiltinType::List(Box::new(
+                                UnresolvedType::Bottom(BottomTypeReason::Error),
+                            )))
+                        } else {
+                            if parameters.len() > 1 {
+                                self.compiler.diagnostics.add(Diagnostic::error(
+                                    format!(
+                                        "`List` accepts 1 parameter, but {} were provided",
+                                        parameters.len()
+                                    ),
+                                    vec![Note::primary(
+                                        annotation.span,
+                                        "try removing some of these",
+                                    )],
+                                ));
+                            }
+
+                            UnresolvedType::Builtin(BuiltinType::List(Box::new(
+                                self.convert_type_annotation(parameters.first().unwrap(), file),
+                            )))
+                        }
+                    }
+                    lower::BuiltinTypeKind::Mutable => {
+                        if parameters.is_empty() {
+                            self.compiler.diagnostics.add(Diagnostic::error(
+                                "`Mutable` accepts 1 parameter, but none were provided",
+                                vec![Note::primary(
+                                    annotation.span,
+                                    "try adding `_` here to infer the type of `Value`",
+                                )],
+                            ));
+
+                            UnresolvedType::Builtin(BuiltinType::List(Box::new(
+                                UnresolvedType::Bottom(BottomTypeReason::Error),
+                            )))
+                        } else {
+                            if parameters.len() > 1 {
+                                self.compiler.diagnostics.add(Diagnostic::error(
+                                    format!(
+                                        "`Mutable` accepts 1 parameter, but {} were provided",
+                                        parameters.len()
+                                    ),
+                                    vec![Note::primary(
+                                        annotation.span,
+                                        "try removing some of these",
+                                    )],
+                                ));
+                            }
+
+                            UnresolvedType::Builtin(BuiltinType::Mutable(Box::new(
+                                self.convert_type_annotation(parameters.first().unwrap(), file),
+                            )))
+                        }
                     }
                 }
-            },
+            }
             lower::TypeAnnotationKind::Function(input, output) => UnresolvedType::Function(
-                Box::new(self.convert_type_annotation(input)),
-                Box::new(self.convert_type_annotation(output)),
+                Box::new(self.convert_type_annotation(input, file)),
+                Box::new(self.convert_type_annotation(output, file)),
             ),
         }
     }

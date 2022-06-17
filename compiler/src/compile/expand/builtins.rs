@@ -865,4 +865,64 @@ pub(super) fn load_builtins<L>(expander: &mut Expander<L>, scope: &Scope) {
             node
         }),
     );
+
+    // `doc` attribute
+
+    let id = expander.compiler.new_template_id();
+
+    scope_values.insert(InternedString::new("doc"), ScopeValue::Template(id));
+
+    expander.info.templates.insert(
+        id,
+        Template::function(builtin_span, |expander, span, mut inputs, attributes, _| {
+            if inputs.len() != 2 {
+                expander.compiler.diagnostics.add(Diagnostic::error(
+                    "expected 2 inputs to template `doc`",
+                    vec![Note::primary(
+                        span,
+                        "`doc` accepts documentation text and a declaration",
+                    )],
+                ));
+
+                return Node {
+                    span,
+                    kind: NodeKind::Error,
+                };
+            }
+
+            let node = inputs.pop().unwrap();
+            let item = inputs.pop().unwrap();
+
+            let doc = match item.kind {
+                NodeKind::Text(text) => text,
+                _ => {
+                    expander.compiler.diagnostics.add(Diagnostic::error(
+                        "`doc` expects a text value",
+                        vec![Note::primary(item.span, "expected text here")],
+                    ));
+
+                    return node;
+                }
+            };
+
+            let attributes = match attributes {
+                Some(attributes) => attributes,
+                None => {
+                    expander.compiler.diagnostics.add(Diagnostic::error(
+                        "`doc` may only be used as an attribute",
+                        vec![Note::primary(
+                            span,
+                            r#"try putting this between brackets: (`[doc "..."]`)"#,
+                        )],
+                    ));
+
+                    return node;
+                }
+            };
+
+            attributes.doc.push_front(doc);
+
+            node
+        }),
+    );
 }

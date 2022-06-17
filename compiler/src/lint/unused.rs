@@ -16,8 +16,8 @@ impl<L> Compiler<L> {
             find_used_variables(statement);
         }
 
-        for (_, constant) in &program.declarations.generic_constants {
-            find_used_variables(&constant.value);
+        for constant in program.declarations.generic_constants.values() {
+            find_used_variables(&constant.decl.value);
         }
 
         program

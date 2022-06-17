@@ -82,6 +82,7 @@ macro_rules! ids {
 }
 
 ids!(
+    BuiltinTypeId,
     GenericConstantId,
     MonomorphizedConstantId,
     TemplateId,

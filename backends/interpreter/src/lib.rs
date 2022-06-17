@@ -215,6 +215,8 @@ impl<'a> Interpreter<'a> {
                 } else {
                     #[cfg(target_arch = "wasm32")]
                     {
+                        let _ = return_ty;
+
                         return Err(Diverge::new(
                             info.stack.clone(),
                             DivergeKind::Error(Error::from(

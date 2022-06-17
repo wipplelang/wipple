@@ -1,3 +1,5 @@
+#![allow(clippy::needless_update)] // for future-proofing
+
 use super::*;
 
 impl<L> Compiler<L> {
@@ -26,50 +28,88 @@ impl<L> Compiler<L> {
 
         add!(
             builtin_types,
-            "!",
-            BuiltinType::Never,
+            "()",
+            self.new_builtin_type_id(),
             ScopeValue::BuiltinType,
-            (),
+            BuiltinType {
+                kind: BuiltinTypeKind::Unit,
+                attributes: DeclarationAttributes {
+                    doc: VecDeque::from([InternedString::new(
+                        "The unit type; contains no information. `()` is usually seen as the result of functions which have an effect but produce no meaningful value.",
+                    )]),
+                    ..Default::default()
+                },
+            },
+        );
+
+        add!(
+            builtin_types,
+            "!",
+            self.new_builtin_type_id(),
+            ScopeValue::BuiltinType,
+            BuiltinType {
+                kind: BuiltinTypeKind::Never,
+                attributes: DeclarationAttributes {
+                    doc: VecDeque::from([InternedString::new("")]),
+                    ..Default::default()
+                }
+            },
         );
 
         add!(
             builtin_types,
             "Number",
-            BuiltinType::Number,
+            self.new_builtin_type_id(),
             ScopeValue::BuiltinType,
-            (),
+            BuiltinType {
+                kind: BuiltinTypeKind::Number,
+                attributes: DeclarationAttributes {
+                    doc: VecDeque::from([InternedString::new("")]),
+                    ..Default::default()
+                }
+            },
         );
 
         add!(
             builtin_types,
             "Text",
-            BuiltinType::Text,
+            self.new_builtin_type_id(),
             ScopeValue::BuiltinType,
-            (),
-        );
-
-        add!(
-            builtin_types,
-            "Boolean",
-            BuiltinType::Boolean,
-            ScopeValue::BuiltinType,
-            (),
+            BuiltinType {
+                kind: BuiltinTypeKind::Text,
+                attributes: DeclarationAttributes {
+                    doc: VecDeque::from([InternedString::new("")]),
+                    ..Default::default()
+                }
+            },
         );
 
         add!(
             builtin_types,
             "List",
-            BuiltinType::List,
+            self.new_builtin_type_id(),
             ScopeValue::BuiltinType,
-            (),
+            BuiltinType {
+                kind: BuiltinTypeKind::List,
+                attributes: DeclarationAttributes {
+                    doc: VecDeque::from([InternedString::new("")]),
+                    ..Default::default()
+                }
+            },
         );
 
         add!(
             builtin_types,
             "Mutable",
-            BuiltinType::Mutable,
+            self.new_builtin_type_id(),
             ScopeValue::BuiltinType,
-            ()
+            BuiltinType {
+                kind: BuiltinTypeKind::Mutable,
+                attributes: DeclarationAttributes {
+                    doc: VecDeque::from([InternedString::new("")]),
+                    ..Default::default()
+                }
+            },
         );
     }
 }
