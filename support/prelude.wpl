@@ -1,10 +1,10 @@
 -- Functional programming --
 
-[doc "Returns its input unmodified."]
+[help "Returns its input unmodified."]
 it :: A => A -> A
 it : x -> x
 
-[doc "Ignores its second input."]
+[help "Ignores its second input."]
 just :: A B => A -> B -> A
 just : x -> _ -> x
 
@@ -13,7 +13,7 @@ just : x -> _ -> x
 -- Logic --
 
 [language "boolean"]
-[doc "Represents either `True` or `False`."]
+[help "Represents either `True` or `False`."]
 Boolean : type {
 	False
 	True
@@ -28,7 +28,7 @@ if : bool then else ~> when bool {
 
 if? : bool then ~> if bool then ()
 
-[doc "Returns `False` if provided `True`, and vice versa."]
+[help "Returns `False` if provided `True`, and vice versa."]
 not :: Boolean -> Boolean
 not : bool -> if bool False True
 
@@ -40,14 +40,14 @@ Or : Left Right Output => trait (Left -> (() -> Right) -> Output)
 -- `or` operator is defined in the compiler to accommodate `or` patterns
 instance Or Boolean Boolean Boolean : a? -> b? -> if a? True (b? ())
 
-[doc "The result of a comparison between two values."]
+[help "The result of a comparison between two values."]
 Ordering : type {
 	Less
 	Equal
 	Greater
 }
 
-[doc "Implement this trait to enable comparisons between two values of your type."]
+[help "Implement this trait to enable comparisons between two values of your type."]
 Order : A => trait (A -> A -> Ordering)
 
 instance Order Number : a -> b -> external "builtin" "number-ordering" a b
@@ -76,7 +76,7 @@ instance Order Number : a -> b -> external "builtin" "number-ordering" a b
 	Ordering Greater -> True
 })
 
-[doc "Implement this trait to enable equality testing between two values of your type."]
+[help "Implement this trait to enable equality testing between two values of your type."]
 Equal : A => trait (A -> A -> Boolean)
 = : comparison operator (a b ~> Equal a b)
 /= : comparison operator (a b ~> not (a = b))
@@ -93,37 +93,37 @@ instance Equal Boolean : a? -> b? -> a? and b? or not a? and not b?
 
 -- Output --
 
-[doc "Display text on the screen. `print` writes directly to the standard output with no trailing newline."]
+[help "Display text on the screen. `print` writes directly to the standard output with no trailing newline."]
 print :: Text -> ()
 print : text -> external "builtin" "print" text
 
-[doc "Implement this trait to enable `show`ing values of your type."]
+[help "Implement this trait to enable `show`ing values of your type."]
 Show : A => trait (A -> Text)
 instance Show Text : it
 instance Show Number : n -> external "builtin" "number-to-text" n
 instance Show Boolean : x? -> if x? "True" "False"
 
-[doc "Display a value on the screen."]
+[help "Display a value on the screen."]
 show :: A where (Show A) => A -> ()
 show : x -> print (format "_\n" x)
 
 -- Utilities --
 
-[doc "Crash the program with the provided message."]
+[help "Crash the program with the provided message."]
 crash :: Text -> !
 crash : message -> external "builtin" "crash" message
 
-[doc "Indicates unfinished code. Crashes the program upon evaluation."]
+[help "Indicates unfinished code. Crashes the program upon evaluation."]
 ... :: !
 ... : crash "not yet implemented"
 
-[doc "Represents the default or initial value of a type."]
+[help "Represents the default or initial value of a type."]
 Default : A => trait A
 instance Default Number : 0
 instance Default Text : ""
 instance Default Boolean : False
 
-[doc "Represents the presence or absence of a value."]
+[help "Represents the presence or absence of a value."]
 Maybe : Value => type {
 	None
 	Some Value
@@ -136,7 +136,7 @@ Value where (Show Value) => instance Show (Maybe Value) : x? -> when x? {
 	None -> "None"
 }
 
-[doc "Represents the success or failure of an operation."]
+[help "Represents the success or failure of an operation."]
 Result : Success Failure => type {
 	OK Success
 	Error Failure
@@ -144,10 +144,10 @@ Result : Success Failure => type {
 
 use Result
 
-[doc "Implement this trait to enable usage of your type in error handling."]
+[help "Implement this trait to enable usage of your type in error handling."]
 Try : Value Success Failure => trait (Value -> Result Success Failure)
 
-[doc "Represents the failure to find a value inside a `Maybe`."]
+[help "Represents the failure to find a value inside a `Maybe`."]
 None-Error : type
 
 instance Show None-Error : just "found `None`"
@@ -195,13 +195,13 @@ Success Failure => instance Unwrap-Message (Result Success Failure) :
 	just "called `unwrap` on `Error`"
 
 -- TODO: Use higher-kinded types
-[doc "Produces the `Some` value contained within a `Maybe`, or crashes the program with the provided message."]
+[help "Produces the `Some` value contained within a `Maybe`, or crashes the program with the provided message."]
 expect :: Container Value where (Expect Container Value) =>
 	Text -> Container -> Value
 expect : Expect
 
 -- TODO: Use higher-kinded types
-[doc "Produces the `Some` value contained within a `Maybe`, or crashes the program."]
+[help "Produces the `Some` value contained within a `Maybe`, or crashes the program."]
 unwrap :: Container Value
 	where (Expect Container Value) (Unwrap-Message Container) =>
 	Container -> Value
@@ -209,59 +209,59 @@ unwrap : x? -> expect (Unwrap-Message x?) x?
 
 -- Math --
 
-[doc "Implements the `+` operator."]
+[help "Implements the `+` operator."]
 Add : Left Right Sum => trait (Left -> Right -> Sum)
 + : addition operator (a b ~> Add a b)
 instance Add Number Number Number : a -> b -> external "builtin" "add" a b
 instance Add Text Text Text : a -> b -> format "__" a b
 
-[doc "Implements the `-` operator."]
+[help "Implements the `-` operator."]
 Subtract : Left Right Difference => trait (Left -> Right -> Difference)
 - : addition operator (a b ~> Subtract a b)
 instance Subtract Number Number Number : a -> b -> external "builtin" "subtract" a b
 
-[doc "Implements the `*` operator."]
+[help "Implements the `*` operator."]
 Multiply : Left Right Product => trait (Left -> Right -> Product)
 * : multiplication operator (a b ~> Multiply a b)
 instance Multiply Number Number Number : a -> b -> external "builtin" "multiply" a b
 
-[doc "Implements the `/` operator."]
+[help "Implements the `/` operator."]
 Divide : Left Right Quotient => trait (Left -> Right -> Quotient)
 / : multiplication operator (a b ~> Divide a b)
 instance Divide Number Number Number : a -> b -> external "builtin" "divide" a b
 
-[doc "Implements the `^` operator."]
+[help "Implements the `^` operator."]
 Power : Left Right Power => trait (Left -> Right -> Power)
 ^ : power operator (a b ~> Power a b)
 instance Power Number Number Number : a -> b -> external "builtin" "power" a b
 
-[doc "Rounds down a number to the nearest integer."]
+[help "Rounds down a number to the nearest integer."]
 floor :: Number -> Number
 floor : n -> external "builtin" "floor" n
 
-[doc "Rounds up a number to the nearest integer."]
+[help "Rounds up a number to the nearest integer."]
 ceil :: Number -> Number
 ceil : n -> external "builtin" "ceil" n
 
-[doc "Calculates the square root of a number."]
+[help "Calculates the square root of a number."]
 sqrt :: Number -> Number
 sqrt : n -> external "builtin" "sqrt" n
 
 -- Mutability --
 
-[doc "Create a new `Mutable` value."]
+[help "Create a new `Mutable` value."]
 mutable :: A => A -> Mutable A
 mutable : x -> external "builtin" "make-mutable" x
 
-[doc "Retrieve the value inside a `Mutable`."]
+[help "Retrieve the value inside a `Mutable`."]
 get :: A => Mutable A -> A
 get : m -> external "builtin" "get-mutable" m
 
-[doc "Update the value contained inside a `Mutable`."]
+[help "Update the value contained inside a `Mutable`."]
 set! :: A => A -> Mutable A -> ()
 set! : x -> m -> external "builtin" "set-mutable" m x
 
-[doc "Swap the contents of two `Mutable` values."]
+[help "Swap the contents of two `Mutable` values."]
 swap! :: A => Mutable A -> Mutable A -> ()
 swap! : a -> b -> {
 	temp : get a
@@ -269,11 +269,11 @@ swap! : a -> b -> {
 	b . set! temp
 }
 
-[doc "Add a value to a `Mutable` value."]
+[help "Add a value to a `Mutable` value."]
 add! :: Left Right where (Add Left Right Left) => Right -> Mutable Left -> ()
 add! : x -> m -> m . set! (get m + x)
 
-[doc "Increment a `Mutable` value."]
+[help "Increment a `Mutable` value."]
 increment! :: A where (Add A Number A) => Mutable A -> ()
 increment! : add! 1
 
@@ -310,19 +310,19 @@ unless : condition body ~> while (not condition) body
 
 -- Lists --
 
-[doc "Retrieve the first item inside a `List`, if it exists."]
+[help "Retrieve the first item inside a `List`, if it exists."]
 first :: A => List A -> Maybe A
 first : list -> external "builtin" "list-first" list
 
-[doc "Retrieve the last item inside a `List`, if it exists."]
+[help "Retrieve the last item inside a `List`, if it exists."]
 last :: A => List A -> Maybe A
 last : list -> external "builtin" "list-last" list
 
-[doc "Retrieve all but the last item inside a `List`."]
+[help "Retrieve all but the last item inside a `List`."]
 initial :: A => List A -> List A
 initial : list -> external "builtin" "list-initial" list
 
-[doc "Retrieve all but the first item inside a `List`."]
+[help "Retrieve all but the first item inside a `List`."]
 tail :: A => List A -> List A
 tail : list -> external "builtin" "list-tail" list
 
@@ -330,23 +330,23 @@ Index-Error : type
 
 instance Show Index-Error : just "invalid index"
 
-[doc "Retrieve the value in a `List` at a particular index, if it exists."]
+[help "Retrieve the value in a `List` at a particular index, if it exists."]
 at :: A => Number -> List A -> Result A Index-Error
 at : index -> list -> external "builtin" "list-at" list index
 
-[doc "Add a new item to the end of a `List`."]
+[help "Add a new item to the end of a `List`."]
 append :: A => A -> List A -> List A
 append : new -> list -> external "builtin" "list-append" list new
 
-[doc "Add a new item to the end of a `Mutable List`."]
+[help "Add a new item to the end of a `Mutable List`."]
 append! :: A => A -> Mutable (List A) -> ()
 append! : new -> list -> list . set! (list . get . append new)
 
-[doc "Insert a new item at a particular index inside a `List`."]
+[help "Insert a new item at a particular index inside a `List`."]
 insert :: A => Number -> A -> List A -> Result (List A) Index-Error
 insert : index -> new -> list -> external "builtin" "list-insert" list index new
 
-[doc "Insert a new item at a particular index inside a `Mutable List`."]
+[help "Insert a new item at a particular index inside a `Mutable List`."]
 insert! :: A => Number -> A -> Mutable (List A) -> Result () Index-Error
 insert! : index -> new -> list -> {
 	new-list : try (list . get . insert index new)
@@ -354,11 +354,11 @@ insert! : index -> new -> list -> {
 	OK ()
 }
 
-[doc "Remove the item at a particular index inside a `List`."]
+[help "Remove the item at a particular index inside a `List`."]
 remove :: A => Number -> List A -> Result (List A) Index-Error
 remove : index -> list -> external "builtin" "list-remove" list index
 
-[doc "Remove the item at a particular index inside a `Mutable List`."]
+[help "Remove the item at a particular index inside a `Mutable List`."]
 remove! :: A => Number -> Mutable (List A) -> Result () Index-Error
 remove! : index -> list -> {
 	new-list : try (list . get . remove index)
@@ -368,13 +368,13 @@ remove! : index -> list -> {
 
 -- Iterators --
 
-[doc "A container for an iterable value that produces the `next` value on demand."]
+[help "A container for an iterable value that produces the `next` value on demand."]
 Iterator : Context Element => type {
 	context :: Mutable Context
 	next :: Mutable Context -> Maybe Element
 }
 
-[doc "Implement this trait to enable traversing your collection type."]
+[help "Implement this trait to enable traversing your collection type."]
 Iterate : Context Container Element => trait (Container -> Iterator Context Element)
 
 Context Element => instance Iterate Context (Iterator Context Element) Element : it
@@ -383,7 +383,7 @@ Context Element => instance Iterate Context (Iterator Context Element) Element :
 -- reduce : TODO
 
 -- TODO: Use higher-kinded types
-[doc "Keep only the items that satisfy the provided condition."]
+[help "Keep only the items that satisfy the provided condition."]
 filter :: Context Container Element where (Iterate Context Container Element) => (Element -> Boolean) -> Container -> Iterator Context Element
 filter : include? -> container -> {
 	{ context next } : Iterate container
@@ -399,7 +399,7 @@ filter : include? -> container -> {
 }
 
 -- TODO: Use higher-kinded types
-[doc "Execute a function for each item in an iterator."]
+[help "Execute a function for each item in an iterator."]
 each :: Context Container Element where (Iterate Context Container Element) => (Element -> ()) -> Container -> ()
 each : f -> container -> {
 	{ context next } : Iterate container
@@ -416,11 +416,11 @@ each : f -> container -> {
 }
 
 -- TODO: Use higher-kinded types
-[doc "Implement this trait to enable reducing an iterator into your collection type."]
+[help "Implement this trait to enable reducing an iterator into your collection type."]
 Collect : Context Element Container => trait (Iterator Context Element -> Container)
 
 -- TODO: Use higher-kinded types
-[doc "Collect an iterator into a single value, like a `List`."]
+[help "Collect an iterator into a single value, like a `List`."]
 collect :: Context Input Element Output where (Iterate Context Input Element) (Collect Context Element Output) => Input -> Output
 collect : input -> Collect (Iterate input)
 

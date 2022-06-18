@@ -34,7 +34,7 @@ pub struct Statement {
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct StatementAttributes {
     pub language_item: Option<LanguageItem>,
-    pub doc: VecDeque<InternedString>,
+    pub help: VecDeque<InternedString>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, EnumString)]

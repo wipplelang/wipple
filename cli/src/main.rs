@@ -1,5 +1,4 @@
 use clap::Parser;
-use regex::Regex;
 use std::{
     env, fs,
     io::{self, Read, Write},
@@ -26,7 +25,7 @@ enum Args {
         options: BuildOptions,
 
         #[clap(long)]
-        filter: Option<String>,
+        full: bool,
     },
     Bundle {
         #[clap(flatten)]
@@ -69,21 +68,41 @@ fn run() -> anyhow::Result<()> {
                 eprintln!("fatal error: {}", error);
             }
         }
-        Args::Doc { options, filter } => {
-            let filter = filter.as_deref().map(Regex::from_str).transpose()?;
+        Args::Doc { options, full } => {
+            let root = if full {
+                None
+            } else {
+                match PathBuf::from_str(&options.path) {
+                    Ok(path) => Some(path),
+                    Err(_) => {
+                        return Err(anyhow::Error::msg(
+                            "`doc` may only be used with local paths, unless `full` is set",
+                        ))
+                    }
+                }
+            };
 
             let (program, codemap) = match build(options) {
                 Some(program) => program,
                 None => return Err(anyhow::Error::msg("failed to build")),
             };
 
-            let doc = match filter {
-                Some(filter) => {
-                    wipple_compiler::doc::Documentation::with_filter(program, codemap, |path| {
-                        filter.is_match(path.as_str())
-                    })
-                }
-                None => wipple_compiler::doc::Documentation::new(program, codemap),
+            let doc = if let Some(root) = root {
+                wipple_compiler::doc::Documentation::with_filter(program, codemap, |path| {
+                    let path = match path {
+                        wipple_compiler::FilePath::Path(path) => path,
+                        _ => return false,
+                    };
+
+                    let path = match PathBuf::from_str(&path) {
+                        Ok(path) => path,
+                        Err(_) => return false,
+                    };
+
+                    root.ends_with(path)
+                })
+            } else {
+                wipple_compiler::doc::Documentation::new(program, codemap)
             };
 
             serde_json::to_writer(io::stdout(), &doc).unwrap();

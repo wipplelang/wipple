@@ -261,7 +261,7 @@ fn belongs_to_playground(span: wipple_compiler::parse::Span) -> bool {
 struct Completion {
     name: String,
     kind: usize,
-    doc: Option<String>,
+    help: Option<String>,
 }
 
 #[wasm_bindgen]
@@ -296,7 +296,7 @@ pub fn get_completions(position: usize) -> JsValue {
         .map(|(keyword, doc)| Completion {
             name: keyword.to_string(),
             kind: 17,
-            doc: Some(doc.to_string()),
+            help: Some(doc.to_string()),
         })
         .collect::<Vec<_>>();
 
@@ -312,21 +312,21 @@ pub fn get_completions(position: usize) -> JsValue {
 
         completions.extend(declarations.into_iter().map(|(name, value)| {
             fn join<'a>(
-                doc: impl IntoIterator<Item = &'a wipple_compiler::helpers::InternedString>,
+                help: impl IntoIterator<Item = &'a wipple_compiler::helpers::InternedString>,
             ) -> String {
-                Itertools::intersperse(doc.into_iter().map(|s| s.as_str()), "\n").collect()
+                Itertools::intersperse(help.into_iter().map(|s| s.as_str()), "\n").collect()
             }
 
             // https://microsoft.github.io/monaco-editor/api/enums/monaco.languages.CompletionItemKind.html
-            let (kind, doc) = match value {
+            let (kind, help) = match value {
                 ScopeValue::Type(id) => {
                     let ty = program.declarations.types.get(&id).unwrap();
-                    (6, Some(join(&ty.value.attributes.doc)))
+                    (6, Some(join(&ty.value.attributes.help)))
                 }
                 ScopeValue::BuiltinType(_) => (6, None),
                 ScopeValue::Trait(id) => {
                     let tr = program.declarations.traits.get(&id).unwrap();
-                    (7, Some(join(&tr.value.attributes.doc)))
+                    (7, Some(join(&tr.value.attributes.help)))
                 }
                 ScopeValue::TypeParameter(_) => (24, None),
                 ScopeValue::Operator(_) => (11, None),
@@ -337,7 +337,7 @@ pub fn get_completions(position: usize) -> JsValue {
                         constant
                             .attributes
                             .as_ref()
-                            .map(|attributes| join(&attributes.doc)),
+                            .map(|attributes| join(&attributes.help)),
                     )
                 }
                 ScopeValue::Variable(_) => (4, None),
@@ -346,7 +346,7 @@ pub fn get_completions(position: usize) -> JsValue {
             Completion {
                 name: name.to_string(),
                 kind,
-                doc,
+                help,
             }
         }));
     }

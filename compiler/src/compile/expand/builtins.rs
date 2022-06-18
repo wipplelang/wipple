@@ -866,21 +866,21 @@ pub(super) fn load_builtins<L>(expander: &mut Expander<L>, scope: &Scope) {
         }),
     );
 
-    // `doc` attribute
+    // `help` attribute
 
     let id = expander.compiler.new_template_id();
 
-    scope_values.insert(InternedString::new("doc"), ScopeValue::Template(id));
+    scope_values.insert(InternedString::new("help"), ScopeValue::Template(id));
 
     expander.info.templates.insert(
         id,
         Template::function(builtin_span, |expander, span, mut inputs, attributes, _| {
             if inputs.len() != 2 {
                 expander.compiler.diagnostics.add(Diagnostic::error(
-                    "expected 2 inputs to template `doc`",
+                    "expected 2 inputs to template `help`",
                     vec![Note::primary(
                         span,
-                        "`doc` accepts documentation text and a declaration",
+                        "`help` accepts documentation text and a declaration",
                     )],
                 ));
 
@@ -897,7 +897,7 @@ pub(super) fn load_builtins<L>(expander: &mut Expander<L>, scope: &Scope) {
                 NodeKind::Text(text) => text,
                 _ => {
                     expander.compiler.diagnostics.add(Diagnostic::error(
-                        "`doc` expects a text value",
+                        "`help` expects a text value",
                         vec![Note::primary(item.span, "expected text here")],
                     ));
 
@@ -909,10 +909,10 @@ pub(super) fn load_builtins<L>(expander: &mut Expander<L>, scope: &Scope) {
                 Some(attributes) => attributes,
                 None => {
                     expander.compiler.diagnostics.add(Diagnostic::error(
-                        "`doc` may only be used as an attribute",
+                        "`help` may only be used as an attribute",
                         vec![Note::primary(
                             span,
-                            r#"try putting this between brackets: (`[doc "..."]`)"#,
+                            r#"try putting this between brackets: (`[help "..."]`)"#,
                         )],
                     ));
 
@@ -920,7 +920,7 @@ pub(super) fn load_builtins<L>(expander: &mut Expander<L>, scope: &Scope) {
                 }
             };
 
-            attributes.doc.push_front(doc);
+            attributes.help.push_front(doc);
 
             node
         }),

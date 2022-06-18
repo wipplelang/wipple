@@ -12,7 +12,7 @@ use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use std::{
     cell::RefCell,
-    collections::{BTreeMap, HashMap, VecDeque},
+    collections::{BTreeMap, HashMap},
     hash::Hash,
     mem,
     rc::Rc,
@@ -48,7 +48,7 @@ pub struct Declaration<T> {
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct DeclarationAttributes {
-    pub doc: VecDeque<InternedString>,
+    pub help: Vec<InternedString>,
 }
 
 #[derive(Debug, Clone)]
@@ -982,7 +982,9 @@ impl<L> Compiler<L> {
         // TODO: Raise errors for misused attributes
 
         DeclarationAttributes {
-            doc: mem::take(&mut statement_attributes.doc),
+            help: mem::take(&mut statement_attributes.help)
+                .into_iter()
+                .collect(),
         }
     }
 
@@ -1232,6 +1234,7 @@ impl<L> Compiler<L> {
             ast::TypeAnnotationKind::Error => TypeAnnotationKind::Error,
             ast::TypeAnnotationKind::Placeholder => TypeAnnotationKind::Placeholder,
             ast::TypeAnnotationKind::Unit => {
+                // FIXME: Use language item instead of hardcoded ID
                 TypeAnnotationKind::Builtin(BuiltinTypeId(0), Vec::new())
             }
             ast::TypeAnnotationKind::Named(name, parameters) => {

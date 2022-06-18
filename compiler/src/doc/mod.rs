@@ -1,4 +1,4 @@
-use crate::{compile, FilePath};
+use crate::{compile, helpers::InternedString, FilePath};
 use serde::Serialize;
 use std::{borrow::Cow, collections::HashMap};
 
@@ -8,13 +8,6 @@ const DOC_VERSION: u32 = 1;
 #[serde(rename_all = "camelCase")]
 pub struct Documentation {
     pub version: u32,
-    pub files: HashMap<String, File>,
-}
-
-#[derive(Debug, Clone, Default, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct File {
-    // TODO: `[[doc "..."]]` attribute for file-level documentation
     pub types: Vec<Type>,
     pub traits: Vec<Trait>,
     pub constants: Vec<Constant>,
@@ -23,8 +16,9 @@ pub struct File {
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Declaration {
-    pub name: String,
+    pub name: InternedString,
     pub code: String,
+    pub help: Vec<InternedString>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -88,7 +82,9 @@ impl Documentation {
         codemap: HashMap<FilePath, Cow<str>>,
         mut filter: impl FnMut(FilePath) -> bool,
     ) -> Self {
-        let mut files = HashMap::<String, File>::new();
+        let mut types = Vec::new();
+        let mut traits = Vec::new();
+        let mut constants = Vec::new();
 
         macro_rules! insert_decls {
             ($kind:ident, $map:expr) => {
@@ -110,22 +106,22 @@ impl Documentation {
                         file[decl$(.$field)?.span.start..decl$(.$field)?.span.end].to_string()
                     };
 
-                    if let Some(result) = $map(&decl$(.$field)?, code) {
-                        files
-                            .entry(decl$(.$field)?.span.path.to_string())
-                            .or_default()
-                            .$insert
-                            .push(result);
+                    if let Some(result) = $map(&decl, code) {
+                        $insert.push(result);
                     }
                 }
             }};
         }
 
-        insert_decls!(types, |decl: &compile::typecheck::Declaration<_>, code| {
+        insert_decls!(types, |decl: &compile::typecheck::Declaration<
+            compile::typecheck::TypeDeclaration,
+        >,
+                              code| {
             Some(Type {
                 declaration: Declaration {
-                    name: decl.name.expect("types always have names").to_string(),
+                    name: decl.name.expect("types always have names"),
                     code,
+                    help: decl.value.attributes.help.clone(),
                 },
                 kind: TypeKind::Structure {
                     fields: Default::default(),
@@ -133,23 +129,33 @@ impl Documentation {
             })
         });
 
-        insert_decls!(traits, |decl: &compile::typecheck::Declaration<_>, code| {
+        insert_decls!(traits, |decl: &compile::typecheck::Declaration<
+            compile::typecheck::TraitDeclaration,
+        >,
+                               code| {
             Some(Trait {
                 declaration: Declaration {
-                    name: decl.name.expect("types always have names").to_string(),
+                    name: decl.name.expect("types always have names"),
                     code,
+                    help: decl.value.attributes.help.clone(),
                 },
             })
         });
 
         insert_decls!(
             generic_constants(decl) => constants,
-            |decl: &compile::typecheck::Declaration<_>, code| {
+            |decl: &compile::typecheck::GenericConstantDeclaration<_, _>, code| {
                 // instances don't have names; hide them here
-                decl.name.map(|name| Constant {
+                decl.decl.name.map(|name| Constant {
                     declaration: Declaration {
-                        name: name.to_string(),
+                        name,
                         code,
+                        help: decl
+                            .attributes
+                            .as_ref()
+                            .expect("generic constants always have attributes")
+                            .help
+                            .clone(),
                     },
                 })
             }
@@ -157,7 +163,9 @@ impl Documentation {
 
         Documentation {
             version: DOC_VERSION,
-            files,
+            types,
+            traits,
+            constants,
         }
     }
 }

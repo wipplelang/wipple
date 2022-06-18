@@ -1608,7 +1608,6 @@ dependencies = [
  "codemap",
  "codemap-diagnostic",
  "indicatif",
- "regex",
  "reqwest",
  "serde_json",
  "url",
