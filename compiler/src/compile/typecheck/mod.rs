@@ -58,6 +58,9 @@ macro_rules! expr {
                 Variant(usize, Vec<[<$prefix Expression>]>),
                 ListLiteral(Vec<[<$prefix Expression>]>),
                 Return(Box<[<$prefix Expression>]>),
+                Loop(Box<[<$prefix Expression>]>),
+                Break(Box<[<$prefix Expression>]>),
+                Continue,
                 $($kinds)*
             }
 
@@ -215,6 +218,7 @@ impl<L> Compiler<L> {
             ctx: Default::default(),
             variables: Default::default(),
             return_tys: Default::default(),
+            loop_tys: Default::default(),
             traits: Default::default(),
             types: Default::default(),
             generic_constants: Default::default(),
@@ -808,6 +812,7 @@ struct Typechecker<'a, L> {
     ctx: Context,
     variables: BTreeMap<VariableId, UnresolvedType>,
     return_tys: Vec<Option<UnresolvedType>>,
+    loop_tys: Vec<Option<UnresolvedType>>,
     traits: BTreeMap<TraitId, TraitDefinition>,
     types: BTreeMap<TypeId, TypeDefinition>,
     generic_constants: BTreeMap<
@@ -966,7 +971,7 @@ impl<'a, L> Typechecker<'a, L> {
                 let ty = if let Some(arm) = arms.first() {
                     let ty = arm.body.ty.clone();
                     for arm in arms.iter().skip(1) {
-                        if let Err(error) = self.ctx.unify(ty.clone(), arm.body.ty.clone()) {
+                        if let Err(error) = self.ctx.unify(arm.body.ty.clone(), ty.clone()) {
                             if !suppress_errors {
                                 self.report_type_error(error, arm.body.span);
                             }
@@ -1221,17 +1226,7 @@ impl<'a, L> Typechecker<'a, L> {
 
                 let return_ty = match self.return_tys.last_mut() {
                     Some(ty) => ty,
-                    None => {
-                        self.compiler.diagnostics.add(Diagnostic::error(
-                            "cannot use `return` outside a function",
-                            vec![Note::primary(
-                                expr.span,
-                                "try using the value directly instead",
-                            )],
-                        ));
-
-                        return UnresolvedExpression::error(expr.span);
-                    }
+                    None => return UnresolvedExpression::error(expr.span),
                 };
 
                 if let Some(return_ty) = return_ty {
@@ -1252,6 +1247,65 @@ impl<'a, L> Typechecker<'a, L> {
                     kind: UnresolvedExpressionKind::Return(Box::new(value)),
                 }
             }
+            lower::ExpressionKind::Loop(body) => {
+                self.loop_tys.push(None);
+
+                let body = self.typecheck_expr(body, file, suppress_errors);
+
+                let loop_ty = self
+                    .loop_tys
+                    .pop()
+                    .unwrap()
+                    .unwrap_or_else(|| UnresolvedType::Variable(self.ctx.new_variable()));
+
+                if let Err(errors) = self
+                    .ctx
+                    .unify(body.ty.clone(), UnresolvedType::Builtin(BuiltinType::Unit))
+                {
+                    if !suppress_errors {
+                        self.report_type_error(errors, expr.span);
+                    }
+
+                    return UnresolvedExpression::error(expr.span);
+                };
+
+                UnresolvedExpression {
+                    span: expr.span,
+                    ty: loop_ty,
+                    kind: UnresolvedExpressionKind::Loop(Box::new(body)),
+                }
+            }
+            lower::ExpressionKind::Break(value) => {
+                let value = self.typecheck_expr(value, file, suppress_errors);
+
+                let loop_ty = match self.loop_tys.last_mut() {
+                    Some(ty) => ty,
+                    None => return UnresolvedExpression::error(expr.span),
+                };
+
+                if let Some(loop_ty) = loop_ty {
+                    if let Err(errors) = self.ctx.unify(loop_ty.clone(), value.ty.clone()) {
+                        if !suppress_errors {
+                            self.report_type_error(errors, expr.span);
+                        }
+
+                        return UnresolvedExpression::error(expr.span);
+                    }
+                } else {
+                    *loop_ty = Some(value.ty.clone());
+                }
+
+                UnresolvedExpression {
+                    span: expr.span,
+                    ty: UnresolvedType::Bottom(BottomTypeReason::Annotated),
+                    kind: UnresolvedExpressionKind::Break(Box::new(value)),
+                }
+            }
+            lower::ExpressionKind::Continue => UnresolvedExpression {
+                span: expr.span,
+                ty: UnresolvedType::Bottom(BottomTypeReason::Annotated),
+                kind: UnresolvedExpressionKind::Continue,
+            },
         }
     }
 
@@ -1834,6 +1888,13 @@ impl<'a, L> Typechecker<'a, L> {
                     UnresolvedExpressionKind::Return(value) => MonomorphizedExpressionKind::Return(
                         Box::new(self.monomorphize(*value, file, inside_generic_constant)?),
                     ),
+                    UnresolvedExpressionKind::Loop(body) => MonomorphizedExpressionKind::Loop(
+                        Box::new(self.monomorphize(*body, file, inside_generic_constant)?),
+                    ),
+                    UnresolvedExpressionKind::Break(value) => MonomorphizedExpressionKind::Break(
+                        Box::new(self.monomorphize(*value, file, inside_generic_constant)?),
+                    ),
+                    UnresolvedExpressionKind::Continue => MonomorphizedExpressionKind::Continue,
                 })
             })()?,
         })
@@ -1955,6 +2016,13 @@ impl<'a, L> Typechecker<'a, L> {
                 MonomorphizedExpressionKind::Return(value) => {
                     ExpressionKind::Return(Box::new(self.finalize_internal(*value, generic, file)?))
                 }
+                MonomorphizedExpressionKind::Loop(body) => {
+                    ExpressionKind::Loop(Box::new(self.finalize_internal(*body, generic, file)?))
+                }
+                MonomorphizedExpressionKind::Break(value) => {
+                    ExpressionKind::Break(Box::new(self.finalize_internal(*value, generic, file)?))
+                }
+                MonomorphizedExpressionKind::Continue => ExpressionKind::Continue,
             },
         })
     }

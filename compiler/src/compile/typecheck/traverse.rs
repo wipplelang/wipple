@@ -74,6 +74,12 @@ macro_rules! traverse_impl {
                 Return(value) => {
                     value.$traverse(f);
                 }
+                Loop(value) => {
+                    value.$traverse(f);
+                }
+                Break(value) => {
+                    value.$traverse(f);
+                }
                 _ => {}
             }
         }

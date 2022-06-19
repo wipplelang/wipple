@@ -48,6 +48,8 @@ struct Diverge {
 enum DivergeKind {
     Error(String),
     Return(Value),
+    Break(Value),
+    Continue,
 }
 
 type Error = String;
@@ -278,6 +280,27 @@ impl<'a> Interpreter<'a> {
                 let value = self.eval_expr(value, info)?;
                 return Err(Diverge::new(info.stack.clone(), DivergeKind::Return(value)));
             }
+            ExpressionKind::Loop(body) => loop {
+                match self.eval_expr(body, info) {
+                    Ok(_)
+                    | Err(Diverge {
+                        kind: DivergeKind::Continue,
+                        ..
+                    }) => continue,
+                    Err(Diverge {
+                        kind: DivergeKind::Break(value),
+                        ..
+                    }) => break value,
+                    diverge => return diverge,
+                }
+            },
+            ExpressionKind::Break(value) => {
+                let value = self.eval_expr(value, info)?;
+                return Err(Diverge::new(info.stack.clone(), DivergeKind::Break(value)));
+            }
+            ExpressionKind::Continue => {
+                return Err(Diverge::new(info.stack.clone(), DivergeKind::Continue));
+            }
         };
 
         info.stack.pop();
@@ -302,6 +325,10 @@ impl<'a> Interpreter<'a> {
                 kind: DivergeKind::Return(value),
                 ..
             }) => value,
+            Err(Diverge {
+                kind: DivergeKind::Break(_) | DivergeKind::Continue,
+                ..
+            }) => unreachable!(),
             diverge => return diverge,
         };
 

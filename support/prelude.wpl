@@ -279,30 +279,12 @@ increment! : add! 1
 
 -- Loops --
 
-Control-Flow : A => type {
-	Continue
-	Break A
-}
-
-use Control-Flow
-
--- [private]
-loop-impl :: A => (() -> Control-Flow A) -> A
-loop-impl : body -> external "builtin" "loop" body
-
-loop : body ~> loop-impl (() -> body)
-
-forever : body ~> loop {
-	body :: ()
-	Continue :: Control-Flow !
-}
-
 while : condition body ~> loop {
 	if condition {
 		body
-		Continue
+		continue
 	} {
-		Break ()
+		break ()
 	}
 }
 
@@ -391,8 +373,8 @@ filter : include? -> container -> {
 		context : context
 		next : context -> loop {
 			when (next context) {
-				Some x -> if (include? x) (Break (Some x)) Continue
-				None -> Break None
+				Some x -> if (include? x) (break (Some x)) (continue)
+				None -> break None
 			}
 		}
 	}
@@ -408,9 +390,9 @@ each : f -> container -> {
 		when (next context) {
 			Some x -> {
 				f x
-				Continue
+				continue
 			}
-			None -> Break ()
+			None -> break ()
 		}
 	}
 }
@@ -430,9 +412,9 @@ Context Element => instance Collect Context Element (List Element) : { context n
 		when (next context) {
 			Some x -> {
 				list . append! x
-				Continue
+				continue
 			}
-			None -> Break ()
+			None -> break ()
 		}
 	}
 
@@ -445,9 +427,9 @@ Context Element => instance Collect Context Text Text : { context next } -> {
 		when (next context) {
 			Some x -> {
 				text . add! x
-				Continue
+				continue
 			}
-			None -> Break ()
+			None -> break ()
 		}
 	}
 

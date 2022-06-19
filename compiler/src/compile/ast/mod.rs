@@ -71,6 +71,9 @@ pub enum ExpressionKind {
     Annotate(Box<Expression>, TypeAnnotation),
     ListLiteral(Vec<Expression>),
     Return(Box<Expression>),
+    Loop(Box<Expression>),
+    Break(Box<Expression>),
+    Continue,
 }
 
 #[derive(Debug, Clone)]
@@ -605,6 +608,13 @@ impl<L> Compiler<L> {
                         ],
                     )
                 }
+                NodeKind::Loop(value) => {
+                    ExpressionKind::Loop(Box::new(self.build_expression(*value)))
+                }
+                NodeKind::Break(value) => {
+                    ExpressionKind::Break(Box::new(self.build_expression(*value)))
+                }
+                NodeKind::Continue => ExpressionKind::Continue,
                 _ => {
                     self.diagnostics.add(Diagnostic::error(
                         "expected expression",

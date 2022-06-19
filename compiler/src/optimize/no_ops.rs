@@ -65,7 +65,10 @@ fn is_no_op(expr: &Expression) -> bool {
         ExpressionKind::Call(_, _)
         | ExpressionKind::External(_, _, _, _)
         | ExpressionKind::Initialize(_, _)
-        | ExpressionKind::Return(_) => false,
+        | ExpressionKind::Return(_)
+        | ExpressionKind::Loop(_)
+        | ExpressionKind::Break(_)
+        | ExpressionKind::Continue => false,
         ExpressionKind::Block(values)
         | ExpressionKind::Structure(values)
         | ExpressionKind::Variant(_, values)

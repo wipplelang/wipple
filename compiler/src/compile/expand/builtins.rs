@@ -754,7 +754,7 @@ pub(super) fn load_builtins<L>(expander: &mut Expander<L>, scope: &Scope) {
         Template::function(builtin_span, |expander, span, mut inputs, _, _| {
             if inputs.len() != 1 {
                 expander.compiler.diagnostics.add(Diagnostic::error(
-                    "expected 1 inputs to template `return`",
+                    "expected 1 input to template `return`",
                     vec![Note::primary(
                         span,
                         "`return` accepts a value to exit a function early with",
@@ -772,6 +772,100 @@ pub(super) fn load_builtins<L>(expander: &mut Expander<L>, scope: &Scope) {
             Node {
                 span,
                 kind: NodeKind::Return(Box::new(value)),
+            }
+        }),
+    );
+
+    // `loop` template
+
+    let id = expander.compiler.new_template_id();
+
+    scope_values.insert(InternedString::new("loop"), ScopeValue::Template(id));
+
+    expander.info.templates.insert(
+        id,
+        Template::function(builtin_span, |expander, span, mut inputs, _, _| {
+            if inputs.len() != 1 {
+                expander.compiler.diagnostics.add(Diagnostic::error(
+                    "expected 1 input to template `loop`",
+                    vec![Note::primary(
+                        span,
+                        "`loop` accepts a value to evaluate repeatedly",
+                    )],
+                ));
+
+                return Node {
+                    span,
+                    kind: NodeKind::Error,
+                };
+            }
+
+            let value = inputs.pop().unwrap();
+
+            Node {
+                span,
+                kind: NodeKind::Loop(Box::new(value)),
+            }
+        }),
+    );
+
+    // `break` template
+
+    let id = expander.compiler.new_template_id();
+
+    scope_values.insert(InternedString::new("break"), ScopeValue::Template(id));
+
+    expander.info.templates.insert(
+        id,
+        Template::function(builtin_span, |expander, span, mut inputs, _, _| {
+            if inputs.len() != 1 {
+                expander.compiler.diagnostics.add(Diagnostic::error(
+                    "expected 1 input to template `break`",
+                    vec![Note::primary(
+                        span,
+                        "`break` accepts a value to exit a loop with",
+                    )],
+                ));
+
+                return Node {
+                    span,
+                    kind: NodeKind::Error,
+                };
+            }
+
+            let value = inputs.pop().unwrap();
+
+            Node {
+                span,
+                kind: NodeKind::Break(Box::new(value)),
+            }
+        }),
+    );
+
+    // `continue` template
+
+    let id = expander.compiler.new_template_id();
+
+    scope_values.insert(InternedString::new("continue"), ScopeValue::Template(id));
+
+    expander.info.templates.insert(
+        id,
+        Template::function(builtin_span, |expander, span, inputs, _, _| {
+            if !inputs.is_empty() {
+                expander.compiler.diagnostics.add(Diagnostic::error(
+                    "`continue` does not accept inputs",
+                    vec![Note::primary(span, "try removing these inputs")],
+                ));
+
+                return Node {
+                    span,
+                    kind: NodeKind::Error,
+                };
+            }
+
+            Node {
+                span,
+                kind: NodeKind::Continue,
             }
         }),
     );

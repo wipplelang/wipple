@@ -76,6 +76,9 @@ pub enum NodeKind {
     When(Box<Node>, Vec<Statement>),
     Return(Box<Node>),
     Or(Box<Node>, Box<Node>),
+    Loop(Box<Node>),
+    Break(Box<Node>),
+    Continue,
 }
 
 #[derive(Debug)]
@@ -788,6 +791,12 @@ impl<L> Expander<'_, L> {
                         NodeKind::Or(lhs, rhs) => {
                             replace(lhs, map);
                             replace(rhs, map);
+                        }
+                        NodeKind::Loop(body) => {
+                            replace(body, map);
+                        }
+                        NodeKind::Break(value) => {
+                            replace(value, map);
                         }
                         _ => {}
                     }
