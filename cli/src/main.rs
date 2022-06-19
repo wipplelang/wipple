@@ -69,16 +69,12 @@ fn run() -> anyhow::Result<()> {
             }
         }
         Args::Doc { options, full } => {
-            let root = if full {
-                None
-            } else {
-                match PathBuf::from_str(&options.path) {
-                    Ok(path) => Some(path),
-                    Err(_) => {
-                        return Err(anyhow::Error::msg(
-                            "`doc` may only be used with local paths, unless `full` is set",
-                        ))
-                    }
+            let root = match PathBuf::from_str(&options.path) {
+                Ok(path) => path,
+                Err(_) => {
+                    return Err(anyhow::Error::msg(
+                        "`doc` may only be used with local paths, unless `full` is set",
+                    ))
                 }
             };
 
@@ -87,8 +83,10 @@ fn run() -> anyhow::Result<()> {
                 None => return Err(anyhow::Error::msg("failed to build")),
             };
 
-            let doc = if let Some(root) = root {
-                wipple_compiler::doc::Documentation::with_filter(program, codemap, |path| {
+            let doc = if full {
+                wipple_compiler::doc::Documentation::new(program, codemap, &root)
+            } else {
+                wipple_compiler::doc::Documentation::with_filter(program, codemap, &root, |path| {
                     let path = match path {
                         wipple_compiler::FilePath::Path(path) => path,
                         _ => return false,
@@ -101,8 +99,6 @@ fn run() -> anyhow::Result<()> {
 
                     root.ends_with(path)
                 })
-            } else {
-                wipple_compiler::doc::Documentation::new(program, codemap)
             };
 
             serde_json::to_writer(io::stdout(), &doc).unwrap();

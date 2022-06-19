@@ -1,6 +1,6 @@
 use crate::{compile, helpers::InternedString, FilePath};
 use serde::Serialize;
-use std::{borrow::Cow, collections::HashMap};
+use std::{borrow::Cow, collections::HashMap, path::Path};
 
 const DOC_VERSION: u32 = 1;
 
@@ -8,6 +8,7 @@ const DOC_VERSION: u32 = 1;
 #[serde(rename_all = "camelCase")]
 pub struct Documentation {
     pub version: u32,
+    pub name: String,
     pub types: Vec<Type>,
     pub traits: Vec<Trait>,
     pub constants: Vec<Constant>,
@@ -73,15 +74,27 @@ pub struct Constant {
 }
 
 impl Documentation {
-    pub fn new(program: compile::Program, codemap: HashMap<FilePath, Cow<str>>) -> Self {
-        Documentation::with_filter(program, codemap, |_| true)
+    pub fn new(
+        program: compile::Program,
+        codemap: HashMap<FilePath, Cow<str>>,
+        root: &Path,
+    ) -> Self {
+        Documentation::with_filter(program, codemap, root, |_| true)
     }
 
     pub fn with_filter(
         program: compile::Program,
         codemap: HashMap<FilePath, Cow<str>>,
+        root: &Path,
         mut filter: impl FnMut(FilePath) -> bool,
     ) -> Self {
+        let name = root
+            .with_extension("")
+            .file_name()
+            .unwrap()
+            .to_string_lossy()
+            .into_owned();
+
         let mut types = Vec::new();
         let mut traits = Vec::new();
         let mut constants = Vec::new();
@@ -163,6 +176,7 @@ impl Documentation {
 
         Documentation {
             version: DOC_VERSION,
+            name,
             types,
             traits,
             constants,
