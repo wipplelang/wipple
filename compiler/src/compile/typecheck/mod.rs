@@ -489,10 +489,10 @@ impl<L> Compiler<L> {
             body.push((file.clone(), block));
         }
 
-        let prev_bound_instances = typechecker.bound_instances.clone();
-        let prev_monomorphized_constants = typechecker.monomorphized_constants.clone();
-
         for (id, constant) in typechecker.generic_constants.clone() {
+            let prev_bound_instances = typechecker.bound_instances.clone();
+            let prev_monomorphized_constants = typechecker.monomorphized_constants.clone();
+
             let body = typechecker.typecheck_expr(&constant.decl.value, &constant.file, false);
 
             if let Err(error) = typechecker.ctx.unify(body.ty.clone(), constant.generic_ty) {
@@ -555,10 +555,10 @@ impl<L> Compiler<L> {
                     attributes: constant.attributes,
                 },
             );
-        }
 
-        typechecker.bound_instances = prev_bound_instances;
-        typechecker.monomorphized_constants = prev_monomorphized_constants;
+            typechecker.bound_instances = prev_bound_instances;
+            typechecker.monomorphized_constants = prev_monomorphized_constants;
+        }
 
         // Finalize the types of all values in the program, resolving traits and
         // raising an error for unresolved type variables
@@ -2101,6 +2101,8 @@ impl<'a, L> Typechecker<'a, L> {
                         return Ok(id);
                     }
                     _ => {
+                        eprintln!("AMBIGUITY finding instance of {:?} for {:#?}", tr, ty);
+
                         return Err(TypeError::AmbiguousTrait(
                             tr,
                             candidates.into_iter().map(|(_, id)| id).collect(),

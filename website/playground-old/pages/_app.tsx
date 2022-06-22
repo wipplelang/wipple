@@ -1,9 +1,5 @@
 import { AppProps } from "next/app";
-import { wipple } from "../languages";
 import "../styles/globals.css";
-import "../styles/language-wipple.css";
-
-wipple.register();
 
 const App = ({ Component, pageProps }: AppProps) => <Component {...pageProps} />;
 

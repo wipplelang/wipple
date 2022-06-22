@@ -1,323 +1,152 @@
-import theme from "../helpers/theme.json";
-import { useEffect, useRef, useState } from "react";
-import Editor, { Monaco, useMonaco } from "@monaco-editor/react";
-import type monaco from "monaco-editor";
-import { useRefState } from "../helpers/useRefState";
+import { NextPage } from "next";
+import Head from "next/head";
+import React, { useEffect, useState } from "react";
+import {
+    DndContext,
+    closestCenter,
+    PointerSensor,
+    useSensor,
+    useSensors,
+    DragOverlay,
+} from "@dnd-kit/core";
+import {
+    arrayMove,
+    SortableContext,
+    useSortable,
+    verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import DragIndicatorIcon from "@mui/icons-material/DragIndicator";
+import AddIcon from "@mui/icons-material/AddRounded";
+import TextIcon from "@mui/icons-material/TextFormatRounded";
+import DeleteIcon from "@mui/icons-material/DeleteOutlineRounded";
+import PopupState, { bindMenu, bindTrigger } from "material-ui-popup-state";
+import { Menu, MenuItem } from "@mui/material";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
+import { nanoid } from "nanoid";
+import yaml from "js-yaml";
+import { CodeEditor, TextEditor } from "../components";
+import { useAsyncEffect, useRefState } from "../helpers";
 
-interface RunResult {
-    annotations: Annotation[];
-    output: [Span, string][];
-    diagnostics: Diagnostic[];
-}
-
-interface Annotation {
-    span: Span;
+interface Section {
+    id: string;
+    type: "code" | "text";
     value: string;
 }
 
-interface Span {
-    file: string;
-    start: number;
-    end: number;
-}
-
-interface Diagnostic {
-    level: DiagnosticLevel;
-    message: string;
-    notes: Note[];
-}
-
-type DiagnosticLevel = "Note" | "Warning" | "Error";
-
-interface Note {
-    level: NoteLevel;
-    span: Span;
-    message: string;
-}
-
-type NoteLevel = "Primary" | "Secondary";
-
-interface Completion {
+interface PageLink {
     name: string;
-    kind: number;
-    help?: string;
+    link: string;
 }
 
-const fontFamily = "'JetBrains Mono', monospace";
-
-let result: RunResult | undefined;
-
-const Playground = () => {
-    const [runner, setRunner] = useRefState<Worker | undefined>(undefined);
-    useEffect(() => {
-        const runner = new Worker(new URL("../runner/worker.js", import.meta.url));
-        setRunner(runner);
-    }, []);
-
-    const header = useRef<HTMLDivElement>(null);
-    const footer = useRef<HTMLDivElement>(null);
-    const [windowHeight, setWindowHeight] = useState(0);
-    const [headerHeight, setHeaderHeight] = useState(0);
-    const [footerHeight, setFooterHeight] = useState(0);
-
-    const updateHeights = () => {
-        setWindowHeight(window.innerHeight);
-        setHeaderHeight(header.current?.clientHeight ?? 0);
-        setFooterHeight(footer.current?.clientHeight ?? 0);
-    };
-
-    const editorHeight = windowHeight - headerHeight - footerHeight - 48;
-
-    useEffect(updateHeights, [header, footer]);
-    useEffect(() => window.addEventListener("resize", updateHeights), []);
-
-    const [windowWidth, setWindowWidth] = useState(0);
-
-    const updateWidths = () => {
-        setWindowWidth(window.innerWidth);
-    };
-
-    useEffect(updateWidths, []);
-    useEffect(() => window.addEventListener("resize", updateWidths), []);
-
-    const editorWidth = windowWidth - 32;
-
-    const monaco = useMonaco();
-    const [model, setModel] = useRefState<monaco.editor.ITextModel | null>(null);
+const App: NextPage = () => {
+    const [sections, setSections] = useState<Section[]>([]);
+    const [previousPage, setPreviousPage] = useState<PageLink | undefined>();
+    const [nextPage, setNextPage] = useState<PageLink | undefined>();
 
     const [query, setQuery] = useRefState<URLSearchParams | null>(null);
-    useEffect(() => setQuery(new URLSearchParams(window.location.search)), []);
+    useAsyncEffect(async () => {
+        const query = new URLSearchParams(window.location.search);
+        setQuery(query);
 
-    const [updateTrigger, triggerUpdate] = useState({});
-    const [decorationIDs, setDecorationIDs] = useRefState<string[]>([]);
+        // For backward compatibility
+        const codeParam = query.get("code");
+        if (codeParam) {
+            setSections([
+                {
+                    id: nanoid(8),
+                    type: "code",
+                    value: codeParam,
+                },
+            ]);
 
-    const getRange = (m: Monaco, model: monaco.editor.ITextModel, span: Span) => {
-        const startPos = model.getPositionAt(span.start);
-        const endPos = model.getPositionAt(span.end);
+            return;
+        }
 
-        return new m.Range(startPos.lineNumber, startPos.column, endPos.lineNumber, endPos.column);
-    };
+        const sectionsParam = query.get("sections");
+        if (sectionsParam) {
+            setSections(JSON.parse(sectionsParam));
+            return;
+        }
 
-    const updateDecorations = (monaco: Monaco, model: monaco.editor.ITextModel) => {
-        const newIDs = model.deltaDecorations(
-            decorationIDs.current,
-            result?.output.map(([span, output], index) => {
-                const range = getRange(monaco, model, span);
-                range.setStartPosition(range.endLineNumber, range.endColumn + 2);
-                range.setEndPosition(range.endLineNumber, range.endColumn + 2);
+        const lessonParam = query.get("lesson");
+        if (lessonParam) {
+            const data = await (await fetch(`/learn/${lessonParam}.yml`)).text();
 
-                const decoration: monaco.editor.IModelDecoration = {
-                    ownerId: 0,
-                    id: index.toString(),
-                    range,
-                    options: {
-                        after: {
-                            content: output,
-                            inlineClassName: "editor-output-decoration",
-                        },
-                    },
-                };
-
-                return decoration;
-            }) ?? []
-        );
-
-        setDecorationIDs(newIDs);
-    };
-
-    const update = () => {
-        if (!model.current) return;
-
-        const code = model.current.getValue();
-
-        query.current!.set("code", code);
-        const newURL = window.location.pathname + (code ? "?" + query.current!.toString() : "");
-        window.history.replaceState(null, "", newURL);
-
-        if (runner.current) {
-            runner.current.onmessage = (event) => {
-                result = event.data;
-                triggerUpdate({});
+            const lesson = yaml.load(data) as {
+                sections: Section[];
+                previous?: PageLink;
+                next?: PageLink;
             };
 
-            runner.current.postMessage({ type: "run", code });
+            setSections(lesson.sections);
+            setPreviousPage(lesson.previous);
+            setNextPage(lesson.next);
+        } else {
+            setSections([
+                {
+                    id: nanoid(8),
+                    type: "code",
+                    value: "",
+                },
+            ]);
         }
-    };
-
-    useEffect(update, [model.current, runner.current]);
-
-    const initialize = (
-        editor: monaco.editor.IStandaloneCodeEditor,
-        monaco: typeof import("monaco-editor")
-    ) => {
-        editor.focus();
-
-        monaco.languages.register({ id: "wipple" });
-
-        monaco.languages.setLanguageConfiguration("wipple", {
-            wordPattern: /[^\n\t \(\)\[\]\{\}'"]+/,
-            brackets: [
-                ["(", ")"],
-                ["[", "]"],
-                ["{", "}"],
-            ],
-            autoClosingPairs: [
-                { open: "(", close: ")" },
-                { open: "[", close: "]" },
-                { open: "{", close: "}" },
-                { open: '"', close: '"' },
-            ],
-        });
-
-        monaco.languages.setMonarchTokensProvider("wipple", {
-            tokenizer: {
-                root: [
-                    [/\[:|:\]|[()\[\]{}]/, "@brackets"],
-                    [/--.*/, "comment"],
-                    [/:|::|->|=>/, "operator"],
-                    [/['\/]/, "delimiter"],
-                    [/_|use|when|type|trait|instance|where|external/, "keyword"],
-                    [/-?[0-9]+(\.[0-9]+)?/, "number"],
-                    [/"[^"\\]*(?:\\.[^"\\]*)*"/s, "string"],
-                    [/[A-Z][^\r\n\t \(\)\[\]\{\}'"/]*/, "type"],
-                    [/[^\r\n\t \(\)\[\]\{\}'"/]+/, "name"],
-                ],
-            },
-        });
-
-        monaco.editor.defineTheme("wipple", theme as any);
-        monaco.editor.setTheme("wipple");
-
-        const getAnnotation = (model: monaco.editor.ITextModel, position: monaco.IPosition) => {
-            const index = model.getOffsetAt(position);
-
-            // Find the annotation with the smallest span covering the cursor
-            return result?.annotations
-                .filter(
-                    (annotation) => index >= annotation.span.start && index <= annotation.span.end
-                )
-                .sort((a, b) => a.span.end - a.span.start - (b.span.end - b.span.start))[0];
-        };
-
-        monaco.languages.registerHoverProvider("wipple", {
-            provideHover: (model, position) => {
-                const annotation = getAnnotation(model, position);
-                if (!annotation) return undefined;
-
-                return {
-                    range: getRange(monaco, model, annotation.span),
-                    contents: [{ value: "```wipple\n" + annotation.value + "\n```" }],
-                };
-            },
-        });
-
-        monaco.languages.registerCompletionItemProvider("wipple", {
-            provideCompletionItems: async (model, position) => {
-                if (!runner.current) {
-                    return { suggestions: [] };
-                }
-
-                const completions: Completion[] = await new Promise((resolve) => {
-                    runner.current!.onmessage = (event) => {
-                        resolve(event.data);
-                    };
-
-                    runner.current!.postMessage({
-                        type: "completions",
-                        position: model.getOffsetAt(position),
-                    });
-                });
-
-                return {
-                    suggestions: completions?.map(
-                        (completion) =>
-                            ({
-                                label: completion.name,
-                                kind: completion.kind,
-                                insertText: completion.name,
-                                documentation: completion.help,
-                            } as monaco.languages.CompletionItem)
-                    ),
-                };
-            },
-        });
-
-        editor.onDidChangeCursorSelection((event) => {
-            if (event.selection.isEmpty()) {
-                updateDecorations(monaco, model);
-            } else {
-                model.deltaDecorations(decorationIDs.current, []);
-            }
-        });
-
-        const model = editor.getModel()!;
-        setModel(model);
-
-        model.onDidChangeContent(update);
-        setTimeout(update, 500);
-    };
+    }, []);
 
     useEffect(() => {
-        if (!monaco || !model.current) return;
+        if (!query.current) return;
 
-        const severity = (level: NoteLevel, diagnosticLevel: DiagnosticLevel) => {
-            switch (level) {
-                case "Primary":
-                    switch (diagnosticLevel) {
-                        case "Note":
-                            return monaco.MarkerSeverity.Hint;
-                        case "Warning":
-                            return monaco.MarkerSeverity.Warning;
-                        case "Error":
-                            return monaco.MarkerSeverity.Error;
-                    }
-                case "Secondary":
-                    return monaco.MarkerSeverity.Hint;
-            }
-        };
+        query.current.delete("code");
+        query.current.set("sections", JSON.stringify(sections));
+        query.current.delete("lesson");
 
-        const markers =
-            result?.diagnostics?.flatMap((diagnostic) => {
-                diagnostic.notes[0].message = `${diagnostic.message}\n${diagnostic.notes[0].message}`;
+        const newURL =
+            window.location.pathname +
+            (sections.length ? "?" + (query.current.toString() ?? "") : "");
 
-                return diagnostic.notes.map((note) => {
-                    const startPos = model.current!.getPositionAt(note.span.start);
-                    const endPos = model.current!.getPositionAt(note.span.end);
+        window.history.replaceState(null, "", newURL);
+    }, [sections]);
 
-                    return {
-                        startLineNumber: startPos.lineNumber,
-                        startColumn: startPos.column,
-                        endLineNumber: endPos.lineNumber,
-                        endColumn: endPos.column,
-                        message: note.message,
-                        severity: severity(note.level, diagnostic.level),
-                    };
-                });
-            }) ?? [];
-
-        monaco.editor.setModelMarkers(model.current, "wipple", markers);
-
-        updateDecorations(monaco, model.current);
-    }, [updateTrigger]);
+    const [activeId, setActiveId] = useState<string | undefined>(undefined);
+    const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 1 } }));
 
     return (
-        <>
-            <div className="bg-gray-50" style={{ height: windowHeight }}>
-                <div className="flex items-center justify-between p-4 pb-0" ref={header}>
-                    <a href="https://wipple.gramer.dev">
+        <main>
+            <Head>
+                <title>Wipple Playground</title>
+
+                <link rel="preconnect" href="https://fonts.googleapis.com" />
+                <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="crossorigin" />
+                <link
+                    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=JetBrains+Mono:ital,wght@0,400;1,400&display=swap"
+                    rel="stylesheet"
+                />
+
+                <link
+                    rel="stylesheet"
+                    href="https://cdn.jsdelivr.net/npm/katex@0.15.2/dist/katex.min.css"
+                    integrity="sha384-MlJdn/WNKDGXveldHDdyRP1R4CTHr3FeuDNfhsLPYrq2t0UBkUdK2jyTnXPEK1NQ"
+                    crossOrigin="anonymous"
+                />
+            </Head>
+
+            <div className="mx-auto p-6 max-w-4xl">
+                <div className="flex items-center justify-between pb-4">
+                    <a href="https://wipple.gramer.dev" className="flex items-center gap-3">
                         <img src="/images/logo.svg" alt="Wipple Playground" className="h-10" />
+
+                        <h1 className="font-semibold">Wipple Playground</h1>
                     </a>
 
                     <div className="flex gap-4 text-gray-500">
-                        <a target="_blank" href="https://wipple.gramer.dev">
-                            Learn
-                        </a>
+                        <a href="/?lesson=00-the-wipple-playground">Learn</a>
 
                         <a
                             target="_blank"
                             href="https://wipple.gramer.dev/docs/introduction/00-welcome"
                         >
-                            Documentation
+                            Docs
                         </a>
 
                         <a target="_blank" href="https://github.com/wipplelang/wipple">
@@ -326,64 +155,247 @@ const Playground = () => {
                     </div>
                 </div>
 
-                <div
-                    className="m-4 mr-0 p-2 rounded-md bg-white"
-                    style={{
-                        top: headerHeight,
-                        width: editorWidth,
-                        overflow: "visible",
+                <DndContext
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
+                    onDragEnd={(event) => {
+                        setActiveId(undefined);
+                        const { active, over } = event;
+
+                        if (active.id !== over?.id) {
+                            setSections((items) => {
+                                const oldIndex = items.findIndex((s) => s.id === active.id);
+                                const newIndex = items.findIndex((s) => s.id === over?.id);
+
+                                return arrayMove(items, oldIndex, newIndex);
+                            });
+                        }
                     }}
+                    onDragStart={(event) => {
+                        setActiveId(event.active.id as string);
+                    }}
+                    autoScroll
                 >
-                    {query.current && (
-                        <div className="relative w-full">
-                            <Editor
-                                width="100%"
-                                className="absolute inset-0"
-                                height={editorHeight}
-                                language="wipple"
-                                defaultValue={query.current.get("code") ?? undefined}
-                                options={{
-                                    fontFamily,
-                                    fontLigatures: false,
-                                    fontSize: 16,
-                                    minimap: {
-                                        enabled: false,
-                                    },
-                                    tabSize: 2,
-                                    insertSpaces: false,
-                                    "semanticHighlighting.enabled": true,
+                    <SortableContext items={sections} strategy={verticalListSortingStrategy}>
+                        {sections.map((section, index) => (
+                            <SortableItem
+                                key={section.id}
+                                id={section.id}
+                                onPressAdd={(type) => {
+                                    const newSections = [...sections];
+                                    newSections.splice(index + 1, 0, {
+                                        id: nanoid(8),
+                                        type,
+                                        value: "",
+                                    });
+                                    setSections(newSections);
                                 }}
-                                onMount={initialize}
-                            />
-
-                            {!query.current.get("code") && (
-                                <div
-                                    className="absolute inset-0 pointer-events-none"
-                                    style={{
-                                        fontFamily,
-                                        fontStyle: "italic",
-                                        color: theme.rules[0].foreground,
-                                        marginLeft: 76,
+                                onPressRemove={
+                                    sections.length > 1
+                                        ? () => {
+                                              const newSections = [...sections];
+                                              newSections.splice(index, 1);
+                                              setSections(newSections);
+                                          }
+                                        : undefined
+                                }
+                            >
+                                <SectionContainer
+                                    section={section}
+                                    onChange={(section) => {
+                                        const newSections = [...sections];
+                                        newSections.splice(index, 1, section);
+                                        setSections(newSections);
                                     }}
-                                >
-                                    Write your code here!
-                                </div>
-                            )}
-                        </div>
-                    )}
-                </div>
+                                />
+                            </SortableItem>
+                        ))}
+                    </SortableContext>
 
-                <div className="absolute bottom-0 left-0 right-0 flex-grow-0 p-4 text-center text-gray-400">
-                    <div ref={footer} className="-mb-2">
-                        Made by{" "}
-                        <a target="_blank" href="https://gramer.dev" className="text-gray-500">
-                            Wilson Gramer
-                        </a>
+                    <DragOverlay>
+                        {activeId && (
+                            <div className="flex items-center">
+                                <SideMenu />
+
+                                <SectionContainer
+                                    section={sections.find((s) => s.id === activeId)!}
+                                    onChange={() => {}}
+                                />
+                            </div>
+                        )}
+                    </DragOverlay>
+                </DndContext>
+
+                <div className="flex my-5 gap-4">
+                    <div className="flex-1">
+                        {previousPage && (
+                            <a href={previousPage.link}>
+                                <div
+                                    className="p-4 rounded-md border-sky-100 text-sky-500"
+                                    style={{ borderWidth: 1 }}
+                                >
+                                    <div>
+                                        <ArrowBackIcon className="-ml-1 mb-2" />
+                                    </div>
+                                    {previousPage.name}
+                                </div>
+                            </a>
+                        )}
+                    </div>
+
+                    <div className="flex-1">
+                        {nextPage && (
+                            <a href={nextPage.link}>
+                                <div
+                                    className="text-right p-4 rounded-md border-sky-100 text-sky-500"
+                                    style={{ borderWidth: 1 }}
+                                >
+                                    <div className="ml-auto">
+                                        <ArrowForwardIcon className="-mr-1 mb-2" />
+                                    </div>
+                                    {nextPage.name}
+                                </div>
+                            </a>
+                        )}
                     </div>
                 </div>
+
+                <div className="mb-4 text-center text-gray-400">
+                    Made by{" "}
+                    <a target="_blank" href="https://gramer.dev" className="text-gray-500">
+                        Wilson Gramer
+                    </a>
+                </div>
             </div>
-        </>
+        </main>
     );
 };
 
-export default Playground;
+const SideMenu = (props: {
+    grabberProps?: any;
+    onPressAdd?: (type: Section["type"]) => void;
+    onPressRemove?: () => void;
+}) => (
+    <div className="w-6 -mt-4 -ml-6">
+        <div {...props.grabberProps}>
+            <PopupState variant="popover">
+                {(popupState) => (
+                    <>
+                        <button {...bindTrigger(popupState)}>
+                            <DragIndicatorIcon className="text-gray-300 hover:text-gray-500" />
+                        </button>
+
+                        <Menu {...bindMenu(popupState)}>
+                            <MenuItem
+                                disabled={props.onPressAdd == null}
+                                onClick={() => {
+                                    popupState.close();
+                                    props.onPressAdd?.("code");
+                                }}
+                            >
+                                <AddIcon /> Add Code
+                            </MenuItem>
+
+                            <MenuItem
+                                disabled={props.onPressAdd == null}
+                                onClick={() => {
+                                    popupState.close();
+                                    props.onPressAdd?.("text");
+                                }}
+                            >
+                                <TextIcon /> Add Text
+                            </MenuItem>
+
+                            <MenuItem
+                                disabled={props.onPressRemove == null}
+                                onClick={() => {
+                                    popupState.close();
+                                    props.onPressRemove?.();
+                                }}
+                            >
+                                <DeleteIcon /> Remove
+                            </MenuItem>
+                        </Menu>
+                    </>
+                )}
+            </PopupState>
+        </div>
+    </div>
+);
+
+const SortableItem = (props: {
+    id: string;
+    onPressAdd?: (type: Section["type"]) => void;
+    onPressRemove?: () => void;
+    children: React.ReactNode;
+}) => {
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+        id: props.id,
+    });
+
+    const style = {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0 : 1,
+    };
+
+    const [showGrabber, setShowGrabber] = useState(false);
+
+    return (
+        <div
+            ref={setNodeRef}
+            style={style}
+            className="flex items-center"
+            onMouseEnter={() => setShowGrabber(true)}
+            onMouseLeave={() => setShowGrabber(false)}
+        >
+            {showGrabber ? (
+                <div>
+                    <SideMenu
+                        grabberProps={{ ...attributes, ...listeners }}
+                        onPressAdd={props.onPressAdd}
+                        onPressRemove={props.onPressRemove}
+                    />
+                </div>
+            ) : null}
+
+            {props.children}
+        </div>
+    );
+};
+
+const SectionContainer = (props: { section: Section; onChange: (section: Section) => void }) => {
+    let content: JSX.Element;
+    switch (props.section.type) {
+        case "code":
+            content = (
+                <CodeEditor
+                    code={props.section.value}
+                    onChange={(code) => {
+                        props.onChange({
+                            ...props.section,
+                            value: code,
+                        });
+                    }}
+                />
+            );
+            break;
+        case "text":
+            content = (
+                <TextEditor
+                    content={props.section.value}
+                    onChange={(text) => {
+                        props.onChange({
+                            ...props.section,
+                            value: text,
+                        });
+                    }}
+                />
+            );
+            break;
+    }
+
+    return <div className="mb-4 flex-1">{content}</div>;
+};
+
+export default App;

@@ -1,0 +1,26 @@
+sections:
+  - id: iAURnjcY
+    type: text
+    value: |-
+      # Text
+
+      So far we've only worked with numbers, but Wipple supports text as well!
+
+  - id: mJz9LIhq
+    type: code
+    value: show "Hello, world!"
+
+  - id: kxi57pFw
+    type: text
+    value: |-
+      Notice how `"Hello, world!"` is in a different color than `show`. This indicates that we're dealing with text instead of variables or calculations. Just keep in mind that text is always written between quotation marks! `a` means the variable `a`, while `"a"` means the letter a.
+
+      Try `show`-ing your name on the screen!
+
+previous:
+  name: Variables
+  link: /?lesson=02-variables
+
+next:
+  name: So how does Wipple actually work?
+  link: /?lesson=04-so-how-does-wipple-actually-work
