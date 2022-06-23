@@ -28,7 +28,7 @@
         {
             "id": "wSFfEy1-",
             "type": "code",
-            "value": "sum : 2 + 2\nshow sum\n\nmy-awesome-variable : 3 + 4\n\nshow my-awesome-variable"
+            "value": "sum : 2 + 2\nshow sum\n\nmy-awesome-variable : 3 + 4\nshow my-awesome-variable"
         },
         {
             "id": "ljf-TwG-",

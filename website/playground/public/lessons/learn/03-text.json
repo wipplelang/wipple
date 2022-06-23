@@ -14,7 +14,8 @@
             "id": "kxi57pFw",
             "type": "text",
             "value": "Notice how `\"Hello, world!\"` is in a different color than `show`. This indicates that we're dealing with text instead of variables or calculations. Just keep in mind that text is always written between quotation marks! `a` means the variable `a`, while `\"a\"` means the letter a.\n\nTry `show`-ing your name on the screen!"
-        }
+        },
+        { "id": "u921jKfq", "type": "code", "value": "" }
     ],
     "previous": {
         "name": "Variables",
