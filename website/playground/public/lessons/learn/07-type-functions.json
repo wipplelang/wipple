@@ -1,0 +1,53 @@
+{
+    "sections": [
+        {
+            "id": "tWup4Nhf",
+            "type": "text",
+            "value": "# Type functions\n\nNow that we've learned about types and functions, we can learn about **type functions**! A type function is similar to a regular function, except it accepts a type as input and produces another type as output. Type functions are used in combination with regular functions to make **generic values** that work with any type. The symbol for type functions is `=>`, pronounced _\"becomes a\"_.\n\nTo understand all this, let's create a function called `it`:\n\n```\nit : x -> x\n```\n\n`it` is a very simple function — all it does is returns its input. Now let's use `it` a few times:"
+        },
+        {
+            "id": "Gk5mNeYS",
+            "type": "code",
+            "value": "it : x -> x\n\nshow (it 42)\nshow (it \"hello\")"
+        },
+        {
+            "id": "xnCvI0N6",
+            "type": "text",
+            "value": "Uh-oh, we get an error! Wipple's type inference determined that `it` has the type `Number -> Number` based on its usage in `show (it 42)`. So that means we can't use `it` with `Text` at the same time! Ideally, we could have `it` accept _any value_.\n\nTo make `it` more general, we can provide a type function:"
+        },
+        { "id": "DahaLo0J", "type": "code", "value": "it :: A => A -> A\nit : x -> x" },
+        {
+            "id": "zsTdXfHO",
+            "type": "text",
+            "value": "Here, `A` is a **type parameter**, and `it` has the type `A -> A`. Whenever Wipple sees a type function, it provides a type for `A` automatically using type inference:"
+        },
+        {
+            "id": "wNSd2r1j",
+            "type": "code",
+            "value": "it :: A => A -> A\nit : x -> x\n\nshow (it 42) -- here, `A : Number`\nshow (it \"hello\") -- here, `A : Text`"
+        },
+        {
+            "id": "bjqIxB-Y",
+            "type": "text",
+            "value": "Here's another example, `just`, which ignores its second input:"
+        },
+        {
+            "id": "t0f7nCKf",
+            "type": "code",
+            "value": "just :: A B => A -> B -> A\njust : x -> _ -> x\n\ngeneric-greeting : just \"Hello there!\"\n\nshow (generic-greeting \"Alice\")\nshow (generic-greeting \"Bob\")\nshow (generic-greeting \"Charlie\")"
+        },
+        {
+            "id": "tRDQefwj",
+            "type": "text",
+            "value": "`it` and `just` are very handy functions to keep around. In fact, they're so handy that they're included in the Wipple Playground by default!\n\nNow let's learn how to create our own types!"
+        }
+    ],
+    "previous": {
+        "name": "Types",
+        "link": "/?lesson=learn/06-types"
+    },
+    "next": {
+        "name": "Structures",
+        "link": "/?lesson=learn/08-structures"
+    }
+}

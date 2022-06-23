@@ -1,0 +1,37 @@
+{
+    "sections": [
+        {
+            "id": "fCw6w5Vs",
+            "type": "text",
+            "value": "# Logic\n\nUp until now, we've written pretty simple programs that always produce the same output. Now, we'll introduce a way for your code to make decisions about its input!\n\nLet's say you wanted to write a program to grant or deny access based on a password. To do this, we need two things:\n\n-   A way to compare two passwords\n-   A way to display `access granted` or `access denied` depending on whether the passwords are the same or not\n\nThe first thing — comparison — is done by the `=` and `/=` signs in Wipple. Try it out below!"
+        },
+        {
+            "id": "02LsZUH-",
+            "type": "code",
+            "value": "show (1 = 1)\nshow (2 + 2 = 4)\nshow (5 /= 6)\nshow (\"abc\" = \"def\")"
+        },
+        {
+            "id": "KChNmsqx",
+            "type": "text",
+            "value": "By the way, `True` is what's called a **Boolean value** (which can either be `True` or `False`).\n\nThe second thing — making a decision — is done by the `if` function. Just provide a Boolean value and two other values. If the Boolean value is `True`, the first value will be returned, and if it's `False`, the second will be returned.\n\nNow we can write our password checker!"
+        },
+        {
+            "id": "-F0vsrvh",
+            "type": "code",
+            "value": "password : \"abc123\"\ncheck : input -> if (input = password) \"access granted\" \"access denied\"\n\nshow (check \"letmein\")\nshow (check \"password\")\nshow (check \"abc123\")"
+        },
+        {
+            "id": "45dG8R6m",
+            "type": "text",
+            "value": "(Please don't actually implement a password checker like this! Real password checkers use a much more complicated system to ensure security.)\n\nHere are some other logic symbols you can use:\n\n<table>\n    <tbody>\n        <tr>\n            <td><b>Symbol</b></td>\n            <td><b>Function</b></td>\n        </tr>\n        <tr>\n            <td><code>a = b</code></td>\n            <td>Is <code>a</code> equal to <code>b</code>?</td>\n        </tr>\n        <tr>\n            <td><code>a /= b</code></td>\n            <td>Is <code>a</code> not equal to <code>b</code>?</td>\n        </tr>\n        <tr>\n            <td><code>a < b</code></td>\n            <td>Is <code>a</code> less than <code>b</code>?</td>\n        </tr>\n        <tr>\n            <td><code>a > b</code></td>\n            <td>Is <code>a</code> greater than <code>b</code>?</td>\n        </tr>\n        <tr>\n            <td><code>a <= b</code></td>\n            <td>Is <code>a</code> less than or equal to <code>b</code>?</td>\n        </tr>\n        <tr>\n            <td><code>a >= b</code></td>\n            <td>Is <code>a</code> greater than or equal to <code>b</code>?</td>\n        </tr>\n        <tr>\n            <td><code>a and b</code></td>\n            <td>Are both <code>a</code> and <code>b</code> <code>True</code>?</td>\n        </tr>\n        <tr>\n            <td><code>a or b</code></td>\n            <td>Is either <code>a</code> or <code>b</code> <code>True</code>?</td>\n        </tr>\n    </tbody>\n</table>"
+        }
+    ],
+    "previous": {
+        "name": "Traits",
+        "link": "/?lesson=learn/09-traits"
+    },
+    "next": {
+        "name": "Enumerations and pattern matching",
+        "link": "/?lesson=learn/11-enumerations-and-pattern-matching"
+    }
+}

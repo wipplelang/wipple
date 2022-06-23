@@ -1655,6 +1655,8 @@ dependencies = [
 name = "wipple-playground-runner"
 version = "0.0.0"
 dependencies = [
+ "codemap",
+ "codemap-diagnostic",
  "console_error_panic_hook",
  "itertools",
  "lazy_static",

@@ -127,10 +127,10 @@ impl<L: Loader> Compiler<L> {
             .map(|(file, _)| Rc::try_unwrap(file).unwrap())
             .collect::<Vec<_>>();
 
-        if lowered_files.iter().all(|file| file.complete) {
-            self.typecheck_with_progress(lowered_files, |p| progress(Progress::Typechecking(p)))
-        } else {
-            None
+        if self.diagnostics.contains_errors() {
+            return None;
         }
+
+        self.typecheck_with_progress(lowered_files, |p| progress(Progress::Typechecking(p)))
     }
 }

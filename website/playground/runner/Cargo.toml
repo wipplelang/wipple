@@ -10,6 +10,8 @@ crate-type = ["cdylib", "rlib"]
 default = ["console_error_panic_hook"]
 
 [dependencies]
+codemap = "=0.1.2"
+codemap-diagnostic = "0.1"
 console_error_panic_hook = { version = "0.1.6", optional = true }
 itertools = "0.10"
 lazy_static = "1"

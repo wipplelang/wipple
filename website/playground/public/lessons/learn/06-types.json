@@ -1,0 +1,53 @@
+{
+    "sections": [
+        {
+            "id": "X8fvwv7g",
+            "type": "text",
+            "value": "# Types\n\nWipple has a powerful system to detect bugs in your code, called the **type system**. The type system assigns every value in your program a **type**, which represents the \"kind of thing\" each value is.\n\nJust like `:` is used to assign a name a value, the `::` symbol (pronounced _\"is a\"_) is used to assign a value a type. Here's a simple example:\n\n```\n42 :: Number -- \"42 is a Number\"\n\"hello\" :: Text -- \"'hello' is a Text\"\n```\n\nLet's see what happens if we make a mistake:"
+        },
+        { "id": "iFmWOhj8", "type": "code", "value": "42 :: Text" },
+        {
+            "id": "jYxGjc7u",
+            "type": "text",
+            "value": "Take a look at the error and you should see *\"expected `Text`, but found `Number`\"*. Why? Well, we've told Wipple that `42` is supposed to be `Text`, but Wipple determined that `42` is a `Number`. Since these types don't match, Wipple issues an error.\n\nWe can extend this idea to functions, too! Watch what happens if we make a mistake:"
+        },
+        {
+            "id": "NKCjkFjE",
+            "type": "code",
+            "value": "increment : (a -> a + 1) :: (Number -> Number)\nincrement \"2\""
+        },
+        {
+            "id": "e4vdoSzv",
+            "type": "text",
+            "value": "Wipple catches the bug and tells us that we're supposed to provide a `Number`!\n\nWhat's the type of a function like `add` that accepts two inputs? Remember that `add` is really two functions, each accepting an input. This means `add` has the type `Number -> (Number -> Number)`!\n\nTo make it a bit clearer, you can write the name of the function on its own line above the variable, omitting the parentheses:"
+        },
+        {
+            "id": "43GqWoz5",
+            "type": "code",
+            "value": "add :: Number -> Number -> Number\nadd : a -> b -> a + b"
+        },
+        {
+            "id": "8j2J75UL",
+            "type": "text",
+            "value": "Don't worry if this all sounds complicated — you usually don't even have to write the type of your variables! Wipple uses **type inference** to figure out what the types are for you. For example, let's say we have a function named `greet`:"
+        },
+        {
+            "id": "txg7Oi9A",
+            "type": "code",
+            "value": "greet : name -> format \"Hello, _!\" name\ngreeting : greet \"world\"\nshow greeting"
+        },
+        {
+            "id": "xeNcxT2r",
+            "type": "text",
+            "value": "Wipple was able to determine that `greet` has type `Text -> Text` based on its usage!\n\nOne last note — what's the type of `show`? `show` accepts `Text`, sure, but it doesn't produce any result. Wipple has a special type for functions that produce no result: the empty list `()`. So the type of `show` is `show :: Text -> ()`! If you aren't convinced, try assigning `show \"hello\"` to a variable and add `:: ()` to explicitly state the type.\n\nOn the next page, we'll take an even deeper dive into types!"
+        }
+    ],
+    "previous": {
+        "name": "Functions",
+        "link": "/?lesson=learn/05-functions"
+    },
+    "next": {
+        "name": "Type functions",
+        "link": "/?lesson=learn/07-type-functions"
+    }
+}
