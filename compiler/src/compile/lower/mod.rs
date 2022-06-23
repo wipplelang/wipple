@@ -21,7 +21,6 @@ use std::{
 #[derive(Debug, Clone)]
 pub struct File {
     pub span: Span,
-    pub complete: bool,
     pub declarations: Declarations,
     pub global_attributes: FileAttributes,
     pub exported: HashMap<InternedString, ScopeValue>,
@@ -279,7 +278,6 @@ impl<L> Compiler<L> {
             .flat_map(|statement| self.lower_statement(statement, &scope, &mut info))
             .collect();
 
-        let mut complete = true;
         for constant in info.declarations.constants.values() {
             if constant.value.value.borrow().as_ref().is_none() {
                 self.diagnostics.add(Diagnostic::error(
@@ -292,14 +290,11 @@ impl<L> Compiler<L> {
                         ),
                     )],
                 ));
-
-                complete = false;
             }
         }
 
         File {
             span: file.span,
-            complete,
             declarations: info.declarations,
             global_attributes: info.attributes,
             exported: scope.values.take(),
@@ -849,7 +844,7 @@ impl<L> Compiler<L> {
 
                 (Some(ScopeValue::Constant(id, None)), None)
             }
-            ast::StatementKind::Assign(pattern, expr) => {
+            ast::StatementKind::Assign(pattern, expr) => (|| {
                 macro_rules! assign_pattern {
                     () => {{
                         let value = self.lower_expr(expr, scope, info);
@@ -869,29 +864,19 @@ impl<L> Compiler<L> {
                     ast::PatternKind::Name(name) => {
                         let mut associated_constant = None;
 
-                        if let Some(ScopeValue::Constant(id, _)) =
-                            scope.values.borrow().get(name).cloned()
-                        {
+                        let c = scope.values.borrow().get(name).cloned();
+                        if let Some(ScopeValue::Constant(id, _)) = c {
                             let decl = info.declarations.constants.get(&id).unwrap();
                             let (parameters, c) =
                                 (decl.value.parameters.clone(), decl.value.value.clone());
 
-                            if let Some(associated_constant) = c.borrow().as_ref() {
-                                self.diagnostics.add(Diagnostic::error(
-                                    format!("constant `{name}` is already defined"),
-                                    vec![
-                                        Note::primary(
-                                            statement.span,
-                                            "cannot assign to a constant more than once",
-                                        ),
-                                        Note::secondary(
-                                            associated_constant.span,
-                                            "first initialization",
-                                        ),
-                                    ],
-                                ));
+                            let constant_already_assigned = {
+                                let c = c.borrow();
+                                c.is_some()
+                            };
 
-                                return Some(Expression::error(statement.span));
+                            if constant_already_assigned {
+                                return assign_pattern!();
                             }
 
                             associated_constant = Some((parameters, c));
@@ -920,7 +905,7 @@ impl<L> Compiler<L> {
                     }
                     _ => assign_pattern!(),
                 }
-            }
+            })(),
             ast::StatementKind::Use((span, name)) => {
                 let ty = match scope.get(name) {
                     Some(ScopeValue::Type(ty)) => ty,

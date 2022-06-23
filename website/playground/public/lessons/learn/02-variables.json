@@ -1,0 +1,57 @@
+{
+    "sections": [
+        {
+            "id": "g8dXeqX7",
+            "type": "text",
+            "value": "# Variables\n\nYou're probably familiar with variables in math — a variable is just a way to give some complex calculation a name. It's the same thing in Wipple! Let's try it out:"
+        },
+        {
+            "id": "tFK_rYbm",
+            "type": "code",
+            "value": "x : 2 + 2\nshow x"
+        },
+        {
+            "id": "ERs9C21t",
+            "type": "text",
+            "value": "Instead of using an `=` sign, Wipple uses `:` (a colon). You can pronounce `a : b` as _\"a is b\"_. Now, anywhere the computer sees `x`, it will replace it with `4`!\n\nLet's try a more complicated example:"
+        },
+        {
+            "id": "S1YVzvVY",
+            "type": "code",
+            "value": "a : 3\nb : a + 2\nc : a + b\nshow c"
+        },
+        {
+            "id": "n_Cjtvm7",
+            "type": "text",
+            "value": "Note that unlike in math, you can use words for variables in Wipple. Like this:"
+        },
+        {
+            "id": "wSFfEy1-",
+            "type": "code",
+            "value": "sum : 2 + 2\nshow sum\n\nmy-awesome-variable : 3 + 4\n\nshow my-awesome-variable"
+        },
+        {
+            "id": "ljf-TwG-",
+            "type": "text",
+            "value": "Try making some variables of your own in the playground!\n\nCan you guess what this code does?"
+        },
+        {
+            "id": "pdVmbWo1",
+            "type": "code",
+            "value": "show hmmm"
+        },
+        {
+            "id": "JJyEzG8W",
+            "type": "text",
+            "value": "Error! Try to figure out what the problem is and how to fix it — what did you have to do?"
+        }
+    ],
+    "previous": {
+        "name": "Math",
+        "link": "/?lesson=learn/01-math"
+    },
+    "next": {
+        "name": "Text",
+        "link": "/?lesson=learn/03-text"
+    }
+}

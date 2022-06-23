@@ -1,36 +1,9 @@
 import { useEffect } from "react";
 
-export interface RunResult {
-    annotations: Annotation[];
-    output: [Span, string][];
-    diagnostics: Diagnostic[];
-}
-
-export interface Annotation {
-    span: Span;
+export interface Output {
+    success: boolean;
     value: string;
 }
-
-export interface Span {
-    start: number;
-    end: number;
-}
-
-export interface Diagnostic {
-    level: DiagnosticLevel;
-    message: string;
-    notes: Note[];
-}
-
-export type DiagnosticLevel = "Note" | "Warning" | "Error";
-
-export interface Note {
-    level: NoteLevel;
-    span: Span;
-    message: string;
-}
-
-export type NoteLevel = "Primary" | "Secondary";
 
 let runner: Worker | undefined;
 
@@ -40,7 +13,7 @@ export const useRunner = () => {
     }, []);
 
     return {
-        run: (code: string): Promise<RunResult> =>
+        run: (code: string): Promise<Output> =>
             new Promise((resolve, reject) => {
                 runner!.onmessage = (event) => resolve(event.data);
                 runner!.onerror = (event) => reject(event.error);

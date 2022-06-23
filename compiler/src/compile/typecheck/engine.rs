@@ -243,6 +243,9 @@ impl Context {
                 )),
             },
             (UnresolvedType::Bottom(_), _) => Ok(()),
+            (_, UnresolvedType::Bottom(reason)) if matches!(reason, BottomTypeReason::Error) => {
+                Ok(())
+            }
             (actual, expected) => Err(TypeError::Mismatch(actual, expected)),
         }
     }

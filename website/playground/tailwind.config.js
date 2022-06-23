@@ -1,6 +1,7 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
     content: ["./pages/**/*.{js,ts,jsx,tsx}", "./components/**/*.{js,ts,jsx,tsx}"],
+    darkMode: "media",
     theme: {
         extend: {
             typography: (theme) => ({
@@ -16,11 +17,15 @@ module.exports = {
                             "padding-right": "unset",
                         },
                         code: {
-                            backgroundColor: theme("colors.gray.50"),
-                            color: theme("colors.gray.700"),
+                            backgroundColor: "var(--code-bg)",
+                            color: "var(--code-fg)",
                             "border-radius": "0.25rem",
                             padding: "0.125rem",
                             fontWeight: "initial",
+                        },
+                        "pre code": {
+                            backgroundColor: "var(--code-bg)",
+                            color: "var(--code-fg)",
                         },
                         "code::before": {
                             content: '""',

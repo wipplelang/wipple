@@ -21,9 +21,11 @@ use std::{
     rc::Rc,
 };
 
+#[cfg(debug_assertions)]
+use backtrace::Backtrace;
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Program {
-    pub well_typed: bool,
     pub body: Vec<Expression>,
     pub declarations: Declarations<Expression, Type>,
     pub top_level: HashMap<InternedString, lower::ScopeValue>,
@@ -214,8 +216,8 @@ impl<L> Compiler<L> {
             .collect::<Vec<_>>();
 
         let mut typechecker = Typechecker {
-            well_typed: true,
             ctx: Default::default(),
+            errors: Default::default(),
             variables: Default::default(),
             return_tys: Default::default(),
             loop_tys: Default::default(),
@@ -767,8 +769,107 @@ impl<L> Compiler<L> {
 
         // Build the final program
 
-        Some(Program {
-            well_typed: typechecker.well_typed,
+        let success = typechecker.errors.is_empty();
+
+        let mut report = |error: Error| {
+            macro_rules! getter {
+                ($x:ident) => {
+                    |id| {
+                        typechecker
+                            .declarations
+                            .$x
+                            .get(&id)
+                            .unwrap()
+                            .name
+                            .map_or("<unknown>", |name| name.as_str())
+                            .to_string()
+                    }
+                };
+            }
+
+            let type_names = getter!(types);
+            let param_names = getter!(type_parameters);
+            let trait_names = getter!(traits);
+
+            #[allow(unused_mut)]
+            let mut diagnostic = match error.error {
+                TypeError::ErrorExpression => return,
+                TypeError::Recursive(_) => Diagnostic::error(
+                    "recursive type",
+                    vec![Note::primary(
+                        error.span,
+                        "the type of this references itself",
+                    )],
+                ),
+                TypeError::Mismatch(actual, expected) => Diagnostic::error(
+                    "mismatched types",
+                    vec![Note::primary(
+                        error.span,
+                        format!(
+                            "expected `{}`, but found `{}`",
+                            format_type(expected, type_names, param_names),
+                            format_type(actual, type_names, param_names)
+                        ),
+                    )],
+                ),
+                TypeError::MissingInstance(tr, ty) => Diagnostic::error(
+                    "missing instance",
+                    vec![Note::primary(
+                        error.span,
+                        format!(
+                            "could not find instance of `{}` for type `{}`",
+                            trait_names(tr),
+                            format_type(ty, type_names, param_names)
+                        ),
+                    )],
+                ),
+                TypeError::AmbiguousTrait(_, candidates) => Diagnostic::error(
+                    "could not determine the type of this expression",
+                    std::iter::once(Note::primary(
+                        error.span,
+                        "try annotating the type with `::`",
+                    ))
+                    .chain(candidates.into_iter().map(|id| {
+                        let instance = typechecker.generic_constants.get(&id).unwrap();
+                        Note::secondary(instance.decl.span, "this instance could apply")
+                    }))
+                    .collect(),
+                ),
+                TypeError::UnresolvedType => Diagnostic::error(
+                    "could not determine the type of this expression",
+                    vec![Note::primary(
+                        error.span,
+                        "try annotating the type with `::`",
+                    )],
+                ),
+            };
+
+            #[cfg(debug_assertions)]
+            {
+                diagnostic.trace = error.trace;
+            }
+
+            typechecker.compiler.diagnostics.add(diagnostic);
+        };
+
+        let (unresolved_type_errors, other_errors): (Vec<_>, Vec<_>) = typechecker
+            .errors
+            .into_iter()
+            .partition(|e| matches!(e.error, TypeError::UnresolvedType));
+
+        let should_report_unresolved_type_errors = other_errors.is_empty();
+
+        for error in other_errors {
+            report(error);
+        }
+
+        if should_report_unresolved_type_errors {
+            for error in unresolved_type_errors {
+                report(error);
+            }
+        }
+
+        success.then(|| Program {
             body,
             declarations,
             top_level,
@@ -807,9 +908,17 @@ enum TypeDefinitionKind {
     Enumeration(Vec<(GenericConstantId, Vec<UnresolvedType>)>),
 }
 
+struct Error {
+    error: TypeError,
+    span: Span,
+
+    #[cfg(debug_assertions)]
+    trace: Backtrace,
+}
+
 struct Typechecker<'a, L> {
-    well_typed: bool,
     ctx: Context,
+    errors: Vec<Error>,
     variables: BTreeMap<VariableId, UnresolvedType>,
     return_tys: Vec<Option<UnresolvedType>>,
     loop_tys: Vec<Option<UnresolvedType>>,
@@ -837,10 +946,7 @@ impl<'a, L> Typechecker<'a, L> {
         suppress_errors: bool,
     ) -> UnresolvedExpression {
         match &expr.kind {
-            lower::ExpressionKind::Error => {
-                self.well_typed = false; // signal that the program contains errors
-                UnresolvedExpression::error(expr.span)
-            }
+            lower::ExpressionKind::Error => UnresolvedExpression::error(expr.span),
             lower::ExpressionKind::Unit => UnresolvedExpression {
                 span: expr.span,
                 ty: UnresolvedType::Builtin(BuiltinType::Unit),
@@ -925,7 +1031,7 @@ impl<'a, L> Typechecker<'a, L> {
                     Ok(ty) => ty,
                     Err(error) => {
                         if !suppress_errors {
-                            self.report_type_error(error, expr.span);
+                            self.report_type_error(error, function.span);
                         }
 
                         return UnresolvedExpression::error(expr.span);
@@ -2352,72 +2458,12 @@ impl<'a, L> Typechecker<'a, L> {
     }
 
     fn report_type_error(&mut self, error: TypeError, span: Span) {
-        self.well_typed = false;
+        self.errors.push(Error {
+            error,
+            span,
 
-        macro_rules! getter {
-            ($x:ident) => {
-                |id| {
-                    self.declarations
-                        .$x
-                        .get(&id)
-                        .unwrap()
-                        .name
-                        .map_or("<unknown>", |name| name.as_str())
-                        .to_string()
-                }
-            };
-        }
-
-        let type_names = getter!(types);
-        let param_names = getter!(type_parameters);
-        let trait_names = getter!(traits);
-
-        let diagnostic = match error {
-            TypeError::ErrorExpression => return,
-            TypeError::Recursive(_) => Diagnostic::error(
-                "recursive type",
-                vec![Note::primary(span, "the type of this references itself")],
-            ),
-            TypeError::Mismatch(actual, expected) => Diagnostic::error(
-                "mismatched types",
-                vec![Note::primary(
-                    span,
-                    format!(
-                        "expected `{}`, but found `{}`",
-                        format_type(expected, type_names, param_names),
-                        format_type(actual, type_names, param_names)
-                    ),
-                )],
-            ),
-            TypeError::MissingInstance(tr, ty) => Diagnostic::error(
-                "missing instance",
-                vec![Note::primary(
-                    span,
-                    format!(
-                        "could not find instance of `{}` for type `{}`",
-                        trait_names(tr),
-                        format_type(ty, type_names, param_names)
-                    ),
-                )],
-            ),
-            TypeError::AmbiguousTrait(_, candidates) => Diagnostic::error(
-                "could not determine the type of this expression",
-                std::iter::once(Note::primary(span, "try annotating the type with `::`"))
-                    .chain(candidates.into_iter().map(|id| {
-                        let instance = self.generic_constants.get(&id).unwrap();
-                        Note::secondary(
-                            instance.decl.span,
-                            format!("this instance ({:?}) could apply", id),
-                        )
-                    }))
-                    .collect(),
-            ),
-            TypeError::UnresolvedType => Diagnostic::error(
-                "could not determine the type of this expression",
-                vec![Note::primary(span, "try annotating the type with `::`")],
-            ),
-        };
-
-        self.compiler.diagnostics.add(diagnostic);
+            #[cfg(debug_assertions)]
+            trace: Backtrace::new(),
+        });
     }
 }

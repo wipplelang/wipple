@@ -1,0 +1,61 @@
+{
+    "sections": [
+        {
+            "id": "_8Vt72QH",
+            "type": "text",
+            "value": "## Functions\n\nWipple is what's called a **functional** programming language. That means functions are used everywhere in Wipple code!\n\nYou probably remember from math that a function $f(x) = 3x$ takes an input ($x$) and returns an output ($3x$). It works the same way in Wipple! You just write it a little differently:\n\n```\nf : x -> 3 * x\n```\n\nThe arrow is pronounced _\"becomes\"_, so the code above is read as _\"f is when x becomes 3 times x\"_. The process of _x_ becoming 3 times _x_ is a function!\n\nLet's create a function to add two numbers, `a` and `b`:\n\n```\nadd : a -> b -> a + b\n```\n\nNotice that functions only accept a single input. If you want multiple inputs, you need multiple functions (arrows)! The above code can be rewritten like so:\n\n```\nadd : a -> (b -> a + b)\n```\n\nNow how do we use functions? It's simple — just write the name of the function, followed by its inputs:"
+        },
+        { "id": "u-Xv7_7e", "type": "code", "value": "add : a -> b -> a + b\nadd 1 2" },
+        {
+            "id": "jJnzNzGz",
+            "type": "text",
+            "value": "And of course, we need to `show` the answer! (Guess what, `show` is a function too!)"
+        },
+        {
+            "id": "iVWTV2JQ",
+            "type": "code",
+            "value": "add : a -> b -> a + b\nadd 1 2\nshow (add 1 2)"
+        },
+        {
+            "id": "BSOyOP4J",
+            "type": "text",
+            "value": "If you're familiar with programming already, you might ask what happens if we only provide a single input. In Wipple, you just get back the inner function!"
+        },
+        { "id": "6J0OPPn-", "type": "code", "value": "add : a -> b -> a + b\nadd 1" },
+        {
+            "id": "oRQnuZR4",
+            "type": "text",
+            "value": "Here, `a` is 1. What's `b`? We give `b` a value next:"
+        },
+        { "id": "iCpVmjjG", "type": "code", "value": "add : a -> b -> a + b\n(add 1) 2" },
+        {
+            "id": "JIOitSBK",
+            "type": "text",
+            "value": "Notice this is the same code as before — `add 1 2`! Now for the super cool part — we can give `add 1` a name, and use it as its own function:"
+        },
+        {
+            "id": "d6OuP_p9",
+            "type": "code",
+            "value": "add : a -> b -> a + b\nincrement : add 1\nshow (increment 42)"
+        },
+        {
+            "id": "4uhqbM4d",
+            "type": "text",
+            "value": "You should see `43` on the screen!\n\nBefore we move on, let's introduce one more function, named `format`. `format` accepts a piece of text containing `_`s, and replaces all of the `_`s with the inputs you provide. We can use `format` to build our own `greet` function!"
+        },
+        {
+            "id": "XDC299WR",
+            "type": "code",
+            "value": "greet : name -> format \"Hello, _!\" name\n\nshow (greet \"Alice\")\nshow (greet \"Bob\")"
+        },
+        { "id": "dzZ7ereg", "type": "text", "value": "Try `greet`-ing yourself!" }
+    ],
+    "previous": {
+        "name": "So how does Wipple actually work?",
+        "link": "/?lesson=learn/04-so-how-does-wipple-actually-work"
+    },
+    "next": {
+        "name": "Types",
+        "link": "/?lesson=learn/06-types"
+    }
+}

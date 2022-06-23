@@ -39,14 +39,14 @@ export const TextEditor = (props: TextEditorProps) => {
             {isEditing ? (
                 <TextareaAutosize
                     ref={editorRef}
-                    className="w-full focus:outline-none resize-none mt-1"
+                    className="w-full focus:outline-none resize-none mt-1 dark:bg-inherit dark:text-white"
                     style={{ fontFamily: "'JetBrains Mono', monospace" }}
                     value={buffer}
                     onChange={(e) => setBuffer(e.target.value)}
                 />
             ) : (
                 <ReactMarkdown
-                    className={`prose prose-sky max-w-none ${
+                    className={`prose prose-sky dark:prose-invert max-w-none ${
                         props.content === "" ? "text-gray-400 pointer-events-none" : ""
                     }`}
                     remarkPlugins={[remarkMath, remarkGfm, remarkSmartypants]}

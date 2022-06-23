@@ -25,7 +25,6 @@ import { Menu, MenuItem } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import { nanoid } from "nanoid";
-import yaml from "js-yaml";
 import { CodeEditor, TextEditor } from "../components";
 import { useAsyncEffect, useRefState } from "../helpers";
 
@@ -67,18 +66,29 @@ const App: NextPage = () => {
         const sectionsParam = query.get("sections");
         if (sectionsParam) {
             setSections(JSON.parse(sectionsParam));
+
+            const previousPage = query.get("previous");
+            if (previousPage) {
+                setPreviousPage(JSON.parse(previousPage));
+            }
+
+            const nextPage = query.get("next");
+            if (nextPage) {
+                setNextPage(JSON.parse(nextPage));
+            }
+
             return;
         }
 
         const lessonParam = query.get("lesson");
         if (lessonParam) {
-            const data = await (await fetch(`/learn/${lessonParam}.yml`)).text();
+            const data = await (await fetch(`/lessons/${lessonParam}.json`)).text();
 
-            const lesson = yaml.load(data) as {
+            const lesson: {
                 sections: Section[];
                 previous?: PageLink;
                 next?: PageLink;
-            };
+            } = JSON.parse(data);
 
             setSections(lesson.sections);
             setPreviousPage(lesson.previous);
@@ -99,6 +109,8 @@ const App: NextPage = () => {
 
         query.current.delete("code");
         query.current.set("sections", JSON.stringify(sections));
+        previousPage && query.current.set("previous", JSON.stringify(previousPage));
+        nextPage && query.current.set("next", JSON.stringify(nextPage));
         query.current.delete("lesson");
 
         const newURL =
@@ -133,14 +145,13 @@ const App: NextPage = () => {
 
             <div className="mx-auto p-6 max-w-4xl">
                 <div className="flex items-center justify-between pb-4">
-                    <a href="https://wipple.gramer.dev" className="flex items-center gap-3">
+                    <a href="/" className="flex items-center gap-3 text-black dark:text-white">
                         <img src="/images/logo.svg" alt="Wipple Playground" className="h-10" />
-
                         <h1 className="font-semibold">Wipple Playground</h1>
                     </a>
 
-                    <div className="flex gap-4 text-gray-500">
-                        <a href="/?lesson=00-the-wipple-playground">Learn</a>
+                    <div className="flex gap-4 text-gray-500 dark:text-gray-400">
+                        <a href="/?lesson=learn/toc">Learn</a>
 
                         <a
                             target="_blank"
@@ -231,7 +242,7 @@ const App: NextPage = () => {
                         {previousPage && (
                             <a href={previousPage.link}>
                                 <div
-                                    className="p-4 rounded-md border-sky-100 text-sky-500"
+                                    className="p-4 rounded-md border-sky-100 dark:border-sky-900 text-sky-500"
                                     style={{ borderWidth: 1 }}
                                 >
                                     <div>
@@ -247,7 +258,7 @@ const App: NextPage = () => {
                         {nextPage && (
                             <a href={nextPage.link}>
                                 <div
-                                    className="text-right p-4 rounded-md border-sky-100 text-sky-500"
+                                    className="text-right p-4 rounded-md dark:border-sky-900 border-sky-100 text-sky-500"
                                     style={{ borderWidth: 1 }}
                                 >
                                     <div className="ml-auto">
@@ -260,9 +271,13 @@ const App: NextPage = () => {
                     </div>
                 </div>
 
-                <div className="mb-4 text-center text-gray-400">
+                <div className="mb-4 text-center text-gray-400 dark:text-gray-500">
                     Made by{" "}
-                    <a target="_blank" href="https://gramer.dev" className="text-gray-500">
+                    <a
+                        target="_blank"
+                        href="https://gramer.dev"
+                        className="text-gray-500 dark:text-gray-400"
+                    >
                         Wilson Gramer
                     </a>
                 </div>
@@ -282,7 +297,7 @@ const SideMenu = (props: {
                 {(popupState) => (
                     <>
                         <button {...bindTrigger(popupState)}>
-                            <DragIndicatorIcon className="text-gray-300 hover:text-gray-500" />
+                            <DragIndicatorIcon className="text-gray-300 hover:text-gray-500 dark:text-gray-500 dark:hover:text-gray-300" />
                         </button>
 
                         <Menu {...bindMenu(popupState)}>

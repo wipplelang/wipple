@@ -29,3 +29,37 @@
 .language-wipple .token.punctuation {
     color: #24292e;
 }
+
+@media (prefers-color-scheme: dark) {
+    .language-wipple {
+        color: #e1e4e8;
+    }
+
+    .language-wipple .token.string {
+        color: #9ecbff;
+    }
+
+    .language-wipple .token.comment {
+        color: #6a737d;
+    }
+
+    .language-wipple .token.keyword {
+        color: #f97583;
+    }
+
+    .language-wipple .token.class-name {
+        color: #a473ff;
+    }
+
+    .language-wipple .token.operator {
+        color: #79b8ff;
+    }
+
+    .language-wipple .token.number {
+        color: #79b8ff;
+    }
+
+    .language-wipple .token.punctuation {
+        color: #e1e4e8;
+    }
+}
