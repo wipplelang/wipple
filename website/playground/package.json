@@ -5,6 +5,7 @@
     "scripts": {
         "dev": "next dev & nodemon --watch ../../src --watch ./runner -e rs -x ./scripts/wasm.sh",
         "build": "next build",
+        "export": "next export",
         "start": "next start",
         "lint": "next lint"
     },
