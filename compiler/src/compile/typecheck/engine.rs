@@ -117,7 +117,7 @@ impl Context {
         expected.apply(self);
 
         match (actual, expected) {
-            (ty, UnresolvedType::Variable(var)) | (UnresolvedType::Variable(var), ty) => {
+            (UnresolvedType::Variable(var), ty) | (ty, UnresolvedType::Variable(var)) => {
                 if let UnresolvedType::Variable(other) = ty {
                     if var == other {
                         return Ok(());

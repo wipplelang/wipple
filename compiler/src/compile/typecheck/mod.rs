@@ -877,11 +877,19 @@ impl<'a, L> Typechecker<'a, L> {
                 ty: UnresolvedType::Variable(self.ctx.new_variable()),
                 kind: UnresolvedExpressionKind::Trait(*id),
             },
-            lower::ExpressionKind::Variable(id) => UnresolvedExpression {
-                span: expr.span,
-                ty: UnresolvedType::Variable(self.ctx.new_variable()),
-                kind: UnresolvedExpressionKind::Variable(*id),
-            },
+            lower::ExpressionKind::Variable(var) => {
+                let ty = self
+                    .variables
+                    .get(var)
+                    .expect("uninitialized variable")
+                    .clone();
+
+                UnresolvedExpression {
+                    span: expr.span,
+                    ty,
+                    kind: UnresolvedExpressionKind::Variable(*var),
+                }
+            }
             lower::ExpressionKind::Text(text) => UnresolvedExpression {
                 span: expr.span,
                 ty: UnresolvedType::Builtin(BuiltinType::Text),
@@ -901,8 +909,8 @@ impl<'a, L> Typechecker<'a, L> {
                     kind: UnresolvedExpressionKind::Block(statements, declarations.clone()),
                 }
             }
-            lower::ExpressionKind::Call(lhs, input) => {
-                let function = self.typecheck_expr(lhs, file, suppress_errors);
+            lower::ExpressionKind::Call(function, input) => {
+                let function = self.typecheck_expr(function, file, suppress_errors);
                 let input = self.typecheck_expr(input, file, suppress_errors);
 
                 let output_ty = UnresolvedType::Variable(self.ctx.new_variable());
@@ -931,7 +939,10 @@ impl<'a, L> Typechecker<'a, L> {
                 }
             }
             lower::ExpressionKind::Function(pattern, body) => {
-                let pattern = self.typecheck_pattern(pattern, file, suppress_errors);
+                let input_ty = UnresolvedType::Variable(self.ctx.new_variable());
+
+                let pattern =
+                    self.typecheck_pattern(pattern, input_ty.clone(), file, suppress_errors);
 
                 self.return_tys.push(None);
 
@@ -953,10 +964,7 @@ impl<'a, L> Typechecker<'a, L> {
 
                 UnresolvedExpression {
                     span: expr.span,
-                    ty: UnresolvedType::Function(
-                        Box::new(UnresolvedType::Variable(self.ctx.new_variable())),
-                        Box::new(return_ty),
-                    ),
+                    ty: UnresolvedType::Function(Box::new(input_ty), Box::new(return_ty)),
                     kind: UnresolvedExpressionKind::Function(pattern, Box::new(body)),
                 }
             }
@@ -965,22 +973,31 @@ impl<'a, L> Typechecker<'a, L> {
 
                 let arms = arms
                     .iter()
-                    .map(|arm| self.typecheck_arm(arm, file, suppress_errors))
+                    .map(|arm| self.typecheck_arm(arm, input.ty.clone(), file, suppress_errors))
                     .collect::<Vec<_>>();
 
-                let ty = if let Some(arm) = arms.first() {
-                    let ty = arm.body.ty.clone();
-                    for arm in arms.iter().skip(1) {
-                        if let Err(error) = self.ctx.unify(arm.body.ty.clone(), ty.clone()) {
-                            if !suppress_errors {
-                                self.report_type_error(error, arm.body.span);
-                            }
-                        };
-                    }
+                let ty = {
+                    let first_type = arms.iter().find_map(|arm| {
+                        let mut ty = arm.body.ty.clone();
+                        ty.apply(&self.ctx);
+                        (!matches!(ty, UnresolvedType::Bottom(_))).then(|| ty)
+                    });
 
-                    ty
-                } else {
-                    UnresolvedType::Bottom(BottomTypeReason::Annotated)
+                    if let Some(first_type) = first_type {
+                        for arm in &arms {
+                            if let Err(error) =
+                                self.ctx.unify(arm.body.ty.clone(), first_type.clone())
+                            {
+                                if !suppress_errors {
+                                    self.report_type_error(error, arm.body.span);
+                                }
+                            };
+                        }
+
+                        first_type
+                    } else {
+                        UnresolvedType::Bottom(BottomTypeReason::Annotated)
+                    }
                 };
 
                 UnresolvedExpression {
@@ -1022,7 +1039,8 @@ impl<'a, L> Typechecker<'a, L> {
             lower::ExpressionKind::Initialize(pattern, value) => {
                 let value = self.typecheck_expr(value, file, suppress_errors);
 
-                let pattern = self.typecheck_pattern(pattern, file, suppress_errors);
+                let pattern =
+                    self.typecheck_pattern(pattern, value.ty.clone(), file, suppress_errors);
 
                 UnresolvedExpression {
                     span: expr.span,
@@ -1331,12 +1349,13 @@ impl<'a, L> Typechecker<'a, L> {
     fn typecheck_arm(
         &mut self,
         arm: &lower::Arm,
+        ty: UnresolvedType,
         file: &Rc<RefCell<lower::File>>,
         suppress_errors: bool,
     ) -> UnresolvedArm {
         UnresolvedArm {
             span: arm.span,
-            pattern: self.typecheck_pattern(&arm.pattern, file, suppress_errors),
+            pattern: self.typecheck_pattern(&arm.pattern, ty, file, suppress_errors),
             body: self.typecheck_expr(&arm.body, file, suppress_errors),
         }
     }
@@ -1344,53 +1363,71 @@ impl<'a, L> Typechecker<'a, L> {
     fn typecheck_pattern(
         &mut self,
         pattern: &lower::Pattern,
+        ty: UnresolvedType,
         file: &Rc<RefCell<lower::File>>,
         suppress_errors: bool,
     ) -> UnresolvedPattern {
-        let kind = match &pattern.kind {
-            lower::PatternKind::Error => UnresolvedPatternKind::Error,
-            lower::PatternKind::Wildcard => UnresolvedPatternKind::Wildcard,
-            lower::PatternKind::Unit => UnresolvedPatternKind::Unit,
-            lower::PatternKind::Number(number) => UnresolvedPatternKind::Number(*number),
-            lower::PatternKind::Text(text) => UnresolvedPatternKind::Text(*text),
-            lower::PatternKind::Variable(var) => UnresolvedPatternKind::Variable(*var),
-            lower::PatternKind::Destructure(fields) => UnresolvedPatternKind::Destructure(
-                fields
-                    .iter()
-                    .map(|(name, pattern)| {
-                        (
-                            *name,
-                            self.typecheck_pattern(pattern, file, suppress_errors),
-                        )
-                    })
-                    .collect(),
-            ),
-            lower::PatternKind::Variant(ty, variant, values) => UnresolvedPatternKind::Variant(
-                *ty,
-                *variant,
-                values
-                    .iter()
-                    .map(|pattern| self.typecheck_pattern(pattern, file, suppress_errors))
-                    .collect(),
-            ),
-            lower::PatternKind::Annotate(inner, ty) => UnresolvedPatternKind::Annotate(
-                Box::new(self.typecheck_pattern(inner, file, suppress_errors)),
-                self.convert_type_annotation(ty, file),
-            ),
-            lower::PatternKind::Or(lhs, rhs) => UnresolvedPatternKind::Or(
-                Box::new(self.typecheck_pattern(lhs, file, suppress_errors)),
-                Box::new(self.typecheck_pattern(rhs, file, suppress_errors)),
-            ),
-            lower::PatternKind::Where(pattern, condition) => UnresolvedPatternKind::Where(
-                Box::new(self.typecheck_pattern(pattern, file, suppress_errors)),
-                Box::new(self.typecheck_expr(condition, file, suppress_errors)),
-            ),
-        };
+        fn typecheck_pattern<L>(
+            tc: &mut Typechecker<L>,
+            pattern: &lower::Pattern,
+            ty: Option<UnresolvedType>,
+            file: &Rc<RefCell<lower::File>>,
+            suppress_errors: bool,
+        ) -> UnresolvedPattern {
+            let kind = match &pattern.kind {
+                lower::PatternKind::Error => UnresolvedPatternKind::Error,
+                lower::PatternKind::Wildcard => UnresolvedPatternKind::Wildcard,
+                lower::PatternKind::Unit => UnresolvedPatternKind::Unit,
+                lower::PatternKind::Number(number) => UnresolvedPatternKind::Number(*number),
+                lower::PatternKind::Text(text) => UnresolvedPatternKind::Text(*text),
+                lower::PatternKind::Variable(var) => {
+                    tc.variables.insert(
+                        *var,
+                        ty.unwrap_or_else(|| UnresolvedType::Variable(tc.ctx.new_variable())),
+                    );
 
-        UnresolvedPattern {
-            span: pattern.span,
-            kind,
+                    UnresolvedPatternKind::Variable(*var)
+                }
+                lower::PatternKind::Destructure(fields) => UnresolvedPatternKind::Destructure(
+                    fields
+                        .iter()
+                        .map(|(name, pattern)| {
+                            (
+                                *name,
+                                typecheck_pattern(tc, pattern, None, file, suppress_errors),
+                            )
+                        })
+                        .collect(),
+                ),
+                lower::PatternKind::Variant(ty, variant, values) => UnresolvedPatternKind::Variant(
+                    *ty,
+                    *variant,
+                    values
+                        .iter()
+                        .map(|pattern| typecheck_pattern(tc, pattern, None, file, suppress_errors))
+                        .collect(),
+                ),
+                lower::PatternKind::Annotate(inner, ty) => UnresolvedPatternKind::Annotate(
+                    Box::new(typecheck_pattern(tc, inner, None, file, suppress_errors)),
+                    tc.convert_type_annotation(ty, file),
+                ),
+                lower::PatternKind::Or(lhs, rhs) => UnresolvedPatternKind::Or(
+                    Box::new(typecheck_pattern(tc, lhs, None, file, suppress_errors)),
+                    Box::new(typecheck_pattern(tc, rhs, None, file, suppress_errors)),
+                ),
+                lower::PatternKind::Where(pattern, condition) => UnresolvedPatternKind::Where(
+                    Box::new(typecheck_pattern(tc, pattern, None, file, suppress_errors)),
+                    Box::new(tc.typecheck_expr(condition, file, suppress_errors)),
+                ),
+            };
+
+            UnresolvedPattern {
+                span: pattern.span,
+                kind,
+            }
         }
+
+        typecheck_pattern(self, pattern, Some(ty), file, suppress_errors)
     }
 
     fn monomorphize_constant(
@@ -1500,7 +1537,22 @@ impl<'a, L> Typechecker<'a, L> {
             }
             UnresolvedPatternKind::Wildcard => Some(MonomorphizedPatternKind::Wildcard),
             UnresolvedPatternKind::Variable(var) => {
-                self.variables.insert(var, ty.clone());
+                let var_ty = self
+                    .variables
+                    .get(&var)
+                    .expect("uninitialized variable")
+                    .clone();
+
+                let ctx = self.ctx.clone();
+                if let Err(error) = self.ctx.unify(var_ty.clone(), ty.clone()).or_else(|_| {
+                    // HACK: Try the other way around if unification doesn't
+                    // work the first time
+                    // FIXME: Remove if this causes unsoundness
+                    self.ctx = ctx;
+                    self.ctx.unify(ty.clone(), var_ty)
+                }) {
+                    self.report_type_error(error, pattern.span);
+                }
 
                 let decl = file
                     .borrow()
