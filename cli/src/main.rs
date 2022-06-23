@@ -43,7 +43,10 @@ fn main() -> ExitCode {
     match run() {
         Ok(()) => ExitCode::SUCCESS,
         Err(error) => {
-            eprintln!("{error}");
+            if !error.to_string().is_empty() {
+                eprintln!("{error}");
+            }
+
             ExitCode::FAILURE
         }
     }
@@ -56,7 +59,7 @@ fn run() -> anyhow::Result<()> {
         Args::Run { options } => {
             let (program, _) = match build_and_optimize(options) {
                 Some(program) => program,
-                None => return Err(anyhow::Error::msg("failed to build")),
+                None => return Err(anyhow::Error::msg("")),
             };
 
             let interpreter = wipple_interpreter_backend::Interpreter::handling_output(|text| {
