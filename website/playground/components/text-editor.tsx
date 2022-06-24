@@ -21,6 +21,10 @@ export const TextEditor = (props: TextEditorProps) => {
 
     useEffect(() => {
         window.addEventListener("click", (e) => {
+            if (document.elementFromPoint(e.clientX, e.clientY) instanceof HTMLAnchorElement) {
+                return;
+            }
+
             setEditing(containerRef.current?.contains(e.target as Node) ?? false);
         });
     }, []);
