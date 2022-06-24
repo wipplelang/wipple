@@ -1,6 +1,9 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import SimpleCodeEditor from "react-simple-code-editor";
 import * as prism from "prismjs";
+import { debounce, useMediaQuery } from "@mui/material";
+import { Globals as SpringGlobals, useSpring, animated } from "react-spring";
+import useMeasure from "react-use-measure";
 import { Output, useRunner } from "../runner";
 import { useAsyncEffect } from "../helpers";
 
@@ -12,12 +15,28 @@ export interface CodeEditorProps {
 export const CodeEditor = (props: CodeEditorProps) => {
     const [output, setOutput] = useState<Output | undefined>();
 
-    const runner = useRunner();
+    const [outputRef, { height: outputHeight }] = useMeasure();
+    const animatedOutputStyle = useSpring(
+        output?.value ? { opacity: 1, height: outputHeight } : { opacity: 0, height: 0 }
+    );
 
-    useAsyncEffect(async () => {
-        const output = await runner.run(props.code);
+    const prefersReducedMotion = useMediaQuery("(prefers-reduced-motion)");
+    useEffect(() => {
+        SpringGlobals.assign({
+            skipAnimation: prefersReducedMotion,
+        });
+    }, [prefersReducedMotion]);
+
+    const runner = useRunner();
+    const runImmediately = async (code: string) => {
+        const output = await runner.run(code);
         setOutput(output);
-    }, [props.code]);
+    };
+
+    useAsyncEffect(() => runImmediately(props.code), []);
+
+    const run = useMemo(() => debounce(runImmediately, 750), []);
+    useAsyncEffect(() => run(props.code), [props.code]);
 
     return (
         <div className="bg-white dark:bg-gray-900 border-2 border-gray-100 dark:border-gray-700 rounded-lg overflow-clip">
@@ -38,17 +57,18 @@ export const CodeEditor = (props: CodeEditorProps) => {
                 placeholder="Write your code here!"
             />
 
-            {output?.value ? (
+            <animated.div style={animatedOutputStyle}>
                 <div
+                    ref={outputRef}
                     className={`p-4 ${
-                        output.success
+                        output?.success ?? true
                             ? "bg-gray-50 dark:bg-gray-800 text-black dark:text-white"
                             : "bg-red-50 dark:bg-red-900 dark:opacity-50 text-red-900 dark:text-red-50"
                     }`}
                 >
-                    <pre className="whitespace-pre-wrap break-word">{output.value}</pre>
+                    <pre className="whitespace-pre-wrap break-word">{output?.value}</pre>
                 </div>
-            ) : null}
+            </animated.div>
         </div>
     );
 };
