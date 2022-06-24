@@ -1302,7 +1302,7 @@ impl<'a, L> Typechecker<'a, L> {
             lower::ExpressionKind::Variant(id, index, values) => {
                 let enumeration = self.types.get(id).unwrap().clone();
 
-                let (mut variant_constructor, variant_tys) = match &enumeration.kind {
+                let (mut variant_constructor, mut variant_tys) = match &enumeration.kind {
                     TypeDefinitionKind::Enumeration(variants) => {
                         let (id, tys) = &variants[*index];
                         (self.generic_constants.get(id).unwrap().clone(), tys.clone())
@@ -1323,6 +1323,10 @@ impl<'a, L> Typechecker<'a, L> {
                 self.add_substitutions(&mut ty, &mut substitutions);
 
                 for (_, ty, _) in &mut variant_constructor.bounds {
+                    self.add_substitutions(ty, &mut substitutions);
+                }
+
+                for ty in &mut variant_tys {
                     self.add_substitutions(ty, &mut substitutions);
                 }
 
@@ -1648,17 +1652,19 @@ impl<'a, L> Typechecker<'a, L> {
             }
             UnresolvedPatternKind::Wildcard => Some(MonomorphizedPatternKind::Wildcard),
             UnresolvedPatternKind::Variable(var) => {
-                let var_ty = self
+                let mut var_ty = self
                     .variables
                     .get(&var)
                     .expect("uninitialized variable")
                     .clone();
 
+                let mut substitutions = BTreeMap::new();
+                self.add_substitutions(&mut var_ty, &mut substitutions);
+
                 let ctx = self.ctx.clone();
                 if let Err(error) = self.ctx.unify(var_ty.clone(), ty.clone()).or_else(|_| {
                     // HACK: Try the other way around if unification doesn't
-                    // work the first time
-                    // FIXME: Remove if this causes unsoundness
+                    // work the first time (remove if this causes unsoundness)
                     self.ctx = ctx;
                     self.ctx.unify(ty.clone(), var_ty)
                 }) {
@@ -1921,11 +1927,14 @@ impl<'a, L> Typechecker<'a, L> {
                         MonomorphizedExpressionKind::Constant(monomorphized_id)
                     }
                     UnresolvedExpressionKind::Variable(var) => {
-                        let ty = self
+                        let mut ty = self
                             .variables
                             .get(&var)
                             .expect("uninitialized variable")
                             .clone();
+
+                        let mut substitutions = BTreeMap::new();
+                        self.add_substitutions(&mut ty, &mut substitutions);
 
                         if let Err(error) = self.ctx.unify(expr.ty, ty) {
                             self.report_type_error(error, expr.span);
@@ -2264,8 +2273,6 @@ impl<'a, L> Typechecker<'a, L> {
                         return Ok(id);
                     }
                     _ => {
-                        eprintln!("AMBIGUITY finding instance of {:?} for {:#?}", tr, ty);
-
                         return Err(TypeError::AmbiguousTrait(
                             tr,
                             candidates.into_iter().map(|(_, id)| id).collect(),
