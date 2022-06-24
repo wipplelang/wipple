@@ -892,7 +892,6 @@ struct Constant<T, Ty, Attrs = ()> {
 struct TraitDefinition {
     ty: UnresolvedType,
     params: Vec<TypeParameterId>,
-    // bounds: Vec<Bound>, // TODO
 }
 
 #[derive(Debug, Clone)]
@@ -1019,23 +1018,29 @@ impl<'a, L> Typechecker<'a, L> {
                 let function = self.typecheck_expr(function, file, suppress_errors);
                 let input = self.typecheck_expr(input, file, suppress_errors);
 
+                let input_ty = UnresolvedType::Variable(self.ctx.new_variable());
                 let output_ty = UnresolvedType::Variable(self.ctx.new_variable());
 
-                match self.ctx.unify(
+                if let Err(error) = self.ctx.unify(
                     function.ty.clone(),
                     UnresolvedType::Function(
-                        Box::new(input.ty.clone()),
+                        Box::new(input_ty.clone()),
                         Box::new(output_ty.clone()),
                     ),
                 ) {
-                    Ok(ty) => ty,
-                    Err(error) => {
-                        if !suppress_errors {
-                            self.report_type_error(error, function.span);
-                        }
-
-                        return UnresolvedExpression::error(expr.span);
+                    if !suppress_errors {
+                        self.report_type_error(error, function.span);
                     }
+
+                    return UnresolvedExpression::error(expr.span);
+                };
+
+                if let Err(error) = self.ctx.unify(input.ty.clone(), input_ty) {
+                    if !suppress_errors {
+                        self.report_type_error(error, input.span);
+                    }
+
+                    return UnresolvedExpression::error(expr.span);
                 };
 
                 UnresolvedExpression {
