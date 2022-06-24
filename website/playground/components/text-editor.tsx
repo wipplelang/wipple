@@ -40,7 +40,10 @@ export const TextEditor = (props: TextEditorProps) => {
                 <TextareaAutosize
                     ref={editorRef}
                     className="w-full focus:outline-none resize-none mt-1 dark:bg-inherit dark:text-white"
-                    style={{ fontFamily: "'JetBrains Mono', monospace" }}
+                    style={{
+                        fontFamily: "'JetBrains Mono', monospace",
+                        fontVariantLigatures: "none",
+                    }}
                     value={buffer}
                     onChange={(e) => setBuffer(e.target.value)}
                 />

@@ -28,6 +28,7 @@ export const CodeEditor = (props: CodeEditorProps) => {
                 style={{
                     fontFamily: "'JetBrains Mono', monospace",
                     fontStyle: props.code ? "normal" : "italic",
+                    fontVariantLigatures: "none",
                 }}
                 value={props.code}
                 onValueChange={props.onChange}
