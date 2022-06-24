@@ -13,7 +13,7 @@
         {
             "id": "cd1whHeN",
             "type": "text",
-            "value": "What's that `A` after the `Some`? Well, in Wipple, enums can store values alongside the variant. This is an extremely powerful concept that makes it impossible for your program to be in an invalid state. `A` represents the type of the value to be stored alongside `Some`! You might see where this is going — `None` has no associated values and thus represents the absence of one.\n\nSo how to we get the value out of the `Some`? We can use pattern matching!"
+            "value": "What's that `A` after the `Some`? Well, in Wipple, enums can store values alongside the variant. This is an extremely powerful concept that makes it impossible for your program to be in an invalid state. `A` represents the type of the value to be stored alongside `Some`! You might see where this is going — `None` has no associated values and thus represents the absence of one.\n\nSo how do we get the value out of the `Some`? We can use pattern matching!"
         },
         {
             "id": "sQT-kiJh",
