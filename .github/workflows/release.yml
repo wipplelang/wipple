@@ -1,34 +1,11 @@
 on:
-  workflow_dispatch:
-  push:
-    branches:
-      - main
-    paths:
-      - .github/**
-      - backends/**
-      - cli/**
-      - compiler/**
-      - support/**
+  release:
+    types:
+      - published
 
-name: Build
+name: Upload Release Binaries
 
 jobs:
-  create-release:
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v2
-
-      - id: short_sha
-        run: echo "::set-output name=short_sha::$(git rev-parse --short HEAD)"
-
-      - uses: ncipollo/release-action@v1
-        with:
-          name: Wipple Development Snapshot (${{ steps.short_sha.outputs.short_sha }})
-          tag: 0.0.0-dev-${{ github.sha }}
-          omitBody: true
-          token: ${{ secrets.GITHUB_TOKEN }}
-
   build:
     strategy:
       matrix:
@@ -54,6 +31,9 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
+      - id: latest-release
+        uses: WyriHaximus/github-action-get-previous-tag@v1
+
       - run: .github/scripts/build.sh ${{ matrix.target }} ${{ matrix.compiler }}
 
       - uses: svenstaro/upload-release-action@v2
@@ -61,4 +41,4 @@ jobs:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           file: bin/*
           file_glob: true
-          tag: 0.0.0-dev-${{ github.sha }}
+          tag: ${{ steps.latest-release.outputs.tag }}
