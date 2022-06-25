@@ -1,0 +1,13 @@
+[book]
+authors = ["Wilson Gramer"]
+language = "en"
+multilingual = false
+src = "src"
+title = "The Wipple Guide"
+
+[output.html]
+no-section-label = true
+copy-fonts = false
+curly-quotes = true
+additional-js = ["scripts/language-wipple.js"]
+additional-css = ["styles/custom.css"]

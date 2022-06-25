@@ -1,0 +1,14 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=JetBrains+Mono:ital,wght@0,400;1,400&display=swap");
+
+body {
+    font-family: Inter, sans-serif;
+    line-height: 1.5;
+}
+
+pre,
+code,
+.hljs {
+    font-family: "JetBrains Mono", monospace !important;
+    font-variant-ligatures: none;
+    tab-size: 2;
+}
