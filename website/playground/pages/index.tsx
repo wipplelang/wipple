@@ -153,11 +153,8 @@ const App: NextPage = () => {
                     <div className="flex gap-4 text-gray-500 dark:text-gray-400">
                         <a href="/?lesson=learn/toc">Learn</a>
 
-                        <a
-                            target="_blank"
-                            href="https://wipple.gramer.dev/docs/introduction/00-welcome"
-                        >
-                            Docs
+                        <a target="_blank" href="https://guide.wipple.gramer.dev">
+                            Guide
                         </a>
 
                         <a target="_blank" href="https://github.com/wipplelang/wipple">
