@@ -29,6 +29,7 @@ pub struct File {
 pub struct Statement {
     pub attributes: StatementAttributes,
     pub node: Node,
+    pub treat_as_expr: bool,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -389,6 +390,9 @@ impl<L> Expander<'_, L> {
 
                 let span = Span::join(exprs.first().unwrap().span, exprs.last().unwrap().span);
 
+                let treat_as_expr =
+                    exprs.len() == 1 && matches!(exprs.first().unwrap().kind, parse::ExprKind::List(_));
+
                 let mut node = self.expand_list(span, exprs, &scope);
 
                 let mut attributes = StatementAttributes::default();
@@ -490,8 +494,11 @@ impl<L> Expander<'_, L> {
                     }
                 }
 
-                (!matches!(node.kind, NodeKind::Placeholder))
-                    .then(|| Statement { attributes, node })
+                (!matches!(node.kind, NodeKind::Placeholder)).then(|| Statement {
+                    attributes,
+                    node,
+                    treat_as_expr,
+                })
             })
             .collect();
 
