@@ -1,24 +1,51 @@
 use super::engine::{BuiltinType, UnresolvedType};
-use crate::{TypeId, TypeParameterId};
+use crate::{TraitId, TypeId, TypeParameterId};
+
+pub enum FormattableType {
+    Type(UnresolvedType),
+    Trait(TraitId, Vec<UnresolvedType>),
+}
+
+impl From<UnresolvedType> for FormattableType {
+    fn from(ty: UnresolvedType) -> Self {
+        FormattableType::Type(ty)
+    }
+}
+
+impl FormattableType {
+    fn params(&self) -> Vec<UnresolvedType> {
+        match self {
+            FormattableType::Type(ty) => ty
+                .params()
+                .into_iter()
+                .map(UnresolvedType::Parameter)
+                .collect(),
+            FormattableType::Trait(_, params) => params.clone(),
+        }
+    }
+}
 
 pub fn format_type(
-    ty: impl Into<UnresolvedType>,
+    ty: impl Into<FormattableType>,
     type_names: impl Fn(TypeId) -> String,
+    trait_names: impl Fn(TraitId) -> String,
     param_names: impl Fn(TypeParameterId) -> String,
 ) -> String {
-    format_type_with(ty, type_names, param_names)
+    format_type_with(ty, type_names, trait_names, param_names)
 }
 
 fn format_type_with(
-    ty: impl Into<UnresolvedType>,
+    ty: impl Into<FormattableType>,
     type_names: impl Fn(TypeId) -> String,
+    trait_names: impl Fn(TraitId) -> String,
     param_names: impl Fn(TypeParameterId) -> String,
 ) -> String {
-    let ty = ty.into();
+    let ty: FormattableType = ty.into();
 
     fn format_type(
-        ty: UnresolvedType,
+        ty: FormattableType,
         type_names: &impl Fn(TypeId) -> String,
+        trait_names: &impl Fn(TraitId) -> String,
         param_names: &impl Fn(TypeParameterId) -> String,
         is_top_level: bool,
         is_return: bool,
@@ -29,10 +56,17 @@ fn format_type_with(
                 let has_params = !params.is_empty();
 
                 let name = std::iter::once(String::from($name))
-                    .chain(params.into_iter().map(|param| {
+                    .chain(params.into_iter().map(|param: UnresolvedType| {
                         format!(
                             " {}",
-                            format_type(param, type_names, param_names, false, false)
+                            format_type(
+                                param.into(),
+                                type_names,
+                                trait_names,
+                                param_names,
+                                false,
+                                false
+                            )
                         )
                     }))
                     .collect::<String>();
@@ -46,26 +80,46 @@ fn format_type_with(
         }
 
         match ty {
-            UnresolvedType::Variable(_) => String::from("_"),
-            UnresolvedType::Parameter(param) => param_names(param),
-            UnresolvedType::Bottom(_) => String::from("!"),
-            UnresolvedType::Named(id, params) => format_named_type!(type_names(id), params),
-            UnresolvedType::Builtin(ty) => match ty {
+            FormattableType::Type(UnresolvedType::Variable(_)) => String::from("_"),
+            FormattableType::Type(UnresolvedType::Parameter(param)) => param_names(param),
+            FormattableType::Type(UnresolvedType::Bottom(_)) => String::from("!"),
+            FormattableType::Type(UnresolvedType::Named(id, params)) => {
+                format_named_type!(type_names(id), params)
+            }
+            FormattableType::Type(UnresolvedType::Builtin(ty)) => match ty {
                 BuiltinType::Unit => format_named_type!("()", Vec::new()),
                 BuiltinType::Text => format_named_type!("Text", Vec::new()),
                 BuiltinType::Number => format_named_type!("Number", Vec::new()),
                 BuiltinType::List(ty) => format_named_type!("List", vec![*ty]),
                 BuiltinType::Mutable(ty) => format_named_type!("Mutable", vec![*ty]),
             },
-            UnresolvedType::Function(input, output) => {
-                let input = format_type(*input, type_names, param_names, true, false);
-                let output = format_type(*output, type_names, param_names, true, true);
+            FormattableType::Type(UnresolvedType::Function(input, output)) => {
+                let input = format_type(
+                    (*input).into(),
+                    type_names,
+                    trait_names,
+                    param_names,
+                    true,
+                    false,
+                );
+
+                let output = format_type(
+                    (*output).into(),
+                    type_names,
+                    trait_names,
+                    param_names,
+                    true,
+                    true,
+                );
 
                 if is_top_level && is_return {
                     format!("{input} -> {output}")
                 } else {
                     format!("({input} -> {output})")
                 }
+            }
+            FormattableType::Trait(tr, params) => {
+                format_named_type!(trait_names(tr), params)
             }
         }
     }
@@ -75,16 +129,25 @@ fn format_type_with(
         names.push(param);
     }
 
-    let formatted = format_type(ty, &type_names, &param_names, true, true);
+    let show_params = names.is_empty() || matches!(ty, FormattableType::Trait(_, _));
 
-    if names.is_empty() {
+    let formatted = format_type(ty, &type_names, &trait_names, &param_names, true, true);
+
+    if show_params {
         formatted
     } else {
         format!(
             "{}=> {}",
             names
                 .iter()
-                .map(|param| param_names(*param) + " ")
+                .map(|param| format_type(
+                    param.clone().into(),
+                    &type_names,
+                    &trait_names,
+                    &param_names,
+                    false,
+                    false
+                ) + " ")
                 .collect::<String>(),
             formatted
         )
