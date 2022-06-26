@@ -592,10 +592,10 @@ impl<L> Compiler<L> {
             .collect::<Result<Vec<_>, _>>()
             .map(|body| body.into_iter().flatten().collect::<Vec<_>>())
         {
-            Ok(body) => body,
+            Ok(body) => Some(body),
             Err((error, span)) => {
                 typechecker.report_type_error(error, span);
-                return None;
+                None
             }
         };
 
@@ -749,23 +749,27 @@ impl<L> Compiler<L> {
             }
         };
 
-        let body = match body
-            .into_iter()
-            .map(|(file, expr)| {
-                let span = expr.span;
+        let body = body
+            .map(|body| {
+                match body
+                    .into_iter()
+                    .map(|(file, expr)| {
+                        let span = expr.span;
 
-                typechecker
-                    .finalize(expr, &file)
-                    .map_err(|error| (error, span))
+                        typechecker
+                            .finalize(expr, &file)
+                            .map_err(|error| (error, span))
+                    })
+                    .collect::<Result<_, _>>()
+                {
+                    Ok(declarations) => declarations,
+                    Err((error, span)) => {
+                        typechecker.report_type_error(error, span);
+                        Vec::new()
+                    }
+                }
             })
-            .collect::<Result<_, _>>()
-        {
-            Ok(declarations) => declarations,
-            Err((error, span)) => {
-                typechecker.report_type_error(error, span);
-                Vec::new()
-            }
-        };
+            .unwrap_or_default();
 
         // Build the final program
 
