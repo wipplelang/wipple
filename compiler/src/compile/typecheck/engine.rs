@@ -1,6 +1,6 @@
 use crate::{GenericConstantId, TraitId, TypeId, TypeParameterId};
 use serde::{Deserialize, Serialize};
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum UnresolvedType {
@@ -75,7 +75,7 @@ pub enum TypeError {
     ErrorExpression,
     Recursive(TypeVariable),
     Mismatch(UnresolvedType, UnresolvedType),
-    MissingInstance(TraitId, UnresolvedType),
+    MissingInstance(TraitId, Vec<UnresolvedType>),
     AmbiguousTrait(TraitId, Vec<GenericConstantId>),
     UnresolvedType,
 }
@@ -91,12 +91,25 @@ impl Context {
         var
     }
 
+    pub fn unify_params(
+        &mut self,
+        actual: UnresolvedType,
+        expected: UnresolvedType,
+    ) -> (
+        BTreeMap<TypeParameterId, UnresolvedType>,
+        Result<(), TypeError>,
+    ) {
+        let mut params = BTreeMap::new();
+        let result = self.unify_internal(actual, expected, false, &mut params);
+        (params, result)
+    }
+
     pub fn unify(
         &mut self,
         actual: UnresolvedType,
         expected: UnresolvedType,
     ) -> Result<(), TypeError> {
-        self.unify_internal(actual, expected, false)
+        self.unify_internal(actual, expected, false, &mut BTreeMap::new())
     }
 
     pub fn unify_generic(
@@ -104,7 +117,7 @@ impl Context {
         actual: UnresolvedType,
         expected: UnresolvedType,
     ) -> Result<(), TypeError> {
-        self.unify_internal(actual, expected, true)
+        self.unify_internal(actual, expected, true, &mut BTreeMap::new())
     }
 
     fn unify_internal(
@@ -112,6 +125,7 @@ impl Context {
         mut actual: UnresolvedType,
         mut expected: UnresolvedType,
         generic: bool,
+        params: &mut BTreeMap<TypeParameterId, UnresolvedType>,
     ) -> Result<(), TypeError> {
         actual.apply(self);
         expected.apply(self);
@@ -144,7 +158,10 @@ impl Context {
                     ))
                 }
             }
-            (_, UnresolvedType::Parameter(_)) if !generic => Ok(()),
+            (ty, UnresolvedType::Parameter(param)) if !generic => {
+                params.insert(param, ty);
+                Ok(())
+            }
             (UnresolvedType::Parameter(actual), expected) if !generic => Err(TypeError::Mismatch(
                 UnresolvedType::Parameter(actual),
                 expected,
@@ -156,7 +173,7 @@ impl Context {
                 if actual_id == expected_id {
                     for (actual, expected) in actual_params.iter().zip(&expected_params) {
                         if let Err(error) =
-                            self.unify_internal(actual.clone(), expected.clone(), generic)
+                            self.unify_internal(actual.clone(), expected.clone(), generic, params)
                         {
                             return Err(if let TypeError::Mismatch(_, _) = error {
                                 TypeError::Mismatch(
@@ -181,9 +198,12 @@ impl Context {
                 UnresolvedType::Function(actual_input, actual_output),
                 UnresolvedType::Function(expected_input, expected_output),
             ) => {
-                if let Err(error) =
-                    self.unify_internal((*actual_input).clone(), (*expected_input).clone(), generic)
-                {
+                if let Err(error) = self.unify_internal(
+                    (*actual_input).clone(),
+                    (*expected_input).clone(),
+                    generic,
+                    params,
+                ) {
                     return Err(if let TypeError::Mismatch(_, _) = error {
                         TypeError::Mismatch(
                             UnresolvedType::Function(actual_input, actual_output),
@@ -198,6 +218,7 @@ impl Context {
                     (*actual_output).clone(),
                     (*expected_output).clone(),
                     generic,
+                    params,
                 ) {
                     return Err(if let TypeError::Mismatch(_, _) = error {
                         TypeError::Mismatch(
@@ -224,6 +245,7 @@ impl Context {
                         (*actual_element).clone(),
                         (*expected_element).clone(),
                         generic,
+                        params,
                     ) {
                         return Err(if let TypeError::Mismatch(_, _) = error {
                             TypeError::Mismatch(
@@ -339,9 +361,9 @@ impl UnresolvedType {
         }
     }
 
-    pub fn params(&self) -> BTreeSet<TypeParameterId> {
+    pub fn params(&self) -> Vec<TypeParameterId> {
         match self {
-            UnresolvedType::Parameter(param) => BTreeSet::from([*param]),
+            UnresolvedType::Parameter(param) => vec![*param],
             UnresolvedType::Function(input, output) => {
                 let mut params = input.params();
                 params.extend(output.params());
@@ -350,9 +372,9 @@ impl UnresolvedType {
             UnresolvedType::Named(_, params) => params.iter().flat_map(|ty| ty.params()).collect(),
             UnresolvedType::Builtin(ty) => match ty {
                 BuiltinType::List(ty) | BuiltinType::Mutable(ty) => ty.params(),
-                _ => BTreeSet::new(),
+                _ => Vec::new(),
             },
-            _ => BTreeSet::new(),
+            _ => Vec::new(),
         }
     }
 

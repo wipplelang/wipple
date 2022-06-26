@@ -5,7 +5,7 @@ mod format;
 mod traverse;
 
 pub use engine::{BuiltinType, Type};
-pub use format::format_type;
+pub use format::{format_type, FormattableType};
 
 use crate::{
     compile::lower, diagnostics::*, helpers::InternedString, parse::Span, Compiler, FilePath,
@@ -592,10 +592,10 @@ impl<L> Compiler<L> {
             .collect::<Result<Vec<_>, _>>()
             .map(|body| body.into_iter().flatten().collect::<Vec<_>>())
         {
-            Ok(body) => body,
+            Ok(body) => Some(body),
             Err((error, span)) => {
                 typechecker.report_type_error(error, span);
-                return None;
+                None
             }
         };
 
@@ -749,23 +749,27 @@ impl<L> Compiler<L> {
             }
         };
 
-        let body = match body
-            .into_iter()
-            .map(|(file, expr)| {
-                let span = expr.span;
+        let body = body
+            .map(|body| {
+                match body
+                    .into_iter()
+                    .map(|(file, expr)| {
+                        let span = expr.span;
 
-                typechecker
-                    .finalize(expr, &file)
-                    .map_err(|error| (error, span))
+                        typechecker
+                            .finalize(expr, &file)
+                            .map_err(|error| (error, span))
+                    })
+                    .collect::<Result<_, _>>()
+                {
+                    Ok(declarations) => declarations,
+                    Err((error, span)) => {
+                        typechecker.report_type_error(error, span);
+                        Vec::new()
+                    }
+                }
             })
-            .collect::<Result<_, _>>()
-        {
-            Ok(declarations) => declarations,
-            Err((error, span)) => {
-                typechecker.report_type_error(error, span);
-                Vec::new()
-            }
-        };
+            .unwrap_or_default();
 
         // Build the final program
 
@@ -788,8 +792,8 @@ impl<L> Compiler<L> {
             }
 
             let type_names = getter!(types);
-            let param_names = getter!(type_parameters);
             let trait_names = getter!(traits);
+            let param_names = getter!(type_parameters);
 
             #[allow(unused_mut)]
             let mut diagnostic = match error.error {
@@ -807,19 +811,23 @@ impl<L> Compiler<L> {
                         error.span,
                         format!(
                             "expected `{}`, but found `{}`",
-                            format_type(expected, type_names, param_names),
-                            format_type(actual, type_names, param_names)
+                            format_type(expected, type_names, trait_names, param_names),
+                            format_type(actual, type_names, trait_names, param_names)
                         ),
                     )],
                 ),
-                TypeError::MissingInstance(tr, ty) => Diagnostic::error(
+                TypeError::MissingInstance(tr, params) => Diagnostic::error(
                     "missing instance",
                     vec![Note::primary(
                         error.span,
                         format!(
-                            "could not find instance of `{}` for type `{}`",
-                            trait_names(tr),
-                            format_type(ty, type_names, param_names)
+                            "could not find instance `{}`",
+                            format_type(
+                                FormattableType::Trait(tr, params),
+                                type_names,
+                                trait_names,
+                                param_names
+                            )
                         ),
                     )],
                 ),
@@ -2246,6 +2254,10 @@ impl<'a, L> Typechecker<'a, L> {
     ) -> Result<GenericConstantId, TypeError> {
         ty.apply(&self.ctx);
 
+        let tr_decl = self.traits.get(&tr).unwrap().clone();
+        let mut temp_ctx = self.ctx.clone();
+        temp_ctx.unify(ty.clone(), tr_decl.ty.clone())?;
+
         macro_rules! find_instance {
             ($instances:expr, $unify:ident, $transform:expr,) => {{
                 let instances = $instances;
@@ -2300,7 +2312,15 @@ impl<'a, L> Typechecker<'a, L> {
             },
         );
 
-        Err(TypeError::MissingInstance(tr, ty))
+        let params = self.ctx.unify_params(ty, tr_decl.ty.clone()).0;
+
+        let params = tr_decl
+            .params
+            .into_iter()
+            .map(|param| params.get(&param).unwrap().clone())
+            .collect();
+
+        Err(TypeError::MissingInstance(tr, params))
     }
 
     fn convert_type_annotation(
