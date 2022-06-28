@@ -4,12 +4,10 @@ use super::*;
 
 impl<L> Compiler<L> {
     pub(super) fn load_builtins(&mut self, scope: &Scope, info: &mut Info) {
-        let builtin_span = Span::new(FilePath::_Builtin, 0..0);
-
         let mut scope_values = scope.values.borrow_mut();
 
         macro_rules! add {
-            ($decls:ident, $name:expr, $id:expr, $scope_value:expr, $value:expr $(,)?) => {{
+            ($decls:ident, $span:expr, $name:expr, $id:expr, $scope_value:expr, $value:expr $(,)?) => {{
                 let name = InternedString::new($name);
                 let id = $id;
 
@@ -17,7 +15,7 @@ impl<L> Compiler<L> {
                     id,
                     Declaration {
                         name: Some(name),
-                        span: builtin_span,
+                        span: $span,
                         value: $value,
                     },
                 );
@@ -28,6 +26,7 @@ impl<L> Compiler<L> {
 
         add!(
             builtin_types,
+            Span::builtin("`()` type"),
             "()",
             self.new_builtin_type_id(),
             ScopeValue::BuiltinType,
@@ -44,6 +43,7 @@ impl<L> Compiler<L> {
 
         add!(
             builtin_types,
+            Span::builtin("`!` type"),
             "!",
             self.new_builtin_type_id(),
             ScopeValue::BuiltinType,
@@ -60,6 +60,7 @@ impl<L> Compiler<L> {
 
         add!(
             builtin_types,
+            Span::builtin("`Number` type"),
             "Number",
             self.new_builtin_type_id(),
             ScopeValue::BuiltinType,
@@ -76,6 +77,7 @@ impl<L> Compiler<L> {
 
         add!(
             builtin_types,
+            Span::builtin("`Text` type"),
             "Text",
             self.new_builtin_type_id(),
             ScopeValue::BuiltinType,
@@ -92,6 +94,7 @@ impl<L> Compiler<L> {
 
         add!(
             builtin_types,
+            Span::builtin("`List` type"),
             "List",
             self.new_builtin_type_id(),
             ScopeValue::BuiltinType,
@@ -108,6 +111,7 @@ impl<L> Compiler<L> {
 
         add!(
             builtin_types,
+            Span::builtin("`Mutable` type"),
             "Mutable",
             self.new_builtin_type_id(),
             ScopeValue::BuiltinType,

@@ -12,7 +12,7 @@ diagnostics: |
     107 | show :: A where (Show A) => A -> ()
         |                 ^^^^^^^^ could not find instance `Show Foo`
     error: missing instance
-       --> test:3:1
+       --> prelude:108:33
         |
-    3   | show Foo
-        | ^^^^ could not find instance `Show Foo`
+    108 | show : x -> print (format "_\n" x)
+        |                                 ^ could not find instance `Show Foo`

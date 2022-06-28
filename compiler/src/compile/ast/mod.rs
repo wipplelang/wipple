@@ -604,7 +604,7 @@ impl<L> Compiler<L> {
 
                     ExpressionKind::Call(
                         Box::new(Expression {
-                            span: Span::new(FilePath::_Builtin, 0..0),
+                            span: Span::builtin("`Or` trait"),
                             kind: ExpressionKind::Name(InternedString::new("Or")),
                         }),
                         vec![
@@ -613,7 +613,7 @@ impl<L> Compiler<L> {
                                 span: rhs.span,
                                 kind: ExpressionKind::Function(
                                     Pattern {
-                                        span: Span::new(FilePath::_Builtin, 0..0),
+                                        span: rhs.span,
                                         kind: PatternKind::Unit,
                                     },
                                     Box::new(rhs),
