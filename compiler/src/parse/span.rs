@@ -1,4 +1,4 @@
-use crate::FilePath;
+use crate::{helpers::InternedString, FilePath};
 use serde::{Deserialize, Serialize};
 use std::{fmt, ops::Range};
 
@@ -16,6 +16,10 @@ impl Span {
             start: range.start,
             end: range.end,
         }
+    }
+
+    pub fn builtin(location: impl AsRef<str>) -> Self {
+        Span::new(FilePath::Builtin(InternedString::new(location)), 0..0)
     }
 
     pub fn join(left: Span, right: Span) -> Self {

@@ -498,7 +498,7 @@ impl<L> Compiler<L> {
             let body = typechecker.typecheck_expr(&constant.decl.value, &constant.file, false);
 
             if let Err(error) = typechecker.ctx.unify(body.ty.clone(), constant.generic_ty) {
-                typechecker.report_type_error(error, body.span);
+                typechecker.errors.push(Error::new(error, body.span));
             }
 
             // Register dummy generic instances so finalization works -- these
@@ -535,7 +535,7 @@ impl<L> Compiler<L> {
             let body = match typechecker.monomorphize(body, &constant.file, None) {
                 Ok(expr) => expr,
                 Err(error) => {
-                    typechecker.report_type_error(error, body_span);
+                    typechecker.errors.push(error);
 
                     MonomorphizedExpression {
                         span: body_span,
@@ -579,12 +579,7 @@ impl<L> Compiler<L> {
                     .iter()
                     .cloned()
                     .map(|expr| {
-                        let span = expr.span;
-
-                        let expr = typechecker
-                            .monomorphize(expr, file, None)
-                            .map_err(|error| (error, span))?;
-
+                        let expr = typechecker.monomorphize(expr, file, None)?;
                         Ok((file.clone(), expr))
                     })
                     .collect::<Result<Vec<_>, _>>()
@@ -593,8 +588,8 @@ impl<L> Compiler<L> {
             .map(|body| body.into_iter().flatten().collect::<Vec<_>>())
         {
             Ok(body) => Some(body),
-            Err((error, span)) => {
-                typechecker.report_type_error(error, span);
+            Err(error) => {
+                typechecker.errors.push(error);
                 None
             }
         };
@@ -627,7 +622,7 @@ impl<L> Compiler<L> {
                     let instance_id = match typechecker.instance_for(tr, ty.clone()) {
                         Ok(id) => id,
                         Err(error) => {
-                            typechecker.report_type_error(error, span);
+                            typechecker.errors.push(Error::new(error, span));
                             continue;
                         }
                     };
@@ -646,7 +641,7 @@ impl<L> Compiler<L> {
                 ) {
                     Ok(value) => value,
                     Err(error) => {
-                        typechecker.report_type_error(error, span);
+                        typechecker.errors.push(error);
                         continue;
                     }
                 };
@@ -685,12 +680,10 @@ impl<L> Compiler<L> {
                                 decl: Declaration {
                                     name: constant.decl.name,
                                     span: constant.decl.span,
-                                    value: typechecker
-                                        .finalize_generic(
-                                            constant.decl.value.clone(),
-                                            &constant.file,
-                                        )
-                                        .map_err(|error| (error, constant.decl.span))?,
+                                    value: typechecker.finalize_generic(
+                                        constant.decl.value.clone(),
+                                        &constant.file,
+                                    )?,
                                 },
                                 attributes: constant.attributes,
                             },
@@ -710,9 +703,7 @@ impl<L> Compiler<L> {
                                 Declaration {
                                     name: decl.name,
                                     span: decl.span,
-                                    value: typechecker
-                                        .finalize(decl.value, &file)
-                                        .map_err(|error| (error, decl.span))?,
+                                    value: typechecker.finalize(decl.value, &file)?,
                                 },
                             ),
                         ))
@@ -735,7 +726,9 @@ impl<L> Compiler<L> {
                                     .unwrap()
                                     .clone()
                                     .finalize(&typechecker.ctx, true)
-                                    .ok_or((TypeError::UnresolvedType, decl.span))?,
+                                    .ok_or_else(|| {
+                                        Error::new(TypeError::UnresolvedType, decl.span)
+                                    })?,
                             },
                         ))
                     })
@@ -743,8 +736,8 @@ impl<L> Compiler<L> {
             })
         })() {
             Ok(declarations) => declarations,
-            Err((error, span)) => {
-                typechecker.report_type_error(error, span);
+            Err(error) => {
+                typechecker.errors.push(error);
                 Declarations::default()
             }
         };
@@ -753,18 +746,12 @@ impl<L> Compiler<L> {
             .map(|body| {
                 match body
                     .into_iter()
-                    .map(|(file, expr)| {
-                        let span = expr.span;
-
-                        typechecker
-                            .finalize(expr, &file)
-                            .map_err(|error| (error, span))
-                    })
+                    .map(|(file, expr)| typechecker.finalize(expr, &file))
                     .collect::<Result<_, _>>()
                 {
                     Ok(declarations) => declarations,
-                    Err((error, span)) => {
-                        typechecker.report_type_error(error, span);
+                    Err(error) => {
+                        typechecker.errors.push(error);
                         Vec::new()
                     }
                 }
@@ -915,12 +902,25 @@ enum TypeDefinitionKind {
     Enumeration(Vec<(GenericConstantId, Vec<UnresolvedType>)>),
 }
 
+#[derive(Debug, Clone)]
 struct Error {
     error: TypeError,
     span: Span,
 
     #[cfg(debug_assertions)]
     trace: Backtrace,
+}
+
+impl Error {
+    fn new(error: TypeError, span: Span) -> Self {
+        Error {
+            error,
+            span,
+
+            #[cfg(debug_assertions)]
+            trace: Backtrace::new(),
+        }
+    }
 }
 
 struct Typechecker<'a, L> {
@@ -1037,7 +1037,7 @@ impl<'a, L> Typechecker<'a, L> {
                     ),
                 ) {
                     if !suppress_errors {
-                        self.report_type_error(error, function.span);
+                        self.errors.push(Error::new(error, function.span));
                     }
 
                     return UnresolvedExpression::error(expr.span);
@@ -1045,7 +1045,7 @@ impl<'a, L> Typechecker<'a, L> {
 
                 if let Err(error) = self.ctx.unify(input.ty.clone(), input_ty) {
                     if !suppress_errors {
-                        self.report_type_error(error, input.span);
+                        self.errors.push(Error::new(error, input.span));
                     }
 
                     return UnresolvedExpression::error(expr.span);
@@ -1075,7 +1075,7 @@ impl<'a, L> Typechecker<'a, L> {
 
                 if let Err(errors) = self.ctx.unify(body.ty.clone(), return_ty.clone()) {
                     if !suppress_errors {
-                        self.report_type_error(errors, expr.span);
+                        self.errors.push(Error::new(errors, body.span));
                     }
 
                     return UnresolvedExpression::error(expr.span);
@@ -1108,7 +1108,7 @@ impl<'a, L> Typechecker<'a, L> {
                                 self.ctx.unify(arm.body.ty.clone(), first_type.clone())
                             {
                                 if !suppress_errors {
-                                    self.report_type_error(error, arm.body.span);
+                                    self.errors.push(Error::new(error, arm.body.span));
                                 }
                             };
                         }
@@ -1143,7 +1143,7 @@ impl<'a, L> Typechecker<'a, L> {
 
                 if let Err(error) = self.ctx.unify(value.ty, ty.clone()) {
                     if !suppress_errors {
-                        self.report_type_error(error, value.span);
+                        self.errors.push(Error::new(error, value.span));
                     }
 
                     return UnresolvedExpression::error(expr.span);
@@ -1212,7 +1212,7 @@ impl<'a, L> Typechecker<'a, L> {
                         Ok(ty) => ty,
                         Err(errors) => {
                             if !suppress_errors {
-                                self.report_type_error(errors, expr.span);
+                                self.errors.push(Error::new(errors, expr.span));
                             }
 
                             return UnresolvedExpression::error(expr.span);
@@ -1296,7 +1296,7 @@ impl<'a, L> Typechecker<'a, L> {
                 for (span, item_ty) in item_tys {
                     if let Err(error) = self.ctx.unify(item_ty, ty.clone()) {
                         if !suppress_errors {
-                            self.report_type_error(error, span);
+                            self.errors.push(Error::new(error, span));
                         }
                     };
                 }
@@ -1346,7 +1346,7 @@ impl<'a, L> Typechecker<'a, L> {
 
                         if let Err(errors) = self.ctx.unify(value.ty.clone(), ty) {
                             if !suppress_errors {
-                                self.report_type_error(errors, expr.span);
+                                self.errors.push(Error::new(errors, expr.span));
                             }
 
                             return UnresolvedExpression::error(expr.span);
@@ -1373,7 +1373,7 @@ impl<'a, L> Typechecker<'a, L> {
                 if let Some(return_ty) = return_ty {
                     if let Err(errors) = self.ctx.unify(return_ty.clone(), value.ty.clone()) {
                         if !suppress_errors {
-                            self.report_type_error(errors, expr.span);
+                            self.errors.push(Error::new(errors, expr.span));
                         }
 
                         return UnresolvedExpression::error(expr.span);
@@ -1404,7 +1404,7 @@ impl<'a, L> Typechecker<'a, L> {
                     .unify(body.ty.clone(), UnresolvedType::Builtin(BuiltinType::Unit))
                 {
                     if !suppress_errors {
-                        self.report_type_error(errors, expr.span);
+                        self.errors.push(Error::new(errors, expr.span));
                     }
 
                     return UnresolvedExpression::error(expr.span);
@@ -1427,7 +1427,7 @@ impl<'a, L> Typechecker<'a, L> {
                 if let Some(loop_ty) = loop_ty {
                     if let Err(errors) = self.ctx.unify(loop_ty.clone(), value.ty.clone()) {
                         if !suppress_errors {
-                            self.report_type_error(errors, expr.span);
+                            self.errors.push(Error::new(errors, expr.span));
                         }
 
                         return UnresolvedExpression::error(expr.span);
@@ -1608,12 +1608,12 @@ impl<'a, L> Typechecker<'a, L> {
         match_set: &mut MatchSet,
         file: &Rc<RefCell<lower::File>>,
         inside_generic_constant: Option<(GenericConstantId, MonomorphizedConstantId)>,
-    ) -> Result<MonomorphizedArm, TypeError> {
+    ) -> Result<MonomorphizedArm, Error> {
         Ok(MonomorphizedArm {
             span: arm.span,
             pattern: self
                 .monomorphize_pattern(arm.pattern, ty, match_set, file, inside_generic_constant)
-                .ok_or(TypeError::ErrorExpression)?,
+                .ok_or_else(|| Error::new(TypeError::ErrorExpression, arm.span))?,
             body: self.monomorphize(arm.body, file, inside_generic_constant)?,
         })
     }
@@ -1638,7 +1638,7 @@ impl<'a, L> Typechecker<'a, L> {
                     .ctx
                     .unify(ty, UnresolvedType::Builtin(BuiltinType::Unit))
                 {
-                    self.report_type_error(error, pattern.span);
+                    self.errors.push(Error::new(error, pattern.span));
                 }
 
                 match_set.set_matched(true);
@@ -1650,7 +1650,7 @@ impl<'a, L> Typechecker<'a, L> {
                     .ctx
                     .unify(ty, UnresolvedType::Builtin(BuiltinType::Number))
                 {
-                    self.report_type_error(error, pattern.span);
+                    self.errors.push(Error::new(error, pattern.span));
                 }
 
                 Some(MonomorphizedPatternKind::Number(number))
@@ -1660,7 +1660,7 @@ impl<'a, L> Typechecker<'a, L> {
                     .ctx
                     .unify(ty, UnresolvedType::Builtin(BuiltinType::Text))
                 {
-                    self.report_type_error(error, pattern.span);
+                    self.errors.push(Error::new(error, pattern.span));
                 }
 
                 Some(MonomorphizedPatternKind::Text(text))
@@ -1688,7 +1688,7 @@ impl<'a, L> Typechecker<'a, L> {
                     self.ctx = ctx;
                     self.ctx.unify(ty.clone(), var_ty)
                 }) {
-                    self.report_type_error(error, pattern.span);
+                    self.errors.push(Error::new(error, pattern.span));
                 }
 
                 let decl = file
@@ -1837,7 +1837,7 @@ impl<'a, L> Typechecker<'a, L> {
                 }
 
                 if let Err(error) = self.ctx.unify(
-                    ty,
+                    ty.clone(),
                     UnresolvedType::Named(
                         variant_ty,
                         enumeration
@@ -1847,7 +1847,7 @@ impl<'a, L> Typechecker<'a, L> {
                             .collect(),
                     ),
                 ) {
-                    self.report_type_error(error, pattern.span);
+                    self.errors.push(Error::new(error, pattern.span));
                     return None;
                 }
 
@@ -1882,7 +1882,7 @@ impl<'a, L> Typechecker<'a, L> {
             }
             UnresolvedPatternKind::Annotate(inner, inner_ty) => {
                 if let Err(error) = self.ctx.unify(ty.clone(), inner_ty) {
-                    self.report_type_error(error, pattern.span);
+                    self.errors.push(Error::new(error, pattern.span));
                 }
 
                 Some(
@@ -1925,7 +1925,7 @@ impl<'a, L> Typechecker<'a, L> {
                 let condition = match self.monomorphize(*condition, file, inside_generic_constant) {
                     Ok(expr) => expr,
                     Err(error) => {
-                        self.report_type_error(error, condition_span);
+                        self.errors.push(error);
                         return None;
                     }
                 };
@@ -1935,7 +1935,7 @@ impl<'a, L> Typechecker<'a, L> {
                         condition.ty.clone(),
                         UnresolvedType::Named(boolean_ty, Vec::new()),
                     ) {
-                        self.report_type_error(error, condition.span);
+                        self.errors.push(Error::new(error, condition.span));
                     }
                 } else {
                     self.compiler.diagnostics.add(Diagnostic::error(
@@ -1967,7 +1967,7 @@ impl<'a, L> Typechecker<'a, L> {
         mut expr: UnresolvedExpression,
         file: &Rc<RefCell<lower::File>>,
         inside_generic_constant: Option<(GenericConstantId, MonomorphizedConstantId)>,
-    ) -> Result<MonomorphizedExpression, TypeError> {
+    ) -> Result<MonomorphizedExpression, Error> {
         expr.ty.apply(&self.ctx);
 
         Ok(MonomorphizedExpression {
@@ -1991,7 +1991,7 @@ impl<'a, L> Typechecker<'a, L> {
                         let (monomorphized_id, ty) = self.monomorphize_constant(id, expr.span);
 
                         if let Err(error) = self.ctx.unify(ty, expr.ty) {
-                            self.report_type_error(error, expr.span);
+                            self.errors.push(Error::new(error, expr.span));
                         }
 
                         MonomorphizedExpressionKind::Constant(monomorphized_id)
@@ -2007,7 +2007,7 @@ impl<'a, L> Typechecker<'a, L> {
                         self.add_substitutions(&mut ty, &mut substitutions);
 
                         if let Err(error) = self.ctx.unify(expr.ty, ty) {
-                            self.report_type_error(error, expr.span);
+                            self.errors.push(Error::new(error, expr.span));
                         }
 
                         MonomorphizedExpressionKind::Variable(var)
@@ -2041,8 +2041,11 @@ impl<'a, L> Typechecker<'a, L> {
 
                         input_ty.apply(&self.ctx);
 
-                        let mut match_set = self.match_set_from(&input_ty);
+                        let mut match_set = self
+                            .match_set_from(&input_ty)
+                            .map_err(|error| Error::new(error, expr.span))?;
 
+                        let pattern_span = pattern.span;
                         let pattern = self
                             .monomorphize_pattern(
                                 pattern,
@@ -2051,7 +2054,7 @@ impl<'a, L> Typechecker<'a, L> {
                                 file,
                                 inside_generic_constant,
                             )
-                            .ok_or(TypeError::ErrorExpression)?;
+                            .ok_or_else(|| Error::new(TypeError::ErrorExpression, pattern_span))?;
 
                         self.assert_matched(&match_set, pattern.span, true)?;
 
@@ -2064,7 +2067,9 @@ impl<'a, L> Typechecker<'a, L> {
                         let mut input = self.monomorphize(*input, file, inside_generic_constant)?;
                         input.ty.apply(&self.ctx);
 
-                        let mut match_set = self.match_set_from(&input.ty);
+                        let mut match_set = self
+                            .match_set_from(&input.ty)
+                            .map_err(|error| Error::new(error, expr.span))?;
 
                         let arms = arms
                             .into_iter()
@@ -2098,7 +2103,9 @@ impl<'a, L> Typechecker<'a, L> {
                         let mut value = self.monomorphize(*value, file, inside_generic_constant)?;
                         value.ty.apply(&self.ctx);
 
-                        let mut match_set = self.match_set_from(&value.ty);
+                        let mut match_set = self
+                            .match_set_from(&value.ty)
+                            .map_err(|error| Error::new(error, expr.span))?;
 
                         let pattern = self
                             .monomorphize_pattern(
@@ -2108,7 +2115,7 @@ impl<'a, L> Typechecker<'a, L> {
                                 file,
                                 inside_generic_constant,
                             )
-                            .ok_or(TypeError::ErrorExpression)?;
+                            .ok_or_else(|| Error::new(TypeError::ErrorExpression, value.span))?;
 
                         self.assert_matched(&match_set, pattern.span, true)?;
 
@@ -2132,13 +2139,15 @@ impl<'a, L> Typechecker<'a, L> {
                         )
                     }
                     UnresolvedExpressionKind::Trait(tr) => {
-                        let instance = self.instance_for(tr, expr.ty.clone())?;
+                        let instance = self
+                            .instance_for(tr, expr.ty.clone())
+                            .map_err(|error| Error::new(error, expr.span))?;
 
                         let (monomorphized_instance, ty) =
                             self.monomorphize_constant(instance, expr.span);
 
                         if let Err(error) = self.ctx.unify(ty, expr.ty.clone()) {
-                            self.report_type_error(error, expr.span);
+                            self.errors.push(Error::new(error, expr.span));
                         }
 
                         MonomorphizedExpressionKind::Constant(monomorphized_instance)
@@ -2186,7 +2195,7 @@ impl<'a, L> Typechecker<'a, L> {
         &mut self,
         expr: MonomorphizedExpression,
         file: &Rc<RefCell<lower::File>>,
-    ) -> Result<Expression, TypeError> {
+    ) -> Result<Expression, Error> {
         self.finalize_internal(expr, false, file)
     }
 
@@ -2194,7 +2203,7 @@ impl<'a, L> Typechecker<'a, L> {
         &mut self,
         expr: MonomorphizedExpression,
         file: &Rc<RefCell<lower::File>>,
-    ) -> Result<Expression, TypeError> {
+    ) -> Result<Expression, Error> {
         self.finalize_internal(expr, true, file)
     }
 
@@ -2203,15 +2212,17 @@ impl<'a, L> Typechecker<'a, L> {
         expr: MonomorphizedExpression,
         generic: bool,
         file: &Rc<RefCell<lower::File>>,
-    ) -> Result<Expression, TypeError> {
+    ) -> Result<Expression, Error> {
         Ok(Expression {
             span: expr.span,
             ty: expr
                 .ty
                 .finalize(&self.ctx, generic)
-                .ok_or(TypeError::UnresolvedType)?,
+                .ok_or_else(|| Error::new(TypeError::UnresolvedType, expr.span))?,
             kind: match expr.kind {
-                MonomorphizedExpressionKind::Error => return Err(TypeError::ErrorExpression),
+                MonomorphizedExpressionKind::Error => {
+                    return Err(Error::new(TypeError::ErrorExpression, expr.span));
+                }
                 MonomorphizedExpressionKind::Marker => ExpressionKind::Marker,
                 MonomorphizedExpressionKind::Constant(id) => ExpressionKind::Constant(id),
                 MonomorphizedExpressionKind::Variable(var) => ExpressionKind::Variable(var),
@@ -2298,7 +2309,7 @@ impl<'a, L> Typechecker<'a, L> {
         pattern: MonomorphizedPattern,
         generic: bool,
         file: &Rc<RefCell<lower::File>>,
-    ) -> Result<Pattern, TypeError> {
+    ) -> Result<Pattern, Error> {
         Ok(Pattern {
             span: pattern.span,
             kind: match pattern.kind {
@@ -2574,16 +2585,6 @@ impl<'a, L> Typechecker<'a, L> {
             ),
         }
     }
-
-    fn report_type_error(&mut self, error: TypeError, span: Span) {
-        self.errors.push(Error {
-            error,
-            span,
-
-            #[cfg(debug_assertions)]
-            trace: Backtrace::new(),
-        });
-    }
 }
 
 #[derive(Debug, Clone)]
@@ -2595,34 +2596,36 @@ enum MatchSet {
 }
 
 impl<'a, L> Typechecker<'a, L> {
-    fn match_set_from(&mut self, ty: &UnresolvedType) -> MatchSet {
+    fn match_set_from(&mut self, ty: &UnresolvedType) -> Result<MatchSet, TypeError> {
         match &ty {
             UnresolvedType::Named(id, _) => {
                 let kind = self.types.get(id).unwrap().kind.clone();
 
                 match kind {
-                    TypeDefinitionKind::Marker => MatchSet::Unit(false),
-                    TypeDefinitionKind::Structure(fields) => MatchSet::Structure(
+                    TypeDefinitionKind::Marker => Ok(MatchSet::Unit(false)),
+                    TypeDefinitionKind::Structure(fields) => Ok(MatchSet::Structure(
                         fields
                             .values()
-                            .map(|(_, ty)| (false, self.match_set_from(ty)))
-                            .collect(),
-                    ),
-                    TypeDefinitionKind::Enumeration(variants) => MatchSet::Enumeration(
+                            .map(|(_, ty)| Ok((false, self.match_set_from(ty)?)))
+                            .collect::<Result<_, _>>()?,
+                    )),
+                    TypeDefinitionKind::Enumeration(variants) => Ok(MatchSet::Enumeration(
                         variants
                             .iter()
                             .map(|(_, tys)| {
-                                (
+                                Ok((
                                     false,
-                                    tys.iter().map(|ty| self.match_set_from(ty)).collect(),
-                                )
+                                    tys.iter()
+                                        .map(|ty| self.match_set_from(ty))
+                                        .collect::<Result<_, _>>()?,
+                                ))
                             })
-                            .collect(),
-                    ),
+                            .collect::<Result<_, _>>()?,
+                    )),
                 }
             }
-            UnresolvedType::Bottom(_) => MatchSet::Never,
-            _ => MatchSet::Unit(false),
+            UnresolvedType::Bottom(_) => Ok(MatchSet::Never),
+            _ => Ok(MatchSet::Unit(false)),
         }
     }
 
@@ -2631,7 +2634,7 @@ impl<'a, L> Typechecker<'a, L> {
         match_set: &MatchSet,
         span: Span,
         for_exhaustive_pattern: bool,
-    ) -> Result<(), TypeError> {
+    ) -> Result<(), Error> {
         if match_set.is_matched() {
             Ok(())
         } else {
@@ -2653,7 +2656,7 @@ impl<'a, L> Typechecker<'a, L> {
                 ));
             }
 
-            Err(TypeError::ErrorExpression)
+            Err(Error::new(TypeError::ErrorExpression, span))
         }
     }
 }

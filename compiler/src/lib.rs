@@ -26,23 +26,23 @@ pub enum FilePath {
     Path(InternedString),
     Virtual(InternedString),
     Prelude,
-    _Builtin,
+    Builtin(InternedString),
 }
 
 impl FilePath {
-    pub fn as_str(&self) -> &'static str {
+    pub fn as_str(&self) -> Cow<'static, str> {
         match self {
-            FilePath::Path(path) => path.as_str(),
-            FilePath::Virtual(name) => name.as_str(),
-            FilePath::Prelude => "prelude",
-            FilePath::_Builtin => "builtin",
+            FilePath::Path(path) => Cow::Borrowed(path.as_str()),
+            FilePath::Virtual(name) => Cow::Borrowed(name.as_str()),
+            FilePath::Prelude => Cow::Borrowed("prelude"),
+            FilePath::Builtin(location) => Cow::Owned(format!("builtin ({})", location)),
         }
     }
 }
 
 impl fmt::Display for FilePath {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(self.as_str())
+        f.write_str(&self.as_str())
     }
 }
 
