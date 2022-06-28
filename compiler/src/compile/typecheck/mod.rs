@@ -1605,13 +1605,14 @@ impl<'a, L> Typechecker<'a, L> {
         &mut self,
         arm: UnresolvedArm,
         ty: UnresolvedType,
+        match_set: &mut MatchSet,
         file: &Rc<RefCell<lower::File>>,
         inside_generic_constant: Option<(GenericConstantId, MonomorphizedConstantId)>,
     ) -> Result<MonomorphizedArm, TypeError> {
         Ok(MonomorphizedArm {
             span: arm.span,
             pattern: self
-                .monomorphize_pattern(arm.pattern, ty, file, inside_generic_constant)
+                .monomorphize_pattern(arm.pattern, ty, match_set, file, inside_generic_constant)
                 .ok_or(TypeError::ErrorExpression)?,
             body: self.monomorphize(arm.body, file, inside_generic_constant)?,
         })
@@ -1621,13 +1622,17 @@ impl<'a, L> Typechecker<'a, L> {
         &mut self,
         pattern: UnresolvedPattern,
         mut ty: UnresolvedType,
+        match_set: &mut MatchSet,
         file: &Rc<RefCell<lower::File>>,
         inside_generic_constant: Option<(GenericConstantId, MonomorphizedConstantId)>,
     ) -> Option<MonomorphizedPattern> {
         ty.apply(&self.ctx);
 
         let kind = (|| match pattern.kind {
-            UnresolvedPatternKind::Error => None,
+            UnresolvedPatternKind::Error => {
+                match_set.set_matched(true);
+                None
+            }
             UnresolvedPatternKind::Unit => {
                 if let Err(error) = self
                     .ctx
@@ -1635,6 +1640,8 @@ impl<'a, L> Typechecker<'a, L> {
                 {
                     self.report_type_error(error, pattern.span);
                 }
+
+                match_set.set_matched(true);
 
                 Some(MonomorphizedPatternKind::Wildcard)
             }
@@ -1658,8 +1665,13 @@ impl<'a, L> Typechecker<'a, L> {
 
                 Some(MonomorphizedPatternKind::Text(text))
             }
-            UnresolvedPatternKind::Wildcard => Some(MonomorphizedPatternKind::Wildcard),
+            UnresolvedPatternKind::Wildcard => {
+                match_set.set_matched(true);
+                Some(MonomorphizedPatternKind::Wildcard)
+            }
             UnresolvedPatternKind::Variable(var) => {
+                match_set.set_matched(true);
+
                 let mut var_ty = self
                     .variables
                     .get(&var)
@@ -1735,6 +1747,11 @@ impl<'a, L> Typechecker<'a, L> {
                     .zip(params)
                     .collect::<BTreeMap<_, _>>();
 
+                let field_match_sets = match match_set {
+                    MatchSet::Structure(fields) => fields,
+                    _ => unreachable!(),
+                };
+
                 let fields = fields
                     .into_iter()
                     .filter_map(|(name, pattern)| {
@@ -1752,9 +1769,13 @@ impl<'a, L> Typechecker<'a, L> {
 
                         member_ty.instantiate_with(&substitutions);
 
+                        let (matches, match_set) = &mut field_match_sets[index];
+                        *matches = true;
+
                         let pattern = self.monomorphize_pattern(
                             pattern,
                             member_ty,
+                            match_set,
                             file,
                             inside_generic_constant,
                         )?;
@@ -1762,6 +1783,15 @@ impl<'a, L> Typechecker<'a, L> {
                         Some((index, pattern))
                     })
                     .collect();
+
+                for (matches, field_match_set) in field_match_sets {
+                    if *matches {
+                        continue;
+                    }
+
+                    *matches = true;
+                    field_match_set.set_matched(true);
+                }
 
                 Some(MonomorphizedPatternKind::Destructure(fields))
             }
@@ -1818,17 +1848,29 @@ impl<'a, L> Typechecker<'a, L> {
                     ),
                 ) {
                     self.report_type_error(error, pattern.span);
+                    return None;
                 }
+
+                let (matches, variant_match_sets) = match match_set {
+                    MatchSet::Enumeration(variants) => &mut variants[variant],
+                    _ => unreachable!(),
+                };
+
+                *matches = true;
 
                 let pattern = MonomorphizedPatternKind::Variant(
                     variant,
                     values
                         .into_iter()
                         .zip(variant_tys)
-                        .map(|(pattern, variant_ty)| {
+                        .zip(variant_match_sets)
+                        .map(|((pattern, variant_ty), match_set)| {
+                            *matches = true;
+
                             self.monomorphize_pattern(
                                 pattern,
                                 variant_ty,
+                                match_set,
                                 file,
                                 inside_generic_constant,
                             )
@@ -1844,22 +1886,40 @@ impl<'a, L> Typechecker<'a, L> {
                 }
 
                 Some(
-                    self.monomorphize_pattern(*inner, ty, file, inside_generic_constant)?
-                        .kind,
+                    self.monomorphize_pattern(
+                        *inner,
+                        ty,
+                        match_set,
+                        file,
+                        inside_generic_constant,
+                    )?
+                    .kind,
                 )
             }
             UnresolvedPatternKind::Or(lhs, rhs) => Some(MonomorphizedPatternKind::Or(
                 Box::new(self.monomorphize_pattern(
                     *lhs,
                     ty.clone(),
+                    match_set,
                     file,
                     inside_generic_constant,
                 )?),
-                Box::new(self.monomorphize_pattern(*rhs, ty, file, inside_generic_constant)?),
+                Box::new(self.monomorphize_pattern(
+                    *rhs,
+                    ty,
+                    match_set,
+                    file,
+                    inside_generic_constant,
+                )?),
             )),
             UnresolvedPatternKind::Where(pattern, condition) => {
-                let pattern =
-                    self.monomorphize_pattern(*pattern, ty, file, inside_generic_constant)?;
+                let pattern = self.monomorphize_pattern(
+                    *pattern,
+                    ty,
+                    match_set,
+                    file,
+                    inside_generic_constant,
+                )?;
 
                 let condition_span = condition.span;
                 let condition = match self.monomorphize(*condition, file, inside_generic_constant) {
@@ -1886,6 +1946,8 @@ impl<'a, L> Typechecker<'a, L> {
                         )],
                     ))
                 }
+
+                match_set.set_matched(false);
 
                 Some(MonomorphizedPatternKind::Where(
                     Box::new(pattern),
@@ -1972,14 +2034,26 @@ impl<'a, L> Typechecker<'a, L> {
                         MonomorphizedExpressionKind::Call(Box::new(func), Box::new(input))
                     }
                     UnresolvedExpressionKind::Function(pattern, body) => {
-                        let input_ty = match expr.ty {
+                        let mut input_ty = match expr.ty {
                             UnresolvedType::Function(input, _) => *input,
                             _ => unreachable!(),
                         };
 
+                        input_ty.apply(&self.ctx);
+
+                        let mut match_set = self.match_set_from(&input_ty);
+
                         let pattern = self
-                            .monomorphize_pattern(pattern, input_ty, file, inside_generic_constant)
+                            .monomorphize_pattern(
+                                pattern,
+                                input_ty,
+                                &mut match_set,
+                                file,
+                                inside_generic_constant,
+                            )
                             .ok_or(TypeError::ErrorExpression)?;
+
+                        self.assert_matched(&match_set, pattern.span, true)?;
 
                         MonomorphizedExpressionKind::Function(
                             pattern,
@@ -1987,7 +2061,10 @@ impl<'a, L> Typechecker<'a, L> {
                         )
                     }
                     UnresolvedExpressionKind::When(input, arms) => {
-                        let input = self.monomorphize(*input, file, inside_generic_constant)?;
+                        let mut input = self.monomorphize(*input, file, inside_generic_constant)?;
+                        input.ty.apply(&self.ctx);
+
+                        let mut match_set = self.match_set_from(&input.ty);
 
                         let arms = arms
                             .into_iter()
@@ -1995,11 +2072,14 @@ impl<'a, L> Typechecker<'a, L> {
                                 self.monomorphize_arm(
                                     arm,
                                     input.ty.clone(),
+                                    &mut match_set,
                                     file,
                                     inside_generic_constant,
                                 )
                             })
                             .collect::<Result<_, _>>()?;
+
+                        self.assert_matched(&match_set, expr.span, false)?;
 
                         MonomorphizedExpressionKind::When(Box::new(input), arms)
                     }
@@ -2015,16 +2095,22 @@ impl<'a, L> Typechecker<'a, L> {
                     }
                     UnresolvedExpressionKind::Initialize(pattern, value) => {
                         // Resolve the right-hand side first
-                        let value = self.monomorphize(*value, file, inside_generic_constant)?;
+                        let mut value = self.monomorphize(*value, file, inside_generic_constant)?;
+                        value.ty.apply(&self.ctx);
+
+                        let mut match_set = self.match_set_from(&value.ty);
 
                         let pattern = self
                             .monomorphize_pattern(
                                 pattern,
                                 value.ty.clone(),
+                                &mut match_set,
                                 file,
                                 inside_generic_constant,
                             )
                             .ok_or(TypeError::ErrorExpression)?;
+
+                        self.assert_matched(&match_set, pattern.span, true)?;
 
                         MonomorphizedExpressionKind::Initialize(pattern, Box::new(value))
                     }
@@ -2497,5 +2583,113 @@ impl<'a, L> Typechecker<'a, L> {
             #[cfg(debug_assertions)]
             trace: Backtrace::new(),
         });
+    }
+}
+
+#[derive(Debug, Clone)]
+enum MatchSet {
+    Never,
+    Unit(bool),
+    Structure(Vec<(bool, MatchSet)>),
+    Enumeration(Vec<(bool, Vec<MatchSet>)>),
+}
+
+impl<'a, L> Typechecker<'a, L> {
+    fn match_set_from(&mut self, ty: &UnresolvedType) -> MatchSet {
+        match &ty {
+            UnresolvedType::Named(id, _) => {
+                let kind = self.types.get(id).unwrap().kind.clone();
+
+                match kind {
+                    TypeDefinitionKind::Marker => MatchSet::Unit(false),
+                    TypeDefinitionKind::Structure(fields) => MatchSet::Structure(
+                        fields
+                            .values()
+                            .map(|(_, ty)| (false, self.match_set_from(ty)))
+                            .collect(),
+                    ),
+                    TypeDefinitionKind::Enumeration(variants) => MatchSet::Enumeration(
+                        variants
+                            .iter()
+                            .map(|(_, tys)| {
+                                (
+                                    false,
+                                    tys.iter().map(|ty| self.match_set_from(ty)).collect(),
+                                )
+                            })
+                            .collect(),
+                    ),
+                }
+            }
+            UnresolvedType::Bottom(_) => MatchSet::Never,
+            _ => MatchSet::Unit(false),
+        }
+    }
+
+    fn assert_matched(
+        &mut self,
+        match_set: &MatchSet,
+        span: Span,
+        for_exhaustive_pattern: bool,
+    ) -> Result<(), TypeError> {
+        if match_set.is_matched() {
+            Ok(())
+        } else {
+            if for_exhaustive_pattern {
+                self.compiler.diagnostics.add(Diagnostic::error(
+                    "pattern is not exhaustive",
+                    vec![Note::primary(
+                        span,
+                        "this pattern does not handle all possible values",
+                    )],
+                ));
+            } else {
+                self.compiler.diagnostics.add(Diagnostic::error(
+                    "`when` expression is not exhaustive",
+                    vec![Note::primary(
+                        span,
+                        "try adding some more patterns to cover all possible values",
+                    )],
+                ));
+            }
+
+            Err(TypeError::ErrorExpression)
+        }
+    }
+}
+
+impl MatchSet {
+    fn is_matched(&self) -> bool {
+        match self {
+            MatchSet::Never => true,
+            MatchSet::Unit(matches) => *matches,
+            MatchSet::Structure(fields) => fields
+                .iter()
+                .all(|(matches, field)| *matches && field.is_matched()),
+            MatchSet::Enumeration(variants) => variants.iter().all(|(matches, variant)| {
+                *matches && variant.iter().all(|variant| variant.is_matched())
+            }),
+        }
+    }
+
+    fn set_matched(&mut self, is_matched: bool) {
+        match self {
+            MatchSet::Unit(matches) => *matches = is_matched,
+            MatchSet::Structure(fields) => {
+                for (matches, field) in fields {
+                    *matches = is_matched;
+                    field.set_matched(is_matched);
+                }
+            }
+            MatchSet::Enumeration(variants) => {
+                for (matches, variant) in variants {
+                    *matches = is_matched;
+                    for match_set in variant {
+                        match_set.set_matched(is_matched);
+                    }
+                }
+            }
+            _ => {}
+        }
     }
 }
