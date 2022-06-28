@@ -1853,7 +1853,15 @@ impl<'a, L> Typechecker<'a, L> {
 
                 let (matches, variant_match_sets) = match match_set {
                     MatchSet::Enumeration(variants) => &mut variants[variant],
-                    _ => unreachable!(),
+                    _ => {
+                        ty.apply(&self.ctx);
+                        *match_set = self.match_set_from(&ty).unwrap();
+
+                        match match_set {
+                            MatchSet::Enumeration(variants) => &mut variants[variant],
+                            _ => unreachable!(),
+                        }
+                    }
                 };
 
                 *matches = true;
