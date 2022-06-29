@@ -1,0 +1,11 @@
+[[no-std]]
+
+[help "Returns its input unmodified."]
+it :: A => A -> A
+it : x -> x
+
+[help "Ignores its second input."]
+just :: A B => A -> B -> A
+just : x -> _ -> x
+
+. : dot operator (x f ~> f x)

@@ -1,4 +1,8 @@
-#![allow(clippy::type_complexity, clippy::collapsible_match)]
+#![allow(
+    clippy::type_complexity,
+    clippy::collapsible_match,
+    clippy::too_many_arguments
+)]
 
 mod builtins;
 
@@ -6,7 +10,7 @@ use crate::{
     diagnostics::*,
     helpers::InternedString,
     parse::{self, Span},
-    Compiler, FilePath, TemplateId,
+    Compiler, FilePath, Loader, TemplateId,
 };
 use rust_decimal::Decimal;
 use std::{
@@ -18,11 +22,33 @@ use std::{
 use strum::EnumString;
 
 #[derive(Debug)]
-pub struct File {
+pub struct File<L> {
     pub path: FilePath,
     pub span: Span,
+    pub attributes: FileAttributes,
+    pub declarations: Declarations<L>,
+    pub exported: ScopeValues,
     pub statements: Vec<Statement>,
-    pub dependencies: Vec<Dependency>,
+    pub dependencies: Vec<Rc<File<L>>>,
+}
+
+impl<L> Clone for File<L> {
+    fn clone(&self) -> Self {
+        Self {
+            path: self.path,
+            span: self.span,
+            attributes: self.attributes.clone(),
+            declarations: self.declarations.clone(),
+            exported: self.exported.clone(),
+            statements: self.statements.clone(),
+            dependencies: self.dependencies.clone(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct FileAttributes {
+    pub no_std: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -82,34 +108,49 @@ pub enum NodeKind {
     Continue,
 }
 
-#[derive(Debug)]
-pub struct Dependency {
-    pub span: Span,
-    pub name: InternedString,
-}
-
-pub struct Info<L> {
+pub struct Declarations<L> {
     templates: BTreeMap<TemplateId, Template<L>>,
 }
 
-impl<L> Default for Info<L> {
+impl<L> Default for Declarations<L> {
     fn default() -> Self {
-        Info {
+        Declarations {
             templates: Default::default(),
         }
     }
 }
 
-impl<L> Compiler<L> {
+impl<L> Declarations<L> {
+    fn merge(&mut self, other: Self) {
+        self.templates.extend(other.templates);
+    }
+}
+
+impl<L> std::fmt::Debug for Declarations<L> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Declarations")
+            .field("templates", &self.templates)
+            .finish()
+    }
+}
+
+impl<L> Clone for Declarations<L> {
+    fn clone(&self) -> Self {
+        Self {
+            templates: self.templates.clone(),
+        }
+    }
+}
+
+impl<L: Loader> Compiler<'_, L> {
     pub fn expand(
         &mut self,
         file: parse::File,
-        info: &mut Info<L>,
-        mut load: impl FnMut(&mut Self, FilePath, &mut Info<L>) -> Option<Rc<ScopeValues>>,
-    ) -> (File, ScopeValues) {
+        mut load: impl FnMut(&mut Compiler<L>, FilePath) -> Option<Rc<File<L>>>,
+    ) -> Option<File<L>> {
         let mut expander = Expander {
             compiler: self,
-            info,
+            declarations: Default::default(),
             dependencies: Default::default(),
             load: &mut load,
         };
@@ -117,34 +158,43 @@ impl<L> Compiler<L> {
         let scope = Scope::default();
         builtins::load_builtins(&mut expander, &scope);
 
-        // TODO: Respect `[: no-prelude :]` instead of checking the path
-        if file.path != FilePath::Prelude {
-            let prelude_scope =
-                (expander.load)(expander.compiler, FilePath::Prelude, expander.info)
-                    .expect("failed to load prelude");
+        let attributes = expander.expand_file_attributes(file.attributes, &scope);
 
-            scope.values.borrow_mut().extend((*prelude_scope).clone());
+        if !attributes.no_std {
+            if let Some(std_path) = expander.compiler.loader.std_path() {
+                let file = (expander.load)(expander.compiler, std_path)?;
+                expander.add_dependency(file, &scope);
+            } else {
+                expander.compiler.diagnostics.add(Diagnostic::new(
+                    DiagnosticLevel::Error,
+                    "standard library is missing, but this file requires it",
+                    vec![Note::primary(
+                        file.span.with_end(file.span.start),
+                        "try adding [[no-std]] to this file to prevent automatically loading the standard library",
+                    )],
+                ));
+            }
         }
 
         let (statements, exported) = expander.expand_block(file.statements, &scope);
 
-        (
-            File {
-                path: file.path,
-                span: file.span,
-                statements,
-                dependencies: expander.dependencies,
-            },
+        Some(File {
+            path: file.path,
+            span: file.span,
+            statements,
+            attributes,
+            declarations: expander.declarations,
             exported,
-        )
+            dependencies: expander.dependencies,
+        })
     }
 }
 
-struct Expander<'a, L> {
-    compiler: &'a mut Compiler<L>,
-    info: &'a mut Info<L>,
-    dependencies: Vec<Dependency>,
-    load: &'a mut dyn FnMut(&mut Compiler<L>, FilePath, &mut Info<L>) -> Option<Rc<ScopeValues>>,
+struct Expander<'a, 'l, L> {
+    compiler: &'a mut Compiler<'l, L>,
+    declarations: Declarations<L>,
+    dependencies: Vec<Rc<File<L>>>,
+    load: &'a mut dyn FnMut(&mut Compiler<L>, FilePath) -> Option<Rc<File<L>>>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -200,6 +250,15 @@ impl<L> Clone for Template<L> {
     }
 }
 
+impl<L> std::fmt::Debug for Template<L> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Template")
+            .field("span", &self.span)
+            .field("body", &self.body)
+            .finish()
+    }
+}
+
 enum TemplateBody<L> {
     Syntax(Vec<InternedString>, Node),
     Function(
@@ -208,6 +267,7 @@ enum TemplateBody<L> {
                 &mut Expander<L>,
                 Span,
                 Vec<Node>,
+                Option<&mut FileAttributes>,
                 Option<&mut StatementAttributes>,
                 &Scope,
             ) -> Node,
@@ -226,6 +286,17 @@ impl<L> Clone for TemplateBody<L> {
     }
 }
 
+impl<L> std::fmt::Debug for TemplateBody<L> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Syntax(inputs, node) => {
+                f.debug_tuple("Syntax").field(inputs).field(node).finish()
+            }
+            Self::Function(_) => f.debug_tuple("Function").finish(),
+        }
+    }
+}
+
 impl<L> Template<L> {
     fn syntax(span: Span, inputs: Vec<InternedString>, node: Node) -> Self {
         Template {
@@ -236,7 +307,14 @@ impl<L> Template<L> {
 
     fn function(
         span: Span,
-        f: impl Fn(&mut Expander<L>, Span, Vec<Node>, Option<&mut StatementAttributes>, &Scope) -> Node
+        f: impl Fn(
+                &mut Expander<L>,
+                Span,
+                Vec<Node>,
+                Option<&mut FileAttributes>,
+                Option<&mut StatementAttributes>,
+                &Scope,
+            ) -> Node
             + 'static,
     ) -> Self {
         Template {
@@ -294,7 +372,140 @@ impl OperatorPrecedence {
     }
 }
 
-impl<L> Expander<'_, L> {
+impl<L> Expander<'_, '_, L> {
+    fn add_dependency(&mut self, file: Rc<File<L>>, scope: &Scope) {
+        self.dependencies.push(file.clone());
+        scope.values.borrow_mut().extend(file.exported.clone());
+        self.declarations.merge(file.declarations.clone());
+    }
+
+    fn expand_file_attributes(
+        &mut self,
+        file_attributes: Vec<parse::Expr>,
+        scope: &Scope,
+    ) -> FileAttributes {
+        macro_rules! assert_empty {
+            ($node:expr, $span:expr) => {
+                if !matches!($node.kind, NodeKind::Empty | NodeKind::Error) {
+                    self.compiler.diagnostics.add(Diagnostic::new(
+                        DiagnosticLevel::Error,
+                        "invalid file attribute",
+                        vec![Note::primary(
+                            $span,
+                            "this attribute must expand to an empty expression",
+                        )],
+                    ));
+                }
+            };
+        }
+
+        let mut attributes = FileAttributes::default();
+        'attributes: for attribute in file_attributes {
+            match attribute.kind {
+                parse::ExprKind::Name(name) => {
+                    if let Some(ScopeValue::Template(template)) = scope.get(name) {
+                        let node = self.expand_template(
+                            name,
+                            attribute.span,
+                            template,
+                            Vec::new(),
+                            Some(&mut attributes),
+                            None,
+                            scope,
+                        );
+
+                        assert_empty!(node, attribute.span);
+                    }
+                }
+                parse::ExprKind::List(lines) => {
+                    let exprs = lines
+                        .into_iter()
+                        .flat_map(|line| line.exprs)
+                        .collect::<Vec<_>>();
+
+                    for expr in &exprs {
+                        if let parse::ExprKind::Name(name) = expr.kind {
+                            if let Some(ScopeValue::Operator(_)) = scope.get(name) {
+                                self.compiler.diagnostics.add(Diagnostic::new(
+                                    DiagnosticLevel::Error,
+                                    "unexpected operator",
+                                    vec![Note::primary(
+                                        attribute.span,
+                                        "operators aren't allowed within attributes",
+                                    )],
+                                ));
+
+                                continue 'attributes;
+                            }
+                        }
+                    }
+
+                    let mut exprs = exprs.into_iter();
+
+                    let first = exprs.next().unwrap();
+                    let name = match first.kind {
+                        parse::ExprKind::Name(name) => name,
+                        _ => {
+                            self.compiler.diagnostics.add(Diagnostic::new(
+                                DiagnosticLevel::Error,
+                                "expected name in attribute",
+                                vec![Note::primary(
+                                    attribute.span,
+                                    "expected name of template here",
+                                )],
+                            ));
+
+                            continue 'attributes;
+                        }
+                    };
+
+                    let template = match scope.get(name) {
+                        Some(ScopeValue::Template(template)) => template,
+                        Some(ScopeValue::Operator(_)) => {
+                            unreachable!("operators trigger an error above");
+                        }
+                        None => {
+                            self.compiler.diagnostics.add(Diagnostic::error(
+                                format!("cannot find template `{}`", name),
+                                vec![Note::primary(first.span, "no such template")],
+                            ));
+
+                            continue 'attributes;
+                        }
+                    };
+
+                    let inputs = exprs
+                        .map(|expr| self.expand_expr(expr, scope))
+                        .collect::<Vec<_>>();
+
+                    let node = self.expand_template(
+                        name,
+                        attribute.span,
+                        template,
+                        inputs,
+                        Some(&mut attributes),
+                        None,
+                        scope,
+                    );
+
+                    assert_empty!(node, attribute.span);
+                }
+                _ => {
+                    self.compiler.diagnostics.add(Diagnostic::new(
+                        DiagnosticLevel::Error,
+                        "invalid attribute",
+                        vec![Note::primary(
+                            attribute.span,
+                            "expected a call to a template here",
+                        )],
+                    ));
+                }
+            }
+        }
+
+        attributes
+    }
+
     fn expand_expr(&mut self, expr: parse::Expr, scope: &Scope) -> Node {
         match expr.kind {
             parse::ExprKind::Underscore => Node {
@@ -390,8 +601,8 @@ impl<L> Expander<'_, L> {
 
                 let span = Span::join(exprs.first().unwrap().span, exprs.last().unwrap().span);
 
-                let treat_as_expr =
-                    exprs.len() == 1 && matches!(exprs.first().unwrap().kind, parse::ExprKind::List(_));
+                let treat_as_expr = exprs.len() == 1
+                    && matches!(exprs.first().unwrap().kind, parse::ExprKind::List(_));
 
                 let mut node = self.expand_list(span, exprs, &scope);
 
@@ -405,6 +616,7 @@ impl<L> Expander<'_, L> {
                                     attribute.span,
                                     template,
                                     vec![node],
+                                    None,
                                     Some(&mut attributes),
                                     &scope,
                                 );
@@ -477,6 +689,7 @@ impl<L> Expander<'_, L> {
                                 attribute.span,
                                 template,
                                 inputs,
+                                None,
                                 Some(&mut attributes),
                                 &scope,
                             );
@@ -522,8 +735,9 @@ impl<L> Expander<'_, L> {
                             .map(|expr| self.expand_expr(expr, scope))
                             .collect();
 
-                        return self
-                            .expand_template(*name, list_span, template, inputs, None, scope);
+                        return self.expand_template(
+                            *name, list_span, template, inputs, None, None, scope,
+                        );
                     }
                 }
 
@@ -546,8 +760,9 @@ impl<L> Expander<'_, L> {
                     if let parse::ExprKind::Name(name) = first.kind {
                         if let Some(ScopeValue::Template(template)) = scope.get(name) {
                             let inputs = exprs.map(|expr| self.expand_expr(expr, scope)).collect();
-                            return self
-                                .expand_template(name, list_span, template, inputs, None, scope);
+                            return self.expand_template(
+                                name, list_span, template, inputs, None, None, scope,
+                            );
                         }
                     }
 
@@ -689,6 +904,7 @@ impl<L> Expander<'_, L> {
                             max_operator.template,
                             vec![lhs, rhs],
                             None,
+                            None,
                             scope,
                         )
                     }
@@ -701,16 +917,17 @@ impl<L> Expander<'_, L> {
         &mut self,
         name: InternedString,
         span: Span,
-        template: TemplateId,
+        id: TemplateId,
         exprs: Vec<Node>,
-        attributes: Option<&mut StatementAttributes>,
+        file_attributes: Option<&mut FileAttributes>,
+        statement_attributes: Option<&mut StatementAttributes>,
         scope: &Scope,
     ) -> Node {
         let template = self
-            .info
+            .declarations
             .templates
-            .get(&template)
-            .expect("template not registered")
+            .get(&id)
+            .unwrap_or_else(|| panic!("template `{}` ({:?}) not registered", name, id))
             .clone();
 
         match template.body {
@@ -816,7 +1033,14 @@ impl<L> Expander<'_, L> {
 
                 body
             }
-            TemplateBody::Function(expand) => expand(self, span, exprs, attributes, scope),
+            TemplateBody::Function(expand) => expand(
+                self,
+                span,
+                exprs,
+                file_attributes,
+                statement_attributes,
+                scope,
+            ),
         }
     }
 

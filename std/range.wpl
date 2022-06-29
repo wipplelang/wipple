@@ -1,0 +1,44 @@
+[[no-std]]
+
+use "./iterate.wpl"
+
+Range : type {
+	min :: Number
+	max :: Number
+	step :: Number
+}
+
+instance Iterate () Range Number : range -> {
+	range : mutable range
+	{ min max step } : get range
+	current : mutable min
+
+	if? (max < min) {
+		crash "`max` must be greater than `min`"
+	}
+
+	if? (step < 0) {
+		crash "`step` must be positive"
+	}
+
+	Iterator {
+		context : mutable ()
+		next : _ -> {
+			{ max step } : get range
+
+			if ((get current) >= max) {
+				None
+			} {
+				n : get current
+				current . add! step
+				Some n
+			}
+		}
+	}
+}
+
+to : dot operator (min' max' ~> Range {
+	min : min'
+	max : max'
+	step : 1
+})

@@ -1,24 +1,17 @@
-#![allow(clippy::type_complexity)]
+#![allow(clippy::too_many_arguments)]
 
 use crate::{
-    compile::{
-        self,
-        expand::{self, ScopeValues},
-        lower, Program,
-    },
+    compile::{self, Program},
     diagnostics::*,
     parse::Span,
     Compiler, FilePath, Loader,
 };
-use indexmap::IndexMap;
-use std::{
-    cell::{Cell, RefCell},
-    rc::Rc,
-    sync::Arc,
-};
+use std::{cell::Cell, rc::Rc};
 
+#[derive(Debug)]
 pub enum Progress {
     Resolving {
+        path: FilePath,
         count: usize,
     },
     Lowering {
@@ -29,7 +22,7 @@ pub enum Progress {
     Typechecking(compile::typecheck::Progress),
 }
 
-impl<L: Loader> Compiler<L> {
+impl<L: Loader> Compiler<'_, L> {
     pub fn build(&mut self, path: FilePath) -> Option<Program> {
         self.build_with_progress(path, |_| {})
     }
@@ -39,97 +32,130 @@ impl<L: Loader> Compiler<L> {
         path: FilePath,
         mut progress: impl FnMut(Progress),
     ) -> Option<Program> {
-        #[allow(clippy::too_many_arguments)]
+        let mut files = indexmap::IndexMap::new();
+
         fn load<L: Loader>(
             compiler: &mut Compiler<L>,
             path: FilePath,
             source_path: Option<FilePath>,
             source_span: Option<Span>,
-            cache: &RefCell<IndexMap<FilePath, (Rc<lower::File>, Rc<ScopeValues>)>>,
-            info: &mut expand::Info<L>,
             progress: &mut impl FnMut(Progress),
             count: Rc<Cell<usize>>,
-        ) -> Option<(Rc<lower::File>, Rc<ScopeValues>)> {
-            count.set(count.get() + 1);
-            progress(Progress::Resolving { count: count.get() });
+            files: &mut indexmap::IndexMap<FilePath, Rc<compile::expand::File<L>>>,
+        ) -> Option<Rc<compile::expand::File<L>>> {
+            macro_rules! try_load {
+                ($expr:expr) => {
+                    match $expr {
+                        Ok(x) => x,
+                        Err(error) => {
+                            compiler.diagnostics.add(Diagnostic::error(
+                                format!("cannot load file `{}`: {}", path, error),
+                                source_span
+                                    .map(|span| Note::primary(span, "try fixing this import"))
+                                    .into_iter()
+                                    .collect(),
+                            ));
 
-            if let Some(cached) = cache.borrow().get(&path) {
+                            return None;
+                        }
+                    }
+                };
+            }
+
+            let resolved_path = try_load!(compiler.loader.resolve(path, source_path));
+
+            if let Some(cached) = compiler.loader.cache().get(&resolved_path) {
                 return Some(cached.clone());
             }
 
-            let (path, code) = match compiler.loader.load(path, source_path) {
-                Ok(code) => code,
-                Err(error) => {
-                    compiler.diagnostics.add(Diagnostic::error(
-                        format!("cannot load file `{}`: {}", path, error),
-                        source_span
-                            .map(|span| Note::primary(span, "try fixing this import"))
-                            .into_iter()
-                            .collect(),
-                    ));
+            count.set(count.get() + 1);
+            progress(Progress::Resolving {
+                path: resolved_path,
+                count: count.get(),
+            });
 
-                    return None;
-                }
-            };
+            let code = try_load!(compiler.loader.load(resolved_path));
 
-            compiler
-                .diagnostics
-                .add_file(path, Arc::from(code.as_ref()));
-
-            let file = compiler.parse(path, &code)?;
-
-            let dependencies: RefCell<Vec<Rc<lower::File>>> = Default::default();
-
-            let (file, scope) = compiler.expand(file, info, |compiler, new_path, info| {
+            let file = compiler.parse(resolved_path, &code)?;
+            let file = compiler.expand(file, |compiler, new_path| {
                 load(
                     compiler,
                     new_path,
-                    Some(path),
+                    Some(resolved_path),
                     source_span,
-                    cache,
-                    info,
                     progress,
                     count.clone(),
+                    files,
                 )
-                .map(|(file, scope)| {
-                    dependencies.borrow_mut().push(file);
-                    scope
-                })
-            });
+            })?;
 
-            let file = compiler.build_ast(file);
-            let file = compiler.lower(file, dependencies.into_inner());
+            let file = Rc::new(file);
 
-            Some(
-                cache
-                    .borrow_mut()
-                    .entry(path)
-                    .or_insert((Rc::new(file), Rc::new(scope)))
-                    .clone(),
-            )
+            // Don't cache virtual or builtin paths
+            if matches!(resolved_path, FilePath::Path(_)) {
+                compiler.loader.cache().insert(resolved_path, file.clone());
+            }
+
+            compiler
+                .loader
+                .source_map()
+                .insert(resolved_path, code.clone());
+
+            files.insert(resolved_path, file.clone());
+
+            Some(file)
         }
 
-        let cache = Default::default();
         load(
             self,
             path,
             None,
             None,
-            &cache,
-            &mut expand::Info::default(),
             &mut progress,
             Default::default(),
+            &mut files,
         )?;
 
-        let lowered_files = cache
-            .into_inner()
+        let mut cache = indexmap::IndexMap::new();
+
+        fn lower<L: Loader>(
+            compiler: &mut Compiler<L>,
+            file: Rc<compile::expand::File<L>>,
+            cache: &mut indexmap::IndexMap<FilePath, Rc<compile::lower::File>>,
+        ) -> Rc<compile::lower::File> {
+            let path = file.path;
+
+            if let Some(file) = cache.get(&path) {
+                return file.clone();
+            }
+
+            let dependencies = file
+                .dependencies
+                .clone()
+                .into_iter()
+                .map(|dependency| lower(compiler, dependency, cache))
+                .collect::<Vec<_>>();
+
+            let file = compiler.build_ast((*file).clone());
+
+            let file = Rc::new(compiler.lower(file, dependencies));
+            cache.insert(path, file.clone());
+
+            file
+        }
+
+        #[allow(clippy::needless_collect)] // needed for diagnostics below
+        let lowered_files = files
             .into_values()
-            .map(|(file, _)| Rc::try_unwrap(file).unwrap())
+            .map(|file| lower(self, file, &mut cache))
             .collect::<Vec<_>>();
 
-        if self.diagnostics.contains_errors() {
-            return None;
-        }
+        drop(cache);
+
+        let lowered_files = lowered_files
+            .into_iter()
+            .map(|file| Rc::try_unwrap(file).unwrap())
+            .collect::<Vec<_>>();
 
         self.typecheck_with_progress(lowered_files, |p| progress(Progress::Typechecking(p)))
     }

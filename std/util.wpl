@@ -1,0 +1,103 @@
+[[no-std]]
+
+use "./fp.wpl"
+use "./logic.wpl"
+use "./output.wpl"
+
+[help "Crash the program with the provided message."]
+crash :: Text -> !
+crash : message -> external "builtin" "crash" message
+
+[help "Indicates unfinished code. Crashes the program upon evaluation."]
+... :: !
+... : crash "not yet implemented"
+
+[help "Represents the default or initial value of a type."]
+Default : A => trait A
+instance Default Number : 0
+instance Default Text : ""
+instance Default Boolean : False
+
+[help "Represents the presence or absence of a value."]
+Maybe : Value => type {
+	None
+	Some Value
+}
+
+use Maybe
+
+Value where (Show Value) => instance Show (Maybe Value) : x? -> when x? {
+	Some x -> format "Some _" (Show x)
+	None -> "None"
+}
+
+[help "Represents the success or failure of an operation."]
+Result : Success Failure => type {
+	OK Success
+	Error Failure
+}
+
+use Result
+
+[help "Implement this trait to enable usage of your type in error handling."]
+Try : Value Success Failure => trait (Value -> Result Success Failure)
+
+[help "Represents the failure to find a value inside a `Maybe`."]
+None-Error : type
+
+instance Show None-Error : just "found `None`"
+
+A => instance Try (Maybe A) A None-Error : x? -> when x? {
+	Some x -> OK x
+	None -> Error None-Error
+}
+
+Success Failure => instance Try (Result Success Failure) Success Failure : it
+
+try : x? ~> when (Try x?) {
+	OK x -> x
+	Error e -> return (Error e)
+}
+
+Success Failure where (Show Success) (Show Failure) =>
+	instance Show (Result Success Failure) :
+		x? -> when x? {
+		OK x -> format "OK _" (Show x)
+		Error e -> format "Error _" (Show e)
+	}
+
+-- TODO: Use higher-kinded types
+Expect : Container Value => trait (Text -> Container -> Value)
+
+Value => instance Expect (Maybe Value) Value : message -> x? -> when x? {
+	Some x -> x
+	None -> crash message
+}
+
+Success Failure where (Show Failure) =>
+	instance Expect (Result Success Failure) Success :
+		message -> x? -> when x? {
+			OK x -> x
+			Error e -> crash (format "_: _" message e)
+		}
+
+Unwrap-Message : Container => trait (Container -> Text)
+
+Value => instance Unwrap-Message (Maybe Value) :
+	just "called `unwrap` on `None`"
+
+Success Failure => instance Unwrap-Message (Result Success Failure) :
+	just "called `unwrap` on `Error`"
+
+-- TODO: Use higher-kinded types
+[help "Produces the `Some` value contained within a `Maybe`, or crashes the program with the provided message."]
+expect :: Container Value where (Expect Container Value) =>
+	Text -> Container -> Value
+expect : Expect
+
+-- TODO: Use higher-kinded types
+[help "Produces the `Some` value contained within a `Maybe`, or crashes the program."]
+unwrap :: Container Value
+	where (Expect Container Value) (Unwrap-Message Container) =>
+	Container -> Value
+unwrap : x? -> expect (Unwrap-Message x?) x?

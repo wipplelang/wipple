@@ -1,6 +1,6 @@
 use crate::{compile, helpers::InternedString, FilePath};
 use serde::Serialize;
-use std::{borrow::Cow, collections::HashMap, path::Path};
+use std::{collections::HashMap, path::Path, sync::Arc};
 
 const DOC_VERSION: u32 = 1;
 
@@ -76,7 +76,7 @@ pub struct Constant {
 impl Documentation {
     pub fn new(
         program: compile::Program,
-        codemap: HashMap<FilePath, Cow<str>>,
+        codemap: HashMap<FilePath, Arc<str>>,
         root: &Path,
     ) -> Self {
         Documentation::with_filter(program, codemap, root, |_| true)
@@ -84,7 +84,7 @@ impl Documentation {
 
     pub fn with_filter(
         program: compile::Program,
-        codemap: HashMap<FilePath, Cow<str>>,
+        codemap: HashMap<FilePath, Arc<str>>,
         root: &Path,
         mut filter: impl FnMut(FilePath) -> bool,
     ) -> Self {

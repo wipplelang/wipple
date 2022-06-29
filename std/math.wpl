@@ -1,0 +1,41 @@
+[[no-std]]
+
+use "./output.wpl"
+
+[help "Implements the `+` operator."]
+Add : Left Right Sum => trait (Left -> Right -> Sum)
++ : addition operator (a b ~> Add a b)
+instance Add Number Number Number : a -> b -> external "builtin" "add" a b
+instance Add Text Text Text : a -> b -> format "__" a b
+
+[help "Implements the `-` operator."]
+Subtract : Left Right Difference => trait (Left -> Right -> Difference)
+- : addition operator (a b ~> Subtract a b)
+instance Subtract Number Number Number : a -> b -> external "builtin" "subtract" a b
+
+[help "Implements the `*` operator."]
+Multiply : Left Right Product => trait (Left -> Right -> Product)
+* : multiplication operator (a b ~> Multiply a b)
+instance Multiply Number Number Number : a -> b -> external "builtin" "multiply" a b
+
+[help "Implements the `/` operator."]
+Divide : Left Right Quotient => trait (Left -> Right -> Quotient)
+/ : multiplication operator (a b ~> Divide a b)
+instance Divide Number Number Number : a -> b -> external "builtin" "divide" a b
+
+[help "Implements the `^` operator."]
+Power : Left Right Power => trait (Left -> Right -> Power)
+^ : power operator (a b ~> Power a b)
+instance Power Number Number Number : a -> b -> external "builtin" "power" a b
+
+[help "Rounds down a number to the nearest integer."]
+floor :: Number -> Number
+floor : n -> external "builtin" "floor" n
+
+[help "Rounds up a number to the nearest integer."]
+ceil :: Number -> Number
+ceil : n -> external "builtin" "ceil" n
+
+[help "Calculates the square root of a number."]
+sqrt :: Number -> Number
+sqrt : n -> external "builtin" "sqrt" n

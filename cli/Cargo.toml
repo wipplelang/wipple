@@ -13,9 +13,8 @@ clap = { version = "3", features = ["derive"] }
 codemap = "=0.1.2"
 codemap-diagnostic = "0.1"
 indicatif = "0.16"
-url = "2"
-reqwest = { version = "0.11", features = ["blocking", "rustls-tls"], default-features = false }
 serde_json = "1"
 wipple-bundled-backend = { path = "../backends/bundled/builder" }
 wipple-compiler = { path = "../compiler", features = ["clap"] }
+wipple-default-loader = { path = "../loaders/default" }
 wipple-interpreter-backend = { path = "../backends/interpreter" }

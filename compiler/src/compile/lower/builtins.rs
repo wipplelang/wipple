@@ -1,15 +1,21 @@
 #![allow(clippy::needless_update)] // for future-proofing
 
 use super::*;
+use lazy_static::lazy_static;
+use std::sync::{Arc, Mutex};
 
-impl<L> Compiler<L> {
+impl<L> Compiler<'_, L> {
     pub(super) fn load_builtins(&mut self, scope: &Scope, info: &mut Info) {
         let mut scope_values = scope.values.borrow_mut();
 
         macro_rules! add {
-            ($decls:ident, $span:expr, $name:expr, $id:expr, $scope_value:expr, $value:expr $(,)?) => {{
+            ($decls:ident, $span:expr, $name:expr, $id_storage:ident: $id_ty:ty = $id:expr, $scope_value:expr, $value:expr $(,)?) => {{
+                lazy_static! {
+                    static ref $id_storage: Arc<Mutex<Option<$id_ty>>> = Default::default();
+                }
+
                 let name = InternedString::new($name);
-                let id = $id;
+                let id = *$id_storage.lock().unwrap().get_or_insert_with(|| $id);
 
                 info.declarations.$decls.insert(
                     id,
@@ -28,7 +34,7 @@ impl<L> Compiler<L> {
             builtin_types,
             Span::builtin("`()` type"),
             "()",
-            self.new_builtin_type_id(),
+            UNIT_TYPE: BuiltinTypeId = self.new_builtin_type_id(),
             ScopeValue::BuiltinType,
             BuiltinType {
                 kind: BuiltinTypeKind::Unit,
@@ -45,7 +51,7 @@ impl<L> Compiler<L> {
             builtin_types,
             Span::builtin("`!` type"),
             "!",
-            self.new_builtin_type_id(),
+            NEVER_TYPE: BuiltinTypeId = self.new_builtin_type_id(),
             ScopeValue::BuiltinType,
             BuiltinType {
                 kind: BuiltinTypeKind::Never,
@@ -62,7 +68,7 @@ impl<L> Compiler<L> {
             builtin_types,
             Span::builtin("`Number` type"),
             "Number",
-            self.new_builtin_type_id(),
+            NUMBER_TYPE: BuiltinTypeId = self.new_builtin_type_id(),
             ScopeValue::BuiltinType,
             BuiltinType {
                 kind: BuiltinTypeKind::Number,
@@ -79,7 +85,7 @@ impl<L> Compiler<L> {
             builtin_types,
             Span::builtin("`Text` type"),
             "Text",
-            self.new_builtin_type_id(),
+            TEXT_TYPE: BuiltinTypeId = self.new_builtin_type_id(),
             ScopeValue::BuiltinType,
             BuiltinType {
                 kind: BuiltinTypeKind::Text,
@@ -96,7 +102,7 @@ impl<L> Compiler<L> {
             builtin_types,
             Span::builtin("`List` type"),
             "List",
-            self.new_builtin_type_id(),
+            LIST_TYPE: BuiltinTypeId = self.new_builtin_type_id(),
             ScopeValue::BuiltinType,
             BuiltinType {
                 kind: BuiltinTypeKind::List,
@@ -113,7 +119,7 @@ impl<L> Compiler<L> {
             builtin_types,
             Span::builtin("`Mutable` type"),
             "Mutable",
-            self.new_builtin_type_id(),
+            MUTABLE_TYPE: BuiltinTypeId = self.new_builtin_type_id(),
             ScopeValue::BuiltinType,
             BuiltinType {
                 kind: BuiltinTypeKind::Mutable,

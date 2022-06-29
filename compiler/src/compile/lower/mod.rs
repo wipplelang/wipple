@@ -5,8 +5,8 @@ use crate::{
     diagnostics::*,
     helpers::InternedString,
     parse::Span,
-    BuiltinTypeId, Compiler, FilePath, GenericConstantId, TemplateId, TraitId, TypeId,
-    TypeParameterId, VariableId,
+    BuiltinTypeId, Compiler, GenericConstantId, TemplateId, TraitId, TypeId, TypeParameterId,
+    VariableId,
 };
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
@@ -229,17 +229,14 @@ impl TypeAnnotation {
     }
 }
 
-impl<L> Compiler<L> {
+impl<L> Compiler<'_, L> {
     pub fn lower(&mut self, file: ast::File, dependencies: Vec<Rc<File>>) -> File {
         let scope = Scope::root(ScopeKind::Block);
 
         let mut info = Info {
-            file: file.path,
             declarations: Default::default(),
             attributes: Default::default(),
         };
-
-        // TODO: Handle file attributes
 
         self.load_builtins(&scope, &mut info);
 
@@ -305,12 +302,19 @@ impl<L> Compiler<L> {
 
 impl FileAttributes {
     fn merge(&mut self, other: &Self) {
-        // This is OK because language items may only be set in the prelude
-        self.language_items = other.language_items.clone();
+        self.language_items.merge(&other.language_items);
     }
 }
 
-#[derive(Debug)]
+impl LanguageItems {
+    fn merge(&mut self, other: &Self) {
+        if let Some(ty) = other.boolean {
+            self.boolean = Some(ty);
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
 struct Scope<'a> {
     kind: ScopeKind,
     parent: Option<&'a Scope<'a>>,
@@ -409,12 +413,11 @@ impl<'a> Scope<'a> {
 }
 
 struct Info {
-    file: FilePath,
     declarations: Declarations,
     attributes: FileAttributes,
 }
 
-impl<L> Compiler<L> {
+impl<L> Compiler<'_, L> {
     fn lower_block(
         &mut self,
         statements: Vec<ast::Statement>,
@@ -969,18 +972,6 @@ impl<L> Compiler<L> {
 
         (|| {
             if let Some(language_item) = statement.attributes.language_item {
-                if !matches!(info.file, FilePath::Prelude) {
-                    self.diagnostics.add(Diagnostic::error(
-                        "`language` attribute may only be used in the prelude",
-                        vec![Note::primary(
-                            statement.span,
-                            "cannot use this attribute here",
-                        )],
-                    ));
-
-                    return;
-                }
-
                 match language_item {
                     expand::LanguageItem::Boolean => {
                         let ty = match scope_value {

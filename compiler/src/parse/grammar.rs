@@ -14,6 +14,7 @@ pub struct File {
     pub path: FilePath,
     pub span: Span,
     pub shebang: Option<InternedString>,
+    pub attributes: Vec<Expr>,
     pub statements: Vec<Statement>,
 }
 
@@ -70,7 +71,9 @@ pub enum ParseError {
 }
 
 impl<'src> Parser<'_, 'src> {
-    pub fn parse_file(&mut self) -> Option<Vec<Statement>> {
+    pub fn parse_file(&mut self) -> Option<(Vec<Expr>, Vec<Statement>)> {
+        let attributes = self.parse_file_attributes();
+
         let (statements, _) = self.parse_statements(None)?;
 
         if let (span, Some(token)) = self.consume() {
@@ -86,7 +89,24 @@ impl<'src> Parser<'_, 'src> {
             return None;
         }
 
-        Some(statements)
+        Some((attributes, statements))
+    }
+
+    pub fn parse_file_attributes(&mut self) -> Vec<Expr> {
+        std::iter::from_fn(|| self.try_parse_file_attribute()).collect()
+    }
+
+    pub fn try_parse_file_attribute(&mut self) -> Option<Expr> {
+        let (span, token) = self.peek();
+
+        if !matches!(token, Some(Token::LeftFileBracket)) {
+            return None;
+        }
+
+        self.consume();
+
+        self.parse_list_contents(Token::RightFileBracket)
+            .map(|(lines, end_span)| Expr::new(span.with_end(end_span.end), ExprKind::List(lines)))
     }
 
     pub fn parse_statements(

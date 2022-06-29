@@ -191,6 +191,7 @@ pub struct GenericConstantDeclaration<Expr, File> {
     pub attributes: Option<lower::DeclarationAttributes>,
 }
 
+#[derive(Debug)]
 pub enum Progress {
     Typechecking {
         path: FilePath,
@@ -200,7 +201,7 @@ pub enum Progress {
     Finalizing,
 }
 
-impl<L> Compiler<L> {
+impl<L> Compiler<'_, L> {
     pub fn typecheck(&mut self, files: Vec<lower::File>) -> Option<Program> {
         self.typecheck_with_progress(files, |_| {})
     }
@@ -433,14 +434,14 @@ impl<L> Compiler<L> {
 
                 let mut tr = typechecker.traits.get(&decl.value.tr).unwrap().clone();
 
-                let substitutions = tr
+                let mut substitutions = tr
                     .params
                     .into_iter()
                     .zip(&decl.value.trait_params)
                     .map(|(param, ty)| (param, typechecker.convert_type_annotation(ty, file)))
                     .collect();
 
-                tr.ty.instantiate_with(&substitutions);
+                typechecker.add_substitutions(&mut tr.ty, &mut substitutions);
 
                 let bounds = decl
                     .value
@@ -923,7 +924,7 @@ impl Error {
     }
 }
 
-struct Typechecker<'a, L> {
+struct Typechecker<'a, 'l, L> {
     ctx: Context,
     errors: Vec<Error>,
     variables: BTreeMap<VariableId, UnresolvedType>,
@@ -942,10 +943,10 @@ struct Typechecker<'a, L> {
     declared_instances: BTreeMap<TraitId, Vec<GenericConstantId>>,
     bound_instances: BTreeMap<TraitId, Vec<GenericConstantId>>,
     declarations: Declarations<MonomorphizedExpression, UnresolvedType, Rc<RefCell<lower::File>>>,
-    compiler: &'a mut Compiler<L>,
+    compiler: &'a mut Compiler<'l, L>,
 }
 
-impl<'a, L> Typechecker<'a, L> {
+impl<'a, L> Typechecker<'a, '_, L> {
     fn typecheck_expr(
         &mut self,
         expr: &lower::Expression,
@@ -2452,7 +2453,13 @@ impl<'a, L> Typechecker<'a, L> {
                     .declarations
                     .builtin_types
                     .get(id)
-                    .unwrap()
+                    .unwrap_or_else(|| {
+                        panic!(
+                            "builtin type {:?} not found in {:#?}",
+                            id,
+                            file.borrow().declarations.builtin_types
+                        )
+                    })
                     .clone();
 
                 match builtin_ty.value.kind {
@@ -2603,7 +2610,7 @@ enum MatchSet {
     Enumeration(Vec<(bool, Vec<MatchSet>)>),
 }
 
-impl<'a, L> Typechecker<'a, L> {
+impl<'a, L> Typechecker<'a, '_, L> {
     fn match_set_from(&mut self, ty: &UnresolvedType) -> Result<MatchSet, TypeError> {
         match &ty {
             UnresolvedType::Named(id, _) => {

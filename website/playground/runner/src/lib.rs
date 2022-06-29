@@ -1,7 +1,8 @@
-use lazy_static::lazy_static;
+use loader::Fetcher;
 use serde::Serialize;
-use std::{borrow::Cow, io::Write, sync::Mutex};
+use std::{cell::RefCell, io::Write, rc::Rc, sync::Arc};
 use wasm_bindgen::prelude::*;
+use wipple_default_loader as loader;
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -10,29 +11,84 @@ struct Output {
     value: String,
 }
 
-lazy_static! {
-    static ref PROGRAM: Mutex<Option<wipple_compiler::compile::Program>> = Default::default();
+thread_local! {
+    static LOADER: Rc<RefCell<Option<loader::Loader>>> = Default::default();
 }
 
 #[wasm_bindgen]
-pub fn run(code: &str) -> JsValue {
+pub fn run(code: String, fetch: js_sys::Function) -> JsValue {
     #[cfg(feature = "console_error_panic_hook")]
     console_error_panic_hook::set_once();
 
-    let mut compiler = wipple_compiler::Compiler::new(Loader { code });
+    let playground_path = wipple_compiler::helpers::InternedString::new("playground");
 
-    let path = wipple_compiler::FilePath::Virtual(wipple_compiler::helpers::InternedString::new(
-        "playground",
-    ));
+    let loader = LOADER.with(Clone::clone);
+    let mut loader = loader.borrow_mut();
 
-    let program = compiler.build(path);
+    let loader = loader.get_or_insert_with(|| {
+        loader::Loader::with_fetcher(
+            String::new(),
+            Some(wipple_compiler::FilePath::Path(
+                #[cfg(feature = "debug_playground")]
+                wipple_compiler::helpers::InternedString::new(format!(
+                    "{}std/std.wpl",
+                    env!("CARGO_WORKSPACE_DIR")
+                )),
+                #[cfg(not(feature = "debug_playground"))]
+                wipple_compiler::helpers::InternedString::new(loader::STD_URL),
+            )),
+            Fetcher::new(
+                |path| {
+                    #[cfg(feature = "debug_playground")]
+                    {
+                        #[derive(rust_embed::RustEmbed)]
+                        #[folder = "$CARGO_WORKSPACE_DIR/std"]
+                        struct EmbeddedStd;
+
+                        let path = std::path::PathBuf::from(path);
+                        let path = path.file_name().unwrap().to_str().unwrap();
+
+                        let file = EmbeddedStd::get(path)
+                            .map(|file| String::from_utf8(file.data.to_vec()).unwrap())
+                            .ok_or_else(|| anyhow::Error::msg("file does not exist"))?;
+
+                        Ok(file)
+                    }
+
+                    #[cfg(not(feature = "debug_playground"))]
+                    {
+                        let _ = path;
+                        Err(anyhow::Error::msg("loading files from paths is not supported in the playground; try loading from a URL instead"))
+                    }
+                },
+                move |url| {
+                    fetch
+                        .call1(&JsValue::null(), &JsValue::from_str(url.as_str()))
+                        .map_err(|e| anyhow::Error::msg(format!("request failed: {:?}", e)))
+                        .map(|value| {
+                            value
+                                .as_string()
+                                .expect("playground didn't return a string")
+                        })
+                },
+            ),
+        )
+    });
+
+    loader
+        .virtual_paths
+        .insert(playground_path, Arc::from(code));
+
+    let mut compiler = wipple_compiler::Compiler::new(loader);
+
+    let program = compiler.build(wipple_compiler::FilePath::Virtual(playground_path));
 
     let program = program.map(|program| {
         compiler.lint(&program);
-        (program.clone(), compiler.optimize(program))
+        compiler.optimize(program)
     });
 
-    let (_, diagnostics) = compiler.finish();
+    let diagnostics = compiler.finish();
     let success = !diagnostics.contains_errors();
 
     let (codemap, diagnostics) = diagnostics.into_console_friendly(
@@ -47,9 +103,7 @@ pub fn run(code: &str) -> JsValue {
         emitter.emit(&diagnostics);
     }
 
-    if let Some((program, optimized_program)) = program {
-        *PROGRAM.lock().unwrap() = Some(program);
-
+    if let Some(program) = program {
         if success {
             let result = {
                 let interpreter =
@@ -59,7 +113,7 @@ pub fn run(code: &str) -> JsValue {
                         },
                     );
 
-                interpreter.eval(optimized_program)
+                interpreter.eval(program)
             };
 
             if let Err((error, _)) = result {
@@ -74,33 +128,4 @@ pub fn run(code: &str) -> JsValue {
     };
 
     JsValue::from_serde(&output).unwrap()
-}
-
-struct Loader<'a> {
-    code: &'a str,
-}
-
-impl<'a> wipple_compiler::Loader for Loader<'a> {
-    type Error = &'static str;
-
-    fn load(
-        &mut self,
-        path: wipple_compiler::FilePath,
-        _current: Option<wipple_compiler::FilePath>,
-    ) -> Result<(wipple_compiler::FilePath, Cow<'static, str>), Self::Error> {
-        match path {
-            wipple_compiler::FilePath::Path(_) => {
-                Err("imports are not supported in the playground")
-            }
-            wipple_compiler::FilePath::Virtual(s) if s.as_str() == "playground" => Ok((
-                wipple_compiler::FilePath::Virtual(s),
-                Cow::Owned(self.code.to_string()),
-            )),
-            wipple_compiler::FilePath::Prelude => Ok((
-                wipple_compiler::FilePath::Prelude,
-                Cow::Borrowed(include_str!("../../../../support/prelude.wpl")),
-            )),
-            _ => unimplemented!(),
-        }
-    }
 }

@@ -9,23 +9,35 @@ pub mod parse;
 use diagnostics::*;
 use helpers::InternedString;
 use serde::{Deserialize, Serialize};
-use std::{borrow::Cow, fmt};
+use std::{borrow::Cow, collections::HashMap, fmt, hash::Hash, rc::Rc, sync::Arc};
 
-pub trait Loader {
+pub type SourceMap = HashMap<FilePath, Arc<str>>;
+
+pub trait Loader
+where
+    Self: Sized,
+{
     type Error: fmt::Display;
 
-    fn load(
+    fn std_path(&self) -> Option<FilePath>;
+
+    fn resolve(
         &mut self,
         path: FilePath,
         current: Option<FilePath>,
-    ) -> Result<(FilePath, Cow<'static, str>), Self::Error>;
+    ) -> Result<FilePath, Self::Error>;
+
+    fn load(&mut self, path: FilePath) -> Result<Arc<str>, Self::Error>;
+
+    fn cache(&mut self) -> &mut HashMap<FilePath, Rc<compile::expand::File<Self>>>;
+
+    fn source_map(&mut self) -> &mut SourceMap;
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum FilePath {
     Path(InternedString),
     Virtual(InternedString),
-    Prelude,
     Builtin(InternedString),
 }
 
@@ -34,7 +46,6 @@ impl FilePath {
         match self {
             FilePath::Path(path) => Cow::Borrowed(path.as_str()),
             FilePath::Virtual(name) => Cow::Borrowed(name.as_str()),
-            FilePath::Prelude => Cow::Borrowed("prelude"),
             FilePath::Builtin(location) => Cow::Owned(format!("builtin ({})", location)),
         }
     }
@@ -47,8 +58,8 @@ impl fmt::Display for FilePath {
 }
 
 #[derive(Debug)]
-pub struct Compiler<L> {
-    loader: L,
+pub struct Compiler<'a, L> {
+    pub loader: &'a mut L,
     diagnostics: Diagnostics,
     ids: Ids,
 }
@@ -77,7 +88,7 @@ macro_rules! ids {
                 )*
             }
 
-            impl<L> Compiler<L> {
+            impl<L> Compiler<'_, L> {
                 $(
                     fn [<new_ $id:snake>](&mut self) -> $id {
                         self.ids.[<new_ $id:snake>]()
@@ -99,8 +110,8 @@ ids!(
     VariableId,
 );
 
-impl<L> Compiler<L> {
-    pub fn new(loader: L) -> Self {
+impl<'a, L> Compiler<'a, L> {
+    pub fn new(loader: &'a mut L) -> Self {
         Compiler {
             loader,
             diagnostics: Default::default(),
@@ -108,7 +119,10 @@ impl<L> Compiler<L> {
         }
     }
 
-    pub fn finish(self) -> (L, Diagnostics) {
-        (self.loader, self.diagnostics)
+    pub fn finish(self) -> FinalizedDiagnostics<'a, L> {
+        FinalizedDiagnostics {
+            loader: self.loader,
+            diagnostics: self.diagnostics.diagnostics,
+        }
     }
 }
