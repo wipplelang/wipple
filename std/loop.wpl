@@ -1,0 +1,12 @@
+[[no-std]]
+
+while : condition body ~> loop {
+	if condition {
+		body
+		continue
+	} {
+		break ()
+	}
+}
+
+unless : condition body ~> while (not condition) body

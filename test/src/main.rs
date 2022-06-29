@@ -2,12 +2,13 @@ use clap::Parser;
 use colored::Colorize;
 use serde::Deserialize;
 use std::{
-    borrow::Cow,
     cell::RefCell,
-    fs,
+    env, fs,
     io::{self, Write},
     path::PathBuf,
+    sync::Arc,
 };
+use wipple_default_loader as loader;
 
 #[derive(Parser)]
 struct Args {
@@ -28,24 +29,38 @@ struct Args {
 fn main() -> anyhow::Result<()> {
     let args = Args::parse();
 
+    let mut loader = loader::Loader::new(
+        String::new(),
+        Some(wipple_compiler::FilePath::Path(
+            wipple_compiler::helpers::InternedString::new(
+                env::current_dir()
+                    .unwrap()
+                    .join("std/std.wpl")
+                    .as_os_str()
+                    .to_str()
+                    .unwrap(),
+            ),
+        )),
+    );
+
     let mut pass_count = 0usize;
     let mut fail_count = 0usize;
     let mut results = Vec::new();
 
     let mut run_path = |path: PathBuf| -> anyhow::Result<()> {
-        let test_name = path.with_extension("");
-        let test_name = test_name
-            .file_name()
-            .unwrap()
-            .to_string_lossy()
-            .into_owned();
+        let test_name = path.to_string_lossy().into_owned();
 
-        eprint!("{} {}", " RUN ".black().on_bright_black(), test_name);
+        eprint!(
+            "{} {}",
+            " RUNS ".black().on_bright_black(),
+            test_name.as_str().bold()
+        );
 
         let file = fs::File::open(&path)?;
         let test_case = serde_yaml::from_reader(file)?;
         let result = run(
             &test_case,
+            wipple_compiler::Compiler::new(&mut loader),
             #[cfg(debug_assertions)]
             args.debug,
             #[cfg(debug_assertions)]
@@ -58,7 +73,7 @@ fn main() -> anyhow::Result<()> {
             eprintln!(
                 "\r{} {}",
                 " PASS ".bright_white().on_bright_green(),
-                path.to_string_lossy().bold()
+                test_name.as_str().bold()
             );
         } else {
             fail_count += 1;
@@ -66,7 +81,7 @@ fn main() -> anyhow::Result<()> {
             eprintln!(
                 "\r{} {}",
                 " FAIL ".bright_white().on_bright_red(),
-                path.to_string_lossy().bold()
+                test_name.as_str().bold()
             );
 
             if !result.output_diff.is_empty() {
@@ -90,9 +105,14 @@ fn main() -> anyhow::Result<()> {
     if args.path.is_file() {
         run_path(args.path)?;
     } else {
-        for entry in fs::read_dir(args.path)? {
-            let path = entry?.path();
-            run_path(path)?;
+        let mut entries = fs::read_dir(args.path)?
+            .map(|entry| entry.map(|e| e.path()))
+            .collect::<Result<Vec<_>, _>>()?;
+
+        entries.sort_unstable();
+
+        for entry in entries {
+            run_path(entry)?;
         }
     }
 
@@ -204,54 +224,27 @@ impl TestResult {
 
 fn run(
     test_case: &TestCase,
+    mut compiler: wipple_compiler::Compiler<loader::Loader>,
     #[cfg(debug_assertions)] debug: bool,
     #[cfg(debug_assertions)] trace: bool,
 ) -> anyhow::Result<TestResult> {
-    struct Loader {
-        code: String,
-    }
+    let test_path = wipple_compiler::helpers::InternedString::new("test");
 
-    impl wipple_compiler::Loader for Loader {
-        type Error = anyhow::Error;
-
-        fn load(
-            &mut self,
-            path: wipple_compiler::FilePath,
-            _: Option<wipple_compiler::FilePath>,
-        ) -> Result<(wipple_compiler::FilePath, Cow<'static, str>), Self::Error> {
-            match path {
-                wipple_compiler::FilePath::Virtual(path) if path.as_str() == "test" => Ok((
-                    wipple_compiler::FilePath::Virtual(path),
-                    Cow::Owned(self.code.clone()),
-                )),
-                wipple_compiler::FilePath::Prelude => Ok((
-                    wipple_compiler::FilePath::Prelude,
-                    Cow::Borrowed(include_str!("../../support/prelude.wpl")),
-                )),
-                _ => unimplemented!(),
-            }
-        }
-    }
-
-    let loader = Loader {
-        code: test_case.code.clone(),
-    };
-
-    let mut compiler = wipple_compiler::Compiler::new(loader);
-
-    let path =
-        wipple_compiler::FilePath::Virtual(wipple_compiler::helpers::InternedString::new("test"));
+    compiler
+        .loader
+        .virtual_paths
+        .insert(test_path, Arc::from(test_case.code.as_str()));
 
     let program = compiler
-        .build(path)
+        .build(wipple_compiler::FilePath::Virtual(test_path))
         .map(|program| compiler.optimize(program));
 
-    let (_, diagnostics) = compiler.finish();
+    let diagnostics = compiler.finish();
     let success = !diagnostics.contains_errors();
 
     #[cfg(debug_assertions)]
     if debug {
-        println!("{:#?}", program);
+        println!("{:#?}", program.as_ref().map(|p| &p.body));
     }
 
     let output = {
@@ -273,7 +266,7 @@ fn run(
         String::from_utf8(buf.into_inner()).unwrap()
     };
 
-    let diagnostics = {
+    let mut diagnostics = {
         let mut buf = Vec::new();
         {
             let (codemap, diagnostics) = diagnostics.into_console_friendly(
@@ -287,6 +280,8 @@ fn run(
 
         String::from_utf8(buf).unwrap()
     };
+
+    diagnostics = diagnostics.replace(env!("CARGO_WORKSPACE_DIR"), "<dir>/");
 
     Ok(TestResult {
         output_diff: diff(test_case.output.trim(), output.trim()),

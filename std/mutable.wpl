@@ -1,0 +1,32 @@
+[[no-std]]
+
+use "./fp.wpl"
+use "./math.wpl"
+
+[help "Create a new `Mutable` value."]
+mutable :: A => A -> Mutable A
+mutable : x -> external "builtin" "make-mutable" x
+
+[help "Retrieve the value inside a `Mutable`."]
+get :: A => Mutable A -> A
+get : m -> external "builtin" "get-mutable" m
+
+[help "Update the value contained inside a `Mutable`."]
+set! :: A => A -> Mutable A -> ()
+set! : x -> m -> external "builtin" "set-mutable" m x
+
+[help "Swap the contents of two `Mutable` values."]
+swap! :: A => Mutable A -> Mutable A -> ()
+swap! : a -> b -> {
+	temp : get a
+	a . set! b
+	b . set! temp
+}
+
+[help "Add a value to a `Mutable` value."]
+add! :: Left Right where (Add Left Right Left) => Right -> Mutable Left -> ()
+add! : x -> m -> m . set! (get m + x)
+
+[help "Increment a `Mutable` value."]
+increment! :: A where (Add A Number A) => Mutable A -> ()
+increment! : add! 1

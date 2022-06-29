@@ -1,4 +1,4 @@
-use crate::{parse::Span, FilePath};
+use crate::{parse::Span, FilePath, Loader};
 use serde::Serialize;
 use std::{
     cmp::Ordering,
@@ -108,7 +108,6 @@ impl Note {
 
 #[derive(Debug, Default)]
 pub struct Diagnostics {
-    pub files: HashMap<FilePath, Arc<str>>,
     pub diagnostics: Vec<Diagnostic>,
 }
 
@@ -117,14 +116,18 @@ impl Diagnostics {
         Default::default()
     }
 
-    pub fn add_file(&mut self, path: FilePath, code: Arc<str>) {
-        self.files.insert(path, code);
-    }
-
     pub fn add(&mut self, diagnostic: Diagnostic) {
         self.diagnostics.push(diagnostic);
     }
+}
 
+#[derive(Debug)]
+pub struct FinalizedDiagnostics<'a, L> {
+    pub loader: &'a mut L,
+    pub diagnostics: Vec<Diagnostic>,
+}
+
+impl<'a, L: Loader> FinalizedDiagnostics<'a, L> {
     pub fn contains_errors(&self) -> bool {
         self.diagnostics
             .iter()
@@ -140,7 +143,6 @@ impl Diagnostics {
         let mut codemap = codemap::CodeMap::new();
         let mut diagnostics = Vec::new();
 
-        let files = &self.files;
         let mut tracked_files = HashMap::<FilePath, Arc<codemap::File>>::new();
         for diagnostic in self.diagnostics {
             let diagnostic = codemap_diagnostic::Diagnostic {
@@ -167,10 +169,10 @@ impl Diagnostics {
                             Entry::Vacant(entry) => {
                                 let file = codemap.add_file(
                                     note.span.path.to_string(),
-                                    files
+                                    self.loader
+                                        .source_map()
                                         .get(&note.span.path)
-                                        .map(|s| &**s)
-                                        .unwrap_or("<unknown>")
+                                        .expect("file not loaded")
                                         .to_string(),
                                 );
 

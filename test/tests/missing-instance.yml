@@ -7,12 +7,12 @@ output: |
 
 diagnostics: |
     error: missing instance
-       --> prelude:107:17
-        |
-    107 | show :: A where (Show A) => A -> ()
-        |                 ^^^^^^^^ could not find instance `Show Foo`
+      --> <dir>/std/output.wpl:17:17
+       |
+    17 | show :: A where (Show A) => A -> ()
+       |                 ^^^^^^^^ could not find instance `Show Foo`
     error: missing instance
-       --> prelude:108:33
-        |
-    108 | show : x -> print (format "_\n" x)
-        |                                 ^ could not find instance `Show Foo`
+      --> <dir>/std/output.wpl:18:33
+       |
+    18 | show : x -> print (format "_\n" x)
+       |                                 ^ could not find instance `Show Foo`

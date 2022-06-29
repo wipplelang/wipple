@@ -14,4 +14,5 @@ serde = "1"
 serde_yaml = "0.8"
 similar = "2"
 wipple-compiler = { path = "../compiler", features = ["clap"] }
+wipple-default-loader = { path = "../loaders/default" }
 wipple-interpreter-backend = { path = "../backends/interpreter" }

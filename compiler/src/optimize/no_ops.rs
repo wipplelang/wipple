@@ -5,7 +5,7 @@ use crate::{
 };
 use std::mem;
 
-impl<L> Compiler<L> {
+impl<L> Compiler<'_, L> {
     pub(super) fn optimize_no_ops(&mut self, program: &mut Program) {
         for constant in program.constants.values_mut() {
             constant.traverse(|expr| {

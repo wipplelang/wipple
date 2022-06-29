@@ -12,10 +12,10 @@ pub enum Token<'src> {
     #[token(")")]
     RightParenthesis,
 
-    #[token("[:")]
+    #[token("[[")]
     LeftFileBracket,
 
-    #[token(":]")]
+    #[token("]]")]
     RightFileBracket,
 
     #[token("[")]

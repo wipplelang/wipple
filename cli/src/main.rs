@@ -2,12 +2,14 @@ use clap::Parser;
 use std::{
     env, fs,
     io::{self, Read, Write},
+    mem,
     os::unix::prelude::PermissionsExt,
     path::PathBuf,
     process::ExitCode,
     str::FromStr,
 };
-use wipple_compiler::Compiler;
+use wipple_compiler::{Compiler, Loader};
+use wipple_default_loader as loader;
 
 #[derive(Parser)]
 #[clap(
@@ -143,6 +145,12 @@ fn run() -> anyhow::Result<()> {
 struct BuildOptions {
     path: String,
 
+    #[clap(long, default_value = loader::STD_URL)]
+    std: String,
+
+    #[clap(long, conflicts_with = "std")]
+    no_std: bool,
+
     #[cfg(debug_assertions)]
     #[clap(long)]
     debug: bool,
@@ -152,99 +160,21 @@ struct BuildOptions {
     trace: bool,
 }
 
-mod loader {
-    use reqwest::Url;
-    use std::{borrow::Cow, collections::HashMap, fs, path::PathBuf, str::FromStr};
-    use wipple_compiler::{helpers::InternedString, FilePath};
-
-    pub type SourceMap = HashMap<wipple_compiler::FilePath, Cow<'static, str>>;
-
-    pub struct Loader {
-        pub base: String,
-        pub source_map: SourceMap,
-    }
-
-    impl wipple_compiler::Loader for Loader {
-        type Error = anyhow::Error;
-
-        fn load(
-            &mut self,
-            path: FilePath,
-            current: Option<FilePath>,
-        ) -> Result<(FilePath, Cow<'static, str>), Self::Error> {
-            match path {
-                FilePath::Path(path) => {
-                    let (path, code) = match Url::from_str(&path) {
-                        Ok(url) => (FilePath::Path(path), download(url)?),
-                        Err(_) => {
-                            let base = match current {
-                                Some(FilePath::Path(path)) => path.as_str(),
-                                Some(_) => panic!("cannot load file from virtual path or prelude"),
-                                None => &self.base,
-                            };
-
-                            let parsed_path = PathBuf::from(path.as_str());
-
-                            if parsed_path.is_relative() {
-                                match Url::from_str(base) {
-                                    Ok(base) => {
-                                        let url = base.join(path.as_str())?;
-
-                                        (
-                                            FilePath::Path(InternedString::from(url.to_string())),
-                                            download(url)?,
-                                        )
-                                    }
-                                    Err(_) => {
-                                        let path = PathBuf::from(&self.base)
-                                            .parent()
-                                            .unwrap()
-                                            .join(parsed_path);
-
-                                        (
-                                            FilePath::Path(InternedString::new(
-                                                path.to_str().unwrap(),
-                                            )),
-                                            fs::read_to_string(path)?,
-                                        )
-                                    }
-                                }
-                            } else {
-                                (FilePath::Path(path), fs::read_to_string(parsed_path)?)
-                            }
-                        }
-                    };
-
-                    // FIXME: Return a stable reference to the code inside the
-                    // source map instead of cloning
-                    self.source_map.insert(path, Cow::Owned(code.clone()));
-
-                    Ok((path, Cow::Owned(code)))
-                }
-                FilePath::Virtual(_) => Err(anyhow::Error::msg("virtual paths are not supported")),
-                FilePath::Prelude => {
-                    let code = include_str!("../../support/prelude.wpl");
-                    self.source_map.insert(path, Cow::Borrowed(code));
-
-                    Ok((FilePath::Prelude, Cow::Borrowed(code)))
-                }
-                _ => unimplemented!(),
-            }
-        }
-    }
-
-    fn download(url: Url) -> anyhow::Result<String> {
-        Ok(reqwest::blocking::get(url)?.text()?)
-    }
-}
-
-fn build(options: BuildOptions) -> Option<(wipple_compiler::compile::Program, loader::SourceMap)> {
+fn build(
+    options: BuildOptions,
+) -> Option<(
+    wipple_compiler::compile::Program,
+    wipple_compiler::SourceMap,
+)> {
     build_with_passes(options, |_, program| program)
 }
 
 fn build_and_optimize(
     options: BuildOptions,
-) -> Option<(wipple_compiler::optimize::Program, loader::SourceMap)> {
+) -> Option<(
+    wipple_compiler::optimize::Program,
+    wipple_compiler::SourceMap,
+)> {
     build_with_passes(options, |compiler, program| {
         compiler.lint(&program);
         compiler.optimize(program)
@@ -254,7 +184,7 @@ fn build_and_optimize(
 fn build_with_passes<P: std::fmt::Debug>(
     options: BuildOptions,
     passes: impl FnOnce(&mut Compiler<loader::Loader>, wipple_compiler::compile::Program) -> P,
-) -> Option<(P, loader::SourceMap)> {
+) -> Option<(P, wipple_compiler::SourceMap)> {
     #[cfg(debug_assertions)]
     let progress_bar = None::<indicatif::ProgressBar>;
 
@@ -268,8 +198,8 @@ fn build_with_passes<P: std::fmt::Debug>(
 
         if let Some(progress_bar) = progress_bar.as_ref() {
             match progress {
-                build::Progress::Resolving { count } => {
-                    progress_bar.set_message(format!("Resolving {} files", count))
+                build::Progress::Resolving { path, count } => {
+                    progress_bar.set_message(format!("({count} files) Resolving {}", path))
                 }
                 build::Progress::Lowering {
                     path,
@@ -290,19 +220,31 @@ fn build_with_passes<P: std::fmt::Debug>(
         }
     };
 
-    let loader = loader::Loader {
-        base: env::current_dir().unwrap().to_string_lossy().into_owned(),
-        source_map: Default::default(),
-    };
+    let mut loader = loader::Loader::new(
+        env::current_dir().unwrap().to_string_lossy().into_owned(),
+        (!options.no_std).then(|| {
+            wipple_compiler::FilePath::Path(wipple_compiler::helpers::InternedString::new(
+                if loader::is_url(&options.std) {
+                    options.std
+                } else {
+                    PathBuf::from(options.std)
+                        .canonicalize()
+                        .unwrap()
+                        .to_string_lossy()
+                        .into_owned()
+                },
+            ))
+        }),
+    );
 
-    let mut compiler = Compiler::new(loader);
+    let mut compiler = Compiler::new(&mut loader);
 
     let path = wipple_compiler::FilePath::Path(options.path.into());
     let program = compiler.build_with_progress(path, progress);
 
     let program = program.map(|program| passes(&mut compiler, program));
 
-    let (loader, diagnostics) = compiler.finish();
+    let diagnostics = compiler.finish();
     let success = !diagnostics.contains_errors();
 
     if let Some(progress_bar) = progress_bar {
@@ -329,6 +271,6 @@ fn build_with_passes<P: std::fmt::Debug>(
     }
 
     success
-        .then(|| program.map(|program| (program, loader.source_map)))
+        .then(|| program.map(|program| (program, mem::take(loader.source_map()))))
         .flatten()
 }

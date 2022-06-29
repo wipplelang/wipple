@@ -9,7 +9,7 @@ pub use span::*;
 
 use crate::{helpers::InternedString, Compiler, FilePath};
 
-impl<L> Compiler<L> {
+impl<L> Compiler<'_, L> {
     pub fn parse(&mut self, file: FilePath, code: &str) -> Option<File> {
         let (shebang, code) = match grammar::parse_shebang(code) {
             Some((shebang, code)) => (Some(shebang), code),
@@ -24,10 +24,11 @@ impl<L> Compiler<L> {
             diagnostics: &mut self.diagnostics,
         };
 
-        parser.parse_file().map(|statements| File {
+        parser.parse_file().map(|(attributes, statements)| File {
             path: file,
             span: parser.file_span(),
             shebang: shebang.map(InternedString::new),
+            attributes,
             statements,
         })
     }

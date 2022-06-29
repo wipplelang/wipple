@@ -1,7 +1,7 @@
 use crate::{compile, diagnostics::*, Compiler};
 use std::collections::BTreeSet;
 
-impl<L> Compiler<L> {
+impl<L> Compiler<'_, L> {
     pub fn lint_unused(&mut self, program: &compile::Program) {
         let mut used_variables = BTreeSet::new();
         let mut find_used_variables = |expr: &compile::typecheck::Expression| {

@@ -75,7 +75,7 @@ pub struct Arm {
     pub body: Expression,
 }
 
-impl<L> Compiler<L> {
+impl<L> Compiler<'_, L> {
     pub fn optimize(&mut self, program: compile::Program) -> Program {
         let mut program = Program::from(program);
 

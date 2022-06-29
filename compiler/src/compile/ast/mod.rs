@@ -177,8 +177,8 @@ pub struct Bound {
     pub parameters: Vec<TypeAnnotation>,
 }
 
-impl<L> Compiler<L> {
-    pub fn build_ast(&mut self, file: expand::File) -> File {
+impl<L> Compiler<'_, L> {
+    pub fn build_ast(&mut self, file: expand::File<L>) -> File {
         File {
             path: file.path,
             span: file.span,
