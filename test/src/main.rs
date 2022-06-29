@@ -266,7 +266,7 @@ fn run(
         String::from_utf8(buf.into_inner()).unwrap()
     };
 
-    let diagnostics = {
+    let mut diagnostics = {
         let mut buf = Vec::new();
         {
             let (codemap, diagnostics) = diagnostics.into_console_friendly(
@@ -280,6 +280,8 @@ fn run(
 
         String::from_utf8(buf).unwrap()
     };
+
+    diagnostics = diagnostics.replace(env!("CARGO_WORKSPACE_DIR"), "<dir>/");
 
     Ok(TestResult {
         output_diff: diff(test_case.output.trim(), output.trim()),
