@@ -15,11 +15,14 @@ anyhow = "1"
 codemap = "=0.1.2"
 codemap-diagnostic = "0.1"
 console_error_panic_hook = { version = "0.1.6", optional = true }
+force-send-sync = "1"
 itertools = "0.10"
 js-sys = "0.3"
+lazy_static = "1"
 serde = { version = "1.0", features = ["derive"] }
 wasm-bindgen = { version = "0.2", features = ["serde-serialize"] }
-web-sys = { version = "0.3", features = ["console"] }
+wasm-bindgen-futures = "0.4"
+web-sys = { version = "0.3", features = ["Response", "Request", "WorkerGlobalScope"] }
 wipple-compiler = { path = "../../../compiler" }
 wipple-default-loader = { path = "../../../loaders/default" }
 wipple-interpreter-backend = { path = "../../../backends/interpreter" }

@@ -2,7 +2,7 @@ use crate::{
     compile::{self, typecheck},
     helpers::InternedString,
     parse::Span,
-    Compiler, MonomorphizedConstantId, VariableId,
+    Compiler, Loader, MonomorphizedConstantId, VariableId,
 };
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
@@ -75,7 +75,7 @@ pub struct Arm {
     pub body: Expression,
 }
 
-impl<L> Compiler<'_, L> {
+impl<L: Loader> Compiler<L> {
     pub fn optimize(&mut self, program: compile::Program) -> Program {
         let mut program = Program::from(program);
 

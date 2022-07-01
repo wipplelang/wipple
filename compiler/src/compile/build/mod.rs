@@ -6,7 +6,9 @@ use crate::{
     parse::Span,
     Compiler, FilePath, Loader,
 };
-use std::{cell::Cell, rc::Rc};
+use async_recursion::async_recursion;
+use parking_lot::Mutex;
+use std::sync::{atomic::AtomicUsize, Arc};
 
 #[derive(Debug)]
 pub enum Progress {
@@ -22,27 +24,31 @@ pub enum Progress {
     Typechecking(compile::typecheck::Progress),
 }
 
-impl<L: Loader> Compiler<'_, L> {
-    pub fn build(&mut self, path: FilePath) -> Option<Program> {
-        self.build_with_progress(path, |_| {})
+impl<L: Loader> Compiler<L> {
+    pub async fn build(&mut self, path: FilePath) -> Option<Program> {
+        self.build_with_progress(path, |_| {}).await
     }
 
-    pub fn build_with_progress(
+    pub async fn build_with_progress(
         &mut self,
         path: FilePath,
-        mut progress: impl FnMut(Progress),
+        progress: impl Fn(Progress) + Send + Sync + 'static,
     ) -> Option<Program> {
-        let mut files = indexmap::IndexMap::new();
+        let progress = Arc::new(Mutex::new(progress));
 
-        fn load<L: Loader>(
-            compiler: &mut Compiler<L>,
+        let files: Arc<Mutex<indexmap::IndexMap<FilePath, Arc<compile::expand::File<L>>>>> =
+            Default::default();
+
+        #[async_recursion]
+        async fn load<L: Loader>(
+            compiler: &Compiler<L>,
             path: FilePath,
             source_path: Option<FilePath>,
             source_span: Option<Span>,
-            progress: &mut impl FnMut(Progress),
-            count: Rc<Cell<usize>>,
-            files: &mut indexmap::IndexMap<FilePath, Rc<compile::expand::File<L>>>,
-        ) -> Option<Rc<compile::expand::File<L>>> {
+            progress: Arc<Mutex<impl Fn(Progress) + Send + Sync + 'static>>,
+            count: Arc<AtomicUsize>,
+            files: Arc<Mutex<indexmap::IndexMap<FilePath, Arc<compile::expand::File<L>>>>>,
+        ) -> Option<Arc<compile::expand::File<L>>> {
             macro_rules! try_load {
                 ($expr:expr) => {
                     match $expr {
@@ -64,44 +70,66 @@ impl<L: Loader> Compiler<'_, L> {
 
             let resolved_path = try_load!(compiler.loader.resolve(path, source_path));
 
-            if let Some(cached) = compiler.loader.cache().get(&resolved_path) {
+            if let Some(cached) = compiler.loader.cache().lock().get(&resolved_path) {
                 return Some(cached.clone());
             }
 
-            count.set(count.get() + 1);
-            progress(Progress::Resolving {
-                path: resolved_path,
-                count: count.get(),
-            });
+            {
+                let count = count.fetch_add(1, std::sync::atomic::Ordering::Relaxed) + 1;
+                progress.lock()(Progress::Resolving {
+                    path: resolved_path,
+                    count,
+                });
+            }
 
-            let code = try_load!(compiler.loader.load(resolved_path));
+            let code = try_load!(compiler.loader.load(resolved_path).await);
 
             let file = compiler.parse(resolved_path, &code)?;
-            let file = compiler.expand(file, |compiler, new_path| {
-                load(
-                    compiler,
-                    new_path,
-                    Some(resolved_path),
-                    source_span,
-                    progress,
-                    count.clone(),
-                    files,
-                )
-            })?;
+            let file = compiler
+                .expand(file, {
+                    let progress = progress.clone();
+                    let count = count.clone();
+                    let files = files.clone();
 
-            let file = Rc::new(file);
+                    move |compiler, new_path| {
+                        let progress = progress.clone();
+                        let count = count.clone();
+                        let files = files.clone();
+
+                        Box::pin(async move {
+                            load(
+                                compiler,
+                                new_path,
+                                Some(resolved_path),
+                                source_span,
+                                progress,
+                                count,
+                                files,
+                            )
+                            .await
+                        })
+                    }
+                })
+                .await?;
+
+            let file = Arc::new(file);
 
             // Don't cache virtual or builtin paths
             if matches!(resolved_path, FilePath::Path(_)) {
-                compiler.loader.cache().insert(resolved_path, file.clone());
+                compiler
+                    .loader
+                    .cache()
+                    .lock()
+                    .insert(resolved_path, file.clone());
             }
 
             compiler
                 .loader
                 .source_map()
+                .lock()
                 .insert(resolved_path, code.clone());
 
-            files.insert(resolved_path, file.clone());
+            files.lock().insert(resolved_path, file.clone());
 
             Some(file)
         }
@@ -111,18 +139,19 @@ impl<L: Loader> Compiler<'_, L> {
             path,
             None,
             None,
-            &mut progress,
+            progress.clone(),
             Default::default(),
-            &mut files,
-        )?;
+            files.clone(),
+        )
+        .await?;
 
         let mut cache = indexmap::IndexMap::new();
 
         fn lower<L: Loader>(
             compiler: &mut Compiler<L>,
-            file: Rc<compile::expand::File<L>>,
-            cache: &mut indexmap::IndexMap<FilePath, Rc<compile::lower::File>>,
-        ) -> Rc<compile::lower::File> {
+            file: Arc<compile::expand::File<L>>,
+            cache: &mut indexmap::IndexMap<FilePath, Arc<compile::lower::File>>,
+        ) -> Arc<compile::lower::File> {
             let path = file.path;
 
             if let Some(file) = cache.get(&path) {
@@ -138,14 +167,16 @@ impl<L: Loader> Compiler<'_, L> {
 
             let file = compiler.build_ast((*file).clone());
 
-            let file = Rc::new(compiler.lower(file, dependencies));
+            let file = Arc::new(compiler.lower(file, dependencies));
             cache.insert(path, file.clone());
 
             file
         }
 
         #[allow(clippy::needless_collect)] // needed for diagnostics below
-        let lowered_files = files
+        let lowered_files = Arc::try_unwrap(files)
+            .unwrap_or_else(|_| unreachable!())
+            .into_inner()
             .into_values()
             .map(|file| lower(self, file, &mut cache))
             .collect::<Vec<_>>();
@@ -154,9 +185,11 @@ impl<L: Loader> Compiler<'_, L> {
 
         let lowered_files = lowered_files
             .into_iter()
-            .map(|file| Rc::try_unwrap(file).unwrap())
+            .map(|file| Arc::try_unwrap(file).unwrap())
             .collect::<Vec<_>>();
 
-        self.typecheck_with_progress(lowered_files, |p| progress(Progress::Typechecking(p)))
+        self.typecheck_with_progress(lowered_files, |p| {
+            progress.lock()(Progress::Typechecking(p))
+        })
     }
 }

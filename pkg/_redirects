@@ -1,0 +1,2 @@
+/github/* https://raw.githubusercontent.com/:splat 200
+/gist/* https://gist.githubusercontent.com/:splat 200

@@ -12,27 +12,30 @@ use crate::{
     parse::{self, Span},
     Compiler, FilePath, Loader, TemplateId,
 };
+use async_recursion::async_recursion;
+use futures::StreamExt;
+use futures::{future::BoxFuture, stream::FuturesOrdered};
+use parking_lot::Mutex;
 use rust_decimal::Decimal;
 use std::{
-    cell::RefCell,
     cmp::Ordering,
     collections::{BTreeMap, HashMap, VecDeque},
-    rc::Rc,
+    sync::Arc,
 };
 use strum::EnumString;
 
 #[derive(Debug)]
-pub struct File<L> {
+pub struct File<L: Loader> {
     pub path: FilePath,
     pub span: Span,
     pub attributes: FileAttributes,
     pub declarations: Declarations<L>,
     pub exported: ScopeValues,
     pub statements: Vec<Statement>,
-    pub dependencies: Vec<Rc<File<L>>>,
+    pub dependencies: Vec<Arc<File<L>>>,
 }
 
-impl<L> Clone for File<L> {
+impl<L: Loader> Clone for File<L> {
     fn clone(&self) -> Self {
         Self {
             path: self.path,
@@ -108,11 +111,11 @@ pub enum NodeKind {
     Continue,
 }
 
-pub struct Declarations<L> {
+pub struct Declarations<L: Loader> {
     templates: BTreeMap<TemplateId, Template<L>>,
 }
 
-impl<L> Default for Declarations<L> {
+impl<L: Loader> Default for Declarations<L> {
     fn default() -> Self {
         Declarations {
             templates: Default::default(),
@@ -120,13 +123,13 @@ impl<L> Default for Declarations<L> {
     }
 }
 
-impl<L> Declarations<L> {
+impl<L: Loader> Declarations<L> {
     fn merge(&mut self, other: Self) {
         self.templates.extend(other.templates);
     }
 }
 
-impl<L> std::fmt::Debug for Declarations<L> {
+impl<L: Loader> std::fmt::Debug for Declarations<L> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Declarations")
             .field("templates", &self.templates)
@@ -134,7 +137,7 @@ impl<L> std::fmt::Debug for Declarations<L> {
     }
 }
 
-impl<L> Clone for Declarations<L> {
+impl<L: Loader> Clone for Declarations<L> {
     fn clone(&self) -> Self {
         Self {
             templates: self.templates.clone(),
@@ -142,27 +145,30 @@ impl<L> Clone for Declarations<L> {
     }
 }
 
-impl<L: Loader> Compiler<'_, L> {
-    pub fn expand(
-        &mut self,
+impl<L: Loader> Compiler<L> {
+    pub async fn expand(
+        &self,
         file: parse::File,
-        mut load: impl FnMut(&mut Compiler<L>, FilePath) -> Option<Rc<File<L>>>,
+        load: impl Fn(&Compiler<L>, FilePath) -> BoxFuture<Option<Arc<File<L>>>> + 'static + Send + Sync,
     ) -> Option<File<L>> {
         let mut expander = Expander {
-            compiler: self,
+            compiler: self.clone(),
             declarations: Default::default(),
             dependencies: Default::default(),
-            load: &mut load,
+            load: Arc::new(load),
         };
 
         let scope = Scope::default();
         builtins::load_builtins(&mut expander, &scope);
 
-        let attributes = expander.expand_file_attributes(file.attributes, &scope);
+        let attributes = expander
+            .expand_file_attributes(file.attributes, &scope)
+            .await;
 
         if !attributes.no_std {
-            if let Some(std_path) = expander.compiler.loader.std_path() {
-                let file = (expander.load)(expander.compiler, std_path)?;
+            let std_path = expander.compiler.loader.std_path();
+            if let Some(std_path) = std_path {
+                let file = (expander.load)(&expander.compiler, std_path).await?;
                 expander.add_dependency(file, &scope);
             } else {
                 expander.compiler.diagnostics.add(Diagnostic::new(
@@ -176,31 +182,34 @@ impl<L: Loader> Compiler<'_, L> {
             }
         }
 
-        let (statements, exported) = expander.expand_block(file.statements, &scope);
+        let (statements, exported) = expander.expand_block(file.statements, &scope).await;
 
         Some(File {
             path: file.path,
             span: file.span,
             statements,
             attributes,
-            declarations: expander.declarations,
+            declarations: Arc::try_unwrap(expander.declarations).unwrap().into_inner(),
             exported,
-            dependencies: expander.dependencies,
+            dependencies: Arc::try_unwrap(expander.dependencies)
+                .unwrap_or_else(|_| unreachable!())
+                .into_inner(),
         })
     }
 }
 
-struct Expander<'a, 'l, L> {
-    compiler: &'a mut Compiler<'l, L>,
-    declarations: Declarations<L>,
-    dependencies: Vec<Rc<File<L>>>,
-    load: &'a mut dyn FnMut(&mut Compiler<L>, FilePath) -> Option<Rc<File<L>>>,
+#[derive(Clone)]
+struct Expander<L: Loader> {
+    compiler: Compiler<L>,
+    declarations: Arc<Mutex<Declarations<L>>>,
+    dependencies: Arc<Mutex<Vec<Arc<File<L>>>>>,
+    load: Arc<dyn Fn(&Compiler<L>, FilePath) -> BoxFuture<Option<Arc<File<L>>>> + Send + Sync>,
 }
 
 #[derive(Debug, Clone, Default)]
 pub struct Scope<'a> {
     parent: Option<&'a Scope<'a>>,
-    values: RefCell<ScopeValues>,
+    values: Arc<Mutex<ScopeValues>>,
 }
 
 pub type ScopeValues = HashMap<InternedString, ScopeValue>;
@@ -224,7 +233,7 @@ impl<'a> Scope<'a> {
         let mut result = None;
 
         while let Some(scope) = parent {
-            if let Some(value) = scope.values.borrow().get(&name).cloned() {
+            if let Some(value) = scope.values.lock().get(&name).cloned() {
                 result = Some(value);
                 break;
             }
@@ -236,12 +245,12 @@ impl<'a> Scope<'a> {
     }
 }
 
-struct Template<L> {
+struct Template<L: Loader> {
     span: Span,
     body: TemplateBody<L>,
 }
 
-impl<L> Clone for Template<L> {
+impl<L: Loader> Clone for Template<L> {
     fn clone(&self) -> Self {
         Self {
             span: self.span,
@@ -250,7 +259,7 @@ impl<L> Clone for Template<L> {
     }
 }
 
-impl<L> std::fmt::Debug for Template<L> {
+impl<L: Loader> std::fmt::Debug for Template<L> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Template")
             .field("span", &self.span)
@@ -259,23 +268,25 @@ impl<L> std::fmt::Debug for Template<L> {
     }
 }
 
-enum TemplateBody<L> {
+enum TemplateBody<L: Loader> {
     Syntax(Vec<InternedString>, Node),
     Function(
-        Rc<
-            dyn Fn(
-                &mut Expander<L>,
-                Span,
-                Vec<Node>,
-                Option<&mut FileAttributes>,
-                Option<&mut StatementAttributes>,
-                &Scope,
-            ) -> Node,
+        Arc<
+            dyn for<'a> Fn(
+                    &'a Expander<L>,
+                    Span,
+                    Vec<Node>,
+                    Option<&'a mut FileAttributes>,
+                    Option<&'a mut StatementAttributes>,
+                    &'a Scope,
+                ) -> BoxFuture<'a, Node>
+                + Send
+                + Sync,
         >,
     ),
 }
 
-impl<L> Clone for TemplateBody<L> {
+impl<L: Loader> Clone for TemplateBody<L> {
     fn clone(&self) -> Self {
         match self {
             TemplateBody::Syntax(inputs, node) => {
@@ -286,7 +297,7 @@ impl<L> Clone for TemplateBody<L> {
     }
 }
 
-impl<L> std::fmt::Debug for TemplateBody<L> {
+impl<L: Loader> std::fmt::Debug for TemplateBody<L> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Syntax(inputs, node) => {
@@ -297,7 +308,7 @@ impl<L> std::fmt::Debug for TemplateBody<L> {
     }
 }
 
-impl<L> Template<L> {
+impl<L: Loader> Template<L> {
     fn syntax(span: Span, inputs: Vec<InternedString>, node: Node) -> Self {
         Template {
             span,
@@ -307,19 +318,21 @@ impl<L> Template<L> {
 
     fn function(
         span: Span,
-        f: impl Fn(
-                &mut Expander<L>,
+        f: impl for<'a> Fn(
+                &'a Expander<L>,
                 Span,
                 Vec<Node>,
-                Option<&mut FileAttributes>,
-                Option<&mut StatementAttributes>,
-                &Scope,
-            ) -> Node
-            + 'static,
+                Option<&'a mut FileAttributes>,
+                Option<&'a mut StatementAttributes>,
+                &'a Scope,
+            ) -> BoxFuture<'a, Node>
+            + 'static
+            + Send
+            + Sync,
     ) -> Self {
         Template {
             span,
-            body: TemplateBody::Function(Rc::new(f)),
+            body: TemplateBody::Function(Arc::new(f)),
         }
     }
 }
@@ -372,17 +385,17 @@ impl OperatorPrecedence {
     }
 }
 
-impl<L> Expander<'_, '_, L> {
-    fn add_dependency(&mut self, file: Rc<File<L>>, scope: &Scope) {
-        self.dependencies.push(file.clone());
-        scope.values.borrow_mut().extend(file.exported.clone());
-        self.declarations.merge(file.declarations.clone());
+impl<L: Loader> Expander<L> {
+    fn add_dependency(&self, file: Arc<File<L>>, scope: &Scope) {
+        self.dependencies.lock().push(file.clone());
+        scope.values.lock().extend(file.exported.clone());
+        self.declarations.lock().merge(file.declarations.clone());
     }
 
-    fn expand_file_attributes(
-        &mut self,
+    async fn expand_file_attributes(
+        &self,
         file_attributes: Vec<parse::Expr>,
-        scope: &Scope,
+        scope: &Scope<'_>,
     ) -> FileAttributes {
         macro_rules! assert_empty {
             ($node:expr, $span:expr) => {
@@ -404,15 +417,17 @@ impl<L> Expander<'_, '_, L> {
             match attribute.kind {
                 parse::ExprKind::Name(name) => {
                     if let Some(ScopeValue::Template(template)) = scope.get(name) {
-                        let node = self.expand_template(
-                            name,
-                            attribute.span,
-                            template,
-                            Vec::new(),
-                            Some(&mut attributes),
-                            None,
-                            scope,
-                        );
+                        let node = self
+                            .expand_template(
+                                name,
+                                attribute.span,
+                                template,
+                                Vec::new(),
+                                Some(&mut attributes),
+                                None,
+                                scope,
+                            )
+                            .await;
 
                         assert_empty!(node, attribute.span);
                     }
@@ -476,17 +491,21 @@ impl<L> Expander<'_, '_, L> {
 
                     let inputs = exprs
                         .map(|expr| self.expand_expr(expr, scope))
-                        .collect::<Vec<_>>();
+                        .collect::<FuturesOrdered<_>>()
+                        .collect::<Vec<_>>()
+                        .await;
 
-                    let node = self.expand_template(
-                        name,
-                        attribute.span,
-                        template,
-                        inputs,
-                        Some(&mut attributes),
-                        None,
-                        scope,
-                    );
+                    let node = self
+                        .expand_template(
+                            name,
+                            attribute.span,
+                            template,
+                            inputs,
+                            Some(&mut attributes),
+                            None,
+                            scope,
+                        )
+                        .await;
 
                     assert_empty!(node, attribute.span);
                 }
@@ -506,7 +525,8 @@ impl<L> Expander<'_, '_, L> {
         attributes
     }
 
-    fn expand_expr(&mut self, expr: parse::Expr, scope: &Scope) -> Node {
+    #[async_recursion]
+    async fn expand_expr(&self, expr: parse::Expr, scope: &Scope<'_>) -> Node {
         match expr.kind {
             parse::ExprKind::Underscore => Node {
                 span: expr.span,
@@ -524,22 +544,27 @@ impl<L> Expander<'_, '_, L> {
                 span: expr.span,
                 kind: NodeKind::Number(number),
             },
-            parse::ExprKind::List(list) => self.expand_list(
-                expr.span,
-                list.into_iter().flat_map(|line| line.exprs).collect(),
-                scope,
-            ),
+            parse::ExprKind::List(list) => {
+                self.expand_list(
+                    expr.span,
+                    list.into_iter().flat_map(|line| line.exprs).collect(),
+                    scope,
+                )
+                .await
+            }
             parse::ExprKind::ListLiteral(list) => Node {
                 span: expr.span,
                 kind: NodeKind::ListLiteral(
                     list.into_iter()
                         .flat_map(|line| line.exprs)
                         .map(|expr| self.expand_expr(expr, scope))
-                        .collect(),
+                        .collect::<FuturesOrdered<_>>()
+                        .collect::<Vec<_>>()
+                        .await,
                 ),
             },
             parse::ExprKind::Block(statements) => {
-                let (statements, _) = self.expand_block(statements, scope);
+                let (statements, _) = self.expand_block(statements, scope).await;
 
                 Node {
                     span: expr.span,
@@ -549,16 +574,16 @@ impl<L> Expander<'_, '_, L> {
         }
     }
 
-    fn expand_block(
-        &mut self,
+    async fn expand_block(
+        &self,
         statements: Vec<parse::Statement>,
-        scope: &Scope,
+        scope: &Scope<'_>,
     ) -> (Vec<Statement>, ScopeValues) {
         let scope = scope.child();
 
         let statements = statements
             .into_iter()
-            .filter_map(|statement| {
+            .map(|statement| async {
                 let mut lines = statement.lines.into_iter();
 
                 let (first_attributes, first_exprs) = match lines.next() {
@@ -604,22 +629,24 @@ impl<L> Expander<'_, '_, L> {
                 let treat_as_expr = exprs.len() == 1
                     && matches!(exprs.first().unwrap().kind, parse::ExprKind::List(_));
 
-                let mut node = self.expand_list(span, exprs, &scope);
+                let mut node = self.expand_list(span, exprs, &scope).await;
 
                 let mut attributes = StatementAttributes::default();
                 'attributes: for attribute in first_attributes.into_iter().rev() {
                     match attribute.kind {
                         parse::ExprKind::Name(name) => {
                             if let Some(ScopeValue::Template(template)) = scope.get(name) {
-                                node = self.expand_template(
-                                    name,
-                                    attribute.span,
-                                    template,
-                                    vec![node],
-                                    None,
-                                    Some(&mut attributes),
-                                    &scope,
-                                );
+                                node = self
+                                    .expand_template(
+                                        name,
+                                        attribute.span,
+                                        template,
+                                        vec![node],
+                                        None,
+                                        Some(&mut attributes),
+                                        &scope,
+                                    )
+                                    .await;
                             }
                         }
                         parse::ExprKind::List(lines) => {
@@ -681,18 +708,24 @@ impl<L> Expander<'_, '_, L> {
 
                             let inputs = exprs
                                 .map(|expr| self.expand_expr(expr, &scope))
+                                .collect::<FuturesOrdered<_>>()
+                                .collect::<Vec<_>>()
+                                .await
+                                .into_iter()
                                 .chain(std::iter::once(node))
                                 .collect::<Vec<_>>();
 
-                            node = self.expand_template(
-                                name,
-                                attribute.span,
-                                template,
-                                inputs,
-                                None,
-                                Some(&mut attributes),
-                                &scope,
-                            );
+                            node = self
+                                .expand_template(
+                                    name,
+                                    attribute.span,
+                                    template,
+                                    inputs,
+                                    None,
+                                    Some(&mut attributes),
+                                    &scope,
+                                )
+                                .await;
                         }
                         _ => {
                             self.compiler.diagnostics.add(Diagnostic::new(
@@ -713,12 +746,26 @@ impl<L> Expander<'_, '_, L> {
                     treat_as_expr,
                 })
             })
+            .collect::<FuturesOrdered<_>>()
+            .collect::<Vec<_>>()
+            .await
+            .into_iter()
+            .flatten()
             .collect();
 
-        (statements, scope.values.into_inner())
+        (
+            statements,
+            Arc::try_unwrap(scope.values).unwrap().into_inner(),
+        )
     }
 
-    fn expand_list(&mut self, list_span: Span, mut exprs: Vec<parse::Expr>, scope: &Scope) -> Node {
+    #[async_recursion]
+    async fn expand_list(
+        &self,
+        list_span: Span,
+        mut exprs: Vec<parse::Expr>,
+        scope: &Scope<'_>,
+    ) -> Node {
         match exprs.len() {
             0 => Node {
                 span: list_span,
@@ -733,15 +780,17 @@ impl<L> Expander<'_, '_, L> {
                             .into_iter()
                             .skip(1)
                             .map(|expr| self.expand_expr(expr, scope))
-                            .collect();
+                            .collect::<FuturesOrdered<_>>()
+                            .collect()
+                            .await;
 
-                        return self.expand_template(
-                            *name, list_span, template, inputs, None, None, scope,
-                        );
+                        return self
+                            .expand_template(*name, list_span, template, inputs, None, None, scope)
+                            .await;
                     }
                 }
 
-                self.expand_expr(expr, scope)
+                self.expand_expr(expr, scope).await
             }
             _ => {
                 let mut operators = VecDeque::new();
@@ -759,10 +808,17 @@ impl<L> Expander<'_, '_, L> {
 
                     if let parse::ExprKind::Name(name) = first.kind {
                         if let Some(ScopeValue::Template(template)) = scope.get(name) {
-                            let inputs = exprs.map(|expr| self.expand_expr(expr, scope)).collect();
-                            return self.expand_template(
-                                name, list_span, template, inputs, None, None, scope,
-                            );
+                            let inputs = exprs
+                                .map(|expr| self.expand_expr(expr, scope))
+                                .collect::<FuturesOrdered<_>>()
+                                .collect()
+                                .await;
+
+                            return self
+                                .expand_template(
+                                    name, list_span, template, inputs, None, None, scope,
+                                )
+                                .await;
                         }
                     }
 
@@ -772,7 +828,9 @@ impl<L> Expander<'_, '_, L> {
                             std::iter::once(first)
                                 .chain(exprs)
                                 .map(|expr| self.expand_expr(expr, scope))
-                                .collect(),
+                                .collect::<FuturesOrdered<_>>()
+                                .collect()
+                                .await,
                         ),
                     }
                 } else {
@@ -886,17 +944,21 @@ impl<L> Expander<'_, '_, L> {
                     } else {
                         let span = Span::join(lhs.first().unwrap().span, rhs.last().unwrap().span);
 
-                        let lhs = self.expand_list(
-                            Span::join(lhs.first().unwrap().span, lhs.last().unwrap().span),
-                            lhs,
-                            scope,
-                        );
+                        let lhs = self
+                            .expand_list(
+                                Span::join(lhs.first().unwrap().span, lhs.last().unwrap().span),
+                                lhs,
+                                scope,
+                            )
+                            .await;
 
-                        let rhs = self.expand_list(
-                            Span::join(rhs.first().unwrap().span, rhs.last().unwrap().span),
-                            rhs,
-                            scope,
-                        );
+                        let rhs = self
+                            .expand_list(
+                                Span::join(rhs.first().unwrap().span, rhs.last().unwrap().span),
+                                rhs,
+                                scope,
+                            )
+                            .await;
 
                         self.expand_template(
                             max_name,
@@ -907,24 +969,26 @@ impl<L> Expander<'_, '_, L> {
                             None,
                             scope,
                         )
+                        .await
                     }
                 }
             }
         }
     }
 
-    fn expand_template(
-        &mut self,
+    async fn expand_template(
+        &self,
         name: InternedString,
         span: Span,
         id: TemplateId,
         exprs: Vec<Node>,
         file_attributes: Option<&mut FileAttributes>,
         statement_attributes: Option<&mut StatementAttributes>,
-        scope: &Scope,
+        scope: &Scope<'_>,
     ) -> Node {
         let template = self
             .declarations
+            .lock()
             .templates
             .get(&id)
             .unwrap_or_else(|| panic!("template `{}` ({:?}) not registered", name, id))
@@ -1033,19 +1097,22 @@ impl<L> Expander<'_, '_, L> {
 
                 body
             }
-            TemplateBody::Function(expand) => expand(
-                self,
-                span,
-                exprs,
-                file_attributes,
-                statement_attributes,
-                scope,
-            ),
+            TemplateBody::Function(expand) => {
+                expand(
+                    self,
+                    span,
+                    exprs,
+                    file_attributes,
+                    statement_attributes,
+                    scope,
+                )
+                .await
+            }
         }
     }
 
     fn report_wrong_template_arity(
-        &mut self,
+        &self,
         template_name: &str,
         span: Span,
         actual: usize,

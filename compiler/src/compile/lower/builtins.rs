@@ -1,10 +1,11 @@
 #![allow(clippy::needless_update)] // for future-proofing
 
 use super::*;
+use crate::Loader;
 use lazy_static::lazy_static;
 use std::sync::{Arc, Mutex};
 
-impl<L> Compiler<'_, L> {
+impl<L: Loader> Compiler<L> {
     pub(super) fn load_builtins(&mut self, scope: &Scope, info: &mut Info) {
         let mut scope_values = scope.values.borrow_mut();
 

@@ -10,9 +10,11 @@ codemap = "=0.1.2"
 codemap-diagnostic = "0.1"
 colored = "2"
 junit-report = "0.7"
+parking_lot = "0.12"
 serde = "1"
 serde_yaml = "0.8"
 similar = "2"
+tokio = { version = "1", features = ["full"] }
 wipple-compiler = { path = "../compiler", features = ["clap"] }
 wipple-default-loader = { path = "../loaders/default" }
 wipple-interpreter-backend = { path = "../backends/interpreter" }

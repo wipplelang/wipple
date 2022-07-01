@@ -1,11 +1,11 @@
 use crate::{
     diagnostics::*,
     optimize::{Expression, ExpressionKind, PatternKind, Program},
-    Compiler,
+    Compiler, Loader,
 };
 use std::mem;
 
-impl<L> Compiler<'_, L> {
+impl<L: Loader> Compiler<L> {
     pub(super) fn optimize_no_ops(&mut self, program: &mut Program) {
         for constant in program.constants.values_mut() {
             constant.traverse(|expr| {
@@ -19,7 +19,7 @@ impl<L> Compiler<'_, L> {
     }
 
     fn remove_no_op_statements(&mut self, statements: &mut Vec<Expression>, check_last: bool) {
-        let mut warn_no_op = |statement: &Expression| {
+        let warn_no_op = |statement: &Expression| {
             if let Some(span) = statement.span {
                 self.diagnostics.add(Diagnostic::warning(
                     "statement doesn't do anything",

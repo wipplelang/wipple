@@ -1,8 +1,8 @@
 mod unused;
 
-use crate::{compile, Compiler};
+use crate::{compile, Compiler, Loader};
 
-impl<L> Compiler<'_, L> {
+impl<L: Loader> Compiler<L> {
     pub fn lint(&mut self, program: &compile::Program) {
         self.lint_unused(program);
     }

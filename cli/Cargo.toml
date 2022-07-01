@@ -14,6 +14,7 @@ codemap = "=0.1.2"
 codemap-diagnostic = "0.1"
 indicatif = "0.16"
 serde_json = "1"
+tokio = { version = "1", features = ["full"] }
 wipple-bundled-backend = { path = "../backends/bundled/builder" }
 wipple-compiler = { path = "../compiler", features = ["clap"] }
 wipple-default-loader = { path = "../loaders/default" }

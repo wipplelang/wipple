@@ -1,12 +1,13 @@
 use clap::Parser;
 use colored::Colorize;
+use parking_lot::Mutex;
 use serde::Deserialize;
 use std::{
     cell::RefCell,
     env, fs,
     io::{self, Write},
     path::PathBuf,
-    sync::Arc,
+    sync::{atomic::AtomicUsize, Arc},
 };
 use wipple_default_loader as loader;
 
@@ -26,16 +27,17 @@ struct Args {
     trace: bool,
 }
 
-fn main() -> anyhow::Result<()> {
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
     let args = Args::parse();
 
-    let mut loader = loader::Loader::new(
-        String::new(),
+    let loader = loader::Loader::new(
+        None,
         Some(wipple_compiler::FilePath::Path(
             wipple_compiler::helpers::InternedString::new(
                 env::current_dir()
                     .unwrap()
-                    .join("std/std.wpl")
+                    .join("pkg/std/std.wpl")
                     .as_os_str()
                     .to_str()
                     .unwrap(),
@@ -43,11 +45,11 @@ fn main() -> anyhow::Result<()> {
         )),
     );
 
-    let mut pass_count = 0usize;
-    let mut fail_count = 0usize;
-    let mut results = Vec::new();
+    let pass_count = AtomicUsize::new(0);
+    let fail_count = AtomicUsize::new(0);
+    let results = Mutex::new(Vec::new());
 
-    let mut run_path = |path: PathBuf| -> anyhow::Result<()> {
+    let run_path = |path: PathBuf| async {
         let test_name = path.to_string_lossy().into_owned();
 
         eprint!(
@@ -60,15 +62,16 @@ fn main() -> anyhow::Result<()> {
         let test_case = serde_yaml::from_reader(file)?;
         let result = run(
             &test_case,
-            wipple_compiler::Compiler::new(&mut loader),
+            wipple_compiler::Compiler::new(loader.clone()),
             #[cfg(debug_assertions)]
             args.debug,
             #[cfg(debug_assertions)]
             args.trace,
-        )?;
+        )
+        .await?;
 
         if result.passed() {
-            pass_count += 1;
+            pass_count.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
 
             eprintln!(
                 "\r{} {}",
@@ -76,7 +79,7 @@ fn main() -> anyhow::Result<()> {
                 test_name.as_str().bold()
             );
         } else {
-            fail_count += 1;
+            fail_count.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
 
             eprintln!(
                 "\r{} {}",
@@ -97,13 +100,13 @@ fn main() -> anyhow::Result<()> {
             eprintln!();
         }
 
-        results.push((test_name, path, result));
+        results.lock().push((test_name, path, result));
 
-        Ok(())
+        anyhow::Result::<()>::Ok(())
     };
 
     if args.path.is_file() {
-        run_path(args.path)?;
+        run_path(args.path).await?;
     } else {
         let mut entries = fs::read_dir(args.path)?
             .map(|entry| entry.map(|e| e.path()))
@@ -112,9 +115,13 @@ fn main() -> anyhow::Result<()> {
         entries.sort_unstable();
 
         for entry in entries {
-            run_path(entry)?;
+            run_path(entry).await?;
         }
     }
+
+    let pass_count = pass_count.into_inner();
+    let fail_count = fail_count.into_inner();
+    let results = results.into_inner();
 
     eprintln!(
         "\n{} tests, {}, {}",
@@ -222,7 +229,7 @@ impl TestResult {
     }
 }
 
-fn run(
+async fn run(
     test_case: &TestCase,
     mut compiler: wipple_compiler::Compiler<loader::Loader>,
     #[cfg(debug_assertions)] debug: bool,
@@ -233,10 +240,12 @@ fn run(
     compiler
         .loader
         .virtual_paths
+        .lock()
         .insert(test_path, Arc::from(test_case.code.as_str()));
 
     let program = compiler
         .build(wipple_compiler::FilePath::Virtual(test_path))
+        .await
         .map(|program| compiler.optimize(program));
 
     let diagnostics = compiler.finish();
@@ -269,7 +278,7 @@ fn run(
     let mut diagnostics = {
         let mut buf = Vec::new();
         {
-            let (codemap, diagnostics) = diagnostics.into_console_friendly(
+            let (_, codemap, diagnostics) = diagnostics.into_console_friendly(
                 #[cfg(debug_assertions)]
                 trace,
             );
@@ -281,7 +290,7 @@ fn run(
         String::from_utf8(buf).unwrap()
     };
 
-    diagnostics = diagnostics.replace(env!("CARGO_WORKSPACE_DIR"), "<dir>/");
+    diagnostics = diagnostics.replace(concat!(env!("CARGO_WORKSPACE_DIR"), "pkg"), "<dir>");
 
     Ok(TestResult {
         output_diff: diff(test_case.output.trim(), output.trim()),
