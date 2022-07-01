@@ -120,6 +120,13 @@ impl Diagnostics {
     pub fn add(&self, diagnostic: Diagnostic) {
         self.diagnostics.lock().push(diagnostic);
     }
+
+    pub fn contains_errors(&self) -> bool {
+        self.diagnostics
+            .lock()
+            .iter()
+            .any(|d| matches!(d.level, DiagnosticLevel::Error))
+    }
 }
 
 #[derive(Debug)]

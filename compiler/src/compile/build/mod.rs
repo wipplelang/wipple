@@ -115,7 +115,7 @@ impl<L: Loader> Compiler<L> {
             let file = Arc::new(file);
 
             // Don't cache virtual or builtin paths
-            if matches!(resolved_path, FilePath::Path(_)) {
+            if !matches!(resolved_path, FilePath::Virtual(_) | FilePath::Builtin(_)) {
                 compiler
                     .loader
                     .cache()
@@ -173,9 +173,9 @@ impl<L: Loader> Compiler<L> {
             file
         }
 
-        #[allow(clippy::needless_collect)] // needed for diagnostics below
+        #[allow(clippy::needless_collect)] // needed to ensure Arc::try_unwrap succeeds
         let lowered_files = Arc::try_unwrap(files)
-            .unwrap_or_else(|_| unreachable!())
+            .unwrap()
             .into_inner()
             .into_values()
             .map(|file| lower(self, file, &mut cache))
@@ -187,6 +187,10 @@ impl<L: Loader> Compiler<L> {
             .into_iter()
             .map(|file| Arc::try_unwrap(file).unwrap())
             .collect::<Vec<_>>();
+
+        if self.diagnostics.contains_errors() {
+            return None;
+        }
 
         self.typecheck_with_progress(lowered_files, |p| {
             progress.lock()(Progress::Typechecking(p))

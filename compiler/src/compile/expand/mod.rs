@@ -13,18 +13,17 @@ use crate::{
     Compiler, FilePath, Loader, TemplateId,
 };
 use async_recursion::async_recursion;
-use futures::StreamExt;
-use futures::{future::BoxFuture, stream::FuturesOrdered};
+use futures::{future::BoxFuture, stream, StreamExt};
 use parking_lot::Mutex;
 use rust_decimal::Decimal;
 use std::{
     cmp::Ordering,
     collections::{BTreeMap, HashMap, VecDeque},
+    fmt::Debug,
     sync::Arc,
 };
 use strum::EnumString;
 
-#[derive(Debug)]
 pub struct File<L: Loader> {
     pub path: FilePath,
     pub span: Span,
@@ -33,6 +32,20 @@ pub struct File<L: Loader> {
     pub exported: ScopeValues,
     pub statements: Vec<Statement>,
     pub dependencies: Vec<Arc<File<L>>>,
+}
+
+impl<L: Loader> Debug for File<L> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("File")
+            .field("path", &self.path)
+            .field("span", &self.span)
+            .field("attributes", &self.attributes)
+            .field("declarations", &self.declarations)
+            .field("exported", &self.exported)
+            .field("statements", &self.statements)
+            .field("dependencies", &self.dependencies)
+            .finish()
+    }
 }
 
 impl<L: Loader> Clone for File<L> {
@@ -489,9 +502,9 @@ impl<L: Loader> Expander<L> {
                         }
                     };
 
-                    let inputs = exprs
+                    let inputs = stream::iter(exprs)
                         .map(|expr| self.expand_expr(expr, scope))
-                        .collect::<FuturesOrdered<_>>()
+                        .buffered(1)
                         .collect::<Vec<_>>()
                         .await;
 
@@ -555,10 +568,9 @@ impl<L: Loader> Expander<L> {
             parse::ExprKind::ListLiteral(list) => Node {
                 span: expr.span,
                 kind: NodeKind::ListLiteral(
-                    list.into_iter()
-                        .flat_map(|line| line.exprs)
-                        .map(|expr| self.expand_expr(expr, scope))
-                        .collect::<FuturesOrdered<_>>()
+                    stream::iter(list)
+                        .flat_map(|line| stream::iter(line.exprs))
+                        .then(|expr| self.expand_expr(expr, scope))
                         .collect::<Vec<_>>()
                         .await,
                 ),
@@ -581,9 +593,8 @@ impl<L: Loader> Expander<L> {
     ) -> (Vec<Statement>, ScopeValues) {
         let scope = scope.child();
 
-        let statements = statements
-            .into_iter()
-            .map(|statement| async {
+        let statements = stream::iter(statements)
+            .then(|statement| async {
                 let mut lines = statement.lines.into_iter();
 
                 let (first_attributes, first_exprs) = match lines.next() {
@@ -706,14 +717,11 @@ impl<L: Loader> Expander<L> {
                                 }
                             };
 
-                            let inputs = exprs
-                                .map(|expr| self.expand_expr(expr, &scope))
-                                .collect::<FuturesOrdered<_>>()
+                            let inputs = stream::iter(exprs)
+                                .then(|expr| self.expand_expr(expr, &scope))
+                                .chain(stream::once(async { node }))
                                 .collect::<Vec<_>>()
-                                .await
-                                .into_iter()
-                                .chain(std::iter::once(node))
-                                .collect::<Vec<_>>();
+                                .await;
 
                             node = self
                                 .expand_template(
@@ -746,7 +754,6 @@ impl<L: Loader> Expander<L> {
                     treat_as_expr,
                 })
             })
-            .collect::<FuturesOrdered<_>>()
             .collect::<Vec<_>>()
             .await
             .into_iter()
@@ -776,11 +783,9 @@ impl<L: Loader> Expander<L> {
 
                 if let parse::ExprKind::Name(name) = &expr.kind {
                     if let Some(ScopeValue::Template(template)) = scope.get(*name) {
-                        let inputs = exprs
-                            .into_iter()
+                        let inputs = stream::iter(exprs)
                             .skip(1)
-                            .map(|expr| self.expand_expr(expr, scope))
-                            .collect::<FuturesOrdered<_>>()
+                            .then(|expr| self.expand_expr(expr, scope))
                             .collect()
                             .await;
 
@@ -808,9 +813,8 @@ impl<L: Loader> Expander<L> {
 
                     if let parse::ExprKind::Name(name) = first.kind {
                         if let Some(ScopeValue::Template(template)) = scope.get(name) {
-                            let inputs = exprs
-                                .map(|expr| self.expand_expr(expr, scope))
-                                .collect::<FuturesOrdered<_>>()
+                            let inputs = stream::iter(exprs)
+                                .then(|expr| self.expand_expr(expr, scope))
                                 .collect()
                                 .await;
 
@@ -825,10 +829,9 @@ impl<L: Loader> Expander<L> {
                     Node {
                         span: list_span,
                         kind: NodeKind::List(
-                            std::iter::once(first)
-                                .chain(exprs)
-                                .map(|expr| self.expand_expr(expr, scope))
-                                .collect::<FuturesOrdered<_>>()
+                            stream::once(async { first })
+                                .chain(stream::iter(exprs))
+                                .then(|expr| self.expand_expr(expr, scope))
                                 .collect()
                                 .await,
                         ),
