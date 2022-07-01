@@ -8,7 +8,7 @@ use std::{collections::HashMap, path::PathBuf, str::FromStr, sync::Arc};
 use url::Url;
 use wipple_compiler::{compile, helpers::InternedString, FilePath, SourceMap};
 
-pub const STD_URL: &str = "https://std.wipple.gramer.dev/std.wpl";
+pub const STD_URL: &str = "https://pkg.wipple.gramer.dev/std/std.wpl";
 
 #[derive(Clone)]
 pub struct Loader {
