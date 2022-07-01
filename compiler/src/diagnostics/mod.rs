@@ -1,4 +1,5 @@
 use crate::{parse::Span, FilePath, Loader};
+use parking_lot::Mutex;
 use serde::Serialize;
 use std::{
     cmp::Ordering,
@@ -106,9 +107,9 @@ impl Note {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Clone, Default)]
 pub struct Diagnostics {
-    pub diagnostics: Vec<Diagnostic>,
+    pub diagnostics: Arc<Mutex<Vec<Diagnostic>>>,
 }
 
 impl Diagnostics {
@@ -116,18 +117,18 @@ impl Diagnostics {
         Default::default()
     }
 
-    pub fn add(&mut self, diagnostic: Diagnostic) {
-        self.diagnostics.push(diagnostic);
+    pub fn add(&self, diagnostic: Diagnostic) {
+        self.diagnostics.lock().push(diagnostic);
     }
 }
 
 #[derive(Debug)]
-pub struct FinalizedDiagnostics<'a, L> {
-    pub loader: &'a mut L,
+pub struct FinalizedDiagnostics<L> {
+    pub loader: L,
     pub diagnostics: Vec<Diagnostic>,
 }
 
-impl<'a, L: Loader> FinalizedDiagnostics<'a, L> {
+impl<L: Loader> FinalizedDiagnostics<L> {
     pub fn contains_errors(&self) -> bool {
         self.diagnostics
             .iter()
@@ -137,7 +138,7 @@ impl<'a, L: Loader> FinalizedDiagnostics<'a, L> {
     pub fn into_console_friendly(
         mut self,
         #[cfg(debug_assertions)] include_trace: bool,
-    ) -> (codemap::CodeMap, Vec<codemap_diagnostic::Diagnostic>) {
+    ) -> (L, codemap::CodeMap, Vec<codemap_diagnostic::Diagnostic>) {
         self.diagnostics.dedup();
 
         let mut codemap = codemap::CodeMap::new();
@@ -171,6 +172,7 @@ impl<'a, L: Loader> FinalizedDiagnostics<'a, L> {
                                     note.span.path.to_string(),
                                     self.loader
                                         .source_map()
+                                        .lock()
                                         .get(&note.span.path)
                                         .expect("file not loaded")
                                         .to_string(),
@@ -203,6 +205,6 @@ impl<'a, L: Loader> FinalizedDiagnostics<'a, L> {
             (Some(a), Some(b)) => a.span.low().cmp(&b.span.low()),
         });
 
-        (codemap, diagnostics)
+        (self.loader, codemap, diagnostics)
     }
 }

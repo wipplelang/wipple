@@ -2,7 +2,6 @@ use clap::Parser;
 use std::{
     env, fs,
     io::{self, Read, Write},
-    mem,
     os::unix::prelude::PermissionsExt,
     path::PathBuf,
     process::ExitCode,
@@ -41,8 +40,9 @@ enum Args {
     },
 }
 
-fn main() -> ExitCode {
-    match run() {
+#[tokio::main]
+async fn main() -> ExitCode {
+    match run().await {
         Ok(()) => ExitCode::SUCCESS,
         Err(error) => {
             if !error.to_string().is_empty() {
@@ -54,12 +54,12 @@ fn main() -> ExitCode {
     }
 }
 
-fn run() -> anyhow::Result<()> {
+async fn run() -> anyhow::Result<()> {
     let args = Args::parse();
 
     match args {
         Args::Run { options } => {
-            let (program, _) = match build_and_optimize(options) {
+            let (program, _) = match build_and_optimize(options).await {
                 Some(program) => program,
                 None => return Err(anyhow::Error::msg("")),
             };
@@ -83,7 +83,7 @@ fn run() -> anyhow::Result<()> {
                 }
             };
 
-            let (program, codemap) = match build(options) {
+            let (program, codemap) = match build(options).await {
                 Some(program) => program,
                 None => return Err(anyhow::Error::msg("failed to build")),
             };
@@ -117,7 +117,7 @@ fn run() -> anyhow::Result<()> {
                 .and_then(|file| file.bytes().collect::<Result<Vec<_>, _>>())
                 .map_err(|error| anyhow::Error::msg(format!("could not load runner: {error}")))?;
 
-            let (program, _) = match build_and_optimize(options) {
+            let (program, _) = match build_and_optimize(options).await {
                 Some(program) => program,
                 None => return Err(anyhow::Error::msg("failed to build")),
             };
@@ -160,16 +160,16 @@ struct BuildOptions {
     trace: bool,
 }
 
-fn build(
+async fn build(
     options: BuildOptions,
 ) -> Option<(
     wipple_compiler::compile::Program,
     wipple_compiler::SourceMap,
 )> {
-    build_with_passes(options, |_, program| program)
+    build_with_passes(options, |_, program| program).await
 }
 
-fn build_and_optimize(
+async fn build_and_optimize(
     options: BuildOptions,
 ) -> Option<(
     wipple_compiler::optimize::Program,
@@ -179,9 +179,10 @@ fn build_and_optimize(
         compiler.lint(&program);
         compiler.optimize(program)
     })
+    .await
 }
 
-fn build_with_passes<P: std::fmt::Debug>(
+async fn build_with_passes<P: std::fmt::Debug>(
     options: BuildOptions,
     passes: impl FnOnce(&mut Compiler<loader::Loader>, wipple_compiler::compile::Program) -> P,
 ) -> Option<(P, wipple_compiler::SourceMap)> {
@@ -189,39 +190,46 @@ fn build_with_passes<P: std::fmt::Debug>(
     let progress_bar = None::<indicatif::ProgressBar>;
 
     #[cfg(not(debug_assertions))]
-    let progress_bar = Some(
+    let progress_bar = Arc::new(Some(
         indicatif::ProgressBar::new(0).with_style(indicatif::ProgressStyle::default_spinner()),
-    );
+    ));
 
-    let progress = |progress| {
-        use wipple_compiler::compile::{build, typecheck};
+    let progress = {
+        let progress_bar = progress_bar.clone();
 
-        if let Some(progress_bar) = progress_bar.as_ref() {
-            match progress {
-                build::Progress::Resolving { path, count } => {
-                    progress_bar.set_message(format!("({count} files) Resolving {}", path))
-                }
-                build::Progress::Lowering {
-                    path,
-                    current,
-                    total,
-                } => progress_bar.set_message(format!("({current}/{total}) Compiling {path}")),
-                build::Progress::Typechecking(progress) => match progress {
-                    typecheck::Progress::Typechecking {
+        move |progress| {
+            use wipple_compiler::compile::{build, typecheck};
+
+            if let Some(progress_bar) = progress_bar.as_ref() {
+                match progress {
+                    build::Progress::Resolving { path, count } => {
+                        progress_bar.set_message(format!("({count} files) Resolving {}", path))
+                    }
+                    build::Progress::Lowering {
                         path,
                         current,
                         total,
-                    } => {
-                        progress_bar.set_message(format!("({current}/{total}) Typechecking {path}"))
-                    }
-                    typecheck::Progress::Finalizing => progress_bar.set_message("Finalizing"),
-                },
+                    } => progress_bar.set_message(format!("({current}/{total}) Compiling {path}")),
+                    build::Progress::Typechecking(progress) => match progress {
+                        typecheck::Progress::Typechecking {
+                            path,
+                            current,
+                            total,
+                        } => progress_bar
+                            .set_message(format!("({current}/{total}) Typechecking {path}")),
+                        typecheck::Progress::Finalizing => progress_bar.set_message("Finalizing"),
+                    },
+                }
             }
         }
     };
 
-    let mut loader = loader::Loader::new(
-        env::current_dir().unwrap().to_string_lossy().into_owned(),
+    let loader = loader::Loader::new(
+        Some(wipple_compiler::FilePath::Path(
+            wipple_compiler::helpers::InternedString::new(
+                env::current_dir().unwrap().to_string_lossy(),
+            ),
+        )),
         (!options.no_std).then(|| {
             wipple_compiler::FilePath::Path(wipple_compiler::helpers::InternedString::new(
                 if loader::is_url(&options.std) {
@@ -237,10 +245,10 @@ fn build_with_passes<P: std::fmt::Debug>(
         }),
     );
 
-    let mut compiler = Compiler::new(&mut loader);
+    let mut compiler = Compiler::new(loader);
 
     let path = wipple_compiler::FilePath::Path(options.path.into());
-    let program = compiler.build_with_progress(path, progress);
+    let program = compiler.build_with_progress(path, progress).await;
 
     let program = program.map(|program| passes(&mut compiler, program));
 
@@ -251,7 +259,7 @@ fn build_with_passes<P: std::fmt::Debug>(
         progress_bar.finish_and_clear();
     }
 
-    let (codemap, diagnostics) = diagnostics.into_console_friendly(
+    let (loader, codemap, diagnostics) = diagnostics.into_console_friendly(
         #[cfg(debug_assertions)]
         options.trace,
     );
@@ -271,6 +279,6 @@ fn build_with_passes<P: std::fmt::Debug>(
     }
 
     success
-        .then(|| program.map(|program| (program, mem::take(loader.source_map()))))
+        .then(|| program.map(|program| (program, loader.source_map().lock().clone())))
         .flatten()
 }

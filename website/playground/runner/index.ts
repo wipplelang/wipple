@@ -6,18 +6,35 @@ export interface Output {
 }
 
 let runner: Worker | undefined;
+let active: Promise<Output> | undefined;
 
 export const useRunner = () => {
     useEffect(() => {
+        if (runner) return;
         runner = new Worker(new URL("../runner/worker.js", import.meta.url));
     }, []);
 
     return {
-        run: (code: string): Promise<Output> =>
-            new Promise((resolve, reject) => {
-                runner!.onmessage = (event) => resolve(event.data);
-                runner!.onerror = (event) => reject(event.error);
+        run: (code: string): Promise<Output> => {
+            active = new Promise(async (resolve, reject) => {
+                if (active) {
+                    await active;
+                }
+
+                runner!.onmessage = (event) => {
+                    resolve(event.data);
+                    active = undefined;
+                };
+
+                runner!.onerror = (event) => {
+                    reject(event.error);
+                    active = undefined;
+                };
+
                 runner!.postMessage(code);
-            }),
+            });
+
+            return active;
+        },
     };
 };

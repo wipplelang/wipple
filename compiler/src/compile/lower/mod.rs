@@ -5,8 +5,8 @@ use crate::{
     diagnostics::*,
     helpers::InternedString,
     parse::Span,
-    BuiltinTypeId, Compiler, GenericConstantId, TemplateId, TraitId, TypeId, TypeParameterId,
-    VariableId,
+    BuiltinTypeId, Compiler, GenericConstantId, Loader, TemplateId, TraitId, TypeId,
+    TypeParameterId, VariableId,
 };
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
@@ -16,6 +16,7 @@ use std::{
     hash::Hash,
     mem,
     rc::Rc,
+    sync::Arc,
 };
 
 #[derive(Debug, Clone)]
@@ -229,8 +230,8 @@ impl TypeAnnotation {
     }
 }
 
-impl<L> Compiler<'_, L> {
-    pub fn lower(&mut self, file: ast::File, dependencies: Vec<Rc<File>>) -> File {
+impl<L: Loader> Compiler<L> {
+    pub fn lower(&mut self, file: ast::File, dependencies: Vec<Arc<File>>) -> File {
         let scope = Scope::root(ScopeKind::Block);
 
         let mut info = Info {
@@ -417,7 +418,7 @@ struct Info {
     attributes: FileAttributes,
 }
 
-impl<L> Compiler<'_, L> {
+impl<L: Loader> Compiler<L> {
     fn lower_block(
         &mut self,
         statements: Vec<ast::Statement>,

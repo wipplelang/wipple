@@ -9,7 +9,8 @@ pub use format::{format_type, FormattableType};
 
 use crate::{
     compile::lower, diagnostics::*, helpers::InternedString, parse::Span, Compiler, FilePath,
-    GenericConstantId, MonomorphizedConstantId, TraitId, TypeId, TypeParameterId, VariableId,
+    GenericConstantId, Loader, MonomorphizedConstantId, TraitId, TypeId, TypeParameterId,
+    VariableId,
 };
 use engine::*;
 use rust_decimal::Decimal;
@@ -201,13 +202,13 @@ pub enum Progress {
     Finalizing,
 }
 
-impl<L> Compiler<'_, L> {
-    pub fn typecheck(&mut self, files: Vec<lower::File>) -> Option<Program> {
+impl<L: Loader> Compiler<L> {
+    pub fn typecheck(&self, files: Vec<lower::File>) -> Option<Program> {
         self.typecheck_with_progress(files, |_| {})
     }
 
     pub fn typecheck_with_progress(
-        &mut self,
+        &self,
         files: Vec<lower::File>,
         mut progress: impl FnMut(Progress),
     ) -> Option<Program> {
@@ -229,7 +230,7 @@ impl<L> Compiler<'_, L> {
             declared_instances: Default::default(),
             bound_instances: Default::default(),
             declarations: Default::default(),
-            compiler: self,
+            compiler: self.clone(),
         };
 
         let total_files = files.len();
@@ -763,7 +764,7 @@ impl<L> Compiler<'_, L> {
 
         let success = typechecker.errors.is_empty();
 
-        let mut report = |error: Error| {
+        let report = |error: Error| {
             macro_rules! getter {
                 ($x:ident) => {
                     |id| {
@@ -924,7 +925,7 @@ impl Error {
     }
 }
 
-struct Typechecker<'a, 'l, L> {
+struct Typechecker<L: Loader> {
     ctx: Context,
     errors: Vec<Error>,
     variables: BTreeMap<VariableId, UnresolvedType>,
@@ -943,10 +944,10 @@ struct Typechecker<'a, 'l, L> {
     declared_instances: BTreeMap<TraitId, Vec<GenericConstantId>>,
     bound_instances: BTreeMap<TraitId, Vec<GenericConstantId>>,
     declarations: Declarations<MonomorphizedExpression, UnresolvedType, Rc<RefCell<lower::File>>>,
-    compiler: &'a mut Compiler<'l, L>,
+    compiler: Compiler<L>,
 }
 
-impl<'a, L> Typechecker<'a, '_, L> {
+impl<L: Loader> Typechecker<L> {
     fn typecheck_expr(
         &mut self,
         expr: &lower::Expression,
@@ -1491,7 +1492,7 @@ impl<'a, L> Typechecker<'a, '_, L> {
         file: &Rc<RefCell<lower::File>>,
         suppress_errors: bool,
     ) -> UnresolvedPattern {
-        fn typecheck_pattern<L>(
+        fn typecheck_pattern<L: Loader>(
             tc: &mut Typechecker<L>,
             pattern: &lower::Pattern,
             ty: Option<UnresolvedType>,
@@ -2610,7 +2611,7 @@ enum MatchSet {
     Enumeration(Vec<(bool, Vec<MatchSet>)>),
 }
 
-impl<'a, L> Typechecker<'a, '_, L> {
+impl<L: Loader> Typechecker<L> {
     fn match_set_from(&mut self, ty: &UnresolvedType) -> Result<MatchSet, TypeError> {
         match &ty {
             UnresolvedType::Named(id, _) => {

@@ -1,61 +1,103 @@
+#![allow(clippy::type_complexity)]
+
+use async_trait::async_trait;
+use futures::future::BoxFuture;
+use parking_lot::Mutex;
 use path_clean::PathClean;
-use std::{collections::HashMap, path::PathBuf, rc::Rc, str::FromStr, sync::Arc};
+use std::{collections::HashMap, path::PathBuf, str::FromStr, sync::Arc};
 use url::Url;
 use wipple_compiler::{compile, helpers::InternedString, FilePath, SourceMap};
 
 pub const STD_URL: &str = "https://std.wipple.gramer.dev/std.wpl";
 
+#[derive(Clone)]
 pub struct Loader {
-    pub virtual_paths: HashMap<InternedString, Arc<str>>,
-    fetcher: Fetcher,
-    base: String,
+    pub virtual_paths: Arc<Mutex<HashMap<InternedString, Arc<str>>>>,
+    fetcher: Arc<Mutex<Fetcher>>,
+    base: Option<FilePath>,
     std_path: Option<FilePath>,
-    source_map: SourceMap,
-    cache: HashMap<FilePath, Rc<compile::expand::File<Self>>>,
+    source_map: Arc<Mutex<SourceMap>>,
+    cache: Arc<Mutex<HashMap<FilePath, Arc<compile::expand::File<Self>>>>>,
 }
 
+#[derive(Default)]
 pub struct Fetcher {
-    from_path: Box<dyn Fn(&str) -> anyhow::Result<String>>,
-    from_url: Box<dyn Fn(Url) -> anyhow::Result<String>>,
+    from_path: Option<Box<dyn Fn(&str) -> BoxFuture<anyhow::Result<String>> + Send + Sync>>,
+    from_url: Option<Box<dyn Fn(Url) -> BoxFuture<'static, anyhow::Result<String>> + Send + Sync>>,
 }
 
 impl Fetcher {
-    pub fn new(
-        from_path: impl Fn(&str) -> anyhow::Result<String> + 'static,
-        from_url: impl Fn(Url) -> anyhow::Result<String> + 'static,
+    pub fn new() -> Self {
+        Default::default()
+    }
+
+    pub fn with_path_handler(
+        mut self,
+        from_path: impl Fn(&str) -> BoxFuture<anyhow::Result<String>> + Send + Sync + 'static,
     ) -> Self {
-        Fetcher {
-            from_path: Box::new(from_path),
-            from_url: Box::new(from_url),
-        }
+        self.from_path = Some(Box::new(from_path));
+        self
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn with_default_path_handler(self) -> Self {
+        self.with_path_handler(|path| {
+            Box::pin(async move {
+                // TODO: Use async IO
+                std::fs::read_to_string(path).map_err(|e| e.into())
+            })
+        })
+    }
+
+    pub fn with_url_handler(
+        mut self,
+        from_url: impl Fn(Url) -> BoxFuture<'static, anyhow::Result<String>> + Send + Sync + 'static,
+    ) -> Self {
+        self.from_url = Some(Box::new(from_url));
+        self
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn with_default_url_handler(self) -> Self {
+        self.with_url_handler(|url| {
+            Box::pin(async move { reqwest::get(url).await?.text().await.map_err(|e| e.into()) })
+        })
     }
 }
 
 impl Loader {
     #[cfg(not(target_arch = "wasm32"))]
-    pub fn new(base: String, std_path: Option<FilePath>) -> Self {
-        Loader::with_fetcher(
+    pub fn new(base: Option<FilePath>, std_path: Option<FilePath>) -> Self {
+        Loader::new_with_fetcher(
             base,
             std_path,
-            Fetcher::new(
-                |path| std::fs::read_to_string(path).map_err(|e| e.into()),
-                |url| reqwest::blocking::get(url)?.text().map_err(|e| e.into()),
-            ),
+            Fetcher::new()
+                .with_default_path_handler()
+                .with_default_url_handler(),
         )
     }
 
-    pub fn with_fetcher(base: String, std_path: Option<FilePath>, fetcher: Fetcher) -> Self {
+    pub fn new_with_fetcher(
+        base: Option<FilePath>,
+        std_path: Option<FilePath>,
+        fetcher: Fetcher,
+    ) -> Self {
         Loader {
             virtual_paths: Default::default(),
-            fetcher,
+            fetcher: Arc::new(Mutex::new(fetcher)),
             base,
             std_path,
             source_map: Default::default(),
             cache: Default::default(),
         }
     }
+
+    pub fn with_fetcher(&self, f: impl FnOnce(Fetcher) -> Fetcher) {
+        replace_with::replace_with_or_default(&mut *self.fetcher.lock(), f);
+    }
 }
 
+#[async_trait]
 impl wipple_compiler::Loader for Loader {
     type Error = anyhow::Error;
 
@@ -63,42 +105,38 @@ impl wipple_compiler::Loader for Loader {
         self.std_path
     }
 
-    fn resolve(
-        &mut self,
-        path: FilePath,
-        current: Option<FilePath>,
-    ) -> Result<FilePath, Self::Error> {
-        match path {
+    fn resolve(&self, path: FilePath, current: Option<FilePath>) -> Result<FilePath, Self::Error> {
+        let path = match path {
             FilePath::Path(path) => {
                 if is_url(path) {
-                    Ok(FilePath::Path(path))
+                    Ok(FilePath::Url(path))
                 } else {
                     let base = match current {
-                        Some(FilePath::Path(path)) => path.as_str(),
-                        _ => &self.base,
+                        Some(path) => path,
+                        _ => match self.base {
+                            Some(base) => base,
+                            None => return Ok(FilePath::Path(path)),
+                        },
                     };
 
                     let parsed_path = PathBuf::from(path.as_str());
 
-                    if parsed_path.is_relative() {
-                        match Url::from_str(base) {
-                            Ok(base) => {
-                                let url = base.join(path.as_str())?;
-                                Ok(FilePath::Path(InternedString::from(url.to_string())))
+                    if !parsed_path.has_root() {
+                        match base {
+                            FilePath::Url(url) => {
+                                let url = Url::from_str(&url).unwrap().join(path.as_str())?;
+                                Ok(FilePath::Url(InternedString::from(url.to_string())))
                             }
-                            Err(_) => {
-                                let path = PathBuf::from(
-                                    current
-                                        .map(|path| path.to_string())
-                                        .unwrap_or_else(|| self.base.to_string()),
-                                )
-                                .parent()
-                                .unwrap()
-                                .join(parsed_path)
-                                .clean();
+                            FilePath::Path(path) | FilePath::Virtual(path) => {
+                                let path = PathBuf::from(path.as_str())
+                                    .parent()
+                                    .unwrap()
+                                    .join(parsed_path)
+                                    .clean();
 
                                 Ok(FilePath::Path(InternedString::new(path.to_str().unwrap())))
                             }
+                            _ => unimplemented!(),
                         }
                     } else {
                         Ok(FilePath::Path(path))
@@ -107,17 +145,30 @@ impl wipple_compiler::Loader for Loader {
             }
             FilePath::Virtual(path) => Ok(FilePath::Virtual(path)),
             _ => unimplemented!(),
-        }
+        };
+
+        path
     }
 
-    fn load(&mut self, path: FilePath) -> Result<Arc<str>, Self::Error> {
+    async fn load(&self, path: FilePath) -> Result<Arc<str>, Self::Error> {
         let code = match path {
-            FilePath::Path(path) => Arc::from(match Url::from_str(&path) {
-                Ok(url) => (self.fetcher.from_url)(url)?,
-                Err(_) => (self.fetcher.from_path)(path.as_str())?,
-            }),
+            FilePath::Path(path) => {
+                let fut = self.fetcher.lock().from_path.as_ref().ok_or_else(|| {
+                    anyhow::Error::msg("this environment does not support loading from the paths")
+                })?(path.as_str());
+
+                Arc::from(fut.await?)
+            }
+            FilePath::Url(url) => {
+                let fut = self.fetcher.lock().from_url.as_ref().ok_or_else(|| {
+                    anyhow::Error::msg("this environment does not support loading from URLs")
+                })?(Url::from_str(&url).unwrap());
+
+                Arc::from(fut.await?)
+            }
             FilePath::Virtual(path) => self
                 .virtual_paths
+                .lock()
                 .get(&path)
                 .cloned()
                 .ok_or_else(|| anyhow::Error::msg("invalid virtual path"))?,
@@ -127,15 +178,35 @@ impl wipple_compiler::Loader for Loader {
         Ok(code)
     }
 
-    fn cache(&mut self) -> &mut HashMap<FilePath, Rc<compile::expand::File<Self>>> {
-        &mut self.cache
+    fn cache(&self) -> Arc<Mutex<HashMap<FilePath, Arc<compile::expand::File<Self>>>>> {
+        self.cache.clone()
     }
 
-    fn source_map(&mut self) -> &mut SourceMap {
-        &mut self.source_map
+    fn source_map(&self) -> Arc<Mutex<SourceMap>> {
+        self.source_map.clone()
     }
 }
 
 pub fn is_url(s: impl AsRef<str>) -> bool {
     Url::from_str(s.as_ref()).is_ok()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use wipple_compiler::Loader;
+
+    #[test]
+    fn test_paths() {
+        let loader = super::Loader::new(None, None);
+
+        let path = loader
+            .resolve(
+                FilePath::Path(InternedString::new("/foo/bar.wpl")),
+                Some(FilePath::Path(InternedString::new("https://foo/bar"))),
+            )
+            .unwrap();
+
+        assert_eq!(path.as_str(), "/foo/bar.wpl");
+    }
 }

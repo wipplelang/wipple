@@ -6,37 +6,44 @@ pub mod lint;
 pub mod optimize;
 pub mod parse;
 
+use async_trait::async_trait;
 use diagnostics::*;
 use helpers::InternedString;
+use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
-use std::{borrow::Cow, collections::HashMap, fmt, hash::Hash, rc::Rc, sync::Arc};
+use std::{
+    borrow::Cow,
+    collections::HashMap,
+    fmt,
+    hash::Hash,
+    mem,
+    sync::{atomic::AtomicUsize, Arc},
+};
 
 pub type SourceMap = HashMap<FilePath, Arc<str>>;
 
+#[async_trait]
 pub trait Loader
 where
-    Self: Sized,
+    Self: Clone + Send + Sync + 'static,
 {
     type Error: fmt::Display;
 
     fn std_path(&self) -> Option<FilePath>;
 
-    fn resolve(
-        &mut self,
-        path: FilePath,
-        current: Option<FilePath>,
-    ) -> Result<FilePath, Self::Error>;
+    fn resolve(&self, path: FilePath, current: Option<FilePath>) -> Result<FilePath, Self::Error>;
 
-    fn load(&mut self, path: FilePath) -> Result<Arc<str>, Self::Error>;
+    async fn load(&self, path: FilePath) -> Result<Arc<str>, Self::Error>;
 
-    fn cache(&mut self) -> &mut HashMap<FilePath, Rc<compile::expand::File<Self>>>;
+    fn cache(&self) -> Arc<Mutex<HashMap<FilePath, Arc<compile::expand::File<Self>>>>>;
 
-    fn source_map(&mut self) -> &mut SourceMap;
+    fn source_map(&self) -> Arc<Mutex<SourceMap>>;
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum FilePath {
     Path(InternedString),
+    Url(InternedString),
     Virtual(InternedString),
     Builtin(InternedString),
 }
@@ -45,6 +52,7 @@ impl FilePath {
     pub fn as_str(&self) -> Cow<'static, str> {
         match self {
             FilePath::Path(path) => Cow::Borrowed(path.as_str()),
+            FilePath::Url(url) => Cow::Borrowed(url.as_str()),
             FilePath::Virtual(name) => Cow::Borrowed(name.as_str()),
             FilePath::Builtin(location) => Cow::Owned(format!("builtin ({})", location)),
         }
@@ -57,9 +65,9 @@ impl fmt::Display for FilePath {
     }
 }
 
-#[derive(Debug)]
-pub struct Compiler<'a, L> {
-    pub loader: &'a mut L,
+#[derive(Debug, Clone)]
+pub struct Compiler<L: Loader> {
+    pub loader: L,
     diagnostics: Diagnostics,
     ids: Ids,
 }
@@ -67,9 +75,9 @@ pub struct Compiler<'a, L> {
 macro_rules! ids {
     ($($(#[$meta:meta])* $id:ident),* $(,)?) => {
         paste::paste! {
-            #[derive(Debug, Default)]
+            #[derive(Debug, Clone, Default)]
             struct Ids {
-                $([<next_ $id:snake>]: usize,)*
+                $([<next_ $id:snake>]: Arc<AtomicUsize>,)*
             }
 
             $(
@@ -80,17 +88,19 @@ macro_rules! ids {
 
             impl Ids {
                 $(
-                    fn [<new_ $id:snake>](&mut self) -> $id {
-                        let id = self.[<next_ $id:snake>];
-                        self.[<next_ $id:snake>] += 1;
+                    fn [<new_ $id:snake>](&self) -> $id {
+                        let id = self
+                            .[<next_ $id:snake>]
+                            .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+
                         $id(id)
                     }
                 )*
             }
 
-            impl<L> Compiler<'_, L> {
+            impl<L: Loader> Compiler<L> {
                 $(
-                    fn [<new_ $id:snake>](&mut self) -> $id {
+                    fn [<new_ $id:snake>](&self) -> $id {
                         self.ids.[<new_ $id:snake>]()
                     }
                 )*
@@ -110,8 +120,8 @@ ids!(
     VariableId,
 );
 
-impl<'a, L> Compiler<'a, L> {
-    pub fn new(loader: &'a mut L) -> Self {
+impl<L: Loader> Compiler<L> {
+    pub fn new(loader: L) -> Self {
         Compiler {
             loader,
             diagnostics: Default::default(),
@@ -119,10 +129,14 @@ impl<'a, L> Compiler<'a, L> {
         }
     }
 
-    pub fn finish(self) -> FinalizedDiagnostics<'a, L> {
+    pub fn finish(self) -> FinalizedDiagnostics<L> {
         FinalizedDiagnostics {
             loader: self.loader,
-            diagnostics: self.diagnostics.diagnostics,
+            diagnostics: mem::take(
+                &mut Arc::try_unwrap(self.diagnostics.diagnostics)
+                    .unwrap()
+                    .lock(),
+            ),
         }
     }
 }

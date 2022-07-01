@@ -7,13 +7,15 @@ pub use lexer::*;
 use logos::Lexer;
 pub use span::*;
 
-use crate::{helpers::InternedString, Compiler, FilePath};
+use crate::{helpers::InternedString, Compiler, FilePath, Loader};
 
-impl<L> Compiler<'_, L> {
-    pub fn parse(&mut self, file: FilePath, code: &str) -> Option<File> {
-        let (shebang, code) = match grammar::parse_shebang(code) {
+impl<L: Loader> Compiler<L> {
+    pub fn parse(&self, file: FilePath, code: &str) -> Option<File> {
+        let code = code.replace("\r\n", "\n");
+
+        let (shebang, code) = match grammar::parse_shebang(&code) {
             Some((shebang, code)) => (Some(shebang), code),
-            None => (None, code),
+            None => (None, code.as_str()),
         };
 
         let mut parser = Parser {
@@ -21,7 +23,7 @@ impl<L> Compiler<'_, L> {
             len: code.len(),
             offset: shebang.map(|s| "#!".len() + s.len()).unwrap_or(0),
             file,
-            diagnostics: &mut self.diagnostics,
+            diagnostics: self.diagnostics.clone(),
         };
 
         parser.parse_file().map(|(attributes, statements)| File {

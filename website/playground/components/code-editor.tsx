@@ -41,7 +41,7 @@ export const CodeEditor = (props: CodeEditorProps) => {
     return (
         <div className="bg-white dark:bg-gray-900 border-2 border-gray-100 dark:border-gray-700 rounded-lg overflow-clip">
             <SimpleCodeEditor
-                className="m-4 dark:caret-white"
+                className="code-editor m-4 dark:caret-white"
                 textareaClassName="outline-0"
                 preClassName="language-wipple"
                 style={{
@@ -66,7 +66,7 @@ export const CodeEditor = (props: CodeEditorProps) => {
                             : "bg-red-50 dark:bg-red-900 dark:opacity-50 text-red-900 dark:text-red-50"
                     }`}
                 >
-                    <pre className="whitespace-pre-wrap break-word">{output?.value}</pre>
+                    <pre className="whitespace-pre-wrap break-all">{output?.value}</pre>
                 </div>
             </animated.div>
         </div>

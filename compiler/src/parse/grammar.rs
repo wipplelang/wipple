@@ -55,12 +55,12 @@ impl Expr {
     }
 }
 
-pub struct Parser<'a, 'src> {
+pub struct Parser<'src> {
     pub lexer: Peekable<SpannedIter<'src, Token<'src>>>,
     pub len: usize,
     pub offset: usize,
     pub file: FilePath,
-    pub diagnostics: &'a mut Diagnostics,
+    pub diagnostics: Diagnostics,
 }
 
 #[derive(Clone, Copy)]
@@ -70,7 +70,7 @@ pub enum ParseError {
     EndOfFile,
 }
 
-impl<'src> Parser<'_, 'src> {
+impl<'src> Parser<'src> {
     pub fn parse_file(&mut self) -> Option<(Vec<Expr>, Vec<Statement>)> {
         let attributes = self.parse_file_attributes();
 
