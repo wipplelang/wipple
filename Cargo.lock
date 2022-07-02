@@ -1939,6 +1939,7 @@ dependencies = [
  "codemap-diagnostic",
  "futures",
  "indexmap",
+ "itertools",
  "lasso",
  "lazy_static",
  "logos",

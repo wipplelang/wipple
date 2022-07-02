@@ -8,6 +8,7 @@ pub enum UnresolvedType {
     Parameter(TypeParameterId),
     Named(TypeId, Vec<UnresolvedType>),
     Function(Box<UnresolvedType>, Box<UnresolvedType>),
+    Tuple(Vec<UnresolvedType>),
     Builtin(BuiltinType<Box<UnresolvedType>>),
     Bottom(BottomTypeReason),
 }
@@ -17,6 +18,7 @@ pub enum Type {
     Parameter(TypeParameterId),
     Named(TypeId, Vec<Type>),
     Function(Box<Type>, Box<Type>),
+    Tuple(Vec<Type>),
     Builtin(BuiltinType<Box<Type>>),
     Bottom(BottomTypeReason),
 }
@@ -30,6 +32,9 @@ impl From<Type> for UnresolvedType {
             }
             Type::Function(input, output) => {
                 UnresolvedType::Function(Box::new((*input).into()), Box::new((*output).into()))
+            }
+            Type::Tuple(tys) => {
+                UnresolvedType::Tuple(tys.into_iter().map(|ty| ty.into()).collect())
             }
             Type::Builtin(builtin) => UnresolvedType::Builtin(match builtin {
                 BuiltinType::Unit => BuiltinType::Unit,
@@ -232,6 +237,31 @@ impl Context {
 
                 Ok(())
             }
+            (UnresolvedType::Tuple(actual_tys), UnresolvedType::Tuple(expected_tys)) => {
+                if actual_tys.len() != expected_tys.len() {
+                    return Err(TypeError::Mismatch(
+                        UnresolvedType::Tuple(actual_tys),
+                        UnresolvedType::Tuple(expected_tys),
+                    ));
+                }
+
+                for (actual, expected) in std::iter::zip(&actual_tys, &expected_tys) {
+                    if let Err(error) =
+                        self.unify_internal(actual.clone(), expected.clone(), generic, params)
+                    {
+                        return Err(if let TypeError::Mismatch(_, _) = error {
+                            TypeError::Mismatch(
+                                UnresolvedType::Tuple(actual_tys),
+                                UnresolvedType::Tuple(expected_tys),
+                            )
+                        } else {
+                            error
+                        });
+                    }
+                }
+
+                Ok(())
+            }
             (
                 UnresolvedType::Builtin(actual_builtin),
                 UnresolvedType::Builtin(expected_builtin),
@@ -286,6 +316,7 @@ impl UnresolvedType {
             UnresolvedType::Variable(v) => v == var,
             UnresolvedType::Function(input, output) => input.contains(var) || output.contains(var),
             UnresolvedType::Named(_, params) => params.iter().any(|param| param.contains(var)),
+            UnresolvedType::Tuple(tys) => tys.iter().any(|ty| ty.contains(var)),
             UnresolvedType::Builtin(ty) => match ty {
                 BuiltinType::List(ty) | BuiltinType::Mutable(ty) => ty.contains(var),
                 _ => false,
@@ -301,6 +332,7 @@ impl UnresolvedType {
             }
             UnresolvedType::Bottom(BottomTypeReason::Error) => true,
             UnresolvedType::Named(_, params) => params.iter().any(|param| param.contains_error()),
+            UnresolvedType::Tuple(tys) => tys.iter().any(|ty| ty.contains_error()),
             UnresolvedType::Builtin(ty) => match ty {
                 BuiltinType::List(ty) | BuiltinType::Mutable(ty) => ty.contains_error(),
                 _ => false,
@@ -324,6 +356,11 @@ impl UnresolvedType {
             UnresolvedType::Named(_, params) => {
                 for param in params {
                     param.apply(ctx);
+                }
+            }
+            UnresolvedType::Tuple(tys) => {
+                for ty in tys {
+                    ty.apply(ctx);
                 }
             }
             UnresolvedType::Builtin(ty) => match ty {
@@ -351,6 +388,11 @@ impl UnresolvedType {
                     param.instantiate_with(substitutions);
                 }
             }
+            UnresolvedType::Tuple(tys) => {
+                for ty in tys {
+                    ty.instantiate_with(substitutions);
+                }
+            }
             UnresolvedType::Builtin(ty) => match ty {
                 BuiltinType::List(ty) | BuiltinType::Mutable(ty) => {
                     ty.instantiate_with(substitutions)
@@ -370,6 +412,7 @@ impl UnresolvedType {
                 params
             }
             UnresolvedType::Named(_, params) => params.iter().flat_map(|ty| ty.params()).collect(),
+            UnresolvedType::Tuple(tys) => tys.iter().flat_map(|ty| ty.params()).collect(),
             UnresolvedType::Builtin(ty) => match ty {
                 BuiltinType::List(ty) | BuiltinType::Mutable(ty) => ty.params(),
                 _ => Vec::new(),
@@ -400,6 +443,11 @@ impl UnresolvedType {
             UnresolvedType::Function(input, output) => Type::Function(
                 Box::new(input.finalize(ctx, generic)?),
                 Box::new(output.finalize(ctx, generic)?),
+            ),
+            UnresolvedType::Tuple(tys) => Type::Tuple(
+                tys.into_iter()
+                    .map(|ty| ty.finalize(ctx, generic))
+                    .collect::<Option<_>>()?,
             ),
             UnresolvedType::Builtin(builtin) => Type::Builtin(match builtin {
                 BuiltinType::Unit => BuiltinType::Unit,

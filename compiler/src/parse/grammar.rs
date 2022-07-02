@@ -72,6 +72,10 @@ pub enum ParseError {
 
 impl<'src> Parser<'src> {
     pub fn parse_file(&mut self) -> Option<(Vec<Expr>, Vec<Statement>)> {
+        while let (_, Some(Token::Comment(_) | Token::LineBreak)) = self.peek() {
+            self.consume();
+        }
+
         let attributes = self.parse_file_attributes();
 
         let (statements, _) = self.parse_statements(None)?;

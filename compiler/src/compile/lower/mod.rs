@@ -166,6 +166,7 @@ pub enum ExpressionKind {
     Loop(Box<Expression>),
     Break(Box<Expression>),
     Continue,
+    Tuple(Vec<Expression>),
 }
 
 impl Expression {
@@ -203,6 +204,7 @@ pub enum PatternKind {
     Annotate(Box<Pattern>, TypeAnnotation),
     Or(Box<Pattern>, Box<Pattern>),
     Where(Box<Pattern>, Box<Expression>),
+    Tuple(Vec<Pattern>),
 }
 
 #[derive(Debug, Clone)]
@@ -219,6 +221,7 @@ pub enum TypeAnnotationKind {
     Parameter(TypeParameterId),
     Builtin(BuiltinTypeId, Vec<TypeAnnotation>),
     Function(Box<TypeAnnotation>, Box<TypeAnnotation>),
+    Tuple(Vec<TypeAnnotation>),
 }
 
 impl TypeAnnotation {
@@ -1287,6 +1290,12 @@ impl<L: Loader> Compiler<L> {
 
                 ExpressionKind::Continue
             }
+            ast::ExpressionKind::Tuple(exprs) => ExpressionKind::Tuple(
+                exprs
+                    .into_iter()
+                    .map(|expr| self.lower_expr(expr, scope, info))
+                    .collect(),
+            ),
         };
 
         Expression {
@@ -1346,6 +1355,11 @@ impl<L: Loader> Compiler<L> {
             ast::TypeAnnotationKind::Function(input, output) => TypeAnnotationKind::Function(
                 Box::new(self.lower_type_annotation(*input, scope, info)),
                 Box::new(self.lower_type_annotation(*output, scope, info)),
+            ),
+            ast::TypeAnnotationKind::Tuple(tys) => TypeAnnotationKind::Tuple(
+                tys.into_iter()
+                    .map(|ty| self.lower_type_annotation(ty, scope, info))
+                    .collect(),
             ),
         };
 
@@ -1517,6 +1531,12 @@ impl<L: Loader> Compiler<L> {
             ast::PatternKind::Where(pattern, condition) => PatternKind::Where(
                 Box::new(self.lower_pattern(*pattern, scope, info)),
                 Box::new(self.lower_expr(*condition, scope, info)),
+            ),
+            ast::PatternKind::Tuple(patterns) => PatternKind::Tuple(
+                patterns
+                    .into_iter()
+                    .map(|pattern| self.lower_pattern(pattern, scope, info))
+                    .collect(),
             ),
         })();
 

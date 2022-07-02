@@ -415,6 +415,30 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
         ),
     );
 
+    // `,` operator
+
+    let id = once_id!(template);
+
+    scope_values.insert(
+        InternedString::new(","),
+        ScopeValue::Operator(Operator {
+            precedence: OperatorPrecedence::Comma,
+            template: id,
+        }),
+    );
+
+    expander.declarations.lock().templates.insert(
+        id,
+        Template::function(Span::builtin("`,` operator"), |_, span, inputs, _, _, _| {
+            Box::pin(async move {
+                Node {
+                    span,
+                    kind: NodeKind::Tuple(inputs),
+                }
+            })
+        }),
+    );
+
     // `use` template
 
     let id = once_id!(template);

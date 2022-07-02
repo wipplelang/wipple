@@ -74,6 +74,7 @@ pub enum ExpressionKind {
     Loop(Box<Expression>),
     Break(Box<Expression>),
     Continue,
+    Tuple(Vec<Expression>),
 }
 
 #[derive(Debug, Clone)]
@@ -97,6 +98,7 @@ pub enum TypeAnnotationKind {
     Unit,
     Named(InternedString, Vec<TypeAnnotation>),
     Function(Box<TypeAnnotation>, Box<TypeAnnotation>),
+    Tuple(Vec<TypeAnnotation>),
 }
 
 #[derive(Debug, Clone)]
@@ -124,6 +126,7 @@ pub enum PatternKind {
     Annotate(Box<Pattern>, TypeAnnotation),
     Or(Box<Pattern>, Box<Pattern>),
     Where(Box<Pattern>, Box<Expression>),
+    Tuple(Vec<Pattern>),
 }
 
 #[derive(Debug, Clone)]
@@ -629,6 +632,12 @@ impl<L: Loader> Compiler<L> {
                     ExpressionKind::Break(Box::new(self.build_expression(*value)))
                 }
                 NodeKind::Continue => ExpressionKind::Continue,
+                NodeKind::Tuple(nodes) => ExpressionKind::Tuple(
+                    nodes
+                        .into_iter()
+                        .map(|node| self.build_expression(node))
+                        .collect(),
+                ),
                 _ => {
                     self.diagnostics.add(Diagnostic::error(
                         "expected expression",
@@ -754,6 +763,12 @@ impl<L: Loader> Compiler<L> {
                     Box::new(self.build_pattern(*pattern)),
                     Box::new(self.build_expression(*condition)),
                 ),
+                NodeKind::Tuple(nodes) => PatternKind::Tuple(
+                    nodes
+                        .into_iter()
+                        .map(|node| self.build_pattern(node))
+                        .collect(),
+                ),
                 _ => {
                     self.diagnostics.add(Diagnostic::error(
                         "expected pattern",
@@ -799,6 +814,12 @@ impl<L: Loader> Compiler<L> {
                         }
                     }
                 }
+                NodeKind::Tuple(nodes) => TypeAnnotationKind::Tuple(
+                    nodes
+                        .into_iter()
+                        .map(|node| self.build_type_annotation(node))
+                        .collect(),
+                ),
                 _ => {
                     self.diagnostics.add(Diagnostic::error(
                         "expected type",

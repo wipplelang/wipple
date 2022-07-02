@@ -64,6 +64,7 @@ macro_rules! expr {
                 Loop(Box<[<$prefix Expression>]>),
                 Break(Box<[<$prefix Expression>]>),
                 Continue,
+                Tuple(Vec<[<$prefix Expression>]>),
                 $($kinds)*
             }
 
@@ -94,6 +95,7 @@ macro_rules! pattern {
                 Variable(VariableId),
                 Or(Box<[<$prefix Pattern>]>, Box<[<$prefix Pattern>]>),
                 Where(Box<[<$prefix Pattern>]>, Box<[<$prefix Expression>]>),
+                Tuple(Vec<[<$prefix Pattern>]>),
                 $($kinds)*
             }
         }
@@ -1492,6 +1494,20 @@ impl<L: Loader> Typechecker<L> {
                 ty: UnresolvedType::Bottom(BottomTypeReason::Annotated),
                 kind: UnresolvedExpressionKind::Continue,
             },
+            lower::ExpressionKind::Tuple(exprs) => {
+                let exprs = exprs
+                    .iter()
+                    .map(|expr| self.typecheck_expr(expr, file, suppress_errors))
+                    .collect::<Vec<_>>();
+
+                let ty = UnresolvedType::Tuple(exprs.iter().map(|expr| expr.ty.clone()).collect());
+
+                UnresolvedExpression {
+                    span: expr.span,
+                    ty,
+                    kind: UnresolvedExpressionKind::Tuple(exprs),
+                }
+            }
         }
     }
 
@@ -1586,6 +1602,12 @@ impl<L: Loader> Typechecker<L> {
                 lower::PatternKind::Where(pattern, condition) => UnresolvedPatternKind::Where(
                     Box::new(typecheck_pattern(tc, pattern, None, file, suppress_errors)),
                     Box::new(tc.typecheck_expr(condition, file, suppress_errors)),
+                ),
+                lower::PatternKind::Tuple(patterns) => UnresolvedPatternKind::Tuple(
+                    patterns
+                        .iter()
+                        .map(|pattern| typecheck_pattern(tc, pattern, None, file, suppress_errors))
+                        .collect(),
                 ),
             };
 
@@ -2007,6 +2029,40 @@ impl<L: Loader> Typechecker<L> {
                     Box::new(condition),
                 ))
             }
+            UnresolvedPatternKind::Tuple(patterns) => {
+                let tys = patterns
+                    .iter()
+                    .map(|_| UnresolvedType::Variable(self.ctx.new_variable()))
+                    .collect::<Vec<_>>();
+
+                if let Err(error) = self.ctx.unify(ty, UnresolvedType::Tuple(tys.clone())) {
+                    self.errors.push(Error::new(error, pattern.span));
+
+                    return None;
+                }
+
+                let match_sets = match match_set {
+                    MatchSet::Tuple(sets) => sets,
+                    _ => unreachable!(),
+                };
+
+                Some(MonomorphizedPatternKind::Tuple(
+                    patterns
+                        .into_iter()
+                        .zip(tys)
+                        .zip(match_sets)
+                        .map(|((pattern, ty), match_set)| {
+                            self.monomorphize_pattern(
+                                pattern,
+                                ty,
+                                match_set,
+                                file,
+                                inside_generic_constant,
+                            )
+                        })
+                        .collect::<Option<_>>()?,
+                ))
+            }
         })()?;
 
         Some(MonomorphizedPattern {
@@ -2223,6 +2279,12 @@ impl<L: Loader> Typechecker<L> {
                         Box::new(self.monomorphize(*value, file, inside_generic_constant)?),
                     ),
                     UnresolvedExpressionKind::Continue => MonomorphizedExpressionKind::Continue,
+                    UnresolvedExpressionKind::Tuple(exprs) => MonomorphizedExpressionKind::Tuple(
+                        exprs
+                            .into_iter()
+                            .map(|expr| self.monomorphize(expr, file, inside_generic_constant))
+                            .collect::<Result<_, _>>()?,
+                    ),
                 })
             })()?,
         })
@@ -2353,6 +2415,12 @@ impl<L: Loader> Typechecker<L> {
                     ExpressionKind::Break(Box::new(self.finalize_internal(*value, generic, file)?))
                 }
                 MonomorphizedExpressionKind::Continue => ExpressionKind::Continue,
+                MonomorphizedExpressionKind::Tuple(exprs) => ExpressionKind::Tuple(
+                    exprs
+                        .into_iter()
+                        .map(|expr| self.finalize_internal(expr, generic, file))
+                        .collect::<Result<_, _>>()?,
+                ),
             },
         })
     }
@@ -2392,6 +2460,12 @@ impl<L: Loader> Typechecker<L> {
                 MonomorphizedPatternKind::Where(pattern, condition) => PatternKind::Where(
                     Box::new(self.finalize_pattern(*pattern, generic, file)?),
                     Box::new(self.finalize_internal(*condition, generic, file)?),
+                ),
+                MonomorphizedPatternKind::Tuple(patterns) => PatternKind::Tuple(
+                    patterns
+                        .into_iter()
+                        .map(|pattern| self.finalize_pattern(pattern, generic, file))
+                        .collect::<Result<_, _>>()?,
                 ),
             },
         })
@@ -2642,6 +2716,11 @@ impl<L: Loader> Typechecker<L> {
                 Box::new(self.convert_type_annotation(input, file)),
                 Box::new(self.convert_type_annotation(output, file)),
             ),
+            lower::TypeAnnotationKind::Tuple(tys) => UnresolvedType::Tuple(
+                tys.iter()
+                    .map(|ty| self.convert_type_annotation(ty, file))
+                    .collect(),
+            ),
         }
     }
 }
@@ -2652,6 +2731,7 @@ enum MatchSet {
     Unit(bool),
     Structure(Vec<(bool, MatchSet)>),
     Enumeration(Vec<(bool, Vec<MatchSet>)>),
+    Tuple(Vec<MatchSet>),
 }
 
 impl<L: Loader> Typechecker<L> {
@@ -2683,6 +2763,11 @@ impl<L: Loader> Typechecker<L> {
                     )),
                 }
             }
+            UnresolvedType::Tuple(tys) => Ok(MatchSet::Tuple(
+                tys.iter()
+                    .map(|ty| self.match_set_from(ty))
+                    .collect::<Result<_, _>>()?,
+            )),
             UnresolvedType::Bottom(_) => Ok(MatchSet::Never),
             _ => Ok(MatchSet::Unit(false)),
         }
@@ -2731,6 +2816,7 @@ impl MatchSet {
             MatchSet::Enumeration(variants) => variants.iter().all(|(matches, variant)| {
                 *matches && variant.iter().all(|variant| variant.is_matched())
             }),
+            MatchSet::Tuple(sets) => sets.iter().all(|set| set.is_matched()),
         }
     }
 
@@ -2749,6 +2835,11 @@ impl MatchSet {
                     for match_set in variant {
                         match_set.set_matched(is_matched);
                     }
+                }
+            }
+            MatchSet::Tuple(sets) => {
+                for set in sets {
+                    set.set_matched(is_matched);
                 }
             }
             _ => {}

@@ -1,3 +1,5 @@
+use itertools::Itertools;
+
 use super::engine::{BuiltinType, UnresolvedType};
 use crate::{TraitId, TypeId, TypeParameterId};
 
@@ -118,6 +120,19 @@ fn format_type_with(
                     format!("({input} -> {output})")
                 }
             }
+            FormattableType::Type(UnresolvedType::Tuple(tys)) => tys
+                .into_iter()
+                .map(|ty| {
+                    format_type(
+                        ty.into(),
+                        type_names,
+                        trait_names,
+                        param_names,
+                        is_top_level,
+                        is_return,
+                    )
+                })
+                .join(" , "),
             FormattableType::Trait(tr, params) => {
                 format_named_type!(trait_names(tr), params)
             }
