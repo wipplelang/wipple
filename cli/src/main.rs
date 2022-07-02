@@ -6,6 +6,7 @@ use std::{
     path::PathBuf,
     process::ExitCode,
     str::FromStr,
+    sync::Arc,
 };
 use wipple_compiler::{Compiler, Loader};
 use wipple_default_loader as loader;
@@ -187,7 +188,7 @@ async fn build_with_passes<P: std::fmt::Debug>(
     passes: impl FnOnce(&mut Compiler<loader::Loader>, wipple_compiler::compile::Program) -> P,
 ) -> Option<(P, wipple_compiler::SourceMap)> {
     #[cfg(debug_assertions)]
-    let progress_bar = None::<indicatif::ProgressBar>;
+    let progress_bar = Arc::new(None::<indicatif::ProgressBar>);
 
     #[cfg(not(debug_assertions))]
     let progress_bar = Arc::new(Some(
@@ -232,6 +233,9 @@ async fn build_with_passes<P: std::fmt::Debug>(
         )),
         (!options.no_std).then(|| {
             wipple_compiler::FilePath::Path(wipple_compiler::helpers::InternedString::new(
+                #[cfg(debug_assertions)]
+                concat!(env!("CARGO_WORKSPACE_DIR"), "pkg/std/std.wpl"),
+                #[cfg(not(debug_assertions))]
                 if loader::is_url(&options.std) {
                     options.std
                 } else {
@@ -255,7 +259,7 @@ async fn build_with_passes<P: std::fmt::Debug>(
     let diagnostics = compiler.finish();
     let success = !diagnostics.contains_errors();
 
-    if let Some(progress_bar) = progress_bar {
+    if let Some(progress_bar) = progress_bar.as_ref() {
         progress_bar.finish_and_clear();
     }
 
