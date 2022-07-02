@@ -474,7 +474,11 @@ impl<L: Loader> Compiler<L> {
                         ),
                         std::iter::once(Note::primary(
                             decl.span,
-                            "try making this instance more specific",
+                            if decl.value.bounds.is_empty() {
+                                "try making this instance more specific"
+                            } else {
+                                "this instance may have different bounds than the others, but one type could satisfy the bounds on more than one of these instances simultaneously"
+                            },
                         ))
                         .chain(colliding_instances.into_iter().map(|span| {
                             Note::primary(span, "this instance could apply to the same type(s)")
