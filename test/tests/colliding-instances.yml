@@ -1,0 +1,45 @@
+code: |
+    T : A => trait ()
+
+    X : type
+    instance T X : ()
+    instance T X : ()
+
+    A => instance T A : ()
+
+    U : A => trait ()
+    A where (U A) => instance T A : ()
+
+output: |
+
+diagnostics: |
+  error: this instance collides with 1 other instances
+    --> test:5:1
+     |
+  4  | instance T X : ()
+     | ^^^^^^^^^^^^^^^^^ this instance could apply to the same type(s)
+  5  | instance T X : ()
+     | ^^^^^^^^^^^^^^^^^ try making this instance more specific
+  error: this instance collides with 2 other instances
+    --> test:7:1
+     |
+  4  | instance T X : ()
+     | ^^^^^^^^^^^^^^^^^ this instance could apply to the same type(s)
+  5  | instance T X : ()
+     | ^^^^^^^^^^^^^^^^^ this instance could apply to the same type(s)
+  5  | instance T X : ()
+  7  | A => instance T A : ()
+     | ^^^^^^^^^^^^^^^^^^^^^^ try making this instance more specific
+  error: this instance collides with 3 other instances
+    --> test:10:1
+     |
+  4  | instance T X : ()
+     | ^^^^^^^^^^^^^^^^^ this instance could apply to the same type(s)
+  5  | instance T X : ()
+     | ^^^^^^^^^^^^^^^^^ this instance could apply to the same type(s)
+  5  | instance T X : ()
+  7  | A => instance T A : ()
+     | ^^^^^^^^^^^^^^^^^^^^^^ this instance could apply to the same type(s)
+  ...
+  10 | A where (U A) => instance T A : ()
+     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this instance may have different bounds than the others, but one type could satisfy the bounds on more than one of these instances simultaneously

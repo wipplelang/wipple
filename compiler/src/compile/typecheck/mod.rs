@@ -444,6 +444,49 @@ impl<L: Loader> Compiler<L> {
 
                 typechecker.add_substitutions(&mut tr.ty, &mut substitutions);
 
+                // Check if the instance collides with any other instances --
+                // there's no need to check the bounds because there's no way to
+                // ensure a type doesn't satisfy the bounds specified in both
+                // instances
+
+                let colliding_instances = typechecker
+                    .declared_instances
+                    .get(&decl.value.tr)
+                    .cloned()
+                    .unwrap_or_default()
+                    .into_iter()
+                    .filter_map(|id| {
+                        let other = typechecker.generic_constants.get(&id).unwrap();
+
+                        let mut temp_ctx = typechecker.ctx.clone();
+                        temp_ctx
+                            .unify(tr.ty.clone(), other.generic_ty.clone())
+                            .is_ok()
+                            .then(|| other.decl.span)
+                    })
+                    .collect::<Vec<_>>();
+
+                if !colliding_instances.is_empty() {
+                    self.diagnostics.add(Diagnostic::error(
+                        format!(
+                            "this instance collides with {} other instances",
+                            colliding_instances.len()
+                        ),
+                        std::iter::once(Note::primary(
+                            decl.span,
+                            if decl.value.bounds.is_empty() {
+                                "try making this instance more specific"
+                            } else {
+                                "this instance may have different bounds than the others, but one type could satisfy the bounds on more than one of these instances simultaneously"
+                            },
+                        ))
+                        .chain(colliding_instances.into_iter().map(|span| {
+                            Note::primary(span, "this instance could apply to the same type(s)")
+                        }))
+                        .collect(),
+                    ));
+                }
+
                 let bounds = decl
                     .value
                     .bounds
