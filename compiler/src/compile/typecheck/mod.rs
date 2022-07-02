@@ -265,6 +265,10 @@ impl<L: Loader> Compiler<L> {
             }
 
             for (id, decl) in file.borrow().declarations.traits.clone() {
+                if typechecker.declarations.traits.contains_key(&id) {
+                    continue;
+                }
+
                 let ty = typechecker.convert_type_annotation(&decl.value.ty, file);
 
                 let params = decl.value.parameters;
@@ -295,6 +299,10 @@ impl<L: Loader> Compiler<L> {
             });
 
             for (&id, decl) in &file.borrow().declarations.types {
+                if typechecker.types.contains_key(&id) {
+                    continue;
+                }
+
                 let params = decl.value.params.clone();
 
                 #[allow(clippy::map_entry)] // `typechecker` is borrowed twice otherwise
@@ -360,6 +368,10 @@ impl<L: Loader> Compiler<L> {
             }
 
             for (&id, decl) in &file.borrow().declarations.traits {
+                if typechecker.traits.contains_key(&id) {
+                    continue;
+                }
+
                 let ty = typechecker.convert_type_annotation(&decl.value.ty, file);
                 let params = decl.value.parameters.clone();
 
@@ -369,6 +381,10 @@ impl<L: Loader> Compiler<L> {
             }
 
             for (&id, decl) in &file.borrow().declarations.constants {
+                if typechecker.generic_constants.contains_key(&id) {
+                    continue;
+                }
+
                 let value = decl.value.value.borrow().as_ref().unwrap().clone();
                 let generic_ty = typechecker.convert_type_annotation(&decl.value.ty, file);
 
@@ -411,6 +427,10 @@ impl<L: Loader> Compiler<L> {
             }
 
             for (id, decl) in file.borrow().declarations.instances.clone() {
+                if typechecker.generic_constants.contains_key(&id) {
+                    continue;
+                }
+
                 let value = decl.value.value.clone();
 
                 let mut tr = typechecker.traits.get(&decl.value.tr).unwrap().clone();
