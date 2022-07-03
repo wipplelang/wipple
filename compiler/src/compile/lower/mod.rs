@@ -160,7 +160,6 @@ pub enum ExpressionKind {
     Annotate(Box<Expression>, TypeAnnotation),
     Initialize(Pattern, Box<Expression>),
     Instantiate(TypeId, Vec<(InternedString, Expression)>),
-    ListLiteral(Vec<Expression>),
     Variant(TypeId, usize, Vec<Expression>),
     Return(Box<Expression>),
     Loop(Box<Expression>),
@@ -1245,12 +1244,6 @@ impl<L: Loader> Compiler<L> {
             ast::ExpressionKind::Annotate(expr, ty) => ExpressionKind::Annotate(
                 Box::new(self.lower_expr(*expr, scope, info)),
                 self.lower_type_annotation(ty, scope, info),
-            ),
-            ast::ExpressionKind::ListLiteral(items) => ExpressionKind::ListLiteral(
-                items
-                    .into_iter()
-                    .map(|expr| self.lower_expr(expr, scope, info))
-                    .collect(),
             ),
             ast::ExpressionKind::Return(value) => {
                 if !scope.is_within_function() {

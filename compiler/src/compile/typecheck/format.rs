@@ -120,19 +120,37 @@ fn format_type_with(
                     format!("({input} -> {output})")
                 }
             }
-            FormattableType::Type(UnresolvedType::Tuple(tys)) => tys
-                .into_iter()
-                .map(|ty| {
+            FormattableType::Type(UnresolvedType::Tuple(mut tys)) => {
+                let ty = if tys.len() == 1 {
                     format_type(
-                        ty.into(),
+                        tys.pop().unwrap().into(),
                         type_names,
                         trait_names,
                         param_names,
                         is_top_level,
                         is_return,
-                    )
-                })
-                .join(" , "),
+                    ) + " ,"
+                } else {
+                    tys.into_iter()
+                        .map(|ty| {
+                            format_type(
+                                ty.into(),
+                                type_names,
+                                trait_names,
+                                param_names,
+                                is_top_level,
+                                is_return,
+                            )
+                        })
+                        .join(" , ")
+                };
+
+                if is_top_level {
+                    ty
+                } else {
+                    format!("({})", ty)
+                }
+            }
             FormattableType::Trait(tr, params) => {
                 format_named_type!(trait_names(tr), params)
             }

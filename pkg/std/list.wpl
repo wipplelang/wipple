@@ -5,6 +5,28 @@ use "./output.wpl"
 use "./fp.wpl"
 use "./mutable.wpl"
 
+[help "Implementations for the `list` function."]
+Tuple-To-List : Tuple List => trait (Tuple -> List)
+
+tuple-to-list-impl : tuple' ~>
+	(A => instance Tuple-To-List tuple' (List A) : tuple -> external "builtin" "make-list" tuple)
+
+tuple-to-list-impl ()
+-- tuple-to-list-impl (A ,) -- TODO
+tuple-to-list-impl (A , A)
+tuple-to-list-impl (A , A , A)
+tuple-to-list-impl (A , A , A , A)
+tuple-to-list-impl (A , A , A , A , A)
+tuple-to-list-impl (A , A , A , A , A , A)
+tuple-to-list-impl (A , A , A , A , A , A , A)
+tuple-to-list-impl (A , A , A , A , A , A , A , A)
+tuple-to-list-impl (A , A , A , A , A , A , A , A , A)
+tuple-to-list-impl (A , A , A , A , A , A , A , A , A , A)
+
+[help "Create a `List` from a tuple."]
+list :: Tuple List where (Tuple-To-List Tuple List) => Tuple -> List
+list : Tuple-To-List
+
 [help "Retrieve the first item inside a `List`, if it exists."]
 first :: A => List A -> Maybe A
 first : list -> external "builtin" "list-first" list

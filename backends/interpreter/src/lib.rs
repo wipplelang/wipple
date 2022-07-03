@@ -270,12 +270,6 @@ impl<'a> Interpreter<'a> {
                     .map(|expr| self.eval_expr(expr, info))
                     .collect::<Result<_, _>>()?,
             ),
-            ExpressionKind::ListLiteral(exprs) => Value::List(
-                exprs
-                    .iter()
-                    .map(|expr| self.eval_expr(expr, info))
-                    .collect::<Result<_, _>>()?,
-            ),
             ExpressionKind::Return(value) => {
                 let value = self.eval_expr(value, info)?;
                 return Err(Diverge::new(info.stack.clone(), DivergeKind::Return(value)));

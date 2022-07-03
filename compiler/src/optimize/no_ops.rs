@@ -72,7 +72,6 @@ fn is_no_op(expr: &Expression) -> bool {
         ExpressionKind::Block(values)
         | ExpressionKind::Structure(values)
         | ExpressionKind::Variant(_, values)
-        | ExpressionKind::ListLiteral(values)
         | ExpressionKind::Tuple(values) => values.iter().all(is_no_op),
         ExpressionKind::When(input, arms) => {
             is_no_op(input)

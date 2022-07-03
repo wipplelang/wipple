@@ -6,9 +6,6 @@ pub enum Token<'src> {
     #[token("(")]
     LeftParenthesis,
 
-    #[token("'(")]
-    QuotedLeftParenthesis,
-
     #[token(")")]
     RightParenthesis,
 
@@ -62,7 +59,6 @@ impl<'src> fmt::Display for Token<'src> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Token::LeftParenthesis => write!(f, "`(`"),
-            Token::QuotedLeftParenthesis => write!(f, "`'(`"),
             Token::RightParenthesis => write!(f, "`)`"),
             Token::LeftFileBracket => write!(f, "`[:`"),
             Token::RightFileBracket => write!(f, "`:]`"),

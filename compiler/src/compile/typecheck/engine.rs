@@ -430,7 +430,7 @@ impl UnresolvedType {
                 if generic {
                     Type::Parameter(param)
                 } else {
-                    panic!("cannot finalize type parameter in non-generic context")
+                    return None;
                 }
             }
             UnresolvedType::Named(id, params) => Type::Named(

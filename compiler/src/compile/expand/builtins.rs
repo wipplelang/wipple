@@ -734,7 +734,7 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
                                     format_text,
                                     Node {
                                         span: Span::builtin("generated list as input to `format`"),
-                                        kind: NodeKind::ListLiteral(
+                                        kind: NodeKind::Tuple(
                                             inputs
                                                 .into_iter()
                                                 .map(|input| Node {

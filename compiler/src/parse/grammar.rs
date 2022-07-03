@@ -31,7 +31,6 @@ pub enum ExprKind {
     Text(InternedString),
     Number(Decimal),
     List(Vec<ListLine>),
-    ListLiteral(Vec<ListLine>),
     Block(Vec<Statement>),
 }
 
@@ -280,7 +279,6 @@ impl<'src> Parser<'src> {
             try_parse_text,
             try_parse_number,
             try_parse_list,
-            try_parse_list_literal,
             try_parse_block,
         )
     }
@@ -386,27 +384,6 @@ impl<'src> Parser<'src> {
                     Ok(Expr::new(
                         span.with_end(end_span.end),
                         ExprKind::List(lines),
-                    ))
-                } else {
-                    Err(ParseError::InvalidExpr)
-                }
-            }
-            Some(_) => Err(ParseError::WrongTokenType),
-            None => Err(ParseError::EndOfFile),
-        }
-    }
-
-    pub fn try_parse_list_literal(&mut self) -> Result<Expr, ParseError> {
-        let (span, token) = self.peek();
-
-        match token {
-            Some(Token::QuotedLeftParenthesis) => {
-                self.consume();
-
-                if let Some((lines, end_span)) = self.parse_list_contents(Token::RightParenthesis) {
-                    Ok(Expr::new(
-                        span.with_end(end_span.end),
-                        ExprKind::ListLiteral(lines),
                     ))
                 } else {
                     Err(ParseError::InvalidExpr)

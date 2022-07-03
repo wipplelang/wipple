@@ -62,7 +62,7 @@ collect :: Context Input Element Output where (Iterate Context Input Element) (C
 collect : input -> Collect (Iterate input)
 
 Context Element => instance Collect Context Element (List Element) : { context next } -> {
-	list : mutable '()
+	list : mutable (list ())
 	loop {
 		when (next context) {
 			Some x -> {

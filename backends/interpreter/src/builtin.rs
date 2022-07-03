@@ -67,6 +67,7 @@ lazy_static! {
             "floor" => builtin_floor,
             "ceil" => builtin_ceil,
             "sqrt" => builtin_sqrt,
+            "make-list" => builtin_make_list,
             "list-first" => builtin_list_first,
             "list-last" => builtin_list_last,
             "list-initial" => builtin_list_initial,
@@ -397,6 +398,12 @@ fn builtin_loop(
             _ => unreachable!(),
         }
     })
+}
+
+fn builtin_make_list(_: &Interpreter, (tuple,): (Value,), _: &Info) -> Result<Value, Diverge> {
+    // This is OK because tuples and lists have the same representation in the
+    // interpreter
+    Ok(tuple)
 }
 
 fn builtin_list_first(_: &Interpreter, (list,): (Value,), _: &Info) -> Result<Value, Diverge> {

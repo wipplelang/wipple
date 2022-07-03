@@ -115,7 +115,6 @@ pub enum NodeKind {
     TypeFunction(Box<Node>, Box<Node>),
     Where(Box<Node>, Box<Node>),
     Instance(Box<Node>, Vec<Node>),
-    ListLiteral(Vec<Node>),
     Use(Box<Node>),
     When(Box<Node>, Vec<Statement>),
     Return(Box<Node>),
@@ -569,16 +568,6 @@ impl<L: Loader> Expander<L> {
                 )
                 .await
             }
-            parse::ExprKind::ListLiteral(list) => Node {
-                span: expr.span,
-                kind: NodeKind::ListLiteral(
-                    stream::iter(list)
-                        .flat_map(|line| stream::iter(line.exprs))
-                        .then(|expr| self.expand_expr(expr, scope))
-                        .collect::<Vec<_>>()
-                        .await,
-                ),
-            },
             parse::ExprKind::Block(statements) => {
                 let (statements, _) = self.expand_block(statements, scope).await;
 
@@ -950,14 +939,18 @@ impl<L: Loader> Expander<L> {
                         );
 
                         let exprs = stream::iter(exprs)
+                            .enumerate()
                             .then({
                                 let operators = Arc::new(operators);
 
-                                move |(operator_index, exprs)| {
+                                move |(index, (operator_index, mut exprs))| {
                                     let operators = operators.clone();
 
                                     async move {
-                                        if exprs.is_empty() {
+                                        let is_trailing = index + 1 >= len;
+
+                                        // Allow trailing operator
+                                        if exprs.is_empty() && !is_trailing {
                                             let operator_span = operators
                                                 .iter()
                                                 .find_map(|(index, _, span, _)| {
@@ -984,6 +977,10 @@ impl<L: Loader> Expander<L> {
                                             exprs.first().unwrap().span,
                                             exprs.last().unwrap().span,
                                         );
+
+                                        if is_trailing {
+                                            exprs.pop();
+                                        }
 
                                         self.expand_list(span, exprs, scope).await
                                     }

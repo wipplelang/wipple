@@ -59,7 +59,6 @@ macro_rules! expr {
                 Initialize([<$prefix Pattern>], Box<[<$prefix Expression>]>),
                 Structure(Vec<[<$prefix Expression>]>),
                 Variant(usize, Vec<[<$prefix Expression>]>),
-                ListLiteral(Vec<[<$prefix Expression>]>),
                 Return(Box<[<$prefix Expression>]>),
                 Loop(Box<[<$prefix Expression>]>),
                 Break(Box<[<$prefix Expression>]>),
@@ -1327,33 +1326,6 @@ impl<L: Loader> Typechecker<L> {
                     kind: UnresolvedExpressionKind::Structure(fields),
                 }
             }
-            lower::ExpressionKind::ListLiteral(items) => {
-                let items = items
-                    .iter()
-                    .map(|expr| self.typecheck_expr(expr, file, suppress_errors))
-                    .collect::<Vec<_>>();
-
-                let mut item_tys = items.iter().map(|item| (item.span, item.ty.clone()));
-
-                let ty = item_tys
-                    .next()
-                    .map(|(_, ty)| ty)
-                    .unwrap_or_else(|| UnresolvedType::Variable(self.ctx.new_variable()));
-
-                for (span, item_ty) in item_tys {
-                    if let Err(error) = self.ctx.unify(item_ty, ty.clone()) {
-                        if !suppress_errors {
-                            self.errors.push(Error::new(error, span));
-                        }
-                    };
-                }
-
-                UnresolvedExpression {
-                    span: expr.span,
-                    ty: UnresolvedType::Builtin(BuiltinType::List(Box::new(ty))),
-                    kind: UnresolvedExpressionKind::ListLiteral(items),
-                }
-            }
             lower::ExpressionKind::Variant(id, index, values) => {
                 let enumeration = self.types.get(id).unwrap().clone();
 
@@ -2261,14 +2233,6 @@ impl<L: Loader> Typechecker<L> {
 
                         MonomorphizedExpressionKind::Constant(monomorphized_instance)
                     }
-                    UnresolvedExpressionKind::ListLiteral(items) => {
-                        MonomorphizedExpressionKind::ListLiteral(
-                            items
-                                .into_iter()
-                                .map(|expr| self.monomorphize(expr, file, inside_generic_constant))
-                                .collect::<Result<_, _>>()?,
-                        )
-                    }
                     UnresolvedExpressionKind::Return(value) => MonomorphizedExpressionKind::Return(
                         Box::new(self.monomorphize(*value, file, inside_generic_constant)?),
                     ),
@@ -2395,12 +2359,6 @@ impl<L: Loader> Typechecker<L> {
                 MonomorphizedExpressionKind::Variant(index, values) => ExpressionKind::Variant(
                     index,
                     values
-                        .into_iter()
-                        .map(|expr| self.finalize_internal(expr, generic, file))
-                        .collect::<Result<_, _>>()?,
-                ),
-                MonomorphizedExpressionKind::ListLiteral(items) => ExpressionKind::ListLiteral(
-                    items
                         .into_iter()
                         .map(|expr| self.finalize_internal(expr, generic, file))
                         .collect::<Result<_, _>>()?,
@@ -2541,7 +2499,12 @@ impl<L: Loader> Typechecker<L> {
         let params = tr_decl
             .params
             .into_iter()
-            .map(|param| params.get(&param).unwrap().clone())
+            .map(|param| {
+                params
+                    .get(&param)
+                    .cloned()
+                    .unwrap_or_else(|| UnresolvedType::Variable(self.ctx.new_variable()))
+            })
             .collect();
 
         Err(TypeError::MissingInstance(tr, params))

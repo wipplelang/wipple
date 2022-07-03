@@ -69,7 +69,6 @@ pub enum ExpressionKind {
     When(Box<Expression>, Vec<Arm>),
     External(InternedString, InternedString, Vec<Expression>),
     Annotate(Box<Expression>, TypeAnnotation),
-    ListLiteral(Vec<Expression>),
     Return(Box<Expression>),
     Loop(Box<Expression>),
     Break(Box<Expression>),
@@ -561,12 +560,6 @@ impl<L: Loader> Compiler<L> {
                 NodeKind::Annotate(value, ty) => ExpressionKind::Annotate(
                     Box::new(self.build_expression(*value)),
                     self.build_type_annotation(*ty),
-                ),
-                NodeKind::ListLiteral(items) => ExpressionKind::ListLiteral(
-                    items
-                        .into_iter()
-                        .map(|node| self.build_expression(node))
-                        .collect(),
                 ),
                 NodeKind::When(input, block) => {
                     let input = self.build_expression(*input);

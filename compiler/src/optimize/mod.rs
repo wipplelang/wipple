@@ -43,7 +43,6 @@ pub enum ExpressionKind {
     Initialize(Pattern, Box<Expression>),
     Structure(Vec<Expression>),
     Variant(usize, Vec<Expression>),
-    ListLiteral(Vec<Expression>),
     Return(Box<Expression>),
     Loop(Box<Expression>),
     Break(Box<Expression>),
@@ -146,9 +145,6 @@ impl From<compile::Expression> for Expression {
                 }
                 compile::ExpressionKind::Variant(variant, values) => {
                     ExpressionKind::Variant(variant, values.into_iter().map(From::from).collect())
-                }
-                compile::ExpressionKind::ListLiteral(values) => {
-                    ExpressionKind::ListLiteral(values.into_iter().map(From::from).collect())
                 }
                 compile::ExpressionKind::Constant(constant) => ExpressionKind::Constant(constant),
                 compile::ExpressionKind::Return(value) => {
@@ -267,11 +263,6 @@ impl Expression {
                     value.traverse_inner(f);
                 }
             }
-            ExpressionKind::ListLiteral(values) => {
-                for value in values {
-                    value.traverse_inner(f);
-                }
-            }
             ExpressionKind::Return(value) => {
                 value.traverse_inner(f);
             }
@@ -280,6 +271,11 @@ impl Expression {
             }
             ExpressionKind::Break(value) => {
                 value.traverse_inner(f);
+            }
+            ExpressionKind::Tuple(values) => {
+                for value in values {
+                    value.traverse_inner(f);
+                }
             }
             _ => {}
         }
