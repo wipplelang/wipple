@@ -36,11 +36,11 @@ last :: A => List A -> Maybe A
 last : list -> external "builtin" "list-last" list
 
 [help "Retrieve all but the last item inside a `List`."]
-initial :: A => List A -> List A
+initial :: A => List A -> Maybe (List A)
 initial : list -> external "builtin" "list-initial" list
 
 [help "Retrieve all but the first item inside a `List`."]
-tail :: A => List A -> List A
+tail :: A => List A -> Maybe (List A)
 tail : list -> external "builtin" "list-tail" list
 
 Index-Error : type

@@ -14,7 +14,6 @@ use crate::{
 };
 use async_recursion::async_recursion;
 use futures::{future::BoxFuture, stream, StreamExt};
-use itertools::Itertools;
 use parking_lot::Mutex;
 use rust_decimal::Decimal;
 use std::{
@@ -908,64 +907,66 @@ impl<L: Loader> Expander<L> {
                         max_operator.precedence.associativity(),
                         OperatorAssociativity::None { error: false }
                     ) {
-                        let exprs = exprs
-                            .into_iter()
-                            .enumerate()
-                            .group_by(|(index, _)| {
-                                operators
-                                    .iter()
-                                    .rev()
-                                    .map(|(operator_index, ..)| *operator_index)
-                                    .find(|operator_index| operator_index < index)
-                                    .unwrap_or(0)
-                            })
-                            .into_iter()
-                            .map(|(operator_index, it)| {
-                                (operator_index, it.map(|(_, expr)| expr).collect::<Vec<_>>())
-                            })
-                            .collect::<Vec<_>>();
+                        let mut grouped_exprs = vec![(None, Vec::new())];
+                        {
+                            let mut operators = operators.clone();
 
-                        let len = exprs.len();
+                            for (index, expr) in exprs.into_iter().enumerate() {
+                                let operator_index = operators.front().map(|(index, ..)| *index);
 
-                        let exprs = exprs.into_iter().enumerate().map(
-                            |(index, (operator_index, mut exprs))| {
-                                let last = index + 1 == len;
-                                if !last {
-                                    exprs.pop();
+                                if Some(index) == operator_index {
+                                    operators.pop_front();
+                                    grouped_exprs.push((Some(index), Vec::new()));
+                                } else {
+                                    grouped_exprs.last_mut().unwrap().1.push(expr);
                                 }
+                            }
+                        }
 
-                                (operator_index, exprs)
-                            },
-                        );
+                        // Allow trailing operators
+                        if grouped_exprs.last().unwrap().1.is_empty() {
+                            grouped_exprs.pop();
+                        }
 
-                        let exprs = stream::iter(exprs)
-                            .enumerate()
+                        let exprs = stream::iter(grouped_exprs)
                             .then({
                                 let operators = Arc::new(operators);
 
-                                move |(index, (operator_index, mut exprs))| {
+                                move |(operator_index, exprs)| {
                                     let operators = operators.clone();
 
                                     async move {
-                                        let is_trailing = index + 1 >= len;
+                                        if exprs.is_empty() {
+                                            if let Some(operator_index) = operator_index {
+                                                dbg!(operator_index, &operators);
 
-                                        // Allow trailing operator
-                                        if exprs.is_empty() && !is_trailing {
-                                            let operator_span = operators
-                                                .iter()
-                                                .find_map(|(index, _, span, _)| {
-                                                    (*index == operator_index).then(|| *span)
-                                                })
-                                                .unwrap();
+                                                let operator_span = operators
+                                                    .iter()
+                                                    .find_map(|(index, _, span, _)| {
+                                                        (*index == operator_index).then(|| *span)
+                                                    })
+                                                    .unwrap();
 
-                                            self.compiler.diagnostics.add(Diagnostic::new(
-                                                DiagnosticLevel::Error,
-                                                "expected values on right side of operator",
-                                                vec![Note::primary(
-                                                    operator_span,
-                                                    "try providing a value to the right of this",
-                                                )],
-                                            ));
+                                                self.compiler.diagnostics.add(Diagnostic::new(
+                                                    DiagnosticLevel::Error,
+                                                        "expected values on right side of operator",
+                                                        vec![Note::primary(
+                                                        operator_span,
+                                                        "try providing a value to the right of this",
+                                                    )],
+                                                ));
+                                            } else {
+                                                let operator_span = operators.front().unwrap().2;
+
+                                                self.compiler.diagnostics.add(Diagnostic::new(
+                                                    DiagnosticLevel::Error,
+                                                        "expected values on left side of operator",
+                                                        vec![Note::primary(
+                                                        operator_span,
+                                                        "try providing a value to the left of this",
+                                                    )],
+                                                ));
+                                            }
 
                                             return Node {
                                                 span: list_span,
@@ -978,16 +979,14 @@ impl<L: Loader> Expander<L> {
                                             exprs.last().unwrap().span,
                                         );
 
-                                        if is_trailing {
-                                            exprs.pop();
-                                        }
-
                                         self.expand_list(span, exprs, scope).await
                                     }
                                 }
                             })
                             .collect::<Vec<_>>()
                             .await;
+
+                        debug_assert!(!exprs.is_empty());
 
                         let span =
                             Span::join(exprs.first().unwrap().span, exprs.last().unwrap().span);

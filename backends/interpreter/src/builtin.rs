@@ -436,7 +436,11 @@ fn builtin_list_initial(_: &Interpreter, (list,): (Value,), _: &Info) -> Result<
         _ => unreachable!(),
     };
 
-    Ok(Value::List(list.slice(0..(list.len() - 1))))
+    Ok(if list.is_empty() {
+        none()
+    } else {
+        some(Value::List(list.slice(0..(list.len() - 1))))
+    })
 }
 
 fn builtin_list_tail(_: &Interpreter, (list,): (Value,), _: &Info) -> Result<Value, Diverge> {
@@ -445,7 +449,11 @@ fn builtin_list_tail(_: &Interpreter, (list,): (Value,), _: &Info) -> Result<Val
         _ => unreachable!(),
     };
 
-    Ok(Value::List(list.slice(1..list.len())))
+    Ok(if list.is_empty() {
+        none()
+    } else {
+        some(Value::List(list.slice(1..list.len())))
+    })
 }
 
 fn builtin_list_at(

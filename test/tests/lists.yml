@@ -1,11 +1,11 @@
 code: |
-    list : '(1 2 3)
+    my-list : list (1 , 2 , 3)
 
-    show (list . first)
-    show (list . last)
-    show (list . initial . last)
-    show (list . tail . first)
-    show (list . at 1)
+    show (my-list . first)
+    show (my-list . last)
+    show (my-list . initial . unwrap . last)
+    show (my-list . tail . unwrap . first)
+    show (my-list . at 1)
 
 output: |
     Some 1

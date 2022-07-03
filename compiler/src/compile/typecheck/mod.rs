@@ -2651,7 +2651,7 @@ impl<L: Loader> Typechecker<L> {
                                 )],
                             ));
 
-                            UnresolvedType::Builtin(BuiltinType::List(Box::new(
+                            UnresolvedType::Builtin(BuiltinType::Mutable(Box::new(
                                 UnresolvedType::Bottom(BottomTypeReason::Error),
                             )))
                         } else {
