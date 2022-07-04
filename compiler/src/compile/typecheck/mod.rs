@@ -1743,7 +1743,7 @@ impl<L: Loader> Typechecker<L> {
                 Some(MonomorphizedPatternKind::Variable(var))
             }
             UnresolvedPatternKind::Destructure(fields) => {
-                let (id, params) = match ty {
+                let (id, params) = match ty.clone() {
                     UnresolvedType::Named(id, params) => (id, params),
                     _ => {
                         self.compiler.diagnostics.add(Diagnostic::error(
@@ -1781,7 +1781,15 @@ impl<L: Loader> Typechecker<L> {
 
                 let field_match_sets = match match_set {
                     MatchSet::Structure(fields) => fields,
-                    _ => unreachable!(),
+                    _ => {
+                        ty.apply(&self.ctx);
+                        *match_set = self.match_set_from(&ty).unwrap();
+
+                        match match_set {
+                            MatchSet::Structure(fields) => fields,
+                            _ => unreachable!(),
+                        }
+                    }
                 };
 
                 let fields = fields
