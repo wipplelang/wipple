@@ -89,7 +89,6 @@ fn format_type_with(
                 format_named_type!(type_names(id), params)
             }
             FormattableType::Type(UnresolvedType::Builtin(ty)) => match ty {
-                BuiltinType::Unit => format_named_type!("()", Vec::new()),
                 BuiltinType::Text => format_named_type!("Text", Vec::new()),
                 BuiltinType::Number => format_named_type!("Number", Vec::new()),
                 BuiltinType::List(ty) => format_named_type!("List", vec![*ty]),

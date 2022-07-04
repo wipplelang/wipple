@@ -38,7 +38,7 @@ impl<'a> ExternalFunction<'a> {
         let returns = match return_ty {
             Type::Builtin(BuiltinType::Number) => Some(ExternalValueType::Number),
             Type::Builtin(BuiltinType::Text) => Some(ExternalValueType::Text),
-            Type::Builtin(BuiltinType::Unit) => None,
+            Type::Tuple(tys) if tys.is_empty() => None,
             _ => {
                 return Err(Error::from(
                     "only `Number`, `Text` and `()` are supported here",

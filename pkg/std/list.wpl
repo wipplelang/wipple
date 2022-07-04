@@ -12,7 +12,7 @@ tuple-to-list-impl : tuple' ~>
 	(A => instance Tuple-To-List tuple' (List A) : tuple -> external "builtin" "make-list" tuple)
 
 tuple-to-list-impl ()
--- tuple-to-list-impl (A ,) -- TODO
+tuple-to-list-impl (A ,)
 tuple-to-list-impl (A , A)
 tuple-to-list-impl (A , A , A)
 tuple-to-list-impl (A , A , A , A)

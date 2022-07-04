@@ -118,7 +118,6 @@ expr!(pub, "", Type, {
 
 pattern!(, "Unresolved", {
     Error,
-    Unit,
     Destructure(HashMap<InternedString, UnresolvedPattern>),
     Variant(TypeId, usize, Vec<UnresolvedPattern>),
     Annotate(Box<UnresolvedPattern>, UnresolvedType),
@@ -1000,11 +999,6 @@ impl<L: Loader> Typechecker<L> {
     ) -> UnresolvedExpression {
         match &expr.kind {
             lower::ExpressionKind::Error => UnresolvedExpression::error(expr.span),
-            lower::ExpressionKind::Unit => UnresolvedExpression {
-                span: expr.span,
-                ty: UnresolvedType::Builtin(BuiltinType::Unit),
-                kind: UnresolvedExpressionKind::Marker,
-            },
             lower::ExpressionKind::Marker(id) => {
                 let marker = self.types.get(id).unwrap().clone();
 
@@ -1209,7 +1203,7 @@ impl<L: Loader> Typechecker<L> {
 
                 UnresolvedExpression {
                     span: expr.span,
-                    ty: UnresolvedType::Builtin(BuiltinType::Unit),
+                    ty: UnresolvedType::Tuple(Vec::new()),
                     kind: UnresolvedExpressionKind::Initialize(pattern, Box::new(value)),
                 }
             }
@@ -1420,7 +1414,7 @@ impl<L: Loader> Typechecker<L> {
 
                 if let Err(errors) = self
                     .ctx
-                    .unify(body.ty.clone(), UnresolvedType::Builtin(BuiltinType::Unit))
+                    .unify(body.ty.clone(), UnresolvedType::Tuple(Vec::new()))
                 {
                     if !suppress_errors {
                         self.errors.push(Error::new(errors, expr.span));
@@ -1497,7 +1491,7 @@ impl<L: Loader> Typechecker<L> {
         let ty = statements
             .last()
             .map(|statement| statement.ty.clone())
-            .unwrap_or(UnresolvedType::Builtin(BuiltinType::Unit));
+            .unwrap_or(UnresolvedType::Tuple(Vec::new()));
 
         (ty, statements)
     }
@@ -1533,7 +1527,6 @@ impl<L: Loader> Typechecker<L> {
             let kind = match &pattern.kind {
                 lower::PatternKind::Error => UnresolvedPatternKind::Error,
                 lower::PatternKind::Wildcard => UnresolvedPatternKind::Wildcard,
-                lower::PatternKind::Unit => UnresolvedPatternKind::Unit,
                 lower::PatternKind::Number(number) => UnresolvedPatternKind::Number(*number),
                 lower::PatternKind::Text(text) => UnresolvedPatternKind::Text(*text),
                 lower::PatternKind::Variable(var) => {
@@ -1671,18 +1664,6 @@ impl<L: Loader> Typechecker<L> {
             UnresolvedPatternKind::Error => {
                 match_set.set_matched(true);
                 None
-            }
-            UnresolvedPatternKind::Unit => {
-                if let Err(error) = self
-                    .ctx
-                    .unify(ty, UnresolvedType::Builtin(BuiltinType::Unit))
-                {
-                    self.errors.push(Error::new(error, pattern.span));
-                }
-
-                match_set.set_matched(true);
-
-                Some(MonomorphizedPatternKind::Wildcard)
             }
             UnresolvedPatternKind::Number(number) => {
                 if let Err(error) = self
@@ -2007,15 +1988,25 @@ impl<L: Loader> Typechecker<L> {
                     .map(|_| UnresolvedType::Variable(self.ctx.new_variable()))
                     .collect::<Vec<_>>();
 
-                if let Err(error) = self.ctx.unify(ty, UnresolvedType::Tuple(tys.clone())) {
+                if let Err(error) = self
+                    .ctx
+                    .unify(ty.clone(), UnresolvedType::Tuple(tys.clone()))
+                {
                     self.errors.push(Error::new(error, pattern.span));
-
                     return None;
                 }
 
                 let match_sets = match match_set {
                     MatchSet::Tuple(sets) => sets,
-                    _ => unreachable!(),
+                    _ => {
+                        ty.apply(&self.ctx);
+                        *match_set = self.match_set_from(&ty).unwrap();
+
+                        match match_set {
+                            MatchSet::Tuple(sets) => sets,
+                            _ => unreachable!(),
+                        }
+                    }
                 };
 
                 Some(MonomorphizedPatternKind::Tuple(
@@ -2557,19 +2548,6 @@ impl<L: Loader> Typechecker<L> {
 
                         UnresolvedType::Bottom(BottomTypeReason::Annotated)
                     }
-                    lower::BuiltinTypeKind::Unit => {
-                        if !parameters.is_empty() {
-                            self.compiler.diagnostics.add(Diagnostic::error(
-                                "`()` does not accept parameters",
-                                vec![Note::primary(
-                                    annotation.span,
-                                    "try removing these parameters",
-                                )],
-                            ));
-                        }
-
-                        UnresolvedType::Builtin(BuiltinType::Unit)
-                    }
                     lower::BuiltinTypeKind::Number => {
                         if !parameters.is_empty() {
                             self.compiler.diagnostics.add(Diagnostic::error(
@@ -2691,7 +2669,7 @@ impl<L: Loader> Typechecker<L> {
 #[derive(Debug, Clone)]
 enum MatchSet {
     Never,
-    Unit(bool),
+    Marker(bool),
     Structure(Vec<(bool, MatchSet)>),
     Enumeration(Vec<(bool, Vec<MatchSet>)>),
     Tuple(Vec<MatchSet>),
@@ -2704,7 +2682,7 @@ impl<L: Loader> Typechecker<L> {
                 let kind = self.types.get(id).unwrap().kind.clone();
 
                 match kind {
-                    TypeDefinitionKind::Marker => Ok(MatchSet::Unit(false)),
+                    TypeDefinitionKind::Marker => Ok(MatchSet::Marker(false)),
                     TypeDefinitionKind::Structure(fields) => Ok(MatchSet::Structure(
                         fields
                             .values()
@@ -2732,7 +2710,7 @@ impl<L: Loader> Typechecker<L> {
                     .collect::<Result<_, _>>()?,
             )),
             UnresolvedType::Bottom(_) => Ok(MatchSet::Never),
-            _ => Ok(MatchSet::Unit(false)),
+            _ => Ok(MatchSet::Marker(false)),
         }
     }
 
@@ -2772,7 +2750,7 @@ impl MatchSet {
     fn is_matched(&self) -> bool {
         match self {
             MatchSet::Never => true,
-            MatchSet::Unit(matches) => *matches,
+            MatchSet::Marker(matches) => *matches,
             MatchSet::Structure(fields) => fields
                 .iter()
                 .all(|(matches, field)| *matches && field.is_matched()),
@@ -2785,7 +2763,7 @@ impl MatchSet {
 
     fn set_matched(&mut self, is_matched: bool) {
         match self {
-            MatchSet::Unit(matches) => *matches = is_matched,
+            MatchSet::Marker(matches) => *matches = is_matched,
             MatchSet::Structure(fields) => {
                 for (matches, field) in fields {
                     *matches = is_matched;

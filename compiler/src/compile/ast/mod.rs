@@ -59,7 +59,6 @@ pub struct Expression {
 #[derive(Debug, Clone)]
 pub enum ExpressionKind {
     Error,
-    Unit,
     Name(InternedString),
     Number(Decimal),
     Text(InternedString),
@@ -94,7 +93,6 @@ pub struct TypeAnnotation {
 pub enum TypeAnnotationKind {
     Error,
     Placeholder,
-    Unit,
     Named(InternedString, Vec<TypeAnnotation>),
     Function(Box<TypeAnnotation>, Box<TypeAnnotation>),
     Tuple(Vec<TypeAnnotation>),
@@ -116,7 +114,6 @@ pub struct Pattern {
 pub enum PatternKind {
     Error,
     Wildcard,
-    Unit,
     Number(Decimal),
     Text(InternedString),
     Name(InternedString),
@@ -493,7 +490,7 @@ impl<L: Loader> Compiler<L> {
             span: node.span,
             kind: (|| match node.kind {
                 NodeKind::Error => ExpressionKind::Error,
-                NodeKind::Empty => ExpressionKind::Unit,
+                NodeKind::Empty => ExpressionKind::Tuple(Vec::new()),
                 NodeKind::Name(name) => ExpressionKind::Name(name),
                 NodeKind::Text(text) => ExpressionKind::Text(text),
                 NodeKind::Number(number) => ExpressionKind::Number(number),
@@ -610,7 +607,7 @@ impl<L: Loader> Compiler<L> {
                                 kind: ExpressionKind::Function(
                                     Pattern {
                                         span: rhs.span,
-                                        kind: PatternKind::Unit,
+                                        kind: PatternKind::Tuple(Vec::new()),
                                     },
                                     Box::new(rhs),
                                 ),
@@ -739,7 +736,7 @@ impl<L: Loader> Compiler<L> {
 
                     PatternKind::Variant((name_span, name), rest)
                 }
-                NodeKind::Empty => PatternKind::Unit,
+                NodeKind::Empty => PatternKind::Tuple(Vec::new()),
                 NodeKind::Number(number) => PatternKind::Number(number),
                 NodeKind::Text(text) => PatternKind::Text(text),
                 NodeKind::Annotate(node, ty) => {
@@ -781,7 +778,7 @@ impl<L: Loader> Compiler<L> {
         TypeAnnotation {
             span: node.span,
             kind: match node.kind {
-                NodeKind::Empty => TypeAnnotationKind::Unit,
+                NodeKind::Empty => TypeAnnotationKind::Tuple(Vec::new()),
                 NodeKind::Underscore => TypeAnnotationKind::Placeholder,
                 NodeKind::Name(name) => TypeAnnotationKind::Named(name, Vec::new()), // TODO: Parameters
                 NodeKind::Function(input, output) => TypeAnnotationKind::Function(

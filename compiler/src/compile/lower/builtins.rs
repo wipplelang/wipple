@@ -33,23 +33,6 @@ impl<L: Loader> Compiler<L> {
 
         add!(
             builtin_types,
-            Span::builtin("`()` type"),
-            "()",
-            UNIT_TYPE: BuiltinTypeId = self.new_builtin_type_id(),
-            ScopeValue::BuiltinType,
-            BuiltinType {
-                kind: BuiltinTypeKind::Unit,
-                attributes: DeclarationAttributes {
-                    help: vec![InternedString::new(
-                        "The unit type; contains no information. `()` is usually seen as the result of functions which have an effect but produce no meaningful value.",
-                    )],
-                    ..Default::default()
-                },
-            },
-        );
-
-        add!(
-            builtin_types,
             Span::builtin("`!` type"),
             "!",
             NEVER_TYPE: BuiltinTypeId = self.new_builtin_type_id(),

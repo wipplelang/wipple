@@ -86,7 +86,6 @@ pub struct BuiltinType {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub enum BuiltinTypeKind {
     Never,
-    Unit,
     Number,
     Boolean,
     Text,
@@ -145,7 +144,6 @@ pub struct Expression {
 #[derive(Debug, Clone)]
 pub enum ExpressionKind {
     Error,
-    Unit,
     Marker(TypeId),
     Constant(GenericConstantId),
     Trait(TraitId),
@@ -194,7 +192,6 @@ pub struct Pattern {
 pub enum PatternKind {
     Error,
     Wildcard,
-    Unit,
     Number(Decimal),
     Text(InternedString),
     Variable(VariableId),
@@ -1043,7 +1040,6 @@ impl<L: Loader> Compiler<L> {
 
         let kind = match expr.kind {
             ast::ExpressionKind::Error => ExpressionKind::Error,
-            ast::ExpressionKind::Unit => ExpressionKind::Unit,
             ast::ExpressionKind::Text(text) => ExpressionKind::Text(text),
             ast::ExpressionKind::Number(number) => ExpressionKind::Number(number),
             ast::ExpressionKind::Name(name) => {
@@ -1306,10 +1302,6 @@ impl<L: Loader> Compiler<L> {
         let kind = match ty.kind {
             ast::TypeAnnotationKind::Error => TypeAnnotationKind::Error,
             ast::TypeAnnotationKind::Placeholder => TypeAnnotationKind::Placeholder,
-            ast::TypeAnnotationKind::Unit => {
-                // FIXME: Use language item instead of hardcoded ID
-                TypeAnnotationKind::Builtin(BuiltinTypeId(0), Vec::new())
-            }
             ast::TypeAnnotationKind::Named(name, parameters) => {
                 let parameters = parameters
                     .into_iter()
@@ -1366,7 +1358,6 @@ impl<L: Loader> Compiler<L> {
         let kind = (|| match pattern.kind {
             ast::PatternKind::Error => PatternKind::Error,
             ast::PatternKind::Wildcard => PatternKind::Wildcard,
-            ast::PatternKind::Unit => PatternKind::Unit,
             ast::PatternKind::Number(number) => PatternKind::Number(number),
             ast::PatternKind::Text(text) => PatternKind::Text(text),
             ast::PatternKind::Name(name) => match scope.get(name) {
