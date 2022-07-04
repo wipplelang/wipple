@@ -182,7 +182,7 @@ pub struct TypeDeclaration {
 pub struct TraitDeclaration {
     pub ty: UnresolvedType,
     pub params: Vec<TypeParameterId>,
-    pub attributes: lower::DeclarationAttributes,
+    pub attributes: lower::TraitAttributes,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -848,21 +848,33 @@ impl<L: Loader> Compiler<L> {
                         ),
                     )],
                 ),
-                TypeError::MissingInstance(tr, params) => Diagnostic::error(
-                    "missing instance",
-                    vec![Note::primary(
-                        error.span,
-                        format!(
-                            "could not find instance `{}`",
-                            format_type(
-                                FormattableType::Trait(tr, params),
-                                type_names,
-                                trait_names,
-                                param_names
-                            )
-                        ),
-                    )],
-                ),
+                TypeError::MissingInstance(id, params) => {
+                    let tr = typechecker.declarations.traits.get(&id).unwrap();
+
+                    Diagnostic::error(
+                        "missing instance",
+                        std::iter::once(Note::primary(
+                            error.span,
+                            format!(
+                                "could not find instance `{}`",
+                                format_type(
+                                    FormattableType::Trait(id, params),
+                                    type_names,
+                                    trait_names,
+                                    param_names
+                                )
+                            ),
+                        ))
+                        .chain(
+                            tr.value
+                                .attributes
+                                .on_unimplemented
+                                .as_ref()
+                                .map(|message| Note::secondary(error.span, message)),
+                        )
+                        .collect(),
+                    )
+                }
                 TypeError::AmbiguousTrait(_, candidates) => Diagnostic::error(
                     "could not determine the type of this expression",
                     std::iter::once(Note::primary(

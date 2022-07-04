@@ -97,7 +97,13 @@ pub enum BuiltinTypeKind {
 pub struct Trait {
     pub parameters: Vec<TypeParameterId>,
     pub ty: TypeAnnotation,
-    pub attributes: DeclarationAttributes,
+    pub attributes: TraitAttributes,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TraitAttributes {
+    pub decl_attributes: DeclarationAttributes,
+    pub on_unimplemented: Option<InternedString>,
 }
 
 #[derive(Debug, Clone)]
@@ -641,7 +647,7 @@ impl<L: Loader> Compiler<L> {
                     Trait {
                         parameters,
                         ty: self.lower_type_annotation(declaration.ty, &scope, info),
-                        attributes: self.lower_decl_attributes(&mut statement.attributes),
+                        attributes: self.lower_trait_attributes(&mut statement.attributes),
                     }
                 };
 
@@ -1020,6 +1026,18 @@ impl<L: Loader> Compiler<L> {
             help: mem::take(&mut statement_attributes.help)
                 .into_iter()
                 .collect(),
+        }
+    }
+
+    fn lower_trait_attributes(
+        &mut self,
+        statement_attributes: &mut ast::StatementAttributes,
+    ) -> TraitAttributes {
+        // TODO: Raise errors for misused attributes
+
+        TraitAttributes {
+            decl_attributes: self.lower_decl_attributes(statement_attributes),
+            on_unimplemented: mem::take(&mut statement_attributes.on_unimplemented),
         }
     }
 

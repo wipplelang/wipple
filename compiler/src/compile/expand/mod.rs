@@ -78,6 +78,7 @@ pub struct Statement {
 pub struct StatementAttributes {
     pub language_item: Option<LanguageItem>,
     pub help: VecDeque<InternedString>,
+    pub on_unimplemented: Option<InternedString>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, EnumString)]

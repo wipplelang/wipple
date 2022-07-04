@@ -150,7 +150,7 @@ impl Documentation {
                 declaration: Declaration {
                     name: decl.name.expect("types always have names"),
                     code,
-                    help: decl.value.attributes.help.clone(),
+                    help: decl.value.attributes.decl_attributes.help.clone(),
                 },
             })
         });
