@@ -415,6 +415,30 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
         ),
     );
 
+    // `,` operator
+
+    let id = once_id!(template);
+
+    scope_values.insert(
+        InternedString::new(","),
+        ScopeValue::Operator(Operator {
+            precedence: OperatorPrecedence::Comma,
+            template: id,
+        }),
+    );
+
+    expander.declarations.lock().templates.insert(
+        id,
+        Template::function(Span::builtin("`,` operator"), |_, span, inputs, _, _, _| {
+            Box::pin(async move {
+                Node {
+                    span,
+                    kind: NodeKind::Tuple(inputs),
+                }
+            })
+        }),
+    );
+
     // `use` template
 
     let id = once_id!(template);
@@ -710,7 +734,7 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
                                     format_text,
                                     Node {
                                         span: Span::builtin("generated list as input to `format`"),
-                                        kind: NodeKind::ListLiteral(
+                                        kind: NodeKind::Tuple(
                                             inputs
                                                 .into_iter()
                                                 .map(|input| Node {
@@ -1097,6 +1121,86 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
                     };
 
                     attributes.help.push_front(doc);
+
+                    node
+                })
+            },
+        ),
+    );
+
+    // `on-unimplemented` attribute
+
+    let id = once_id!(template);
+
+    scope_values.insert(
+        InternedString::new("on-unimplemented"),
+        ScopeValue::Template(id),
+    );
+
+    expander.declarations.lock().templates.insert(
+        id,
+        Template::function(
+            Span::builtin("`on-unimplemented` attribute"),
+            |expander, span, mut inputs, _, attributes, _| {
+                Box::pin(async move {
+                    if inputs.len() != 2 {
+                        expander.compiler.diagnostics.add(Diagnostic::error(
+                            "expected 2 inputs to template `on-unimplemented`",
+                            vec![Note::primary(
+                                span,
+                                "`on-unimplemented` accepts a message and a declaration",
+                            )],
+                        ));
+
+                        return Node {
+                            span,
+                            kind: NodeKind::Error,
+                        };
+                    }
+
+                    let node = inputs.pop().unwrap();
+                    let item = inputs.pop().unwrap();
+
+                    let message = match item.kind {
+                        NodeKind::Text(text) => text,
+                        _ => {
+                            expander.compiler.diagnostics.add(Diagnostic::error(
+                                "`on-unimplemented` expects a text value",
+                                vec![Note::primary(item.span, "expected text here")],
+                            ));
+
+                            return node;
+                        }
+                    };
+
+                    let attributes = match attributes {
+                        Some(attributes) => attributes,
+                        None => {
+                            expander.compiler.diagnostics.add(Diagnostic::error(
+                                "`on-unimplemented` may only be used as an attribute",
+                                vec![Note::primary(
+                                    span,
+                                    r#"try putting this between brackets: (`[on-unimplemented "..."]`)"#,
+                                )],
+                            ));
+
+                            return node;
+                        }
+                    };
+
+                    if attributes.on_unimplemented.is_some() {
+                        expander.compiler.diagnostics.add(Diagnostic::error(
+                            "`on-unimplemented` item is already set for this statement",
+                            vec![Note::primary(
+                                span,
+                                "cannot use more than one `on-unimplemented` item per statement",
+                            )],
+                        ));
+
+                        return node;
+                    }
+
+                    attributes.on_unimplemented = Some(message);
 
                     node
                 })

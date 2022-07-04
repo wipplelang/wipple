@@ -181,7 +181,9 @@ impl<L: Loader> FinalizedDiagnostics<L> {
                                         .source_map()
                                         .lock()
                                         .get(&note.span.path)
-                                        .expect("file not loaded")
+                                        .unwrap_or_else(|| {
+                                            panic!("file {:?} not loaded", note.span.path)
+                                        })
                                         .to_string(),
                                 );
 

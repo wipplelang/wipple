@@ -36,7 +36,7 @@ lazy_static! {
             Some(wipple_compiler::FilePath::Path(
                 #[cfg(feature = "debug_playground")]
                 wipple_compiler::helpers::InternedString::new(format!(
-                    "{}std/std.wpl",
+                    "{}pkg/std/std.wpl",
                     env!("CARGO_WORKSPACE_DIR")
                 )),
                 #[cfg(not(feature = "debug_playground"))]
@@ -48,7 +48,7 @@ lazy_static! {
                         #[cfg(feature = "debug_playground")]
                         {
                             #[derive(rust_embed::RustEmbed)]
-                            #[folder = "$CARGO_WORKSPACE_DIR/std"]
+                            #[folder = "$CARGO_WORKSPACE_DIR/pkg/std"]
                             struct EmbeddedStd;
 
                             let path = std::path::PathBuf::from(path);

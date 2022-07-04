@@ -86,7 +86,6 @@ pub struct BuiltinType {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub enum BuiltinTypeKind {
     Never,
-    Unit,
     Number,
     Boolean,
     Text,
@@ -98,7 +97,13 @@ pub enum BuiltinTypeKind {
 pub struct Trait {
     pub parameters: Vec<TypeParameterId>,
     pub ty: TypeAnnotation,
-    pub attributes: DeclarationAttributes,
+    pub attributes: TraitAttributes,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TraitAttributes {
+    pub decl_attributes: DeclarationAttributes,
+    pub on_unimplemented: Option<InternedString>,
 }
 
 #[derive(Debug, Clone)]
@@ -145,7 +150,6 @@ pub struct Expression {
 #[derive(Debug, Clone)]
 pub enum ExpressionKind {
     Error,
-    Unit,
     Marker(TypeId),
     Constant(GenericConstantId),
     Trait(TraitId),
@@ -160,12 +164,12 @@ pub enum ExpressionKind {
     Annotate(Box<Expression>, TypeAnnotation),
     Initialize(Pattern, Box<Expression>),
     Instantiate(TypeId, Vec<(InternedString, Expression)>),
-    ListLiteral(Vec<Expression>),
     Variant(TypeId, usize, Vec<Expression>),
     Return(Box<Expression>),
     Loop(Box<Expression>),
     Break(Box<Expression>),
     Continue,
+    Tuple(Vec<Expression>),
 }
 
 impl Expression {
@@ -194,7 +198,6 @@ pub struct Pattern {
 pub enum PatternKind {
     Error,
     Wildcard,
-    Unit,
     Number(Decimal),
     Text(InternedString),
     Variable(VariableId),
@@ -203,6 +206,7 @@ pub enum PatternKind {
     Annotate(Box<Pattern>, TypeAnnotation),
     Or(Box<Pattern>, Box<Pattern>),
     Where(Box<Pattern>, Box<Expression>),
+    Tuple(Vec<Pattern>),
 }
 
 #[derive(Debug, Clone)]
@@ -219,6 +223,7 @@ pub enum TypeAnnotationKind {
     Parameter(TypeParameterId),
     Builtin(BuiltinTypeId, Vec<TypeAnnotation>),
     Function(Box<TypeAnnotation>, Box<TypeAnnotation>),
+    Tuple(Vec<TypeAnnotation>),
 }
 
 impl TypeAnnotation {
@@ -642,7 +647,7 @@ impl<L: Loader> Compiler<L> {
                     Trait {
                         parameters,
                         ty: self.lower_type_annotation(declaration.ty, &scope, info),
-                        attributes: self.lower_decl_attributes(&mut statement.attributes),
+                        attributes: self.lower_trait_attributes(&mut statement.attributes),
                     }
                 };
 
@@ -1024,6 +1029,18 @@ impl<L: Loader> Compiler<L> {
         }
     }
 
+    fn lower_trait_attributes(
+        &mut self,
+        statement_attributes: &mut ast::StatementAttributes,
+    ) -> TraitAttributes {
+        // TODO: Raise errors for misused attributes
+
+        TraitAttributes {
+            decl_attributes: self.lower_decl_attributes(statement_attributes),
+            on_unimplemented: mem::take(&mut statement_attributes.on_unimplemented),
+        }
+    }
+
     fn lower_expr(&mut self, expr: ast::Expression, scope: &Scope, info: &mut Info) -> Expression {
         macro_rules! function_call {
             ($function:expr, $inputs:expr) => {
@@ -1041,7 +1058,6 @@ impl<L: Loader> Compiler<L> {
 
         let kind = match expr.kind {
             ast::ExpressionKind::Error => ExpressionKind::Error,
-            ast::ExpressionKind::Unit => ExpressionKind::Unit,
             ast::ExpressionKind::Text(text) => ExpressionKind::Text(text),
             ast::ExpressionKind::Number(number) => ExpressionKind::Number(number),
             ast::ExpressionKind::Name(name) => {
@@ -1243,12 +1259,6 @@ impl<L: Loader> Compiler<L> {
                 Box::new(self.lower_expr(*expr, scope, info)),
                 self.lower_type_annotation(ty, scope, info),
             ),
-            ast::ExpressionKind::ListLiteral(items) => ExpressionKind::ListLiteral(
-                items
-                    .into_iter()
-                    .map(|expr| self.lower_expr(expr, scope, info))
-                    .collect(),
-            ),
             ast::ExpressionKind::Return(value) => {
                 if !scope.is_within_function() {
                     self.diagnostics.add(Diagnostic::error(
@@ -1287,6 +1297,12 @@ impl<L: Loader> Compiler<L> {
 
                 ExpressionKind::Continue
             }
+            ast::ExpressionKind::Tuple(exprs) => ExpressionKind::Tuple(
+                exprs
+                    .into_iter()
+                    .map(|expr| self.lower_expr(expr, scope, info))
+                    .collect(),
+            ),
         };
 
         Expression {
@@ -1304,10 +1320,6 @@ impl<L: Loader> Compiler<L> {
         let kind = match ty.kind {
             ast::TypeAnnotationKind::Error => TypeAnnotationKind::Error,
             ast::TypeAnnotationKind::Placeholder => TypeAnnotationKind::Placeholder,
-            ast::TypeAnnotationKind::Unit => {
-                // FIXME: Use language item instead of hardcoded ID
-                TypeAnnotationKind::Builtin(BuiltinTypeId(0), Vec::new())
-            }
             ast::TypeAnnotationKind::Named(name, parameters) => {
                 let parameters = parameters
                     .into_iter()
@@ -1347,6 +1359,11 @@ impl<L: Loader> Compiler<L> {
                 Box::new(self.lower_type_annotation(*input, scope, info)),
                 Box::new(self.lower_type_annotation(*output, scope, info)),
             ),
+            ast::TypeAnnotationKind::Tuple(tys) => TypeAnnotationKind::Tuple(
+                tys.into_iter()
+                    .map(|ty| self.lower_type_annotation(ty, scope, info))
+                    .collect(),
+            ),
         };
 
         TypeAnnotation {
@@ -1359,7 +1376,6 @@ impl<L: Loader> Compiler<L> {
         let kind = (|| match pattern.kind {
             ast::PatternKind::Error => PatternKind::Error,
             ast::PatternKind::Wildcard => PatternKind::Wildcard,
-            ast::PatternKind::Unit => PatternKind::Unit,
             ast::PatternKind::Number(number) => PatternKind::Number(number),
             ast::PatternKind::Text(text) => PatternKind::Text(text),
             ast::PatternKind::Name(name) => match scope.get(name) {
@@ -1517,6 +1533,12 @@ impl<L: Loader> Compiler<L> {
             ast::PatternKind::Where(pattern, condition) => PatternKind::Where(
                 Box::new(self.lower_pattern(*pattern, scope, info)),
                 Box::new(self.lower_expr(*condition, scope, info)),
+            ),
+            ast::PatternKind::Tuple(patterns) => PatternKind::Tuple(
+                patterns
+                    .into_iter()
+                    .map(|pattern| self.lower_pattern(pattern, scope, info))
+                    .collect(),
             ),
         })();
 

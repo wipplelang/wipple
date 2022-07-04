@@ -1,3 +1,5 @@
+use itertools::Itertools;
+
 use super::engine::{BuiltinType, UnresolvedType};
 use crate::{TraitId, TypeId, TypeParameterId};
 
@@ -87,7 +89,6 @@ fn format_type_with(
                 format_named_type!(type_names(id), params)
             }
             FormattableType::Type(UnresolvedType::Builtin(ty)) => match ty {
-                BuiltinType::Unit => format_named_type!("()", Vec::new()),
                 BuiltinType::Text => format_named_type!("Text", Vec::new()),
                 BuiltinType::Number => format_named_type!("Number", Vec::new()),
                 BuiltinType::List(ty) => format_named_type!("List", vec![*ty]),
@@ -116,6 +117,37 @@ fn format_type_with(
                     format!("{input} -> {output}")
                 } else {
                     format!("({input} -> {output})")
+                }
+            }
+            FormattableType::Type(UnresolvedType::Tuple(mut tys)) => {
+                let ty = if tys.len() == 1 {
+                    format_type(
+                        tys.pop().unwrap().into(),
+                        type_names,
+                        trait_names,
+                        param_names,
+                        is_top_level,
+                        is_return,
+                    ) + " ,"
+                } else {
+                    tys.into_iter()
+                        .map(|ty| {
+                            format_type(
+                                ty.into(),
+                                type_names,
+                                trait_names,
+                                param_names,
+                                is_top_level,
+                                is_return,
+                            )
+                        })
+                        .join(" , ")
+                };
+
+                if is_top_level {
+                    ty
+                } else {
+                    format!("({})", ty)
                 }
             }
             FormattableType::Trait(tr, params) => {

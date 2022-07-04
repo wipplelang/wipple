@@ -67,6 +67,7 @@ lazy_static! {
             "floor" => builtin_floor,
             "ceil" => builtin_ceil,
             "sqrt" => builtin_sqrt,
+            "make-list" => builtin_make_list,
             "list-first" => builtin_list_first,
             "list-last" => builtin_list_last,
             "list-initial" => builtin_list_initial,
@@ -399,6 +400,12 @@ fn builtin_loop(
     })
 }
 
+fn builtin_make_list(_: &Interpreter, (tuple,): (Value,), _: &Info) -> Result<Value, Diverge> {
+    // This is OK because tuples and lists have the same representation in the
+    // interpreter
+    Ok(tuple)
+}
+
 fn builtin_list_first(_: &Interpreter, (list,): (Value,), _: &Info) -> Result<Value, Diverge> {
     let list = match list {
         Value::List(list) => list,
@@ -429,7 +436,11 @@ fn builtin_list_initial(_: &Interpreter, (list,): (Value,), _: &Info) -> Result<
         _ => unreachable!(),
     };
 
-    Ok(Value::List(list.slice(0..(list.len() - 1))))
+    Ok(if list.is_empty() {
+        none()
+    } else {
+        some(Value::List(list.slice(0..(list.len() - 1))))
+    })
 }
 
 fn builtin_list_tail(_: &Interpreter, (list,): (Value,), _: &Info) -> Result<Value, Diverge> {
@@ -438,7 +449,11 @@ fn builtin_list_tail(_: &Interpreter, (list,): (Value,), _: &Info) -> Result<Val
         _ => unreachable!(),
     };
 
-    Ok(Value::List(list.slice(1..list.len())))
+    Ok(if list.is_empty() {
+        none()
+    } else {
+        some(Value::List(list.slice(1..list.len())))
+    })
 }
 
 fn builtin_list_at(

@@ -43,11 +43,11 @@ pub enum ExpressionKind {
     Initialize(Pattern, Box<Expression>),
     Structure(Vec<Expression>),
     Variant(usize, Vec<Expression>),
-    ListLiteral(Vec<Expression>),
     Return(Box<Expression>),
     Loop(Box<Expression>),
     Break(Box<Expression>),
     Continue,
+    Tuple(Vec<Expression>),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -66,6 +66,7 @@ pub enum PatternKind {
     Variant(usize, Vec<Pattern>),
     Or(Box<Pattern>, Box<Pattern>),
     Where(Box<Pattern>, Box<Expression>),
+    Tuple(Vec<Pattern>),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -145,9 +146,6 @@ impl From<compile::Expression> for Expression {
                 compile::ExpressionKind::Variant(variant, values) => {
                     ExpressionKind::Variant(variant, values.into_iter().map(From::from).collect())
                 }
-                compile::ExpressionKind::ListLiteral(values) => {
-                    ExpressionKind::ListLiteral(values.into_iter().map(From::from).collect())
-                }
                 compile::ExpressionKind::Constant(constant) => ExpressionKind::Constant(constant),
                 compile::ExpressionKind::Return(value) => {
                     ExpressionKind::Return(Box::new((*value).into()))
@@ -159,6 +157,9 @@ impl From<compile::Expression> for Expression {
                     ExpressionKind::Break(Box::new((*value).into()))
                 }
                 compile::ExpressionKind::Continue => ExpressionKind::Continue,
+                compile::ExpressionKind::Tuple(values) => {
+                    ExpressionKind::Tuple(values.into_iter().map(From::from).collect())
+                }
             },
         }
     }
@@ -187,6 +188,9 @@ impl From<compile::Pattern> for Pattern {
                 }
                 compile::PatternKind::Where(pattern, condition) => {
                     PatternKind::Where(Box::new((*pattern).into()), Box::new((*condition).into()))
+                }
+                compile::PatternKind::Tuple(values) => {
+                    PatternKind::Tuple(values.into_iter().map(From::from).collect())
                 }
             },
         }
@@ -259,11 +263,6 @@ impl Expression {
                     value.traverse_inner(f);
                 }
             }
-            ExpressionKind::ListLiteral(values) => {
-                for value in values {
-                    value.traverse_inner(f);
-                }
-            }
             ExpressionKind::Return(value) => {
                 value.traverse_inner(f);
             }
@@ -272,6 +271,11 @@ impl Expression {
             }
             ExpressionKind::Break(value) => {
                 value.traverse_inner(f);
+            }
+            ExpressionKind::Tuple(values) => {
+                for value in values {
+                    value.traverse_inner(f);
+                }
             }
             _ => {}
         }

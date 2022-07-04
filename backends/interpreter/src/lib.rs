@@ -270,12 +270,6 @@ impl<'a> Interpreter<'a> {
                     .map(|expr| self.eval_expr(expr, info))
                     .collect::<Result<_, _>>()?,
             ),
-            ExpressionKind::ListLiteral(exprs) => Value::List(
-                exprs
-                    .iter()
-                    .map(|expr| self.eval_expr(expr, info))
-                    .collect::<Result<_, _>>()?,
-            ),
             ExpressionKind::Return(value) => {
                 let value = self.eval_expr(value, info)?;
                 return Err(Diverge::new(info.stack.clone(), DivergeKind::Return(value)));
@@ -301,6 +295,12 @@ impl<'a> Interpreter<'a> {
             ExpressionKind::Continue => {
                 return Err(Diverge::new(info.stack.clone(), DivergeKind::Continue));
             }
+            ExpressionKind::Tuple(exprs) => Value::List(
+                exprs
+                    .iter()
+                    .map(|expr| self.eval_expr(expr, info))
+                    .collect::<Result<_, _>>()?,
+            ),
         };
 
         info.stack.pop();
@@ -415,6 +415,20 @@ impl<'a> Interpreter<'a> {
                     Value::Variant(index, _) => Ok(index != 0),
                     _ => unreachable!(),
                 }
+            }
+            PatternKind::Tuple(patterns) => {
+                let values = match value {
+                    Value::List(values) => values,
+                    _ => unreachable!(),
+                };
+
+                for (pattern, value) in std::iter::zip(patterns, values) {
+                    if !self.eval_pattern(pattern, value, info)? {
+                        return Ok(false);
+                    }
+                }
+
+                Ok(true)
             }
         }
     }

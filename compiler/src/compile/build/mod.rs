@@ -84,6 +84,12 @@ impl<L: Loader> Compiler<L> {
 
             let code = try_load!(compiler.loader.load(resolved_path).await);
 
+            compiler
+                .loader
+                .source_map()
+                .lock()
+                .insert(resolved_path, code.clone());
+
             let file = compiler.parse(resolved_path, &code)?;
             let file = compiler
                 .expand(file, {
@@ -122,12 +128,6 @@ impl<L: Loader> Compiler<L> {
                     .lock()
                     .insert(resolved_path, file.clone());
             }
-
-            compiler
-                .loader
-                .source_map()
-                .lock()
-                .insert(resolved_path, code.clone());
 
             files.lock().insert(resolved_path, file.clone());
 

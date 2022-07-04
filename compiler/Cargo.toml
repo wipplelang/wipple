@@ -12,6 +12,7 @@ codemap-diagnostic = "0.1"
 clap = { version = "3", features = ["derive"], optional = true }
 futures = "0.3"
 indexmap = "1"
+itertools = "0.10"
 lasso = { version = "0.6", features = ["multi-threaded", "serialize"] }
 lazy_static = "1"
 logos = "0.12"

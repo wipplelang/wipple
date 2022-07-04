@@ -59,7 +59,6 @@ pub struct Expression {
 #[derive(Debug, Clone)]
 pub enum ExpressionKind {
     Error,
-    Unit,
     Name(InternedString),
     Number(Decimal),
     Text(InternedString),
@@ -69,11 +68,11 @@ pub enum ExpressionKind {
     When(Box<Expression>, Vec<Arm>),
     External(InternedString, InternedString, Vec<Expression>),
     Annotate(Box<Expression>, TypeAnnotation),
-    ListLiteral(Vec<Expression>),
     Return(Box<Expression>),
     Loop(Box<Expression>),
     Break(Box<Expression>),
     Continue,
+    Tuple(Vec<Expression>),
 }
 
 #[derive(Debug, Clone)]
@@ -94,9 +93,9 @@ pub struct TypeAnnotation {
 pub enum TypeAnnotationKind {
     Error,
     Placeholder,
-    Unit,
     Named(InternedString, Vec<TypeAnnotation>),
     Function(Box<TypeAnnotation>, Box<TypeAnnotation>),
+    Tuple(Vec<TypeAnnotation>),
 }
 
 #[derive(Debug, Clone)]
@@ -115,7 +114,6 @@ pub struct Pattern {
 pub enum PatternKind {
     Error,
     Wildcard,
-    Unit,
     Number(Decimal),
     Text(InternedString),
     Name(InternedString),
@@ -124,6 +122,7 @@ pub enum PatternKind {
     Annotate(Box<Pattern>, TypeAnnotation),
     Or(Box<Pattern>, Box<Pattern>),
     Where(Box<Pattern>, Box<Expression>),
+    Tuple(Vec<Pattern>),
 }
 
 #[derive(Debug, Clone)]
@@ -491,7 +490,7 @@ impl<L: Loader> Compiler<L> {
             span: node.span,
             kind: (|| match node.kind {
                 NodeKind::Error => ExpressionKind::Error,
-                NodeKind::Empty => ExpressionKind::Unit,
+                NodeKind::Empty => ExpressionKind::Tuple(Vec::new()),
                 NodeKind::Name(name) => ExpressionKind::Name(name),
                 NodeKind::Text(text) => ExpressionKind::Text(text),
                 NodeKind::Number(number) => ExpressionKind::Number(number),
@@ -559,12 +558,6 @@ impl<L: Loader> Compiler<L> {
                     Box::new(self.build_expression(*value)),
                     self.build_type_annotation(*ty),
                 ),
-                NodeKind::ListLiteral(items) => ExpressionKind::ListLiteral(
-                    items
-                        .into_iter()
-                        .map(|node| self.build_expression(node))
-                        .collect(),
-                ),
                 NodeKind::When(input, block) => {
                     let input = self.build_expression(*input);
 
@@ -614,7 +607,7 @@ impl<L: Loader> Compiler<L> {
                                 kind: ExpressionKind::Function(
                                     Pattern {
                                         span: rhs.span,
-                                        kind: PatternKind::Unit,
+                                        kind: PatternKind::Tuple(Vec::new()),
                                     },
                                     Box::new(rhs),
                                 ),
@@ -629,6 +622,12 @@ impl<L: Loader> Compiler<L> {
                     ExpressionKind::Break(Box::new(self.build_expression(*value)))
                 }
                 NodeKind::Continue => ExpressionKind::Continue,
+                NodeKind::Tuple(nodes) => ExpressionKind::Tuple(
+                    nodes
+                        .into_iter()
+                        .map(|node| self.build_expression(node))
+                        .collect(),
+                ),
                 _ => {
                     self.diagnostics.add(Diagnostic::error(
                         "expected expression",
@@ -737,7 +736,7 @@ impl<L: Loader> Compiler<L> {
 
                     PatternKind::Variant((name_span, name), rest)
                 }
-                NodeKind::Empty => PatternKind::Unit,
+                NodeKind::Empty => PatternKind::Tuple(Vec::new()),
                 NodeKind::Number(number) => PatternKind::Number(number),
                 NodeKind::Text(text) => PatternKind::Text(text),
                 NodeKind::Annotate(node, ty) => {
@@ -753,6 +752,12 @@ impl<L: Loader> Compiler<L> {
                 NodeKind::Where(pattern, condition) => PatternKind::Where(
                     Box::new(self.build_pattern(*pattern)),
                     Box::new(self.build_expression(*condition)),
+                ),
+                NodeKind::Tuple(nodes) => PatternKind::Tuple(
+                    nodes
+                        .into_iter()
+                        .map(|node| self.build_pattern(node))
+                        .collect(),
                 ),
                 _ => {
                     self.diagnostics.add(Diagnostic::error(
@@ -773,7 +778,7 @@ impl<L: Loader> Compiler<L> {
         TypeAnnotation {
             span: node.span,
             kind: match node.kind {
-                NodeKind::Empty => TypeAnnotationKind::Unit,
+                NodeKind::Empty => TypeAnnotationKind::Tuple(Vec::new()),
                 NodeKind::Underscore => TypeAnnotationKind::Placeholder,
                 NodeKind::Name(name) => TypeAnnotationKind::Named(name, Vec::new()), // TODO: Parameters
                 NodeKind::Function(input, output) => TypeAnnotationKind::Function(
@@ -799,6 +804,12 @@ impl<L: Loader> Compiler<L> {
                         }
                     }
                 }
+                NodeKind::Tuple(nodes) => TypeAnnotationKind::Tuple(
+                    nodes
+                        .into_iter()
+                        .map(|node| self.build_type_annotation(node))
+                        .collect(),
+                ),
                 _ => {
                     self.diagnostics.add(Diagnostic::error(
                         "expected type",
