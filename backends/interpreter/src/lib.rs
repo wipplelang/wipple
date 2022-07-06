@@ -29,7 +29,7 @@ pub enum Value {
     Positive(u64),
     Function(Rc<Function>),
     List(im::Vector<Value>),
-    Variant(usize, im::Vector<Value>),
+    Variant(usize, Box<[Value]>),
     Mutable(Rc<RefCell<Value>>),
 }
 
@@ -149,6 +149,8 @@ impl<'a> Interpreter<'a> {
                 }
             }
             ExpressionKind::Number(number) => Value::Number(*number),
+            ExpressionKind::Integer(integer) => Value::Integer(*integer),
+            ExpressionKind::Positive(positive) => Value::Positive(*positive),
             ExpressionKind::Text(text) => Value::Text(Rc::from(text.as_str())),
             ExpressionKind::Block(statements) => {
                 let parent = info.scope.clone();
@@ -393,7 +395,7 @@ impl<'a> Interpreter<'a> {
                     return Ok(false);
                 }
 
-                for (pattern, value) in patterns.iter().zip(values) {
+                for (pattern, value) in patterns.iter().zip(values.iter()) {
                     if !self.eval_pattern(pattern, value.clone(), info)? {
                         return Ok(false);
                     }
