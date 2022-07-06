@@ -25,6 +25,8 @@ pub enum Value {
     Marker,
     Text(Rc<str>),
     Number(Decimal),
+    Integer(i64),
+    Positive(u64),
     Function(Rc<Function>),
     List(im::Vector<Value>),
     Variant(usize, im::Vector<Value>),

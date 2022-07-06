@@ -1,32 +1,46 @@
 [[no-std]]
 
+use "./fp.wpl"
 use "./output.wpl"
+use "./util.wpl"
+
+[help "Implemented by numeric types, including `Number`, `Integer` and `Positive`."]
+Numeric : N => trait (N -> Number)
+instance Numeric Number : it
+instance Numeric Integer : n -> external "builtin" "integer-to-number" n
+instance Numeric Positive : n -> external "builtin" "positive-to-number" n
+
+integer :: N where (Numeric N) => N -> Maybe Integer
+integer : n -> external "builtin" "make-integer" (Numeric n)
+
+positive :: N where (Numeric N) => N -> Maybe Positive
+positive : n -> external "builtin" "make-positive" (Numeric n)
 
 [help "Implements the `+` operator."]
 Add : Left Right Sum => trait (Left -> Right -> Sum)
 + : addition operator (a b ~> Add a b)
-instance Add Number Number Number : a -> b -> external "builtin" "add" a b
+instance Add Number Number Number : a -> b -> external "builtin" "add-numbers" a b
 instance Add Text Text Text : a -> b -> format "__" a b
 
 [help "Implements the `-` operator."]
 Subtract : Left Right Difference => trait (Left -> Right -> Difference)
 - : addition operator (a b ~> Subtract a b)
-instance Subtract Number Number Number : a -> b -> external "builtin" "subtract" a b
+instance Subtract Number Number Number : a -> b -> external "builtin" "subtract-numbers" a b
 
 [help "Implements the `*` operator."]
 Multiply : Left Right Product => trait (Left -> Right -> Product)
 * : multiplication operator (a b ~> Multiply a b)
-instance Multiply Number Number Number : a -> b -> external "builtin" "multiply" a b
+instance Multiply Number Number Number : a -> b -> external "builtin" "multiply-numbers" a b
 
 [help "Implements the `/` operator."]
 Divide : Left Right Quotient => trait (Left -> Right -> Quotient)
 / : multiplication operator (a b ~> Divide a b)
-instance Divide Number Number Number : a -> b -> external "builtin" "divide" a b
+instance Divide Number Number Number : a -> b -> external "builtin" "divide-numbers" a b
 
 [help "Implements the `^` operator."]
 Power : Left Right Power => trait (Left -> Right -> Power)
 ^ : power operator (a b ~> Power a b)
-instance Power Number Number Number : a -> b -> external "builtin" "power" a b
+instance Power Number Number Number : a -> b -> external "builtin" "power-numbers" a b
 
 [help "Rounds down a number to the nearest integer."]
 floor :: Number -> Number

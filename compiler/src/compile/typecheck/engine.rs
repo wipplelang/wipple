@@ -37,8 +37,10 @@ impl From<Type> for UnresolvedType {
                 UnresolvedType::Tuple(tys.into_iter().map(|ty| ty.into()).collect())
             }
             Type::Builtin(builtin) => UnresolvedType::Builtin(match builtin {
-                BuiltinType::Text => BuiltinType::Text,
                 BuiltinType::Number => BuiltinType::Number,
+                BuiltinType::Integer => BuiltinType::Integer,
+                BuiltinType::Positive => BuiltinType::Positive,
+                BuiltinType::Text => BuiltinType::Text,
                 BuiltinType::List(ty) => BuiltinType::List(Box::new((*ty).into())),
                 BuiltinType::Mutable(ty) => BuiltinType::Mutable(Box::new((*ty).into())),
             }),
@@ -52,8 +54,10 @@ pub struct TypeVariable(pub usize);
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum BuiltinType<Ty> {
-    Text,
     Number,
+    Integer,
+    Positive,
+    Text,
     List(Ty),
     Mutable(Ty),
 }
@@ -264,8 +268,10 @@ impl Context {
                 UnresolvedType::Builtin(actual_builtin),
                 UnresolvedType::Builtin(expected_builtin),
             ) => match (actual_builtin, expected_builtin) {
-                (BuiltinType::Text, BuiltinType::Text) => Ok(()),
                 (BuiltinType::Number, BuiltinType::Number) => Ok(()),
+                (BuiltinType::Integer, BuiltinType::Integer) => Ok(()),
+                (BuiltinType::Positive, BuiltinType::Positive) => Ok(()),
+                (BuiltinType::Text, BuiltinType::Text) => Ok(()),
                 (BuiltinType::List(actual_element), BuiltinType::List(expected_element))
                 | (BuiltinType::Mutable(actual_element), BuiltinType::Mutable(expected_element)) => {
                     if let Err(error) = self.unify_internal(
@@ -447,8 +453,10 @@ impl UnresolvedType {
                     .collect::<Option<_>>()?,
             ),
             UnresolvedType::Builtin(builtin) => Type::Builtin(match builtin {
-                BuiltinType::Text => BuiltinType::Text,
                 BuiltinType::Number => BuiltinType::Number,
+                BuiltinType::Integer => BuiltinType::Integer,
+                BuiltinType::Positive => BuiltinType::Positive,
+                BuiltinType::Text => BuiltinType::Text,
                 BuiltinType::List(ty) => BuiltinType::List(Box::new(ty.finalize(ctx, generic)?)),
                 BuiltinType::Mutable(ty) => {
                     BuiltinType::Mutable(Box::new(ty.finalize(ctx, generic)?))

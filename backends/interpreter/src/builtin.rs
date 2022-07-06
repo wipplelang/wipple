@@ -1,7 +1,7 @@
 use crate::*;
 use itertools::Itertools;
 use lazy_static::lazy_static;
-use num_traits::{pow::Pow, ToPrimitive};
+use num_traits::{pow::Pow, FromPrimitive, ToPrimitive};
 use rust_decimal::MathematicalOps;
 use std::collections::HashMap;
 
@@ -52,12 +52,16 @@ lazy_static! {
             "crash" => builtin_crash,
             "print" => builtin_print,
             "format" => builtin_format,
+            "make-integer" => builtin_make_integer,
+            "make-positive" => builtin_make_positive,
             "number-to-text" => builtin_number_to_text,
-            "add" => builtin_add,
-            "subtract" => builtin_subtract,
-            "multiply" => builtin_multiply,
-            "divide" => builtin_divide,
-            "power" => builtin_power,
+            "integer-to-number" => builtin_integer_to_number,
+            "positive-to-number" => builtin_positive_to_number,
+            "add-numbers" => builtin_add_numbers,
+            "subtract-numbers" => builtin_subtract_numbers,
+            "multiply-numbers" => builtin_multiply_numbers,
+            "divide-numbers" => builtin_divide_numbers,
+            "power-numbers" => builtin_power_numbers,
             "text-equality" => builtin_text_equality,
             "number-ordering" => builtin_number_ordering,
             "make-mutable" => builtin_make_mutable,
@@ -177,6 +181,30 @@ fn builtin_format(
     Ok(Value::Text(Rc::from(formatted)))
 }
 
+fn builtin_make_integer(_: &Interpreter, (number,): (Value,), _: &Info) -> Result<Value, Diverge> {
+    let number = match number {
+        Value::Number(number) => number,
+        _ => unreachable!(),
+    };
+
+    Ok(match number.to_i64() {
+        Some(n) => some(Value::Integer(n)),
+        None => none(),
+    })
+}
+
+fn builtin_make_positive(_: &Interpreter, (number,): (Value,), _: &Info) -> Result<Value, Diverge> {
+    let number = match number {
+        Value::Number(number) => number,
+        _ => unreachable!(),
+    };
+
+    Ok(match number.to_u64() {
+        Some(n) => some(Value::Positive(n)),
+        None => none(),
+    })
+}
+
 fn builtin_number_to_text(
     _: &Interpreter,
     (number,): (Value,),
@@ -188,6 +216,32 @@ fn builtin_number_to_text(
     };
 
     Ok(Value::Text(Rc::from(number.to_string())))
+}
+
+fn builtin_integer_to_number(
+    _: &Interpreter,
+    (integer,): (Value,),
+    _: &Info,
+) -> Result<Value, Diverge> {
+    let integer = match integer {
+        Value::Integer(integer) => integer,
+        _ => unreachable!(),
+    };
+
+    Ok(Value::Number(Decimal::from_i64(integer).unwrap()))
+}
+
+fn builtin_positive_to_number(
+    _: &Interpreter,
+    (positive,): (Value,),
+    _: &Info,
+) -> Result<Value, Diverge> {
+    let positive = match positive {
+        Value::Positive(positive) => positive,
+        _ => unreachable!(),
+    };
+
+    Ok(Value::Number(Decimal::from_u64(positive).unwrap()))
 }
 
 macro_rules! builtin_math {
@@ -215,12 +269,12 @@ macro_rules! builtin_math {
 }
 
 builtin_math!(
-    builtin_add => +,
-    builtin_subtract => -,
-    builtin_multiply => *,
+    builtin_add_numbers => +,
+    builtin_subtract_numbers => -,
+    builtin_multiply_numbers => *,
 );
 
-fn builtin_divide(
+fn builtin_divide_numbers(
     _: &Interpreter,
     (lhs, rhs): (Value, Value),
     info: &mut Info,
@@ -245,7 +299,7 @@ fn builtin_divide(
     Ok(Value::Number(lhs / rhs))
 }
 
-fn builtin_power(
+fn builtin_power_numbers(
     _: &Interpreter,
     (lhs, rhs): (Value, Value),
     info: &mut Info,
