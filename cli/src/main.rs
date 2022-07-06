@@ -39,6 +39,10 @@ enum Args {
         #[clap(long)]
         runner: PathBuf,
     },
+    Cache {
+        #[clap(long)]
+        clear: bool,
+    },
 }
 
 #[tokio::main]
@@ -137,6 +141,25 @@ async fn run() -> anyhow::Result<()> {
                 Ok(())
             })?;
         }
+        Args::Cache { clear } => {
+            let cache_dir = match loader::Fetcher::cache_dir() {
+                Some(dir) => dir,
+                None => return Err(anyhow::Error::msg("cache not supported on this platform")),
+            };
+
+            if clear {
+                if let Err(error) = fs::remove_dir_all(cache_dir) {
+                    match error.kind() {
+                        io::ErrorKind::NotFound => {},
+                        _ => return Err(error.into()),
+                    }
+                };
+
+                eprintln!("cache cleared successfully");
+            } else {
+                println!("{}", cache_dir.to_string_lossy());
+            }
+        }
     }
 
     Ok(())
@@ -146,8 +169,8 @@ async fn run() -> anyhow::Result<()> {
 struct BuildOptions {
     path: String,
 
-    #[clap(long, default_value = loader::STD_URL)]
-    std: String,
+    #[clap(long)]
+    std: Option<String>,
 
     #[clap(long, conflicts_with = "std")]
     no_std: bool,
@@ -232,20 +255,30 @@ async fn build_with_passes<P: std::fmt::Debug>(
             ),
         )),
         (!options.no_std).then(|| {
-            wipple_compiler::FilePath::Path(wipple_compiler::helpers::InternedString::new(
+            let path = options.std.as_deref();
+
+            wipple_compiler::FilePath::Path(
                 #[cfg(debug_assertions)]
-                concat!(env!("CARGO_WORKSPACE_DIR"), "pkg/std/std.wpl"),
+                wipple_compiler::helpers::InternedString::new(
+                    path.unwrap_or(concat!(env!("CARGO_WORKSPACE_DIR"), "pkg/std/std.wpl")),
+                ),
                 #[cfg(not(debug_assertions))]
-                if loader::is_url(&options.std) {
-                    options.std
-                } else {
-                    PathBuf::from(options.std)
-                        .canonicalize()
-                        .unwrap()
-                        .to_string_lossy()
-                        .into_owned()
+                {
+                    let path = path.unwrap_or(loader::STD_URL);
+
+                    if loader::is_url(path) {
+                        wipple_compiler::helpers::InternedString::new(path)
+                    } else {
+                        wipple_compiler::helpers::InternedString::new(
+                            PathBuf::from(path)
+                                .canonicalize()
+                                .unwrap()
+                                .to_str()
+                                .unwrap(),
+                        )
+                    }
                 },
-            ))
+            )
         }),
     );
 
