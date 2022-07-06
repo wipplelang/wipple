@@ -87,6 +87,8 @@ pub struct BuiltinType {
 pub enum BuiltinTypeKind {
     Never,
     Number,
+    Integer,
+    Positive,
     Boolean,
     Text,
     List,
