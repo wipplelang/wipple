@@ -4,6 +4,7 @@ use async_trait::async_trait;
 use futures::future::BoxFuture;
 use parking_lot::Mutex;
 use path_clean::PathClean;
+use sha2::{Digest, Sha256};
 use std::{collections::HashMap, path::PathBuf, str::FromStr, sync::Arc};
 use url::Url;
 use wipple_compiler::{compile, helpers::InternedString, FilePath, SourceMap};
@@ -31,6 +32,10 @@ impl Fetcher {
         Default::default()
     }
 
+    pub fn cache_dir() -> Option<PathBuf> {
+        dirs::cache_dir().map(|dir| dir.join("wipple"))
+    }
+
     pub fn with_path_handler(
         mut self,
         from_path: impl Fn(&str) -> BoxFuture<anyhow::Result<String>> + Send + Sync + 'static,
@@ -42,10 +47,7 @@ impl Fetcher {
     #[cfg(not(target_arch = "wasm32"))]
     pub fn with_default_path_handler(self) -> Self {
         self.with_path_handler(|path| {
-            Box::pin(async move {
-                // TODO: Use async IO
-                std::fs::read_to_string(path).map_err(|e| e.into())
-            })
+            Box::pin(async move { tokio::fs::read_to_string(path).await.map_err(|e| e.into()) })
         })
     }
 
@@ -60,7 +62,51 @@ impl Fetcher {
     #[cfg(not(target_arch = "wasm32"))]
     pub fn with_default_url_handler(self) -> Self {
         self.with_url_handler(|url| {
-            Box::pin(async move { reqwest::get(url).await?.text().await.map_err(|e| e.into()) })
+            Box::pin(async move {
+                let load = |cache_path: Option<PathBuf>| async {
+                    let file = reqwest::get(url.clone()).await?.text().await?;
+
+                    if let Some(cache_path) = cache_path {
+                        tokio::fs::create_dir_all(cache_path.parent().unwrap())
+                            .await
+                            .map_err(|e| {
+                                anyhow::Error::msg(format!(
+                                    "failed to create cache directory: {}",
+                                    e
+                                ))
+                            })?;
+
+                        tokio::fs::write(cache_path, file.clone())
+                            .await
+                            .map_err(|e| {
+                                anyhow::Error::msg(format!("failed to cache {}: {}", url, e))
+                            })?;
+                    }
+
+                    Ok(file)
+                };
+
+                let cache_dir = match Self::cache_dir() {
+                    Some(dir) => dir,
+                    None => return load(None).await,
+                };
+
+                let hash = {
+                    let mut hasher = Sha256::new();
+                    hasher.update(url.as_str());
+                    format!("{:x}", hasher.finalize())
+                };
+
+                let cache_path = cache_dir.join(hash);
+
+                if !cache_path.exists() {
+                    return load(Some(cache_path)).await;
+                }
+
+                let file = tokio::fs::read_to_string(cache_path).await?;
+
+                Ok(file)
+            })
         })
     }
 }
