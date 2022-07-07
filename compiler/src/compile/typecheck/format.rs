@@ -32,8 +32,15 @@ pub fn format_type(
     type_names: impl Fn(TypeId) -> String,
     trait_names: impl Fn(TraitId) -> String,
     param_names: impl Fn(TypeParameterId) -> String,
+    surround_in_backticks: bool,
 ) -> String {
-    format_type_with(ty, type_names, trait_names, param_names)
+    format_type_with(
+        ty,
+        type_names,
+        trait_names,
+        param_names,
+        surround_in_backticks,
+    )
 }
 
 fn format_type_with(
@@ -41,6 +48,7 @@ fn format_type_with(
     type_names: impl Fn(TypeId) -> String,
     trait_names: impl Fn(TraitId) -> String,
     param_names: impl Fn(TypeParameterId) -> String,
+    surround_in_backticks: bool,
 ) -> String {
     let ty: FormattableType = ty.into();
 
@@ -51,6 +59,7 @@ fn format_type_with(
         param_names: &impl Fn(TypeParameterId) -> String,
         is_top_level: bool,
         is_return: bool,
+        surround_in_backticks: bool,
     ) -> String {
         macro_rules! format_named_type {
             ($name:expr, $params:expr) => {{
@@ -67,7 +76,8 @@ fn format_type_with(
                                 trait_names,
                                 param_names,
                                 false,
-                                false
+                                false,
+                                false,
                             )
                         )
                     }))
@@ -81,28 +91,35 @@ fn format_type_with(
             }};
         }
 
-        match ty {
-            FormattableType::Type(UnresolvedType::Variable(_)) => String::from("_"),
-            FormattableType::Type(UnresolvedType::Parameter(param)) => param_names(param),
-            FormattableType::Type(UnresolvedType::Bottom(_)) => String::from("!"),
-            FormattableType::Type(UnresolvedType::Named(id, params)) => {
-                format_named_type!(type_names(id), params)
+        let (formatted, should_surround_in_backticks) = match ty {
+            FormattableType::Type(UnresolvedType::Variable(_)) => (String::from("_"), true),
+            FormattableType::Type(UnresolvedType::NumericVariable(_, _)) => {
+                (String::from("number"), false)
             }
-            FormattableType::Type(UnresolvedType::Builtin(ty)) => match ty {
-                BuiltinType::Number => format_named_type!("Number", Vec::new()),
-                BuiltinType::Integer => format_named_type!("Integer", Vec::new()),
-                BuiltinType::Positive => format_named_type!("Positive", Vec::new()),
-                BuiltinType::Text => format_named_type!("Text", Vec::new()),
-                BuiltinType::List(ty) => format_named_type!("List", vec![*ty]),
-                BuiltinType::Mutable(ty) => format_named_type!("Mutable", vec![*ty]),
-            },
+            FormattableType::Type(UnresolvedType::Parameter(param)) => (param_names(param), true),
+            FormattableType::Type(UnresolvedType::Bottom(_)) => (String::from("!"), true),
+            FormattableType::Type(UnresolvedType::Named(id, params)) => {
+                (format_named_type!(type_names(id), params), true)
+            }
+            FormattableType::Type(UnresolvedType::Builtin(ty)) => (
+                match ty {
+                    BuiltinType::Number => format_named_type!("Number", Vec::new()),
+                    BuiltinType::Integer => format_named_type!("Integer", Vec::new()),
+                    BuiltinType::Positive => format_named_type!("Positive", Vec::new()),
+                    BuiltinType::Text => format_named_type!("Text", Vec::new()),
+                    BuiltinType::List(ty) => format_named_type!("List", vec![*ty]),
+                    BuiltinType::Mutable(ty) => format_named_type!("Mutable", vec![*ty]),
+                },
+                true,
+            ),
             FormattableType::Type(UnresolvedType::Function(input, output)) => {
                 let input = format_type(
                     (*input).into(),
                     type_names,
                     trait_names,
                     param_names,
-                    true,
+                    is_top_level,
+                    false,
                     false,
                 );
 
@@ -111,15 +128,19 @@ fn format_type_with(
                     type_names,
                     trait_names,
                     param_names,
+                    is_top_level,
                     true,
-                    true,
+                    false,
                 );
 
-                if is_top_level && is_return {
-                    format!("{input} -> {output}")
-                } else {
-                    format!("({input} -> {output})")
-                }
+                (
+                    if is_top_level && is_return {
+                        format!("{input} -> {output}")
+                    } else {
+                        format!("({input} -> {output})")
+                    },
+                    true,
+                )
             }
             FormattableType::Type(UnresolvedType::Tuple(mut tys)) => {
                 let ty = if tys.len() == 1 {
@@ -130,6 +151,7 @@ fn format_type_with(
                         param_names,
                         is_top_level,
                         is_return,
+                        false,
                     ) + " ,"
                 } else {
                     tys.into_iter()
@@ -141,20 +163,30 @@ fn format_type_with(
                                 param_names,
                                 is_top_level,
                                 is_return,
+                                false,
                             )
                         })
                         .join(" , ")
                 };
 
-                if is_top_level {
-                    ty
-                } else {
-                    format!("({})", ty)
-                }
+                (
+                    if is_top_level {
+                        ty
+                    } else {
+                        format!("({})", ty)
+                    },
+                    true,
+                )
             }
             FormattableType::Trait(tr, params) => {
-                format_named_type!(trait_names(tr), params)
+                (format_named_type!(trait_names(tr), params), true)
             }
+        };
+
+        if surround_in_backticks && should_surround_in_backticks {
+            format!("`{}`", formatted)
+        } else {
+            formatted
         }
     }
 
@@ -165,12 +197,20 @@ fn format_type_with(
 
     let show_params = names.is_empty() || matches!(ty, FormattableType::Trait(_, _));
 
-    let formatted = format_type(ty, &type_names, &trait_names, &param_names, true, true);
+    let formatted = format_type(
+        ty,
+        &type_names,
+        &trait_names,
+        &param_names,
+        true,
+        true,
+        show_params,
+    );
 
     if show_params {
         formatted
     } else {
-        format!(
+        let formatted = format!(
             "{}=> {}",
             names
                 .iter()
@@ -180,10 +220,17 @@ fn format_type_with(
                     &trait_names,
                     &param_names,
                     false,
+                    false,
                     false
                 ) + " ")
                 .collect::<String>(),
             formatted
-        )
+        );
+
+        if surround_in_backticks {
+            format!("`{}`", formatted)
+        } else {
+            formatted
+        }
     }
 }

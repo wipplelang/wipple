@@ -85,27 +85,27 @@ lazy_static! {
 }
 
 fn r#false() -> Value {
-    Value::Variant(0, im::Vector::new())
+    Value::Variant(0, Vec::new().into_boxed_slice())
 }
 
 fn r#true() -> Value {
-    Value::Variant(1, im::Vector::new())
+    Value::Variant(1, Vec::new().into_boxed_slice())
 }
 
 fn none() -> Value {
-    Value::Variant(0, im::Vector::new())
+    Value::Variant(0, Vec::new().into_boxed_slice())
 }
 
 fn some(value: Value) -> Value {
-    Value::Variant(1, im::vector![value])
+    Value::Variant(1, vec![value].into_boxed_slice())
 }
 
 fn ok(value: Value) -> Value {
-    Value::Variant(0, im::vector![value])
+    Value::Variant(0, vec![value].into_boxed_slice())
 }
 
 fn error(value: Value) -> Value {
-    Value::Variant(1, im::vector![value])
+    Value::Variant(1, vec![value].into_boxed_slice())
 }
 
 fn builtin_crash(_: &Interpreter, (text,): (Value,), info: &mut Info) -> Result<Value, Diverge> {
@@ -404,7 +404,7 @@ fn builtin_number_ordering(
         std::cmp::Ordering::Greater => 2,
     };
 
-    Ok(Value::Variant(index, im::Vector::new()))
+    Ok(Value::Variant(index, Vec::new().into_boxed_slice()))
 }
 
 fn builtin_make_mutable(_: &Interpreter, (value,): (Value,), _: &Info) -> Result<Value, Diverge> {

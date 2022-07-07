@@ -61,6 +61,8 @@ fn is_no_op(expr: &Expression) -> bool {
         | ExpressionKind::Constant(_)
         | ExpressionKind::Text(_)
         | ExpressionKind::Number(_)
+        | ExpressionKind::Integer(_)
+        | ExpressionKind::Positive(_)
         | ExpressionKind::Function(_, _) => true,
         ExpressionKind::Call(_, _)
         | ExpressionKind::External(_, _, _, _)

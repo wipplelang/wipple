@@ -8,12 +8,15 @@ pub use engine::{BuiltinType, Type};
 pub use format::{format_type, FormattableType};
 
 use crate::{
-    compile::lower, diagnostics::*, helpers::InternedString, parse::Span, Compiler, FilePath,
-    GenericConstantId, Loader, MonomorphizedConstantId, TraitId, TypeId, TypeParameterId,
-    VariableId,
+    compile::lower,
+    diagnostics::*,
+    helpers::{DecimalExt, InternedString},
+    parse::Span,
+    Compiler, FilePath, GenericConstantId, Loader, MonomorphizedConstantId, TraitId, TypeId,
+    TypeParameterId, VariableId,
 };
 use engine::*;
-use rust_decimal::Decimal;
+use rust_decimal::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::{
     cell::RefCell,
@@ -48,6 +51,8 @@ macro_rules! expr {
                 Variable(VariableId),
                 Text(InternedString),
                 Number(Decimal),
+                Integer(i64),
+                Positive(u64),
                 Block(
                     Vec<[<$prefix Expression>]>,
                     HashMap<InternedString, lower::ScopeValue>,
@@ -842,9 +847,9 @@ impl<L: Loader> Compiler<L> {
                     vec![Note::primary(
                         error.span,
                         format!(
-                            "expected `{}`, but found `{}`",
-                            format_type(expected, type_names, trait_names, param_names),
-                            format_type(actual, type_names, trait_names, param_names)
+                            "expected {}, but found {}",
+                            format_type(expected, type_names, trait_names, param_names, true),
+                            format_type(actual, type_names, trait_names, param_names, true)
                         ),
                     )],
                 ),
@@ -856,12 +861,13 @@ impl<L: Loader> Compiler<L> {
                         std::iter::once(Note::primary(
                             error.span,
                             format!(
-                                "could not find instance `{}`",
+                                "could not find instance {}",
                                 format_type(
                                     FormattableType::Trait(id, params),
                                     type_names,
                                     trait_names,
-                                    param_names
+                                    param_names,
+                                    true
                                 )
                             ),
                         ))
@@ -1060,11 +1066,36 @@ impl<L: Loader> Typechecker<L> {
                 ty: UnresolvedType::Builtin(BuiltinType::Text),
                 kind: UnresolvedExpressionKind::Text(*text),
             },
-            lower::ExpressionKind::Number(number) => UnresolvedExpression {
-                span: expr.span,
-                ty: UnresolvedType::Builtin(BuiltinType::Number),
-                kind: UnresolvedExpressionKind::Number(*number),
-            },
+            lower::ExpressionKind::Number(number) => {
+                if let Some(positive) = number.to_u64_exact() {
+                    UnresolvedExpression {
+                        span: expr.span,
+                        ty: UnresolvedType::NumericVariable(
+                            self.ctx.new_variable(),
+                            NumericBound::Positive,
+                        ),
+                        kind: UnresolvedExpressionKind::Positive(positive),
+                    }
+                } else if let Some(integer) = number.to_i64_exact() {
+                    UnresolvedExpression {
+                        span: expr.span,
+                        ty: UnresolvedType::NumericVariable(
+                            self.ctx.new_variable(),
+                            NumericBound::Integer,
+                        ),
+                        kind: UnresolvedExpressionKind::Integer(integer),
+                    }
+                } else {
+                    UnresolvedExpression {
+                        span: expr.span,
+                        ty: UnresolvedType::NumericVariable(
+                            self.ctx.new_variable(),
+                            NumericBound::Number,
+                        ),
+                        kind: UnresolvedExpressionKind::Number(*number),
+                    }
+                }
+            }
             lower::ExpressionKind::Block(statements, declarations) => {
                 let (ty, statements) = self.typecheck_block(statements, file, suppress_errors);
 
@@ -2062,6 +2093,14 @@ impl<L: Loader> Typechecker<L> {
     ) -> Result<MonomorphizedExpression, Error> {
         expr.ty.apply(&self.ctx);
 
+        let numeric_bound = |ty| match ty {
+            UnresolvedType::NumericVariable(_, _)
+            | UnresolvedType::Builtin(BuiltinType::Number) => NumericBound::Number,
+            UnresolvedType::Builtin(BuiltinType::Integer) => NumericBound::Integer,
+            UnresolvedType::Builtin(BuiltinType::Positive) => NumericBound::Positive,
+            _ => unreachable!(),
+        };
+
         Ok(MonomorphizedExpression {
             span: expr.span,
             ty: expr.ty.clone(),
@@ -2105,9 +2144,26 @@ impl<L: Loader> Typechecker<L> {
                         MonomorphizedExpressionKind::Variable(var)
                     }
                     UnresolvedExpressionKind::Text(text) => MonomorphizedExpressionKind::Text(text),
-                    UnresolvedExpressionKind::Number(number) => {
-                        MonomorphizedExpressionKind::Number(number)
-                    }
+                    UnresolvedExpressionKind::Number(number) => match numeric_bound(expr.ty) {
+                        NumericBound::Number => MonomorphizedExpressionKind::Number(number),
+                        NumericBound::Integer | NumericBound::Positive => unreachable!(),
+                    },
+                    UnresolvedExpressionKind::Integer(integer) => match numeric_bound(expr.ty) {
+                        NumericBound::Number => {
+                            MonomorphizedExpressionKind::Number(Decimal::from_i64(integer).unwrap())
+                        }
+                        NumericBound::Integer => MonomorphizedExpressionKind::Integer(integer),
+                        NumericBound::Positive => unreachable!(),
+                    },
+                    UnresolvedExpressionKind::Positive(positive) => match numeric_bound(expr.ty) {
+                        NumericBound::Number => MonomorphizedExpressionKind::Number(
+                            Decimal::from_u64(positive).unwrap(),
+                        ),
+                        NumericBound::Integer => {
+                            MonomorphizedExpressionKind::Integer(positive as i64)
+                        }
+                        NumericBound::Positive => MonomorphizedExpressionKind::Positive(positive),
+                    },
                     UnresolvedExpressionKind::Block(statements, scope) => {
                         MonomorphizedExpressionKind::Block(
                             statements
@@ -2318,6 +2374,10 @@ impl<L: Loader> Typechecker<L> {
                 MonomorphizedExpressionKind::Variable(var) => ExpressionKind::Variable(var),
                 MonomorphizedExpressionKind::Text(text) => ExpressionKind::Text(text),
                 MonomorphizedExpressionKind::Number(number) => ExpressionKind::Number(number),
+                MonomorphizedExpressionKind::Integer(integer) => ExpressionKind::Integer(integer),
+                MonomorphizedExpressionKind::Positive(positive) => {
+                    ExpressionKind::Positive(positive)
+                }
                 MonomorphizedExpressionKind::Block(statements, scope) => ExpressionKind::Block(
                     statements
                         .into_iter()

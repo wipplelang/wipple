@@ -30,6 +30,8 @@ pub enum ExpressionKind {
     Constant(MonomorphizedConstantId),
     Text(InternedString),
     Number(Decimal),
+    Integer(i64),
+    Positive(u64),
     Block(Vec<Expression>),
     Call(Box<Expression>, Box<Expression>),
     Function(Pattern, Box<Expression>),
@@ -110,6 +112,8 @@ impl From<compile::Expression> for Expression {
                 compile::ExpressionKind::Variable(var) => ExpressionKind::Variable(var),
                 compile::ExpressionKind::Text(text) => ExpressionKind::Text(text),
                 compile::ExpressionKind::Number(number) => ExpressionKind::Number(number),
+                compile::ExpressionKind::Integer(integer) => ExpressionKind::Integer(integer),
+                compile::ExpressionKind::Positive(positive) => ExpressionKind::Positive(positive),
                 compile::ExpressionKind::Block(statements, _) => {
                     ExpressionKind::Block(statements.into_iter().map(From::from).collect())
                 }
