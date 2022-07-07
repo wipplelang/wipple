@@ -4,7 +4,6 @@ use async_trait::async_trait;
 use futures::future::BoxFuture;
 use parking_lot::Mutex;
 use path_clean::PathClean;
-use sha2::{Digest, Sha256};
 use std::{collections::HashMap, path::PathBuf, str::FromStr, sync::Arc};
 use url::Url;
 use wipple_compiler::{compile, helpers::InternedString, FilePath, SourceMap};
@@ -32,6 +31,7 @@ impl Fetcher {
         Default::default()
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn cache_dir() -> Option<PathBuf> {
         dirs::cache_dir().map(|dir| dir.join("wipple"))
     }
@@ -63,6 +63,8 @@ impl Fetcher {
     pub fn with_default_url_handler(self) -> Self {
         self.with_url_handler(|url| {
             Box::pin(async move {
+                use sha2::{Digest, Sha256};
+
                 let load = |cache_path: Option<PathBuf>| async {
                     let file = reqwest::get(url.clone()).await?.text().await?;
 
