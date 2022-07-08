@@ -150,7 +150,7 @@ async fn run() -> anyhow::Result<()> {
             if clear {
                 if let Err(error) = fs::remove_dir_all(cache_dir) {
                     match error.kind() {
-                        io::ErrorKind::NotFound => {},
+                        io::ErrorKind::NotFound => {}
                         _ => return Err(error.into()),
                     }
                 };
@@ -214,9 +214,16 @@ async fn build_with_passes<P: std::fmt::Debug>(
     let progress_bar = Arc::new(None::<indicatif::ProgressBar>);
 
     #[cfg(not(debug_assertions))]
-    let progress_bar = Arc::new(Some(
-        indicatif::ProgressBar::new(0).with_style(indicatif::ProgressStyle::default_spinner()),
-    ));
+    let progress_bar = Arc::new(Some({
+        let progress_bar = indicatif::ProgressBar::new(0).with_style(
+            indicatif::ProgressStyle::default_spinner()
+                .tick_strings(&["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]),
+        );
+
+        progress_bar.enable_steady_tick(80);
+
+        progress_bar
+    }));
 
     let progress = {
         let progress_bar = progress_bar.clone();
