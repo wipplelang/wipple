@@ -2092,6 +2092,7 @@ impl<L: Loader> Typechecker<L> {
         inside_generic_constant: Option<(GenericConstantId, MonomorphizedConstantId)>,
     ) -> Result<MonomorphizedExpression, Error> {
         expr.ty.apply(&self.ctx);
+        expr.ty.eliminate_numeric_variables();
 
         let numeric_bound = |ty| match ty {
             UnresolvedType::NumericVariable(_, _)
