@@ -1,7 +1,8 @@
 use crate::*;
 use itertools::Itertools;
 use lazy_static::lazy_static;
-use num_traits::{pow::Pow, FromPrimitive, ToPrimitive};
+use num_integer::Roots;
+use num_traits::{pow::Pow, FromPrimitive, ToPrimitive, Zero};
 use rust_decimal::MathematicalOps;
 use std::collections::HashMap;
 
@@ -62,15 +63,27 @@ lazy_static! {
             "multiply-numbers" => builtin_multiply_numbers,
             "divide-numbers" => builtin_divide_numbers,
             "power-numbers" => builtin_power_numbers,
+            "floor-number" => builtin_floor_number,
+            "ceil-number" => builtin_ceil_number,
+            "sqrt-number" => builtin_sqrt_number,
+            "add-integers" => builtin_add_integers,
+            "subtract-integers" => builtin_subtract_integers,
+            "multiply-integers" => builtin_multiply_integers,
+            "divide-integers" => builtin_divide_integers,
+            "power-integer-positive" => builtin_power_integer_positive,
+            "sqrt-integer" => builtin_sqrt_integer,
+            "add-positives" => builtin_add_positives,
+            "subtract-positives" => builtin_subtract_positives,
+            "multiply-positives" => builtin_multiply_positives,
+            "divide-positives" => builtin_divide_positives,
+            "power-positives" => builtin_power_positives,
+            "sqrt-positive" => builtin_sqrt_positive,
             "text-equality" => builtin_text_equality,
             "number-ordering" => builtin_number_ordering,
             "make-mutable" => builtin_make_mutable,
             "get-mutable" => builtin_get_mutable,
             "set-mutable" => builtin_set_mutable,
             "loop" => builtin_loop,
-            "floor" => builtin_floor,
-            "ceil" => builtin_ceil,
-            "sqrt" => builtin_sqrt,
             "make-list" => builtin_make_list,
             "list-first" => builtin_list_first,
             "list-last" => builtin_list_last,
@@ -244,35 +257,59 @@ fn builtin_positive_to_number(
     Ok(Value::Number(Decimal::from_u64(positive).unwrap()))
 }
 
-macro_rules! builtin_math {
-    ($($f:ident => $op:tt),* $(,)?) => {
-        $(
-            fn $f(
-                _: &Interpreter,
-                (lhs, rhs): (Value, Value),
-                _: &Info,
-            ) -> Result<Value, Diverge> {
-                let lhs = match lhs {
-                    Value::Number(number) => number,
-                    _ => unreachable!(),
-                };
-
-                let rhs = match rhs {
-                    Value::Number(number) => number,
-                    _ => unreachable!(),
-                };
-
-                Ok(Value::Number(lhs $op rhs))
-            }
-        )*
+fn builtin_add_numbers(
+    _: &Interpreter,
+    (lhs, rhs): (Value, Value),
+    _: &Info,
+) -> Result<Value, Diverge> {
+    let lhs = match lhs {
+        Value::Number(number) => number,
+        _ => unreachable!(),
     };
+
+    let rhs = match rhs {
+        Value::Number(number) => number,
+        _ => unreachable!(),
+    };
+
+    Ok(Value::Number(lhs + rhs))
 }
 
-builtin_math!(
-    builtin_add_numbers => +,
-    builtin_subtract_numbers => -,
-    builtin_multiply_numbers => *,
-);
+fn builtin_subtract_numbers(
+    _: &Interpreter,
+    (lhs, rhs): (Value, Value),
+    _: &Info,
+) -> Result<Value, Diverge> {
+    let lhs = match lhs {
+        Value::Number(number) => number,
+        _ => unreachable!(),
+    };
+
+    let rhs = match rhs {
+        Value::Number(number) => number,
+        _ => unreachable!(),
+    };
+
+    Ok(Value::Number(lhs - rhs))
+}
+
+fn builtin_multiply_numbers(
+    _: &Interpreter,
+    (lhs, rhs): (Value, Value),
+    _: &Info,
+) -> Result<Value, Diverge> {
+    let lhs = match lhs {
+        Value::Number(number) => number,
+        _ => unreachable!(),
+    };
+
+    let rhs = match rhs {
+        Value::Number(number) => number,
+        _ => unreachable!(),
+    };
+
+    Ok(Value::Number(lhs * rhs))
+}
 
 fn builtin_divide_numbers(
     _: &Interpreter,
@@ -326,7 +363,11 @@ fn builtin_power_numbers(
     Ok(Value::Number(lhs.pow(rhs)))
 }
 
-fn builtin_floor(_: &Interpreter, (value,): (Value,), _: &mut Info) -> Result<Value, Diverge> {
+fn builtin_floor_number(
+    _: &Interpreter,
+    (value,): (Value,),
+    _: &mut Info,
+) -> Result<Value, Diverge> {
     let number = match value {
         Value::Number(number) => number,
         _ => unreachable!(),
@@ -335,7 +376,11 @@ fn builtin_floor(_: &Interpreter, (value,): (Value,), _: &mut Info) -> Result<Va
     Ok(Value::Number(number.floor()))
 }
 
-fn builtin_ceil(_: &Interpreter, (value,): (Value,), _: &mut Info) -> Result<Value, Diverge> {
+fn builtin_ceil_number(
+    _: &Interpreter,
+    (value,): (Value,),
+    _: &mut Info,
+) -> Result<Value, Diverge> {
     let number = match value {
         Value::Number(number) => number,
         _ => unreachable!(),
@@ -344,7 +389,11 @@ fn builtin_ceil(_: &Interpreter, (value,): (Value,), _: &mut Info) -> Result<Val
     Ok(Value::Number(number.ceil()))
 }
 
-fn builtin_sqrt(_: &Interpreter, (value,): (Value,), info: &mut Info) -> Result<Value, Diverge> {
+fn builtin_sqrt_number(
+    _: &Interpreter,
+    (value,): (Value,),
+    info: &mut Info,
+) -> Result<Value, Diverge> {
     let number = match value {
         Value::Number(number) => number,
         _ => unreachable!(),
@@ -356,7 +405,7 @@ fn builtin_sqrt(_: &Interpreter, (value,): (Value,), info: &mut Info) -> Result<
             return Err(Diverge::new(
                 info.stack.clone(),
                 DivergeKind::Error(String::from(
-                    "the square root of a negative number is undefined",
+                    "cannot calculate the square root of a negative number",
                 )),
             ))
         }
@@ -364,6 +413,265 @@ fn builtin_sqrt(_: &Interpreter, (value,): (Value,), info: &mut Info) -> Result<
 
     Ok(Value::Number(sqrt))
 }
+
+////////////
+
+fn builtin_add_integers(
+    _: &Interpreter,
+    (lhs, rhs): (Value, Value),
+    _: &Info,
+) -> Result<Value, Diverge> {
+    let lhs = match lhs {
+        Value::Integer(number) => number,
+        _ => unreachable!(),
+    };
+
+    let rhs = match rhs {
+        Value::Integer(number) => number,
+        _ => unreachable!(),
+    };
+
+    Ok(Value::Integer(lhs + rhs))
+}
+
+fn builtin_subtract_integers(
+    _: &Interpreter,
+    (lhs, rhs): (Value, Value),
+    _: &Info,
+) -> Result<Value, Diverge> {
+    let lhs = match lhs {
+        Value::Integer(number) => number,
+        _ => unreachable!(),
+    };
+
+    let rhs = match rhs {
+        Value::Integer(number) => number,
+        _ => unreachable!(),
+    };
+
+    Ok(Value::Integer(lhs - rhs))
+}
+
+fn builtin_multiply_integers(
+    _: &Interpreter,
+    (lhs, rhs): (Value, Value),
+    _: &Info,
+) -> Result<Value, Diverge> {
+    let lhs = match lhs {
+        Value::Integer(number) => number,
+        _ => unreachable!(),
+    };
+
+    let rhs = match rhs {
+        Value::Integer(number) => number,
+        _ => unreachable!(),
+    };
+
+    Ok(Value::Integer(lhs * rhs))
+}
+
+fn builtin_divide_integers(
+    _: &Interpreter,
+    (lhs, rhs): (Value, Value),
+    info: &mut Info,
+) -> Result<Value, Diverge> {
+    let lhs = match lhs {
+        Value::Integer(number) => number,
+        _ => unreachable!(),
+    };
+
+    let rhs = match rhs {
+        Value::Integer(number) => number,
+        _ => unreachable!(),
+    };
+
+    if rhs.is_zero() {
+        return Err(Diverge::new(
+            info.stack.clone(),
+            DivergeKind::Error(String::from("division by zero is undefined")),
+        ));
+    }
+
+    Ok(Value::Integer(lhs / rhs))
+}
+
+fn builtin_power_integer_positive(
+    _: &Interpreter,
+    (lhs, rhs): (Value, Value),
+    info: &mut Info,
+) -> Result<Value, Diverge> {
+    let lhs = match lhs {
+        Value::Integer(number) => number,
+        _ => unreachable!(),
+    };
+
+    let rhs = match rhs {
+        Value::Positive(number) => number,
+        _ => unreachable!(),
+    };
+
+    if lhs.is_zero() && rhs.is_zero() {
+        return Err(Diverge::new(
+            info.stack.clone(),
+            DivergeKind::Error(String::from(
+                "raising zero to the power of zero is undefined",
+            )),
+        ));
+    }
+
+    // FIXME: Remove cast once num-traits supports `i32: Pow<u64>`
+    let rhs = rhs as u32;
+
+    Ok(Value::Integer(Pow::pow(lhs, rhs)))
+}
+
+fn builtin_sqrt_integer(
+    _: &Interpreter,
+    (value,): (Value,),
+    info: &mut Info,
+) -> Result<Value, Diverge> {
+    let number = match value {
+        Value::Integer(number) => number,
+        _ => unreachable!(),
+    };
+
+    if number.is_negative() {
+        return Err(Diverge::new(
+            info.stack.clone(),
+            DivergeKind::Error(String::from(
+                "cannot calculate the square root of a negative number",
+            )),
+        ));
+    }
+
+    Ok(Value::Integer(number.sqrt()))
+}
+
+//////////////
+
+fn builtin_add_positives(
+    _: &Interpreter,
+    (lhs, rhs): (Value, Value),
+    _: &Info,
+) -> Result<Value, Diverge> {
+    let lhs = match lhs {
+        Value::Positive(number) => number,
+        _ => unreachable!(),
+    };
+
+    let rhs = match rhs {
+        Value::Positive(number) => number,
+        _ => unreachable!(),
+    };
+
+    Ok(Value::Positive(lhs + rhs))
+}
+
+fn builtin_subtract_positives(
+    _: &Interpreter,
+    (lhs, rhs): (Value, Value),
+    _: &Info,
+) -> Result<Value, Diverge> {
+    let lhs = match lhs {
+        Value::Positive(number) => number,
+        _ => unreachable!(),
+    };
+
+    let rhs = match rhs {
+        Value::Positive(number) => number,
+        _ => unreachable!(),
+    };
+
+    Ok(Value::Integer((lhs as i64) - (rhs as i64)))
+}
+
+fn builtin_multiply_positives(
+    _: &Interpreter,
+    (lhs, rhs): (Value, Value),
+    _: &Info,
+) -> Result<Value, Diverge> {
+    let lhs = match lhs {
+        Value::Positive(number) => number,
+        _ => unreachable!(),
+    };
+
+    let rhs = match rhs {
+        Value::Positive(number) => number,
+        _ => unreachable!(),
+    };
+
+    Ok(Value::Positive(lhs * rhs))
+}
+
+fn builtin_divide_positives(
+    _: &Interpreter,
+    (lhs, rhs): (Value, Value),
+    info: &mut Info,
+) -> Result<Value, Diverge> {
+    let lhs = match lhs {
+        Value::Positive(number) => number,
+        _ => unreachable!(),
+    };
+
+    let rhs = match rhs {
+        Value::Positive(number) => number,
+        _ => unreachable!(),
+    };
+
+    if rhs.is_zero() {
+        return Err(Diverge::new(
+            info.stack.clone(),
+            DivergeKind::Error(String::from("division by zero is undefined")),
+        ));
+    }
+
+    Ok(Value::Positive(lhs / rhs))
+}
+
+fn builtin_power_positives(
+    _: &Interpreter,
+    (lhs, rhs): (Value, Value),
+    info: &mut Info,
+) -> Result<Value, Diverge> {
+    let lhs = match lhs {
+        Value::Positive(number) => number,
+        _ => unreachable!(),
+    };
+
+    let rhs = match rhs {
+        Value::Positive(number) => number,
+        _ => unreachable!(),
+    };
+
+    if lhs.is_zero() && rhs.is_zero() {
+        return Err(Diverge::new(
+            info.stack.clone(),
+            DivergeKind::Error(String::from(
+                "raising zero to the power of zero is undefined",
+            )),
+        ));
+    }
+
+    // FIXME: Remove cast once num-traits supports `u64: Pow<u64>`
+    let rhs = rhs as u32;
+
+    Ok(Value::Positive(Pow::pow(lhs, rhs)))
+}
+
+fn builtin_sqrt_positive(
+    _: &Interpreter,
+    (value,): (Value,),
+    _: &mut Info,
+) -> Result<Value, Diverge> {
+    let number = match value {
+        Value::Positive(number) => number,
+        _ => unreachable!(),
+    };
+
+    Ok(Value::Positive(number.sqrt()))
+}
+
+/////////
 
 fn builtin_text_equality(
     _: &Interpreter,

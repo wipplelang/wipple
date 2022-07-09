@@ -488,6 +488,35 @@ impl UnresolvedType {
         }
     }
 
+    pub fn eliminate_numeric_variables(&mut self) {
+        match self {
+            UnresolvedType::NumericVariable(_, _) => {
+                *self = UnresolvedType::Builtin(BuiltinType::Number);
+            }
+            UnresolvedType::Function(input, output) => {
+                input.eliminate_numeric_variables();
+                output.eliminate_numeric_variables();
+            }
+            UnresolvedType::Named(_, params) => {
+                for param in params {
+                    param.eliminate_numeric_variables();
+                }
+            }
+            UnresolvedType::Tuple(tys) => {
+                for ty in tys {
+                    ty.eliminate_numeric_variables();
+                }
+            }
+            UnresolvedType::Builtin(ty) => match ty {
+                BuiltinType::List(ty) | BuiltinType::Mutable(ty) => {
+                    ty.eliminate_numeric_variables();
+                }
+                _ => {}
+            },
+            _ => {}
+        }
+    }
+
     pub fn params(&self) -> Vec<TypeParameterId> {
         match self {
             UnresolvedType::Parameter(param) => vec![*param],
