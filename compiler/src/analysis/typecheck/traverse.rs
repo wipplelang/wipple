@@ -29,7 +29,7 @@ macro_rules! traverse_impl {
             f(expr);
 
             match &$($mut)? expr.kind {
-                Block(statements, _) => {
+                Block(statements) => {
                     for statement in statements {
                         statement.$traverse(f);
                     }

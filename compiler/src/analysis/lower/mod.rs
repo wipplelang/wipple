@@ -1,14 +1,13 @@
 mod builtins;
 
 use crate::{
-    compile::{ast, expand},
+    analysis::{ast, expand},
     diagnostics::*,
     helpers::InternedString,
     parse::Span,
     BuiltinTypeId, Compiler, GenericConstantId, Loader, TemplateId, TraitId, TypeId,
     TypeParameterId, VariableId,
 };
-use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use std::{
     cell::RefCell,
@@ -157,8 +156,8 @@ pub enum ExpressionKind {
     Trait(TraitId),
     Variable(VariableId),
     Text(InternedString),
-    Number(Decimal),
-    Block(Vec<Expression>, HashMap<InternedString, ScopeValue>),
+    Number(f64),
+    Block(Vec<Expression>),
     Call(Box<Expression>, Box<Expression>),
     Function(Pattern, Box<Expression>),
     When(Box<Expression>, Vec<Arm>),
@@ -200,7 +199,7 @@ pub struct Pattern {
 pub enum PatternKind {
     Error,
     Wildcard,
-    Number(Decimal),
+    Number(f64),
     Text(InternedString),
     Variable(VariableId),
     Destructure(HashMap<InternedString, Pattern>),
@@ -431,15 +430,13 @@ impl<L: Loader> Compiler<L> {
         statements: Vec<ast::Statement>,
         scope: &Scope,
         info: &mut Info,
-    ) -> (Vec<Expression>, HashMap<InternedString, ScopeValue>) {
+    ) -> Vec<Expression> {
         let scope = scope.child(ScopeKind::Block);
 
-        let statements = statements
+        statements
             .into_iter()
             .flat_map(|statement| self.lower_statement(statement, &scope, info))
-            .collect();
-
-        (statements, scope.values.into_inner())
+            .collect()
     }
 
     fn lower_statement(
@@ -1077,8 +1074,8 @@ impl<L: Loader> Compiler<L> {
             }
             ast::ExpressionKind::Block(statements) => {
                 let scope = scope.child(ScopeKind::Block);
-                let (block, declarations) = self.lower_block(statements, &scope, info);
-                ExpressionKind::Block(block, declarations)
+                let block = self.lower_block(statements, &scope, info);
+                ExpressionKind::Block(block)
             }
             ast::ExpressionKind::Call(function, inputs) => match &function.kind {
                 ast::ExpressionKind::Name(ty_name) => {
@@ -1229,13 +1226,7 @@ impl<L: Loader> Compiler<L> {
 
                 let body = self.lower_expr(*body, &scope, info);
 
-                ExpressionKind::Function(
-                    pattern,
-                    Box::new(Expression {
-                        span: expr.span,
-                        kind: ExpressionKind::Block(vec![body], scope.values.into_inner()),
-                    }),
-                )
+                ExpressionKind::Function(pattern, Box::new(body))
             }
             ast::ExpressionKind::When(input, arms) => ExpressionKind::When(
                 Box::new(self.lower_expr(*input, scope, info)),
@@ -1247,16 +1238,14 @@ impl<L: Loader> Compiler<L> {
                     })
                     .collect(),
             ),
-            ast::ExpressionKind::External(namespace, identifier, inputs) => {
-                ExpressionKind::External(
-                    namespace,
-                    identifier,
-                    inputs
-                        .into_iter()
-                        .map(|expr| self.lower_expr(expr, scope, info))
-                        .collect(),
-                )
-            }
+            ast::ExpressionKind::External(abi, identifier, inputs) => ExpressionKind::External(
+                abi,
+                identifier,
+                inputs
+                    .into_iter()
+                    .map(|expr| self.lower_expr(expr, scope, info))
+                    .collect(),
+            ),
             ast::ExpressionKind::Annotate(expr, ty) => ExpressionKind::Annotate(
                 Box::new(self.lower_expr(*expr, scope, info)),
                 self.lower_type_annotation(ty, scope, info),

@@ -141,7 +141,7 @@ pub async fn run(code: String) -> JsValue {
 
     let program = program.map(|program| {
         compiler.lint(&program);
-        compiler.optimize(program)
+        compiler.ir_from(program)
     });
 
     let diagnostics = compiler.finish();
@@ -163,16 +163,14 @@ pub async fn run(code: String) -> JsValue {
         if success {
             let result = {
                 let interpreter =
-                    wipple_interpreter_backend::Interpreter::handling_output_with_span(
-                        |text, _| {
-                            write!(output, "{}", text).unwrap();
-                        },
-                    );
+                    wipple_interpreter_backend::Interpreter::handling_output(|text| {
+                        write!(output, "{}", text).unwrap();
+                    });
 
-                interpreter.eval(program)
+                interpreter.run(&program)
             };
 
-            if let Err((error, _)) = result {
+            if let Err(error) = result {
                 write!(output, "fatal error: {error}").unwrap();
             }
         }

@@ -1,9 +1,9 @@
-pub mod compile;
+pub mod analysis;
 pub mod diagnostics;
 pub mod doc;
 pub mod helpers;
+pub mod ir;
 pub mod lint;
-pub mod optimize;
 pub mod parse;
 
 use async_trait::async_trait;
@@ -16,17 +16,13 @@ use std::{
     collections::HashMap,
     fmt,
     hash::Hash,
-    mem,
     sync::{atomic::AtomicUsize, Arc},
 };
 
 pub type SourceMap = HashMap<FilePath, Arc<str>>;
 
 #[async_trait]
-pub trait Loader
-where
-    Self: Clone + Send + Sync + 'static,
-{
+pub trait Loader: Clone + Send + Sync + 'static {
     type Error: fmt::Display;
 
     fn std_path(&self) -> Option<FilePath>;
@@ -35,7 +31,7 @@ where
 
     async fn load(&self, path: FilePath) -> Result<Arc<str>, Self::Error>;
 
-    fn cache(&self) -> Arc<Mutex<HashMap<FilePath, Arc<compile::expand::File<Self>>>>>;
+    fn cache(&self) -> Arc<Mutex<HashMap<FilePath, Arc<analysis::expand::File<Self>>>>>;
 
     fn source_map(&self) -> Arc<Mutex<SourceMap>>;
 }
@@ -111,6 +107,7 @@ macro_rules! ids {
 
 ids!(
     BuiltinTypeId,
+    IrComputationId,
     GenericConstantId,
     MonomorphizedConstantId,
     TemplateId,
@@ -132,11 +129,9 @@ impl<L: Loader> Compiler<L> {
     pub fn finish(self) -> FinalizedDiagnostics<L> {
         FinalizedDiagnostics {
             loader: self.loader,
-            diagnostics: mem::take(
-                &mut Arc::try_unwrap(self.diagnostics.diagnostics)
-                    .unwrap()
-                    .lock(),
-            ),
+            diagnostics: Arc::try_unwrap(self.diagnostics.diagnostics)
+                .unwrap()
+                .into_inner(),
         }
     }
 }

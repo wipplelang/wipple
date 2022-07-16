@@ -93,9 +93,6 @@ fn format_type_with(
 
         let (formatted, should_surround_in_backticks) = match ty {
             FormattableType::Type(UnresolvedType::Variable(_)) => (String::from("_"), true),
-            FormattableType::Type(UnresolvedType::NumericVariable(_, _)) => {
-                (String::from("number"), false)
-            }
             FormattableType::Type(UnresolvedType::Parameter(param)) => (param_names(param), true),
             FormattableType::Type(UnresolvedType::Bottom(_)) => (String::from("!"), true),
             FormattableType::Type(UnresolvedType::Named(id, params)) => {
@@ -143,18 +140,21 @@ fn format_type_with(
                 )
             }
             FormattableType::Type(UnresolvedType::Tuple(mut tys)) => {
-                let ty = if tys.len() == 1 {
-                    format_type(
-                        tys.pop().unwrap().into(),
-                        type_names,
-                        trait_names,
-                        param_names,
-                        is_top_level,
-                        is_return,
-                        false,
-                    ) + " ,"
-                } else {
-                    tys.into_iter()
+                let ty = match tys.len() {
+                    0 => String::from("()"),
+                    1 => {
+                        format_type(
+                            tys.pop().unwrap().into(),
+                            type_names,
+                            trait_names,
+                            param_names,
+                            is_top_level,
+                            is_return,
+                            false,
+                        ) + " ,"
+                    }
+                    _ => tys
+                        .into_iter()
                         .map(|ty| {
                             format_type(
                                 ty.into(),
@@ -166,7 +166,7 @@ fn format_type_with(
                                 false,
                             )
                         })
-                        .join(" , ")
+                        .join(" , "),
                 };
 
                 (

@@ -15,7 +15,6 @@ use crate::{
 use async_recursion::async_recursion;
 use futures::{future::BoxFuture, stream, StreamExt};
 use parking_lot::Mutex;
-use rust_decimal::Decimal;
 use std::{
     cmp::Ordering,
     collections::{BTreeMap, HashMap, VecDeque},
@@ -62,38 +61,38 @@ impl<L: Loader> Clone for File<L> {
     }
 }
 
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct FileAttributes {
     pub no_std: bool,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Statement {
     pub attributes: StatementAttributes,
     pub node: Node,
     pub treat_as_expr: bool,
 }
 
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub struct StatementAttributes {
     pub language_item: Option<LanguageItem>,
     pub help: VecDeque<InternedString>,
     pub on_unimplemented: Option<InternedString>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, EnumString)]
+#[derive(Debug, Clone, Copy, PartialEq, EnumString)]
 #[strum(serialize_all = "kebab-case")]
 pub enum LanguageItem {
     Boolean,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Node {
     pub span: Span,
     pub kind: NodeKind,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum NodeKind {
     Error,
     Placeholder,
@@ -101,7 +100,7 @@ pub enum NodeKind {
     Underscore,
     Name(InternedString),
     Text(InternedString),
-    Number(Decimal),
+    Number(f64),
     List(Vec<Node>),
     Block(Vec<Statement>),
     Assign(Box<Node>, Box<Node>),
@@ -1127,8 +1126,8 @@ impl<L: Loader> Expander<L> {
                             replace(lhs, map);
                             replace(rhs, map);
                         }
-                        NodeKind::External(namespace, identifier, inputs) => {
-                            replace(namespace, map);
+                        NodeKind::External(abi, identifier, inputs) => {
+                            replace(abi, map);
                             replace(identifier, map);
 
                             for input in inputs {

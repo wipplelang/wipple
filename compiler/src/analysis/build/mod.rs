@@ -1,7 +1,7 @@
 #![allow(clippy::too_many_arguments)]
 
 use crate::{
-    compile::{self, Program},
+    analysis::{self, typecheck::Program},
     diagnostics::*,
     parse::Span,
     Compiler, FilePath, Loader,
@@ -21,7 +21,7 @@ pub enum Progress {
         current: usize,
         total: usize,
     },
-    Typechecking(compile::typecheck::Progress),
+    Typechecking(analysis::typecheck::Progress),
 }
 
 impl<L: Loader> Compiler<L> {
@@ -36,7 +36,7 @@ impl<L: Loader> Compiler<L> {
     ) -> Option<Program> {
         let progress = Arc::new(Mutex::new(progress));
 
-        let files: Arc<Mutex<indexmap::IndexMap<FilePath, Arc<compile::expand::File<L>>>>> =
+        let files: Arc<Mutex<indexmap::IndexMap<FilePath, Arc<analysis::expand::File<L>>>>> =
             Default::default();
 
         #[async_recursion]
@@ -47,8 +47,8 @@ impl<L: Loader> Compiler<L> {
             source_span: Option<Span>,
             progress: Arc<Mutex<impl Fn(Progress) + Send + Sync + 'static>>,
             count: Arc<AtomicUsize>,
-            files: Arc<Mutex<indexmap::IndexMap<FilePath, Arc<compile::expand::File<L>>>>>,
-        ) -> Option<Arc<compile::expand::File<L>>> {
+            files: Arc<Mutex<indexmap::IndexMap<FilePath, Arc<analysis::expand::File<L>>>>>,
+        ) -> Option<Arc<analysis::expand::File<L>>> {
             macro_rules! try_load {
                 ($expr:expr) => {
                     match $expr {
@@ -149,9 +149,9 @@ impl<L: Loader> Compiler<L> {
 
         fn lower<L: Loader>(
             compiler: &mut Compiler<L>,
-            file: Arc<compile::expand::File<L>>,
-            cache: &mut indexmap::IndexMap<FilePath, Arc<compile::lower::File>>,
-        ) -> Arc<compile::lower::File> {
+            file: Arc<analysis::expand::File<L>>,
+            cache: &mut indexmap::IndexMap<FilePath, Arc<analysis::lower::File>>,
+        ) -> Arc<analysis::lower::File> {
             let path = file.path;
 
             if let Some(file) = cache.get(&path) {

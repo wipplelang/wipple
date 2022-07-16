@@ -1,8 +1,7 @@
 use clap::Parser;
 use std::{
     env, fs,
-    io::{self, Read, Write},
-    os::unix::prelude::PermissionsExt,
+    io::{self, Write},
     path::PathBuf,
     process::ExitCode,
     str::FromStr,
@@ -22,22 +21,16 @@ enum Args {
         #[clap(flatten)]
         options: BuildOptions,
     },
+    DumpIr {
+        #[clap(flatten)]
+        options: BuildOptions,
+    },
     Doc {
         #[clap(flatten)]
         options: BuildOptions,
 
         #[clap(long)]
         full: bool,
-    },
-    Bundle {
-        #[clap(flatten)]
-        options: BuildOptions,
-
-        #[clap(short)]
-        output: PathBuf,
-
-        #[clap(long)]
-        runner: PathBuf,
     },
     Cache {
         #[clap(long)]
@@ -64,7 +57,7 @@ async fn run() -> anyhow::Result<()> {
 
     match args {
         Args::Run { options } => {
-            let (program, _) = match build_and_optimize(options).await {
+            let program = match build_ir(options).await {
                 Some(program) => program,
                 None => return Err(anyhow::Error::msg("")),
             };
@@ -74,9 +67,20 @@ async fn run() -> anyhow::Result<()> {
                 io::stdout().flush().unwrap();
             });
 
-            if let Err((error, _)) = interpreter.eval(program) {
+            if let Err(error) = interpreter.run(&program) {
                 eprintln!("fatal error: {}", error);
             }
+        }
+        Args::DumpIr { options } => {
+            let program = match build_ir(options).await {
+                Some(program) => program,
+                None => return Err(anyhow::Error::msg("")),
+            };
+
+            let mut buf = Vec::new();
+            program.to_writer_pretty(&mut buf).unwrap();
+            let out = String::from_utf8(buf).unwrap();
+            eprintln!("{}", out);
         }
         Args::Doc { options, full } => {
             let root = match PathBuf::from_str(&options.path) {
@@ -112,34 +116,6 @@ async fn run() -> anyhow::Result<()> {
             };
 
             serde_json::to_writer(io::stdout(), &doc).unwrap();
-        }
-        Args::Bundle {
-            options,
-            runner,
-            output: bin,
-        } => {
-            let runner = fs::File::open(runner)
-                .and_then(|file| file.bytes().collect::<Result<Vec<_>, _>>())
-                .map_err(|error| anyhow::Error::msg(format!("could not load runner: {error}")))?;
-
-            let (program, _) = match build_and_optimize(options).await {
-                Some(program) => program,
-                None => return Err(anyhow::Error::msg("failed to build")),
-            };
-
-            let exe = wipple_bundled_backend::bundle(program, runner);
-
-            let _ = fs::remove_file(&bin);
-
-            fs::File::create(&bin).and_then(|mut file| {
-                file.write_all(&exe)?;
-
-                let mut permissions = file.metadata()?.permissions();
-                permissions.set_mode(0o755);
-                file.set_permissions(permissions)?;
-
-                Ok(())
-            })?;
         }
         Args::Cache { clear } => {
             let cache_dir = match loader::Fetcher::cache_dir() {
@@ -177,38 +153,33 @@ struct BuildOptions {
 
     #[cfg(debug_assertions)]
     #[clap(long)]
-    debug: bool,
-
-    #[cfg(debug_assertions)]
-    #[clap(long)]
     trace: bool,
 }
 
 async fn build(
     options: BuildOptions,
 ) -> Option<(
-    wipple_compiler::compile::Program,
+    wipple_compiler::analysis::typecheck::Program,
     wipple_compiler::SourceMap,
 )> {
     build_with_passes(options, |_, program| program).await
 }
 
-async fn build_and_optimize(
-    options: BuildOptions,
-) -> Option<(
-    wipple_compiler::optimize::Program,
-    wipple_compiler::SourceMap,
-)> {
+async fn build_ir(options: BuildOptions) -> Option<wipple_compiler::ir::Program> {
     build_with_passes(options, |compiler, program| {
         compiler.lint(&program);
-        compiler.optimize(program)
+        compiler.ir_from(program)
     })
     .await
+    .map(|(ir, _)| ir)
 }
 
-async fn build_with_passes<P: std::fmt::Debug>(
+async fn build_with_passes<P>(
     options: BuildOptions,
-    passes: impl FnOnce(&mut Compiler<loader::Loader>, wipple_compiler::compile::Program) -> P,
+    passes: impl FnOnce(
+        &mut Compiler<loader::Loader>,
+        wipple_compiler::analysis::typecheck::Program,
+    ) -> P,
 ) -> Option<(P, wipple_compiler::SourceMap)> {
     #[cfg(debug_assertions)]
     let progress_bar = Arc::new(None::<indicatif::ProgressBar>);
@@ -229,7 +200,7 @@ async fn build_with_passes<P: std::fmt::Debug>(
         let progress_bar = progress_bar.clone();
 
         move |progress| {
-            use wipple_compiler::compile::{build, typecheck};
+            use wipple_compiler::analysis::{build, typecheck};
 
             if let Some(progress_bar) = progress_bar.as_ref() {
                 match progress {
@@ -240,7 +211,7 @@ async fn build_with_passes<P: std::fmt::Debug>(
                         path,
                         current,
                         total,
-                    } => progress_bar.set_message(format!("({current}/{total}) Compiling {path}")),
+                    } => progress_bar.set_message(format!("({current}/{total}) Lowering {path}")),
                     build::Progress::Typechecking(progress) => match progress {
                         typecheck::Progress::Typechecking {
                             path,
@@ -315,11 +286,6 @@ async fn build_with_passes<P: std::fmt::Debug>(
         );
 
         emitter.emit(&diagnostics);
-    }
-
-    #[cfg(debug_assertions)]
-    if options.debug {
-        eprintln!("{:#?}", program);
     }
 
     success

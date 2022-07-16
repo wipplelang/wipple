@@ -6,7 +6,6 @@ use crate::{
 use lazy_static::lazy_static;
 use logos::SpannedIter;
 use regex::Regex;
-use rust_decimal::prelude::*;
 use std::{iter::Peekable, ops::Range};
 
 #[derive(Debug, Clone)]
@@ -29,7 +28,7 @@ pub enum ExprKind {
     Underscore,
     Name(InternedString),
     Text(InternedString),
-    Number(Decimal),
+    Number(f64),
     List(Vec<ListLine>),
     Block(Vec<Statement>),
 }

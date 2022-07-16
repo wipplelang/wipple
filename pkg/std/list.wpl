@@ -10,7 +10,7 @@ use "./mutable.wpl"
 Tuple-To-List : Tuple List => trait (Tuple -> List)
 
 tuple-to-list-impl : tuple' ~>
-	(A => instance Tuple-To-List tuple' (List A) : tuple -> external "builtin" "make-list" tuple)
+	(A => instance Tuple-To-List tuple' (List A) : tuple -> external "runtime" "make-list" tuple)
 
 tuple-to-list-impl ()
 tuple-to-list-impl (A ,)
@@ -30,19 +30,19 @@ list : Tuple-To-List
 
 [help "Retrieve the first item inside a `List`, if it exists."]
 first :: A => List A -> Maybe A
-first : list -> external "builtin" "list-first" list
+first : list -> external "runtime" "list-first" list
 
 [help "Retrieve the last item inside a `List`, if it exists."]
 last :: A => List A -> Maybe A
-last : list -> external "builtin" "list-last" list
+last : list -> external "runtime" "list-last" list
 
 [help "Retrieve all but the last item inside a `List`."]
 initial :: A => List A -> Maybe (List A)
-initial : list -> external "builtin" "list-initial" list
+initial : list -> external "runtime" "list-initial" list
 
 [help "Retrieve all but the first item inside a `List`."]
 tail :: A => List A -> Maybe (List A)
-tail : list -> external "builtin" "list-tail" list
+tail : list -> external "runtime" "list-tail" list
 
 Index-Error : type
 
@@ -50,11 +50,11 @@ instance Show Index-Error : just "invalid index"
 
 [help "Retrieve the value in a `List` at a particular index, if it exists."]
 at :: A => Number -> List A -> Result A Index-Error
-at : index -> list -> external "builtin" "list-at" list index
+at : index -> list -> external "runtime" "list-at" list index
 
 [help "Add a new item to the end of a `List`."]
 append :: A => A -> List A -> List A
-append : new -> list -> external "builtin" "list-append" list new
+append : new -> list -> external "runtime" "list-append" list new
 
 [help "Add a new item to the end of a `Mutable List`."]
 append! :: A => A -> Mutable (List A) -> ()
@@ -62,7 +62,7 @@ append! : new -> list -> list . set! (list . get . append new)
 
 [help "Insert a new item at a particular index inside a `List`."]
 insert :: A => Number -> A -> List A -> Result (List A) Index-Error
-insert : index -> new -> list -> external "builtin" "list-insert" list index new
+insert : index -> new -> list -> external "runtime" "list-insert" list index new
 
 [help "Insert a new item at a particular index inside a `Mutable List`."]
 insert! :: A => Number -> A -> Mutable (List A) -> Result () Index-Error
@@ -74,7 +74,7 @@ insert! : index -> new -> list -> {
 
 [help "Remove the item at a particular index inside a `List`."]
 remove :: A => Number -> List A -> Result (List A) Index-Error
-remove : index -> list -> external "builtin" "list-remove" list index
+remove : index -> list -> external "runtime" "list-remove" list index
 
 [help "Remove the item at a particular index inside a `Mutable List`."]
 remove! :: A => Number -> Mutable (List A) -> Result () Index-Error

@@ -7,11 +7,5 @@ edition = "2021"
 im = "15"
 itertools = "0.10"
 lazy_static = "1"
-num-integer = "0.1"
-num-traits = "0.2"
-rust_decimal = { version = "1", features = ["maths"] }
+paste = "1"
 wipple-compiler = { path = "../../compiler" }
-
-[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-libffi = { version = "3", features = ["system"] }
-libloading = "0.7"

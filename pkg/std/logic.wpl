@@ -38,7 +38,7 @@ Ordering : type {
 [help "Implement this trait to enable comparisons between two values of your type."]
 Order : A => trait (A -> A -> Ordering)
 
-instance Order Number : a -> b -> external "builtin" "number-ordering" a b
+instance Order Number : a -> b -> external "runtime" "number-ordering" a b
 
 < : comparison operator (a b ~> when (Order a b) {
 	Ordering Less -> True
@@ -75,6 +75,6 @@ instance Equal Number : a -> b -> when (Order a b) {
 	Ordering Greater -> False
 }
 
-instance Equal Text : a -> b -> external "builtin" "text-equality" a b
+instance Equal Text : a -> b -> external "runtime" "text-equality" a b
 instance Equal () : () -> () -> True
 instance Equal Boolean : a? -> b? -> a? and b? or not a? and not b?

@@ -1,5 +1,5 @@
 use crate::{
-    compile::expand::{
+    analysis::expand::{
         Expander, LanguageItem, Node, NodeKind, Operator, OperatorPrecedence, Scope, ScopeValue,
         Template,
     },
@@ -502,7 +502,7 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
                             "expected at least 2 inputs to template `external`",
                             vec![Note::primary(
                                 span,
-                                "`external` requires a namespace and identifier",
+                                "`external` requires an ABI and identifier",
                             )],
                         ));
 
@@ -514,13 +514,13 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
 
                     let mut inputs = VecDeque::from(inputs);
 
-                    let namespace = inputs.pop_front().unwrap();
+                    let abi = inputs.pop_front().unwrap();
                     let identifier = inputs.pop_front().unwrap();
                     let inputs = Vec::from(inputs);
 
                     Node {
                         span,
-                        kind: NodeKind::External(Box::new(namespace), Box::new(identifier), inputs),
+                        kind: NodeKind::External(Box::new(abi), Box::new(identifier), inputs),
                     }
                 })
             },
@@ -723,8 +723,8 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
                             span,
                             kind: NodeKind::External(
                                 Box::new(Node {
-                                    span: Span::builtin("\"builtin\" namespace in call to `external` in `format` template"),
-                                    kind: NodeKind::Text(InternedString::new("builtin")),
+                                    span: Span::builtin("\"runtime\" ABI in call to `external` in `format` template"),
+                                    kind: NodeKind::Text(InternedString::new("runtime")),
                                 }),
                                 Box::new(Node {
                                     span: Span::builtin("\"format\" identifier in call to `external` in `format` template"),

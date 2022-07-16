@@ -4,19 +4,15 @@ mod engine;
 mod format;
 mod traverse;
 
-pub use engine::{BuiltinType, Type};
+pub use engine::{BottomTypeReason, BuiltinType, Type};
 pub use format::{format_type, FormattableType};
 
 use crate::{
-    compile::lower,
-    diagnostics::*,
-    helpers::{DecimalExt, InternedString},
-    parse::Span,
-    Compiler, FilePath, GenericConstantId, Loader, MonomorphizedConstantId, TraitId, TypeId,
-    TypeParameterId, VariableId,
+    analysis::lower, diagnostics::*, helpers::InternedString, parse::Span, Compiler, FilePath,
+    GenericConstantId, Loader, MonomorphizedConstantId, TraitId, TypeId, TypeParameterId,
+    VariableId,
 };
 use engine::*;
-use rust_decimal::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::{
     cell::RefCell,
@@ -50,13 +46,8 @@ macro_rules! expr {
                 Marker,
                 Variable(VariableId),
                 Text(InternedString),
-                Number(Decimal),
-                Integer(i64),
-                Positive(u64),
-                Block(
-                    Vec<[<$prefix Expression>]>,
-                    HashMap<InternedString, lower::ScopeValue>,
-                ),
+                Number(f64),
+                Block(Vec<[<$prefix Expression>]>),
                 Call(Box<[<$prefix Expression>]>, Box<[<$prefix Expression>]>),
                 Function([<$prefix Pattern>], Box<[<$prefix Expression>]>),
                 When(Box<[<$prefix Expression>]>, Vec<[<$prefix Arm>]>),
@@ -94,7 +85,7 @@ macro_rules! pattern {
             #[derive(Debug, Clone, Serialize, Deserialize)]
             $vis enum [<$prefix PatternKind>] {
                 Wildcard,
-                Number(Decimal),
+                Number(f64),
                 Text(InternedString),
                 Variable(VariableId),
                 Or(Box<[<$prefix Pattern>]>, Box<[<$prefix Pattern>]>),
@@ -1066,43 +1057,18 @@ impl<L: Loader> Typechecker<L> {
                 ty: UnresolvedType::Builtin(BuiltinType::Text),
                 kind: UnresolvedExpressionKind::Text(*text),
             },
-            lower::ExpressionKind::Number(number) => {
-                if let Some(positive) = number.to_u64_exact() {
-                    UnresolvedExpression {
-                        span: expr.span,
-                        ty: UnresolvedType::NumericVariable(
-                            self.ctx.new_variable(),
-                            NumericBound::Positive,
-                        ),
-                        kind: UnresolvedExpressionKind::Positive(positive),
-                    }
-                } else if let Some(integer) = number.to_i64_exact() {
-                    UnresolvedExpression {
-                        span: expr.span,
-                        ty: UnresolvedType::NumericVariable(
-                            self.ctx.new_variable(),
-                            NumericBound::Integer,
-                        ),
-                        kind: UnresolvedExpressionKind::Integer(integer),
-                    }
-                } else {
-                    UnresolvedExpression {
-                        span: expr.span,
-                        ty: UnresolvedType::NumericVariable(
-                            self.ctx.new_variable(),
-                            NumericBound::Number,
-                        ),
-                        kind: UnresolvedExpressionKind::Number(*number),
-                    }
-                }
-            }
-            lower::ExpressionKind::Block(statements, declarations) => {
+            lower::ExpressionKind::Number(number) => UnresolvedExpression {
+                span: expr.span,
+                ty: UnresolvedType::Builtin(BuiltinType::Number),
+                kind: UnresolvedExpressionKind::Number(*number),
+            },
+            lower::ExpressionKind::Block(statements) => {
                 let (ty, statements) = self.typecheck_block(statements, file, suppress_errors);
 
                 UnresolvedExpression {
                     span: expr.span,
                     ty,
-                    kind: UnresolvedExpressionKind::Block(statements, declarations.clone()),
+                    kind: UnresolvedExpressionKind::Block(statements),
                 }
             }
             lower::ExpressionKind::Call(function, input) => {
@@ -1208,7 +1174,7 @@ impl<L: Loader> Typechecker<L> {
                     kind: UnresolvedExpressionKind::When(Box::new(input), arms),
                 }
             }
-            lower::ExpressionKind::External(namespace, identifier, inputs) => {
+            lower::ExpressionKind::External(abi, identifier, inputs) => {
                 let inputs = inputs
                     .iter()
                     .map(|expr| self.typecheck_expr(expr, file, suppress_errors))
@@ -1217,7 +1183,7 @@ impl<L: Loader> Typechecker<L> {
                 UnresolvedExpression {
                     span: expr.span,
                     ty: UnresolvedType::Variable(self.ctx.new_variable()),
-                    kind: UnresolvedExpressionKind::External(*namespace, *identifier, inputs),
+                    kind: UnresolvedExpressionKind::External(*abi, *identifier, inputs),
                 }
             }
             lower::ExpressionKind::Annotate(expr, ty) => {
@@ -2092,15 +2058,6 @@ impl<L: Loader> Typechecker<L> {
         inside_generic_constant: Option<(GenericConstantId, MonomorphizedConstantId)>,
     ) -> Result<MonomorphizedExpression, Error> {
         expr.ty.apply(&self.ctx);
-        expr.ty.eliminate_numeric_variables();
-
-        let numeric_bound = |ty| match ty {
-            UnresolvedType::NumericVariable(_, _)
-            | UnresolvedType::Builtin(BuiltinType::Number) => NumericBound::Number,
-            UnresolvedType::Builtin(BuiltinType::Integer) => NumericBound::Integer,
-            UnresolvedType::Builtin(BuiltinType::Positive) => NumericBound::Positive,
-            _ => unreachable!(),
-        };
 
         Ok(MonomorphizedExpression {
             span: expr.span,
@@ -2145,33 +2102,15 @@ impl<L: Loader> Typechecker<L> {
                         MonomorphizedExpressionKind::Variable(var)
                     }
                     UnresolvedExpressionKind::Text(text) => MonomorphizedExpressionKind::Text(text),
-                    UnresolvedExpressionKind::Number(number) => match numeric_bound(expr.ty) {
-                        NumericBound::Number => MonomorphizedExpressionKind::Number(number),
-                        NumericBound::Integer | NumericBound::Positive => unreachable!(),
-                    },
-                    UnresolvedExpressionKind::Integer(integer) => match numeric_bound(expr.ty) {
-                        NumericBound::Number => {
-                            MonomorphizedExpressionKind::Number(Decimal::from_i64(integer).unwrap())
-                        }
-                        NumericBound::Integer => MonomorphizedExpressionKind::Integer(integer),
-                        NumericBound::Positive => unreachable!(),
-                    },
-                    UnresolvedExpressionKind::Positive(positive) => match numeric_bound(expr.ty) {
-                        NumericBound::Number => MonomorphizedExpressionKind::Number(
-                            Decimal::from_u64(positive).unwrap(),
-                        ),
-                        NumericBound::Integer => {
-                            MonomorphizedExpressionKind::Integer(positive as i64)
-                        }
-                        NumericBound::Positive => MonomorphizedExpressionKind::Positive(positive),
-                    },
-                    UnresolvedExpressionKind::Block(statements, scope) => {
+                    UnresolvedExpressionKind::Number(number) => {
+                        MonomorphizedExpressionKind::Number(number)
+                    }
+                    UnresolvedExpressionKind::Block(statements) => {
                         MonomorphizedExpressionKind::Block(
                             statements
                                 .into_iter()
                                 .map(|expr| self.monomorphize(expr, file, inside_generic_constant))
                                 .collect::<Result<_, _>>()?,
-                            scope,
                         )
                     }
                     UnresolvedExpressionKind::Call(func, input) => {
@@ -2237,9 +2176,9 @@ impl<L: Loader> Typechecker<L> {
 
                         MonomorphizedExpressionKind::When(Box::new(input), arms)
                     }
-                    UnresolvedExpressionKind::External(namespace, identifier, inputs) => {
+                    UnresolvedExpressionKind::External(abi, identifier, inputs) => {
                         MonomorphizedExpressionKind::External(
-                            namespace,
+                            abi,
                             identifier,
                             inputs
                                 .into_iter()
@@ -2375,16 +2314,11 @@ impl<L: Loader> Typechecker<L> {
                 MonomorphizedExpressionKind::Variable(var) => ExpressionKind::Variable(var),
                 MonomorphizedExpressionKind::Text(text) => ExpressionKind::Text(text),
                 MonomorphizedExpressionKind::Number(number) => ExpressionKind::Number(number),
-                MonomorphizedExpressionKind::Integer(integer) => ExpressionKind::Integer(integer),
-                MonomorphizedExpressionKind::Positive(positive) => {
-                    ExpressionKind::Positive(positive)
-                }
-                MonomorphizedExpressionKind::Block(statements, scope) => ExpressionKind::Block(
+                MonomorphizedExpressionKind::Block(statements) => ExpressionKind::Block(
                     statements
                         .into_iter()
                         .map(|expr| self.finalize_internal(expr, generic, file))
                         .collect::<Result<_, _>>()?,
-                    scope,
                 ),
                 MonomorphizedExpressionKind::Call(func, input) => ExpressionKind::Call(
                     Box::new(self.finalize_internal(*func, generic, file)?),
@@ -2406,9 +2340,9 @@ impl<L: Loader> Typechecker<L> {
                         })
                         .collect::<Result<_, _>>()?,
                 ),
-                MonomorphizedExpressionKind::External(namespace, identifier, inputs) => {
+                MonomorphizedExpressionKind::External(abi, identifier, inputs) => {
                     ExpressionKind::External(
-                        namespace,
+                        abi,
                         identifier,
                         inputs
                             .into_iter()

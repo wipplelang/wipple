@@ -5,7 +5,6 @@ use std::collections::BTreeMap;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum UnresolvedType {
     Variable(TypeVariable),
-    NumericVariable(TypeVariable, NumericBound),
     Parameter(TypeParameterId),
     Named(TypeId, Vec<UnresolvedType>),
     Function(Box<UnresolvedType>, Box<UnresolvedType>),
@@ -52,20 +51,6 @@ impl From<Type> for UnresolvedType {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct TypeVariable(pub usize);
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
-#[repr(u8)]
-pub enum NumericBound {
-    Number,
-    Integer,
-    Positive,
-}
-
-impl NumericBound {
-    fn unify(self, other: Self) -> bool {
-        self >= other
-    }
-}
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum BuiltinType<Ty> {
@@ -152,13 +137,6 @@ impl Context {
         actual.apply(self);
         expected.apply(self);
 
-        let numeric_bound = |ty: &_| match ty {
-            BuiltinType::Number => Some(NumericBound::Number),
-            BuiltinType::Integer => Some(NumericBound::Integer),
-            BuiltinType::Positive => Some(NumericBound::Positive),
-            _ => None,
-        };
-
         match (actual, expected) {
             (UnresolvedType::Variable(var), ty) | (ty, UnresolvedType::Variable(var)) => {
                 if let UnresolvedType::Variable(other) = ty {
@@ -173,66 +151,6 @@ impl Context {
                     self.substitutions.insert(var, ty);
                     Ok(())
                 }
-            }
-            (
-                UnresolvedType::NumericVariable(expected_var, expected_bound),
-                UnresolvedType::NumericVariable(actual_var, actual_bound),
-            ) => {
-                if !expected_bound.unify(actual_bound) {
-                    return Err(TypeError::Mismatch(
-                        UnresolvedType::NumericVariable(expected_var, expected_bound),
-                        UnresolvedType::NumericVariable(actual_var, actual_bound),
-                    ));
-                }
-
-                if expected_var != actual_var {
-                    self.substitutions.insert(
-                        expected_var,
-                        UnresolvedType::NumericVariable(actual_var, actual_bound),
-                    );
-                }
-
-                Ok(())
-            }
-            (UnresolvedType::NumericVariable(var, expected_bound), UnresolvedType::Builtin(ty)) => {
-                let actual_bound = match numeric_bound(&ty) {
-                    Some(bound) => bound,
-                    None => {
-                        return Err(TypeError::Mismatch(
-                            UnresolvedType::NumericVariable(var, expected_bound),
-                            UnresolvedType::Builtin(ty),
-                        ));
-                    }
-                };
-
-                if !expected_bound.unify(actual_bound) {
-                    return Err(TypeError::Mismatch(
-                        UnresolvedType::NumericVariable(var, expected_bound),
-                        UnresolvedType::Builtin(ty),
-                    ));
-                }
-
-                Ok(())
-            }
-            (UnresolvedType::Builtin(ty), UnresolvedType::NumericVariable(var, expected_bound)) => {
-                let actual_bound = match numeric_bound(&ty) {
-                    Some(bound) => bound,
-                    None => {
-                        return Err(TypeError::Mismatch(
-                            UnresolvedType::Builtin(ty),
-                            UnresolvedType::NumericVariable(var, expected_bound),
-                        ));
-                    }
-                };
-
-                if !expected_bound.unify(actual_bound) {
-                    return Err(TypeError::Mismatch(
-                        UnresolvedType::Builtin(ty),
-                        UnresolvedType::NumericVariable(var, expected_bound),
-                    ));
-                }
-
-                Ok(())
             }
             (
                 UnresolvedType::Parameter(actual_param),
@@ -428,7 +346,7 @@ impl UnresolvedType {
 
     pub fn apply(&mut self, ctx: &Context) {
         match self {
-            UnresolvedType::Variable(var) | UnresolvedType::NumericVariable(var, _) => {
+            UnresolvedType::Variable(var) => {
                 if let Some(ty) = ctx.substitutions.get(var) {
                     *self = ty.clone();
                     self.apply(ctx);
@@ -488,35 +406,6 @@ impl UnresolvedType {
         }
     }
 
-    pub fn eliminate_numeric_variables(&mut self) {
-        match self {
-            UnresolvedType::NumericVariable(_, _) => {
-                *self = UnresolvedType::Builtin(BuiltinType::Number);
-            }
-            UnresolvedType::Function(input, output) => {
-                input.eliminate_numeric_variables();
-                output.eliminate_numeric_variables();
-            }
-            UnresolvedType::Named(_, params) => {
-                for param in params {
-                    param.eliminate_numeric_variables();
-                }
-            }
-            UnresolvedType::Tuple(tys) => {
-                for ty in tys {
-                    ty.eliminate_numeric_variables();
-                }
-            }
-            UnresolvedType::Builtin(ty) => match ty {
-                BuiltinType::List(ty) | BuiltinType::Mutable(ty) => {
-                    ty.eliminate_numeric_variables();
-                }
-                _ => {}
-            },
-            _ => {}
-        }
-    }
-
     pub fn params(&self) -> Vec<TypeParameterId> {
         match self {
             UnresolvedType::Parameter(param) => vec![*param],
@@ -540,7 +429,6 @@ impl UnresolvedType {
 
         Some(match self {
             UnresolvedType::Variable(_) => return None,
-            UnresolvedType::NumericVariable(_, _) => Type::Builtin(BuiltinType::Number),
             UnresolvedType::Parameter(param) => {
                 if generic {
                     Type::Parameter(param)

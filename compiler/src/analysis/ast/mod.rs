@@ -1,13 +1,12 @@
 use crate::{
-    compile::expand::{self, Node, NodeKind},
+    analysis::expand::{self, Node, NodeKind},
     diagnostics::*,
     helpers::InternedString,
     parse::Span,
     Compiler, FilePath, Loader,
 };
-use rust_decimal::Decimal;
 
-pub use crate::compile::expand::StatementAttributes;
+pub use crate::analysis::expand::StatementAttributes;
 
 #[derive(Debug, Clone)]
 pub struct File {
@@ -60,7 +59,7 @@ pub struct Expression {
 pub enum ExpressionKind {
     Error,
     Name(InternedString),
-    Number(Decimal),
+    Number(f64),
     Text(InternedString),
     Block(Vec<Statement>),
     Call(Box<Expression>, Vec<Expression>),
@@ -114,7 +113,7 @@ pub struct Pattern {
 pub enum PatternKind {
     Error,
     Wildcard,
-    Number(Decimal),
+    Number(f64),
     Text(InternedString),
     Name(InternedString),
     Destructure(Vec<(Span, InternedString)>),
@@ -512,17 +511,14 @@ impl<L: Loader> Compiler<L> {
                     self.build_pattern(*input),
                     Box::new(self.build_expression(*body)),
                 ),
-                NodeKind::External(namespace, identifier, inputs) => {
-                    let namespace = match namespace.kind {
+                NodeKind::External(abi, identifier, inputs) => {
+                    let abi = match abi.kind {
                         NodeKind::Error => return ExpressionKind::Error,
                         NodeKind::Text(text) => text,
                         _ => {
                             self.diagnostics.add(Diagnostic::error(
                                 "expected text here",
-                                vec![Note::primary(
-                                    namespace.span,
-                                    "`external` requires a namespace",
-                                )],
+                                vec![Note::primary(abi.span, "`external` requires an ABI")],
                             ));
 
                             return ExpressionKind::Error;
@@ -546,7 +542,7 @@ impl<L: Loader> Compiler<L> {
                     };
 
                     ExpressionKind::External(
-                        namespace,
+                        abi,
                         identifier,
                         inputs
                             .into_iter()

@@ -1,12 +1,12 @@
-use crate::{compile, diagnostics::*, Compiler, Loader};
+use crate::{analysis, diagnostics::*, Compiler, Loader};
 use std::collections::BTreeSet;
 
 impl<L: Loader> Compiler<L> {
-    pub fn lint_unused(&mut self, program: &compile::Program) {
+    pub fn lint_unused(&mut self, program: &analysis::typecheck::Program) {
         let mut used_variables = BTreeSet::new();
-        let mut find_used_variables = |expr: &compile::typecheck::Expression| {
+        let mut find_used_variables = |expr: &analysis::typecheck::Expression| {
             expr.traverse(|expr| {
-                if let compile::typecheck::ExpressionKind::Variable(var) = &expr.kind {
+                if let analysis::typecheck::ExpressionKind::Variable(var) = &expr.kind {
                     used_variables.insert(*var);
                 }
             })

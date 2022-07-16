@@ -1,4 +1,4 @@
-use crate::{compile, helpers::InternedString, FilePath};
+use crate::{analysis, helpers::InternedString, FilePath};
 use serde::Serialize;
 use std::{collections::HashMap, path::Path, sync::Arc};
 
@@ -75,7 +75,7 @@ pub struct Constant {
 
 impl Documentation {
     pub fn new(
-        program: compile::Program,
+        program: analysis::typecheck::Program,
         codemap: HashMap<FilePath, Arc<str>>,
         root: &Path,
     ) -> Self {
@@ -83,7 +83,7 @@ impl Documentation {
     }
 
     pub fn with_filter(
-        program: compile::Program,
+        program: analysis::typecheck::Program,
         codemap: HashMap<FilePath, Arc<str>>,
         root: &Path,
         mut filter: impl FnMut(FilePath) -> bool,
@@ -126,8 +126,8 @@ impl Documentation {
             }};
         }
 
-        insert_decls!(types, |decl: &compile::typecheck::Declaration<
-            compile::typecheck::TypeDeclaration,
+        insert_decls!(types, |decl: &analysis::typecheck::Declaration<
+            analysis::typecheck::TypeDeclaration,
         >,
                               code| {
             Some(Type {
@@ -142,8 +142,8 @@ impl Documentation {
             })
         });
 
-        insert_decls!(traits, |decl: &compile::typecheck::Declaration<
-            compile::typecheck::TraitDeclaration,
+        insert_decls!(traits, |decl: &analysis::typecheck::Declaration<
+            analysis::typecheck::TraitDeclaration,
         >,
                                code| {
             Some(Trait {
@@ -157,7 +157,7 @@ impl Documentation {
 
         insert_decls!(
             generic_constants(decl) => constants,
-            |decl: &compile::typecheck::GenericConstantDeclaration<_, _>, code| {
+            |decl: &analysis::typecheck::GenericConstantDeclaration<_, _>, code| {
                 // instances don't have names; hide them here
                 decl.decl.name.map(|name| Constant {
                     declaration: Declaration {

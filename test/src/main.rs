@@ -20,10 +20,6 @@ struct Args {
 
     #[cfg(debug_assertions)]
     #[clap(long)]
-    debug: bool,
-
-    #[cfg(debug_assertions)]
-    #[clap(long)]
     trace: bool,
 }
 
@@ -63,8 +59,6 @@ async fn main() -> anyhow::Result<()> {
         let result = run(
             &test_case,
             wipple_compiler::Compiler::new(loader.clone()),
-            #[cfg(debug_assertions)]
-            args.debug,
             #[cfg(debug_assertions)]
             args.trace,
         )
@@ -232,7 +226,6 @@ impl TestResult {
 async fn run(
     test_case: &TestCase,
     mut compiler: wipple_compiler::Compiler<loader::Loader>,
-    #[cfg(debug_assertions)] debug: bool,
     #[cfg(debug_assertions)] trace: bool,
 ) -> anyhow::Result<TestResult> {
     let test_path = wipple_compiler::helpers::InternedString::new("test");
@@ -246,15 +239,10 @@ async fn run(
     let program = compiler
         .build(wipple_compiler::FilePath::Virtual(test_path))
         .await
-        .map(|program| compiler.optimize(program));
+        .map(|program| compiler.ir_from(program));
 
     let diagnostics = compiler.finish();
     let success = !diagnostics.contains_errors();
-
-    #[cfg(debug_assertions)]
-    if debug {
-        println!("{:#?}", program.as_ref().map(|p| &p.body));
-    }
 
     let output = {
         let buf = RefCell::new(Vec::new());
@@ -266,7 +254,7 @@ async fn run(
                         write!(buf.borrow_mut(), "{}", text).unwrap()
                     });
 
-                if let Err((error, _)) = interpreter.eval(program) {
+                if let Err(error) = interpreter.run(&program) {
                     write!(buf.borrow_mut(), "fatal error: {}", error)?;
                 }
             }
