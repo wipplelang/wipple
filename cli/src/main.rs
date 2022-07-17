@@ -7,8 +7,8 @@ use std::{
     str::FromStr,
     sync::Arc,
 };
-use wipple_compiler::{Compiler, Loader};
 use wipple_default_loader as loader;
+use wipple_frontend::{Compiler, Loader};
 
 #[derive(Parser)]
 #[clap(
@@ -98,11 +98,11 @@ async fn run() -> anyhow::Result<()> {
             };
 
             let doc = if full {
-                wipple_compiler::doc::Documentation::new(program, codemap, &root)
+                wipple_frontend::doc::Documentation::new(program, codemap, &root)
             } else {
-                wipple_compiler::doc::Documentation::with_filter(program, codemap, &root, |path| {
+                wipple_frontend::doc::Documentation::with_filter(program, codemap, &root, |path| {
                     let path = match path {
-                        wipple_compiler::FilePath::Path(path) => path,
+                        wipple_frontend::FilePath::Path(path) => path,
                         _ => return false,
                     };
 
@@ -159,13 +159,13 @@ struct BuildOptions {
 async fn build(
     options: BuildOptions,
 ) -> Option<(
-    wipple_compiler::analysis::typecheck::Program,
-    wipple_compiler::SourceMap,
+    wipple_frontend::analysis::typecheck::Program,
+    wipple_frontend::SourceMap,
 )> {
     build_with_passes(options, |_, program| program).await
 }
 
-async fn build_ir(options: BuildOptions) -> Option<wipple_compiler::ir::Program> {
+async fn build_ir(options: BuildOptions) -> Option<wipple_frontend::ir::Program> {
     build_with_passes(options, |compiler, program| {
         compiler.lint(&program);
         compiler.ir_from(program)
@@ -178,9 +178,9 @@ async fn build_with_passes<P>(
     options: BuildOptions,
     passes: impl FnOnce(
         &mut Compiler<loader::Loader>,
-        wipple_compiler::analysis::typecheck::Program,
+        wipple_frontend::analysis::typecheck::Program,
     ) -> P,
-) -> Option<(P, wipple_compiler::SourceMap)> {
+) -> Option<(P, wipple_frontend::SourceMap)> {
     #[cfg(debug_assertions)]
     let progress_bar = Arc::new(None::<indicatif::ProgressBar>);
 
@@ -200,7 +200,7 @@ async fn build_with_passes<P>(
         let progress_bar = progress_bar.clone();
 
         move |progress| {
-            use wipple_compiler::analysis::{build, typecheck};
+            use wipple_frontend::analysis::{build, typecheck};
 
             if let Some(progress_bar) = progress_bar.as_ref() {
                 match progress {
@@ -227,17 +227,17 @@ async fn build_with_passes<P>(
     };
 
     let loader = loader::Loader::new(
-        Some(wipple_compiler::FilePath::Path(
-            wipple_compiler::helpers::InternedString::new(
+        Some(wipple_frontend::FilePath::Path(
+            wipple_frontend::helpers::InternedString::new(
                 env::current_dir().unwrap().to_string_lossy(),
             ),
         )),
         (!options.no_std).then(|| {
             let path = options.std.as_deref();
 
-            wipple_compiler::FilePath::Path(
+            wipple_frontend::FilePath::Path(
                 #[cfg(debug_assertions)]
-                wipple_compiler::helpers::InternedString::new(
+                wipple_frontend::helpers::InternedString::new(
                     path.unwrap_or(concat!(env!("CARGO_WORKSPACE_DIR"), "pkg/std/std.wpl")),
                 ),
                 #[cfg(not(debug_assertions))]
@@ -245,9 +245,9 @@ async fn build_with_passes<P>(
                     let path = path.unwrap_or(loader::STD_URL);
 
                     if loader::is_url(path) {
-                        wipple_compiler::helpers::InternedString::new(path)
+                        wipple_frontend::helpers::InternedString::new(path)
                     } else {
-                        wipple_compiler::helpers::InternedString::new(
+                        wipple_frontend::helpers::InternedString::new(
                             PathBuf::from(path)
                                 .canonicalize()
                                 .unwrap()
@@ -262,7 +262,7 @@ async fn build_with_passes<P>(
 
     let mut compiler = Compiler::new(loader);
 
-    let path = wipple_compiler::FilePath::Path(options.path.into());
+    let path = wipple_frontend::FilePath::Path(options.path.into());
     let program = compiler.build_with_progress(path, progress).await;
 
     let program = program.map(|program| passes(&mut compiler, program));

@@ -1,10 +1,13 @@
 mod pretty;
 
 use crate::{
-    analysis::typecheck, helpers::InternedString, parse::Span, Compiler, IrComputationId, Loader,
+    analysis::typecheck, helpers::InternedString, Compiler, IrComputationId, Loader,
     MonomorphizedConstantId, VariableId,
 };
-use std::{collections::BTreeSet, mem};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    mem,
+};
 
 pub mod abi {
     pub const RUNTIME: &str = "runtime";
@@ -12,27 +15,20 @@ pub mod abi {
 
 #[derive(Debug, Clone)]
 pub struct Program {
-    // pub constants: BTreeMap<MonomorphizedConstantId, Constant>,
+    pub constants: Vec<Constant>,
     pub functions: Vec<Function>,
+    pub entrypoint: Sections,
 }
 
 #[derive(Debug, Clone, Default)]
 pub struct Section {
     pub statements: Vec<Statement>,
-    terminator: Option<Terminator>,
+    pub terminator: Option<Terminator>,
 }
 
 impl Section {
     pub fn new() -> Self {
         Default::default()
-    }
-
-    pub fn terminator(&self) -> &Terminator {
-        self.terminator.as_ref().unwrap()
-    }
-
-    pub fn into_terminator(self) -> Terminator {
-        self.terminator.unwrap()
     }
 
     fn add_statement(&mut self, statement: Statement) {
@@ -44,18 +40,13 @@ impl Section {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
-pub enum Reference {
-    Constant(MonomorphizedConstantId),
-    Variable(VariableId),
-    FunctionInput,
-}
-
 #[derive(Debug, Clone)]
 pub enum Expression {
     Marker,
-    Reference(Reference),
+    Constant(usize),
     Function(usize),
+    Variable(VariableId),
+    FunctionInput,
     Number(f64),
     Text(InternedString),
     Call(IrComputationId, IrComputationId),
@@ -74,6 +65,12 @@ pub enum Terminator {
     Return(IrComputationId),
     Goto(SectionIndex),
     Unreachable,
+}
+
+#[derive(Debug, Clone)]
+pub struct Constant {
+    pub ty: typecheck::Type,
+    pub sections: Sections,
 }
 
 #[derive(Debug, Clone)]
@@ -160,50 +157,43 @@ pub struct SectionIndex(pub usize);
 
 impl<L: Loader> Compiler<L> {
     pub fn ir_from(&mut self, program: typecheck::Program) -> Program {
-        // let mut constants = BTreeMap::new();
+        let mut constants = BTreeMap::new();
         let mut functions = Vec::new();
 
         let mut info = Info {
-            // _constants: &mut constants,
+            constants: &mut constants,
             functions: &mut functions,
             captures: BTreeSet::new(),
             locals: BTreeSet::new(),
         };
 
-        let mut sections = Sections::new();
-        for expr in program.body {
-            self.gen_computation_from_expr(expr, &mut sections, &mut info);
+        let mut constants = Vec::new();
+        for (id, ((), constant)) in program.declarations.monomorphized_constants {
+            let ty = constant.value.ty.clone();
+            info.constants.insert(id, constants.len());
+
+            let mut sections = Sections::new();
+            let result = self.gen_computation_from_expr(constant.value, &mut sections, &mut info);
+            sections.set_terminator(Terminator::Return(result));
+
+            constants.push(Constant { ty, sections });
         }
 
-        let result = self.gen_computation_from_expr(
-            typecheck::Expression {
-                span: Span::builtin("dummy"),
-                ty: typecheck::Type::Tuple(Vec::new()),
-                kind: typecheck::ExpressionKind::Marker,
-            },
-            &mut sections,
-            &mut info,
-        );
-
-        sections.set_terminator(Terminator::Return(result));
-
-        let function = Function {
-            ty: None,
-            captures: BTreeSet::new(),
-            sections,
-        };
-
-        info.functions.push(function);
+        let mut entrypoint = Sections::new();
+        for expr in program.body {
+            self.gen_computation_from_expr(expr, &mut entrypoint, &mut info);
+        }
 
         Program {
-            // constants,
+            constants,
             functions,
+            entrypoint,
         }
     }
 }
 
 struct Info<'a> {
-    // _constants: &'a mut BTreeMap<MonomorphizedConstantId, Constant>,
+    constants: &'a mut BTreeMap<MonomorphizedConstantId, usize>,
     functions: &'a mut Vec<Function>,
     captures: BTreeSet<VariableId>,
     locals: BTreeSet<VariableId>,
@@ -237,10 +227,7 @@ impl<L: Loader> Compiler<L> {
                     info.captures.insert(var);
                 }
 
-                sections.add_statement(Statement::Compute(
-                    computation,
-                    Expression::Reference(Reference::Variable(var)),
-                ));
+                sections.add_statement(Statement::Compute(computation, Expression::Variable(var)));
             }
             typecheck::ExpressionKind::Text(text) => {
                 sections.add_statement(Statement::Compute(computation, Expression::Text(text)));
@@ -285,10 +272,7 @@ impl<L: Loader> Compiler<L> {
                 let prev_captures = mem::take(&mut info.captures);
 
                 let input = self.new_ir_computation_id();
-                sections.add_statement(Statement::Compute(
-                    input,
-                    Expression::Reference(Reference::FunctionInput),
-                ));
+                sections.add_statement(Statement::Compute(input, Expression::FunctionInput));
 
                 self.gen_sections_from_init(pattern, input, computation, sections, info);
 
@@ -342,7 +326,14 @@ impl<L: Loader> Compiler<L> {
             typecheck::ExpressionKind::Break(_) => todo!(),
             typecheck::ExpressionKind::Continue => todo!(),
             typecheck::ExpressionKind::Tuple(_) => todo!(),
-            typecheck::ExpressionKind::Constant(_) => todo!(),
+            typecheck::ExpressionKind::Constant(id) => {
+                let constant = info.constants.get(&id).unwrap();
+
+                sections.add_statement(Statement::Compute(
+                    computation,
+                    Expression::Constant(*constant),
+                ));
+            }
         };
     }
 

@@ -1,10 +1,8 @@
-#![allow(clippy::type_complexity)]
-
 mod runtime;
 
 use std::{cell::RefCell, collections::BTreeMap, rc::Rc};
-use wipple_compiler::{
-    ir::{abi, Expression, Program, Reference, SectionIndex, Statement, Terminator},
+use wipple_frontend::{
+    ir::{abi, Expression, Program, SectionIndex, Statement, Terminator},
     VariableId,
 };
 
@@ -12,6 +10,7 @@ type Error = String;
 
 #[derive(Default)]
 pub struct Interpreter<'a> {
+    #[allow(clippy::type_complexity)]
     output: Option<Rc<RefCell<Box<dyn FnMut(&str) + 'a>>>>,
 }
 
@@ -40,40 +39,82 @@ enum Value {
 
 type Scope = BTreeMap<VariableId, Value>;
 
+struct Info<'a> {
+    program: &'a Program,
+    initialized_constants: BTreeMap<usize, Value>,
+}
+
 impl<'a> Interpreter<'a> {
     pub fn run(&self, program: &Program) -> Result<(), Error> {
-        let entrypoint = program.functions.len() - 1;
-        self.call(entrypoint, None, program, BTreeMap::new())?;
+        let mut info = Info {
+            program,
+            initialized_constants: Default::default(),
+        };
+
+        self.evaluate(
+            &program.entrypoint,
+            &mut info,
+            &mut Scope::new(),
+            None,
+            false,
+        )?;
+
         Ok(())
     }
 
     fn call(
         &self,
         function: usize,
-        input: Option<&Value>,
-        program: &Program,
-        mut scope: Scope,
+        input: &Value,
+        info: &mut Info,
+        scope: &mut Scope,
     ) -> Result<Value, Error> {
-        let function = &program.functions[function];
+        let sections = &info.program.functions[function].sections;
 
+        let value = self
+            .evaluate(sections, info, scope, Some(input), true)?
+            .unwrap();
+
+        Ok(value)
+    }
+
+    fn evaluate(
+        &self,
+        sections: &wipple_frontend::ir::Sections,
+        info: &mut Info,
+        scope: &mut Scope,
+        input: Option<&Value>,
+        expect_terminator: bool,
+    ) -> Result<Option<Value>, String> {
         let mut section_index = SectionIndex(0);
         let mut computations = BTreeMap::new();
 
         loop {
-            let section = &function.sections[section_index];
+            let section = &sections[section_index];
 
             for statement in &section.statements {
                 match statement {
                     Statement::Compute(id, expr) => {
                         let value = match expr {
                             Expression::Marker => Value::Marker,
-                            Expression::Reference(reference) => match reference {
-                                Reference::Constant(_) => todo!(),
-                                Reference::Variable(var) => scope.get(var).unwrap().clone(),
-                                Reference::FunctionInput => input.unwrap().clone(),
-                            },
+                            Expression::Constant(constant) => {
+                                if let Some(value) = info.initialized_constants.get(constant) {
+                                    value.clone()
+                                } else {
+                                    let sections = &info.program.constants[*constant].sections;
+
+                                    let value =
+                                        self.evaluate(sections, info, scope, None, true)?.unwrap();
+
+                                    info.initialized_constants.insert(*constant, value.clone());
+
+                                    value
+                                }
+                            }
+                            .clone(),
                             Expression::Function(function) => {
-                                let captures = program
+                                let captures = info
+                                    .program
                                     .functions
                                     .get(*function)
                                     .unwrap()
@@ -84,20 +125,22 @@ impl<'a> Interpreter<'a> {
 
                                 Value::Function(*function, Rc::new(captures))
                             }
+                            Expression::Variable(var) => scope.get(var).unwrap().clone(),
+                            Expression::FunctionInput => input.unwrap().clone(),
                             Expression::Number(number) => Value::Number(*number),
                             Expression::Text(text) => Value::Text(Rc::from(text.as_str())),
                             Expression::Call(function, input) => {
-                                let (function, captures) = match computations.get(function).unwrap()
-                                {
-                                    Value::Function(function, captures) => {
-                                        (function, captures.as_ref().clone())
-                                    }
-                                    _ => unreachable!(),
-                                };
+                                let (function, mut captures) =
+                                    match computations.get(function).unwrap() {
+                                        Value::Function(function, captures) => {
+                                            (function, captures.as_ref().clone())
+                                        }
+                                        _ => unreachable!(),
+                                    };
 
                                 let input = computations.get(input).unwrap();
 
-                                self.call(*function, Some(input), program, captures)?
+                                self.call(*function, input, info, &mut captures)?
                             }
                             Expression::External(abi, identifier, inputs) => {
                                 if abi.as_str() != abi::RUNTIME {
@@ -122,28 +165,32 @@ impl<'a> Interpreter<'a> {
                 }
             }
 
-            match section.terminator() {
-                Terminator::If(condition, then_section, else_section) => {
-                    let condition = computations.get(condition).unwrap().clone();
+            match &section.terminator {
+                Some(terminator) => match terminator {
+                    Terminator::If(condition, then_section, else_section) => {
+                        let condition = computations.get(condition).unwrap().clone();
 
-                    let condition = match condition {
-                        Value::Variant(n, _) => n == 1,
-                        _ => unreachable!(),
-                    };
+                        let condition = match condition {
+                            Value::Variant(n, _) => n == 1,
+                            _ => unreachable!(),
+                        };
 
-                    section_index = if condition {
-                        *then_section
-                    } else {
-                        *else_section
-                    };
-                }
-                Terminator::Return(computation) => {
-                    break Ok(computations.get(computation).unwrap().clone());
-                }
-                Terminator::Goto(index) => {
-                    section_index = *index;
-                }
-                Terminator::Unreachable => unreachable!(),
+                        section_index = if condition {
+                            *then_section
+                        } else {
+                            *else_section
+                        };
+                    }
+                    Terminator::Return(computation) => {
+                        break Ok(Some(computations.get(computation).unwrap().clone()));
+                    }
+                    Terminator::Goto(index) => {
+                        section_index = *index;
+                    }
+                    Terminator::Unreachable => unreachable!(),
+                },
+                None if !expect_terminator => break Ok(None),
+                _ => unreachable!(),
             }
         }
     }

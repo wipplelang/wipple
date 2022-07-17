@@ -3,7 +3,7 @@ resolver = "2"
 members = [
     "backends/interpreter",
     "cli",
-    "compiler",
+    "frontend",
     "loaders/default",
     "test",
     "website/playground/runner",

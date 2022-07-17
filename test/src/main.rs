@@ -29,8 +29,8 @@ async fn main() -> anyhow::Result<()> {
 
     let loader = loader::Loader::new(
         None,
-        Some(wipple_compiler::FilePath::Path(
-            wipple_compiler::helpers::InternedString::new(
+        Some(wipple_frontend::FilePath::Path(
+            wipple_frontend::helpers::InternedString::new(
                 env::current_dir()
                     .unwrap()
                     .join("pkg/std/std.wpl")
@@ -58,7 +58,7 @@ async fn main() -> anyhow::Result<()> {
         let test_case = serde_yaml::from_reader(file)?;
         let result = run(
             &test_case,
-            wipple_compiler::Compiler::new(loader.clone()),
+            wipple_frontend::Compiler::new(loader.clone()),
             #[cfg(debug_assertions)]
             args.trace,
         )
@@ -225,10 +225,10 @@ impl TestResult {
 
 async fn run(
     test_case: &TestCase,
-    mut compiler: wipple_compiler::Compiler<loader::Loader>,
+    mut compiler: wipple_frontend::Compiler<loader::Loader>,
     #[cfg(debug_assertions)] trace: bool,
 ) -> anyhow::Result<TestResult> {
-    let test_path = wipple_compiler::helpers::InternedString::new("test");
+    let test_path = wipple_frontend::helpers::InternedString::new("test");
 
     compiler
         .loader
@@ -237,7 +237,7 @@ async fn run(
         .insert(test_path, Arc::from(test_case.code.as_str()));
 
     let program = compiler
-        .build(wipple_compiler::FilePath::Virtual(test_path))
+        .build(wipple_frontend::FilePath::Virtual(test_path))
         .await
         .map(|program| compiler.ir_from(program));
 

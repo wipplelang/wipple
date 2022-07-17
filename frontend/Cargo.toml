@@ -1,5 +1,5 @@
 [package]
-name = "wipple-compiler"
+name = "wipple-frontend"
 version = "0.0.0"
 edition = "2021"
 

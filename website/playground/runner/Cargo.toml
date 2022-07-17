@@ -23,7 +23,7 @@ serde = { version = "1.0", features = ["derive"] }
 wasm-bindgen = { version = "0.2", features = ["serde-serialize"] }
 wasm-bindgen-futures = "0.4"
 web-sys = { version = "0.3", features = ["Response", "Request", "WorkerGlobalScope"] }
-wipple-compiler = { path = "../../../compiler" }
 wipple-default-loader = { path = "../../../loaders/default" }
+wipple-frontend = { path = "../../../frontend" }
 wipple-interpreter-backend = { path = "../../../backends/interpreter" }
 rust-embed = { version = "6", features = ["debug-embed", "interpolate-folder-path"], optional = true }

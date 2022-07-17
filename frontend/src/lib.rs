@@ -3,7 +3,6 @@ pub mod diagnostics;
 pub mod doc;
 pub mod helpers;
 pub mod ir;
-pub mod lint;
 pub mod parse;
 
 use async_trait::async_trait;

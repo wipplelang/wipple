@@ -1,5 +1,5 @@
-use super::{Expression, Program, Reference, Statement, Terminator};
-use crate::{ir::SectionIndex, IrComputationId, MonomorphizedConstantId, VariableId};
+use super::{Expression, Program, Statement, Terminator};
+use crate::{ir::SectionIndex, IrComputationId, VariableId};
 use std::io::Write;
 
 impl Program {
@@ -35,8 +35,10 @@ impl Program {
                         Statement::Compute(id, expr) => {
                             let expr = match expr {
                                 Expression::Marker => String::from("marker"),
-                                Expression::Reference(reference) => mangle_reference(*reference),
+                                Expression::Constant(id) => mangle_constant(*id),
                                 Expression::Function(id) => mangle_function(*id),
+                                Expression::Variable(id) => mangle_variable(*id),
+                                Expression::FunctionInput => mangle_function_input(),
                                 Expression::Number(number) => format!("number {}", number),
                                 Expression::Text(text) => format!("text \"{}\"", text),
                                 Expression::Call(func, input) => format!(
@@ -68,26 +70,40 @@ impl Program {
                     }
                 }
 
-                match $section.terminator() {
-                    Terminator::If(condition, then_branch, else_branch) => {
-                        write_indented!(
-                            "if {} then {} else {}",
-                            mangle_computation(*condition),
-                            mangle_section(*then_branch),
-                            mangle_section(*else_branch)
-                        )
-                    }
-                    Terminator::Return(id) => {
-                        write_indented!("return {}", mangle_computation(*id));
-                    }
-                    Terminator::Unreachable => write_indented!("unreachable"),
-                    Terminator::Goto(section) => {
-                        write_indented!("goto {}", mangle_section(*section));
+                if let Some(terminator) = &$section.terminator {
+                    match terminator {
+                        Terminator::If(condition, then_branch, else_branch) => {
+                            write_indented!(
+                                "if {} then {} else {}",
+                                mangle_computation(*condition),
+                                mangle_section(*then_branch),
+                                mangle_section(*else_branch)
+                            )
+                        }
+                        Terminator::Return(id) => {
+                            write_indented!("return {}", mangle_computation(*id));
+                        }
+                        Terminator::Unreachable => write_indented!("unreachable"),
+                        Terminator::Goto(section) => {
+                            write_indented!("goto {}", mangle_section(*section));
+                        }
                     }
                 }
 
                 dedent!();
             }};
+        }
+
+        for (id, constant) in self.constants.iter().enumerate() {
+            write_indented!("{}:", mangle_constant(id));
+
+            indent!();
+
+            for (index, section) in constant.sections.enumerate() {
+                write_section!(index, section);
+            }
+
+            dedent!();
         }
 
         for (id, function) in self.functions.iter().enumerate() {
@@ -118,12 +134,34 @@ impl Program {
             dedent!();
         }
 
+        write_indented!("entrypoint:");
+
+        indent!();
+
+        for (index, section) in self.entrypoint.enumerate() {
+            write_section!(index, section);
+        }
+
+        dedent!();
+
         Ok(())
     }
 }
 
-fn mangle_constant(id: MonomorphizedConstantId) -> String {
-    format!("C{}", id.0)
+fn mangle_constant(id: usize) -> String {
+    format!("C{}", id)
+}
+
+fn mangle_function(id: usize) -> String {
+    format!("F{}", id)
+}
+
+fn mangle_variable(id: VariableId) -> String {
+    format!("@{}", id.0)
+}
+
+fn mangle_function_input() -> String {
+    String::from("I")
 }
 
 fn mangle_section(index: SectionIndex) -> String {
@@ -132,24 +170,4 @@ fn mangle_section(index: SectionIndex) -> String {
 
 fn mangle_computation(id: IrComputationId) -> String {
     format!("${}", id.0)
-}
-
-fn mangle_variable(id: VariableId) -> String {
-    format!("@{}", id.0)
-}
-
-fn mangle_function(id: usize) -> String {
-    format!("F{}", id)
-}
-
-fn mangle_function_input() -> String {
-    String::from("I")
-}
-
-fn mangle_reference(reference: Reference) -> String {
-    match reference {
-        Reference::Constant(id) => mangle_constant(id),
-        Reference::Variable(id) => mangle_variable(id),
-        Reference::FunctionInput => mangle_function_input(),
-    }
 }
