@@ -20,7 +20,11 @@ struct Args {
 
     #[cfg(debug_assertions)]
     #[clap(long)]
-    trace: bool,
+    trace_diagnostics: bool,
+
+    #[cfg(debug_assertions)]
+    #[clap(long)]
+    trace_ir: bool,
 }
 
 #[tokio::main]
@@ -60,7 +64,9 @@ async fn main() -> anyhow::Result<()> {
             &test_case,
             wipple_frontend::Compiler::new(loader.clone()),
             #[cfg(debug_assertions)]
-            args.trace,
+            args.trace_diagnostics,
+            #[cfg(debug_assertions)]
+            args.trace_ir,
         )
         .await?;
 
@@ -226,7 +232,8 @@ impl TestResult {
 async fn run(
     test_case: &TestCase,
     mut compiler: wipple_frontend::Compiler<loader::Loader>,
-    #[cfg(debug_assertions)] trace: bool,
+    #[cfg(debug_assertions)] trace_diagnostics: bool,
+    #[cfg(debug_assertions)] trace_ir: bool,
 ) -> anyhow::Result<TestResult> {
     let test_path = wipple_frontend::helpers::InternedString::new("test");
 
@@ -249,10 +256,16 @@ async fn run(
 
         if success {
             if let Some(program) = program {
-                let interpreter =
+                #[allow(unused_mut)]
+                let mut interpreter =
                     wipple_interpreter_backend::Interpreter::handling_output(|text| {
                         write!(buf.borrow_mut(), "{}", text).unwrap()
                     });
+
+                #[cfg(debug_assertions)]
+                {
+                    interpreter = interpreter.tracing_ir(trace_ir);
+                }
 
                 if let Err(error) = interpreter.run(&program) {
                     write!(buf.borrow_mut(), "fatal error: {}", error)?;
@@ -268,7 +281,7 @@ async fn run(
         {
             let (_, codemap, diagnostics) = diagnostics.into_console_friendly(
                 #[cfg(debug_assertions)]
-                trace,
+                trace_diagnostics,
             );
 
             let mut emitter = codemap_diagnostic::Emitter::new(Box::new(&mut buf), Some(&codemap));

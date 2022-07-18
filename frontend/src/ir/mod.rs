@@ -204,7 +204,6 @@ impl<L: Loader> Compiler<L> {
             functions: &mut functions,
             map: BTreeMap::new(),
             captures: Vec::new(),
-            locals: BTreeSet::new(),
         };
 
         let mut constants = Vec::new();
@@ -254,8 +253,7 @@ struct Info<'a> {
     constants: &'a mut BTreeMap<MonomorphizedConstantId, usize>,
     functions: &'a mut Vec<Function<UnresolvedSectionIndex>>,
     map: SectionIndexMap,
-    captures: Vec<BTreeSet<VariableId>>,
-    locals: BTreeSet<VariableId>,
+    captures: Vec<(BTreeSet<VariableId>, BTreeSet<VariableId>)>,
 }
 
 impl<'a> Info<'a> {
@@ -297,10 +295,12 @@ impl<L: Loader> Compiler<L> {
                 sections.add_statement(Statement::Compute(computation, Expression::Marker));
             }
             typecheck::ExpressionKind::Variable(var) => {
-                if !info.locals.contains(&var) {
-                    for captures in &mut info.captures {
-                        captures.insert(var);
+                for (locals, captures) in info.captures.iter_mut().rev() {
+                    if locals.contains(&var) {
+                        break;
                     }
+
+                    captures.insert(var);
                 }
 
                 sections.add_statement(Statement::Compute(computation, Expression::Variable(var)));
@@ -355,9 +355,7 @@ impl<L: Loader> Compiler<L> {
             }
             typecheck::ExpressionKind::Function(pattern, body) => {
                 let prev_sections = mem::take(sections);
-                let prev_locals = mem::take(&mut info.locals);
-
-                info.captures.push(BTreeSet::new());
+                info.captures.push(Default::default());
 
                 let input = self.new_ir_computation_id();
                 sections.add_statement(Statement::Compute(input, Expression::FunctionInput));
@@ -372,18 +370,16 @@ impl<L: Loader> Compiler<L> {
                     _ => unreachable!(),
                 };
 
-                let locals = mem::replace(&mut info.locals, prev_locals);
+                let (locals, captures) = info.captures.pop().unwrap();
 
                 let function = Function {
                     ty: Some((input_ty, output_ty)),
                     captures: info
                         .captures
                         .iter()
-                        .flatten()
+                        .flat_map(|(_, captures)| captures)
                         .copied()
-                        .collect::<BTreeSet<_>>()
-                        .difference(&locals)
-                        .copied()
+                        .chain(captures)
                         .collect(),
                     locals,
                     sections: mem::replace(sections, prev_sections),
@@ -393,8 +389,6 @@ impl<L: Loader> Compiler<L> {
                 info.functions.push(function);
 
                 sections.add_statement(Statement::Compute(computation, Expression::Function(id)));
-
-                info.captures.pop().unwrap();
             }
             typecheck::ExpressionKind::When(input, arms) => {
                 let input = self.gen_computation_from_expr(*input, loop_info, sections, info);
@@ -613,7 +607,10 @@ impl<L: Loader> Compiler<L> {
                 gen_then_branch!(info);
             }
             typecheck::PatternKind::Variable(var) => {
-                info.locals.insert(var);
+                if let Some((locals, _)) = info.captures.last_mut() {
+                    locals.insert(var);
+                }
+
                 sections.add_statement(Statement::Initialize(var, input));
                 gen_then_branch!(info);
             }
