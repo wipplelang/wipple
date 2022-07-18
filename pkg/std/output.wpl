@@ -5,12 +5,12 @@ use "./logic.wpl"
 
 [help "Display text on the screen. `print` writes directly to the standard output with no trailing newline."]
 print :: Text -> ()
-print : text -> external "builtin" "print" text
+print : text -> external "runtime" "print" text
 
 [help "Implement this trait to enable `show`ing values of your type."]
 Show : A => trait (A -> Text)
 instance Show Text : it
-instance Show Number : n -> external "builtin" "number-to-text" n
+instance Show Number : n -> external "runtime" "number-to-text" n
 instance Show Boolean : x? -> if x? "True" "False"
 
 [help "Display a value on the screen."]

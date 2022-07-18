@@ -6,7 +6,7 @@ use parking_lot::Mutex;
 use path_clean::PathClean;
 use std::{collections::HashMap, path::PathBuf, str::FromStr, sync::Arc};
 use url::Url;
-use wipple_compiler::{compile, helpers::InternedString, FilePath, SourceMap};
+use wipple_frontend::{analysis, helpers::InternedString, FilePath, SourceMap};
 
 pub const STD_URL: &str = "https://pkg.wipple.gramer.dev/std/std.wpl";
 
@@ -17,7 +17,7 @@ pub struct Loader {
     base: Option<FilePath>,
     std_path: Option<FilePath>,
     source_map: Arc<Mutex<SourceMap>>,
-    cache: Arc<Mutex<HashMap<FilePath, Arc<compile::expand::File<Self>>>>>,
+    cache: Arc<Mutex<HashMap<FilePath, Arc<analysis::expand::File<Self>>>>>,
 }
 
 #[derive(Default)]
@@ -146,7 +146,7 @@ impl Loader {
 }
 
 #[async_trait]
-impl wipple_compiler::Loader for Loader {
+impl wipple_frontend::Loader for Loader {
     type Error = anyhow::Error;
 
     fn std_path(&self) -> Option<FilePath> {
@@ -226,7 +226,7 @@ impl wipple_compiler::Loader for Loader {
         Ok(code)
     }
 
-    fn cache(&self) -> Arc<Mutex<HashMap<FilePath, Arc<compile::expand::File<Self>>>>> {
+    fn cache(&self) -> Arc<Mutex<HashMap<FilePath, Arc<analysis::expand::File<Self>>>>> {
         self.cache.clone()
     }
 
@@ -242,7 +242,7 @@ pub fn is_url(s: impl AsRef<str>) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use wipple_compiler::Loader;
+    use wipple_frontend::Loader;
 
     #[test]
     fn test_paths() {

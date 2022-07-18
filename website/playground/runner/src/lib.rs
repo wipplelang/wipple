@@ -33,14 +33,14 @@ lazy_static! {
     static ref LOADER: loader::Loader = {
         loader::Loader::new_with_fetcher(
             None,
-            Some(wipple_compiler::FilePath::Path(
+            Some(wipple_frontend::FilePath::Path(
                 #[cfg(feature = "debug_playground")]
-                wipple_compiler::helpers::InternedString::new(format!(
+                wipple_frontend::helpers::InternedString::new(format!(
                     "{}pkg/std/std.wpl",
                     env!("CARGO_WORKSPACE_DIR")
                 )),
                 #[cfg(not(feature = "debug_playground"))]
-                wipple_compiler::helpers::InternedString::new(loader::STD_URL),
+                wipple_frontend::helpers::InternedString::new(loader::STD_URL),
             )),
             Fetcher::new()
                 .with_path_handler(|path| {
@@ -126,22 +126,22 @@ pub async fn run(code: String) -> JsValue {
 
     let loader = LOADER.clone();
 
-    let playground_path = wipple_compiler::helpers::InternedString::new("playground");
+    let playground_path = wipple_frontend::helpers::InternedString::new("playground");
 
     loader
         .virtual_paths
         .lock()
         .insert(playground_path, Arc::from(code));
 
-    let mut compiler = wipple_compiler::Compiler::new(loader);
+    let mut compiler = wipple_frontend::Compiler::new(loader);
 
     let program = compiler
-        .build(wipple_compiler::FilePath::Virtual(playground_path))
+        .build(wipple_frontend::FilePath::Virtual(playground_path))
         .await;
 
     let program = program.map(|program| {
         compiler.lint(&program);
-        compiler.optimize(program)
+        compiler.ir_from(program)
     });
 
     let diagnostics = compiler.finish();
@@ -163,16 +163,14 @@ pub async fn run(code: String) -> JsValue {
         if success {
             let result = {
                 let interpreter =
-                    wipple_interpreter_backend::Interpreter::handling_output_with_span(
-                        |text, _| {
-                            write!(output, "{}", text).unwrap();
-                        },
-                    );
+                    wipple_interpreter_backend::Interpreter::handling_output(|text| {
+                        write!(output, "{}", text).unwrap();
+                    });
 
-                interpreter.eval(program)
+                interpreter.run(&program)
             };
 
-            if let Err((error, _)) = result {
+            if let Err(error) = result {
                 write!(output, "fatal error: {error}").unwrap();
             }
         }

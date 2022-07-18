@@ -11,7 +11,7 @@ parking_lot = "0.12"
 path-clean = "0.1"
 replace_with = "0.1"
 url = "2"
-wipple-compiler = { path = "../../compiler" }
+wipple-frontend = { path = "../../frontend" }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 dirs = "4"

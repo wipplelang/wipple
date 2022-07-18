@@ -1,11 +1,9 @@
 [workspace]
 resolver = "2"
 members = [
-    "backends/bundled/builder",
-    "backends/bundled/runner",
     "backends/interpreter",
     "cli",
-    "compiler",
+    "frontend",
     "loaders/default",
     "test",
     "website/playground/runner",

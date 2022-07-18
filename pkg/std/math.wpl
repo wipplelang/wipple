@@ -4,66 +4,40 @@ use "./fp.wpl"
 use "./output.wpl"
 use "./util.wpl"
 
-[help "Implemented by numeric types, including `Number`, `Integer` and `Positive`."]
-Numeric : N => trait (N -> Number)
-instance Numeric Number : it
-instance Numeric Integer : n -> external "builtin" "integer-to-number" n
-instance Numeric Positive : n -> external "builtin" "positive-to-number" n
-
-integer :: N where (Numeric N) => N -> Maybe Integer
-integer : n -> external "builtin" "make-integer" (Numeric n)
-
-positive :: N where (Numeric N) => N -> Maybe Positive
-positive : n -> external "builtin" "make-positive" (Numeric n)
-
 [help "Implements the `+` operator."]
 Add : Left Right Sum => trait (Left -> Right -> Sum)
 + : addition operator (a b ~> Add a b)
-instance Add Number Number Number : a -> b -> external "builtin" "add-numbers" a b
-instance Add Integer Integer Integer : a -> b -> external "builtin" "add-integers" a b
-instance Add Positive Positive Positive : a -> b -> external "builtin" "add-positives" a b
+instance Add Number Number Number : a -> b -> external "runtime" "add" a b
 instance Add Text Text Text : a -> b -> format "__" a b
 
 [help "Implements the `-` operator."]
 Subtract : Left Right Difference => trait (Left -> Right -> Difference)
 - : addition operator (a b ~> Subtract a b)
-instance Subtract Number Number Number : a -> b -> external "builtin" "subtract-numbers" a b
-instance Subtract Integer Integer Integer : a -> b -> external "builtin" "subtract-integers" a b
-instance Subtract Positive Positive Integer : a -> b -> external "builtin" "subtract-positives" a b
+instance Subtract Number Number Number : a -> b -> external "runtime" "subtract" a b
 
 [help "Implements the `*` operator."]
 Multiply : Left Right Product => trait (Left -> Right -> Product)
 * : multiplication operator (a b ~> Multiply a b)
-instance Multiply Number Number Number : a -> b -> external "builtin" "multiply-numbers" a b
-instance Multiply Integer Integer Integer : a -> b -> external "builtin" "multiply-integers" a b
-instance Multiply Positive Positive Positive : a -> b -> external "builtin" "multiply-positives" a b
+instance Multiply Number Number Number : a -> b -> external "runtime" "multiply" a b
 
 [help "Implements the `/` operator."]
 Divide : Left Right Quotient => trait (Left -> Right -> Quotient)
 / : multiplication operator (a b ~> Divide a b)
-instance Divide Number Number Number : a -> b -> external "builtin" "divide-numbers" a b
-instance Divide Integer Integer Integer : a -> b -> external "builtin" "divide-integers" a b
-instance Divide Positive Positive Positive : a -> b -> external "builtin" "divide-positives" a b
+instance Divide Number Number Number : a -> b -> external "runtime" "divide" a b
 
 [help "Implements the `^` operator."]
 Power : Left Right Power => trait (Left -> Right -> Power)
 ^ : power operator (a b ~> Power a b)
-instance Power Number Number Number : a -> b -> external "builtin" "power-numbers" a b
-instance Power Integer Integer Positive : a -> b -> external "builtin" "power-integer-positive" a b
-instance Power Positive Positive Positive : a -> b -> external "builtin" "power-positives" a b
+instance Power Number Number Number : a -> b -> external "runtime" "power" a b
 
 [help "Rounds down a number to the nearest integer."]
 floor :: Number -> Number
-floor : n -> external "builtin" "floor-number" n
+floor : n -> external "runtime" "floor" n
 
 [help "Rounds up a number to the nearest integer."]
 ceil :: Number -> Number
-ceil : n -> external "builtin" "ceil-number" n
-
-[help "Implements the `sqrt` function."]
-Sqrt : Radicand Root => trait (Radicand -> Root)
-instance Sqrt Number Number : n -> external "builtin" "sqrt-number" n
+ceil : n -> external "runtime" "ceil" n
 
 [help "Calculates the square root of a number."]
-sqrt :: Radicand Root where (Sqrt Radicand Root) => Radicand -> Root
-sqrt : Sqrt
+sqrt :: Number -> Number
+sqrt : n -> external "runtime" "sqrt" n

@@ -3,12 +3,6 @@
 version = 3
 
 [[package]]
-name = "abort_on_panic"
-version = "2.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "955f37ac58af2416bac687c8ab66a4ccba282229bd7422a28d2281a5e66a6116"
-
-[[package]]
 name = "addr2line"
 version = "0.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -54,12 +48,6 @@ name = "arrayvec"
 version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "23b62fc65de8e4e7f52534fb52b0f3ed04746ae267519eef2a83941e8085068b"
-
-[[package]]
-name = "arrayvec"
-version = "0.7.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8da52d66c7071e2e3fa2a1e5c6d088fec47b593032b254f5e980de8ea54454d6"
 
 [[package]]
 name = "async-recursion"
@@ -127,15 +115,6 @@ name = "beef"
 version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3a8241f3ebb85c056b509d4327ad0358fbbba6ffb340bf388f26350aeda225b1"
-
-[[package]]
-name = "bincode"
-version = "1.3.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b1f45e9417d87227c7a56d22e471c6206462cba514c7590c09aff4cf6d1ddcad"
-dependencies = [
- "serde",
-]
 
 [[package]]
 name = "bitflags"
@@ -778,36 +757,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "349d5a591cd28b49e1d1037471617a32ddcda5731b99419008085f72d5a53836"
 
 [[package]]
-name = "libffi"
-version = "3.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0e08093a2ddeee94bd0c830a53d895ff91f1f3bb0f9b3c8c6b00739cdf76bc1d"
-dependencies = [
- "abort_on_panic",
- "libc",
- "libffi-sys",
-]
-
-[[package]]
-name = "libffi-sys"
-version = "2.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ab4106b7f09d7b87d021334d5618fac1dfcfb824d4c5fe111ff0074dfd242e15"
-dependencies = [
- "cc",
-]
-
-[[package]]
-name = "libloading"
-version = "0.7.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "efbc0f03f9a775e9f6aed295c6a1ba2253c5757a9e03d55c6caa46a681abcddd"
-dependencies = [
- "cfg-if",
- "winapi",
-]
-
-[[package]]
 name = "linked-hash-map"
 version = "0.5.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -892,25 +841,6 @@ dependencies = [
  "log",
  "wasi",
  "windows-sys",
-]
-
-[[package]]
-name = "num-integer"
-version = "0.1.45"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "225d3389fb3509a24c93f5c29eb6bde2586b98d9f016636dff58d7c6f7569cd9"
-dependencies = [
- "autocfg",
- "num-traits",
-]
-
-[[package]]
-name = "num-traits"
-version = "0.2.15"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "578ede34cf02f8924ab9447f50c28075b4d3e5b269972345e7e0372b38c6cdcd"
-dependencies = [
- "autocfg",
 ]
 
 [[package]]
@@ -1232,17 +1162,6 @@ checksum = "756feca3afcbb1487a1d01f4ecd94cf8ec98ea074c55a69e7136d29fb6166029"
 dependencies = [
  "sha2 0.9.9",
  "walkdir",
-]
-
-[[package]]
-name = "rust_decimal"
-version = "1.25.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "34a3bb58e85333f1ab191bf979104b586ebd77475bc6681882825f4532dfe87c"
-dependencies = [
- "arrayvec 0.7.2",
- "num-traits",
- "serde",
 ]
 
 [[package]]
@@ -1742,7 +1661,7 @@ version = "0.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6cbce692ab4ca2f1f3047fcf732430249c0e971bfdd2b234cf2c47ad93af5983"
 dependencies = [
- "arrayvec 0.5.2",
+ "arrayvec",
  "utf8parse",
  "vte_generate_state_changes",
 ]
@@ -1965,22 +1884,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "wipple-bundled-backend"
-version = "0.0.0"
-dependencies = [
- "bincode",
- "wipple-compiler",
-]
-
-[[package]]
-name = "wipple-bundled-runner"
-version = "0.0.0"
-dependencies = [
- "bincode",
- "wipple-interpreter-backend",
-]
-
-[[package]]
 name = "wipple-cli"
 version = "0.0.0"
 dependencies = [
@@ -1991,14 +1894,31 @@ dependencies = [
  "indicatif",
  "serde_json",
  "tokio",
- "wipple-bundled-backend",
- "wipple-compiler",
  "wipple-default-loader",
+ "wipple-frontend",
  "wipple-interpreter-backend",
 ]
 
 [[package]]
-name = "wipple-compiler"
+name = "wipple-default-loader"
+version = "0.0.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "dirs",
+ "futures",
+ "parking_lot",
+ "path-clean",
+ "replace_with",
+ "reqwest",
+ "sha2 0.10.2",
+ "tokio",
+ "url",
+ "wipple-frontend",
+]
+
+[[package]]
+name = "wipple-frontend"
 version = "0.0.0"
 dependencies = [
  "async-recursion",
@@ -2018,28 +1938,9 @@ dependencies = [
  "paste",
  "peg",
  "regex",
- "rust_decimal",
  "rustc_lexer",
  "serde",
  "strum",
-]
-
-[[package]]
-name = "wipple-default-loader"
-version = "0.0.0"
-dependencies = [
- "anyhow",
- "async-trait",
- "dirs",
- "futures",
- "parking_lot",
- "path-clean",
- "replace_with",
- "reqwest",
- "sha2 0.10.2",
- "tokio",
- "url",
- "wipple-compiler",
 ]
 
 [[package]]
@@ -2049,12 +1950,8 @@ dependencies = [
  "im",
  "itertools",
  "lazy_static",
- "libffi",
- "libloading",
- "num-integer",
- "num-traits",
- "rust_decimal",
- "wipple-compiler",
+ "paste",
+ "wipple-frontend",
 ]
 
 [[package]]
@@ -2074,8 +1971,8 @@ dependencies = [
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
- "wipple-compiler",
  "wipple-default-loader",
+ "wipple-frontend",
  "wipple-interpreter-backend",
 ]
 
@@ -2094,8 +1991,8 @@ dependencies = [
  "serde_yaml",
  "similar",
  "tokio",
- "wipple-compiler",
  "wipple-default-loader",
+ "wipple-frontend",
  "wipple-interpreter-backend",
 ]
 

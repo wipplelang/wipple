@@ -5,15 +5,15 @@ use "./math.wpl"
 
 [help "Create a new `Mutable` value."]
 mutable :: A => A -> Mutable A
-mutable : x -> external "builtin" "make-mutable" x
+mutable : x -> external "runtime" "make-mutable" x
 
 [help "Retrieve the value inside a `Mutable`."]
 get :: A => Mutable A -> A
-get : m -> external "builtin" "get-mutable" m
+get : m -> external "runtime" "get-mutable" m
 
 [help "Update the value contained inside a `Mutable`."]
 set! :: A => A -> Mutable A -> ()
-set! : x -> m -> external "builtin" "set-mutable" m x
+set! : x -> m -> external "runtime" "set-mutable" m x
 
 [help "Swap the contents of two `Mutable` values."]
 swap! :: A => Mutable A -> Mutable A -> ()
