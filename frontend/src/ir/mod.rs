@@ -387,7 +387,11 @@ impl<L: Loader> Compiler<L> {
                     Expression::Variant(discriminant, values),
                 ));
             }
-            typecheck::ExpressionKind::Return(_) => todo!(),
+            typecheck::ExpressionKind::Return(expr) => {
+                let result = self.gen_computation_from_expr(*expr, sections, info);
+                sections.set_terminator(Terminator::Return(result));
+                sections.add_section();
+            }
             typecheck::ExpressionKind::Loop(_) => todo!(),
             typecheck::ExpressionKind::Break(_) => todo!(),
             typecheck::ExpressionKind::Continue => todo!(),
@@ -400,6 +404,8 @@ impl<L: Loader> Compiler<L> {
                 ));
             }
         }
+
+        assert!(!sections.has_terminator());
     }
 
     fn gen_sections_from_init(
