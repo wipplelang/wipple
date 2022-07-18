@@ -12,17 +12,27 @@ type Error = String;
 pub struct Interpreter<'a> {
     #[allow(clippy::type_complexity)]
     output: Option<Rc<RefCell<Box<dyn FnMut(&str) + 'a>>>>,
+    trace_ir: bool,
 }
 
 impl<'a> Interpreter<'a> {
     pub fn handling_output(output: impl FnMut(&str) + 'a) -> Self {
         Interpreter {
             output: Some(Rc::new(RefCell::new(Box::new(output) as Box<_>))),
+            trace_ir: false,
         }
     }
 
     pub fn ignoring_output() -> Self {
-        Interpreter { output: None }
+        Interpreter {
+            output: None,
+            trace_ir: false,
+        }
+    }
+
+    pub fn tracing_ir(mut self, trace_ir: bool) -> Self {
+        self.trace_ir = trace_ir;
+        self
     }
 }
 
@@ -92,7 +102,13 @@ impl<'a> Interpreter<'a> {
         loop {
             let section = &sections[section_index];
 
+            eprintln!("{}:", section_index);
+
             for statement in &section.statements {
+                if self.trace_ir {
+                    eprintln!("\t{}", statement);
+                }
+
                 match statement {
                     Statement::Compute(id, expr) => {
                         let value = match expr {
@@ -154,6 +170,10 @@ impl<'a> Interpreter<'a> {
 
                                 self.call_runtime(identifier, inputs)?
                             }
+                            Expression::Tuple(_) => todo!(),
+                            Expression::Variant(_, _) => todo!(),
+                            Expression::TupleElement(_, _) => todo!(),
+                            Expression::Discriminant(_) => todo!(),
                         };
 
                         computations.insert(*id, value);
@@ -166,29 +186,35 @@ impl<'a> Interpreter<'a> {
             }
 
             match &section.terminator {
-                Some(terminator) => match terminator {
-                    Terminator::If(condition, then_section, else_section) => {
-                        let condition = computations.get(condition).unwrap().clone();
+                Some(terminator) => {
+                    if self.trace_ir {
+                        eprintln!("\t{}", terminator);
+                    }
 
-                        let condition = match condition {
-                            Value::Variant(n, _) => n == 1,
-                            _ => unreachable!(),
-                        };
+                    match terminator {
+                        Terminator::If(condition, then_section, else_section) => {
+                            let condition = computations.get(condition).unwrap().clone();
 
-                        section_index = if condition {
-                            *then_section
-                        } else {
-                            *else_section
-                        };
+                            let condition = match condition {
+                                Value::Variant(n, _) => n == 1,
+                                _ => unreachable!(),
+                            };
+
+                            section_index = if condition {
+                                *then_section
+                            } else {
+                                *else_section
+                            };
+                        }
+                        Terminator::Return(computation) => {
+                            break Ok(Some(computations.get(computation).unwrap().clone()));
+                        }
+                        Terminator::Goto(index) => {
+                            section_index = *index;
+                        }
+                        Terminator::Unreachable => unreachable!(),
                     }
-                    Terminator::Return(computation) => {
-                        break Ok(Some(computations.get(computation).unwrap().clone()));
-                    }
-                    Terminator::Goto(index) => {
-                        section_index = *index;
-                    }
-                    Terminator::Unreachable => unreachable!(),
-                },
+                }
                 None if !expect_terminator => break Ok(None),
                 _ => unreachable!(),
             }

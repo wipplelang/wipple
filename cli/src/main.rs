@@ -20,6 +20,10 @@ enum Args {
     Run {
         #[clap(flatten)]
         options: BuildOptions,
+
+        #[cfg(debug_assertions)]
+        #[clap(long)]
+        trace_ir: bool,
     },
     DumpIr {
         #[clap(flatten)]
@@ -56,7 +60,7 @@ async fn run() -> anyhow::Result<()> {
     let args = Args::parse();
 
     match args {
-        Args::Run { options } => {
+        Args::Run { options, trace_ir } => {
             let program = match build_ir(options).await {
                 Some(program) => program,
                 None => return Err(anyhow::Error::msg("")),
@@ -65,7 +69,8 @@ async fn run() -> anyhow::Result<()> {
             let interpreter = wipple_interpreter_backend::Interpreter::handling_output(|text| {
                 print!("{}", text);
                 io::stdout().flush().unwrap();
-            });
+            })
+            .tracing_ir(trace_ir);
 
             if let Err(error) = interpreter.run(&program) {
                 eprintln!("fatal error: {}", error);
@@ -77,10 +82,7 @@ async fn run() -> anyhow::Result<()> {
                 None => return Err(anyhow::Error::msg("")),
             };
 
-            let mut buf = Vec::new();
-            program.to_writer_pretty(&mut buf).unwrap();
-            let out = String::from_utf8(buf).unwrap();
-            eprintln!("{}", out);
+            eprint!("{}", program);
         }
         Args::Doc { options, full } => {
             let root = match PathBuf::from_str(&options.path) {
