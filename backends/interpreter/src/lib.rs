@@ -235,7 +235,13 @@ impl<'a> Interpreter<'a> {
                         Terminator::Unreachable => unreachable!(),
                     }
                 }
-                None if !expect_terminator => break Ok(None),
+                None if !expect_terminator => {
+                    if self.trace_ir {
+                        eprintln!("\t<no terminator>");
+                    }
+
+                    break Ok(None);
+                }
                 _ => unreachable!(),
             }
         }

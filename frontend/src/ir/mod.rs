@@ -116,6 +116,10 @@ impl<I> Sections<I> {
             .map(|(index, section)| (SectionIndex(index), section))
     }
 
+    fn current_index(&self) -> SectionIndex {
+        SectionIndex(self.next_index().0 - 1)
+    }
+
     fn next_index(&self) -> SectionIndex {
         SectionIndex(self.0.len())
     }
@@ -176,7 +180,10 @@ impl<S> IntoIterator for Sections<S> {
 pub struct SectionIndex(pub usize);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-struct UnresolvedSectionIndex(usize);
+enum UnresolvedSectionIndex {
+    Resolved(SectionIndex),
+    Unresolved(usize),
+}
 
 impl<L: Loader> Compiler<L> {
     pub fn ir_from(&mut self, program: typecheck::Program) -> Program {
@@ -197,7 +204,10 @@ impl<L: Loader> Compiler<L> {
             info.constants.insert(id, constants.len());
 
             let mut sections = Sections::new();
-            let result = self.gen_computation_from_expr(constant.value, &mut sections, &mut info);
+
+            let result =
+                self.gen_computation_from_expr(constant.value, None, &mut sections, &mut info);
+
             sections.set_terminator(Terminator::Return(result));
 
             constants.push(Constant { ty, sections });
@@ -205,7 +215,7 @@ impl<L: Loader> Compiler<L> {
 
         let mut entrypoint = Sections::new();
         for expr in program.body {
-            self.gen_computation_from_expr(expr, &mut entrypoint, &mut info);
+            self.gen_computation_from_expr(expr, None, &mut entrypoint, &mut info);
         }
 
         let map = info.map;
@@ -224,7 +234,7 @@ impl<L: Loader> Compiler<L> {
     }
 }
 
-type SectionIndexMap = BTreeMap<UnresolvedSectionIndex, Option<SectionIndex>>;
+type SectionIndexMap = BTreeMap<usize, Option<SectionIndex>>;
 
 struct Info<'a> {
     constants: &'a mut BTreeMap<MonomorphizedConstantId, usize>,
@@ -239,9 +249,9 @@ impl<'a> Info<'a> {
         &mut self,
         f: impl FnOnce(&mut Self, UnresolvedSectionIndex) -> SectionIndex,
     ) -> SectionIndex {
-        let unresolved = UnresolvedSectionIndex(self.map.len());
+        let unresolved = self.map.len();
         self.map.insert(unresolved, None);
-        let index = f(self, unresolved);
+        let index = f(self, UnresolvedSectionIndex::Unresolved(unresolved));
         self.map.insert(unresolved, Some(index));
         index
     }
@@ -251,11 +261,12 @@ impl<L: Loader> Compiler<L> {
     fn gen_computation_from_expr(
         &mut self,
         expr: typecheck::Expression,
+        loop_info: Option<(UnresolvedSectionIndex, UnresolvedSectionIndex)>,
         sections: &mut Sections<UnresolvedSectionIndex>,
         info: &mut Info,
     ) -> IrComputationId {
         let id = self.new_ir_computation_id();
-        self.gen_computation_from_expr_with(id, expr, sections, info);
+        self.gen_computation_from_expr_with(id, expr, loop_info, sections, info);
         id
     }
 
@@ -263,6 +274,7 @@ impl<L: Loader> Compiler<L> {
         &mut self,
         computation: IrComputationId,
         expr: typecheck::Expression,
+        loop_info: Option<(UnresolvedSectionIndex, UnresolvedSectionIndex)>,
         sections: &mut Sections<UnresolvedSectionIndex>,
         info: &mut Info,
     ) {
@@ -288,9 +300,15 @@ impl<L: Loader> Compiler<L> {
 
                 for (index, expr) in exprs.into_iter().enumerate() {
                     if index + 1 == count {
-                        self.gen_computation_from_expr_with(computation, expr, sections, info);
+                        self.gen_computation_from_expr_with(
+                            computation,
+                            expr,
+                            loop_info,
+                            sections,
+                            info,
+                        );
                     } else {
-                        self.gen_computation_from_expr(expr, sections, info);
+                        self.gen_computation_from_expr(expr, loop_info, sections, info);
                     }
                 }
             }
@@ -302,8 +320,8 @@ impl<L: Loader> Compiler<L> {
 
                 let no_return = matches!(output_ty, typecheck::Type::Bottom(_));
 
-                let function = self.gen_computation_from_expr(*function, sections, info);
-                let input = self.gen_computation_from_expr(*input, sections, info);
+                let function = self.gen_computation_from_expr(*function, loop_info, sections, info);
+                let input = self.gen_computation_from_expr(*input, loop_info, sections, info);
 
                 sections.add_statement(Statement::Compute(
                     computation,
@@ -322,9 +340,9 @@ impl<L: Loader> Compiler<L> {
                 let input = self.new_ir_computation_id();
                 sections.add_statement(Statement::Compute(input, Expression::FunctionInput));
 
-                self.gen_sections_from_init(pattern, input, computation, sections, info);
+                self.gen_sections_from_init(pattern, input, computation, None, sections, info);
 
-                let result = self.gen_computation_from_expr(*body, sections, info);
+                let result = self.gen_computation_from_expr(*body, None, sections, info);
                 sections.set_terminator(Terminator::Return(result));
 
                 let (input_ty, output_ty) = match expr.ty {
@@ -347,13 +365,13 @@ impl<L: Loader> Compiler<L> {
                 sections.add_statement(Statement::Compute(computation, Expression::Function(id)));
             }
             typecheck::ExpressionKind::When(input, arms) => {
-                let input = self.gen_computation_from_expr(*input, sections, info);
-                self.gen_sections_from_when(arms, input, computation, sections, info);
+                let input = self.gen_computation_from_expr(*input, loop_info, sections, info);
+                self.gen_sections_from_when(arms, input, computation, loop_info, sections, info);
             }
             typecheck::ExpressionKind::External(abi, identifier, inputs) => {
                 let inputs = inputs
                     .into_iter()
-                    .map(|expr| self.gen_computation_from_expr(expr, sections, info))
+                    .map(|expr| self.gen_computation_from_expr(expr, loop_info, sections, info))
                     .collect();
 
                 sections.add_statement(Statement::Compute(
@@ -362,8 +380,8 @@ impl<L: Loader> Compiler<L> {
                 ));
             }
             typecheck::ExpressionKind::Initialize(pattern, value) => {
-                let value = self.gen_computation_from_expr(*value, sections, info);
-                self.gen_sections_from_init(pattern, value, computation, sections, info);
+                let value = self.gen_computation_from_expr(*value, loop_info, sections, info);
+                self.gen_sections_from_init(pattern, value, computation, loop_info, sections, info);
                 // No need to add a marker computation here because variable assignment cannot be
                 // used in expression position, so its computation is never used
             }
@@ -371,7 +389,7 @@ impl<L: Loader> Compiler<L> {
             | typecheck::ExpressionKind::Tuple(exprs) => {
                 let values = exprs
                     .into_iter()
-                    .map(|expr| self.gen_computation_from_expr(expr, sections, info))
+                    .map(|expr| self.gen_computation_from_expr(expr, loop_info, sections, info))
                     .collect();
 
                 sections.add_statement(Statement::Compute(computation, Expression::Tuple(values)));
@@ -379,7 +397,7 @@ impl<L: Loader> Compiler<L> {
             typecheck::ExpressionKind::Variant(discriminant, exprs) => {
                 let values = exprs
                     .into_iter()
-                    .map(|expr| self.gen_computation_from_expr(expr, sections, info))
+                    .map(|expr| self.gen_computation_from_expr(expr, loop_info, sections, info))
                     .collect();
 
                 sections.add_statement(Statement::Compute(
@@ -388,13 +406,35 @@ impl<L: Loader> Compiler<L> {
                 ));
             }
             typecheck::ExpressionKind::Return(expr) => {
-                let result = self.gen_computation_from_expr(*expr, sections, info);
+                let result = self.gen_computation_from_expr(*expr, loop_info, sections, info);
                 sections.set_terminator(Terminator::Return(result));
                 sections.add_section();
             }
-            typecheck::ExpressionKind::Loop(_) => todo!(),
-            typecheck::ExpressionKind::Break(_) => todo!(),
-            typecheck::ExpressionKind::Continue => todo!(),
+            typecheck::ExpressionKind::Loop(body) => {
+                let loop_start = UnresolvedSectionIndex::Resolved(sections.current_index());
+
+                info.with_unresolved_section_index(|info, loop_end| {
+                    self.gen_computation_from_expr(
+                        *body,
+                        Some((loop_start, loop_end)),
+                        sections,
+                        info,
+                    );
+
+                    sections.set_terminator(Terminator::Goto(loop_start));
+
+                    sections.add_section()
+                });
+            }
+            typecheck::ExpressionKind::Break(expr) => {
+                self.gen_computation_from_expr_with(computation, *expr, loop_info, sections, info);
+                sections.set_terminator(Terminator::Goto(loop_info.unwrap().1));
+                sections.add_section();
+            }
+            typecheck::ExpressionKind::Continue => {
+                sections.set_terminator(Terminator::Goto(loop_info.unwrap().0));
+                sections.add_section();
+            }
             typecheck::ExpressionKind::Constant(id) => {
                 let constant = info.constants.get(&id).unwrap();
 
@@ -413,6 +453,7 @@ impl<L: Loader> Compiler<L> {
         pattern: typecheck::Pattern,
         input: IrComputationId,
         result: IrComputationId,
+        loop_info: Option<(UnresolvedSectionIndex, UnresolvedSectionIndex)>,
         sections: &mut Sections<UnresolvedSectionIndex>,
         info: &mut Info,
     ) {
@@ -430,6 +471,7 @@ impl<L: Loader> Compiler<L> {
             }],
             input,
             result,
+            loop_info,
             sections,
             info,
         );
@@ -440,6 +482,7 @@ impl<L: Loader> Compiler<L> {
         arms: Vec<typecheck::Arm>,
         input: IrComputationId,
         result: IrComputationId,
+        loop_info: Option<(UnresolvedSectionIndex, UnresolvedSectionIndex)>,
         sections: &mut Sections<UnresolvedSectionIndex>,
         info: &mut Info,
     ) {
@@ -452,6 +495,7 @@ impl<L: Loader> Compiler<L> {
                         input,
                         result,
                         else_branch,
+                        loop_info,
                         sections,
                         info,
                     );
@@ -473,6 +517,7 @@ impl<L: Loader> Compiler<L> {
         input: IrComputationId,
         result: IrComputationId,
         else_branch: UnresolvedSectionIndex,
+        loop_info: Option<(UnresolvedSectionIndex, UnresolvedSectionIndex)>,
         sections: &mut Sections<UnresolvedSectionIndex>,
         info: &mut Info,
     ) {
@@ -481,7 +526,10 @@ impl<L: Loader> Compiler<L> {
                 match body {
                     Ok(section) => sections.set_terminator(Terminator::Goto(section)),
                     Err((expr, end)) => {
-                        self.gen_computation_from_expr_with(result, expr, sections, $info);
+                        self.gen_computation_from_expr_with(
+                            result, expr, loop_info, sections, $info,
+                        );
+
                         sections.set_terminator(Terminator::Goto(end));
                     }
                 }
@@ -546,6 +594,7 @@ impl<L: Loader> Compiler<L> {
                             input,
                             result,
                             else_if_branch,
+                            loop_info,
                             sections,
                             info,
                         );
@@ -559,6 +608,7 @@ impl<L: Loader> Compiler<L> {
                         input,
                         result,
                         else_branch,
+                        loop_info,
                         sections,
                         info,
                     );
@@ -577,6 +627,7 @@ impl<L: Loader> Compiler<L> {
                             input,
                             result,
                             else_branch,
+                            loop_info,
                             sections,
                             info,
                         );
@@ -584,7 +635,9 @@ impl<L: Loader> Compiler<L> {
                         sections.add_section()
                     });
 
-                    let condition = self.gen_computation_from_expr(*condition, sections, info);
+                    let condition =
+                        self.gen_computation_from_expr(*condition, loop_info, sections, info);
+
                     sections.set_terminator(Terminator::If(condition, then_branch, else_branch));
 
                     sections.add_section()
@@ -607,6 +660,7 @@ impl<L: Loader> Compiler<L> {
                             element,
                             result,
                             else_branch,
+                            loop_info,
                             sections,
                             info,
                         );
@@ -676,6 +730,9 @@ impl Terminator<UnresolvedSectionIndex> {
 
 impl UnresolvedSectionIndex {
     fn finalize(self, map: &SectionIndexMap) -> SectionIndex {
-        map.get(&self).unwrap().unwrap()
+        match self {
+            UnresolvedSectionIndex::Resolved(index) => index,
+            UnresolvedSectionIndex::Unresolved(index) => map.get(&index).unwrap().unwrap(),
+        }
     }
 }
