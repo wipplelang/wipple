@@ -163,16 +163,36 @@ impl<'a> Interpreter<'a> {
                                     return Err(Error::from("unknown ABI (only 'runtime' is supported in the interpreter)"));
                                 }
 
-                                let inputs = inputs
+                                self.call_runtime(
+                                    identifier,
+                                    inputs
+                                        .iter()
+                                        .map(|id| computations.get(id).unwrap().clone())
+                                        .collect(),
+                                )?
+                            }
+                            Expression::Tuple(elements) => Value::List(
+                                elements
                                     .iter()
                                     .map(|id| computations.get(id).unwrap().clone())
-                                    .collect();
+                                    .collect(),
+                            ),
+                            Expression::Variant(discriminant, elements) => Value::Variant(
+                                *discriminant,
+                                elements
+                                    .iter()
+                                    .map(|id| computations.get(id).unwrap().clone())
+                                    .collect::<Vec<_>>()
+                                    .into_boxed_slice(),
+                            ),
+                            Expression::TupleElement(tuple, element) => {
+                                let tuple = match computations.get(tuple).unwrap().clone() {
+                                    Value::List(tuple) => tuple,
+                                    _ => unreachable!(),
+                                };
 
-                                self.call_runtime(identifier, inputs)?
+                                tuple[*element].clone()
                             }
-                            Expression::Tuple(_) => todo!(),
-                            Expression::Variant(_, _) => todo!(),
-                            Expression::TupleElement(_, _) => todo!(),
                             Expression::Discriminant(_) => todo!(),
                         };
 

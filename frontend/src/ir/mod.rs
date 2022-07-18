@@ -440,7 +440,7 @@ impl<L: Loader> Compiler<L> {
         info.with_unresolved_section_index(|info, end| {
             for arm in arms {
                 info.with_unresolved_section_index(|info, else_branch| {
-                    self.gen_sections_from_arm(
+                    self.gen_sections_from_pattern(
                         arm.pattern,
                         Err((arm.body, end)),
                         input,
@@ -460,7 +460,7 @@ impl<L: Loader> Compiler<L> {
         });
     }
 
-    fn gen_sections_from_arm(
+    fn gen_sections_from_pattern(
         &mut self,
         pattern: typecheck::Pattern,
         body: Result<UnresolvedSectionIndex, (typecheck::Expression, UnresolvedSectionIndex)>,
@@ -534,7 +534,7 @@ impl<L: Loader> Compiler<L> {
             typecheck::PatternKind::Or(left, right) => {
                 info.with_unresolved_section_index(|info, then_branch| {
                     info.with_unresolved_section_index(|info, else_if_branch| {
-                        self.gen_sections_from_arm(
+                        self.gen_sections_from_pattern(
                             *left,
                             Ok(then_branch),
                             input,
@@ -547,7 +547,7 @@ impl<L: Loader> Compiler<L> {
                         sections.add_section()
                     });
 
-                    self.gen_sections_from_arm(
+                    self.gen_sections_from_pattern(
                         *right,
                         Ok(then_branch),
                         input,
@@ -557,13 +557,60 @@ impl<L: Loader> Compiler<L> {
                         info,
                     );
 
-                    let then_branch = sections.add_section();
-                    gen_then_branch!(info);
-                    then_branch
+                    sections.add_section()
                 });
+
+                gen_then_branch!(info);
             }
-            typecheck::PatternKind::Where(_, _) => todo!(),
-            typecheck::PatternKind::Tuple(_) => todo!(),
+            typecheck::PatternKind::Where(pattern, condition) => {
+                info.with_unresolved_section_index(|info, then_branch| {
+                    info.with_unresolved_section_index(|info, condition_branch| {
+                        self.gen_sections_from_pattern(
+                            *pattern,
+                            Ok(condition_branch),
+                            input,
+                            result,
+                            else_branch,
+                            sections,
+                            info,
+                        );
+
+                        sections.add_section()
+                    });
+
+                    let condition = self.gen_computation_from_expr(*condition, sections, info);
+                    sections.set_terminator(Terminator::If(condition, then_branch, else_branch));
+
+                    sections.add_section()
+                });
+
+                gen_then_branch!(info);
+            }
+            typecheck::PatternKind::Tuple(patterns) => {
+                for (index, pattern) in patterns.into_iter().enumerate() {
+                    let element = self.new_ir_computation_id();
+                    sections.add_statement(Statement::Compute(
+                        element,
+                        Expression::TupleElement(input, index),
+                    ));
+
+                    info.with_unresolved_section_index(|info, then_branch| {
+                        self.gen_sections_from_pattern(
+                            pattern,
+                            Ok(then_branch),
+                            element,
+                            result,
+                            else_branch,
+                            sections,
+                            info,
+                        );
+
+                        sections.add_section()
+                    });
+                }
+
+                gen_then_branch!(info);
+            }
             typecheck::PatternKind::Destructure(_) => todo!(),
             typecheck::PatternKind::Variant(_, _) => todo!(),
         }
