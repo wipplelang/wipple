@@ -60,17 +60,27 @@ async fn run() -> anyhow::Result<()> {
     let args = Args::parse();
 
     match args {
-        Args::Run { options, trace_ir } => {
+        Args::Run {
+            options,
+            #[cfg(debug_assertions)]
+            trace_ir,
+        } => {
             let program = match build_ir(options).await {
                 Some(program) => program,
                 None => return Err(anyhow::Error::msg("")),
             };
 
-            let interpreter = wipple_interpreter_backend::Interpreter::handling_output(|text| {
-                print!("{}", text);
-                io::stdout().flush().unwrap();
-            })
-            .tracing_ir(trace_ir);
+            #[allow(unused_mut)]
+            let mut interpreter =
+                wipple_interpreter_backend::Interpreter::handling_output(|text| {
+                    print!("{}", text);
+                    io::stdout().flush().unwrap();
+                });
+
+            #[cfg(debug_assertions)]
+            {
+                interpreter = interpreter.tracing_ir(trace_ir);
+            }
 
             if let Err(error) = interpreter.run(&program) {
                 eprintln!("fatal error: {}", error);

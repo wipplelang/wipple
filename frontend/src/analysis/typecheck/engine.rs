@@ -38,8 +38,6 @@ impl From<Type> for UnresolvedType {
             }
             Type::Builtin(builtin) => UnresolvedType::Builtin(match builtin {
                 BuiltinType::Number => BuiltinType::Number,
-                BuiltinType::Integer => BuiltinType::Integer,
-                BuiltinType::Positive => BuiltinType::Positive,
                 BuiltinType::Text => BuiltinType::Text,
                 BuiltinType::List(ty) => BuiltinType::List(Box::new((*ty).into())),
                 BuiltinType::Mutable(ty) => BuiltinType::Mutable(Box::new((*ty).into())),
@@ -55,8 +53,6 @@ pub struct TypeVariable(pub usize);
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum BuiltinType<Ty> {
     Number,
-    Integer,
-    Positive,
     Text,
     List(Ty),
     Mutable(Ty),
@@ -269,8 +265,6 @@ impl Context {
                 UnresolvedType::Builtin(expected_builtin),
             ) => match (actual_builtin, expected_builtin) {
                 (BuiltinType::Number, BuiltinType::Number) => Ok(()),
-                (BuiltinType::Integer, BuiltinType::Integer) => Ok(()),
-                (BuiltinType::Positive, BuiltinType::Positive) => Ok(()),
                 (BuiltinType::Text, BuiltinType::Text) => Ok(()),
                 (BuiltinType::List(actual_element), BuiltinType::List(expected_element))
                 | (BuiltinType::Mutable(actual_element), BuiltinType::Mutable(expected_element)) => {
@@ -454,8 +448,6 @@ impl UnresolvedType {
             ),
             UnresolvedType::Builtin(builtin) => Type::Builtin(match builtin {
                 BuiltinType::Number => BuiltinType::Number,
-                BuiltinType::Integer => BuiltinType::Integer,
-                BuiltinType::Positive => BuiltinType::Positive,
                 BuiltinType::Text => BuiltinType::Text,
                 BuiltinType::List(ty) => BuiltinType::List(Box::new(ty.finalize(ctx, generic)?)),
                 BuiltinType::Mutable(ty) => {

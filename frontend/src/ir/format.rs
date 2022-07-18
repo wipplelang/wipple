@@ -57,8 +57,21 @@ impl std::fmt::Display for Program {
 
         for (id, function) in self.functions.iter().enumerate() {
             write_indented!(
-                "{}{}:",
+                "{}{}{}:",
                 mangle_function(id),
+                (!function.locals.is_empty())
+                    .then(|| {
+                        format!(
+                            " (locals {})",
+                            function
+                                .locals
+                                .iter()
+                                .map(|var| mangle_variable(*var))
+                                .collect::<Vec<_>>()
+                                .join(", ")
+                        )
+                    })
+                    .unwrap_or_default(),
                 (!function.captures.is_empty())
                     .then(|| {
                         format!(
@@ -108,7 +121,7 @@ impl std::fmt::Display for Statement {
                     Expression::Variable(id) => mangle_variable(*id),
                     Expression::FunctionInput => mangle_function_input(),
                     Expression::Number(number) => format!("number {}", number),
-                    Expression::Text(text) => format!("text \"{}\"", text),
+                    Expression::Text(text) => format!("text {:?}", text),
                     Expression::Call(func, input) => format!(
                         "call {} {}",
                         mangle_computation(*func),
@@ -144,8 +157,18 @@ impl std::fmt::Display for Statement {
                     Expression::TupleElement(id, index) => {
                         format!("tuple-element {} {}", mangle_computation(*id), index)
                     }
+                    Expression::VariantElement(id, index) => {
+                        format!("variant-element {} {}", mangle_computation(*id), index)
+                    }
                     Expression::Discriminant(id) => {
                         format!("discriminant {}", mangle_computation(*id))
+                    }
+                    Expression::CompareDiscriminants(id, index) => {
+                        format!(
+                            "compare-discriminants {} {}",
+                            mangle_computation(*id),
+                            index
+                        )
                     }
                 };
 

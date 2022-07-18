@@ -2576,32 +2576,6 @@ impl<L: Loader> Typechecker<L> {
 
                         UnresolvedType::Builtin(BuiltinType::Number)
                     }
-                    lower::BuiltinTypeKind::Integer => {
-                        if !parameters.is_empty() {
-                            self.compiler.diagnostics.add(Diagnostic::error(
-                                "`Integer` does not accept parameters",
-                                vec![Note::primary(
-                                    annotation.span,
-                                    "try removing these parameters",
-                                )],
-                            ));
-                        }
-
-                        UnresolvedType::Builtin(BuiltinType::Integer)
-                    }
-                    lower::BuiltinTypeKind::Positive => {
-                        if !parameters.is_empty() {
-                            self.compiler.diagnostics.add(Diagnostic::error(
-                                "`Positive` does not accept parameters",
-                                vec![Note::primary(
-                                    annotation.span,
-                                    "try removing these parameters",
-                                )],
-                            ));
-                        }
-
-                        UnresolvedType::Builtin(BuiltinType::Positive)
-                    }
                     lower::BuiltinTypeKind::Text => {
                         if !parameters.is_empty() {
                             self.compiler.diagnostics.add(Diagnostic::error(

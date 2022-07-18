@@ -64,7 +64,9 @@ pub enum Expression {
     Tuple(Vec<IrComputationId>),
     Variant(usize, Vec<IrComputationId>),
     TupleElement(IrComputationId, usize),
+    VariantElement(IrComputationId, usize),
     Discriminant(IrComputationId),
+    CompareDiscriminants(IrComputationId, usize),
 }
 
 #[derive(Debug, Clone)]
@@ -97,16 +99,23 @@ pub struct Function<I = SectionIndex> {
     /// values will be copied into the structure.
     pub captures: BTreeSet<VariableId>,
 
+    pub locals: BTreeSet<VariableId>,
+
     pub sections: Sections<I>,
 }
 
 #[derive(Debug, Clone)]
 pub struct Sections<I = SectionIndex>(Vec<Section<I>>);
 
-impl<I> Sections<I> {
-    #[allow(clippy::new_without_default)]
-    pub fn new() -> Self {
+impl<I> Default for Sections<I> {
+    fn default() -> Self {
         Sections(vec![Section::new()])
+    }
+}
+
+impl<I> Sections<I> {
+    pub fn new() -> Self {
+        Default::default()
     }
 
     pub fn enumerate(&self) -> impl Iterator<Item = (SectionIndex, &Section<I>)> {
@@ -194,12 +203,17 @@ impl<L: Loader> Compiler<L> {
             constants: &mut constants,
             functions: &mut functions,
             map: BTreeMap::new(),
-            captures: BTreeSet::new(),
+            captures: Vec::new(),
             locals: BTreeSet::new(),
         };
 
         let mut constants = Vec::new();
-        for (id, ((), constant)) in program.declarations.monomorphized_constants {
+        for (id, ((), constant)) in program
+            .declarations
+            .monomorphized_constants
+            .into_iter()
+            .rev()
+        {
             let ty = constant.value.ty.clone();
             info.constants.insert(id, constants.len());
 
@@ -240,7 +254,7 @@ struct Info<'a> {
     constants: &'a mut BTreeMap<MonomorphizedConstantId, usize>,
     functions: &'a mut Vec<Function<UnresolvedSectionIndex>>,
     map: SectionIndexMap,
-    captures: BTreeSet<VariableId>,
+    captures: Vec<BTreeSet<VariableId>>,
     locals: BTreeSet<VariableId>,
 }
 
@@ -284,7 +298,9 @@ impl<L: Loader> Compiler<L> {
             }
             typecheck::ExpressionKind::Variable(var) => {
                 if !info.locals.contains(&var) {
-                    info.captures.insert(var);
+                    for captures in &mut info.captures {
+                        captures.insert(var);
+                    }
                 }
 
                 sections.add_statement(Statement::Compute(computation, Expression::Variable(var)));
@@ -298,17 +314,21 @@ impl<L: Loader> Compiler<L> {
             typecheck::ExpressionKind::Block(exprs) => {
                 let count = exprs.len();
 
-                for (index, expr) in exprs.into_iter().enumerate() {
-                    if index + 1 == count {
-                        self.gen_computation_from_expr_with(
-                            computation,
-                            expr,
-                            loop_info,
-                            sections,
-                            info,
-                        );
-                    } else {
-                        self.gen_computation_from_expr(expr, loop_info, sections, info);
+                if exprs.is_empty() {
+                    sections.add_statement(Statement::Compute(computation, Expression::Marker));
+                } else {
+                    for (index, expr) in exprs.into_iter().enumerate() {
+                        if index + 1 == count {
+                            self.gen_computation_from_expr_with(
+                                computation,
+                                expr,
+                                loop_info,
+                                sections,
+                                info,
+                            );
+                        } else {
+                            self.gen_computation_from_expr(expr, loop_info, sections, info);
+                        }
                     }
                 }
             }
@@ -334,8 +354,10 @@ impl<L: Loader> Compiler<L> {
                 }
             }
             typecheck::ExpressionKind::Function(pattern, body) => {
-                let prev_sections = mem::replace(sections, Sections::new());
-                let prev_captures = mem::take(&mut info.captures);
+                let prev_sections = mem::take(sections);
+                let prev_locals = mem::take(&mut info.locals);
+
+                info.captures.push(BTreeSet::new());
 
                 let input = self.new_ir_computation_id();
                 sections.add_statement(Statement::Compute(input, Expression::FunctionInput));
@@ -350,12 +372,20 @@ impl<L: Loader> Compiler<L> {
                     _ => unreachable!(),
                 };
 
-                let mut captures = prev_captures.clone();
-                captures.extend(mem::replace(&mut info.captures, prev_captures));
+                let locals = mem::replace(&mut info.locals, prev_locals);
 
                 let function = Function {
                     ty: Some((input_ty, output_ty)),
-                    captures: captures.clone(),
+                    captures: info
+                        .captures
+                        .iter()
+                        .flatten()
+                        .copied()
+                        .collect::<BTreeSet<_>>()
+                        .difference(&locals)
+                        .copied()
+                        .collect(),
+                    locals,
                     sections: mem::replace(sections, prev_sections),
                 };
 
@@ -363,6 +393,8 @@ impl<L: Loader> Compiler<L> {
                 info.functions.push(function);
 
                 sections.add_statement(Statement::Compute(computation, Expression::Function(id)));
+
+                info.captures.pop().unwrap();
             }
             typecheck::ExpressionKind::When(input, arms) => {
                 let input = self.gen_computation_from_expr(*input, loop_info, sections, info);
@@ -382,8 +414,7 @@ impl<L: Loader> Compiler<L> {
             typecheck::ExpressionKind::Initialize(pattern, value) => {
                 let value = self.gen_computation_from_expr(*value, loop_info, sections, info);
                 self.gen_sections_from_init(pattern, value, computation, loop_info, sections, info);
-                // No need to add a marker computation here because variable assignment cannot be
-                // used in expression position, so its computation is never used
+                sections.add_statement(Statement::Compute(computation, Expression::Marker));
             }
             typecheck::ExpressionKind::Structure(exprs)
             | typecheck::ExpressionKind::Tuple(exprs) => {
@@ -414,7 +445,8 @@ impl<L: Loader> Compiler<L> {
                 let loop_start = UnresolvedSectionIndex::Resolved(sections.current_index());
 
                 info.with_unresolved_section_index(|info, loop_end| {
-                    self.gen_computation_from_expr(
+                    self.gen_computation_from_expr_with(
+                        computation,
                         *body,
                         Some((loop_start, loop_end)),
                         sections,
@@ -671,8 +703,75 @@ impl<L: Loader> Compiler<L> {
 
                 gen_then_branch!(info);
             }
-            typecheck::PatternKind::Destructure(_) => todo!(),
-            typecheck::PatternKind::Variant(_, _) => todo!(),
+            typecheck::PatternKind::Destructure(fields) => {
+                for (index, pattern) in fields.into_iter() {
+                    let element = self.new_ir_computation_id();
+                    sections.add_statement(Statement::Compute(
+                        element,
+                        Expression::TupleElement(input, index),
+                    ));
+
+                    info.with_unresolved_section_index(|info, then_branch| {
+                        self.gen_sections_from_pattern(
+                            pattern,
+                            Ok(then_branch),
+                            element,
+                            result,
+                            else_branch,
+                            loop_info,
+                            sections,
+                            info,
+                        );
+
+                        sections.add_section()
+                    });
+                }
+
+                gen_then_branch!(info);
+            }
+            typecheck::PatternKind::Variant(input_discriminant, patterns) => {
+                let discriminant = self.new_ir_computation_id();
+                sections.add_statement(Statement::Compute(
+                    discriminant,
+                    Expression::Discriminant(input),
+                ));
+
+                let comparison = self.new_ir_computation_id();
+                sections.add_statement(Statement::Compute(
+                    comparison,
+                    Expression::CompareDiscriminants(discriminant, input_discriminant),
+                ));
+
+                info.with_unresolved_section_index(|_, then_branch| {
+                    sections.set_terminator(Terminator::If(comparison, then_branch, else_branch));
+                    sections.add_section()
+                });
+
+                for (index, pattern) in patterns.into_iter().enumerate() {
+                    let element = self.new_ir_computation_id();
+                    sections.add_statement(Statement::Compute(
+                        element,
+                        Expression::VariantElement(input, index),
+                    ));
+
+                    info.with_unresolved_section_index(|info, then_branch| {
+                        self.gen_sections_from_pattern(
+                            pattern,
+                            Ok(then_branch),
+                            element,
+                            result,
+                            else_branch,
+                            loop_info,
+                            sections,
+                            info,
+                        );
+
+                        sections.add_section()
+                    });
+                }
+
+                gen_then_branch!(info);
+            }
         }
 
         assert!(sections.has_terminator());
@@ -693,6 +792,7 @@ impl Function<UnresolvedSectionIndex> {
         Function {
             ty: self.ty,
             captures: self.captures,
+            locals: self.locals,
             sections: self.sections.finalize(map),
         }
     }

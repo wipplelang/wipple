@@ -67,40 +67,6 @@ impl<L: Loader> Compiler<L> {
 
         add!(
             builtin_types,
-            Span::builtin("`Integer` type"),
-            "Integer",
-            INTEGER_TYPE: BuiltinTypeId = self.new_builtin_type_id(),
-            ScopeValue::BuiltinType,
-            BuiltinType {
-                kind: BuiltinTypeKind::Integer,
-                attributes: DeclarationAttributes {
-                    help: vec![InternedString::new(
-                        "Represents a whole number; specifically, a signed 64-bit integer value.",
-                    )],
-                    ..Default::default()
-                }
-            },
-        );
-
-        add!(
-            builtin_types,
-            Span::builtin("`Positive` type"),
-            "Positive",
-            POSITIVE_TYPE: BuiltinTypeId = self.new_builtin_type_id(),
-            ScopeValue::BuiltinType,
-            BuiltinType {
-                kind: BuiltinTypeKind::Positive,
-                attributes: DeclarationAttributes {
-                    help: vec![InternedString::new(
-                        "Represents a positive number; specifically, an unsigned 64-bit integer value.",
-                    )],
-                    ..Default::default()
-                }
-            },
-        );
-
-        add!(
-            builtin_types,
             Span::builtin("`Text` type"),
             "Text",
             TEXT_TYPE: BuiltinTypeId = self.new_builtin_type_id(),
