@@ -11,11 +11,12 @@ mod __runtime {
 
     pub type Value<T> = MaybeUninit<T>;
 
+    #[inline(always)]
     pub fn value<T>() -> Value<T> {
         Value::uninit()
     }
 
-    #[track_caller]
+    #[inline(always)]
     pub fn init<T>(value: &mut Value<T>, x: T) {
         value.write(x);
     }
@@ -27,7 +28,7 @@ mod __runtime {
     ///    when converting to a type containing the bottom type (`!`), so a
     ///    transmute that actually reinterprets the type or size of a value will
     ///    never occur because the program will never reach that point.
-    #[track_caller]
+    #[inline(always)]
     pub fn read<T, U: Clone>(value: &Value<T>) -> U {
         unsafe {
             let x = value.assume_init_ref();
@@ -35,12 +36,12 @@ mod __runtime {
         }
     }
 
-    #[track_caller]
+    #[inline(always)]
     pub fn capture<T: Clone>(value: &Value<T>) -> Value<T> {
         unsafe { Value::new(value.assume_init_ref().clone()) }
     }
 
-    #[track_caller]
+    #[inline(always)]
     pub fn drop<T>(value: &mut Value<T>) {
         unsafe { value.assume_init_drop() }
     }
@@ -50,13 +51,14 @@ mod __runtime {
     /// # Safety
     ///
     /// See [`read`] above.
-    #[track_caller]
+    #[inline(always)]
     pub fn read_init<T, U: Clone>(value: &'static Constant<T>) -> U {
         value.with(|x| unsafe { (*(x as *const T as *const U)).clone() })
     }
 
+    #[inline(always)]
     pub fn unreachable() -> ! {
-        unreachable!()
+        unsafe { std::hint::unreachable_unchecked() }
     }
 
     #[derive(Clone, Copy)]
@@ -66,6 +68,7 @@ mod __runtime {
 
     pub type Text = Rc<str>;
 
+    #[inline(always)]
     pub fn text(s: &'static str) -> Text {
         Text::from(s)
     }
@@ -76,12 +79,14 @@ mod __runtime {
 
     pub type Function<Input, Output> = Rc<dyn Fn(Input) -> Output>;
 
+    #[inline(always)]
     pub fn function<Input, Output>(
         function: impl Fn(Input) -> Output + 'static,
     ) -> Function<Input, Output> {
         Rc::new(function)
     }
 
+    #[inline(always)]
     pub fn call<Input, Output>(function: Function<Input, Output>, input: Input) -> Output {
         function(input)
     }
@@ -96,6 +101,7 @@ mod __runtime {
         fn discriminant(&self) -> Discriminant;
     }
 
+    #[inline(always)]
     pub fn discriminant<T: Enumeration>(enumeration: &T) -> Discriminant {
         enumeration.discriminant()
     }
