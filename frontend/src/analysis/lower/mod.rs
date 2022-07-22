@@ -8,6 +8,7 @@ use crate::{
     BuiltinTypeId, Compiler, GenericConstantId, Loader, TemplateId, TraitId, TypeId,
     TypeParameterId, VariableId,
 };
+use serde::Serialize;
 use std::{
     cell::RefCell,
     collections::{BTreeMap, HashMap},
@@ -44,7 +45,7 @@ pub struct Declaration<T> {
     pub value: T,
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, Serialize)]
 pub struct DeclarationAttributes {
     pub help: Vec<InternedString>,
 }
@@ -98,7 +99,7 @@ pub struct Trait {
     pub attributes: TraitAttributes,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct TraitAttributes {
     pub decl_attributes: DeclarationAttributes,
     pub on_unimplemented: Option<InternedString>,
@@ -332,7 +333,7 @@ pub enum ScopeKind {
     Loop,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub enum ScopeValue {
     Type(TypeId),
     BuiltinType(BuiltinTypeId),

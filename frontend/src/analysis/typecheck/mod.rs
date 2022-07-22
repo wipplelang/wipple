@@ -13,6 +13,7 @@ use crate::{
     VariableId,
 };
 use engine::*;
+use serde::Serialize;
 use std::{
     cell::RefCell,
     collections::{BTreeMap, BTreeSet, HashMap},
@@ -23,8 +24,9 @@ use std::{
 #[cfg(debug_assertions)]
 use backtrace::Backtrace;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct Program {
+    pub valid: bool,
     pub body: Vec<Expression>,
     pub declarations: Declarations<Expression, Type>,
     pub top_level: HashMap<InternedString, lower::ScopeValue>,
@@ -33,14 +35,14 @@ pub struct Program {
 macro_rules! expr {
     ($vis:vis, $prefix:literal, $type:ident, { $($kinds:tt)* }) => {
         paste::paste! {
-            #[derive(Debug, Clone)]
+            #[derive(Debug, Clone, Serialize)]
             $vis struct [<$prefix Expression>] {
                 $vis span: Span,
                 $vis ty: $type,
                 $vis kind: [<$prefix ExpressionKind>],
             }
 
-            #[derive(Debug, Clone)]
+            #[derive(Debug, Clone, Serialize)]
             $vis enum [<$prefix ExpressionKind>] {
                 Marker,
                 Variable(VariableId),
@@ -62,7 +64,7 @@ macro_rules! expr {
                 $($kinds)*
             }
 
-            #[derive(Debug, Clone)]
+            #[derive(Debug, Clone, Serialize)]
             $vis struct [<$prefix Arm>] {
                 $vis span: Span,
                 $vis pattern: [<$prefix Pattern>],
@@ -75,13 +77,13 @@ macro_rules! expr {
 macro_rules! pattern {
     ($vis:vis, $prefix:literal, { $($kinds:tt)* }) => {
         paste::paste! {
-            #[derive(Debug, Clone)]
+            #[derive(Debug, Clone, Serialize)]
             $vis struct [<$prefix Pattern>] {
                 $vis span: Span,
                 $vis kind: [<$prefix PatternKind>],
             }
 
-            #[derive(Debug, Clone)]
+            #[derive(Debug, Clone, Serialize)]
             $vis enum [<$prefix PatternKind>] {
                 Wildcard,
                 Number(f64),
@@ -138,7 +140,7 @@ impl UnresolvedExpression {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct Declarations<Expr, Ty, File = ()> {
     pub types: BTreeMap<TypeId, Declaration<TypeDeclaration>>,
     pub type_parameters: BTreeMap<TypeParameterId, Declaration<()>>,
@@ -162,26 +164,26 @@ impl<Expr, Ty, File> Default for Declarations<Expr, Ty, File> {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct Declaration<T> {
     pub name: Option<InternedString>,
     pub span: Span,
     pub value: T,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct TypeDeclaration {
     pub attributes: lower::DeclarationAttributes,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct TraitDeclaration {
     pub ty: UnresolvedType,
     pub params: Vec<TypeParameterId>,
     pub attributes: lower::TraitAttributes,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct GenericConstantDeclaration<Expr, File> {
     pub file: File,
     pub decl: Declaration<Expr>,
@@ -199,7 +201,7 @@ pub enum Progress {
 }
 
 impl<L: Loader> Compiler<L> {
-    pub fn typecheck(&self, files: Vec<lower::File>) -> Option<Program> {
+    pub fn typecheck(&self, files: Vec<lower::File>) -> Program {
         self.typecheck_with_progress(files, |_| {})
     }
 
@@ -207,7 +209,7 @@ impl<L: Loader> Compiler<L> {
         &self,
         files: Vec<lower::File>,
         mut progress: impl FnMut(Progress),
-    ) -> Option<Program> {
+    ) -> Program {
         let mut files = files
             .into_iter()
             .map(|file| Rc::new(RefCell::new(file)))
@@ -939,11 +941,12 @@ impl<L: Loader> Compiler<L> {
             }
         }
 
-        success.then(|| Program {
+        Program {
+            valid: success,
             body,
             declarations,
             top_level,
-        })
+        }
     }
 }
 

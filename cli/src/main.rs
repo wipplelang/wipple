@@ -80,9 +80,30 @@ async fn main() -> ExitCode {
 async fn run() -> anyhow::Result<()> {
     let args = Args::parse();
 
+    #[cfg(debug_assertions)]
+    let progress_bar = None::<Arc<indicatif::ProgressBar>>;
+
+    #[cfg(not(debug_assertions))]
+    let progress_bar = Some(Arc::new({
+        let progress_bar = indicatif::ProgressBar::new(0).with_style(
+            indicatif::ProgressStyle::default_spinner()
+                .tick_strings(&["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]),
+        );
+
+        progress_bar.enable_steady_tick(80);
+
+        progress_bar
+    }));
+
     match args {
         Args::Run { options } => {
-            let ir = match build_ir(options).await {
+            let ir = build_ir(options, progress_bar.clone()).await;
+
+            if let Some(progress_bar) = progress_bar.as_ref() {
+                progress_bar.finish_and_clear();
+            }
+
+            let ir = match ir {
                 Some(ir) => ir,
                 None => return Err(anyhow::Error::msg("")),
             };
@@ -99,22 +120,42 @@ async fn run() -> anyhow::Result<()> {
             }
         }
         Args::Compile { options, target } => {
-            let ir = match build_ir(options).await {
+            let ir = match build_ir(options, progress_bar.clone()).await {
                 Some(ir) => ir,
-                None => return Err(anyhow::Error::msg("")),
+                None => {
+                    if let Some(progress_bar) = progress_bar.as_ref() {
+                        progress_bar.finish_and_clear();
+                    }
+
+                    return Err(anyhow::Error::msg(""));
+                }
             };
 
             match target {
                 Target::Rust => {
+                    if let Some(progress_bar) = progress_bar.as_deref() {
+                        progress_bar.set_message("Compiling to Rust");
+                    }
+
                     // TODO: Add a 'build' command that detects and installs
                     // rustc if needed, and then pipes this output into rustc
                     // (using `rustc -`) to build the final executable
                     let tt = wipple_rust_backend::compile(&ir)?;
                     let src = prettyplease::unparse(&syn::parse_file(&tt.to_string()).unwrap());
 
+                    if let Some(progress_bar) = progress_bar.as_ref() {
+                        progress_bar.finish_and_clear();
+                    }
+
                     print!("{}", src)
                 }
-                Target::Ir => print!("{}", ir),
+                Target::Ir => {
+                    if let Some(progress_bar) = progress_bar.as_ref() {
+                        progress_bar.finish_and_clear();
+                    }
+
+                    print!("{}", ir)
+                }
             }
         }
         Args::Doc { options, full } => {
@@ -123,14 +164,24 @@ async fn run() -> anyhow::Result<()> {
                 Err(_) => {
                     return Err(anyhow::Error::msg(
                         "`doc` may only be used with local paths, unless `full` is set",
-                    ))
+                    ));
                 }
             };
 
-            let (program, codemap) = match analyze(options).await {
+            let (program, codemap) = match analyze(options, progress_bar.clone()).await {
                 Some(ir) => ir,
-                None => return Err(anyhow::Error::msg("failed to build")),
+                None => {
+                    if let Some(progress_bar) = progress_bar.as_ref() {
+                        progress_bar.finish_and_clear();
+                    }
+
+                    return Err(anyhow::Error::msg("failed to build"));
+                }
             };
+
+            if let Some(progress_bar) = progress_bar.as_ref() {
+                progress_bar.set_message("Generating documentation");
+            }
 
             let doc = if full {
                 wipple_frontend::doc::Documentation::new(program, codemap, &root)
@@ -149,6 +200,10 @@ async fn run() -> anyhow::Result<()> {
                     root.ends_with(path)
                 })
             };
+
+            if let Some(progress_bar) = progress_bar.as_ref() {
+                progress_bar.finish_and_clear();
+            }
 
             serde_json::to_writer(io::stdout(), &doc).unwrap();
         }
@@ -178,15 +233,19 @@ async fn run() -> anyhow::Result<()> {
 
 async fn analyze(
     options: BuildOptions,
+    progress_bar: Option<Arc<indicatif::ProgressBar>>,
 ) -> Option<(
-    wipple_frontend::analysis::typecheck::Program,
+    wipple_frontend::analysis::Program,
     wipple_frontend::SourceMap,
 )> {
-    build_with_passes(options, |_, _, program| program).await
+    build_with_passes(options, progress_bar, |_, _, program| program).await
 }
 
-async fn build_ir(options: BuildOptions) -> Option<wipple_frontend::ir::Program> {
-    build_with_passes(options, |progress_bar, compiler, program| {
+async fn build_ir(
+    options: BuildOptions,
+    progress_bar: Option<Arc<indicatif::ProgressBar>>,
+) -> Option<wipple_frontend::ir::Program> {
+    build_with_passes(options, progress_bar, |progress_bar, compiler, program| {
         if let Some(progress_bar) = progress_bar {
             progress_bar.set_message("Linting");
         }
@@ -205,27 +264,13 @@ async fn build_ir(options: BuildOptions) -> Option<wipple_frontend::ir::Program>
 
 async fn build_with_passes<P>(
     options: BuildOptions,
+    progress_bar: Option<Arc<indicatif::ProgressBar>>,
     passes: impl FnOnce(
-        &Option<indicatif::ProgressBar>,
+        Option<&indicatif::ProgressBar>,
         &mut Compiler<loader::Loader>,
-        wipple_frontend::analysis::typecheck::Program,
+        wipple_frontend::analysis::Program,
     ) -> P,
 ) -> Option<(P, wipple_frontend::SourceMap)> {
-    #[cfg(debug_assertions)]
-    let progress_bar = Arc::new(None::<indicatif::ProgressBar>);
-
-    #[cfg(not(debug_assertions))]
-    let progress_bar = Arc::new(Some({
-        let progress_bar = indicatif::ProgressBar::new(0).with_style(
-            indicatif::ProgressStyle::default_spinner()
-                .tick_strings(&["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]),
-        );
-
-        progress_bar.enable_steady_tick(80);
-
-        progress_bar
-    }));
-
     let analysis_progress = {
         let progress_bar = progress_bar.clone();
 
@@ -299,14 +344,10 @@ async fn build_with_passes<P>(
         .analyze_with_progress(path, analysis_progress)
         .await;
 
-    let program = program.map(|program| passes(progress_bar.as_ref(), &mut compiler, program));
+    let program = program.map(|program| passes(progress_bar.as_deref(), &mut compiler, program));
 
     let diagnostics = compiler.finish();
     let success = !diagnostics.contains_errors();
-
-    if let Some(progress_bar) = progress_bar.as_ref() {
-        progress_bar.finish_and_clear();
-    }
 
     let (loader, codemap, diagnostics) = diagnostics.into_console_friendly(
         #[cfg(debug_assertions)]

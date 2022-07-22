@@ -6,11 +6,12 @@ pub mod lint;
 pub mod lower;
 pub mod typecheck;
 
+pub use typecheck::{Arm, Expression, ExpressionKind, Pattern, PatternKind, Program};
+
 use crate::{diagnostics::*, parse::Span, Compiler, FilePath, Loader};
 use async_recursion::async_recursion;
 use parking_lot::Mutex;
 use std::sync::{atomic::AtomicUsize, Arc};
-use typecheck::Program;
 
 #[derive(Debug)]
 pub enum Progress {
@@ -226,8 +227,10 @@ impl<L: Loader> Compiler<L> {
             return None;
         }
 
-        self.typecheck_with_progress(lowered_files, |p| {
+        let program = self.typecheck_with_progress(lowered_files, |p| {
             progress.lock()(Progress::Typechecking(p))
-        })
+        });
+
+        program.valid.then(|| program)
     }
 }
