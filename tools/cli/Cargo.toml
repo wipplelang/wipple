@@ -17,7 +17,7 @@ prettyplease = "0.1"
 serde_json = "1"
 syn = "1"
 tokio = { version = "1", features = ["full"] }
-wipple-default-loader = { path = "../loaders/default" }
-wipple-frontend = { path = "../frontend", features = ["clap"] }
-wipple-interpreter-backend = { path = "../backends/interpreter" }
-wipple-rust-backend = { path = "../backends/rust" }
+wipple-default-loader = { path = "../../loaders/default" }
+wipple-frontend = { path = "../../frontend", features = ["clap"] }
+wipple-interpreter-backend = { path = "../../backends/interpreter" }
+wipple-rust-backend = { path = "../../backends/rust" }
