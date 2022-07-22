@@ -1,7 +1,7 @@
 mod runtime;
 
 use std::{cell::RefCell, collections::BTreeMap, rc::Rc};
-use wipple_frontend::{ir, VariableId};
+use wipple_frontend::{ir, MonomorphizedConstantId, VariableId};
 
 type Error = String;
 
@@ -39,7 +39,7 @@ type Scope = BTreeMap<VariableId, Value>;
 
 struct Info<'a> {
     program: &'a ir::Program,
-    initialized_constants: BTreeMap<usize, Value>,
+    initialized_constants: BTreeMap<MonomorphizedConstantId, Value>,
 }
 
 impl<'a> Interpreter<'a> {
@@ -97,7 +97,8 @@ impl<'a> Interpreter<'a> {
                                 if let Some(value) = info.initialized_constants.get(constant) {
                                     value.clone()
                                 } else {
-                                    let sections = &info.program.constants[*constant].sections;
+                                    let sections =
+                                        &info.program.constants.get(constant).unwrap().sections;
 
                                     let value =
                                         self.evaluate(sections, info, scope, None, true)?.unwrap();

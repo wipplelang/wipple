@@ -5,7 +5,9 @@ use proc_macro2::{Span, TokenStream};
 use quote::{quote, ToTokens};
 use std::{collections::BTreeMap, mem};
 use thiserror::Error;
-use wipple_frontend::{helpers::InternedString, ir, ComputationId, TypeId, VariableId};
+use wipple_frontend::{
+    helpers::InternedString, ir, ComputationId, MonomorphizedConstantId, TypeId, VariableId,
+};
 
 #[derive(Debug, Clone, Error)]
 pub enum Error {
@@ -27,9 +29,8 @@ pub fn compile(ir: &ir::Program) -> Result<TokenStream> {
     let constants = ir
         .constants
         .iter()
-        .enumerate()
         .map(|(id, constant)| {
-            let id = write_constant(id);
+            let id = write_constant(*id);
             let ty = write_type(&constant.ty, &mut info);
 
             let init = write_sections(&constant.sections, false, &mut info)?;
@@ -483,8 +484,8 @@ fn write_variable(var: VariableId) -> TokenStream {
     syn::Ident::new(&format!("__variable_{}", var.0), Span::call_site()).to_token_stream()
 }
 
-fn write_constant(constant: usize) -> TokenStream {
-    syn::Ident::new(&format!("__constant_{}", constant), Span::call_site()).to_token_stream()
+fn write_constant(constant: MonomorphizedConstantId) -> TokenStream {
+    syn::Ident::new(&format!("__constant_{}", constant.0), Span::call_site()).to_token_stream()
 }
 
 fn write_structure(id: TypeId) -> TokenStream {

@@ -1,5 +1,5 @@
 use super::{ExpressionKind, Program, SectionIndex, Statement, Terminator, Type};
-use crate::{ComputationId, VariableId};
+use crate::{ComputationId, MonomorphizedConstantId, VariableId};
 use std::collections::BTreeMap;
 
 impl std::fmt::Display for Program {
@@ -183,8 +183,8 @@ impl std::fmt::Display for Program {
             Ok(())
         }
 
-        for (id, constant) in self.constants.iter().enumerate() {
-            writeln_indented!(f, i, "{}:", mangle_constant(id));
+        for (id, constant) in self.constants.iter() {
+            writeln_indented!(f, i, "{}:", mangle_constant(*id));
 
             indent!(i);
 
@@ -261,8 +261,8 @@ impl std::fmt::Display for SectionIndex {
     }
 }
 
-fn mangle_constant(id: usize) -> String {
-    format!("C{}", id)
+fn mangle_constant(id: MonomorphizedConstantId) -> String {
+    format!("C{}", id.0)
 }
 
 fn mangle_variable(id: VariableId) -> String {

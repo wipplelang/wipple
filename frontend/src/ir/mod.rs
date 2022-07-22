@@ -15,7 +15,7 @@ pub mod abi {
 #[derive(Debug, Clone)]
 pub struct Program {
     pub nominal_types: BTreeMap<TypeId, Type>,
-    pub constants: Vec<Constant>,
+    pub constants: BTreeMap<MonomorphizedConstantId, Constant>,
     pub entrypoint: Sections,
 }
 
@@ -73,7 +73,7 @@ pub struct Expression<I = SectionIndex> {
 #[derive(Debug, Clone)]
 pub enum ExpressionKind<I = SectionIndex> {
     Marker,
-    Constant(usize),
+    Constant(MonomorphizedConstantId),
     Function(Function<I>),
     Variable(VariableId),
     FunctionInput,
@@ -211,20 +211,11 @@ enum UnresolvedSectionIndex {
 
 impl<L: Loader> Compiler<L> {
     pub fn ir_from(&mut self, program: &typecheck::Program) -> Program {
+        let mut info = Info::default();
+
         let mut constants = BTreeMap::new();
-
-        let mut info = Info {
-            constants: &mut constants,
-            nominal_types: Default::default(),
-            map: Default::default(),
-            function: Default::default(),
-            block: Default::default(),
-        };
-
-        let mut constants = Vec::new();
-        for (id, ((), constant)) in program.declarations.monomorphized_constants.iter().rev() {
+        for (id, ((), _, constant)) in program.declarations.monomorphized_constants.iter().rev() {
             let ty = self.gen_type(constant.value.ty.clone(), &mut info);
-            info.constants.insert(*id, constants.len());
 
             let mut sections = Sections::new();
 
@@ -234,7 +225,7 @@ impl<L: Loader> Compiler<L> {
                 sections.set_terminator(Terminator::Return(result))
             }
 
-            constants.push(Constant { ty, sections });
+            constants.insert(*id, Constant { ty, sections });
         }
 
         let mut entrypoint = Sections::new();
@@ -248,7 +239,7 @@ impl<L: Loader> Compiler<L> {
             nominal_types: info.nominal_types,
             constants: constants
                 .into_iter()
-                .map(|constant| constant.finalize(&map))
+                .map(|(id, constant)| (id, constant.finalize(&map)))
                 .collect(),
             entrypoint: entrypoint.finalize(&map),
         }
@@ -257,15 +248,15 @@ impl<L: Loader> Compiler<L> {
 
 type SectionIndexMap = BTreeMap<usize, Option<SectionIndex>>;
 
-struct Info<'a> {
+#[derive(Default)]
+struct Info {
     nominal_types: BTreeMap<TypeId, Type>,
-    constants: &'a mut BTreeMap<MonomorphizedConstantId, usize>,
     map: SectionIndexMap,
     function: Vec<(Vec<VariableId>, Vec<VariableId>)>,
     block: Vec<VariableId>,
 }
 
-impl<'a> Info<'a> {
+impl Info {
     fn with_unresolved_section_index(
         &mut self,
         f: impl FnOnce(&mut Self, UnresolvedSectionIndex) -> SectionIndex,
@@ -632,13 +623,11 @@ impl<L: Loader> Compiler<L> {
                         sections.add_section();
                     }
                     typecheck::ExpressionKind::Constant(id) => {
-                        let constant = info.constants.get(id).unwrap();
-
                         sections.add_statement(Statement::Compute(
                             computation,
                             Expression {
                                 ty,
-                                kind: ExpressionKind::Constant(*constant),
+                                kind: ExpressionKind::Constant(*id),
                             },
                         ));
                     }

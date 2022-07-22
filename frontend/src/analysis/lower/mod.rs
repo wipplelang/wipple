@@ -8,7 +8,6 @@ use crate::{
     BuiltinTypeId, Compiler, GenericConstantId, Loader, TemplateId, TraitId, TypeId,
     TypeParameterId, VariableId,
 };
-use serde::{Deserialize, Serialize};
 use std::{
     cell::RefCell,
     collections::{BTreeMap, HashMap},
@@ -45,7 +44,7 @@ pub struct Declaration<T> {
     pub value: T,
 }
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default)]
 pub struct DeclarationAttributes {
     pub help: Vec<InternedString>,
 }
@@ -82,7 +81,7 @@ pub struct BuiltinType {
     pub attributes: DeclarationAttributes,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum BuiltinTypeKind {
     Never,
     Number,
@@ -99,7 +98,7 @@ pub struct Trait {
     pub attributes: TraitAttributes,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
 pub struct TraitAttributes {
     pub decl_attributes: DeclarationAttributes,
     pub on_unimplemented: Option<InternedString>,
@@ -333,7 +332,7 @@ pub enum ScopeKind {
     Loop,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone)]
 pub enum ScopeValue {
     Type(TypeId),
     BuiltinType(BuiltinTypeId),
