@@ -6,28 +6,27 @@ use "./mutable.wpl"
 use "./list.wpl"
 
 [help "A container for an iterable value that produces the `next` value on demand."]
-Iterator : Context Element => type {
-	context :: Mutable Context
-	next :: Mutable Context -> Maybe Element
+Iterator : Element => type {
+	next :: () -> Maybe Element
 }
 
 [help "Implement this trait to enable traversing your collection type."]
-Iterate : Context Container Element => trait (Container -> Iterator Context Element)
+Iterate : Container Element => trait (Container -> Iterator Element)
 
-Context Element => instance Iterate Context (Iterator Context Element) Element : it
+Element => instance Iterate (Iterator Element) Element : it
 
--- reduce :: Context Container Element Result where (Iterate Context Container Element) => (Element -> Result -> Result) -> Container -> Iterator Context Result
+-- reduce :: Container Element Result where (Iterate Container Element) => (Element -> Result -> Result) -> Container -> Iterator Result
 -- reduce : TODO
 
 -- TODO: Use higher-kinded types
 [help "Keep only the items that satisfy the provided condition."]
-filter :: Context Container Element where (Iterate Context Container Element) => (Element -> Boolean) -> Container -> Iterator Context Element
+filter :: Container Element where (Iterate Container Element) => (Element -> Boolean) -> Container -> Iterator Element
 filter : include? -> container -> {
-	{ context next } : Iterate container
+	{ next } : Iterate container
+
 	Iterator {
-		context : context
-		next : context -> loop {
-			when (next context) {
+		next : () -> loop {
+			when (next ()) {
 				Some x -> if (include? x) (break (Some x)) (continue)
 				None -> break None
 			}
@@ -37,12 +36,12 @@ filter : include? -> container -> {
 
 -- TODO: Use higher-kinded types
 [help "Execute a function for each item in an iterator."]
-each :: Context Container Element where (Iterate Context Container Element) => (Element -> ()) -> Container -> ()
+each :: Container Element where (Iterate Container Element) => (Element -> ()) -> Container -> ()
 each : f -> container -> {
-	{ context next } : Iterate container
+	{ next } : Iterate container
 
 	loop {
-		when (next context) {
+		when (next ()) {
 			Some x -> {
 				f x
 				continue
@@ -54,17 +53,17 @@ each : f -> container -> {
 
 -- TODO: Use higher-kinded types
 [help "Implement this trait to enable reducing an iterator into your collection type."]
-Collect : Context Element Container => trait (Iterator Context Element -> Container)
+Collect : Element Container => trait (Iterator Element -> Container)
 
 -- TODO: Use higher-kinded types
 [help "Collect an iterator into a single value, like a `List`."]
-collect :: Context Input Element Output where (Iterate Context Input Element) (Collect Context Element Output) => Input -> Output
+collect :: Input Element Output where (Iterate Input Element) (Collect Element Output) => Input -> Output
 collect : input -> Collect (Iterate input)
 
-Context Element => instance Collect Context Element (List Element) : { context next } -> {
+Element => instance Collect Element (List Element) : { next } -> {
 	list : mutable (list ())
 	loop {
-		when (next context) {
+		when (next ()) {
 			Some x -> {
 				list . append! x
 				continue
@@ -76,10 +75,10 @@ Context Element => instance Collect Context Element (List Element) : { context n
 	get list
 }
 
-Context Element => instance Collect Context Text Text : { context next } -> {
+Element => instance Collect Text Text : { next } -> {
 	text : mutable ""
 	loop {
-		when (next context) {
+		when (next ()) {
 			Some x -> {
 				text . add! x
 				continue
@@ -91,10 +90,11 @@ Context Element => instance Collect Context Text Text : { context next } -> {
 	get text
 }
 
-A => instance Iterate Number (List A) A : list -> Iterator {
-	context : mutable 0
-	next : index -> {
-		when (list . at (get index)) {
+A => instance Iterate (List A) A : list -> {
+	index : mutable 0
+
+	Iterator {
+		next : () -> when (list . at (get index)) {
 			OK element -> {
 				increment! index
 				Some element

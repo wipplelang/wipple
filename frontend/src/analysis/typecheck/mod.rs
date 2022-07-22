@@ -4,7 +4,7 @@ mod engine;
 mod format;
 mod traverse;
 
-pub use engine::{BottomTypeReason, BuiltinType, Type};
+pub use engine::{BottomTypeReason, BuiltinType, Type, TypeStructure};
 pub use format::{format_type, FormattableType};
 
 use crate::{
@@ -13,7 +13,7 @@ use crate::{
     VariableId,
 };
 use engine::*;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use std::{
     cell::RefCell,
     collections::{BTreeMap, BTreeSet, HashMap},
@@ -24,8 +24,9 @@ use std::{
 #[cfg(debug_assertions)]
 use backtrace::Backtrace;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct Program {
+    pub valid: bool,
     pub body: Vec<Expression>,
     pub declarations: Declarations<Expression, Type>,
     pub top_level: HashMap<InternedString, lower::ScopeValue>,
@@ -34,14 +35,14 @@ pub struct Program {
 macro_rules! expr {
     ($vis:vis, $prefix:literal, $type:ident, { $($kinds:tt)* }) => {
         paste::paste! {
-            #[derive(Debug, Clone, Serialize, Deserialize)]
+            #[derive(Debug, Clone, Serialize)]
             $vis struct [<$prefix Expression>] {
                 $vis span: Span,
                 $vis ty: $type,
                 $vis kind: [<$prefix ExpressionKind>],
             }
 
-            #[derive(Debug, Clone, Serialize, Deserialize)]
+            #[derive(Debug, Clone, Serialize)]
             $vis enum [<$prefix ExpressionKind>] {
                 Marker,
                 Variable(VariableId),
@@ -63,7 +64,7 @@ macro_rules! expr {
                 $($kinds)*
             }
 
-            #[derive(Debug, Clone, Serialize, Deserialize)]
+            #[derive(Debug, Clone, Serialize)]
             $vis struct [<$prefix Arm>] {
                 $vis span: Span,
                 $vis pattern: [<$prefix Pattern>],
@@ -76,13 +77,13 @@ macro_rules! expr {
 macro_rules! pattern {
     ($vis:vis, $prefix:literal, { $($kinds:tt)* }) => {
         paste::paste! {
-            #[derive(Debug, Clone, Serialize, Deserialize)]
+            #[derive(Debug, Clone, Serialize)]
             $vis struct [<$prefix Pattern>] {
                 $vis span: Span,
                 $vis kind: [<$prefix PatternKind>],
             }
 
-            #[derive(Debug, Clone, Serialize, Deserialize)]
+            #[derive(Debug, Clone, Serialize)]
             $vis enum [<$prefix PatternKind>] {
                 Wildcard,
                 Number(f64),
@@ -139,13 +140,14 @@ impl UnresolvedExpression {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct Declarations<Expr, Ty, File = ()> {
     pub types: BTreeMap<TypeId, Declaration<TypeDeclaration>>,
     pub type_parameters: BTreeMap<TypeParameterId, Declaration<()>>,
     pub traits: BTreeMap<TraitId, Declaration<TraitDeclaration>>,
     pub generic_constants: BTreeMap<GenericConstantId, GenericConstantDeclaration<Expr, File>>,
-    pub monomorphized_constants: BTreeMap<MonomorphizedConstantId, (File, Declaration<Expr>)>,
+    pub monomorphized_constants:
+        BTreeMap<MonomorphizedConstantId, (File, GenericConstantId, Declaration<Expr>)>,
     pub variables: BTreeMap<VariableId, Declaration<Ty>>,
 }
 
@@ -162,26 +164,26 @@ impl<Expr, Ty, File> Default for Declarations<Expr, Ty, File> {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct Declaration<T> {
     pub name: Option<InternedString>,
     pub span: Span,
     pub value: T,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct TypeDeclaration {
     pub attributes: lower::DeclarationAttributes,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct TraitDeclaration {
     pub ty: UnresolvedType,
     pub params: Vec<TypeParameterId>,
     pub attributes: lower::TraitAttributes,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct GenericConstantDeclaration<Expr, File> {
     pub file: File,
     pub decl: Declaration<Expr>,
@@ -199,7 +201,7 @@ pub enum Progress {
 }
 
 impl<L: Loader> Compiler<L> {
-    pub fn typecheck(&self, files: Vec<lower::File>) -> Option<Program> {
+    pub fn typecheck(&self, files: Vec<lower::File>) -> Program {
         self.typecheck_with_progress(files, |_| {})
     }
 
@@ -207,7 +209,7 @@ impl<L: Loader> Compiler<L> {
         &self,
         files: Vec<lower::File>,
         mut progress: impl FnMut(Progress),
-    ) -> Option<Program> {
+    ) -> Program {
         let mut files = files
             .into_iter()
             .map(|file| Rc::new(RefCell::new(file)))
@@ -305,24 +307,18 @@ impl<L: Loader> Compiler<L> {
                 if !typechecker.types.contains_key(&id) {
                     match &decl.value.kind {
                         lower::TypeKind::Structure(fields, field_names) => {
-                            let fields = field_names
+                            let field_tys = fields
                                 .iter()
-                                .map(|(name, index)| {
-                                    (
-                                        *name,
-                                        (
-                                            *index,
-                                            typechecker
-                                                .convert_type_annotation(&fields[*index].ty, file),
-                                        ),
-                                    )
-                                })
+                                .map(|field| typechecker.convert_type_annotation(&field.ty, file))
                                 .collect();
 
                             typechecker.types.insert(
                                 id,
                                 TypeDefinition {
-                                    kind: TypeDefinitionKind::Structure(fields),
+                                    kind: TypeDefinitionKind::Structure(
+                                        field_tys,
+                                        field_names.clone(),
+                                    ),
                                     params,
                                 },
                             );
@@ -331,21 +327,24 @@ impl<L: Loader> Compiler<L> {
                             let variant_tys = variants
                                 .iter()
                                 .map(|variant| {
-                                    (
-                                        variant.constructor,
-                                        variant
-                                            .tys
-                                            .iter()
-                                            .map(|ty| typechecker.convert_type_annotation(ty, file))
-                                            .collect(),
-                                    )
+                                    variant
+                                        .tys
+                                        .iter()
+                                        .map(|ty| typechecker.convert_type_annotation(ty, file))
+                                        .collect()
                                 })
                                 .collect();
+
+                            let variant_constructors =
+                                variants.iter().map(|variant| variant.constructor).collect();
 
                             typechecker.types.insert(
                                 id,
                                 TypeDefinition {
-                                    kind: TypeDefinitionKind::Enumeration(variant_tys),
+                                    kind: TypeDefinitionKind::Enumeration(
+                                        variant_tys,
+                                        variant_constructors,
+                                    ),
                                     params,
                                 },
                             );
@@ -635,24 +634,18 @@ impl<L: Loader> Compiler<L> {
             }
         };
 
-        let mut already_checked = BTreeSet::new();
         loop {
-            if already_checked.is_superset(
-                &typechecker
-                    .monomorphized_constants
-                    .keys()
-                    .copied()
-                    .collect(),
-            ) {
-                break;
-            }
-
+            let mut new = false;
             for (id, (span, generic_id, constant)) in typechecker.monomorphized_constants.clone() {
-                if already_checked.contains(&id) {
+                if typechecker
+                    .declarations
+                    .monomorphized_constants
+                    .contains_key(&id)
+                {
                     continue;
                 }
 
-                already_checked.insert(id);
+                new = true;
 
                 let mut ty = constant.decl.value.ty.clone();
                 ty.apply(&typechecker.ctx);
@@ -683,7 +676,12 @@ impl<L: Loader> Compiler<L> {
                     Ok(value) => value,
                     Err(error) => {
                         typechecker.errors.push(error);
-                        continue;
+
+                        MonomorphizedExpression {
+                            span,
+                            ty,
+                            kind: MonomorphizedExpressionKind::Error,
+                        }
                     }
                 };
 
@@ -691,6 +689,7 @@ impl<L: Loader> Compiler<L> {
                     id,
                     (
                         constant.file,
+                        generic_id,
                         Declaration {
                             name: constant.decl.name,
                             span,
@@ -699,11 +698,15 @@ impl<L: Loader> Compiler<L> {
                     ),
                 );
             }
+
+            if !new {
+                break;
+            }
         }
 
         // Finalize values
 
-        let declarations = match (|| {
+        let mut declarations = match (|| {
             Ok(Declarations {
                 types: typechecker.declarations.types.clone(),
                 type_parameters: typechecker.declarations.type_parameters.clone(),
@@ -736,11 +739,12 @@ impl<L: Loader> Compiler<L> {
                     .monomorphized_constants
                     .clone()
                     .into_iter()
-                    .map(|(id, (file, decl))| {
+                    .map(|(id, (file, generic_id, decl))| {
                         Ok((
                             id,
                             (
                                 (),
+                                generic_id,
                                 Declaration {
                                     name: decl.name,
                                     span: decl.span,
@@ -783,7 +787,7 @@ impl<L: Loader> Compiler<L> {
             }
         };
 
-        let body = body
+        let mut body = body
             .map(|body| {
                 match body
                     .into_iter()
@@ -799,30 +803,55 @@ impl<L: Loader> Compiler<L> {
             })
             .unwrap_or_default();
 
+        // Consolidate constants based on their type
+
+        let mut cache = HashMap::new();
+        let mut cached = BTreeSet::new();
+        let mut map = BTreeMap::new();
+
+        for (id, ((), generic_id, constant)) in &declarations.monomorphized_constants {
+            let cached_id = *cache
+                .entry((generic_id, constant.value.ty.clone()))
+                .or_insert_with(|| {
+                    cached.insert(*id);
+                    *id
+                });
+
+            map.insert(*id, cached_id);
+        }
+
+        for id in declarations
+            .monomorphized_constants
+            .keys()
+            .cloned()
+            .collect::<Vec<_>>()
+        {
+            if !cached.contains(&id) {
+                declarations.monomorphized_constants.remove(&id);
+            }
+        }
+
+        let update = |expr: &mut Expression| {
+            if let ExpressionKind::Constant(id) = &mut expr.kind {
+                if let Some(cached_id) = map.get(id) {
+                    *id = *cached_id;
+                }
+            }
+        };
+
+        for ((), _, constant) in declarations.monomorphized_constants.values_mut() {
+            constant.value.traverse_mut(update)
+        }
+
+        for expr in &mut body {
+            expr.traverse_mut(update);
+        }
+
         // Build the final program
 
         let success = typechecker.errors.is_empty();
 
-        let report = |error: Error| {
-            macro_rules! getter {
-                ($x:ident) => {
-                    |id| {
-                        typechecker
-                            .declarations
-                            .$x
-                            .get(&id)
-                            .unwrap()
-                            .name
-                            .map_or("<unknown>", |name| name.as_str())
-                            .to_string()
-                    }
-                };
-            }
-
-            let type_names = getter!(types);
-            let trait_names = getter!(traits);
-            let param_names = getter!(type_parameters);
-
+        let report = |error: Error, typechecker: &Typechecker<L>| {
             #[allow(unused_mut)]
             let mut diagnostic = match error.error {
                 TypeError::ErrorExpression => return,
@@ -839,8 +868,8 @@ impl<L: Loader> Compiler<L> {
                         error.span,
                         format!(
                             "expected {}, but found {}",
-                            format_type(expected, type_names, trait_names, param_names, true),
-                            format_type(actual, type_names, trait_names, param_names, true)
+                            typechecker.format_type(expected, true),
+                            typechecker.format_type(actual, true)
                         ),
                     )],
                 ),
@@ -853,13 +882,7 @@ impl<L: Loader> Compiler<L> {
                             error.span,
                             format!(
                                 "could not find instance {}",
-                                format_type(
-                                    FormattableType::Trait(id, params),
-                                    type_names,
-                                    trait_names,
-                                    param_names,
-                                    true
-                                )
+                                typechecker.format_type(FormattableType::Trait(id, params), true)
                             ),
                         ))
                         .chain(
@@ -901,28 +924,29 @@ impl<L: Loader> Compiler<L> {
             typechecker.compiler.diagnostics.add(diagnostic);
         };
 
-        let (unresolved_type_errors, other_errors): (Vec<_>, Vec<_>) = typechecker
-            .errors
-            .into_iter()
-            .partition(|e| matches!(e.error, TypeError::UnresolvedType));
+        let (unresolved_type_errors, other_errors): (Vec<_>, Vec<_>) =
+            mem::take(&mut typechecker.errors)
+                .into_iter()
+                .partition(|e| matches!(e.error, TypeError::UnresolvedType));
 
         let should_report_unresolved_type_errors = other_errors.is_empty();
 
         for error in other_errors {
-            report(error);
+            report(error, &typechecker);
         }
 
         if should_report_unresolved_type_errors {
             for error in unresolved_type_errors {
-                report(error);
+                report(error, &typechecker);
             }
         }
 
-        success.then(|| Program {
+        Program {
+            valid: success,
             body,
             declarations,
             top_level,
-        })
+        }
     }
 }
 
@@ -952,8 +976,8 @@ struct TypeDefinition {
 #[derive(Debug, Clone)]
 enum TypeDefinitionKind {
     Marker,
-    Structure(HashMap<InternedString, (usize, UnresolvedType)>),
-    Enumeration(Vec<(GenericConstantId, Vec<UnresolvedType>)>),
+    Structure(Vec<UnresolvedType>, HashMap<InternedString, usize>),
+    Enumeration(Vec<Vec<UnresolvedType>>, Vec<GenericConstantId>),
 }
 
 #[derive(Debug, Clone)]
@@ -1018,6 +1042,7 @@ impl<L: Loader> Typechecker<L> {
                         .into_iter()
                         .map(UnresolvedType::Parameter)
                         .collect(),
+                    TypeStructure::Marker,
                 );
 
                 let mut substitutions = BTreeMap::new();
@@ -1219,8 +1244,10 @@ impl<L: Loader> Typechecker<L> {
             lower::ExpressionKind::Instantiate(id, fields) => {
                 let structure = self.types.get(id).unwrap().clone();
 
-                let mut structure_fields = match &structure.kind {
-                    TypeDefinitionKind::Structure(fields) => fields.clone(),
+                let (mut structure_field_tys, structure_field_names) = match &structure.kind {
+                    TypeDefinitionKind::Structure(field_tys, field_names) => {
+                        (field_tys.clone(), field_names.clone())
+                    }
                     _ => unreachable!(), // or do we need to display an error like above?
                 };
 
@@ -1231,24 +1258,25 @@ impl<L: Loader> Typechecker<L> {
                         .into_iter()
                         .map(UnresolvedType::Parameter)
                         .collect(),
+                    TypeStructure::Structure(structure_field_tys.clone()),
                 );
 
                 let mut substitutions = BTreeMap::new();
                 self.add_substitutions(&mut ty, &mut substitutions);
 
-                for (_, ty) in structure_fields.values_mut() {
-                    self.add_substitutions(ty, &mut substitutions);
+                for index in structure_field_names.values() {
+                    self.add_substitutions(&mut structure_field_tys[*index], &mut substitutions);
                 }
 
-                let mut fields_by_index = structure_fields.iter().collect::<Vec<_>>();
-                fields_by_index.sort_by_key(|(_, (index, _))| *index);
+                let mut fields_by_index = structure_field_names.iter().collect::<Vec<_>>();
+                fields_by_index.sort_by_key(|(_, index)| *index);
 
                 let mut unpopulated_fields = vec![None; fields_by_index.len()];
                 let mut extra_fields = Vec::new();
 
                 for (name, expr) in fields {
-                    let (index, ty) = match structure_fields.get(name) {
-                        Some((index, ty)) => (*index, ty.clone()),
+                    let (index, ty) = match structure_field_names.get(name) {
+                        Some(index) => (*index, structure_field_tys[*index].clone()),
                         None => {
                             extra_fields.push(name);
                             continue;
@@ -1332,10 +1360,14 @@ impl<L: Loader> Typechecker<L> {
             lower::ExpressionKind::Variant(id, index, values) => {
                 let enumeration = self.types.get(id).unwrap().clone();
 
-                let (mut variant_constructor, mut variant_tys) = match &enumeration.kind {
-                    TypeDefinitionKind::Enumeration(variants) => {
-                        let (id, tys) = &variants[*index];
-                        (self.generic_constants.get(id).unwrap().clone(), tys.clone())
+                let (variants_tys, mut variant_constructor) = match &enumeration.kind {
+                    TypeDefinitionKind::Enumeration(variants_tys, variants_constructors) => {
+                        let id = &variants_constructors[*index];
+
+                        (
+                            variants_tys.clone(),
+                            self.generic_constants.get(id).unwrap().clone(),
+                        )
                     }
                     _ => unreachable!(), // or do we need to display an error like above?
                 };
@@ -1347,6 +1379,7 @@ impl<L: Loader> Typechecker<L> {
                         .into_iter()
                         .map(UnresolvedType::Parameter)
                         .collect(),
+                    TypeStructure::Enumeration(variants_tys.clone()),
                 );
 
                 let mut substitutions = BTreeMap::new();
@@ -1355,6 +1388,8 @@ impl<L: Loader> Typechecker<L> {
                 for (_, ty, _) in &mut variant_constructor.bounds {
                     self.add_substitutions(ty, &mut substitutions);
                 }
+
+                let mut variant_tys = variants_tys[*index].clone();
 
                 for ty in &mut variant_tys {
                     self.add_substitutions(ty, &mut substitutions);
@@ -1741,7 +1776,7 @@ impl<L: Loader> Typechecker<L> {
             }
             UnresolvedPatternKind::Destructure(fields) => {
                 let (id, params) = match ty.clone() {
-                    UnresolvedType::Named(id, params) => (id, params),
+                    UnresolvedType::Named(id, params, _) => (id, params),
                     _ => {
                         self.compiler.diagnostics.add(Diagnostic::error(
                             "cannot destructure this value",
@@ -1764,8 +1799,10 @@ impl<L: Loader> Typechecker<L> {
                     }
                 };
 
-                let structure_fields = match &structure.kind {
-                    TypeDefinitionKind::Structure(fields) => fields.clone(),
+                let (structure_field_tys, structure_field_names) = match &structure.kind {
+                    TypeDefinitionKind::Structure(field_tys, field_names) => {
+                        (field_tys.clone(), field_names.clone())
+                    }
                     _ => unreachable!(), // or do we need to display an error like above?
                 };
 
@@ -1792,8 +1829,8 @@ impl<L: Loader> Typechecker<L> {
                 let fields = fields
                     .into_iter()
                     .filter_map(|(name, pattern)| {
-                        let (index, mut member_ty) = match structure_fields.get(&name) {
-                            Some((index, ty)) => (*index, ty.clone()),
+                        let index = match structure_field_names.get(&name) {
+                            Some(index) => *index,
                             None => {
                                 self.compiler.diagnostics.add(Diagnostic::error(
                                     format!("value has no member named '{}'", name),
@@ -1804,6 +1841,7 @@ impl<L: Loader> Typechecker<L> {
                             }
                         };
 
+                        let mut member_ty = structure_field_tys[index].clone();
                         member_ty.instantiate_with(&substitutions);
 
                         let (matches, match_set) = &mut field_match_sets[index];
@@ -1834,7 +1872,7 @@ impl<L: Loader> Typechecker<L> {
             }
             UnresolvedPatternKind::Variant(variant_ty, variant, values) => {
                 let (id, params) = match &ty {
-                    UnresolvedType::Named(id, params) => (id, params),
+                    UnresolvedType::Named(id, params, _) => (id, params),
                     _ => {
                         self.compiler.diagnostics.add(Diagnostic::error(
                             "cannot apply pattern to this value",
@@ -1857,8 +1895,8 @@ impl<L: Loader> Typechecker<L> {
                     }
                 };
 
-                let (_, mut variant_tys) = match &enumeration.kind {
-                    TypeDefinitionKind::Enumeration(variants) => variants[variant].clone(),
+                let mut variant_tys = match &enumeration.kind {
+                    TypeDefinitionKind::Enumeration(variant_tys, _) => variant_tys[variant].clone(),
                     _ => unreachable!(), // or do we need to display an error like above?
                 };
 
@@ -1882,6 +1920,9 @@ impl<L: Loader> Typechecker<L> {
                             .iter()
                             .map(|param| substitutions.get(param).unwrap().clone())
                             .collect(),
+                        // HACK: Optimization because unification doesn't take structure into
+                        // account -- the structure can be applied during finalization
+                        TypeStructure::Marker,
                     ),
                 ) {
                     self.errors.push(Error::new(error, pattern.span));
@@ -1978,7 +2019,13 @@ impl<L: Loader> Typechecker<L> {
                 if let Some(boolean_ty) = file.borrow().global_attributes.language_items.boolean {
                     if let Err(error) = self.ctx.unify(
                         condition.ty.clone(),
-                        UnresolvedType::Named(boolean_ty, Vec::new()),
+                        UnresolvedType::Named(
+                            boolean_ty,
+                            Vec::new(),
+                            // HACK: Optimization because unification doesn't take structure into
+                            // account -- the structure can be applied during finalization
+                            TypeStructure::Marker,
+                        ),
                     ) {
                         self.errors.push(Error::new(error, condition.span));
                     }
@@ -2526,13 +2573,53 @@ impl<L: Loader> Typechecker<L> {
             lower::TypeAnnotationKind::Placeholder => {
                 UnresolvedType::Variable(self.ctx.new_variable())
             }
-            lower::TypeAnnotationKind::Named(id, params) => UnresolvedType::Named(
-                *id,
-                params
+            lower::TypeAnnotationKind::Named(id, params) => {
+                let file_ = file.borrow();
+                let ty = file_.declarations.types.get(id).unwrap();
+
+                let params = params
                     .iter()
                     .map(|param| self.convert_type_annotation(param, file))
-                    .collect(),
-            ),
+                    .collect::<Vec<_>>();
+
+                let substitutions = ty
+                    .value
+                    .params
+                    .iter()
+                    .copied()
+                    .zip(params.iter().cloned())
+                    .collect::<BTreeMap<_, _>>();
+
+                let mut convert_and_instantiate = |ty| {
+                    let mut ty = self.convert_type_annotation(ty, file);
+                    ty.instantiate_with(&substitutions);
+                    ty
+                };
+
+                let structure = match &ty.value.kind {
+                    lower::TypeKind::Marker => TypeStructure::Marker,
+                    lower::TypeKind::Structure(fields, _) => TypeStructure::Structure(
+                        fields
+                            .iter()
+                            .map(|field| convert_and_instantiate(&field.ty))
+                            .collect(),
+                    ),
+                    lower::TypeKind::Enumeration(variants, _) => TypeStructure::Enumeration(
+                        variants
+                            .iter()
+                            .map(|variant| {
+                                variant
+                                    .tys
+                                    .iter()
+                                    .map(&mut convert_and_instantiate)
+                                    .collect()
+                            })
+                            .collect(),
+                    ),
+                };
+
+                UnresolvedType::Named(*id, params, structure)
+            }
             lower::TypeAnnotationKind::Parameter(id) => UnresolvedType::Parameter(*id),
             lower::TypeAnnotationKind::Builtin(id, parameters) => {
                 let builtin_ty = file
@@ -2679,6 +2766,34 @@ impl<L: Loader> Typechecker<L> {
             ),
         }
     }
+
+    fn format_type(&self, ty: impl Into<FormattableType>, surround_in_backticks: bool) -> String {
+        macro_rules! getter {
+            ($x:ident) => {
+                |id| {
+                    self.declarations
+                        .$x
+                        .get(&id)
+                        .unwrap()
+                        .name
+                        .map_or("<unknown>", |name| name.as_str())
+                        .to_string()
+                }
+            };
+        }
+
+        let type_names = getter!(types);
+        let trait_names = getter!(traits);
+        let param_names = getter!(type_parameters);
+
+        format_type(
+            ty,
+            type_names,
+            trait_names,
+            param_names,
+            surround_in_backticks,
+        )
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -2693,21 +2808,21 @@ enum MatchSet {
 impl<L: Loader> Typechecker<L> {
     fn match_set_from(&mut self, ty: &UnresolvedType) -> Result<MatchSet, TypeError> {
         match &ty {
-            UnresolvedType::Named(id, _) => {
+            UnresolvedType::Named(id, _, _) => {
                 let kind = self.types.get(id).unwrap().kind.clone();
 
                 match kind {
                     TypeDefinitionKind::Marker => Ok(MatchSet::Marker(false)),
-                    TypeDefinitionKind::Structure(fields) => Ok(MatchSet::Structure(
+                    TypeDefinitionKind::Structure(fields, _) => Ok(MatchSet::Structure(
                         fields
-                            .values()
-                            .map(|(_, ty)| Ok((false, self.match_set_from(ty)?)))
+                            .iter()
+                            .map(|ty| Ok((false, self.match_set_from(ty)?)))
                             .collect::<Result<_, _>>()?,
                     )),
-                    TypeDefinitionKind::Enumeration(variants) => Ok(MatchSet::Enumeration(
+                    TypeDefinitionKind::Enumeration(variants, _) => Ok(MatchSet::Enumeration(
                         variants
                             .iter()
-                            .map(|(_, tys)| {
+                            .map(|tys| {
                                 Ok((
                                     false,
                                     tys.iter()

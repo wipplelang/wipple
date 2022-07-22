@@ -2,6 +2,7 @@
 resolver = "2"
 members = [
     "backends/interpreter",
+    "backends/rust",
     "cli",
     "frontend",
     "loaders/default",

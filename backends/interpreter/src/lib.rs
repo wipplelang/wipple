@@ -1,10 +1,7 @@
 mod runtime;
 
 use std::{cell::RefCell, collections::BTreeMap, rc::Rc};
-use wipple_frontend::{
-    ir::{abi, Expression, Program, SectionIndex, Statement, Terminator},
-    VariableId,
-};
+use wipple_frontend::{ir, MonomorphizedConstantId, VariableId};
 
 type Error = String;
 
@@ -12,34 +9,17 @@ type Error = String;
 pub struct Interpreter<'a> {
     #[allow(clippy::type_complexity)]
     output: Option<Rc<RefCell<Box<dyn FnMut(&str) + 'a>>>>,
-
-    #[cfg(debug_assertions)]
-    trace_ir: bool,
 }
 
 impl<'a> Interpreter<'a> {
     pub fn handling_output(output: impl FnMut(&str) + 'a) -> Self {
         Interpreter {
             output: Some(Rc::new(RefCell::new(Box::new(output) as Box<_>))),
-
-            #[cfg(debug_assertions)]
-            trace_ir: false,
         }
     }
 
     pub fn ignoring_output() -> Self {
-        Interpreter {
-            output: None,
-
-            #[cfg(debug_assertions)]
-            trace_ir: false,
-        }
-    }
-
-    #[cfg(debug_assertions)]
-    pub fn tracing_ir(mut self, trace_ir: bool) -> Self {
-        self.trace_ir = trace_ir;
-        self
+        Interpreter { output: None }
     }
 }
 
@@ -49,7 +29,7 @@ enum Value {
     Number(f64),
     Discriminant(usize),
     Text(Rc<str>),
-    Function(usize, Rc<Scope>),
+    Function(ir::Function, Rc<Scope>),
     Variant(usize, Box<[Value]>),
     Mutable(Rc<RefCell<Value>>),
     List(im::Vector<Value>),
@@ -58,12 +38,12 @@ enum Value {
 type Scope = BTreeMap<VariableId, Value>;
 
 struct Info<'a> {
-    program: &'a Program,
-    initialized_constants: BTreeMap<usize, Value>,
+    program: &'a ir::Program,
+    initialized_constants: BTreeMap<MonomorphizedConstantId, Value>,
 }
 
 impl<'a> Interpreter<'a> {
-    pub fn run(&self, program: &Program) -> Result<(), Error> {
+    pub fn run(&self, program: &ir::Program) -> Result<(), Error> {
         let mut info = Info {
             program,
             initialized_constants: Default::default(),
@@ -75,8 +55,6 @@ impl<'a> Interpreter<'a> {
             &mut Scope::new(),
             None,
             false,
-            #[cfg(debug_assertions)]
-            0,
         )?;
 
         Ok(())
@@ -84,24 +62,13 @@ impl<'a> Interpreter<'a> {
 
     fn call(
         &self,
-        function: usize,
+        function: &ir::Function,
         input: &Value,
         info: &mut Info,
         scope: &mut Scope,
-        #[cfg(debug_assertions)] indent: usize,
     ) -> Result<Value, Error> {
-        let sections = &info.program.functions[function].sections;
-
         let value = self
-            .evaluate(
-                sections,
-                info,
-                scope,
-                Some(input),
-                true,
-                #[cfg(debug_assertions)]
-                indent,
-            )?
+            .evaluate(&function.sections, info, scope, Some(input), true)?
             .unwrap();
 
         Ok(value)
@@ -114,94 +81,53 @@ impl<'a> Interpreter<'a> {
         scope: &mut Scope,
         input: Option<&Value>,
         expect_terminator: bool,
-        #[cfg(debug_assertions)] indent: usize,
     ) -> Result<Option<Value>, String> {
-        let mut section_index = SectionIndex(0);
+        let mut section_index = ir::SectionIndex(0);
         let mut computations = BTreeMap::new();
-
-        macro_rules! log {
-            ($fmt:literal $(,)? $($e:expr)*) => {
-                #[cfg(debug_assertions)]
-                if self.trace_ir {
-                    eprintln!(concat!("{}", $fmt), "\t".repeat(indent), $($e)*);
-                }
-            };
-        }
 
         loop {
             let section = &sections[section_index];
 
-            log!("{}:", section_index);
-
             for statement in &section.statements {
-                log!("\t{}", statement);
-
                 match statement {
-                    Statement::Compute(id, expr) => {
-                        let value = match expr {
-                            Expression::Marker => Value::Marker,
-                            Expression::Constant(constant) => {
+                    ir::Statement::Compute(id, expr) => {
+                        let value = match &expr.kind {
+                            ir::ExpressionKind::Marker => Value::Marker,
+                            ir::ExpressionKind::Constant(constant) => {
                                 if let Some(value) = info.initialized_constants.get(constant) {
                                     value.clone()
                                 } else {
-                                    let sections = &info.program.constants[*constant].sections;
+                                    let sections =
+                                        &info.program.constants.get(constant).unwrap().sections;
 
-                                    let value = self
-                                        .evaluate(
-                                            sections,
-                                            info,
-                                            scope,
-                                            None,
-                                            true,
-                                            #[cfg(debug_assertions)]
-                                            indent,
-                                        )?
-                                        .unwrap();
+                                    let value =
+                                        self.evaluate(sections, info, scope, None, true)?.unwrap();
 
                                     info.initialized_constants.insert(*constant, value.clone());
 
                                     value
                                 }
                             }
-                            Expression::Function(function) => {
-                                let captures = info
-                                    .program
-                                    .functions
-                                    .get(*function)
-                                    .unwrap()
-                                    .captures
-                                    .iter()
-                                    .map(|&var| (var, scope.get(&var).unwrap().clone()))
-                                    .collect();
-
-                                Value::Function(*function, Rc::new(captures))
+                            ir::ExpressionKind::Function(function) => {
+                                Value::Function(function.clone(), Rc::new(scope.clone()))
                             }
-                            Expression::Variable(var) => scope.get(var).unwrap().clone(),
-                            Expression::FunctionInput => input.unwrap().clone(),
-                            Expression::Number(number) => Value::Number(*number),
-                            Expression::Text(text) => Value::Text(Rc::from(text.as_str())),
-                            Expression::Call(function, input) => {
-                                let (function, mut captures) =
-                                    match computations.get(function).unwrap() {
-                                        Value::Function(function, captures) => {
-                                            (function, captures.as_ref().clone())
-                                        }
-                                        _ => unreachable!(),
-                                    };
+                            ir::ExpressionKind::Variable(var) => scope.get(var).unwrap().clone(),
+                            ir::ExpressionKind::FunctionInput => input.unwrap().clone(),
+                            ir::ExpressionKind::Number(number) => Value::Number(*number),
+                            ir::ExpressionKind::Text(text) => Value::Text(Rc::from(text.as_str())),
+                            ir::ExpressionKind::Call(function, input) => {
+                                let (function, captures) = match computations.get(function).unwrap()
+                                {
+                                    Value::Function(function, captures) => (function, captures),
+                                    _ => unreachable!(),
+                                };
 
                                 let input = computations.get(input).unwrap();
 
-                                self.call(
-                                    *function,
-                                    input,
-                                    info,
-                                    &mut captures,
-                                    #[cfg(debug_assertions)]
-                                    (indent + 1),
-                                )?
+                                self.call(function, input, info, &mut (**captures).clone())?
                             }
-                            Expression::External(abi, identifier, inputs) => {
-                                if abi.as_str() != abi::RUNTIME {
+                            ir::ExpressionKind::External(abi, identifier, inputs) => {
+                                if abi.as_str() != ir::abi::RUNTIME {
                                     return Err(Error::from("unknown ABI (only 'runtime' is supported in the interpreter)"));
                                 }
 
@@ -213,13 +139,19 @@ impl<'a> Interpreter<'a> {
                                         .collect(),
                                 )?
                             }
-                            Expression::Tuple(elements) => Value::List(
+                            ir::ExpressionKind::Tuple(elements) => Value::List(
                                 elements
                                     .iter()
                                     .map(|id| computations.get(id).unwrap().clone())
                                     .collect(),
                             ),
-                            Expression::Variant(discriminant, elements) => Value::Variant(
+                            ir::ExpressionKind::Structure(fields) => Value::List(
+                                fields
+                                    .iter()
+                                    .map(|id| computations.get(id).unwrap().clone())
+                                    .collect(),
+                            ),
+                            ir::ExpressionKind::Variant(discriminant, elements) => Value::Variant(
                                 *discriminant,
                                 elements
                                     .iter()
@@ -227,7 +159,7 @@ impl<'a> Interpreter<'a> {
                                     .collect::<Vec<_>>()
                                     .into_boxed_slice(),
                             ),
-                            Expression::TupleElement(tuple, element) => {
+                            ir::ExpressionKind::TupleElement(tuple, element) => {
                                 let tuple = match computations.get(tuple).unwrap().clone() {
                                     Value::List(tuple) => tuple,
                                     _ => unreachable!(),
@@ -235,7 +167,15 @@ impl<'a> Interpreter<'a> {
 
                                 tuple[*element].clone()
                             }
-                            Expression::VariantElement(variant, element) => {
+                            ir::ExpressionKind::StructureElement(structure, _, element) => {
+                                let structure = match computations.get(structure).unwrap().clone() {
+                                    Value::List(structure) => structure,
+                                    _ => unreachable!(),
+                                };
+
+                                structure[*element].clone()
+                            }
+                            ir::ExpressionKind::VariantElement(variant, _, element) => {
                                 let elements = match computations.get(variant).unwrap().clone() {
                                     Value::Variant(_, elements) => elements,
                                     _ => unreachable!(),
@@ -243,7 +183,7 @@ impl<'a> Interpreter<'a> {
 
                                 elements[*element].clone()
                             }
-                            Expression::Discriminant(variant) => {
+                            ir::ExpressionKind::Discriminant(variant) => {
                                 match computations.get(variant).unwrap().clone() {
                                     Value::Variant(discriminant, _) => {
                                         Value::Discriminant(discriminant)
@@ -251,7 +191,7 @@ impl<'a> Interpreter<'a> {
                                     _ => unreachable!(),
                                 }
                             }
-                            Expression::CompareDiscriminants(left, right) => {
+                            ir::ExpressionKind::CompareDiscriminants(left, right) => {
                                 let left = match computations.get(left).unwrap().clone() {
                                     Value::Discriminant(discriminant) => discriminant,
                                     _ => unreachable!(),
@@ -266,56 +206,53 @@ impl<'a> Interpreter<'a> {
 
                         computations.insert(*id, value);
                     }
-                    Statement::Initialize(var, computation) => {
+                    ir::Statement::Initialize(var, computation) => {
                         let value = computations.get(computation).unwrap().clone();
                         scope.insert(*var, value);
+                    }
+                    ir::Statement::Drop(vars) => {
+                        for var in vars {
+                            scope.remove(var);
+                        }
                     }
                 }
             }
 
             match &section.terminator {
-                Some(terminator) => {
-                    log!("\t{}", terminator);
+                Some(terminator) => match terminator {
+                    ir::Terminator::If(condition, then_section, else_section) => {
+                        let condition = computations.get(condition).unwrap().clone();
 
-                    match terminator {
-                        Terminator::If(condition, then_section, else_section) => {
-                            let condition = computations.get(condition).unwrap().clone();
+                        let condition = match condition {
+                            Value::Variant(n, _) => n == 1,
+                            _ => unreachable!(),
+                        };
 
-                            let condition = match condition {
-                                Value::Variant(n, _) => n == 1,
-                                _ => unreachable!(),
-                            };
-
-                            section_index = if condition {
-                                *then_section
-                            } else {
-                                *else_section
-                            };
-                        }
-                        Terminator::Return(computation) => {
-                            break Ok(Some(
-                                computations
-                                    .get(computation)
-                                    .unwrap_or_else(|| {
-                                        panic!(
-                                            "could not find {:?} in {:#?}",
-                                            computation, computations
-                                        )
-                                    })
-                                    .clone(),
-                            ));
-                        }
-                        Terminator::Goto(index) => {
-                            section_index = *index;
-                        }
-                        Terminator::Unreachable => unreachable!(),
+                        section_index = if condition {
+                            *then_section
+                        } else {
+                            *else_section
+                        };
                     }
-                }
-                None if !expect_terminator => {
-                    log!("\t<no terminator>");
-
-                    break Ok(None);
-                }
+                    ir::Terminator::Return(computation) => {
+                        break Ok(Some(
+                            computations
+                                .get(computation)
+                                .unwrap_or_else(|| {
+                                    panic!(
+                                        "could not find {:?} in {:#?}",
+                                        computation, computations
+                                    )
+                                })
+                                .clone(),
+                        ));
+                    }
+                    ir::Terminator::Goto(index) => {
+                        section_index = *index;
+                    }
+                    ir::Terminator::Unreachable => unreachable!(),
+                },
+                None if !expect_terminator => break Ok(None),
                 _ => unreachable!(),
             }
         }

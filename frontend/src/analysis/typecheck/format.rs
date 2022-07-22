@@ -1,6 +1,6 @@
 use itertools::Itertools;
 
-use super::engine::{BuiltinType, UnresolvedType};
+use super::engine::{BuiltinType, Type, UnresolvedType};
 use crate::{TraitId, TypeId, TypeParameterId};
 
 pub enum FormattableType {
@@ -11,6 +11,12 @@ pub enum FormattableType {
 impl From<UnresolvedType> for FormattableType {
     fn from(ty: UnresolvedType) -> Self {
         FormattableType::Type(ty)
+    }
+}
+
+impl From<Type> for FormattableType {
+    fn from(ty: Type) -> Self {
+        FormattableType::Type(ty.into())
     }
 }
 
@@ -95,7 +101,7 @@ fn format_type_with(
             FormattableType::Type(UnresolvedType::Variable(_)) => (String::from("_"), true),
             FormattableType::Type(UnresolvedType::Parameter(param)) => (param_names(param), true),
             FormattableType::Type(UnresolvedType::Bottom(_)) => (String::from("!"), true),
-            FormattableType::Type(UnresolvedType::Named(id, params)) => {
+            FormattableType::Type(UnresolvedType::Named(id, params, _)) => {
                 (format_named_type!(type_names(id), params), true)
             }
             FormattableType::Type(UnresolvedType::Builtin(ty)) => (

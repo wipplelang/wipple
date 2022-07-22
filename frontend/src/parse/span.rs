@@ -1,8 +1,8 @@
 use crate::{helpers::InternedString, FilePath};
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use std::{fmt, ops::Range};
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Serialize)]
 pub struct Span {
     pub path: FilePath,
     pub start: usize,

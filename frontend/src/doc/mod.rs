@@ -75,7 +75,7 @@ pub struct Constant {
 
 impl Documentation {
     pub fn new(
-        program: analysis::typecheck::Program,
+        program: analysis::Program,
         codemap: HashMap<FilePath, Arc<str>>,
         root: &Path,
     ) -> Self {
@@ -83,7 +83,7 @@ impl Documentation {
     }
 
     pub fn with_filter(
-        program: analysis::typecheck::Program,
+        program: analysis::Program,
         codemap: HashMap<FilePath, Arc<str>>,
         root: &Path,
         mut filter: impl FnMut(FilePath) -> bool,

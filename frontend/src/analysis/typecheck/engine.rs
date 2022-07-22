@@ -1,35 +1,44 @@
 use crate::{GenericConstantId, TraitId, TypeId, TypeParameterId};
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use std::collections::BTreeMap;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
 pub enum UnresolvedType {
     Variable(TypeVariable),
     Parameter(TypeParameterId),
-    Named(TypeId, Vec<UnresolvedType>),
+    Named(TypeId, Vec<UnresolvedType>, TypeStructure<UnresolvedType>),
     Function(Box<UnresolvedType>, Box<UnresolvedType>),
     Tuple(Vec<UnresolvedType>),
     Builtin(BuiltinType<Box<UnresolvedType>>),
     Bottom(BottomTypeReason),
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
 pub enum Type {
     Parameter(TypeParameterId),
-    Named(TypeId, Vec<Type>),
+    Named(TypeId, Vec<Type>, TypeStructure<Type>),
     Function(Box<Type>, Box<Type>),
     Tuple(Vec<Type>),
     Builtin(BuiltinType<Box<Type>>),
     Bottom(BottomTypeReason),
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
+pub enum TypeStructure<Ty> {
+    Marker,
+    Structure(Vec<Ty>),
+    Enumeration(Vec<Vec<Ty>>),
+}
+
 impl From<Type> for UnresolvedType {
     fn from(ty: Type) -> Self {
         match ty {
             Type::Parameter(param) => UnresolvedType::Parameter(param),
-            Type::Named(id, params) => {
-                UnresolvedType::Named(id, params.into_iter().map(|param| param.into()).collect())
-            }
+            Type::Named(id, params, structure) => UnresolvedType::Named(
+                id,
+                params.into_iter().map(|param| param.into()).collect(),
+                structure.into(),
+            ),
             Type::Function(input, output) => {
                 UnresolvedType::Function(Box::new((*input).into()), Box::new((*output).into()))
             }
@@ -47,10 +56,27 @@ impl From<Type> for UnresolvedType {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+impl From<TypeStructure<Type>> for TypeStructure<UnresolvedType> {
+    fn from(structure: TypeStructure<Type>) -> Self {
+        match structure {
+            TypeStructure::Marker => TypeStructure::Marker,
+            TypeStructure::Structure(tys) => {
+                TypeStructure::Structure(tys.into_iter().map(From::from).collect())
+            }
+            TypeStructure::Enumeration(variants) => TypeStructure::Enumeration(
+                variants
+                    .into_iter()
+                    .map(|tys| tys.into_iter().map(From::from).collect())
+                    .collect(),
+            ),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
 pub struct TypeVariable(pub usize);
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
 pub enum BuiltinType<Ty> {
     Number,
     Text,
@@ -58,7 +84,7 @@ pub enum BuiltinType<Ty> {
     Mutable(Ty),
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
 pub enum BottomTypeReason {
     Annotated,
     Error,
@@ -170,8 +196,8 @@ impl Context {
                 expected,
             )),
             (
-                UnresolvedType::Named(actual_id, actual_params),
-                UnresolvedType::Named(expected_id, expected_params),
+                UnresolvedType::Named(actual_id, actual_params, actual_structure),
+                UnresolvedType::Named(expected_id, expected_params, expected_structure),
             ) => {
                 if actual_id == expected_id {
                     for (actual, expected) in actual_params.iter().zip(&expected_params) {
@@ -180,8 +206,16 @@ impl Context {
                         {
                             return Err(if let TypeError::Mismatch(_, _) = error {
                                 TypeError::Mismatch(
-                                    UnresolvedType::Named(actual_id, actual_params),
-                                    UnresolvedType::Named(expected_id, expected_params),
+                                    UnresolvedType::Named(
+                                        actual_id,
+                                        actual_params,
+                                        actual_structure,
+                                    ),
+                                    UnresolvedType::Named(
+                                        expected_id,
+                                        expected_params,
+                                        expected_structure,
+                                    ),
                                 )
                             } else {
                                 error
@@ -192,8 +226,8 @@ impl Context {
                     Ok(())
                 } else {
                     Err(TypeError::Mismatch(
-                        UnresolvedType::Named(actual_id, actual_params),
-                        UnresolvedType::Named(expected_id, expected_params),
+                        UnresolvedType::Named(actual_id, actual_params, actual_structure),
+                        UnresolvedType::Named(expected_id, expected_params, expected_structure),
                     ))
                 }
             }
@@ -303,7 +337,7 @@ impl Context {
 impl UnresolvedType {
     pub fn id(&self) -> Option<TypeId> {
         match self {
-            UnresolvedType::Named(id, _) => Some(*id),
+            UnresolvedType::Named(id, _, _) => Some(*id),
             _ => None,
         }
     }
@@ -312,7 +346,7 @@ impl UnresolvedType {
         match self {
             UnresolvedType::Variable(v) => v == var,
             UnresolvedType::Function(input, output) => input.contains(var) || output.contains(var),
-            UnresolvedType::Named(_, params) => params.iter().any(|param| param.contains(var)),
+            UnresolvedType::Named(_, params, _) => params.iter().any(|param| param.contains(var)),
             UnresolvedType::Tuple(tys) => tys.iter().any(|ty| ty.contains(var)),
             UnresolvedType::Builtin(ty) => match ty {
                 BuiltinType::List(ty) | BuiltinType::Mutable(ty) => ty.contains(var),
@@ -328,7 +362,9 @@ impl UnresolvedType {
                 input.contains_error() || output.contains_error()
             }
             UnresolvedType::Bottom(BottomTypeReason::Error) => true,
-            UnresolvedType::Named(_, params) => params.iter().any(|param| param.contains_error()),
+            UnresolvedType::Named(_, params, _) => {
+                params.iter().any(|param| param.contains_error())
+            }
             UnresolvedType::Tuple(tys) => tys.iter().any(|ty| ty.contains_error()),
             UnresolvedType::Builtin(ty) => match ty {
                 BuiltinType::List(ty) | BuiltinType::Mutable(ty) => ty.contains_error(),
@@ -350,10 +386,12 @@ impl UnresolvedType {
                 input.apply(ctx);
                 output.apply(ctx);
             }
-            UnresolvedType::Named(_, params) => {
+            UnresolvedType::Named(_, params, structure) => {
                 for param in params {
                     param.apply(ctx);
                 }
+
+                structure.apply(ctx);
             }
             UnresolvedType::Tuple(tys) => {
                 for ty in tys {
@@ -380,10 +418,12 @@ impl UnresolvedType {
                 input.instantiate_with(substitutions);
                 output.instantiate_with(substitutions);
             }
-            UnresolvedType::Named(_, params) => {
+            UnresolvedType::Named(_, params, structure) => {
                 for param in params {
                     param.instantiate_with(substitutions);
                 }
+
+                structure.instantiate_with(substitutions);
             }
             UnresolvedType::Tuple(tys) => {
                 for ty in tys {
@@ -408,7 +448,11 @@ impl UnresolvedType {
                 params.extend(output.params());
                 params
             }
-            UnresolvedType::Named(_, params) => params.iter().flat_map(|ty| ty.params()).collect(),
+            UnresolvedType::Named(_, params, structure) => params
+                .iter()
+                .flat_map(|ty| ty.params())
+                .chain(structure.params())
+                .collect(),
             UnresolvedType::Tuple(tys) => tys.iter().flat_map(|ty| ty.params()).collect(),
             UnresolvedType::Builtin(ty) => match ty {
                 BuiltinType::List(ty) | BuiltinType::Mutable(ty) => ty.params(),
@@ -430,12 +474,13 @@ impl UnresolvedType {
                     return None;
                 }
             }
-            UnresolvedType::Named(id, params) => Type::Named(
+            UnresolvedType::Named(id, params, structure) => Type::Named(
                 id,
                 params
                     .into_iter()
                     .map(|param| param.finalize(ctx, generic))
                     .collect::<Option<_>>()?,
+                structure.finalize(ctx, generic)?,
             ),
             UnresolvedType::Function(input, output) => Type::Function(
                 Box::new(input.finalize(ctx, generic)?),
@@ -455,6 +500,76 @@ impl UnresolvedType {
                 }
             }),
             UnresolvedType::Bottom(is_error) => Type::Bottom(is_error),
+        })
+    }
+}
+
+impl TypeStructure<UnresolvedType> {
+    pub fn apply(&mut self, ctx: &Context) {
+        match self {
+            TypeStructure::Marker => {}
+            TypeStructure::Structure(tys) => {
+                for ty in tys {
+                    ty.apply(ctx);
+                }
+            }
+            TypeStructure::Enumeration(variants) => {
+                for tys in variants {
+                    for ty in tys {
+                        ty.apply(ctx);
+                    }
+                }
+            }
+        }
+    }
+
+    pub fn instantiate_with(&mut self, substitutions: &GenericSubstitutions) {
+        match self {
+            TypeStructure::Marker => {}
+            TypeStructure::Structure(tys) => {
+                for ty in tys {
+                    ty.instantiate_with(substitutions);
+                }
+            }
+            TypeStructure::Enumeration(variants) => {
+                for tys in variants {
+                    for ty in tys {
+                        ty.instantiate_with(substitutions);
+                    }
+                }
+            }
+        }
+    }
+
+    pub fn params(&self) -> Vec<TypeParameterId> {
+        match self {
+            TypeStructure::Marker => Vec::new(),
+            TypeStructure::Structure(tys) => tys.iter().flat_map(|ty| ty.params()).collect(),
+            TypeStructure::Enumeration(variants) => variants
+                .iter()
+                .flat_map(|tys| tys.iter().flat_map(|ty| ty.params()))
+                .collect(),
+        }
+    }
+
+    pub fn finalize(self, ctx: &Context, generic: bool) -> Option<TypeStructure<Type>> {
+        Some(match self {
+            TypeStructure::Marker => TypeStructure::Marker,
+            TypeStructure::Structure(tys) => TypeStructure::Structure(
+                tys.into_iter()
+                    .map(|ty| ty.finalize(ctx, generic))
+                    .collect::<Option<_>>()?,
+            ),
+            TypeStructure::Enumeration(variants) => TypeStructure::Enumeration(
+                variants
+                    .into_iter()
+                    .map(|tys| {
+                        tys.into_iter()
+                            .map(|ty| ty.finalize(ctx, generic))
+                            .collect::<Option<_>>()
+                    })
+                    .collect::<Option<_>>()?,
+            ),
         })
     }
 }

@@ -1,13 +1,12 @@
 use crate::{parse::Span, FilePath, Loader};
 use parking_lot::Mutex;
-use serde::Serialize;
 use std::{
     cmp::Ordering,
     collections::{hash_map::Entry, HashMap},
     sync::Arc,
 };
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone)]
 pub struct Diagnostic {
     pub level: DiagnosticLevel,
     pub message: String,
@@ -25,7 +24,7 @@ impl PartialEq for Diagnostic {
 
 impl Eq for Diagnostic {}
 
-#[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DiagnosticLevel {
     Note,
     Warning,
@@ -42,14 +41,14 @@ impl From<DiagnosticLevel> for codemap_diagnostic::Level {
     }
 }
 
-#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Note {
     pub level: NoteLevel,
     pub span: Span,
     pub message: String,
 }
 
-#[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum NoteLevel {
     Primary,
     Secondary,

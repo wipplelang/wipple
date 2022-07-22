@@ -162,7 +162,10 @@ impl<L: Loader> Compiler<L> {
     pub async fn expand(
         &self,
         file: parse::File,
-        load: impl Fn(&Compiler<L>, FilePath) -> BoxFuture<Option<Arc<File<L>>>> + 'static + Send + Sync,
+        load: impl Fn(&Compiler<L>, Span, FilePath) -> BoxFuture<Option<Arc<File<L>>>>
+            + 'static
+            + Send
+            + Sync,
     ) -> Option<File<L>> {
         let mut expander = Expander {
             compiler: self.clone(),
@@ -181,7 +184,7 @@ impl<L: Loader> Compiler<L> {
         if !attributes.no_std {
             let std_path = expander.compiler.loader.std_path();
             if let Some(std_path) = std_path {
-                let file = (expander.load)(&expander.compiler, std_path).await?;
+                let file = (expander.load)(&expander.compiler, file.span, std_path).await?;
                 expander.add_dependency(file, &scope);
             } else {
                 expander.compiler.diagnostics.add(Diagnostic::new(
@@ -216,7 +219,8 @@ struct Expander<L: Loader> {
     compiler: Compiler<L>,
     declarations: Arc<Mutex<Declarations<L>>>,
     dependencies: Arc<Mutex<Vec<Arc<File<L>>>>>,
-    load: Arc<dyn Fn(&Compiler<L>, FilePath) -> BoxFuture<Option<Arc<File<L>>>> + Send + Sync>,
+    load:
+        Arc<dyn Fn(&Compiler<L>, Span, FilePath) -> BoxFuture<Option<Arc<File<L>>>> + Send + Sync>,
 }
 
 #[derive(Debug, Clone, Default)]

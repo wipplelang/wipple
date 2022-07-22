@@ -9,7 +9,7 @@ use async_trait::async_trait;
 use diagnostics::*;
 use helpers::InternedString;
 use parking_lot::Mutex;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use std::{
     borrow::Cow,
     collections::HashMap,
@@ -35,7 +35,7 @@ pub trait Loader: Clone + Send + Sync + 'static {
     fn source_map(&self) -> Arc<Mutex<SourceMap>>;
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
 pub enum FilePath {
     Path(InternedString),
     Url(InternedString),
@@ -77,7 +77,7 @@ macro_rules! ids {
 
             $(
                 $(#[$meta])*
-                #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, ::serde::Serialize, ::serde::Deserialize)]
+                #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
                 pub struct $id(pub usize);
             )*
 
@@ -106,7 +106,7 @@ macro_rules! ids {
 
 ids!(
     BuiltinTypeId,
-    IrComputationId,
+    ComputationId,
     GenericConstantId,
     MonomorphizedConstantId,
     TemplateId,
