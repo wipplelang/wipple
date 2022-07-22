@@ -239,7 +239,7 @@ async fn run(
     let program = compiler
         .analyze(wipple_frontend::FilePath::Virtual(test_path))
         .await
-        .map(|program| compiler.ir_from(&program));
+        .and_then(|program| program.valid.then(|| compiler.ir_from(&program)));
 
     let diagnostics = compiler.finish();
     let success = !diagnostics.contains_errors();

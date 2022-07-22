@@ -223,14 +223,10 @@ impl<L: Loader> Compiler<L> {
             .map(|file| Arc::try_unwrap(file).unwrap())
             .collect::<Vec<_>>();
 
-        if self.diagnostics.contains_errors() {
-            return None;
-        }
-
         let program = self.typecheck_with_progress(lowered_files, |p| {
             progress.lock()(Progress::Typechecking(p))
         });
 
-        program.valid.then(|| program)
+        Some(program)
     }
 }
