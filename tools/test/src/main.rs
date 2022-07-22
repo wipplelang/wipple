@@ -267,7 +267,7 @@ async fn run(
     let mut diagnostics = {
         let mut buf = Vec::new();
         {
-            let (_, codemap, diagnostics) = diagnostics.into_console_friendly(
+            let (codemap, diagnostics) = diagnostics.into_console_friendly(
                 #[cfg(debug_assertions)]
                 trace_diagnostics,
             );

@@ -1953,6 +1953,7 @@ dependencies = [
  "regex",
  "rustc_lexer",
  "serde",
+ "serde_json",
  "strum",
 ]
 

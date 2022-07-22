@@ -149,7 +149,7 @@ pub async fn run(code: String) -> JsValue {
     let diagnostics = compiler.finish();
     let success = !diagnostics.contains_errors();
 
-    let (_, codemap, diagnostics) = diagnostics.into_console_friendly(
+    let (codemap, diagnostics) = diagnostics.into_console_friendly(
         #[cfg(debug_assertions)]
         false,
     );

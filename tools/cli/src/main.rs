@@ -59,8 +59,9 @@ struct BuildOptions {
 
 #[derive(Debug, Clone, Copy, ValueEnum)]
 enum Target {
-    Rust,
+    Analysis,
     Ir,
+    Rust,
 }
 
 #[tokio::main]
@@ -95,17 +96,38 @@ async fn run() -> anyhow::Result<()> {
         progress_bar
     }));
 
+    let emit_diagnostics = |diagnostics: wipple_frontend::diagnostics::FinalizedDiagnostics<_>,
+                            options: &BuildOptions| {
+        let (codemap, diagnostics) = diagnostics.into_console_friendly(
+            #[cfg(debug_assertions)]
+            options.trace,
+        );
+
+        if !diagnostics.is_empty() {
+            let mut emitter = codemap_diagnostic::Emitter::stderr(
+                codemap_diagnostic::ColorConfig::Auto,
+                Some(&codemap),
+            );
+
+            emitter.emit(&diagnostics);
+        }
+    };
+
     match args {
         Args::Run { options } => {
-            let ir = build_ir(options, progress_bar.clone()).await;
+            let ir = generate_ir(&options, progress_bar.clone()).await;
 
             if let Some(progress_bar) = progress_bar.as_ref() {
                 progress_bar.finish_and_clear();
             }
 
             let ir = match ir {
-                Some(ir) => ir,
-                None => return Err(anyhow::Error::msg("")),
+                Ok(ir) => ir,
+                Err(diagnostics) => {
+                    emit_diagnostics(diagnostics, &options);
+
+                    return Err(anyhow::Error::msg(""));
+                }
             };
 
             #[allow(unused_mut)]
@@ -120,19 +142,57 @@ async fn run() -> anyhow::Result<()> {
             }
         }
         Args::Compile { options, target } => {
-            let ir = match build_ir(options, progress_bar.clone()).await {
-                Some(ir) => ir,
-                None => {
+            match target {
+                Target::Analysis => {
+                    let program = match analyze(&options, progress_bar.clone()).await {
+                        Ok((program, _)) => program,
+                        Err(diagnostics) => {
+                            if let Some(progress_bar) = progress_bar.as_ref() {
+                                progress_bar.finish_and_clear();
+                            }
+
+                            emit_diagnostics(diagnostics, &options);
+
+                            return Err(anyhow::Error::msg(""));
+                        }
+                    };
+
+                    serde_json::to_writer(io::stdout(), &program).unwrap();
+                }
+                Target::Ir => {
+                    let ir = match generate_ir(&options, progress_bar.clone()).await {
+                        Ok(ir) => ir,
+                        Err(diagnostics) => {
+                            if let Some(progress_bar) = progress_bar.as_ref() {
+                                progress_bar.finish_and_clear();
+                            }
+
+                            emit_diagnostics(diagnostics, &options);
+
+                            return Err(anyhow::Error::msg(""));
+                        }
+                    };
+
                     if let Some(progress_bar) = progress_bar.as_ref() {
                         progress_bar.finish_and_clear();
                     }
 
-                    return Err(anyhow::Error::msg(""));
+                    print!("{}", ir)
                 }
-            };
-
-            match target {
                 Target::Rust => {
+                    let ir = match generate_ir(&options, progress_bar.clone()).await {
+                        Ok(ir) => ir,
+                        Err(diagnostics) => {
+                            if let Some(progress_bar) = progress_bar.as_ref() {
+                                progress_bar.finish_and_clear();
+                            }
+
+                            emit_diagnostics(diagnostics, &options);
+
+                            return Err(anyhow::Error::msg(""));
+                        }
+                    };
+
                     if let Some(progress_bar) = progress_bar.as_deref() {
                         progress_bar.set_message("Compiling to Rust");
                     }
@@ -149,13 +209,6 @@ async fn run() -> anyhow::Result<()> {
 
                     print!("{}", src)
                 }
-                Target::Ir => {
-                    if let Some(progress_bar) = progress_bar.as_ref() {
-                        progress_bar.finish_and_clear();
-                    }
-
-                    print!("{}", ir)
-                }
             }
         }
         Args::Doc { options, full } => {
@@ -168,12 +221,14 @@ async fn run() -> anyhow::Result<()> {
                 }
             };
 
-            let (program, codemap) = match analyze(options, progress_bar.clone()).await {
-                Some(ir) => ir,
-                None => {
+            let (program, codemap) = match analyze(&options, progress_bar.clone()).await {
+                Ok(ir) => ir,
+                Err(diagnostics) => {
                     if let Some(progress_bar) = progress_bar.as_ref() {
                         progress_bar.finish_and_clear();
                     }
+
+                    emit_diagnostics(diagnostics, &options);
 
                     return Err(anyhow::Error::msg("failed to build"));
                 }
@@ -232,26 +287,26 @@ async fn run() -> anyhow::Result<()> {
 }
 
 async fn analyze(
-    options: BuildOptions,
+    options: &BuildOptions,
     progress_bar: Option<Arc<indicatif::ProgressBar>>,
-) -> Option<(
-    wipple_frontend::analysis::Program,
-    wipple_frontend::SourceMap,
-)> {
+) -> Result<
+    (
+        wipple_frontend::analysis::Program,
+        wipple_frontend::SourceMap,
+    ),
+    wipple_frontend::diagnostics::FinalizedDiagnostics<loader::Loader>,
+> {
     build_with_passes(options, progress_bar, |_, _, program| program).await
 }
 
-async fn build_ir(
-    options: BuildOptions,
+async fn generate_ir(
+    options: &BuildOptions,
     progress_bar: Option<Arc<indicatif::ProgressBar>>,
-) -> Option<wipple_frontend::ir::Program> {
+) -> Result<
+    wipple_frontend::ir::Program,
+    wipple_frontend::diagnostics::FinalizedDiagnostics<loader::Loader>,
+> {
     build_with_passes(options, progress_bar, |progress_bar, compiler, program| {
-        if let Some(progress_bar) = progress_bar {
-            progress_bar.set_message("Linting");
-        }
-
-        compiler.lint(&program);
-
         if let Some(progress_bar) = progress_bar {
             progress_bar.set_message("Generating IR");
         }
@@ -263,14 +318,17 @@ async fn build_ir(
 }
 
 async fn build_with_passes<P>(
-    options: BuildOptions,
+    options: &BuildOptions,
     progress_bar: Option<Arc<indicatif::ProgressBar>>,
     passes: impl FnOnce(
         Option<&indicatif::ProgressBar>,
         &mut Compiler<loader::Loader>,
         wipple_frontend::analysis::Program,
     ) -> P,
-) -> Option<(P, wipple_frontend::SourceMap)> {
+) -> Result<
+    (P, wipple_frontend::SourceMap),
+    wipple_frontend::diagnostics::FinalizedDiagnostics<loader::Loader>,
+> {
     let analysis_progress = {
         let progress_bar = progress_bar.clone();
 
@@ -339,31 +397,26 @@ async fn build_with_passes<P>(
 
     let mut compiler = Compiler::new(loader);
 
-    let path = wipple_frontend::FilePath::Path(options.path.into());
+    let path = wipple_frontend::FilePath::Path(options.path.clone().into());
     let program = compiler
         .analyze_with_progress(path, analysis_progress)
         .await;
 
-    let program = program.map(|program| passes(progress_bar.as_deref(), &mut compiler, program));
+    let program = program.map(|program| {
+        if let Some(progress_bar) = progress_bar.as_deref() {
+            progress_bar.set_message("Linting");
+        }
+
+        compiler.lint(&program);
+
+        passes(progress_bar.as_deref(), &mut compiler, program)
+    });
 
     let diagnostics = compiler.finish();
     let success = !diagnostics.contains_errors();
 
-    let (loader, codemap, diagnostics) = diagnostics.into_console_friendly(
-        #[cfg(debug_assertions)]
-        options.trace,
-    );
-
-    if !diagnostics.is_empty() {
-        let mut emitter = codemap_diagnostic::Emitter::stderr(
-            codemap_diagnostic::ColorConfig::Auto,
-            Some(&codemap),
-        );
-
-        emitter.emit(&diagnostics);
-    }
-
     success
-        .then(|| program.map(|program| (program, loader.source_map().lock().clone())))
+        .then(|| program.map(|program| (program, compiler.loader.source_map().lock().clone())))
         .flatten()
+        .ok_or(diagnostics)
 }

@@ -125,12 +125,10 @@ impl<L: Loader> Compiler<L> {
         }
     }
 
-    pub fn finish(self) -> FinalizedDiagnostics<L> {
+    pub fn finish(&self) -> FinalizedDiagnostics<L> {
         FinalizedDiagnostics {
-            loader: self.loader,
-            diagnostics: Arc::try_unwrap(self.diagnostics.diagnostics)
-                .unwrap()
-                .into_inner(),
+            loader: self.loader.clone(),
+            diagnostics: self.diagnostics.diagnostics.lock().clone(),
         }
     }
 }
