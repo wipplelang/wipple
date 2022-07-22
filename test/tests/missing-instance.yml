@@ -7,12 +7,12 @@ output: |
 
 diagnostics: |
     error: missing instance
-      --> <dir>/std/output.wpl:17:17
+      --> <dir>/std/output.wpl:16:17
        |
-    17 | show :: A where (Show A) => A -> ()
+    16 | show :: A where (Show A) => A -> ()
        |                 ^^^^^^^^ could not find instance `Show Foo`
     error: missing instance
-      --> <dir>/std/output.wpl:18:33
+      --> <dir>/std/output.wpl:17:40
        |
-    18 | show : x -> print (format "_\n" x)
-       |                                 ^ could not find instance `Show Foo`
+    17 | show : x -> write-stdout (format "_\n" x)
+       |                                        ^ could not find instance `Show Foo`
