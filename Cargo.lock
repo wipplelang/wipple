@@ -976,6 +976,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8b870d8c151b6f2fb93e84a13146138f05d02ed11c7e7c54f8826aaaf7c9f184"
 
 [[package]]
+name = "prettyplease"
+version = "0.1.16"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "da6ffbe862780245013cb1c0a48c4e44b7d665548088f91f6b90876d0625e4c2"
+dependencies = [
+ "proc-macro2",
+ "syn",
+]
+
+[[package]]
 name = "proc-macro-error"
 version = "1.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1892,11 +1902,14 @@ dependencies = [
  "codemap",
  "codemap-diagnostic",
  "indicatif",
+ "prettyplease",
  "serde_json",
+ "syn",
  "tokio",
  "wipple-default-loader",
  "wipple-frontend",
  "wipple-interpreter-backend",
+ "wipple-rust-backend",
 ]
 
 [[package]]
@@ -1974,6 +1987,17 @@ dependencies = [
  "wipple-default-loader",
  "wipple-frontend",
  "wipple-interpreter-backend",
+]
+
+[[package]]
+name = "wipple-rust-backend"
+version = "0.0.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+ "thiserror",
+ "wipple-frontend",
 ]
 
 [[package]]

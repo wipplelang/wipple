@@ -465,7 +465,8 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
                     match input.kind {
                         NodeKind::Text(path) => {
                             if let Some(file) =
-                                (expander.load)(&expander.compiler, FilePath::Path(path)).await
+                                (expander.load)(&expander.compiler, span, FilePath::Path(path))
+                                    .await
                             {
                                 expander.add_dependency(file, scope);
                             }
@@ -734,24 +735,51 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
                                     format_text,
                                     Node {
                                         span: Span::builtin("generated list as input to `format`"),
-                                        kind: NodeKind::Tuple(
-                                            inputs
-                                                .into_iter()
-                                                .map(|input| Node {
-                                                    span: input.span,
-                                                    kind: NodeKind::List(vec![
-                                                        Node {
-                                                            span: input.span,
-                                                            kind: NodeKind::Name(
-                                                                InternedString::new("Show"),
-                                                            ),
-                                                        },
-                                                        input,
-                                                    ]),
-                                                })
-                                                .collect(),
+                                        kind: NodeKind::Annotate(
+                                            Box::new(Node {
+                                                span: Span::builtin("generated list as input to `format`"),
+                                                kind: NodeKind::List(vec![
+                                                    Node {
+                                                        span: Span::builtin("generated list as input to `format`"),
+                                                        kind: NodeKind::Name(InternedString::new("list")),
+                                                    },
+                                                    Node {
+                                                        span: Span::builtin("generated list as input to `format`"),
+                                                        kind: NodeKind::Tuple(
+                                                            inputs
+                                                                .into_iter()
+                                                                .map(|input| Node {
+                                                                    span: input.span,
+                                                                    kind: NodeKind::List(vec![
+                                                                        Node {
+                                                                            span: input.span,
+                                                                            kind: NodeKind::Name(
+                                                                                InternedString::new("Show"),
+                                                                            ),
+                                                                        },
+                                                                        input,
+                                                                    ]),
+                                                                })
+                                                                .collect(),
+                                                        ),
+                                                    }
+                                                ]),
+                                            }),
+                                            Box::new(Node {
+                                                span: Span::builtin("generated `List` type as input to `format`"),
+                                                kind: NodeKind::List(vec![
+                                                    Node {
+                                                        span: Span::builtin("generated `List` type as input to `format`"),
+                                                        kind: NodeKind::Name(InternedString::new("List")),
+                                                    },
+                                                    Node {
+                                                        span: Span::builtin("generated `List` type as input to `format`"),
+                                                        kind: NodeKind::Name(InternedString::new("Text")),
+                                                    },
+                                                ]),
+                                            }),
                                         ),
-                                    },
+                                    }
                                 ],
                             ),
                         }),

@@ -136,12 +136,12 @@ pub async fn run(code: String) -> JsValue {
     let mut compiler = wipple_frontend::Compiler::new(loader);
 
     let program = compiler
-        .build(wipple_frontend::FilePath::Virtual(playground_path))
+        .analyze(wipple_frontend::FilePath::Virtual(playground_path))
         .await;
 
     let program = program.map(|program| {
         compiler.lint(&program);
-        compiler.ir_from(program)
+        compiler.ir_from(&program)
     });
 
     let diagnostics = compiler.finish();

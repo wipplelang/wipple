@@ -8,7 +8,7 @@ Range : type {
 	step :: Number
 }
 
-instance Iterate () Range Number : range -> {
+instance Iterate Range Number : range -> {
 	range : mutable range
 	{ min max step } : get range
 	current : mutable min
@@ -22,8 +22,7 @@ instance Iterate () Range Number : range -> {
 	}
 
 	Iterator {
-		context : mutable ()
-		next : _ -> {
+		next : () -> {
 			{ max step } : get range
 
 			if ((get current) >= max) {

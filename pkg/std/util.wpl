@@ -2,7 +2,6 @@
 
 use "./fp.wpl"
 use "./logic.wpl"
-use "./output.wpl"
 
 [help "Crash the program with the provided message."]
 crash :: Text -> !
@@ -26,11 +25,6 @@ Maybe : Value => type {
 
 use Maybe
 
-Value where (Show Value) => instance Show (Maybe Value) : x? -> when x? {
-	Some x -> format "Some _" (Show x)
-	None -> "None"
-}
-
 [help "Represents the success or failure of an operation."]
 Result : Success Failure => type {
 	OK Success
@@ -45,26 +39,17 @@ Try : Value Success Failure => trait (Value -> Result Success Failure)
 [help "Represents the failure to find a value inside a `Maybe`."]
 None-Error : type
 
-instance Show None-Error : just "found `None`"
-
 A => instance Try (Maybe A) A None-Error : x? -> when x? {
 	Some x -> OK x
 	None -> Error None-Error
 }
 
-Success Failure => instance Try (Result Success Failure) Success Failure : it
+Success Failure => instance Try (Result Success Failure) Success Failure : x? -> (x? :: Result Success Failure)
 
-try : x? ~> when (Try x?) {
+try : x? ~> when ((Try :: _ -> Result _ _) x?) {
 	OK x -> x
 	Error e -> return (Error e)
 }
-
-Success Failure where (Show Success) (Show Failure) =>
-	instance Show (Result Success Failure) :
-		x? -> when x? {
-		OK x -> format "OK _" (Show x)
-		Error e -> format "Error _" (Show e)
-	}
 
 -- TODO: Use higher-kinded types
 Expect : Container Value => trait (Text -> Container -> Value)
@@ -73,13 +58,6 @@ Value => instance Expect (Maybe Value) Value : message -> x? -> when x? {
 	Some x -> x
 	None -> crash message
 }
-
-Success Failure where (Show Failure) =>
-	instance Expect (Result Success Failure) Success :
-		message -> x? -> when x? {
-			OK x -> x
-			Error e -> crash (format "_: _" message e)
-		}
 
 Unwrap-Message : Container => trait (Container -> Text)
 

@@ -95,7 +95,7 @@ fn format_type_with(
             FormattableType::Type(UnresolvedType::Variable(_)) => (String::from("_"), true),
             FormattableType::Type(UnresolvedType::Parameter(param)) => (param_names(param), true),
             FormattableType::Type(UnresolvedType::Bottom(_)) => (String::from("!"), true),
-            FormattableType::Type(UnresolvedType::Named(id, params)) => {
+            FormattableType::Type(UnresolvedType::Named(id, params, _)) => {
                 (format_named_type!(type_names(id), params), true)
             }
             FormattableType::Type(UnresolvedType::Builtin(ty)) => (

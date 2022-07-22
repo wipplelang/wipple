@@ -1,7 +1,6 @@
 [[no-std]]
 
 use "./util.wpl"
-use "./output.wpl"
 use "./fp.wpl"
 use "./mutable.wpl"
 
@@ -45,8 +44,6 @@ tail :: A => List A -> Maybe (List A)
 tail : list -> external "runtime" "list-tail" list
 
 Index-Error : type
-
-instance Show Index-Error : just "invalid index"
 
 [help "Retrieve the value in a `List` at a particular index, if it exists."]
 at :: A => Number -> List A -> Result A Index-Error

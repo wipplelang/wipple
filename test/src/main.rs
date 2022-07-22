@@ -20,11 +20,7 @@ struct Args {
 
     #[cfg(debug_assertions)]
     #[clap(long)]
-    trace_diagnostics: bool,
-
-    #[cfg(debug_assertions)]
-    #[clap(long)]
-    trace_ir: bool,
+    trace: bool,
 }
 
 #[tokio::main]
@@ -64,9 +60,7 @@ async fn main() -> anyhow::Result<()> {
             &test_case,
             wipple_frontend::Compiler::new(loader.clone()),
             #[cfg(debug_assertions)]
-            args.trace_diagnostics,
-            #[cfg(debug_assertions)]
-            args.trace_ir,
+            args.trace,
         )
         .await?;
 
@@ -233,7 +227,6 @@ async fn run(
     test_case: &TestCase,
     mut compiler: wipple_frontend::Compiler<loader::Loader>,
     #[cfg(debug_assertions)] trace_diagnostics: bool,
-    #[cfg(debug_assertions)] trace_ir: bool,
 ) -> anyhow::Result<TestResult> {
     let test_path = wipple_frontend::helpers::InternedString::new("test");
 
@@ -244,9 +237,9 @@ async fn run(
         .insert(test_path, Arc::from(test_case.code.as_str()));
 
     let program = compiler
-        .build(wipple_frontend::FilePath::Virtual(test_path))
+        .analyze(wipple_frontend::FilePath::Virtual(test_path))
         .await
-        .map(|program| compiler.ir_from(program));
+        .map(|program| compiler.ir_from(&program));
 
     let diagnostics = compiler.finish();
     let success = !diagnostics.contains_errors();
@@ -261,11 +254,6 @@ async fn run(
                     wipple_interpreter_backend::Interpreter::handling_output(|text| {
                         write!(buf.borrow_mut(), "{}", text).unwrap()
                     });
-
-                #[cfg(debug_assertions)]
-                {
-                    interpreter = interpreter.tracing_ir(trace_ir);
-                }
 
                 if let Err(error) = interpreter.run(&program) {
                     write!(buf.borrow_mut(), "fatal error: {}", error)?;

@@ -4,7 +4,7 @@ mod engine;
 mod format;
 mod traverse;
 
-pub use engine::{BottomTypeReason, BuiltinType, Type};
+pub use engine::{BottomTypeReason, BuiltinType, Type, TypeStructure};
 pub use format::{format_type, FormattableType};
 
 use crate::{
@@ -305,24 +305,18 @@ impl<L: Loader> Compiler<L> {
                 if !typechecker.types.contains_key(&id) {
                     match &decl.value.kind {
                         lower::TypeKind::Structure(fields, field_names) => {
-                            let fields = field_names
+                            let field_tys = fields
                                 .iter()
-                                .map(|(name, index)| {
-                                    (
-                                        *name,
-                                        (
-                                            *index,
-                                            typechecker
-                                                .convert_type_annotation(&fields[*index].ty, file),
-                                        ),
-                                    )
-                                })
+                                .map(|field| typechecker.convert_type_annotation(&field.ty, file))
                                 .collect();
 
                             typechecker.types.insert(
                                 id,
                                 TypeDefinition {
-                                    kind: TypeDefinitionKind::Structure(fields),
+                                    kind: TypeDefinitionKind::Structure(
+                                        field_tys,
+                                        field_names.clone(),
+                                    ),
                                     params,
                                 },
                             );
@@ -331,21 +325,24 @@ impl<L: Loader> Compiler<L> {
                             let variant_tys = variants
                                 .iter()
                                 .map(|variant| {
-                                    (
-                                        variant.constructor,
-                                        variant
-                                            .tys
-                                            .iter()
-                                            .map(|ty| typechecker.convert_type_annotation(ty, file))
-                                            .collect(),
-                                    )
+                                    variant
+                                        .tys
+                                        .iter()
+                                        .map(|ty| typechecker.convert_type_annotation(ty, file))
+                                        .collect()
                                 })
                                 .collect();
+
+                            let variant_constructors =
+                                variants.iter().map(|variant| variant.constructor).collect();
 
                             typechecker.types.insert(
                                 id,
                                 TypeDefinition {
-                                    kind: TypeDefinitionKind::Enumeration(variant_tys),
+                                    kind: TypeDefinitionKind::Enumeration(
+                                        variant_tys,
+                                        variant_constructors,
+                                    ),
                                     params,
                                 },
                             );
@@ -952,8 +949,8 @@ struct TypeDefinition {
 #[derive(Debug, Clone)]
 enum TypeDefinitionKind {
     Marker,
-    Structure(HashMap<InternedString, (usize, UnresolvedType)>),
-    Enumeration(Vec<(GenericConstantId, Vec<UnresolvedType>)>),
+    Structure(Vec<UnresolvedType>, HashMap<InternedString, usize>),
+    Enumeration(Vec<Vec<UnresolvedType>>, Vec<GenericConstantId>),
 }
 
 #[derive(Debug, Clone)]
@@ -1018,6 +1015,7 @@ impl<L: Loader> Typechecker<L> {
                         .into_iter()
                         .map(UnresolvedType::Parameter)
                         .collect(),
+                    TypeStructure::Marker,
                 );
 
                 let mut substitutions = BTreeMap::new();
@@ -1219,8 +1217,10 @@ impl<L: Loader> Typechecker<L> {
             lower::ExpressionKind::Instantiate(id, fields) => {
                 let structure = self.types.get(id).unwrap().clone();
 
-                let mut structure_fields = match &structure.kind {
-                    TypeDefinitionKind::Structure(fields) => fields.clone(),
+                let (mut structure_field_tys, structure_field_names) = match &structure.kind {
+                    TypeDefinitionKind::Structure(field_tys, field_names) => {
+                        (field_tys.clone(), field_names.clone())
+                    }
                     _ => unreachable!(), // or do we need to display an error like above?
                 };
 
@@ -1231,24 +1231,25 @@ impl<L: Loader> Typechecker<L> {
                         .into_iter()
                         .map(UnresolvedType::Parameter)
                         .collect(),
+                    TypeStructure::Structure(structure_field_tys.clone()),
                 );
 
                 let mut substitutions = BTreeMap::new();
                 self.add_substitutions(&mut ty, &mut substitutions);
 
-                for (_, ty) in structure_fields.values_mut() {
-                    self.add_substitutions(ty, &mut substitutions);
+                for index in structure_field_names.values() {
+                    self.add_substitutions(&mut structure_field_tys[*index], &mut substitutions);
                 }
 
-                let mut fields_by_index = structure_fields.iter().collect::<Vec<_>>();
-                fields_by_index.sort_by_key(|(_, (index, _))| *index);
+                let mut fields_by_index = structure_field_names.iter().collect::<Vec<_>>();
+                fields_by_index.sort_by_key(|(_, index)| *index);
 
                 let mut unpopulated_fields = vec![None; fields_by_index.len()];
                 let mut extra_fields = Vec::new();
 
                 for (name, expr) in fields {
-                    let (index, ty) = match structure_fields.get(name) {
-                        Some((index, ty)) => (*index, ty.clone()),
+                    let (index, ty) = match structure_field_names.get(name) {
+                        Some(index) => (*index, structure_field_tys[*index].clone()),
                         None => {
                             extra_fields.push(name);
                             continue;
@@ -1332,10 +1333,14 @@ impl<L: Loader> Typechecker<L> {
             lower::ExpressionKind::Variant(id, index, values) => {
                 let enumeration = self.types.get(id).unwrap().clone();
 
-                let (mut variant_constructor, mut variant_tys) = match &enumeration.kind {
-                    TypeDefinitionKind::Enumeration(variants) => {
-                        let (id, tys) = &variants[*index];
-                        (self.generic_constants.get(id).unwrap().clone(), tys.clone())
+                let (variants_tys, mut variant_constructor) = match &enumeration.kind {
+                    TypeDefinitionKind::Enumeration(variants_tys, variants_constructors) => {
+                        let id = &variants_constructors[*index];
+
+                        (
+                            variants_tys.clone(),
+                            self.generic_constants.get(id).unwrap().clone(),
+                        )
                     }
                     _ => unreachable!(), // or do we need to display an error like above?
                 };
@@ -1347,6 +1352,7 @@ impl<L: Loader> Typechecker<L> {
                         .into_iter()
                         .map(UnresolvedType::Parameter)
                         .collect(),
+                    TypeStructure::Enumeration(variants_tys.clone()),
                 );
 
                 let mut substitutions = BTreeMap::new();
@@ -1355,6 +1361,8 @@ impl<L: Loader> Typechecker<L> {
                 for (_, ty, _) in &mut variant_constructor.bounds {
                     self.add_substitutions(ty, &mut substitutions);
                 }
+
+                let mut variant_tys = variants_tys[*index].clone();
 
                 for ty in &mut variant_tys {
                     self.add_substitutions(ty, &mut substitutions);
@@ -1741,7 +1749,7 @@ impl<L: Loader> Typechecker<L> {
             }
             UnresolvedPatternKind::Destructure(fields) => {
                 let (id, params) = match ty.clone() {
-                    UnresolvedType::Named(id, params) => (id, params),
+                    UnresolvedType::Named(id, params, _) => (id, params),
                     _ => {
                         self.compiler.diagnostics.add(Diagnostic::error(
                             "cannot destructure this value",
@@ -1764,8 +1772,10 @@ impl<L: Loader> Typechecker<L> {
                     }
                 };
 
-                let structure_fields = match &structure.kind {
-                    TypeDefinitionKind::Structure(fields) => fields.clone(),
+                let (structure_field_tys, structure_field_names) = match &structure.kind {
+                    TypeDefinitionKind::Structure(field_tys, field_names) => {
+                        (field_tys.clone(), field_names.clone())
+                    }
                     _ => unreachable!(), // or do we need to display an error like above?
                 };
 
@@ -1792,8 +1802,8 @@ impl<L: Loader> Typechecker<L> {
                 let fields = fields
                     .into_iter()
                     .filter_map(|(name, pattern)| {
-                        let (index, mut member_ty) = match structure_fields.get(&name) {
-                            Some((index, ty)) => (*index, ty.clone()),
+                        let index = match structure_field_names.get(&name) {
+                            Some(index) => *index,
                             None => {
                                 self.compiler.diagnostics.add(Diagnostic::error(
                                     format!("value has no member named '{}'", name),
@@ -1804,6 +1814,7 @@ impl<L: Loader> Typechecker<L> {
                             }
                         };
 
+                        let mut member_ty = structure_field_tys[index].clone();
                         member_ty.instantiate_with(&substitutions);
 
                         let (matches, match_set) = &mut field_match_sets[index];
@@ -1834,7 +1845,7 @@ impl<L: Loader> Typechecker<L> {
             }
             UnresolvedPatternKind::Variant(variant_ty, variant, values) => {
                 let (id, params) = match &ty {
-                    UnresolvedType::Named(id, params) => (id, params),
+                    UnresolvedType::Named(id, params, _) => (id, params),
                     _ => {
                         self.compiler.diagnostics.add(Diagnostic::error(
                             "cannot apply pattern to this value",
@@ -1857,8 +1868,8 @@ impl<L: Loader> Typechecker<L> {
                     }
                 };
 
-                let (_, mut variant_tys) = match &enumeration.kind {
-                    TypeDefinitionKind::Enumeration(variants) => variants[variant].clone(),
+                let mut variant_tys = match &enumeration.kind {
+                    TypeDefinitionKind::Enumeration(variant_tys, _) => variant_tys[variant].clone(),
                     _ => unreachable!(), // or do we need to display an error like above?
                 };
 
@@ -1882,6 +1893,9 @@ impl<L: Loader> Typechecker<L> {
                             .iter()
                             .map(|param| substitutions.get(param).unwrap().clone())
                             .collect(),
+                        // HACK: Optimization because unification doesn't take structure into
+                        // account -- the structure can be applied during finalization
+                        TypeStructure::Marker,
                     ),
                 ) {
                     self.errors.push(Error::new(error, pattern.span));
@@ -1978,7 +1992,13 @@ impl<L: Loader> Typechecker<L> {
                 if let Some(boolean_ty) = file.borrow().global_attributes.language_items.boolean {
                     if let Err(error) = self.ctx.unify(
                         condition.ty.clone(),
-                        UnresolvedType::Named(boolean_ty, Vec::new()),
+                        UnresolvedType::Named(
+                            boolean_ty,
+                            Vec::new(),
+                            // HACK: Optimization because unification doesn't take structure into
+                            // account -- the structure can be applied during finalization
+                            TypeStructure::Marker,
+                        ),
                     ) {
                         self.errors.push(Error::new(error, condition.span));
                     }
@@ -2526,13 +2546,53 @@ impl<L: Loader> Typechecker<L> {
             lower::TypeAnnotationKind::Placeholder => {
                 UnresolvedType::Variable(self.ctx.new_variable())
             }
-            lower::TypeAnnotationKind::Named(id, params) => UnresolvedType::Named(
-                *id,
-                params
+            lower::TypeAnnotationKind::Named(id, params) => {
+                let file_ = file.borrow();
+                let ty = file_.declarations.types.get(id).unwrap();
+
+                let params = params
                     .iter()
                     .map(|param| self.convert_type_annotation(param, file))
-                    .collect(),
-            ),
+                    .collect::<Vec<_>>();
+
+                let substitutions = ty
+                    .value
+                    .params
+                    .iter()
+                    .copied()
+                    .zip(params.iter().cloned())
+                    .collect::<BTreeMap<_, _>>();
+
+                let mut convert_and_instantiate = |ty| {
+                    let mut ty = self.convert_type_annotation(ty, file);
+                    ty.instantiate_with(&substitutions);
+                    ty
+                };
+
+                let structure = match &ty.value.kind {
+                    lower::TypeKind::Marker => TypeStructure::Marker,
+                    lower::TypeKind::Structure(fields, _) => TypeStructure::Structure(
+                        fields
+                            .iter()
+                            .map(|field| convert_and_instantiate(&field.ty))
+                            .collect(),
+                    ),
+                    lower::TypeKind::Enumeration(variants, _) => TypeStructure::Enumeration(
+                        variants
+                            .iter()
+                            .map(|variant| {
+                                variant
+                                    .tys
+                                    .iter()
+                                    .map(&mut convert_and_instantiate)
+                                    .collect()
+                            })
+                            .collect(),
+                    ),
+                };
+
+                UnresolvedType::Named(*id, params, structure)
+            }
             lower::TypeAnnotationKind::Parameter(id) => UnresolvedType::Parameter(*id),
             lower::TypeAnnotationKind::Builtin(id, parameters) => {
                 let builtin_ty = file
@@ -2693,21 +2753,21 @@ enum MatchSet {
 impl<L: Loader> Typechecker<L> {
     fn match_set_from(&mut self, ty: &UnresolvedType) -> Result<MatchSet, TypeError> {
         match &ty {
-            UnresolvedType::Named(id, _) => {
+            UnresolvedType::Named(id, _, _) => {
                 let kind = self.types.get(id).unwrap().kind.clone();
 
                 match kind {
                     TypeDefinitionKind::Marker => Ok(MatchSet::Marker(false)),
-                    TypeDefinitionKind::Structure(fields) => Ok(MatchSet::Structure(
+                    TypeDefinitionKind::Structure(fields, _) => Ok(MatchSet::Structure(
                         fields
-                            .values()
-                            .map(|(_, ty)| Ok((false, self.match_set_from(ty)?)))
+                            .iter()
+                            .map(|ty| Ok((false, self.match_set_from(ty)?)))
                             .collect::<Result<_, _>>()?,
                     )),
-                    TypeDefinitionKind::Enumeration(variants) => Ok(MatchSet::Enumeration(
+                    TypeDefinitionKind::Enumeration(variants, _) => Ok(MatchSet::Enumeration(
                         variants
                             .iter()
-                            .map(|(_, tys)| {
+                            .map(|tys| {
                                 Ok((
                                     false,
                                     tys.iter()

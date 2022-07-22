@@ -48,7 +48,7 @@ lazy_static! {
 
         fns!(
             "crash",
-            "print",
+            "write-stdout",
             "format",
             "number-to-text",
             "add",
@@ -111,7 +111,7 @@ fn crash(_: &Interpreter, (text,): (Value,)) -> Result<Value, Error> {
     Err(Error::from(text.as_ref()))
 }
 
-fn print(interpreter: &Interpreter, (text,): (Value,)) -> Result<Value, Error> {
+fn write_stdout(interpreter: &Interpreter, (text,): (Value,)) -> Result<Value, Error> {
     let text = match text {
         Value::Text(text) => text,
         _ => unreachable!(),

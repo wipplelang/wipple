@@ -1,188 +1,211 @@
-use super::{Expression, Program, Statement, Terminator};
-use crate::{ir::SectionIndex, IrComputationId, VariableId};
+use super::{ExpressionKind, Program, SectionIndex, Statement, Terminator, Type};
+use crate::{ComputationId, VariableId};
+use std::collections::BTreeMap;
 
 impl std::fmt::Display for Program {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        let mut indentation = String::new();
+        let mut i = String::new();
+
+        #[derive(Default)]
+        struct Info<'a> {
+            computations: BTreeMap<ComputationId, &'a Type>,
+        }
+
+        let mut info = Info::default();
 
         macro_rules! indent {
-            () => {
-                indentation += "\t";
+            ($i:ident) => {
+                $i += "\t";
             };
         }
 
         macro_rules! dedent {
-            () => {
-                indentation.pop().expect("cannot dedent any further");
+            ($i:ident) => {
+                $i.pop().expect("cannot dedent any further");
             };
         }
 
         macro_rules! write_indented {
-            ($($t:tt)*) => {{
-                write!(f, "{}", indentation)?;
-                writeln!(f, $($t)*)?
+            ($f:ident, $i:ident, $($t:tt)*) => {{
+                write!($f, "{}", $i)?;
+                write!($f, $($t)*)?
+            }};
+        }
+
+        macro_rules! writeln_indented {
+            ($f:ident, $i:ident, $($t:tt)*) => {{
+                write!($f, "{}", $i)?;
+                writeln!($f, $($t)*)?
             }};
         }
 
         macro_rules! write_section {
-            ($index:ident, $section:ident) => {{
-                write_indented!("{}:", mangle_section($index));
-                indent!();
+            ($f:ident, $i:ident, $index:ident, $section:ident, $info:expr) => {{
+                writeln_indented!($f, $i, "{}:", mangle_section($index));
+                indent!($i);
 
                 for statement in &$section.statements {
-                    write_indented!("{}", statement)
+                    write_statement($f, &$i, statement, $info)?;
                 }
 
                 if let Some(terminator) = &$section.terminator {
-                    write_indented!("{}", terminator);
+                    writeln_indented!($f, $i, "{}", terminator);
                 } else {
-                    write_indented!("<no terminator>");
+                    writeln_indented!($f, $i, "<no terminator>");
                 }
 
-                dedent!();
+                dedent!($i);
             }};
         }
 
-        for (id, constant) in self.constants.iter().enumerate() {
-            write_indented!("{}:", mangle_constant(id));
+        fn write_statement<'a>(
+            f: &mut std::fmt::Formatter,
+            i: &str,
+            statement: &'a Statement,
+            info: &mut Info<'a>,
+        ) -> std::fmt::Result {
+            match statement {
+                Statement::Compute(id, expr) => {
+                    info.computations.insert(*id, &expr.ty);
 
-            indent!();
+                    write_indented!(f, i, "{}: {} = ", mangle_computation(*id), expr.ty);
 
-            for (index, section) in constant.sections.enumerate() {
-                write_section!(index, section);
-            }
+                    match &expr.kind {
+                        ExpressionKind::Marker => writeln!(f, "marker")?,
+                        ExpressionKind::Constant(id) => writeln!(f, "{}", mangle_constant(*id))?,
+                        ExpressionKind::Function(function) => {
+                            writeln!(f, "function")?;
+                            let mut i = i.to_string();
+                            indent!(i);
 
-            dedent!();
-        }
+                            for (index, section) in function.sections.enumerate() {
+                                write_section!(f, i, index, section, info);
+                            }
 
-        for (id, function) in self.functions.iter().enumerate() {
-            write_indented!(
-                "{}{}{}:",
-                mangle_function(id),
-                (!function.locals.is_empty())
-                    .then(|| {
-                        format!(
-                            " (locals {})",
-                            function
-                                .locals
+                            dedent!(i);
+                        }
+                        ExpressionKind::Variable(id) => writeln!(f, "{}", mangle_variable(*id))?,
+                        ExpressionKind::FunctionInput => {
+                            writeln!(f, "{}", mangle_function_input())?
+                        }
+                        ExpressionKind::Number(number) => writeln!(f, "number {}", number)?,
+                        ExpressionKind::Text(text) => writeln!(f, "text {:?}", text)?,
+                        ExpressionKind::Call(func, input) => writeln!(
+                            f,
+                            "call {} {}",
+                            mangle_computation(*func),
+                            mangle_computation(*input)
+                        )?,
+                        ExpressionKind::External(abi, identifier, inputs) => writeln!(
+                            f,
+                            "external {:?} {:?} {}",
+                            abi,
+                            identifier,
+                            inputs
                                 .iter()
-                                .map(|var| mangle_variable(*var))
+                                .map(|id| mangle_computation(*id))
                                 .collect::<Vec<_>>()
-                                .join(", ")
-                        )
-                    })
-                    .unwrap_or_default(),
-                (!function.captures.is_empty())
-                    .then(|| {
-                        format!(
-                            " (captures {})",
-                            function
-                                .captures
+                                .join(" ")
+                        )?,
+                        ExpressionKind::Tuple(values) => writeln!(
+                            f,
+                            "tuple {}",
+                            values
                                 .iter()
-                                .map(|var| mangle_variable(*var))
+                                .map(|id| mangle_computation(*id))
                                 .collect::<Vec<_>>()
-                                .join(", ")
-                        )
-                    })
-                    .unwrap_or_default()
-            );
-
-            indent!();
-
-            for (index, section) in function.sections.enumerate() {
-                write_section!(index, section);
-            }
-
-            dedent!();
-        }
-
-        write_indented!("entrypoint:");
-
-        indent!();
-
-        for (index, section) in self.entrypoint.enumerate() {
-            write_section!(index, section);
-        }
-
-        dedent!();
-
-        Ok(())
-    }
-}
-
-impl std::fmt::Display for Statement {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self {
-            Statement::Compute(id, expr) => {
-                let expr = match expr {
-                    Expression::Marker => String::from("marker"),
-                    Expression::Constant(id) => mangle_constant(*id),
-                    Expression::Function(id) => mangle_function(*id),
-                    Expression::Variable(id) => mangle_variable(*id),
-                    Expression::FunctionInput => mangle_function_input(),
-                    Expression::Number(number) => format!("number {}", number),
-                    Expression::Text(text) => format!("text {:?}", text),
-                    Expression::Call(func, input) => format!(
-                        "call {} {}",
-                        mangle_computation(*func),
-                        mangle_computation(*input)
-                    ),
-                    Expression::External(abi, identifier, inputs) => format!(
-                        "external {:?} {:?} {}",
-                        abi,
-                        identifier,
-                        inputs
-                            .iter()
-                            .map(|id| mangle_computation(*id))
-                            .collect::<Vec<_>>()
-                            .join(" ")
-                    ),
-                    Expression::Tuple(values) => format!(
-                        "tuple {}",
-                        values
-                            .iter()
-                            .map(|id| mangle_computation(*id))
-                            .collect::<Vec<_>>()
-                            .join(" ")
-                    ),
-                    Expression::Variant(discriminant, values) => format!(
-                        "variant {} {}",
-                        discriminant,
-                        values
-                            .iter()
-                            .map(|id| mangle_computation(*id))
-                            .collect::<Vec<_>>()
-                            .join(" ")
-                    ),
-                    Expression::TupleElement(id, index) => {
-                        format!("tuple-element {} {}", mangle_computation(*id), index)
-                    }
-                    Expression::VariantElement(id, index) => {
-                        format!("variant-element {} {}", mangle_computation(*id), index)
-                    }
-                    Expression::Discriminant(id) => {
-                        format!("discriminant {}", mangle_computation(*id))
-                    }
-                    Expression::CompareDiscriminants(id, index) => {
-                        format!(
+                                .join(" ")
+                        )?,
+                        ExpressionKind::Structure(values) => writeln!(
+                            f,
+                            "structure {}",
+                            values
+                                .iter()
+                                .map(|id| mangle_computation(*id))
+                                .collect::<Vec<_>>()
+                                .join(" ")
+                        )?,
+                        ExpressionKind::Variant(discriminant, values) => writeln!(
+                            f,
+                            "variant {} {}",
+                            discriminant,
+                            values
+                                .iter()
+                                .map(|id| mangle_computation(*id))
+                                .collect::<Vec<_>>()
+                                .join(" ")
+                        )?,
+                        ExpressionKind::TupleElement(id, index) => {
+                            writeln!(f, "tuple-element {} {}", mangle_computation(*id), index)?
+                        }
+                        ExpressionKind::StructureElement(id, _, index) => {
+                            writeln!(f, "structure-element {} {}", mangle_computation(*id), index)?
+                        }
+                        ExpressionKind::VariantElement(id, _, index) => {
+                            writeln!(f, "variant-element {} {}", mangle_computation(*id), index)?
+                        }
+                        ExpressionKind::Discriminant(id) => {
+                            writeln!(f, "discriminant {}", mangle_computation(*id))?
+                        }
+                        ExpressionKind::CompareDiscriminants(id, index) => writeln!(
+                            f,
                             "compare-discriminants {} {}",
                             mangle_computation(*id),
                             index
-                        )
-                    }
-                };
+                        )?,
+                    };
+                }
+                Statement::Initialize(var, computation) => {
+                    let ty = info.computations.get(computation).unwrap();
 
-                write!(f, "{} = {}", mangle_computation(*id), expr)
+                    writeln_indented!(
+                        f,
+                        i,
+                        "{}: {} = {}",
+                        mangle_variable(*var),
+                        ty,
+                        mangle_computation(*computation)
+                    )
+                }
+                Statement::Drop(vars) => {
+                    writeln_indented!(
+                        f,
+                        i,
+                        "drop {}",
+                        vars.iter()
+                            .map(|var| mangle_variable(*var))
+                            .collect::<Vec<_>>()
+                            .join(", ")
+                    )
+                }
             }
-            Statement::Initialize(var, computation) => {
-                write!(
-                    f,
-                    "{} = {}",
-                    mangle_variable(*var),
-                    mangle_computation(*computation)
-                )
-            }
+
+            Ok(())
         }
+
+        for (id, constant) in self.constants.iter().enumerate() {
+            writeln_indented!(f, i, "{}:", mangle_constant(id));
+
+            indent!(i);
+
+            for (index, section) in constant.sections.enumerate() {
+                write_section!(f, i, index, section, &mut info);
+            }
+
+            dedent!(i);
+        }
+
+        writeln_indented!(f, i, "entrypoint:");
+
+        indent!(i);
+
+        for (index, section) in self.entrypoint.enumerate() {
+            write_section!(f, i, index, section, &mut info);
+        }
+
+        dedent!(i);
+
+        Ok(())
     }
 }
 
@@ -203,6 +226,35 @@ impl<I: std::fmt::Display> std::fmt::Display for Terminator<I> {
     }
 }
 
+impl std::fmt::Display for Type {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Type::Number => write!(f, "number"),
+            Type::Text => write!(f, "text"),
+            Type::Discriminant => write!(f, "discriminant"),
+            Type::Boolean => write!(f, "boolean"),
+            Type::Function(input, output) => write!(f, "(function {} {})", input, output),
+            Type::Tuple(tys) => {
+                write!(f, "(")?;
+
+                for ty in tys {
+                    write!(f, "{}, ", ty)?;
+                }
+
+                write!(f, ")")?;
+
+                Ok(())
+            }
+            Type::List(ty) => write!(f, "(list {})", ty),
+            Type::Mutable(ty) => write!(f, "(mutable {})", ty),
+            Type::Marker => write!(f, "marker"),
+            Type::Structure(id, _) => write!(f, "(structure {})", id.0),
+            Type::Enumeration(id, _) => write!(f, "(enumeration {})", id.0),
+            Type::Unreachable => write!(f, "unreachable"),
+        }
+    }
+}
+
 impl std::fmt::Display for SectionIndex {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{}", mangle_section(*self))
@@ -211,10 +263,6 @@ impl std::fmt::Display for SectionIndex {
 
 fn mangle_constant(id: usize) -> String {
     format!("C{}", id)
-}
-
-fn mangle_function(id: usize) -> String {
-    format!("F{}", id)
 }
 
 fn mangle_variable(id: VariableId) -> String {
@@ -229,6 +277,6 @@ fn mangle_section(index: SectionIndex) -> String {
     format!("#{}", index.0)
 }
 
-fn mangle_computation(id: IrComputationId) -> String {
+fn mangle_computation(id: ComputationId) -> String {
     format!("${}", id.0)
 }
