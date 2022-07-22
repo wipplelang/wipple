@@ -831,7 +831,9 @@ impl<L: Loader> Compiler<L> {
 
         let update = |expr: &mut Expression| {
             if let ExpressionKind::Constant(id) = &mut expr.kind {
-                *id = *map.get(id).unwrap();
+                if let Some(cached_id) = map.get(id) {
+                    *id = *cached_id;
+                }
             }
         };
 
