@@ -29,6 +29,8 @@ pub struct File {
 
 #[derive(Debug, Clone, Default)]
 pub struct Declarations {
+    pub operators: BTreeMap<TemplateId, expand::Operator>,
+    pub templates: BTreeMap<TemplateId, expand::Declaration<()>>,
     pub types: BTreeMap<TypeId, Declaration<Type>>,
     pub type_parameters: BTreeMap<TypeParameterId, Declaration<()>>,
     pub traits: BTreeMap<TraitId, Declaration<Trait>>,
@@ -235,7 +237,7 @@ impl TypeAnnotation {
 }
 
 impl<L: Loader> Compiler<L> {
-    pub fn lower(&mut self, file: ast::File, dependencies: Vec<Arc<File>>) -> File {
+    pub fn lower(&mut self, file: ast::File<L>, dependencies: Vec<Arc<File>>) -> File {
         let scope = Scope::root(ScopeKind::Block);
 
         let mut info = Info {
@@ -244,6 +246,25 @@ impl<L: Loader> Compiler<L> {
         };
 
         self.load_builtins(&scope, &mut info);
+
+        info.declarations.operators = file.declarations.operators;
+
+        info.declarations.templates = file
+            .declarations
+            .templates
+            .into_iter()
+            .map(|(id, decl)| {
+                (
+                    id,
+                    expand::Declaration {
+                        name: decl.name,
+                        span: decl.span,
+                        value: (),
+                        uses: decl.uses,
+                    },
+                )
+            })
+            .collect();
 
         for dependency in dependencies {
             macro_rules! merge_dependency {

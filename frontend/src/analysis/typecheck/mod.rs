@@ -8,9 +8,12 @@ pub use engine::{BottomTypeReason, BuiltinType, Type, TypeStructure};
 pub use format::{format_type, FormattableType};
 
 use crate::{
-    analysis::lower, diagnostics::*, helpers::InternedString, parse::Span, Compiler, FilePath,
-    GenericConstantId, Loader, MonomorphizedConstantId, TraitId, TypeId, TypeParameterId,
-    VariableId,
+    analysis::{expand, lower},
+    diagnostics::*,
+    helpers::InternedString,
+    parse::Span,
+    Compiler, FilePath, GenericConstantId, Loader, MonomorphizedConstantId, TemplateId, TraitId,
+    TypeId, TypeParameterId, VariableId,
 };
 use engine::*;
 use serde::Serialize;
@@ -143,6 +146,8 @@ impl UnresolvedExpression {
 
 #[derive(Debug, Clone, Serialize)]
 pub struct Declarations<Expr, Ty, File = ()> {
+    pub operators: BTreeMap<TemplateId, expand::Operator>,
+    pub templates: BTreeMap<TemplateId, expand::Declaration<()>>,
     pub types: BTreeMap<TypeId, Declaration<TypeDeclaration>>,
     pub type_parameters: BTreeMap<TypeParameterId, Declaration<()>>,
     pub traits: BTreeMap<TraitId, Declaration<TraitDeclaration>>,
@@ -155,6 +160,8 @@ pub struct Declarations<Expr, Ty, File = ()> {
 impl<Expr, Ty, File> Default for Declarations<Expr, Ty, File> {
     fn default() -> Self {
         Self {
+            operators: Default::default(),
+            templates: Default::default(),
             types: Default::default(),
             type_parameters: Default::default(),
             traits: Default::default(),
@@ -237,6 +244,14 @@ impl<L: Loader> Compiler<L> {
         // Copy declarations
 
         for file in &files {
+            for (id, decl) in file.borrow().declarations.operators.clone() {
+                typechecker.declarations.operators.entry(id).or_insert(decl);
+            }
+
+            for (id, decl) in file.borrow().declarations.templates.clone() {
+                typechecker.declarations.templates.entry(id).or_insert(decl);
+            }
+
             for (id, decl) in file.borrow().declarations.types.clone() {
                 typechecker
                     .declarations
@@ -704,6 +719,8 @@ impl<L: Loader> Compiler<L> {
 
         let mut declarations = match (|| {
             Ok(Declarations {
+                operators: typechecker.declarations.operators.clone(),
+                templates: typechecker.declarations.templates.clone(),
                 types: typechecker.declarations.types.clone(),
                 type_parameters: typechecker.declarations.type_parameters.clone(),
                 traits: typechecker.declarations.traits.clone(),

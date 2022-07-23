@@ -1,7 +1,7 @@
 use crate::{
     analysis::expand::{
-        Expander, LanguageItem, Node, NodeKind, Operator, OperatorPrecedence, Scope, ScopeValue,
-        Template,
+        Declaration, Expander, LanguageItem, Node, NodeKind, Operator, OperatorPrecedence, Scope,
+        ScopeValue, Template,
     },
     diagnostics::*,
     helpers::InternedString,
@@ -22,24 +22,27 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
     }
 
     let mut scope_values = scope.values.lock();
+    let mut declarations = expander.declarations.lock();
 
     // `:` operator
 
     let id = once_id!(template);
 
-    scope_values.insert(
-        InternedString::new(":"),
-        ScopeValue::Operator(Operator {
-            precedence: OperatorPrecedence::Assignment,
-            template: id,
-        }),
-    );
+    let operator = Operator {
+        precedence: OperatorPrecedence::Assignment,
+        template: id,
+    };
 
-    expander.declarations.lock().templates.insert(
+    scope_values.insert(InternedString::new(":"), ScopeValue::Operator(operator));
+
+    declarations.operators.insert(id, operator);
+
+    declarations.templates.insert(
         id,
-        Template::function(
+        Declaration::new(
+            ":",
             Span::builtin("`:` operator"),
-            |expander, span, mut inputs, _, _, scope| {
+            Template::function(|expander, span, mut inputs, _, _, scope| {
                 Box::pin(async move {
                     let rhs = inputs.pop().unwrap();
                     let lhs = inputs.pop().unwrap();
@@ -63,11 +66,10 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
 
                             let id = expander.compiler.new_template_id();
 
-                            expander
-                                .declarations
-                                .lock()
-                                .templates
-                                .insert(id, Template::syntax(rhs.span, inputs, *body));
+                            expander.declarations.lock().templates.insert(
+                                id,
+                                Declaration::new(name, lhs.span, Template::syntax(inputs, *body)),
+                            );
 
                             scope.values.lock().insert(name, ScopeValue::Template(id));
 
@@ -94,11 +96,10 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
 
                             let id = expander.compiler.new_template_id();
 
-                            expander
-                                .declarations
-                                .lock()
-                                .templates
-                                .insert(id, Template::syntax(rhs.span, inputs, *body));
+                            expander.declarations.lock().templates.insert(
+                                id,
+                                Declaration::new(name, lhs.span, Template::syntax(inputs, *body)),
+                            );
 
                             scope.values.lock().insert(
                                 name,
@@ -119,7 +120,7 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
                         },
                     }
                 })
-            },
+            }),
         ),
     );
 
@@ -127,19 +128,21 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
 
     let id = once_id!(template);
 
-    scope_values.insert(
-        InternedString::new("->"),
-        ScopeValue::Operator(Operator {
-            precedence: OperatorPrecedence::Function,
-            template: id,
-        }),
-    );
+    let operator = Operator {
+        precedence: OperatorPrecedence::Function,
+        template: id,
+    };
 
-    expander.declarations.lock().templates.insert(
+    scope_values.insert(InternedString::new("->"), ScopeValue::Operator(operator));
+
+    declarations.operators.insert(id, operator);
+
+    declarations.templates.insert(
         id,
-        Template::function(
+        Declaration::new(
+            "->",
             Span::builtin("`->` operator"),
-            |_, span, mut inputs, _, _, _| {
+            Template::function(|_, span, mut inputs, _, _, _| {
                 Box::pin(async move {
                     let rhs = inputs.pop().unwrap();
                     let lhs = inputs.pop().unwrap();
@@ -149,7 +152,7 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
                         kind: NodeKind::Function(Box::new(lhs), Box::new(rhs)),
                     }
                 })
-            },
+            }),
         ),
     );
 
@@ -157,19 +160,21 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
 
     let id = once_id!(template);
 
-    scope_values.insert(
-        InternedString::new("=>"),
-        ScopeValue::Operator(Operator {
-            precedence: OperatorPrecedence::TypeFunction,
-            template: id,
-        }),
-    );
+    let operator = Operator {
+        precedence: OperatorPrecedence::TypeFunction,
+        template: id,
+    };
 
-    expander.declarations.lock().templates.insert(
+    scope_values.insert(InternedString::new("=>"), ScopeValue::Operator(operator));
+
+    declarations.operators.insert(id, operator);
+
+    declarations.templates.insert(
         id,
-        Template::function(
+        Declaration::new(
+            "=>",
             Span::builtin("`=>` operator"),
-            |_, span, mut inputs, _, _, _| {
+            Template::function(|_, span, mut inputs, _, _, _| {
                 Box::pin(async move {
                     let rhs = inputs.pop().unwrap();
                     let lhs = inputs.pop().unwrap();
@@ -179,7 +184,7 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
                         kind: NodeKind::TypeFunction(Box::new(lhs), Box::new(rhs)),
                     }
                 })
-            },
+            }),
         ),
     );
 
@@ -187,19 +192,21 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
 
     let id = once_id!(template);
 
-    scope_values.insert(
-        InternedString::new("where"),
-        ScopeValue::Operator(Operator {
-            precedence: OperatorPrecedence::Where,
-            template: id,
-        }),
-    );
+    let operator = Operator {
+        precedence: OperatorPrecedence::Where,
+        template: id,
+    };
 
-    expander.declarations.lock().templates.insert(
+    scope_values.insert(InternedString::new("where"), ScopeValue::Operator(operator));
+
+    declarations.operators.insert(id, operator);
+
+    declarations.templates.insert(
         id,
-        Template::function(
+        Declaration::new(
+            "where",
             Span::builtin("`where` operator"),
-            |_, span, mut inputs, _, _, _| {
+            Template::function(|_, span, mut inputs, _, _, _| {
                 Box::pin(async move {
                     let rhs = inputs.pop().unwrap();
                     let lhs = inputs.pop().unwrap();
@@ -209,7 +216,7 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
                         kind: NodeKind::Where(Box::new(lhs), Box::new(rhs)),
                     }
                 })
-            },
+            }),
         ),
     );
 
@@ -217,19 +224,21 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
 
     let id = once_id!(template);
 
-    scope_values.insert(
-        InternedString::new("::"),
-        ScopeValue::Operator(Operator {
-            precedence: OperatorPrecedence::Annotation,
-            template: id,
-        }),
-    );
+    let operator = Operator {
+        precedence: OperatorPrecedence::Annotation,
+        template: id,
+    };
 
-    expander.declarations.lock().templates.insert(
+    scope_values.insert(InternedString::new("::"), ScopeValue::Operator(operator));
+
+    declarations.operators.insert(id, operator);
+
+    declarations.templates.insert(
         id,
-        Template::function(
+        Declaration::new(
+            "::",
             Span::builtin("`::` operator"),
-            |_, span, mut inputs, _, _, _| {
+            Template::function(|_, span, mut inputs, _, _, _| {
                 Box::pin(async move {
                     let rhs = inputs.pop().unwrap();
                     let lhs = inputs.pop().unwrap();
@@ -239,7 +248,7 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
                         kind: NodeKind::Annotate(Box::new(lhs), Box::new(rhs)),
                     }
                 })
-            },
+            }),
         ),
     );
 
@@ -247,19 +256,21 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
 
     let id = once_id!(template);
 
-    scope_values.insert(
-        InternedString::new("~>"),
-        ScopeValue::Operator(Operator {
-            precedence: OperatorPrecedence::Function,
-            template: id,
-        }),
-    );
+    let operator = Operator {
+        precedence: OperatorPrecedence::Function,
+        template: id,
+    };
 
-    expander.declarations.lock().templates.insert(
+    scope_values.insert(InternedString::new("~>"), ScopeValue::Operator(operator));
+
+    declarations.operators.insert(id, operator);
+
+    declarations.templates.insert(
         id,
-        Template::function(
+        Declaration::new(
+            "~>",
             Span::builtin("`~>` operator"),
-            |expander, span, mut inputs, _, _, _| {
+            Template::function(|expander, span, mut inputs, _, _, _| {
                 Box::pin(async move {
                     let rhs = inputs.pop().unwrap();
                     let lhs = inputs.pop().unwrap();
@@ -306,7 +317,7 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
                         kind: NodeKind::Template(inputs, Box::new(rhs)),
                     }
                 })
-            },
+            }),
         ),
     );
 
@@ -314,35 +325,55 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
 
     let id = once_id!(template);
 
+    let operator = Operator {
+        precedence: OperatorPrecedence::Function,
+        template: id,
+    };
+
     scope_values.insert(
         InternedString::new("operator"),
-        ScopeValue::Operator(Operator {
-            precedence: OperatorPrecedence::Function,
-            template: id,
-        }),
+        ScopeValue::Operator(operator),
     );
 
-    expander.declarations.lock().templates.insert(
-        id,
-        Template::function(Span::builtin("`operator` operator"), |expander, span, mut inputs, _, _, _| Box::pin(async move { let rhs = inputs.pop().unwrap();
-            let lhs = inputs.pop().unwrap();
+    declarations.operators.insert(id, operator);
 
-            let precedence = match lhs.kind {
-                NodeKind::Name(name) => match name.as_str() {
-                    "power" => OperatorPrecedence::Power,
-                    "multiplication" => OperatorPrecedence::Multiplication,
-                    "addition" => OperatorPrecedence::Addition,
-                    "comparison" => OperatorPrecedence::Comparison,
-                    "conjunction" => OperatorPrecedence::Conjunction,
-                    "disjunction" => OperatorPrecedence::Disjunction,
-                    "dot" => OperatorPrecedence::Dot,
+    declarations.templates.insert(
+        id,
+        Declaration::new(
+            "operator",
+            Span::builtin("`operator` operator"),
+            Template::function(|expander, span, mut inputs, _, _, _| Box::pin(async move {
+                let rhs = inputs.pop().unwrap();
+                let lhs = inputs.pop().unwrap();
+
+                let precedence = match lhs.kind {
+                    NodeKind::Name(name) => match name.as_str() {
+                        "power" => OperatorPrecedence::Power,
+                        "multiplication" => OperatorPrecedence::Multiplication,
+                        "addition" => OperatorPrecedence::Addition,
+                        "comparison" => OperatorPrecedence::Comparison,
+                        "conjunction" => OperatorPrecedence::Conjunction,
+                        "disjunction" => OperatorPrecedence::Disjunction,
+                        "dot" => OperatorPrecedence::Dot,
+                        _ => {
+                            expander.compiler.diagnostics.add(Diagnostic::error(
+                                "invalid precedence name",
+                                vec![Note::primary(
+                                    lhs.span,
+                                    "try providing a valid precedence name, like `function` or `addition`",
+                                )],
+                            ));
+
+                            return Node {
+                                span,
+                                kind: NodeKind::Error,
+                            };
+                        }
+                    }
                     _ => {
                         expander.compiler.diagnostics.add(Diagnostic::error(
-                            "invalid precedence name",
-                            vec![Note::primary(
-                                lhs.span,
-                                "try providing a valid precedence name, like `function` or `addition`",
-                            )],
+                            "expected precedence on left-hand side of operator declaration",
+                            vec![Note::primary(lhs.span, "expected a valid precedence name here, like `function` or `addition`")],
                         ));
 
                         return Node {
@@ -350,58 +381,50 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
                             kind: NodeKind::Error,
                         };
                     }
+                };
+
+                let (inputs, body) = match rhs.kind {
+                    NodeKind::Template(inputs, body) => (inputs, body),
+                    _ => {
+                        expander.compiler.diagnostics.add(Diagnostic::error(
+                            "expected template on right-hand side of operator declaration",
+                            vec![Note::primary(rhs.span, "expected a template here")],
+                        ));
+
+                        return Node {
+                            span,
+                            kind: NodeKind::Error,
+                        };
+                    }
+                };
+
+                Node {
+                    span,
+                    kind: NodeKind::Operator(precedence, inputs, body),
                 }
-                _ => {
-                    expander.compiler.diagnostics.add(Diagnostic::error(
-                        "expected precedence on left-hand side of operator declaration",
-                        vec![Note::primary(lhs.span, "expected a valid precedence name here, like `function` or `addition`")],
-                    ));
-
-                    return Node {
-                        span,
-                        kind: NodeKind::Error,
-                    };
-                }
-            };
-
-            let (inputs, body) = match rhs.kind {
-                NodeKind::Template(inputs, body) => (inputs, body),
-                _ => {
-                    expander.compiler.diagnostics.add(Diagnostic::error(
-                        "expected template on right-hand side of operator declaration",
-                        vec![Note::primary(rhs.span, "expected a template here")],
-                    ));
-
-                    return Node {
-                        span,
-                        kind: NodeKind::Error,
-                    };
-                }
-            };
-
-            Node {
-                span,
-                kind: NodeKind::Operator(precedence, inputs, body),
-            } })),
+            })),
+        ),
     );
 
     // `or` operator
 
     let id = once_id!(template);
 
-    scope_values.insert(
-        InternedString::new("or"),
-        ScopeValue::Operator(Operator {
-            precedence: OperatorPrecedence::Disjunction,
-            template: id,
-        }),
-    );
+    let operator = Operator {
+        precedence: OperatorPrecedence::Disjunction,
+        template: id,
+    };
 
-    expander.declarations.lock().templates.insert(
+    scope_values.insert(InternedString::new("or"), ScopeValue::Operator(operator));
+
+    declarations.operators.insert(id, operator);
+
+    declarations.templates.insert(
         id,
-        Template::function(
+        Declaration::new(
+            "or",
             Span::builtin("`or` operator"),
-            |_, span, mut inputs, _, _, _| {
+            Template::function(|_, span, mut inputs, _, _, _| {
                 Box::pin(async move {
                     let rhs = inputs.pop().unwrap();
                     let lhs = inputs.pop().unwrap();
@@ -411,7 +434,7 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
                         kind: NodeKind::Or(Box::new(lhs), Box::new(rhs)),
                     }
                 })
-            },
+            }),
         ),
     );
 
@@ -419,24 +442,29 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
 
     let id = once_id!(template);
 
-    scope_values.insert(
-        InternedString::new(","),
-        ScopeValue::Operator(Operator {
-            precedence: OperatorPrecedence::Comma,
-            template: id,
-        }),
-    );
+    let operator = Operator {
+        precedence: OperatorPrecedence::Comma,
+        template: id,
+    };
 
-    expander.declarations.lock().templates.insert(
+    scope_values.insert(InternedString::new(","), ScopeValue::Operator(operator));
+
+    declarations.operators.insert(id, operator);
+
+    declarations.templates.insert(
         id,
-        Template::function(Span::builtin("`,` operator"), |_, span, inputs, _, _, _| {
-            Box::pin(async move {
-                Node {
-                    span,
-                    kind: NodeKind::Tuple(inputs),
-                }
-            })
-        }),
+        Declaration::new(
+            ",",
+            Span::builtin("`,` operator"),
+            Template::function(|_, span, inputs, _, _, _| {
+                Box::pin(async move {
+                    Node {
+                        span,
+                        kind: NodeKind::Tuple(inputs),
+                    }
+                })
+            }),
+        ),
     );
 
     // `use` template
@@ -445,11 +473,12 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
 
     scope_values.insert(InternedString::new("use"), ScopeValue::Template(id));
 
-    expander.declarations.lock().templates.insert(
+    declarations.templates.insert(
         id,
-        Template::function(
+        Declaration::new(
+            "use",
             Span::builtin("`use` template"),
-            |expander, span, mut inputs, _, _, scope| {
+            Template::function(|expander, span, mut inputs, _, _, scope| {
                 Box::pin(async move {
                     if inputs.len() != 1 {
                         expander.report_wrong_template_arity("use", span, inputs.len(), 1);
@@ -482,7 +511,7 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
                         },
                     }
                 })
-            },
+            }),
         ),
     );
 
@@ -492,11 +521,12 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
 
     scope_values.insert(InternedString::new("external"), ScopeValue::Template(id));
 
-    expander.declarations.lock().templates.insert(
+    declarations.templates.insert(
         id,
-        Template::function(
+        Declaration::new(
+            "external",
             Span::builtin("`external` template"),
-            |expander, span, inputs, _, _, _| {
+            Template::function(|expander, span, inputs, _, _, _| {
                 Box::pin(async move {
                     if inputs.len() < 2 {
                         expander.compiler.diagnostics.add(Diagnostic::error(
@@ -524,7 +554,7 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
                         kind: NodeKind::External(Box::new(abi), Box::new(identifier), inputs),
                     }
                 })
-            },
+            }),
         ),
     );
 
@@ -534,37 +564,22 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
 
     scope_values.insert(InternedString::new("type"), ScopeValue::Template(id));
 
-    expander.declarations.lock().templates.insert(
+    declarations.templates.insert(
         id,
-        Template::function(Span::builtin("`type` template"), |expander, span, mut inputs, _, _, _| Box::pin(async move { if inputs.is_empty() {
-                return Node { span, kind: NodeKind::Type(None) }
-            }
+        Declaration::new(
+            "type",
+            Span::builtin("`type` template"),
+            Template::function(|expander, span, mut inputs, _, _, _| Box::pin(async move {
+                if inputs.is_empty() {
+                    return Node { span, kind: NodeKind::Type(None) }
+                }
 
-            if inputs.len() != 1 {
-                expander.compiler.diagnostics.add(Diagnostic::error(
-                    "expected 0 or 1 inputs to template `type`",
-                    vec![Note::primary(
-                        span,
-                        "`type` may be used standalone, or with a block denoting the type's fields or variants",
-                    )],
-                ));
-
-                return Node {
-                    span,
-                    kind: NodeKind::Error,
-                };
-            }
-
-            let block = inputs.pop().unwrap();
-
-            let fields = match block.kind {
-                NodeKind::Block(statements) => statements,
-                _ => {
+                if inputs.len() != 1 {
                     expander.compiler.diagnostics.add(Diagnostic::error(
-                        "expected a block here",
+                        "expected 0 or 1 inputs to template `type`",
                         vec![Note::primary(
-                            block.span,
-                            "`when` requires a block containing functions",
+                            span,
+                            "`type` may be used standalone, or with a block denoting the type's fields or variants",
                         )],
                     ));
 
@@ -573,12 +588,33 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
                         kind: NodeKind::Error,
                     };
                 }
-            };
 
-            Node {
-                span,
-                kind: NodeKind::Type(Some(fields)),
-            } })),
+                let block = inputs.pop().unwrap();
+
+                let fields = match block.kind {
+                    NodeKind::Block(statements) => statements,
+                    _ => {
+                        expander.compiler.diagnostics.add(Diagnostic::error(
+                            "expected a block here",
+                            vec![Note::primary(
+                                block.span,
+                                "`when` requires a block containing functions",
+                            )],
+                        ));
+
+                        return Node {
+                            span,
+                            kind: NodeKind::Error,
+                        };
+                    }
+                };
+
+                Node {
+                    span,
+                    kind: NodeKind::Type(Some(fields)),
+                }
+            })),
+        ),
     );
 
     // `trait` template
@@ -587,11 +623,12 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
 
     scope_values.insert(InternedString::new("trait"), ScopeValue::Template(id));
 
-    expander.declarations.lock().templates.insert(
+    declarations.templates.insert(
         id,
-        Template::function(
+        Declaration::new(
+            "trait",
             Span::builtin("`trait` template"),
-            |expander, span, mut inputs, _, _, _| {
+            Template::function(|expander, span, mut inputs, _, _, _| {
                 Box::pin(async move {
                     if inputs.len() != 1 {
                         expander.compiler.diagnostics.add(Diagnostic::error(
@@ -612,7 +649,7 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
                         kind: NodeKind::Trait(Box::new(ty)),
                     }
                 })
-            },
+            }),
         ),
     );
 
@@ -622,11 +659,12 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
 
     scope_values.insert(InternedString::new("instance"), ScopeValue::Template(id));
 
-    expander.declarations.lock().templates.insert(
+    declarations.templates.insert(
         id,
-        Template::function(
+        Declaration::new(
+            "instance",
             Span::builtin("`instance` template"),
-            |expander, span, inputs, _, _, _| {
+            Template::function(|expander, span, inputs, _, _, _| {
                 Box::pin(async move {
                     if inputs.is_empty() {
                         expander.compiler.diagnostics.add(Diagnostic::error(
@@ -653,7 +691,7 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
                         kind: NodeKind::Instance(Box::new(trait_name), parameters),
                     }
                 })
-            },
+            }),
         ),
     );
 
@@ -663,11 +701,13 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
 
     scope_values.insert(InternedString::new("format"), ScopeValue::Template(id));
 
-    expander.declarations.lock().templates.insert(
+    declarations.templates.insert(
         id,
-        Template::function(
+        Declaration::new(
+            "format",
             Span::builtin("`format` template"),
-            move |expander, span, inputs, _, _, _| Box::pin(async move { if inputs.is_empty() {
+            Template::function(move |expander, span, inputs, _, _, _| Box::pin(async move {
+                if inputs.is_empty() {
                     expander.compiler.diagnostics.add(Diagnostic::error(
                         "expected at least 1 input to template `format`",
                         vec![Note::primary(
@@ -788,7 +828,8 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
                             kind: NodeKind::Name(InternedString::new("Text")),
                         }),
                     ),
-                } }),
+                }
+            })),
         ),
     );
 
@@ -798,11 +839,12 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
 
     scope_values.insert(InternedString::new("when"), ScopeValue::Template(id));
 
-    expander.declarations.lock().templates.insert(
+    declarations.templates.insert(
         id,
-        Template::function(
+        Declaration::new(
+            "when",
             Span::builtin("`when` template"),
-            |expander, span, mut inputs, _, _, _| {
+            Template::function(|expander, span, mut inputs, _, _, _| {
                 Box::pin(async move {
                     if inputs.len() != 2 {
                         expander.compiler.diagnostics.add(Diagnostic::error(
@@ -828,9 +870,9 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
                             expander.compiler.diagnostics.add(Diagnostic::error(
                                 "expected a block here",
                                 vec![Note::primary(
-                                block.span,
-                                "`type` requires a block denoting the type's fields or variants",
-                            )],
+                                    block.span,
+                                    "`type` requires a block denoting the type's fields or variants",
+                                )],
                             ));
 
                             return Node {
@@ -845,7 +887,7 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
                         kind: NodeKind::When(Box::new(input), block),
                     }
                 })
-            },
+            }),
         ),
     );
 
@@ -855,11 +897,12 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
 
     scope_values.insert(InternedString::new("return"), ScopeValue::Template(id));
 
-    expander.declarations.lock().templates.insert(
+    declarations.templates.insert(
         id,
-        Template::function(
+        Declaration::new(
+            "return",
             Span::builtin("`return` template"),
-            |expander, span, mut inputs, _, _, _| {
+            Template::function(|expander, span, mut inputs, _, _, _| {
                 Box::pin(async move {
                     if inputs.len() != 1 {
                         expander.compiler.diagnostics.add(Diagnostic::error(
@@ -883,7 +926,7 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
                         kind: NodeKind::Return(Box::new(value)),
                     }
                 })
-            },
+            }),
         ),
     );
 
@@ -893,11 +936,12 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
 
     scope_values.insert(InternedString::new("loop"), ScopeValue::Template(id));
 
-    expander.declarations.lock().templates.insert(
+    declarations.templates.insert(
         id,
-        Template::function(
+        Declaration::new(
+            "loop",
             Span::builtin("`loop` template"),
-            |expander, span, mut inputs, _, _, _| {
+            Template::function(|expander, span, mut inputs, _, _, _| {
                 Box::pin(async move {
                     if inputs.len() != 1 {
                         expander.compiler.diagnostics.add(Diagnostic::error(
@@ -921,7 +965,7 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
                         kind: NodeKind::Loop(Box::new(value)),
                     }
                 })
-            },
+            }),
         ),
     );
 
@@ -931,11 +975,12 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
 
     scope_values.insert(InternedString::new("break"), ScopeValue::Template(id));
 
-    expander.declarations.lock().templates.insert(
+    declarations.templates.insert(
         id,
-        Template::function(
+        Declaration::new(
+            "break",
             Span::builtin("`break` template"),
-            |expander, span, mut inputs, _, _, _| {
+            Template::function(|expander, span, mut inputs, _, _, _| {
                 Box::pin(async move {
                     if inputs.len() != 1 {
                         expander.compiler.diagnostics.add(Diagnostic::error(
@@ -959,7 +1004,7 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
                         kind: NodeKind::Break(Box::new(value)),
                     }
                 })
-            },
+            }),
         ),
     );
 
@@ -969,11 +1014,12 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
 
     scope_values.insert(InternedString::new("continue"), ScopeValue::Template(id));
 
-    expander.declarations.lock().templates.insert(
+    declarations.templates.insert(
         id,
-        Template::function(
+        Declaration::new(
+            "continue",
             Span::builtin("`continue` template"),
-            |expander, span, inputs, _, _, _| {
+            Template::function(|expander, span, inputs, _, _, _| {
                 Box::pin(async move {
                     if !inputs.is_empty() {
                         expander.compiler.diagnostics.add(Diagnostic::error(
@@ -992,7 +1038,7 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
                         kind: NodeKind::Continue,
                     }
                 })
-            },
+            }),
         ),
     );
 
@@ -1002,11 +1048,12 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
 
     scope_values.insert(InternedString::new("language"), ScopeValue::Template(id));
 
-    expander.declarations.lock().templates.insert(
+    declarations.templates.insert(
         id,
-        Template::function(
+        Declaration::new(
+            "language",
             Span::builtin("`language` attribute"),
-            |expander, span, mut inputs, _, attributes, _| {
+            Template::function(|expander, span, mut inputs, _, attributes, _| {
                 Box::pin(async move {
                     if inputs.len() != 2 {
                         expander.compiler.diagnostics.add(Diagnostic::error(
@@ -1087,7 +1134,7 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
 
                     node
                 })
-            },
+            }),
         ),
     );
 
@@ -1097,11 +1144,12 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
 
     scope_values.insert(InternedString::new("help"), ScopeValue::Template(id));
 
-    expander.declarations.lock().templates.insert(
+    declarations.templates.insert(
         id,
-        Template::function(
+        Declaration::new(
+            "help",
             Span::builtin("`help` attribute"),
-            |expander, span, mut inputs, _, attributes, _| {
+            Template::function(|expander, span, mut inputs, _, attributes, _| {
                 Box::pin(async move {
                     if inputs.len() != 2 {
                         expander.compiler.diagnostics.add(Diagnostic::error(
@@ -1152,7 +1200,7 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
 
                     node
                 })
-            },
+            }),
         ),
     );
 
@@ -1165,11 +1213,12 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
         ScopeValue::Template(id),
     );
 
-    expander.declarations.lock().templates.insert(
+    declarations.templates.insert(
         id,
-        Template::function(
+        Declaration::new(
+            "on-unimplemented",
             Span::builtin("`on-unimplemented` attribute"),
-            |expander, span, mut inputs, _, attributes, _| {
+            Template::function(|expander, span, mut inputs, _, attributes, _| {
                 Box::pin(async move {
                     if inputs.len() != 2 {
                         expander.compiler.diagnostics.add(Diagnostic::error(
@@ -1233,7 +1282,7 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
                     node
                 })
             },
-        ),
+        ))
     );
 
     // `no-std` attribute
@@ -1242,11 +1291,12 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
 
     scope_values.insert(InternedString::new("no-std"), ScopeValue::Template(id));
 
-    expander.declarations.lock().templates.insert(
+    declarations.templates.insert(
         id,
-        Template::function(
+        Declaration::new(
+            "no-std",
             Span::builtin("`no-std` attribute"),
-            |expander, span, inputs, attributes, _, _| {
+            Template::function(|expander, span, inputs, attributes, _, _| {
                 Box::pin(async move {
                     if !inputs.is_empty() {
                         expander.compiler.diagnostics.add(Diagnostic::error(
@@ -1292,7 +1342,7 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
                         kind: NodeKind::Empty,
                     }
                 })
-            },
+            }),
         ),
     );
 }

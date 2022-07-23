@@ -15,6 +15,7 @@ use crate::{
 use async_recursion::async_recursion;
 use futures::{future::BoxFuture, stream, StreamExt};
 use parking_lot::Mutex;
+use serde::Serialize;
 use std::{
     cmp::Ordering,
     collections::{BTreeMap, HashMap, VecDeque},
@@ -125,26 +126,14 @@ pub enum NodeKind {
 }
 
 pub struct Declarations<L: Loader> {
-    templates: BTreeMap<TemplateId, Template<L>>,
-}
-
-impl<L: Loader> Default for Declarations<L> {
-    fn default() -> Self {
-        Declarations {
-            templates: Default::default(),
-        }
-    }
-}
-
-impl<L: Loader> Declarations<L> {
-    fn merge(&mut self, other: Self) {
-        self.templates.extend(other.templates);
-    }
+    pub operators: BTreeMap<TemplateId, Operator>,
+    pub templates: BTreeMap<TemplateId, Declaration<Template<L>>>,
 }
 
 impl<L: Loader> std::fmt::Debug for Declarations<L> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Declarations")
+            .field("operators", &self.operators)
             .field("templates", &self.templates)
             .finish()
     }
@@ -152,8 +141,56 @@ impl<L: Loader> std::fmt::Debug for Declarations<L> {
 
 impl<L: Loader> Clone for Declarations<L> {
     fn clone(&self) -> Self {
-        Self {
+        Declarations {
+            operators: self.operators.clone(),
             templates: self.templates.clone(),
+        }
+    }
+}
+
+impl<L: Loader> Default for Declarations<L> {
+    fn default() -> Self {
+        Self {
+            operators: Default::default(),
+            templates: Default::default(),
+        }
+    }
+}
+
+impl<L: Loader> Declarations<L> {
+    fn merge(&mut self, other: Self) {
+        use std::collections::btree_map::Entry;
+
+        self.operators.extend(other.operators);
+
+        for (id, decl) in other.templates {
+            match self.templates.entry(id) {
+                Entry::Vacant(entry) => {
+                    entry.insert(decl);
+                }
+                Entry::Occupied(mut entry) => {
+                    entry.get_mut().uses.extend(decl.uses);
+                }
+            }
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct Declaration<T> {
+    pub name: InternedString,
+    pub span: Span,
+    pub value: T,
+    pub uses: Vec<Span>,
+}
+
+impl<T> Declaration<T> {
+    pub fn new(name: impl AsRef<str>, span: Span, value: T) -> Self {
+        Declaration {
+            name: InternedString::new(name),
+            span,
+            value,
+            uses: Vec::new(),
         }
     }
 }
@@ -215,7 +252,7 @@ impl<L: Loader> Compiler<L> {
 }
 
 #[derive(Clone)]
-struct Expander<L: Loader> {
+pub struct Expander<L: Loader> {
     compiler: Compiler<L>,
     declarations: Arc<Mutex<Declarations<L>>>,
     dependencies: Arc<Mutex<Vec<Arc<File<L>>>>>,
@@ -262,30 +299,7 @@ impl<'a> Scope<'a> {
     }
 }
 
-struct Template<L: Loader> {
-    span: Span,
-    body: TemplateBody<L>,
-}
-
-impl<L: Loader> Clone for Template<L> {
-    fn clone(&self) -> Self {
-        Self {
-            span: self.span,
-            body: self.body.clone(),
-        }
-    }
-}
-
-impl<L: Loader> std::fmt::Debug for Template<L> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("Template")
-            .field("span", &self.span)
-            .field("body", &self.body)
-            .finish()
-    }
-}
-
-enum TemplateBody<L: Loader> {
+pub enum Template<L: Loader> {
     Syntax(Vec<InternedString>, Node),
     Function(
         Arc<
@@ -303,18 +317,16 @@ enum TemplateBody<L: Loader> {
     ),
 }
 
-impl<L: Loader> Clone for TemplateBody<L> {
+impl<L: Loader> Clone for Template<L> {
     fn clone(&self) -> Self {
         match self {
-            TemplateBody::Syntax(inputs, node) => {
-                TemplateBody::Syntax(inputs.clone(), node.clone())
-            }
-            TemplateBody::Function(expand) => TemplateBody::Function(expand.clone()),
+            Template::Syntax(inputs, node) => Template::Syntax(inputs.clone(), node.clone()),
+            Template::Function(expand) => Template::Function(expand.clone()),
         }
     }
 }
 
-impl<L: Loader> std::fmt::Debug for TemplateBody<L> {
+impl<L: Loader> std::fmt::Debug for Template<L> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Syntax(inputs, node) => {
@@ -326,15 +338,11 @@ impl<L: Loader> std::fmt::Debug for TemplateBody<L> {
 }
 
 impl<L: Loader> Template<L> {
-    fn syntax(span: Span, inputs: Vec<InternedString>, node: Node) -> Self {
-        Template {
-            span,
-            body: TemplateBody::Syntax(inputs, node),
-        }
+    fn syntax(inputs: Vec<InternedString>, node: Node) -> Self {
+        Template::Syntax(inputs, node)
     }
 
     fn function(
-        span: Span,
         f: impl for<'a> Fn(
                 &'a Expander<L>,
                 Span,
@@ -347,20 +355,17 @@ impl<L: Loader> Template<L> {
             + Send
             + Sync,
     ) -> Self {
-        Template {
-            span,
-            body: TemplateBody::Function(Arc::new(f)),
-        }
+        Template::Function(Arc::new(f))
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 pub struct Operator {
     pub precedence: OperatorPrecedence,
     pub template: TemplateId,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize)]
 pub enum OperatorPrecedence {
     Power,
     Multiplication,
@@ -1085,16 +1090,23 @@ impl<L: Loader> Expander<L> {
         statement_attributes: Option<&mut StatementAttributes>,
         scope: &Scope<'_>,
     ) -> Node {
-        let template = self
-            .declarations
-            .lock()
-            .templates
-            .get(&id)
-            .unwrap_or_else(|| panic!("template `{}` ({:?}) not registered", name, id))
-            .clone();
+        let template = {
+            let mut declarations = self.declarations.lock();
 
-        match template.body {
-            TemplateBody::Syntax(inputs, mut body) => {
+            let decl = declarations
+                .templates
+                .get_mut(&id)
+                .unwrap_or_else(|| panic!("template `{}` ({:?}) not registered", name, id));
+
+            let value = decl.value.clone();
+
+            decl.uses.push(span);
+
+            value
+        };
+
+        match template {
+            Template::Syntax(inputs, mut body) => {
                 if exprs.len() != inputs.len() {
                     self.report_wrong_template_arity(&name, span, exprs.len(), inputs.len());
 
@@ -1196,7 +1208,7 @@ impl<L: Loader> Expander<L> {
 
                 body
             }
-            TemplateBody::Function(expand) => {
+            Template::Function(expand) => {
                 expand(
                     self,
                     span,
