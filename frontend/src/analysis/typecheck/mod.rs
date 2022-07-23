@@ -29,7 +29,6 @@ pub struct Program {
     pub valid: bool,
     pub body: Vec<Expression>,
     pub declarations: Declarations<Expression, Type>,
-    pub top_level: HashMap<InternedString, lower::ScopeValue>,
 }
 
 macro_rules! expr {
@@ -43,6 +42,7 @@ macro_rules! expr {
             }
 
             #[derive(Debug, Clone, Serialize)]
+            #[serde(tag = "type", content = "value")]
             $vis enum [<$prefix ExpressionKind>] {
                 Marker,
                 Variable(VariableId),
@@ -84,6 +84,7 @@ macro_rules! pattern {
             }
 
             #[derive(Debug, Clone, Serialize)]
+            #[serde(tag = "kind", content = "value")]
             $vis enum [<$prefix PatternKind>] {
                 Wildcard,
                 Number(f64),
@@ -607,11 +608,6 @@ impl<L: Loader> Compiler<L> {
 
         progress(Progress::Finalizing);
 
-        let mut top_level = HashMap::new();
-        for file in &files {
-            top_level.extend(file.borrow().exported.clone());
-        }
-
         let body = match body
             .iter()
             .map(|(file, exprs)| {
@@ -945,7 +941,6 @@ impl<L: Loader> Compiler<L> {
             valid: success,
             body,
             declarations,
-            top_level,
         }
     }
 }

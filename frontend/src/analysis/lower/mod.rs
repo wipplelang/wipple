@@ -333,7 +333,7 @@ pub enum ScopeKind {
     Loop,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone)]
 pub enum ScopeValue {
     Type(TypeId),
     BuiltinType(BuiltinTypeId),

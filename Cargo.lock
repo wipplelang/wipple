@@ -1903,6 +1903,7 @@ dependencies = [
  "codemap-diagnostic",
  "indicatif",
  "prettyplease",
+ "serde",
  "serde_json",
  "syn",
  "tokio",

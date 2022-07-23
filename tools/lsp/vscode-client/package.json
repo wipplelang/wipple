@@ -1,0 +1,50 @@
+{
+    "name": "wipple",
+    "displayName": "Wipple Language Support",
+    "description": "Wipple language support for VSCode",
+    "version": "0.0.1",
+    "engines": {
+        "vscode": "^1.69.0"
+    },
+    "categories": [
+        "Programming Languages"
+    ],
+    "contributes": {
+        "languages": [
+            {
+                "id": "wipple",
+                "aliases": [
+                    "Wipple",
+                    "wipple"
+                ],
+                "extensions": [
+                    ".wpl"
+                ],
+                "configuration": "./language-configuration.json"
+            }
+        ],
+        "grammars": [
+            {
+                "language": "wipple",
+                "scopeName": "source.wipple",
+                "path": "./syntaxes/wipple.tmLanguage.json"
+            }
+        ]
+    },
+    "activationEvents": [
+        "onLanguage:wipple"
+    ],
+    "scripts": {
+        "vscode:prepublish": "npm run compile",
+        "compile": "tsc -b",
+        "watch": "tsc -b -w"
+    },
+    "dependencies": {
+        "vscode-languageclient": "^7.0.0"
+    },
+    "devDependencies": {
+        "@types/node": "^18.0.6",
+        "@types/vscode": "^1.69.0",
+        "typescript": "^4.7.4"
+    }
+}

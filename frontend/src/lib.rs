@@ -36,6 +36,7 @@ pub trait Loader: Clone + Send + Sync + 'static {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
+#[serde(tag = "type", content = "value")]
 pub enum FilePath {
     Path(InternedString),
     Url(InternedString),

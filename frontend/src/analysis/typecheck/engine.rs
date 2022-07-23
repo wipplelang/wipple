@@ -3,6 +3,7 @@ use serde::Serialize;
 use std::collections::BTreeMap;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
+#[serde(tag = "type", content = "value")]
 pub enum UnresolvedType {
     Variable(TypeVariable),
     Parameter(TypeParameterId),
@@ -14,6 +15,7 @@ pub enum UnresolvedType {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
+#[serde(tag = "type", content = "value")]
 pub enum Type {
     Parameter(TypeParameterId),
     Named(TypeId, Vec<Type>, TypeStructure<Type>),
@@ -24,6 +26,7 @@ pub enum Type {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
+#[serde(tag = "type", content = "value")]
 pub enum TypeStructure<Ty> {
     Marker,
     Structure(Vec<Ty>),
@@ -77,6 +80,7 @@ impl From<TypeStructure<Type>> for TypeStructure<UnresolvedType> {
 pub struct TypeVariable(pub usize);
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
+#[serde(tag = "type", content = "value")]
 pub enum BuiltinType<Ty> {
     Number,
     Text,
