@@ -24,6 +24,7 @@ impl<L: Loader> Compiler<L> {
                         name: Some(name),
                         span: $span,
                         value: $value,
+                        uses: Vec::new(),
                     },
                 );
 

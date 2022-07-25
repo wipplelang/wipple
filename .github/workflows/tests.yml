@@ -4,10 +4,10 @@ on:
     paths:
       - .github/**
       - backends/**
-      - cli/**
-      - compiler/**
-      - support/**
-      - test/**
+      - frontend/**
+      - loaders/**
+      - pkg/**
+      - tools/**
 
 name: Tests
 

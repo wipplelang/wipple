@@ -238,23 +238,3 @@ impl wipple_frontend::Loader for Loader {
 pub fn is_url(s: impl AsRef<str>) -> bool {
     Url::from_str(s.as_ref()).is_ok()
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use wipple_frontend::Loader;
-
-    #[test]
-    fn test_paths() {
-        let loader = super::Loader::new(None, None);
-
-        let path = loader
-            .resolve(
-                FilePath::Path(InternedString::new("/foo/bar.wpl")),
-                Some(FilePath::Path(InternedString::new("https://foo/bar"))),
-            )
-            .unwrap();
-
-        assert_eq!(path.as_str(), "/foo/bar.wpl");
-    }
-}

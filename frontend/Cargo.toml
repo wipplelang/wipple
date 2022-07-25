@@ -23,4 +23,5 @@ peg = "0.8"
 regex = "1"
 rustc_lexer = "0.1"
 serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", optional = true }
 strum = { version = "0.24", features = ["derive"] }

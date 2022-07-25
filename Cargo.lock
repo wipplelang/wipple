@@ -1903,6 +1903,7 @@ dependencies = [
  "codemap-diagnostic",
  "indicatif",
  "prettyplease",
+ "serde",
  "serde_json",
  "syn",
  "tokio",
@@ -1953,6 +1954,7 @@ dependencies = [
  "regex",
  "rustc_lexer",
  "serde",
+ "serde_json",
  "strum",
 ]
 

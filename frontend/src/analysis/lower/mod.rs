@@ -29,6 +29,8 @@ pub struct File {
 
 #[derive(Debug, Clone, Default)]
 pub struct Declarations {
+    pub operators: BTreeMap<TemplateId, expand::Operator>,
+    pub templates: BTreeMap<TemplateId, expand::TemplateDeclaration<()>>,
     pub types: BTreeMap<TypeId, Declaration<Type>>,
     pub type_parameters: BTreeMap<TypeParameterId, Declaration<()>>,
     pub traits: BTreeMap<TraitId, Declaration<Trait>>,
@@ -43,6 +45,7 @@ pub struct Declaration<T> {
     pub name: Option<InternedString>,
     pub span: Span,
     pub value: T,
+    pub uses: Vec<Span>,
 }
 
 #[derive(Debug, Clone, Default, Serialize)]
@@ -235,7 +238,7 @@ impl TypeAnnotation {
 }
 
 impl<L: Loader> Compiler<L> {
-    pub fn lower(&mut self, file: ast::File, dependencies: Vec<Arc<File>>) -> File {
+    pub fn lower(&mut self, file: ast::File<L>, dependencies: Vec<Arc<File>>) -> File {
         let scope = Scope::root(ScopeKind::Block);
 
         let mut info = Info {
@@ -245,16 +248,49 @@ impl<L: Loader> Compiler<L> {
 
         self.load_builtins(&scope, &mut info);
 
+        info.declarations.operators = file.declarations.operators;
+
+        info.declarations.templates = file
+            .declarations
+            .templates
+            .into_iter()
+            .map(|(id, decl)| {
+                (
+                    id,
+                    expand::TemplateDeclaration {
+                        name: decl.name,
+                        span: decl.span,
+                        template: (),
+                        attributes: decl.attributes,
+                        uses: decl.uses,
+                    },
+                )
+            })
+            .collect();
+
         for dependency in dependencies {
             macro_rules! merge_dependency {
                 ($($kind:ident),* $(,)?) => {
                     $(
-                        info.declarations
-                            .$kind
-                            .extend(dependency.declarations.$kind.clone());
+                        for (id, decl) in dependency.declarations.$kind.clone() {
+                            use std::collections::btree_map::Entry;
+
+                            match info.declarations.$kind.entry(id) {
+                                Entry::Vacant(entry) => {
+                                    entry.insert(decl);
+                                }
+                                Entry::Occupied(mut entry) => {
+                                    entry.get_mut().uses.extend(decl.uses);
+                                }
+                            }
+                        }
                     )*
                 };
             }
+
+            info.declarations
+                .operators
+                .extend(dependency.declarations.operators.clone());
 
             merge_dependency!(
                 types,
@@ -333,7 +369,7 @@ pub enum ScopeKind {
     Loop,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone)]
 pub enum ScopeValue {
     Type(TypeId),
     BuiltinType(BuiltinTypeId),
@@ -465,6 +501,7 @@ impl<L: Loader> Compiler<L> {
                                 name: Some(param.name),
                                 span: param.span,
                                 value: (),
+                                uses: Vec::new(),
                             },
                         );
 
@@ -556,6 +593,7 @@ impl<L: Loader> Compiler<L> {
                                             name: Some(name),
                                             span: ty.span,
                                             value: (),
+                                            uses: Vec::new(),
                                         },
                                     );
 
@@ -605,6 +643,7 @@ impl<L: Loader> Compiler<L> {
                                         attributes: self
                                             .lower_decl_attributes(&mut variant.attributes),
                                     },
+                                    uses: Vec::new(),
                                 },
                             );
 
@@ -628,14 +667,15 @@ impl<L: Loader> Compiler<L> {
                     id,
                     Declaration {
                         name: Some(name),
-                        span: statement.span,
+                        span,
                         value: ty,
+                        uses: Vec::new(),
                     },
                 );
 
                 (Some(ScopeValue::Type(id)), None)
             }
-            ast::StatementKind::Trait((_span, name), declaration) => {
+            ast::StatementKind::Trait((span, name), declaration) => {
                 let tr = {
                     let scope = scope.child(ScopeKind::Block);
 
@@ -658,14 +698,15 @@ impl<L: Loader> Compiler<L> {
                     id,
                     Declaration {
                         name: Some(name),
-                        span: statement.span,
+                        span,
                         value: tr,
+                        uses: Vec::new(),
                     },
                 );
 
                 (Some(ScopeValue::Trait(id)), None)
             }
-            ast::StatementKind::Constant((_span, name), declaration) => {
+            ast::StatementKind::Constant((span, name), declaration) => {
                 let constant = {
                     let scope = scope.child(ScopeKind::Block);
 
@@ -676,7 +717,16 @@ impl<L: Loader> Compiler<L> {
                         .into_iter()
                         .map(|bound| {
                             let tr = match scope.get(bound.trait_name) {
-                                Some(ScopeValue::Trait(tr)) => tr,
+                                Some(ScopeValue::Trait(tr)) => {
+                                    info.declarations
+                                        .traits
+                                        .get_mut(&tr)
+                                        .unwrap()
+                                        .uses
+                                        .push(bound.trait_span);
+
+                                    tr
+                                }
                                 Some(_) => {
                                     self.diagnostics.add(Diagnostic::error(
                                         format!("`{}` is not a trait", bound.trait_name),
@@ -739,8 +789,9 @@ impl<L: Loader> Compiler<L> {
                     id,
                     Declaration {
                         name: Some(name),
-                        span: statement.span,
+                        span,
                         value: constant,
+                        uses: Vec::new(),
                     },
                 );
 
@@ -757,7 +808,16 @@ impl<L: Loader> Compiler<L> {
                         .into_iter()
                         .map(|bound| {
                             let tr = match scope.get(bound.trait_name) {
-                                Some(ScopeValue::Trait(tr)) => tr,
+                                Some(ScopeValue::Trait(tr)) => {
+                                    info.declarations
+                                        .traits
+                                        .get_mut(&tr)
+                                        .unwrap()
+                                        .uses
+                                        .push(bound.trait_span);
+
+                                    tr
+                                }
                                 Some(_) => {
                                     self.diagnostics.add(Diagnostic::error(
                                         format!("`{}` is not a trait", bound.trait_name),
@@ -802,7 +862,16 @@ impl<L: Loader> Compiler<L> {
                     };
 
                     let tr = match scope.get(decl.trait_name) {
-                        Some(ScopeValue::Trait(tr)) => tr,
+                        Some(ScopeValue::Trait(tr)) => {
+                            info.declarations
+                                .traits
+                                .get_mut(&tr)
+                                .unwrap()
+                                .uses
+                                .push(decl.trait_span);
+
+                            tr
+                        }
                         Some(_) => {
                             self.diagnostics.add(Diagnostic::error(
                                 format!("`{}` is not a trait", decl.trait_name),
@@ -845,6 +914,7 @@ impl<L: Loader> Compiler<L> {
                         name: None,
                         span: statement.span,
                         value: instance,
+                        uses: Vec::new(),
                     },
                 );
 
@@ -914,7 +984,16 @@ impl<L: Loader> Compiler<L> {
             })(),
             ast::StatementKind::Use((span, name)) => {
                 let ty = match scope.get(name) {
-                    Some(ScopeValue::Type(ty)) => ty,
+                    Some(ScopeValue::Type(ty)) => {
+                        info.declarations
+                            .types
+                            .get_mut(&ty)
+                            .unwrap()
+                            .uses
+                            .push(span);
+
+                        ty
+                    }
                     Some(_) => {
                         self.diagnostics.add(Diagnostic::error(
                             format!("`{}` is not a type", name),
@@ -1080,92 +1159,100 @@ impl<L: Loader> Compiler<L> {
                     let input = inputs.first().unwrap();
 
                     match scope.get(*ty_name) {
-                        Some(ScopeValue::Type(id)) => match &input.kind {
-                            ast::ExpressionKind::Block(statements) => {
-                                if inputs.len() > 1 {
-                                    self.diagnostics.add(Diagnostic::error(
-                                        "too many inputs in structure instantiation",
-                                        vec![Note::primary(
-                                            Span::join(
-                                                inputs.first().unwrap().span,
-                                                inputs.last().unwrap().span,
-                                            ),
-                                            "this structure requires a single block containing its fields",
-                                        )],
-                                    ));
-                                }
+                        Some(ScopeValue::Type(id)) => {
+                            info.declarations
+                                .types
+                                .get_mut(&id)
+                                .unwrap()
+                                .uses
+                                .push(function.span);
 
-                                let fields = statements
-                                    .iter()
-                                    .filter_map(|s| match &s.kind {
-                                        ast::StatementKind::Assign(pattern, expr) => match &pattern.kind {
-                                            ast::PatternKind::Name(name) => Some((*name, expr)),
+                            match &input.kind {
+                                ast::ExpressionKind::Block(statements) => {
+                                    if inputs.len() > 1 {
+                                        self.diagnostics.add(Diagnostic::error(
+                                            "too many inputs in structure instantiation",
+                                            vec![Note::primary(
+                                                Span::join(
+                                                    inputs.first().unwrap().span,
+                                                    inputs.last().unwrap().span,
+                                                ),
+                                                "this structure requires a single block containing its fields",
+                                            )],
+                                        ));
+                                    }
+
+                                    let fields = statements
+                                        .iter()
+                                        .filter_map(|s| match &s.kind {
+                                            ast::StatementKind::Assign(pattern, expr) => match &pattern.kind {
+                                                ast::PatternKind::Name(name) => Some((*name, expr)),
+                                                _ => {
+                                                    self.diagnostics.add(Diagnostic::error(
+                                                        "structure instantiation may not contain complex patterns",
+                                                        vec![Note::primary(
+                                                            s.span,
+                                                            "try splitting this pattern into multiple names",
+                                                        )]
+                                                    ));
+
+                                                    None
+                                                },
+                                            },
+                                            // TODO: 'use' inside instantiation
                                             _ => {
                                                 self.diagnostics.add(Diagnostic::error(
-                                                    "structure instantiation may not contain complex patterns",
+                                                    "structure instantiation may not contain executable statements",
                                                     vec![Note::primary(
                                                         s.span,
-                                                        "try splitting this pattern into multiple names",
+                                                        "try removing this",
                                                     )]
                                                 ));
 
                                                 None
-                                            },
-                                        },
-                                        // TODO: 'use' inside instantiation
-                                        _ => {
-                                            self.diagnostics.add(Diagnostic::error(
-                                                "structure instantiation may not contain executable statements",
-                                                vec![Note::primary(
-                                                    s.span,
-                                                    "try removing this",
-                                                )]
-                                            ));
+                                            }
+                                        })
+                                        .collect::<Vec<_>>()
+                                        .into_iter()
+                                        .map(|(name, value)| {
+                                            (name, self.lower_expr(value.clone(), scope, info))
+                                        })
+                                        .collect();
 
-                                            None
-                                        }
-                                    })
-                                    .collect::<Vec<_>>()
-                                    .into_iter()
-                                    .map(|(name, value)| {
-                                        (name, self.lower_expr(value.clone(), scope, info))
-                                    })
-                                    .collect();
-
-                                let ty = &info.declarations.types.get(&id).unwrap().value;
-                                if !matches!(ty.kind, TypeKind::Structure(_, _)) {
-                                    self.diagnostics.add(Diagnostic::error(
-                                        "only structures may be instantiated like this",
-                                        vec![Note::primary(function.span, "not a structure")],
-                                    ));
-
-                                    return Expression::error(expr.span);
-                                }
-
-                                ExpressionKind::Instantiate(id, fields)
-                            }
-                            ast::ExpressionKind::Name(name) => {
-                                let ty_decl = info.declarations.types.get(&id).unwrap();
-
-                                let (variant_types, variants) = match &ty_decl.value.kind {
-                                    TypeKind::Enumeration(types, variants) => (types, variants),
-                                    _ => {
+                                    let ty = &info.declarations.types.get(&id).unwrap().value;
+                                    if !matches!(ty.kind, TypeKind::Structure(_, _)) {
                                         self.diagnostics.add(Diagnostic::error(
-                                            "only enumerations may be instantiated like this",
-                                            vec![Note::primary(
-                                                function.span,
-                                                "not an enumeration",
-                                            )],
+                                            "only structures may be instantiated like this",
+                                            vec![Note::primary(function.span, "not a structure")],
                                         ));
 
                                         return Expression::error(expr.span);
                                     }
-                                };
 
-                                let index = match variants.get(name) {
-                                    Some(index) => *index,
-                                    None => {
-                                        self.diagnostics.add(Diagnostic::error(
+                                    ExpressionKind::Instantiate(id, fields)
+                                }
+                                ast::ExpressionKind::Name(name) => {
+                                    let ty_decl = info.declarations.types.get(&id).unwrap();
+
+                                    let (variant_types, variants) = match &ty_decl.value.kind {
+                                        TypeKind::Enumeration(types, variants) => (types, variants),
+                                        _ => {
+                                            self.diagnostics.add(Diagnostic::error(
+                                                "only enumerations may be instantiated like this",
+                                                vec![Note::primary(
+                                                    function.span,
+                                                    "not an enumeration",
+                                                )],
+                                            ));
+
+                                            return Expression::error(expr.span);
+                                        }
+                                    };
+
+                                    let index = match variants.get(name) {
+                                        Some(index) => *index,
+                                        None => {
+                                            self.diagnostics.add(Diagnostic::error(
                                             format!(
                                                 "enumeration `{}` does not declare a variant named `{}`",
                                                 ty_name,
@@ -1174,26 +1261,35 @@ impl<L: Loader> Compiler<L> {
                                             vec![Note::primary(input.span, "no such variant")],
                                         ));
 
-                                        return Expression::error(expr.span);
-                                    }
-                                };
+                                            return Expression::error(expr.span);
+                                        }
+                                    };
 
-                                function_call!(
-                                    Expression {
-                                        span: expr.span,
-                                        kind: ExpressionKind::Constant(
-                                            variant_types[index].constructor
-                                        )
-                                    },
-                                    inputs.into_iter().skip(1)
-                                )
-                                .kind
+                                    function_call!(
+                                        Expression {
+                                            span: expr.span,
+                                            kind: ExpressionKind::Constant(
+                                                variant_types[index].constructor
+                                            )
+                                        },
+                                        inputs.into_iter().skip(1)
+                                    )
+                                    .kind
+                                }
+                                _ => {
+                                    function_call!(self.lower_expr(*function, scope, info), inputs)
+                                        .kind
+                                }
                             }
-                            _ => {
-                                function_call!(self.lower_expr(*function, scope, info), inputs).kind
-                            }
-                        },
-                        Some(ScopeValue::TypeParameter(_)) => {
+                        }
+                        Some(ScopeValue::TypeParameter(id)) => {
+                            info.declarations
+                                .type_parameters
+                                .get_mut(&id)
+                                .unwrap()
+                                .uses
+                                .push(function.span);
+
                             self.diagnostics.add(Diagnostic::error(
                                 "cannot instantiate type parameter",
                                 vec![Note::primary(
@@ -1204,7 +1300,14 @@ impl<L: Loader> Compiler<L> {
 
                             ExpressionKind::Error
                         }
-                        Some(ScopeValue::BuiltinType(_)) => {
+                        Some(ScopeValue::BuiltinType(id)) => {
+                            info.declarations
+                                .builtin_types
+                                .get_mut(&id)
+                                .unwrap()
+                                .uses
+                                .push(function.span);
+
                             self.diagnostics.add(Diagnostic::error(
                                 "cannot instantiate builtin type",
                                 vec![Note::primary(function.span, "try using a literal instead")],
@@ -1316,8 +1419,24 @@ impl<L: Loader> Compiler<L> {
                     .collect();
 
                 match scope.get(name) {
-                    Some(ScopeValue::Type(ty)) => TypeAnnotationKind::Named(ty, parameters),
+                    Some(ScopeValue::Type(id)) => {
+                        info.declarations
+                            .types
+                            .get_mut(&id)
+                            .unwrap()
+                            .uses
+                            .push(ty.span);
+
+                        TypeAnnotationKind::Named(id, parameters)
+                    }
                     Some(ScopeValue::TypeParameter(param)) => {
+                        info.declarations
+                            .type_parameters
+                            .get_mut(&param)
+                            .unwrap()
+                            .uses
+                            .push(ty.span);
+
                         if !parameters.is_empty() {
                             // TODO: Higher-kinded types
                             self.diagnostics.add(Diagnostic::error(
@@ -1332,6 +1451,13 @@ impl<L: Loader> Compiler<L> {
                         TypeAnnotationKind::Parameter(param)
                     }
                     Some(ScopeValue::BuiltinType(builtin)) => {
+                        info.declarations
+                            .builtin_types
+                            .get_mut(&builtin)
+                            .unwrap()
+                            .uses
+                            .push(ty.span);
+
                         TypeAnnotationKind::Builtin(builtin, parameters)
                     }
                     _ => {
@@ -1368,7 +1494,14 @@ impl<L: Loader> Compiler<L> {
             ast::PatternKind::Number(number) => PatternKind::Number(number),
             ast::PatternKind::Text(text) => PatternKind::Text(text),
             ast::PatternKind::Name(name) => match scope.get(name) {
-                Some(ScopeValue::Constant(_, Some((ty, variant)))) => {
+                Some(ScopeValue::Constant(id, Some((ty, variant)))) => {
+                    info.declarations
+                        .constants
+                        .get_mut(&id)
+                        .unwrap()
+                        .uses
+                        .push(pattern.span);
+
                     PatternKind::Variant(ty, variant, Vec::new())
                 }
                 _ => {
@@ -1385,6 +1518,7 @@ impl<L: Loader> Compiler<L> {
                             name: Some(name),
                             span: pattern.span,
                             value: (),
+                            uses: Vec::new(),
                         },
                     );
 
@@ -1426,6 +1560,13 @@ impl<L: Loader> Compiler<L> {
 
                 match first {
                     ScopeValue::Type(ty) => {
+                        info.declarations
+                            .types
+                            .get_mut(&ty)
+                            .unwrap()
+                            .uses
+                            .push(name_span);
+
                         let variants = match &info.declarations.types.get(&ty).unwrap().value.kind {
                             TypeKind::Enumeration(_, variants) => variants,
                             _ => {
@@ -1494,13 +1635,22 @@ impl<L: Loader> Compiler<L> {
                                 .collect(),
                         )
                     }
-                    ScopeValue::Constant(_, Some((ty, variant))) => PatternKind::Variant(
-                        ty,
-                        variant,
-                        values
-                            .map(|value| self.lower_pattern(value, scope, info))
-                            .collect(),
-                    ),
+                    ScopeValue::Constant(id, Some((ty, variant))) => {
+                        info.declarations
+                            .constants
+                            .get_mut(&id)
+                            .unwrap()
+                            .uses
+                            .push(name_span);
+
+                        PatternKind::Variant(
+                            ty,
+                            variant,
+                            values
+                                .map(|value| self.lower_pattern(value, scope, info))
+                                .collect(),
+                        )
+                    }
                     _ => {
                         self.diagnostics.add(Diagnostic::error(
                             format!("cannot use `{}` in pattern", name),
@@ -1546,6 +1696,13 @@ impl<L: Loader> Compiler<L> {
     ) -> Option<ExpressionKind> {
         match scope.get(name) {
             Some(ScopeValue::Type(id)) => {
+                info.declarations
+                    .types
+                    .get_mut(&id)
+                    .unwrap()
+                    .uses
+                    .push(span);
+
                 match info.declarations.types.get(&id).unwrap().value.kind {
                     TypeKind::Marker => Some(ExpressionKind::Marker(id)),
                     _ => {
@@ -1558,7 +1715,14 @@ impl<L: Loader> Compiler<L> {
                     }
                 }
             }
-            Some(ScopeValue::BuiltinType(_)) => {
+            Some(ScopeValue::BuiltinType(id)) => {
+                info.declarations
+                    .builtin_types
+                    .get_mut(&id)
+                    .unwrap()
+                    .uses
+                    .push(span);
+
                 self.diagnostics.add(Diagnostic::error(
                     "cannot use builtin type as value",
                     vec![Note::primary(span, "try using a literal instead")],
@@ -1566,8 +1730,24 @@ impl<L: Loader> Compiler<L> {
 
                 Some(ExpressionKind::Error)
             }
-            Some(ScopeValue::Trait(id)) => Some(ExpressionKind::Trait(id)),
-            Some(ScopeValue::TypeParameter(_)) => {
+            Some(ScopeValue::Trait(id)) => {
+                info.declarations
+                    .traits
+                    .get_mut(&id)
+                    .unwrap()
+                    .uses
+                    .push(span);
+
+                Some(ExpressionKind::Trait(id))
+            }
+            Some(ScopeValue::TypeParameter(id)) => {
+                info.declarations
+                    .type_parameters
+                    .get_mut(&id)
+                    .unwrap()
+                    .uses
+                    .push(span);
+
                 self.diagnostics.add(Diagnostic::error(
                     "cannot use type parameter as value",
                     vec![Note::primary(
@@ -1578,7 +1758,14 @@ impl<L: Loader> Compiler<L> {
 
                 Some(ExpressionKind::Error)
             }
-            Some(ScopeValue::Operator(_)) => {
+            Some(ScopeValue::Operator(id)) => {
+                info.declarations
+                    .templates
+                    .get_mut(&id)
+                    .unwrap()
+                    .uses
+                    .push(span);
+
                 self.diagnostics.add(Diagnostic::error(
                     "cannot use operator as value",
                     vec![Note::primary(
@@ -1589,8 +1776,26 @@ impl<L: Loader> Compiler<L> {
 
                 Some(ExpressionKind::Error)
             }
-            Some(ScopeValue::Constant(id, _)) => Some(ExpressionKind::Constant(id)),
-            Some(ScopeValue::Variable(id)) => Some(ExpressionKind::Variable(id)),
+            Some(ScopeValue::Constant(id, _)) => {
+                info.declarations
+                    .constants
+                    .get_mut(&id)
+                    .unwrap()
+                    .uses
+                    .push(span);
+
+                Some(ExpressionKind::Constant(id))
+            }
+            Some(ScopeValue::Variable(id)) => {
+                info.declarations
+                    .variables
+                    .get_mut(&id)
+                    .unwrap()
+                    .uses
+                    .push(span);
+
+                Some(ExpressionKind::Variable(id))
+            }
             None => None,
         }
     }
@@ -1612,6 +1817,7 @@ impl<L: Loader> Compiler<L> {
                         name: Some(parameter.name),
                         span: parameter.span,
                         value: (),
+                        uses: Vec::new(),
                     },
                 );
 

@@ -1,5 +1,6 @@
 [[no-std]]
 
+[keyword]
 while : condition body ~> loop {
 	if condition {
 		body
@@ -9,4 +10,5 @@ while : condition body ~> loop {
 	}
 }
 
+[keyword]
 unless : condition body ~> while (not condition) body

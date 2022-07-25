@@ -1,12 +1,13 @@
 use crate::{parse::Span, FilePath, Loader};
 use parking_lot::Mutex;
+use serde::Serialize;
 use std::{
     cmp::Ordering,
     collections::{hash_map::Entry, HashMap},
     sync::Arc,
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct Diagnostic {
     pub level: DiagnosticLevel,
     pub message: String,
@@ -24,7 +25,7 @@ impl PartialEq for Diagnostic {
 
 impl Eq for Diagnostic {}
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 pub enum DiagnosticLevel {
     Note,
     Warning,
@@ -41,14 +42,14 @@ impl From<DiagnosticLevel> for codemap_diagnostic::Level {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct Note {
     pub level: NoteLevel,
     pub span: Span,
     pub message: String,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 pub enum NoteLevel {
     Primary,
     Secondary,
@@ -141,10 +142,15 @@ impl<L: Loader> FinalizedDiagnostics<L> {
             .any(|d| matches!(d.level, DiagnosticLevel::Error))
     }
 
+    #[cfg(feature = "serde_json")]
+    pub fn to_json(self, w: impl std::io::Write) -> serde_json::Result<()> {
+        serde_json::to_writer(w, &self.diagnostics)
+    }
+
     pub fn into_console_friendly(
         mut self,
         #[cfg(debug_assertions)] include_trace: bool,
-    ) -> (L, codemap::CodeMap, Vec<codemap_diagnostic::Diagnostic>) {
+    ) -> (codemap::CodeMap, Vec<codemap_diagnostic::Diagnostic>) {
         self.diagnostics.dedup();
 
         let mut codemap = codemap::CodeMap::new();
@@ -213,6 +219,6 @@ impl<L: Loader> FinalizedDiagnostics<L> {
             (Some(a), Some(b)) => a.span.low().cmp(&b.span.low()),
         });
 
-        (self.loader, codemap, diagnostics)
+        (codemap, diagnostics)
     }
 }

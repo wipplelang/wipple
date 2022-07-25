@@ -8,9 +8,12 @@ pub use engine::{BottomTypeReason, BuiltinType, Type, TypeStructure};
 pub use format::{format_type, FormattableType};
 
 use crate::{
-    analysis::lower, diagnostics::*, helpers::InternedString, parse::Span, Compiler, FilePath,
-    GenericConstantId, Loader, MonomorphizedConstantId, TraitId, TypeId, TypeParameterId,
-    VariableId,
+    analysis::{expand, lower},
+    diagnostics::*,
+    helpers::InternedString,
+    parse::Span,
+    Compiler, FilePath, GenericConstantId, Loader, MonomorphizedConstantId, TemplateId, TraitId,
+    TypeId, TypeParameterId, VariableId,
 };
 use engine::*;
 use serde::Serialize;
@@ -29,7 +32,6 @@ pub struct Program {
     pub valid: bool,
     pub body: Vec<Expression>,
     pub declarations: Declarations<Expression, Type>,
-    pub top_level: HashMap<InternedString, lower::ScopeValue>,
 }
 
 macro_rules! expr {
@@ -43,6 +45,7 @@ macro_rules! expr {
             }
 
             #[derive(Debug, Clone, Serialize)]
+            #[serde(tag = "type", content = "value")]
             $vis enum [<$prefix ExpressionKind>] {
                 Marker,
                 Variable(VariableId),
@@ -84,6 +87,7 @@ macro_rules! pattern {
             }
 
             #[derive(Debug, Clone, Serialize)]
+            #[serde(tag = "kind", content = "value")]
             $vis enum [<$prefix PatternKind>] {
                 Wildcard,
                 Number(f64),
@@ -142,6 +146,8 @@ impl UnresolvedExpression {
 
 #[derive(Debug, Clone, Serialize)]
 pub struct Declarations<Expr, Ty, File = ()> {
+    pub operators: BTreeMap<TemplateId, expand::Operator>,
+    pub templates: BTreeMap<TemplateId, expand::TemplateDeclaration<()>>,
     pub types: BTreeMap<TypeId, Declaration<TypeDeclaration>>,
     pub type_parameters: BTreeMap<TypeParameterId, Declaration<()>>,
     pub traits: BTreeMap<TraitId, Declaration<TraitDeclaration>>,
@@ -154,6 +160,8 @@ pub struct Declarations<Expr, Ty, File = ()> {
 impl<Expr, Ty, File> Default for Declarations<Expr, Ty, File> {
     fn default() -> Self {
         Self {
+            operators: Default::default(),
+            templates: Default::default(),
             types: Default::default(),
             type_parameters: Default::default(),
             traits: Default::default(),
@@ -169,6 +177,7 @@ pub struct Declaration<T> {
     pub name: Option<InternedString>,
     pub span: Span,
     pub value: T,
+    pub uses: Vec<Span>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -236,6 +245,23 @@ impl<L: Loader> Compiler<L> {
         // Copy declarations
 
         for file in &files {
+            for (id, decl) in file.borrow().declarations.operators.clone() {
+                typechecker.declarations.operators.entry(id).or_insert(decl);
+            }
+
+            for (id, decl) in file.borrow().declarations.templates.clone() {
+                use std::collections::btree_map::Entry;
+
+                match typechecker.declarations.templates.entry(id) {
+                    Entry::Vacant(entry) => {
+                        entry.insert(decl);
+                    }
+                    Entry::Occupied(mut entry) => {
+                        entry.get_mut().uses.extend(decl.uses);
+                    }
+                }
+            }
+
             for (id, decl) in file.borrow().declarations.types.clone() {
                 typechecker
                     .declarations
@@ -247,6 +273,7 @@ impl<L: Loader> Compiler<L> {
                         value: TypeDeclaration {
                             attributes: decl.value.attributes,
                         },
+                        uses: decl.uses,
                     });
             }
 
@@ -259,6 +286,7 @@ impl<L: Loader> Compiler<L> {
                         name: decl.name,
                         span: decl.span,
                         value: (),
+                        uses: decl.uses,
                     });
             }
 
@@ -281,6 +309,7 @@ impl<L: Loader> Compiler<L> {
                             params,
                             attributes: decl.value.attributes,
                         },
+                        uses: decl.uses,
                     },
                 );
             }
@@ -380,7 +409,11 @@ impl<L: Loader> Compiler<L> {
                     continue;
                 }
 
-                let value = decl.value.value.borrow().as_ref().unwrap().clone();
+                let value = match decl.value.value.borrow().as_ref() {
+                    Some(value) => value.clone(),
+                    None => continue,
+                };
+
                 let generic_ty = typechecker.convert_type_annotation(&decl.value.ty, file);
 
                 let bounds = decl
@@ -413,6 +446,7 @@ impl<L: Loader> Compiler<L> {
                             name: decl.name,
                             span: decl.span,
                             value,
+                            uses: decl.uses.clone(),
                         },
                         generic_ty,
                         bounds,
@@ -518,6 +552,7 @@ impl<L: Loader> Compiler<L> {
                             name: decl.name,
                             span: decl.span,
                             value,
+                            uses: decl.uses,
                         },
                         generic_ty: tr.ty,
                         bounds,
@@ -557,6 +592,7 @@ impl<L: Loader> Compiler<L> {
                                 span: constant.decl.value.span,
                                 kind: lower::ExpressionKind::Error,
                             },
+                            uses: constant.decl.uses.clone(),
                         },
                         generic_ty: ty,
                         bounds: Vec::new(),
@@ -593,6 +629,7 @@ impl<L: Loader> Compiler<L> {
                         name: constant.decl.name,
                         span: constant.decl.span,
                         value: body,
+                        uses: constant.decl.uses,
                     },
                     attributes: constant.attributes,
                 },
@@ -606,11 +643,6 @@ impl<L: Loader> Compiler<L> {
         // raising an error for unresolved type variables
 
         progress(Progress::Finalizing);
-
-        let mut top_level = HashMap::new();
-        for file in &files {
-            top_level.extend(file.borrow().exported.clone());
-        }
 
         let body = match body
             .iter()
@@ -650,16 +682,17 @@ impl<L: Loader> Compiler<L> {
                 let mut ty = constant.decl.value.ty.clone();
                 ty.apply(&typechecker.ctx);
 
-                for (tr, mut ty, span) in constant.bounds.clone() {
+                for (tr, mut ty, bound_span) in constant.bounds.clone() {
                     ty.apply(&typechecker.ctx);
 
-                    let instance_id = match typechecker.instance_for(tr, ty.clone()) {
-                        Ok(id) => id,
-                        Err(error) => {
-                            typechecker.errors.push(Error::new(error, span));
-                            continue;
-                        }
-                    };
+                    let instance_id =
+                        match typechecker.instance_for(tr, ty.clone(), Some(bound_span)) {
+                            Ok(id) => id,
+                            Err(error) => {
+                                typechecker.errors.push(Error::new(error, span));
+                                continue;
+                            }
+                        };
 
                     typechecker
                         .bound_instances
@@ -694,6 +727,7 @@ impl<L: Loader> Compiler<L> {
                             name: constant.decl.name,
                             span,
                             value: body,
+                            uses: constant.decl.uses,
                         },
                     ),
                 );
@@ -708,6 +742,8 @@ impl<L: Loader> Compiler<L> {
 
         let mut declarations = match (|| {
             Ok(Declarations {
+                operators: typechecker.declarations.operators.clone(),
+                templates: typechecker.declarations.templates.clone(),
                 types: typechecker.declarations.types.clone(),
                 type_parameters: typechecker.declarations.type_parameters.clone(),
                 traits: typechecker.declarations.traits.clone(),
@@ -728,6 +764,7 @@ impl<L: Loader> Compiler<L> {
                                         constant.decl.value.clone(),
                                         &constant.file,
                                     )?,
+                                    uses: constant.decl.uses,
                                 },
                                 attributes: constant.attributes,
                             },
@@ -749,6 +786,7 @@ impl<L: Loader> Compiler<L> {
                                     name: decl.name,
                                     span: decl.span,
                                     value: typechecker.finalize(decl.value, &file)?,
+                                    uses: decl.uses,
                                 },
                             ),
                         ))
@@ -774,6 +812,7 @@ impl<L: Loader> Compiler<L> {
                                     .ok_or_else(|| {
                                         Error::new(TypeError::UnresolvedType, decl.span)
                                     })?,
+                                uses: decl.uses,
                             },
                         ))
                     })
@@ -873,7 +912,7 @@ impl<L: Loader> Compiler<L> {
                         ),
                     )],
                 ),
-                TypeError::MissingInstance(id, params) => {
+                TypeError::MissingInstance(id, params, bound_span) => {
                     let tr = typechecker.declarations.traits.get(&id).unwrap();
 
                     Diagnostic::error(
@@ -885,6 +924,10 @@ impl<L: Loader> Compiler<L> {
                                 typechecker.format_type(FormattableType::Trait(id, params), true)
                             ),
                         ))
+                        .chain(
+                            bound_span
+                                .map(|span| Note::secondary(span, "required by this bound here")),
+                        )
                         .chain(
                             tr.value
                                 .attributes
@@ -931,6 +974,27 @@ impl<L: Loader> Compiler<L> {
 
         let should_report_unresolved_type_errors = other_errors.is_empty();
 
+        let (missing_instance_errors, other_errors): (Vec<_>, Vec<_>) = other_errors
+            .into_iter()
+            .partition(|e| matches!(e.error, TypeError::MissingInstance(_, _, _)));
+
+        let (ignore_if_unsatisfied_bounds_errors, missing_instance_errors): (Vec<_>, Vec<_>) =
+            missing_instance_errors
+                .into_iter()
+                .partition(|e| e.ignore_if_unsatisfied_bounds);
+
+        let should_report_ignored_errors = missing_instance_errors.is_empty();
+
+        for error in missing_instance_errors {
+            report(error, &typechecker);
+        }
+
+        if should_report_ignored_errors {
+            for error in ignore_if_unsatisfied_bounds_errors {
+                report(error, &typechecker);
+            }
+        }
+
         for error in other_errors {
             report(error, &typechecker);
         }
@@ -945,7 +1009,6 @@ impl<L: Loader> Compiler<L> {
             valid: success,
             body,
             declarations,
-            top_level,
         }
     }
 }
@@ -984,7 +1047,7 @@ enum TypeDefinitionKind {
 struct Error {
     error: TypeError,
     span: Span,
-
+    ignore_if_unsatisfied_bounds: bool,
     #[cfg(debug_assertions)]
     trace: Backtrace,
 }
@@ -994,10 +1057,15 @@ impl Error {
         Error {
             error,
             span,
-
+            ignore_if_unsatisfied_bounds: false,
             #[cfg(debug_assertions)]
             trace: Backtrace::new(),
         }
+    }
+
+    fn ignore_if_unsatisfied_bounds(mut self) -> Self {
+        self.ignore_if_unsatisfied_bounds = true;
+        self
     }
 }
 
@@ -1666,6 +1734,7 @@ impl<L: Loader> Typechecker<L> {
                         name: constant.decl.name,
                         span: constant.decl.span,
                         value: body,
+                        uses: constant.decl.uses,
                     },
                     generic_ty: (),
                     bounds: constant.bounds,
@@ -1769,6 +1838,7 @@ impl<L: Loader> Typechecker<L> {
                         name: decl.name,
                         span: decl.span,
                         value: ty.clone(),
+                        uses: decl.uses,
                     },
                 );
 
@@ -2274,9 +2344,11 @@ impl<L: Loader> Typechecker<L> {
                         )
                     }
                     UnresolvedExpressionKind::Trait(tr) => {
-                        let instance = self
-                            .instance_for(tr, expr.ty.clone())
-                            .map_err(|error| Error::new(error, expr.span))?;
+                        let instance =
+                            self.instance_for(tr, expr.ty.clone(), None)
+                                .map_err(|error| {
+                                    Error::new(error, expr.span).ignore_if_unsatisfied_bounds()
+                                })?;
 
                         let (monomorphized_instance, ty) =
                             self.monomorphize_constant(instance, expr.span);
@@ -2486,6 +2558,7 @@ impl<L: Loader> Typechecker<L> {
         &mut self,
         tr: TraitId,
         mut ty: UnresolvedType,
+        bound_span: Option<Span>,
     ) -> Result<GenericConstantId, TypeError> {
         ty.apply(&self.ctx);
 
@@ -2560,7 +2633,7 @@ impl<L: Loader> Typechecker<L> {
             })
             .collect();
 
-        Err(TypeError::MissingInstance(tr, params))
+        Err(TypeError::MissingInstance(tr, params, bound_span))
     }
 
     fn convert_type_annotation(

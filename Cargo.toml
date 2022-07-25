@@ -3,9 +3,9 @@ resolver = "2"
 members = [
     "backends/interpreter",
     "backends/rust",
-    "cli",
     "frontend",
     "loaders/default",
-    "test",
+    "tools/cli",
+    "tools/test",
     "website/playground/runner",
 ]

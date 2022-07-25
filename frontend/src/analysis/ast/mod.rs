@@ -6,12 +6,13 @@ use crate::{
     Compiler, FilePath, Loader,
 };
 
-pub use crate::analysis::expand::StatementAttributes;
+pub use crate::analysis::expand::{Declarations, StatementAttributes};
 
 #[derive(Debug, Clone)]
-pub struct File {
+pub struct File<L: Loader> {
     pub path: FilePath,
     pub span: Span,
+    pub declarations: Declarations<expand::Template<L>>,
     pub statements: Vec<Statement>,
 }
 
@@ -176,10 +177,11 @@ pub struct Bound {
 }
 
 impl<L: Loader> Compiler<L> {
-    pub fn build_ast(&mut self, file: expand::File<L>) -> File {
+    pub fn build_ast(&mut self, file: expand::File<L>) -> File<L> {
         File {
             path: file.path,
             span: file.span,
+            declarations: file.declarations,
             statements: file
                 .statements
                 .into_iter()
