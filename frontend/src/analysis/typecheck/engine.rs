@@ -1,4 +1,4 @@
-use crate::{GenericConstantId, TraitId, TypeId, TypeParameterId};
+use crate::{parse::Span, GenericConstantId, TraitId, TypeId, TypeParameterId};
 use serde::Serialize;
 use std::collections::BTreeMap;
 
@@ -108,7 +108,7 @@ pub enum TypeError {
     ErrorExpression,
     Recursive(TypeVariable),
     Mismatch(UnresolvedType, UnresolvedType),
-    MissingInstance(TraitId, Vec<UnresolvedType>),
+    MissingInstance(TraitId, Vec<UnresolvedType>, Option<Span>),
     AmbiguousTrait(TraitId, Vec<GenericConstantId>),
     UnresolvedType,
 }

@@ -682,16 +682,17 @@ impl<L: Loader> Compiler<L> {
                 let mut ty = constant.decl.value.ty.clone();
                 ty.apply(&typechecker.ctx);
 
-                for (tr, mut ty, _) in constant.bounds.clone() {
+                for (tr, mut ty, bound_span) in constant.bounds.clone() {
                     ty.apply(&typechecker.ctx);
 
-                    let instance_id = match typechecker.instance_for(tr, ty.clone()) {
-                        Ok(id) => id,
-                        Err(error) => {
-                            typechecker.errors.push(Error::new(error, span));
-                            continue;
-                        }
-                    };
+                    let instance_id =
+                        match typechecker.instance_for(tr, ty.clone(), Some(bound_span)) {
+                            Ok(id) => id,
+                            Err(error) => {
+                                typechecker.errors.push(Error::new(error, span));
+                                continue;
+                            }
+                        };
 
                     typechecker
                         .bound_instances
@@ -911,7 +912,7 @@ impl<L: Loader> Compiler<L> {
                         ),
                     )],
                 ),
-                TypeError::MissingInstance(id, params) => {
+                TypeError::MissingInstance(id, params, bound_span) => {
                     let tr = typechecker.declarations.traits.get(&id).unwrap();
 
                     Diagnostic::error(
@@ -923,6 +924,10 @@ impl<L: Loader> Compiler<L> {
                                 typechecker.format_type(FormattableType::Trait(id, params), true)
                             ),
                         ))
+                        .chain(
+                            bound_span
+                                .map(|span| Note::secondary(span, "required by this bound here")),
+                        )
                         .chain(
                             tr.value
                                 .attributes
@@ -971,7 +976,7 @@ impl<L: Loader> Compiler<L> {
 
         let (missing_instance_errors, other_errors): (Vec<_>, Vec<_>) = other_errors
             .into_iter()
-            .partition(|e| matches!(e.error, TypeError::MissingInstance(_, _)));
+            .partition(|e| matches!(e.error, TypeError::MissingInstance(_, _, _)));
 
         let (ignore_if_unsatisfied_bounds_errors, missing_instance_errors): (Vec<_>, Vec<_>) =
             missing_instance_errors
@@ -2339,9 +2344,11 @@ impl<L: Loader> Typechecker<L> {
                         )
                     }
                     UnresolvedExpressionKind::Trait(tr) => {
-                        let instance = self.instance_for(tr, expr.ty.clone()).map_err(|error| {
-                            Error::new(error, expr.span).ignore_if_unsatisfied_bounds()
-                        })?;
+                        let instance =
+                            self.instance_for(tr, expr.ty.clone(), None)
+                                .map_err(|error| {
+                                    Error::new(error, expr.span).ignore_if_unsatisfied_bounds()
+                                })?;
 
                         let (monomorphized_instance, ty) =
                             self.monomorphize_constant(instance, expr.span);
@@ -2551,6 +2558,7 @@ impl<L: Loader> Typechecker<L> {
         &mut self,
         tr: TraitId,
         mut ty: UnresolvedType,
+        bound_span: Option<Span>,
     ) -> Result<GenericConstantId, TypeError> {
         ty.apply(&self.ctx);
 
@@ -2625,7 +2633,7 @@ impl<L: Loader> Typechecker<L> {
             })
             .collect();
 
-        Err(TypeError::MissingInstance(tr, params))
+        Err(TypeError::MissingInstance(tr, params, bound_span))
     }
 
     fn convert_type_annotation(

@@ -1,18 +1,17 @@
 code: |
     Foo : type
-
     show Foo
 
 output: |
 
 diagnostics: |
     error: missing instance
-      --> <dir>/std/output.wpl:16:17
+      --> test:2:1
+       |
+    2  | show Foo
+       | ^^^^ could not find instance `Show Foo`
+       | 
+      ::: <dir>/std/output.wpl
        |
     16 | show :: A where (Show A) => A -> ()
-       |                 ^^^^^^^^ could not find instance `Show Foo`
-    error: missing instance
-      --> <dir>/std/output.wpl:17:40
-       |
-    17 | show : x -> write-stdout (format "_\n" x)
-       |                                        ^ could not find instance `Show Foo`
+       |                 -------- required by this bound here
