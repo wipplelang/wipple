@@ -194,12 +194,9 @@ fn format_type_with(
         }
     }
 
-    let mut names = Vec::new();
-    for param in ty.params() {
-        names.push(param);
-    }
+    let params = ty.params();
 
-    let show_params = names.is_empty() || matches!(ty, FormattableType::Trait(_, _));
+    let show_params = params.is_empty() || matches!(ty, FormattableType::Trait(_, _));
 
     let formatted = format_type(
         ty,
@@ -216,7 +213,7 @@ fn format_type_with(
     } else {
         let formatted = format!(
             "{}=> {}",
-            names
+            params
                 .iter()
                 .map(|param| format_type(
                     param.clone().into(),

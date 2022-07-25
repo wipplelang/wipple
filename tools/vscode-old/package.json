@@ -1,16 +1,22 @@
 {
     "name": "wipple-vscode-extension",
-    "displayName": "Wipple",
     "description": "Wipple language support",
+    "author": "Wilson Gramer",
+    "license": "MIT",
     "version": "0.3.0",
-    "engines": {
-        "vscode": "^1.54.0"
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/wipplelang/wipple"
     },
+    "publisher": "wilsongramer",
     "categories": [],
+    "engines": {
+        "vscode": "^1.63.0"
+    },
     "activationEvents": [
         "onLanguage:wipple"
     ],
-    "main": "./dist/extension.js",
+    "main": "./client/out/extension",
     "contributes": {
         "languages": [
             {
@@ -34,22 +40,17 @@
         ]
     },
     "scripts": {
-        "vscode:prepublish": "npm run package",
-        "compile": "webpack",
-        "watch": "webpack --watch",
-        "package": "webpack --mode production --devtool hidden-source-map"
+        "vscode:prepublish": "npm run compile",
+        "compile": "tsc -b",
+        "watch": "tsc -b -w",
+        "lint": "eslint ./client/src ./server/src --ext .ts,.tsx",
+        "postinstall": "(cd client && npm install) && (cd server && npm install)"
     },
     "devDependencies": {
-        "@types/lodash": "^4.14.182",
-        "@types/node": "14.x",
-        "@types/vscode": "^1.54.0",
-        "ts-loader": "^9.2.8",
-        "typescript": "^4.6.4",
-        "webpack": "^5.70.0",
-        "webpack-cli": "^4.9.2"
-    },
-    "dependencies": {
-        "execa": "^6.1.0",
-        "lodash": "^4.17.21"
+        "@types/node": "^16.11.7",
+        "@typescript-eslint/eslint-plugin": "^5.30.0",
+        "@typescript-eslint/parser": "^5.30.0",
+        "eslint": "^8.13.0",
+        "typescript": "^4.7.2"
     }
 }

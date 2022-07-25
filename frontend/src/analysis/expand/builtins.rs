@@ -1,7 +1,7 @@
 use crate::{
     analysis::expand::{
-        Declaration, Expander, LanguageItem, Node, NodeKind, Operator, OperatorPrecedence, Scope,
-        ScopeValue, Template,
+        Expander, LanguageItem, Node, NodeKind, Operator, OperatorPrecedence, Scope, ScopeValue,
+        Template, TemplateDeclaration,
     },
     diagnostics::*,
     helpers::InternedString,
@@ -39,7 +39,7 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
 
     declarations.templates.insert(
         id,
-        Declaration::new(
+        TemplateDeclaration::new(
             ":",
             Span::builtin("`:` operator"),
             Template::function(|expander, span, mut inputs, _, _, scope| {
@@ -68,14 +68,18 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
 
                             expander.declarations.lock().templates.insert(
                                 id,
-                                Declaration::new(name, lhs.span, Template::syntax(inputs, *body)),
+                                TemplateDeclaration::new(
+                                    name,
+                                    lhs.span,
+                                    Template::syntax(inputs, *body),
+                                ),
                             );
 
                             scope.values.lock().insert(name, ScopeValue::Template(id));
 
                             Node {
                                 span,
-                                kind: NodeKind::Placeholder,
+                                kind: NodeKind::TemplateDeclaration(id),
                             }
                         }
                         NodeKind::Operator(precedence, inputs, body) => {
@@ -98,7 +102,11 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
 
                             expander.declarations.lock().templates.insert(
                                 id,
-                                Declaration::new(name, lhs.span, Template::syntax(inputs, *body)),
+                                TemplateDeclaration::new(
+                                    name,
+                                    lhs.span,
+                                    Template::syntax(inputs, *body),
+                                ),
                             );
 
                             scope.values.lock().insert(
@@ -139,7 +147,7 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
 
     declarations.templates.insert(
         id,
-        Declaration::new(
+        TemplateDeclaration::new(
             "->",
             Span::builtin("`->` operator"),
             Template::function(|_, span, mut inputs, _, _, _| {
@@ -171,7 +179,7 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
 
     declarations.templates.insert(
         id,
-        Declaration::new(
+        TemplateDeclaration::new(
             "=>",
             Span::builtin("`=>` operator"),
             Template::function(|_, span, mut inputs, _, _, _| {
@@ -203,7 +211,7 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
 
     declarations.templates.insert(
         id,
-        Declaration::new(
+        TemplateDeclaration::new(
             "where",
             Span::builtin("`where` operator"),
             Template::function(|_, span, mut inputs, _, _, _| {
@@ -235,7 +243,7 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
 
     declarations.templates.insert(
         id,
-        Declaration::new(
+        TemplateDeclaration::new(
             "::",
             Span::builtin("`::` operator"),
             Template::function(|_, span, mut inputs, _, _, _| {
@@ -267,7 +275,7 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
 
     declarations.templates.insert(
         id,
-        Declaration::new(
+        TemplateDeclaration::new(
             "~>",
             Span::builtin("`~>` operator"),
             Template::function(|expander, span, mut inputs, _, _, _| {
@@ -339,7 +347,7 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
 
     declarations.templates.insert(
         id,
-        Declaration::new(
+        TemplateDeclaration::new(
             "operator",
             Span::builtin("`operator` operator"),
             Template::function(|expander, span, mut inputs, _, _, _| Box::pin(async move {
@@ -421,7 +429,7 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
 
     declarations.templates.insert(
         id,
-        Declaration::new(
+        TemplateDeclaration::new(
             "or",
             Span::builtin("`or` operator"),
             Template::function(|_, span, mut inputs, _, _, _| {
@@ -453,7 +461,7 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
 
     declarations.templates.insert(
         id,
-        Declaration::new(
+        TemplateDeclaration::new(
             ",",
             Span::builtin("`,` operator"),
             Template::function(|_, span, inputs, _, _, _| {
@@ -475,7 +483,7 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
 
     declarations.templates.insert(
         id,
-        Declaration::new(
+        TemplateDeclaration::keyword(
             "use",
             Span::builtin("`use` template"),
             Template::function(|expander, span, mut inputs, _, _, scope| {
@@ -523,7 +531,7 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
 
     declarations.templates.insert(
         id,
-        Declaration::new(
+        TemplateDeclaration::keyword(
             "external",
             Span::builtin("`external` template"),
             Template::function(|expander, span, inputs, _, _, _| {
@@ -566,7 +574,7 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
 
     declarations.templates.insert(
         id,
-        Declaration::new(
+        TemplateDeclaration::keyword(
             "type",
             Span::builtin("`type` template"),
             Template::function(|expander, span, mut inputs, _, _, _| Box::pin(async move {
@@ -625,7 +633,7 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
 
     declarations.templates.insert(
         id,
-        Declaration::new(
+        TemplateDeclaration::keyword(
             "trait",
             Span::builtin("`trait` template"),
             Template::function(|expander, span, mut inputs, _, _, _| {
@@ -661,7 +669,7 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
 
     declarations.templates.insert(
         id,
-        Declaration::new(
+        TemplateDeclaration::keyword(
             "instance",
             Span::builtin("`instance` template"),
             Template::function(|expander, span, inputs, _, _, _| {
@@ -703,7 +711,7 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
 
     declarations.templates.insert(
         id,
-        Declaration::new(
+        TemplateDeclaration::new(
             "format",
             Span::builtin("`format` template"),
             Template::function(move |expander, span, inputs, _, _, _| Box::pin(async move {
@@ -764,27 +772,27 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
                             span,
                             kind: NodeKind::External(
                                 Box::new(Node {
-                                    span: Span::builtin("\"runtime\" ABI in call to `external` in `format` template"),
+                                    span,
                                     kind: NodeKind::Text(InternedString::new("runtime")),
                                 }),
                                 Box::new(Node {
-                                    span: Span::builtin("\"format\" identifier in call to `external` in `format` template"),
+                                    span,
                                     kind: NodeKind::Text(InternedString::new("format")),
                                 }),
                                 vec![
                                     format_text,
                                     Node {
-                                        span: Span::builtin("generated list as input to `format`"),
+                                        span,
                                         kind: NodeKind::Annotate(
                                             Box::new(Node {
-                                                span: Span::builtin("generated list as input to `format`"),
+                                                span,
                                                 kind: NodeKind::List(vec![
                                                     Node {
-                                                        span: Span::builtin("generated list as input to `format`"),
+                                                        span,
                                                         kind: NodeKind::Name(InternedString::new("list")),
                                                     },
                                                     Node {
-                                                        span: Span::builtin("generated list as input to `format`"),
+                                                        span,
                                                         kind: NodeKind::Tuple(
                                                             inputs
                                                                 .into_iter()
@@ -806,14 +814,14 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
                                                 ]),
                                             }),
                                             Box::new(Node {
-                                                span: Span::builtin("generated `List` type as input to `format`"),
+                                                span,
                                                 kind: NodeKind::List(vec![
                                                     Node {
-                                                        span: Span::builtin("generated `List` type as input to `format`"),
+                                                        span,
                                                         kind: NodeKind::Name(InternedString::new("List")),
                                                     },
                                                     Node {
-                                                        span: Span::builtin("generated `List` type as input to `format`"),
+                                                        span,
                                                         kind: NodeKind::Name(InternedString::new("Text")),
                                                     },
                                                 ]),
@@ -824,7 +832,7 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
                             ),
                         }),
                         Box::new(Node {
-                            span: Span::builtin("`Text` type in type annotation in output of `format`"),
+                            span,
                             kind: NodeKind::Name(InternedString::new("Text")),
                         }),
                     ),
@@ -841,7 +849,7 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
 
     declarations.templates.insert(
         id,
-        Declaration::new(
+        TemplateDeclaration::keyword(
             "when",
             Span::builtin("`when` template"),
             Template::function(|expander, span, mut inputs, _, _, _| {
@@ -899,7 +907,7 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
 
     declarations.templates.insert(
         id,
-        Declaration::new(
+        TemplateDeclaration::keyword(
             "return",
             Span::builtin("`return` template"),
             Template::function(|expander, span, mut inputs, _, _, _| {
@@ -938,7 +946,7 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
 
     declarations.templates.insert(
         id,
-        Declaration::new(
+        TemplateDeclaration::keyword(
             "loop",
             Span::builtin("`loop` template"),
             Template::function(|expander, span, mut inputs, _, _, _| {
@@ -977,7 +985,7 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
 
     declarations.templates.insert(
         id,
-        Declaration::new(
+        TemplateDeclaration::keyword(
             "break",
             Span::builtin("`break` template"),
             Template::function(|expander, span, mut inputs, _, _, _| {
@@ -1016,7 +1024,7 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
 
     declarations.templates.insert(
         id,
-        Declaration::new(
+        TemplateDeclaration::keyword(
             "continue",
             Span::builtin("`continue` template"),
             Template::function(|expander, span, inputs, _, _, _| {
@@ -1050,7 +1058,7 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
 
     declarations.templates.insert(
         id,
-        Declaration::new(
+        TemplateDeclaration::new(
             "language",
             Span::builtin("`language` attribute"),
             Template::function(|expander, span, mut inputs, _, attributes, _| {
@@ -1146,7 +1154,7 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
 
     declarations.templates.insert(
         id,
-        Declaration::new(
+        TemplateDeclaration::new(
             "help",
             Span::builtin("`help` attribute"),
             Template::function(|expander, span, mut inputs, _, attributes, _| {
@@ -1181,22 +1189,32 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
                         }
                     };
 
-                    let attributes = match attributes {
-                        Some(attributes) => attributes,
-                        None => {
-                            expander.compiler.diagnostics.add(Diagnostic::error(
-                                "`help` may only be used as an attribute",
-                                vec![Note::primary(
-                                    span,
-                                    r#"try putting this between brackets: (`[help "..."]`)"#,
-                                )],
-                            ));
-
-                            return node;
+                    match attributes {
+                        Some(attributes) => {
+                            attributes.help.push_front(doc);
                         }
-                    };
-
-                    attributes.help.push_front(doc);
+                        None => {
+                            if let NodeKind::TemplateDeclaration(id) = item.kind {
+                                expander
+                                    .declarations
+                                    .lock()
+                                    .templates
+                                    .get_mut(&id)
+                                    .unwrap()
+                                    .attributes
+                                    .help
+                                    .push_front(doc);
+                            } else {
+                                expander.compiler.diagnostics.add(Diagnostic::error(
+                                    "`help` may only be used as an attribute",
+                                    vec![Note::primary(
+                                        span,
+                                        r#"try putting this between brackets: (`[help "..."]`)"#,
+                                    )],
+                                ));
+                            }
+                        }
+                    }
 
                     node
                 })
@@ -1215,7 +1233,7 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
 
     declarations.templates.insert(
         id,
-        Declaration::new(
+        TemplateDeclaration::new(
             "on-unimplemented",
             Span::builtin("`on-unimplemented` attribute"),
             Template::function(|expander, span, mut inputs, _, attributes, _| {
@@ -1293,7 +1311,7 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
 
     declarations.templates.insert(
         id,
-        Declaration::new(
+        TemplateDeclaration::new(
             "no-std",
             Span::builtin("`no-std` attribute"),
             Template::function(|expander, span, inputs, attributes, _, _| {
@@ -1341,6 +1359,71 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
                         span,
                         kind: NodeKind::Empty,
                     }
+                })
+            }),
+        ),
+    );
+
+    // `keyword` attribute
+
+    let id = once_id!(template);
+
+    scope_values.insert(InternedString::new("keyword"), ScopeValue::Template(id));
+
+    declarations.templates.insert(
+        id,
+        TemplateDeclaration::new(
+            "keyword",
+            Span::builtin("`keyword` attribute"),
+            Template::function(|expander, span, mut inputs, _, _, _| {
+                Box::pin(async move {
+                    if inputs.len() != 1 {
+                        expander.compiler.diagnostics.add(Diagnostic::error(
+                            "expected 1 input to template `keyword`",
+                            vec![Note::primary(
+                                span,
+                                "`keyword` accepts a template declaration",
+                            )],
+                        ));
+
+                        return Node {
+                            span,
+                            kind: NodeKind::Error,
+                        };
+                    }
+
+                    let node = inputs.pop().unwrap();
+
+                    let template = match node.kind {
+                        NodeKind::TemplateDeclaration(id) => id,
+                        _ => {
+                            expander.compiler.diagnostics.add(Diagnostic::error(
+                                "`keyword` may only be used on a template declaration",
+                                vec![Note::primary(span, "expected a template declaration here")],
+                            ));
+
+                            return Node {
+                                span,
+                                kind: NodeKind::Error,
+                            };
+                        }
+                    };
+
+                    let mut declarations = expander.declarations.lock();
+                    let decl = declarations.templates.get_mut(&template).unwrap();
+
+                    if decl.attributes.keyword {
+                        expander.compiler.diagnostics.add(Diagnostic::error(
+                            "cannot apply `keyword` attribute multiple times",
+                            vec![Note::primary(span, "try removing this")],
+                        ));
+
+                        return node;
+                    }
+
+                    decl.attributes.keyword = true;
+
+                    node
                 })
             }),
         ),

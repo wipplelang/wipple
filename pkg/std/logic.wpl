@@ -1,5 +1,7 @@
 [[no-std]]
 
+Foo : type
+
 [language "boolean"]
 [help "Represents either `True` or `False`."]
 Boolean : type {
@@ -9,11 +11,13 @@ Boolean : type {
 
 use Boolean
 
+[keyword]
 if : bool then else ~> when bool {
 	False -> else
 	True -> then
 }
 
+[keyword]
 if? : bool then ~> if bool then ()
 
 [help "Returns `False` if provided `True`, and vice versa."]

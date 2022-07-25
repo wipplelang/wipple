@@ -12,7 +12,7 @@ pub use crate::analysis::expand::{Declarations, StatementAttributes};
 pub struct File<L: Loader> {
     pub path: FilePath,
     pub span: Span,
-    pub declarations: Declarations<L>,
+    pub declarations: Declarations<expand::Template<L>>,
     pub statements: Vec<Statement>,
 }
 

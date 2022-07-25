@@ -1,6 +1,0 @@
-{
-    "compilerOptions": {
-        "outDir": "lib",
-        "strict": true
-    }
-}

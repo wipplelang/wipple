@@ -1,0 +1,26 @@
+{
+    "name": "wipple-lsp-server",
+    "description": "Wipple LSP server",
+    "version": "0.3.0",
+    "author": "Wilson Gramer",
+    "license": "MIT",
+    "engines": {
+        "node": "*"
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/wipplelang/wipple"
+    },
+    "scripts": {
+        "build": "tsc"
+    },
+    "dependencies": {
+        "execa": "^5.0.0",
+        "lodash": "^4.17.21",
+        "vscode-languageserver": "^7.0.0",
+        "vscode-languageserver-textdocument": "^1.0.4"
+    },
+    "devDependencies": {
+        "@types/lodash": "^4.14.182"
+    }
+}

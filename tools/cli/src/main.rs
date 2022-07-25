@@ -50,6 +50,9 @@ struct BuildOptions {
     #[clap(long)]
     std: Option<String>,
 
+    #[clap(long)]
+    base_path: Option<PathBuf>,
+
     #[clap(long, conflicts_with = "std")]
     no_std: bool,
 
@@ -99,6 +102,9 @@ async fn run() -> anyhow::Result<()> {
 
     let emit_diagnostics = |diagnostics: wipple_frontend::diagnostics::FinalizedDiagnostics<_>,
                             options: &BuildOptions| {
+        #[cfg(not(debug_assertions))]
+        let _ = options;
+
         let (codemap, diagnostics) = diagnostics.into_console_friendly(
             #[cfg(debug_assertions)]
             options.trace,
@@ -372,11 +378,27 @@ async fn build_with_passes<P>(
         }
     };
 
+    let base = if options.path == "-" {
+        options
+            .base_path
+            .as_ref()
+            .cloned()
+            .unwrap_or_else(|| env::current_dir().unwrap())
+            .to_string_lossy()
+            .to_string()
+    } else {
+        let path = PathBuf::from(&options.path);
+
+        if path.is_file() {
+            path.parent().unwrap().to_string_lossy().to_string()
+        } else {
+            options.path.clone()
+        }
+    };
+
     let loader = loader::Loader::new(
         Some(wipple_frontend::FilePath::Path(
-            wipple_frontend::helpers::InternedString::new(
-                env::current_dir().unwrap().to_string_lossy(),
-            ),
+            wipple_frontend::helpers::InternedString::new(base),
         )),
         (!options.no_std).then(|| {
             let path = options.std.as_deref();
