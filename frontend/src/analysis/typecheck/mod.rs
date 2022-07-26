@@ -12,8 +12,8 @@ use crate::{
     diagnostics::*,
     helpers::InternedString,
     parse::Span,
-    Compiler, FilePath, GenericConstantId, Loader, MonomorphizedConstantId, TemplateId, TraitId,
-    TypeId, TypeParameterId, VariableId,
+    BuiltinTypeId, Compiler, FilePath, GenericConstantId, Loader, MonomorphizedConstantId,
+    TemplateId, TraitId, TypeId, TypeParameterId, VariableId,
 };
 use engine::*;
 use serde::Serialize;
@@ -32,6 +32,8 @@ pub struct Program {
     pub valid: bool,
     pub body: Vec<Expression>,
     pub declarations: Declarations<Expression, Type>,
+    pub exported: Vec<(FilePath, lower::ScopeValues)>,
+    pub scopes: Vec<(Span, lower::ScopeValues)>,
 }
 
 macro_rules! expr {
@@ -148,6 +150,7 @@ impl UnresolvedExpression {
 pub struct Declarations<Expr, Ty, File = ()> {
     pub operators: BTreeMap<TemplateId, expand::Operator>,
     pub templates: BTreeMap<TemplateId, expand::TemplateDeclaration<()>>,
+    pub builtin_types: BTreeMap<BuiltinTypeId, Declaration<lower::DeclarationAttributes>>,
     pub types: BTreeMap<TypeId, Declaration<TypeDeclaration>>,
     pub type_parameters: BTreeMap<TypeParameterId, Declaration<()>>,
     pub traits: BTreeMap<TraitId, Declaration<TraitDeclaration>>,
@@ -162,6 +165,7 @@ impl<Expr, Ty, File> Default for Declarations<Expr, Ty, File> {
         Self {
             operators: Default::default(),
             templates: Default::default(),
+            builtin_types: Default::default(),
             types: Default::default(),
             type_parameters: Default::default(),
             traits: Default::default(),
@@ -182,6 +186,7 @@ pub struct Declaration<T> {
 
 #[derive(Debug, Clone, Serialize)]
 pub struct TypeDeclaration {
+    pub kind: lower::TypeKind,
     pub attributes: lower::DeclarationAttributes,
 }
 
@@ -240,11 +245,20 @@ impl<L: Loader> Compiler<L> {
             compiler: self.clone(),
         };
 
+        let mut exported = Vec::new();
+        let mut scopes = Vec::new();
+
         let total_files = files.len();
 
         // Copy declarations
 
         for file in &files {
+            {
+                let file = file.borrow();
+                exported.push((file.span.path, file.exported.clone()));
+                scopes.extend(file.scopes.clone());
+            }
+
             for (id, decl) in file.borrow().declarations.operators.clone() {
                 typechecker.declarations.operators.entry(id).or_insert(decl);
             }
@@ -262,6 +276,24 @@ impl<L: Loader> Compiler<L> {
                 }
             }
 
+            for (id, decl) in file.borrow().declarations.builtin_types.clone() {
+                use std::collections::btree_map::Entry;
+
+                match typechecker.declarations.builtin_types.entry(id) {
+                    Entry::Vacant(entry) => {
+                        entry.insert(Declaration {
+                            name: decl.name,
+                            span: decl.span,
+                            value: decl.value.attributes,
+                            uses: decl.uses,
+                        });
+                    }
+                    Entry::Occupied(mut entry) => {
+                        entry.get_mut().uses.extend(decl.uses);
+                    }
+                }
+            }
+
             for (id, decl) in file.borrow().declarations.types.clone() {
                 typechecker
                     .declarations
@@ -271,6 +303,7 @@ impl<L: Loader> Compiler<L> {
                         name: decl.name,
                         span: decl.span,
                         value: TypeDeclaration {
+                            kind: decl.value.kind,
                             attributes: decl.value.attributes,
                         },
                         uses: decl.uses,
@@ -744,6 +777,7 @@ impl<L: Loader> Compiler<L> {
             Ok(Declarations {
                 operators: typechecker.declarations.operators.clone(),
                 templates: typechecker.declarations.templates.clone(),
+                builtin_types: typechecker.declarations.builtin_types.clone(),
                 types: typechecker.declarations.types.clone(),
                 type_parameters: typechecker.declarations.type_parameters.clone(),
                 traits: typechecker.declarations.traits.clone(),
@@ -1009,6 +1043,8 @@ impl<L: Loader> Compiler<L> {
             valid: success,
             body,
             declarations,
+            exported,
+            scopes,
         }
     }
 }
