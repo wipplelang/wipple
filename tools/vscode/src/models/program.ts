@@ -1,9 +1,11 @@
-import { Span } from "./span";
+import { FilePath, Span } from "./span";
 
 export interface Program {
     valid: boolean;
     body: Expression[];
     declarations: Declarations;
+    exported: [FilePath, ScopeValues][];
+    scopes: [Span, ScopeValues][];
 }
 
 export interface Expression {
@@ -87,6 +89,7 @@ export type BottomTypeReason = "Annotated" | "Error" | "Placeholder";
 export interface Declarations {
     operators: Record<string, Operator>;
     templates: Record<string, TemplateDeclaration>;
+    builtin_types: Record<string, Declaration<DeclarationAttributes>>;
     types: Record<string, Declaration<TypeDeclaration>>;
     type_parameters: Record<string, Declaration<undefined>>;
     traits: Record<string, Declaration<TraitDeclaration>>;
@@ -129,6 +132,7 @@ export interface TraitAttributes {
 }
 
 export interface TypeDeclaration {
+    kind: { type: "Marker" | "Structure" | "Enumeration" };
     attributes: DeclarationAttributes;
 }
 
@@ -143,3 +147,15 @@ export interface GenericConstantDeclaration {
     decl: Declaration<Expression>;
     attributes?: DeclarationAttributes;
 }
+
+export type ScopeValues = Record<string, ScopeValue>;
+
+export type ScopeValue =
+    | { type: "Operator"; value: Operator }
+    | { type: "Template"; value: number }
+    | { type: "Type"; value: number }
+    | { type: "BuiltinType"; value: number }
+    | { type: "Trait"; value: number }
+    | { type: "TypeParameter"; value: number }
+    | { type: "Constant"; value: [number, [number, number] | null] }
+    | { type: "Variable"; value: number };

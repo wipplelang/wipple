@@ -2,7 +2,17 @@ import * as vscode from "vscode";
 import * as execa from "execa";
 import * as _ from "lodash";
 import * as path from "path";
-import { Diagnostic, Expression, formatType, Program, Span, traverseExpr } from "./models";
+import {
+    Diagnostic,
+    Expression,
+    FilePath,
+    formatType,
+    Program,
+    ScopeValues,
+    Span,
+    traverseExpr,
+    Type,
+} from "./models";
 
 const debug = process.env.WIPPLE_VSCODE_DEVELOPMENT === "1";
 
@@ -41,6 +51,10 @@ export const activate = (context: vscode.ExtensionContext) => {
     context.subscriptions.push(semanticTokensEvent);
 
     context.subscriptions.push(vscode.languages.registerHoverProvider("wipple", hoverProvider));
+
+    context.subscriptions.push(
+        vscode.languages.registerCompletionItemProvider("wipple", completionItemProvider)
+    );
 };
 
 const handleDocumentUpdate = async (document: vscode.TextDocument) => {
@@ -53,29 +67,29 @@ const handleDocumentUpdate = async (document: vscode.TextDocument) => {
     try {
         output = await execa.execa(
             bin,
-            [
-                "compile",
-                "-",
-                "--base-path",
-                path.dirname(document.uri.fsPath),
-                "--target",
-                "analysis",
-                ...args,
-            ],
+            ["dump", "-", "--base-path", path.dirname(document.uri.fsPath), "analysis", ...args],
             { input: source }
         );
     } catch (e) {
         output = e as execa.ExecaError;
     }
 
-    const result = JSON.parse(output.stdout);
+    let result;
+
+    try {
+        result = JSON.parse(output.stdout);
+    } catch {
+        console.error(output.stderr);
+        return;
+    }
+
     storage[document.uri.toString()] = result;
 
     await updateDiagnostics(document, result.diagnostics);
 };
 
-const belongsToCurrentDocument = (span: Span) =>
-    span.path.type === "Virtual" && span.path.value === "stdin";
+const belongsToCurrentDocument = ({ path }: { path: FilePath }) =>
+    path.type === "Virtual" && path.value === "stdin";
 
 const updateDiagnostics = async (
     document: vscode.TextDocument,
@@ -426,5 +440,124 @@ const hoverProvider: vscode.HoverProvider = {
 
         const [_span, hover] = _.sortBy(info, ([span]) => span.end - span.start)[0];
         return hover;
+    },
+};
+
+const completionItemProvider: vscode.CompletionItemProvider = {
+    provideCompletionItems: async (document, position) => {
+        const s = storage[document.uri.toString()];
+        if (!s) return undefined;
+        const { program } = s;
+
+        const offset = document.offsetAt(position);
+
+        const isWithinPosition = (span: Span) =>
+            belongsToCurrentDocument(span) && offset >= span.start && offset <= span.end;
+
+        const items: vscode.CompletionItem[] = [];
+
+        const add = (values: ScopeValues) => {
+            for (const [name, value] of Object.entries(values)) {
+                let kind: vscode.CompletionItemKind | undefined;
+                let help: string[] | undefined;
+                let ty: Type | undefined;
+                switch (value.type) {
+                    case "Operator":
+                        kind = vscode.CompletionItemKind.Operator;
+                        help =
+                            program.declarations.templates[value.value.template.toString()]
+                                .attributes.help;
+                        break;
+                    case "Template":
+                        if (program.declarations.operators[value.value.toString()] != null) {
+                            kind = undefined; // prevent duplicates of operators
+                        } else if (
+                            program.declarations.templates[value.value.toString()].attributes
+                                .keyword
+                        ) {
+                            kind = vscode.CompletionItemKind.Keyword;
+                        } else {
+                            kind = vscode.CompletionItemKind.Function;
+                        }
+
+                        help =
+                            program.declarations.templates[value.value.toString()].attributes.help;
+
+                        break;
+                    case "Type":
+                        switch (
+                            program.declarations.types[value.value.toString()].value.kind.type
+                        ) {
+                            case "Marker":
+                            case "Structure":
+                                kind = vscode.CompletionItemKind.Struct;
+                                break;
+                            case "Enumeration":
+                                kind = vscode.CompletionItemKind.Enum;
+                                break;
+                        }
+
+                        help =
+                            program.declarations.types[value.value.toString()].value.attributes
+                                .help;
+
+                        break;
+                    case "BuiltinType":
+                        kind = vscode.CompletionItemKind.Struct;
+
+                        help =
+                            program.declarations.builtin_types[value.value.toString()].value.help;
+
+                        break;
+                    case "Trait":
+                        kind = vscode.CompletionItemKind.Interface;
+
+                        help =
+                            program.declarations.traits[value.value.toString()].value.attributes
+                                .decl_attributes.help;
+
+                        break;
+                    case "TypeParameter":
+                        kind = vscode.CompletionItemKind.TypeParameter;
+                        break;
+                    case "Constant":
+                        kind = vscode.CompletionItemKind.Constant;
+
+                        help =
+                            program.declarations.generic_constants[value.value[0].toString()]
+                                .attributes?.help;
+
+                        ty =
+                            program.declarations.generic_constants[value.value[0].toString()].decl
+                                .value.ty;
+
+                        break;
+                    case "Variable":
+                        kind = vscode.CompletionItemKind.Variable;
+
+                        ty = program.declarations.variables[value.value.toString()].value;
+
+                        break;
+                }
+
+                if (kind) {
+                    const item = new vscode.CompletionItem(name, kind);
+
+                    item.detail = ty && formatType(ty, program);
+                    item.documentation = help?.join("\n");
+
+                    items.push(item);
+                }
+            }
+        };
+
+        for (const [span, values] of program.scopes) {
+            if (!isWithinPosition(span)) continue;
+            add(values);
+        }
+
+        add(program.exported.find(([path]) => belongsToCurrentDocument({ path }))![1]);
+
+        return items;
     },
 };

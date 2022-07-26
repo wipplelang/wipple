@@ -30,6 +30,7 @@ pub struct File<L: Loader> {
     pub attributes: FileAttributes,
     pub declarations: Declarations<Template<L>>,
     pub exported: ScopeValues,
+    pub scopes: Vec<(Span, ScopeValues)>,
     pub statements: Vec<Statement>,
     pub dependencies: Vec<Arc<File<L>>>,
 }
@@ -56,6 +57,7 @@ impl<L: Loader> Clone for File<L> {
             attributes: self.attributes.clone(),
             declarations: self.declarations.clone(),
             exported: self.exported.clone(),
+            scopes: self.scopes.clone(),
             statements: self.statements.clone(),
             dependencies: self.dependencies.clone(),
         }
@@ -207,6 +209,7 @@ impl<L: Loader> Compiler<L> {
             compiler: self.clone(),
             declarations: Default::default(),
             dependencies: Default::default(),
+            scopes: Default::default(),
             load: Arc::new(load),
         };
 
@@ -243,6 +246,7 @@ impl<L: Loader> Compiler<L> {
             attributes,
             declarations: Arc::try_unwrap(expander.declarations).unwrap().into_inner(),
             exported,
+            scopes: Arc::try_unwrap(expander.scopes).unwrap().into_inner(),
             dependencies: Arc::try_unwrap(expander.dependencies)
                 .unwrap_or_else(|_| unreachable!())
                 .into_inner(),
@@ -255,6 +259,7 @@ pub struct Expander<L: Loader> {
     compiler: Compiler<L>,
     declarations: Arc<Mutex<Declarations<Template<L>>>>,
     dependencies: Arc<Mutex<Vec<Arc<File<L>>>>>,
+    scopes: Arc<Mutex<Vec<(Span, ScopeValues)>>>,
     load:
         Arc<dyn Fn(&Compiler<L>, Span, FilePath) -> BoxFuture<Option<Arc<File<L>>>> + Send + Sync>,
 }
@@ -578,7 +583,9 @@ impl<L: Loader> Expander<L> {
                 .await
             }
             parse::ExprKind::Block(statements) => {
-                let (statements, _) = self.expand_block(statements, scope).await;
+                let (statements, scope_values) = self.expand_block(statements, scope).await;
+
+                self.scopes.lock().push((expr.span, scope_values));
 
                 Node {
                     span: expr.span,

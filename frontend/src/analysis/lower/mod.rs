@@ -23,7 +23,8 @@ pub struct File {
     pub span: Span,
     pub declarations: Declarations,
     pub global_attributes: FileAttributes,
-    pub exported: HashMap<InternedString, ScopeValue>,
+    pub exported: ScopeValues,
+    pub scopes: Vec<(Span, ScopeValues)>,
     pub block: Vec<Expression>,
 }
 
@@ -40,7 +41,7 @@ pub struct Declarations {
     pub variables: BTreeMap<VariableId, Declaration<()>>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct Declaration<T> {
     pub name: Option<InternedString>,
     pub span: Span,
@@ -60,32 +61,33 @@ pub struct Type {
     pub attributes: DeclarationAttributes,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
+#[serde(tag = "type", content = "value")]
 pub enum TypeKind {
     Marker,
     Structure(Vec<TypeField>, HashMap<InternedString, usize>),
     Enumeration(Vec<TypeVariant>, HashMap<InternedString, usize>),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct TypeField {
     pub ty: TypeAnnotation,
     pub attributes: DeclarationAttributes,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct TypeVariant {
     pub constructor: GenericConstantId,
     pub tys: Vec<TypeAnnotation>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct BuiltinType {
     pub kind: BuiltinTypeKind,
     pub attributes: DeclarationAttributes,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
 pub enum BuiltinTypeKind {
     Never,
     Number,
@@ -211,13 +213,13 @@ pub enum PatternKind {
     Tuple(Vec<Pattern>),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct TypeAnnotation {
     pub span: Span,
     pub kind: TypeAnnotationKind,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub enum TypeAnnotationKind {
     Error,
     Placeholder,
@@ -241,10 +243,7 @@ impl<L: Loader> Compiler<L> {
     pub fn lower(&mut self, file: ast::File<L>, dependencies: Vec<Arc<File>>) -> File {
         let scope = Scope::root(ScopeKind::Block);
 
-        let mut info = Info {
-            declarations: Default::default(),
-            attributes: Default::default(),
-        };
+        let mut info = Info::default();
 
         self.load_builtins(&scope, &mut info);
 
@@ -336,6 +335,7 @@ impl<L: Loader> Compiler<L> {
             declarations: info.declarations,
             global_attributes: info.attributes,
             exported: scope.values.take(),
+            scopes: info.scopes,
             block,
         }
     }
@@ -359,8 +359,10 @@ impl LanguageItems {
 struct Scope<'a> {
     kind: ScopeKind,
     parent: Option<&'a Scope<'a>>,
-    values: RefCell<HashMap<InternedString, ScopeValue>>,
+    values: RefCell<ScopeValues>,
 }
+
+pub type ScopeValues = HashMap<InternedString, ScopeValue>;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ScopeKind {
@@ -369,13 +371,15 @@ pub enum ScopeKind {
     Loop,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
+#[serde(tag = "type", content = "value")]
 pub enum ScopeValue {
+    Operator(expand::Operator),
+    Template(TemplateId),
     Type(TypeId),
     BuiltinType(BuiltinTypeId),
     Trait(TraitId),
     TypeParameter(TypeParameterId),
-    Operator(TemplateId),
     Constant(GenericConstantId, Option<(TypeId, usize)>),
     Variable(VariableId),
 }
@@ -453,24 +457,31 @@ impl<'a> Scope<'a> {
     }
 }
 
+#[derive(Default)]
 struct Info {
     declarations: Declarations,
     attributes: FileAttributes,
+    scopes: Vec<(Span, ScopeValues)>,
 }
 
 impl<L: Loader> Compiler<L> {
     fn lower_block(
         &mut self,
+        span: Span,
         statements: Vec<ast::Statement>,
         scope: &Scope,
         info: &mut Info,
     ) -> Vec<Expression> {
         let scope = scope.child(ScopeKind::Block);
 
-        statements
+        let statements = statements
             .into_iter()
             .flat_map(|statement| self.lower_statement(statement, &scope, info))
-            .collect()
+            .collect();
+
+        info.scopes.push((span, scope.values.into_inner()));
+
+        statements
     }
 
     fn lower_statement(
@@ -1151,7 +1162,7 @@ impl<L: Loader> Compiler<L> {
             }
             ast::ExpressionKind::Block(statements) => {
                 let scope = scope.child(ScopeKind::Block);
-                let block = self.lower_block(statements, &scope, info);
+                let block = self.lower_block(expr.span, statements, &scope, info);
                 ExpressionKind::Block(block)
             }
             ast::ExpressionKind::Call(function, inputs) => match &function.kind {
@@ -1695,6 +1706,7 @@ impl<L: Loader> Compiler<L> {
         info: &mut Info,
     ) -> Option<ExpressionKind> {
         match scope.get(name) {
+            Some(ScopeValue::Template(_) | ScopeValue::Operator(_)) => unreachable!(),
             Some(ScopeValue::Type(id)) => {
                 info.declarations
                     .types
@@ -1753,24 +1765,6 @@ impl<L: Loader> Compiler<L> {
                     vec![Note::primary(
                         span,
                         "type parameters cannot be instantiated because the actual type is not known here",
-                    )],
-                ));
-
-                Some(ExpressionKind::Error)
-            }
-            Some(ScopeValue::Operator(id)) => {
-                info.declarations
-                    .templates
-                    .get_mut(&id)
-                    .unwrap()
-                    .uses
-                    .push(span);
-
-                self.diagnostics.add(Diagnostic::error(
-                    "cannot use operator as value",
-                    vec![Note::primary(
-                        span,
-                        "try adding inputs to the left and right sides of this operator",
                     )],
                 ));
 
