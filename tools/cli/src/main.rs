@@ -182,9 +182,6 @@ async fn run() -> anyhow::Result<()> {
                 progress_bar.set_message("Compiling to Rust");
             }
 
-            // TODO: Add a 'build' command that detects and installs
-            // rustc if needed, and then pipes this output into rustc
-            // (using `rustc -`) to build the final executable
             let tt = wipple_rust_backend::compile(&ir)?;
             let src = prettyplease::unparse(&syn::parse_file(&tt.to_string()).unwrap());
 
