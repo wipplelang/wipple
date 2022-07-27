@@ -9,6 +9,10 @@ mod __runtime {
         thread,
     };
 
+    unsafe fn transmute_clone<T, U: Clone>(x: &T) -> U {
+        (*(x as *const T as *const U)).clone()
+    }
+
     pub type Value<T> = MaybeUninit<T>;
 
     #[inline(always)]
@@ -32,7 +36,7 @@ mod __runtime {
     pub fn read<T, U: Clone>(value: &Value<T>) -> U {
         unsafe {
             let x = value.assume_init_ref();
-            (*(x as *const T as *const U)).clone()
+            transmute_clone(x)
         }
     }
 
@@ -53,7 +57,7 @@ mod __runtime {
     /// See [`read`] above.
     #[inline(always)]
     pub fn read_init<T, U: Clone>(value: &'static Constant<T>) -> U {
-        value.with(|x| unsafe { (*(x as *const T as *const U)).clone() })
+        value.with(|x| unsafe { transmute_clone(x) })
     }
 
     #[inline(always)]
@@ -179,8 +183,8 @@ mod __runtime {
             x.sqrt()
         }
 
-        pub fn text_equality() -> ! {
-            todo!()
+        pub fn text_equality(a: Text, b: Text) -> Boolean {
+            a == b
         }
 
         pub fn number_equality(a: Number, b: Number) -> Boolean {
@@ -193,15 +197,15 @@ mod __runtime {
             Greater(),
         }
 
-        pub fn number_ordering<T: 'static>(a: Number, b: Number) -> T {
+        pub fn number_ordering<T: Clone>(a: Number, b: Number) -> T {
             let ordering = match a.partial_cmp(&b).unwrap() {
                 cmp::Ordering::Less => Ordering::Less(),
                 cmp::Ordering::Equal => Ordering::Equal(),
                 cmp::Ordering::Greater => Ordering::Greater(),
             };
 
-            // SAFETY: This relies on the `Ordering` type from Wipple.
-            unsafe { mem::transmute_copy(&ordering) }
+            // SAFETY: This relies on the `Ordering` type from Wipple
+            unsafe { transmute_clone(&ordering) }
         }
 
         pub fn make_mutable<T>(value: T) -> Mutable<T> {
@@ -292,36 +296,84 @@ mod __runtime {
             tuple.make_list()
         }
 
-        pub fn list_first() -> ! {
-            todo!()
+        pub fn list_first<T: Clone, U: Clone>(list: List<T>) -> U {
+            // SAFETY: This relies on the `Maybe` type from Wipple
+            unsafe { transmute_clone(&list.first().cloned()) }
         }
 
-        pub fn list_last() -> ! {
-            todo!()
+        pub fn list_last<T: Clone, U: Clone>(list: List<T>) -> U {
+            // SAFETY: This relies on the `Maybe` type from Wipple
+            unsafe { transmute_clone(&list.last().cloned()) }
         }
 
-        pub fn list_initial() -> ! {
-            todo!()
+        pub fn list_initial<T: Clone, U: Clone>(list: List<T>) -> U {
+            let initial = (!list.is_empty()).then(|| Rc::new(list[0..(list.len() - 1)].to_vec()));
+
+            // SAFETY: This relies on the `Maybe` type from Wipple
+            unsafe { transmute_clone(&initial) }
         }
 
-        pub fn list_tail() -> ! {
-            todo!()
+        pub fn list_tail<T: Clone>(list: List<T>) -> List<T> {
+            let tail = (!list.is_empty()).then(|| Rc::new(list[1..].to_vec()));
+
+            // SAFETY: This relies on the `Maybe` type from Wipple
+            unsafe { transmute_clone(&tail) }
         }
 
-        pub fn list_at() -> ! {
-            todo!()
+        pub fn list_at<T: Clone, U: Clone>(list: List<T>, index: Number) -> U {
+            struct IndexError;
+
+            let index = if index >= 0. && index.floor() == index {
+                index as usize
+            } else {
+                // SAFETY: This relies on the `Maybe` type from Wipple
+                return unsafe { transmute_clone(&Err::<List<T>, _>(IndexError)) };
+            };
+
+            // SAFETY: This relies on the `Result (List A) Index-Error` type from Wipple
+            unsafe { transmute_clone(&list.get(index).cloned().ok_or(IndexError)) }
         }
 
-        pub fn list_append() -> ! {
-            todo!()
+        pub fn list_append<T: Clone>(list: List<T>, item: T) -> List<T> {
+            let mut list = (*list).clone();
+            list.push(item);
+            Rc::new(list)
         }
 
-        pub fn list_insert() -> ! {
-            todo!()
+        pub fn list_insert<T: Clone, U: Clone>(list: List<T>, index: Number, item: T) -> U {
+            struct IndexError;
+
+            let index = if index >= 0. && index.floor() == index {
+                index as usize
+            } else {
+                // SAFETY: This relies on the `Result (List A) Index-Error` type from Wipple
+                return unsafe { transmute_clone(&Err::<List<T>, _>(IndexError)) };
+            };
+
+            let mut list = (*list).clone();
+            list.insert(index, item);
+            let list = Rc::new(list);
+
+            // SAFETY: This relies on the `Result (List A) Index-Error` type from Wipple
+            unsafe { transmute_clone(&Ok::<_, IndexError>(list)) }
         }
 
-        pub fn list_remove() -> ! {
-            todo!()
+        pub fn list_remove<T: Clone, U: Clone>(list: List<T>, index: Number) -> U {
+            struct IndexError;
+
+            let index = if index >= 0. && index.floor() == index {
+                index as usize
+            } else {
+                // SAFETY: This relies on the `Result (List A) Index-Error` type from Wipple
+                return unsafe { transmute_clone(&Err::<List<T>, _>(IndexError)) };
+            };
+
+            let mut list = (*list).clone();
+            list.remove(index);
+            let list = Rc::new(list);
+
+            // SAFETY: This relies on the `Result (List A) Index-Error` type from Wipple
+            unsafe { transmute_clone(&Ok::<_, IndexError>(list)) }
         }
     }
 }
