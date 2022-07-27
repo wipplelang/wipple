@@ -29,13 +29,19 @@ let diagnosticCollection: vscode.DiagnosticCollection;
 export const activate = (context: vscode.ExtensionContext) => {
     context.subscriptions.push(
         vscode.workspace.onDidOpenTextDocument(async (document) => {
+            if (document.languageId !== "wipple") return;
+
             await handleDocumentUpdate(document);
             semanticTokensEvent.fire();
         })
     );
 
     context.subscriptions.push(
-        vscode.workspace.onDidChangeTextDocument((event) => handleDocumentUpdate(event.document))
+        vscode.workspace.onDidChangeTextDocument((event) => {
+            if (event.document.languageId !== "wipple") return;
+
+            handleDocumentUpdate(event.document);
+        })
     );
 
     diagnosticCollection = vscode.languages.createDiagnosticCollection("wipple");
@@ -67,7 +73,7 @@ const handleDocumentUpdate = async (document: vscode.TextDocument) => {
     try {
         output = await execa.execa(
             bin,
-            ["dump", "-", "--base-path", path.dirname(document.uri.fsPath), "analysis", ...args],
+            ["dump", "-", "--base-path", document.uri.fsPath, "analysis", ...args],
             { input: source }
         );
     } catch (e) {

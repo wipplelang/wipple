@@ -2,8 +2,8 @@ use clap::{Parser, ValueEnum};
 use serde::Serialize;
 use std::{
     env, fs,
-    io::{self, Read, Write},
-    path::PathBuf,
+    io::{self, Read},
+    path::{Path, PathBuf},
     process::ExitCode,
     str::FromStr,
     sync::Arc,
@@ -18,9 +18,16 @@ use wipple_frontend::{Compiler, Loader};
     about = "The Wipple programming language"
 )]
 enum Args {
+    #[clap(trailing_var_arg = true)]
     Run {
         #[clap(flatten)]
         options: BuildOptions,
+
+        #[clap(long, value_enum, default_value = "rust")]
+        backend: RunBackend,
+
+        #[clap(multiple_values = true)]
+        backend_args: Vec<std::ffi::OsString>,
     },
     #[clap(trailing_var_arg = true)]
     Compile {
@@ -30,8 +37,11 @@ enum Args {
         #[clap(short)]
         output: PathBuf,
 
+        #[clap(long, value_enum, default_value = "rust")]
+        backend: CompileBackend,
+
         #[clap(multiple_values = true)]
-        rustc_args: Vec<std::ffi::OsString>,
+        backend_args: Vec<std::ffi::OsString>,
     },
     Doc {
         #[clap(flatten)]
@@ -69,6 +79,17 @@ struct BuildOptions {
     #[cfg(debug_assertions)]
     #[clap(long)]
     trace: bool,
+}
+
+#[derive(Debug, Clone, Copy, ValueEnum)]
+enum RunBackend {
+    Interpreter,
+    Rust,
+}
+
+#[derive(Debug, Clone, Copy, ValueEnum)]
+enum CompileBackend {
+    Rust,
 }
 
 #[derive(Debug, Clone, Copy, ValueEnum)]
@@ -133,36 +154,10 @@ async fn run() -> anyhow::Result<()> {
     };
 
     match args {
-        Args::Run { options } => {
-            let (ir, diagnostics) = generate_ir(&options, progress_bar.clone()).await;
-
-            if let Some(progress_bar) = progress_bar.as_ref() {
-                progress_bar.finish_and_clear();
-            }
-
-            let error = diagnostics.contains_errors();
-            emit_diagnostics(diagnostics, &options);
-            if error {
-                return Err(anyhow::Error::msg(""));
-            }
-
-            if let Some(ir) = ir {
-                #[allow(unused_mut)]
-                let mut interpreter =
-                    wipple_interpreter_backend::Interpreter::handling_output(|text| {
-                        print!("{}", text);
-                        io::stdout().flush().unwrap();
-                    });
-
-                if let Err(error) = interpreter.run(&ir) {
-                    eprintln!("fatal error: {}", error);
-                }
-            }
-        }
-        Args::Compile {
+        Args::Run {
             options,
-            output,
-            rustc_args,
+            backend,
+            backend_args: rustc_args,
         } => {
             let (ir, diagnostics) = generate_ir(&options, progress_bar.clone()).await;
 
@@ -178,59 +173,54 @@ async fn run() -> anyhow::Result<()> {
 
             let ir = ir.unwrap();
 
-            if let Some(progress_bar) = progress_bar.as_deref() {
-                progress_bar.set_message("Compiling to Rust");
-            }
+            match backend {
+                RunBackend::Interpreter => {
+                    let interpreter =
+                        wipple_interpreter_backend::Interpreter::handling_output(|text| {
+                            print!("{}", text);
+                        });
 
-            let tt = wipple_rust_backend::compile(&ir)?;
-            let src = prettyplease::unparse(&syn::parse_file(&tt.to_string()).unwrap());
-
-            let rustc = match which::which("rustc") {
-                Ok(path) => path,
-                _ => {
-                    if let Some(progress_bar) = progress_bar.as_ref() {
-                        progress_bar.set_message("Installing Rust compiler");
-                        progress_bar.disable_steady_tick();
-                    }
-
-                    if !subprocess::Exec::shell(
-                        "curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y",
-                    )
-                    .join()?
-                    .success()
-                    {
-                        return Err(anyhow::Error::msg(""));
-                    }
-
-                    if let Some(progress_bar) = progress_bar.as_deref() {
-                        progress_bar.enable_steady_tick(PROGRESS_BAR_TICK_SPEED);
-                    }
-
-                    match which::which("rustc") {
-                        Ok(path) => path,
-                        Err(_) => {
-                            return Err(anyhow::Error::msg(
-                                "installed Rust, but couldn't find it in your PATH",
-                            ));
-                        }
+                    if let Err(error) = interpreter.run(&ir) {
+                        eprintln!("fatal error: {}", error);
                     }
                 }
-            };
+                RunBackend::Rust => {
+                    let output = mktemp::Temp::new_file()?;
 
-            if let Some(progress_bar) = progress_bar.as_ref() {
-                progress_bar.set_message("Compiling");
+                    compile_rust(ir, &*output, &rustc_args, progress_bar.clone())?;
+
+                    if let Some(progress_bar) = progress_bar.as_ref() {
+                        progress_bar.finish_and_clear();
+                    }
+
+                    subprocess::Exec::cmd(output.as_path()).join()?;
+                }
+            }
+        }
+        Args::Compile {
+            options,
+            output,
+            backend,
+            backend_args,
+        } => {
+            let (ir, diagnostics) = generate_ir(&options, progress_bar.clone()).await;
+
+            let error = diagnostics.contains_errors();
+            emit_diagnostics(diagnostics, &options);
+            if error {
+                if let Some(progress_bar) = progress_bar.as_ref() {
+                    progress_bar.finish_and_clear();
+                }
+
+                return Err(anyhow::Error::msg(""));
             }
 
-            if !subprocess::Exec::cmd(rustc)
-                .arg("-")
-                .arg("-o")
-                .arg(output)
-                .args(&rustc_args)
-                .stdin(src.as_str())
-                .capture()?
-                .success()
-            {
-                return Err(anyhow::Error::msg(""));
+            let ir = ir.unwrap();
+
+            match backend {
+                CompileBackend::Rust => {
+                    compile_rust(ir, &output, &backend_args, progress_bar.clone())?;
+                }
             }
 
             if let Some(progress_bar) = progress_bar.as_ref() {
@@ -550,4 +540,68 @@ async fn build_with_passes<P>(
     let source_map = compiler.loader.source_map().lock().clone();
 
     (program, source_map, diagnostics)
+}
+
+fn compile_rust(
+    ir: wipple_frontend::ir::Program,
+    output: &Path,
+    rustc_args: &[std::ffi::OsString],
+    progress_bar: Option<Arc<indicatif::ProgressBar>>,
+) -> anyhow::Result<()> {
+    if let Some(progress_bar) = progress_bar.as_deref() {
+        progress_bar.set_message("Compiling to Rust");
+    }
+
+    let tt = wipple_rust_backend::compile(&ir)?;
+    let src = prettyplease::unparse(&syn::parse_file(&tt.to_string()).unwrap());
+
+    let rustc = match which::which("rustc") {
+        Ok(path) => path,
+        _ => {
+            if let Some(progress_bar) = progress_bar.as_ref() {
+                progress_bar.set_message("Installing Rust compiler");
+                progress_bar.disable_steady_tick();
+            }
+
+            if !subprocess::Exec::shell(
+                "curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y",
+            )
+            .join()?
+            .success()
+            {
+                return Err(anyhow::Error::msg(""));
+            }
+
+            if let Some(progress_bar) = progress_bar.as_deref() {
+                progress_bar.enable_steady_tick(PROGRESS_BAR_TICK_SPEED);
+            }
+
+            match which::which("rustc") {
+                Ok(path) => path,
+                Err(_) => {
+                    return Err(anyhow::Error::msg(
+                        "installed Rust, but couldn't find it in your PATH",
+                    ));
+                }
+            }
+        }
+    };
+
+    if let Some(progress_bar) = progress_bar.as_ref() {
+        progress_bar.set_message("Compiling");
+    }
+
+    if !subprocess::Exec::cmd(rustc)
+        .arg("-")
+        .arg("-o")
+        .arg(output)
+        .args(rustc_args)
+        .stdin(src.as_str())
+        .capture()?
+        .success()
+    {
+        return Err(anyhow::Error::msg(""));
+    }
+
+    Ok(())
 }
