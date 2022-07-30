@@ -371,6 +371,7 @@ pub struct Operator {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize)]
 pub enum OperatorPrecedence {
+    Cast,
     Power,
     Multiplication,
     Addition,
@@ -396,6 +397,7 @@ pub enum OperatorAssociativity {
 impl OperatorPrecedence {
     pub fn associativity(&self) -> OperatorAssociativity {
         match self {
+            OperatorPrecedence::Cast => OperatorAssociativity::Left,
             OperatorPrecedence::Conjunction => OperatorAssociativity::Left,
             OperatorPrecedence::Disjunction => OperatorAssociativity::Left,
             OperatorPrecedence::Comparison => OperatorAssociativity::Left,
@@ -1161,8 +1163,8 @@ impl<L: Loader> Expander<L> {
                             replace(lhs, map);
                             replace(rhs, map);
                         }
-                        NodeKind::External(abi, identifier, inputs) => {
-                            replace(abi, map);
+                        NodeKind::External(lib, identifier, inputs) => {
+                            replace(lib, map);
                             replace(identifier, map);
 
                             for input in inputs {

@@ -356,6 +356,7 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
 
                 let precedence = match lhs.kind {
                     NodeKind::Name(name) => match name.as_str() {
+                        "cast" => OperatorPrecedence::Cast,
                         "power" => OperatorPrecedence::Power,
                         "multiplication" => OperatorPrecedence::Multiplication,
                         "addition" => OperatorPrecedence::Addition,
@@ -553,13 +554,13 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
 
                     let mut inputs = VecDeque::from(inputs);
 
-                    let abi = inputs.pop_front().unwrap();
+                    let lib = inputs.pop_front().unwrap();
                     let identifier = inputs.pop_front().unwrap();
                     let inputs = Vec::from(inputs);
 
                     Node {
                         span,
-                        kind: NodeKind::External(Box::new(abi), Box::new(identifier), inputs),
+                        kind: NodeKind::External(Box::new(lib), Box::new(identifier), inputs),
                     }
                 })
             }),

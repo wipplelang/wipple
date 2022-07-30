@@ -8,7 +8,7 @@ use crate::{
 };
 use std::{collections::BTreeMap, mem};
 
-pub mod abi {
+pub mod lib {
     pub const RUNTIME: &str = "runtime";
 }
 
@@ -52,6 +52,7 @@ impl<I> Section<I> {
 pub enum Type {
     Number,
     Text,
+    Integer,
     Discriminant,
     Boolean,
     Function(Box<Type>, Box<Type>),
@@ -487,7 +488,7 @@ impl<L: Loader> Compiler<L> {
                             info,
                         );
                     }
-                    typecheck::ExpressionKind::External(abi, identifier, exprs) => {
+                    typecheck::ExpressionKind::External(lib, identifier, exprs) => {
                         let mut inputs = Vec::with_capacity(exprs.len());
                         for expr in exprs {
                             let computation = or_unreachable!(
@@ -501,7 +502,7 @@ impl<L: Loader> Compiler<L> {
                             computation,
                             Expression {
                                 ty,
-                                kind: ExpressionKind::External(*abi, *identifier, inputs),
+                                kind: ExpressionKind::External(*lib, *identifier, inputs),
                             },
                         ));
                     }
@@ -761,7 +762,7 @@ impl<L: Loader> Compiler<L> {
                     Expression {
                         ty: Type::Boolean,
                         kind: ExpressionKind::External(
-                            InternedString::new(abi::RUNTIME),
+                            InternedString::new(lib::RUNTIME),
                             InternedString::new("number-equality"),
                             vec![input, predicate],
                         ),
@@ -791,7 +792,7 @@ impl<L: Loader> Compiler<L> {
                     Expression {
                         ty: Type::Boolean,
                         kind: ExpressionKind::External(
-                            InternedString::new(abi::RUNTIME),
+                            InternedString::new(lib::RUNTIME),
                             InternedString::new("text-equality"),
                             vec![input, predicate],
                         ),
@@ -1064,6 +1065,7 @@ impl<L: Loader> Compiler<L> {
             typecheck::Type::Builtin(ty) => match ty {
                 typecheck::BuiltinType::Number => Type::Number,
                 typecheck::BuiltinType::Text => Type::Text,
+                typecheck::BuiltinType::Integer => Type::Integer,
                 typecheck::BuiltinType::List(ty) => Type::List(Box::new(self.gen_type(*ty, info))),
                 typecheck::BuiltinType::Mutable(ty) => {
                     Type::Mutable(Box::new(self.gen_type(*ty, info)))
@@ -1152,8 +1154,8 @@ impl Expression<UnresolvedSectionIndex> {
                 ExpressionKind::Number(number) => ExpressionKind::Number(number),
                 ExpressionKind::Text(text) => ExpressionKind::Text(text),
                 ExpressionKind::Call(function, input) => ExpressionKind::Call(function, input),
-                ExpressionKind::External(abi, identifier, inputs) => {
-                    ExpressionKind::External(abi, identifier, inputs)
+                ExpressionKind::External(lib, identifier, inputs) => {
+                    ExpressionKind::External(lib, identifier, inputs)
                 }
                 ExpressionKind::Tuple(values) => ExpressionKind::Tuple(values),
                 ExpressionKind::Structure(values) => ExpressionKind::Structure(values),

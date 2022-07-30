@@ -513,14 +513,14 @@ impl<L: Loader> Compiler<L> {
                     self.build_pattern(*input),
                     Box::new(self.build_expression(*body)),
                 ),
-                NodeKind::External(abi, identifier, inputs) => {
-                    let abi = match abi.kind {
+                NodeKind::External(lib, identifier, inputs) => {
+                    let lib = match lib.kind {
                         NodeKind::Error => return ExpressionKind::Error,
                         NodeKind::Text(text) => text,
                         _ => {
                             self.diagnostics.add(Diagnostic::error(
                                 "expected text here",
-                                vec![Note::primary(abi.span, "`external` requires an ABI")],
+                                vec![Note::primary(lib.span, "`external` requires an ABI")],
                             ));
 
                             return ExpressionKind::Error;
@@ -544,7 +544,7 @@ impl<L: Loader> Compiler<L> {
                     };
 
                     ExpressionKind::External(
-                        abi,
+                        lib,
                         identifier,
                         inputs
                             .into_iter()

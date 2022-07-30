@@ -5,14 +5,12 @@ use proc_macro2::{Span, TokenStream};
 use quote::{quote, ToTokens};
 use std::{collections::BTreeMap, mem};
 use thiserror::Error;
-use wipple_frontend::{
-    helpers::InternedString, ir, ComputationId, MonomorphizedConstantId, TypeId, VariableId,
-};
+use wipple_frontend::{ir, ComputationId, MonomorphizedConstantId, TypeId, VariableId};
 
 #[derive(Debug, Clone, Error)]
 pub enum Error {
-    #[error("unknown abi `{0}`")]
-    UnknownAbi(InternedString),
+    #[error("invalid identifier")]
+    InvalidIdentifier,
 }
 
 pub type Result<T> = std::result::Result<T, Error>;
@@ -266,8 +264,10 @@ fn write_expression<'a>(expr: &'a ir::Expression, info: &mut Info<'a>) -> Result
                 )
             }
         }
-        ir::ExpressionKind::External(abi, identifier, inputs) => match abi.as_str() {
-            "runtime" => {
+        ir::ExpressionKind::External(lib, identifier, inputs) => {
+            let lib = lib.as_str();
+
+            if lib == "runtime" {
                 let function = syn::Ident::new(&identifier.replace('-', "_"), Span::call_site());
 
                 let inputs = inputs.iter().map(|id| {
@@ -277,11 +277,99 @@ fn write_expression<'a>(expr: &'a ir::Expression, info: &mut Info<'a>) -> Result
                 });
 
                 quote!(__runtime::builtins::#function(#(#inputs),*))
+            } else {
+                use nom::{
+                    bytes::complete::tag,
+                    character::complete::{alphanumeric1, char, space0},
+                    multi::separated_list0,
+                    sequence::delimited,
+                    Parser,
+                };
+
+                #[derive(Debug, Clone, PartialEq, Eq)]
+                enum Ty {
+                    Int,
+                    Double,
+                }
+
+                fn ty(s: &str) -> nom::IResult<&str, Ty> {
+                    (tag("int").map(|_| Ty::Int))
+                        .or(tag("double").map(|_| Ty::Double))
+                        .parse(s)
+                }
+
+                impl std::fmt::Display for Ty {
+                    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                        match self {
+                            Ty::Int => write!(f, "int"),
+                            Ty::Double => write!(f, "double"),
+                        }
+                    }
+                }
+
+                impl Ty {
+                    fn c_ty(&self) -> TokenStream {
+                        match self {
+                            Ty::Int => quote!(::std::os::raw::c_int),
+                            Ty::Double => quote!(::std::os::raw::c_double),
+                        }
+                    }
+                }
+
+                fn return_ty(s: &str) -> nom::IResult<&str, Option<Ty>> {
+                    (ty.map(Some)).or(tag("void").map(|_| None)).parse(s)
+                }
+
+                fn args(s: &str) -> nom::IResult<&str, Vec<Ty>> {
+                    delimited(
+                        char('(').and(space0),
+                        separated_list0(space0.and(tag(",")).and(space0), ty),
+                        space0.and(char(')')),
+                    )(s)
+                }
+
+                let (rest, ((((return_ty, _), func), _), args)) = return_ty
+                    .and(space0)
+                    .and(alphanumeric1)
+                    .and(space0)
+                    .and(args)
+                    .parse(identifier)
+                    .map_err(|_| Error::InvalidIdentifier)?;
+
+                if !rest.is_empty() {
+                    return Err(Error::InvalidIdentifier);
+                }
+
+                let func = syn::Ident::new(func, Span::call_site());
+
+                let inputs = args.iter().zip(inputs).map(|(arg, input)| {
+                    let arg_ty = arg.c_ty();
+                    let computation = write_computation(*input);
+                    let computation_ty = write_type(info.computations.get(input).unwrap(), info);
+
+                    quote!({
+                        let arg: #computation_ty = __runtime::read(&#computation);
+                        __runtime::ToC::<#arg_ty>::to_c(arg)
+                    })
+                });
+
+                let args = args.iter().map(|arg| {
+                    let ty = arg.c_ty();
+                    quote!(_: #ty)
+                });
+
+                let return_ty = return_ty.map(|ty| ty.c_ty()).unwrap_or_else(|| quote!(()));
+
+                quote!({
+                    #[link(name = #lib)]
+                    extern "C" {
+                        fn #func(#(#args),*) -> #return_ty;
+                    }
+
+                    __runtime::FromC::<#return_ty>::from_c(#func(#(#inputs),*))
+                })
             }
-            "rust" => todo!(),
-            "c" => todo!(),
-            _ => return Err(Error::UnknownAbi(*abi)),
-        },
+        }
         ir::ExpressionKind::Structure(values) => {
             let id = match &expr.ty {
                 ir::Type::Structure(id, _) => write_structure(*id),
@@ -379,6 +467,7 @@ fn write_expression<'a>(expr: &'a ir::Expression, info: &mut Info<'a>) -> Result
 fn write_type(ty: &ir::Type, info: &mut Info) -> TokenStream {
     match ty {
         ir::Type::Number => quote!(__runtime::Number),
+        ir::Type::Integer => quote!(__runtime::Integer),
         ir::Type::Text => quote!(__runtime::Text),
         ir::Type::Discriminant => quote!(__runtime::Discriminant),
         ir::Type::Boolean => quote!(__runtime::Boolean),
