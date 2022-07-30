@@ -59,8 +59,23 @@ impl<L: Loader> Compiler<L> {
                 kind: BuiltinTypeKind::Number,
                 attributes: DeclarationAttributes {
                     help: vec![InternedString::new(
-                        "Represents a number. Unlike in most languages, Wipple numbers are stored in decimal format instead of floating-point format, making calculations with base-10 numbers more accurate.",
+                        "Represents a whole or fractional number, represented as a 64-bit floating point value. By default, numeric literals have the type `Number`; if you need to convert it to an `Integer`, use the `as?` operator.",
                     )],
+                    ..Default::default()
+                }
+            },
+        );
+
+        add!(
+            builtin_types,
+            Span::builtin("`Integer` type"),
+            "Integer",
+            INTEGER_TYPE: BuiltinTypeId = self.new_builtin_type_id(),
+            ScopeValue::BuiltinType,
+            BuiltinType {
+                kind: BuiltinTypeKind::Integer,
+                attributes: DeclarationAttributes {
+                    help: vec![InternedString::new("Represents a whole number, specifically a 64-bit signed integer. Integers are most commonly used when dealing with lists, whose items can only be accessed at whole-number intervals.",)],
                     ..Default::default()
                 }
             },

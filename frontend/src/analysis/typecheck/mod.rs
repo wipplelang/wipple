@@ -522,7 +522,7 @@ impl<L: Loader> Compiler<L> {
 
                         let mut temp_ctx = typechecker.ctx.clone();
                         temp_ctx
-                            .unify(tr.ty.clone(), other.generic_ty.clone())
+                            .unify(other.generic_ty.clone(), tr.ty.clone())
                             .is_ok()
                             .then(|| other.decl.span)
                     })
@@ -1303,7 +1303,7 @@ impl<L: Loader> Typechecker<L> {
                     kind: UnresolvedExpressionKind::When(Box::new(input), arms),
                 }
             }
-            lower::ExpressionKind::External(abi, identifier, inputs) => {
+            lower::ExpressionKind::External(lib, identifier, inputs) => {
                 let inputs = inputs
                     .iter()
                     .map(|expr| self.typecheck_expr(expr, file, suppress_errors))
@@ -1312,7 +1312,7 @@ impl<L: Loader> Typechecker<L> {
                 UnresolvedExpression {
                     span: expr.span,
                     ty: UnresolvedType::Variable(self.ctx.new_variable()),
-                    kind: UnresolvedExpressionKind::External(*abi, *identifier, inputs),
+                    kind: UnresolvedExpressionKind::External(*lib, *identifier, inputs),
                 }
             }
             lower::ExpressionKind::Annotate(expr, ty) => {
@@ -2329,9 +2329,9 @@ impl<L: Loader> Typechecker<L> {
 
                         MonomorphizedExpressionKind::When(Box::new(input), arms)
                     }
-                    UnresolvedExpressionKind::External(abi, identifier, inputs) => {
+                    UnresolvedExpressionKind::External(lib, identifier, inputs) => {
                         MonomorphizedExpressionKind::External(
-                            abi,
+                            lib,
                             identifier,
                             inputs
                                 .into_iter()
@@ -2495,9 +2495,9 @@ impl<L: Loader> Typechecker<L> {
                         })
                         .collect::<Result<_, _>>()?,
                 ),
-                MonomorphizedExpressionKind::External(abi, identifier, inputs) => {
+                MonomorphizedExpressionKind::External(lib, identifier, inputs) => {
                     ExpressionKind::External(
-                        abi,
+                        lib,
                         identifier,
                         inputs
                             .into_iter()
@@ -2771,6 +2771,19 @@ impl<L: Loader> Typechecker<L> {
                         }
 
                         UnresolvedType::Builtin(BuiltinType::Number)
+                    }
+                    lower::BuiltinTypeKind::Integer => {
+                        if !parameters.is_empty() {
+                            self.compiler.diagnostics.add(Diagnostic::error(
+                                "`Integer` does not accept parameters",
+                                vec![Note::primary(
+                                    annotation.span,
+                                    "try removing these parameters",
+                                )],
+                            ));
+                        }
+
+                        UnresolvedType::Builtin(BuiltinType::Integer)
                     }
                     lower::BuiltinTypeKind::Text => {
                         if !parameters.is_empty() {

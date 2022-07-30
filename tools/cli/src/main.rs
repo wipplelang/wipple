@@ -175,6 +175,10 @@ async fn run() -> anyhow::Result<()> {
 
             match backend {
                 RunBackend::Interpreter => {
+                    if let Some(progress_bar) = progress_bar.as_ref() {
+                        progress_bar.finish_and_clear();
+                    }
+
                     let interpreter =
                         wipple_interpreter_backend::Interpreter::handling_output(|text| {
                             print!("{}", text);
@@ -288,8 +292,8 @@ async fn run() -> anyhow::Result<()> {
                     progress_bar.set_message("Compiling to Rust");
                 }
 
-                let tt = wipple_rust_backend::compile(&ir)?;
-                let src = prettyplease::unparse(&syn::parse_file(&tt.to_string()).unwrap());
+                let tokens = wipple_rust_backend::compile(&ir)?;
+                let src = prettyplease::unparse(&syn::parse_file(&tokens.to_string()).unwrap());
 
                 if let Some(progress_bar) = progress_bar.as_ref() {
                     progress_bar.finish_and_clear();
@@ -552,8 +556,8 @@ fn compile_rust(
         progress_bar.set_message("Compiling to Rust");
     }
 
-    let tt = wipple_rust_backend::compile(&ir)?;
-    let src = prettyplease::unparse(&syn::parse_file(&tt.to_string()).unwrap());
+    let tokens = wipple_rust_backend::compile(&ir)?;
+    let src = prettyplease::unparse(&syn::parse_file(&tokens.to_string()).unwrap());
 
     let rustc = match which::which("rustc") {
         Ok(path) => path,

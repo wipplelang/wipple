@@ -96,10 +96,10 @@ impl std::fmt::Display for Program {
                             mangle_computation(*func),
                             mangle_computation(*input)
                         )?,
-                        ExpressionKind::External(abi, identifier, inputs) => writeln!(
+                        ExpressionKind::External(lib, identifier, inputs) => writeln!(
                             f,
                             "external {:?} {:?} {}",
-                            abi,
+                            lib,
                             identifier,
                             inputs
                                 .iter()
@@ -230,6 +230,7 @@ impl std::fmt::Display for Type {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
             Type::Number => write!(f, "number"),
+            Type::Integer => write!(f, "integer"),
             Type::Text => write!(f, "text"),
             Type::Discriminant => write!(f, "discriminant"),
             Type::Boolean => write!(f, "boolean"),

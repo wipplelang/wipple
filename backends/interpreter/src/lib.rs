@@ -126,9 +126,9 @@ impl<'a> Interpreter<'a> {
 
                                 self.call(function, input, info, &mut (**captures).clone())?
                             }
-                            ir::ExpressionKind::External(abi, identifier, inputs) => {
-                                if abi.as_str() != ir::abi::RUNTIME {
-                                    return Err(Error::from("unknown ABI (only 'runtime' is supported in the interpreter)"));
+                            ir::ExpressionKind::External(lib, identifier, inputs) => {
+                                if lib.as_str() != ir::lib::RUNTIME {
+                                    return Err(Error::from("unknown external library (only 'runtime' is supported in the interpreter)"));
                                 }
 
                                 self.call_runtime(

@@ -91,6 +91,7 @@ pub struct BuiltinType {
 pub enum BuiltinTypeKind {
     Never,
     Number,
+    Integer,
     Boolean,
     Text,
     List,
@@ -1350,8 +1351,8 @@ impl<L: Loader> Compiler<L> {
                     })
                     .collect(),
             ),
-            ast::ExpressionKind::External(abi, identifier, inputs) => ExpressionKind::External(
-                abi,
+            ast::ExpressionKind::External(lib, identifier, inputs) => ExpressionKind::External(
+                lib,
                 identifier,
                 inputs
                     .into_iter()

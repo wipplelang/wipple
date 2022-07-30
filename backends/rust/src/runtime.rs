@@ -5,6 +5,7 @@ mod __runtime {
         cell::RefCell,
         cmp,
         mem::{self, MaybeUninit},
+        os,
         rc::Rc,
         thread,
     };
@@ -70,6 +71,8 @@ mod __runtime {
 
     pub type Number = f64;
 
+    pub type Integer = i64;
+
     pub type Text = Rc<str>;
 
     #[inline(always)]
@@ -108,6 +111,38 @@ mod __runtime {
     #[inline(always)]
     pub fn discriminant<T: Enumeration>(enumeration: &T) -> Discriminant {
         enumeration.discriminant()
+    }
+
+    pub trait FromC<T> {
+        fn from_c(x: T) -> Self;
+    }
+
+    impl FromC<os::raw::c_int> for Integer {
+        fn from_c(x: os::raw::c_int) -> Self {
+            x as Integer
+        }
+    }
+
+    impl FromC<os::raw::c_double> for Number {
+        fn from_c(x: os::raw::c_double) -> Self {
+            x as Number
+        }
+    }
+
+    pub trait ToC<T> {
+        fn to_c(self) -> T;
+    }
+
+    impl ToC<os::raw::c_int> for Integer {
+        fn to_c(self) -> os::raw::c_int {
+            self as os::raw::c_int
+        }
+    }
+
+    impl ToC<os::raw::c_double> for Number {
+        fn to_c(self) -> os::raw::c_double {
+            self as os::raw::c_double
+        }
     }
 
     pub mod builtins {
@@ -189,6 +224,17 @@ mod __runtime {
 
         pub fn number_equality(a: Number, b: Number) -> Boolean {
             a == b
+        }
+
+        pub fn integer_to_number<T: Clone>(n: Integer) -> T {
+            unsafe { transmute_clone(&(n as f64)) }
+        }
+
+        pub fn number_to_integer<T: Clone>(n: Number) -> T {
+            let n = if n.trunc() == n { Some(n as i64) } else { None };
+
+            // SAFETY: This relies on the `Maybe` type from Wipple
+            unsafe { transmute_clone(&n) }
         }
 
         pub enum Ordering {
