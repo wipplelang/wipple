@@ -17,4 +17,3 @@ fi
 $compiler build --target=$target --release
 
 cp target/$target/release/wipple bin/wipple-$target
-cp target/$target/release/wipple-runner bin/wipple-runner-$target
