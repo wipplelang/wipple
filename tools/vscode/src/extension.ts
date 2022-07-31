@@ -2,6 +2,7 @@ import * as vscode from "vscode";
 import * as execa from "execa";
 import * as _ from "lodash";
 import * as path from "path";
+import * as assert from "assert";
 import {
     Diagnostic,
     Expression,
@@ -27,21 +28,14 @@ const semanticTokensEvent = new vscode.EventEmitter<void>();
 let diagnosticCollection: vscode.DiagnosticCollection;
 
 export const activate = (context: vscode.ExtensionContext) => {
-    context.subscriptions.push(
-        vscode.workspace.onDidOpenTextDocument(async (document) => {
-            if (document.languageId !== "wipple") return;
+    for (const document of vscode.workspace.textDocuments) {
+        handleDocumentUpdate(document);
+    }
 
-            await handleDocumentUpdate(document);
-            semanticTokensEvent.fire();
-        })
-    );
+    context.subscriptions.push(vscode.workspace.onDidOpenTextDocument(handleDocumentUpdate));
 
     context.subscriptions.push(
-        vscode.workspace.onDidChangeTextDocument((event) => {
-            if (event.document.languageId !== "wipple") return;
-
-            handleDocumentUpdate(event.document);
-        })
+        vscode.workspace.onDidChangeTextDocument((event) => handleDocumentUpdate(event.document))
     );
 
     diagnosticCollection = vscode.languages.createDiagnosticCollection("wipple");
@@ -61,9 +55,15 @@ export const activate = (context: vscode.ExtensionContext) => {
     context.subscriptions.push(
         vscode.languages.registerCompletionItemProvider("wipple", completionItemProvider)
     );
+
+    context.subscriptions.push(
+        vscode.languages.registerDefinitionProvider("wipple", definitionProvider)
+    );
 };
 
 const handleDocumentUpdate = async (document: vscode.TextDocument) => {
+    if (document.languageId !== "wipple") return;
+
     const source = document.getText();
 
     const bin = debug ? path.join(__dirname, "../../../target/release/wipple") : "wipple";
@@ -565,5 +565,75 @@ const completionItemProvider: vscode.CompletionItemProvider = {
         add(program.exported.find(([path]) => belongsToCurrentDocument({ path }))![1]);
 
         return items;
+    },
+};
+
+const definitionProvider: vscode.DefinitionProvider = {
+    provideDefinition: (document, position) => {
+        const s = storage[document.uri.toString()];
+        if (!s) return undefined;
+        const { program } = s;
+
+        const offset = document.offsetAt(position);
+        const isWithinPosition = (span: Span) =>
+            belongsToCurrentDocument(span) && offset >= span.start && offset <= span.end;
+
+        const items: [Span, Span][] = [];
+
+        const addExpr = (expr: Expression) => {
+            if (!isWithinPosition(expr.span)) return;
+
+            let definitionSpan: Span;
+            switch (expr.kind.type) {
+                case "Constant":
+                    definitionSpan =
+                        program.declarations.generic_constants[expr.kind.value].decl.span;
+                    break;
+                case "Variable":
+                    definitionSpan = program.declarations.variables[expr.kind.value].span;
+                    break;
+                case "Marker":
+                    assert(expr.ty.type === "Named");
+                    definitionSpan = program.declarations.types[expr.ty.value[0]].span;
+                    break;
+                default:
+                    return;
+            }
+
+            items.push([expr.span, definitionSpan]);
+        };
+
+        for (const expr of program.body) {
+            traverseExpr(expr, addExpr);
+        }
+
+        for (const constant of Object.values(program.declarations.generic_constants)) {
+            traverseExpr(constant.decl.value, addExpr);
+        }
+
+        const [_span, definitionSpan] = _.sortBy(items, ([span]) => span.end - span.start)[0] ?? [];
+
+        if (!definitionSpan) return undefined;
+
+        let uri: vscode.Uri;
+        switch (definitionSpan.path.type) {
+            case "Path":
+                uri = vscode.Uri.file(definitionSpan.path.value);
+                break;
+            case "Virtual":
+                if (definitionSpan.path.value !== "stdin") return undefined;
+                uri = document.uri;
+                break;
+            default:
+                return undefined;
+        }
+
+        return {
+            uri,
+            range: new vscode.Range(
+                document.positionAt(definitionSpan.start),
+                document.positionAt(definitionSpan.end)
+            ),
+        };
     },
 };
