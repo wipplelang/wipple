@@ -1,7 +1,7 @@
 use clap::{Parser, ValueEnum};
 use serde::Serialize;
 use std::{
-    env, fs,
+    fs,
     io::{self, Read},
     path::{Path, PathBuf},
     process::ExitCode,

@@ -73,7 +73,7 @@ const handleDocumentUpdate = async (document: vscode.TextDocument) => {
     try {
         output = await execa.execa(
             bin,
-            ["dump", "-", "--base-path", document.uri.fsPath, "analysis", ...args],
+            ["dump", "-", "--base-path", path.dirname(document.uri.fsPath), "analysis", ...args],
             { input: source }
         );
     } catch (e) {
