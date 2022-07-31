@@ -169,13 +169,15 @@ impl wipple_frontend::Loader for Loader {
 
                     let parsed_path = PathBuf::from(path.as_str());
 
-                    if !parsed_path.has_root() {
+                    if parsed_path.has_root() {
+                        Ok(FilePath::Path(path))
+                    } else {
                         match base {
                             FilePath::Url(url) => {
                                 let url = Url::from_str(&url).unwrap().join(path.as_str())?;
                                 Ok(FilePath::Url(InternedString::from(url.to_string())))
                             }
-                            FilePath::Path(path) | FilePath::Virtual(path) => {
+                            FilePath::Path(path) => {
                                 let path = PathBuf::from(path.as_str())
                                     .parent()
                                     .unwrap()
@@ -184,10 +186,20 @@ impl wipple_frontend::Loader for Loader {
 
                                 Ok(FilePath::Path(InternedString::new(path.to_str().unwrap())))
                             }
+                            FilePath::Virtual(_) => {
+                                let base = match self.base {
+                                    Some(base) => base,
+                                    None => unimplemented!(),
+                                };
+
+                                let path = PathBuf::from(base.as_str().as_ref())
+                                    .join(parsed_path)
+                                    .clean();
+
+                                Ok(FilePath::Path(InternedString::new(path.to_str().unwrap())))
+                            }
                             _ => unimplemented!(),
                         }
-                    } else {
-                        Ok(FilePath::Path(path))
                     }
                 }
             }

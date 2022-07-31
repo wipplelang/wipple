@@ -457,23 +457,12 @@ async fn build_with_passes<P>(
         }
     };
 
-    let base = if options.path == "-" {
-        options
-            .base_path
-            .as_ref()
-            .cloned()
-            .unwrap_or_else(|| env::current_dir().unwrap())
-            .to_string_lossy()
-            .to_string()
-    } else {
-        let path = PathBuf::from(&options.path);
-
-        if path.is_file() {
-            path.parent().unwrap().to_string_lossy().to_string()
-        } else {
-            options.path.clone()
-        }
-    };
+    let base = options
+        .base_path
+        .clone()
+        .unwrap_or_else(|| PathBuf::from(&options.path).parent().unwrap().to_path_buf())
+        .to_string_lossy()
+        .to_string();
 
     let loader = loader::Loader::new(
         Some(wipple_frontend::FilePath::Path(
