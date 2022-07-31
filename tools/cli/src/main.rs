@@ -599,6 +599,7 @@ fn compile_rust(
         .arg("-")
         .arg("-o")
         .arg(output)
+        .arg("-O")
         .args(rustc_args)
         .stdin(src.as_str())
         .capture()?
