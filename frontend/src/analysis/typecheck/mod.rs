@@ -232,6 +232,7 @@ impl<L: Loader> Compiler<L> {
         let mut typechecker = Typechecker {
             ctx: Default::default(),
             errors: Default::default(),
+            report_errors: true,
             variables: Default::default(),
             return_tys: Default::default(),
             loop_tys: Default::default(),
@@ -922,7 +923,7 @@ impl<L: Loader> Compiler<L> {
 
         // Build the final program
 
-        let success = typechecker.errors.is_empty();
+        let success = typechecker.report_errors && typechecker.errors.is_empty();
 
         let report = |error: Error, typechecker: &Typechecker<L>| {
             #[allow(unused_mut)]
@@ -1001,41 +1002,39 @@ impl<L: Loader> Compiler<L> {
             typechecker.compiler.diagnostics.add(diagnostic);
         };
 
-        let (unresolved_type_errors, other_errors): (Vec<_>, Vec<_>) =
-            mem::take(&mut typechecker.errors)
+        if typechecker.report_errors {
+            let (unresolved_type_errors, other_errors): (Vec<_>, Vec<_>) =
+                mem::take(&mut typechecker.errors)
+                    .into_iter()
+                    .partition(|e| matches!(e.error, TypeError::UnresolvedType));
+
+            let should_report_unresolved_type_errors = other_errors.is_empty();
+
+            let (missing_instance_errors, other_errors): (Vec<_>, Vec<_>) = other_errors
                 .into_iter()
-                .partition(|e| matches!(e.error, TypeError::UnresolvedType));
+                .partition(|e| matches!(e.error, TypeError::MissingInstance(_, _, _)));
 
-        let should_report_unresolved_type_errors = other_errors.is_empty();
+            let (ignore_if_unsatisfied_bounds_errors, missing_instance_errors): (Vec<_>, Vec<_>) =
+                missing_instance_errors
+                    .into_iter()
+                    .partition(|e| e.ignore_if_unsatisfied_bounds);
 
-        let (missing_instance_errors, other_errors): (Vec<_>, Vec<_>) = other_errors
-            .into_iter()
-            .partition(|e| matches!(e.error, TypeError::MissingInstance(_, _, _)));
+            let should_report_ignored_errors = missing_instance_errors.is_empty();
 
-        let (ignore_if_unsatisfied_bounds_errors, missing_instance_errors): (Vec<_>, Vec<_>) =
-            missing_instance_errors
-                .into_iter()
-                .partition(|e| e.ignore_if_unsatisfied_bounds);
+            if should_report_ignored_errors {
+                for error in ignore_if_unsatisfied_bounds_errors {
+                    report(error, &typechecker);
+                }
+            }
 
-        let should_report_ignored_errors = missing_instance_errors.is_empty();
-
-        for error in missing_instance_errors {
-            report(error, &typechecker);
-        }
-
-        if should_report_ignored_errors {
-            for error in ignore_if_unsatisfied_bounds_errors {
+            for error in other_errors {
                 report(error, &typechecker);
             }
-        }
 
-        for error in other_errors {
-            report(error, &typechecker);
-        }
-
-        if should_report_unresolved_type_errors {
-            for error in unresolved_type_errors {
-                report(error, &typechecker);
+            if should_report_unresolved_type_errors {
+                for error in unresolved_type_errors {
+                    report(error, &typechecker);
+                }
             }
         }
 
@@ -1108,6 +1107,7 @@ impl Error {
 struct Typechecker<L: Loader> {
     ctx: Context,
     errors: Vec<Error>,
+    report_errors: bool,
     variables: BTreeMap<VariableId, UnresolvedType>,
     return_tys: Vec<Option<UnresolvedType>>,
     loop_tys: Vec<Option<UnresolvedType>>,
@@ -1135,7 +1135,10 @@ impl<L: Loader> Typechecker<L> {
         suppress_errors: bool,
     ) -> UnresolvedExpression {
         match &expr.kind {
-            lower::ExpressionKind::Error => UnresolvedExpression::error(expr.span),
+            lower::ExpressionKind::Error => {
+                self.report_errors = false;
+                UnresolvedExpression::error(expr.span)
+            }
             lower::ExpressionKind::Marker(id) => {
                 let marker = self.types.get(id).unwrap().clone();
 
