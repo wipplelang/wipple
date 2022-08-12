@@ -94,7 +94,7 @@ A => instance Iterate (List A) A : list -> {
 	index : mutable 0
 
 	Iterator {
-		next : () -> when (list . at (get index)) {
+		next : () -> when (list . nth (get index)) {
 			OK element -> {
 				increment! index
 				Some element

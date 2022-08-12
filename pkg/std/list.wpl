@@ -46,8 +46,8 @@ tail : list -> external "runtime" "list-tail" list
 Index-Error : type
 
 [help "Retrieve the value in a `List` at a particular index, if it exists."]
-at :: A => Number -> List A -> Result A Index-Error
-at : index -> list -> external "runtime" "list-at" list index
+nth :: A => Number -> List A -> Result A Index-Error
+nth : index -> list -> external "runtime" "list-nth" list index
 
 [help "Add a new item to the end of a `List`."]
 append :: A => A -> List A -> List A

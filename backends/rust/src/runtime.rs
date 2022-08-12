@@ -366,7 +366,7 @@ mod __runtime {
             unsafe { transmute_clone(&tail) }
         }
 
-        pub fn list_at<T: Clone, U: Clone>(list: List<T>, index: Number) -> U {
+        pub fn list_nth<T: Clone, U: Clone>(list: List<T>, index: Number) -> U {
             struct IndexError;
 
             let index = if index >= 0. && index.floor() == index {

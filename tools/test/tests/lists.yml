@@ -5,7 +5,7 @@ code: |
     show (my-list . last)
     show (my-list . initial . unwrap . last)
     show (my-list . tail . unwrap . first)
-    show (my-list . at 1)
+    show (my-list . nth 1)
 
 output: |
     Some 1

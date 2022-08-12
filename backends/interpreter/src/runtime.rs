@@ -70,7 +70,7 @@ lazy_static! {
             "list-last",
             "list-initial",
             "list-tail",
-            "list-at",
+            "list-nth",
             "list-append",
             "list-insert",
             "list-remove",
@@ -409,7 +409,7 @@ fn list_tail(_: &Interpreter, (list,): (Value,)) -> Result<Value, Error> {
     })
 }
 
-fn list_at(_: &Interpreter, (list, index): (Value, Value)) -> Result<Value, Error> {
+fn list_nth(_: &Interpreter, (list, index): (Value, Value)) -> Result<Value, Error> {
     let list = match list {
         Value::List(list) => list,
         _ => unreachable!(),
