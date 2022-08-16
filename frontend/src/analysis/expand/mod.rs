@@ -64,7 +64,7 @@ impl<L: Loader> Clone for File<L> {
     }
 }
 
-#[derive(Debug, Clone, Default, PartialEq)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct FileAttributes {
     pub no_std: bool,
 }
@@ -76,14 +76,14 @@ pub struct Statement {
     pub treat_as_expr: bool,
 }
 
-#[derive(Debug, Clone, Default, PartialEq)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct StatementAttributes {
     pub language_item: Option<LanguageItem>,
     pub help: VecDeque<InternedString>,
     pub on_unimplemented: Option<InternedString>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, EnumString)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, EnumString)]
 #[strum(serialize_all = "kebab-case")]
 pub enum LanguageItem {
     Boolean,
