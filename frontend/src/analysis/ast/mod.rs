@@ -31,13 +31,18 @@ pub struct Statement {
 
 #[derive(Debug, Clone)]
 pub enum StatementKind {
+    Declaration(Declaration),
+    Assign(Pattern, Expression),
+    Use((Span, InternedString)),
+    Expression(ExpressionKind),
+}
+
+#[derive(Debug, Clone)]
+pub enum Declaration {
     Type((Span, InternedString), TypeDeclaration),
     Trait((Span, InternedString), TraitDeclaration),
     Constant((Span, InternedString), ConstantDeclaration),
     Instance(Instance),
-    Assign(Pattern, Expression),
-    Use((Span, InternedString)),
-    Expression(ExpressionKind),
 }
 
 #[derive(Debug, Clone)]
@@ -214,7 +219,9 @@ impl<L: Loader> Compiler<L> {
                                         trait_parameters,
                                         *value,
                                     ) {
-                                        Some(instance) => StatementKind::Instance(instance),
+                                        Some(instance) => StatementKind::Declaration(
+                                            Declaration::Instance(instance),
+                                        ),
                                         None => StatementKind::Expression(ExpressionKind::Error),
                                     }
                                 }
@@ -239,7 +246,9 @@ impl<L: Loader> Compiler<L> {
                                 trait_parameters,
                                 *value,
                             ) {
-                                Some(instance) => StatementKind::Instance(instance),
+                                Some(instance) => {
+                                    StatementKind::Declaration(Declaration::Instance(instance))
+                                }
                                 None => StatementKind::Expression(ExpressionKind::Error),
                             }
                         }
@@ -278,14 +287,16 @@ impl<L: Loader> Compiler<L> {
                                     };
 
                                     match self.build_type_declaration(value.span, fields) {
-                                        Some(kind) => StatementKind::Type(
-                                            (pattern.span, name),
-                                            TypeDeclaration {
-                                                parameters: Vec::new(),
-                                                bounds: Vec::new(),
-                                                kind,
-                                            },
-                                        ),
+                                        Some(kind) => {
+                                            StatementKind::Declaration(Declaration::Type(
+                                                (pattern.span, name),
+                                                TypeDeclaration {
+                                                    parameters: Vec::new(),
+                                                    bounds: Vec::new(),
+                                                    kind,
+                                                },
+                                            ))
+                                        }
                                         None => StatementKind::Expression(ExpressionKind::Error),
                                     }
                                 }
@@ -307,14 +318,14 @@ impl<L: Loader> Compiler<L> {
                                         }
                                     };
 
-                                    StatementKind::Trait(
+                                    StatementKind::Declaration(Declaration::Trait(
                                         (pattern.span, name),
                                         TraitDeclaration {
                                             parameters: Vec::new(),
                                             bounds: Vec::new(),
                                             ty: self.build_type_annotation(*ty),
                                         },
-                                    )
+                                    ))
                                 }
                                 NodeKind::TypeFunction(parameters, node) => {
                                     let name = match pattern.kind {
@@ -346,27 +357,31 @@ impl<L: Loader> Compiler<L> {
                                     match node.kind {
                                         NodeKind::Type(fields) => {
                                             match self.build_type_declaration(node.span, fields) {
-                                                Some(kind) => StatementKind::Type(
-                                                    (pattern.span, name),
-                                                    TypeDeclaration {
-                                                        parameters,
-                                                        bounds,
-                                                        kind,
-                                                    },
-                                                ),
+                                                Some(kind) => {
+                                                    StatementKind::Declaration(Declaration::Type(
+                                                        (pattern.span, name),
+                                                        TypeDeclaration {
+                                                            parameters,
+                                                            bounds,
+                                                            kind,
+                                                        },
+                                                    ))
+                                                }
                                                 None => {
                                                     StatementKind::Expression(ExpressionKind::Error)
                                                 }
                                             }
                                         }
-                                        NodeKind::Trait(ty) => StatementKind::Trait(
-                                            (pattern.span, name),
-                                            TraitDeclaration {
-                                                parameters,
-                                                bounds,
-                                                ty: self.build_type_annotation(*ty),
-                                            },
-                                        ),
+                                        NodeKind::Trait(ty) => {
+                                            StatementKind::Declaration(Declaration::Trait(
+                                                (pattern.span, name),
+                                                TraitDeclaration {
+                                                    parameters,
+                                                    bounds,
+                                                    ty: self.build_type_annotation(*ty),
+                                                },
+                                            ))
+                                        }
                                         _ => {
                                             self.diagnostics.add(Diagnostic::error(
                                             "expected type or trait declaration in type function",
@@ -414,14 +429,14 @@ impl<L: Loader> Compiler<L> {
                             _ => (Vec::new(), Vec::new(), self.build_type_annotation(*ty)),
                         };
 
-                        StatementKind::Constant(
+                        StatementKind::Declaration(Declaration::Constant(
                             name,
                             ConstantDeclaration {
                                 parameters,
                                 bounds,
                                 ty,
                             },
-                        )
+                        ))
                     }
                     NodeKind::Use(expr) => {
                         let name = match expr.kind {
