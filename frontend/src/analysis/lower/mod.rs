@@ -310,11 +310,7 @@ impl<L: Loader> Compiler<L> {
                 .extend(dependency.exported.clone());
         }
 
-        let block = file
-            .statements
-            .into_iter()
-            .flat_map(|statement| self.lower_statement(statement, &scope, &mut info))
-            .collect();
+        let block = self.lower_statements(file.statements, &scope, &mut info);
 
         for constant in info.declarations.constants.values() {
             if constant.value.value.borrow().as_ref().is_none() {
@@ -465,6 +461,29 @@ struct Info {
     scopes: Vec<(Span, ScopeValues)>,
 }
 
+struct StatementDeclaration {
+    span: Span,
+    kind: StatementDeclarationKind,
+    attributes: ast::StatementAttributes,
+}
+
+enum StatementDeclarationKind {
+    Type(TypeId, ((Span, InternedString), ast::TypeDeclaration)),
+    Trait(TraitId, ((Span, InternedString), ast::TraitDeclaration)),
+    Constant(
+        GenericConstantId,
+        ((Span, InternedString), ast::ConstantDeclaration),
+    ),
+    Instance(GenericConstantId, ast::Instance),
+    Use((Span, InternedString)),
+    Queued(QueuedStatement),
+}
+
+enum QueuedStatement {
+    Assign(ast::Pattern, ast::Expression),
+    Expression(ast::ExpressionKind),
+}
+
 impl<L: Loader> Compiler<L> {
     fn lower_block(
         &mut self,
@@ -474,252 +493,241 @@ impl<L: Loader> Compiler<L> {
         info: &mut Info,
     ) -> Vec<Expression> {
         let scope = scope.child(ScopeKind::Block);
-
-        let statements = statements
-            .into_iter()
-            .flat_map(|statement| self.lower_statement(statement, &scope, info))
-            .collect();
-
+        let statements = self.lower_statements(statements, &scope, info);
         info.scopes.push((span, scope.values.into_inner()));
-
         statements
     }
 
-    fn lower_statement(
+    fn lower_statements(
         &mut self,
-        mut statement: ast::Statement,
+        statements: Vec<ast::Statement>,
         scope: &Scope,
         info: &mut Info,
-    ) -> Option<Expression> {
-        let (scope_value, expr) = match statement.kind {
-            ast::StatementKind::Type((span, name), ty) => {
-                let id = self.new_type_id();
-                scope.values.borrow_mut().insert(name, ScopeValue::Type(id));
+    ) -> Vec<Expression> {
+        let declarations = statements
+            .into_iter()
+            .map(|statement| self.lower_statement(statement, scope))
+            .collect::<Vec<_>>();
 
-                let parameters = ty
-                    .parameters
-                    .into_iter()
-                    .map(|param| {
-                        let id = self.new_type_parameter_id();
+        let mut queue = Vec::new();
+        for mut decl in declarations {
+            let scope_value = match decl.kind {
+                StatementDeclarationKind::Type(id, ((span, name), ty)) => {
+                    let parameters = ty
+                        .parameters
+                        .into_iter()
+                        .map(|param| {
+                            let id = self.new_type_parameter_id();
 
-                        scope
-                            .values
-                            .borrow_mut()
-                            .insert(param.name, ScopeValue::TypeParameter(id));
-
-                        info.declarations.type_parameters.insert(
-                            id,
-                            Declaration {
-                                name: Some(param.name),
-                                span: param.span,
-                                value: (),
-                                uses: Vec::new(),
-                            },
-                        );
-
-                        id
-                    })
-                    .collect();
-
-                if !ty.bounds.is_empty() {
-                    self.diagnostics.add(Diagnostic::error(
-                        "bounds are not allowed on types",
-                        vec![Note::primary(
-                            ty.bounds
-                                .first()
-                                .unwrap()
-                                .span
-                                .with_end(ty.bounds.last().unwrap().span.end),
-                            "try moving these to the respective functions instead",
-                        )],
-                    ));
-                }
-
-                let ty = match ty.kind {
-                    ast::TypeKind::Marker => Type {
-                        kind: TypeKind::Marker,
-                        params: parameters,
-                        attributes: self.lower_decl_attributes(&mut statement.attributes),
-                    },
-                    ast::TypeKind::Structure(fields) => {
-                        let mut field_tys = Vec::with_capacity(fields.len());
-                        let mut field_names = HashMap::with_capacity(fields.len());
-                        for (index, mut field) in fields.into_iter().enumerate() {
-                            field_tys.push(TypeField {
-                                ty: self.lower_type_annotation(field.ty, scope, info),
-                                attributes: self.lower_decl_attributes(&mut field.attributes),
-                            });
-
-                            field_names.insert(field.name, index);
-                        }
-
-                        Type {
-                            kind: TypeKind::Structure(field_tys, field_names),
-                            params: parameters,
-                            attributes: self.lower_decl_attributes(&mut statement.attributes),
-                        }
-                    }
-                    ast::TypeKind::Enumeration(variants) => {
-                        let mut variant_tys = Vec::with_capacity(variants.len());
-                        let mut variant_names = HashMap::with_capacity(variants.len());
-                        for (index, mut variant) in variants.into_iter().enumerate() {
-                            let tys = variant
+                            scope
                                 .values
-                                .into_iter()
-                                .map(|ty| self.lower_type_annotation(ty, scope, info))
-                                .collect::<Vec<_>>();
+                                .borrow_mut()
+                                .insert(param.name, ScopeValue::TypeParameter(id));
 
-                            let constructor_id = self.new_generic_constant_id();
-
-                            let constructor_ty = tys.iter().fold(
-                                TypeAnnotation {
-                                    span: variant.span,
-                                    kind: TypeAnnotationKind::Named(
-                                        id,
-                                        parameters
-                                            .iter()
-                                            .map(|param| TypeAnnotation {
-                                                span,
-                                                kind: TypeAnnotationKind::Parameter(*param),
-                                            })
-                                            .collect(),
-                                    ),
-                                },
-                                |result, next| TypeAnnotation {
-                                    span: variant.span,
-                                    kind: TypeAnnotationKind::Function(
-                                        Box::new(next.clone()),
-                                        Box::new(result),
-                                    ),
-                                },
-                            );
-
-                            let variables = tys
-                                .iter()
-                                .map(|ty| {
-                                    let var = self.new_variable_id();
-
-                                    info.declarations.variables.insert(
-                                        var,
-                                        Declaration {
-                                            name: Some(name),
-                                            span: ty.span,
-                                            value: (),
-                                            uses: Vec::new(),
-                                        },
-                                    );
-
-                                    (ty.span, var)
-                                })
-                                .collect::<Vec<_>>();
-
-                            let result = Expression {
-                                span: variant.span,
-                                kind: ExpressionKind::Variant(
-                                    id,
-                                    index,
-                                    variables
-                                        .iter()
-                                        .map(|(span, var)| Expression {
-                                            span: *span,
-                                            kind: ExpressionKind::Variable(*var),
-                                        })
-                                        .collect(),
-                                ),
-                            };
-
-                            let constructor =
-                                variables
-                                    .iter()
-                                    .fold(result, |result, (span, var)| Expression {
-                                        span: variant.span,
-                                        kind: ExpressionKind::Function(
-                                            Pattern {
-                                                span: *span,
-                                                kind: PatternKind::Variable(*var),
-                                            },
-                                            Box::new(result),
-                                        ),
-                                    });
-
-                            info.declarations.constants.insert(
-                                constructor_id,
+                            info.declarations.type_parameters.insert(
+                                id,
                                 Declaration {
-                                    name: Some(variant.name),
-                                    span: variant.span,
-                                    value: Constant {
-                                        parameters: parameters.clone(),
-                                        bounds: Vec::new(),
-                                        ty: constructor_ty,
-                                        value: Rc::new(RefCell::new(Some(constructor))),
-                                        attributes: self
-                                            .lower_decl_attributes(&mut variant.attributes),
-                                    },
+                                    name: Some(param.name),
+                                    span: param.span,
+                                    value: (),
                                     uses: Vec::new(),
                                 },
                             );
 
-                            variant_tys.push(TypeVariant {
-                                constructor: constructor_id,
-                                tys,
-                            });
+                            id
+                        })
+                        .collect();
 
-                            variant_names.insert(variant.name, index);
-                        }
-
-                        Type {
-                            kind: TypeKind::Enumeration(variant_tys, variant_names),
-                            params: parameters,
-                            attributes: self.lower_decl_attributes(&mut statement.attributes),
-                        }
+                    if !ty.bounds.is_empty() {
+                        self.diagnostics.add(Diagnostic::error(
+                            "bounds are not allowed on types",
+                            vec![Note::primary(
+                                ty.bounds
+                                    .first()
+                                    .unwrap()
+                                    .span
+                                    .with_end(ty.bounds.last().unwrap().span.end),
+                                "try moving these to the respective functions instead",
+                            )],
+                        ));
                     }
-                };
 
-                info.declarations.types.insert(
-                    id,
-                    Declaration {
-                        name: Some(name),
-                        span,
-                        value: ty,
-                        uses: Vec::new(),
-                    },
-                );
+                    let ty = match ty.kind {
+                        ast::TypeKind::Marker => Type {
+                            kind: TypeKind::Marker,
+                            params: parameters,
+                            attributes: self.lower_decl_attributes(&mut decl.attributes),
+                        },
+                        ast::TypeKind::Structure(fields) => {
+                            let mut field_tys = Vec::with_capacity(fields.len());
+                            let mut field_names = HashMap::with_capacity(fields.len());
+                            for (index, mut field) in fields.into_iter().enumerate() {
+                                field_tys.push(TypeField {
+                                    ty: self.lower_type_annotation(field.ty, scope, info),
+                                    attributes: self.lower_decl_attributes(&mut field.attributes),
+                                });
 
-                (Some(ScopeValue::Type(id)), None)
-            }
-            ast::StatementKind::Trait((span, name), declaration) => {
-                let tr = {
+                                field_names.insert(field.name, index);
+                            }
+
+                            Type {
+                                kind: TypeKind::Structure(field_tys, field_names),
+                                params: parameters,
+                                attributes: self.lower_decl_attributes(&mut decl.attributes),
+                            }
+                        }
+                        ast::TypeKind::Enumeration(variants) => {
+                            let mut variant_tys = Vec::with_capacity(variants.len());
+                            let mut variant_names = HashMap::with_capacity(variants.len());
+                            for (index, mut variant) in variants.into_iter().enumerate() {
+                                let tys = variant
+                                    .values
+                                    .into_iter()
+                                    .map(|ty| self.lower_type_annotation(ty, scope, info))
+                                    .collect::<Vec<_>>();
+
+                                let constructor_id = self.new_generic_constant_id();
+
+                                let constructor_ty = tys.iter().fold(
+                                    TypeAnnotation {
+                                        span: variant.span,
+                                        kind: TypeAnnotationKind::Named(
+                                            id,
+                                            parameters
+                                                .iter()
+                                                .map(|param| TypeAnnotation {
+                                                    span,
+                                                    kind: TypeAnnotationKind::Parameter(*param),
+                                                })
+                                                .collect(),
+                                        ),
+                                    },
+                                    |result, next| TypeAnnotation {
+                                        span: variant.span,
+                                        kind: TypeAnnotationKind::Function(
+                                            Box::new(next.clone()),
+                                            Box::new(result),
+                                        ),
+                                    },
+                                );
+
+                                let variables = tys
+                                    .iter()
+                                    .map(|ty| {
+                                        let var = self.new_variable_id();
+
+                                        info.declarations.variables.insert(
+                                            var,
+                                            Declaration {
+                                                name: Some(name),
+                                                span: ty.span,
+                                                value: (),
+                                                uses: Vec::new(),
+                                            },
+                                        );
+
+                                        (ty.span, var)
+                                    })
+                                    .collect::<Vec<_>>();
+
+                                let result = Expression {
+                                    span: variant.span,
+                                    kind: ExpressionKind::Variant(
+                                        id,
+                                        index,
+                                        variables
+                                            .iter()
+                                            .map(|(span, var)| Expression {
+                                                span: *span,
+                                                kind: ExpressionKind::Variable(*var),
+                                            })
+                                            .collect(),
+                                    ),
+                                };
+
+                                let constructor =
+                                    variables.iter().fold(result, |result, (span, var)| {
+                                        Expression {
+                                            span: variant.span,
+                                            kind: ExpressionKind::Function(
+                                                Pattern {
+                                                    span: *span,
+                                                    kind: PatternKind::Variable(*var),
+                                                },
+                                                Box::new(result),
+                                            ),
+                                        }
+                                    });
+
+                                info.declarations.constants.insert(
+                                    constructor_id,
+                                    Declaration {
+                                        name: Some(variant.name),
+                                        span: variant.span,
+                                        value: Constant {
+                                            parameters: parameters.clone(),
+                                            bounds: Vec::new(),
+                                            ty: constructor_ty,
+                                            value: Rc::new(RefCell::new(Some(constructor))),
+                                            attributes: self
+                                                .lower_decl_attributes(&mut variant.attributes),
+                                        },
+                                        uses: Vec::new(),
+                                    },
+                                );
+
+                                variant_tys.push(TypeVariant {
+                                    constructor: constructor_id,
+                                    tys,
+                                });
+
+                                variant_names.insert(variant.name, index);
+                            }
+
+                            Type {
+                                kind: TypeKind::Enumeration(variant_tys, variant_names),
+                                params: parameters,
+                                attributes: self.lower_decl_attributes(&mut decl.attributes),
+                            }
+                        }
+                    };
+
+                    info.declarations.types.insert(
+                        id,
+                        Declaration {
+                            name: Some(name),
+                            span,
+                            value: ty,
+                            uses: Vec::new(),
+                        },
+                    );
+
+                    Some(ScopeValue::Type(id))
+                }
+                StatementDeclarationKind::Trait(id, ((span, name), declaration)) => {
                     let scope = scope.child(ScopeKind::Block);
 
                     let parameters = self.with_parameters(declaration.parameters, &scope, info);
 
-                    Trait {
+                    let tr = Trait {
                         parameters,
                         ty: self.lower_type_annotation(declaration.ty, &scope, info),
-                        attributes: self.lower_trait_attributes(&mut statement.attributes),
-                    }
-                };
+                        attributes: self.lower_trait_attributes(&mut decl.attributes),
+                    };
 
-                let id = self.new_trait_id();
-                scope
-                    .values
-                    .borrow_mut()
-                    .insert(name, ScopeValue::Trait(id));
+                    info.declarations.traits.insert(
+                        id,
+                        Declaration {
+                            name: Some(name),
+                            span,
+                            value: tr,
+                            uses: Vec::new(),
+                        },
+                    );
 
-                info.declarations.traits.insert(
-                    id,
-                    Declaration {
-                        name: Some(name),
-                        span,
-                        value: tr,
-                        uses: Vec::new(),
-                    },
-                );
-
-                (Some(ScopeValue::Trait(id)), None)
-            }
-            ast::StatementKind::Constant((span, name), declaration) => {
-                let constant = {
+                    Some(ScopeValue::Trait(id))
+                }
+                StatementDeclarationKind::Constant(id, ((span, name), declaration)) => {
                     let scope = scope.child(ScopeKind::Block);
 
                     let parameters = self.with_parameters(declaration.parameters, &scope, info);
@@ -727,7 +735,7 @@ impl<L: Loader> Compiler<L> {
                     let bounds = declaration
                         .bounds
                         .into_iter()
-                        .map(|bound| {
+                        .filter_map(|bound| {
                             let tr = match scope.get(bound.trait_name) {
                                 Some(ScopeValue::Trait(tr)) => {
                                     info.declarations
@@ -748,7 +756,7 @@ impl<L: Loader> Compiler<L> {
                                         )],
                                     ));
 
-                                    return Err(Expression::error(statement.span));
+                                    return None;
                                 }
                                 None => {
                                     self.diagnostics.add(Diagnostic::error(
@@ -759,7 +767,7 @@ impl<L: Loader> Compiler<L> {
                                         )],
                                     ));
 
-                                    return Err(Expression::error(statement.span));
+                                    return None;
                                 }
                             };
 
@@ -769,56 +777,43 @@ impl<L: Loader> Compiler<L> {
                                 .map(|ty| self.lower_type_annotation(ty, &scope, info))
                                 .collect();
 
-                            Ok(Bound {
+                            Some(Bound {
                                 span: bound.span,
                                 tr,
                                 parameters,
                             })
                         })
-                        .collect::<Result<_, _>>();
+                        .collect::<Vec<_>>();
 
-                    let bounds = match bounds {
-                        Ok(bounds) => bounds,
-                        Err(error) => return Some(error),
-                    };
-
-                    Constant {
+                    let constant = Constant {
                         parameters,
                         bounds,
                         ty: self.lower_type_annotation(declaration.ty, &scope, info),
                         value: Default::default(),
-                        attributes: self.lower_decl_attributes(&mut statement.attributes),
-                    }
-                };
+                        attributes: self.lower_decl_attributes(&mut decl.attributes),
+                    };
 
-                let id = self.new_generic_constant_id();
-                scope
-                    .values
-                    .borrow_mut()
-                    .insert(name, ScopeValue::Constant(id, None));
+                    info.declarations.constants.insert(
+                        id,
+                        Declaration {
+                            name: Some(name),
+                            span,
+                            value: constant,
+                            uses: Vec::new(),
+                        },
+                    );
 
-                info.declarations.constants.insert(
-                    id,
-                    Declaration {
-                        name: Some(name),
-                        span,
-                        value: constant,
-                        uses: Vec::new(),
-                    },
-                );
-
-                (Some(ScopeValue::Constant(id, None)), None)
-            }
-            ast::StatementKind::Instance(decl) => {
-                let instance = {
+                    Some(ScopeValue::Constant(id, None))
+                }
+                StatementDeclarationKind::Instance(id, instance) => {
                     let scope = scope.child(ScopeKind::Block);
 
-                    let params = self.with_parameters(decl.parameters, &scope, info);
+                    let params = self.with_parameters(instance.parameters, &scope, info);
 
-                    let bounds = decl
+                    let bounds = instance
                         .bounds
                         .into_iter()
-                        .map(|bound| {
+                        .filter_map(|bound| {
                             let tr = match scope.get(bound.trait_name) {
                                 Some(ScopeValue::Trait(tr)) => {
                                     info.declarations
@@ -839,7 +834,7 @@ impl<L: Loader> Compiler<L> {
                                         )],
                                     ));
 
-                                    return Err(Expression::error(statement.span));
+                                    return None;
                                 }
                                 None => {
                                     self.diagnostics.add(Diagnostic::error(
@@ -850,7 +845,7 @@ impl<L: Loader> Compiler<L> {
                                         )],
                                     ));
 
-                                    return Err(Expression::error(statement.span));
+                                    return None;
                                 }
                             };
 
@@ -860,248 +855,314 @@ impl<L: Loader> Compiler<L> {
                                 .map(|ty| self.lower_type_annotation(ty, &scope, info))
                                 .collect();
 
-                            Ok(Bound {
+                            Some(Bound {
                                 span: bound.span,
                                 tr,
                                 parameters,
                             })
                         })
-                        .collect::<Result<_, _>>();
+                        .collect();
 
-                    let bounds = match bounds {
-                        Ok(bounds) => bounds,
-                        Err(error) => return Some(error),
-                    };
-
-                    let tr = match scope.get(decl.trait_name) {
+                    let tr = match scope.get(instance.trait_name) {
                         Some(ScopeValue::Trait(tr)) => {
                             info.declarations
                                 .traits
                                 .get_mut(&tr)
                                 .unwrap()
                                 .uses
-                                .push(decl.trait_span);
+                                .push(instance.trait_span);
 
                             tr
                         }
                         Some(_) => {
                             self.diagnostics.add(Diagnostic::error(
-                                format!("`{}` is not a trait", decl.trait_name),
-                                vec![Note::primary(decl.trait_span, "expected a trait here")],
+                                format!("`{}` is not a trait", instance.trait_name),
+                                vec![Note::primary(instance.trait_span, "expected a trait here")],
                             ));
 
-                            return Some(Expression::error(statement.span));
+                            continue;
                         }
                         None => {
                             self.diagnostics.add(Diagnostic::error(
-                                format!("cannot find `{}`", decl.trait_name),
-                                vec![Note::primary(decl.trait_span, "this name is not defined")],
+                                format!("cannot find `{}`", instance.trait_name),
+                                vec![Note::primary(
+                                    instance.trait_span,
+                                    "this name is not defined",
+                                )],
                             ));
 
-                            return Some(Expression::error(statement.span));
+                            continue;
                         }
                     };
 
-                    let trait_params = decl
+                    let trait_params = instance
                         .trait_parameters
                         .into_iter()
                         .map(|ty| self.lower_type_annotation(ty, &scope, info))
                         .collect();
 
-                    let value = self.lower_expr(decl.value, &scope, info);
+                    let value = self.lower_expr(instance.value, &scope, info);
 
-                    Instance {
+                    let instance = Instance {
                         params,
                         bounds,
                         tr,
                         trait_params,
                         value,
-                    }
-                };
+                    };
 
-                let id = self.new_generic_constant_id();
-                info.declarations.instances.insert(
-                    id,
-                    Declaration {
-                        name: None,
-                        span: statement.span,
-                        value: instance,
-                        uses: Vec::new(),
-                    },
-                );
+                    info.declarations.instances.insert(
+                        id,
+                        Declaration {
+                            name: None,
+                            span: decl.span,
+                            value: instance,
+                            uses: Vec::new(),
+                        },
+                    );
 
-                (Some(ScopeValue::Constant(id, None)), None)
-            }
-            ast::StatementKind::Assign(pattern, expr) => (|| {
-                macro_rules! assign_pattern {
-                    () => {{
-                        let value = self.lower_expr(expr, scope, info);
-                        let pattern = self.lower_pattern(pattern, scope, info);
-
-                        (
-                            None,
-                            Some(Expression {
-                                span: statement.span,
-                                kind: ExpressionKind::Initialize(pattern, Box::new(value)),
-                            }),
-                        )
-                    }};
+                    Some(ScopeValue::Constant(id, None))
                 }
+                StatementDeclarationKind::Use((span, name)) => {
+                    let ty = match scope.get(name) {
+                        Some(ScopeValue::Type(ty)) => {
+                            info.declarations
+                                .types
+                                .get_mut(&ty)
+                                .unwrap()
+                                .uses
+                                .push(span);
 
-                match &pattern.kind {
-                    ast::PatternKind::Name(name) => {
-                        let mut associated_constant = None;
-
-                        let c = scope.values.borrow().get(name).cloned();
-                        if let Some(ScopeValue::Constant(id, _)) = c {
-                            let decl = info.declarations.constants.get(&id).unwrap();
-                            let (parameters, c) =
-                                (decl.value.parameters.clone(), decl.value.value.clone());
-
-                            let constant_already_assigned = {
-                                let c = c.borrow();
-                                c.is_some()
-                            };
-
-                            if constant_already_assigned {
-                                return assign_pattern!();
-                            }
-
-                            associated_constant = Some((parameters, c));
+                            ty
                         }
-
-                        if let Some((associated_parameters, associated_constant)) =
-                            associated_constant
-                        {
-                            let scope = scope.child(ScopeKind::Block);
-
-                            for id in associated_parameters {
-                                let parameter = info.declarations.type_parameters.get(&id).unwrap();
-
-                                scope
-                                    .values
-                                    .borrow_mut()
-                                    .insert(parameter.name.unwrap(), ScopeValue::TypeParameter(id));
-                            }
-
-                            let value = self.lower_expr(expr, &scope, info);
-                            associated_constant.replace(Some(value));
-                            (None, None)
-                        } else {
-                            assign_pattern!()
-                        }
-                    }
-                    _ => assign_pattern!(),
-                }
-            })(),
-            ast::StatementKind::Use((span, name)) => {
-                let ty = match scope.get(name) {
-                    Some(ScopeValue::Type(ty)) => {
-                        info.declarations
-                            .types
-                            .get_mut(&ty)
-                            .unwrap()
-                            .uses
-                            .push(span);
-
-                        ty
-                    }
-                    Some(_) => {
-                        self.diagnostics.add(Diagnostic::error(
-                            format!("`{}` is not a type", name),
-                            vec![Note::primary(span, "expected a type here")],
-                        ));
-
-                        return Some(Expression::error(statement.span));
-                    }
-                    None => {
-                        self.diagnostics.add(Diagnostic::error(
-                            format!("cannot find `{}`", name),
-                            vec![Note::primary(span, "this name is not defined")],
-                        ));
-
-                        return Some(Expression::error(statement.span));
-                    }
-                };
-
-                let (constructors, names) =
-                    match &info.declarations.types.get(&ty).unwrap().value.kind {
-                        TypeKind::Enumeration(constructors, names) => (constructors, names),
-                        _ => {
+                        Some(_) => {
                             self.diagnostics.add(Diagnostic::error(
-                                "only enumerations may be `use`d",
-                                vec![Note::primary(
-                                    span,
-                                    format!("`{}` is not an enumeration", name),
-                                )],
+                                format!("`{}` is not a type", name),
+                                vec![Note::primary(span, "expected a type here")],
                             ));
 
-                            return Some(Expression::error(statement.span));
+                            continue;
+                        }
+                        None => {
+                            self.diagnostics.add(Diagnostic::error(
+                                format!("cannot find `{}`", name),
+                                vec![Note::primary(span, "this name is not defined")],
+                            ));
+
+                            continue;
                         }
                     };
 
-                for (name, index) in names {
-                    let variant = constructors[*index].constructor;
-
-                    scope
-                        .values
-                        .borrow_mut()
-                        .insert(*name, ScopeValue::Constant(variant, Some((ty, *index))));
-                }
-
-                (None, None)
-            }
-            ast::StatementKind::Expression(expr) => (
-                None,
-                Some(self.lower_expr(
-                    ast::Expression {
-                        span: statement.span,
-                        kind: expr,
-                    },
-                    scope,
-                    info,
-                )),
-            ),
-        };
-
-        (|| {
-            if let Some(language_item) = statement.attributes.language_item {
-                match language_item {
-                    expand::LanguageItem::Boolean => {
-                        let ty = match scope_value {
-                            Some(ScopeValue::Type(id)) => id,
+                    let (constructors, names) =
+                        match &info.declarations.types.get(&ty).unwrap().value.kind {
+                            TypeKind::Enumeration(constructors, names) => (constructors, names),
                             _ => {
                                 self.diagnostics.add(Diagnostic::error(
-                                    "`boolean` language item expects a type",
+                                    "only enumerations may be `use`d",
                                     vec![Note::primary(
-                                        statement.span,
-                                        "expected type declaration here",
+                                        span,
+                                        format!("`{}` is not an enumeration", name),
+                                    )],
+                                ));
+
+                                continue;
+                            }
+                        };
+
+                    for (name, index) in names {
+                        let variant = constructors[*index].constructor;
+
+                        scope
+                            .values
+                            .borrow_mut()
+                            .insert(*name, ScopeValue::Constant(variant, Some((ty, *index))));
+                    }
+
+                    None
+                }
+                StatementDeclarationKind::Queued(queued) => {
+                    queue.push((decl.span, queued));
+                    None
+                }
+            };
+
+            (|| {
+                if let Some(language_item) = decl.attributes.language_item {
+                    match language_item {
+                        expand::LanguageItem::Boolean => {
+                            let ty = match scope_value {
+                                Some(ScopeValue::Type(id)) => id,
+                                _ => {
+                                    self.diagnostics.add(Diagnostic::error(
+                                        "`boolean` language item expects a type",
+                                        vec![Note::primary(
+                                            decl.span,
+                                            "expected type declaration here",
+                                        )],
+                                    ));
+
+                                    return;
+                                }
+                            };
+
+                            if info.attributes.language_items.boolean.is_some() {
+                                self.diagnostics.add(Diagnostic::error(
+                                    "`language` item may only be defined once",
+                                    vec![Note::primary(
+                                        decl.span,
+                                        "`language` item already defined elsewhere",
                                     )],
                                 ));
 
                                 return;
                             }
-                        };
 
-                        if info.attributes.language_items.boolean.is_some() {
-                            self.diagnostics.add(Diagnostic::error(
-                                "`language` item may only be defined once",
-                                vec![Note::primary(
-                                    statement.span,
-                                    "`language` item already defined elsewhere",
-                                )],
-                            ));
-
-                            return;
+                            info.attributes.language_items.boolean = Some(ty);
                         }
-
-                        info.attributes.language_items.boolean = Some(ty);
                     }
                 }
-            }
-        })();
+            })();
+        }
 
-        expr
+        queue
+            .into_iter()
+            .filter_map(|(span, statement)| match statement {
+                QueuedStatement::Assign(pattern, expr) => (|| {
+                    macro_rules! assign_pattern {
+                        () => {{
+                            let value = self.lower_expr(expr, scope, info);
+                            let pattern = self.lower_pattern(pattern, scope, info);
+
+                            Some(Expression {
+                                span,
+                                kind: ExpressionKind::Initialize(pattern, Box::new(value)),
+                            })
+                        }};
+                    }
+
+                    match &pattern.kind {
+                        ast::PatternKind::Name(name) => {
+                            let mut associated_constant = None;
+
+                            let c = scope.values.borrow().get(name).cloned();
+                            if let Some(ScopeValue::Constant(id, _)) = c {
+                                let decl = info.declarations.constants.get(&id).unwrap();
+                                let (parameters, c) =
+                                    (decl.value.parameters.clone(), decl.value.value.clone());
+
+                                let constant_already_assigned = {
+                                    let c = c.borrow();
+                                    c.is_some()
+                                };
+
+                                if constant_already_assigned {
+                                    return assign_pattern!();
+                                }
+
+                                associated_constant = Some((parameters, c));
+                            }
+
+                            if let Some((associated_parameters, associated_constant)) =
+                                associated_constant
+                            {
+                                let scope = scope.child(ScopeKind::Block);
+
+                                for id in associated_parameters {
+                                    let parameter =
+                                        info.declarations.type_parameters.get(&id).unwrap();
+
+                                    scope.values.borrow_mut().insert(
+                                        parameter.name.unwrap(),
+                                        ScopeValue::TypeParameter(id),
+                                    );
+                                }
+
+                                let value = self.lower_expr(expr, &scope, info);
+                                associated_constant.replace(Some(value));
+                                None
+                            } else {
+                                assign_pattern!()
+                            }
+                        }
+                        _ => assign_pattern!(),
+                    }
+                })(),
+                QueuedStatement::Expression(expr) => {
+                    Some(self.lower_expr(ast::Expression { span, kind: expr }, scope, info))
+                }
+            })
+            .collect()
+    }
+
+    fn lower_statement<'a>(
+        &mut self,
+        statement: ast::Statement,
+        scope: &'a Scope,
+    ) -> StatementDeclaration {
+        match statement.kind {
+            ast::StatementKind::Declaration(decl) => match decl {
+                ast::Declaration::Type((span, name), ty) => {
+                    let id = self.new_type_id();
+                    scope.values.borrow_mut().insert(name, ScopeValue::Type(id));
+
+                    StatementDeclaration {
+                        span: statement.span,
+                        kind: StatementDeclarationKind::Type(id, ((span, name), ty)),
+                        attributes: statement.attributes,
+                    }
+                }
+                ast::Declaration::Trait((span, name), declaration) => {
+                    let id = self.new_trait_id();
+                    scope
+                        .values
+                        .borrow_mut()
+                        .insert(name, ScopeValue::Trait(id));
+
+                    StatementDeclaration {
+                        span: statement.span,
+                        kind: StatementDeclarationKind::Trait(id, ((span, name), declaration)),
+                        attributes: statement.attributes,
+                    }
+                }
+                ast::Declaration::Constant((span, name), declaration) => {
+                    let id = self.new_generic_constant_id();
+                    scope
+                        .values
+                        .borrow_mut()
+                        .insert(name, ScopeValue::Constant(id, None));
+
+                    StatementDeclaration {
+                        span: statement.span,
+                        kind: StatementDeclarationKind::Constant(id, ((span, name), declaration)),
+                        attributes: statement.attributes,
+                    }
+                }
+                ast::Declaration::Instance(instance) => {
+                    let id = self.new_generic_constant_id();
+
+                    StatementDeclaration {
+                        span: statement.span,
+                        kind: StatementDeclarationKind::Instance(id, instance),
+                        attributes: statement.attributes,
+                    }
+                }
+            },
+            ast::StatementKind::Assign(pattern, expr) => StatementDeclaration {
+                span: statement.span,
+                kind: StatementDeclarationKind::Queued(QueuedStatement::Assign(pattern, expr)),
+                attributes: statement.attributes,
+            },
+            ast::StatementKind::Use((span, name)) => StatementDeclaration {
+                span: statement.span,
+                kind: StatementDeclarationKind::Use((span, name)),
+                attributes: statement.attributes,
+            },
+            ast::StatementKind::Expression(expr) => StatementDeclaration {
+                span: statement.span,
+                kind: StatementDeclarationKind::Queued(QueuedStatement::Expression(expr)),
+                attributes: statement.attributes,
+            },
+        }
     }
 
     fn lower_decl_attributes(
