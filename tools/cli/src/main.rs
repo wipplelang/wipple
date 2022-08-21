@@ -371,8 +371,16 @@ async fn run() -> anyhow::Result<()> {
                     }
                 };
 
+                if let Some(progress_bar) = progress_bar.as_ref() {
+                    progress_bar.finish_and_clear();
+                }
+
                 eprintln!("cache cleared successfully");
             } else {
+                if let Some(progress_bar) = progress_bar.as_ref() {
+                    progress_bar.finish_and_clear();
+                }
+
                 println!("{}", cache_dir.to_string_lossy());
             }
         }
