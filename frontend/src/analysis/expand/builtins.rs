@@ -9,7 +9,10 @@ use crate::{
     FilePath, Loader, TemplateId,
 };
 use once_cell::sync::OnceCell;
-use std::{collections::VecDeque, str::FromStr};
+use std::{
+    collections::{HashMap, VecDeque},
+    str::FromStr,
+};
 
 pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope) {
     macro_rules! once_id {
@@ -116,6 +119,69 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
                                     template: id,
                                 }),
                             );
+
+                            Node {
+                                span,
+                                kind: NodeKind::Placeholder,
+                            }
+                        }
+                        NodeKind::UseFile(path) => {
+                            // TODO: Merge this logic with destructuring
+                            let mut imports = HashMap::new();
+
+                            let mut insert_import = |name, span| {
+                                if imports.contains_key(&name) {
+                                    expander.compiler.diagnostics.add(Diagnostic::error(
+                                        "duplicate import",
+                                        vec![Note::primary(span, "this name is already imported")],
+                                    ));
+
+                                    return;
+                                }
+
+                                imports.insert(name, span);
+                            };
+
+                            let report_invalid_import = |span| {
+                                expander.compiler.diagnostics.add(Diagnostic::error(
+                                    "only names may be specified in a destructuring pattern",
+                                    vec![Note::primary(span, "expected name here")],
+                                ));
+                            };
+
+                            match lhs.kind {
+                                NodeKind::Block(statements) => {
+                                    for statement in statements {
+                                        match statement.node.kind {
+                                            NodeKind::Name(name) => {
+                                                insert_import(name, statement.node.span)
+                                            }
+                                            NodeKind::List(nodes) => {
+                                                for node in nodes {
+                                                    match node.kind {
+                                                        NodeKind::Name(name) => {
+                                                            insert_import(name, node.span)
+                                                        }
+                                                        NodeKind::Error => {}
+                                                        _ => report_invalid_import(node.span),
+                                                    }
+                                                }
+                                            }
+                                            NodeKind::Error => {}
+                                            _ => report_invalid_import(statement.node.span),
+                                        }
+                                    }
+                                }
+                                NodeKind::Error => {}
+                                _ => {
+                                    todo!();
+                                }
+                            };
+
+                            if let Some(path) = path {
+                                expander.dependencies.lock().get_mut(&path).unwrap().1 =
+                                    Some(imports);
+                            }
 
                             Node {
                                 span,
@@ -502,21 +568,23 @@ pub(super) fn load_builtins<L: Loader>(expander: &mut Expander<L>, scope: &Scope
 
                     match input.kind {
                         NodeKind::Text(path) => {
+                            let mut resolved_path = None;
                             if let Some(file) =
                                 (expander.load)(&expander.compiler, span, FilePath::Path(path))
                                     .await
                             {
+                                resolved_path = Some(file.path);
                                 expander.add_dependency(file, scope);
                             }
 
                             Node {
                                 span,
-                                kind: NodeKind::Placeholder,
+                                kind: NodeKind::UseFile(resolved_path),
                             }
                         }
                         _ => Node {
                             span,
-                            kind: NodeKind::Use(Box::new(input)),
+                            kind: NodeKind::UseExpr(Box::new(input)),
                         },
                     }
                 })
