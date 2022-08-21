@@ -438,7 +438,10 @@ impl<L: Loader> Compiler<L> {
                             },
                         ))
                     }
-                    NodeKind::Use(expr) => {
+                    NodeKind::UseFile(_) => {
+                        StatementKind::Expression(ExpressionKind::Tuple(Vec::new()))
+                    }
+                    NodeKind::UseExpr(expr) => {
                         let name = match expr.kind {
                             NodeKind::Name(name) => name,
                             _ => {

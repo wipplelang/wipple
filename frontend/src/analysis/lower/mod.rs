@@ -1,3 +1,5 @@
+#![allow(clippy::type_complexity)]
+
 mod builtins;
 
 use crate::{
@@ -241,7 +243,11 @@ impl TypeAnnotation {
 }
 
 impl<L: Loader> Compiler<L> {
-    pub fn lower(&mut self, file: ast::File<L>, dependencies: Vec<Arc<File>>) -> File {
+    pub fn lower(
+        &mut self,
+        file: ast::File<L>,
+        dependencies: Vec<(Arc<File>, Option<HashMap<InternedString, Span>>)>,
+    ) -> File {
         let scope = Scope::root(ScopeKind::Block);
 
         let mut info = Info::default();
@@ -268,7 +274,7 @@ impl<L: Loader> Compiler<L> {
             })
             .collect();
 
-        for dependency in dependencies {
+        for (dependency, imports) in dependencies {
             macro_rules! merge_dependency {
                 ($($kind:ident),* $(,)?) => {
                     $(
@@ -304,10 +310,23 @@ impl<L: Loader> Compiler<L> {
 
             info.attributes.merge(&dependency.global_attributes);
 
-            scope
-                .values
-                .borrow_mut()
-                .extend(dependency.exported.clone());
+            if let Some(imports) = imports {
+                for (name, span) in imports {
+                    if let Some(value) = dependency.exported.get(&name) {
+                        scope.values.borrow_mut().insert(name, value.clone());
+                    } else {
+                        self.diagnostics.add(Diagnostic::error(
+                            format!("file does not export a value named '{}'", name),
+                            vec![Note::primary(span, "no such export")],
+                        ));
+                    }
+                }
+            } else {
+                scope
+                    .values
+                    .borrow_mut()
+                    .extend(dependency.exported.clone());
+            }
         }
 
         let block = self.lower_statements(file.statements, &scope, &mut info);

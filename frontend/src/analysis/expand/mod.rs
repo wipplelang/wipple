@@ -32,7 +32,7 @@ pub struct File<L: Loader> {
     pub exported: ScopeValues,
     pub scopes: Vec<(Span, ScopeValues)>,
     pub statements: Vec<Statement>,
-    pub dependencies: Vec<Arc<File<L>>>,
+    pub dependencies: Vec<(Arc<File<L>>, Option<HashMap<InternedString, Span>>)>,
 }
 
 impl<L: Loader> Debug for File<L> {
@@ -118,7 +118,8 @@ pub enum NodeKind {
     TypeFunction(Box<Node>, Box<Node>),
     Where(Box<Node>, Box<Node>),
     Instance(Box<Node>, Vec<Node>),
-    Use(Box<Node>),
+    UseFile(Option<FilePath>),
+    UseExpr(Box<Node>),
     When(Box<Node>, Vec<Statement>),
     Return(Box<Node>),
     Or(Box<Node>, Box<Node>),
@@ -248,8 +249,10 @@ impl<L: Loader> Compiler<L> {
             exported,
             scopes: Arc::try_unwrap(expander.scopes).unwrap().into_inner(),
             dependencies: Arc::try_unwrap(expander.dependencies)
-                .unwrap_or_else(|_| unreachable!())
-                .into_inner(),
+                .unwrap()
+                .into_inner()
+                .into_values()
+                .collect(),
         })
     }
 }
@@ -258,7 +261,8 @@ impl<L: Loader> Compiler<L> {
 pub struct Expander<L: Loader> {
     compiler: Compiler<L>,
     declarations: Arc<Mutex<Declarations<Template<L>>>>,
-    dependencies: Arc<Mutex<Vec<Arc<File<L>>>>>,
+    dependencies:
+        Arc<Mutex<HashMap<FilePath, (Arc<File<L>>, Option<HashMap<InternedString, Span>>)>>>,
     scopes: Arc<Mutex<Vec<(Span, ScopeValues)>>>,
     load:
         Arc<dyn Fn(&Compiler<L>, Span, FilePath) -> BoxFuture<Option<Arc<File<L>>>> + Send + Sync>,
@@ -417,8 +421,12 @@ impl OperatorPrecedence {
 
 impl<L: Loader> Expander<L> {
     fn add_dependency(&self, file: Arc<File<L>>, scope: &Scope) {
-        self.dependencies.lock().push(file.clone());
+        self.dependencies
+            .lock()
+            .insert(file.path, (file.clone(), None));
+
         scope.values.lock().extend(file.exported.clone());
+
         self.declarations.lock().merge(file.declarations.clone());
     }
 

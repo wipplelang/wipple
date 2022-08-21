@@ -197,7 +197,7 @@ impl<L: Loader> Compiler<L> {
                 .dependencies
                 .clone()
                 .into_iter()
-                .map(|dependency| lower(compiler, dependency, cache))
+                .map(|(file, imports)| (lower(compiler, file, cache), imports))
                 .collect::<Vec<_>>();
 
             let file = compiler.build_ast((*file).clone());
