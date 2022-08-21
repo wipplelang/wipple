@@ -1,7 +1,5 @@
 [[no-std]]
 
-Foo : type
-
 [language "boolean"]
 [help "Represents either `True` or `False`."]
 Boolean : type {
