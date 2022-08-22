@@ -31,6 +31,7 @@ pub struct Statement {
 
 #[derive(Debug, Clone)]
 pub enum StatementKind {
+    Empty,
     Declaration(Declaration),
     Assign(Pattern, Expression),
     Use((Span, InternedString)),
@@ -438,9 +439,7 @@ impl<L: Loader> Compiler<L> {
                             },
                         ))
                     }
-                    NodeKind::UseFile(_) => {
-                        StatementKind::Expression(ExpressionKind::Tuple(Vec::new()))
-                    }
+                    NodeKind::UseFile(_) => StatementKind::Empty,
                     NodeKind::UseExpr(expr) => {
                         let name = match expr.kind {
                             NodeKind::Name(name) => name,

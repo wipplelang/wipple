@@ -529,7 +529,12 @@ impl<L: Loader> Compiler<L> {
             .collect::<Vec<_>>();
 
         let mut queue = Vec::new();
-        for mut decl in declarations {
+        for decl in declarations {
+            let mut decl = match decl {
+                Some(decl) => decl,
+                None => continue,
+            };
+
             let scope_value = match decl.kind {
                 StatementDeclarationKind::Type(id, ((span, name), ty)) => {
                     let parameters = ty
@@ -1117,18 +1122,19 @@ impl<L: Loader> Compiler<L> {
         &mut self,
         statement: ast::Statement,
         scope: &'a Scope,
-    ) -> StatementDeclaration {
+    ) -> Option<StatementDeclaration> {
         match statement.kind {
+            ast::StatementKind::Empty => None,
             ast::StatementKind::Declaration(decl) => match decl {
                 ast::Declaration::Type((span, name), ty) => {
                     let id = self.new_type_id();
                     scope.values.borrow_mut().insert(name, ScopeValue::Type(id));
 
-                    StatementDeclaration {
+                    Some(StatementDeclaration {
                         span: statement.span,
                         kind: StatementDeclarationKind::Type(id, ((span, name), ty)),
                         attributes: statement.attributes,
-                    }
+                    })
                 }
                 ast::Declaration::Trait((span, name), declaration) => {
                     let id = self.new_trait_id();
@@ -1137,11 +1143,11 @@ impl<L: Loader> Compiler<L> {
                         .borrow_mut()
                         .insert(name, ScopeValue::Trait(id));
 
-                    StatementDeclaration {
+                    Some(StatementDeclaration {
                         span: statement.span,
                         kind: StatementDeclarationKind::Trait(id, ((span, name), declaration)),
                         attributes: statement.attributes,
-                    }
+                    })
                 }
                 ast::Declaration::Constant((span, name), declaration) => {
                     let id = self.new_generic_constant_id();
@@ -1150,37 +1156,37 @@ impl<L: Loader> Compiler<L> {
                         .borrow_mut()
                         .insert(name, ScopeValue::Constant(id, None));
 
-                    StatementDeclaration {
+                    Some(StatementDeclaration {
                         span: statement.span,
                         kind: StatementDeclarationKind::Constant(id, ((span, name), declaration)),
                         attributes: statement.attributes,
-                    }
+                    })
                 }
                 ast::Declaration::Instance(instance) => {
                     let id = self.new_generic_constant_id();
 
-                    StatementDeclaration {
+                    Some(StatementDeclaration {
                         span: statement.span,
                         kind: StatementDeclarationKind::Instance(id, instance),
                         attributes: statement.attributes,
-                    }
+                    })
                 }
             },
-            ast::StatementKind::Assign(pattern, expr) => StatementDeclaration {
+            ast::StatementKind::Assign(pattern, expr) => Some(StatementDeclaration {
                 span: statement.span,
                 kind: StatementDeclarationKind::Queued(QueuedStatement::Assign(pattern, expr)),
                 attributes: statement.attributes,
-            },
-            ast::StatementKind::Use((span, name)) => StatementDeclaration {
+            }),
+            ast::StatementKind::Use((span, name)) => Some(StatementDeclaration {
                 span: statement.span,
                 kind: StatementDeclarationKind::Use((span, name)),
                 attributes: statement.attributes,
-            },
-            ast::StatementKind::Expression(expr) => StatementDeclaration {
+            }),
+            ast::StatementKind::Expression(expr) => Some(StatementDeclaration {
                 span: statement.span,
                 kind: StatementDeclarationKind::Queued(QueuedStatement::Expression(expr)),
                 attributes: statement.attributes,
-            },
+            }),
         }
     }
 
