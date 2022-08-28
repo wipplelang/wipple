@@ -21,9 +21,9 @@ use std::{
 };
 
 #[derive(Debug, Clone)]
-pub struct File {
+pub struct File<Decls = Declarations> {
     pub span: Span,
-    pub declarations: Declarations,
+    pub declarations: Decls,
     pub global_attributes: FileAttributes,
     pub exported: ScopeValues,
     pub scopes: Vec<(Span, ScopeValues)>,
@@ -43,12 +43,88 @@ pub struct Declarations {
     pub variables: BTreeMap<VariableId, Declaration<()>>,
 }
 
+#[derive(Debug, Clone, Default)]
+struct UnresolvedDeclarations {
+    pub operators: BTreeMap<TemplateId, expand::Operator>,
+    pub templates: BTreeMap<TemplateId, expand::TemplateDeclaration<()>>,
+    pub types: BTreeMap<TypeId, Declaration<Option<Type>>>,
+    pub type_parameters: BTreeMap<TypeParameterId, Declaration<()>>,
+    pub traits: BTreeMap<TraitId, Declaration<Option<Trait>>>,
+    pub builtin_types: BTreeMap<BuiltinTypeId, Declaration<BuiltinType>>,
+    pub constants: BTreeMap<GenericConstantId, Declaration<Option<Constant>>>,
+    pub instances: BTreeMap<GenericConstantId, Declaration<Option<Instance>>>,
+    pub variables: BTreeMap<VariableId, Declaration<()>>,
+}
+
+impl UnresolvedDeclarations {
+    fn resolve(self) -> Declarations {
+        Declarations {
+            operators: self.operators,
+            templates: self.templates,
+            types: self
+                .types
+                .into_iter()
+                .map(|(id, decl)| (id, decl.resolve()))
+                .collect(),
+            type_parameters: self.type_parameters,
+            traits: self
+                .traits
+                .into_iter()
+                .map(|(id, decl)| (id, decl.resolve()))
+                .collect(),
+            builtin_types: self.builtin_types,
+            constants: self
+                .constants
+                .into_iter()
+                .map(|(id, decl)| (id, decl.resolve()))
+                .collect(),
+            instances: self
+                .instances
+                .into_iter()
+                .map(|(id, decl)| (id, decl.resolve()))
+                .collect(),
+            variables: self.variables,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize)]
 pub struct Declaration<T> {
     pub name: Option<InternedString>,
     pub span: Span,
     pub value: T,
     pub uses: Vec<Span>,
+}
+
+impl<T> Declaration<Option<T>> {
+    fn unresolved(name: Option<InternedString>, span: Span) -> Self {
+        Declaration {
+            name,
+            span,
+            value: None,
+            uses: Vec::new(),
+        }
+    }
+
+    fn resolve(self) -> Declaration<T> {
+        Declaration {
+            name: self.name,
+            span: self.span,
+            value: self.value.expect("unresolved declaration"),
+            uses: self.uses,
+        }
+    }
+}
+
+impl<T> Declaration<T> {
+    fn make_unresolved(self) -> Declaration<Option<T>> {
+        Declaration {
+            name: self.name,
+            span: self.span,
+            value: Some(self.value),
+            uses: self.uses,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Default, Serialize)]
@@ -276,14 +352,14 @@ impl<L: Loader> Compiler<L> {
 
         for (dependency, imports) in dependencies {
             macro_rules! merge_dependency {
-                ($($kind:ident),* $(,)?) => {
+                ($($kind:ident($transform:expr)),* $(,)?) => {
                     $(
                         for (id, decl) in dependency.declarations.$kind.clone() {
                             use std::collections::btree_map::Entry;
 
                             match info.declarations.$kind.entry(id) {
                                 Entry::Vacant(entry) => {
-                                    entry.insert(decl);
+                                    entry.insert($transform(decl));
                                 }
                                 Entry::Occupied(mut entry) => {
                                     entry.get_mut().uses.extend(decl.uses);
@@ -299,13 +375,13 @@ impl<L: Loader> Compiler<L> {
                 .extend(dependency.declarations.operators.clone());
 
             merge_dependency!(
-                types,
-                type_parameters,
-                traits,
-                builtin_types,
-                constants,
-                instances,
-                variables,
+                types(Declaration::make_unresolved),
+                type_parameters(std::convert::identity),
+                traits(Declaration::make_unresolved),
+                builtin_types(std::convert::identity),
+                constants(Declaration::make_unresolved),
+                instances(Declaration::make_unresolved),
+                variables(std::convert::identity),
             );
 
             info.attributes.merge(&dependency.global_attributes);
@@ -332,7 +408,15 @@ impl<L: Loader> Compiler<L> {
         let block = self.lower_statements(file.statements, &scope, &mut info);
 
         for constant in info.declarations.constants.values() {
-            if constant.value.value.borrow().as_ref().is_none() {
+            if constant
+                .value
+                .as_ref()
+                .unwrap()
+                .value
+                .borrow()
+                .as_ref()
+                .is_none()
+            {
                 self.diagnostics.add(Diagnostic::error(
                     "uninitialized constant",
                     vec![Note::primary(
@@ -348,7 +432,7 @@ impl<L: Loader> Compiler<L> {
 
         File {
             span: file.span,
-            declarations: info.declarations,
+            declarations: info.declarations.resolve(),
             global_attributes: info.attributes,
             exported: scope.values.take(),
             scopes: info.scopes,
@@ -475,7 +559,7 @@ impl<'a> Scope<'a> {
 
 #[derive(Default)]
 struct Info {
-    declarations: Declarations,
+    declarations: UnresolvedDeclarations,
     attributes: FileAttributes,
     scopes: Vec<(Span, ScopeValues)>,
 }
@@ -487,12 +571,9 @@ struct StatementDeclaration {
 }
 
 enum StatementDeclarationKind {
-    Type(TypeId, ((Span, InternedString), ast::TypeDeclaration)),
-    Trait(TraitId, ((Span, InternedString), ast::TraitDeclaration)),
-    Constant(
-        GenericConstantId,
-        ((Span, InternedString), ast::ConstantDeclaration),
-    ),
+    Type(TypeId, ast::TypeDeclaration),
+    Trait(TraitId, ast::TraitDeclaration),
+    Constant(GenericConstantId, ast::ConstantDeclaration),
     Instance(GenericConstantId, ast::Instance),
     Use((Span, InternedString)),
     Queued(QueuedStatement),
@@ -525,7 +606,7 @@ impl<L: Loader> Compiler<L> {
     ) -> Vec<Expression> {
         let declarations = statements
             .into_iter()
-            .map(|statement| self.lower_statement(statement, scope))
+            .map(|statement| self.lower_statement(statement, scope, info))
             .collect::<Vec<_>>();
 
         let mut queue = Vec::new();
@@ -536,7 +617,7 @@ impl<L: Loader> Compiler<L> {
             };
 
             let scope_value = match decl.kind {
-                StatementDeclarationKind::Type(id, ((span, name), ty)) => {
+                StatementDeclarationKind::Type(id, ty) => {
                     let parameters = ty
                         .parameters
                         .into_iter()
@@ -620,7 +701,7 @@ impl<L: Loader> Compiler<L> {
                                             parameters
                                                 .iter()
                                                 .map(|param| TypeAnnotation {
-                                                    span,
+                                                    span: variant.span,
                                                     kind: TypeAnnotationKind::Parameter(*param),
                                                 })
                                                 .collect(),
@@ -643,7 +724,7 @@ impl<L: Loader> Compiler<L> {
                                         info.declarations.variables.insert(
                                             var,
                                             Declaration {
-                                                name: Some(name),
+                                                name: None,
                                                 span: ty.span,
                                                 value: (),
                                                 uses: Vec::new(),
@@ -688,14 +769,14 @@ impl<L: Loader> Compiler<L> {
                                     Declaration {
                                         name: Some(variant.name),
                                         span: variant.span,
-                                        value: Constant {
+                                        value: Some(Constant {
                                             parameters: parameters.clone(),
                                             bounds: Vec::new(),
                                             ty: constructor_ty,
                                             value: Rc::new(RefCell::new(Some(constructor))),
                                             attributes: self
                                                 .lower_decl_attributes(&mut variant.attributes),
-                                        },
+                                        }),
                                         uses: Vec::new(),
                                     },
                                 );
@@ -716,19 +797,11 @@ impl<L: Loader> Compiler<L> {
                         }
                     };
 
-                    info.declarations.types.insert(
-                        id,
-                        Declaration {
-                            name: Some(name),
-                            span,
-                            value: ty,
-                            uses: Vec::new(),
-                        },
-                    );
+                    info.declarations.types.get_mut(&id).unwrap().value = Some(ty);
 
                     Some(ScopeValue::Type(id))
                 }
-                StatementDeclarationKind::Trait(id, ((span, name), declaration)) => {
+                StatementDeclarationKind::Trait(id, declaration) => {
                     let scope = scope.child(ScopeKind::Block);
 
                     let parameters = self.with_parameters(declaration.parameters, &scope, info);
@@ -739,19 +812,11 @@ impl<L: Loader> Compiler<L> {
                         attributes: self.lower_trait_attributes(&mut decl.attributes),
                     };
 
-                    info.declarations.traits.insert(
-                        id,
-                        Declaration {
-                            name: Some(name),
-                            span,
-                            value: tr,
-                            uses: Vec::new(),
-                        },
-                    );
+                    info.declarations.traits.get_mut(&id).unwrap().value = Some(tr);
 
                     Some(ScopeValue::Trait(id))
                 }
-                StatementDeclarationKind::Constant(id, ((span, name), declaration)) => {
+                StatementDeclarationKind::Constant(id, declaration) => {
                     let scope = scope.child(ScopeKind::Block);
 
                     let parameters = self.with_parameters(declaration.parameters, &scope, info);
@@ -817,15 +882,7 @@ impl<L: Loader> Compiler<L> {
                         attributes: self.lower_decl_attributes(&mut decl.attributes),
                     };
 
-                    info.declarations.constants.insert(
-                        id,
-                        Declaration {
-                            name: Some(name),
-                            span,
-                            value: constant,
-                            uses: Vec::new(),
-                        },
-                    );
+                    info.declarations.constants.get_mut(&id).unwrap().value = Some(constant);
 
                     Some(ScopeValue::Constant(id, None))
                 }
@@ -935,15 +992,7 @@ impl<L: Loader> Compiler<L> {
                         value,
                     };
 
-                    info.declarations.instances.insert(
-                        id,
-                        Declaration {
-                            name: None,
-                            span: decl.span,
-                            value: instance,
-                            uses: Vec::new(),
-                        },
-                    );
+                    info.declarations.instances.get_mut(&id).unwrap().value = Some(instance);
 
                     Some(ScopeValue::Constant(id, None))
                 }
@@ -977,21 +1026,29 @@ impl<L: Loader> Compiler<L> {
                         }
                     };
 
-                    let (constructors, names) =
-                        match &info.declarations.types.get(&ty).unwrap().value.kind {
-                            TypeKind::Enumeration(constructors, names) => (constructors, names),
-                            _ => {
-                                self.diagnostics.add(Diagnostic::error(
-                                    "only enumerations may be `use`d",
-                                    vec![Note::primary(
-                                        span,
-                                        format!("`{}` is not an enumeration", name),
-                                    )],
-                                ));
+                    let (constructors, names) = match &info
+                        .declarations
+                        .types
+                        .get(&ty)
+                        .unwrap()
+                        .value
+                        .as_ref()
+                        .unwrap()
+                        .kind
+                    {
+                        TypeKind::Enumeration(constructors, names) => (constructors, names),
+                        _ => {
+                            self.diagnostics.add(Diagnostic::error(
+                                "only enumerations may be `use`d",
+                                vec![Note::primary(
+                                    span,
+                                    format!("`{}` is not an enumeration", name),
+                                )],
+                            ));
 
-                                continue;
-                            }
-                        };
+                            continue;
+                        }
+                    };
 
                     for (name, index) in names {
                         let variant = constructors[*index].constructor;
@@ -1071,8 +1128,9 @@ impl<L: Loader> Compiler<L> {
                             let c = scope.values.borrow().get(name).cloned();
                             if let Some(ScopeValue::Constant(id, _)) = c {
                                 let decl = info.declarations.constants.get(&id).unwrap();
+                                let value = decl.value.as_ref().unwrap();
                                 let (parameters, c) =
-                                    (decl.value.parameters.clone(), decl.value.value.clone());
+                                    (value.parameters.clone(), value.value.clone());
 
                                 let constant_already_assigned = {
                                     let c = c.borrow();
@@ -1122,6 +1180,7 @@ impl<L: Loader> Compiler<L> {
         &mut self,
         statement: ast::Statement,
         scope: &'a Scope,
+        info: &mut Info,
     ) -> Option<StatementDeclaration> {
         match statement.kind {
             ast::StatementKind::Empty => None,
@@ -1130,9 +1189,13 @@ impl<L: Loader> Compiler<L> {
                     let id = self.new_type_id();
                     scope.values.borrow_mut().insert(name, ScopeValue::Type(id));
 
+                    info.declarations
+                        .types
+                        .insert(id, Declaration::unresolved(Some(name), span));
+
                     Some(StatementDeclaration {
                         span: statement.span,
-                        kind: StatementDeclarationKind::Type(id, ((span, name), ty)),
+                        kind: StatementDeclarationKind::Type(id, ty),
                         attributes: statement.attributes,
                     })
                 }
@@ -1143,9 +1206,13 @@ impl<L: Loader> Compiler<L> {
                         .borrow_mut()
                         .insert(name, ScopeValue::Trait(id));
 
+                    info.declarations
+                        .traits
+                        .insert(id, Declaration::unresolved(Some(name), span));
+
                     Some(StatementDeclaration {
                         span: statement.span,
-                        kind: StatementDeclarationKind::Trait(id, ((span, name), declaration)),
+                        kind: StatementDeclarationKind::Trait(id, declaration),
                         attributes: statement.attributes,
                     })
                 }
@@ -1156,14 +1223,22 @@ impl<L: Loader> Compiler<L> {
                         .borrow_mut()
                         .insert(name, ScopeValue::Constant(id, None));
 
+                    info.declarations
+                        .constants
+                        .insert(id, Declaration::unresolved(Some(name), span));
+
                     Some(StatementDeclaration {
                         span: statement.span,
-                        kind: StatementDeclarationKind::Constant(id, ((span, name), declaration)),
+                        kind: StatementDeclarationKind::Constant(id, declaration),
                         attributes: statement.attributes,
                     })
                 }
                 ast::Declaration::Instance(instance) => {
                     let id = self.new_generic_constant_id();
+
+                    info.declarations
+                        .instances
+                        .insert(id, Declaration::unresolved(None, statement.span));
 
                     Some(StatementDeclaration {
                         span: statement.span,
@@ -1317,7 +1392,14 @@ impl<L: Loader> Compiler<L> {
                                         })
                                         .collect();
 
-                                    let ty = &info.declarations.types.get(&id).unwrap().value;
+                                    let ty = info
+                                        .declarations
+                                        .types
+                                        .get(&id)
+                                        .unwrap()
+                                        .value
+                                        .as_ref()
+                                        .unwrap();
                                     if !matches!(ty.kind, TypeKind::Structure(_, _)) {
                                         self.diagnostics.add(Diagnostic::error(
                                             "only structures may be instantiated like this",
@@ -1332,10 +1414,13 @@ impl<L: Loader> Compiler<L> {
                                 ast::ExpressionKind::Name(name) => {
                                     let ty_decl = info.declarations.types.get(&id).unwrap();
 
-                                    let (variant_types, variants) = match &ty_decl.value.kind {
-                                        TypeKind::Enumeration(types, variants) => (types, variants),
-                                        _ => {
-                                            self.diagnostics.add(Diagnostic::error(
+                                    let (variant_types, variants) =
+                                        match &ty_decl.value.as_ref().unwrap().kind {
+                                            TypeKind::Enumeration(types, variants) => {
+                                                (types, variants)
+                                            }
+                                            _ => {
+                                                self.diagnostics.add(Diagnostic::error(
                                                 "only enumerations may be instantiated like this",
                                                 vec![Note::primary(
                                                     function.span,
@@ -1343,9 +1428,9 @@ impl<L: Loader> Compiler<L> {
                                                 )],
                                             ));
 
-                                            return Expression::error(expr.span);
-                                        }
-                                    };
+                                                return Expression::error(expr.span);
+                                            }
+                                        };
 
                                     let index = match variants.get(name) {
                                         Some(index) => *index,
@@ -1665,7 +1750,16 @@ impl<L: Loader> Compiler<L> {
                             .uses
                             .push(name_span);
 
-                        let variants = match &info.declarations.types.get(&ty).unwrap().value.kind {
+                        let variants = match &info
+                            .declarations
+                            .types
+                            .get(&ty)
+                            .unwrap()
+                            .value
+                            .as_ref()
+                            .unwrap()
+                            .kind
+                        {
                             TypeKind::Enumeration(_, variants) => variants,
                             _ => {
                                 self.diagnostics.add(Diagnostic::error(
@@ -1802,7 +1896,16 @@ impl<L: Loader> Compiler<L> {
                     .uses
                     .push(span);
 
-                match info.declarations.types.get(&id).unwrap().value.kind {
+                match info
+                    .declarations
+                    .types
+                    .get(&id)
+                    .unwrap()
+                    .value
+                    .as_ref()
+                    .unwrap()
+                    .kind
+                {
                     TypeKind::Marker => Some(ExpressionKind::Marker(id)),
                     _ => {
                         self.diagnostics.add(Diagnostic::error(
