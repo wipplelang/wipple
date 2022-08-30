@@ -1,0 +1,23 @@
+code: |
+    Linked-List : A => type {
+        Nil
+        Cons A (Linked-List A)
+    }
+
+    use Linked-List
+
+    reduce :: A R => (A -> R -> R) -> R -> (Linked-List A) -> R
+    reduce : f -> result -> list -> when list {
+        Nil -> result
+        Cons x rest -> reduce f (f x result) rest
+    }
+
+    list : Cons 1 (Cons 2 (Cons 3 Nil))
+
+    sum : reduce Add 0 list
+    show sum
+
+output: |
+    6
+
+diagnostics: |
