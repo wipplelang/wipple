@@ -164,20 +164,23 @@ fn write_sections<'a>(
     let variables = variables
         .into_iter()
         .map(|(var, computation)| {
-            let ty = write_type(info.computations.get(&computation).unwrap(), info);
             let var = write_variable(var);
+            let ty = (*info.computations.get(&computation).unwrap()).clone();
+            let wrapper = write_wrapper(&ty, info);
+            let ty = write_type(&ty, info);
 
-            quote!(let mut #var: __runtime::Value<#ty> = __runtime::value();)
+            quote!(let mut #var: #wrapper<#ty> = __runtime::value();)
         })
         .collect::<Vec<_>>();
 
     let computations = mem::replace(&mut info.computations, prev_computations)
         .into_iter()
-        .map(|(id, ty)| {
-            let id = write_computation(id);
+        .map(|(computation, ty)| {
+            let id = write_computation(computation);
+            let wrapper = write_wrapper(ty, info);
             let ty = write_type(ty, info);
 
-            quote!(let mut #id: __runtime::Value<#ty> = __runtime::value();)
+            quote!(let mut #id: #wrapper<#ty> = __runtime::value();)
         });
 
     let first_label = write_section(ir::SectionIndex(0));
@@ -372,19 +375,34 @@ fn write_expression<'a>(expr: &'a ir::Expression, info: &mut Info<'a>) -> Result
         }
         ir::ExpressionKind::Structure(values) => {
             let id = match &expr.ty {
-                ir::Type::Structure(id, _) => write_structure(*id),
+                ir::Type::Structure(id, _) => *id,
                 _ => unreachable!(),
             };
 
+            let name = write_structure_name(id);
+
             let fields = values.iter().enumerate().map(|(index, id)| {
                 let field = write_structure_field(index);
-                let ty = write_type(info.computations.get(id).unwrap(), info);
-                let id = write_computation(*id);
-                quote!(#field: __runtime::read::<_, #ty>(&#id))
+                let ty = (*info.computations.get(id).unwrap()).clone();
+
+                let value = {
+                    let ty = write_type(&ty, info);
+                    let id = write_computation(*id);
+                    quote!(#field: __runtime::read::<_, #ty>(&#id))
+                };
+
+                if matches!(ty, ir::Type::Recursive(_))
+                    || matches!(ty, ir::Type::Structure(id, _)
+                        | ir::Type::Enumeration(id, _) if is_recursive(id, info))
+                {
+                    quote!(Box::new(#value))
+                } else {
+                    value
+                }
             });
 
             quote! {
-                #id {
+                #name {
                     #(#fields,)*
                 }
             }
@@ -400,19 +418,34 @@ fn write_expression<'a>(expr: &'a ir::Expression, info: &mut Info<'a>) -> Result
         }
         ir::ExpressionKind::Variant(discriminant, values) => {
             let id = match &expr.ty {
-                ir::Type::Enumeration(id, _) => write_enumeration(*id),
+                ir::Type::Enumeration(id, _) => *id,
                 _ => unreachable!(),
             };
+
+            let name = write_enumeration_name(id);
 
             let variant = write_enumeration_variant(*discriminant);
 
             let values = values.iter().map(|id| {
-                let ty = write_type(info.computations.get(id).unwrap(), info);
-                let id = write_computation(*id);
-                quote!(__runtime::read::<_, #ty>(&#id))
+                let ty = (*info.computations.get(id).unwrap()).clone();
+
+                let value = {
+                    let ty = write_type(&ty, info);
+                    let id = write_computation(*id);
+                    quote!(__runtime::read::<_, #ty>(&#id))
+                };
+
+                if matches!(ty, ir::Type::Recursive(_))
+                    || matches!(ty, ir::Type::Structure(id, _)
+                        | ir::Type::Enumeration(id, _) if is_recursive(id, info))
+                {
+                    quote!(Box::new(#value))
+                } else {
+                    value
+                }
             });
 
-            quote!(#id::#variant(#(#values),*))
+            quote!(#name::#variant(#(#values),*))
         }
         ir::ExpressionKind::TupleElement(computation, index) => {
             let ty = write_type(info.computations.get(computation).unwrap(), info);
@@ -431,22 +464,28 @@ fn write_expression<'a>(expr: &'a ir::Expression, info: &mut Info<'a>) -> Result
             let computation = write_computation(*computation);
             let variant = write_enumeration_variant(*discriminant);
 
-            let variants = match info.program.nominal_types.get(id).unwrap() {
-                ir::Type::Enumeration(_, variants) => (0..variants[*discriminant].len()).map(|i| {
-                    if i == *index {
-                        quote!(__element)
-                    } else {
-                        quote!(_)
-                    }
-                }),
+            let (variants, unbox) = match info.program.nominal_types.get(id).unwrap() {
+                ir::Type::Enumeration(_, variants) => (
+                    variants[*discriminant].iter().enumerate().map(|(i, _)| {
+                        if i == *index {
+                            quote!(__element)
+                        } else {
+                            quote!(_)
+                        }
+                    }),
+                    match variants[*discriminant][*index] {
+                        ir::Type::Recursive(_) => Some(quote!(*)),
+                        _ => None,
+                    },
+                ),
                 _ => unreachable!(),
             };
 
-            let id = write_enumeration(*id);
+            let name = write_enumeration_name(*id);
 
             quote! {
                 match __runtime::read::<_, #ty>(&#computation) {
-                    #id::#variant(#(#variants),*) => __element,
+                    #name::#variant(#(#variants),*) => #unbox __element,
                     _ => __runtime::unreachable(),
                 }
             }
@@ -464,97 +503,120 @@ fn write_expression<'a>(expr: &'a ir::Expression, info: &mut Info<'a>) -> Result
     })
 }
 
+fn write_wrapper(ty: &ir::Type, info: &mut Info) -> TokenStream {
+    if let ir::Type::Structure(id, _) | ir::Type::Enumeration(id, _) = ty {
+        if is_recursive(*id, info) {
+            return quote!(__runtime::BoxedValue);
+        }
+    }
+
+    quote!(__runtime::Value)
+}
+
 fn write_type(ty: &ir::Type, info: &mut Info) -> TokenStream {
-    match ty {
-        ir::Type::Number => quote!(__runtime::Number),
-        ir::Type::Integer => quote!(__runtime::Integer),
-        ir::Type::Text => quote!(__runtime::Text),
-        ir::Type::Discriminant => quote!(__runtime::Discriminant),
-        ir::Type::Boolean => quote!(__runtime::Boolean),
-        ir::Type::Function(input, output) => {
-            let input = write_type(input, info);
-            let output = write_type(output, info);
-            quote!(__runtime::Function<#input, #output>)
-        }
-        ir::Type::Tuple(tys) => {
-            let tys = tys.iter().map(|ty| write_type(ty, info));
-            quote!((#(#tys,)*))
-        }
-        ir::Type::List(ty) => {
-            let ty = write_type(ty, info);
-            quote!(__runtime::List<#ty>)
-        }
-        ir::Type::Mutable(ty) => {
-            let ty = write_type(ty, info);
-            quote!(__runtime::Mutable<#ty>)
-        }
-        ir::Type::Marker => quote!(__runtime::Marker),
-        ir::Type::Structure(id, fields) => {
-            let name = write_structure(*id);
-
-            if !info.types.contains_key(id) {
-                info.types.insert(*id, (name.clone(), None));
-
-                let fields = fields.iter().enumerate().map(|(index, ty)| {
-                    let field = write_structure_field(index);
-                    let ty = write_type(ty, info);
-
-                    quote!(#field: #ty,)
-                });
-
-                let decl = quote! {
-                    #[derive(Clone)]
-                    struct #name {
-                        #(#fields)*
-                    }
-                };
-
-                info.types.get_mut(id).unwrap().1 = Some(decl);
+    fn write_type(ty: &ir::Type, info: &mut Info, in_field: bool) -> TokenStream {
+        match ty {
+            ir::Type::Number => quote!(__runtime::Number),
+            ir::Type::Integer => quote!(__runtime::Integer),
+            ir::Type::Text => quote!(__runtime::Text),
+            ir::Type::Discriminant => quote!(__runtime::Discriminant),
+            ir::Type::Boolean => quote!(__runtime::Boolean),
+            ir::Type::Function(input, output) => {
+                let input = write_type(input, info, false);
+                let output = write_type(output, info, false);
+                quote!(__runtime::Function<#input, #output>)
             }
+            ir::Type::Tuple(tys) => {
+                let tys = tys.iter().map(|ty| write_type(ty, info, false));
+                quote!((#(#tys,)*))
+            }
+            ir::Type::List(ty) => {
+                let ty = write_type(ty, info, false);
+                quote!(__runtime::List<#ty>)
+            }
+            ir::Type::Mutable(ty) => {
+                let ty = write_type(ty, info, false);
+                quote!(__runtime::Mutable<#ty>)
+            }
+            ir::Type::Marker => quote!(__runtime::Marker),
+            ir::Type::Structure(id, fields) => {
+                if !info.types.contains_key(id) {
+                    let name = write_structure_name(*id);
 
-            name
-        }
-        ir::Type::Enumeration(id, variants) => {
-            let name = write_enumeration(*id);
+                    info.types.insert(*id, (name.clone(), None));
 
-            if !info.types.contains_key(id) {
-                info.types.insert(*id, (name.clone(), None));
+                    let fields = fields.iter().enumerate().map(|(index, ty)| {
+                        let field = write_structure_field(index);
+                        let ty = write_type(ty, info, false);
 
-                let discriminants = variants.iter().enumerate().map(|(index, _)| {
-                    let variant = write_enumeration_variant(index);
+                        quote!(#field: #ty,)
+                    });
 
-                    quote!(#name::#variant(..) => #index,)
-                });
+                    let decl = quote! {
+                        #[derive(Clone)]
+                        struct #name {
+                            #(#fields)*
+                        }
+                    };
 
-                let variants = variants.iter().enumerate().map(|(index, tys)| {
-                    let variant = write_enumeration_variant(index);
-                    let tys = tys.iter().map(|ty| write_type(ty, info));
+                    info.types.get_mut(id).unwrap().1 = Some(decl);
+                }
 
-                    quote!(#variant(#(#tys),*),)
-                });
+                write_structure_ty(*id, in_field, info)
+            }
+            ir::Type::Enumeration(id, variants) => {
+                if !info.types.contains_key(id) {
+                    let name = write_enumeration_name(*id);
 
-                let decl = quote! {
-                    #[derive(::std::clone::Clone)]
-                    enum #name {
-                        #(#variants)*
-                    }
+                    info.types.insert(*id, (name.clone(), None));
 
-                    impl __runtime::Enumeration for #name {
-                        fn discriminant(&self) -> __runtime::Discriminant {
-                            match self {
-                                #(#discriminants)*
+                    let discriminants = variants.iter().enumerate().map(|(index, _)| {
+                        let variant = write_enumeration_variant(index);
+
+                        quote!(#name::#variant(..) => #index,)
+                    });
+
+                    let variants = variants.iter().enumerate().map(|(index, tys)| {
+                        let variant = write_enumeration_variant(index);
+                        let tys = tys.iter().map(|ty| write_type(ty, info, true));
+
+                        quote!(#variant(#(#tys),*),)
+                    });
+
+                    let decl = quote! {
+                        #[derive(Clone)]
+                        enum #name {
+                            #(#variants)*
+                        }
+
+                        impl __runtime::Enumeration for #name {
+                            fn discriminant(&self) -> __runtime::Discriminant {
+                                match self {
+                                    #(#discriminants)*
+                                }
                             }
                         }
-                    }
-                };
+                    };
 
-                info.types.get_mut(id).unwrap().1 = Some(decl);
+                    info.types.get_mut(id).unwrap().1 = Some(decl);
+                }
+
+                write_enumeration_ty(*id, in_field, info)
             }
+            ir::Type::Recursive(id) => {
+                let name = info.types.get(id).unwrap().0.clone();
 
-            name
+                if in_field {
+                    quote!(Box<#name>)
+                } else {
+                    name
+                }
+            }
+            ir::Type::Unreachable => quote!(__runtime::Unreachable),
         }
-        ir::Type::Unreachable => quote!(__runtime::Unreachable),
     }
+
+    write_type(ty, info, false)
 }
 
 fn write_section(index: ir::SectionIndex) -> TokenStream {
@@ -577,18 +639,42 @@ fn write_constant(constant: MonomorphizedConstantId) -> TokenStream {
     syn::Ident::new(&format!("__constant_{}", constant.0), Span::call_site()).to_token_stream()
 }
 
-fn write_structure(id: TypeId) -> TokenStream {
+fn write_structure_name(id: TypeId) -> TokenStream {
     syn::Ident::new(&format!("__structure_{}", id.0), Span::call_site()).to_token_stream()
+}
+
+fn write_structure_ty(id: TypeId, in_field: bool, info: &Info) -> TokenStream {
+    let ident = write_structure_name(id);
+
+    if in_field && is_recursive(id, info) {
+        quote!(Box<#ident>)
+    } else {
+        ident.to_token_stream()
+    }
 }
 
 fn write_structure_field(index: usize) -> TokenStream {
     syn::Ident::new(&format!("__field_{}", index), Span::call_site()).to_token_stream()
 }
 
-fn write_enumeration(id: TypeId) -> TokenStream {
+fn write_enumeration_name(id: TypeId) -> TokenStream {
     syn::Ident::new(&format!("__enumeration_{}", id.0), Span::call_site()).to_token_stream()
+}
+
+fn write_enumeration_ty(id: TypeId, in_field: bool, info: &Info) -> TokenStream {
+    let ident = write_enumeration_name(id);
+
+    if in_field && is_recursive(id, info) {
+        quote!(Box<#ident>)
+    } else {
+        ident.to_token_stream()
+    }
 }
 
 fn write_enumeration_variant(index: usize) -> TokenStream {
     syn::Ident::new(&format!("__variant_{}", index), Span::call_site()).to_token_stream()
+}
+
+fn is_recursive(id: TypeId, info: &Info) -> bool {
+    info.program.recursive_types.contains(&id)
 }

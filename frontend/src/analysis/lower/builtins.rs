@@ -1,5 +1,3 @@
-#![allow(clippy::needless_update)] // for future-proofing
-
 use super::*;
 use crate::Loader;
 use lazy_static::lazy_static;

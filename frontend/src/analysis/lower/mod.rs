@@ -128,6 +128,7 @@ impl<T> Declaration<T> {
 }
 
 #[derive(Debug, Clone, Default, Serialize)]
+#[non_exhaustive]
 pub struct DeclarationAttributes {
     pub help: Vec<InternedString>,
 }
@@ -184,6 +185,7 @@ pub struct Trait {
 }
 
 #[derive(Debug, Clone, Serialize)]
+#[non_exhaustive]
 pub struct TraitAttributes {
     pub decl_attributes: DeclarationAttributes,
     pub on_unimplemented: Option<InternedString>,
@@ -215,11 +217,13 @@ pub struct Instance {
 }
 
 #[derive(Debug, Clone, Default)]
+#[non_exhaustive]
 pub struct FileAttributes {
     pub language_items: LanguageItems,
 }
 
 #[derive(Debug, Clone, Default)]
+#[non_exhaustive]
 pub struct LanguageItems {
     pub boolean: Option<TypeId>,
 }
@@ -693,7 +697,7 @@ impl<L: Loader> Compiler<L> {
 
                                 let constructor_id = self.new_generic_constant_id();
 
-                                let constructor_ty = tys.iter().fold(
+                                let constructor_ty = tys.iter().rev().fold(
                                     TypeAnnotation {
                                         span: variant.span,
                                         kind: TypeAnnotationKind::Named(
@@ -751,7 +755,7 @@ impl<L: Loader> Compiler<L> {
                                 };
 
                                 let constructor =
-                                    variables.iter().fold(result, |result, (span, var)| {
+                                    variables.iter().rev().fold(result, |result, (span, var)| {
                                         Expression {
                                             span: variant.span,
                                             kind: ExpressionKind::Function(

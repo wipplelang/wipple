@@ -31,6 +31,7 @@ pub enum TypeStructure<Ty> {
     Marker,
     Structure(Vec<Ty>),
     Enumeration(Vec<Vec<Ty>>),
+    Recursive(TypeId),
 }
 
 impl From<Type> for UnresolvedType {
@@ -73,6 +74,7 @@ impl From<TypeStructure<Type>> for TypeStructure<UnresolvedType> {
                     .map(|tys| tys.into_iter().map(From::from).collect())
                     .collect(),
             ),
+            TypeStructure::Recursive(id) => TypeStructure::Recursive(id),
         }
     }
 }
@@ -515,7 +517,7 @@ impl UnresolvedType {
 impl TypeStructure<UnresolvedType> {
     pub fn apply(&mut self, ctx: &Context) {
         match self {
-            TypeStructure::Marker => {}
+            TypeStructure::Marker | TypeStructure::Recursive(_) => {}
             TypeStructure::Structure(tys) => {
                 for ty in tys {
                     ty.apply(ctx);
@@ -533,7 +535,7 @@ impl TypeStructure<UnresolvedType> {
 
     pub fn instantiate_with(&mut self, substitutions: &GenericSubstitutions) {
         match self {
-            TypeStructure::Marker => {}
+            TypeStructure::Marker | TypeStructure::Recursive(_) => {}
             TypeStructure::Structure(tys) => {
                 for ty in tys {
                     ty.instantiate_with(substitutions);
@@ -551,7 +553,7 @@ impl TypeStructure<UnresolvedType> {
 
     pub fn params(&self) -> Vec<TypeParameterId> {
         match self {
-            TypeStructure::Marker => Vec::new(),
+            TypeStructure::Marker | TypeStructure::Recursive(_) => Vec::new(),
             TypeStructure::Structure(tys) => tys.iter().flat_map(|ty| ty.params()).collect(),
             TypeStructure::Enumeration(variants) => variants
                 .iter()
@@ -578,6 +580,7 @@ impl TypeStructure<UnresolvedType> {
                     })
                     .collect::<Option<_>>()?,
             ),
+            TypeStructure::Recursive(id) => TypeStructure::Recursive(id),
         })
     }
 }

@@ -6,7 +6,10 @@ use crate::{
     analysis::typecheck, helpers::InternedString, Compiler, ComputationId, Loader,
     MonomorphizedConstantId, TypeId, VariableId,
 };
-use std::{collections::BTreeMap, mem};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    mem,
+};
 
 pub mod lib {
     pub const RUNTIME: &str = "runtime";
@@ -15,6 +18,7 @@ pub mod lib {
 #[derive(Debug, Clone)]
 pub struct Program {
     pub nominal_types: BTreeMap<TypeId, Type>,
+    pub recursive_types: BTreeSet<TypeId>,
     pub constants: BTreeMap<MonomorphizedConstantId, Constant>,
     pub entrypoint: Sections,
 }
@@ -62,6 +66,7 @@ pub enum Type {
     Marker,
     Structure(TypeId, Vec<Type>),
     Enumeration(TypeId, Vec<Vec<Type>>),
+    Recursive(TypeId),
     Unreachable,
 }
 
@@ -238,6 +243,7 @@ impl<L: Loader> Compiler<L> {
 
         Program {
             nominal_types: info.nominal_types,
+            recursive_types: info.recursive_types,
             constants: constants
                 .into_iter()
                 .map(|(id, constant)| (id, constant.finalize(&map)))
@@ -252,6 +258,7 @@ type SectionIndexMap = BTreeMap<usize, Option<SectionIndex>>;
 #[derive(Default)]
 struct Info {
     nominal_types: BTreeMap<TypeId, Type>,
+    recursive_types: BTreeSet<TypeId>,
     map: SectionIndexMap,
     function: Vec<(Vec<VariableId>, Vec<VariableId>)>,
     block: Vec<VariableId>,
@@ -920,7 +927,11 @@ impl<L: Loader> Compiler<L> {
             }
             typecheck::PatternKind::Destructure(fields) => {
                 let (id, field_tys) = match input_ty {
-                    Type::Structure(id, field_tys) => (id, field_tys),
+                    Type::Structure(id, field_tys) => (*id, field_tys.clone()),
+                    Type::Recursive(id) => match info.nominal_types.get(id).unwrap() {
+                        Type::Structure(id, field_tys) => (*id, field_tys.clone()),
+                        _ => unreachable!(),
+                    },
                     _ => unreachable!(),
                 };
 
@@ -930,7 +941,7 @@ impl<L: Loader> Compiler<L> {
                         element,
                         Expression {
                             ty: field_tys[*index].clone(),
-                            kind: ExpressionKind::StructureElement(input, *id, *index),
+                            kind: ExpressionKind::StructureElement(input, id, *index),
                         },
                     ));
 
@@ -958,6 +969,12 @@ impl<L: Loader> Compiler<L> {
                     Type::Enumeration(id, variants_tys) => {
                         (*id, variants_tys[*input_discriminant].clone())
                     }
+                    Type::Recursive(id) => match info.nominal_types.get(id).unwrap() {
+                        Type::Enumeration(id, variants_tys) => {
+                            (*id, variants_tys[*input_discriminant].clone())
+                        }
+                        _ => unreachable!(),
+                    },
                     _ => unreachable!(),
                 };
 
@@ -1049,9 +1066,15 @@ impl<L: Loader> Compiler<L> {
                             .map(|tys| tys.into_iter().map(|ty| self.gen_type(ty, info)).collect())
                             .collect(),
                     ),
+                    typecheck::TypeStructure::Recursive(id) => {
+                        info.recursive_types.insert(id);
+                        Type::Recursive(id)
+                    }
                 };
 
-                info.nominal_types.insert(id, ty.clone());
+                if !matches!(ty, Type::Recursive(_)) {
+                    info.nominal_types.insert(id, ty.clone());
+                }
 
                 ty
             }

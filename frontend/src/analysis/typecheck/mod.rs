@@ -328,7 +328,7 @@ impl<L: Loader> Compiler<L> {
                     continue;
                 }
 
-                let ty = typechecker.convert_type_annotation(&decl.value.ty, file);
+                let ty = typechecker.convert_type_annotation(&decl.value.ty, file, &mut Vec::new());
 
                 let params = decl.value.parameters;
 
@@ -371,7 +371,13 @@ impl<L: Loader> Compiler<L> {
                         lower::TypeKind::Structure(fields, field_names) => {
                             let field_tys = fields
                                 .iter()
-                                .map(|field| typechecker.convert_type_annotation(&field.ty, file))
+                                .map(|field| {
+                                    typechecker.convert_type_annotation(
+                                        &field.ty,
+                                        file,
+                                        &mut vec![id],
+                                    )
+                                })
                                 .collect();
 
                             typechecker.types.insert(
@@ -392,7 +398,13 @@ impl<L: Loader> Compiler<L> {
                                     variant
                                         .tys
                                         .iter()
-                                        .map(|ty| typechecker.convert_type_annotation(ty, file))
+                                        .map(|ty| {
+                                            typechecker.convert_type_annotation(
+                                                ty,
+                                                file,
+                                                &mut vec![id],
+                                            )
+                                        })
                                         .collect()
                                 })
                                 .collect();
@@ -429,7 +441,7 @@ impl<L: Loader> Compiler<L> {
                     continue;
                 }
 
-                let ty = typechecker.convert_type_annotation(&decl.value.ty, file);
+                let ty = typechecker.convert_type_annotation(&decl.value.ty, file, &mut Vec::new());
                 let params = decl.value.parameters.clone();
 
                 typechecker
@@ -447,7 +459,8 @@ impl<L: Loader> Compiler<L> {
                     None => continue,
                 };
 
-                let generic_ty = typechecker.convert_type_annotation(&decl.value.ty, file);
+                let generic_ty =
+                    typechecker.convert_type_annotation(&decl.value.ty, file, &mut Vec::new());
 
                 let bounds = decl
                     .value
@@ -461,7 +474,10 @@ impl<L: Loader> Compiler<L> {
                             .into_iter()
                             .zip(&bound.parameters)
                             .map(|(param, ty)| {
-                                (param, typechecker.convert_type_annotation(ty, file))
+                                (
+                                    param,
+                                    typechecker.convert_type_annotation(ty, file, &mut Vec::new()),
+                                )
                             })
                             .collect();
 
@@ -501,7 +517,12 @@ impl<L: Loader> Compiler<L> {
                     .params
                     .into_iter()
                     .zip(&decl.value.trait_params)
-                    .map(|(param, ty)| (param, typechecker.convert_type_annotation(ty, file)))
+                    .map(|(param, ty)| {
+                        (
+                            param,
+                            typechecker.convert_type_annotation(ty, file, &mut Vec::new()),
+                        )
+                    })
                     .collect();
 
                 typechecker.add_substitutions(&mut tr.ty, &mut substitutions);
@@ -561,7 +582,10 @@ impl<L: Loader> Compiler<L> {
                             .into_iter()
                             .zip(&bound.parameters)
                             .map(|(param, ty)| {
-                                (param, typechecker.convert_type_annotation(ty, file))
+                                (
+                                    param,
+                                    typechecker.convert_type_annotation(ty, file, &mut Vec::new()),
+                                )
                             })
                             .collect();
 
@@ -1316,7 +1340,7 @@ impl<L: Loader> Typechecker<L> {
                 }
             }
             lower::ExpressionKind::Annotate(expr, ty) => {
-                let ty = self.convert_type_annotation(ty, file);
+                let ty = self.convert_type_annotation(ty, file, &mut Vec::new());
                 let value = self.typecheck_expr(expr, file, suppress_errors);
 
                 if let Err(error) = self.ctx.unify(value.ty, ty.clone()) {
@@ -1706,7 +1730,7 @@ impl<L: Loader> Typechecker<L> {
                 ),
                 lower::PatternKind::Annotate(inner, ty) => UnresolvedPatternKind::Annotate(
                     Box::new(typecheck_pattern(tc, inner, None, file, suppress_errors)),
-                    tc.convert_type_annotation(ty, file),
+                    tc.convert_type_annotation(ty, file, &mut Vec::new()),
                 ),
                 lower::PatternKind::Or(lhs, rhs) => UnresolvedPatternKind::Or(
                     Box::new(typecheck_pattern(tc, lhs, None, file, suppress_errors)),
@@ -1923,7 +1947,7 @@ impl<L: Loader> Typechecker<L> {
                     MatchSet::Structure(fields) => fields,
                     _ => {
                         ty.apply(&self.ctx);
-                        *match_set = self.match_set_from(&ty).unwrap();
+                        *match_set = self.match_set_from(&ty, &mut Vec::new()).unwrap();
 
                         match match_set {
                             MatchSet::Structure(fields) => fields,
@@ -2039,7 +2063,7 @@ impl<L: Loader> Typechecker<L> {
                     MatchSet::Enumeration(variants) => &mut variants[variant],
                     _ => {
                         ty.apply(&self.ctx);
-                        *match_set = self.match_set_from(&ty).unwrap();
+                        *match_set = self.match_set_from(&ty, &mut Vec::new()).unwrap();
 
                         match match_set {
                             MatchSet::Enumeration(variants) => &mut variants[variant],
@@ -2170,7 +2194,7 @@ impl<L: Loader> Typechecker<L> {
                     MatchSet::Tuple(sets) => sets,
                     _ => {
                         ty.apply(&self.ctx);
-                        *match_set = self.match_set_from(&ty).unwrap();
+                        *match_set = self.match_set_from(&ty, &mut Vec::new()).unwrap();
 
                         match match_set {
                             MatchSet::Tuple(sets) => sets,
@@ -2283,7 +2307,7 @@ impl<L: Loader> Typechecker<L> {
                         input_ty.apply(&self.ctx);
 
                         let mut match_set = self
-                            .match_set_from(&input_ty)
+                            .match_set_from(&input_ty, &mut Vec::new())
                             .map_err(|error| Error::new(error, expr.span))?;
 
                         let pattern_span = pattern.span;
@@ -2309,7 +2333,7 @@ impl<L: Loader> Typechecker<L> {
                         input.ty.apply(&self.ctx);
 
                         let mut match_set = self
-                            .match_set_from(&input.ty)
+                            .match_set_from(&input.ty, &mut Vec::new())
                             .map_err(|error| Error::new(error, expr.span))?;
 
                         let arms = arms
@@ -2345,7 +2369,7 @@ impl<L: Loader> Typechecker<L> {
                         value.ty.apply(&self.ctx);
 
                         let mut match_set = self
-                            .match_set_from(&value.ty)
+                            .match_set_from(&value.ty, &mut Vec::new())
                             .map_err(|error| Error::new(error, expr.span))?;
 
                         let pattern = self
@@ -2676,6 +2700,7 @@ impl<L: Loader> Typechecker<L> {
         &mut self,
         annotation: &lower::TypeAnnotation,
         file: &Rc<RefCell<lower::File>>,
+        stack: &mut Vec<TypeId>,
     ) -> UnresolvedType {
         match &annotation.kind {
             lower::TypeAnnotationKind::Error => UnresolvedType::Bottom(BottomTypeReason::Error),
@@ -2688,8 +2713,14 @@ impl<L: Loader> Typechecker<L> {
 
                 let params = params
                     .iter()
-                    .map(|param| self.convert_type_annotation(param, file))
+                    .map(|param| self.convert_type_annotation(param, file, stack))
                     .collect::<Vec<_>>();
+
+                if stack.contains(id) {
+                    return UnresolvedType::Named(*id, params, TypeStructure::Recursive(*id));
+                }
+
+                stack.push(*id);
 
                 let substitutions = ty
                     .value
@@ -2700,7 +2731,7 @@ impl<L: Loader> Typechecker<L> {
                     .collect::<BTreeMap<_, _>>();
 
                 let mut convert_and_instantiate = |ty| {
-                    let mut ty = self.convert_type_annotation(ty, file);
+                    let mut ty = self.convert_type_annotation(ty, file, stack);
                     ty.instantiate_with(&substitutions);
                     ty
                 };
@@ -2726,6 +2757,8 @@ impl<L: Loader> Typechecker<L> {
                             .collect(),
                     ),
                 };
+
+                stack.pop();
 
                 UnresolvedType::Named(*id, params, structure)
             }
@@ -2839,7 +2872,11 @@ impl<L: Loader> Typechecker<L> {
                             }
 
                             UnresolvedType::Builtin(BuiltinType::List(Box::new(
-                                self.convert_type_annotation(parameters.first().unwrap(), file),
+                                self.convert_type_annotation(
+                                    parameters.first().unwrap(),
+                                    file,
+                                    stack,
+                                ),
                             )))
                         }
                     }
@@ -2871,19 +2908,23 @@ impl<L: Loader> Typechecker<L> {
                             }
 
                             UnresolvedType::Builtin(BuiltinType::Mutable(Box::new(
-                                self.convert_type_annotation(parameters.first().unwrap(), file),
+                                self.convert_type_annotation(
+                                    parameters.first().unwrap(),
+                                    file,
+                                    stack,
+                                ),
                             )))
                         }
                     }
                 }
             }
             lower::TypeAnnotationKind::Function(input, output) => UnresolvedType::Function(
-                Box::new(self.convert_type_annotation(input, file)),
-                Box::new(self.convert_type_annotation(output, file)),
+                Box::new(self.convert_type_annotation(input, file, stack)),
+                Box::new(self.convert_type_annotation(output, file, stack)),
             ),
             lower::TypeAnnotationKind::Tuple(tys) => UnresolvedType::Tuple(
                 tys.iter()
-                    .map(|ty| self.convert_type_annotation(ty, file))
+                    .map(|ty| self.convert_type_annotation(ty, file, stack))
                     .collect(),
             ),
         }
@@ -2928,17 +2969,30 @@ enum MatchSet {
 }
 
 impl<L: Loader> Typechecker<L> {
-    fn match_set_from(&mut self, ty: &UnresolvedType) -> Result<MatchSet, TypeError> {
+    fn match_set_from(
+        &mut self,
+        ty: &UnresolvedType,
+        stack: &mut Vec<TypeId>,
+    ) -> Result<MatchSet, TypeError> {
         match &ty {
             UnresolvedType::Named(id, _, _) => {
+                if stack.contains(id) {
+                    // Returning Never is OK because the user has to stop matching on the structure
+                    // of the type at some point -- eventually they will refer to the rest of the
+                    // structure using a name, which always matches
+                    return Ok(MatchSet::Never);
+                }
+
+                stack.push(*id);
+
                 let kind = self.types.get(id).unwrap().kind.clone();
 
-                match kind {
+                let set = match kind {
                     TypeDefinitionKind::Marker => Ok(MatchSet::Marker(false)),
                     TypeDefinitionKind::Structure(fields, _) => Ok(MatchSet::Structure(
                         fields
                             .iter()
-                            .map(|ty| Ok((false, self.match_set_from(ty)?)))
+                            .map(|ty| Ok((false, self.match_set_from(ty, stack)?)))
                             .collect::<Result<_, _>>()?,
                     )),
                     TypeDefinitionKind::Enumeration(variants, _) => Ok(MatchSet::Enumeration(
@@ -2948,17 +3002,21 @@ impl<L: Loader> Typechecker<L> {
                                 Ok((
                                     false,
                                     tys.iter()
-                                        .map(|ty| self.match_set_from(ty))
+                                        .map(|ty| self.match_set_from(ty, stack))
                                         .collect::<Result<_, _>>()?,
                                 ))
                             })
                             .collect::<Result<_, _>>()?,
                     )),
-                }
+                };
+
+                stack.pop();
+
+                set
             }
             UnresolvedType::Tuple(tys) => Ok(MatchSet::Tuple(
                 tys.iter()
-                    .map(|ty| self.match_set_from(ty))
+                    .map(|ty| self.match_set_from(ty, stack))
                     .collect::<Result<_, _>>()?,
             )),
             UnresolvedType::Bottom(_) => Ok(MatchSet::Never),

@@ -251,6 +251,7 @@ impl std::fmt::Display for Type {
             Type::Marker => write!(f, "marker"),
             Type::Structure(id, _) => write!(f, "(structure {})", id.0),
             Type::Enumeration(id, _) => write!(f, "(enumeration {})", id.0),
+            Type::Recursive(id) => write!(f, "(recursive {})", id.0),
             Type::Unreachable => write!(f, "unreachable"),
         }
     }

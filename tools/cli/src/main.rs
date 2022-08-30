@@ -292,8 +292,12 @@ async fn run() -> anyhow::Result<()> {
                     progress_bar.set_message("Compiling to Rust");
                 }
 
-                let tokens = wipple_rust_backend::compile(&ir)?;
-                let src = prettyplease::unparse(&syn::parse_file(&tokens.to_string()).unwrap());
+                let tokens = wipple_rust_backend::compile(&ir)?.to_string();
+
+                let src = syn::parse_file(&tokens)
+                    .as_ref()
+                    .map(prettyplease::unparse)
+                    .unwrap_or(tokens);
 
                 if let Some(progress_bar) = progress_bar.as_ref() {
                     progress_bar.finish_and_clear();
@@ -553,8 +557,11 @@ fn compile_rust(
         progress_bar.set_message("Compiling to Rust");
     }
 
-    let tokens = wipple_rust_backend::compile(&ir)?;
-    let src = prettyplease::unparse(&syn::parse_file(&tokens.to_string()).unwrap());
+    let tokens = wipple_rust_backend::compile(&ir)?.to_string();
+    let src = syn::parse_file(&tokens)
+        .as_ref()
+        .map(prettyplease::unparse)
+        .unwrap_or(tokens);
 
     let rustc = match which::which("rustc") {
         Ok(path) => path,

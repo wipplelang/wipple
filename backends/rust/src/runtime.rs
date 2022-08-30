@@ -15,15 +15,50 @@ mod __runtime {
     }
 
     pub type Value<T> = MaybeUninit<T>;
+    pub type BoxedValue<T> = Box<MaybeUninit<T>>;
 
-    #[inline(always)]
-    pub fn value<T>() -> Value<T> {
-        Value::uninit()
+    pub trait ValueInner<T> {
+        fn uninit() -> Self;
+        fn init(&mut self, x: T);
+        unsafe fn read(&self) -> &T;
+    }
+
+    impl<T> ValueInner<T> for Value<T> {
+        fn uninit() -> Self {
+            MaybeUninit::uninit()
+        }
+
+        fn init(&mut self, x: T) {
+            self.write(x);
+        }
+
+        unsafe fn read(&self) -> &T {
+            self.assume_init_ref()
+        }
+    }
+
+    impl<T> ValueInner<T> for BoxedValue<T> {
+        fn uninit() -> Self {
+            Box::new(MaybeUninit::uninit())
+        }
+
+        fn init(&mut self, x: T) {
+            self.write(x);
+        }
+
+        unsafe fn read(&self) -> &T {
+            self.assume_init_ref()
+        }
     }
 
     #[inline(always)]
-    pub fn init<T>(value: &mut Value<T>, x: T) {
-        value.write(x);
+    pub fn value<T, V: ValueInner<T>>() -> V {
+        V::uninit()
+    }
+
+    #[inline(always)]
+    pub fn init<T>(value: &mut impl ValueInner<T>, x: T) {
+        value.init(x);
     }
 
     /// # Safety
@@ -34,11 +69,8 @@ mod __runtime {
     ///    transmute that actually reinterprets the type or size of a value will
     ///    never occur because the program will never reach that point.
     #[inline(always)]
-    pub fn read<T, U: Clone>(value: &Value<T>) -> U {
-        unsafe {
-            let x = value.assume_init_ref();
-            transmute_clone(x)
-        }
+    pub fn read<T, U: Clone>(value: &impl ValueInner<T>) -> U {
+        unsafe { transmute_clone(value.read()) }
     }
 
     #[inline(always)]
