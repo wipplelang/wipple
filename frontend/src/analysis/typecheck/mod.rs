@@ -1689,72 +1689,89 @@ impl<L: Loader> Typechecker<L> {
         file: &Rc<RefCell<lower::File>>,
         suppress_errors: bool,
     ) -> UnresolvedPattern {
-        fn typecheck_pattern<L: Loader>(
-            tc: &mut Typechecker<L>,
-            pattern: &lower::Pattern,
-            ty: Option<UnresolvedType>,
-            file: &Rc<RefCell<lower::File>>,
-            suppress_errors: bool,
-        ) -> UnresolvedPattern {
-            let kind = match &pattern.kind {
-                lower::PatternKind::Error => UnresolvedPatternKind::Error,
-                lower::PatternKind::Wildcard => UnresolvedPatternKind::Wildcard,
-                lower::PatternKind::Number(number) => UnresolvedPatternKind::Number(*number),
-                lower::PatternKind::Text(text) => UnresolvedPatternKind::Text(*text),
-                lower::PatternKind::Variable(var) => {
-                    tc.variables.insert(
-                        *var,
-                        ty.unwrap_or_else(|| UnresolvedType::Variable(tc.ctx.new_variable())),
-                    );
+        let kind = match &pattern.kind {
+            lower::PatternKind::Error => UnresolvedPatternKind::Error,
+            lower::PatternKind::Wildcard => UnresolvedPatternKind::Wildcard,
+            lower::PatternKind::Number(number) => UnresolvedPatternKind::Number(*number),
+            lower::PatternKind::Text(text) => UnresolvedPatternKind::Text(*text),
+            lower::PatternKind::Variable(var) => {
+                self.variables.insert(*var, ty);
+                UnresolvedPatternKind::Variable(*var)
+            }
+            lower::PatternKind::Destructure(fields) => UnresolvedPatternKind::Destructure(
+                fields
+                    .iter()
+                    .map(|(name, pattern)| {
+                        let ty = UnresolvedType::Variable(self.ctx.new_variable());
 
-                    UnresolvedPatternKind::Variable(*var)
-                }
-                lower::PatternKind::Destructure(fields) => UnresolvedPatternKind::Destructure(
-                    fields
-                        .iter()
-                        .map(|(name, pattern)| {
-                            (
-                                *name,
-                                typecheck_pattern(tc, pattern, None, file, suppress_errors),
-                            )
-                        })
-                        .collect(),
-                ),
-                lower::PatternKind::Variant(ty, variant, values) => UnresolvedPatternKind::Variant(
+                        (
+                            *name,
+                            self.typecheck_pattern(pattern, ty, file, suppress_errors),
+                        )
+                    })
+                    .collect(),
+            ),
+            lower::PatternKind::Variant(ty, variant, values) => {
+                let variant_tys = match &self.types.get(ty).unwrap().kind {
+                    TypeDefinitionKind::Enumeration(variants, _) => variants[*variant].clone(),
+                    _ => unreachable!(),
+                };
+
+                let mut substitutions = BTreeMap::new();
+
+                UnresolvedPatternKind::Variant(
                     *ty,
                     *variant,
                     values
                         .iter()
-                        .map(|pattern| typecheck_pattern(tc, pattern, None, file, suppress_errors))
+                        .zip(variant_tys)
+                        .map(|(pattern, mut ty)| {
+                            self.add_substitutions(&mut ty, &mut substitutions);
+                            self.typecheck_pattern(pattern, ty, file, suppress_errors)
+                        })
                         .collect(),
-                ),
-                lower::PatternKind::Annotate(inner, ty) => UnresolvedPatternKind::Annotate(
-                    Box::new(typecheck_pattern(tc, inner, None, file, suppress_errors)),
-                    tc.convert_type_annotation(ty, file, &mut Vec::new()),
-                ),
-                lower::PatternKind::Or(lhs, rhs) => UnresolvedPatternKind::Or(
-                    Box::new(typecheck_pattern(tc, lhs, None, file, suppress_errors)),
-                    Box::new(typecheck_pattern(tc, rhs, None, file, suppress_errors)),
-                ),
-                lower::PatternKind::Where(pattern, condition) => UnresolvedPatternKind::Where(
-                    Box::new(typecheck_pattern(tc, pattern, None, file, suppress_errors)),
-                    Box::new(tc.typecheck_expr(condition, file, suppress_errors)),
-                ),
-                lower::PatternKind::Tuple(patterns) => UnresolvedPatternKind::Tuple(
-                    patterns
-                        .iter()
-                        .map(|pattern| typecheck_pattern(tc, pattern, None, file, suppress_errors))
-                        .collect(),
-                ),
-            };
-
-            UnresolvedPattern {
-                span: pattern.span,
-                kind,
+                )
             }
-        }
+            lower::PatternKind::Annotate(inner, ty) => {
+                let inner_ty = UnresolvedType::Variable(self.ctx.new_variable());
 
-        typecheck_pattern(self, pattern, Some(ty), file, suppress_errors)
+                UnresolvedPatternKind::Annotate(
+                    Box::new(self.typecheck_pattern(inner, inner_ty, file, suppress_errors)),
+                    self.convert_type_annotation(ty, file, &mut Vec::new()),
+                )
+            }
+            lower::PatternKind::Or(lhs, rhs) => {
+                let lhs_ty = UnresolvedType::Variable(self.ctx.new_variable());
+                let rhs_ty = UnresolvedType::Variable(self.ctx.new_variable());
+
+                UnresolvedPatternKind::Or(
+                    Box::new(self.typecheck_pattern(lhs, lhs_ty, file, suppress_errors)),
+                    Box::new(self.typecheck_pattern(rhs, rhs_ty, file, suppress_errors)),
+                )
+            }
+            lower::PatternKind::Where(pattern, condition) => {
+                let ty = UnresolvedType::Variable(self.ctx.new_variable());
+
+                UnresolvedPatternKind::Where(
+                    Box::new(self.typecheck_pattern(pattern, ty, file, suppress_errors)),
+                    Box::new(self.typecheck_expr(condition, file, suppress_errors)),
+                )
+            }
+            lower::PatternKind::Tuple(patterns) => UnresolvedPatternKind::Tuple(
+                patterns
+                    .iter()
+                    .map(|pattern| {
+                        let ty = UnresolvedType::Variable(self.ctx.new_variable());
+                        self.typecheck_pattern(pattern, ty, file, suppress_errors)
+                    })
+                    .collect(),
+            ),
+        };
+
+        UnresolvedPattern {
+            span: pattern.span,
+            kind,
+        }
     }
 
     fn monomorphize_constant(
@@ -1767,9 +1784,9 @@ impl<L: Loader> Typechecker<L> {
 
         let mut body = self.typecheck_expr(&body, &constant.file, true);
 
-        self.ctx
-            .unify(body.ty.clone(), constant.generic_ty)
-            .expect("failed to unify constant body with its generic type");
+        if let Err(error) = self.ctx.unify(body.ty.clone(), constant.generic_ty) {
+            self.errors.push(Error::new(error, span));
+        }
 
         let mut substitutions = BTreeMap::new();
 
@@ -2409,6 +2426,16 @@ impl<L: Loader> Typechecker<L> {
                                 .map_err(|error| {
                                     Error::new(error, expr.span).ignore_if_unsatisfied_bounds()
                                 })?;
+
+                        if let Some((inside_generic_id, inside_monomorphized_id)) =
+                            inside_generic_constant
+                        {
+                            if inside_generic_id == instance {
+                                return Ok(MonomorphizedExpressionKind::Constant(
+                                    inside_monomorphized_id,
+                                ));
+                            }
+                        }
 
                         let (monomorphized_instance, ty) =
                             self.monomorphize_constant(instance, expr.span);
