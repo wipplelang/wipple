@@ -475,6 +475,11 @@ fn write_expression<'a>(expr: &'a ir::Expression, info: &mut Info<'a>) -> Result
                     }),
                     match variants[*discriminant][*index] {
                         ir::Type::Recursive(_) => Some(quote!(*)),
+                        ir::Type::Structure(id, _) | ir::Type::Enumeration(id, _)
+                            if is_recursive(id, info) =>
+                        {
+                            Some(quote!(*))
+                        }
                         _ => None,
                     },
                 ),
