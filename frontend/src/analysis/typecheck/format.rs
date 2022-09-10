@@ -99,6 +99,7 @@ fn format_type_with(
 
         let (formatted, should_surround_in_backticks) = match ty {
             FormattableType::Type(UnresolvedType::Variable(_)) => (String::from("_"), true),
+            FormattableType::Type(UnresolvedType::NumericVariable(_)) => (String::from("number"), false),
             FormattableType::Type(UnresolvedType::Parameter(param)) => (param_names(param), true),
             FormattableType::Type(UnresolvedType::Bottom(_)) => (String::from("!"), true),
             FormattableType::Type(UnresolvedType::Named(id, params, _)) => {
@@ -108,6 +109,12 @@ fn format_type_with(
                 match ty {
                     BuiltinType::Number => format_named_type!("Number", Vec::new()),
                     BuiltinType::Integer => format_named_type!("Integer", Vec::new()),
+                    BuiltinType::Natural => format_named_type!("Natural", Vec::new()),
+                    BuiltinType::Byte => format_named_type!("Byte", Vec::new()),
+                    BuiltinType::Signed => format_named_type!("Signed", Vec::new()),
+                    BuiltinType::Unsigned => format_named_type!("Unsigned", Vec::new()),
+                    BuiltinType::Float => format_named_type!("Float", Vec::new()),
+                    BuiltinType::Double => format_named_type!("Double", Vec::new()),
                     BuiltinType::Text => format_named_type!("Text", Vec::new()),
                     BuiltinType::List(ty) => format_named_type!("List", vec![*ty]),
                     BuiltinType::Mutable(ty) => format_named_type!("Mutable", vec![*ty]),

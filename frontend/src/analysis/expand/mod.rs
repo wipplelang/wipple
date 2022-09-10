@@ -104,7 +104,7 @@ pub enum NodeKind {
     Underscore,
     Name(InternedString),
     Text(InternedString),
-    Number(f64),
+    Number(InternedString),
     List(Vec<Node>),
     Block(Vec<Statement>),
     Assign(Box<Node>, Box<Node>),

@@ -11,4 +11,4 @@ diagnostics: |
      --> test:3:14
       |
     3 |     False -> "hi"
-      |              ^^^^ expected `Number`, but found `Text`
+      |              ^^^^ expected number, but found `Text`

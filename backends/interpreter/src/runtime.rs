@@ -1,7 +1,9 @@
 use crate::{Error, Interpreter, Value};
 use itertools::Itertools;
 use lazy_static::lazy_static;
+use num_traits::pow::Pow;
 use paste::paste;
+use rust_decimal::MathematicalOps;
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 impl<'a> Interpreter<'a> {
@@ -165,7 +167,7 @@ fn number_to_text(_: &Interpreter, (number,): (Value,)) -> Result<Value, Error> 
         _ => unreachable!(),
     };
 
-    Ok(Value::Text(Rc::from(number.to_string())))
+    Ok(Value::Text(Rc::from(number.normalize().to_string())))
 }
 
 fn add(_: &Interpreter, (lhs, rhs): (Value, Value)) -> Result<Value, Error> {
@@ -221,7 +223,7 @@ fn divide(_: &Interpreter, (lhs, rhs): (Value, Value)) -> Result<Value, Error> {
         _ => unreachable!(),
     };
 
-    if rhs == 0. {
+    if rhs.is_zero() {
         return Err(Error::from("division by zero is undefined"));
     }
 
@@ -239,13 +241,13 @@ fn power(_: &Interpreter, (lhs, rhs): (Value, Value)) -> Result<Value, Error> {
         _ => unreachable!(),
     };
 
-    if lhs == 0. && rhs == 0. {
+    if lhs.is_zero() && rhs.is_zero() {
         return Err(Error::from(
             "raising zero to the power of zero is undefined",
         ));
     }
 
-    Ok(Value::Number(lhs.powf(rhs)))
+    Ok(Value::Number(lhs.pow(rhs)))
 }
 
 fn floor(_: &Interpreter, (value,): (Value,)) -> Result<Value, Error> {
@@ -272,13 +274,10 @@ fn sqrt(_: &Interpreter, (value,): (Value,)) -> Result<Value, Error> {
         _ => unreachable!(),
     };
 
-    if number < 0. {
-        return Err(Error::from(
-            "cannot calculate the square root of a negative number",
-        ));
-    }
-
-    Ok(Value::Number(number.sqrt()))
+    number
+        .sqrt()
+        .map(Value::Number)
+        .ok_or_else(|| Error::from("cannot calculate the square root of a negative number"))
 }
 
 fn text_equality(_: &Interpreter, (lhs, rhs): (Value, Value)) -> Result<Value, Error> {
@@ -416,7 +415,7 @@ fn list_nth(_: &Interpreter, (list, index): (Value, Value)) -> Result<Value, Err
     };
 
     let index = match index {
-        Value::Number(number) => number as usize,
+        Value::Natural(number) => number as usize,
         _ => unreachable!(),
     };
 
@@ -453,7 +452,7 @@ fn list_insert(
     };
 
     let index = match index {
-        Value::Number(number) => number as usize,
+        Value::Natural(number) => number as usize,
         _ => unreachable!(),
     };
 
@@ -475,7 +474,7 @@ fn list_remove(_: &Interpreter, (list, index): (Value, Value)) -> Result<Value, 
     };
 
     let index = match index {
-        Value::Number(number) => number as usize,
+        Value::Natural(number) => number as usize,
         _ => unreachable!(),
     };
 

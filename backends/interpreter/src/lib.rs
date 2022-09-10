@@ -1,6 +1,11 @@
 mod runtime;
 
-use std::{cell::RefCell, collections::BTreeMap, rc::Rc};
+use std::{
+    cell::RefCell,
+    collections::BTreeMap,
+    os::raw::{c_int, c_uint},
+    rc::Rc,
+};
 use wipple_frontend::{ir, MonomorphizedConstantId, VariableId};
 
 type Error = String;
@@ -26,7 +31,14 @@ impl<'a> Interpreter<'a> {
 #[derive(Debug, Clone)]
 enum Value {
     Marker,
-    Number(f64),
+    Number(rust_decimal::Decimal),
+    Integer(i64),
+    Natural(u64),
+    Byte(u8),
+    Signed(c_int),
+    Unsigned(c_uint),
+    Float(f32),
+    Double(f64),
     Discriminant(usize),
     Text(Rc<str>),
     Function(ir::Function, Rc<Scope>),
@@ -114,6 +126,13 @@ impl<'a> Interpreter<'a> {
                             ir::ExpressionKind::Variable(var) => scope.get(var).unwrap().clone(),
                             ir::ExpressionKind::FunctionInput => input.unwrap().clone(),
                             ir::ExpressionKind::Number(number) => Value::Number(*number),
+                            ir::ExpressionKind::Integer(integer) => Value::Integer(*integer),
+                            ir::ExpressionKind::Natural(natural) => Value::Natural(*natural),
+                            ir::ExpressionKind::Byte(byte) => Value::Byte(*byte),
+                            ir::ExpressionKind::Signed(signed) => Value::Signed(*signed),
+                            ir::ExpressionKind::Unsigned(unsigned) => Value::Unsigned(*unsigned),
+                            ir::ExpressionKind::Float(float) => Value::Float(*float),
+                            ir::ExpressionKind::Double(double) => Value::Double(*double),
                             ir::ExpressionKind::Text(text) => Value::Text(Rc::from(text.as_str())),
                             ir::ExpressionKind::Call(function, input) => {
                                 let (function, captures) = match computations.get(function).unwrap()

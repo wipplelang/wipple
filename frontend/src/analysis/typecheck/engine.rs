@@ -7,6 +7,7 @@ use std::collections::BTreeMap;
 pub enum UnresolvedType {
     Variable(TypeVariable),
     Parameter(TypeParameterId),
+    NumericVariable(TypeVariable),
     Named(TypeId, Vec<UnresolvedType>, TypeStructure<UnresolvedType>),
     Function(Box<UnresolvedType>, Box<UnresolvedType>),
     Tuple(Vec<UnresolvedType>),
@@ -52,6 +53,12 @@ impl From<Type> for UnresolvedType {
             Type::Builtin(builtin) => UnresolvedType::Builtin(match builtin {
                 BuiltinType::Number => BuiltinType::Number,
                 BuiltinType::Integer => BuiltinType::Integer,
+                BuiltinType::Natural => BuiltinType::Natural,
+                BuiltinType::Byte => BuiltinType::Byte,
+                BuiltinType::Signed => BuiltinType::Signed,
+                BuiltinType::Unsigned => BuiltinType::Unsigned,
+                BuiltinType::Float => BuiltinType::Float,
+                BuiltinType::Double => BuiltinType::Double,
                 BuiltinType::Text => BuiltinType::Text,
                 BuiltinType::List(ty) => BuiltinType::List(Box::new((*ty).into())),
                 BuiltinType::Mutable(ty) => BuiltinType::Mutable(Box::new((*ty).into())),
@@ -87,6 +94,12 @@ pub struct TypeVariable(pub usize);
 pub enum BuiltinType<Ty> {
     Number,
     Integer,
+    Natural,
+    Byte,
+    Signed,
+    Unsigned,
+    Float,
+    Double,
     Text,
     List(Ty),
     Mutable(Ty),
@@ -105,6 +118,7 @@ pub type GenericSubstitutions = BTreeMap<TypeParameterId, UnresolvedType>;
 pub struct Context {
     pub next_var: usize,
     pub substitutions: BTreeMap<TypeVariable, UnresolvedType>,
+    pub numeric_substitutions: BTreeMap<TypeVariable, UnresolvedType>,
 }
 
 #[derive(Debug, Clone)]
@@ -115,6 +129,7 @@ pub enum TypeError {
     MissingInstance(TraitId, Vec<UnresolvedType>, Option<Span>),
     AmbiguousTrait(TraitId, Vec<GenericConstantId>),
     UnresolvedType,
+    InvalidNumericLiteral(UnresolvedType),
 }
 
 impl Context {
@@ -203,6 +218,46 @@ impl Context {
                 UnresolvedType::Parameter(actual),
                 expected,
             )),
+            (UnresolvedType::NumericVariable(var), ty) => {
+                match &ty {
+                    UnresolvedType::NumericVariable(other) => {
+                        if var == *other {
+                            return Ok(());
+                        }
+                    }
+                    UnresolvedType::Builtin(ty) if ty.is_numeric() => {}
+                    _ => {
+                        return Err(TypeError::Mismatch(
+                            UnresolvedType::NumericVariable(var),
+                            ty,
+                        ));
+                    }
+                }
+
+                self.numeric_substitutions.insert(var, ty);
+
+                Ok(())
+            }
+            (ty, UnresolvedType::NumericVariable(var)) => {
+                match &ty {
+                    UnresolvedType::NumericVariable(other) => {
+                        if var == *other {
+                            return Ok(());
+                        }
+                    }
+                    UnresolvedType::Builtin(ty) if ty.is_numeric() => {}
+                    _ => {
+                        return Err(TypeError::Mismatch(
+                            ty,
+                            UnresolvedType::NumericVariable(var),
+                        ));
+                    }
+                }
+
+                self.numeric_substitutions.insert(var, ty);
+
+                Ok(())
+            }
             (
                 UnresolvedType::Named(actual_id, actual_params, actual_structure),
                 UnresolvedType::Named(expected_id, expected_params, expected_structure),
@@ -306,11 +361,16 @@ impl Context {
                 UnresolvedType::Builtin(actual_builtin),
                 UnresolvedType::Builtin(expected_builtin),
             ) => match (actual_builtin, expected_builtin) {
-                (BuiltinType::Number, BuiltinType::Number) => Ok(()),
-                (BuiltinType::Integer, BuiltinType::Integer) => Ok(()),
-                (BuiltinType::Text, BuiltinType::Text) => Ok(()),
-                (BuiltinType::List(actual_element), BuiltinType::List(expected_element))
-                | (BuiltinType::Mutable(actual_element), BuiltinType::Mutable(expected_element)) => {
+                (BuiltinType::Number, BuiltinType::Number)
+                | (BuiltinType::Integer, BuiltinType::Integer)
+                | (BuiltinType::Natural, BuiltinType::Natural)
+                | (BuiltinType::Byte, BuiltinType::Byte)
+                | (BuiltinType::Signed, BuiltinType::Signed)
+                | (BuiltinType::Unsigned, BuiltinType::Unsigned)
+                | (BuiltinType::Float, BuiltinType::Float)
+                | (BuiltinType::Double, BuiltinType::Double)
+                | (BuiltinType::Text, BuiltinType::Text) => Ok(()),
+                (BuiltinType::List(actual_element), BuiltinType::List(expected_element)) => {
                     if let Err(error) = self.unify_internal(
                         (*actual_element).clone(),
                         (*expected_element).clone(),
@@ -321,6 +381,25 @@ impl Context {
                             TypeError::Mismatch(
                                 UnresolvedType::Builtin(BuiltinType::List(actual_element)),
                                 UnresolvedType::Builtin(BuiltinType::List(expected_element)),
+                            )
+                        } else {
+                            error
+                        });
+                    }
+
+                    Ok(())
+                }
+                (BuiltinType::Mutable(actual_element), BuiltinType::Mutable(expected_element)) => {
+                    if let Err(error) = self.unify_internal(
+                        (*actual_element).clone(),
+                        (*expected_element).clone(),
+                        generic,
+                        params,
+                    ) {
+                        return Err(if let TypeError::Mismatch(_, _) = error {
+                            TypeError::Mismatch(
+                                UnresolvedType::Builtin(BuiltinType::Mutable(actual_element)),
+                                UnresolvedType::Builtin(BuiltinType::Mutable(expected_element)),
                             )
                         } else {
                             error
@@ -387,6 +466,12 @@ impl UnresolvedType {
         match self {
             UnresolvedType::Variable(var) => {
                 if let Some(ty) = ctx.substitutions.get(var) {
+                    *self = ty.clone();
+                    self.apply(ctx);
+                }
+            }
+            UnresolvedType::NumericVariable(var) => {
+                if let Some(ty) = ctx.numeric_substitutions.get(var) {
                     *self = ty.clone();
                     self.apply(ctx);
                 }
@@ -471,24 +556,25 @@ impl UnresolvedType {
         }
     }
 
-    pub fn finalize(mut self, ctx: &Context, generic: bool) -> Option<Type> {
+    pub fn finalize(mut self, ctx: &Context, generic: bool) -> Result<Type, TypeError> {
         self.apply(ctx);
 
-        Some(match self {
-            UnresolvedType::Variable(_) => return None,
+        Ok(match self {
+            UnresolvedType::Variable(_) => return Err(TypeError::UnresolvedType),
             UnresolvedType::Parameter(param) => {
                 if generic {
                     Type::Parameter(param)
                 } else {
-                    return None;
+                    return Err(TypeError::UnresolvedType);
                 }
             }
+            UnresolvedType::NumericVariable(_) => Type::Builtin(BuiltinType::Number),
             UnresolvedType::Named(id, params, structure) => Type::Named(
                 id,
                 params
                     .into_iter()
                     .map(|param| param.finalize(ctx, generic))
-                    .collect::<Option<_>>()?,
+                    .collect::<Result<_, _>>()?,
                 structure.finalize(ctx, generic)?,
             ),
             UnresolvedType::Function(input, output) => Type::Function(
@@ -498,11 +584,17 @@ impl UnresolvedType {
             UnresolvedType::Tuple(tys) => Type::Tuple(
                 tys.into_iter()
                     .map(|ty| ty.finalize(ctx, generic))
-                    .collect::<Option<_>>()?,
+                    .collect::<Result<_, _>>()?,
             ),
             UnresolvedType::Builtin(builtin) => Type::Builtin(match builtin {
                 BuiltinType::Number => BuiltinType::Number,
                 BuiltinType::Integer => BuiltinType::Integer,
+                BuiltinType::Natural => BuiltinType::Natural,
+                BuiltinType::Byte => BuiltinType::Byte,
+                BuiltinType::Signed => BuiltinType::Signed,
+                BuiltinType::Unsigned => BuiltinType::Unsigned,
+                BuiltinType::Float => BuiltinType::Float,
+                BuiltinType::Double => BuiltinType::Double,
                 BuiltinType::Text => BuiltinType::Text,
                 BuiltinType::List(ty) => BuiltinType::List(Box::new(ty.finalize(ctx, generic)?)),
                 BuiltinType::Mutable(ty) => {
@@ -562,13 +654,13 @@ impl TypeStructure<UnresolvedType> {
         }
     }
 
-    pub fn finalize(self, ctx: &Context, generic: bool) -> Option<TypeStructure<Type>> {
-        Some(match self {
+    pub fn finalize(self, ctx: &Context, generic: bool) -> Result<TypeStructure<Type>, TypeError> {
+        Ok(match self {
             TypeStructure::Marker => TypeStructure::Marker,
             TypeStructure::Structure(tys) => TypeStructure::Structure(
                 tys.into_iter()
                     .map(|ty| ty.finalize(ctx, generic))
-                    .collect::<Option<_>>()?,
+                    .collect::<Result<_, _>>()?,
             ),
             TypeStructure::Enumeration(variants) => TypeStructure::Enumeration(
                 variants
@@ -576,11 +668,27 @@ impl TypeStructure<UnresolvedType> {
                     .map(|tys| {
                         tys.into_iter()
                             .map(|ty| ty.finalize(ctx, generic))
-                            .collect::<Option<_>>()
+                            .collect::<Result<_, _>>()
                     })
-                    .collect::<Option<_>>()?,
+                    .collect::<Result<_, _>>()?,
             ),
             TypeStructure::Recursive(id) => TypeStructure::Recursive(id),
         })
+    }
+}
+
+impl<Ty> BuiltinType<Ty> {
+    fn is_numeric(&self) -> bool {
+        matches!(
+            self,
+            BuiltinType::Number
+                | BuiltinType::Integer
+                | BuiltinType::Natural
+                | BuiltinType::Byte
+                | BuiltinType::Signed
+                | BuiltinType::Unsigned
+                | BuiltinType::Float
+                | BuiltinType::Double
+        )
     }
 }

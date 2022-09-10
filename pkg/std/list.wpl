@@ -46,7 +46,7 @@ tail : list -> external "runtime" "list-tail" list
 Index-Error : type
 
 [help "Retrieve the value in a `List` at a particular index, if it exists."]
-nth :: A => Number -> List A -> Result A Index-Error
+nth :: A => Natural -> List A -> Result A Index-Error
 nth : index -> list -> external "runtime" "list-nth" list index
 
 [help "Add a new item to the end of a `List`."]
@@ -58,11 +58,11 @@ append! :: A => A -> Mutable (List A) -> ()
 append! : new -> list -> list . set! (list . get . append new)
 
 [help "Insert a new item at a particular index inside a `List`."]
-insert :: A => Number -> A -> List A -> Result (List A) Index-Error
+insert :: A => Natural -> A -> List A -> Result (List A) Index-Error
 insert : index -> new -> list -> external "runtime" "list-insert" list index new
 
 [help "Insert a new item at a particular index inside a `Mutable List`."]
-insert! :: A => Number -> A -> Mutable (List A) -> Result () Index-Error
+insert! :: A => Natural -> A -> Mutable (List A) -> Result () Index-Error
 insert! : index -> new -> list -> {
 	new-list : try (list . get . insert index new)
 	list . set! new-list
@@ -70,11 +70,11 @@ insert! : index -> new -> list -> {
 }
 
 [help "Remove the item at a particular index inside a `List`."]
-remove :: A => Number -> List A -> Result (List A) Index-Error
+remove :: A => Natural -> List A -> Result (List A) Index-Error
 remove : index -> list -> external "runtime" "list-remove" list index
 
 [help "Remove the item at a particular index inside a `Mutable List`."]
-remove! :: A => Number -> Mutable (List A) -> Result () Index-Error
+remove! :: A => Natural -> Mutable (List A) -> Result () Index-Error
 remove! : index -> list -> {
 	new-list : try (list . get . remove index)
 	list . set! new-list

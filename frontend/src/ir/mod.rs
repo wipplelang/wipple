@@ -9,6 +9,7 @@ use crate::{
 use std::{
     collections::{BTreeMap, BTreeSet},
     mem,
+    os::raw::{c_int, c_uint},
 };
 
 pub mod lib {
@@ -57,6 +58,12 @@ pub enum Type {
     Number,
     Text,
     Integer,
+    Natural,
+    Byte,
+    Signed,
+    Unsigned,
+    Float,
+    Double,
     Discriminant,
     Boolean,
     Function(Box<Type>, Box<Type>),
@@ -83,7 +90,14 @@ pub enum ExpressionKind<I = SectionIndex> {
     Function(Function<I>),
     Variable(VariableId),
     FunctionInput,
-    Number(f64),
+    Number(rust_decimal::Decimal),
+    Integer(i64),
+    Natural(u64),
+    Byte(u8),
+    Signed(c_int),
+    Unsigned(c_uint),
+    Float(f32),
+    Double(f64),
     Text(InternedString),
     Call(ComputationId, ComputationId),
     External(InternedString, InternedString, Vec<ComputationId>),
@@ -355,6 +369,69 @@ impl<L: Loader> Compiler<L> {
                             Expression {
                                 ty,
                                 kind: ExpressionKind::Number(*number),
+                            },
+                        ));
+                    }
+                    typecheck::ExpressionKind::Integer(integer) => {
+                        sections.add_statement(Statement::Compute(
+                            computation,
+                            Expression {
+                                ty,
+                                kind: ExpressionKind::Integer(*integer),
+                            },
+                        ));
+                    }
+                    typecheck::ExpressionKind::Natural(natural) => {
+                        sections.add_statement(Statement::Compute(
+                            computation,
+                            Expression {
+                                ty,
+                                kind: ExpressionKind::Natural(*natural),
+                            },
+                        ));
+                    }
+                    typecheck::ExpressionKind::Byte(byte) => {
+                        sections.add_statement(Statement::Compute(
+                            computation,
+                            Expression {
+                                ty,
+                                kind: ExpressionKind::Byte(*byte),
+                            },
+                        ));
+                    }
+                    typecheck::ExpressionKind::Signed(signed) => {
+                        sections.add_statement(Statement::Compute(
+                            computation,
+                            Expression {
+                                ty,
+                                kind: ExpressionKind::Signed(*signed),
+                            },
+                        ));
+                    }
+                    typecheck::ExpressionKind::Unsigned(unsigned) => {
+                        sections.add_statement(Statement::Compute(
+                            computation,
+                            Expression {
+                                ty,
+                                kind: ExpressionKind::Unsigned(*unsigned),
+                            },
+                        ));
+                    }
+                    typecheck::ExpressionKind::Float(float) => {
+                        sections.add_statement(Statement::Compute(
+                            computation,
+                            Expression {
+                                ty,
+                                kind: ExpressionKind::Float(*float),
+                            },
+                        ));
+                    }
+                    typecheck::ExpressionKind::Double(double) => {
+                        sections.add_statement(Statement::Compute(
+                            computation,
+                            Expression {
+                                ty,
+                                kind: ExpressionKind::Double(*double),
                             },
                         ));
                     }
@@ -751,15 +828,14 @@ impl<L: Loader> Compiler<L> {
             };
         }
 
-        match &pattern.kind {
-            typecheck::PatternKind::Wildcard => gen_then_branch!(info),
-            typecheck::PatternKind::Number(number) => {
+        macro_rules! match_number {
+            ($kind:ident($n:expr), $comparison:literal) => {{
                 let predicate = self.new_computation_id();
                 sections.add_statement(Statement::Compute(
                     predicate,
                     Expression {
-                        ty: Type::Number,
-                        kind: ExpressionKind::Number(*number),
+                        ty: Type::$kind,
+                        kind: ExpressionKind::$kind($n),
                     },
                 ));
 
@@ -770,7 +846,7 @@ impl<L: Loader> Compiler<L> {
                         ty: Type::Boolean,
                         kind: ExpressionKind::External(
                             InternedString::new(lib::RUNTIME),
-                            InternedString::new("number-equality"),
+                            InternedString::new($comparison),
                             vec![input, predicate],
                         ),
                     },
@@ -782,6 +858,34 @@ impl<L: Loader> Compiler<L> {
                 });
 
                 gen_then_branch!(info);
+            }};
+        }
+
+        match &pattern.kind {
+            typecheck::PatternKind::Wildcard => gen_then_branch!(info),
+            typecheck::PatternKind::Number(number) => {
+                match_number!(Number(*number), "number-equality")
+            }
+            typecheck::PatternKind::Integer(integer) => {
+                match_number!(Integer(*integer), "integer-equality")
+            }
+            typecheck::PatternKind::Natural(natural) => {
+                match_number!(Natural(*natural), "natural-equality")
+            }
+            typecheck::PatternKind::Byte(byte) => {
+                match_number!(Byte(*byte), "byte-equality")
+            }
+            typecheck::PatternKind::Signed(signed) => {
+                match_number!(Signed(*signed), "signed-equality")
+            }
+            typecheck::PatternKind::Unsigned(unsigned) => {
+                match_number!(Unsigned(*unsigned), "unsigned-equality")
+            }
+            typecheck::PatternKind::Float(float) => {
+                match_number!(Float(*float), "float-equality")
+            }
+            typecheck::PatternKind::Double(double) => {
+                match_number!(Double(*double), "double-equality")
             }
             typecheck::PatternKind::Text(text) => {
                 let predicate = self.new_computation_id();
@@ -1089,6 +1193,12 @@ impl<L: Loader> Compiler<L> {
                 typecheck::BuiltinType::Number => Type::Number,
                 typecheck::BuiltinType::Text => Type::Text,
                 typecheck::BuiltinType::Integer => Type::Integer,
+                typecheck::BuiltinType::Natural => Type::Natural,
+                typecheck::BuiltinType::Byte => Type::Byte,
+                typecheck::BuiltinType::Signed => Type::Signed,
+                typecheck::BuiltinType::Unsigned => Type::Unsigned,
+                typecheck::BuiltinType::Float => Type::Float,
+                typecheck::BuiltinType::Double => Type::Double,
                 typecheck::BuiltinType::List(ty) => Type::List(Box::new(self.gen_type(*ty, info))),
                 typecheck::BuiltinType::Mutable(ty) => {
                     Type::Mutable(Box::new(self.gen_type(*ty, info)))
@@ -1175,6 +1285,13 @@ impl Expression<UnresolvedSectionIndex> {
                 ExpressionKind::Variable(id) => ExpressionKind::Variable(id),
                 ExpressionKind::FunctionInput => ExpressionKind::FunctionInput,
                 ExpressionKind::Number(number) => ExpressionKind::Number(number),
+                ExpressionKind::Integer(integer) => ExpressionKind::Integer(integer),
+                ExpressionKind::Natural(natural) => ExpressionKind::Natural(natural),
+                ExpressionKind::Byte(byte) => ExpressionKind::Byte(byte),
+                ExpressionKind::Signed(signed) => ExpressionKind::Signed(signed),
+                ExpressionKind::Unsigned(unsigned) => ExpressionKind::Unsigned(unsigned),
+                ExpressionKind::Float(float) => ExpressionKind::Float(float),
+                ExpressionKind::Double(double) => ExpressionKind::Double(double),
                 ExpressionKind::Text(text) => ExpressionKind::Text(text),
                 ExpressionKind::Call(function, input) => ExpressionKind::Call(function, input),
                 ExpressionKind::External(lib, identifier, inputs) => {
