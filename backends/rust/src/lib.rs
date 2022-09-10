@@ -249,7 +249,22 @@ fn write_expression<'a>(expr: &'a ir::Expression, info: &mut Info<'a>) -> Result
             quote!(__runtime::read::<_, #ty>(&#id))
         }
         ir::ExpressionKind::FunctionInput => quote!(__function_input.clone()),
-        ir::ExpressionKind::Number(number) => quote!(#number),
+        ir::ExpressionKind::Number(number) => {
+            let parts = number
+                .serialize()
+                .into_iter()
+                .map(proc_macro2::Literal::u8_suffixed)
+                .collect::<Vec<_>>();
+
+            quote!(rust_decimal::Decimal::deserialize([#(#parts),*]))
+        }
+        ir::ExpressionKind::Integer(integer) => quote!(#integer),
+        ir::ExpressionKind::Natural(natural) => quote!(#natural),
+        ir::ExpressionKind::Byte(byte) => quote!(#byte),
+        ir::ExpressionKind::Signed(signed) => quote!(#signed),
+        ir::ExpressionKind::Unsigned(unsigned) => quote!(#unsigned),
+        ir::ExpressionKind::Float(float) => quote!(#float),
+        ir::ExpressionKind::Double(double) => quote!(#double),
         ir::ExpressionKind::Text(text) => {
             let text = text.as_str();
             quote!(__runtime::text(#text))
@@ -475,6 +490,11 @@ fn write_expression<'a>(expr: &'a ir::Expression, info: &mut Info<'a>) -> Result
                     }),
                     match variants[*discriminant][*index] {
                         ir::Type::Recursive(_) => Some(quote!(*)),
+                        ir::Type::Structure(id, _) | ir::Type::Enumeration(id, _)
+                            if is_recursive(id, info) =>
+                        {
+                            Some(quote!(*))
+                        }
                         _ => None,
                     },
                 ),
@@ -518,6 +538,12 @@ fn write_type(ty: &ir::Type, info: &mut Info) -> TokenStream {
         match ty {
             ir::Type::Number => quote!(__runtime::Number),
             ir::Type::Integer => quote!(__runtime::Integer),
+            ir::Type::Natural => quote!(__runtime::Natural),
+            ir::Type::Byte => quote!(__runtime::Byte),
+            ir::Type::Signed => quote!(__runtime::Signed),
+            ir::Type::Unsigned => quote!(__runtime::Unsigned),
+            ir::Type::Float => quote!(__runtime::Float),
+            ir::Type::Double => quote!(__runtime::Double),
             ir::Type::Text => quote!(__runtime::Text),
             ir::Type::Discriminant => quote!(__runtime::Discriminant),
             ir::Type::Boolean => quote!(__runtime::Boolean),

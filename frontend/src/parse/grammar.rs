@@ -28,7 +28,7 @@ pub enum ExprKind {
     Underscore,
     Name(InternedString),
     Text(InternedString),
-    Number(f64),
+    Number(InternedString),
     List(Vec<ListLine>),
     Block(Vec<Statement>),
 }
@@ -351,21 +351,13 @@ impl<'src> Parser<'src> {
         let (span, token) = self.peek();
 
         match token {
-            Some(Token::Number(raw)) => {
+            Some(Token::Number(number)) => {
                 self.consume();
 
-                match raw.parse() {
-                    Ok(number) => Ok(Expr::new(span, ExprKind::Number(number))),
-                    Err(error) => {
-                        self.diagnostics.add(Diagnostic::new(
-                            DiagnosticLevel::Error,
-                            "syntax error",
-                            vec![Note::primary(span, error)],
-                        ));
-
-                        Err(ParseError::InvalidExpr)
-                    }
-                }
+                Ok(Expr::new(
+                    span,
+                    ExprKind::Number(InternedString::new(number)),
+                ))
             }
             Some(_) => Err(ParseError::WrongTokenType),
             None => Err(ParseError::EndOfFile),

@@ -74,25 +74,17 @@ unwrap :: Container Value
 	Container -> Value
 unwrap : x? -> expect (Unwrap-Message x?) x?
 
-
 As : Input Output => trait (Input -> Output)
-
 as : cast operator (x t ~> (As x :: t))
-
 A => instance As A A : it
-instance As Integer Number : n -> external "runtime" "integer-to-number" n
 
 As? : Input Output => trait (Input -> Maybe Output)
-
 as? : cast operator (x t ~> (As? x :: Maybe t))
-
 A => instance As? A A : Some
-instance As? Number Integer : n -> external "runtime" "number-to-integer" n
 
 [help "Represents the default or initial value of a type."]
 Default : A => trait A
 instance Default Number : 0
-instance Default Integer : 0 as? Integer . unwrap
 instance Default Text : ""
 instance Default Boolean : False
 A => instance Default (Maybe A) : None

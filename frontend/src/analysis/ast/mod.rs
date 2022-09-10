@@ -66,7 +66,7 @@ pub struct Expression {
 pub enum ExpressionKind {
     Error,
     Name(InternedString),
-    Number(f64),
+    Number(InternedString),
     Text(InternedString),
     Block(Vec<Statement>),
     Call(Box<Expression>, Vec<Expression>),
@@ -120,7 +120,7 @@ pub struct Pattern {
 pub enum PatternKind {
     Error,
     Wildcard,
-    Number(f64),
+    Number(InternedString),
     Text(InternedString),
     Name(InternedString),
     Destructure(Vec<(Span, InternedString)>),

@@ -1,5 +1,8 @@
 #![allow(clippy::type_complexity)]
 
+#[macro_use]
+mod number;
+
 mod engine;
 mod format;
 mod traverse;
@@ -21,6 +24,7 @@ use std::{
     cell::RefCell,
     collections::{BTreeMap, BTreeSet, HashMap},
     mem,
+    os::raw::{c_int, c_uint},
     rc::Rc,
 };
 
@@ -52,7 +56,6 @@ macro_rules! expr {
                 Marker,
                 Variable(VariableId),
                 Text(InternedString),
-                Number(f64),
                 Block(Vec<[<$prefix Expression>]>),
                 Call(Box<[<$prefix Expression>]>, Box<[<$prefix Expression>]>),
                 Function([<$prefix Pattern>], Box<[<$prefix Expression>]>),
@@ -92,7 +95,6 @@ macro_rules! pattern {
             #[serde(tag = "kind", content = "value")]
             $vis enum [<$prefix PatternKind>] {
                 Wildcard,
-                Number(f64),
                 Text(InternedString),
                 Variable(VariableId),
                 Or(Box<[<$prefix Pattern>]>, Box<[<$prefix Pattern>]>),
@@ -106,32 +108,52 @@ macro_rules! pattern {
 
 expr!(, "Unresolved", UnresolvedType, {
     Error,
+    Number(InternedString),
     Trait(TraitId),
     Constant(GenericConstantId),
 });
 
 expr!(, "Monomorphized", UnresolvedType, {
     Error,
+    Number(InternedString),
     Constant(MonomorphizedConstantId),
 });
 
 expr!(pub, "", Type, {
+    Number(rust_decimal::Decimal),
+    Integer(i64),
+    Natural(u64),
+    Byte(u8),
+    Signed(c_int),
+    Unsigned(c_uint),
+    Float(f32),
+    Double(f64),
     Constant(MonomorphizedConstantId),
 });
 
 pattern!(, "Unresolved", {
     Error,
+    Number(InternedString),
     Destructure(HashMap<InternedString, UnresolvedPattern>),
     Variant(TypeId, usize, Vec<UnresolvedPattern>),
     Annotate(Box<UnresolvedPattern>, UnresolvedType),
 });
 
 pattern!(, "Monomorphized", {
+    Number(InternedString),
     Destructure(BTreeMap<usize, MonomorphizedPattern>),
     Variant(usize, Vec<MonomorphizedPattern>),
 });
 
 pattern!(pub, "", {
+    Number(rust_decimal::Decimal),
+    Integer(i64),
+    Natural(u64),
+    Byte(u8),
+    Signed(c_int),
+    Unsigned(c_uint),
+    Float(f32),
+    Double(f64),
     Destructure(BTreeMap<usize, Pattern>),
     Variant(usize, Vec<Pattern>)
 });
@@ -871,9 +893,7 @@ impl<L: Loader> Compiler<L> {
                                     .unwrap()
                                     .clone()
                                     .finalize(&typechecker.ctx, true)
-                                    .ok_or_else(|| {
-                                        Error::new(TypeError::UnresolvedType, decl.span)
-                                    })?,
+                                    .map_err(|e| Error::new(e, decl.span))?,
                                 uses: decl.uses,
                             },
                         ))
@@ -1018,6 +1038,13 @@ impl<L: Loader> Compiler<L> {
                         error.span,
                         "try annotating the type with `::`",
                     )],
+                ),
+                TypeError::InvalidNumericLiteral(ty) => Diagnostic::error(
+                    format!(
+                        "number does not fit into a {}",
+                        typechecker.format_type(ty, true)
+                    ),
+                    vec![Note::primary(error.span, "invalid numeric literal")],
                 ),
             };
 
@@ -1216,7 +1243,7 @@ impl<L: Loader> Typechecker<L> {
             },
             lower::ExpressionKind::Number(number) => UnresolvedExpression {
                 span: expr.span,
-                ty: UnresolvedType::Builtin(BuiltinType::Number),
+                ty: UnresolvedType::NumericVariable(self.ctx.new_variable()),
                 kind: UnresolvedExpressionKind::Number(*number),
             },
             lower::ExpressionKind::Block(statements) => {
@@ -2487,93 +2514,118 @@ impl<L: Loader> Typechecker<L> {
         generic: bool,
         file: &Rc<RefCell<lower::File>>,
     ) -> Result<Expression, Error> {
+        let ty = expr
+            .ty
+            .finalize(&self.ctx, generic)
+            .map_err(|e| Error::new(e, expr.span))?;
+
+        let kind = match expr.kind {
+            MonomorphizedExpressionKind::Error => {
+                return Err(Error::new(TypeError::ErrorExpression, expr.span));
+            }
+            MonomorphizedExpressionKind::Marker => ExpressionKind::Marker,
+            MonomorphizedExpressionKind::Constant(id) => ExpressionKind::Constant(id),
+            MonomorphizedExpressionKind::Variable(var) => ExpressionKind::Variable(var),
+            MonomorphizedExpressionKind::Text(text) => ExpressionKind::Text(text),
+            MonomorphizedExpressionKind::Number(number) => {
+                parse_number!(number, ExpressionKind, &ty, Type)
+                    .map_err(|e| Error::new(e, expr.span))?
+            }
+            MonomorphizedExpressionKind::Block(statements) => ExpressionKind::Block(
+                statements
+                    .into_iter()
+                    .map(|expr| self.finalize_internal(expr, generic, file))
+                    .collect::<Result<_, _>>()?,
+            ),
+            MonomorphizedExpressionKind::Call(func, input) => ExpressionKind::Call(
+                Box::new(self.finalize_internal(*func, generic, file)?),
+                Box::new(self.finalize_internal(*input, generic, file)?),
+            ),
+            MonomorphizedExpressionKind::Function(pattern, body) => {
+                let input_ty = match &ty {
+                    Type::Function(input, _) => input.clone(),
+                    _ => unreachable!(),
+                };
+
+                ExpressionKind::Function(
+                    self.finalize_pattern(pattern, generic, &input_ty, file)?,
+                    Box::new(self.finalize_internal(*body, generic, file)?),
+                )
+            }
+            MonomorphizedExpressionKind::When(input, arms) => {
+                let input = self.finalize_internal(*input, generic, file)?;
+
+                let arms = arms
+                    .into_iter()
+                    .map(|arm| {
+                        Ok(Arm {
+                            span: arm.span,
+                            pattern: self.finalize_pattern(
+                                arm.pattern,
+                                generic,
+                                &input.ty,
+                                file,
+                            )?,
+                            body: self.finalize_internal(arm.body, generic, file)?,
+                        })
+                    })
+                    .collect::<Result<_, _>>()?;
+
+                ExpressionKind::When(Box::new(input), arms)
+            }
+            MonomorphizedExpressionKind::External(lib, identifier, inputs) => {
+                ExpressionKind::External(
+                    lib,
+                    identifier,
+                    inputs
+                        .into_iter()
+                        .map(|expr| self.finalize_internal(expr, generic, file))
+                        .collect::<Result<_, _>>()?,
+                )
+            }
+            MonomorphizedExpressionKind::Initialize(pattern, value) => {
+                let value = self.finalize_internal(*value, generic, file)?;
+
+                ExpressionKind::Initialize(
+                    self.finalize_pattern(pattern, generic, &value.ty, file)?,
+                    Box::new(value),
+                )
+            }
+            MonomorphizedExpressionKind::Structure(fields) => ExpressionKind::Structure(
+                fields
+                    .into_iter()
+                    .map(|expr| self.finalize_internal(expr, generic, file))
+                    .collect::<Result<_, _>>()?,
+            ),
+            MonomorphizedExpressionKind::Variant(index, values) => ExpressionKind::Variant(
+                index,
+                values
+                    .into_iter()
+                    .map(|expr| self.finalize_internal(expr, generic, file))
+                    .collect::<Result<_, _>>()?,
+            ),
+            MonomorphizedExpressionKind::Return(value) => {
+                ExpressionKind::Return(Box::new(self.finalize_internal(*value, generic, file)?))
+            }
+            MonomorphizedExpressionKind::Loop(body) => {
+                ExpressionKind::Loop(Box::new(self.finalize_internal(*body, generic, file)?))
+            }
+            MonomorphizedExpressionKind::Break(value) => {
+                ExpressionKind::Break(Box::new(self.finalize_internal(*value, generic, file)?))
+            }
+            MonomorphizedExpressionKind::Continue => ExpressionKind::Continue,
+            MonomorphizedExpressionKind::Tuple(exprs) => ExpressionKind::Tuple(
+                exprs
+                    .into_iter()
+                    .map(|expr| self.finalize_internal(expr, generic, file))
+                    .collect::<Result<_, _>>()?,
+            ),
+        };
+
         Ok(Expression {
             span: expr.span,
-            ty: expr
-                .ty
-                .finalize(&self.ctx, generic)
-                .ok_or_else(|| Error::new(TypeError::UnresolvedType, expr.span))?,
-            kind: match expr.kind {
-                MonomorphizedExpressionKind::Error => {
-                    return Err(Error::new(TypeError::ErrorExpression, expr.span));
-                }
-                MonomorphizedExpressionKind::Marker => ExpressionKind::Marker,
-                MonomorphizedExpressionKind::Constant(id) => ExpressionKind::Constant(id),
-                MonomorphizedExpressionKind::Variable(var) => ExpressionKind::Variable(var),
-                MonomorphizedExpressionKind::Text(text) => ExpressionKind::Text(text),
-                MonomorphizedExpressionKind::Number(number) => ExpressionKind::Number(number),
-                MonomorphizedExpressionKind::Block(statements) => ExpressionKind::Block(
-                    statements
-                        .into_iter()
-                        .map(|expr| self.finalize_internal(expr, generic, file))
-                        .collect::<Result<_, _>>()?,
-                ),
-                MonomorphizedExpressionKind::Call(func, input) => ExpressionKind::Call(
-                    Box::new(self.finalize_internal(*func, generic, file)?),
-                    Box::new(self.finalize_internal(*input, generic, file)?),
-                ),
-                MonomorphizedExpressionKind::Function(pattern, body) => ExpressionKind::Function(
-                    self.finalize_pattern(pattern, generic, file)?,
-                    Box::new(self.finalize_internal(*body, generic, file)?),
-                ),
-                MonomorphizedExpressionKind::When(input, arms) => ExpressionKind::When(
-                    Box::new(self.finalize_internal(*input, generic, file)?),
-                    arms.into_iter()
-                        .map(|arm| {
-                            Ok(Arm {
-                                span: arm.span,
-                                pattern: self.finalize_pattern(arm.pattern, generic, file)?,
-                                body: self.finalize_internal(arm.body, generic, file)?,
-                            })
-                        })
-                        .collect::<Result<_, _>>()?,
-                ),
-                MonomorphizedExpressionKind::External(lib, identifier, inputs) => {
-                    ExpressionKind::External(
-                        lib,
-                        identifier,
-                        inputs
-                            .into_iter()
-                            .map(|expr| self.finalize_internal(expr, generic, file))
-                            .collect::<Result<_, _>>()?,
-                    )
-                }
-                MonomorphizedExpressionKind::Initialize(pattern, value) => {
-                    ExpressionKind::Initialize(
-                        self.finalize_pattern(pattern, generic, file)?,
-                        Box::new(self.finalize_internal(*value, generic, file)?),
-                    )
-                }
-                MonomorphizedExpressionKind::Structure(fields) => ExpressionKind::Structure(
-                    fields
-                        .into_iter()
-                        .map(|expr| self.finalize_internal(expr, generic, file))
-                        .collect::<Result<_, _>>()?,
-                ),
-                MonomorphizedExpressionKind::Variant(index, values) => ExpressionKind::Variant(
-                    index,
-                    values
-                        .into_iter()
-                        .map(|expr| self.finalize_internal(expr, generic, file))
-                        .collect::<Result<_, _>>()?,
-                ),
-                MonomorphizedExpressionKind::Return(value) => {
-                    ExpressionKind::Return(Box::new(self.finalize_internal(*value, generic, file)?))
-                }
-                MonomorphizedExpressionKind::Loop(body) => {
-                    ExpressionKind::Loop(Box::new(self.finalize_internal(*body, generic, file)?))
-                }
-                MonomorphizedExpressionKind::Break(value) => {
-                    ExpressionKind::Break(Box::new(self.finalize_internal(*value, generic, file)?))
-                }
-                MonomorphizedExpressionKind::Continue => ExpressionKind::Continue,
-                MonomorphizedExpressionKind::Tuple(exprs) => ExpressionKind::Tuple(
-                    exprs
-                        .into_iter()
-                        .map(|expr| self.finalize_internal(expr, generic, file))
-                        .collect::<Result<_, _>>()?,
-                ),
-            },
+            ty,
+            kind,
         })
     }
 
@@ -2581,20 +2633,27 @@ impl<L: Loader> Typechecker<L> {
         &mut self,
         pattern: MonomorphizedPattern,
         generic: bool,
+        input_ty: &Type,
         file: &Rc<RefCell<lower::File>>,
     ) -> Result<Pattern, Error> {
         Ok(Pattern {
             span: pattern.span,
             kind: match pattern.kind {
                 MonomorphizedPatternKind::Wildcard => PatternKind::Wildcard,
-                MonomorphizedPatternKind::Number(number) => PatternKind::Number(number),
+                MonomorphizedPatternKind::Number(number) => {
+                    parse_number!(number, PatternKind, input_ty, Type)
+                        .map_err(|e| Error::new(e, pattern.span))?
+                }
                 MonomorphizedPatternKind::Text(text) => PatternKind::Text(text),
                 MonomorphizedPatternKind::Variable(var) => PatternKind::Variable(var),
                 MonomorphizedPatternKind::Destructure(fields) => PatternKind::Destructure(
                     fields
                         .into_iter()
                         .map(|(index, field)| {
-                            Ok((index, self.finalize_pattern(field, generic, file)?))
+                            Ok((
+                                index,
+                                self.finalize_pattern(field, generic, input_ty, file)?,
+                            ))
                         })
                         .collect::<Result<_, _>>()?,
                 ),
@@ -2602,21 +2661,21 @@ impl<L: Loader> Typechecker<L> {
                     index,
                     values
                         .into_iter()
-                        .map(|value| self.finalize_pattern(value, generic, file))
+                        .map(|value| self.finalize_pattern(value, generic, input_ty, file))
                         .collect::<Result<_, _>>()?,
                 ),
                 MonomorphizedPatternKind::Or(lhs, rhs) => PatternKind::Or(
-                    Box::new(self.finalize_pattern(*lhs, generic, file)?),
-                    Box::new(self.finalize_pattern(*rhs, generic, file)?),
+                    Box::new(self.finalize_pattern(*lhs, generic, input_ty, file)?),
+                    Box::new(self.finalize_pattern(*rhs, generic, input_ty, file)?),
                 ),
                 MonomorphizedPatternKind::Where(pattern, condition) => PatternKind::Where(
-                    Box::new(self.finalize_pattern(*pattern, generic, file)?),
+                    Box::new(self.finalize_pattern(*pattern, generic, input_ty, file)?),
                     Box::new(self.finalize_internal(*condition, generic, file)?),
                 ),
                 MonomorphizedPatternKind::Tuple(patterns) => PatternKind::Tuple(
                     patterns
                         .into_iter()
-                        .map(|pattern| self.finalize_pattern(pattern, generic, file))
+                        .map(|pattern| self.finalize_pattern(pattern, generic, input_ty, file))
                         .collect::<Result<_, _>>()?,
                 ),
             },
@@ -2826,6 +2885,84 @@ impl<L: Loader> Typechecker<L> {
                         }
 
                         UnresolvedType::Builtin(BuiltinType::Integer)
+                    }
+                    lower::BuiltinTypeKind::Natural => {
+                        if !parameters.is_empty() {
+                            self.compiler.diagnostics.add(Diagnostic::error(
+                                "`Natural` does not accept parameters",
+                                vec![Note::primary(
+                                    annotation.span,
+                                    "try removing these parameters",
+                                )],
+                            ));
+                        }
+
+                        UnresolvedType::Builtin(BuiltinType::Natural)
+                    }
+                    lower::BuiltinTypeKind::Byte => {
+                        if !parameters.is_empty() {
+                            self.compiler.diagnostics.add(Diagnostic::error(
+                                "`Byte` does not accept parameters",
+                                vec![Note::primary(
+                                    annotation.span,
+                                    "try removing these parameters",
+                                )],
+                            ));
+                        }
+
+                        UnresolvedType::Builtin(BuiltinType::Byte)
+                    }
+                    lower::BuiltinTypeKind::Signed => {
+                        if !parameters.is_empty() {
+                            self.compiler.diagnostics.add(Diagnostic::error(
+                                "`Signed` does not accept parameters",
+                                vec![Note::primary(
+                                    annotation.span,
+                                    "try removing these parameters",
+                                )],
+                            ));
+                        }
+
+                        UnresolvedType::Builtin(BuiltinType::Signed)
+                    }
+                    lower::BuiltinTypeKind::Unsigned => {
+                        if !parameters.is_empty() {
+                            self.compiler.diagnostics.add(Diagnostic::error(
+                                "`Unsigned` does not accept parameters",
+                                vec![Note::primary(
+                                    annotation.span,
+                                    "try removing these parameters",
+                                )],
+                            ));
+                        }
+
+                        UnresolvedType::Builtin(BuiltinType::Unsigned)
+                    }
+                    lower::BuiltinTypeKind::Float => {
+                        if !parameters.is_empty() {
+                            self.compiler.diagnostics.add(Diagnostic::error(
+                                "`Float` does not accept parameters",
+                                vec![Note::primary(
+                                    annotation.span,
+                                    "try removing these parameters",
+                                )],
+                            ));
+                        }
+
+                        UnresolvedType::Builtin(BuiltinType::Float)
+                    }
+                    lower::BuiltinTypeKind::Double => {
+                        if !parameters.is_empty() {
+                            self.compiler.diagnostics.add(Diagnostic::error(
+                                "`Double` does not accept parameters",
+                                vec![Note::primary(
+                                    annotation.span,
+                                    "try removing these parameters",
+                                )],
+                            ));
+                        }
+
+                        UnresolvedType::Builtin(BuiltinType::Double)
                     }
                     lower::BuiltinTypeKind::Text => {
                         if !parameters.is_empty() {

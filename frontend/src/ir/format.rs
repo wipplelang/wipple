@@ -89,6 +89,13 @@ impl std::fmt::Display for Program {
                             writeln!(f, "{}", mangle_function_input())?
                         }
                         ExpressionKind::Number(number) => writeln!(f, "number {}", number)?,
+                        ExpressionKind::Integer(integer) => writeln!(f, "integer {}", integer)?,
+                        ExpressionKind::Natural(natural) => writeln!(f, "natural {}", natural)?,
+                        ExpressionKind::Byte(byte) => writeln!(f, "byte {}", byte)?,
+                        ExpressionKind::Signed(signed) => writeln!(f, "signed {}", signed)?,
+                        ExpressionKind::Unsigned(unsigned) => writeln!(f, "unsigned {}", unsigned)?,
+                        ExpressionKind::Float(float) => writeln!(f, "float {}", float)?,
+                        ExpressionKind::Double(double) => writeln!(f, "double {}", double)?,
                         ExpressionKind::Text(text) => writeln!(f, "text {:?}", text)?,
                         ExpressionKind::Call(func, input) => writeln!(
                             f,
@@ -231,6 +238,12 @@ impl std::fmt::Display for Type {
         match self {
             Type::Number => write!(f, "number"),
             Type::Integer => write!(f, "integer"),
+            Type::Natural => write!(f, "natural"),
+            Type::Byte => write!(f, "byte"),
+            Type::Signed => write!(f, "signed"),
+            Type::Unsigned => write!(f, "unsigned"),
+            Type::Float => write!(f, "float"),
+            Type::Double => write!(f, "double"),
             Type::Text => write!(f, "text"),
             Type::Discriminant => write!(f, "discriminant"),
             Type::Boolean => write!(f, "boolean"),

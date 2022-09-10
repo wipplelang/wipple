@@ -56,9 +56,7 @@ impl<L: Loader> Compiler<L> {
             BuiltinType {
                 kind: BuiltinTypeKind::Number,
                 attributes: DeclarationAttributes {
-                    help: vec![InternedString::new(
-                        "Represents a whole or fractional number, represented as a 64-bit floating point value. By default, numeric literals have the type `Number`; if you need to convert it to an `Integer`, use the `as?` operator.",
-                    )],
+                    help: vec![InternedString::new("Represents a decimal number.",)],
                     ..Default::default()
                 }
             },
@@ -73,7 +71,111 @@ impl<L: Loader> Compiler<L> {
             BuiltinType {
                 kind: BuiltinTypeKind::Integer,
                 attributes: DeclarationAttributes {
-                    help: vec![InternedString::new("Represents a whole number, specifically a 64-bit signed integer. Integers are most commonly used when dealing with lists, whose items can only be accessed at whole-number intervals.",)],
+                    help: vec![InternedString::new(
+                        "Represents a whole number that can be positive or negative.",
+                    )],
+                    ..Default::default()
+                }
+            },
+        );
+
+        add!(
+            builtin_types,
+            Span::builtin("`Natural` type"),
+            "Natural",
+            NATURAL_TYPE: BuiltinTypeId = self.new_builtin_type_id(),
+            ScopeValue::BuiltinType,
+            BuiltinType {
+                kind: BuiltinTypeKind::Natural,
+                attributes: DeclarationAttributes {
+                    help: vec![InternedString::new(
+                        "Represents a whole number that can only be positive.",
+                    )],
+                    ..Default::default()
+                }
+            },
+        );
+
+        add!(
+            builtin_types,
+            Span::builtin("`Byte` type"),
+            "Byte",
+            BYTE_TYPE: BuiltinTypeId = self.new_builtin_type_id(),
+            ScopeValue::BuiltinType,
+            BuiltinType {
+                kind: BuiltinTypeKind::Byte,
+                attributes: DeclarationAttributes {
+                    help: vec![InternedString::new(
+                        "Represents a byte of data, specifically an 8-bit unsigned integer.",
+                    )],
+                    ..Default::default()
+                }
+            },
+        );
+
+        add!(
+            builtin_types,
+            Span::builtin("`Signed` type"),
+            "Signed",
+            SIGNED_TYPE: BuiltinTypeId = self.new_builtin_type_id(),
+            ScopeValue::BuiltinType,
+            BuiltinType {
+                kind: BuiltinTypeKind::Signed,
+                attributes: DeclarationAttributes {
+                    help: vec![InternedString::new(
+                        "Represents a platform-sized signed integer, equivalent to the `signed int` type in C.",
+                    )],
+                    ..Default::default()
+                }
+            },
+        );
+
+        add!(
+            builtin_types,
+            Span::builtin("`Unsigned` type"),
+            "Unsigned",
+            UNSIGNED_TYPE: BuiltinTypeId = self.new_builtin_type_id(),
+            ScopeValue::BuiltinType,
+            BuiltinType {
+                kind: BuiltinTypeKind::Unsigned,
+                attributes: DeclarationAttributes {
+                    help: vec![InternedString::new(
+                        "Represents a platform-sized unsigned integer, equivalent to the `unsigned int` type in C.",
+                    )],
+                    ..Default::default()
+                }
+            },
+        );
+
+        add!(
+            builtin_types,
+            Span::builtin("`Float` type"),
+            "Float",
+            FLOAT_TYPE: BuiltinTypeId = self.new_builtin_type_id(),
+            ScopeValue::BuiltinType,
+            BuiltinType {
+                kind: BuiltinTypeKind::Float,
+                attributes: DeclarationAttributes {
+                    help: vec![InternedString::new(
+                        "Represents a 32-bit floating-point number, equivalent to the `float` type in C.",
+                    )],
+                    ..Default::default()
+                }
+            },
+        );
+
+        add!(
+            builtin_types,
+            Span::builtin("`Double` type"),
+            "Double",
+            DOUBLE_TYPE: BuiltinTypeId = self.new_builtin_type_id(),
+            ScopeValue::BuiltinType,
+            BuiltinType {
+                kind: BuiltinTypeKind::Double,
+                attributes: DeclarationAttributes {
+                    help: vec![InternedString::new(
+                        "Represents a 64-bit floating-point number, equivalent to the `double` type in C.",
+                    )],
                     ..Default::default()
                 }
             },
