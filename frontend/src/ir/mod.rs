@@ -1,1330 +1,567 @@
-#![allow(clippy::too_many_arguments, clippy::new_without_default)]
+#![allow(
+    clippy::too_many_arguments,
+    clippy::type_complexity,
+    clippy::new_without_default
+)]
 
 mod format;
+mod prepare;
 
 use crate::{
-    analysis::typecheck, helpers::InternedString, Compiler, ComputationId, Loader,
-    MonomorphizedConstantId, TypeId, VariableId,
+    analysis::typecheck, helpers::InternedString, Compiler, Label, Loader, MonomorphizedConstantId,
+    VariableId,
 };
+use itertools::Itertools;
 use std::{
-    collections::{BTreeMap, BTreeSet},
-    mem,
+    collections::BTreeMap,
     os::raw::{c_int, c_uint},
 };
 
-pub mod lib {
+pub mod abi {
     pub const RUNTIME: &str = "runtime";
 }
 
 #[derive(Debug, Clone)]
 pub struct Program {
-    pub nominal_types: BTreeMap<TypeId, Type>,
-    pub recursive_types: BTreeSet<TypeId>,
-    pub constants: BTreeMap<MonomorphizedConstantId, Constant>,
-    pub entrypoint: Sections,
+    pub labels: BTreeMap<Label, Vec<Statement>>,
+    pub entrypoint: Label,
 }
 
 #[derive(Debug, Clone)]
-pub struct Section<I = SectionIndex> {
-    pub statements: Vec<Statement<I>>,
-    pub terminator: Option<Terminator<I>>,
-}
-
-impl<I> Section<I> {
-    pub fn new() -> Self {
-        Section {
-            statements: Vec::new(),
-            terminator: None,
-        }
-    }
-
-    fn add_statement(&mut self, statement: Statement<I>) {
-        assert!(!self.has_terminator());
-        self.statements.push(statement);
-    }
-
-    fn set_terminator(&mut self, terminator: Terminator<I>) {
-        assert!(!self.has_terminator());
-        self.terminator = Some(terminator);
-    }
-
-    fn has_terminator(&self) -> bool {
-        self.terminator.is_some()
-    }
-}
-
-#[derive(Debug, Clone)]
-pub enum Type {
-    Number,
-    Text,
-    Integer,
-    Natural,
-    Byte,
-    Signed,
-    Unsigned,
-    Float,
-    Double,
-    Discriminant,
-    Boolean,
-    Function(Box<Type>, Box<Type>),
-    Tuple(Vec<Type>),
-    List(Box<Type>),
-    Mutable(Box<Type>),
+pub enum Statement {
+    /// Duplicate the top value on the stack.
+    Copy,
+    /// Remove the top value on the stack.
+    Drop,
+    /// Take the top value on the stack and assign it to a variable in the
+    /// current scope.
+    Initialize(VariableId),
+    /// Go to the provided label, maintaining the current stack and variable
+    /// scope. When the label finishes executing, return to the caller.
+    Goto(Label, bool),
+    /// Go to the provided label with the top of the stack as input, maintaining
+    /// the current stack and variable scope. When the label finishes executing,
+    /// return to the caller.
+    Sub(Label, bool),
+    /// Pop a value off the stack. If this value is equivalent to the value
+    /// produced by [`Statement::Variant(1, 0)`], go to the first label.
+    /// Otherwise, go to the second label.
+    If(Label, Label),
+    /// Push a marker value to the stack.
     Marker,
-    Structure(TypeId, Vec<Type>),
-    Enumeration(TypeId, Vec<Vec<Type>>),
-    Recursive(TypeId),
-    Unreachable,
-}
-
-#[derive(Debug, Clone)]
-pub struct Expression<I = SectionIndex> {
-    pub ty: Type,
-    pub kind: ExpressionKind<I>,
-}
-
-#[derive(Debug, Clone)]
-pub enum ExpressionKind<I = SectionIndex> {
-    Marker,
-    Constant(MonomorphizedConstantId),
-    Function(Function<I>),
+    /// Treat a label as a closure and push it to the stack.
+    Closure(Label),
+    /// Retrieve a variable from the current scope and push its value to the
+    /// stack.
     Variable(VariableId),
-    FunctionInput,
+    /// Treat a label as a constant, initialize it if needed, and push its value
+    /// to the stack.
+    Constant(Label),
+    /// Push a number to the stack.
     Number(rust_decimal::Decimal),
+    /// Push a number to the stack.
     Integer(i64),
+    /// Push a number to the stack.
     Natural(u64),
+    /// Push a number to the stack.
     Byte(u8),
+    /// Push a number to the stack.
     Signed(c_int),
+    /// Push a number to the stack.
     Unsigned(c_uint),
+    /// Push a number to the stack.
     Float(f32),
+    /// Push a number to the stack.
     Double(f64),
+    /// Push text to the stack.
     Text(InternedString),
-    Call(ComputationId, ComputationId),
-    External(InternedString, InternedString, Vec<ComputationId>),
-    Tuple(Vec<ComputationId>),
-    Structure(Vec<ComputationId>),
-    Variant(usize, Vec<ComputationId>),
-    TupleElement(ComputationId, usize),
-    StructureElement(ComputationId, TypeId, usize),
-    VariantElement(ComputationId, (TypeId, usize), usize),
-    Discriminant(ComputationId),
-    CompareDiscriminants(ComputationId, usize),
-}
-
-#[derive(Debug, Clone)]
-pub enum Statement<I = SectionIndex> {
-    Compute(ComputationId, Expression<I>),
-    Initialize(VariableId, ComputationId),
-    Drop(Vec<VariableId>),
-}
-
-#[derive(Debug, Clone)]
-pub enum Terminator<I = SectionIndex> {
-    If(ComputationId, I, I),
-    Return(ComputationId),
-    Goto(I),
-    Unreachable,
-}
-
-#[derive(Debug, Clone)]
-pub struct Constant<I = SectionIndex> {
-    pub ty: Type,
-    pub sections: Sections<I>,
-}
-
-#[derive(Debug, Clone)]
-pub struct Function<I = SectionIndex> {
-    pub captures: Vec<VariableId>,
-    pub locals: Vec<VariableId>,
-    pub sections: Sections<I>,
-}
-
-#[derive(Debug, Clone)]
-pub struct Sections<I = SectionIndex>(Vec<Section<I>>);
-
-impl<I> Default for Sections<I> {
-    fn default() -> Self {
-        Sections(vec![Section::new()])
-    }
-}
-
-impl<I> Sections<I> {
-    pub fn new() -> Self {
-        Default::default()
-    }
-
-    pub fn enumerate(&self) -> impl Iterator<Item = (SectionIndex, &Section<I>)> {
-        self.0
-            .iter()
-            .enumerate()
-            .map(|(index, section)| (SectionIndex(index), section))
-    }
-
-    fn current_index(&self) -> SectionIndex {
-        SectionIndex(self.next_index().0 - 1)
-    }
-
-    fn next_index(&self) -> SectionIndex {
-        SectionIndex(self.0.len())
-    }
-
-    fn add_section(&mut self) -> SectionIndex {
-        self.add_section_with(Section::new())
-    }
-
-    fn add_section_with(&mut self, section: Section<I>) -> SectionIndex {
-        let index = self.next_index();
-        self.0.push(section);
-        index
-    }
-
-    fn add_statement(&mut self, statement: Statement<I>) {
-        self.0.last_mut().unwrap().add_statement(statement);
-    }
-
-    pub fn set_terminator(&mut self, terminator: Terminator<I>) {
-        self.0.last_mut().unwrap().set_terminator(terminator);
-    }
-
-    fn has_terminator(&self) -> bool {
-        self.0.last().unwrap().has_terminator()
-    }
-}
-
-impl<S> std::ops::Index<SectionIndex> for Sections<S> {
-    type Output = Section<S>;
-
-    fn index(&self, index: SectionIndex) -> &Self::Output {
-        &self.0[index.0]
-    }
-}
-
-impl<S> std::ops::IndexMut<SectionIndex> for Sections<S> {
-    fn index_mut(&mut self, index: SectionIndex) -> &mut Self::Output {
-        &mut self.0[index.0]
-    }
-}
-
-impl<S> FromIterator<Section<S>> for Sections<S> {
-    fn from_iter<T: IntoIterator<Item = Section<S>>>(iter: T) -> Self {
-        Sections(Vec::from_iter(iter))
-    }
-}
-
-impl<S> IntoIterator for Sections<S> {
-    type Item = Section<S>;
-    type IntoIter = std::vec::IntoIter<Self::Item>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        self.0.into_iter()
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct SectionIndex(pub usize);
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-enum UnresolvedSectionIndex {
-    Resolved(SectionIndex),
-    Unresolved(usize),
+    /// Take the top two values from the stack, the first being a function and
+    /// the second being its input. Then call the function with the input and
+    /// push the result to the stack.
+    Call(bool),
+    /// Call an external function with the top *n* values on the stack and push
+    /// the result to the stack.
+    External(InternedString, InternedString, usize),
+    /// Push a tuple to the stack with the top *n* values on the stack.
+    Tuple(usize),
+    /// Push a structure to the stack with the top *n* values on the stack.
+    Structure(usize),
+    /// Push a variant to the stack with the top *n* values on the stack.
+    Variant(usize, usize),
+    /// Retrieve the *n*th element from the tuple on the top of the stack.
+    TupleElement(usize),
+    /// Retrieve the *n*th element from the structure on the top of the stack.
+    StructureElement(usize),
+    /// Retrieve the *n*th element from the variant on the top of the stack.
+    VariantElement(usize, usize),
+    /// Take the top value from the stack and check if its discriminant is equal
+    /// to the one provided. Executes [`Statement::Variant(1, 0)`] if they are
+    /// equal, [`Statement::Variant(0, 0)`] otherwise.
+    CompareDiscriminants(usize),
 }
 
 impl<L: Loader> Compiler<L> {
     pub fn ir_from(&mut self, program: &typecheck::Program) -> Program {
-        let mut info = Info::default();
+        let program = self.prepare(program);
 
-        let mut constants = BTreeMap::new();
-        for (id, ((), _, constant)) in program.declarations.monomorphized_constants.iter().rev() {
-            let ty = self.gen_type(constant.value.ty.clone(), &mut info);
-
-            let mut sections = Sections::new();
-
-            if let Some(result) =
-                self.gen_computation_from_expr(&constant.value, None, &mut sections, &mut info)
-            {
-                sections.set_terminator(Terminator::Return(result))
-            }
-
-            constants.insert(*id, Constant { ty, sections });
-        }
-
-        let mut entrypoint = Sections::new();
-        for expr in &program.body {
-            self.gen_computation_from_expr(expr, None, &mut entrypoint, &mut info);
-        }
-
-        let map = info.map;
-
-        Program {
-            nominal_types: info.nominal_types,
-            recursive_types: info.recursive_types,
-            constants: constants
-                .into_iter()
-                .map(|(id, constant)| (id, constant.finalize(&map)))
-                .collect(),
-            entrypoint: entrypoint.finalize(&map),
-        }
-    }
-}
-
-type SectionIndexMap = BTreeMap<usize, Option<SectionIndex>>;
-
-#[derive(Default)]
-struct Info {
-    nominal_types: BTreeMap<TypeId, Type>,
-    recursive_types: BTreeSet<TypeId>,
-    map: SectionIndexMap,
-    function: Vec<(Vec<VariableId>, Vec<VariableId>)>,
-    block: Vec<VariableId>,
-}
-
-impl Info {
-    fn with_unresolved_section_index(
-        &mut self,
-        f: impl FnOnce(&mut Self, UnresolvedSectionIndex) -> SectionIndex,
-    ) -> SectionIndex {
-        let unresolved = self.map.len();
-        self.map.insert(unresolved, None);
-        let index = f(self, UnresolvedSectionIndex::Unresolved(unresolved));
-        self.map.insert(unresolved, Some(index));
-        index
-    }
-}
-
-impl<L: Loader> Compiler<L> {
-    fn gen_computation_from_expr(
-        &mut self,
-        expr: &typecheck::Expression,
-        loop_info: Option<(UnresolvedSectionIndex, UnresolvedSectionIndex)>,
-        sections: &mut Sections<UnresolvedSectionIndex>,
-        info: &mut Info,
-    ) -> Option<ComputationId> {
-        let id = self.new_computation_id();
-        self.gen_computation_from_expr_with(id, expr, loop_info, sections, info)?;
-        Some(id)
-    }
-
-    fn gen_computation_from_expr_with(
-        &mut self,
-        computation: ComputationId,
-        expr: &typecheck::Expression,
-        loop_info: Option<(UnresolvedSectionIndex, UnresolvedSectionIndex)>,
-        sections: &mut Sections<UnresolvedSectionIndex>,
-        info: &mut Info,
-    ) -> Option<()> {
-        let ty = self.gen_type(expr.ty.clone(), info);
-
-        {
-            let ty = ty.clone();
-
-            (|| {
-                macro_rules! or_unreachable {
-                    ($computation:expr) => {
-                        match $computation {
-                            Some(computation) => computation,
-                            None => return,
-                        }
-                    };
-                }
-
-                match &expr.kind {
-                    typecheck::ExpressionKind::Marker => {
-                        sections.add_statement(Statement::Compute(
-                            computation,
-                            Expression {
-                                ty,
-                                kind: ExpressionKind::Marker,
-                            },
-                        ));
-                    }
-                    typecheck::ExpressionKind::Variable(var) => {
-                        for (locals, captures) in info.function.iter_mut().rev() {
-                            if locals.contains(var) {
-                                break;
-                            }
-
-                            captures.push(*var);
-                        }
-
-                        sections.add_statement(Statement::Compute(
-                            computation,
-                            Expression {
-                                ty,
-                                kind: ExpressionKind::Variable(*var),
-                            },
-                        ));
-                    }
-                    typecheck::ExpressionKind::Text(text) => {
-                        sections.add_statement(Statement::Compute(
-                            computation,
-                            Expression {
-                                ty,
-                                kind: ExpressionKind::Text(*text),
-                            },
-                        ));
-                    }
-                    typecheck::ExpressionKind::Number(number) => {
-                        sections.add_statement(Statement::Compute(
-                            computation,
-                            Expression {
-                                ty,
-                                kind: ExpressionKind::Number(*number),
-                            },
-                        ));
-                    }
-                    typecheck::ExpressionKind::Integer(integer) => {
-                        sections.add_statement(Statement::Compute(
-                            computation,
-                            Expression {
-                                ty,
-                                kind: ExpressionKind::Integer(*integer),
-                            },
-                        ));
-                    }
-                    typecheck::ExpressionKind::Natural(natural) => {
-                        sections.add_statement(Statement::Compute(
-                            computation,
-                            Expression {
-                                ty,
-                                kind: ExpressionKind::Natural(*natural),
-                            },
-                        ));
-                    }
-                    typecheck::ExpressionKind::Byte(byte) => {
-                        sections.add_statement(Statement::Compute(
-                            computation,
-                            Expression {
-                                ty,
-                                kind: ExpressionKind::Byte(*byte),
-                            },
-                        ));
-                    }
-                    typecheck::ExpressionKind::Signed(signed) => {
-                        sections.add_statement(Statement::Compute(
-                            computation,
-                            Expression {
-                                ty,
-                                kind: ExpressionKind::Signed(*signed),
-                            },
-                        ));
-                    }
-                    typecheck::ExpressionKind::Unsigned(unsigned) => {
-                        sections.add_statement(Statement::Compute(
-                            computation,
-                            Expression {
-                                ty,
-                                kind: ExpressionKind::Unsigned(*unsigned),
-                            },
-                        ));
-                    }
-                    typecheck::ExpressionKind::Float(float) => {
-                        sections.add_statement(Statement::Compute(
-                            computation,
-                            Expression {
-                                ty,
-                                kind: ExpressionKind::Float(*float),
-                            },
-                        ));
-                    }
-                    typecheck::ExpressionKind::Double(double) => {
-                        sections.add_statement(Statement::Compute(
-                            computation,
-                            Expression {
-                                ty,
-                                kind: ExpressionKind::Double(*double),
-                            },
-                        ));
-                    }
-                    typecheck::ExpressionKind::Block(exprs) => {
-                        let prev_block = mem::take(&mut info.block);
-
-                        let count = exprs.len();
-
-                        if exprs.is_empty() {
-                            sections.add_statement(Statement::Compute(
-                                computation,
-                                Expression {
-                                    ty,
-                                    kind: ExpressionKind::Tuple(Vec::new()),
-                                },
-                            ));
-                        } else {
-                            for (index, expr) in exprs.iter().enumerate() {
-                                if index + 1 == count {
-                                    self.gen_computation_from_expr_with(
-                                        computation,
-                                        expr,
-                                        loop_info,
-                                        sections,
-                                        info,
-                                    );
-                                } else {
-                                    self.gen_computation_from_expr(expr, loop_info, sections, info);
-                                }
-                            }
-                        }
-
-                        let block = mem::replace(&mut info.block, prev_block);
-
-                        if !block.is_empty() {
-                            sections
-                                .add_statement(Statement::Drop(block.into_iter().rev().collect()));
-                        }
-                    }
-                    typecheck::ExpressionKind::Call(function, input) => {
-                        let function = or_unreachable!(
-                            self.gen_computation_from_expr(function, loop_info, sections, info)
-                        );
-
-                        let input = or_unreachable!(
-                            self.gen_computation_from_expr(input, loop_info, sections, info)
-                        );
-
-                        sections.add_statement(Statement::Compute(
-                            computation,
-                            Expression {
-                                ty,
-                                kind: ExpressionKind::Call(function, input),
-                            },
-                        ));
-                    }
-                    typecheck::ExpressionKind::Function(pattern, body) => {
-                        let input_ty = match &ty {
-                            Type::Function(input, _) => (**input).clone(),
-                            _ => unreachable!(),
-                        };
-
-                        let prev_block = mem::take(&mut info.block);
-                        let prev_sections = mem::take(sections);
-                        info.function.push(Default::default());
-
-                        let input = self.new_computation_id();
-                        sections.add_statement(Statement::Compute(
-                            input,
-                            Expression {
-                                ty: input_ty.clone(),
-                                kind: ExpressionKind::FunctionInput,
-                            },
-                        ));
-
-                        self.gen_sections_from_init(
-                            pattern,
-                            input,
-                            &input_ty,
-                            computation,
-                            None,
-                            sections,
-                            info,
-                        );
-
-                        let result = self.gen_computation_from_expr(body, None, sections, info);
-
-                        let (locals, captures) = info.function.pop().unwrap();
-
-                        let mut function_sections = mem::replace(sections, prev_sections);
-                        info.block = prev_block;
-
-                        let captures = info
-                            .function
-                            .iter()
-                            .flat_map(|(_, captures)| captures)
-                            .copied()
-                            .chain(captures)
-                            .collect::<Vec<_>>();
-
-                        if !captures.is_empty() {
-                            function_sections.add_statement(Statement::Drop(
-                                captures.iter().copied().rev().collect(),
-                            ));
-                        }
-
-                        if let Some(result) = result {
-                            function_sections.set_terminator(Terminator::Return(result));
-                        }
-
-                        let function = Function {
-                            captures,
-                            locals,
-                            sections: function_sections,
-                        };
-
-                        sections.add_statement(Statement::Compute(
-                            computation,
-                            Expression {
-                                ty,
-                                kind: ExpressionKind::Function(function),
-                            },
-                        ));
-                    }
-                    typecheck::ExpressionKind::When(input, arms) => {
-                        let input_ty = self.gen_type(input.ty.clone(), info);
-                        let input = or_unreachable!(
-                            self.gen_computation_from_expr(input, loop_info, sections, info)
-                        );
-
-                        self.gen_sections_from_when(
-                            arms,
-                            input,
-                            &input_ty,
-                            computation,
-                            loop_info,
-                            sections,
-                            info,
-                        );
-                    }
-                    typecheck::ExpressionKind::External(lib, identifier, exprs) => {
-                        let mut inputs = Vec::with_capacity(exprs.len());
-                        for expr in exprs {
-                            let computation = or_unreachable!(
-                                self.gen_computation_from_expr(expr, loop_info, sections, info)
-                            );
-
-                            inputs.push(computation);
-                        }
-
-                        sections.add_statement(Statement::Compute(
-                            computation,
-                            Expression {
-                                ty,
-                                kind: ExpressionKind::External(*lib, *identifier, inputs),
-                            },
-                        ));
-                    }
-                    typecheck::ExpressionKind::Initialize(pattern, value) => {
-                        let value_ty = self.gen_type(value.ty.clone(), info);
-                        let value = or_unreachable!(
-                            self.gen_computation_from_expr(value, loop_info, sections, info)
-                        );
-
-                        self.gen_sections_from_init(
-                            pattern,
-                            value,
-                            &value_ty,
-                            computation,
-                            loop_info,
-                            sections,
-                            info,
-                        );
-
-                        sections.add_statement(Statement::Compute(
-                            computation,
-                            Expression {
-                                ty,
-                                kind: ExpressionKind::Tuple(Vec::new()),
-                            },
-                        ));
-                    }
-                    typecheck::ExpressionKind::Structure(exprs) => {
-                        let mut values = Vec::with_capacity(exprs.len());
-                        for expr in exprs {
-                            let computation = or_unreachable!(
-                                self.gen_computation_from_expr(expr, loop_info, sections, info)
-                            );
-
-                            values.push(computation);
-                        }
-
-                        sections.add_statement(Statement::Compute(
-                            computation,
-                            Expression {
-                                ty,
-                                kind: ExpressionKind::Structure(values),
-                            },
-                        ));
-                    }
-                    typecheck::ExpressionKind::Tuple(exprs) => {
-                        let mut values = Vec::with_capacity(exprs.len());
-                        for expr in exprs {
-                            let computation = or_unreachable!(
-                                self.gen_computation_from_expr(expr, loop_info, sections, info)
-                            );
-
-                            values.push(computation);
-                        }
-
-                        sections.add_statement(Statement::Compute(
-                            computation,
-                            Expression {
-                                ty,
-                                kind: ExpressionKind::Tuple(values),
-                            },
-                        ));
-                    }
-                    typecheck::ExpressionKind::Variant(discriminant, exprs) => {
-                        let mut values = Vec::with_capacity(exprs.len());
-                        for expr in exprs {
-                            let computation = or_unreachable!(
-                                self.gen_computation_from_expr(expr, loop_info, sections, info)
-                            );
-
-                            values.push(computation);
-                        }
-                        sections.add_statement(Statement::Compute(
-                            computation,
-                            Expression {
-                                ty,
-                                kind: ExpressionKind::Variant(*discriminant, values),
-                            },
-                        ));
-                    }
-                    typecheck::ExpressionKind::Return(expr) => {
-                        let result = or_unreachable!(
-                            self.gen_computation_from_expr(expr, loop_info, sections, info)
-                        );
-
-                        sections.set_terminator(Terminator::Return(result));
-                        sections.add_section();
-                    }
-                    typecheck::ExpressionKind::Loop(body) => {
-                        let loop_start = UnresolvedSectionIndex::Resolved(sections.current_index());
-
-                        info.with_unresolved_section_index(|info, loop_end| {
-                            self.gen_computation_from_expr_with(
-                                computation,
-                                body,
-                                Some((loop_start, loop_end)),
-                                sections,
-                                info,
-                            );
-
-                            sections.set_terminator(Terminator::Goto(loop_start));
-
-                            sections.add_section()
-                        });
-                    }
-                    typecheck::ExpressionKind::Break(expr) => {
-                        self.gen_computation_from_expr_with(
-                            computation,
-                            expr,
-                            loop_info,
-                            sections,
-                            info,
-                        );
-                        sections.set_terminator(Terminator::Goto(loop_info.unwrap().1));
-                        sections.add_section();
-                    }
-                    typecheck::ExpressionKind::Continue => {
-                        sections.set_terminator(Terminator::Goto(loop_info.unwrap().0));
-                        sections.add_section();
-                    }
-                    typecheck::ExpressionKind::Constant(id) => {
-                        sections.add_statement(Statement::Compute(
-                            computation,
-                            Expression {
-                                ty,
-                                kind: ExpressionKind::Constant(*id),
-                            },
-                        ));
-                    }
-                }
-            })();
-
-            assert!(!sections.has_terminator());
-        }
-
-        (!matches!(ty, Type::Unreachable)).then(|| ())
-    }
-
-    fn gen_sections_from_init(
-        &mut self,
-        pattern: &typecheck::Pattern,
-        input: ComputationId,
-        input_ty: &Type,
-        result: ComputationId,
-        loop_info: Option<(UnresolvedSectionIndex, UnresolvedSectionIndex)>,
-        sections: &mut Sections<UnresolvedSectionIndex>,
-        info: &mut Info,
-    ) {
-        let span = pattern.span;
-
-        let body = typecheck::Expression {
-            span,
-            ty: typecheck::Type::Tuple(Vec::new()),
-            kind: typecheck::ExpressionKind::Tuple(Vec::new()),
+        let mut gen = IrGen {
+            compiler: self,
+            constants: Default::default(),
+            labels: Default::default(),
         };
 
-        info.with_unresolved_section_index(|info, end| {
-            info.with_unresolved_section_index(|info, else_branch| {
-                self.gen_sections_from_pattern(
-                    pattern,
-                    Err((&body, end)),
-                    input_ty,
-                    input,
-                    result,
-                    else_branch,
-                    loop_info,
-                    sections,
-                    info,
-                );
+        for id in program.constants.keys() {
+            let label = gen.compiler.new_label();
+            gen.constants.insert(*id, label);
+        }
 
-                sections.add_section()
-            });
+        for (id, constant) in program.constants {
+            let statements = gen.gen_expr(constant, true);
+            let label = gen.constants.get(&id).unwrap();
+            gen.labels.insert(*label, statements);
+        }
 
-            sections.set_terminator(Terminator::Unreachable);
+        let statements = gen.gen_expr(program.body, true);
+        let entrypoint_label = gen.compiler.new_label();
+        gen.labels.insert(entrypoint_label, statements);
 
-            sections.add_section()
-        });
+        Program {
+            labels: gen.labels,
+            entrypoint: entrypoint_label,
+        }
+    }
+}
+
+struct IrGen<'a, L: Loader> {
+    compiler: &'a mut Compiler<L>,
+    constants: BTreeMap<MonomorphizedConstantId, Label>,
+    labels: BTreeMap<Label, Vec<Statement>>,
+}
+
+impl<L: Loader> IrGen<'_, L> {
+    #[must_use]
+    fn gen_expr(&mut self, expr: prepare::Expression, is_tail: bool) -> Vec<Statement> {
+        let mut statements = Vec::new();
+
+        macro_rules! sub {
+            ($sub:ident, $statements:expr, $is_tail:expr) => {{
+                let label = self.compiler.new_label();
+                {
+                    let statements = $statements;
+                    self.labels.insert(label, statements);
+                }
+
+                statements.push(Statement::$sub(label, $is_tail));
+            }};
+        }
+
+        match expr {
+            prepare::Expression::Marker => {
+                statements.push(Statement::Marker);
+            }
+            prepare::Expression::Variable(var) => {
+                statements.push(Statement::Variable(var));
+            }
+            prepare::Expression::Text(text) => {
+                statements.push(Statement::Text(text));
+            }
+            prepare::Expression::Number(number) => {
+                statements.push(Statement::Number(number));
+            }
+            prepare::Expression::Integer(integer) => {
+                statements.push(Statement::Integer(integer));
+            }
+            prepare::Expression::Natural(natural) => {
+                statements.push(Statement::Natural(natural));
+            }
+            prepare::Expression::Byte(byte) => {
+                statements.push(Statement::Byte(byte));
+            }
+            prepare::Expression::Signed(signed) => {
+                statements.push(Statement::Signed(signed));
+            }
+            prepare::Expression::Unsigned(unsigned) => {
+                statements.push(Statement::Unsigned(unsigned));
+            }
+            prepare::Expression::Float(float) => {
+                statements.push(Statement::Float(float));
+            }
+            prepare::Expression::Double(double) => {
+                statements.push(Statement::Double(double));
+            }
+            prepare::Expression::Block(exprs) => {
+                if exprs.is_empty() {
+                    statements.push(Statement::Tuple(0));
+                } else {
+                    let block_label = self.compiler.new_label();
+                    {
+                        let mut statements = Vec::new();
+
+                        let count = exprs.len();
+                        for (index, expr) in exprs.into_iter().enumerate() {
+                            statements.append(&mut self.gen_expr(expr, index + 1 < count));
+                        }
+
+                        self.labels.insert(block_label, statements);
+                    }
+
+                    statements.push(Statement::Goto(block_label, is_tail));
+                }
+            }
+            prepare::Expression::Call(function, input) => {
+                sub!(Goto, self.gen_expr(*function, false), false);
+                sub!(Goto, self.gen_expr(*input, false), false);
+                statements.push(Statement::Call(is_tail));
+            }
+            prepare::Expression::Function(pattern, body) => {
+                let body_label = self.compiler.new_label();
+                {
+                    let statements = self.gen_expr(*body, true);
+                    self.labels.insert(body_label, statements);
+                }
+
+                let function_label = self.compiler.new_label();
+                {
+                    let statements = self.gen_pattern(pattern, body_label, None, false);
+                    self.labels.insert(function_label, statements);
+                }
+
+                statements.push(Statement::Closure(function_label));
+            }
+            prepare::Expression::When(input, arms) => {
+                statements.append(&mut self.gen_expr(*input, false));
+                sub!(Sub, self.gen_when(arms, is_tail), is_tail);
+            }
+            prepare::Expression::External(lib, identifier, exprs) => {
+                let count = exprs.len();
+
+                for expr in exprs {
+                    statements.append(&mut self.gen_expr(expr, false));
+                }
+
+                statements.push(Statement::External(lib, identifier, count));
+            }
+            prepare::Expression::Structure(exprs) => {
+                let count = exprs.len();
+
+                for expr in exprs {
+                    statements.append(&mut self.gen_expr(expr, false));
+                }
+
+                statements.push(Statement::Structure(count));
+            }
+            prepare::Expression::Tuple(exprs) => {
+                let count = exprs.len();
+
+                for expr in exprs {
+                    statements.append(&mut self.gen_expr(expr, false));
+                }
+
+                statements.push(Statement::Tuple(count));
+            }
+            prepare::Expression::Variant(discriminant, exprs) => {
+                let count = exprs.len();
+
+                for expr in exprs {
+                    statements.append(&mut self.gen_expr(expr, false));
+                }
+
+                statements.push(Statement::Variant(discriminant, count));
+            }
+            prepare::Expression::Constant(id) => {
+                let id = self.constants.get(&id).unwrap();
+                statements.push(Statement::Constant(*id));
+            }
+        }
+
+        statements
     }
 
-    fn gen_sections_from_when(
-        &mut self,
-        arms: &[typecheck::Arm],
-        input: ComputationId,
-        input_ty: &Type,
-        result: ComputationId,
-        loop_info: Option<(UnresolvedSectionIndex, UnresolvedSectionIndex)>,
-        sections: &mut Sections<UnresolvedSectionIndex>,
-        info: &mut Info,
-    ) {
-        info.with_unresolved_section_index(|info, end| {
-            for arm in arms {
-                info.with_unresolved_section_index(|info, else_branch| {
-                    self.gen_sections_from_pattern(
-                        &arm.pattern,
-                        Err((&arm.body, end)),
-                        input_ty,
-                        input,
-                        result,
-                        else_branch,
-                        loop_info,
-                        sections,
-                        info,
-                    );
+    #[must_use]
+    fn gen_when(&mut self, arms: Vec<prepare::Arm>, is_tail: bool) -> Vec<Statement> {
+        let mut statements = Vec::new();
+        let first_arm_label = self.compiler.new_label();
 
-                    sections.add_section()
-                });
+        statements.push(Statement::Sub(first_arm_label, is_tail));
+
+        #[allow(clippy::needless_collect)] // self is borrowed inside the for loop
+        let arms = std::iter::once(first_arm_label)
+            .chain(std::iter::repeat_with(|| self.compiler.new_label()))
+            .zip(arms)
+            .map(Some)
+            .chain(std::iter::once(None))
+            .collect::<Vec<_>>();
+
+        for (current, next) in arms.into_iter().tuple_windows() {
+            let (current_arm_label, arm) = current.unwrap();
+            let next_arm_label = next.map(|(label, _)| label);
+
+            let arm_body_label = self.compiler.new_label();
+            {
+                let statements = self.gen_expr(arm.body, is_tail);
+                self.labels.insert(arm_body_label, statements);
             }
 
-            sections.set_terminator(Terminator::Unreachable);
+            let mut statements = Vec::new();
 
-            sections.add_section()
-        });
+            let copy = next_arm_label.is_some();
+            if copy {
+                statements.push(Statement::Copy);
+            }
+
+            statements.append(&mut self.gen_pattern(
+                arm.pattern,
+                arm_body_label,
+                next_arm_label,
+                copy,
+            ));
+
+            self.labels.insert(current_arm_label, statements);
+        }
+
+        statements
     }
 
-    fn gen_sections_from_pattern(
+    #[must_use]
+    fn gen_pattern(
         &mut self,
-        pattern: &typecheck::Pattern,
-        body: Result<UnresolvedSectionIndex, (&typecheck::Expression, UnresolvedSectionIndex)>,
-        input_ty: &Type,
-        input: ComputationId,
-        result: ComputationId,
-        else_branch: UnresolvedSectionIndex,
-        loop_info: Option<(UnresolvedSectionIndex, UnresolvedSectionIndex)>,
-        sections: &mut Sections<UnresolvedSectionIndex>,
-        info: &mut Info,
-    ) {
-        macro_rules! gen_then_branch {
-            ($info:ident) => {
-                match body {
-                    Ok(section) => sections.set_terminator(Terminator::Goto(section)),
-                    Err((expr, end)) => {
-                        self.gen_computation_from_expr_with(
-                            result, expr, loop_info, sections, $info,
-                        );
+        pattern: prepare::Pattern,
+        body_label: Label,
+        else_label: Option<Label>,
+        sub: bool,
+    ) -> Vec<Statement> {
+        let mut statements = Vec::new();
 
-                        sections.set_terminator(Terminator::Goto(end));
-                    }
+        macro_rules! gen_tail_if {
+            () => {{
+                if let Some(else_label) = else_label {
+                    statements.push(Statement::If(body_label, else_label));
+                } else {
+                    statements.push(Statement::Sub(body_label, true));
                 }
-            };
+            }};
         }
 
         macro_rules! match_number {
             ($kind:ident($n:expr), $comparison:literal) => {{
-                let predicate = self.new_computation_id();
-                sections.add_statement(Statement::Compute(
-                    predicate,
-                    Expression {
-                        ty: Type::$kind,
-                        kind: ExpressionKind::$kind($n),
-                    },
+                statements.push(Statement::$kind($n));
+
+                statements.push(Statement::External(
+                    InternedString::new(abi::RUNTIME),
+                    InternedString::new($comparison),
+                    2,
                 ));
 
-                let condition = self.new_computation_id();
-                sections.add_statement(Statement::Compute(
-                    condition,
-                    Expression {
-                        ty: Type::Boolean,
-                        kind: ExpressionKind::External(
-                            InternedString::new(lib::RUNTIME),
-                            InternedString::new($comparison),
-                            vec![input, predicate],
-                        ),
-                    },
-                ));
-
-                info.with_unresolved_section_index(|_, then_branch| {
-                    sections.set_terminator(Terminator::If(condition, then_branch, else_branch));
-                    sections.add_section()
-                });
-
-                gen_then_branch!(info);
+                gen_tail_if!();
             }};
         }
 
-        match &pattern.kind {
-            typecheck::PatternKind::Wildcard => gen_then_branch!(info),
-            typecheck::PatternKind::Number(number) => {
-                match_number!(Number(*number), "number-equality")
+        macro_rules! gen_goto_or_sub {
+            ($label:expr, $sub:expr) => {{
+                if $sub {
+                    statements.push(Statement::Sub($label, true));
+                } else {
+                    statements.push(Statement::Goto($label, true));
+                }
+            }};
+        }
+
+        match pattern {
+            prepare::Pattern::Wildcard => gen_goto_or_sub!(body_label, sub),
+            prepare::Pattern::Number(number) => {
+                match_number!(Number(number), "number-equality");
             }
-            typecheck::PatternKind::Integer(integer) => {
-                match_number!(Integer(*integer), "integer-equality")
+            prepare::Pattern::Integer(integer) => {
+                match_number!(Integer(integer), "integer-equality");
             }
-            typecheck::PatternKind::Natural(natural) => {
-                match_number!(Natural(*natural), "natural-equality")
+            prepare::Pattern::Natural(natural) => {
+                match_number!(Natural(natural), "natural-equality");
             }
-            typecheck::PatternKind::Byte(byte) => {
-                match_number!(Byte(*byte), "byte-equality")
+            prepare::Pattern::Byte(byte) => {
+                match_number!(Byte(byte), "byte-equality");
             }
-            typecheck::PatternKind::Signed(signed) => {
-                match_number!(Signed(*signed), "signed-equality")
+            prepare::Pattern::Signed(signed) => {
+                match_number!(Signed(signed), "signed-equality");
             }
-            typecheck::PatternKind::Unsigned(unsigned) => {
-                match_number!(Unsigned(*unsigned), "unsigned-equality")
+            prepare::Pattern::Unsigned(unsigned) => {
+                match_number!(Unsigned(unsigned), "unsigned-equality");
             }
-            typecheck::PatternKind::Float(float) => {
-                match_number!(Float(*float), "float-equality")
+            prepare::Pattern::Float(float) => {
+                match_number!(Float(float), "float-equality");
             }
-            typecheck::PatternKind::Double(double) => {
-                match_number!(Double(*double), "double-equality")
+            prepare::Pattern::Double(double) => {
+                match_number!(Double(double), "double-equality");
             }
-            typecheck::PatternKind::Text(text) => {
-                let predicate = self.new_computation_id();
-                sections.add_statement(Statement::Compute(
-                    predicate,
-                    Expression {
-                        ty: Type::Text,
-                        kind: ExpressionKind::Text(*text),
-                    },
+            prepare::Pattern::Text(text) => {
+                statements.push(Statement::Text(text));
+
+                statements.push(Statement::External(
+                    InternedString::new(abi::RUNTIME),
+                    InternedString::new("text-equality"),
+                    2,
                 ));
 
-                let condition = self.new_computation_id();
-                sections.add_statement(Statement::Compute(
-                    condition,
-                    Expression {
-                        ty: Type::Boolean,
-                        kind: ExpressionKind::External(
-                            InternedString::new(lib::RUNTIME),
-                            InternedString::new("text-equality"),
-                            vec![input, predicate],
-                        ),
-                    },
-                ));
-
-                info.with_unresolved_section_index(|_, then_branch| {
-                    sections.set_terminator(Terminator::If(condition, then_branch, else_branch));
-                    sections.add_section()
-                });
-
-                gen_then_branch!(info);
+                gen_tail_if!();
             }
-            typecheck::PatternKind::Variable(var) => {
-                info.block.push(*var);
-                if let Some((locals, _)) = info.function.last_mut() {
-                    locals.push(*var);
+            prepare::Pattern::Variable(var) => {
+                statements.push(Statement::Initialize(var));
+                gen_goto_or_sub!(body_label, sub);
+            }
+            prepare::Pattern::Or(left, right) => {
+                statements.push(Statement::Copy);
+
+                let right_label = self.compiler.new_label();
+                {
+                    let mut statements = Vec::new();
+                    statements.push(Statement::Copy);
+                    statements.append(&mut self.gen_pattern(*right, body_label, else_label, true));
+                    self.labels.insert(right_label, statements);
                 }
 
-                sections.add_statement(Statement::Initialize(*var, input));
-                gen_then_branch!(info);
+                statements.append(&mut self.gen_pattern(
+                    *left,
+                    body_label,
+                    Some(right_label),
+                    true,
+                ));
             }
-            typecheck::PatternKind::Or(left, right) => {
-                info.with_unresolved_section_index(|info, then_branch| {
-                    info.with_unresolved_section_index(|info, else_if_branch| {
-                        self.gen_sections_from_pattern(
-                            left,
-                            Ok(then_branch),
-                            input_ty,
-                            input,
-                            result,
-                            else_if_branch,
-                            loop_info,
-                            sections,
-                            info,
-                        );
+            prepare::Pattern::Where(pattern, condition) => {
+                let condition_label = self.compiler.new_label();
+                {
+                    let mut statements = Vec::new();
+                    statements.push(Statement::Copy);
+                    statements.append(&mut self.gen_expr(*condition, true));
 
-                        sections.add_section()
-                    });
-
-                    self.gen_sections_from_pattern(
-                        right,
-                        Ok(then_branch),
-                        input_ty,
-                        input,
-                        result,
-                        else_branch,
-                        loop_info,
-                        sections,
-                        info,
-                    );
-
-                    sections.add_section()
-                });
-
-                gen_then_branch!(info);
-            }
-            typecheck::PatternKind::Where(pattern, condition) => {
-                info.with_unresolved_section_index(|info, then_branch| {
-                    info.with_unresolved_section_index(|info, condition_branch| {
-                        self.gen_sections_from_pattern(
-                            pattern,
-                            Ok(condition_branch),
-                            input_ty,
-                            input,
-                            result,
-                            else_branch,
-                            loop_info,
-                            sections,
-                            info,
-                        );
-
-                        sections.add_section()
-                    });
-
-                    if let Some(condition) =
-                        self.gen_computation_from_expr(condition, loop_info, sections, info)
-                    {
-                        sections.set_terminator(Terminator::If(
-                            condition,
-                            then_branch,
-                            else_branch,
-                        ));
-                    }
-
-                    sections.add_section()
-                });
-
-                gen_then_branch!(info);
-            }
-            typecheck::PatternKind::Tuple(patterns) => {
-                let tuple_tys = match input_ty {
-                    Type::Tuple(tys) => tys,
-                    _ => unreachable!(),
-                };
-
-                for ((index, pattern), ty) in patterns.iter().enumerate().zip(tuple_tys) {
-                    let element = self.new_computation_id();
-                    sections.add_statement(Statement::Compute(
-                        element,
-                        Expression {
-                            ty: ty.clone(),
-                            kind: ExpressionKind::TupleElement(input, index),
-                        },
+                    statements.push(Statement::If(
+                        body_label,
+                        else_label.expect("`where` patterns are never exhaustive"),
                     ));
 
-                    info.with_unresolved_section_index(|info, then_branch| {
-                        self.gen_sections_from_pattern(
-                            pattern,
-                            Ok(then_branch),
-                            input_ty,
-                            element,
-                            result,
-                            else_branch,
-                            loop_info,
-                            sections,
-                            info,
-                        );
-
-                        sections.add_section()
-                    });
+                    self.labels.insert(condition_label, statements);
                 }
 
-                gen_then_branch!(info);
+                statements.append(&mut self.gen_pattern(
+                    *pattern,
+                    condition_label,
+                    else_label,
+                    true,
+                ));
             }
-            typecheck::PatternKind::Destructure(fields) => {
-                let (id, field_tys) = match input_ty {
-                    Type::Structure(id, field_tys) => (*id, field_tys.clone()),
-                    Type::Recursive(id) => match info.nominal_types.get(id).unwrap() {
-                        Type::Structure(id, field_tys) => (*id, field_tys.clone()),
-                        _ => unreachable!(),
-                    },
-                    _ => unreachable!(),
+            prepare::Pattern::Tuple(patterns) => {
+                let (first_pattern_label, sub) = if patterns.is_empty() {
+                    (body_label, sub)
+                } else {
+                    (self.compiler.new_label(), true)
                 };
 
-                for (index, pattern) in fields {
-                    let element = self.new_computation_id();
-                    sections.add_statement(Statement::Compute(
-                        element,
-                        Expression {
-                            ty: field_tys[*index].clone(),
-                            kind: ExpressionKind::StructureElement(input, id, *index),
-                        },
+                gen_goto_or_sub!(first_pattern_label, sub);
+
+                #[allow(clippy::needless_collect)] // self is borrowed inside the for loop
+                let patterns = std::iter::once(first_pattern_label)
+                    .chain(std::iter::repeat_with(|| self.compiler.new_label()))
+                    .zip(patterns)
+                    .map(Some)
+                    .chain(std::iter::once(None))
+                    .collect::<Vec<_>>();
+
+                for (index, (current, next)) in patterns.into_iter().tuple_windows().enumerate() {
+                    let (current_pattern_label, pattern) = current.unwrap();
+                    let next_pattern_label = next.map(|(label, _)| label);
+
+                    let mut statements = Vec::new();
+                    statements.push(Statement::Copy);
+                    statements.push(Statement::TupleElement(index));
+
+                    statements.append(&mut self.gen_pattern(
+                        pattern,
+                        next_pattern_label.unwrap_or(body_label),
+                        else_label,
+                        true,
                     ));
 
-                    info.with_unresolved_section_index(|info, then_branch| {
-                        self.gen_sections_from_pattern(
-                            pattern,
-                            Ok(then_branch),
-                            input_ty,
-                            element,
-                            result,
-                            else_branch,
-                            loop_info,
-                            sections,
-                            info,
-                        );
-
-                        sections.add_section()
-                    });
+                    self.labels.insert(current_pattern_label, statements);
                 }
-
-                gen_then_branch!(info);
             }
-            typecheck::PatternKind::Variant(input_discriminant, patterns) => {
-                let (id, variant_tys) = match input_ty {
-                    Type::Enumeration(id, variants_tys) => {
-                        (*id, variants_tys[*input_discriminant].clone())
-                    }
-                    Type::Recursive(id) => match info.nominal_types.get(id).unwrap() {
-                        Type::Enumeration(id, variants_tys) => {
-                            (*id, variants_tys[*input_discriminant].clone())
-                        }
-                        _ => unreachable!(),
-                    },
-                    _ => unreachable!(),
+            prepare::Pattern::Destructure(fields) => {
+                let (first_pattern_label, sub) = if fields.is_empty() {
+                    (body_label, sub)
+                } else {
+                    (self.compiler.new_label(), true)
                 };
 
-                let discriminant = self.new_computation_id();
-                sections.add_statement(Statement::Compute(
-                    discriminant,
-                    Expression {
-                        ty: Type::Discriminant,
-                        kind: ExpressionKind::Discriminant(input),
-                    },
-                ));
+                gen_goto_or_sub!(first_pattern_label, sub);
 
-                let comparison = self.new_computation_id();
-                sections.add_statement(Statement::Compute(
-                    comparison,
-                    Expression {
-                        ty: Type::Boolean,
-                        kind: ExpressionKind::CompareDiscriminants(
-                            discriminant,
-                            *input_discriminant,
-                        ),
-                    },
-                ));
+                #[allow(clippy::needless_collect)] // self is borrowed inside the for loop
+                let fields = std::iter::once(first_pattern_label)
+                    .chain(std::iter::repeat_with(|| self.compiler.new_label()))
+                    .zip(fields)
+                    .map(Some)
+                    .chain(std::iter::once(None))
+                    .collect::<Vec<_>>();
 
-                info.with_unresolved_section_index(|_, then_branch| {
-                    sections.set_terminator(Terminator::If(comparison, then_branch, else_branch));
-                    sections.add_section()
-                });
+                for (current, next) in fields.into_iter().tuple_windows() {
+                    let (current_pattern_label, (index, pattern)) = current.unwrap();
+                    let next_pattern_label = next.map(|(label, _)| label);
 
-                for (index, pattern) in patterns.iter().enumerate() {
-                    let element = self.new_computation_id();
-                    sections.add_statement(Statement::Compute(
-                        element,
-                        Expression {
-                            ty: variant_tys[index].clone(),
-                            kind: ExpressionKind::VariantElement(
-                                input,
-                                (id, *input_discriminant),
-                                index,
-                            ),
-                        },
+                    let mut statements = Vec::new();
+                    statements.push(Statement::Copy);
+                    statements.push(Statement::StructureElement(index));
+
+                    statements.append(&mut self.gen_pattern(
+                        pattern,
+                        next_pattern_label.unwrap_or(body_label),
+                        else_label,
+                        true,
                     ));
 
-                    info.with_unresolved_section_index(|info, then_branch| {
-                        self.gen_sections_from_pattern(
-                            pattern,
-                            Ok(then_branch),
-                            input_ty,
-                            element,
-                            result,
-                            else_branch,
-                            loop_info,
-                            sections,
-                            info,
-                        );
-
-                        sections.add_section()
-                    });
+                    self.labels.insert(current_pattern_label, statements);
                 }
-
-                gen_then_branch!(info);
             }
-        }
-
-        assert!(sections.has_terminator());
-    }
-
-    fn gen_type(&mut self, ty: typecheck::Type, info: &mut Info) -> Type {
-        match ty {
-            typecheck::Type::Parameter(_) => unreachable!(),
-            typecheck::Type::Named(id, _, structure) => {
-                if let Some(ty) = info.nominal_types.get(&id) {
-                    return ty.clone();
-                }
-
-                let ty = match structure {
-                    typecheck::TypeStructure::Marker => Type::Marker,
-                    typecheck::TypeStructure::Structure(fields) => Type::Structure(
-                        id,
-                        fields
-                            .into_iter()
-                            .map(|ty| self.gen_type(ty, info))
-                            .collect(),
-                    ),
-                    typecheck::TypeStructure::Enumeration(variants) => Type::Enumeration(
-                        id,
-                        variants
-                            .into_iter()
-                            .map(|tys| tys.into_iter().map(|ty| self.gen_type(ty, info)).collect())
-                            .collect(),
-                    ),
-                    typecheck::TypeStructure::Recursive(id) => {
-                        info.recursive_types.insert(id);
-                        Type::Recursive(id)
-                    }
+            prepare::Pattern::Variant(discriminant, patterns) => {
+                let (first_pattern_label, sub) = if patterns.is_empty() {
+                    statements.push(Statement::CompareDiscriminants(discriminant));
+                    (body_label, sub)
+                } else {
+                    statements.push(Statement::Copy);
+                    statements.push(Statement::CompareDiscriminants(discriminant));
+                    (self.compiler.new_label(), true)
                 };
 
-                if !matches!(ty, Type::Recursive(_)) {
-                    info.nominal_types.insert(id, ty.clone());
+                if let Some(else_label) = else_label {
+                    statements.push(Statement::If(first_pattern_label, else_label));
+                } else {
+                    statements.push(Statement::Drop);
+                    gen_goto_or_sub!(first_pattern_label, sub);
                 }
 
-                ty
+                #[allow(clippy::needless_collect)] // self is borrowed inside the for loop
+                let patterns = std::iter::once(first_pattern_label)
+                    .chain(std::iter::repeat_with(|| self.compiler.new_label()))
+                    .zip(patterns)
+                    .map(Some)
+                    .chain(std::iter::once(None))
+                    .collect::<Vec<_>>();
+
+                for (index, (current, next)) in patterns.into_iter().tuple_windows().enumerate() {
+                    let (current_pattern_label, pattern) = current.unwrap();
+                    let next_pattern_label = next.map(|(label, _)| label);
+
+                    let mut statements = Vec::new();
+                    statements.push(Statement::Copy);
+                    statements.push(Statement::VariantElement(discriminant, index));
+
+                    statements.append(&mut self.gen_pattern(
+                        pattern,
+                        next_pattern_label.unwrap_or(body_label),
+                        else_label,
+                        true,
+                    ));
+
+                    self.labels.insert(current_pattern_label, statements);
+                }
             }
-            typecheck::Type::Function(input, output) => Type::Function(
-                Box::new(self.gen_type(*input, info)),
-                Box::new(self.gen_type(*output, info)),
-            ),
-            typecheck::Type::Tuple(tys) => {
-                Type::Tuple(tys.into_iter().map(|ty| self.gen_type(ty, info)).collect())
-            }
-            typecheck::Type::Builtin(ty) => match ty {
-                typecheck::BuiltinType::Number => Type::Number,
-                typecheck::BuiltinType::Text => Type::Text,
-                typecheck::BuiltinType::Integer => Type::Integer,
-                typecheck::BuiltinType::Natural => Type::Natural,
-                typecheck::BuiltinType::Byte => Type::Byte,
-                typecheck::BuiltinType::Signed => Type::Signed,
-                typecheck::BuiltinType::Unsigned => Type::Unsigned,
-                typecheck::BuiltinType::Float => Type::Float,
-                typecheck::BuiltinType::Double => Type::Double,
-                typecheck::BuiltinType::List(ty) => Type::List(Box::new(self.gen_type(*ty, info))),
-                typecheck::BuiltinType::Mutable(ty) => {
-                    Type::Mutable(Box::new(self.gen_type(*ty, info)))
-                }
-            },
-            typecheck::Type::Bottom(_) => Type::Unreachable,
         }
-    }
-}
 
-impl Constant<UnresolvedSectionIndex> {
-    fn finalize(self, map: &SectionIndexMap) -> Constant<SectionIndex> {
-        Constant {
-            ty: self.ty,
-            sections: self.sections.finalize(map),
-        }
-    }
-}
-
-impl Function<UnresolvedSectionIndex> {
-    fn finalize(self, map: &SectionIndexMap) -> Function {
-        Function {
-            captures: self.captures,
-            locals: self.locals,
-            sections: self.sections.finalize(map),
-        }
-    }
-}
-
-impl Sections<UnresolvedSectionIndex> {
-    fn finalize(self, map: &SectionIndexMap) -> Sections {
-        self.into_iter()
-            .map(|section| section.finalize(map))
-            .collect()
-    }
-}
-
-impl Section<UnresolvedSectionIndex> {
-    fn finalize(self, map: &SectionIndexMap) -> Section {
-        Section {
-            statements: self
-                .statements
-                .into_iter()
-                .map(|statement| statement.finalize(map))
-                .collect(),
-            terminator: self.terminator.map(|terminator| terminator.finalize(map)),
-        }
-    }
-}
-
-impl Terminator<UnresolvedSectionIndex> {
-    fn finalize(self, map: &SectionIndexMap) -> Terminator {
-        match self {
-            Terminator::If(id, then_branch, else_branch) => {
-                Terminator::If(id, then_branch.finalize(map), else_branch.finalize(map))
-            }
-            Terminator::Return(id) => Terminator::Return(id),
-            Terminator::Goto(section) => Terminator::Goto(section.finalize(map)),
-            Terminator::Unreachable => Terminator::Unreachable,
-        }
-    }
-}
-
-impl Statement<UnresolvedSectionIndex> {
-    fn finalize(self, map: &SectionIndexMap) -> Statement {
-        match self {
-            Statement::Compute(id, expr) => Statement::Compute(id, expr.finalize(map)),
-            Statement::Initialize(var, computation) => Statement::Initialize(var, computation),
-            Statement::Drop(vars) => Statement::Drop(vars),
-        }
-    }
-}
-
-impl Expression<UnresolvedSectionIndex> {
-    fn finalize(self, map: &SectionIndexMap) -> Expression {
-        Expression {
-            ty: self.ty,
-            kind: match self.kind {
-                ExpressionKind::Marker => ExpressionKind::Marker,
-                ExpressionKind::Constant(id) => ExpressionKind::Constant(id),
-                ExpressionKind::Function(function) => {
-                    ExpressionKind::Function(function.finalize(map))
-                }
-                ExpressionKind::Variable(id) => ExpressionKind::Variable(id),
-                ExpressionKind::FunctionInput => ExpressionKind::FunctionInput,
-                ExpressionKind::Number(number) => ExpressionKind::Number(number),
-                ExpressionKind::Integer(integer) => ExpressionKind::Integer(integer),
-                ExpressionKind::Natural(natural) => ExpressionKind::Natural(natural),
-                ExpressionKind::Byte(byte) => ExpressionKind::Byte(byte),
-                ExpressionKind::Signed(signed) => ExpressionKind::Signed(signed),
-                ExpressionKind::Unsigned(unsigned) => ExpressionKind::Unsigned(unsigned),
-                ExpressionKind::Float(float) => ExpressionKind::Float(float),
-                ExpressionKind::Double(double) => ExpressionKind::Double(double),
-                ExpressionKind::Text(text) => ExpressionKind::Text(text),
-                ExpressionKind::Call(function, input) => ExpressionKind::Call(function, input),
-                ExpressionKind::External(lib, identifier, inputs) => {
-                    ExpressionKind::External(lib, identifier, inputs)
-                }
-                ExpressionKind::Tuple(values) => ExpressionKind::Tuple(values),
-                ExpressionKind::Structure(values) => ExpressionKind::Structure(values),
-                ExpressionKind::Variant(discriminant, values) => {
-                    ExpressionKind::Variant(discriminant, values)
-                }
-                ExpressionKind::TupleElement(tuple, index) => {
-                    ExpressionKind::TupleElement(tuple, index)
-                }
-                ExpressionKind::StructureElement(structure, id, index) => {
-                    ExpressionKind::StructureElement(structure, id, index)
-                }
-                ExpressionKind::VariantElement(variant, (id, discriminant), index) => {
-                    ExpressionKind::VariantElement(variant, (id, discriminant), index)
-                }
-                ExpressionKind::Discriminant(variant) => ExpressionKind::Discriminant(variant),
-                ExpressionKind::CompareDiscriminants(left, right) => {
-                    ExpressionKind::CompareDiscriminants(left, right)
-                }
-            },
-        }
-    }
-}
-
-impl UnresolvedSectionIndex {
-    fn finalize(self, map: &SectionIndexMap) -> SectionIndex {
-        match self {
-            UnresolvedSectionIndex::Resolved(index) => index,
-            UnresolvedSectionIndex::Unresolved(index) => map.get(&index).unwrap().unwrap(),
-        }
+        statements
     }
 }

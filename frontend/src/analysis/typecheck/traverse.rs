@@ -66,15 +66,6 @@ macro_rules! traverse_impl {
                         value.$traverse(f);
                     }
                 }
-                Return(value) => {
-                    value.$traverse(f);
-                }
-                Loop(value) => {
-                    value.$traverse(f);
-                }
-                Break(value) => {
-                    value.$traverse(f);
-                }
                 Tuple(values) => {
                     for value in values {
                         value.$traverse(f);

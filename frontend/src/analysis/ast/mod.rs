@@ -74,10 +74,6 @@ pub enum ExpressionKind {
     When(Box<Expression>, Vec<Arm>),
     External(InternedString, InternedString, Vec<Expression>),
     Annotate(Box<Expression>, TypeAnnotation),
-    Return(Box<Expression>),
-    Loop(Box<Expression>),
-    Break(Box<Expression>),
-    Continue,
     Tuple(Vec<Expression>),
 }
 
@@ -602,9 +598,6 @@ impl<L: Loader> Compiler<L> {
 
                     ExpressionKind::When(Box::new(input), arms)
                 }
-                NodeKind::Return(value) => {
-                    ExpressionKind::Return(Box::new(self.build_expression(*value)))
-                }
                 NodeKind::Or(lhs, rhs) => {
                     // Use the `Or` trait defined in the prelude
 
@@ -630,13 +623,6 @@ impl<L: Loader> Compiler<L> {
                         ],
                     )
                 }
-                NodeKind::Loop(value) => {
-                    ExpressionKind::Loop(Box::new(self.build_expression(*value)))
-                }
-                NodeKind::Break(value) => {
-                    ExpressionKind::Break(Box::new(self.build_expression(*value)))
-                }
-                NodeKind::Continue => ExpressionKind::Continue,
                 NodeKind::Tuple(nodes) => ExpressionKind::Tuple(
                     nodes
                         .into_iter()

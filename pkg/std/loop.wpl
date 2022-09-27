@@ -1,12 +1,28 @@
 [[no-std]]
 
+Control-Flow : A => type {
+	Break A
+	Continue
+}
+
+use Control-Flow
+
+loop' :: A => (() -> Control-Flow A) -> A
+loop' : body -> when (body ()) {
+	Break value -> value
+	Continue -> loop' body
+}
+
+[keyword]
+loop : body ~> loop' (() -> body)
+
 [keyword]
 while : condition body ~> loop {
 	if condition {
 		body
-		continue
+		Continue :: Control-Flow ()
 	} {
-		break ()
+		Break ()
 	}
 }
 

@@ -51,17 +51,6 @@ export const traverseExpr = (expr: Expression, f: (expr: Expression) => void) =>
                 traverseExpr(inner, f);
             }
             break;
-        case "Return":
-            traverseExpr(expr.kind.value, f);
-            break;
-        case "Loop":
-            traverseExpr(expr.kind.value, f);
-            break;
-        case "Break":
-            traverseExpr(expr.kind.value, f);
-            break;
-        case "Continue":
-            break;
         case "Tuple":
             for (const inner of expr.kind.value) {
                 traverseExpr(inner, f);

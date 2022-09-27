@@ -3,7 +3,7 @@ macro_rules! parse_number {
     ($number:ident, $number_ty:ident, $ty:expr, $expr_ty:ident) => {{
         let builtin = match $ty {
             $expr_ty::Builtin(builtin) => builtin,
-            _ => unreachable!(),
+            x => unreachable!("{:#?}", x),
         };
 
         macro_rules! parse {

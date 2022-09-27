@@ -53,14 +53,15 @@ lazy_static! {
             "write-stdout",
             "format",
             "number-to-text",
-            "add",
-            "subtract",
-            "multiply",
-            "divide",
-            "power",
-            "floor",
-            "ceil",
-            "sqrt",
+            "add-number",
+            "subtract-number",
+            "multiply-number",
+            "divide-number",
+            "power-number",
+            "floor-number",
+            "ceil-number",
+            "sqrt-number",
+            "add-natural",
             "text-equality",
             "number-equality",
             "number-ordering",
@@ -81,27 +82,27 @@ lazy_static! {
 }
 
 fn r#false() -> Value {
-    Value::Variant(0, Vec::new().into_boxed_slice())
+    Value::Variant(0, Vec::new())
 }
 
 fn r#true() -> Value {
-    Value::Variant(1, Vec::new().into_boxed_slice())
+    Value::Variant(1, Vec::new())
 }
 
 fn none() -> Value {
-    Value::Variant(0, Vec::new().into_boxed_slice())
+    Value::Variant(0, Vec::new())
 }
 
 fn some(value: Value) -> Value {
-    Value::Variant(1, vec![value].into_boxed_slice())
+    Value::Variant(1, vec![value])
 }
 
 fn ok(value: Value) -> Value {
-    Value::Variant(0, vec![value].into_boxed_slice())
+    Value::Variant(0, vec![value])
 }
 
 fn error(value: Value) -> Value {
-    Value::Variant(1, vec![value].into_boxed_slice())
+    Value::Variant(1, vec![value])
 }
 
 fn crash(_: &Interpreter, (text,): (Value,)) -> Result<Value, Error> {
@@ -125,7 +126,7 @@ fn write_stdout(interpreter: &Interpreter, (text,): (Value,)) -> Result<Value, E
         .ok_or_else(|| Error::from("output not configured"))?
         .borrow_mut()(&text);
 
-    Ok(Value::Marker)
+    Ok(Value::Tuple(Vec::new()))
 }
 
 fn format(_: &Interpreter, (text, inputs): (Value, Value)) -> Result<Value, Error> {
@@ -170,7 +171,7 @@ fn number_to_text(_: &Interpreter, (number,): (Value,)) -> Result<Value, Error> 
     Ok(Value::Text(Rc::from(number.normalize().to_string())))
 }
 
-fn add(_: &Interpreter, (lhs, rhs): (Value, Value)) -> Result<Value, Error> {
+fn add_number(_: &Interpreter, (lhs, rhs): (Value, Value)) -> Result<Value, Error> {
     let lhs = match lhs {
         Value::Number(number) => number,
         _ => unreachable!(),
@@ -184,7 +185,7 @@ fn add(_: &Interpreter, (lhs, rhs): (Value, Value)) -> Result<Value, Error> {
     Ok(Value::Number(lhs + rhs))
 }
 
-fn subtract(_: &Interpreter, (lhs, rhs): (Value, Value)) -> Result<Value, Error> {
+fn subtract_number(_: &Interpreter, (lhs, rhs): (Value, Value)) -> Result<Value, Error> {
     let lhs = match lhs {
         Value::Number(number) => number,
         _ => unreachable!(),
@@ -198,7 +199,7 @@ fn subtract(_: &Interpreter, (lhs, rhs): (Value, Value)) -> Result<Value, Error>
     Ok(Value::Number(lhs - rhs))
 }
 
-fn multiply(_: &Interpreter, (lhs, rhs): (Value, Value)) -> Result<Value, Error> {
+fn multiply_number(_: &Interpreter, (lhs, rhs): (Value, Value)) -> Result<Value, Error> {
     let lhs = match lhs {
         Value::Number(number) => number,
         _ => unreachable!(),
@@ -212,7 +213,7 @@ fn multiply(_: &Interpreter, (lhs, rhs): (Value, Value)) -> Result<Value, Error>
     Ok(Value::Number(lhs * rhs))
 }
 
-fn divide(_: &Interpreter, (lhs, rhs): (Value, Value)) -> Result<Value, Error> {
+fn divide_number(_: &Interpreter, (lhs, rhs): (Value, Value)) -> Result<Value, Error> {
     let lhs = match lhs {
         Value::Number(number) => number,
         _ => unreachable!(),
@@ -230,7 +231,7 @@ fn divide(_: &Interpreter, (lhs, rhs): (Value, Value)) -> Result<Value, Error> {
     Ok(Value::Number(lhs / rhs))
 }
 
-fn power(_: &Interpreter, (lhs, rhs): (Value, Value)) -> Result<Value, Error> {
+fn power_number(_: &Interpreter, (lhs, rhs): (Value, Value)) -> Result<Value, Error> {
     let lhs = match lhs {
         Value::Number(number) => number,
         _ => unreachable!(),
@@ -250,7 +251,7 @@ fn power(_: &Interpreter, (lhs, rhs): (Value, Value)) -> Result<Value, Error> {
     Ok(Value::Number(lhs.pow(rhs)))
 }
 
-fn floor(_: &Interpreter, (value,): (Value,)) -> Result<Value, Error> {
+fn floor_number(_: &Interpreter, (value,): (Value,)) -> Result<Value, Error> {
     let number = match value {
         Value::Number(number) => number,
         _ => unreachable!(),
@@ -259,7 +260,7 @@ fn floor(_: &Interpreter, (value,): (Value,)) -> Result<Value, Error> {
     Ok(Value::Number(number.floor()))
 }
 
-fn ceil(_: &Interpreter, (value,): (Value,)) -> Result<Value, Error> {
+fn ceil_number(_: &Interpreter, (value,): (Value,)) -> Result<Value, Error> {
     let number = match value {
         Value::Number(number) => number,
         _ => unreachable!(),
@@ -268,7 +269,7 @@ fn ceil(_: &Interpreter, (value,): (Value,)) -> Result<Value, Error> {
     Ok(Value::Number(number.ceil()))
 }
 
-fn sqrt(_: &Interpreter, (value,): (Value,)) -> Result<Value, Error> {
+fn sqrt_number(_: &Interpreter, (value,): (Value,)) -> Result<Value, Error> {
     let number = match value {
         Value::Number(number) => number,
         _ => unreachable!(),
@@ -278,6 +279,20 @@ fn sqrt(_: &Interpreter, (value,): (Value,)) -> Result<Value, Error> {
         .sqrt()
         .map(Value::Number)
         .ok_or_else(|| Error::from("cannot calculate the square root of a negative number"))
+}
+
+fn add_natural(_: &Interpreter, (lhs, rhs): (Value, Value)) -> Result<Value, Error> {
+    let lhs = match lhs {
+        Value::Natural(natural) => natural,
+        _ => unreachable!(),
+    };
+
+    let rhs = match rhs {
+        Value::Natural(natural) => natural,
+        _ => unreachable!(),
+    };
+
+    Ok(Value::Natural(lhs + rhs))
 }
 
 fn text_equality(_: &Interpreter, (lhs, rhs): (Value, Value)) -> Result<Value, Error> {
@@ -325,7 +340,7 @@ fn number_ordering(_: &Interpreter, (lhs, rhs): (Value, Value)) -> Result<Value,
         std::cmp::Ordering::Greater => 2,
     };
 
-    Ok(Value::Variant(index, Vec::new().into_boxed_slice()))
+    Ok(Value::Variant(index, Vec::new()))
 }
 
 fn make_mutable(_: &Interpreter, (value,): (Value,)) -> Result<Value, Error> {
@@ -349,13 +364,16 @@ fn set_mutable(_: &Interpreter, (value, new_value): (Value, Value)) -> Result<Va
 
     *value.borrow_mut() = new_value;
 
-    Ok(Value::Marker)
+    Ok(Value::Tuple(Vec::new()))
 }
 
 fn make_list(_: &Interpreter, (tuple,): (Value,)) -> Result<Value, Error> {
-    // This is OK because tuples and lists have the same representation in the
-    // interpreter
-    Ok(tuple)
+    let tuple = match tuple {
+        Value::Tuple(tuple) => tuple,
+        _ => unreachable!(),
+    };
+
+    Ok(Value::List(tuple.into()))
 }
 
 fn list_first(_: &Interpreter, (list,): (Value,)) -> Result<Value, Error> {

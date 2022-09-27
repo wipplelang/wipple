@@ -6,36 +6,37 @@ use "./util.wpl"
 [help "Implements the `+` operator."]
 Add : Left Right Sum => trait (Left -> Right -> Sum)
 + : addition operator (a b ~> Add a b)
-instance Add Number Number Number : a -> b -> external "runtime" "add" a b
+instance Add Number Number Number : a -> b -> external "runtime" "add-number" a b
+instance Add Natural Natural Natural : a -> b -> external "runtime" "add-natural" a b
 
 [help "Implements the `-` operator."]
 Subtract : Left Right Difference => trait (Left -> Right -> Difference)
 - : addition operator (a b ~> Subtract a b)
-instance Subtract Number Number Number : a -> b -> external "runtime" "subtract" a b
+instance Subtract Number Number Number : a -> b -> external "runtime" "subtract-number" a b
 
 [help "Implements the `*` operator."]
 Multiply : Left Right Product => trait (Left -> Right -> Product)
 * : multiplication operator (a b ~> Multiply a b)
-instance Multiply Number Number Number : a -> b -> external "runtime" "multiply" a b
+instance Multiply Number Number Number : a -> b -> external "runtime" "multiply-number" a b
 
 [help "Implements the `/` operator."]
 Divide : Left Right Quotient => trait (Left -> Right -> Quotient)
 / : multiplication operator (a b ~> Divide a b)
-instance Divide Number Number Number : a -> b -> external "runtime" "divide" a b
+instance Divide Number Number Number : a -> b -> external "runtime" "divide-number" a b
 
 [help "Implements the `^` operator."]
 Power : Left Right Power => trait (Left -> Right -> Power)
 ^ : power operator (a b ~> Power a b)
-instance Power Number Number Number : a -> b -> external "runtime" "power" a b
+instance Power Number Number Number : a -> b -> external "runtime" "power-number" a b
 
 [help "Rounds down a number to the nearest integer."]
 floor :: Number -> Number
-floor : n -> external "runtime" "floor" n
+floor : n -> external "runtime" "floor-number" n
 
 [help "Rounds up a number to the nearest integer."]
 ceil :: Number -> Number
-ceil : n -> external "runtime" "ceil" n
+ceil : n -> external "runtime" "ceil-number" n
 
 [help "Calculates the square root of a number."]
 sqrt :: Number -> Number
-sqrt : n -> external "runtime" "sqrt" n
+sqrt : n -> external "runtime" "sqrt-number" n

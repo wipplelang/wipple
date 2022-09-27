@@ -76,7 +76,7 @@
         "link": "/?lesson=learn/11-enumerations-and-pattern-matching"
     },
     "next": {
-        "name": "Working with lists",
-        "link": "/?lesson=learn/13-working-with-lists"
+        "name": "Tuples",
+        "link": "/?lesson=learn/13-tuples"
     }
 }

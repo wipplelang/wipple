@@ -22,14 +22,21 @@ impl From<Type> for FormattableType {
 
 impl FormattableType {
     fn params(&self) -> Vec<UnresolvedType> {
-        match self {
+        let mut params = match self {
             FormattableType::Type(ty) => ty
                 .params()
                 .into_iter()
                 .map(UnresolvedType::Parameter)
                 .collect(),
             FormattableType::Trait(_, params) => params.clone(),
-        }
+        };
+
+        params.dedup_by_key(|ty| match ty {
+            UnresolvedType::Parameter(param) => Some(*param),
+            _ => None,
+        });
+
+        params
     }
 }
 
@@ -99,7 +106,9 @@ fn format_type_with(
 
         let (formatted, should_surround_in_backticks) = match ty {
             FormattableType::Type(UnresolvedType::Variable(_)) => (String::from("_"), true),
-            FormattableType::Type(UnresolvedType::NumericVariable(_)) => (String::from("number"), false),
+            FormattableType::Type(UnresolvedType::NumericVariable(_)) => {
+                (String::from("number"), false)
+            }
             FormattableType::Type(UnresolvedType::Parameter(param)) => (param_names(param), true),
             FormattableType::Type(UnresolvedType::Bottom(_)) => (String::from("!"), true),
             FormattableType::Type(UnresolvedType::Named(id, params, _)) => {

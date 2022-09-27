@@ -33,18 +33,6 @@ Try : Value Success Failure => trait (Value -> Result Success Failure)
 [help "Represents the failure to find a value inside a `Maybe`."]
 None-Error : type
 
-A => instance Try (Maybe A) A None-Error : x? -> when x? {
-	Some x -> OK x
-	None -> Error None-Error
-}
-
-Success Failure => instance Try (Result Success Failure) Success Failure : x? -> (x? :: Result Success Failure)
-
-try : x? ~> when ((Try :: _ -> Result _ _) x?) {
-	OK x -> x
-	Error e -> return (Error e)
-}
-
 -- TODO: Use higher-kinded types
 Expect : Container Value => trait (Text -> Container -> Value)
 

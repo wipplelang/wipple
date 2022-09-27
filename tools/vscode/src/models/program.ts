@@ -28,10 +28,6 @@ export type ExpressionKind =
     | { type: "Initialize"; value: [Pattern, Expression] }
     | { type: "Structure"; value: Expression[] }
     | { type: "Variant"; value: [number, Expression[]] }
-    | { type: "Return"; value: Expression }
-    | { type: "Loop"; value: Expression }
-    | { type: "Break"; value: Expression }
-    | { type: "Continue" }
     | { type: "Tuple"; value: Expression[] };
 
 export interface Arm {

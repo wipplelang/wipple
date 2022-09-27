@@ -24,4 +24,3 @@ which = "4"
 wipple-default-loader = { path = "../../loaders/default" }
 wipple-frontend = { path = "../../frontend", features = ["clap", "serde_json"] }
 wipple-interpreter-backend = { path = "../../backends/interpreter" }
-wipple-rust-backend = { path = "../../backends/rust" }

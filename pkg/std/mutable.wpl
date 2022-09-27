@@ -28,5 +28,5 @@ add! :: Left Right where (Add Left Right Left) => Right -> Mutable Left -> ()
 add! : x -> m -> m . set! (get m + x)
 
 [help "Increment a `Mutable` value."]
-increment! :: A where (Add A Number A) => Mutable A -> ()
-increment! : add! 1
+increment! :: A where (Add A Natural A) => Mutable A -> ()
+increment! : add! (1 :: Natural)

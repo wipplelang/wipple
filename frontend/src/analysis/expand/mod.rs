@@ -121,11 +121,7 @@ pub enum NodeKind {
     UseFile(Option<FilePath>),
     UseExpr(Box<Node>),
     When(Box<Node>, Vec<Statement>),
-    Return(Box<Node>),
     Or(Box<Node>, Box<Node>),
-    Loop(Box<Node>),
-    Break(Box<Node>),
-    Continue,
     Tuple(Vec<Node>),
 }
 
@@ -973,8 +969,6 @@ impl<L: Loader> Expander<L> {
                                     async move {
                                         if exprs.is_empty() {
                                             if let Some(operator_index) = operator_index {
-                                                dbg!(operator_index, &operators);
-
                                                 let operator_span = operators
                                                     .iter()
                                                     .find_map(|(index, _, span, _)| {
@@ -1213,18 +1207,9 @@ impl<L: Loader> Expander<L> {
                                 replace(&mut arm.node, map);
                             }
                         }
-                        NodeKind::Return(value) => {
-                            replace(value, map);
-                        }
                         NodeKind::Or(lhs, rhs) => {
                             replace(lhs, map);
                             replace(rhs, map);
-                        }
-                        NodeKind::Loop(body) => {
-                            replace(body, map);
-                        }
-                        NodeKind::Break(value) => {
-                            replace(value, map);
                         }
                         _ => {}
                     }

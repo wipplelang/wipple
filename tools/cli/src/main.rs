@@ -3,7 +3,7 @@ use serde::Serialize;
 use std::{
     fs,
     io::{self, Read},
-    path::{Path, PathBuf},
+    path::PathBuf,
     process::ExitCode,
     str::FromStr,
     sync::Arc,
@@ -23,7 +23,7 @@ enum Args {
         #[clap(flatten)]
         options: BuildOptions,
 
-        #[clap(long, value_enum, default_value = "rust")]
+        #[clap(long, value_enum, default_value = "interpreter")]
         backend: RunBackend,
 
         #[clap(multiple_values = true)]
@@ -37,7 +37,7 @@ enum Args {
         #[clap(short)]
         output: PathBuf,
 
-        #[clap(long, value_enum, default_value = "rust")]
+        #[clap(long, value_enum, /* default_value = ".." */)]
         backend: CompileBackend,
 
         #[clap(multiple_values = true)]
@@ -73,9 +73,6 @@ struct BuildOptions {
     #[clap(long)]
     base_path: Option<PathBuf>,
 
-    #[clap(long, conflicts_with = "std")]
-    no_std: bool,
-
     #[cfg(debug_assertions)]
     #[clap(long)]
     trace: bool,
@@ -84,19 +81,15 @@ struct BuildOptions {
 #[derive(Debug, Clone, Copy, ValueEnum)]
 enum RunBackend {
     Interpreter,
-    Rust,
 }
 
 #[derive(Debug, Clone, Copy, ValueEnum)]
-enum CompileBackend {
-    Rust,
-}
+enum CompileBackend {}
 
 #[derive(Debug, Clone, Copy, ValueEnum)]
 enum DumpTarget {
     Analysis,
     Ir,
-    Rust,
 }
 
 #[tokio::main]
@@ -113,6 +106,7 @@ async fn main() -> ExitCode {
     }
 }
 
+#[cfg(not(debug_assertions))]
 const PROGRESS_BAR_TICK_SPEED: u64 = 80;
 
 async fn run() -> anyhow::Result<()> {
@@ -157,7 +151,7 @@ async fn run() -> anyhow::Result<()> {
         Args::Run {
             options,
             backend,
-            backend_args: rustc_args,
+            backend_args: _,
         } => {
             let (ir, diagnostics) = generate_ir(&options, progress_bar.clone()).await;
 
@@ -188,48 +182,15 @@ async fn run() -> anyhow::Result<()> {
                         eprintln!("fatal error: {}", error);
                     }
                 }
-                RunBackend::Rust => {
-                    let output = mktemp::Temp::new_file()?;
-
-                    compile_rust(ir, &*output, &rustc_args, progress_bar.clone())?;
-
-                    if let Some(progress_bar) = progress_bar.as_ref() {
-                        progress_bar.finish_and_clear();
-                    }
-
-                    subprocess::Exec::cmd(output.as_path()).join()?;
-                }
             }
         }
         Args::Compile {
-            options,
-            output,
-            backend,
-            backend_args,
+            options: _,
+            output: _,
+            backend: _,
+            backend_args: _,
         } => {
-            let (ir, diagnostics) = generate_ir(&options, progress_bar.clone()).await;
-
-            let error = diagnostics.contains_errors();
-            emit_diagnostics(diagnostics, &options);
-            if error {
-                if let Some(progress_bar) = progress_bar.as_ref() {
-                    progress_bar.finish_and_clear();
-                }
-
-                return Err(anyhow::Error::msg(""));
-            }
-
-            let ir = ir.unwrap();
-
-            match backend {
-                CompileBackend::Rust => {
-                    compile_rust(ir, &output, &backend_args, progress_bar.clone())?;
-                }
-            }
-
-            if let Some(progress_bar) = progress_bar.as_ref() {
-                progress_bar.finish_and_clear();
-            }
+            unimplemented!();
         }
         Args::Dump { options, target } => match target {
             DumpTarget::Analysis => {
@@ -272,38 +233,6 @@ async fn run() -> anyhow::Result<()> {
                 }
 
                 print!("{}", ir.unwrap())
-            }
-            DumpTarget::Rust => {
-                let (ir, diagnostics) = generate_ir(&options, progress_bar.clone()).await;
-
-                let error = diagnostics.contains_errors();
-                emit_diagnostics(diagnostics, &options);
-                if error {
-                    if let Some(progress_bar) = progress_bar.as_ref() {
-                        progress_bar.finish_and_clear();
-                    }
-
-                    return Err(anyhow::Error::msg(""));
-                }
-
-                let ir = ir.unwrap();
-
-                if let Some(progress_bar) = progress_bar.as_deref() {
-                    progress_bar.set_message("Compiling to Rust");
-                }
-
-                let tokens = wipple_rust_backend::compile(&ir)?.to_string();
-
-                let src = syn::parse_file(&tokens)
-                    .as_ref()
-                    .map(prettyplease::unparse)
-                    .unwrap_or(tokens);
-
-                if let Some(progress_bar) = progress_bar.as_ref() {
-                    progress_bar.finish_and_clear();
-                }
-
-                print!("{}", src)
             }
         },
         Args::Doc { options, full } => {
@@ -480,7 +409,7 @@ async fn build_with_passes<P>(
         Some(wipple_frontend::FilePath::Path(
             wipple_frontend::helpers::InternedString::new(base),
         )),
-        (!options.no_std).then(|| {
+        Some({
             let path = options.std.as_deref();
 
             wipple_frontend::FilePath::Path(
@@ -545,72 +474,4 @@ async fn build_with_passes<P>(
     let source_map = compiler.loader.source_map().lock().clone();
 
     (program, source_map, diagnostics)
-}
-
-fn compile_rust(
-    ir: wipple_frontend::ir::Program,
-    output: &Path,
-    rustc_args: &[std::ffi::OsString],
-    progress_bar: Option<Arc<indicatif::ProgressBar>>,
-) -> anyhow::Result<()> {
-    if let Some(progress_bar) = progress_bar.as_deref() {
-        progress_bar.set_message("Compiling to Rust");
-    }
-
-    let tokens = wipple_rust_backend::compile(&ir)?.to_string();
-    let src = syn::parse_file(&tokens)
-        .as_ref()
-        .map(prettyplease::unparse)
-        .unwrap_or(tokens);
-
-    let rustc = match which::which("rustc") {
-        Ok(path) => path,
-        _ => {
-            if let Some(progress_bar) = progress_bar.as_ref() {
-                progress_bar.set_message("Installing Rust compiler");
-                progress_bar.disable_steady_tick();
-            }
-
-            if !subprocess::Exec::shell(
-                "curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y",
-            )
-            .join()?
-            .success()
-            {
-                return Err(anyhow::Error::msg(""));
-            }
-
-            if let Some(progress_bar) = progress_bar.as_deref() {
-                progress_bar.enable_steady_tick(PROGRESS_BAR_TICK_SPEED);
-            }
-
-            match which::which("rustc") {
-                Ok(path) => path,
-                Err(_) => {
-                    return Err(anyhow::Error::msg(
-                        "installed Rust, but couldn't find it in your PATH",
-                    ));
-                }
-            }
-        }
-    };
-
-    if let Some(progress_bar) = progress_bar.as_ref() {
-        progress_bar.set_message("Compiling");
-    }
-
-    if !subprocess::Exec::cmd(rustc)
-        .arg("-")
-        .arg("-o")
-        .arg(output)
-        .arg("-O")
-        .args(rustc_args)
-        .stdin(src.as_str())
-        .capture()?
-        .success()
-    {
-        return Err(anyhow::Error::msg(""));
-    }
-
-    Ok(())
 }
