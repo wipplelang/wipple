@@ -17,13 +17,16 @@ show :: A where (Show A) => A -> ()
 show : x -> write-stdout (format "_\n" x)
 
 instance Show Text : it
-
 instance Show Number : n -> external "runtime" "number-to-text" n
-
+instance Show Integer : n -> external "runtime" "integer-to-text" n
+instance Show Natural : n -> external "runtime" "natural-to-text" n
+instance Show Byte : n -> external "runtime" "byte-to-text" n
+instance Show Signed : n -> external "runtime" "signed-to-text" n
+instance Show Unsigned : n -> external "runtime" "unsigned-to-text" n
+instance Show Float : n -> external "runtime" "float-to-text" n
+instance Show Double : n -> external "runtime" "double-to-text" n
 instance Show Boolean : x? -> if x? "True" "False"
-
 instance Show Index-Error : just "invalid index"
-
 instance Show None-Error : just "found `None`"
 
 Value where (Show Value) => instance Show (Maybe Value) : x? -> when x? {

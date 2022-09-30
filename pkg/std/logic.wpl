@@ -41,6 +41,13 @@ Ordering : type {
 Order : A => trait (A -> A -> Ordering)
 
 instance Order Number : a -> b -> external "runtime" "number-ordering" a b
+instance Order Integer : a -> b -> external "runtime" "integer-ordering" a b
+instance Order Natural : a -> b -> external "runtime" "natural-ordering" a b
+instance Order Byte : a -> b -> external "runtime" "byte-ordering" a b
+instance Order Signed : a -> b -> external "runtime" "signed-ordering" a b
+instance Order Unsigned : a -> b -> external "runtime" "unsigned-ordering" a b
+instance Order Float : a -> b -> external "runtime" "float-ordering" a b
+instance Order Double : a -> b -> external "runtime" "double-ordering" a b
 
 < : comparison operator (a b ~> when (Order a b) {
 	Ordering Less -> True
@@ -71,12 +78,14 @@ Equal : A => trait (A -> A -> Boolean)
 = : comparison operator (a b ~> Equal a b)
 /= : comparison operator (a b ~> not (a = b))
 
-instance Equal Number : a -> b -> when (Order a b) {
-	Ordering Less -> False
-	Ordering Equal -> True
-	Ordering Greater -> False
-}
-
 instance Equal Text : a -> b -> external "runtime" "text-equality" a b
+instance Equal Number : a -> b -> external "runtime" "number-equality" a b
+instance Equal Integer : a -> b -> external "runtime" "integer-equality" a b
+instance Equal Natural : a -> b -> external "runtime" "natural-equality" a b
+instance Equal Byte : a -> b -> external "runtime" "byte-equality" a b
+instance Equal Signed : a -> b -> external "runtime" "signed-equality" a b
+instance Equal Unsigned : a -> b -> external "runtime" "unsigned-equality" a b
+instance Equal Float : a -> b -> external "runtime" "float-equality" a b
+instance Equal Double : a -> b -> external "runtime" "double-equality" a b
 instance Equal () : () -> () -> True
 instance Equal Boolean : a? -> b? -> a? and b? or not a? and not b?

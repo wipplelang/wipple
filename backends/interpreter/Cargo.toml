@@ -4,11 +4,9 @@ version = "0.0.0"
 edition = "2021"
 
 [dependencies]
-backtrace = "0.3" # FIXME: TEMPORARY
 im = "15"
 itertools = "0.10"
 lazy_static = "1"
 num-traits = "0.2"
-paste = "1"
 rust_decimal = { version = "1", features = ["maths"] }
 wipple-frontend = { path = "../../frontend" }

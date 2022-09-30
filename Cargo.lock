@@ -2030,12 +2030,10 @@ dependencies = [
 name = "wipple-interpreter-backend"
 version = "0.0.0"
 dependencies = [
- "backtrace",
  "im",
  "itertools",
  "lazy_static",
  "num-traits",
- "paste",
  "rust_decimal",
  "wipple-frontend",
 ]
