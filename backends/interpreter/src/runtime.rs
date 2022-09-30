@@ -2,6 +2,7 @@ use crate::{Error, Interpreter, Value};
 use itertools::Itertools;
 use lazy_static::lazy_static;
 use num_traits::pow::Pow;
+use rust_decimal::Decimal;
 use rust_decimal::MathematicalOps;
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
@@ -76,8 +77,19 @@ fn initialize_runtime() -> HashMap<&'static str, RuntimeFunction> {
             runtime_math_fn!(concat!("add-", $name), Value::$ty, (lhs, rhs) => Ok(lhs + rhs));
             runtime_math_fn!(concat!("subtract-", $name), Value::$ty, (lhs, rhs) => Ok(lhs - rhs));
             runtime_math_fn!(concat!("multiply-", $name), Value::$ty, (lhs, rhs) => Ok(lhs * rhs));
-            runtime_math_fn!(concat!("divide-", $name), Value::$ty, (lhs, rhs) => Ok(lhs / rhs));
         }
+    }
+
+    macro_rules! runtime_div_fn {
+        ($name:expr, Value::$ty:ident, $zero:expr) => {
+            runtime_math_fn!($name, Value::$ty, (lhs, rhs) => {
+                if rhs != $zero {
+                    Ok(lhs / rhs)
+                } else {
+                    Err(Error::from("cannot divide by zero"))
+                }
+            });
+        };
     }
 
     macro_rules! runtime_text_fn {
@@ -161,33 +173,77 @@ fn initialize_runtime() -> HashMap<&'static str, RuntimeFunction> {
     runtime_text_fn!("double-to-text", Value::Double);
 
     runtime_math_fn!("number", Value::Number);
-    runtime_math_fn!("power-number", Value::Number, (lhs, rhs) => Ok(lhs.pow(rhs)));
+    runtime_div_fn!("divide-number", Value::Number, Decimal::ZERO);
+    runtime_math_fn!("power-number", Value::Number, (lhs, rhs) => {
+        if lhs != Decimal::ZERO && rhs != Decimal::ZERO {
+            Ok(lhs.pow(rhs))
+        } else {
+            Err(Error::from("cannot raise zero to the power of zero"))
+        }
+    });
     runtime_math_fn!("floor-number", Value::Number, (n) => Ok(n.floor()));
     runtime_math_fn!("ceil-number", Value::Number, (n) => Ok(n.ceil()));
     runtime_math_fn!("sqrt-number", Value::Number, (n) => Ok(n.sqrt().unwrap()));
 
     runtime_math_fn!("integer", Value::Integer);
-    runtime_math_fn!("power-integer", Value::Integer, (lhs, rhs) => Ok(lhs.pow(rhs as u32)));
+    runtime_div_fn!("divide-integer", Value::Integer, 0);
+    runtime_math_fn!("power-number", Value::Integer, (lhs, rhs) => {
+        if lhs != 0 && rhs != 0 {
+            Ok(lhs.pow(rhs as u32))
+        } else {
+            Err(Error::from("cannot raise zero to the power of zero"))
+        }
+    });
 
     runtime_math_fn!("natural", Value::Natural);
-    runtime_math_fn!("power-natural", Value::Natural, (lhs, rhs) => Ok(lhs.pow(rhs as u32)));
+    runtime_div_fn!("divide-natural", Value::Natural, 0);
+    runtime_math_fn!("power-natural", Value::Natural, (lhs, rhs) => {
+        if lhs != 0 && rhs != 0 {
+            Ok(lhs.pow(rhs as u32))
+        } else {
+            Err(Error::from("cannot raise zero to the power of zero"))
+        }
+    });
 
     runtime_math_fn!("byte", Value::Byte);
-    runtime_math_fn!("power-byte", Value::Byte, (lhs, rhs) => Ok(lhs.pow(rhs as u32)));
+    runtime_div_fn!("divide-byte", Value::Byte, 0);
+    runtime_math_fn!("power-byte", Value::Byte, (lhs, rhs) => {
+        if lhs != 0 && rhs != 0 {
+            Ok(lhs.pow(rhs as u32))
+        } else {
+            Err(Error::from("cannot raise zero to the power of zero"))
+        }
+    });
 
     runtime_math_fn!("signed", Value::Signed);
-    runtime_math_fn!("power-signed", Value::Signed, (lhs, rhs) => Ok(lhs.pow(rhs as u32)));
+    runtime_div_fn!("divide-signed", Value::Signed, 0);
+    runtime_math_fn!("power-signed", Value::Signed, (lhs, rhs) => {
+        if lhs != 0 && rhs != 0 {
+            Ok(lhs.pow(rhs as u32))
+        } else {
+            Err(Error::from("cannot raise zero to the power of zero"))
+        }
+    });
 
     runtime_math_fn!("unsigned", Value::Unsigned);
-    runtime_math_fn!("power-unsigned", Value::Unsigned, (lhs, rhs) => Ok(lhs.pow(rhs)));
+    runtime_div_fn!("divide-unsigned", Value::Unsigned, 0);
+    runtime_math_fn!("power-unsigned", Value::Unsigned, (lhs, rhs) => {
+        if lhs != 0 && rhs != 0 {
+            Ok(lhs.pow(rhs))
+        } else {
+            Err(Error::from("cannot raise zero to the power of zero"))
+        }
+    });
 
     runtime_math_fn!("float", Value::Float);
+    runtime_math_fn!("divide-float", Value::Float, (lhs, rhs) => Ok(lhs / rhs));
     runtime_math_fn!("power-float", Value::Float, (lhs, rhs) => Ok(lhs.pow(rhs)));
     runtime_math_fn!("floor-float", Value::Float, (n) => Ok(n.floor()));
     runtime_math_fn!("ceil-float", Value::Float, (n) => Ok(n.ceil()));
     runtime_math_fn!("sqrt-float", Value::Float, (n) => Ok(n.sqrt()));
 
     runtime_math_fn!("double", Value::Double);
+    runtime_math_fn!("divide-double", Value::Double, (lhs, rhs) => Ok(lhs / rhs));
     runtime_math_fn!("power-double", Value::Double, (lhs, rhs) => Ok(lhs.pow(rhs)));
     runtime_math_fn!("floor-double", Value::Double, (n) => Ok(n.floor()));
     runtime_math_fn!("ceil-double", Value::Double, (n) => Ok(n.ceil()));
