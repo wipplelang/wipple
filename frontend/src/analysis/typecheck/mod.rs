@@ -64,10 +64,6 @@ macro_rules! expr {
                 Initialize([<$prefix Pattern>], Box<[<$prefix Expression>]>),
                 Structure(Vec<[<$prefix Expression>]>),
                 Variant(usize, Vec<[<$prefix Expression>]>),
-                Return(Box<[<$prefix Expression>]>),
-                Loop(Box<[<$prefix Expression>]>),
-                Break(Box<[<$prefix Expression>]>),
-                Continue,
                 Tuple(Vec<[<$prefix Expression>]>),
                 $($kinds)*
             }
@@ -178,7 +174,7 @@ pub struct Declarations<Expr, Ty, File = ()> {
     pub traits: BTreeMap<TraitId, Declaration<TraitDeclaration>>,
     pub generic_constants: BTreeMap<GenericConstantId, GenericConstantDeclaration<Expr, File>>,
     pub monomorphized_constants:
-        BTreeMap<MonomorphizedConstantId, (File, GenericConstantId, Declaration<Expr>)>,
+        BTreeMap<MonomorphizedConstantId, (File, GenericConstantId, Ty, Declaration<Expr>)>,
     pub variables: BTreeMap<VariableId, Declaration<Ty>>,
 }
 
@@ -255,8 +251,6 @@ impl<L: Loader> Compiler<L> {
             ctx: Default::default(),
             errors: Default::default(),
             variables: Default::default(),
-            return_tys: Default::default(),
-            loop_tys: Default::default(),
             traits: Default::default(),
             types: Default::default(),
             generic_constants: Default::default(),
@@ -687,7 +681,7 @@ impl<L: Loader> Compiler<L> {
             }
 
             let body_span = body.span;
-            let body = match typechecker.monomorphize(body, &constant.file, &mut Vec::new()) {
+            let body = match typechecker.monomorphize(body, &constant.file, &mut BTreeMap::new()) {
                 Ok(expr) => expr,
                 Err(error) => {
                     typechecker.errors.push(error);
@@ -730,7 +724,7 @@ impl<L: Loader> Compiler<L> {
                     .iter()
                     .cloned()
                     .map(|expr| {
-                        let expr = typechecker.monomorphize(expr, file, &mut Vec::new())?;
+                        let expr = typechecker.monomorphize(expr, file, &mut BTreeMap::new())?;
                         Ok((file.clone(), expr))
                     })
                     .collect::<Result<Vec<_>, _>>()
@@ -745,7 +739,7 @@ impl<L: Loader> Compiler<L> {
             }
         };
 
-        let mut cache = Vec::new();
+        let mut cache = BTreeMap::new();
 
         loop {
             let mut new = false;
@@ -782,7 +776,7 @@ impl<L: Loader> Compiler<L> {
                         .push(instance_id);
                 }
 
-                cache.push((generic_id, id));
+                cache.insert(generic_id, id);
 
                 let body = match typechecker.monomorphize(
                     constant.decl.value.clone(),
@@ -795,7 +789,7 @@ impl<L: Loader> Compiler<L> {
 
                         MonomorphizedExpression {
                             span,
-                            ty,
+                            ty: ty.clone(),
                             kind: MonomorphizedExpressionKind::Error,
                         }
                     }
@@ -806,6 +800,7 @@ impl<L: Loader> Compiler<L> {
                     (
                         constant.file,
                         generic_id,
+                        ty,
                         Declaration {
                             name: constant.decl.name,
                             span,
@@ -860,12 +855,14 @@ impl<L: Loader> Compiler<L> {
                     .monomorphized_constants
                     .clone()
                     .into_iter()
-                    .map(|(id, (file, generic_id, decl))| {
+                    .map(|(id, (file, generic_id, ty, decl))| {
                         Ok((
                             id,
                             (
                                 (),
                                 generic_id,
+                                ty.finalize(&typechecker.ctx, false)
+                                    .map_err(|e| Error::new(e, decl.span))?,
                                 Declaration {
                                     name: decl.name,
                                     span: decl.span,
@@ -930,13 +927,11 @@ impl<L: Loader> Compiler<L> {
         let mut cached = BTreeSet::new();
         let mut map = BTreeMap::new();
 
-        for (id, ((), generic_id, constant)) in &declarations.monomorphized_constants {
-            let cached_id = *cache
-                .entry((generic_id, constant.value.ty.clone()))
-                .or_insert_with(|| {
-                    cached.insert(*id);
-                    *id
-                });
+        for (id, ((), generic_id, ty, _)) in &declarations.monomorphized_constants {
+            let cached_id = *cache.entry((generic_id, ty.clone())).or_insert_with(|| {
+                cached.insert(*id);
+                *id
+            });
 
             map.insert(*id, cached_id);
         }
@@ -960,7 +955,7 @@ impl<L: Loader> Compiler<L> {
             }
         };
 
-        for ((), _, constant) in declarations.monomorphized_constants.values_mut() {
+        for ((), _, _, constant) in declarations.monomorphized_constants.values_mut() {
             constant.value.traverse_mut(update)
         }
 
@@ -1164,8 +1159,6 @@ struct Typechecker<L: Loader> {
     ctx: Context,
     errors: Vec<Error>,
     variables: BTreeMap<VariableId, UnresolvedType>,
-    return_tys: Vec<Option<UnresolvedType>>,
-    loop_tys: Vec<Option<UnresolvedType>>,
     traits: BTreeMap<TraitId, TraitDefinition>,
     types: BTreeMap<TypeId, TypeDefinition>,
     generic_constants: BTreeMap<
@@ -1296,27 +1289,11 @@ impl<L: Loader> Typechecker<L> {
                 let pattern =
                     self.typecheck_pattern(pattern, input_ty.clone(), file, suppress_errors);
 
-                self.return_tys.push(None);
-
                 let body = self.typecheck_expr(body, file, suppress_errors);
-
-                let return_ty = self
-                    .return_tys
-                    .pop()
-                    .unwrap()
-                    .unwrap_or_else(|| UnresolvedType::Variable(self.ctx.new_variable()));
-
-                if let Err(errors) = self.ctx.unify(body.ty.clone(), return_ty.clone()) {
-                    if !suppress_errors {
-                        self.errors.push(Error::new(errors, body.span));
-                    }
-
-                    return UnresolvedExpression::error(expr.span);
-                };
 
                 UnresolvedExpression {
                     span: expr.span,
-                    ty: UnresolvedType::Function(Box::new(input_ty), Box::new(return_ty)),
+                    ty: UnresolvedType::Function(Box::new(input_ty), Box::new(body.ty.clone())),
                     kind: UnresolvedExpressionKind::Function(pattern, Box::new(body)),
                 }
             }
@@ -1578,91 +1555,6 @@ impl<L: Loader> Typechecker<L> {
                     kind: UnresolvedExpressionKind::Variant(*index, values),
                 }
             }
-            lower::ExpressionKind::Return(value) => {
-                let value = self.typecheck_expr(value, file, suppress_errors);
-
-                let return_ty = match self.return_tys.last_mut() {
-                    Some(ty) => ty,
-                    None => return UnresolvedExpression::error(expr.span),
-                };
-
-                if let Some(return_ty) = return_ty {
-                    if let Err(errors) = self.ctx.unify(return_ty.clone(), value.ty.clone()) {
-                        if !suppress_errors {
-                            self.errors.push(Error::new(errors, expr.span));
-                        }
-
-                        return UnresolvedExpression::error(expr.span);
-                    }
-                } else {
-                    *return_ty = Some(value.ty.clone());
-                }
-
-                UnresolvedExpression {
-                    span: expr.span,
-                    ty: UnresolvedType::Bottom(BottomTypeReason::Annotated),
-                    kind: UnresolvedExpressionKind::Return(Box::new(value)),
-                }
-            }
-            lower::ExpressionKind::Loop(body) => {
-                self.loop_tys.push(None);
-
-                let body = self.typecheck_expr(body, file, suppress_errors);
-
-                let loop_ty = self
-                    .loop_tys
-                    .pop()
-                    .unwrap()
-                    .unwrap_or_else(|| UnresolvedType::Variable(self.ctx.new_variable()));
-
-                if let Err(errors) = self
-                    .ctx
-                    .unify(body.ty.clone(), UnresolvedType::Tuple(Vec::new()))
-                {
-                    if !suppress_errors {
-                        self.errors.push(Error::new(errors, expr.span));
-                    }
-
-                    return UnresolvedExpression::error(expr.span);
-                };
-
-                UnresolvedExpression {
-                    span: expr.span,
-                    ty: loop_ty,
-                    kind: UnresolvedExpressionKind::Loop(Box::new(body)),
-                }
-            }
-            lower::ExpressionKind::Break(value) => {
-                let value = self.typecheck_expr(value, file, suppress_errors);
-
-                let loop_ty = match self.loop_tys.last_mut() {
-                    Some(ty) => ty,
-                    None => return UnresolvedExpression::error(expr.span),
-                };
-
-                if let Some(loop_ty) = loop_ty {
-                    if let Err(errors) = self.ctx.unify(loop_ty.clone(), value.ty.clone()) {
-                        if !suppress_errors {
-                            self.errors.push(Error::new(errors, expr.span));
-                        }
-
-                        return UnresolvedExpression::error(expr.span);
-                    }
-                } else {
-                    *loop_ty = Some(value.ty.clone());
-                }
-
-                UnresolvedExpression {
-                    span: expr.span,
-                    ty: UnresolvedType::Bottom(BottomTypeReason::Annotated),
-                    kind: UnresolvedExpressionKind::Break(Box::new(value)),
-                }
-            }
-            lower::ExpressionKind::Continue => UnresolvedExpression {
-                span: expr.span,
-                ty: UnresolvedType::Bottom(BottomTypeReason::Annotated),
-                kind: UnresolvedExpressionKind::Continue,
-            },
             lower::ExpressionKind::Tuple(exprs) => {
                 let exprs = exprs
                     .iter()
@@ -1859,7 +1751,7 @@ impl<L: Loader> Typechecker<L> {
         ty: UnresolvedType,
         match_set: &mut MatchSet,
         file: &Rc<RefCell<lower::File>>,
-        cache: &mut Vec<(GenericConstantId, MonomorphizedConstantId)>,
+        cache: &mut BTreeMap<GenericConstantId, MonomorphizedConstantId>,
     ) -> Result<MonomorphizedArm, Error> {
         Ok(MonomorphizedArm {
             span: arm.span,
@@ -1876,7 +1768,7 @@ impl<L: Loader> Typechecker<L> {
         mut ty: UnresolvedType,
         match_set: &mut MatchSet,
         file: &Rc<RefCell<lower::File>>,
-        cache: &mut Vec<(GenericConstantId, MonomorphizedConstantId)>,
+        cache: &mut BTreeMap<GenericConstantId, MonomorphizedConstantId>,
     ) -> Option<MonomorphizedPattern> {
         ty.apply(&self.ctx);
 
@@ -2238,38 +2130,32 @@ impl<L: Loader> Typechecker<L> {
         &mut self,
         mut expr: UnresolvedExpression,
         file: &Rc<RefCell<lower::File>>,
-        cache: &mut Vec<(GenericConstantId, MonomorphizedConstantId)>,
+        cache: &mut BTreeMap<GenericConstantId, MonomorphizedConstantId>,
     ) -> Result<MonomorphizedExpression, Error> {
         expr.ty.apply(&self.ctx);
 
         macro_rules! find_cached {
             ($id:expr) => {
-                cache
-                    .iter()
-                    .copied()
-                    .find_map(|(generic_id, monomorphized_id)| {
-                        (generic_id == $id).then(|| monomorphized_id)
-                    })
-                    .and_then(|id| {
-                        let ty = self
-                            .monomorphized_constants
-                            .get(&id)
-                            .unwrap()
-                            .2
-                            .decl
-                            .value
-                            .ty
-                            .clone();
+                cache.get(&$id).and_then(|id| {
+                    let ty = self
+                        .monomorphized_constants
+                        .get(id)
+                        .unwrap()
+                        .2
+                        .decl
+                        .value
+                        .ty
+                        .clone();
 
-                        let mut temp_ctx = self.ctx.clone();
+                    let mut temp_ctx = self.ctx.clone();
 
-                        if temp_ctx.unify(ty.clone(), expr.ty.clone()).is_ok() {
-                            self.ctx = temp_ctx;
-                            Some(id)
-                        } else {
-                            None
-                        }
-                    })
+                    if temp_ctx.unify(ty.clone(), expr.ty.clone()).is_ok() {
+                        self.ctx = temp_ctx;
+                        Some(*id)
+                    } else {
+                        None
+                    }
+                })
             };
         }
 
@@ -2286,7 +2172,7 @@ impl<L: Loader> Typechecker<L> {
                         }
 
                         let monomorphized_id = self.compiler.new_monomorphized_constant_id();
-                        cache.push((id, monomorphized_id));
+                        cache.insert(id, monomorphized_id);
 
                         let ty = self.monomorphize_constant(id, monomorphized_id, expr.span);
 
@@ -2444,7 +2330,7 @@ impl<L: Loader> Typechecker<L> {
                         }
 
                         let monomorphized_instance = self.compiler.new_monomorphized_constant_id();
-                        cache.push((instance, monomorphized_instance));
+                        cache.insert(instance, monomorphized_instance);
 
                         let ty =
                             self.monomorphize_constant(instance, monomorphized_instance, expr.span);
@@ -2455,16 +2341,6 @@ impl<L: Loader> Typechecker<L> {
 
                         MonomorphizedExpressionKind::Constant(monomorphized_instance)
                     }
-                    UnresolvedExpressionKind::Return(value) => MonomorphizedExpressionKind::Return(
-                        Box::new(self.monomorphize(*value, file, cache)?),
-                    ),
-                    UnresolvedExpressionKind::Loop(body) => MonomorphizedExpressionKind::Loop(
-                        Box::new(self.monomorphize(*body, file, cache)?),
-                    ),
-                    UnresolvedExpressionKind::Break(value) => MonomorphizedExpressionKind::Break(
-                        Box::new(self.monomorphize(*value, file, cache)?),
-                    ),
-                    UnresolvedExpressionKind::Continue => MonomorphizedExpressionKind::Continue,
                     UnresolvedExpressionKind::Tuple(exprs) => MonomorphizedExpressionKind::Tuple(
                         exprs
                             .into_iter()
@@ -2604,16 +2480,6 @@ impl<L: Loader> Typechecker<L> {
                     .map(|expr| self.finalize_internal(expr, generic, file))
                     .collect::<Result<_, _>>()?,
             ),
-            MonomorphizedExpressionKind::Return(value) => {
-                ExpressionKind::Return(Box::new(self.finalize_internal(*value, generic, file)?))
-            }
-            MonomorphizedExpressionKind::Loop(body) => {
-                ExpressionKind::Loop(Box::new(self.finalize_internal(*body, generic, file)?))
-            }
-            MonomorphizedExpressionKind::Break(value) => {
-                ExpressionKind::Break(Box::new(self.finalize_internal(*value, generic, file)?))
-            }
-            MonomorphizedExpressionKind::Continue => ExpressionKind::Continue,
             MonomorphizedExpressionKind::Tuple(exprs) => ExpressionKind::Tuple(
                 exprs
                     .into_iter()
@@ -2646,24 +2512,37 @@ impl<L: Loader> Typechecker<L> {
                 }
                 MonomorphizedPatternKind::Text(text) => PatternKind::Text(text),
                 MonomorphizedPatternKind::Variable(var) => PatternKind::Variable(var),
-                MonomorphizedPatternKind::Destructure(fields) => PatternKind::Destructure(
-                    fields
-                        .into_iter()
-                        .map(|(index, field)| {
-                            Ok((
-                                index,
-                                self.finalize_pattern(field, generic, input_ty, file)?,
-                            ))
-                        })
-                        .collect::<Result<_, _>>()?,
-                ),
-                MonomorphizedPatternKind::Variant(index, values) => PatternKind::Variant(
-                    index,
-                    values
-                        .into_iter()
-                        .map(|value| self.finalize_pattern(value, generic, input_ty, file))
-                        .collect::<Result<_, _>>()?,
-                ),
+                MonomorphizedPatternKind::Destructure(fields) => {
+                    let input_tys = match input_ty {
+                        Type::Named(_, _, TypeStructure::Structure(fields)) => fields,
+                        _ => unreachable!(),
+                    };
+
+                    PatternKind::Destructure(
+                        fields
+                            .into_iter()
+                            .zip(input_tys)
+                            .map(|((index, field), ty)| {
+                                Ok((index, self.finalize_pattern(field, generic, ty, file)?))
+                            })
+                            .collect::<Result<_, _>>()?,
+                    )
+                }
+                MonomorphizedPatternKind::Variant(index, values) => {
+                    let input_tys = match input_ty {
+                        Type::Named(_, _, TypeStructure::Enumeration(variants)) => &variants[index],
+                        _ => unreachable!(),
+                    };
+
+                    PatternKind::Variant(
+                        index,
+                        values
+                            .into_iter()
+                            .zip(input_tys)
+                            .map(|(value, ty)| self.finalize_pattern(value, generic, ty, file))
+                            .collect::<Result<_, _>>()?,
+                    )
+                }
                 MonomorphizedPatternKind::Or(lhs, rhs) => PatternKind::Or(
                     Box::new(self.finalize_pattern(*lhs, generic, input_ty, file)?),
                     Box::new(self.finalize_pattern(*rhs, generic, input_ty, file)?),
@@ -2672,12 +2551,20 @@ impl<L: Loader> Typechecker<L> {
                     Box::new(self.finalize_pattern(*pattern, generic, input_ty, file)?),
                     Box::new(self.finalize_internal(*condition, generic, file)?),
                 ),
-                MonomorphizedPatternKind::Tuple(patterns) => PatternKind::Tuple(
-                    patterns
-                        .into_iter()
-                        .map(|pattern| self.finalize_pattern(pattern, generic, input_ty, file))
-                        .collect::<Result<_, _>>()?,
-                ),
+                MonomorphizedPatternKind::Tuple(patterns) => {
+                    let input_tys = match input_ty {
+                        Type::Tuple(tys) => tys,
+                        _ => unreachable!(),
+                    };
+
+                    PatternKind::Tuple(
+                        patterns
+                            .into_iter()
+                            .zip(input_tys)
+                            .map(|(pattern, ty)| self.finalize_pattern(pattern, generic, ty, file))
+                            .collect::<Result<_, _>>()?,
+                    )
+                }
             },
         })
     }
@@ -2685,17 +2572,39 @@ impl<L: Loader> Typechecker<L> {
     fn instance_for(
         &mut self,
         tr: TraitId,
-        mut ty: UnresolvedType,
+        ty: UnresolvedType,
         bound_span: Option<Span>,
     ) -> Result<GenericConstantId, TypeError> {
-        ty.apply(&self.ctx);
-
         let tr_decl = self.traits.get(&tr).unwrap().clone();
-        let mut temp_ctx = self.ctx.clone();
-        temp_ctx.unify(ty.clone(), tr_decl.ty.clone())?;
+
+        {
+            let mut ctx = self.ctx.clone();
+            ctx.unify(ty.clone(), tr_decl.ty.clone())?;
+        }
 
         macro_rules! find_instance {
             ($instances:expr, $unify:ident, $transform:expr,) => {{
+                // First try with numeric variables...
+                match find_instance!(@find ty.clone(), $instances, $unify, $transform) {
+                    // ...if there is a single candidate, return it.
+                    Some(Ok(candidate)) => return Ok(candidate),
+                    // ...if there are multiple candiates, try again finalizing numeric variables.
+                    Some(Err(_)) => {
+                        let mut ty = ty.clone();
+                        ty.apply(&self.ctx);
+                        ty.finalize_numeric_variables(&self.ctx);
+
+                        match find_instance!(@find ty, $instances, $unify, $transform) {
+                            Some(result) => return result,
+                            None => {}
+                        }
+                    }
+                    // ...if there are no candidates, continue the search.
+                    None => {}
+                }
+            }};
+            (@find $ty:expr, $instances:expr, $unify:ident, $transform:expr) => {{
+                let ty = $ty;
                 let instances = $instances;
 
                 let mut candidates = Vec::new();
@@ -2705,7 +2614,7 @@ impl<L: Loader> Typechecker<L> {
                     let instance_ty = $transform(instance.generic_ty);
 
                     let mut ctx = self.ctx.clone();
-                    if ctx.$unify(ty.clone(), instance_ty).is_ok() {
+                    if ctx.$unify(ty.clone(), instance_ty.clone()).is_ok() {
                         candidates.push((ctx, id));
                     }
                 }
@@ -2713,19 +2622,17 @@ impl<L: Loader> Typechecker<L> {
                 candidates.dedup_by_key(|(_, id)| *id);
 
                 match candidates.len() {
-                    0 => {}
+                    0 => None,
                     1 => {
                         let (ctx, id) = candidates.pop().unwrap();
                         self.ctx = ctx;
 
-                        return Ok(id);
+                        Some(Ok(id))
                     }
-                    _ => {
-                        return Err(TypeError::AmbiguousTrait(
-                            tr,
-                            candidates.into_iter().map(|(_, id)| id).collect(),
-                        ));
-                    }
+                    _ => Some(Err(TypeError::AmbiguousTrait(
+                        tr,
+                        candidates.into_iter().map(|(_, id)| id).collect(),
+                    ))),
                 }
             }};
         }
@@ -2748,7 +2655,7 @@ impl<L: Loader> Typechecker<L> {
             },
         );
 
-        let params = self.ctx.unify_params(ty, tr_decl.ty.clone()).0;
+        let params = self.ctx.unify_params(ty, tr_decl.ty).0;
 
         let params = tr_decl
             .params

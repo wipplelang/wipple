@@ -4,6 +4,7 @@ use "./util.wpl"
 use "./fp.wpl"
 use "./mutable.wpl"
 use "./list.wpl"
+use "./loop.wpl"
 
 [help "A container for an iterable value that produces the `next` value on demand."]
 Iterator : Element => type {
@@ -27,15 +28,18 @@ filter : include? -> container -> {
 	Iterator {
 		next : () -> loop {
 			when (next ()) {
-				Some x -> if (include? x) (break (Some x)) (continue)
-				None -> break None
+				Some x ->
+					if (include? x)
+						(Break (Some x))
+						(Continue :: Control-Flow (Maybe _))  -- type annotation is needed because of typechecker bug
+				None -> Break None
 			}
 		}
 	}
 }
 
--- TODO: Use higher-kinded types
-[help "Execute a function for each item in an iterator."]
+-- -- TODO: Use higher-kinded types
+-- [help "Execute a function for each item in an iterator."]
 each :: Container Element where (Iterate Container Element) => (Element -> ()) -> Container -> ()
 each : f -> container -> {
 	{ next } : Iterate container
@@ -44,9 +48,9 @@ each : f -> container -> {
 		when (next ()) {
 			Some x -> {
 				f x
-				continue
+				(Continue :: Control-Flow ()) -- type annotation is needed because of typechecker bug
 			}
-			None -> break ()
+			None -> Break ()
 		}
 	}
 }
@@ -66,9 +70,9 @@ Element => instance Collect Element (List Element) : { next } -> {
 		when (next ()) {
 			Some x -> {
 				list . append! x
-				continue
+				Continue
 			}
-			None -> break ()
+			None -> Break ()
 		}
 	}
 
@@ -81,9 +85,9 @@ Element => instance Collect Text Text : { next } -> {
 		when (next ()) {
 			Some x -> {
 				text . add! x
-				continue
+				Continue
 			}
-			None -> break ()
+			None -> Break ()
 		}
 	}
 

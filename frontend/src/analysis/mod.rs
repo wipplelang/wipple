@@ -231,6 +231,6 @@ impl<L: Loader> Compiler<L> {
             progress.lock()(Progress::Typechecking(p))
         });
 
-        Some(program)
+        program.valid.then_some(program)
     }
 }

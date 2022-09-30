@@ -258,10 +258,6 @@ pub enum ExpressionKind {
     Initialize(Pattern, Box<Expression>),
     Instantiate(TypeId, Vec<(InternedString, Expression)>),
     Variant(TypeId, usize, Vec<Expression>),
-    Return(Box<Expression>),
-    Loop(Box<Expression>),
-    Break(Box<Expression>),
-    Continue,
     Tuple(Vec<Expression>),
 }
 
@@ -334,7 +330,7 @@ impl<L: Loader> Compiler<L> {
         file: ast::File<L>,
         dependencies: Vec<(Arc<File>, Option<HashMap<InternedString, Span>>)>,
     ) -> File {
-        let scope = Scope::root(ScopeKind::Block);
+        let scope = Scope::root();
 
         let mut info = Info::default();
 
@@ -467,7 +463,6 @@ impl LanguageItems {
 
 #[derive(Debug, Clone)]
 struct Scope<'a> {
-    kind: ScopeKind,
     parent: Option<&'a Scope<'a>>,
     values: RefCell<ScopeValues>,
 }
@@ -478,7 +473,6 @@ pub type ScopeValues = HashMap<InternedString, ScopeValue>;
 pub enum ScopeKind {
     Block,
     Function,
-    Loop,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -495,17 +489,15 @@ pub enum ScopeValue {
 }
 
 impl<'a> Scope<'a> {
-    fn root(kind: ScopeKind) -> Self {
+    fn root() -> Self {
         Scope {
-            kind,
             parent: None,
             values: Default::default(),
         }
     }
 
-    fn child(&'a self, kind: ScopeKind) -> Self {
+    fn child(&'a self) -> Self {
         Scope {
-            kind,
             parent: Some(self),
             values: Default::default(),
         }
@@ -525,45 +517,6 @@ impl<'a> Scope<'a> {
         }
 
         result
-    }
-
-    fn is_within_function(&'a self) -> bool {
-        let mut parent = Some(self);
-        let mut is_within_function = false;
-        while let Some(scope) = parent {
-            if let ScopeKind::Function = scope.kind {
-                is_within_function = true;
-                break;
-            }
-
-            parent = scope.parent;
-        }
-
-        is_within_function
-    }
-
-    fn is_within_loop(&'a self) -> bool {
-        let mut parent = Some(self);
-        let mut is_within_loop = false;
-        while let Some(scope) = parent {
-            if let ScopeKind::Function = scope.kind {
-                is_within_loop = true;
-                break;
-            }
-
-            match scope.kind {
-                ScopeKind::Block => {}
-                ScopeKind::Function => break,
-                ScopeKind::Loop => {
-                    is_within_loop = true;
-                    break;
-                }
-            }
-
-            parent = scope.parent;
-        }
-
-        is_within_loop
     }
 }
 
@@ -602,7 +555,7 @@ impl<L: Loader> Compiler<L> {
         scope: &Scope,
         info: &mut Info,
     ) -> Vec<Expression> {
-        let scope = scope.child(ScopeKind::Block);
+        let scope = scope.child();
         let statements = self.lower_statements(statements, &scope, info);
         info.scopes.push((span, scope.values.into_inner()));
         statements
@@ -812,7 +765,7 @@ impl<L: Loader> Compiler<L> {
                     Some(ScopeValue::Type(id))
                 }
                 StatementDeclarationKind::Trait(id, declaration) => {
-                    let scope = scope.child(ScopeKind::Block);
+                    let scope = scope.child();
 
                     let parameters = self.with_parameters(declaration.parameters, &scope, info);
 
@@ -827,7 +780,7 @@ impl<L: Loader> Compiler<L> {
                     Some(ScopeValue::Trait(id))
                 }
                 StatementDeclarationKind::Constant(id, declaration) => {
-                    let scope = scope.child(ScopeKind::Block);
+                    let scope = scope.child();
 
                     let parameters = self.with_parameters(declaration.parameters, &scope, info);
 
@@ -897,7 +850,7 @@ impl<L: Loader> Compiler<L> {
                     Some(ScopeValue::Constant(id, None))
                 }
                 StatementDeclarationKind::Instance(id, instance) => {
-                    let scope = scope.child(ScopeKind::Block);
+                    let scope = scope.child();
 
                     let params = self.with_parameters(instance.parameters, &scope, info);
 
@@ -1157,7 +1110,7 @@ impl<L: Loader> Compiler<L> {
                             if let Some((associated_parameters, associated_constant)) =
                                 associated_constant
                             {
-                                let scope = scope.child(ScopeKind::Block);
+                                let scope = scope.child();
 
                                 for id in associated_parameters {
                                     let parameter =
@@ -1333,7 +1286,7 @@ impl<L: Loader> Compiler<L> {
                 }
             }
             ast::ExpressionKind::Block(statements) => {
-                let scope = scope.child(ScopeKind::Block);
+                let scope = scope.child();
                 let block = self.lower_block(expr.span, statements, &scope, info);
                 ExpressionKind::Block(block)
             }
@@ -1514,12 +1467,9 @@ impl<L: Loader> Compiler<L> {
                 _ => function_call!(self.lower_expr(*function, scope, info), inputs).kind,
             },
             ast::ExpressionKind::Function(input, body) => {
-                let scope = scope.child(ScopeKind::Function);
-
+                let scope = scope.child();
                 let pattern = self.lower_pattern(input, &scope, info);
-
                 let body = self.lower_expr(*body, &scope, info);
-
                 ExpressionKind::Function(pattern, Box::new(body))
             }
             ast::ExpressionKind::When(input, arms) => ExpressionKind::When(
@@ -1544,44 +1494,6 @@ impl<L: Loader> Compiler<L> {
                 Box::new(self.lower_expr(*expr, scope, info)),
                 self.lower_type_annotation(ty, scope, info),
             ),
-            ast::ExpressionKind::Return(value) => {
-                if !scope.is_within_function() {
-                    self.diagnostics.add(Diagnostic::error(
-                        "`return` outside function",
-                        vec![Note::primary(
-                            expr.span,
-                            "try moving this inside a function",
-                        )],
-                    ));
-                }
-
-                ExpressionKind::Return(Box::new(self.lower_expr(*value, scope, info)))
-            }
-            ast::ExpressionKind::Loop(body) => {
-                let scope = scope.child(ScopeKind::Loop);
-                let body = self.lower_expr(*body, &scope, info);
-                ExpressionKind::Loop(Box::new(body))
-            }
-            ast::ExpressionKind::Break(value) => {
-                if !scope.is_within_loop() {
-                    self.diagnostics.add(Diagnostic::error(
-                        "`break` outside loop",
-                        vec![Note::primary(expr.span, "try moving this inside a loop")],
-                    ));
-                }
-
-                ExpressionKind::Break(Box::new(self.lower_expr(*value, scope, info)))
-            }
-            ast::ExpressionKind::Continue => {
-                if !scope.is_within_loop() {
-                    self.diagnostics.add(Diagnostic::error(
-                        "`continue` outside loop",
-                        vec![Note::primary(expr.span, "try moving this inside a loop")],
-                    ));
-                }
-
-                ExpressionKind::Continue
-            }
             ast::ExpressionKind::Tuple(exprs) => ExpressionKind::Tuple(
                 exprs
                     .into_iter()

@@ -107,8 +107,8 @@ macro_rules! ids {
 
 ids!(
     BuiltinTypeId,
-    ComputationId,
     GenericConstantId,
+    Label,
     MonomorphizedConstantId,
     TemplateId,
     TraitId,

@@ -556,8 +556,51 @@ impl UnresolvedType {
         }
     }
 
+    pub fn finalize_numeric_variables(&mut self, ctx: &Context) {
+        match self {
+            UnresolvedType::Variable(var) => {
+                if let Some(ty) = ctx.substitutions.get(var) {
+                    *self = ty.clone();
+                    self.finalize_numeric_variables(ctx);
+                }
+            }
+            UnresolvedType::NumericVariable(var) => {
+                if let Some(ty) = ctx.numeric_substitutions.get(var) {
+                    *self = ty.clone();
+                    self.finalize_numeric_variables(ctx);
+                } else {
+                    *self = UnresolvedType::Builtin(BuiltinType::Number);
+                }
+            }
+            UnresolvedType::Function(input, output) => {
+                input.finalize_numeric_variables(ctx);
+                output.finalize_numeric_variables(ctx);
+            }
+            UnresolvedType::Named(_, params, structure) => {
+                for param in params {
+                    param.finalize_numeric_variables(ctx);
+                }
+
+                structure.finalize_numeric_variables(ctx);
+            }
+            UnresolvedType::Tuple(tys) => {
+                for ty in tys {
+                    ty.finalize_numeric_variables(ctx);
+                }
+            }
+            UnresolvedType::Builtin(ty) => match ty {
+                BuiltinType::List(ty) | BuiltinType::Mutable(ty) => {
+                    ty.finalize_numeric_variables(ctx)
+                }
+                _ => {}
+            },
+            _ => {}
+        }
+    }
+
     pub fn finalize(mut self, ctx: &Context, generic: bool) -> Result<Type, TypeError> {
         self.apply(ctx);
+        self.finalize_numeric_variables(ctx);
 
         Ok(match self {
             UnresolvedType::Variable(_) => return Err(TypeError::UnresolvedType),
@@ -568,7 +611,7 @@ impl UnresolvedType {
                     return Err(TypeError::UnresolvedType);
                 }
             }
-            UnresolvedType::NumericVariable(_) => Type::Builtin(BuiltinType::Number),
+            UnresolvedType::NumericVariable(_) => unreachable!(),
             UnresolvedType::Named(id, params, structure) => Type::Named(
                 id,
                 params
@@ -651,6 +694,24 @@ impl TypeStructure<UnresolvedType> {
                 .iter()
                 .flat_map(|tys| tys.iter().flat_map(|ty| ty.params()))
                 .collect(),
+        }
+    }
+
+    pub fn finalize_numeric_variables(&mut self, ctx: &Context) {
+        match self {
+            TypeStructure::Marker | TypeStructure::Recursive(_) => {}
+            TypeStructure::Structure(tys) => {
+                for ty in tys {
+                    ty.finalize_numeric_variables(ctx);
+                }
+            }
+            TypeStructure::Enumeration(variants) => {
+                for tys in variants {
+                    for ty in tys {
+                        ty.finalize_numeric_variables(ctx);
+                    }
+                }
+            }
         }
     }
 
