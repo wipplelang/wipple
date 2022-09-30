@@ -2572,29 +2572,46 @@ impl<L: Loader> Typechecker<L> {
     fn instance_for(
         &mut self,
         tr: TraitId,
-        mut ty: UnresolvedType,
+        ty: UnresolvedType,
         bound_span: Option<Span>,
     ) -> Result<GenericConstantId, TypeError> {
-        ty.apply(&self.ctx);
-        ty.finalize_numeric_variables(&self.ctx);
-
         let tr_decl = self.traits.get(&tr).unwrap().clone();
-        let mut tr_ty = tr_decl.ty.clone();
-        tr_ty.finalize_numeric_variables(&self.ctx);
 
-        let mut temp_ctx = self.ctx.clone();
-        temp_ctx.unify(ty.clone(), tr_ty.clone())?;
+        {
+            let mut ctx = self.ctx.clone();
+            ctx.unify(ty.clone(), tr_decl.ty.clone())?;
+        }
 
         macro_rules! find_instance {
             ($instances:expr, $unify:ident, $transform:expr,) => {{
+                // First try with numeric variables...
+                match find_instance!(@find ty.clone(), $instances, $unify, $transform) {
+                    // ...if there is a single candidate, return it.
+                    Some(Ok(candidate)) => return Ok(candidate),
+                    // ...if there are multiple candiates, try again finalizing numeric variables.
+                    Some(Err(_)) => {
+                        let mut ty = ty.clone();
+                        ty.apply(&self.ctx);
+                        ty.finalize_numeric_variables(&self.ctx);
+
+                        match find_instance!(@find ty, $instances, $unify, $transform) {
+                            Some(result) => return result,
+                            None => {}
+                        }
+                    }
+                    // ...if there are no candidates, continue the search.
+                    None => {}
+                }
+            }};
+            (@find $ty:expr, $instances:expr, $unify:ident, $transform:expr) => {{
+                let ty = $ty;
                 let instances = $instances;
 
                 let mut candidates = Vec::new();
 
                 for id in instances {
                     let instance = self.generic_constants.get(&id).unwrap().clone();
-                    let mut instance_ty = $transform(instance.generic_ty);
-                    instance_ty.finalize_numeric_variables(&self.ctx);
+                    let instance_ty = $transform(instance.generic_ty);
 
                     let mut ctx = self.ctx.clone();
                     if ctx.$unify(ty.clone(), instance_ty.clone()).is_ok() {
@@ -2605,19 +2622,17 @@ impl<L: Loader> Typechecker<L> {
                 candidates.dedup_by_key(|(_, id)| *id);
 
                 match candidates.len() {
-                    0 => {}
+                    0 => None,
                     1 => {
                         let (ctx, id) = candidates.pop().unwrap();
                         self.ctx = ctx;
 
-                        return Ok(id);
+                        Some(Ok(id))
                     }
-                    _ => {
-                        return Err(TypeError::AmbiguousTrait(
-                            tr,
-                            candidates.into_iter().map(|(_, id)| id).collect(),
-                        ));
-                    }
+                    _ => Some(Err(TypeError::AmbiguousTrait(
+                        tr,
+                        candidates.into_iter().map(|(_, id)| id).collect(),
+                    ))),
                 }
             }};
         }
@@ -2640,7 +2655,7 @@ impl<L: Loader> Typechecker<L> {
             },
         );
 
-        let params = self.ctx.unify_params(ty, tr_ty).0;
+        let params = self.ctx.unify_params(ty, tr_decl.ty).0;
 
         let params = tr_decl
             .params

@@ -29,4 +29,4 @@ add! : x -> m -> m . set! (get m + x)
 
 [help "Increment a `Mutable` value."]
 increment! :: A where (Add A Natural A) => Mutable A -> ()
-increment! : add! (1 :: Natural)
+increment! : add! 1
