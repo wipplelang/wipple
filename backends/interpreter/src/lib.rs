@@ -48,7 +48,42 @@ enum Value {
     Tuple(Vec<Value>),
 }
 
-type Scope = BTreeMap<VariableId, Value>;
+#[derive(Debug, Clone, Default)]
+struct Scope {
+    vars: RefCell<BTreeMap<VariableId, Value>>,
+    parent: Option<Rc<Scope>>,
+}
+
+impl Scope {
+    fn new() -> Rc<Self> {
+        Default::default()
+    }
+
+    fn child(self: &Rc<Self>) -> Rc<Self> {
+        Rc::new(Scope {
+            vars: Default::default(),
+            parent: Some(self.clone()),
+        })
+    }
+
+    fn get(&self, var: VariableId) -> Value {
+        let mut parent = Some(self);
+
+        while let Some(scope) = parent {
+            if let Some(value) = scope.vars.borrow().get(&var) {
+                return value.clone();
+            }
+
+            parent = scope.parent.as_deref();
+        }
+
+        panic!("uninitialized variable {:?}", var)
+    }
+
+    fn set(&self, var: VariableId, value: Value) {
+        self.vars.borrow_mut().insert(var, value);
+    }
+}
 
 struct Info<'a> {
     program: &'a ir::Program,
@@ -61,10 +96,6 @@ struct Stack(Vec<Value>);
 impl Stack {
     fn new() -> Self {
         Stack(Vec::new())
-    }
-
-    fn with(value: Value) -> Self {
-        Stack(vec![value])
     }
 
     fn push(&mut self, value: Value) {
@@ -87,6 +118,10 @@ impl Stack {
             .rev()
             .collect()
     }
+
+    fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
 }
 
 impl<'a> Interpreter<'a> {
@@ -96,81 +131,97 @@ impl<'a> Interpreter<'a> {
             initialized_constants: Default::default(),
         };
 
-        self.sub(&program.entrypoint, Stack::new(), Scope::new(), &mut info)?;
+        let mut stack = Stack::new();
+
+        self.evaluate_label(
+            &program.entrypoint,
+            &mut stack,
+            &mut Scope::new(),
+            &mut info,
+        )?;
+
+        assert!(stack.is_empty());
 
         Ok(())
     }
 
-    fn sub(
+    fn evaluate_label(
         &self,
         label: &Label,
-        stack: Stack,
-        mut scope: Scope,
+        stack: &mut Stack,
+        scope: &mut Rc<Scope>,
         info: &mut Info,
     ) -> Result<Value, Error> {
-        let statements = info.program.labels.get(label).unwrap();
-        self.evaluate(statements, stack, &mut scope, info)
+        let statements = &info.program.labels.get(label).unwrap().1;
+        self.evaluate(statements, stack, scope, info)
     }
 
     fn evaluate(
         &self,
         statements: &[ir::Statement],
-        mut stack: Stack,
-        scope: &mut Scope,
+        stack: &mut Stack,
+        scope: &mut Rc<Scope>,
         info: &mut Info,
     ) -> Result<Value, Error> {
-        for statement in statements {
+        let mut statements = statements.iter();
+
+        while let Some(statement) = statements.next() {
+            // eprintln!();
+            // dbg!(&stack);
+            // eprintln!("{}", statement);
+
             match statement {
+                ir::Statement::Comment(_) => {}
+                ir::Statement::Begin => {
+                    *scope = scope.child();
+                }
+                ir::Statement::End => {
+                    *scope = scope.parent.as_ref().unwrap().clone();
+                }
                 ir::Statement::Copy => {
                     stack.copy();
                 }
                 ir::Statement::Drop => {
                     stack.pop();
                 }
-                ir::Statement::Initialize(var) => {
-                    scope.insert(*var, stack.pop());
+                ir::Statement::Jump(label) => {
+                    statements = info.program.labels.get(label).unwrap().1.iter();
                 }
-                ir::Statement::Goto(label, _) => {
-                    let result = self.sub(label, Stack::new(), scope.clone(), info)?;
-                    stack.push(result);
-                }
-                ir::Statement::Sub(label, _) => {
-                    let result = self.sub(label, Stack::with(stack.pop()), scope.clone(), info)?;
-                    stack.push(result);
-                }
-                ir::Statement::If(then_label, else_label) => {
-                    let label = match stack.pop() {
-                        Value::Variant(1, values) if values.is_empty() => then_label,
-                        Value::Variant(0, values) if values.is_empty() => else_label,
-                        _ => unreachable!(),
-                    };
-
-                    let result = self.sub(label, Stack::with(stack.pop()), scope.clone(), info)?;
-                    stack.push(result);
-                }
-                ir::Statement::Marker => stack.push(Value::Marker),
-                ir::Statement::Closure(label) => {
-                    stack.push(Value::Closure(*label, Rc::new(scope.clone())));
-                }
-                ir::Statement::Variable(var) => stack.push(scope.get(var).unwrap().clone()),
-                ir::Statement::Constant(label) => {
-                    if let Some(value) = info.initialized_constants.get(label) {
-                        stack.push(value.clone());
-                    } else {
-                        let value = self.sub(label, Stack::new(), scope.clone(), info)?;
-                        stack.push(value);
+                ir::Statement::If(matching_discriminant, label) => {
+                    if let Value::Variant(discriminant, _) = stack.pop() {
+                        if discriminant == *matching_discriminant {
+                            statements = info.program.labels.get(label).unwrap().1.iter();
+                        }
                     }
                 }
-                ir::Statement::Number(number) => stack.push(Value::Number(*number)),
-                ir::Statement::Integer(integer) => stack.push(Value::Integer(*integer)),
-                ir::Statement::Natural(natural) => stack.push(Value::Natural(*natural)),
-                ir::Statement::Byte(byte) => stack.push(Value::Byte(*byte)),
-                ir::Statement::Signed(signed) => stack.push(Value::Signed(*signed)),
-                ir::Statement::Unsigned(unsigned) => stack.push(Value::Unsigned(*unsigned)),
-                ir::Statement::Float(float) => stack.push(Value::Float(*float)),
-                ir::Statement::Double(double) => stack.push(Value::Double(*double)),
-                ir::Statement::Text(text) => stack.push(Value::Text(Rc::from(text.as_str()))),
-                ir::Statement::Call(_) => {
+                ir::Statement::Unreachable => unreachable!(),
+                ir::Statement::Initialize(var) => scope.set(*var, stack.pop()),
+                ir::Statement::Value(value) => {
+                    let value = match value {
+                        ir::Value::Marker => Value::Marker,
+                        ir::Value::Text(text) => Value::Text(Rc::from(text.as_str())),
+                        ir::Value::Number(number) => Value::Number(*number),
+                        ir::Value::Integer(integer) => Value::Integer(*integer),
+                        ir::Value::Natural(natural) => Value::Natural(*natural),
+                        ir::Value::Byte(byte) => Value::Byte(*byte),
+                        ir::Value::Signed(signed) => Value::Signed(*signed),
+                        ir::Value::Unsigned(unsigned) => Value::Unsigned(*unsigned),
+                        ir::Value::Float(float) => Value::Float(*float),
+                        ir::Value::Double(double) => Value::Double(*double),
+                        ir::Value::Variable(var) => scope.get(*var),
+                        ir::Value::Constant(label) => {
+                            if let Some(value) = info.initialized_constants.get(label) {
+                                value.clone()
+                            } else {
+                                self.evaluate_label(label, stack, &mut scope.child(), info)?
+                            }
+                        }
+                        ir::Value::Closure(label) => Value::Closure(*label, scope.clone()),
+                    };
+
+                    stack.push(value);
+                }
+                ir::Statement::Call => {
                     let input = stack.pop();
 
                     let (label, scope) = match stack.pop() {
@@ -178,7 +229,8 @@ impl<'a> Interpreter<'a> {
                         _ => unreachable!(),
                     };
 
-                    let result = self.sub(&label, Stack::with(input), (*scope).clone(), info)?;
+                    stack.push(input);
+                    let result = self.evaluate_label(&label, stack, &mut scope.child(), info)?;
                     stack.push(result);
                 }
                 ir::Statement::External(abi, identifier, inputs) => {
@@ -228,17 +280,6 @@ impl<'a> Interpreter<'a> {
                     };
 
                     stack.push(variant[*index].clone());
-                }
-                ir::Statement::CompareDiscriminants(other) => {
-                    let discriminant = match stack.pop() {
-                        Value::Variant(discriminant, _) => discriminant,
-                        _ => unreachable!(),
-                    };
-
-                    stack.push(Value::Variant(
-                        (discriminant == *other) as usize,
-                        Vec::new(),
-                    ));
                 }
             }
         }

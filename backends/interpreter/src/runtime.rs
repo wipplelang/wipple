@@ -4,7 +4,7 @@ use lazy_static::lazy_static;
 use num_traits::pow::Pow;
 use rust_decimal::Decimal;
 use rust_decimal::MathematicalOps;
-use std::{cell::RefCell, collections::HashMap, rc::Rc};
+use std::{cell::RefCell, collections::hash_map::Entry, collections::HashMap, rc::Rc};
 
 impl<'a> Interpreter<'a> {
     pub(crate) fn call_runtime(
@@ -55,17 +55,20 @@ fn initialize_runtime() -> HashMap<&'static str, RuntimeFunction> {
 
     macro_rules! runtime_fn {
         ($name:expr, ($interpreter:pat, $($input:pat),*) => $result:expr) => {
-            builtins.insert($name, |$interpreter, inputs| {
-                #[allow(unreachable_patterns)]
-                match inputs
-                    .into_iter()
-                    .collect_tuple()
-                    .expect("wrong number of inputs to builtin function")
-                {
-                    ($($input,)*) => $result,
-                    _ => unreachable!(),
-                }
-            });
+            match builtins.entry($name) {
+                Entry::Occupied(_) => panic!("{:?} is already defined", $name),
+                Entry::Vacant(entry) => entry.insert(|$interpreter, inputs| {
+                    #[allow(unreachable_patterns)]
+                    match inputs
+                        .into_iter()
+                        .collect_tuple()
+                        .expect("wrong number of inputs to builtin function")
+                    {
+                        ($($input,)*) => $result,
+                        _ => unreachable!(),
+                    }
+                }),
+            };
         };
     }
 
@@ -187,7 +190,7 @@ fn initialize_runtime() -> HashMap<&'static str, RuntimeFunction> {
 
     runtime_math_fn!("integer", Value::Integer);
     runtime_div_fn!("divide-integer", Value::Integer, 0);
-    runtime_math_fn!("power-number", Value::Integer, (lhs, rhs) => {
+    runtime_math_fn!("power-integer", Value::Integer, (lhs, rhs) => {
         if lhs != 0 && rhs != 0 {
             Ok(lhs.pow(rhs as u32))
         } else {

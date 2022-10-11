@@ -232,7 +232,9 @@ async fn run() -> anyhow::Result<()> {
                     return Err(anyhow::Error::msg(""));
                 }
 
-                print!("{}", ir.unwrap())
+                if let Some(ir) = ir {
+                    print!("{}", ir);
+                }
             }
         },
         Args::Doc { options, full } => {

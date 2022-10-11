@@ -5,13 +5,12 @@
 )]
 
 mod format;
-mod prepare;
+mod ssa;
 
 use crate::{
-    analysis::typecheck, helpers::InternedString, Compiler, Label, Loader, MonomorphizedConstantId,
-    VariableId,
+    analysis::typecheck, helpers::InternedString, parse::Span, Compiler, Label, Loader,
+    MonomorphizedConstantId, VariableId,
 };
-use itertools::Itertools;
 use std::{
     collections::BTreeMap,
     os::raw::{c_int, c_uint},
@@ -23,86 +22,52 @@ pub mod abi {
 
 #[derive(Debug, Clone)]
 pub struct Program {
-    pub labels: BTreeMap<Label, Vec<Statement>>,
+    pub labels: BTreeMap<Label, (Option<Span>, Vec<Statement>)>,
     pub entrypoint: Label,
 }
 
 #[derive(Debug, Clone)]
 pub enum Statement {
-    /// Duplicate the top value on the stack.
+    Comment(String),
+    Begin,
+    End,
     Copy,
-    /// Remove the top value on the stack.
     Drop,
-    /// Take the top value on the stack and assign it to a variable in the
-    /// current scope.
+    Jump(Label),
+    If(usize, Label),
+    Unreachable,
     Initialize(VariableId),
-    /// Go to the provided label, maintaining the current stack and variable
-    /// scope. When the label finishes executing, return to the caller.
-    Goto(Label, bool),
-    /// Go to the provided label with the top of the stack as input, maintaining
-    /// the current stack and variable scope. When the label finishes executing,
-    /// return to the caller.
-    Sub(Label, bool),
-    /// Pop a value off the stack. If this value is equivalent to the value
-    /// produced by [`Statement::Variant(1, 0)`], go to the first label.
-    /// Otherwise, go to the second label.
-    If(Label, Label),
-    /// Push a marker value to the stack.
-    Marker,
-    /// Treat a label as a closure and push it to the stack.
-    Closure(Label),
-    /// Retrieve a variable from the current scope and push its value to the
-    /// stack.
-    Variable(VariableId),
-    /// Treat a label as a constant, initialize it if needed, and push its value
-    /// to the stack.
-    Constant(Label),
-    /// Push a number to the stack.
-    Number(rust_decimal::Decimal),
-    /// Push a number to the stack.
-    Integer(i64),
-    /// Push a number to the stack.
-    Natural(u64),
-    /// Push a number to the stack.
-    Byte(u8),
-    /// Push a number to the stack.
-    Signed(c_int),
-    /// Push a number to the stack.
-    Unsigned(c_uint),
-    /// Push a number to the stack.
-    Float(f32),
-    /// Push a number to the stack.
-    Double(f64),
-    /// Push text to the stack.
-    Text(InternedString),
-    /// Take the top two values from the stack, the first being a function and
-    /// the second being its input. Then call the function with the input and
-    /// push the result to the stack.
-    Call(bool),
-    /// Call an external function with the top *n* values on the stack and push
-    /// the result to the stack.
+    Value(Value),
+    Call,
     External(InternedString, InternedString, usize),
-    /// Push a tuple to the stack with the top *n* values on the stack.
     Tuple(usize),
-    /// Push a structure to the stack with the top *n* values on the stack.
     Structure(usize),
-    /// Push a variant to the stack with the top *n* values on the stack.
     Variant(usize, usize),
-    /// Retrieve the *n*th element from the tuple on the top of the stack.
     TupleElement(usize),
-    /// Retrieve the *n*th element from the structure on the top of the stack.
     StructureElement(usize),
-    /// Retrieve the *n*th element from the variant on the top of the stack.
     VariantElement(usize, usize),
-    /// Take the top value from the stack and check if its discriminant is equal
-    /// to the one provided. Executes [`Statement::Variant(1, 0)`] if they are
-    /// equal, [`Statement::Variant(0, 0)`] otherwise.
-    CompareDiscriminants(usize),
+}
+
+#[derive(Debug, Clone)]
+pub enum Value {
+    Marker,
+    Text(InternedString),
+    Number(rust_decimal::Decimal),
+    Integer(i64),
+    Natural(u64),
+    Byte(u8),
+    Signed(c_int),
+    Unsigned(c_uint),
+    Float(f32),
+    Double(f64),
+    Variable(VariableId),
+    Constant(Label),
+    Closure(Label),
 }
 
 impl<L: Loader> Compiler<L> {
     pub fn ir_from(&mut self, program: &typecheck::Program) -> Program {
-        let program = self.prepare(program);
+        let program = self.convert_to_ssa(program);
 
         let mut gen = IrGen {
             compiler: self,
@@ -116,14 +81,13 @@ impl<L: Loader> Compiler<L> {
         }
 
         for (id, constant) in program.constants {
-            let statements = gen.gen_expr(constant, true);
-            let label = gen.constants.get(&id).unwrap();
-            gen.labels.insert(*label, statements);
+            let mut label = *gen.constants.get(&id).unwrap();
+            gen.initialize_label(label, constant.span);
+            gen.gen_expr(constant, &mut label);
         }
 
-        let statements = gen.gen_expr(program.body, true);
-        let entrypoint_label = gen.compiler.new_label();
-        gen.labels.insert(entrypoint_label, statements);
+        let entrypoint_label = gen.new_label(None);
+        gen.gen_block(program.body, &mut entrypoint_label.clone());
 
         Program {
             labels: gen.labels,
@@ -135,433 +99,437 @@ impl<L: Loader> Compiler<L> {
 struct IrGen<'a, L: Loader> {
     compiler: &'a mut Compiler<L>,
     constants: BTreeMap<MonomorphizedConstantId, Label>,
-    labels: BTreeMap<Label, Vec<Statement>>,
+    labels: BTreeMap<Label, (Option<Span>, Vec<Statement>)>,
 }
 
 impl<L: Loader> IrGen<'_, L> {
-    #[must_use]
-    fn gen_expr(&mut self, expr: prepare::Expression, is_tail: bool) -> Vec<Statement> {
-        let mut statements = Vec::new();
-
-        macro_rules! sub {
-            ($sub:ident, $statements:expr, $is_tail:expr) => {{
-                let label = self.compiler.new_label();
-                {
-                    let statements = $statements;
-                    self.labels.insert(label, statements);
-                }
-
-                statements.push(Statement::$sub(label, $is_tail));
-            }};
-        }
-
-        match expr {
-            prepare::Expression::Marker => {
-                statements.push(Statement::Marker);
-            }
-            prepare::Expression::Variable(var) => {
-                statements.push(Statement::Variable(var));
-            }
-            prepare::Expression::Text(text) => {
-                statements.push(Statement::Text(text));
-            }
-            prepare::Expression::Number(number) => {
-                statements.push(Statement::Number(number));
-            }
-            prepare::Expression::Integer(integer) => {
-                statements.push(Statement::Integer(integer));
-            }
-            prepare::Expression::Natural(natural) => {
-                statements.push(Statement::Natural(natural));
-            }
-            prepare::Expression::Byte(byte) => {
-                statements.push(Statement::Byte(byte));
-            }
-            prepare::Expression::Signed(signed) => {
-                statements.push(Statement::Signed(signed));
-            }
-            prepare::Expression::Unsigned(unsigned) => {
-                statements.push(Statement::Unsigned(unsigned));
-            }
-            prepare::Expression::Float(float) => {
-                statements.push(Statement::Float(float));
-            }
-            prepare::Expression::Double(double) => {
-                statements.push(Statement::Double(double));
-            }
-            prepare::Expression::Block(exprs) => {
-                if exprs.is_empty() {
-                    statements.push(Statement::Tuple(0));
-                } else {
-                    let block_label = self.compiler.new_label();
-                    {
-                        let mut statements = Vec::new();
-
-                        let count = exprs.len();
-                        for (index, expr) in exprs.into_iter().enumerate() {
-                            statements.append(&mut self.gen_expr(expr, index + 1 < count));
-                        }
-
-                        self.labels.insert(block_label, statements);
-                    }
-
-                    statements.push(Statement::Goto(block_label, is_tail));
-                }
-            }
-            prepare::Expression::Call(function, input) => {
-                sub!(Goto, self.gen_expr(*function, false), false);
-                sub!(Goto, self.gen_expr(*input, false), false);
-                statements.push(Statement::Call(is_tail));
-            }
-            prepare::Expression::Function(pattern, body) => {
-                let body_label = self.compiler.new_label();
-                {
-                    let statements = self.gen_expr(*body, true);
-                    self.labels.insert(body_label, statements);
-                }
-
-                let function_label = self.compiler.new_label();
-                {
-                    let statements = self.gen_pattern(pattern, body_label, None, false);
-                    self.labels.insert(function_label, statements);
-                }
-
-                statements.push(Statement::Closure(function_label));
-            }
-            prepare::Expression::When(input, arms) => {
-                statements.append(&mut self.gen_expr(*input, false));
-                sub!(Sub, self.gen_when(arms, is_tail), is_tail);
-            }
-            prepare::Expression::External(lib, identifier, exprs) => {
-                let count = exprs.len();
-
-                for expr in exprs {
-                    statements.append(&mut self.gen_expr(expr, false));
-                }
-
-                statements.push(Statement::External(lib, identifier, count));
-            }
-            prepare::Expression::Structure(exprs) => {
-                let count = exprs.len();
-
-                for expr in exprs {
-                    statements.append(&mut self.gen_expr(expr, false));
-                }
-
-                statements.push(Statement::Structure(count));
-            }
-            prepare::Expression::Tuple(exprs) => {
-                let count = exprs.len();
-
-                for expr in exprs {
-                    statements.append(&mut self.gen_expr(expr, false));
-                }
-
-                statements.push(Statement::Tuple(count));
-            }
-            prepare::Expression::Variant(discriminant, exprs) => {
-                let count = exprs.len();
-
-                for expr in exprs {
-                    statements.append(&mut self.gen_expr(expr, false));
-                }
-
-                statements.push(Statement::Variant(discriminant, count));
-            }
-            prepare::Expression::Constant(id) => {
-                let id = self.constants.get(&id).unwrap();
-                statements.push(Statement::Constant(*id));
-            }
-        }
-
-        statements
+    fn new_label(&mut self, span: Option<Span>) -> Label {
+        let label = self.compiler.new_label();
+        self.initialize_label(label, span);
+        label
     }
 
-    #[must_use]
-    fn gen_when(&mut self, arms: Vec<prepare::Arm>, is_tail: bool) -> Vec<Statement> {
-        let mut statements = Vec::new();
-        let first_arm_label = self.compiler.new_label();
-
-        statements.push(Statement::Sub(first_arm_label, is_tail));
-
-        #[allow(clippy::needless_collect)] // self is borrowed inside the for loop
-        let arms = std::iter::once(first_arm_label)
-            .chain(std::iter::repeat_with(|| self.compiler.new_label()))
-            .zip(arms)
-            .map(Some)
-            .chain(std::iter::once(None))
-            .collect::<Vec<_>>();
-
-        for (current, next) in arms.into_iter().tuple_windows() {
-            let (current_arm_label, arm) = current.unwrap();
-            let next_arm_label = next.map(|(label, _)| label);
-
-            let arm_body_label = self.compiler.new_label();
-            {
-                let statements = self.gen_expr(arm.body, is_tail);
-                self.labels.insert(arm_body_label, statements);
-            }
-
-            let mut statements = Vec::new();
-
-            let copy = next_arm_label.is_some();
-            if copy {
-                statements.push(Statement::Copy);
-            }
-
-            statements.append(&mut self.gen_pattern(
-                arm.pattern,
-                arm_body_label,
-                next_arm_label,
-                copy,
-            ));
-
-            self.labels.insert(current_arm_label, statements);
-        }
-
-        statements
+    fn initialize_label(&mut self, label: Label, span: Option<Span>) {
+        self.labels.insert(label, (span, Vec::new()));
     }
 
-    #[must_use]
-    fn gen_pattern(
-        &mut self,
-        pattern: prepare::Pattern,
-        body_label: Label,
-        else_label: Option<Label>,
-        sub: bool,
-    ) -> Vec<Statement> {
-        let mut statements = Vec::new();
+    fn statements_for(&mut self, label: Label) -> &mut Vec<Statement> {
+        &mut self.labels.get_mut(&label).unwrap().1
+    }
+}
 
-        macro_rules! gen_tail_if {
-            () => {{
-                if let Some(else_label) = else_label {
-                    statements.push(Statement::If(body_label, else_label));
-                } else {
-                    statements.push(Statement::Sub(body_label, true));
+impl<L: Loader> IrGen<'_, L> {
+    fn gen_expr(&mut self, expr: ssa::Expression, label: &mut Label) {
+        match expr.kind {
+            ssa::ExpressionKind::Marker => {
+                self.statements_for(*label)
+                    .push(Statement::Value(Value::Marker));
+            }
+            ssa::ExpressionKind::Variable(var) => {
+                self.statements_for(*label)
+                    .push(Statement::Value(Value::Variable(var)));
+            }
+            ssa::ExpressionKind::Text(text) => {
+                self.statements_for(*label)
+                    .push(Statement::Value(Value::Text(text)));
+            }
+            ssa::ExpressionKind::Number(number) => {
+                self.statements_for(*label)
+                    .push(Statement::Value(Value::Number(number)));
+            }
+            ssa::ExpressionKind::Integer(integer) => {
+                self.statements_for(*label)
+                    .push(Statement::Value(Value::Integer(integer)));
+            }
+            ssa::ExpressionKind::Natural(natural) => {
+                self.statements_for(*label)
+                    .push(Statement::Value(Value::Natural(natural)));
+            }
+            ssa::ExpressionKind::Byte(byte) => {
+                self.statements_for(*label)
+                    .push(Statement::Value(Value::Byte(byte)));
+            }
+            ssa::ExpressionKind::Signed(signed) => {
+                self.statements_for(*label)
+                    .push(Statement::Value(Value::Signed(signed)));
+            }
+            ssa::ExpressionKind::Unsigned(unsigned) => {
+                self.statements_for(*label)
+                    .push(Statement::Value(Value::Unsigned(unsigned)));
+            }
+            ssa::ExpressionKind::Float(float) => {
+                self.statements_for(*label)
+                    .push(Statement::Value(Value::Float(float)));
+            }
+            ssa::ExpressionKind::Double(double) => {
+                self.statements_for(*label)
+                    .push(Statement::Value(Value::Double(double)));
+            }
+            ssa::ExpressionKind::Block(exprs) => self.gen_block(exprs, label),
+            ssa::ExpressionKind::Call(function, input) => {
+                self.statements_for(*label)
+                    .push(Statement::Comment(String::from("evaluate function")));
+                self.gen_expr(*function, label);
+
+                self.statements_for(*label)
+                    .push(Statement::Comment(String::from("evaluate input")));
+                self.gen_expr(*input, label);
+
+                self.statements_for(*label).push(Statement::Call);
+            }
+            ssa::ExpressionKind::Function(pattern, body) => {
+                let function_label = self.new_label(pattern.span);
+
+                {
+                    let mut function_label = function_label;
+                    let mut body_label = self.new_label(body.span);
+
+                    self.statements_for(function_label)
+                        .push(Statement::Comment(String::from("function pattern")));
+
+                    self.gen_pattern(pattern, body_label, &mut function_label);
+
+                    self.statements_for(function_label)
+                        .push(Statement::Unreachable);
+
+                    self.statements_for(body_label)
+                        .push(Statement::Comment(String::from("function body")));
+
+                    self.gen_expr(*body, &mut body_label);
                 }
-            }};
+
+                self.statements_for(*label)
+                    .push(Statement::Value(Value::Closure(function_label)));
+            }
+            ssa::ExpressionKind::When(input, arms) => {
+                self.statements_for(*label)
+                    .push(Statement::Comment(String::from("evaluate `when` input")));
+                self.gen_expr(*input, label);
+
+                self.statements_for(*label)
+                    .push(Statement::Comment(String::from("`when` arms")));
+                self.gen_when(arms, label);
+            }
+            ssa::ExpressionKind::External(lib, identifier, exprs) => {
+                let count = exprs.len();
+
+                for (index, expr) in exprs.into_iter().enumerate() {
+                    self.statements_for(*label)
+                        .push(Statement::Comment(format!("input {} to `external`", index)));
+
+                    self.gen_expr(expr, label);
+                }
+
+                self.statements_for(*label)
+                    .push(Statement::External(lib, identifier, count));
+            }
+            ssa::ExpressionKind::Structure(exprs) => {
+                let count = exprs.len();
+
+                for (index, expr) in exprs.into_iter().enumerate() {
+                    self.statements_for(*label)
+                        .push(Statement::Comment(format!("input {} to structure", index)));
+
+                    self.gen_expr(expr, label);
+                }
+
+                self.statements_for(*label)
+                    .push(Statement::Structure(count));
+            }
+            ssa::ExpressionKind::Tuple(exprs) => {
+                let count = exprs.len();
+
+                for (index, expr) in exprs.into_iter().enumerate() {
+                    self.statements_for(*label)
+                        .push(Statement::Comment(format!("input {} to tuple", index)));
+
+                    self.gen_expr(expr, label);
+                }
+
+                self.statements_for(*label).push(Statement::Tuple(count));
+            }
+            ssa::ExpressionKind::Variant(discriminant, exprs) => {
+                let count = exprs.len();
+
+                for (index, expr) in exprs.into_iter().enumerate() {
+                    self.statements_for(*label)
+                        .push(Statement::Comment(format!("input {} to variant", index)));
+
+                    self.gen_expr(expr, label);
+                }
+
+                self.statements_for(*label)
+                    .push(Statement::Variant(discriminant, count));
+            }
+            ssa::ExpressionKind::Constant(id) => {
+                let id = *self.constants.get(&id).unwrap();
+                self.statements_for(*label)
+                    .push(Statement::Value(Value::Constant(id)));
+            }
+        }
+    }
+
+    fn gen_block(&mut self, exprs: Vec<ssa::Expression>, label: &mut Label) {
+        if exprs.is_empty() {
+            self.statements_for(*label).push(Statement::Tuple(0));
+        } else {
+            self.statements_for(*label).push(Statement::Begin);
+
+            for (index, expr) in exprs.into_iter().enumerate() {
+                if index != 0 {
+                    self.statements_for(*label).push(Statement::Drop);
+                }
+
+                self.statements_for(*label)
+                    .push(Statement::Comment(format!("statement {} in block", index)));
+
+                self.gen_expr(expr, label);
+            }
+
+            self.statements_for(*label).push(Statement::End);
+        }
+    }
+
+    fn gen_when(&mut self, arms: Vec<ssa::Arm>, label: &mut Label) {
+        if arms.is_empty() {
+            self.statements_for(*label).push(Statement::Drop);
+            return;
         }
 
+        let continue_label = self.new_label(None);
+
+        for (index, arm) in arms.into_iter().enumerate() {
+            let mut body_label = self.new_label(arm.body.span);
+
+            self.statements_for(*label)
+                .push(Statement::Comment(format!("arm {} in `when`", index)));
+            self.statements_for(*label).push(Statement::Copy);
+            self.gen_pattern(arm.pattern, body_label, label);
+
+            self.statements_for(body_label).push(Statement::Drop);
+            self.gen_expr(arm.body, &mut body_label);
+            self.statements_for(body_label)
+                .push(Statement::Jump(continue_label));
+        }
+
+        self.statements_for(*label)
+            .push(Statement::Comment(String::from("end of `when`")));
+
+        self.statements_for(*label).push(Statement::Unreachable);
+
+        *label = continue_label;
+    }
+
+    fn gen_pattern(&mut self, pattern: ssa::Pattern, body_label: Label, label: &mut Label) {
         macro_rules! match_number {
             ($kind:ident($n:expr), $comparison:literal) => {{
-                statements.push(Statement::$kind($n));
+                self.statements_for(*label)
+                    .push(Statement::Value(Value::$kind($n)));
 
-                statements.push(Statement::External(
+                self.statements_for(*label).push(Statement::External(
                     InternedString::new(abi::RUNTIME),
                     InternedString::new($comparison),
                     2,
                 ));
 
-                gen_tail_if!();
+                self.statements_for(*label)
+                    .push(Statement::If(1, body_label));
             }};
         }
 
-        macro_rules! gen_goto_or_sub {
-            ($label:expr, $sub:expr) => {{
-                if $sub {
-                    statements.push(Statement::Sub($label, true));
-                } else {
-                    statements.push(Statement::Goto($label, true));
-                }
-            }};
-        }
-
-        match pattern {
-            prepare::Pattern::Wildcard => gen_goto_or_sub!(body_label, sub),
-            prepare::Pattern::Number(number) => {
+        match pattern.kind {
+            ssa::PatternKind::Wildcard => {
+                self.statements_for(*label).push(Statement::Drop);
+                self.statements_for(*label)
+                    .push(Statement::Jump(body_label));
+            }
+            ssa::PatternKind::Number(number) => {
                 match_number!(Number(number), "number-equality");
             }
-            prepare::Pattern::Integer(integer) => {
+            ssa::PatternKind::Integer(integer) => {
                 match_number!(Integer(integer), "integer-equality");
             }
-            prepare::Pattern::Natural(natural) => {
+            ssa::PatternKind::Natural(natural) => {
                 match_number!(Natural(natural), "natural-equality");
             }
-            prepare::Pattern::Byte(byte) => {
+            ssa::PatternKind::Byte(byte) => {
                 match_number!(Byte(byte), "byte-equality");
             }
-            prepare::Pattern::Signed(signed) => {
+            ssa::PatternKind::Signed(signed) => {
                 match_number!(Signed(signed), "signed-equality");
             }
-            prepare::Pattern::Unsigned(unsigned) => {
+            ssa::PatternKind::Unsigned(unsigned) => {
                 match_number!(Unsigned(unsigned), "unsigned-equality");
             }
-            prepare::Pattern::Float(float) => {
+            ssa::PatternKind::Float(float) => {
                 match_number!(Float(float), "float-equality");
             }
-            prepare::Pattern::Double(double) => {
+            ssa::PatternKind::Double(double) => {
                 match_number!(Double(double), "double-equality");
             }
-            prepare::Pattern::Text(text) => {
-                statements.push(Statement::Text(text));
+            ssa::PatternKind::Text(text) => {
+                self.statements_for(*label)
+                    .push(Statement::Value(Value::Text(text)));
 
-                statements.push(Statement::External(
+                self.statements_for(*label).push(Statement::External(
                     InternedString::new(abi::RUNTIME),
                     InternedString::new("text-equality"),
                     2,
                 ));
 
-                gen_tail_if!();
+                self.statements_for(*label)
+                    .push(Statement::If(1, body_label));
             }
-            prepare::Pattern::Variable(var) => {
-                statements.push(Statement::Initialize(var));
-                gen_goto_or_sub!(body_label, sub);
+            ssa::PatternKind::Variable(var) => {
+                self.statements_for(*label).push(Statement::Initialize(var));
+                self.statements_for(*label)
+                    .push(Statement::Jump(body_label));
             }
-            prepare::Pattern::Or(left, right) => {
-                statements.push(Statement::Copy);
+            ssa::PatternKind::Or(left, right) => {
+                let continue_label = self.new_label(None);
 
-                let right_label = self.compiler.new_label();
-                {
-                    let mut statements = Vec::new();
-                    statements.push(Statement::Copy);
-                    statements.append(&mut self.gen_pattern(*right, body_label, else_label, true));
-                    self.labels.insert(right_label, statements);
+                self.statements_for(*label).push(Statement::Copy);
+                self.gen_pattern(*left, continue_label, label);
+
+                self.statements_for(continue_label).push(Statement::Drop);
+                self.statements_for(continue_label)
+                    .push(Statement::Jump(body_label));
+
+                self.gen_pattern(*right, body_label, label);
+            }
+            ssa::PatternKind::Where(pattern, condition) => {
+                let condition_label = self.new_label(condition.span);
+                let else_label = self.new_label(None);
+
+                self.gen_pattern(*pattern, condition_label, label);
+                self.statements_for(*label)
+                    .push(Statement::Jump(else_label));
+
+                *label = condition_label;
+                self.gen_expr(*condition, label);
+                self.statements_for(*label)
+                    .push(Statement::If(1, body_label));
+                self.statements_for(*label)
+                    .push(Statement::Jump(else_label));
+
+                *label = else_label;
+            }
+            ssa::PatternKind::Tuple(patterns) => {
+                let else_label = self.new_label(None);
+
+                let mut patterns = patterns.into_iter().enumerate().peekable();
+                while let Some((index, pattern)) = patterns.next() {
+                    let next_label =
+                        self.new_label(patterns.peek().and_then(|(_, pattern)| pattern.span));
+
+                    self.statements_for(*label)
+                        .push(Statement::Comment(format!("pattern {} in tuple", index)));
+
+                    self.statements_for(*label).push(Statement::Copy);
+
+                    self.statements_for(*label)
+                        .push(Statement::TupleElement(index));
+
+                    self.gen_pattern(pattern, next_label, label);
+
+                    self.statements_for(*label)
+                        .push(Statement::Jump(else_label));
+
+                    *label = next_label;
                 }
 
-                statements.append(&mut self.gen_pattern(
-                    *left,
-                    body_label,
-                    Some(right_label),
-                    true,
-                ));
+                self.statements_for(*label)
+                    .push(Statement::Comment(String::from("end of tuple pattern")));
+
+                self.statements_for(*label).push(Statement::Drop);
+
+                self.statements_for(*label)
+                    .push(Statement::Jump(body_label));
+
+                *label = else_label;
+                self.statements_for(*label).push(Statement::Drop);
             }
-            prepare::Pattern::Where(pattern, condition) => {
-                let condition_label = self.compiler.new_label();
-                {
-                    let mut statements = Vec::new();
-                    statements.push(Statement::Copy);
-                    statements.append(&mut self.gen_expr(*condition, true));
+            ssa::PatternKind::Destructure(fields) => {
+                let else_label = self.new_label(None);
 
-                    statements.push(Statement::If(
-                        body_label,
-                        else_label.expect("`where` patterns are never exhaustive"),
-                    ));
+                let mut fields = fields.into_iter().peekable();
+                while let Some((index, field)) = fields.next() {
+                    let next_label =
+                        self.new_label(fields.peek().and_then(|(_, field)| field.span));
 
-                    self.labels.insert(condition_label, statements);
+                    self.statements_for(*label)
+                        .push(Statement::Comment(format!("field {} in structure", index)));
+
+                    self.statements_for(*label).push(Statement::Copy);
+
+                    self.statements_for(*label)
+                        .push(Statement::StructureElement(index));
+
+                    self.gen_pattern(field, next_label, label);
+
+                    self.statements_for(*label)
+                        .push(Statement::Jump(else_label));
+
+                    *label = next_label;
                 }
 
-                statements.append(&mut self.gen_pattern(
-                    *pattern,
-                    condition_label,
-                    else_label,
-                    true,
-                ));
+                self.statements_for(*label)
+                    .push(Statement::Comment(String::from("end of structure pattern")));
+
+                self.statements_for(*label).push(Statement::Drop);
+
+                self.statements_for(*label)
+                    .push(Statement::Jump(body_label));
+
+                *label = else_label;
+                self.statements_for(*label).push(Statement::Drop);
             }
-            prepare::Pattern::Tuple(patterns) => {
-                let (first_pattern_label, sub) = if patterns.is_empty() {
-                    (body_label, sub)
-                } else {
-                    (self.compiler.new_label(), true)
-                };
+            ssa::PatternKind::Variant(discriminant, patterns) => {
+                let element_label = self.new_label(None);
+                let else_label = self.new_label(None);
 
-                gen_goto_or_sub!(first_pattern_label, sub);
+                self.statements_for(*label).push(Statement::Copy);
 
-                #[allow(clippy::needless_collect)] // self is borrowed inside the for loop
-                let patterns = std::iter::once(first_pattern_label)
-                    .chain(std::iter::repeat_with(|| self.compiler.new_label()))
-                    .zip(patterns)
-                    .map(Some)
-                    .chain(std::iter::once(None))
-                    .collect::<Vec<_>>();
+                self.statements_for(*label)
+                    .push(Statement::If(discriminant, element_label));
 
-                for (index, (current, next)) in patterns.into_iter().tuple_windows().enumerate() {
-                    let (current_pattern_label, pattern) = current.unwrap();
-                    let next_pattern_label = next.map(|(label, _)| label);
+                self.statements_for(*label)
+                    .push(Statement::Jump(else_label));
 
-                    let mut statements = Vec::new();
-                    statements.push(Statement::Copy);
-                    statements.push(Statement::TupleElement(index));
+                *label = element_label;
 
-                    statements.append(&mut self.gen_pattern(
-                        pattern,
-                        next_pattern_label.unwrap_or(body_label),
-                        else_label,
-                        true,
-                    ));
+                let mut patterns = patterns.into_iter().enumerate().peekable();
+                while let Some((index, pattern)) = patterns.next() {
+                    let next_label =
+                        self.new_label(patterns.peek().and_then(|(_, pattern)| pattern.span));
 
-                    self.labels.insert(current_pattern_label, statements);
-                }
-            }
-            prepare::Pattern::Destructure(fields) => {
-                let (first_pattern_label, sub) = if fields.is_empty() {
-                    (body_label, sub)
-                } else {
-                    (self.compiler.new_label(), true)
-                };
+                    self.statements_for(*label)
+                        .push(Statement::Comment(format!("pattern {} in variant", index)));
 
-                gen_goto_or_sub!(first_pattern_label, sub);
+                    self.statements_for(*label).push(Statement::Copy);
 
-                #[allow(clippy::needless_collect)] // self is borrowed inside the for loop
-                let fields = std::iter::once(first_pattern_label)
-                    .chain(std::iter::repeat_with(|| self.compiler.new_label()))
-                    .zip(fields)
-                    .map(Some)
-                    .chain(std::iter::once(None))
-                    .collect::<Vec<_>>();
+                    self.statements_for(*label)
+                        .push(Statement::VariantElement(discriminant, index));
 
-                for (current, next) in fields.into_iter().tuple_windows() {
-                    let (current_pattern_label, (index, pattern)) = current.unwrap();
-                    let next_pattern_label = next.map(|(label, _)| label);
+                    self.gen_pattern(pattern, next_label, label);
 
-                    let mut statements = Vec::new();
-                    statements.push(Statement::Copy);
-                    statements.push(Statement::StructureElement(index));
+                    self.statements_for(*label)
+                        .push(Statement::Jump(else_label));
 
-                    statements.append(&mut self.gen_pattern(
-                        pattern,
-                        next_pattern_label.unwrap_or(body_label),
-                        else_label,
-                        true,
-                    ));
-
-                    self.labels.insert(current_pattern_label, statements);
-                }
-            }
-            prepare::Pattern::Variant(discriminant, patterns) => {
-                let (first_pattern_label, sub) = if patterns.is_empty() {
-                    statements.push(Statement::CompareDiscriminants(discriminant));
-                    (body_label, sub)
-                } else {
-                    statements.push(Statement::Copy);
-                    statements.push(Statement::CompareDiscriminants(discriminant));
-                    (self.compiler.new_label(), true)
-                };
-
-                if let Some(else_label) = else_label {
-                    statements.push(Statement::If(first_pattern_label, else_label));
-                } else {
-                    statements.push(Statement::Drop);
-                    gen_goto_or_sub!(first_pattern_label, sub);
+                    *label = next_label;
                 }
 
-                #[allow(clippy::needless_collect)] // self is borrowed inside the for loop
-                let patterns = std::iter::once(first_pattern_label)
-                    .chain(std::iter::repeat_with(|| self.compiler.new_label()))
-                    .zip(patterns)
-                    .map(Some)
-                    .chain(std::iter::once(None))
-                    .collect::<Vec<_>>();
+                self.statements_for(*label)
+                    .push(Statement::Comment(String::from("end of variant pattern")));
 
-                for (index, (current, next)) in patterns.into_iter().tuple_windows().enumerate() {
-                    let (current_pattern_label, pattern) = current.unwrap();
-                    let next_pattern_label = next.map(|(label, _)| label);
+                self.statements_for(*label).push(Statement::Drop);
 
-                    let mut statements = Vec::new();
-                    statements.push(Statement::Copy);
-                    statements.push(Statement::VariantElement(discriminant, index));
+                self.statements_for(*label)
+                    .push(Statement::Jump(body_label));
 
-                    statements.append(&mut self.gen_pattern(
-                        pattern,
-                        next_pattern_label.unwrap_or(body_label),
-                        else_label,
-                        true,
-                    ));
-
-                    self.labels.insert(current_pattern_label, statements);
-                }
+                *label = else_label;
+                self.statements_for(*label).push(Statement::Drop);
             }
         }
-
-        statements
     }
 }

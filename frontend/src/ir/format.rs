@@ -1,127 +1,78 @@
-use super::{Program, Statement};
+use super::*;
+
+impl std::fmt::Display for Label {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "#{}", self.0)
+    }
+}
 
 impl std::fmt::Display for Program {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        let mut i = String::new();
+        writeln!(f, "entrypoint: {}", self.entrypoint)?;
 
-        macro_rules! indent {
-            ($i:ident) => {
-                $i += "\t";
-            };
-        }
+        for (label, (span, statements)) in &self.labels {
+            write!(f, "\n{}", label)?;
 
-        macro_rules! dedent {
-            ($i:ident) => {
-                $i.pop().expect("cannot dedent any further");
-            };
-        }
-
-        macro_rules! writeln_indented {
-            ($f:ident, $i:ident) => {{
-                writeln!($f, "{}", $i)?;
-            }};
-            ($f:ident, $i:ident, $($t:tt)*) => {{
-                write!($f, "{}", $i)?;
-                writeln!($f, $($t)*)?
-            }};
-        }
-
-        writeln_indented!(f, i, "entrypoint = {}", self.entrypoint.0);
-        writeln_indented!(f, i);
-
-        for (label, statements) in &self.labels {
-            writeln_indented!(f, i, "#{}:", label.0);
-
-            indent!(i);
-
-            for statement in statements {
-                match statement {
-                    Statement::Copy => writeln_indented!(f, i, "copy"),
-                    Statement::Drop => writeln_indented!(f, i, "drop"),
-                    Statement::Initialize(var) => writeln_indented!(f, i, "initialize {}", var.0),
-                    Statement::Goto(label, tail) => {
-                        if *tail {
-                            writeln_indented!(f, i, "tail goto #{}", label.0);
-                        } else {
-                            writeln_indented!(f, i, "goto #{}", label.0);
-                        }
-                    }
-                    Statement::Sub(label, tail) => {
-                        if *tail {
-                            writeln_indented!(f, i, "tail sub #{}", label.0);
-                        } else {
-                            writeln_indented!(f, i, "sub #{}", label.0);
-                        }
-                    }
-                    Statement::If(then_label, else_label) => {
-                        writeln_indented!(f, i, "if #{} #{}", then_label.0, else_label.0)
-                    }
-                    Statement::Marker => writeln_indented!(f, i, "marker"),
-                    Statement::Closure(id) => {
-                        writeln_indented!(f, i, "closure {}", id.0);
-                    }
-                    Statement::Variable(id) => {
-                        writeln_indented!(f, i, "variable {}", id.0)
-                    }
-                    Statement::Constant(id) => {
-                        writeln_indented!(f, i, "constant {}", id.0)
-                    }
-                    Statement::Number(number) => {
-                        writeln_indented!(f, i, "number {}", number)
-                    }
-                    Statement::Integer(integer) => {
-                        writeln_indented!(f, i, "integer {}", integer);
-                    }
-                    Statement::Natural(natural) => {
-                        writeln_indented!(f, i, "natural {}", natural);
-                    }
-                    Statement::Byte(byte) => writeln_indented!(f, i, "byte {}", byte),
-                    Statement::Signed(signed) => {
-                        writeln_indented!(f, i, "signed {}", signed)
-                    }
-                    Statement::Unsigned(unsigned) => {
-                        writeln_indented!(f, i, "unsigned {}", unsigned);
-                    }
-                    Statement::Float(float) => writeln_indented!(f, i, "float {}", float),
-                    Statement::Double(double) => {
-                        writeln_indented!(f, i, "double {}", double)
-                    }
-                    Statement::Text(text) => writeln_indented!(f, i, "text {:?}", text),
-                    Statement::Call(tail) => {
-                        if *tail {
-                            writeln_indented!(f, i, "tail call");
-                        } else {
-                            writeln_indented!(f, i, "call");
-                        }
-                    }
-                    Statement::External(lib, identifier, count) => {
-                        writeln_indented!(f, i, "external {:?} {:?} {}", lib, identifier, count);
-                    }
-                    Statement::Tuple(count) => writeln_indented!(f, i, "tuple {}", count),
-                    Statement::Structure(count) => {
-                        writeln_indented!(f, i, "structure {}", count);
-                    }
-                    Statement::Variant(discriminant, count) => {
-                        writeln_indented!(f, i, "variant {} {}", discriminant, count);
-                    }
-                    Statement::TupleElement(index) => {
-                        writeln_indented!(f, i, "tuple element {}", index);
-                    }
-                    Statement::StructureElement(index) => {
-                        writeln_indented!(f, i, "structure element {}", index);
-                    }
-                    Statement::VariantElement(discriminant, index) => {
-                        writeln_indented!(f, i, "variant element {} {}", discriminant, index);
-                    }
-                    Statement::CompareDiscriminants(index) => {
-                        writeln_indented!(f, i, "compare discriminants {}", index);
-                    }
-                }
+            if let Some(span) = span {
+                write!(f, " ({:?})", span)?;
             }
 
-            dedent!(i);
+            writeln!(f, ":")?;
+
+            for statement in statements {
+                writeln!(f, "  {}", statement)?;
+            }
         }
 
         Ok(())
+    }
+}
+
+impl std::fmt::Display for Statement {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Statement::Comment(comment) => write!(f, ";; {}", comment),
+            Statement::Copy => write!(f, "copy"),
+            Statement::Drop => write!(f, "drop"),
+            Statement::Begin => write!(f, "begin"),
+            Statement::End => write!(f, "end"),
+            Statement::Value(value) => write!(f, "{}", value),
+            Statement::Call => write!(f, "call"),
+            Statement::External(abi, identifier, count) => {
+                write!(f, "external {:?} {:?} {}", abi, identifier, count)
+            }
+            Statement::Tuple(count) => write!(f, "tuple {}", count),
+            Statement::Structure(count) => write!(f, "structure {}", count),
+            Statement::Variant(variant, count) => write!(f, "variant {} {}", variant, count),
+            Statement::TupleElement(index) => write!(f, "tuple element {}", index),
+            Statement::StructureElement(index) => write!(f, "structure element {}", index),
+            Statement::VariantElement(variant, index) => {
+                write!(f, "variant element {} {}", variant, index)
+            }
+            Statement::Initialize(initialize) => write!(f, "initialize ${}", initialize.0),
+            Statement::If(variant, label) => write!(f, "if {} {}", variant, label),
+            Statement::Jump(label) => write!(f, "jump {}", label),
+            Statement::Unreachable => write!(f, "unreachable"),
+        }
+    }
+}
+
+impl std::fmt::Display for Value {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Value::Marker => write!(f, "marker"),
+            Value::Text(text) => write!(f, "text {:?}", text),
+            Value::Number(number) => write!(f, "number {}", number),
+            Value::Integer(integer) => write!(f, "integer {}", integer),
+            Value::Natural(natural) => write!(f, "natural {}", natural),
+            Value::Byte(byte) => write!(f, "byte {}", byte),
+            Value::Signed(signed) => write!(f, "signed {}", signed),
+            Value::Unsigned(unsigned) => write!(f, "unsigned {}", unsigned),
+            Value::Float(float) => write!(f, "float {}", float),
+            Value::Double(double) => write!(f, "double {}", double),
+            Value::Variable(variable) => write!(f, "variable ${}", variable.0),
+            Value::Constant(label) => write!(f, "constant {}", label),
+            Value::Closure(label) => write!(f, "closure {}", label),
+        }
     }
 }
