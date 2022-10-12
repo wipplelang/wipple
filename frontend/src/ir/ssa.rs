@@ -16,6 +16,7 @@ pub struct Program {
 #[derive(Debug, Clone)]
 pub struct Expression {
     pub span: Option<Span>,
+    pub tail: bool,
     pub kind: ExpressionKind,
 }
 
@@ -26,7 +27,7 @@ pub enum ExpressionKind {
     Text(InternedString),
     Block(Vec<Expression>),
     Call(Box<Expression>, Box<Expression>),
-    Function(Pattern, Box<Expression>),
+    Function(Pattern, Box<Expression>, analysis::lower::CaptureList),
     When(Box<Expression>, Vec<Arm>),
     External(InternedString, InternedString, Vec<Expression>),
     Structure(Vec<Expression>),
@@ -83,34 +84,40 @@ impl<L: Loader> Compiler<L> {
                 .declarations
                 .monomorphized_constants
                 .iter()
-                .map(|(id, (_, _, _, constant))| (*id, self.convert_expr_to_ssa(&constant.value)))
+                .map(|(id, (_, _, _, constant))| {
+                    (*id, self.convert_expr_to_ssa(&constant.value, true))
+                })
                 .collect(),
-            body: self.convert_block_to_ssa(&program.body),
+            body: self.convert_block_to_ssa(&program.body, true),
         }
     }
 
-    fn convert_expr_to_ssa(&mut self, expr: &analysis::Expression) -> Expression {
+    fn convert_expr_to_ssa(&mut self, expr: &analysis::Expression, tail: bool) -> Expression {
         Expression {
             span: Some(expr.span),
+            tail,
             kind: match &expr.kind {
                 analysis::ExpressionKind::Marker => ExpressionKind::Marker,
                 analysis::ExpressionKind::Variable(var) => ExpressionKind::Variable(*var),
                 analysis::ExpressionKind::Text(text) => ExpressionKind::Text(*text),
                 analysis::ExpressionKind::Block(exprs) => {
-                    ExpressionKind::Block(self.convert_block_to_ssa(exprs))
+                    ExpressionKind::Block(self.convert_block_to_ssa(exprs, tail))
                 }
                 analysis::ExpressionKind::Call(func, input) => ExpressionKind::Call(
-                    Box::new(self.convert_expr_to_ssa(func)),
-                    Box::new(self.convert_expr_to_ssa(input)),
+                    Box::new(self.convert_expr_to_ssa(func, false)),
+                    Box::new(self.convert_expr_to_ssa(input, false)),
                 ),
-                analysis::ExpressionKind::Function(pattern, body) => ExpressionKind::Function(
-                    self.convert_pattern_to_ssa(pattern),
-                    Box::new(self.convert_expr_to_ssa(body)),
-                ),
+                analysis::ExpressionKind::Function(pattern, body, captures) => {
+                    ExpressionKind::Function(
+                        self.convert_pattern_to_ssa(pattern),
+                        Box::new(self.convert_expr_to_ssa(body, tail)),
+                        captures.clone(),
+                    )
+                }
                 analysis::ExpressionKind::When(input, arms) => ExpressionKind::When(
-                    Box::new(self.convert_expr_to_ssa(input)),
+                    Box::new(self.convert_expr_to_ssa(input, false)),
                     arms.iter()
-                        .map(|arm| self.convert_arm_to_ssa(arm))
+                        .map(|arm| self.convert_arm_to_ssa(arm, tail))
                         .collect(),
                 ),
                 analysis::ExpressionKind::External(abi, identifier, inputs) => {
@@ -119,7 +126,7 @@ impl<L: Loader> Compiler<L> {
                         *identifier,
                         inputs
                             .iter()
-                            .map(|expr| self.convert_expr_to_ssa(expr))
+                            .map(|expr| self.convert_expr_to_ssa(expr, false))
                             .collect(),
                     )
                 }
@@ -131,20 +138,20 @@ impl<L: Loader> Compiler<L> {
                 analysis::ExpressionKind::Structure(exprs) => ExpressionKind::Structure(
                     exprs
                         .iter()
-                        .map(|expr| self.convert_expr_to_ssa(expr))
+                        .map(|expr| self.convert_expr_to_ssa(expr, false))
                         .collect(),
                 ),
                 analysis::ExpressionKind::Variant(discriminant, exprs) => ExpressionKind::Variant(
                     *discriminant,
                     exprs
                         .iter()
-                        .map(|expr| self.convert_expr_to_ssa(expr))
+                        .map(|expr| self.convert_expr_to_ssa(expr, false))
                         .collect(),
                 ),
                 analysis::ExpressionKind::Tuple(exprs) => ExpressionKind::Tuple(
                     exprs
                         .iter()
-                        .map(|expr| self.convert_expr_to_ssa(expr))
+                        .map(|expr| self.convert_expr_to_ssa(expr, false))
                         .collect(),
                 ),
                 analysis::ExpressionKind::Number(number) => ExpressionKind::Number(*number),
@@ -160,25 +167,35 @@ impl<L: Loader> Compiler<L> {
         }
     }
 
-    fn convert_block_to_ssa(&mut self, exprs: &[analysis::Expression]) -> Vec<Expression> {
+    fn convert_block_to_ssa(
+        &mut self,
+        exprs: &[analysis::Expression],
+        tail: bool,
+    ) -> Vec<Expression> {
         let mut result = Vec::new();
-
+        let count = exprs.len();
         for (index, expr) in exprs.iter().enumerate() {
+            let tail = tail && index + 1 == count;
+
             if let analysis::ExpressionKind::Initialize(pattern, value) = &expr.kind {
                 let remaining = &exprs[(index + 1)..];
 
                 result.push(Expression {
                     span: Some(expr.span),
+                    tail,
                     kind: ExpressionKind::When(
-                        Box::new(self.convert_expr_to_ssa(value)),
+                        Box::new(self.convert_expr_to_ssa(value, false)),
                         vec![Arm {
                             span: Some(pattern.span),
                             pattern: self.convert_pattern_to_ssa(pattern),
                             body: Expression {
+                                tail,
                                 span: remaining.first().map(|expr| {
                                     expr.span.with_end(remaining.last().unwrap().span.end)
                                 }),
-                                kind: ExpressionKind::Block(self.convert_block_to_ssa(remaining)),
+                                kind: ExpressionKind::Block(
+                                    self.convert_block_to_ssa(remaining, tail),
+                                ),
                             },
                         }],
                     ),
@@ -186,18 +203,18 @@ impl<L: Loader> Compiler<L> {
 
                 break;
             } else {
-                result.push(self.convert_expr_to_ssa(expr));
+                result.push(self.convert_expr_to_ssa(expr, tail));
             }
         }
 
         result
     }
 
-    fn convert_arm_to_ssa(&mut self, arm: &analysis::Arm) -> Arm {
+    fn convert_arm_to_ssa(&mut self, arm: &analysis::Arm, tail: bool) -> Arm {
         Arm {
             span: Some(arm.span),
             pattern: self.convert_pattern_to_ssa(&arm.pattern),
-            body: self.convert_expr_to_ssa(&arm.body),
+            body: self.convert_expr_to_ssa(&arm.body, tail),
         }
     }
 
@@ -241,7 +258,7 @@ impl<L: Loader> Compiler<L> {
                 ),
                 analysis::PatternKind::Where(pattern, condition) => PatternKind::Where(
                     Box::new(self.convert_pattern_to_ssa(pattern)),
-                    Box::new(self.convert_expr_to_ssa(condition)),
+                    Box::new(self.convert_expr_to_ssa(condition, false)),
                 ),
             },
         }

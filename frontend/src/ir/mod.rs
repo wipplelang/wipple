@@ -39,6 +39,7 @@ pub enum Statement {
     Initialize(VariableId),
     Value(Value),
     Call,
+    TailCall,
     External(InternedString, InternedString, usize),
     Tuple(usize),
     Structure(usize),
@@ -62,6 +63,7 @@ pub enum Value {
     Double(f64),
     Variable(VariableId),
     Constant(Label),
+    Function(Label),
     Closure(Label),
 }
 
@@ -175,9 +177,13 @@ impl<L: Loader> IrGen<'_, L> {
                     .push(Statement::Comment(String::from("evaluate input")));
                 self.gen_expr(*input, label);
 
-                self.statements_for(*label).push(Statement::Call);
+                self.statements_for(*label).push(if expr.tail {
+                    Statement::TailCall
+                } else {
+                    Statement::Call
+                });
             }
-            ssa::ExpressionKind::Function(pattern, body) => {
+            ssa::ExpressionKind::Function(pattern, body, captures) => {
                 let function_label = self.new_label(pattern.span);
 
                 {
@@ -198,8 +204,13 @@ impl<L: Loader> IrGen<'_, L> {
                     self.gen_expr(*body, &mut body_label);
                 }
 
-                self.statements_for(*label)
-                    .push(Statement::Value(Value::Closure(function_label)));
+                let value = if captures.is_empty() {
+                    Value::Function(function_label)
+                } else {
+                    Value::Closure(function_label)
+                };
+
+                self.statements_for(*label).push(Statement::Value(value));
             }
             ssa::ExpressionKind::When(input, arms) => {
                 self.statements_for(*label)

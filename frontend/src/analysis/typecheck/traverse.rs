@@ -38,7 +38,7 @@ macro_rules! traverse_impl {
                     function.$traverse(f);
                     input.$traverse(f);
                 }
-                Function(_, body) => body.$traverse(f),
+                Function(_, body, _) => body.$traverse(f),
                 When(input, arms) => {
                     input.$traverse(f);
 

@@ -40,6 +40,7 @@ enum Value {
     Float(f32),
     Double(f64),
     Text(Rc<str>),
+    Function(Label),
     Closure(Label, Rc<Scope>),
     Variant(usize, Vec<Value>),
     Mutable(Rc<RefCell<Value>>),
@@ -166,10 +167,6 @@ impl<'a> Interpreter<'a> {
         let mut statements = statements.iter();
 
         while let Some(statement) = statements.next() {
-            // eprintln!();
-            // dbg!(&stack);
-            // eprintln!("{}", statement);
-
             match statement {
                 ir::Statement::Comment(_) => {}
                 ir::Statement::Begin => {
@@ -216,6 +213,7 @@ impl<'a> Interpreter<'a> {
                                 self.evaluate_label(label, stack, &mut scope.child(), info)?
                             }
                         }
+                        ir::Value::Function(label) => Value::Function(*label),
                         ir::Value::Closure(label) => Value::Closure(*label, scope.clone()),
                     };
 
@@ -225,6 +223,7 @@ impl<'a> Interpreter<'a> {
                     let input = stack.pop();
 
                     let (label, scope) = match stack.pop() {
+                        Value::Function(label) => (label, Scope::new()),
                         Value::Closure(label, scope) => (label, scope),
                         _ => unreachable!(),
                     };
@@ -232,6 +231,25 @@ impl<'a> Interpreter<'a> {
                     stack.push(input);
                     let result = self.evaluate_label(&label, stack, &mut scope.child(), info)?;
                     stack.push(result);
+                }
+                ir::Statement::TailCall => {
+                    let input = stack.pop();
+
+                    let (label, scope) = match stack.pop() {
+                        Value::Function(label) => (label, None),
+                        Value::Closure(label, scope) => (label, Some(scope)),
+                        _ => unreachable!(),
+                    };
+
+                    stack.push(input);
+
+                    if let Some(scope) = scope {
+                        let result =
+                            self.evaluate_label(&label, stack, &mut scope.child(), info)?;
+                        stack.push(result);
+                    } else {
+                        statements = info.program.labels.get(&label).unwrap().1.iter();
+                    }
                 }
                 ir::Statement::External(abi, identifier, inputs) => {
                     let inputs = stack.popn(*inputs);

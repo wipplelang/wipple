@@ -13,7 +13,7 @@ use crate::{
 use serde::Serialize;
 use std::{
     cell::RefCell,
-    collections::{BTreeMap, HashMap},
+    collections::{BTreeMap, BTreeSet, HashMap},
     hash::Hash,
     mem,
     rc::Rc,
@@ -251,7 +251,7 @@ pub enum ExpressionKind {
     Number(InternedString),
     Block(Vec<Expression>),
     Call(Box<Expression>, Box<Expression>),
-    Function(Pattern, Box<Expression>),
+    Function(Pattern, Box<Expression>, CaptureList),
     When(Box<Expression>, Vec<Arm>),
     External(InternedString, InternedString, Vec<Expression>),
     Annotate(Box<Expression>, TypeAnnotation),
@@ -324,6 +324,8 @@ impl TypeAnnotation {
     }
 }
 
+pub type CaptureList = Vec<(VariableId, Span)>;
+
 impl<L: Loader> Compiler<L> {
     pub fn lower(
         &mut self,
@@ -395,7 +397,7 @@ impl<L: Loader> Compiler<L> {
             if let Some(imports) = imports {
                 for (name, span) in imports {
                     if let Some(value) = dependency.exported.get(&name) {
-                        scope.values.borrow_mut().insert(name, value.clone());
+                        scope.insert(name, value.clone());
                     } else {
                         self.diagnostics.add(Diagnostic::error(
                             format!("file does not export a value named '{}'", name),
@@ -404,10 +406,7 @@ impl<L: Loader> Compiler<L> {
                     }
                 }
             } else {
-                scope
-                    .values
-                    .borrow_mut()
-                    .extend(dependency.exported.clone());
+                scope.extend(dependency.exported.clone());
             }
         }
 
@@ -461,10 +460,12 @@ impl LanguageItems {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 struct Scope<'a> {
     parent: Option<&'a Scope<'a>>,
     values: RefCell<ScopeValues>,
+    declared_variables: RefCell<BTreeSet<VariableId>>,
+    used_variables: RefCell<CaptureList>,
 }
 
 pub type ScopeValues = HashMap<InternedString, ScopeValue>;
@@ -490,22 +491,34 @@ pub enum ScopeValue {
 
 impl<'a> Scope<'a> {
     fn root() -> Self {
-        Scope {
-            parent: None,
-            values: Default::default(),
-        }
+        Scope::default()
     }
 
     fn child(&'a self) -> Self {
         Scope {
             parent: Some(self),
-            values: Default::default(),
+            ..Default::default()
         }
     }
 
-    fn get(&'a self, name: InternedString) -> Option<ScopeValue> {
+    fn insert(&'a self, name: InternedString, value: ScopeValue) {
+        if let ScopeValue::Variable(var) = value {
+            self.declared_variables.borrow_mut().insert(var);
+        }
+
+        self.values.borrow_mut().insert(name, value);
+    }
+
+    fn extend(&'a self, values: impl IntoIterator<Item = (InternedString, ScopeValue)>) {
+        for (name, value) in values {
+            self.insert(name, value);
+        }
+    }
+
+    fn get(&'a self, name: InternedString, span: Span) -> Option<ScopeValue> {
         let mut parent = Some(self);
         let mut result = None;
+        let mut used_variables = Vec::new();
 
         while let Some(scope) = parent {
             if let Some(value) = scope.values.borrow().get(&name).cloned() {
@@ -513,10 +526,28 @@ impl<'a> Scope<'a> {
                 break;
             }
 
+            used_variables.push(&scope.used_variables);
             parent = scope.parent;
         }
 
+        if let Some(ScopeValue::Variable(id)) = result {
+            for u in used_variables {
+                u.borrow_mut().push((id, span));
+            }
+        }
+
         result
+    }
+
+    fn used_variables(&self) -> Vec<(VariableId, Span)> {
+        let mut parent = Some(self);
+        let mut used_variables = Vec::new();
+        while let Some(scope) = parent {
+            used_variables.extend(scope.used_variables.clone().into_inner());
+            parent = scope.parent;
+        }
+
+        used_variables
     }
 }
 
@@ -587,10 +618,7 @@ impl<L: Loader> Compiler<L> {
                         .map(|param| {
                             let id = self.new_type_parameter_id();
 
-                            scope
-                                .values
-                                .borrow_mut()
-                                .insert(param.name, ScopeValue::TypeParameter(id));
+                            scope.insert(param.name, ScopeValue::TypeParameter(id));
 
                             info.declarations.type_parameters.insert(
                                 id,
@@ -694,7 +722,7 @@ impl<L: Loader> Compiler<L> {
                                             },
                                         );
 
-                                        (ty.span, var)
+                                        (var, ty.span)
                                     })
                                     .collect::<Vec<_>>();
 
@@ -705,7 +733,7 @@ impl<L: Loader> Compiler<L> {
                                         index,
                                         variables
                                             .iter()
-                                            .map(|(span, var)| Expression {
+                                            .map(|(var, span)| Expression {
                                                 span: *span,
                                                 kind: ExpressionKind::Variable(*var),
                                             })
@@ -714,7 +742,7 @@ impl<L: Loader> Compiler<L> {
                                 };
 
                                 let constructor =
-                                    variables.iter().rev().fold(result, |result, (span, var)| {
+                                    variables.iter().rev().fold(result, |result, (var, span)| {
                                         Expression {
                                             span: variant.span,
                                             kind: ExpressionKind::Function(
@@ -723,6 +751,7 @@ impl<L: Loader> Compiler<L> {
                                                     kind: PatternKind::Variable(*var),
                                                 },
                                                 Box::new(result),
+                                                variables.clone(),
                                             ),
                                         }
                                     });
@@ -788,7 +817,7 @@ impl<L: Loader> Compiler<L> {
                         .bounds
                         .into_iter()
                         .filter_map(|bound| {
-                            let tr = match scope.get(bound.trait_name) {
+                            let tr = match scope.get(bound.trait_name, bound.trait_span) {
                                 Some(ScopeValue::Trait(tr)) => {
                                     info.declarations
                                         .traits
@@ -858,7 +887,7 @@ impl<L: Loader> Compiler<L> {
                         .bounds
                         .into_iter()
                         .filter_map(|bound| {
-                            let tr = match scope.get(bound.trait_name) {
+                            let tr = match scope.get(bound.trait_name, bound.trait_span) {
                                 Some(ScopeValue::Trait(tr)) => {
                                     info.declarations
                                         .traits
@@ -907,7 +936,7 @@ impl<L: Loader> Compiler<L> {
                         })
                         .collect();
 
-                    let tr = match scope.get(instance.trait_name) {
+                    let tr = match scope.get(instance.trait_name, instance.trait_span) {
                         Some(ScopeValue::Trait(tr)) => {
                             info.declarations
                                 .traits
@@ -960,7 +989,7 @@ impl<L: Loader> Compiler<L> {
                     Some(ScopeValue::Constant(id, None))
                 }
                 StatementDeclarationKind::Use((span, name)) => {
-                    let ty = match scope.get(name) {
+                    let ty = match scope.get(name, span) {
                         Some(ScopeValue::Type(ty)) => {
                             info.declarations
                                 .types
@@ -1016,10 +1045,7 @@ impl<L: Loader> Compiler<L> {
                     for (name, index) in names {
                         let variant = constructors[*index].constructor;
 
-                        scope
-                            .values
-                            .borrow_mut()
-                            .insert(*name, ScopeValue::Constant(variant, Some((ty, *index))));
+                        scope.insert(*name, ScopeValue::Constant(variant, Some((ty, *index))));
                     }
 
                     None
@@ -1116,7 +1142,7 @@ impl<L: Loader> Compiler<L> {
                                     let parameter =
                                         info.declarations.type_parameters.get(&id).unwrap();
 
-                                    scope.values.borrow_mut().insert(
+                                    scope.insert(
                                         parameter.name.unwrap(),
                                         ScopeValue::TypeParameter(id),
                                     );
@@ -1150,7 +1176,7 @@ impl<L: Loader> Compiler<L> {
             ast::StatementKind::Declaration(decl) => match decl {
                 ast::Declaration::Type((span, name), ty) => {
                     let id = self.new_type_id();
-                    scope.values.borrow_mut().insert(name, ScopeValue::Type(id));
+                    scope.insert(name, ScopeValue::Type(id));
 
                     info.declarations
                         .types
@@ -1164,10 +1190,7 @@ impl<L: Loader> Compiler<L> {
                 }
                 ast::Declaration::Trait((span, name), declaration) => {
                     let id = self.new_trait_id();
-                    scope
-                        .values
-                        .borrow_mut()
-                        .insert(name, ScopeValue::Trait(id));
+                    scope.insert(name, ScopeValue::Trait(id));
 
                     info.declarations
                         .traits
@@ -1181,10 +1204,7 @@ impl<L: Loader> Compiler<L> {
                 }
                 ast::Declaration::Constant((span, name), declaration) => {
                     let id = self.new_generic_constant_id();
-                    scope
-                        .values
-                        .borrow_mut()
-                        .insert(name, ScopeValue::Constant(id, None));
+                    scope.insert(name, ScopeValue::Constant(id, None));
 
                     info.declarations
                         .constants
@@ -1294,7 +1314,7 @@ impl<L: Loader> Compiler<L> {
                 ast::ExpressionKind::Name(ty_name) => {
                     let input = inputs.first().unwrap();
 
-                    match scope.get(*ty_name) {
+                    match scope.get(*ty_name, function.span) {
                         Some(ScopeValue::Type(id)) => {
                             info.declarations
                                 .types
@@ -1470,7 +1490,10 @@ impl<L: Loader> Compiler<L> {
                 let scope = scope.child();
                 let pattern = self.lower_pattern(input, &scope, info);
                 let body = self.lower_expr(*body, &scope, info);
-                ExpressionKind::Function(pattern, Box::new(body))
+
+                let captures = scope.used_variables();
+
+                ExpressionKind::Function(pattern, Box::new(body), captures)
             }
             ast::ExpressionKind::When(input, arms) => ExpressionKind::When(
                 Box::new(self.lower_expr(*input, scope, info)),
@@ -1523,7 +1546,7 @@ impl<L: Loader> Compiler<L> {
                     .map(|parameter| self.lower_type_annotation(parameter, scope, info))
                     .collect();
 
-                match scope.get(name) {
+                match scope.get(name, ty.span) {
                     Some(ScopeValue::Type(id)) => {
                         info.declarations
                             .types
@@ -1598,7 +1621,7 @@ impl<L: Loader> Compiler<L> {
             ast::PatternKind::Wildcard => PatternKind::Wildcard,
             ast::PatternKind::Number(number) => PatternKind::Number(number),
             ast::PatternKind::Text(text) => PatternKind::Text(text),
-            ast::PatternKind::Name(name) => match scope.get(name) {
+            ast::PatternKind::Name(name) => match scope.get(name, pattern.span) {
                 Some(ScopeValue::Constant(id, Some((ty, variant)))) => {
                     info.declarations
                         .constants
@@ -1612,10 +1635,7 @@ impl<L: Loader> Compiler<L> {
                 _ => {
                     let var = self.new_variable_id();
 
-                    scope
-                        .values
-                        .borrow_mut()
-                        .insert(name, ScopeValue::Variable(var));
+                    scope.insert(name, ScopeValue::Variable(var));
 
                     info.declarations.variables.insert(
                         var,
@@ -1649,7 +1669,7 @@ impl<L: Loader> Compiler<L> {
                     .collect(),
             ),
             ast::PatternKind::Variant((name_span, name), values) => {
-                let first = match scope.get(name) {
+                let first = match scope.get(name, name_span) {
                     Some(name) => name,
                     None => {
                         self.diagnostics.add(Diagnostic::error(
@@ -1808,7 +1828,7 @@ impl<L: Loader> Compiler<L> {
         scope: &Scope,
         info: &mut Info,
     ) -> Option<ExpressionKind> {
-        match scope.get(name) {
+        match scope.get(name, span) {
             Some(ScopeValue::Template(_) | ScopeValue::Operator(_)) => unreachable!(),
             Some(ScopeValue::Type(id)) => {
                 info.declarations
@@ -1927,10 +1947,7 @@ impl<L: Loader> Compiler<L> {
                     },
                 );
 
-                scope
-                    .values
-                    .borrow_mut()
-                    .insert(parameter.name, ScopeValue::TypeParameter(id));
+                scope.insert(parameter.name, ScopeValue::TypeParameter(id));
 
                 id
             })

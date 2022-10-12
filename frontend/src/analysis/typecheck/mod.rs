@@ -58,7 +58,7 @@ macro_rules! expr {
                 Text(InternedString),
                 Block(Vec<[<$prefix Expression>]>),
                 Call(Box<[<$prefix Expression>]>, Box<[<$prefix Expression>]>),
-                Function([<$prefix Pattern>], Box<[<$prefix Expression>]>),
+                Function([<$prefix Pattern>], Box<[<$prefix Expression>]>, lower::CaptureList),
                 When(Box<[<$prefix Expression>]>, Vec<[<$prefix Arm>]>),
                 External(InternedString, InternedString, Vec<[<$prefix Expression>]>),
                 Initialize([<$prefix Pattern>], Box<[<$prefix Expression>]>),
@@ -1283,7 +1283,7 @@ impl<L: Loader> Typechecker<L> {
                     kind: UnresolvedExpressionKind::Call(Box::new(function), Box::new(input)),
                 }
             }
-            lower::ExpressionKind::Function(pattern, body) => {
+            lower::ExpressionKind::Function(pattern, body, captures) => {
                 let input_ty = UnresolvedType::Variable(self.ctx.new_variable());
 
                 let pattern =
@@ -1294,7 +1294,11 @@ impl<L: Loader> Typechecker<L> {
                 UnresolvedExpression {
                     span: expr.span,
                     ty: UnresolvedType::Function(Box::new(input_ty), Box::new(body.ty.clone())),
-                    kind: UnresolvedExpressionKind::Function(pattern, Box::new(body)),
+                    kind: UnresolvedExpressionKind::Function(
+                        pattern,
+                        Box::new(body),
+                        captures.clone(),
+                    ),
                 }
             }
             lower::ExpressionKind::When(input, arms) => {
@@ -2218,7 +2222,7 @@ impl<L: Loader> Typechecker<L> {
 
                         MonomorphizedExpressionKind::Call(Box::new(func), Box::new(input))
                     }
-                    UnresolvedExpressionKind::Function(pattern, body) => {
+                    UnresolvedExpressionKind::Function(pattern, body, captures) => {
                         let mut input_ty = match expr.ty {
                             UnresolvedType::Function(input, _) => *input,
                             _ => unreachable!(),
@@ -2240,6 +2244,7 @@ impl<L: Loader> Typechecker<L> {
                         MonomorphizedExpressionKind::Function(
                             pattern,
                             Box::new(self.monomorphize(*body, file, cache)?),
+                            captures,
                         )
                     }
                     UnresolvedExpressionKind::When(input, arms) => {
@@ -2417,7 +2422,7 @@ impl<L: Loader> Typechecker<L> {
                 Box::new(self.finalize_internal(*func, generic, file)?),
                 Box::new(self.finalize_internal(*input, generic, file)?),
             ),
-            MonomorphizedExpressionKind::Function(pattern, body) => {
+            MonomorphizedExpressionKind::Function(pattern, body, captures) => {
                 let input_ty = match &ty {
                     Type::Function(input, _) => input.clone(),
                     _ => unreachable!(),
@@ -2426,6 +2431,7 @@ impl<L: Loader> Typechecker<L> {
                 ExpressionKind::Function(
                     self.finalize_pattern(pattern, generic, &input_ty, file)?,
                     Box::new(self.finalize_internal(*body, generic, file)?),
+                    captures,
                 )
             }
             MonomorphizedExpressionKind::When(input, arms) => {

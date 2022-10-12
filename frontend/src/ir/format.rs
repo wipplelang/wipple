@@ -38,6 +38,7 @@ impl std::fmt::Display for Statement {
             Statement::End => write!(f, "end"),
             Statement::Value(value) => write!(f, "{}", value),
             Statement::Call => write!(f, "call"),
+            Statement::TailCall => write!(f, "tail call"),
             Statement::External(abi, identifier, count) => {
                 write!(f, "external {:?} {:?} {}", abi, identifier, count)
             }
@@ -72,6 +73,7 @@ impl std::fmt::Display for Value {
             Value::Double(double) => write!(f, "double {}", double),
             Value::Variable(variable) => write!(f, "variable ${}", variable.0),
             Value::Constant(label) => write!(f, "constant {}", label),
+            Value::Function(label) => write!(f, "function {}", label),
             Value::Closure(label) => write!(f, "closure {}", label),
         }
     }
