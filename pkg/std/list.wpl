@@ -61,22 +61,26 @@ append! : new -> list -> list . set! (list . get . append new)
 insert :: A => Natural -> A -> List A -> Result (List A) Index-Error
 insert : index -> new -> list -> external "runtime" "list-insert" list index new
 
--- [help "Insert a new item at a particular index inside a `Mutable List`."]
--- insert! :: A => Natural -> A -> Mutable (List A) -> Result () Index-Error
--- insert! : index -> new -> list -> {
--- 	new-list : try (list . get . insert index new)
--- 	list . set! new-list
--- 	OK ()
--- }
+[help "Insert a new item at a particular index inside a `Mutable List`."]
+insert! :: A => Natural -> A -> Mutable (List A) -> Result () Index-Error
+insert! : index -> new -> list -> when (list . get . insert index new) {
+	OK new-list -> {
+		list . set! new-list
+		OK ()
+	}
+	Error e -> Error e
+}
 
 [help "Remove the item at a particular index inside a `List`."]
 remove :: A => Natural -> List A -> Result (List A) Index-Error
 remove : index -> list -> external "runtime" "list-remove" list index
 
--- [help "Remove the item at a particular index inside a `Mutable List`."]
--- remove! :: A => Natural -> Mutable (List A) -> Result () Index-Error
--- remove! : index -> list -> {
--- 	new-list : try (list . get . remove index)
--- 	list . set! new-list
--- 	OK ()
--- }
+[help "Remove the item at a particular index inside a `Mutable List`."]
+remove! :: A => Natural -> Mutable (List A) -> Result () Index-Error
+remove! : index -> list -> when (list . get . remove index) {
+	OK new-list -> {
+		list . set! new-list
+		OK ()
+	}
+	Error e -> Error e
+}
