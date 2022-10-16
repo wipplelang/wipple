@@ -6,8 +6,7 @@ edition = "2021"
 [dependencies]
 anyhow = "1"
 clap = { version = "3", features = ["derive"] }
-codemap = "=0.1.2"
-codemap-diagnostic = "0.1"
+codespan-reporting = "0.11"
 colored = "2"
 junit-report = "0.7"
 parking_lot = "0.12"

@@ -7,16 +7,16 @@ use crate::{
     diagnostics::*,
     helpers::InternedString,
     parse::Span,
-    BuiltinTypeId, Compiler, GenericConstantId, Loader, TemplateId, TraitId, TypeId,
+    BuiltinTypeId, Compiler, FilePath, GenericConstantId, TemplateId, TraitId, TypeId,
     TypeParameterId, VariableId,
 };
+use parking_lot::Mutex;
 use serde::Serialize;
 use std::{
     cell::RefCell,
-    collections::{BTreeMap, BTreeSet, HashMap},
+    collections::{HashMap, HashSet},
     hash::Hash,
     mem,
-    rc::Rc,
     sync::Arc,
 };
 
@@ -32,28 +32,28 @@ pub struct File<Decls = Declarations> {
 
 #[derive(Debug, Clone, Default)]
 pub struct Declarations {
-    pub operators: BTreeMap<TemplateId, expand::Operator>,
-    pub templates: BTreeMap<TemplateId, expand::TemplateDeclaration<()>>,
-    pub types: BTreeMap<TypeId, Declaration<Type>>,
-    pub type_parameters: BTreeMap<TypeParameterId, Declaration<()>>,
-    pub traits: BTreeMap<TraitId, Declaration<Trait>>,
-    pub builtin_types: BTreeMap<BuiltinTypeId, Declaration<BuiltinType>>,
-    pub constants: BTreeMap<GenericConstantId, Declaration<Constant>>,
-    pub instances: BTreeMap<GenericConstantId, Declaration<Instance>>,
-    pub variables: BTreeMap<VariableId, Declaration<()>>,
+    pub operators: HashMap<TemplateId, expand::Operator>,
+    pub templates: HashMap<TemplateId, expand::TemplateDeclaration<()>>,
+    pub types: HashMap<TypeId, Declaration<Type>>,
+    pub type_parameters: HashMap<TypeParameterId, Declaration<()>>,
+    pub traits: HashMap<TraitId, Declaration<Trait>>,
+    pub builtin_types: HashMap<BuiltinTypeId, Declaration<BuiltinType>>,
+    pub constants: HashMap<GenericConstantId, Declaration<Constant>>,
+    pub instances: HashMap<GenericConstantId, Declaration<Instance>>,
+    pub variables: HashMap<VariableId, Declaration<()>>,
 }
 
 #[derive(Debug, Clone, Default)]
 struct UnresolvedDeclarations {
-    pub operators: BTreeMap<TemplateId, expand::Operator>,
-    pub templates: BTreeMap<TemplateId, expand::TemplateDeclaration<()>>,
-    pub types: BTreeMap<TypeId, Declaration<Option<Type>>>,
-    pub type_parameters: BTreeMap<TypeParameterId, Declaration<()>>,
-    pub traits: BTreeMap<TraitId, Declaration<Option<Trait>>>,
-    pub builtin_types: BTreeMap<BuiltinTypeId, Declaration<BuiltinType>>,
-    pub constants: BTreeMap<GenericConstantId, Declaration<Option<Constant>>>,
-    pub instances: BTreeMap<GenericConstantId, Declaration<Option<Instance>>>,
-    pub variables: BTreeMap<VariableId, Declaration<()>>,
+    pub operators: HashMap<TemplateId, expand::Operator>,
+    pub templates: HashMap<TemplateId, expand::TemplateDeclaration<()>>,
+    pub types: HashMap<TypeId, Declaration<Option<Type>>>,
+    pub type_parameters: HashMap<TypeParameterId, Declaration<()>>,
+    pub traits: HashMap<TraitId, Declaration<Option<Trait>>>,
+    pub builtin_types: HashMap<BuiltinTypeId, Declaration<BuiltinType>>,
+    pub constants: HashMap<GenericConstantId, Declaration<Option<Constant>>>,
+    pub instances: HashMap<GenericConstantId, Declaration<Option<Instance>>>,
+    pub variables: HashMap<VariableId, Declaration<()>>,
 }
 
 impl UnresolvedDeclarations {
@@ -110,7 +110,9 @@ impl<T> Declaration<Option<T>> {
         Declaration {
             name: self.name,
             span: self.span,
-            value: self.value.expect("unresolved declaration"),
+            value: self.value.unwrap_or_else(|| {
+                panic!("unresolved declaration: {:?} @ {:?}", self.name, self.span)
+            }),
             uses: self.uses,
         }
     }
@@ -202,7 +204,7 @@ pub struct Constant {
     pub parameters: Vec<TypeParameterId>,
     pub bounds: Vec<Bound>,
     pub ty: TypeAnnotation,
-    pub value: Rc<RefCell<Option<Expression>>>,
+    pub value: Arc<Mutex<Option<Expression>>>,
     pub attributes: DeclarationAttributes,
 }
 
@@ -326,15 +328,20 @@ impl TypeAnnotation {
 
 pub type CaptureList = Vec<(VariableId, Span)>;
 
-impl<L: Loader> Compiler<L> {
+impl Compiler<'_> {
     pub fn lower(
-        &mut self,
-        file: ast::File<L>,
+        &self,
+        file: ast::File,
         dependencies: Vec<(Arc<File>, Option<HashMap<InternedString, Span>>)>,
     ) -> File {
         let scope = Scope::root();
 
-        let mut info = Info::default();
+        let mut info = Info {
+            file: file.path,
+            declarations: Default::default(),
+            attributes: Default::default(),
+            scopes: Default::default(),
+        };
 
         self.load_builtins(&scope, &mut info);
 
@@ -360,14 +367,14 @@ impl<L: Loader> Compiler<L> {
 
         for (dependency, imports) in dependencies {
             macro_rules! merge_dependency {
-                ($($kind:ident($transform:expr)),* $(,)?) => {
+                ($($kind:ident$(($transform:expr))?),* $(,)?) => {
                     $(
                         for (id, decl) in dependency.declarations.$kind.clone() {
-                            use std::collections::btree_map::Entry;
+                            use std::collections::hash_map::Entry;
 
                             match info.declarations.$kind.entry(id) {
                                 Entry::Vacant(entry) => {
-                                    entry.insert($transform(decl));
+                                    entry.insert($($transform)?(decl));
                                 }
                                 Entry::Occupied(mut entry) => {
                                     entry.get_mut().uses.extend(decl.uses);
@@ -384,12 +391,12 @@ impl<L: Loader> Compiler<L> {
 
             merge_dependency!(
                 types(Declaration::make_unresolved),
-                type_parameters(std::convert::identity),
+                type_parameters,
                 traits(Declaration::make_unresolved),
-                builtin_types(std::convert::identity),
+                builtin_types,
                 constants(Declaration::make_unresolved),
                 instances(Declaration::make_unresolved),
-                variables(std::convert::identity),
+                variables,
             );
 
             info.attributes.merge(&dependency.global_attributes);
@@ -418,7 +425,7 @@ impl<L: Loader> Compiler<L> {
                 .as_ref()
                 .unwrap()
                 .value
-                .borrow()
+                .lock()
                 .as_ref()
                 .is_none()
             {
@@ -464,7 +471,7 @@ impl LanguageItems {
 struct Scope<'a> {
     parent: Option<&'a Scope<'a>>,
     values: RefCell<ScopeValues>,
-    declared_variables: RefCell<BTreeSet<VariableId>>,
+    declared_variables: RefCell<HashSet<VariableId>>,
     used_variables: RefCell<CaptureList>,
 }
 
@@ -516,6 +523,19 @@ impl<'a> Scope<'a> {
     }
 
     fn get(&'a self, name: InternedString, span: Span) -> Option<ScopeValue> {
+        self.get_inner(name, span, true)
+    }
+
+    fn peek(&'a self, name: InternedString, span: Span) -> Option<ScopeValue> {
+        self.get_inner(name, span, false)
+    }
+
+    fn get_inner(
+        &'a self,
+        name: InternedString,
+        span: Span,
+        track_use: bool,
+    ) -> Option<ScopeValue> {
         let mut parent = Some(self);
         let mut result = None;
         let mut used_variables = Vec::new();
@@ -526,13 +546,18 @@ impl<'a> Scope<'a> {
                 break;
             }
 
-            used_variables.push(&scope.used_variables);
+            if track_use {
+                used_variables.push(&scope.used_variables);
+            }
+
             parent = scope.parent;
         }
 
-        if let Some(ScopeValue::Variable(id)) = result {
-            for u in used_variables {
-                u.borrow_mut().push((id, span));
+        if track_use {
+            if let Some(ScopeValue::Variable(id)) = result {
+                for u in used_variables {
+                    u.borrow_mut().push((id, span));
+                }
             }
         }
 
@@ -542,8 +567,16 @@ impl<'a> Scope<'a> {
     fn used_variables(&self) -> Vec<(VariableId, Span)> {
         let mut parent = Some(self);
         let mut used_variables = Vec::new();
+        let declared_variables = self.declared_variables.borrow();
         while let Some(scope) = parent {
-            used_variables.extend(scope.used_variables.clone().into_inner());
+            used_variables.extend(
+                scope
+                    .used_variables
+                    .clone()
+                    .into_inner()
+                    .into_iter()
+                    .filter(|(var, _)| !declared_variables.contains(var)),
+            );
             parent = scope.parent;
         }
 
@@ -551,8 +584,8 @@ impl<'a> Scope<'a> {
     }
 }
 
-#[derive(Default)]
 struct Info {
+    file: FilePath,
     declarations: UnresolvedDeclarations,
     attributes: FileAttributes,
     scopes: Vec<(Span, ScopeValues)>,
@@ -578,9 +611,9 @@ enum QueuedStatement {
     Expression(ast::ExpressionKind),
 }
 
-impl<L: Loader> Compiler<L> {
+impl Compiler<'_> {
     fn lower_block(
-        &mut self,
+        &self,
         span: Span,
         statements: Vec<ast::Statement>,
         scope: &Scope,
@@ -593,7 +626,7 @@ impl<L: Loader> Compiler<L> {
     }
 
     fn lower_statements(
-        &mut self,
+        &self,
         statements: Vec<ast::Statement>,
         scope: &Scope,
         info: &mut Info,
@@ -616,7 +649,7 @@ impl<L: Loader> Compiler<L> {
                         .parameters
                         .into_iter()
                         .map(|param| {
-                            let id = self.new_type_parameter_id();
+                            let id = self.new_type_parameter_id(info.file);
 
                             scope.insert(param.name, ScopeValue::TypeParameter(id));
 
@@ -682,7 +715,7 @@ impl<L: Loader> Compiler<L> {
                                     .map(|ty| self.lower_type_annotation(ty, scope, info))
                                     .collect::<Vec<_>>();
 
-                                let constructor_id = self.new_generic_constant_id();
+                                let constructor_id = self.new_generic_constant_id(info.file);
 
                                 let constructor_ty = tys.iter().rev().fold(
                                     TypeAnnotation {
@@ -710,7 +743,7 @@ impl<L: Loader> Compiler<L> {
                                 let variables = tys
                                     .iter()
                                     .map(|ty| {
-                                        let var = self.new_variable_id();
+                                        let var = self.new_variable_id(info.file);
 
                                         info.declarations.variables.insert(
                                             var,
@@ -765,7 +798,7 @@ impl<L: Loader> Compiler<L> {
                                             parameters: parameters.clone(),
                                             bounds: Vec::new(),
                                             ty: constructor_ty,
-                                            value: Rc::new(RefCell::new(Some(constructor))),
+                                            value: Arc::new(Mutex::new(Some(constructor))),
                                             attributes: self
                                                 .lower_decl_attributes(&mut variant.attributes),
                                         }),
@@ -953,6 +986,7 @@ impl<L: Loader> Compiler<L> {
                                 vec![Note::primary(instance.trait_span, "expected a trait here")],
                             ));
 
+                            info.declarations.instances.remove(&id);
                             continue;
                         }
                         None => {
@@ -964,6 +998,7 @@ impl<L: Loader> Compiler<L> {
                                 )],
                             ));
 
+                            info.declarations.instances.remove(&id);
                             continue;
                         }
                     };
@@ -1122,7 +1157,7 @@ impl<L: Loader> Compiler<L> {
                                     (value.parameters.clone(), value.value.clone());
 
                                 let constant_already_assigned = {
-                                    let c = c.borrow();
+                                    let c = c.lock();
                                     c.is_some()
                                 };
 
@@ -1149,7 +1184,21 @@ impl<L: Loader> Compiler<L> {
                                 }
 
                                 let value = self.lower_expr(expr, &scope, info);
-                                associated_constant.replace(Some(value));
+
+                                let used_variables = scope.used_variables();
+                                if !used_variables.is_empty() {
+                                    self.diagnostics.add(Diagnostic::error(
+                                        "constant cannot capture outside variables",
+                                        used_variables
+                                            .into_iter()
+                                            .map(|(_, span)| {
+                                                Note::primary(span, "captured variable")
+                                            })
+                                            .collect(),
+                                    ));
+                                }
+
+                                *associated_constant.lock() = Some(value);
                                 None
                             } else {
                                 assign_pattern!()
@@ -1166,7 +1215,7 @@ impl<L: Loader> Compiler<L> {
     }
 
     fn lower_statement<'a>(
-        &mut self,
+        &self,
         statement: ast::Statement,
         scope: &'a Scope,
         info: &mut Info,
@@ -1175,7 +1224,7 @@ impl<L: Loader> Compiler<L> {
             ast::StatementKind::Empty => None,
             ast::StatementKind::Declaration(decl) => match decl {
                 ast::Declaration::Type((span, name), ty) => {
-                    let id = self.new_type_id();
+                    let id = self.new_type_id(info.file);
                     scope.insert(name, ScopeValue::Type(id));
 
                     info.declarations
@@ -1189,7 +1238,7 @@ impl<L: Loader> Compiler<L> {
                     })
                 }
                 ast::Declaration::Trait((span, name), declaration) => {
-                    let id = self.new_trait_id();
+                    let id = self.new_trait_id(info.file);
                     scope.insert(name, ScopeValue::Trait(id));
 
                     info.declarations
@@ -1203,7 +1252,7 @@ impl<L: Loader> Compiler<L> {
                     })
                 }
                 ast::Declaration::Constant((span, name), declaration) => {
-                    let id = self.new_generic_constant_id();
+                    let id = self.new_generic_constant_id(info.file);
                     scope.insert(name, ScopeValue::Constant(id, None));
 
                     info.declarations
@@ -1217,7 +1266,7 @@ impl<L: Loader> Compiler<L> {
                     })
                 }
                 ast::Declaration::Instance(instance) => {
-                    let id = self.new_generic_constant_id();
+                    let id = self.new_generic_constant_id(info.file);
 
                     info.declarations
                         .instances
@@ -1249,7 +1298,7 @@ impl<L: Loader> Compiler<L> {
     }
 
     fn lower_decl_attributes(
-        &mut self,
+        &self,
         statement_attributes: &mut ast::StatementAttributes,
     ) -> DeclarationAttributes {
         // TODO: Raise errors for misused attributes
@@ -1262,7 +1311,7 @@ impl<L: Loader> Compiler<L> {
     }
 
     fn lower_trait_attributes(
-        &mut self,
+        &self,
         statement_attributes: &mut ast::StatementAttributes,
     ) -> TraitAttributes {
         // TODO: Raise errors for misused attributes
@@ -1273,7 +1322,7 @@ impl<L: Loader> Compiler<L> {
         }
     }
 
-    fn lower_expr(&mut self, expr: ast::Expression, scope: &Scope, info: &mut Info) -> Expression {
+    fn lower_expr(&self, expr: ast::Expression, scope: &Scope, info: &mut Info) -> Expression {
         macro_rules! function_call {
             ($function:expr, $inputs:expr) => {
                 $inputs
@@ -1532,7 +1581,7 @@ impl<L: Loader> Compiler<L> {
     }
 
     fn lower_type_annotation(
-        &mut self,
+        &self,
         ty: ast::TypeAnnotation,
         scope: &Scope,
         info: &mut Info,
@@ -1615,13 +1664,13 @@ impl<L: Loader> Compiler<L> {
         }
     }
 
-    fn lower_pattern(&mut self, pattern: ast::Pattern, scope: &Scope, info: &mut Info) -> Pattern {
+    fn lower_pattern(&self, pattern: ast::Pattern, scope: &Scope, info: &mut Info) -> Pattern {
         let kind = (|| match pattern.kind {
             ast::PatternKind::Error => PatternKind::Error,
             ast::PatternKind::Wildcard => PatternKind::Wildcard,
             ast::PatternKind::Number(number) => PatternKind::Number(number),
             ast::PatternKind::Text(text) => PatternKind::Text(text),
-            ast::PatternKind::Name(name) => match scope.get(name, pattern.span) {
+            ast::PatternKind::Name(name) => match scope.peek(name, pattern.span) {
                 Some(ScopeValue::Constant(id, Some((ty, variant)))) => {
                     info.declarations
                         .constants
@@ -1633,7 +1682,7 @@ impl<L: Loader> Compiler<L> {
                     PatternKind::Variant(ty, variant, Vec::new())
                 }
                 _ => {
-                    let var = self.new_variable_id();
+                    let var = self.new_variable_id(info.file);
 
                     scope.insert(name, ScopeValue::Variable(var));
 
@@ -1822,7 +1871,7 @@ impl<L: Loader> Compiler<L> {
     }
 
     fn resolve_value(
-        &mut self,
+        &self,
         span: Span,
         name: InternedString,
         scope: &Scope,
@@ -1927,7 +1976,7 @@ impl<L: Loader> Compiler<L> {
     }
 
     fn with_parameters(
-        &mut self,
+        &self,
         parameters: Vec<ast::TypeParameter>,
         scope: &Scope,
         info: &mut Info,
@@ -1935,7 +1984,7 @@ impl<L: Loader> Compiler<L> {
         parameters
             .into_iter()
             .map(|parameter| {
-                let id = self.new_type_parameter_id();
+                let id = self.new_type_parameter_id(info.file);
 
                 info.declarations.type_parameters.insert(
                     id,

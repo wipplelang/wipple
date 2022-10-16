@@ -2,39 +2,40 @@
 
 use "./iterate.wpl"
 
-Range : type {
-	min :: Number
-	max :: Number
-	step :: Number
+Range : N => type {
+	min :: N
+	max :: N
+	step :: N
 }
 
-instance Iterate Range Number : range -> {
-	range : mutable range
-	{ min max step } : get range
-	current : mutable min
+-- N where (Add N N N) (Order N) (Numeric N) => instance Iterate (Range N) : range -> {
+-- 	{ zero } : Numeric
+-- 	range : mutable range
+-- 	{ min max step } : get range
+-- 	current : mutable min
 
-	if? (max < min) {
-		crash "`max` must be greater than `min`"
-	}
+-- 	if? (max < min) {
+-- 		crash "`max` must be greater than `min`"
+-- 	}
 
-	if? (step < 0) {
-		crash "`step` must be positive"
-	}
+-- 	if? (step < zero) {
+-- 		crash "`step` must be positive"
+-- 	}
 
-	Iterator {
-		next : () -> {
-			{ max step } : get range
+-- 	Iterator {
+-- 		next : () -> {
+-- 			{ max step } : get range
 
-			if ((get current) >= max) {
-				None
-			} {
-				n : get current
-				current . add! step
-				Some n
-			}
-		}
-	}
-}
+-- 			if ((get current) >= max) {
+-- 				None
+-- 			} {
+-- 				n : get current
+-- 				current . add! step
+-- 				Some n
+-- 			}
+-- 		}
+-- 	}
+-- }
 
 to : dot operator (min' max' ~> Range {
 	min : min'

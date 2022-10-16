@@ -1,6 +1,6 @@
-use crate::{parse::Span, GenericConstantId, TraitId, TypeId, TypeParameterId};
+use crate::{parse::Span, TraitId, TypeId, TypeParameterId};
 use serde::Serialize;
-use std::collections::BTreeMap;
+use std::collections::HashMap;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
 #[serde(tag = "type", content = "value")]
@@ -109,16 +109,15 @@ pub enum BuiltinType<Ty> {
 pub enum BottomTypeReason {
     Annotated,
     Error,
-    Placeholder,
 }
 
-pub type GenericSubstitutions = BTreeMap<TypeParameterId, UnresolvedType>;
+pub type GenericSubstitutions = HashMap<TypeParameterId, UnresolvedType>;
 
 #[derive(Debug, Clone, Default)]
 pub struct Context {
     pub next_var: usize,
-    pub substitutions: BTreeMap<TypeVariable, UnresolvedType>,
-    pub numeric_substitutions: BTreeMap<TypeVariable, UnresolvedType>,
+    pub substitutions: im::HashMap<TypeVariable, UnresolvedType>,
+    pub numeric_substitutions: im::HashMap<TypeVariable, UnresolvedType>,
 }
 
 #[derive(Debug, Clone)]
@@ -127,9 +126,15 @@ pub enum TypeError {
     Recursive(TypeVariable),
     Mismatch(UnresolvedType, UnresolvedType),
     MissingInstance(TraitId, Vec<UnresolvedType>, Option<Span>),
-    AmbiguousTrait(TraitId, Vec<GenericConstantId>),
+    AmbiguousTrait(TraitId, Vec<Span>),
     UnresolvedType,
     InvalidNumericLiteral(UnresolvedType),
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct FinalizeOptions {
+    pub generic: bool,
+    pub replace_variables_with_errors: bool,
 }
 
 impl Context {
@@ -146,30 +151,30 @@ impl Context {
     pub fn unify_params(
         &mut self,
         actual: UnresolvedType,
-        expected: UnresolvedType,
+        expected: impl Into<UnresolvedType>,
     ) -> (
-        BTreeMap<TypeParameterId, UnresolvedType>,
+        HashMap<TypeParameterId, UnresolvedType>,
         Result<(), TypeError>,
     ) {
-        let mut params = BTreeMap::new();
-        let result = self.unify_internal(actual, expected, false, &mut params);
+        let mut params = HashMap::new();
+        let result = self.unify_internal(actual, expected.into(), false, &mut params);
         (params, result)
     }
 
     pub fn unify(
         &mut self,
         actual: UnresolvedType,
-        expected: UnresolvedType,
+        expected: impl Into<UnresolvedType>,
     ) -> Result<(), TypeError> {
-        self.unify_internal(actual, expected, false, &mut BTreeMap::new())
+        self.unify_internal(actual, expected.into(), false, &mut HashMap::new())
     }
 
     pub fn unify_generic(
         &mut self,
         actual: UnresolvedType,
-        expected: UnresolvedType,
+        expected: impl Into<UnresolvedType>,
     ) -> Result<(), TypeError> {
-        self.unify_internal(actual, expected, true, &mut BTreeMap::new())
+        self.unify_internal(actual, expected.into(), true, &mut HashMap::new())
     }
 
     fn unify_internal(
@@ -177,10 +182,16 @@ impl Context {
         mut actual: UnresolvedType,
         mut expected: UnresolvedType,
         generic: bool,
-        params: &mut BTreeMap<TypeParameterId, UnresolvedType>,
+        params: &mut HashMap<TypeParameterId, UnresolvedType>,
     ) -> Result<(), TypeError> {
         actual.apply(self);
         expected.apply(self);
+
+        if !generic {
+            if let UnresolvedType::Parameter(param) = expected {
+                params.insert(param, actual.clone());
+            }
+        }
 
         match (actual, expected) {
             (UnresolvedType::Variable(var), ty) | (ty, UnresolvedType::Variable(var)) => {
@@ -210,14 +221,12 @@ impl Context {
                     ))
                 }
             }
-            (ty, UnresolvedType::Parameter(param)) if !generic => {
-                params.insert(param, ty);
-                Ok(())
-            }
-            (UnresolvedType::Parameter(actual), expected) if !generic => Err(TypeError::Mismatch(
-                UnresolvedType::Parameter(actual),
-                expected,
-            )),
+            (_, UnresolvedType::Parameter(_)) if !generic => Ok(()),
+            // FIXME: Determine if removing this is sound
+            // (UnresolvedType::Parameter(actual), expected) if !generic => Err(TypeError::Mismatch(
+            //     UnresolvedType::Parameter(actual),
+            //     expected,
+            // )),
             (UnresolvedType::NumericVariable(var), ty) => {
                 match &ty {
                     UnresolvedType::NumericVariable(other) => {
@@ -413,10 +422,7 @@ impl Context {
                     UnresolvedType::Builtin(expected_builtin),
                 )),
             },
-            (UnresolvedType::Bottom(_), _) => Ok(()),
-            (_, UnresolvedType::Bottom(reason)) if matches!(reason, BottomTypeReason::Error) => {
-                Ok(())
-            }
+            (UnresolvedType::Bottom(_), _) | (_, UnresolvedType::Bottom(_)) => Ok(()),
             (actual, expected) => Err(TypeError::Mismatch(actual, expected)),
         }
     }
@@ -500,33 +506,35 @@ impl UnresolvedType {
         }
     }
 
-    pub fn instantiate_with(&mut self, substitutions: &GenericSubstitutions) {
+    pub fn instantiate_with(&mut self, ctx: &Context, substitutions: &GenericSubstitutions) {
+        self.apply(ctx);
+
         match self {
             UnresolvedType::Parameter(param) => {
                 *self = substitutions
                     .get(param)
-                    .unwrap_or_else(|| panic!("missing parameter {:?} in substitution", param))
-                    .clone();
+                    .cloned()
+                    .unwrap_or_else(|| panic!("could not find {:?} in substitutions", param));
             }
             UnresolvedType::Function(input, output) => {
-                input.instantiate_with(substitutions);
-                output.instantiate_with(substitutions);
+                input.instantiate_with(ctx, substitutions);
+                output.instantiate_with(ctx, substitutions);
             }
             UnresolvedType::Named(_, params, structure) => {
                 for param in params {
-                    param.instantiate_with(substitutions);
+                    param.instantiate_with(ctx, substitutions);
                 }
 
-                structure.instantiate_with(substitutions);
+                structure.instantiate_with(ctx, substitutions);
             }
             UnresolvedType::Tuple(tys) => {
                 for ty in tys {
-                    ty.instantiate_with(substitutions);
+                    ty.instantiate_with(ctx, substitutions);
                 }
             }
             UnresolvedType::Builtin(ty) => match ty {
                 BuiltinType::List(ty) | BuiltinType::Mutable(ty) => {
-                    ty.instantiate_with(substitutions)
+                    ty.instantiate_with(ctx, substitutions)
                 }
                 _ => {}
             },
@@ -598,14 +606,14 @@ impl UnresolvedType {
         }
     }
 
-    pub fn finalize(mut self, ctx: &Context, generic: bool) -> Result<Type, TypeError> {
+    pub fn finalize(mut self, ctx: &Context, options: FinalizeOptions) -> Result<Type, TypeError> {
         self.apply(ctx);
         self.finalize_numeric_variables(ctx);
 
         Ok(match self {
             UnresolvedType::Variable(_) => return Err(TypeError::UnresolvedType),
             UnresolvedType::Parameter(param) => {
-                if generic {
+                if options.generic {
                     Type::Parameter(param)
                 } else {
                     return Err(TypeError::UnresolvedType);
@@ -616,17 +624,17 @@ impl UnresolvedType {
                 id,
                 params
                     .into_iter()
-                    .map(|param| param.finalize(ctx, generic))
+                    .map(|param| param.finalize(ctx, options))
                     .collect::<Result<_, _>>()?,
-                structure.finalize(ctx, generic)?,
+                structure.finalize(ctx, options)?,
             ),
             UnresolvedType::Function(input, output) => Type::Function(
-                Box::new(input.finalize(ctx, generic)?),
-                Box::new(output.finalize(ctx, generic)?),
+                Box::new(input.finalize(ctx, options)?),
+                Box::new(output.finalize(ctx, options)?),
             ),
             UnresolvedType::Tuple(tys) => Type::Tuple(
                 tys.into_iter()
-                    .map(|ty| ty.finalize(ctx, generic))
+                    .map(|ty| ty.finalize(ctx, options))
                     .collect::<Result<_, _>>()?,
             ),
             UnresolvedType::Builtin(builtin) => Type::Builtin(match builtin {
@@ -639,9 +647,9 @@ impl UnresolvedType {
                 BuiltinType::Float => BuiltinType::Float,
                 BuiltinType::Double => BuiltinType::Double,
                 BuiltinType::Text => BuiltinType::Text,
-                BuiltinType::List(ty) => BuiltinType::List(Box::new(ty.finalize(ctx, generic)?)),
+                BuiltinType::List(ty) => BuiltinType::List(Box::new(ty.finalize(ctx, options)?)),
                 BuiltinType::Mutable(ty) => {
-                    BuiltinType::Mutable(Box::new(ty.finalize(ctx, generic)?))
+                    BuiltinType::Mutable(Box::new(ty.finalize(ctx, options)?))
                 }
             }),
             UnresolvedType::Bottom(is_error) => Type::Bottom(is_error),
@@ -668,18 +676,18 @@ impl TypeStructure<UnresolvedType> {
         }
     }
 
-    pub fn instantiate_with(&mut self, substitutions: &GenericSubstitutions) {
+    pub fn instantiate_with(&mut self, ctx: &Context, substitutions: &GenericSubstitutions) {
         match self {
             TypeStructure::Marker | TypeStructure::Recursive(_) => {}
             TypeStructure::Structure(tys) => {
                 for ty in tys {
-                    ty.instantiate_with(substitutions);
+                    ty.instantiate_with(ctx, substitutions);
                 }
             }
             TypeStructure::Enumeration(variants) => {
                 for tys in variants {
                     for ty in tys {
-                        ty.instantiate_with(substitutions);
+                        ty.instantiate_with(ctx, substitutions);
                     }
                 }
             }
@@ -715,12 +723,16 @@ impl TypeStructure<UnresolvedType> {
         }
     }
 
-    pub fn finalize(self, ctx: &Context, generic: bool) -> Result<TypeStructure<Type>, TypeError> {
+    pub fn finalize(
+        self,
+        ctx: &Context,
+        options: FinalizeOptions,
+    ) -> Result<TypeStructure<Type>, TypeError> {
         Ok(match self {
             TypeStructure::Marker => TypeStructure::Marker,
             TypeStructure::Structure(tys) => TypeStructure::Structure(
                 tys.into_iter()
-                    .map(|ty| ty.finalize(ctx, generic))
+                    .map(|ty| ty.finalize(ctx, options))
                     .collect::<Result<_, _>>()?,
             ),
             TypeStructure::Enumeration(variants) => TypeStructure::Enumeration(
@@ -728,7 +740,7 @@ impl TypeStructure<UnresolvedType> {
                     .into_iter()
                     .map(|tys| {
                         tys.into_iter()
-                            .map(|ty| ty.finalize(ctx, generic))
+                            .map(|ty| ty.finalize(ctx, options))
                             .collect::<Result<_, _>>()
                     })
                     .collect::<Result<_, _>>()?,

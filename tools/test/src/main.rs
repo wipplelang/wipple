@@ -27,6 +27,9 @@ struct Args {
 async fn main() -> anyhow::Result<()> {
     let args = Args::parse();
 
+    #[cfg(debug_assertions)]
+    wipple_frontend::diagnostics::set_backtrace_enabled(args.trace);
+
     let loader = loader::Loader::new(
         None,
         Some(wipple_frontend::FilePath::Path(
@@ -40,6 +43,8 @@ async fn main() -> anyhow::Result<()> {
             ),
         )),
     );
+
+    let compiler = wipple_frontend::Compiler::new(&loader);
 
     let pass_count = AtomicUsize::new(0);
     let fail_count = AtomicUsize::new(0);
@@ -58,7 +63,8 @@ async fn main() -> anyhow::Result<()> {
         let test_case = serde_yaml::from_reader(file)?;
         let result = run(
             &test_case,
-            wipple_frontend::Compiler::new(loader.clone()),
+            &loader,
+            &compiler,
             #[cfg(debug_assertions)]
             args.trace,
         )
@@ -223,25 +229,31 @@ impl TestResult {
     }
 }
 
-async fn run(
+async fn run<'l>(
     test_case: &TestCase,
-    mut compiler: wipple_frontend::Compiler<loader::Loader>,
+    loader: &'l loader::Loader,
+    compiler: &wipple_frontend::Compiler<'l>,
     #[cfg(debug_assertions)] trace_diagnostics: bool,
 ) -> anyhow::Result<TestResult> {
     let test_path = wipple_frontend::helpers::InternedString::new("test");
 
-    compiler
-        .loader
+    loader
         .virtual_paths
         .lock()
         .insert(test_path, Arc::from(test_case.code.as_str()));
 
     let program = compiler
-        .analyze(wipple_frontend::FilePath::Virtual(test_path))
-        .await
-        .and_then(|program| program.valid.then(|| compiler.ir_from(&program)));
+        .analyze(
+            wipple_frontend::FilePath::Virtual(test_path),
+            wipple_frontend::analysis::Options::default(),
+        )
+        .await;
 
-    let diagnostics = compiler.finish();
+    compiler.lint(&program);
+
+    let program = program.complete.then(|| compiler.ir_from(&program));
+
+    let mut diagnostics = compiler.finish();
     let success = !diagnostics.contains_errors();
 
     let output = {
@@ -267,13 +279,18 @@ async fn run(
     let mut diagnostics = {
         let mut buf = Vec::new();
         {
-            let (codemap, diagnostics) = diagnostics.into_console_friendly(
+            let (files, diagnostics) = diagnostics.into_console_friendly(
                 #[cfg(debug_assertions)]
                 trace_diagnostics,
             );
 
-            let mut emitter = codemap_diagnostic::Emitter::new(Box::new(&mut buf), Some(&codemap));
-            emitter.emit(&diagnostics);
+            let mut writer = codespan_reporting::term::termcolor::NoColor::new(&mut buf);
+
+            let config = codespan_reporting::term::Config::default();
+
+            for diagnostic in diagnostics {
+                codespan_reporting::term::emit(&mut writer, &config, &files, &diagnostic)?;
+            }
         }
 
         String::from_utf8(buf).unwrap()

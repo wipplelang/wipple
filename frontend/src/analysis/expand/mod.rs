@@ -10,7 +10,7 @@ use crate::{
     diagnostics::*,
     helpers::InternedString,
     parse::{self, Span},
-    Compiler, FilePath, Loader, TemplateId,
+    Compiler, FilePath, TemplateId,
 };
 use async_recursion::async_recursion;
 use futures::{future::BoxFuture, stream, StreamExt};
@@ -18,38 +18,25 @@ use parking_lot::Mutex;
 use serde::Serialize;
 use std::{
     cmp::Ordering,
-    collections::{BTreeMap, HashMap, VecDeque},
+    collections::{HashMap, VecDeque},
     fmt::Debug,
     sync::Arc,
 };
 use strum::EnumString;
 
-pub struct File<L: Loader> {
+#[derive(Debug)]
+pub struct File {
     pub path: FilePath,
     pub span: Span,
     pub attributes: FileAttributes,
-    pub declarations: Declarations<Template<L>>,
+    pub declarations: Declarations<Template>,
     pub exported: ScopeValues,
     pub scopes: Vec<(Span, ScopeValues)>,
     pub statements: Vec<Statement>,
-    pub dependencies: Vec<(Arc<File<L>>, Option<HashMap<InternedString, Span>>)>,
+    pub dependencies: Vec<(Arc<File>, Option<HashMap<InternedString, Span>>)>,
 }
 
-impl<L: Loader> Debug for File<L> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("File")
-            .field("path", &self.path)
-            .field("span", &self.span)
-            .field("attributes", &self.attributes)
-            .field("declarations", &self.declarations)
-            .field("exported", &self.exported)
-            .field("statements", &self.statements)
-            .field("dependencies", &self.dependencies)
-            .finish()
-    }
-}
-
-impl<L: Loader> Clone for File<L> {
+impl Clone for File {
     fn clone(&self) -> Self {
         Self {
             path: self.path,
@@ -127,8 +114,8 @@ pub enum NodeKind {
 
 #[derive(Debug, Clone)]
 pub struct Declarations<T> {
-    pub operators: BTreeMap<TemplateId, Operator>,
-    pub templates: BTreeMap<TemplateId, TemplateDeclaration<T>>,
+    pub operators: HashMap<TemplateId, Operator>,
+    pub templates: HashMap<TemplateId, TemplateDeclaration<T>>,
 }
 
 impl<T> Default for Declarations<T> {
@@ -142,7 +129,7 @@ impl<T> Default for Declarations<T> {
 
 impl<T> Declarations<T> {
     fn merge(&mut self, other: Self) {
-        use std::collections::btree_map::Entry;
+        use std::collections::hash_map::Entry;
 
         self.operators.extend(other.operators);
 
@@ -193,17 +180,17 @@ pub struct TemplateAttributes {
     pub help: VecDeque<InternedString>,
 }
 
-impl<L: Loader> Compiler<L> {
+impl<'l> Compiler<'l> {
     pub async fn expand(
         &self,
         file: parse::File,
-        load: impl Fn(&Compiler<L>, Span, FilePath) -> BoxFuture<Option<Arc<File<L>>>>
+        load: impl for<'a> Fn(&'a Compiler<'l>, Span, FilePath) -> BoxFuture<'a, Option<Arc<File>>>
             + 'static
             + Send
             + Sync,
-    ) -> Option<File<L>> {
+    ) -> Option<File> {
         let mut expander = Expander {
-            compiler: self.clone(),
+            compiler: self,
             declarations: Default::default(),
             dependencies: Default::default(),
             scopes: Default::default(),
@@ -211,7 +198,7 @@ impl<L: Loader> Compiler<L> {
         };
 
         let scope = Scope::default();
-        builtins::load_builtins(&mut expander, &scope);
+        builtins::load_builtins(&mut expander, file.path, &scope);
 
         let attributes = expander
             .expand_file_attributes(file.attributes, &scope)
@@ -220,7 +207,7 @@ impl<L: Loader> Compiler<L> {
         if !attributes.no_std {
             let std_path = expander.compiler.loader.std_path();
             if let Some(std_path) = std_path {
-                let file = (expander.load)(&expander.compiler, file.span, std_path).await?;
+                let file = (expander.load)(expander.compiler, file.span, std_path).await?;
                 expander.add_dependency(file, &scope);
             } else {
                 expander.compiler.diagnostics.add(Diagnostic::new(
@@ -254,14 +241,14 @@ impl<L: Loader> Compiler<L> {
 }
 
 #[derive(Clone)]
-pub struct Expander<L: Loader> {
-    compiler: Compiler<L>,
-    declarations: Arc<Mutex<Declarations<Template<L>>>>,
-    dependencies:
-        Arc<Mutex<HashMap<FilePath, (Arc<File<L>>, Option<HashMap<InternedString, Span>>)>>>,
+pub struct Expander<'a, 'l> {
+    compiler: &'a Compiler<'l>,
+    declarations: Arc<Mutex<Declarations<Template>>>,
+    dependencies: Arc<Mutex<HashMap<FilePath, (Arc<File>, Option<HashMap<InternedString, Span>>)>>>,
     scopes: Arc<Mutex<Vec<(Span, ScopeValues)>>>,
-    load:
-        Arc<dyn Fn(&Compiler<L>, Span, FilePath) -> BoxFuture<Option<Arc<File<L>>>> + Send + Sync>,
+    load: Arc<
+        dyn Fn(&'a Compiler<'l>, Span, FilePath) -> BoxFuture<'a, Option<Arc<File>>> + Send + Sync,
+    >,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -303,12 +290,12 @@ impl<'a> Scope<'a> {
     }
 }
 
-pub enum Template<L: Loader> {
+pub enum Template {
     Syntax(Vec<InternedString>, Node),
     Function(
         Arc<
             dyn for<'a> Fn(
-                    &'a Expander<L>,
+                    &'a Expander,
                     Span,
                     Vec<Node>,
                     Option<&'a mut FileAttributes>,
@@ -321,7 +308,7 @@ pub enum Template<L: Loader> {
     ),
 }
 
-impl<L: Loader> Clone for Template<L> {
+impl Clone for Template {
     fn clone(&self) -> Self {
         match self {
             Template::Syntax(inputs, node) => Template::Syntax(inputs.clone(), node.clone()),
@@ -330,7 +317,7 @@ impl<L: Loader> Clone for Template<L> {
     }
 }
 
-impl<L: Loader> std::fmt::Debug for Template<L> {
+impl std::fmt::Debug for Template {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Syntax(inputs, node) => {
@@ -341,14 +328,14 @@ impl<L: Loader> std::fmt::Debug for Template<L> {
     }
 }
 
-impl<L: Loader> Template<L> {
+impl Template {
     fn syntax(inputs: Vec<InternedString>, node: Node) -> Self {
         Template::Syntax(inputs, node)
     }
 
     fn function(
         f: impl for<'a> Fn(
-                &'a Expander<L>,
+                &'a Expander,
                 Span,
                 Vec<Node>,
                 Option<&'a mut FileAttributes>,
@@ -415,8 +402,8 @@ impl OperatorPrecedence {
     }
 }
 
-impl<L: Loader> Expander<L> {
-    fn add_dependency(&self, file: Arc<File<L>>, scope: &Scope) {
+impl Expander<'_, '_> {
+    fn add_dependency(&self, file: Arc<File>, scope: &Scope) {
         self.dependencies
             .lock()
             .insert(file.path, (file.clone(), None));

@@ -1,27 +1,12 @@
 use super::{
-    Expression, ExpressionKind, MonomorphizedExpression, MonomorphizedExpressionKind,
-    MonomorphizedPatternKind, PatternKind, Program, UnresolvedExpression, UnresolvedExpressionKind,
-    UnresolvedPatternKind,
+    Expression, MonomorphizedExpression, MonomorphizedPatternKind, PatternKind,
+    UnresolvedExpression, UnresolvedPatternKind,
 };
-
-impl Program {
-    pub fn traverse_body(&self, mut f: impl FnMut(&Expression)) {
-        for statement in &self.body {
-            statement.traverse_inner(&mut f);
-        }
-    }
-
-    pub fn traverse_body_mut(&mut self, mut f: impl FnMut(&mut Expression)) {
-        for statement in &mut self.body {
-            statement.traverse_mut_inner(&mut f);
-        }
-    }
-}
 
 macro_rules! traverse_impl {
     ($prefix:literal, $f:expr, $expr:expr, $traverse:ident, &$($mut:tt)?) => {{
         paste::paste! {
-            use [<$prefix ExpressionKind>]::*;
+            use super::[<$prefix ExpressionKind>]::*;
 
             let f = $f;
             let expr = $expr;

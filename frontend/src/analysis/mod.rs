@@ -6,12 +6,35 @@ pub mod lint;
 pub mod lower;
 pub mod typecheck;
 
-pub use typecheck::{Arm, Expression, ExpressionKind, Pattern, PatternKind, Program};
+pub use typecheck::{
+    Arm, Expression, ExpressionKind, Pattern, PatternKind, Program, TypecheckMode,
+};
 
-use crate::{diagnostics::*, parse::Span, Compiler, FilePath, Loader};
+use crate::{diagnostics::*, parse::Span, Compiler, FilePath};
 use async_recursion::async_recursion;
 use parking_lot::Mutex;
 use std::sync::{atomic::AtomicUsize, Arc};
+
+#[derive(Default)]
+pub struct Options {
+    progress: Option<Box<dyn Fn(Progress) + Send + Sync>>,
+    typecheck_mode: typecheck::TypecheckMode,
+}
+
+impl Options {
+    pub fn tracking_progress(
+        mut self,
+        progress: impl Fn(Progress) + Send + Sync + 'static,
+    ) -> Self {
+        self.progress = Some(Box::new(progress));
+        self
+    }
+
+    pub fn typecheck_mode(mut self, mode: typecheck::TypecheckMode) -> Self {
+        self.typecheck_mode = mode;
+        self
+    }
+}
 
 #[derive(Debug)]
 pub enum Progress {
@@ -27,32 +50,25 @@ pub enum Progress {
     Typechecking(typecheck::Progress),
 }
 
-impl<L: Loader> Compiler<L> {
-    pub async fn analyze(&mut self, path: FilePath) -> Option<Program> {
-        self.analyze_with_progress(path, |_| {}).await
-    }
+impl Compiler<'_> {
+    pub async fn analyze(&self, path: FilePath, options: Options) -> Program {
+        let progress = Arc::new(Mutex::new(
+            options.progress.unwrap_or_else(|| Box::new(|_| {})),
+        ));
 
-    pub async fn analyze_with_progress(
-        &mut self,
-        path: FilePath,
-        progress: impl Fn(Progress) + Send + Sync + 'static,
-    ) -> Option<Program> {
-        let progress = Arc::new(Mutex::new(progress));
-
-        let files: Arc<Mutex<indexmap::IndexMap<FilePath, Arc<expand::File<L>>>>> =
-            Default::default();
+        let files: Arc<Mutex<indexmap::IndexMap<FilePath, Arc<expand::File>>>> = Default::default();
 
         #[async_recursion]
-        async fn load<L: Loader>(
-            compiler: &Compiler<L>,
+        async fn load<'a, 'l>(
+            compiler: &'a Compiler<'l>,
             path: FilePath,
             source_path: Option<FilePath>,
             source_span: Option<Span>,
             progress: Arc<Mutex<impl Fn(Progress) + Send + Sync + 'static>>,
             count: Arc<AtomicUsize>,
-            files: Arc<Mutex<indexmap::IndexMap<FilePath, Arc<expand::File<L>>>>>,
+            files: Arc<Mutex<indexmap::IndexMap<FilePath, Arc<expand::File>>>>,
             stack: Arc<Mutex<Vec<FilePath>>>,
-        ) -> Option<Arc<expand::File<L>>> {
+        ) -> Option<Arc<expand::File>> {
             macro_rules! try_load {
                 ($expr:expr) => {
                     match $expr {
@@ -75,6 +91,20 @@ impl<L: Loader> Compiler<L> {
             let resolved_path = try_load!(compiler.loader.resolve(path, source_path));
 
             if let Some(cached) = compiler.loader.cache().lock().get(&resolved_path) {
+                fn insert(
+                    file: &Arc<expand::File>,
+                    files: &mut indexmap::IndexMap<FilePath, Arc<expand::File>>,
+                ) {
+                    for (dependency, _) in &file.dependencies {
+                        insert(dependency, files);
+                    }
+
+                    files.insert(file.path, file.clone());
+                }
+
+                let mut files = files.lock();
+                insert(cached, &mut files);
+
                 return Some(cached.clone());
             }
 
@@ -178,18 +208,14 @@ impl<L: Loader> Compiler<L> {
             files.clone(),
             Default::default(),
         )
-        .await?;
+        .await;
 
-        let mut cache = indexmap::IndexMap::new();
+        let files = Arc::try_unwrap(files).unwrap().into_inner();
 
-        fn lower<L: Loader>(
-            compiler: &mut Compiler<L>,
-            file: Arc<expand::File<L>>,
-            cache: &mut indexmap::IndexMap<FilePath, Arc<lower::File>>,
-        ) -> Arc<lower::File> {
+        fn lower(compiler: &Compiler, file: Arc<expand::File>) -> Arc<lower::File> {
             let path = file.path;
 
-            if let Some(file) = cache.get(&path) {
+            if let Some(file) = compiler.cache.lock().get(&path) {
                 return file.clone();
             }
 
@@ -197,40 +223,33 @@ impl<L: Loader> Compiler<L> {
                 .dependencies
                 .clone()
                 .into_iter()
-                .map(|(file, imports)| (lower(compiler, file, cache), imports))
+                .map(|(file, imports)| (lower(compiler, file), imports))
                 .collect::<Vec<_>>();
 
             let file = compiler.build_ast((*file).clone());
 
             let file = Arc::new(compiler.lower(file, dependencies));
-            cache.insert(path, file.clone());
+
+            // Only cache files already cached by loader
+            if compiler.loader.cache().lock().contains_key(&path) {
+                compiler.cache.lock().insert(path, file.clone());
+            }
 
             file
         }
 
-        #[allow(clippy::needless_collect)] // needed to ensure Arc::try_unwrap succeeds
-        let lowered_files = Arc::try_unwrap(files)
-            .unwrap()
-            .into_inner()
+        let lowered_files = files
             .into_values()
-            .map(|file| lower(self, file, &mut cache))
+            .map(|file| (*lower(self, file)).clone())
             .collect::<Vec<_>>();
 
-        drop(cache);
+        let lowering_is_complete = !self.diagnostics.contains_errors();
 
-        let lowered_files = lowered_files
-            .into_iter()
-            .map(|file| Arc::try_unwrap(file).unwrap())
-            .collect::<Vec<_>>();
-
-        if self.diagnostics.contains_errors() {
-            return None;
-        }
-
-        let program = self.typecheck_with_progress(lowered_files, |p| {
-            progress.lock()(Progress::Typechecking(p))
-        });
-
-        program.valid.then_some(program)
+        self.typecheck_with_progress(
+            lowered_files,
+            options.typecheck_mode,
+            lowering_is_complete,
+            move |p| progress.lock()(Progress::Typechecking(p)),
+        )
     }
 }

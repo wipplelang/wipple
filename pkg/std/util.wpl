@@ -33,7 +33,6 @@ Try : Value Success Failure => trait (Value -> Result Success Failure)
 [help "Represents the failure to find a value inside a `Maybe`."]
 None-Error : type
 
--- TODO: Use higher-kinded types
 Expect : Container Value => trait (Text -> Container -> Value)
 
 Value => instance Expect (Maybe Value) Value : message -> x? -> when x? {
@@ -49,13 +48,11 @@ Value => instance Unwrap-Message (Maybe Value) :
 Success Failure => instance Unwrap-Message (Result Success Failure) :
 	just "called `unwrap` on `Error`"
 
--- TODO: Use higher-kinded types
 [help "Produces the `Some` value contained within a `Maybe`, or crashes the program with the provided message."]
 expect :: Container Value where (Expect Container Value) =>
 	Text -> Container -> Value
 expect : Expect
 
--- TODO: Use higher-kinded types
 [help "Produces the `Some` value contained within a `Maybe`, or crashes the program."]
 unwrap :: Container Value
 	where (Expect Container Value) (Unwrap-Message Container) =>

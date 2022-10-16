@@ -1,6 +1,8 @@
 #[macro_export]
 macro_rules! parse_number {
     ($number:ident, $number_ty:ident, $ty:expr, $expr_ty:ident) => {{
+        use $crate::analysis::typecheck::engine::{BuiltinType, TypeError};
+
         let builtin = match $ty {
             $expr_ty::Builtin(builtin) => builtin,
             x => unreachable!("{:#?}", x),

@@ -155,6 +155,8 @@ fn format_type_with(
                 }
             }
             FormattableType::Type(UnresolvedType::Tuple(mut tys)) => {
+                let is_empty = tys.is_empty();
+
                 let ty = match tys.len() {
                     0 => String::from("()"),
                     1 => {
@@ -184,7 +186,7 @@ fn format_type_with(
                         .join(" , "),
                 };
 
-                if is_top_level {
+                if is_top_level || is_empty {
                     ty
                 } else {
                     format!("({})", ty)

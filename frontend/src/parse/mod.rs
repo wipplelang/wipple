@@ -7,9 +7,9 @@ pub use lexer::*;
 use logos::Lexer;
 pub use span::*;
 
-use crate::{helpers::InternedString, Compiler, FilePath, Loader};
+use crate::{helpers::InternedString, Compiler, FilePath};
 
-impl<L: Loader> Compiler<L> {
+impl Compiler<'_> {
     pub fn parse(&self, file: FilePath, code: &str) -> Option<File> {
         let code = code.replace("\r\n", "\n");
 

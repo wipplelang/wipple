@@ -89,3 +89,41 @@ instance Equal Float : a -> b -> external "runtime" "float-equality" a b
 instance Equal Double : a -> b -> external "runtime" "double-equality" a b
 instance Equal () : () -> () -> True
 instance Equal Boolean : a? -> b? -> a? and b? or not a? and not b?
+
+Numeric-Impl : N => type {
+	zero :: N
+}
+
+Numeric : N => trait (Numeric-Impl N)
+
+instance Numeric Number : Numeric-Impl {
+	zero : 0
+}
+
+instance Numeric Integer : Numeric-Impl {
+	zero : 0
+}
+
+instance Numeric Natural : Numeric-Impl {
+	zero : 0
+}
+
+instance Numeric Byte : Numeric-Impl {
+	zero : 0
+}
+
+instance Numeric Signed : Numeric-Impl {
+	zero : 0
+}
+
+instance Numeric Unsigned : Numeric-Impl {
+	zero : 0
+}
+
+instance Numeric Float : Numeric-Impl {
+	zero : 0
+}
+
+instance Numeric Double : Numeric-Impl {
+	zero : 0
+}

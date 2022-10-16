@@ -19,12 +19,12 @@ output: |
 
 diagnostics: |
     error: `when` expression is not exhaustive
-      --> test:9:32
-       |
-    9  |   instance Show Grade : grade -> when grade {
-       |  ________________________________^
-    10 | |     Grade A -> "A"
-    11 | |     Grade B -> "B"
-    12 | |     Grade C -> "C"
-    13 | | }
-       | |_^ try adding some more patterns to cover all possible values
+       ┌─ test:9:32
+       │  
+     9 │   instance Show Grade : grade -> when grade {
+       │ ╭────────────────────────────────^
+    10 │ │     Grade A -> "A"
+    11 │ │     Grade B -> "B"
+    12 │ │     Grade C -> "C"
+    13 │ │ }
+       │ ╰─^ try adding some more patterns to cover all possible values

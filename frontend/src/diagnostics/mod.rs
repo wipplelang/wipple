@@ -1,11 +1,27 @@
-use crate::{parse::Span, FilePath, Loader};
+use crate::{parse::Span, FilePath, SourceMap};
 use parking_lot::Mutex;
 use serde::Serialize;
 use std::{
     cmp::Ordering,
     collections::{hash_map::Entry, HashMap},
+    mem,
     sync::Arc,
 };
+
+#[cfg(debug_assertions)]
+lazy_static::lazy_static! {
+    static ref BACKTRACE_ENABLED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(true);
+}
+
+#[cfg(debug_assertions)]
+pub fn backtrace_enabled() -> bool {
+    BACKTRACE_ENABLED.load(std::sync::atomic::Ordering::Relaxed)
+}
+
+#[cfg(debug_assertions)]
+pub fn set_backtrace_enabled(enabled: bool) {
+    BACKTRACE_ENABLED.store(enabled, std::sync::atomic::Ordering::Relaxed);
+}
 
 #[derive(Debug, Clone, Serialize)]
 pub struct Diagnostic {
@@ -14,7 +30,7 @@ pub struct Diagnostic {
     pub notes: Vec<Note>,
 
     #[cfg(debug_assertions)]
-    pub trace: backtrace::Backtrace,
+    pub trace: Option<backtrace::Backtrace>,
 }
 
 impl PartialEq for Diagnostic {
@@ -32,12 +48,12 @@ pub enum DiagnosticLevel {
     Error,
 }
 
-impl From<DiagnosticLevel> for codemap_diagnostic::Level {
+impl From<DiagnosticLevel> for codespan_reporting::diagnostic::Severity {
     fn from(level: DiagnosticLevel) -> Self {
         match level {
-            DiagnosticLevel::Note => codemap_diagnostic::Level::Note,
-            DiagnosticLevel::Warning => codemap_diagnostic::Level::Warning,
-            DiagnosticLevel::Error => codemap_diagnostic::Level::Error,
+            DiagnosticLevel::Note => codespan_reporting::diagnostic::Severity::Note,
+            DiagnosticLevel::Warning => codespan_reporting::diagnostic::Severity::Warning,
+            DiagnosticLevel::Error => codespan_reporting::diagnostic::Severity::Error,
         }
     }
 }
@@ -55,11 +71,11 @@ pub enum NoteLevel {
     Secondary,
 }
 
-impl From<NoteLevel> for codemap_diagnostic::SpanStyle {
+impl From<NoteLevel> for codespan_reporting::diagnostic::LabelStyle {
     fn from(level: NoteLevel) -> Self {
         match level {
-            NoteLevel::Primary => codemap_diagnostic::SpanStyle::Primary,
-            NoteLevel::Secondary => codemap_diagnostic::SpanStyle::Secondary,
+            NoteLevel::Primary => codespan_reporting::diagnostic::LabelStyle::Primary,
+            NoteLevel::Secondary => codespan_reporting::diagnostic::LabelStyle::Secondary,
         }
     }
 }
@@ -72,7 +88,7 @@ impl Diagnostic {
             notes,
 
             #[cfg(debug_assertions)]
-            trace: backtrace::Backtrace::new(),
+            trace: backtrace_enabled().then(backtrace::Backtrace::new),
         }
     }
 
@@ -130,12 +146,12 @@ impl Diagnostics {
 }
 
 #[derive(Debug)]
-pub struct FinalizedDiagnostics<L> {
-    pub loader: L,
+pub struct FinalizedDiagnostics {
+    pub source_map: SourceMap,
     pub diagnostics: Vec<Diagnostic>,
 }
 
-impl<L: Loader> FinalizedDiagnostics<L> {
+impl FinalizedDiagnostics {
     pub fn contains_errors(&self) -> bool {
         self.diagnostics
             .iter()
@@ -148,77 +164,76 @@ impl<L: Loader> FinalizedDiagnostics<L> {
     }
 
     pub fn into_console_friendly(
-        mut self,
+        &mut self,
         #[cfg(debug_assertions)] include_trace: bool,
-    ) -> (codemap::CodeMap, Vec<codemap_diagnostic::Diagnostic>) {
-        self.diagnostics.dedup();
+    ) -> (
+        codespan_reporting::files::SimpleFiles<FilePath, Arc<str>>,
+        Vec<codespan_reporting::diagnostic::Diagnostic<usize>>,
+    ) {
+        let mut diagnostics = mem::take(&mut self.diagnostics);
+        diagnostics.dedup();
 
-        let mut codemap = codemap::CodeMap::new();
-        let mut diagnostics = Vec::new();
+        let mut files = codespan_reporting::files::SimpleFiles::new();
+        let mut console_diagnostics = Vec::new();
 
-        let mut tracked_files = HashMap::<FilePath, Arc<codemap::File>>::new();
-        for diagnostic in self.diagnostics {
-            let diagnostic = codemap_diagnostic::Diagnostic {
-                level: diagnostic.level.into(),
+        let mut tracked_files = HashMap::<FilePath, usize>::new();
+        for diagnostic in diagnostics {
+            let labels = diagnostic
+                .notes
+                .into_iter()
+                .map(|note| {
+                    let file = match tracked_files.entry(note.span.path) {
+                        Entry::Occupied(entry) => *entry.get(),
+                        Entry::Vacant(entry) => {
+                            let file = files.add(
+                                note.span.path,
+                                self.source_map
+                                    .get(&note.span.path)
+                                    .unwrap_or_else(|| {
+                                        panic!("file {:?} not loaded", note.span.path)
+                                    })
+                                    .clone(),
+                            );
 
-                #[cfg(debug_assertions)]
-                message: if include_trace {
-                    diagnostic.message + &format!("\n{:?}", diagnostic.trace)
-                } else {
-                    diagnostic.message
-                },
+                            entry.insert(file);
 
-                #[cfg(not(debug_assertions))]
-                message: diagnostic.message,
-
-                code: None,
-
-                spans: diagnostic
-                    .notes
-                    .into_iter()
-                    .map(|note| {
-                        let file = match tracked_files.entry(note.span.path) {
-                            Entry::Occupied(entry) => entry.get().clone(),
-                            Entry::Vacant(entry) => {
-                                let file = codemap.add_file(
-                                    note.span.path.to_string(),
-                                    self.loader
-                                        .source_map()
-                                        .lock()
-                                        .get(&note.span.path)
-                                        .unwrap_or_else(|| {
-                                            panic!("file {:?} not loaded", note.span.path)
-                                        })
-                                        .to_string(),
-                                );
-
-                                entry.insert(file.clone());
-
-                                file
-                            }
-                        };
-
-                        codemap_diagnostic::SpanLabel {
-                            span: file
-                                .span
-                                .subspan(note.span.start as u64, note.span.end as u64),
-                            style: note.level.into(),
-                            label: Some(note.message),
+                            file
                         }
-                    })
-                    .collect(),
-            };
+                    };
 
-            diagnostics.push(diagnostic);
+                    codespan_reporting::diagnostic::Label::new(
+                        note.level.into(),
+                        file,
+                        note.span.start..note.span.end,
+                    )
+                    .with_message(note.message)
+                })
+                .collect();
+
+            let diagnostic =
+                codespan_reporting::diagnostic::Diagnostic::new(diagnostic.level.into())
+                    .with_message((|| {
+                        #[cfg(debug_assertions)]
+                        if include_trace {
+                            if let Some(trace) = diagnostic.trace {
+                                return diagnostic.message + &format!("\n{:?}", trace);
+                            }
+                        }
+
+                        diagnostic.message
+                    })())
+                    .with_labels(labels);
+
+            console_diagnostics.push(diagnostic);
         }
 
-        diagnostics.sort_by(|a, b| match (a.spans.first(), b.spans.first()) {
+        console_diagnostics.sort_by(|a, b| match (a.labels.first(), b.labels.first()) {
             (None, None) => Ordering::Equal,
             (None, Some(_)) => Ordering::Less,
             (Some(_), None) => Ordering::Greater,
-            (Some(a), Some(b)) => a.span.low().cmp(&b.span.low()),
+            (Some(a), Some(b)) => a.range.start.cmp(&b.range.start),
         });
 
-        (codemap, diagnostics)
+        (files, console_diagnostics)
     }
 }

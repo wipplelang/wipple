@@ -25,7 +25,7 @@ output: |
 
 diagnostics: |
     error: mismatched types
-      --> test:20:12
-       |
-    20 | my-drone . land -- cannot land because drone is already idle
-       |            ^^^^ expected `Drone Idle -> _`, but found `Drone Hovering -> Drone Idle`
+       ┌─ test:20:1
+       │
+    20 │ my-drone . land -- cannot land because drone is already idle
+       │ ^^^^^^^^ expected `Drone Hovering`, but found `Drone Idle`

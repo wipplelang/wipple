@@ -6,7 +6,7 @@ output: |
 
 diagnostics: |
     error: mismatched types
-     --> test:2:5
-      |
-    2 | x : "42"
-      |     ^^^^ expected `Number`, but found `Text`
+      ┌─ test:2:5
+      │
+    2 │ x : "42"
+      │     ^^^^ expected `Number`, but found `Text`

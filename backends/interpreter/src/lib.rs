@@ -51,7 +51,7 @@ enum Value {
 
 #[derive(Debug, Clone, Default)]
 struct Scope {
-    vars: RefCell<BTreeMap<VariableId, Value>>,
+    vars: RefCell<BTreeMap<usize, Value>>,
     parent: Option<Rc<Scope>>,
 }
 
@@ -71,7 +71,7 @@ impl Scope {
         let mut parent = Some(self);
 
         while let Some(scope) = parent {
-            if let Some(value) = scope.vars.borrow().get(&var) {
+            if let Some(value) = scope.vars.borrow().get(&var.counter) {
                 return value.clone();
             }
 
@@ -82,7 +82,7 @@ impl Scope {
     }
 
     fn set(&self, var: VariableId, value: Value) {
-        self.vars.borrow_mut().insert(var, value);
+        self.vars.borrow_mut().insert(var.counter, value);
     }
 }
 

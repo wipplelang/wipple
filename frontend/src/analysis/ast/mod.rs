@@ -3,16 +3,16 @@ use crate::{
     diagnostics::*,
     helpers::InternedString,
     parse::Span,
-    Compiler, FilePath, Loader,
+    Compiler, FilePath,
 };
 
 pub use crate::analysis::expand::{Declarations, StatementAttributes};
 
 #[derive(Debug, Clone)]
-pub struct File<L: Loader> {
+pub struct File {
     pub path: FilePath,
     pub span: Span,
-    pub declarations: Declarations<expand::Template<L>>,
+    pub declarations: Declarations<expand::Template>,
     pub statements: Vec<Statement>,
 }
 
@@ -178,8 +178,8 @@ pub struct Bound {
     pub parameters: Vec<TypeAnnotation>,
 }
 
-impl<L: Loader> Compiler<L> {
-    pub fn build_ast(&mut self, file: expand::File<L>) -> File<L> {
+impl Compiler<'_> {
+    pub fn build_ast(&self, file: expand::File) -> File {
         File {
             path: file.path,
             span: file.span,
@@ -192,7 +192,7 @@ impl<L: Loader> Compiler<L> {
         }
     }
 
-    fn build_statement(&mut self, statement: expand::Statement) -> Statement {
+    fn build_statement(&self, statement: expand::Statement) -> Statement {
         Statement {
             span: statement.node.span,
             attributes: statement.attributes,
@@ -458,7 +458,7 @@ impl<L: Loader> Compiler<L> {
     }
 
     fn build_instance(
-        &mut self,
+        &self,
         parameters: Vec<TypeParameter>,
         bounds: Vec<Bound>,
         trait_name: Node,
@@ -499,7 +499,7 @@ impl<L: Loader> Compiler<L> {
         })
     }
 
-    fn build_expression(&mut self, node: Node) -> Expression {
+    fn build_expression(&self, node: Node) -> Expression {
         Expression {
             span: node.span,
             kind: (|| match node.kind {
@@ -641,7 +641,7 @@ impl<L: Loader> Compiler<L> {
         }
     }
 
-    fn build_pattern(&mut self, node: Node) -> Pattern {
+    fn build_pattern(&self, node: Node) -> Pattern {
         Pattern {
             span: node.span,
             kind: (|| match node.kind {
@@ -775,7 +775,7 @@ impl<L: Loader> Compiler<L> {
         }
     }
 
-    fn build_type_annotation(&mut self, node: Node) -> TypeAnnotation {
+    fn build_type_annotation(&self, node: Node) -> TypeAnnotation {
         TypeAnnotation {
             span: node.span,
             kind: match node.kind {
@@ -823,7 +823,7 @@ impl<L: Loader> Compiler<L> {
         }
     }
 
-    fn build_type_function(&mut self, lhs: Node) -> Option<(Vec<TypeParameter>, Vec<Bound>)> {
+    fn build_type_function(&self, lhs: Node) -> Option<(Vec<TypeParameter>, Vec<Bound>)> {
         macro_rules! build_parameter_list {
             ($tys:expr) => {
                 $tys.into_iter()
@@ -987,7 +987,7 @@ impl<L: Loader> Compiler<L> {
     }
 
     fn build_type_declaration(
-        &mut self,
+        &self,
         span: Span,
         fields: Option<Vec<expand::Statement>>,
     ) -> Option<TypeKind> {

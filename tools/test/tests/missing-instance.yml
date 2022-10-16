@@ -6,12 +6,12 @@ output: |
 
 diagnostics: |
     error: missing instance
-      --> test:2:1
-       |
-    2  | show Foo
-       | ^^^^ could not find instance `Show Foo`
-       | 
-      ::: <dir>/std/output.wpl
-       |
-    16 | show :: A where (Show A) => A -> ()
-       |                 -------- required by this bound here
+       ┌─ test:2:1
+       │
+     2 │ show Foo
+       │ ^^^^ could not find instance `Show Foo`
+       │
+       ┌─ <dir>/std/output.wpl:16:17
+       │
+    16 │ show :: A where (Show A) => A -> ()
+       │                 -------- required by this bound here

@@ -8,7 +8,7 @@ output: |
 
 diagnostics: |
     error: mismatched types
-     --> test:3:14
-      |
-    3 |     False -> "hi"
-      |              ^^^^ expected `Number`, but found `Text`
+      ┌─ test:3:14
+      │
+    3 │     False -> "hi"
+      │              ^^^^ expected `Number`, but found `Text`

@@ -10,14 +10,14 @@ use wipple_frontend::{analysis, helpers::InternedString, FilePath, SourceMap};
 
 pub const STD_URL: &str = "https://pkg.wipple.gramer.dev/std/std.wpl";
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct Loader {
     pub virtual_paths: Arc<Mutex<HashMap<InternedString, Arc<str>>>>,
     fetcher: Arc<Mutex<Fetcher>>,
     base: Option<FilePath>,
     std_path: Option<FilePath>,
     source_map: Arc<Mutex<SourceMap>>,
-    cache: Arc<Mutex<HashMap<FilePath, Arc<analysis::expand::File<Self>>>>>,
+    cache: Arc<Mutex<HashMap<FilePath, Arc<analysis::expand::File>>>>,
 }
 
 #[derive(Default)]
@@ -113,6 +113,12 @@ impl Fetcher {
     }
 }
 
+impl std::fmt::Debug for Fetcher {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_tuple("Fetcher").finish()
+    }
+}
+
 impl Loader {
     #[cfg(not(target_arch = "wasm32"))]
     pub fn new(base: Option<FilePath>, std_path: Option<FilePath>) -> Self {
@@ -147,13 +153,11 @@ impl Loader {
 
 #[async_trait]
 impl wipple_frontend::Loader for Loader {
-    type Error = anyhow::Error;
-
     fn std_path(&self) -> Option<FilePath> {
         self.std_path
     }
 
-    fn resolve(&self, path: FilePath, current: Option<FilePath>) -> Result<FilePath, Self::Error> {
+    fn resolve(&self, path: FilePath, current: Option<FilePath>) -> anyhow::Result<FilePath> {
         let path = match path {
             FilePath::Path(path) => {
                 if is_url(path) {
@@ -210,7 +214,7 @@ impl wipple_frontend::Loader for Loader {
         path
     }
 
-    async fn load(&self, path: FilePath) -> Result<Arc<str>, Self::Error> {
+    async fn load(&self, path: FilePath) -> anyhow::Result<Arc<str>> {
         let code = match path {
             FilePath::Path(path) => {
                 let fut = self.fetcher.lock().from_path.as_ref().ok_or_else(|| {
@@ -238,7 +242,7 @@ impl wipple_frontend::Loader for Loader {
         Ok(code)
     }
 
-    fn cache(&self) -> Arc<Mutex<HashMap<FilePath, Arc<analysis::expand::File<Self>>>>> {
+    fn cache(&self) -> Arc<Mutex<HashMap<FilePath, Arc<analysis::expand::File>>>> {
         self.cache.clone()
     }
 

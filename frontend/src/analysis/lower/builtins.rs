@@ -1,41 +1,34 @@
 use super::*;
-use crate::Loader;
-use lazy_static::lazy_static;
-use std::sync::{Arc, Mutex};
 
-impl<L: Loader> Compiler<L> {
-    pub(super) fn load_builtins(&mut self, scope: &Scope, info: &mut Info) {
+impl Compiler<'_> {
+    pub(super) fn load_builtins(&self, scope: &Scope, info: &mut Info) {
         let mut scope_values = scope.values.borrow_mut();
 
         macro_rules! add {
-            ($decls:ident, $span:expr, $name:expr, $id_storage:ident: $id_ty:ty = $id:expr, $scope_value:expr, $value:expr $(,)?) => {{
-                lazy_static! {
-                    static ref $id_storage: Arc<Mutex<Option<$id_ty>>> = Default::default();
+            ($kind:ident, $span:expr, $name:expr, $value:expr $(,)?) => {{
+                paste::paste! {
+                    let name = InternedString::new($name);
+                    let id = self.[<new_ $kind _id>](info.file);
+
+                    info.declarations.[<$kind s>].insert(
+                        id,
+                        Declaration {
+                            name: Some(name),
+                            span: $span,
+                            value: $value,
+                            uses: Vec::new(),
+                        },
+                    );
+
+                    scope_values.insert(name, ScopeValue::[<$kind:camel>](id));
                 }
-
-                let name = InternedString::new($name);
-                let id = *$id_storage.lock().unwrap().get_or_insert_with(|| $id);
-
-                info.declarations.$decls.insert(
-                    id,
-                    Declaration {
-                        name: Some(name),
-                        span: $span,
-                        value: $value,
-                        uses: Vec::new(),
-                    },
-                );
-
-                scope_values.insert(name, $scope_value(id));
             }};
         }
 
         add!(
-            builtin_types,
+            builtin_type,
             Span::builtin("`!` type"),
             "!",
-            NEVER_TYPE: BuiltinTypeId = self.new_builtin_type_id(),
-            ScopeValue::BuiltinType,
             BuiltinType {
                 kind: BuiltinTypeKind::Never,
                 attributes: DeclarationAttributes {
@@ -48,11 +41,9 @@ impl<L: Loader> Compiler<L> {
         );
 
         add!(
-            builtin_types,
+            builtin_type,
             Span::builtin("`Number` type"),
             "Number",
-            NUMBER_TYPE: BuiltinTypeId = self.new_builtin_type_id(),
-            ScopeValue::BuiltinType,
             BuiltinType {
                 kind: BuiltinTypeKind::Number,
                 attributes: DeclarationAttributes {
@@ -63,11 +54,9 @@ impl<L: Loader> Compiler<L> {
         );
 
         add!(
-            builtin_types,
+            builtin_type,
             Span::builtin("`Integer` type"),
             "Integer",
-            INTEGER_TYPE: BuiltinTypeId = self.new_builtin_type_id(),
-            ScopeValue::BuiltinType,
             BuiltinType {
                 kind: BuiltinTypeKind::Integer,
                 attributes: DeclarationAttributes {
@@ -80,11 +69,9 @@ impl<L: Loader> Compiler<L> {
         );
 
         add!(
-            builtin_types,
+            builtin_type,
             Span::builtin("`Natural` type"),
             "Natural",
-            NATURAL_TYPE: BuiltinTypeId = self.new_builtin_type_id(),
-            ScopeValue::BuiltinType,
             BuiltinType {
                 kind: BuiltinTypeKind::Natural,
                 attributes: DeclarationAttributes {
@@ -97,11 +84,9 @@ impl<L: Loader> Compiler<L> {
         );
 
         add!(
-            builtin_types,
+            builtin_type,
             Span::builtin("`Byte` type"),
             "Byte",
-            BYTE_TYPE: BuiltinTypeId = self.new_builtin_type_id(),
-            ScopeValue::BuiltinType,
             BuiltinType {
                 kind: BuiltinTypeKind::Byte,
                 attributes: DeclarationAttributes {
@@ -114,11 +99,9 @@ impl<L: Loader> Compiler<L> {
         );
 
         add!(
-            builtin_types,
+            builtin_type,
             Span::builtin("`Signed` type"),
             "Signed",
-            SIGNED_TYPE: BuiltinTypeId = self.new_builtin_type_id(),
-            ScopeValue::BuiltinType,
             BuiltinType {
                 kind: BuiltinTypeKind::Signed,
                 attributes: DeclarationAttributes {
@@ -131,11 +114,9 @@ impl<L: Loader> Compiler<L> {
         );
 
         add!(
-            builtin_types,
+            builtin_type,
             Span::builtin("`Unsigned` type"),
             "Unsigned",
-            UNSIGNED_TYPE: BuiltinTypeId = self.new_builtin_type_id(),
-            ScopeValue::BuiltinType,
             BuiltinType {
                 kind: BuiltinTypeKind::Unsigned,
                 attributes: DeclarationAttributes {
@@ -148,11 +129,9 @@ impl<L: Loader> Compiler<L> {
         );
 
         add!(
-            builtin_types,
+            builtin_type,
             Span::builtin("`Float` type"),
             "Float",
-            FLOAT_TYPE: BuiltinTypeId = self.new_builtin_type_id(),
-            ScopeValue::BuiltinType,
             BuiltinType {
                 kind: BuiltinTypeKind::Float,
                 attributes: DeclarationAttributes {
@@ -165,11 +144,9 @@ impl<L: Loader> Compiler<L> {
         );
 
         add!(
-            builtin_types,
+            builtin_type,
             Span::builtin("`Double` type"),
             "Double",
-            DOUBLE_TYPE: BuiltinTypeId = self.new_builtin_type_id(),
-            ScopeValue::BuiltinType,
             BuiltinType {
                 kind: BuiltinTypeKind::Double,
                 attributes: DeclarationAttributes {
@@ -182,11 +159,9 @@ impl<L: Loader> Compiler<L> {
         );
 
         add!(
-            builtin_types,
+            builtin_type,
             Span::builtin("`Text` type"),
             "Text",
-            TEXT_TYPE: BuiltinTypeId = self.new_builtin_type_id(),
-            ScopeValue::BuiltinType,
             BuiltinType {
                 kind: BuiltinTypeKind::Text,
                 attributes: DeclarationAttributes {
@@ -199,16 +174,14 @@ impl<L: Loader> Compiler<L> {
         );
 
         add!(
-            builtin_types,
+            builtin_type,
             Span::builtin("`List` type"),
             "List",
-            LIST_TYPE: BuiltinTypeId = self.new_builtin_type_id(),
-            ScopeValue::BuiltinType,
             BuiltinType {
                 kind: BuiltinTypeKind::List,
                 attributes: DeclarationAttributes {
                     help: vec![InternedString::new(
-                        "Represents a collection of values. `List` is generic, meaning you can use any value inside a list (as long as all the values have the same type). You can create a list using the list literal: `'(1 2 3)`.",
+                        "Represents a collection of values. `List` is generic, meaning you can use any value inside a list (as long as all the values have the same type). You can create a list using the list function: `list (1 , 2 , 3)`.",
                     )],
                     ..Default::default()
                 }
@@ -216,11 +189,9 @@ impl<L: Loader> Compiler<L> {
         );
 
         add!(
-            builtin_types,
+            builtin_type,
             Span::builtin("`Mutable` type"),
             "Mutable",
-            MUTABLE_TYPE: BuiltinTypeId = self.new_builtin_type_id(),
-            ScopeValue::BuiltinType,
             BuiltinType {
                 kind: BuiltinTypeKind::Mutable,
                 attributes: DeclarationAttributes {

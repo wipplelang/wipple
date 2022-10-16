@@ -124,6 +124,9 @@ pub async fn run(code: String) -> JsValue {
     #[cfg(feature = "console_error_panic_hook")]
     console_error_panic_hook::set_once();
 
+    #[cfg(debug_assertions)]
+    wipple_frontend::diagnostics::set_backtrace_enabled(false);
+
     let loader = LOADER.clone();
 
     let playground_path = wipple_frontend::helpers::InternedString::new("playground");
@@ -133,23 +136,23 @@ pub async fn run(code: String) -> JsValue {
         .lock()
         .insert(playground_path, Arc::from(code));
 
-    let mut compiler = wipple_frontend::Compiler::new(loader);
+    let compiler = wipple_frontend::Compiler::new(&loader);
 
     let program = compiler
-        .analyze(wipple_frontend::FilePath::Virtual(playground_path))
+        .analyze(
+            wipple_frontend::FilePath::Virtual(playground_path),
+            wipple_frontend::analysis::Options::default(),
+        )
         .await;
 
-    let program = program.and_then(|program| {
-        program.valid.then(|| {
-            compiler.lint(&program);
-            compiler.ir_from(&program)
-        })
-    });
+    compiler.lint(&program);
 
-    let diagnostics = compiler.finish();
+    let program = program.complete.then(|| compiler.ir_from(&program));
+
+    let mut diagnostics = compiler.finish();
     let success = !diagnostics.contains_errors();
 
-    let (codemap, diagnostics) = diagnostics.into_console_friendly(
+    let (files, diagnostics) = diagnostics.into_console_friendly(
         #[cfg(debug_assertions)]
         false,
     );
@@ -157,8 +160,13 @@ pub async fn run(code: String) -> JsValue {
     let mut output = Vec::new();
 
     if !diagnostics.is_empty() {
-        let mut emitter = codemap_diagnostic::Emitter::vec(&mut output, Some(&codemap));
-        emitter.emit(&diagnostics);
+        let mut writer = codespan_reporting::term::termcolor::NoColor::new(&mut output);
+
+        let config = codespan_reporting::term::Config::default();
+
+        for diagnostic in diagnostics {
+            codespan_reporting::term::emit(&mut writer, &config, &files, &diagnostic).unwrap();
+        }
     }
 
     if let Some(program) = program {

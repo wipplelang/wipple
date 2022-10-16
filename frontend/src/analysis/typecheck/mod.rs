@@ -7,41 +7,157 @@ mod engine;
 mod format;
 mod traverse;
 
-pub use engine::{BottomTypeReason, BuiltinType, Type, TypeStructure};
-pub use format::{format_type, FormattableType};
-
 use crate::{
-    analysis::{expand, lower},
-    diagnostics::*,
+    analysis::lower,
+    diagnostics::{Diagnostic, Note},
     helpers::InternedString,
     parse::Span,
-    BuiltinTypeId, Compiler, FilePath, GenericConstantId, Loader, MonomorphizedConstantId,
-    TemplateId, TraitId, TypeId, TypeParameterId, VariableId,
+    BuiltinTypeId, Compiler, FilePath, GenericConstantId, ItemId, TemplateId, TraitId, TypeId,
+    TypeParameterId, VariableId,
 };
-use engine::*;
 use serde::Serialize;
 use std::{
     cell::RefCell,
-    collections::{BTreeMap, BTreeSet, HashMap},
+    collections::{BTreeMap, HashMap, HashSet},
     mem,
     os::raw::{c_int, c_uint},
-    rc::Rc,
 };
 
-#[cfg(debug_assertions)]
-use backtrace::Backtrace;
+#[derive(Debug)]
+pub enum Progress {
+    Collecting {
+        path: FilePath,
+        current: usize,
+        total: usize,
+    },
+    Resolving {
+        count: usize,
+        remaining: usize,
+    },
+}
+
+#[derive(Debug, Clone, Default, Serialize)]
+pub struct Program {
+    pub complete: bool,
+    pub items: HashMap<ItemId, Expression>,
+    pub entrypoint: Option<ItemId>,
+    pub declarations: Declarations,
+}
+
+#[derive(Debug, Clone, Default, Serialize)]
+pub struct Declarations {
+    pub types: im::HashMap<TypeId, TypeDecl>,
+    pub traits: im::HashMap<TraitId, TraitDecl>,
+    pub constants: im::HashMap<GenericConstantId, ConstantDecl>,
+    pub instances: im::HashMap<TraitId, HashMap<GenericConstantId, InstanceDecl>>,
+    pub operators: im::HashMap<TemplateId, OperatorDecl>,
+    pub templates: im::HashMap<TemplateId, TemplateDecl>,
+    pub builtin_types: im::HashMap<BuiltinTypeId, BuiltinTypeDecl>,
+    pub type_parameters: im::HashMap<TypeParameterId, TypeParameterDecl>,
+    pub variables: im::HashMap<VariableId, VariableDecl>,
+}
 
 #[derive(Debug, Clone, Serialize)]
-pub struct Program {
-    pub valid: bool,
-    pub body: Vec<Expression>,
-    pub declarations: Declarations<Expression, Type>,
-    pub exported: Vec<(FilePath, lower::ScopeValues)>,
-    pub scopes: Vec<(Span, lower::ScopeValues)>,
+pub struct TypeDecl {
+    pub name: InternedString,
+    pub span: Span,
+    pub params: Vec<TypeParameterId>,
+    pub kind: TypeDeclKind,
+    pub attributes: lower::DeclarationAttributes,
+    pub uses: Vec<Span>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(tag = "type", content = "value")]
+pub enum TypeDeclKind {
+    Marker,
+    Structure {
+        fields: Vec<engine::Type>,
+        field_names: HashMap<InternedString, usize>,
+    },
+    Enumeration {
+        variants: Vec<Vec<engine::Type>>,
+        variant_names: HashMap<InternedString, usize>,
+    },
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct TraitDecl {
+    pub name: InternedString,
+    pub span: Span,
+    pub params: Vec<TypeParameterId>,
+    pub ty: engine::Type,
+    pub attributes: lower::TraitAttributes,
+    pub uses: Vec<Span>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct ConstantDecl {
+    pub name: InternedString,
+    pub span: Span,
+    pub params: Vec<TypeParameterId>,
+    pub bounds: Vec<Bound>,
+    pub ty: engine::Type,
+    pub attributes: lower::DeclarationAttributes,
+    pub uses: Vec<Span>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct InstanceDecl {
+    pub span: Span,
+    pub trait_id: TraitId,
+    pub params: Vec<TypeParameterId>,
+    pub bounds: Vec<Bound>,
+    pub ty: engine::Type,
+    pub item: ItemId,
+    pub uses: Vec<Span>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct Bound {
+    pub span: Span,
+    pub trait_id: TraitId,
+    pub params: Vec<engine::UnresolvedType>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct OperatorDecl {
+    pub name: InternedString,
+    pub span: Span,
+    pub uses: Vec<Span>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct TemplateDecl {
+    pub name: InternedString,
+    pub span: Span,
+    pub uses: Vec<Span>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct BuiltinTypeDecl {
+    pub name: InternedString,
+    pub span: Span,
+    pub uses: Vec<Span>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct TypeParameterDecl {
+    pub name: InternedString,
+    pub span: Span,
+    pub uses: Vec<Span>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct VariableDecl {
+    pub name: Option<InternedString>,
+    pub span: Span,
+    pub ty: engine::Type,
+    pub uses: Vec<Span>,
 }
 
 macro_rules! expr {
-    ($vis:vis, $prefix:literal, $type:ident, { $($kinds:tt)* }) => {
+    ($vis:vis, $prefix:literal, $type:ty, { $($kinds:tt)* }) => {
         paste::paste! {
             #[derive(Debug, Clone, Serialize)]
             $vis struct [<$prefix Expression>] {
@@ -88,7 +204,7 @@ macro_rules! pattern {
             }
 
             #[derive(Debug, Clone, Serialize)]
-            #[serde(tag = "kind", content = "value")]
+            #[serde(tag = "type", content = "value")]
             $vis enum [<$prefix PatternKind>] {
                 Wildcard,
                 Text(InternedString),
@@ -102,20 +218,20 @@ macro_rules! pattern {
     };
 }
 
-expr!(, "Unresolved", UnresolvedType, {
+expr!(, "Unresolved", engine::UnresolvedType, {
     Error,
     Number(InternedString),
     Trait(TraitId),
     Constant(GenericConstantId),
 });
 
-expr!(, "Monomorphized", UnresolvedType, {
+expr!(, "Monomorphized", engine::UnresolvedType, {
     Error,
     Number(InternedString),
-    Constant(MonomorphizedConstantId),
+    Constant(ItemId),
 });
 
-expr!(pub, "", Type, {
+expr!(pub, "", engine::Type, {
     Number(rust_decimal::Decimal),
     Integer(i64),
     Natural(u64),
@@ -124,18 +240,21 @@ expr!(pub, "", Type, {
     Unsigned(c_uint),
     Float(f32),
     Double(f64),
-    Constant(MonomorphizedConstantId),
+    Constant(ItemId),
 });
 
 pattern!(, "Unresolved", {
     Error,
     Number(InternedString),
-    Destructure(HashMap<InternedString, UnresolvedPattern>),
+    Destructure(
+        engine::UnresolvedType,
+        HashMap<InternedString, (UnresolvedPattern, engine::UnresolvedType)>,
+    ),
     Variant(TypeId, usize, Vec<UnresolvedPattern>),
-    Annotate(Box<UnresolvedPattern>, UnresolvedType),
 });
 
 pattern!(, "Monomorphized", {
+    Error,
     Number(InternedString),
     Destructure(BTreeMap<usize, MonomorphizedPattern>),
     Variant(usize, Vec<MonomorphizedPattern>),
@@ -154,1051 +273,414 @@ pattern!(pub, "", {
     Variant(usize, Vec<Pattern>)
 });
 
-impl UnresolvedExpression {
-    fn error(span: Span) -> Self {
-        UnresolvedExpression {
-            span,
-            ty: UnresolvedType::Bottom(BottomTypeReason::Error),
-            kind: UnresolvedExpressionKind::Error,
-        }
-    }
-}
-
-#[derive(Debug, Clone, Serialize)]
-pub struct Declarations<Expr, Ty, File = ()> {
-    pub operators: BTreeMap<TemplateId, expand::Operator>,
-    pub templates: BTreeMap<TemplateId, expand::TemplateDeclaration<()>>,
-    pub builtin_types: BTreeMap<BuiltinTypeId, Declaration<lower::DeclarationAttributes>>,
-    pub types: BTreeMap<TypeId, Declaration<TypeDeclaration>>,
-    pub type_parameters: BTreeMap<TypeParameterId, Declaration<()>>,
-    pub traits: BTreeMap<TraitId, Declaration<TraitDeclaration>>,
-    pub generic_constants: BTreeMap<GenericConstantId, GenericConstantDeclaration<Expr, File>>,
-    pub monomorphized_constants:
-        BTreeMap<MonomorphizedConstantId, (File, GenericConstantId, Ty, Declaration<Expr>)>,
-    pub variables: BTreeMap<VariableId, Declaration<Ty>>,
-}
-
-impl<Expr, Ty, File> Default for Declarations<Expr, Ty, File> {
-    fn default() -> Self {
-        Self {
-            operators: Default::default(),
-            templates: Default::default(),
-            builtin_types: Default::default(),
-            types: Default::default(),
-            type_parameters: Default::default(),
-            traits: Default::default(),
-            generic_constants: Default::default(),
-            monomorphized_constants: Default::default(),
-            variables: Default::default(),
-        }
-    }
-}
-
-#[derive(Debug, Clone, Serialize)]
-pub struct Declaration<T> {
-    pub name: Option<InternedString>,
+#[derive(Debug, Clone)]
+pub struct Error {
+    pub error: engine::TypeError,
     pub span: Span,
-    pub value: T,
-    pub uses: Vec<Span>,
-}
-
-#[derive(Debug, Clone, Serialize)]
-pub struct TypeDeclaration {
-    pub kind: lower::TypeKind,
-    pub attributes: lower::DeclarationAttributes,
-}
-
-#[derive(Debug, Clone, Serialize)]
-pub struct TraitDeclaration {
-    pub ty: UnresolvedType,
-    pub params: Vec<TypeParameterId>,
-    pub attributes: lower::TraitAttributes,
-}
-
-#[derive(Debug, Clone, Serialize)]
-pub struct GenericConstantDeclaration<Expr, File> {
-    pub file: File,
-    pub decl: Declaration<Expr>,
-    pub attributes: Option<lower::DeclarationAttributes>,
-}
-
-#[derive(Debug)]
-pub enum Progress {
-    Typechecking {
-        path: FilePath,
-        current: usize,
-        total: usize,
-    },
-    Finalizing,
-}
-
-impl<L: Loader> Compiler<L> {
-    pub fn typecheck(&self, files: Vec<lower::File>) -> Program {
-        self.typecheck_with_progress(files, |_| {})
-    }
-
-    pub fn typecheck_with_progress(
-        &self,
-        files: Vec<lower::File>,
-        mut progress: impl FnMut(Progress),
-    ) -> Program {
-        let mut files = files
-            .into_iter()
-            .map(|file| Rc::new(RefCell::new(file)))
-            .collect::<Vec<_>>();
-
-        let mut typechecker = Typechecker {
-            ctx: Default::default(),
-            errors: Default::default(),
-            variables: Default::default(),
-            traits: Default::default(),
-            types: Default::default(),
-            generic_constants: Default::default(),
-            monomorphized_constants: Default::default(),
-            declared_instances: Default::default(),
-            bound_instances: Default::default(),
-            declarations: Default::default(),
-            compiler: self.clone(),
-        };
-
-        let mut exported = Vec::new();
-        let mut scopes = Vec::new();
-
-        let total_files = files.len();
-
-        // Copy declarations
-
-        for file in &files {
-            {
-                let file = file.borrow();
-                exported.push((file.span.path, file.exported.clone()));
-                scopes.extend(file.scopes.clone());
-            }
-
-            for (id, decl) in file.borrow().declarations.operators.clone() {
-                typechecker.declarations.operators.entry(id).or_insert(decl);
-            }
-
-            for (id, decl) in file.borrow().declarations.templates.clone() {
-                use std::collections::btree_map::Entry;
-
-                match typechecker.declarations.templates.entry(id) {
-                    Entry::Vacant(entry) => {
-                        entry.insert(decl);
-                    }
-                    Entry::Occupied(mut entry) => {
-                        entry.get_mut().uses.extend(decl.uses);
-                    }
-                }
-            }
-
-            for (id, decl) in file.borrow().declarations.builtin_types.clone() {
-                use std::collections::btree_map::Entry;
-
-                match typechecker.declarations.builtin_types.entry(id) {
-                    Entry::Vacant(entry) => {
-                        entry.insert(Declaration {
-                            name: decl.name,
-                            span: decl.span,
-                            value: decl.value.attributes,
-                            uses: decl.uses,
-                        });
-                    }
-                    Entry::Occupied(mut entry) => {
-                        entry.get_mut().uses.extend(decl.uses);
-                    }
-                }
-            }
-
-            for (id, decl) in file.borrow().declarations.types.clone() {
-                typechecker
-                    .declarations
-                    .types
-                    .entry(id)
-                    .or_insert(Declaration {
-                        name: decl.name,
-                        span: decl.span,
-                        value: TypeDeclaration {
-                            kind: decl.value.kind,
-                            attributes: decl.value.attributes,
-                        },
-                        uses: decl.uses,
-                    });
-            }
-
-            for (id, decl) in file.borrow().declarations.type_parameters.clone() {
-                typechecker
-                    .declarations
-                    .type_parameters
-                    .entry(id)
-                    .or_insert(Declaration {
-                        name: decl.name,
-                        span: decl.span,
-                        value: (),
-                        uses: decl.uses,
-                    });
-            }
-
-            for (id, decl) in file.borrow().declarations.traits.clone() {
-                if typechecker.declarations.traits.contains_key(&id) {
-                    continue;
-                }
-
-                let ty = typechecker.convert_type_annotation(&decl.value.ty, file, &mut Vec::new());
-
-                let params = decl.value.parameters;
-
-                typechecker.declarations.traits.insert(
-                    id,
-                    Declaration {
-                        name: decl.name,
-                        span: decl.span,
-                        value: TraitDeclaration {
-                            ty,
-                            params,
-                            attributes: decl.value.attributes,
-                        },
-                        uses: decl.uses,
-                    },
-                );
-            }
-        }
-
-        // Typecheck expressions in the program and collect constraints
-
-        let mut body = Vec::new();
-        for (index, file) in files.iter_mut().enumerate() {
-            progress(Progress::Typechecking {
-                path: file.borrow().span.path,
-                current: index + 1,
-                total: total_files,
-            });
-
-            for (&id, decl) in &file.borrow().declarations.types {
-                if typechecker.types.contains_key(&id) {
-                    continue;
-                }
-
-                let params = decl.value.params.clone();
-
-                #[allow(clippy::map_entry)] // `typechecker` is borrowed twice otherwise
-                if !typechecker.types.contains_key(&id) {
-                    match &decl.value.kind {
-                        lower::TypeKind::Structure(fields, field_names) => {
-                            let field_tys = fields
-                                .iter()
-                                .map(|field| {
-                                    typechecker.convert_type_annotation(
-                                        &field.ty,
-                                        file,
-                                        &mut vec![id],
-                                    )
-                                })
-                                .collect();
-
-                            typechecker.types.insert(
-                                id,
-                                TypeDefinition {
-                                    kind: TypeDefinitionKind::Structure(
-                                        field_tys,
-                                        field_names.clone(),
-                                    ),
-                                    params,
-                                },
-                            );
-                        }
-                        lower::TypeKind::Enumeration(variants, _) => {
-                            let variant_tys = variants
-                                .iter()
-                                .map(|variant| {
-                                    variant
-                                        .tys
-                                        .iter()
-                                        .map(|ty| {
-                                            typechecker.convert_type_annotation(
-                                                ty,
-                                                file,
-                                                &mut vec![id],
-                                            )
-                                        })
-                                        .collect()
-                                })
-                                .collect();
-
-                            let variant_constructors =
-                                variants.iter().map(|variant| variant.constructor).collect();
-
-                            typechecker.types.insert(
-                                id,
-                                TypeDefinition {
-                                    kind: TypeDefinitionKind::Enumeration(
-                                        variant_tys,
-                                        variant_constructors,
-                                    ),
-                                    params,
-                                },
-                            );
-                        }
-                        lower::TypeKind::Marker => {
-                            typechecker.types.insert(
-                                id,
-                                TypeDefinition {
-                                    kind: TypeDefinitionKind::Marker,
-                                    params,
-                                },
-                            );
-                        }
-                    }
-                }
-            }
-
-            for (&id, decl) in &file.borrow().declarations.traits {
-                if typechecker.traits.contains_key(&id) {
-                    continue;
-                }
-
-                let ty = typechecker.convert_type_annotation(&decl.value.ty, file, &mut Vec::new());
-                let params = decl.value.parameters.clone();
-
-                typechecker
-                    .traits
-                    .insert(id, TraitDefinition { ty, params });
-            }
-
-            for (&id, decl) in &file.borrow().declarations.constants {
-                if typechecker.generic_constants.contains_key(&id) {
-                    continue;
-                }
-
-                let value = match decl.value.value.borrow().as_ref() {
-                    Some(value) => value.clone(),
-                    None => continue,
-                };
-
-                let generic_ty =
-                    typechecker.convert_type_annotation(&decl.value.ty, file, &mut Vec::new());
-
-                let bounds = decl
-                    .value
-                    .bounds
-                    .iter()
-                    .map(|bound| {
-                        let mut tr = typechecker.traits.get(&bound.tr).unwrap().clone();
-
-                        let substitutions = tr
-                            .params
-                            .into_iter()
-                            .zip(&bound.parameters)
-                            .map(|(param, ty)| {
-                                (
-                                    param,
-                                    typechecker.convert_type_annotation(ty, file, &mut Vec::new()),
-                                )
-                            })
-                            .collect();
-
-                        tr.ty.instantiate_with(&substitutions);
-
-                        (bound.tr, tr.ty, bound.span)
-                    })
-                    .collect::<Vec<_>>();
-
-                typechecker.generic_constants.insert(
-                    id,
-                    Constant {
-                        file: file.clone(),
-                        decl: Declaration {
-                            name: decl.name,
-                            span: decl.span,
-                            value,
-                            uses: decl.uses.clone(),
-                        },
-                        generic_ty,
-                        bounds,
-                        attributes: Some(decl.value.attributes.clone()),
-                    },
-                );
-            }
-
-            for (id, decl) in file.borrow().declarations.instances.clone() {
-                if typechecker.generic_constants.contains_key(&id) {
-                    continue;
-                }
-
-                let value = decl.value.value.clone();
-
-                let mut tr = typechecker.traits.get(&decl.value.tr).unwrap().clone();
-
-                let mut substitutions = tr
-                    .params
-                    .into_iter()
-                    .zip(&decl.value.trait_params)
-                    .map(|(param, ty)| {
-                        (
-                            param,
-                            typechecker.convert_type_annotation(ty, file, &mut Vec::new()),
-                        )
-                    })
-                    .collect();
-
-                typechecker.add_substitutions(&mut tr.ty, &mut substitutions);
-
-                // Check if the instance collides with any other instances --
-                // there's no need to check the bounds because there's no way to
-                // ensure a type doesn't satisfy the bounds specified in both
-                // instances
-
-                let colliding_instances = typechecker
-                    .declared_instances
-                    .get(&decl.value.tr)
-                    .cloned()
-                    .unwrap_or_default()
-                    .into_iter()
-                    .filter_map(|id| {
-                        let other = typechecker.generic_constants.get(&id).unwrap();
-
-                        let mut temp_ctx = typechecker.ctx.clone();
-                        temp_ctx
-                            .unify(other.generic_ty.clone(), tr.ty.clone())
-                            .is_ok()
-                            .then(|| other.decl.span)
-                    })
-                    .collect::<Vec<_>>();
-
-                if !colliding_instances.is_empty() {
-                    self.diagnostics.add(Diagnostic::error(
-                        format!(
-                            "this instance collides with {} other instances",
-                            colliding_instances.len()
-                        ),
-                        std::iter::once(Note::primary(
-                            decl.span,
-                            if decl.value.bounds.is_empty() {
-                                "try making this instance more specific"
-                            } else {
-                                "this instance may have different bounds than the others, but one type could satisfy the bounds on more than one of these instances simultaneously"
-                            },
-                        ))
-                        .chain(colliding_instances.into_iter().map(|span| {
-                            Note::primary(span, "this instance could apply to the same type(s)")
-                        }))
-                        .collect(),
-                    ));
-                }
-
-                let bounds = decl
-                    .value
-                    .bounds
-                    .iter()
-                    .map(|bound| {
-                        let mut tr = typechecker.traits.get(&bound.tr).unwrap().clone();
-
-                        let substitutions = tr
-                            .params
-                            .into_iter()
-                            .zip(&bound.parameters)
-                            .map(|(param, ty)| {
-                                (
-                                    param,
-                                    typechecker.convert_type_annotation(ty, file, &mut Vec::new()),
-                                )
-                            })
-                            .collect();
-
-                        tr.ty.instantiate_with(&substitutions);
-
-                        (bound.tr, tr.ty, bound.span)
-                    })
-                    .collect::<Vec<_>>();
-
-                typechecker
-                    .declared_instances
-                    .entry(decl.value.tr)
-                    .or_default()
-                    .push(id);
-
-                typechecker.generic_constants.insert(
-                    id,
-                    Constant {
-                        file: file.clone(),
-                        decl: Declaration {
-                            name: decl.name,
-                            span: decl.span,
-                            value,
-                            uses: decl.uses,
-                        },
-                        generic_ty: tr.ty,
-                        bounds,
-                        attributes: None,
-                    },
-                );
-            }
-
-            let block = mem::take(&mut file.borrow_mut().block);
-            let (_, block) = typechecker.typecheck_block(&block, file, false);
-            body.push((file.clone(), block));
-        }
-
-        for (id, constant) in typechecker.generic_constants.clone() {
-            let prev_bound_instances = typechecker.bound_instances.clone();
-            let prev_monomorphized_constants = typechecker.monomorphized_constants.clone();
-
-            let body = typechecker.typecheck_expr(&constant.decl.value, &constant.file, false);
-
-            if let Err(error) = typechecker.ctx.unify(body.ty.clone(), constant.generic_ty) {
-                typechecker.errors.push(Error::new(error, body.span));
-            }
-
-            // Register dummy generic instances so finalization works -- these
-            // constants will never actually be used
-            for (tr, ty, span) in constant.bounds {
-                let dummy_id = typechecker.compiler.new_generic_constant_id();
-
-                typechecker.generic_constants.insert(
-                    dummy_id,
-                    Constant {
-                        file: constant.file.clone(),
-                        decl: Declaration {
-                            name: None,
-                            span,
-                            value: lower::Expression {
-                                span: constant.decl.value.span,
-                                kind: lower::ExpressionKind::Error,
-                            },
-                            uses: constant.decl.uses.clone(),
-                        },
-                        generic_ty: ty,
-                        bounds: Vec::new(),
-                        attributes: None,
-                    },
-                );
-
-                typechecker
-                    .bound_instances
-                    .entry(tr)
-                    .or_default()
-                    .push(dummy_id);
-            }
-
-            let body_span = body.span;
-            let body = match typechecker.monomorphize(body, &constant.file, &mut BTreeMap::new()) {
-                Ok(expr) => expr,
-                Err(error) => {
-                    typechecker.errors.push(error);
-
-                    MonomorphizedExpression {
-                        span: body_span,
-                        ty: UnresolvedType::Bottom(BottomTypeReason::Error),
-                        kind: MonomorphizedExpressionKind::Error,
-                    }
-                }
-            };
-
-            typechecker.declarations.generic_constants.insert(
-                id,
-                GenericConstantDeclaration {
-                    file: constant.file,
-                    decl: Declaration {
-                        name: constant.decl.name,
-                        span: constant.decl.span,
-                        value: body,
-                        uses: constant.decl.uses,
-                    },
-                    attributes: constant.attributes,
-                },
-            );
-
-            typechecker.bound_instances = prev_bound_instances;
-            typechecker.monomorphized_constants = prev_monomorphized_constants;
-        }
-
-        // Finalize the types of all values in the program, resolving traits and
-        // raising an error for unresolved type variables
-
-        progress(Progress::Finalizing);
-
-        let body = match body
-            .iter()
-            .map(|(file, exprs)| {
-                exprs
-                    .iter()
-                    .cloned()
-                    .map(|expr| {
-                        let expr = typechecker.monomorphize(expr, file, &mut BTreeMap::new())?;
-                        Ok((file.clone(), expr))
-                    })
-                    .collect::<Result<Vec<_>, _>>()
-            })
-            .collect::<Result<Vec<_>, _>>()
-            .map(|body| body.into_iter().flatten().collect::<Vec<_>>())
-        {
-            Ok(body) => Some(body),
-            Err(error) => {
-                typechecker.errors.push(error);
-                None
-            }
-        };
-
-        let mut cache = BTreeMap::new();
-
-        loop {
-            let mut new = false;
-            for (id, (span, generic_id, constant)) in typechecker.monomorphized_constants.clone() {
-                if typechecker
-                    .declarations
-                    .monomorphized_constants
-                    .contains_key(&id)
-                {
-                    continue;
-                }
-
-                new = true;
-
-                let mut ty = constant.decl.value.ty.clone();
-                ty.apply(&typechecker.ctx);
-
-                for (tr, mut ty, bound_span) in constant.bounds.clone() {
-                    ty.apply(&typechecker.ctx);
-
-                    let instance_id =
-                        match typechecker.instance_for(tr, ty.clone(), Some(bound_span)) {
-                            Ok(id) => id,
-                            Err(error) => {
-                                typechecker.errors.push(Error::new(error, span));
-                                continue;
-                            }
-                        };
-
-                    typechecker
-                        .bound_instances
-                        .entry(tr)
-                        .or_default()
-                        .push(instance_id);
-                }
-
-                cache.insert(generic_id, id);
-
-                let body = match typechecker.monomorphize(
-                    constant.decl.value.clone(),
-                    &constant.file,
-                    &mut cache,
-                ) {
-                    Ok(value) => value,
-                    Err(error) => {
-                        typechecker.errors.push(error);
-
-                        MonomorphizedExpression {
-                            span,
-                            ty: ty.clone(),
-                            kind: MonomorphizedExpressionKind::Error,
-                        }
-                    }
-                };
-
-                typechecker.declarations.monomorphized_constants.insert(
-                    id,
-                    (
-                        constant.file,
-                        generic_id,
-                        ty,
-                        Declaration {
-                            name: constant.decl.name,
-                            span,
-                            value: body,
-                            uses: constant.decl.uses,
-                        },
-                    ),
-                );
-            }
-
-            if !new {
-                break;
-            }
-        }
-
-        // Finalize values
-
-        let mut declarations = match (|| {
-            Ok(Declarations {
-                operators: typechecker.declarations.operators.clone(),
-                templates: typechecker.declarations.templates.clone(),
-                builtin_types: typechecker.declarations.builtin_types.clone(),
-                types: typechecker.declarations.types.clone(),
-                type_parameters: typechecker.declarations.type_parameters.clone(),
-                traits: typechecker.declarations.traits.clone(),
-                generic_constants: typechecker
-                    .declarations
-                    .generic_constants
-                    .clone()
-                    .into_iter()
-                    .map(|(id, constant)| {
-                        Ok((
-                            id,
-                            GenericConstantDeclaration {
-                                file: (),
-                                decl: Declaration {
-                                    name: constant.decl.name,
-                                    span: constant.decl.span,
-                                    value: typechecker.finalize_generic(
-                                        constant.decl.value.clone(),
-                                        &constant.file,
-                                    )?,
-                                    uses: constant.decl.uses,
-                                },
-                                attributes: constant.attributes,
-                            },
-                        ))
-                    })
-                    .collect::<Result<_, _>>()?,
-                monomorphized_constants: typechecker
-                    .declarations
-                    .monomorphized_constants
-                    .clone()
-                    .into_iter()
-                    .map(|(id, (file, generic_id, ty, decl))| {
-                        Ok((
-                            id,
-                            (
-                                (),
-                                generic_id,
-                                ty.finalize(&typechecker.ctx, false)
-                                    .map_err(|e| Error::new(e, decl.span))?,
-                                Declaration {
-                                    name: decl.name,
-                                    span: decl.span,
-                                    value: typechecker.finalize(decl.value, &file)?,
-                                    uses: decl.uses,
-                                },
-                            ),
-                        ))
-                    })
-                    .collect::<Result<_, _>>()?,
-                variables: typechecker
-                    .declarations
-                    .variables
-                    .clone()
-                    .into_iter()
-                    .map(|(id, decl)| {
-                        Ok((
-                            id,
-                            Declaration {
-                                name: decl.name,
-                                span: decl.span,
-                                value: typechecker
-                                    .variables
-                                    .get(&id)
-                                    .unwrap()
-                                    .clone()
-                                    .finalize(&typechecker.ctx, true)
-                                    .map_err(|e| Error::new(e, decl.span))?,
-                                uses: decl.uses,
-                            },
-                        ))
-                    })
-                    .collect::<Result<_, _>>()?,
-            })
-        })() {
-            Ok(declarations) => declarations,
-            Err(error) => {
-                typechecker.errors.push(error);
-                Declarations::default()
-            }
-        };
-
-        let mut body = body
-            .map(|body| {
-                match body
-                    .into_iter()
-                    .map(|(file, expr)| typechecker.finalize(expr, &file))
-                    .collect::<Result<_, _>>()
-                {
-                    Ok(declarations) => declarations,
-                    Err(error) => {
-                        typechecker.errors.push(error);
-                        Vec::new()
-                    }
-                }
-            })
-            .unwrap_or_default();
-
-        // Consolidate constants based on their type
-
-        let mut cache = HashMap::new();
-        let mut cached = BTreeSet::new();
-        let mut map = BTreeMap::new();
-
-        for (id, ((), generic_id, ty, _)) in &declarations.monomorphized_constants {
-            let cached_id = *cache.entry((generic_id, ty.clone())).or_insert_with(|| {
-                cached.insert(*id);
-                *id
-            });
-
-            map.insert(*id, cached_id);
-        }
-
-        for id in declarations
-            .monomorphized_constants
-            .keys()
-            .cloned()
-            .collect::<Vec<_>>()
-        {
-            if !cached.contains(&id) {
-                declarations.monomorphized_constants.remove(&id);
-            }
-        }
-
-        let update = |expr: &mut Expression| {
-            if let ExpressionKind::Constant(id) = &mut expr.kind {
-                if let Some(cached_id) = map.get(id) {
-                    *id = *cached_id;
-                }
-            }
-        };
-
-        for ((), _, _, constant) in declarations.monomorphized_constants.values_mut() {
-            constant.value.traverse_mut(update)
-        }
-
-        for expr in &mut body {
-            expr.traverse_mut(update);
-        }
-
-        // Build the final program
-
-        let success = typechecker.errors.is_empty();
-
-        let report = |error: Error, typechecker: &Typechecker<L>| {
-            #[allow(unused_mut)]
-            let mut diagnostic = match error.error {
-                TypeError::ErrorExpression => return,
-                TypeError::Recursive(_) => Diagnostic::error(
-                    "recursive type",
-                    vec![Note::primary(
-                        error.span,
-                        "the type of this references itself",
-                    )],
-                ),
-                TypeError::Mismatch(actual, expected) => Diagnostic::error(
-                    "mismatched types",
-                    vec![Note::primary(
-                        error.span,
-                        format!(
-                            "expected {}, but found {}",
-                            typechecker.format_type(expected, true),
-                            typechecker.format_type(actual, true)
-                        ),
-                    )],
-                ),
-                TypeError::MissingInstance(id, params, bound_span) => {
-                    let tr = typechecker.declarations.traits.get(&id).unwrap();
-
-                    Diagnostic::error(
-                        "missing instance",
-                        std::iter::once(Note::primary(
-                            error.span,
-                            format!(
-                                "could not find instance {}",
-                                typechecker.format_type(FormattableType::Trait(id, params), true)
-                            ),
-                        ))
-                        .chain(
-                            bound_span
-                                .map(|span| Note::secondary(span, "required by this bound here")),
-                        )
-                        .chain(
-                            tr.value
-                                .attributes
-                                .on_unimplemented
-                                .as_ref()
-                                .map(|message| Note::secondary(error.span, message)),
-                        )
-                        .collect(),
-                    )
-                }
-                TypeError::AmbiguousTrait(_, candidates) => Diagnostic::error(
-                    "could not determine the type of this expression",
-                    std::iter::once(Note::primary(
-                        error.span,
-                        "try annotating the type with `::`",
-                    ))
-                    .chain(candidates.into_iter().map(|id| {
-                        let instance = typechecker.generic_constants.get(&id).unwrap();
-                        Note::secondary(instance.decl.span, "this instance could apply")
-                    }))
-                    .collect(),
-                ),
-                TypeError::UnresolvedType => Diagnostic::error(
-                    "could not determine the type of this expression",
-                    vec![Note::primary(
-                        error.span,
-                        "try annotating the type with `::`",
-                    )],
-                ),
-                TypeError::InvalidNumericLiteral(ty) => Diagnostic::error(
-                    format!(
-                        "number does not fit into a {}",
-                        typechecker.format_type(ty, true)
-                    ),
-                    vec![Note::primary(error.span, "invalid numeric literal")],
-                ),
-            };
-
-            #[cfg(debug_assertions)]
-            {
-                diagnostic.trace = error.trace;
-            }
-
-            typechecker.compiler.diagnostics.add(diagnostic);
-        };
-
-        let (unresolved_type_errors, other_errors): (Vec<_>, Vec<_>) =
-            mem::take(&mut typechecker.errors)
-                .into_iter()
-                .partition(|e| matches!(e.error, TypeError::UnresolvedType));
-
-        let should_report_unresolved_type_errors = other_errors.is_empty();
-
-        let (missing_instance_errors, other_errors): (Vec<_>, Vec<_>) = other_errors
-            .into_iter()
-            .partition(|e| matches!(e.error, TypeError::MissingInstance(_, _, _)));
-
-        let (ignore_if_unsatisfied_bounds_errors, missing_instance_errors): (Vec<_>, Vec<_>) =
-            missing_instance_errors
-                .into_iter()
-                .partition(|e| e.ignore_if_unsatisfied_bounds);
-
-        let should_report_ignored_errors = missing_instance_errors.is_empty();
-
-        for error in missing_instance_errors {
-            report(error, &typechecker);
-        }
-
-        if should_report_ignored_errors {
-            for error in ignore_if_unsatisfied_bounds_errors {
-                report(error, &typechecker);
-            }
-        }
-
-        for error in other_errors {
-            report(error, &typechecker);
-        }
-
-        if should_report_unresolved_type_errors {
-            for error in unresolved_type_errors {
-                report(error, &typechecker);
-            }
-        }
-
-        Program {
-            valid: success,
-            body,
-            declarations,
-            exported,
-            scopes,
-        }
-    }
-}
-
-type Bound = (TraitId, UnresolvedType, Span);
-
-#[derive(Debug, Clone)]
-struct Constant<T, Ty, Attrs = ()> {
-    file: Rc<RefCell<lower::File>>,
-    decl: Declaration<T>,
-    generic_ty: Ty,
-    bounds: Vec<Bound>,
-    attributes: Option<Attrs>,
-}
-
-#[derive(Debug, Clone)]
-struct TraitDefinition {
-    ty: UnresolvedType,
-    params: Vec<TypeParameterId>,
-}
-
-#[derive(Debug, Clone)]
-struct TypeDefinition {
-    kind: TypeDefinitionKind,
-    params: Vec<TypeParameterId>,
-}
-
-#[derive(Debug, Clone)]
-enum TypeDefinitionKind {
-    Marker,
-    Structure(Vec<UnresolvedType>, HashMap<InternedString, usize>),
-    Enumeration(Vec<Vec<UnresolvedType>>, Vec<GenericConstantId>),
-}
-
-#[derive(Debug, Clone)]
-struct Error {
-    error: TypeError,
-    span: Span,
-    ignore_if_unsatisfied_bounds: bool,
     #[cfg(debug_assertions)]
-    trace: Backtrace,
+    pub trace: Option<backtrace::Backtrace>,
 }
 
 impl Error {
-    fn new(error: TypeError, span: Span) -> Self {
+    pub fn new(error: engine::TypeError, span: Span) -> Self {
         Error {
             error,
             span,
-            ignore_if_unsatisfied_bounds: false,
             #[cfg(debug_assertions)]
-            trace: Backtrace::new(),
+            trace: crate::diagnostics::backtrace_enabled().then(backtrace::Backtrace::new),
+        }
+    }
+}
+
+impl Compiler<'_> {
+    pub fn typecheck_with_progress(
+        &self,
+        files: Vec<lower::File>,
+        mode: TypecheckMode,
+        mut complete: bool,
+        mut progress: impl FnMut(Progress),
+    ) -> Program {
+        let mut typechecker = Typechecker::new(self, mode);
+
+        if files.is_empty() {
+            eprintln!("no files provided");
+            complete = false;
+        } else {
+            let file_count = files.len();
+            let mut current_file = 1;
+            for (index, file) in files.into_iter().enumerate() {
+                progress(Progress::Collecting {
+                    path: file.span.path,
+                    current: current_file,
+                    total: file_count,
+                });
+
+                let is_entrypoint = index + 1 == file_count;
+                typechecker.typecheck_file(file, is_entrypoint);
+
+                current_file += 1;
+            }
+        }
+
+        typechecker.resolve(complete, |count, remaining| {
+            progress(Progress::Resolving { count, remaining })
+        })
+    }
+}
+
+#[derive(Debug, Clone)]
+struct Typechecker<'a, 'l> {
+    compiler: &'a Compiler<'l>,
+    mode: TypecheckMode,
+    is_complete: bool,
+    ctx: engine::Context,
+    files: im::HashMap<FilePath, lower::File>,
+    declarations: RefCell<Declarations>,
+    instances: im::HashMap<TraitId, HashSet<GenericConstantId>>,
+    generic_constants: im::HashMap<GenericConstantId, (bool, lower::Expression)>,
+    item_queue: im::Vector<QueuedItem>,
+    items: im::HashMap<ItemId, Expression>,
+    entrypoint: Option<UnresolvedExpression>,
+    errors: im::Vector<Error>,
+}
+
+#[derive(Debug, Clone, Default)]
+pub enum TypecheckMode {
+    #[default]
+    Everything,
+    Only(HashSet<FilePath>),
+}
+
+#[derive(Debug, Clone)]
+struct QueuedItem {
+    id: ItemId,
+    expr: UnresolvedExpression,
+    info: MonomorphizeInfo,
+}
+
+impl<'a, 'l> Typechecker<'a, 'l> {
+    pub fn new(compiler: &'a Compiler<'l>, mode: TypecheckMode) -> Self {
+        Typechecker {
+            compiler,
+            mode,
+            is_complete: true,
+            ctx: Default::default(),
+            files: Default::default(),
+            declarations: Default::default(),
+            instances: Default::default(),
+            generic_constants: Default::default(),
+            item_queue: Default::default(),
+            items: Default::default(),
+            entrypoint: Default::default(),
+            errors: Default::default(),
         }
     }
 
-    fn ignore_if_unsatisfied_bounds(mut self) -> Self {
-        self.ignore_if_unsatisfied_bounds = true;
-        self
+    pub fn add_error(&mut self, error: Error) {
+        self.errors.push_back(error);
+    }
+
+    pub fn resolve(
+        mut self,
+        lowering_is_complete: bool,
+        mut progress: impl FnMut(usize, usize),
+    ) -> Program {
+        let entrypoint = mem::take(&mut self.entrypoint).map(|entrypoint| {
+            let info = MonomorphizeInfo {
+                cache: Default::default(),
+                bound_instances: Default::default(),
+            };
+
+            let entrypoint_id = self.compiler.new_item_id(entrypoint.span.path);
+
+            self.item_queue.push_back(QueuedItem {
+                id: entrypoint_id,
+                expr: entrypoint,
+                info,
+            });
+
+            entrypoint_id
+        });
+
+        let mut count = 0;
+        while let Some(mut item) = self.item_queue.pop_back() {
+            count += 1;
+            progress(count, self.item_queue.len());
+
+            let expr = self.monomorphize_expr(item.expr, &mut item.info);
+
+            if let Some(expr) = self.finalize_expr(expr) {
+                self.items.insert(item.id, expr);
+            } else {
+                self.is_complete = false;
+            }
+        }
+
+        let mut already_checked = HashSet::new();
+        for (id, (instance, body)) in self.generic_constants.clone() {
+            if already_checked.contains(&id) {
+                continue;
+            }
+
+            already_checked.insert(id);
+
+            self.typecheck_generic_constant_expr(id, instance, body);
+        }
+
+        if lowering_is_complete {
+            self.report_errors();
+        }
+
+        Program {
+            complete: lowering_is_complete && self.is_complete,
+            items: self.items.into_iter().collect(),
+            entrypoint,
+            declarations: self.declarations.into_inner(),
+        }
     }
 }
 
-struct Typechecker<L: Loader> {
-    ctx: Context,
-    errors: Vec<Error>,
-    variables: BTreeMap<VariableId, UnresolvedType>,
-    traits: BTreeMap<TraitId, TraitDefinition>,
-    types: BTreeMap<TypeId, TypeDefinition>,
-    generic_constants: BTreeMap<
-        GenericConstantId,
-        Constant<lower::Expression, UnresolvedType, lower::DeclarationAttributes>,
-    >,
-    monomorphized_constants: BTreeMap<
-        MonomorphizedConstantId,
-        (Span, GenericConstantId, Constant<UnresolvedExpression, ()>),
-    >,
-    declared_instances: BTreeMap<TraitId, Vec<GenericConstantId>>,
-    bound_instances: BTreeMap<TraitId, Vec<GenericConstantId>>,
-    declarations: Declarations<MonomorphizedExpression, UnresolvedType, Rc<RefCell<lower::File>>>,
-    compiler: Compiler<L>,
+impl<'a, 'l> Typechecker<'a, 'l> {
+    pub fn typecheck_file(&mut self, mut file: lower::File, is_entrypoint: bool) {
+        let file_span = file.span;
+        let entrypoint = mem::take(&mut file.block);
+        self.files.insert(file_span.path, file);
+
+        if is_entrypoint {
+            if self.entrypoint.is_some() {
+                panic!("entrypoint already provided");
+            }
+
+            let mut info = ConvertInfo {
+                variables: Default::default(),
+            };
+
+            let expr = self.convert_expr(
+                lower::Expression {
+                    span: file_span,
+                    kind: lower::ExpressionKind::Block(entrypoint),
+                },
+                &mut info,
+            );
+
+            self.entrypoint = Some(expr);
+        }
+
+        if self.should_typecheck_everything_in_file(file_span.path) {
+            let mut instances = mem::take(&mut self.instances);
+
+            macro_rules! declarations {
+                ($kind:ident) => {
+                    declarations!($kind(|_, _| {}))
+                };
+                ($kind:ident($f:expr)) => {
+                    paste::paste! {
+                        for id in self
+                            .files
+                            .get(&file_span.path)
+                            .unwrap()
+                            .declarations
+                            .[<$kind s>]
+                            .keys()
+                            .cloned()
+                            .collect::<Vec<_>>()
+                        {
+                            self.[<with_ $kind _decl>](id, |decl| $f(id, decl));
+                        }
+                    }
+                };
+                ($($kind:ident$(($f:expr))?),* $(,)?) => {
+                    $(declarations!($kind$(($f))?);)*
+                }
+            }
+
+            declarations!(
+                type,
+                trait,
+                instance(|id, decl: &InstanceDecl| {
+                    instances.entry(decl.trait_id).or_default().insert(id);
+                }),
+                constant,
+                operator,
+                template,
+                builtin_type,
+                type_parameter,
+                // variables are handled inside `finalize_pattern`
+            );
+
+            self.instances = instances;
+        }
+    }
+
+    fn should_typecheck_everything_in_file(&mut self, file: FilePath) -> bool {
+        match &self.mode {
+            TypecheckMode::Everything => true,
+            TypecheckMode::Only(files) => files.contains(&file),
+        }
+    }
+
+    fn typecheck_generic_constant_expr(
+        &mut self,
+        id: GenericConstantId,
+        instance: bool,
+        expr: lower::Expression,
+    ) {
+        let (generic_ty, bounds) = if instance {
+            self.with_instance_decl(id, |decl| (decl.ty.clone(), decl.bounds.clone()))
+        } else {
+            self.with_constant_decl(id, |decl| (decl.ty.clone(), decl.bounds.clone()))
+        };
+
+        let mut instantiated_ty = engine::UnresolvedType::from(generic_ty.clone());
+
+        let mut substitutions = engine::GenericSubstitutions::new();
+
+        let mut convert_info = ConvertInfo {
+            variables: Default::default(),
+        };
+
+        let mut monomorphize_info = MonomorphizeInfo {
+            cache: Default::default(),
+            bound_instances: Default::default(),
+        };
+
+        for bound in bounds {
+            let mut ty = self.substitute_trait_params(bound.trait_id, bound.params);
+
+            monomorphize_info
+                .bound_instances
+                .entry(bound.trait_id)
+                .or_default()
+                .push((None, ty.clone(), bound.span));
+
+            self.add_substitutions(&mut ty, &mut substitutions);
+        }
+
+        self.add_substitutions(&mut instantiated_ty, &mut substitutions);
+
+        let mut expr = self.convert_expr(expr, &mut convert_info);
+
+        expr.traverse_mut(|expr| {
+            expr.ty.instantiate_with(&self.ctx, &substitutions);
+        });
+
+        if let Err(error) = self.unify(expr.span, expr.ty.clone(), instantiated_ty.clone()) {
+            self.add_error(error);
+        }
+
+        let expr = self.monomorphize_expr(expr, &mut monomorphize_info);
+
+        // Before finalizing, substitute the generics back in
+        let _ = self.ctx.unify(expr.ty.clone(), generic_ty);
+
+        self.finalize_expr(expr);
+    }
+
+    fn typecheck_constant_expr(
+        &mut self,
+        is_instance: bool,
+        id: GenericConstantId,
+        use_span: Span,
+        use_ty: engine::UnresolvedType,
+        mut info: MonomorphizeInfo,
+    ) -> ItemId {
+        let monomorphized_id = self.compiler.new_item_id(id.file);
+        info.cache.insert(id, monomorphized_id);
+
+        let (generic_ty, mut bounds) = if is_instance {
+            self.with_instance_decl(id, |decl| (decl.ty.clone(), decl.bounds.clone()))
+        } else {
+            self.with_constant_decl(id, |decl| (decl.ty.clone(), decl.bounds.clone()))
+        };
+
+        let mut generic_ty = engine::UnresolvedType::from(generic_ty);
+
+        let mut substitutions = engine::GenericSubstitutions::new();
+        self.add_substitutions(&mut generic_ty, &mut substitutions);
+        for bound in &mut bounds {
+            for param in &mut bound.params {
+                self.add_substitutions(param, &mut substitutions);
+            }
+        }
+
+        let (_, body) = self.generic_constants.get(&id).unwrap().clone();
+
+        let mut convert_info = ConvertInfo {
+            variables: Default::default(),
+        };
+
+        let generic_expr = self.convert_expr(body, &mut convert_info);
+
+        if let Err(error) = self.unify(use_span, use_ty, generic_ty.clone()) {
+            self.add_error(error);
+        }
+
+        if let Err(error) = self.unify(use_span, generic_ty, generic_expr.ty.clone()) {
+            self.add_error(error);
+        }
+
+        for bound in &mut bounds {
+            let ty = self.substitute_trait_params(bound.trait_id, bound.params.clone());
+
+            let instance_info = match self.instance_for(
+                bound.trait_id,
+                ty.clone(),
+                use_span,
+                Some(bound.span),
+                &mut info,
+            ) {
+                Ok(info) => info,
+                Err(error) => {
+                    self.add_error(error);
+                    None
+                }
+            };
+
+            info.bound_instances
+                .entry(bound.trait_id)
+                .or_default()
+                .push((instance_info, ty, bound.span));
+        }
+
+        self.item_queue.push_back(QueuedItem {
+            id: monomorphized_id,
+            expr: generic_expr,
+            info,
+        });
+
+        monomorphized_id
+    }
 }
 
-impl<L: Loader> Typechecker<L> {
-    fn typecheck_expr(
-        &mut self,
-        expr: &lower::Expression,
-        file: &Rc<RefCell<lower::File>>,
-        suppress_errors: bool,
-    ) -> UnresolvedExpression {
-        match &expr.kind {
-            lower::ExpressionKind::Error => UnresolvedExpression::error(expr.span),
-            lower::ExpressionKind::Marker(id) => {
-                let marker = self.types.get(id).unwrap().clone();
+struct ConvertInfo {
+    variables: HashMap<VariableId, engine::UnresolvedType>,
+}
 
-                let mut ty = UnresolvedType::Named(
-                    *id,
-                    marker
-                        .params
+impl<'a, 'l> Typechecker<'a, 'l> {
+    fn convert_expr(
+        &mut self,
+        expr: lower::Expression,
+        info: &mut ConvertInfo,
+    ) -> UnresolvedExpression {
+        match expr.kind {
+            lower::ExpressionKind::Error => UnresolvedExpression {
+                span: expr.span,
+                ty: engine::UnresolvedType::Bottom(engine::BottomTypeReason::Error),
+                kind: UnresolvedExpressionKind::Error,
+            },
+            lower::ExpressionKind::Marker(id) => {
+                let params = self.with_type_decl(id, |ty| ty.params.clone());
+
+                let mut ty = engine::UnresolvedType::Named(
+                    id,
+                    params
                         .into_iter()
-                        .map(UnresolvedType::Parameter)
+                        .map(engine::UnresolvedType::Parameter)
                         .collect(),
-                    TypeStructure::Marker,
+                    engine::TypeStructure::Marker,
                 );
 
-                let mut substitutions = BTreeMap::new();
-                self.add_substitutions(&mut ty, &mut substitutions);
+                self.instantiate_generics(&mut ty);
 
                 UnresolvedExpression {
                     span: expr.span,
@@ -1206,41 +688,63 @@ impl<L: Loader> Typechecker<L> {
                     kind: UnresolvedExpressionKind::Marker,
                 }
             }
-            lower::ExpressionKind::Constant(id) => UnresolvedExpression {
-                span: expr.span,
-                ty: UnresolvedType::Variable(self.ctx.new_variable()),
-                kind: UnresolvedExpressionKind::Constant(*id),
-            },
-            lower::ExpressionKind::Trait(id) => UnresolvedExpression {
-                span: expr.span,
-                ty: UnresolvedType::Variable(self.ctx.new_variable()),
-                kind: UnresolvedExpressionKind::Trait(*id),
-            },
-            lower::ExpressionKind::Variable(var) => {
-                let ty = self
-                    .variables
-                    .get(var)
-                    .expect("uninitialized variable")
-                    .clone();
+            lower::ExpressionKind::Constant(id) => {
+                let mut ty = self.with_constant_decl(id, |constant| {
+                    engine::UnresolvedType::from(constant.ty.clone())
+                });
+
+                self.instantiate_generics(&mut ty);
 
                 UnresolvedExpression {
                     span: expr.span,
                     ty,
-                    kind: UnresolvedExpressionKind::Variable(*var),
+                    kind: UnresolvedExpressionKind::Constant(id),
+                }
+            }
+            lower::ExpressionKind::Trait(id) => {
+                let mut ty =
+                    self.with_trait_decl(id, |decl| engine::UnresolvedType::from(decl.ty.clone()));
+
+                self.instantiate_generics(&mut ty);
+
+                UnresolvedExpression {
+                    span: expr.span,
+                    ty,
+                    kind: UnresolvedExpressionKind::Trait(id),
+                }
+            }
+            lower::ExpressionKind::Variable(var) => {
+                let ty =
+                    info.variables.get(&var).cloned().unwrap_or_else(|| {
+                        engine::UnresolvedType::Variable(self.ctx.new_variable())
+                    });
+
+                UnresolvedExpression {
+                    span: expr.span,
+                    ty,
+                    kind: UnresolvedExpressionKind::Variable(var),
                 }
             }
             lower::ExpressionKind::Text(text) => UnresolvedExpression {
                 span: expr.span,
-                ty: UnresolvedType::Builtin(BuiltinType::Text),
-                kind: UnresolvedExpressionKind::Text(*text),
+                ty: engine::UnresolvedType::Builtin(engine::BuiltinType::Text),
+                kind: UnresolvedExpressionKind::Text(text),
             },
             lower::ExpressionKind::Number(number) => UnresolvedExpression {
                 span: expr.span,
-                ty: UnresolvedType::NumericVariable(self.ctx.new_variable()),
-                kind: UnresolvedExpressionKind::Number(*number),
+                ty: engine::UnresolvedType::NumericVariable(self.ctx.new_variable()),
+                kind: UnresolvedExpressionKind::Number(number),
             },
             lower::ExpressionKind::Block(statements) => {
-                let (ty, statements) = self.typecheck_block(statements, file, suppress_errors);
+                let statements = statements
+                    .into_iter()
+                    .map(|statement| self.convert_expr(statement, info))
+                    .collect::<Vec<_>>();
+
+                let ty = statements
+                    .last()
+                    .map(|statement| statement.ty.clone())
+                    .unwrap_or_else(|| engine::UnresolvedType::Tuple(Vec::new()));
 
                 UnresolvedExpression {
                     span: expr.span,
@@ -1249,33 +753,26 @@ impl<L: Loader> Typechecker<L> {
                 }
             }
             lower::ExpressionKind::Call(function, input) => {
-                let function = self.typecheck_expr(function, file, suppress_errors);
-                let input = self.typecheck_expr(input, file, suppress_errors);
+                let function = self.convert_expr(*function, info);
+                let input = self.convert_expr(*input, info);
 
-                let input_ty = UnresolvedType::Variable(self.ctx.new_variable());
-                let output_ty = UnresolvedType::Variable(self.ctx.new_variable());
+                let input_ty = engine::UnresolvedType::Variable(self.ctx.new_variable());
+                let output_ty = engine::UnresolvedType::Variable(self.ctx.new_variable());
 
-                if let Err(error) = self.ctx.unify(
+                if let Err(error) = self.unify(
+                    function.span,
                     function.ty.clone(),
-                    UnresolvedType::Function(
+                    engine::UnresolvedType::Function(
                         Box::new(input_ty.clone()),
                         Box::new(output_ty.clone()),
                     ),
                 ) {
-                    if !suppress_errors {
-                        self.errors.push(Error::new(error, function.span));
-                    }
+                    self.add_error(error);
+                }
 
-                    return UnresolvedExpression::error(expr.span);
-                };
-
-                if let Err(error) = self.ctx.unify(input.ty.clone(), input_ty) {
-                    if !suppress_errors {
-                        self.errors.push(Error::new(error, input.span));
-                    }
-
-                    return UnresolvedExpression::error(expr.span);
-                };
+                if let Err(error) = self.unify(input.span, input.ty.clone(), input_ty) {
+                    self.add_error(error);
+                }
 
                 UnresolvedExpression {
                     span: expr.span,
@@ -1284,52 +781,46 @@ impl<L: Loader> Typechecker<L> {
                 }
             }
             lower::ExpressionKind::Function(pattern, body, captures) => {
-                let input_ty = UnresolvedType::Variable(self.ctx.new_variable());
-
-                let pattern =
-                    self.typecheck_pattern(pattern, input_ty.clone(), file, suppress_errors);
-
-                let body = self.typecheck_expr(body, file, suppress_errors);
+                let input_ty = engine::UnresolvedType::Variable(self.ctx.new_variable());
+                let pattern = self.convert_pattern(pattern, input_ty.clone(), info);
+                let body = self.convert_expr(*body, info);
 
                 UnresolvedExpression {
                     span: expr.span,
-                    ty: UnresolvedType::Function(Box::new(input_ty), Box::new(body.ty.clone())),
-                    kind: UnresolvedExpressionKind::Function(
-                        pattern,
-                        Box::new(body),
-                        captures.clone(),
+                    ty: engine::UnresolvedType::Function(
+                        Box::new(input_ty),
+                        Box::new(body.ty.clone()),
                     ),
+                    kind: UnresolvedExpressionKind::Function(pattern, Box::new(body), captures),
                 }
             }
             lower::ExpressionKind::When(input, arms) => {
-                let input = self.typecheck_expr(input, file, suppress_errors);
+                let input = self.convert_expr(*input, info);
 
                 let arms = arms
-                    .iter()
-                    .map(|arm| self.typecheck_arm(arm, input.ty.clone(), file, suppress_errors))
+                    .into_iter()
+                    .map(|arm| self.convert_arm(arm, input.ty.clone(), info))
                     .collect::<Vec<_>>();
 
                 let ty = {
                     let first_type = arms.iter().find_map(|arm| {
                         let mut ty = arm.body.ty.clone();
                         ty.apply(&self.ctx);
-                        (!matches!(ty, UnresolvedType::Bottom(_))).then(|| ty)
+                        (!matches!(ty, engine::UnresolvedType::Bottom(_))).then(|| ty)
                     });
 
                     if let Some(first_type) = first_type {
                         for arm in &arms {
                             if let Err(error) =
-                                self.ctx.unify(arm.body.ty.clone(), first_type.clone())
+                                self.unify(arm.body.span, arm.body.ty.clone(), first_type.clone())
                             {
-                                if !suppress_errors {
-                                    self.errors.push(Error::new(error, arm.body.span));
-                                }
-                            };
+                                self.add_error(error);
+                            }
                         }
 
                         first_type
                     } else {
-                        UnresolvedType::Bottom(BottomTypeReason::Annotated)
+                        engine::UnresolvedType::Bottom(engine::BottomTypeReason::Annotated)
                     }
                 };
 
@@ -1341,27 +832,23 @@ impl<L: Loader> Typechecker<L> {
             }
             lower::ExpressionKind::External(lib, identifier, inputs) => {
                 let inputs = inputs
-                    .iter()
-                    .map(|expr| self.typecheck_expr(expr, file, suppress_errors))
+                    .into_iter()
+                    .map(|expr| self.convert_expr(expr, info))
                     .collect();
 
                 UnresolvedExpression {
                     span: expr.span,
-                    ty: UnresolvedType::Variable(self.ctx.new_variable()),
-                    kind: UnresolvedExpressionKind::External(*lib, *identifier, inputs),
+                    ty: engine::UnresolvedType::Variable(self.ctx.new_variable()),
+                    kind: UnresolvedExpressionKind::External(lib, identifier, inputs),
                 }
             }
-            lower::ExpressionKind::Annotate(expr, ty) => {
-                let ty = self.convert_type_annotation(ty, file, &mut Vec::new());
-                let value = self.typecheck_expr(expr, file, suppress_errors);
+            lower::ExpressionKind::Annotate(value, ty) => {
+                let ty = self.convert_type_annotation(ty);
+                let value = self.convert_expr(*value, info);
 
-                if let Err(error) = self.ctx.unify(value.ty, ty.clone()) {
-                    if !suppress_errors {
-                        self.errors.push(Error::new(error, value.span));
-                    }
-
-                    return UnresolvedExpression::error(expr.span);
-                };
+                if let Err(error) = self.unify(value.span, value.ty, ty.clone()) {
+                    self.add_error(error);
+                }
 
                 UnresolvedExpression {
                     span: expr.span,
@@ -1370,38 +857,43 @@ impl<L: Loader> Typechecker<L> {
                 }
             }
             lower::ExpressionKind::Initialize(pattern, value) => {
-                let value = self.typecheck_expr(value, file, suppress_errors);
-
-                let pattern =
-                    self.typecheck_pattern(pattern, value.ty.clone(), file, suppress_errors);
+                let value = self.convert_expr(*value, info);
+                let pattern = self.convert_pattern(pattern, value.ty.clone(), info);
 
                 UnresolvedExpression {
                     span: expr.span,
-                    ty: UnresolvedType::Tuple(Vec::new()),
+                    ty: engine::UnresolvedType::Tuple(Vec::new()),
                     kind: UnresolvedExpressionKind::Initialize(pattern, Box::new(value)),
                 }
             }
             lower::ExpressionKind::Instantiate(id, fields) => {
-                let structure = self.types.get(id).unwrap().clone();
+                let (kind, params) =
+                    self.with_type_decl(id, |decl| (decl.kind.clone(), decl.params.clone()));
 
-                let (mut structure_field_tys, structure_field_names) = match &structure.kind {
-                    TypeDefinitionKind::Structure(field_tys, field_names) => {
-                        (field_tys.clone(), field_names.clone())
-                    }
+                let (mut structure_field_tys, structure_field_names) = match kind {
+                    TypeDeclKind::Structure {
+                        fields,
+                        field_names,
+                    } => (
+                        fields
+                            .into_iter()
+                            .map(engine::UnresolvedType::from)
+                            .collect::<Vec<_>>(),
+                        field_names,
+                    ),
                     _ => unreachable!(), // or do we need to display an error like above?
                 };
 
-                let mut ty = UnresolvedType::Named(
-                    *id,
-                    structure
-                        .params
+                let mut ty = engine::UnresolvedType::Named(
+                    id,
+                    params
                         .into_iter()
-                        .map(UnresolvedType::Parameter)
+                        .map(engine::UnresolvedType::Parameter)
                         .collect(),
-                    TypeStructure::Structure(structure_field_tys.clone()),
+                    engine::TypeStructure::Structure(structure_field_tys.clone()),
                 );
 
-                let mut substitutions = BTreeMap::new();
+                let mut substitutions = engine::GenericSubstitutions::new();
                 self.add_substitutions(&mut ty, &mut substitutions);
 
                 for index in structure_field_names.values() {
@@ -1415,7 +907,7 @@ impl<L: Loader> Typechecker<L> {
                 let mut extra_fields = Vec::new();
 
                 for (name, expr) in fields {
-                    let (index, ty) = match structure_field_names.get(name) {
+                    let (index, ty) = match structure_field_names.get(&name) {
                         Some(index) => (*index, structure_field_tys[*index].clone()),
                         None => {
                             extra_fields.push(name);
@@ -1423,18 +915,17 @@ impl<L: Loader> Typechecker<L> {
                         }
                     };
 
-                    let value = self.typecheck_expr(expr, file, suppress_errors);
+                    let span = expr.span;
+                    let mut value = self.convert_expr(expr, info);
 
-                    match self.ctx.unify(value.ty.clone(), ty) {
+                    match self.unify(span, value.ty.clone(), ty.clone()) {
                         Ok(ty) => ty,
-                        Err(errors) => {
-                            if !suppress_errors {
-                                self.errors.push(Error::new(errors, expr.span));
-                            }
-
-                            return UnresolvedExpression::error(expr.span);
+                        Err(error) => {
+                            self.add_error(error);
                         }
                     };
+
+                    value.ty = ty;
 
                     unpopulated_fields[index] = Some(value);
                 }
@@ -1454,8 +945,6 @@ impl<L: Loader> Typechecker<L> {
                             ),
                         )],
                     ));
-
-                    return UnresolvedExpression::error(expr.span);
                 }
 
                 let mut missing_fields = Vec::new();
@@ -1487,8 +976,6 @@ impl<L: Loader> Typechecker<L> {
                             ),
                         )],
                     ));
-
-                    return UnresolvedExpression::error(expr.span);
                 }
 
                 UnresolvedExpression {
@@ -1498,56 +985,52 @@ impl<L: Loader> Typechecker<L> {
                 }
             }
             lower::ExpressionKind::Variant(id, index, values) => {
-                let enumeration = self.types.get(id).unwrap().clone();
+                let (kind, params) =
+                    self.with_type_decl(id, |decl| (decl.kind.clone(), decl.params.clone()));
 
-                let (variants_tys, mut variant_constructor) = match &enumeration.kind {
-                    TypeDefinitionKind::Enumeration(variants_tys, variants_constructors) => {
-                        let id = &variants_constructors[*index];
-
-                        (
-                            variants_tys.clone(),
-                            self.generic_constants.get(id).unwrap().clone(),
-                        )
-                    }
+                let variants_tys = match kind {
+                    TypeDeclKind::Enumeration { variants, .. } => variants
+                        .into_iter()
+                        .map(|variant| {
+                            variant
+                                .into_iter()
+                                .map(engine::UnresolvedType::from)
+                                .collect::<Vec<_>>()
+                        })
+                        .collect::<Vec<_>>(),
                     _ => unreachable!(), // or do we need to display an error like above?
                 };
 
-                let mut ty = UnresolvedType::Named(
-                    *id,
-                    enumeration
-                        .params
+                let mut ty = engine::UnresolvedType::Named(
+                    id,
+                    params
                         .into_iter()
-                        .map(UnresolvedType::Parameter)
+                        .map(engine::UnresolvedType::Parameter)
                         .collect(),
-                    TypeStructure::Enumeration(variants_tys.clone()),
+                    engine::TypeStructure::Enumeration(variants_tys.clone()),
                 );
 
-                let mut substitutions = BTreeMap::new();
+                let mut substitutions = engine::GenericSubstitutions::new();
                 self.add_substitutions(&mut ty, &mut substitutions);
 
-                for (_, ty, _) in &mut variant_constructor.bounds {
-                    self.add_substitutions(ty, &mut substitutions);
-                }
-
-                let mut variant_tys = variants_tys[*index].clone();
+                let mut variant_tys = variants_tys[index].clone();
 
                 for ty in &mut variant_tys {
                     self.add_substitutions(ty, &mut substitutions);
                 }
 
                 let values = values
-                    .iter()
+                    .into_iter()
                     .zip(variant_tys)
                     .map(|(expr, ty)| {
-                        let value = self.typecheck_expr(expr, file, suppress_errors);
+                        let span = expr.span;
+                        let mut value = self.convert_expr(expr, info);
 
-                        if let Err(errors) = self.ctx.unify(value.ty.clone(), ty) {
-                            if !suppress_errors {
-                                self.errors.push(Error::new(errors, expr.span));
-                            }
+                        if let Err(error) = self.unify(span, value.ty.clone(), ty.clone()) {
+                            self.add_error(error);
+                        }
 
-                            return UnresolvedExpression::error(expr.span);
-                        };
+                        value.ty = ty;
 
                         value
                     })
@@ -1556,16 +1039,18 @@ impl<L: Loader> Typechecker<L> {
                 UnresolvedExpression {
                     span: expr.span,
                     ty,
-                    kind: UnresolvedExpressionKind::Variant(*index, values),
+                    kind: UnresolvedExpressionKind::Variant(index, values),
                 }
             }
             lower::ExpressionKind::Tuple(exprs) => {
                 let exprs = exprs
-                    .iter()
-                    .map(|expr| self.typecheck_expr(expr, file, suppress_errors))
+                    .into_iter()
+                    .map(|expr| self.convert_expr(expr, info))
                     .collect::<Vec<_>>();
 
-                let ty = UnresolvedType::Tuple(exprs.iter().map(|expr| expr.ty.clone()).collect());
+                let ty = engine::UnresolvedType::Tuple(
+                    exprs.iter().map(|expr| expr.ty.clone()).collect(),
+                );
 
                 UnresolvedExpression {
                     span: expr.span,
@@ -1576,307 +1061,471 @@ impl<L: Loader> Typechecker<L> {
         }
     }
 
-    fn typecheck_block(
+    fn convert_arm(
         &mut self,
-        statements: &[lower::Expression],
-        file: &Rc<RefCell<lower::File>>,
-        suppress_errors: bool,
-    ) -> (UnresolvedType, Vec<UnresolvedExpression>) {
-        let statements = statements
-            .iter()
-            .map(|statement| self.typecheck_expr(statement, file, suppress_errors))
-            .collect::<Vec<_>>();
-
-        let ty = statements
-            .last()
-            .map(|statement| statement.ty.clone())
-            .unwrap_or(UnresolvedType::Tuple(Vec::new()));
-
-        (ty, statements)
-    }
-
-    fn typecheck_arm(
-        &mut self,
-        arm: &lower::Arm,
-        ty: UnresolvedType,
-        file: &Rc<RefCell<lower::File>>,
-        suppress_errors: bool,
+        arm: lower::Arm,
+        input_ty: engine::UnresolvedType,
+        info: &mut ConvertInfo,
     ) -> UnresolvedArm {
         UnresolvedArm {
             span: arm.span,
-            pattern: self.typecheck_pattern(&arm.pattern, ty, file, suppress_errors),
-            body: self.typecheck_expr(&arm.body, file, suppress_errors),
+            pattern: self.convert_pattern(arm.pattern, input_ty, info),
+            body: self.convert_expr(arm.body, info),
         }
     }
 
-    fn typecheck_pattern(
+    fn convert_pattern(
         &mut self,
-        pattern: &lower::Pattern,
-        ty: UnresolvedType,
-        file: &Rc<RefCell<lower::File>>,
-        suppress_errors: bool,
+        pattern: lower::Pattern,
+        ty: engine::UnresolvedType,
+        info: &mut ConvertInfo,
     ) -> UnresolvedPattern {
-        let kind = match &pattern.kind {
-            lower::PatternKind::Error => UnresolvedPatternKind::Error,
-            lower::PatternKind::Wildcard => UnresolvedPatternKind::Wildcard,
-            lower::PatternKind::Number(number) => UnresolvedPatternKind::Number(*number),
-            lower::PatternKind::Text(text) => UnresolvedPatternKind::Text(*text),
-            lower::PatternKind::Variable(var) => {
-                self.variables.insert(*var, ty);
-                UnresolvedPatternKind::Variable(*var)
-            }
-            lower::PatternKind::Destructure(fields) => UnresolvedPatternKind::Destructure(
-                fields
-                    .iter()
-                    .map(|(name, pattern)| {
-                        let ty = UnresolvedType::Variable(self.ctx.new_variable());
-
-                        (
-                            *name,
-                            self.typecheck_pattern(pattern, ty, file, suppress_errors),
-                        )
-                    })
-                    .collect(),
-            ),
-            lower::PatternKind::Variant(ty, variant, values) => {
-                let variant_tys = match &self.types.get(ty).unwrap().kind {
-                    TypeDefinitionKind::Enumeration(variants, _) => variants[*variant].clone(),
-                    _ => unreachable!(),
-                };
-
-                let mut substitutions = BTreeMap::new();
-
-                UnresolvedPatternKind::Variant(
-                    *ty,
-                    *variant,
-                    values
-                        .iter()
-                        .zip(variant_tys)
-                        .map(|(pattern, mut ty)| {
-                            self.add_substitutions(&mut ty, &mut substitutions);
-                            self.typecheck_pattern(pattern, ty, file, suppress_errors)
-                        })
-                        .collect(),
-                )
-            }
-            lower::PatternKind::Annotate(inner, ty) => {
-                let inner_ty = UnresolvedType::Variable(self.ctx.new_variable());
-
-                UnresolvedPatternKind::Annotate(
-                    Box::new(self.typecheck_pattern(inner, inner_ty, file, suppress_errors)),
-                    self.convert_type_annotation(ty, file, &mut Vec::new()),
-                )
-            }
-            lower::PatternKind::Or(lhs, rhs) => {
-                let lhs_ty = UnresolvedType::Variable(self.ctx.new_variable());
-                let rhs_ty = UnresolvedType::Variable(self.ctx.new_variable());
-
-                UnresolvedPatternKind::Or(
-                    Box::new(self.typecheck_pattern(lhs, lhs_ty, file, suppress_errors)),
-                    Box::new(self.typecheck_pattern(rhs, rhs_ty, file, suppress_errors)),
-                )
-            }
-            lower::PatternKind::Where(pattern, condition) => {
-                let ty = UnresolvedType::Variable(self.ctx.new_variable());
-
-                UnresolvedPatternKind::Where(
-                    Box::new(self.typecheck_pattern(pattern, ty, file, suppress_errors)),
-                    Box::new(self.typecheck_expr(condition, file, suppress_errors)),
-                )
-            }
-            lower::PatternKind::Tuple(patterns) => UnresolvedPatternKind::Tuple(
-                patterns
-                    .iter()
-                    .map(|pattern| {
-                        let ty = UnresolvedType::Variable(self.ctx.new_variable());
-                        self.typecheck_pattern(pattern, ty, file, suppress_errors)
-                    })
-                    .collect(),
-            ),
-        };
-
         UnresolvedPattern {
             span: pattern.span,
-            kind,
+            kind: match pattern.kind {
+                lower::PatternKind::Error => UnresolvedPatternKind::Error,
+                lower::PatternKind::Wildcard => UnresolvedPatternKind::Wildcard,
+                lower::PatternKind::Number(number) => {
+                    let numeric_ty =
+                        engine::UnresolvedType::NumericVariable(self.ctx.new_variable());
+
+                    if let Err(error) = self.unify(pattern.span, ty, numeric_ty) {
+                        self.add_error(error);
+                    }
+
+                    UnresolvedPatternKind::Number(number)
+                }
+                lower::PatternKind::Text(text) => {
+                    if let Err(error) = self.unify(
+                        pattern.span,
+                        ty,
+                        engine::UnresolvedType::Builtin(engine::BuiltinType::Text),
+                    ) {
+                        self.add_error(error);
+                    }
+
+                    UnresolvedPatternKind::Text(text)
+                }
+                lower::PatternKind::Variable(var) => {
+                    info.variables.insert(var, ty);
+                    UnresolvedPatternKind::Variable(var)
+                }
+                lower::PatternKind::Destructure(fields) => UnresolvedPatternKind::Destructure(
+                    ty,
+                    fields
+                        .into_iter()
+                        .map(|(name, pattern)| {
+                            let ty = engine::UnresolvedType::Variable(self.ctx.new_variable());
+                            (name, (self.convert_pattern(pattern, ty.clone(), info), ty))
+                        })
+                        .collect(),
+                ),
+                lower::PatternKind::Variant(id, variant, values) => {
+                    let (params, variants_tys) = self.with_type_decl(id, |decl| {
+                        (
+                            decl.params.clone(),
+                            match &decl.kind {
+                                TypeDeclKind::Enumeration { variants, .. } => variants.clone(),
+                                _ => unreachable!(),
+                            },
+                        )
+                    });
+
+                    let mut substitutions = engine::GenericSubstitutions::new();
+
+                    let mut variant_tys = variants_tys[variant]
+                        .clone()
+                        .into_iter()
+                        .map(engine::UnresolvedType::from)
+                        .collect::<Vec<_>>();
+
+                    let enumeration_ty = engine::UnresolvedType::Named(
+                        id,
+                        params
+                            .into_iter()
+                            .map(|param| {
+                                let mut ty = engine::UnresolvedType::Parameter(param);
+                                self.add_substitutions(&mut ty, &mut substitutions);
+                                ty
+                            })
+                            .collect(),
+                        engine::TypeStructure::Enumeration(
+                            variants_tys
+                                .into_iter()
+                                .map(|tys| {
+                                    tys.into_iter()
+                                        .map(|ty| {
+                                            let mut ty = engine::UnresolvedType::from(ty);
+                                            ty.instantiate_with(&self.ctx, &substitutions);
+                                            ty
+                                        })
+                                        .collect()
+                                })
+                                .collect(),
+                        ),
+                    );
+
+                    if let Err(error) = self.unify(pattern.span, ty, enumeration_ty) {
+                        self.add_error(error);
+                    }
+
+                    for ty in &mut variant_tys {
+                        ty.instantiate_with(&self.ctx, &substitutions);
+                    }
+
+                    UnresolvedPatternKind::Variant(
+                        id,
+                        variant,
+                        values
+                            .into_iter()
+                            .zip(variant_tys)
+                            .map(|(pattern, ty)| self.convert_pattern(pattern, ty, info))
+                            .collect(),
+                    )
+                }
+                lower::PatternKind::Annotate(inner, target_ty) => {
+                    let target_ty = self.convert_type_annotation(target_ty);
+
+                    if let Err(error) = self.unify(pattern.span, ty, target_ty.clone()) {
+                        self.add_error(error);
+                    }
+
+                    self.convert_pattern(*inner, target_ty, info).kind
+                }
+                lower::PatternKind::Or(lhs, rhs) => UnresolvedPatternKind::Or(
+                    Box::new(self.convert_pattern(*lhs, ty.clone(), info)),
+                    Box::new(self.convert_pattern(*rhs, ty, info)),
+                ),
+                lower::PatternKind::Where(pattern, condition) => UnresolvedPatternKind::Where(
+                    Box::new(self.convert_pattern(*pattern, ty, info)),
+                    Box::new(self.convert_expr(*condition, info)),
+                ),
+                lower::PatternKind::Tuple(patterns) => {
+                    let tuple_tys = patterns
+                        .iter()
+                        .map(|_| engine::UnresolvedType::Variable(self.ctx.new_variable()))
+                        .collect::<Vec<_>>();
+
+                    if let Err(error) = self.unify(
+                        pattern.span,
+                        ty,
+                        engine::UnresolvedType::Tuple(tuple_tys.clone()),
+                    ) {
+                        self.add_error(error);
+                    }
+
+                    UnresolvedPatternKind::Tuple(
+                        patterns
+                            .into_iter()
+                            .zip(tuple_tys)
+                            .map(|(pattern, ty)| self.convert_pattern(pattern, ty, info))
+                            .collect(),
+                    )
+                }
+            },
         }
     }
+}
 
-    fn monomorphize_constant(
+#[derive(Debug, Clone)]
+struct MonomorphizeInfo {
+    cache: HashMap<GenericConstantId, ItemId>,
+    bound_instances:
+        HashMap<TraitId, Vec<(Option<GenericConstantId>, engine::UnresolvedType, Span)>>,
+}
+
+impl<'a, 'l> Typechecker<'a, 'l> {
+    fn monomorphize_expr(
         &mut self,
-        generic_id: GenericConstantId,
-        monomorphized_id: MonomorphizedConstantId,
-        span: Span,
-    ) -> UnresolvedType {
-        let mut constant = self.generic_constants.get(&generic_id).unwrap().clone();
-        let body = constant.decl.value;
+        mut expr: UnresolvedExpression,
+        info: &mut MonomorphizeInfo,
+    ) -> MonomorphizedExpression {
+        expr.ty.apply(&self.ctx);
 
-        let mut body = self.typecheck_expr(&body, &constant.file, true);
+        MonomorphizedExpression {
+            span: expr.span,
+            ty: expr.ty.clone(),
+            kind: (|| match expr.kind {
+                UnresolvedExpressionKind::Error => MonomorphizedExpressionKind::Error,
+                UnresolvedExpressionKind::Marker => MonomorphizedExpressionKind::Marker,
+                UnresolvedExpressionKind::Constant(generic_id) => {
+                    let id = info.cache.get(&generic_id).copied().unwrap_or_else(|| {
+                        self.typecheck_constant_expr(
+                            false,
+                            generic_id,
+                            expr.span,
+                            expr.ty.clone(),
+                            info.clone(),
+                        )
+                    });
 
-        if let Err(error) = self.ctx.unify(body.ty.clone(), constant.generic_ty) {
-            self.errors.push(Error::new(error, span));
+                    MonomorphizedExpressionKind::Constant(id)
+                }
+                UnresolvedExpressionKind::Variable(var) => {
+                    MonomorphizedExpressionKind::Variable(var)
+                }
+                UnresolvedExpressionKind::Text(text) => MonomorphizedExpressionKind::Text(text),
+                UnresolvedExpressionKind::Number(number) => {
+                    MonomorphizedExpressionKind::Number(number)
+                }
+                UnresolvedExpressionKind::Block(statements) => MonomorphizedExpressionKind::Block(
+                    statements
+                        .into_iter()
+                        .map(|expr| self.monomorphize_expr(expr, info))
+                        .collect(),
+                ),
+                UnresolvedExpressionKind::Call(func, input) => {
+                    let func = *func;
+                    let input = *input;
+
+                    // HACK: Resolve function calls in both orders to match as
+                    // many instances as possible
+                    let (func, input) = {
+                        // This is cheap because typechecker uses persistent
+                        // data structures
+                        let mut typechecker = self.clone();
+
+                        let errors = mem::take(&mut typechecker.errors);
+
+                        let monomorphized_func = typechecker.monomorphize_expr(func.clone(), info);
+                        let monomorphized_input =
+                            typechecker.monomorphize_expr(input.clone(), info);
+
+                        if typechecker.errors.is_empty() {
+                            typechecker.errors = errors;
+                            *self = typechecker;
+                            (monomorphized_func, monomorphized_input)
+                        } else {
+                            let input = self.monomorphize_expr(input, info);
+                            let func = self.monomorphize_expr(func, info);
+
+                            (func, input)
+                        }
+                    };
+
+                    MonomorphizedExpressionKind::Call(Box::new(func), Box::new(input))
+                }
+                UnresolvedExpressionKind::Function(pattern, body, captures) => {
+                    let pattern = match expr.ty {
+                        engine::UnresolvedType::Function(input_ty, _) => {
+                            let mut input_ty = *input_ty;
+
+                            input_ty.apply(&self.ctx);
+
+                            let mut match_set = self.match_set_from(&input_ty, info);
+
+                            let pattern =
+                                self.monomorphize_pattern(pattern, input_ty, &mut match_set, info);
+
+                            self.assert_matched(&match_set, pattern.span, true);
+
+                            pattern
+                        }
+                        _ => self.monomorphize_pattern(
+                            pattern,
+                            engine::UnresolvedType::Bottom(engine::BottomTypeReason::Error),
+                            &mut MatchSet::Never,
+                            info,
+                        ),
+                    };
+
+                    let body = self.monomorphize_expr(*body, info);
+
+                    MonomorphizedExpressionKind::Function(pattern, Box::new(body), captures)
+                }
+                UnresolvedExpressionKind::When(input, arms) => {
+                    let mut input = self.monomorphize_expr(*input, info);
+                    input.ty.apply(&self.ctx);
+
+                    let mut match_set = self.match_set_from(&input.ty, info);
+
+                    let arms = arms
+                        .into_iter()
+                        .map(|arm| {
+                            self.monomorphize_arm(arm, input.ty.clone(), &mut match_set, info)
+                        })
+                        .collect();
+
+                    self.assert_matched(&match_set, expr.span, false);
+
+                    MonomorphizedExpressionKind::When(Box::new(input), arms)
+                }
+                UnresolvedExpressionKind::External(lib, identifier, inputs) => {
+                    MonomorphizedExpressionKind::External(
+                        lib,
+                        identifier,
+                        inputs
+                            .into_iter()
+                            .map(|expr| self.monomorphize_expr(expr, info))
+                            .collect(),
+                    )
+                }
+                UnresolvedExpressionKind::Initialize(pattern, value) => {
+                    // Resolve the right-hand side first
+                    let mut value = self.monomorphize_expr(*value, info);
+                    value.ty.apply(&self.ctx);
+
+                    let mut match_set = self.match_set_from(&value.ty, info);
+
+                    let pattern =
+                        self.monomorphize_pattern(pattern, value.ty.clone(), &mut match_set, info);
+
+                    self.assert_matched(&match_set, pattern.span, true);
+
+                    MonomorphizedExpressionKind::Initialize(pattern, Box::new(value))
+                }
+                UnresolvedExpressionKind::Structure(fields) => {
+                    MonomorphizedExpressionKind::Structure(
+                        fields
+                            .into_iter()
+                            .map(|expr| self.monomorphize_expr(expr, info))
+                            .collect(),
+                    )
+                }
+                UnresolvedExpressionKind::Variant(index, values) => {
+                    MonomorphizedExpressionKind::Variant(
+                        index,
+                        values
+                            .into_iter()
+                            .map(|expr| self.monomorphize_expr(expr, info))
+                            .collect(),
+                    )
+                }
+                UnresolvedExpressionKind::Trait(tr) => {
+                    let instance_info =
+                        match self.instance_for(tr, expr.ty.clone(), expr.span, None, info) {
+                            Ok(instance) => instance,
+                            Err(error) => {
+                                self.add_error(error);
+                                return MonomorphizedExpressionKind::Error;
+                            }
+                        };
+
+                    let monomorphized_id = match instance_info {
+                        Some(id) => self.typecheck_constant_expr(
+                            true,
+                            id,
+                            expr.span,
+                            expr.ty.clone(),
+                            info.clone(),
+                        ),
+                        None => return MonomorphizedExpressionKind::Error,
+                    };
+
+                    MonomorphizedExpressionKind::Constant(monomorphized_id)
+                }
+                UnresolvedExpressionKind::Tuple(exprs) => MonomorphizedExpressionKind::Tuple(
+                    exprs
+                        .into_iter()
+                        .map(|expr| self.monomorphize_expr(expr, info))
+                        .collect(),
+                ),
+            })(),
         }
-
-        let mut substitutions = BTreeMap::new();
-
-        body.traverse_mut(|expr| self.add_substitutions(&mut expr.ty, &mut substitutions));
-
-        for (_, ty, _) in &mut constant.bounds {
-            self.add_substitutions(ty, &mut substitutions);
-        }
-
-        let ty = body.ty.clone();
-
-        self.monomorphized_constants.insert(
-            monomorphized_id,
-            (
-                span,
-                generic_id,
-                Constant {
-                    file: constant.file,
-                    decl: Declaration {
-                        name: constant.decl.name,
-                        span: constant.decl.span,
-                        value: body,
-                        uses: constant.decl.uses,
-                    },
-                    generic_ty: (),
-                    bounds: constant.bounds,
-                    attributes: None,
-                },
-            ),
-        );
-
-        ty
     }
 
     fn monomorphize_arm(
         &mut self,
         arm: UnresolvedArm,
-        ty: UnresolvedType,
+        ty: engine::UnresolvedType,
         match_set: &mut MatchSet,
-        file: &Rc<RefCell<lower::File>>,
-        cache: &mut BTreeMap<GenericConstantId, MonomorphizedConstantId>,
-    ) -> Result<MonomorphizedArm, Error> {
-        Ok(MonomorphizedArm {
+        info: &mut MonomorphizeInfo,
+    ) -> MonomorphizedArm {
+        MonomorphizedArm {
             span: arm.span,
-            pattern: self
-                .monomorphize_pattern(arm.pattern, ty, match_set, file, cache)
-                .ok_or_else(|| Error::new(TypeError::ErrorExpression, arm.span))?,
-            body: self.monomorphize(arm.body, file, cache)?,
-        })
+            pattern: self.monomorphize_pattern(arm.pattern, ty, match_set, info),
+            body: self.monomorphize_expr(arm.body, info),
+        }
     }
 
     fn monomorphize_pattern(
         &mut self,
         pattern: UnresolvedPattern,
-        mut ty: UnresolvedType,
+        mut ty: engine::UnresolvedType,
         match_set: &mut MatchSet,
-        file: &Rc<RefCell<lower::File>>,
-        cache: &mut BTreeMap<GenericConstantId, MonomorphizedConstantId>,
-    ) -> Option<MonomorphizedPattern> {
+        info: &mut MonomorphizeInfo,
+    ) -> MonomorphizedPattern {
         ty.apply(&self.ctx);
 
         let kind = (|| match pattern.kind {
             UnresolvedPatternKind::Error => {
                 match_set.set_matched(true);
-                None
+                MonomorphizedPatternKind::Error
             }
             UnresolvedPatternKind::Number(number) => {
-                if let Err(error) = self
-                    .ctx
-                    .unify(ty, UnresolvedType::Builtin(BuiltinType::Number))
-                {
-                    self.errors.push(Error::new(error, pattern.span));
+                let numeric_ty = engine::UnresolvedType::NumericVariable(self.ctx.new_variable());
+
+                if let Err(error) = self.unify(pattern.span, ty, numeric_ty) {
+                    self.add_error(error);
                 }
 
-                Some(MonomorphizedPatternKind::Number(number))
+                MonomorphizedPatternKind::Number(number)
             }
             UnresolvedPatternKind::Text(text) => {
-                if let Err(error) = self
-                    .ctx
-                    .unify(ty, UnresolvedType::Builtin(BuiltinType::Text))
-                {
-                    self.errors.push(Error::new(error, pattern.span));
+                if let Err(error) = self.unify(
+                    pattern.span,
+                    ty,
+                    engine::UnresolvedType::Builtin(engine::BuiltinType::Text),
+                ) {
+                    self.add_error(error);
                 }
 
-                Some(MonomorphizedPatternKind::Text(text))
+                MonomorphizedPatternKind::Text(text)
             }
             UnresolvedPatternKind::Wildcard => {
                 match_set.set_matched(true);
-                Some(MonomorphizedPatternKind::Wildcard)
+                MonomorphizedPatternKind::Wildcard
             }
             UnresolvedPatternKind::Variable(var) => {
                 match_set.set_matched(true);
-
-                let mut var_ty = self
-                    .variables
-                    .get(&var)
-                    .expect("uninitialized variable")
-                    .clone();
-
-                let mut substitutions = BTreeMap::new();
-                self.add_substitutions(&mut var_ty, &mut substitutions);
-
-                let ctx = self.ctx.clone();
-                if let Err(error) = self.ctx.unify(var_ty.clone(), ty.clone()).or_else(|_| {
-                    // HACK: Try the other way around if unification doesn't
-                    // work the first time (remove if this causes unsoundness)
-                    self.ctx = ctx;
-                    self.ctx.unify(ty.clone(), var_ty)
-                }) {
-                    self.errors.push(Error::new(error, pattern.span));
+                MonomorphizedPatternKind::Variable(var)
+            }
+            UnresolvedPatternKind::Destructure(structure_ty, fields) => {
+                if let Err(error) = self.unify(pattern.span, ty.clone(), structure_ty) {
+                    self.add_error(error);
                 }
 
-                let decl = file
-                    .borrow()
-                    .declarations
-                    .variables
-                    .get(&var)
-                    .unwrap()
-                    .clone();
+                ty.apply(&self.ctx);
 
-                self.declarations.variables.insert(
-                    var,
-                    Declaration {
-                        name: decl.name,
-                        span: decl.span,
-                        value: ty.clone(),
-                        uses: decl.uses,
-                    },
-                );
-
-                Some(MonomorphizedPatternKind::Variable(var))
-            }
-            UnresolvedPatternKind::Destructure(fields) => {
                 let (id, params) = match ty.clone() {
-                    UnresolvedType::Named(id, params, _) => (id, params),
+                    engine::UnresolvedType::Named(id, params, _) => (id, params),
                     _ => {
                         self.compiler.diagnostics.add(Diagnostic::error(
                             "cannot destructure this value",
                             vec![Note::primary(pattern.span, "value is not a data structure")],
                         ));
 
-                        return None;
+                        match_set.set_matched(true);
+
+                        return MonomorphizedPatternKind::Destructure(
+                            fields
+                                .into_iter()
+                                .map(|(_, (pattern, _))| {
+                                    (
+                                        0,
+                                        self.monomorphize_pattern(
+                                            pattern,
+                                            engine::UnresolvedType::Bottom(
+                                                engine::BottomTypeReason::Error,
+                                            ),
+                                            &mut MatchSet::Never,
+                                            info,
+                                        ),
+                                    )
+                                })
+                                .collect(),
+                        );
                     }
                 };
 
-                let structure = match self.types.get(&id) {
-                    Some(ty) => ty,
-                    None => {
-                        self.compiler.diagnostics.add(Diagnostic::error(
-                            "cannot destructure this value",
-                            vec![Note::primary(pattern.span, "value is not a data structure")],
-                        ));
-
-                        return None;
-                    }
-                };
+                let structure = self.with_type_decl(id, Clone::clone);
 
                 let (structure_field_tys, structure_field_names) = match &structure.kind {
-                    TypeDefinitionKind::Structure(field_tys, field_names) => {
-                        (field_tys.clone(), field_names.clone())
-                    }
-                    _ => unreachable!(), // or do we need to display an error like above?
+                    TypeDeclKind::Structure {
+                        fields,
+                        field_names,
+                    } => (fields.clone(), field_names.clone()),
+                    _ => unreachable!(),
                 };
 
                 let substitutions = structure
@@ -1884,13 +1533,13 @@ impl<L: Loader> Typechecker<L> {
                     .iter()
                     .copied()
                     .zip(params)
-                    .collect::<BTreeMap<_, _>>();
+                    .collect::<HashMap<_, _>>();
 
                 let field_match_sets = match match_set {
                     MatchSet::Structure(fields) => fields,
                     _ => {
                         ty.apply(&self.ctx);
-                        *match_set = self.match_set_from(&ty, &mut Vec::new()).unwrap();
+                        *match_set = self.match_set_from(&ty, info);
 
                         match match_set {
                             MatchSet::Structure(fields) => fields,
@@ -1901,7 +1550,7 @@ impl<L: Loader> Typechecker<L> {
 
                 let fields = fields
                     .into_iter()
-                    .filter_map(|(name, pattern)| {
+                    .filter_map(|(name, (pattern, ty))| {
                         let index = match structure_field_names.get(&name) {
                             Some(index) => *index,
                             None => {
@@ -1914,14 +1563,20 @@ impl<L: Loader> Typechecker<L> {
                             }
                         };
 
-                        let mut member_ty = structure_field_tys[index].clone();
-                        member_ty.instantiate_with(&substitutions);
+                        let mut member_ty =
+                            engine::UnresolvedType::from(structure_field_tys[index].clone());
+
+                        member_ty.instantiate_with(&self.ctx, &substitutions);
+
+                        if let Err(error) = self.unify(pattern.span, ty, member_ty.clone()) {
+                            self.add_error(error);
+                        }
 
                         let (matches, match_set) = &mut field_match_sets[index];
                         *matches = true;
 
                         let pattern =
-                            self.monomorphize_pattern(pattern, member_ty, match_set, file, cache)?;
+                            self.monomorphize_pattern(pattern, member_ty, match_set, info);
 
                         Some((index, pattern))
                     })
@@ -1936,36 +1591,40 @@ impl<L: Loader> Typechecker<L> {
                     field_match_set.set_matched(true);
                 }
 
-                Some(MonomorphizedPatternKind::Destructure(fields))
+                MonomorphizedPatternKind::Destructure(fields)
             }
             UnresolvedPatternKind::Variant(variant_ty, variant, values) => {
                 let (id, params) = match &ty {
-                    UnresolvedType::Named(id, params, _) => (id, params),
+                    engine::UnresolvedType::Named(id, params, _) => (id, params),
                     _ => {
-                        self.compiler.diagnostics.add(Diagnostic::error(
-                            "cannot apply pattern to this value",
-                            vec![Note::primary(pattern.span, "value is not an enumeration")],
-                        ));
-
-                        return None;
+                        return MonomorphizedPatternKind::Variant(
+                            variant,
+                            values
+                                .into_iter()
+                                .map(|pattern| {
+                                    self.monomorphize_pattern(
+                                        pattern,
+                                        engine::UnresolvedType::Bottom(
+                                            engine::BottomTypeReason::Error,
+                                        ),
+                                        &mut MatchSet::Never,
+                                        info,
+                                    )
+                                })
+                                .collect(),
+                        );
                     }
                 };
 
-                let enumeration = match self.types.get(id) {
-                    Some(ty) => ty,
-                    None => {
-                        self.compiler.diagnostics.add(Diagnostic::error(
-                            "cannot apply pattern to this value",
-                            vec![Note::primary(pattern.span, "value is not an enumeration")],
-                        ));
+                let enumeration = self.with_type_decl(*id, Clone::clone);
 
-                        return None;
-                    }
-                };
-
-                let mut variant_tys = match &enumeration.kind {
-                    TypeDefinitionKind::Enumeration(variant_tys, _) => variant_tys[variant].clone(),
-                    _ => unreachable!(), // or do we need to display an error like above?
+                let mut variant_tys = match enumeration.kind {
+                    TypeDeclKind::Enumeration { mut variants, .. } => variants
+                        .swap_remove(variant)
+                        .into_iter()
+                        .map(engine::UnresolvedType::from)
+                        .collect::<Vec<_>>(),
+                    _ => unreachable!(),
                 };
 
                 let substitutions = enumeration
@@ -1973,15 +1632,16 @@ impl<L: Loader> Typechecker<L> {
                     .iter()
                     .copied()
                     .zip(params.iter().cloned())
-                    .collect::<BTreeMap<_, _>>();
+                    .collect::<HashMap<_, _>>();
 
                 for ty in &mut variant_tys {
-                    ty.instantiate_with(&substitutions);
+                    ty.instantiate_with(&self.ctx, &substitutions);
                 }
 
-                if let Err(error) = self.ctx.unify(
+                if let Err(error) = self.unify(
+                    pattern.span,
                     ty.clone(),
-                    UnresolvedType::Named(
+                    engine::UnresolvedType::Named(
                         variant_ty,
                         enumeration
                             .params
@@ -1990,18 +1650,17 @@ impl<L: Loader> Typechecker<L> {
                             .collect(),
                         // HACK: Optimization because unification doesn't take structure into
                         // account -- the structure can be applied during finalization
-                        TypeStructure::Marker,
+                        engine::TypeStructure::Marker,
                     ),
                 ) {
-                    self.errors.push(Error::new(error, pattern.span));
-                    return None;
+                    self.add_error(error);
                 }
 
                 let (matches, variant_match_sets) = match match_set {
                     MatchSet::Enumeration(variants) => &mut variants[variant],
                     _ => {
                         ty.apply(&self.ctx);
-                        *match_set = self.match_set_from(&ty, &mut Vec::new()).unwrap();
+                        *match_set = self.match_set_from(&ty, info);
 
                         match match_set {
                             MatchSet::Enumeration(variants) => &mut variants[variant],
@@ -2012,7 +1671,7 @@ impl<L: Loader> Typechecker<L> {
 
                 *matches = true;
 
-                let pattern = MonomorphizedPatternKind::Variant(
+                MonomorphizedPatternKind::Variant(
                     variant,
                     values
                         .into_iter()
@@ -2020,52 +1679,41 @@ impl<L: Loader> Typechecker<L> {
                         .zip(variant_match_sets)
                         .map(|((pattern, variant_ty), match_set)| {
                             *matches = true;
-
-                            self.monomorphize_pattern(pattern, variant_ty, match_set, file, cache)
+                            self.monomorphize_pattern(pattern, variant_ty, match_set, info)
                         })
-                        .collect::<Option<_>>()?,
-                );
-
-                Some(pattern)
-            }
-            UnresolvedPatternKind::Annotate(inner, inner_ty) => {
-                if let Err(error) = self.ctx.unify(ty.clone(), inner_ty) {
-                    self.errors.push(Error::new(error, pattern.span));
-                }
-
-                Some(
-                    self.monomorphize_pattern(*inner, ty, match_set, file, cache)?
-                        .kind,
+                        .collect(),
                 )
             }
-            UnresolvedPatternKind::Or(lhs, rhs) => Some(MonomorphizedPatternKind::Or(
-                Box::new(self.monomorphize_pattern(*lhs, ty.clone(), match_set, file, cache)?),
-                Box::new(self.monomorphize_pattern(*rhs, ty, match_set, file, cache)?),
-            )),
+            UnresolvedPatternKind::Or(lhs, rhs) => MonomorphizedPatternKind::Or(
+                Box::new(self.monomorphize_pattern(*lhs, ty.clone(), match_set, info)),
+                Box::new(self.monomorphize_pattern(*rhs, ty, match_set, info)),
+            ),
             UnresolvedPatternKind::Where(pattern, condition) => {
-                let pattern = self.monomorphize_pattern(*pattern, ty, match_set, file, cache)?;
+                let pattern = self.monomorphize_pattern(*pattern, ty, match_set, info);
 
                 let condition_span = condition.span;
-                let condition = match self.monomorphize(*condition, file, cache) {
-                    Ok(expr) => expr,
-                    Err(error) => {
-                        self.errors.push(error);
-                        return None;
-                    }
-                };
+                let condition = self.monomorphize_expr(*condition, info);
 
-                if let Some(boolean_ty) = file.borrow().global_attributes.language_items.boolean {
-                    if let Err(error) = self.ctx.unify(
+                if let Some(boolean_ty) = self
+                    .files
+                    .get(&pattern.span.path)
+                    .unwrap()
+                    .global_attributes
+                    .language_items
+                    .boolean
+                {
+                    if let Err(error) = self.unify(
+                        condition.span,
                         condition.ty.clone(),
-                        UnresolvedType::Named(
+                        engine::UnresolvedType::Named(
                             boolean_ty,
                             Vec::new(),
                             // HACK: Optimization because unification doesn't take structure into
                             // account -- the structure can be applied during finalization
-                            TypeStructure::Marker,
+                            engine::TypeStructure::Marker,
                         ),
                     ) {
-                        self.errors.push(Error::new(error, condition.span));
+                        self.add_error(error);
                     }
                 } else {
                     self.compiler.diagnostics.add(Diagnostic::error(
@@ -2079,30 +1727,27 @@ impl<L: Loader> Typechecker<L> {
 
                 match_set.set_matched(false);
 
-                Some(MonomorphizedPatternKind::Where(
-                    Box::new(pattern),
-                    Box::new(condition),
-                ))
+                MonomorphizedPatternKind::Where(Box::new(pattern), Box::new(condition))
             }
             UnresolvedPatternKind::Tuple(patterns) => {
                 let tys = patterns
                     .iter()
-                    .map(|_| UnresolvedType::Variable(self.ctx.new_variable()))
+                    .map(|_| engine::UnresolvedType::Variable(self.ctx.new_variable()))
                     .collect::<Vec<_>>();
 
-                if let Err(error) = self
-                    .ctx
-                    .unify(ty.clone(), UnresolvedType::Tuple(tys.clone()))
-                {
-                    self.errors.push(Error::new(error, pattern.span));
-                    return None;
+                if let Err(error) = self.unify(
+                    pattern.span,
+                    ty.clone(),
+                    engine::UnresolvedType::Tuple(tys.clone()),
+                ) {
+                    self.add_error(error);
                 }
 
                 let match_sets = match match_set {
                     MatchSet::Tuple(sets) => sets,
                     _ => {
                         ty.apply(&self.ctx);
-                        *match_set = self.match_set_from(&ty, &mut Vec::new()).unwrap();
+                        *match_set = self.match_set_from(&ty, info);
 
                         match match_set {
                             MatchSet::Tuple(sets) => sets,
@@ -2111,487 +1756,47 @@ impl<L: Loader> Typechecker<L> {
                     }
                 };
 
-                Some(MonomorphizedPatternKind::Tuple(
+                MonomorphizedPatternKind::Tuple(
                     patterns
                         .into_iter()
                         .zip(tys)
                         .zip(match_sets)
                         .map(|((pattern, ty), match_set)| {
-                            self.monomorphize_pattern(pattern, ty, match_set, file, cache)
+                            self.monomorphize_pattern(pattern, ty, match_set, info)
                         })
-                        .collect::<Option<_>>()?,
-                ))
+                        .collect(),
+                )
             }
-        })()?;
+        })();
 
-        Some(MonomorphizedPattern {
+        MonomorphizedPattern {
             span: pattern.span,
             kind,
-        })
-    }
-
-    fn monomorphize(
-        &mut self,
-        mut expr: UnresolvedExpression,
-        file: &Rc<RefCell<lower::File>>,
-        cache: &mut BTreeMap<GenericConstantId, MonomorphizedConstantId>,
-    ) -> Result<MonomorphizedExpression, Error> {
-        expr.ty.apply(&self.ctx);
-
-        macro_rules! find_cached {
-            ($id:expr) => {
-                cache.get(&$id).and_then(|id| {
-                    let ty = self
-                        .monomorphized_constants
-                        .get(id)
-                        .unwrap()
-                        .2
-                        .decl
-                        .value
-                        .ty
-                        .clone();
-
-                    let mut temp_ctx = self.ctx.clone();
-
-                    if temp_ctx.unify(ty.clone(), expr.ty.clone()).is_ok() {
-                        self.ctx = temp_ctx;
-                        Some(*id)
-                    } else {
-                        None
-                    }
-                })
-            };
         }
-
-        Ok(MonomorphizedExpression {
-            span: expr.span,
-            ty: expr.ty.clone(),
-            kind: (|| {
-                Ok(match expr.kind {
-                    UnresolvedExpressionKind::Error => MonomorphizedExpressionKind::Error,
-                    UnresolvedExpressionKind::Marker => MonomorphizedExpressionKind::Marker,
-                    UnresolvedExpressionKind::Constant(id) => {
-                        if let Some(id) = find_cached!(id) {
-                            return Ok(MonomorphizedExpressionKind::Constant(id));
-                        }
-
-                        let monomorphized_id = self.compiler.new_monomorphized_constant_id();
-                        cache.insert(id, monomorphized_id);
-
-                        let ty = self.monomorphize_constant(id, monomorphized_id, expr.span);
-
-                        if let Err(error) = self.ctx.unify(ty, expr.ty) {
-                            self.errors.push(Error::new(error, expr.span));
-                        }
-
-                        MonomorphizedExpressionKind::Constant(monomorphized_id)
-                    }
-                    UnresolvedExpressionKind::Variable(var) => {
-                        let mut ty = self
-                            .variables
-                            .get(&var)
-                            .expect("uninitialized variable")
-                            .clone();
-
-                        let mut substitutions = BTreeMap::new();
-                        self.add_substitutions(&mut ty, &mut substitutions);
-
-                        if let Err(error) = self.ctx.unify(expr.ty, ty) {
-                            self.errors.push(Error::new(error, expr.span));
-                        }
-
-                        MonomorphizedExpressionKind::Variable(var)
-                    }
-                    UnresolvedExpressionKind::Text(text) => MonomorphizedExpressionKind::Text(text),
-                    UnresolvedExpressionKind::Number(number) => {
-                        MonomorphizedExpressionKind::Number(number)
-                    }
-                    UnresolvedExpressionKind::Block(statements) => {
-                        MonomorphizedExpressionKind::Block(
-                            statements
-                                .into_iter()
-                                .map(|expr| self.monomorphize(expr, file, cache))
-                                .collect::<Result<_, _>>()?,
-                        )
-                    }
-                    UnresolvedExpressionKind::Call(func, input) => {
-                        // Monomorphize in reverse order so that inner traits
-                        // are resolved first, eg. in the case of `T2 (T1 x)`
-                        let input = self.monomorphize(*input, file, cache)?;
-                        let func = self.monomorphize(*func, file, cache)?;
-
-                        MonomorphizedExpressionKind::Call(Box::new(func), Box::new(input))
-                    }
-                    UnresolvedExpressionKind::Function(pattern, body, captures) => {
-                        let mut input_ty = match expr.ty {
-                            UnresolvedType::Function(input, _) => *input,
-                            _ => unreachable!(),
-                        };
-
-                        input_ty.apply(&self.ctx);
-
-                        let mut match_set = self
-                            .match_set_from(&input_ty, &mut Vec::new())
-                            .map_err(|error| Error::new(error, expr.span))?;
-
-                        let pattern_span = pattern.span;
-                        let pattern = self
-                            .monomorphize_pattern(pattern, input_ty, &mut match_set, file, cache)
-                            .ok_or_else(|| Error::new(TypeError::ErrorExpression, pattern_span))?;
-
-                        self.assert_matched(&match_set, pattern.span, true)?;
-
-                        MonomorphizedExpressionKind::Function(
-                            pattern,
-                            Box::new(self.monomorphize(*body, file, cache)?),
-                            captures,
-                        )
-                    }
-                    UnresolvedExpressionKind::When(input, arms) => {
-                        let mut input = self.monomorphize(*input, file, cache)?;
-                        input.ty.apply(&self.ctx);
-
-                        let mut match_set = self
-                            .match_set_from(&input.ty, &mut Vec::new())
-                            .map_err(|error| Error::new(error, expr.span))?;
-
-                        let arms = arms
-                            .into_iter()
-                            .map(|arm| {
-                                self.monomorphize_arm(
-                                    arm,
-                                    input.ty.clone(),
-                                    &mut match_set,
-                                    file,
-                                    cache,
-                                )
-                            })
-                            .collect::<Result<_, _>>()?;
-
-                        self.assert_matched(&match_set, expr.span, false)?;
-
-                        MonomorphizedExpressionKind::When(Box::new(input), arms)
-                    }
-                    UnresolvedExpressionKind::External(lib, identifier, inputs) => {
-                        MonomorphizedExpressionKind::External(
-                            lib,
-                            identifier,
-                            inputs
-                                .into_iter()
-                                .map(|expr| self.monomorphize(expr, file, cache))
-                                .collect::<Result<_, _>>()?,
-                        )
-                    }
-                    UnresolvedExpressionKind::Initialize(pattern, value) => {
-                        // Resolve the right-hand side first
-                        let mut value = self.monomorphize(*value, file, cache)?;
-
-                        value.ty.apply(&self.ctx);
-
-                        let mut match_set = self
-                            .match_set_from(&value.ty, &mut Vec::new())
-                            .map_err(|error| Error::new(error, expr.span))?;
-
-                        let pattern = self
-                            .monomorphize_pattern(
-                                pattern,
-                                value.ty.clone(),
-                                &mut match_set,
-                                file,
-                                cache,
-                            )
-                            .ok_or_else(|| Error::new(TypeError::ErrorExpression, value.span))?;
-
-                        self.assert_matched(&match_set, pattern.span, true)?;
-
-                        MonomorphizedExpressionKind::Initialize(pattern, Box::new(value))
-                    }
-                    UnresolvedExpressionKind::Structure(fields) => {
-                        MonomorphizedExpressionKind::Structure(
-                            fields
-                                .into_iter()
-                                .map(|expr| self.monomorphize(expr, file, cache))
-                                .collect::<Result<_, _>>()?,
-                        )
-                    }
-                    UnresolvedExpressionKind::Variant(index, values) => {
-                        MonomorphizedExpressionKind::Variant(
-                            index,
-                            values
-                                .into_iter()
-                                .map(|expr| self.monomorphize(expr, file, cache))
-                                .collect::<Result<_, _>>()?,
-                        )
-                    }
-                    UnresolvedExpressionKind::Trait(tr) => {
-                        let instance =
-                            self.instance_for(tr, expr.ty.clone(), None)
-                                .map_err(|error| {
-                                    Error::new(error, expr.span).ignore_if_unsatisfied_bounds()
-                                })?;
-
-                        if let Some(id) = find_cached!(instance) {
-                            return Ok(MonomorphizedExpressionKind::Constant(id));
-                        }
-
-                        let monomorphized_instance = self.compiler.new_monomorphized_constant_id();
-                        cache.insert(instance, monomorphized_instance);
-
-                        let ty =
-                            self.monomorphize_constant(instance, monomorphized_instance, expr.span);
-
-                        if let Err(error) = self.ctx.unify(ty, expr.ty.clone()) {
-                            self.errors.push(Error::new(error, expr.span));
-                        }
-
-                        MonomorphizedExpressionKind::Constant(monomorphized_instance)
-                    }
-                    UnresolvedExpressionKind::Tuple(exprs) => MonomorphizedExpressionKind::Tuple(
-                        exprs
-                            .into_iter()
-                            .map(|expr| self.monomorphize(expr, file, cache))
-                            .collect::<Result<_, _>>()?,
-                    ),
-                })
-            })()?,
-        })
-    }
-
-    fn add_substitutions(
-        &mut self,
-        ty: &mut UnresolvedType,
-        substitutions: &mut BTreeMap<TypeParameterId, UnresolvedType>,
-    ) {
-        ty.apply(&self.ctx);
-
-        for param in ty.params() {
-            substitutions
-                .entry(param)
-                .or_insert_with(|| UnresolvedType::Variable(self.ctx.new_variable()));
-        }
-
-        ty.instantiate_with(substitutions);
-    }
-
-    fn finalize(
-        &mut self,
-        expr: MonomorphizedExpression,
-        file: &Rc<RefCell<lower::File>>,
-    ) -> Result<Expression, Error> {
-        self.finalize_internal(expr, false, file)
-    }
-
-    fn finalize_generic(
-        &mut self,
-        expr: MonomorphizedExpression,
-        file: &Rc<RefCell<lower::File>>,
-    ) -> Result<Expression, Error> {
-        self.finalize_internal(expr, true, file)
-    }
-
-    fn finalize_internal(
-        &mut self,
-        expr: MonomorphizedExpression,
-        generic: bool,
-        file: &Rc<RefCell<lower::File>>,
-    ) -> Result<Expression, Error> {
-        let ty = expr
-            .ty
-            .finalize(&self.ctx, generic)
-            .map_err(|e| Error::new(e, expr.span))?;
-
-        let kind = match expr.kind {
-            MonomorphizedExpressionKind::Error => {
-                return Err(Error::new(TypeError::ErrorExpression, expr.span));
-            }
-            MonomorphizedExpressionKind::Marker => ExpressionKind::Marker,
-            MonomorphizedExpressionKind::Constant(id) => ExpressionKind::Constant(id),
-            MonomorphizedExpressionKind::Variable(var) => ExpressionKind::Variable(var),
-            MonomorphizedExpressionKind::Text(text) => ExpressionKind::Text(text),
-            MonomorphizedExpressionKind::Number(number) => {
-                parse_number!(number, ExpressionKind, &ty, Type)
-                    .map_err(|e| Error::new(e, expr.span))?
-            }
-            MonomorphizedExpressionKind::Block(statements) => ExpressionKind::Block(
-                statements
-                    .into_iter()
-                    .map(|expr| self.finalize_internal(expr, generic, file))
-                    .collect::<Result<_, _>>()?,
-            ),
-            MonomorphizedExpressionKind::Call(func, input) => ExpressionKind::Call(
-                Box::new(self.finalize_internal(*func, generic, file)?),
-                Box::new(self.finalize_internal(*input, generic, file)?),
-            ),
-            MonomorphizedExpressionKind::Function(pattern, body, captures) => {
-                let input_ty = match &ty {
-                    Type::Function(input, _) => input.clone(),
-                    _ => unreachable!(),
-                };
-
-                ExpressionKind::Function(
-                    self.finalize_pattern(pattern, generic, &input_ty, file)?,
-                    Box::new(self.finalize_internal(*body, generic, file)?),
-                    captures,
-                )
-            }
-            MonomorphizedExpressionKind::When(input, arms) => {
-                let input = self.finalize_internal(*input, generic, file)?;
-
-                let arms = arms
-                    .into_iter()
-                    .map(|arm| {
-                        Ok(Arm {
-                            span: arm.span,
-                            pattern: self.finalize_pattern(
-                                arm.pattern,
-                                generic,
-                                &input.ty,
-                                file,
-                            )?,
-                            body: self.finalize_internal(arm.body, generic, file)?,
-                        })
-                    })
-                    .collect::<Result<_, _>>()?;
-
-                ExpressionKind::When(Box::new(input), arms)
-            }
-            MonomorphizedExpressionKind::External(lib, identifier, inputs) => {
-                ExpressionKind::External(
-                    lib,
-                    identifier,
-                    inputs
-                        .into_iter()
-                        .map(|expr| self.finalize_internal(expr, generic, file))
-                        .collect::<Result<_, _>>()?,
-                )
-            }
-            MonomorphizedExpressionKind::Initialize(pattern, value) => {
-                let value = self.finalize_internal(*value, generic, file)?;
-
-                ExpressionKind::Initialize(
-                    self.finalize_pattern(pattern, generic, &value.ty, file)?,
-                    Box::new(value),
-                )
-            }
-            MonomorphizedExpressionKind::Structure(fields) => ExpressionKind::Structure(
-                fields
-                    .into_iter()
-                    .map(|expr| self.finalize_internal(expr, generic, file))
-                    .collect::<Result<_, _>>()?,
-            ),
-            MonomorphizedExpressionKind::Variant(index, values) => ExpressionKind::Variant(
-                index,
-                values
-                    .into_iter()
-                    .map(|expr| self.finalize_internal(expr, generic, file))
-                    .collect::<Result<_, _>>()?,
-            ),
-            MonomorphizedExpressionKind::Tuple(exprs) => ExpressionKind::Tuple(
-                exprs
-                    .into_iter()
-                    .map(|expr| self.finalize_internal(expr, generic, file))
-                    .collect::<Result<_, _>>()?,
-            ),
-        };
-
-        Ok(Expression {
-            span: expr.span,
-            ty,
-            kind,
-        })
-    }
-
-    fn finalize_pattern(
-        &mut self,
-        pattern: MonomorphizedPattern,
-        generic: bool,
-        input_ty: &Type,
-        file: &Rc<RefCell<lower::File>>,
-    ) -> Result<Pattern, Error> {
-        Ok(Pattern {
-            span: pattern.span,
-            kind: match pattern.kind {
-                MonomorphizedPatternKind::Wildcard => PatternKind::Wildcard,
-                MonomorphizedPatternKind::Number(number) => {
-                    parse_number!(number, PatternKind, input_ty, Type)
-                        .map_err(|e| Error::new(e, pattern.span))?
-                }
-                MonomorphizedPatternKind::Text(text) => PatternKind::Text(text),
-                MonomorphizedPatternKind::Variable(var) => PatternKind::Variable(var),
-                MonomorphizedPatternKind::Destructure(fields) => {
-                    let input_tys = match input_ty {
-                        Type::Named(_, _, TypeStructure::Structure(fields)) => fields,
-                        _ => unreachable!(),
-                    };
-
-                    PatternKind::Destructure(
-                        fields
-                            .into_iter()
-                            .zip(input_tys)
-                            .map(|((index, field), ty)| {
-                                Ok((index, self.finalize_pattern(field, generic, ty, file)?))
-                            })
-                            .collect::<Result<_, _>>()?,
-                    )
-                }
-                MonomorphizedPatternKind::Variant(index, values) => {
-                    let input_tys = match input_ty {
-                        Type::Named(_, _, TypeStructure::Enumeration(variants)) => &variants[index],
-                        _ => unreachable!(),
-                    };
-
-                    PatternKind::Variant(
-                        index,
-                        values
-                            .into_iter()
-                            .zip(input_tys)
-                            .map(|(value, ty)| self.finalize_pattern(value, generic, ty, file))
-                            .collect::<Result<_, _>>()?,
-                    )
-                }
-                MonomorphizedPatternKind::Or(lhs, rhs) => PatternKind::Or(
-                    Box::new(self.finalize_pattern(*lhs, generic, input_ty, file)?),
-                    Box::new(self.finalize_pattern(*rhs, generic, input_ty, file)?),
-                ),
-                MonomorphizedPatternKind::Where(pattern, condition) => PatternKind::Where(
-                    Box::new(self.finalize_pattern(*pattern, generic, input_ty, file)?),
-                    Box::new(self.finalize_internal(*condition, generic, file)?),
-                ),
-                MonomorphizedPatternKind::Tuple(patterns) => {
-                    let input_tys = match input_ty {
-                        Type::Tuple(tys) => tys,
-                        _ => unreachable!(),
-                    };
-
-                    PatternKind::Tuple(
-                        patterns
-                            .into_iter()
-                            .zip(input_tys)
-                            .map(|(pattern, ty)| self.finalize_pattern(pattern, generic, ty, file))
-                            .collect::<Result<_, _>>()?,
-                    )
-                }
-            },
-        })
     }
 
     fn instance_for(
         &mut self,
         tr: TraitId,
-        ty: UnresolvedType,
+        ty: impl Into<engine::UnresolvedType>,
+        use_span: Span,
         bound_span: Option<Span>,
-    ) -> Result<GenericConstantId, TypeError> {
-        let tr_decl = self.traits.get(&tr).unwrap().clone();
+        info: &mut MonomorphizeInfo,
+    ) -> Result<Option<GenericConstantId>, Error> {
+        let ty = ty.into();
+        let tr_decl = self.with_trait_decl(tr, Clone::clone);
 
-        {
-            let mut ctx = self.ctx.clone();
-            ctx.unify(ty.clone(), tr_decl.ty.clone())?;
+        let mut trait_ty = tr_decl.ty.clone().into();
+        self.instantiate_generics(&mut trait_ty);
+
+        if let Err(error) = self.unify(use_span, ty.clone(), trait_ty) {
+            self.add_error(error);
         }
 
         macro_rules! find_instance {
-            ($instances:expr, $unify:ident, $transform:expr,) => {{
+            ($resolve:expr) => {{
                 // First try with numeric variables...
-                match find_instance!(@find ty.clone(), $instances, $unify, $transform) {
+                match find_instance!(@find ty.clone(), $resolve) {
                     // ...if there is a single candidate, return it.
                     Some(Ok(candidate)) => return Ok(candidate),
                     // ...if there are multiple candiates, try again finalizing numeric variables.
@@ -2600,7 +1805,7 @@ impl<L: Loader> Typechecker<L> {
                         ty.apply(&self.ctx);
                         ty.finalize_numeric_variables(&self.ctx);
 
-                        match find_instance!(@find ty, $instances, $unify, $transform) {
+                        match find_instance!(@find ty, $resolve) {
                             Some(result) => return result,
                             None => {}
                         }
@@ -2609,57 +1814,60 @@ impl<L: Loader> Typechecker<L> {
                     None => {}
                 }
             }};
-            (@find $ty:expr, $instances:expr, $unify:ident, $transform:expr) => {{
-                let ty = $ty;
-                let instances = $instances;
-
+            (@find $ty:expr, $resolve:expr) => {{
                 let mut candidates = Vec::new();
-
-                for id in instances {
-                    let instance = self.generic_constants.get(&id).unwrap().clone();
-                    let instance_ty = $transform(instance.generic_ty);
-
-                    let mut ctx = self.ctx.clone();
-                    if ctx.$unify(ty.clone(), instance_ty.clone()).is_ok() {
-                        candidates.push((ctx, id));
-                    }
-                }
-
-                candidates.dedup_by_key(|(_, id)| *id);
+                $resolve(&mut candidates, engine::UnresolvedType::from($ty));
+                candidates.dedup_by_key(|(_, id, _)| *id);
 
                 match candidates.len() {
                     0 => None,
                     1 => {
-                        let (ctx, id) = candidates.pop().unwrap();
+                        let (ctx, info, _) = candidates.pop().unwrap();
                         self.ctx = ctx;
 
-                        Some(Ok(id))
+                        Some(Ok(info))
                     }
-                    _ => Some(Err(TypeError::AmbiguousTrait(
-                        tr,
-                        candidates.into_iter().map(|(_, id)| id).collect(),
+                    _ => Some(Err(Error::new(
+                        engine::TypeError::AmbiguousTrait(
+                            tr,
+                            candidates.into_iter().map(|(_, _, span)| span).collect(),
+                        ),
+                        use_span,
                     ))),
                 }
             }};
         }
 
-        find_instance!(
-            self.bound_instances.get(&tr).cloned().unwrap_or_default(),
-            unify_generic,
-            |ty| ty,
-        );
+        let bound_instances = info.bound_instances.get(&tr).cloned().unwrap_or_default();
 
-        find_instance!(
-            self.declared_instances
-                .get(&tr)
-                .cloned()
-                .unwrap_or_default(),
-            unify,
-            |mut ty| {
-                self.add_substitutions(&mut ty, &mut BTreeMap::new());
-                ty
-            },
-        );
+        find_instance!(|candidates: &mut Vec<_>, ty: engine::UnresolvedType| {
+            for (info, instance_ty, span) in bound_instances.clone() {
+                let mut ctx = self.ctx.clone();
+                if ctx.unify_generic(ty.clone(), instance_ty.clone()).is_ok() {
+                    candidates.push((ctx, info, span));
+                }
+            }
+        });
+
+        let declared_instances = self.instances.get(&tr).cloned().unwrap_or_default();
+
+        find_instance!(|candidates: &mut Vec<_>, ty: engine::UnresolvedType| {
+            for id in declared_instances.clone() {
+                let (mut instance_ty, instance_span) = self.with_instance_decl(id, |instance| {
+                    (
+                        engine::UnresolvedType::from(instance.ty.clone()),
+                        instance.span,
+                    )
+                });
+
+                self.instantiate_generics(&mut instance_ty);
+
+                let mut ctx = self.ctx.clone();
+                if ctx.unify(ty.clone(), instance_ty.clone()).is_ok() {
+                    candidates.push((ctx, Some(id), instance_span));
+                }
+            }
+        });
 
         let params = self.ctx.unify_params(ty, tr_decl.ty).0;
 
@@ -2670,351 +1878,14 @@ impl<L: Loader> Typechecker<L> {
                 params
                     .get(&param)
                     .cloned()
-                    .unwrap_or_else(|| UnresolvedType::Variable(self.ctx.new_variable()))
+                    .unwrap_or_else(|| engine::UnresolvedType::Variable(self.ctx.new_variable()))
             })
             .collect();
 
-        Err(TypeError::MissingInstance(tr, params, bound_span))
-    }
-
-    fn convert_type_annotation(
-        &mut self,
-        annotation: &lower::TypeAnnotation,
-        file: &Rc<RefCell<lower::File>>,
-        stack: &mut Vec<TypeId>,
-    ) -> UnresolvedType {
-        match &annotation.kind {
-            lower::TypeAnnotationKind::Error => UnresolvedType::Bottom(BottomTypeReason::Error),
-            lower::TypeAnnotationKind::Placeholder => {
-                UnresolvedType::Variable(self.ctx.new_variable())
-            }
-            lower::TypeAnnotationKind::Named(id, params) => {
-                let file_ = file.borrow();
-                let ty = file_.declarations.types.get(id).unwrap();
-
-                let params = params
-                    .iter()
-                    .map(|param| self.convert_type_annotation(param, file, stack))
-                    .collect::<Vec<_>>();
-
-                if stack.contains(id) {
-                    return UnresolvedType::Named(*id, params, TypeStructure::Recursive(*id));
-                }
-
-                stack.push(*id);
-
-                let substitutions = ty
-                    .value
-                    .params
-                    .iter()
-                    .copied()
-                    .zip(params.iter().cloned())
-                    .collect::<BTreeMap<_, _>>();
-
-                let mut convert_and_instantiate = |ty| {
-                    let mut ty = self.convert_type_annotation(ty, file, stack);
-                    ty.instantiate_with(&substitutions);
-                    ty
-                };
-
-                let structure = match &ty.value.kind {
-                    lower::TypeKind::Marker => TypeStructure::Marker,
-                    lower::TypeKind::Structure(fields, _) => TypeStructure::Structure(
-                        fields
-                            .iter()
-                            .map(|field| convert_and_instantiate(&field.ty))
-                            .collect(),
-                    ),
-                    lower::TypeKind::Enumeration(variants, _) => TypeStructure::Enumeration(
-                        variants
-                            .iter()
-                            .map(|variant| {
-                                variant
-                                    .tys
-                                    .iter()
-                                    .map(&mut convert_and_instantiate)
-                                    .collect()
-                            })
-                            .collect(),
-                    ),
-                };
-
-                stack.pop();
-
-                UnresolvedType::Named(*id, params, structure)
-            }
-            lower::TypeAnnotationKind::Parameter(id) => UnresolvedType::Parameter(*id),
-            lower::TypeAnnotationKind::Builtin(id, parameters) => {
-                let builtin_ty = file
-                    .borrow()
-                    .declarations
-                    .builtin_types
-                    .get(id)
-                    .unwrap_or_else(|| {
-                        panic!(
-                            "builtin type {:?} not found in {:#?}",
-                            id,
-                            file.borrow().declarations.builtin_types
-                        )
-                    })
-                    .clone();
-
-                match builtin_ty.value.kind {
-                    lower::BuiltinTypeKind::Never => {
-                        if !parameters.is_empty() {
-                            self.compiler.diagnostics.add(Diagnostic::error(
-                                "`!` does not accept parameters",
-                                vec![Note::primary(
-                                    annotation.span,
-                                    "try removing these parameters",
-                                )],
-                            ));
-                        }
-
-                        UnresolvedType::Bottom(BottomTypeReason::Annotated)
-                    }
-                    lower::BuiltinTypeKind::Number => {
-                        if !parameters.is_empty() {
-                            self.compiler.diagnostics.add(Diagnostic::error(
-                                "`Number` does not accept parameters",
-                                vec![Note::primary(
-                                    annotation.span,
-                                    "try removing these parameters",
-                                )],
-                            ));
-                        }
-
-                        UnresolvedType::Builtin(BuiltinType::Number)
-                    }
-                    lower::BuiltinTypeKind::Integer => {
-                        if !parameters.is_empty() {
-                            self.compiler.diagnostics.add(Diagnostic::error(
-                                "`Integer` does not accept parameters",
-                                vec![Note::primary(
-                                    annotation.span,
-                                    "try removing these parameters",
-                                )],
-                            ));
-                        }
-
-                        UnresolvedType::Builtin(BuiltinType::Integer)
-                    }
-                    lower::BuiltinTypeKind::Natural => {
-                        if !parameters.is_empty() {
-                            self.compiler.diagnostics.add(Diagnostic::error(
-                                "`Natural` does not accept parameters",
-                                vec![Note::primary(
-                                    annotation.span,
-                                    "try removing these parameters",
-                                )],
-                            ));
-                        }
-
-                        UnresolvedType::Builtin(BuiltinType::Natural)
-                    }
-                    lower::BuiltinTypeKind::Byte => {
-                        if !parameters.is_empty() {
-                            self.compiler.diagnostics.add(Diagnostic::error(
-                                "`Byte` does not accept parameters",
-                                vec![Note::primary(
-                                    annotation.span,
-                                    "try removing these parameters",
-                                )],
-                            ));
-                        }
-
-                        UnresolvedType::Builtin(BuiltinType::Byte)
-                    }
-                    lower::BuiltinTypeKind::Signed => {
-                        if !parameters.is_empty() {
-                            self.compiler.diagnostics.add(Diagnostic::error(
-                                "`Signed` does not accept parameters",
-                                vec![Note::primary(
-                                    annotation.span,
-                                    "try removing these parameters",
-                                )],
-                            ));
-                        }
-
-                        UnresolvedType::Builtin(BuiltinType::Signed)
-                    }
-                    lower::BuiltinTypeKind::Unsigned => {
-                        if !parameters.is_empty() {
-                            self.compiler.diagnostics.add(Diagnostic::error(
-                                "`Unsigned` does not accept parameters",
-                                vec![Note::primary(
-                                    annotation.span,
-                                    "try removing these parameters",
-                                )],
-                            ));
-                        }
-
-                        UnresolvedType::Builtin(BuiltinType::Unsigned)
-                    }
-                    lower::BuiltinTypeKind::Float => {
-                        if !parameters.is_empty() {
-                            self.compiler.diagnostics.add(Diagnostic::error(
-                                "`Float` does not accept parameters",
-                                vec![Note::primary(
-                                    annotation.span,
-                                    "try removing these parameters",
-                                )],
-                            ));
-                        }
-
-                        UnresolvedType::Builtin(BuiltinType::Float)
-                    }
-                    lower::BuiltinTypeKind::Double => {
-                        if !parameters.is_empty() {
-                            self.compiler.diagnostics.add(Diagnostic::error(
-                                "`Double` does not accept parameters",
-                                vec![Note::primary(
-                                    annotation.span,
-                                    "try removing these parameters",
-                                )],
-                            ));
-                        }
-
-                        UnresolvedType::Builtin(BuiltinType::Double)
-                    }
-                    lower::BuiltinTypeKind::Text => {
-                        if !parameters.is_empty() {
-                            self.compiler.diagnostics.add(Diagnostic::error(
-                                "`Text` does not accept parameters",
-                                vec![Note::primary(
-                                    annotation.span,
-                                    "try removing these parameters",
-                                )],
-                            ));
-                        }
-
-                        UnresolvedType::Builtin(BuiltinType::Text)
-                    }
-                    lower::BuiltinTypeKind::Boolean => {
-                        if !parameters.is_empty() {
-                            self.compiler.diagnostics.add(Diagnostic::error(
-                                "`Boolean` does not accept parameters",
-                                vec![Note::primary(
-                                    annotation.span,
-                                    "try removing these parameters",
-                                )],
-                            ));
-                        }
-
-                        UnresolvedType::Builtin(BuiltinType::Number)
-                    }
-                    lower::BuiltinTypeKind::List => {
-                        if parameters.is_empty() {
-                            self.compiler.diagnostics.add(Diagnostic::error(
-                                "`List` accepts 1 parameter, but none were provided",
-                                vec![Note::primary(
-                                    annotation.span,
-                                    "try adding `_` here to infer the type of `Element`",
-                                )],
-                            ));
-
-                            UnresolvedType::Builtin(BuiltinType::List(Box::new(
-                                UnresolvedType::Bottom(BottomTypeReason::Error),
-                            )))
-                        } else {
-                            if parameters.len() > 1 {
-                                self.compiler.diagnostics.add(Diagnostic::error(
-                                    format!(
-                                        "`List` accepts 1 parameter, but {} were provided",
-                                        parameters.len()
-                                    ),
-                                    vec![Note::primary(
-                                        annotation.span,
-                                        "try removing some of these",
-                                    )],
-                                ));
-                            }
-
-                            UnresolvedType::Builtin(BuiltinType::List(Box::new(
-                                self.convert_type_annotation(
-                                    parameters.first().unwrap(),
-                                    file,
-                                    stack,
-                                ),
-                            )))
-                        }
-                    }
-                    lower::BuiltinTypeKind::Mutable => {
-                        if parameters.is_empty() {
-                            self.compiler.diagnostics.add(Diagnostic::error(
-                                "`Mutable` accepts 1 parameter, but none were provided",
-                                vec![Note::primary(
-                                    annotation.span,
-                                    "try adding `_` here to infer the type of `Value`",
-                                )],
-                            ));
-
-                            UnresolvedType::Builtin(BuiltinType::Mutable(Box::new(
-                                UnresolvedType::Bottom(BottomTypeReason::Error),
-                            )))
-                        } else {
-                            if parameters.len() > 1 {
-                                self.compiler.diagnostics.add(Diagnostic::error(
-                                    format!(
-                                        "`Mutable` accepts 1 parameter, but {} were provided",
-                                        parameters.len()
-                                    ),
-                                    vec![Note::primary(
-                                        annotation.span,
-                                        "try removing some of these",
-                                    )],
-                                ));
-                            }
-
-                            UnresolvedType::Builtin(BuiltinType::Mutable(Box::new(
-                                self.convert_type_annotation(
-                                    parameters.first().unwrap(),
-                                    file,
-                                    stack,
-                                ),
-                            )))
-                        }
-                    }
-                }
-            }
-            lower::TypeAnnotationKind::Function(input, output) => UnresolvedType::Function(
-                Box::new(self.convert_type_annotation(input, file, stack)),
-                Box::new(self.convert_type_annotation(output, file, stack)),
-            ),
-            lower::TypeAnnotationKind::Tuple(tys) => UnresolvedType::Tuple(
-                tys.iter()
-                    .map(|ty| self.convert_type_annotation(ty, file, stack))
-                    .collect(),
-            ),
-        }
-    }
-
-    fn format_type(&self, ty: impl Into<FormattableType>, surround_in_backticks: bool) -> String {
-        macro_rules! getter {
-            ($x:ident) => {
-                |id| {
-                    self.declarations
-                        .$x
-                        .get(&id)
-                        .unwrap()
-                        .name
-                        .map_or("<unknown>", |name| name.as_str())
-                        .to_string()
-                }
-            };
-        }
-
-        let type_names = getter!(types);
-        let trait_names = getter!(traits);
-        let param_names = getter!(type_parameters);
-
-        format_type(
-            ty,
-            type_names,
-            trait_names,
-            param_names,
-            surround_in_backticks,
-        )
+        Err(Error::new(
+            engine::TypeError::MissingInstance(tr, params, bound_span),
+            use_span,
+        ))
     }
 }
 
@@ -3027,71 +1898,75 @@ enum MatchSet {
     Tuple(Vec<MatchSet>),
 }
 
-impl<L: Loader> Typechecker<L> {
+impl<'a, 'l> Typechecker<'a, 'l> {
     fn match_set_from(
         &mut self,
-        ty: &UnresolvedType,
+        ty: &engine::UnresolvedType,
+        info: &mut MonomorphizeInfo,
+    ) -> MatchSet {
+        self.match_set_from_inner(ty, &mut Vec::new(), info)
+    }
+
+    fn match_set_from_inner(
+        &mut self,
+        ty: &engine::UnresolvedType,
         stack: &mut Vec<TypeId>,
-    ) -> Result<MatchSet, TypeError> {
-        match &ty {
-            UnresolvedType::Named(id, _, _) => {
+        info: &mut MonomorphizeInfo,
+    ) -> MatchSet {
+        match ty {
+            engine::UnresolvedType::Named(id, _, _) => {
                 if stack.contains(id) {
                     // Returning Never is OK because the user has to stop matching on the structure
                     // of the type at some point -- eventually they will refer to the rest of the
-                    // structure using a name, which always matches
-                    return Ok(MatchSet::Never);
+                    // structure using a name, which always matches (FIXME: Verify that this is correct)
+                    return MatchSet::Never;
                 }
 
                 stack.push(*id);
 
-                let kind = self.types.get(id).unwrap().kind.clone();
+                let kind = self.with_type_decl(*id, |ty| ty.kind.clone());
 
                 let set = match kind {
-                    TypeDefinitionKind::Marker => Ok(MatchSet::Marker(false)),
-                    TypeDefinitionKind::Structure(fields, _) => Ok(MatchSet::Structure(
+                    TypeDeclKind::Marker => MatchSet::Marker(false),
+                    TypeDeclKind::Structure { fields, .. } => MatchSet::Structure(
                         fields
-                            .iter()
-                            .map(|ty| Ok((false, self.match_set_from(ty, stack)?)))
-                            .collect::<Result<_, _>>()?,
-                    )),
-                    TypeDefinitionKind::Enumeration(variants, _) => Ok(MatchSet::Enumeration(
+                            .into_iter()
+                            .map(|ty| (false, self.match_set_from_inner(&ty.into(), stack, info)))
+                            .collect(),
+                    ),
+                    TypeDeclKind::Enumeration { variants, .. } => MatchSet::Enumeration(
                         variants
-                            .iter()
+                            .into_iter()
                             .map(|tys| {
-                                Ok((
+                                (
                                     false,
-                                    tys.iter()
-                                        .map(|ty| self.match_set_from(ty, stack))
-                                        .collect::<Result<_, _>>()?,
-                                ))
+                                    tys.into_iter()
+                                        .map(|ty| {
+                                            self.match_set_from_inner(&ty.into(), stack, info)
+                                        })
+                                        .collect(),
+                                )
                             })
-                            .collect::<Result<_, _>>()?,
-                    )),
+                            .collect(),
+                    ),
                 };
 
                 stack.pop();
 
                 set
             }
-            UnresolvedType::Tuple(tys) => Ok(MatchSet::Tuple(
+            engine::UnresolvedType::Tuple(tys) => MatchSet::Tuple(
                 tys.iter()
-                    .map(|ty| self.match_set_from(ty, stack))
-                    .collect::<Result<_, _>>()?,
-            )),
-            UnresolvedType::Bottom(_) => Ok(MatchSet::Never),
-            _ => Ok(MatchSet::Marker(false)),
+                    .map(|ty| self.match_set_from_inner(ty, stack, info))
+                    .collect(),
+            ),
+            engine::UnresolvedType::Bottom(_) => MatchSet::Never,
+            _ => MatchSet::Marker(false),
         }
     }
 
-    fn assert_matched(
-        &mut self,
-        match_set: &MatchSet,
-        span: Span,
-        for_exhaustive_pattern: bool,
-    ) -> Result<(), Error> {
-        if match_set.is_matched() {
-            Ok(())
-        } else {
+    fn assert_matched(&mut self, match_set: &MatchSet, span: Span, for_exhaustive_pattern: bool) {
+        if !match_set.is_matched() {
             if for_exhaustive_pattern {
                 self.compiler.diagnostics.add(Diagnostic::error(
                     "pattern is not exhaustive",
@@ -3109,8 +1984,6 @@ impl<L: Loader> Typechecker<L> {
                     )],
                 ));
             }
-
-            Err(Error::new(TypeError::ErrorExpression, span))
         }
     }
 }
@@ -3154,5 +2027,1160 @@ impl MatchSet {
             }
             _ => {}
         }
+    }
+}
+
+impl<'a, 'l> Typechecker<'a, 'l> {
+    fn finalize_expr(&mut self, expr: MonomorphizedExpression) -> Option<Expression> {
+        let ty = match expr.ty.clone().finalize(
+            &self.ctx,
+            engine::FinalizeOptions {
+                generic: true,
+                ..Default::default()
+            },
+        ) {
+            Ok(ty) => ty,
+            Err(error) => {
+                self.add_error(Error::new(error, expr.span));
+                return None;
+            }
+        };
+
+        let kind = match expr.kind {
+            MonomorphizedExpressionKind::Error => return None,
+            MonomorphizedExpressionKind::Marker => ExpressionKind::Marker,
+            MonomorphizedExpressionKind::Constant(id) => ExpressionKind::Constant(id),
+            MonomorphizedExpressionKind::Variable(var) => ExpressionKind::Variable(var),
+            MonomorphizedExpressionKind::Text(text) => ExpressionKind::Text(text),
+            MonomorphizedExpressionKind::Number(number) => {
+                use engine::Type;
+                match parse_number!(number, ExpressionKind, &ty, Type) {
+                    Ok(number) => number,
+                    Err(error) => {
+                        self.add_error(Error::new(error, expr.span));
+                        return None;
+                    }
+                }
+            }
+            MonomorphizedExpressionKind::Block(statements) => ExpressionKind::Block(
+                statements
+                    .into_iter()
+                    .map(|expr| self.finalize_expr(expr))
+                    .collect::<Option<_>>()?,
+            ),
+            MonomorphizedExpressionKind::Call(func, input) => ExpressionKind::Call(
+                Box::new(self.finalize_expr(*func)?),
+                Box::new(self.finalize_expr(*input)?),
+            ),
+            MonomorphizedExpressionKind::Function(pattern, body, captures) => {
+                let input_ty = match &ty {
+                    engine::Type::Function(input, _) => input.clone(),
+                    _ => unreachable!(),
+                };
+
+                ExpressionKind::Function(
+                    self.finalize_pattern(pattern, &input_ty)?,
+                    Box::new(self.finalize_expr(*body)?),
+                    captures,
+                )
+            }
+            MonomorphizedExpressionKind::When(input, arms) => {
+                let input = self.finalize_expr(*input)?;
+
+                let arms = arms
+                    .into_iter()
+                    .map(|arm| {
+                        Some(Arm {
+                            span: arm.span,
+                            pattern: self.finalize_pattern(arm.pattern, &input.ty)?,
+                            body: self.finalize_expr(arm.body)?,
+                        })
+                    })
+                    .collect::<Option<_>>()?;
+
+                ExpressionKind::When(Box::new(input), arms)
+            }
+            MonomorphizedExpressionKind::External(lib, identifier, inputs) => {
+                ExpressionKind::External(
+                    lib,
+                    identifier,
+                    inputs
+                        .into_iter()
+                        .map(|expr| self.finalize_expr(expr))
+                        .collect::<Option<_>>()?,
+                )
+            }
+            MonomorphizedExpressionKind::Initialize(pattern, value) => {
+                let value = self.finalize_expr(*value)?;
+
+                ExpressionKind::Initialize(
+                    self.finalize_pattern(pattern, &value.ty)?,
+                    Box::new(value),
+                )
+            }
+            MonomorphizedExpressionKind::Structure(fields) => ExpressionKind::Structure(
+                fields
+                    .into_iter()
+                    .map(|expr| self.finalize_expr(expr))
+                    .collect::<Option<_>>()?,
+            ),
+            MonomorphizedExpressionKind::Variant(index, values) => ExpressionKind::Variant(
+                index,
+                values
+                    .into_iter()
+                    .map(|expr| self.finalize_expr(expr))
+                    .collect::<Option<_>>()?,
+            ),
+            MonomorphizedExpressionKind::Tuple(exprs) => ExpressionKind::Tuple(
+                exprs
+                    .into_iter()
+                    .map(|expr| self.finalize_expr(expr))
+                    .collect::<Option<_>>()?,
+            ),
+        };
+
+        Some(Expression {
+            span: expr.span,
+            ty,
+            kind,
+        })
+    }
+
+    fn finalize_pattern(
+        &mut self,
+        pattern: MonomorphizedPattern,
+        input_ty: &engine::Type,
+    ) -> Option<Pattern> {
+        Some(Pattern {
+            span: pattern.span,
+            kind: match pattern.kind {
+                MonomorphizedPatternKind::Error => return None,
+                MonomorphizedPatternKind::Wildcard => PatternKind::Wildcard,
+                MonomorphizedPatternKind::Number(number) => {
+                    use engine::Type;
+                    match parse_number!(number, PatternKind, input_ty, Type) {
+                        Ok(number) => number,
+                        Err(error) => {
+                            self.add_error(Error::new(error, pattern.span));
+                            return None;
+                        }
+                    }
+                }
+                MonomorphizedPatternKind::Text(text) => PatternKind::Text(text),
+                MonomorphizedPatternKind::Variable(var) => {
+                    self.with_variable_decl(var, input_ty.clone(), pattern.span.path, |_| {});
+                    PatternKind::Variable(var)
+                }
+                MonomorphizedPatternKind::Destructure(fields) => {
+                    let input_tys = match input_ty {
+                        engine::Type::Named(_, _, engine::TypeStructure::Structure(fields)) => {
+                            fields
+                        }
+                        _ => return None,
+                    };
+
+                    PatternKind::Destructure(
+                        fields
+                            .into_iter()
+                            .zip(input_tys)
+                            .map(|((index, field), ty)| {
+                                Some((index, self.finalize_pattern(field, ty)?))
+                            })
+                            .collect::<Option<_>>()?,
+                    )
+                }
+                MonomorphizedPatternKind::Variant(index, values) => {
+                    let input_tys = match input_ty {
+                        engine::Type::Named(_, _, engine::TypeStructure::Enumeration(variants)) => {
+                            &variants[index]
+                        }
+                        _ => return None,
+                    };
+
+                    PatternKind::Variant(
+                        index,
+                        values
+                            .into_iter()
+                            .zip(input_tys)
+                            .map(|(value, ty)| self.finalize_pattern(value, ty))
+                            .collect::<Option<_>>()?,
+                    )
+                }
+                MonomorphizedPatternKind::Or(lhs, rhs) => PatternKind::Or(
+                    Box::new(self.finalize_pattern(*lhs, input_ty)?),
+                    Box::new(self.finalize_pattern(*rhs, input_ty)?),
+                ),
+                MonomorphizedPatternKind::Where(pattern, condition) => PatternKind::Where(
+                    Box::new(self.finalize_pattern(*pattern, input_ty)?),
+                    Box::new(self.finalize_expr(*condition)?),
+                ),
+                MonomorphizedPatternKind::Tuple(patterns) => {
+                    let input_tys = match input_ty {
+                        engine::Type::Tuple(tys) => tys,
+                        _ => return None,
+                    };
+
+                    PatternKind::Tuple(
+                        patterns
+                            .into_iter()
+                            .zip(input_tys)
+                            .map(|(pattern, ty)| self.finalize_pattern(pattern, ty))
+                            .collect::<Option<_>>()?,
+                    )
+                }
+            },
+        })
+    }
+}
+
+impl<'a, 'l> Typechecker<'a, 'l> {
+    fn with_type_decl<T>(&mut self, id: TypeId, f: impl FnOnce(&TypeDecl) -> T) -> T {
+        if let Some(decl) = self.declarations.borrow().types.get(&id) {
+            return f(decl);
+        }
+
+        let decl = self
+            .files
+            .get(&id.file)
+            .unwrap_or_else(|| panic!("cannot find file {}", id.file))
+            .declarations
+            .types
+            .get(&id)
+            .unwrap()
+            .clone();
+
+        let decl = TypeDecl {
+            name: decl.name.expect("all types have names"),
+            span: decl.span,
+            params: decl.value.params,
+            kind: match decl.value.kind {
+                lower::TypeKind::Marker => TypeDeclKind::Marker,
+                lower::TypeKind::Structure(fields, field_names) => TypeDeclKind::Structure {
+                    fields: fields
+                        .into_iter()
+                        .map(|field| self.convert_finalized_type_annotation(field.ty))
+                        .collect(),
+                    field_names,
+                },
+                lower::TypeKind::Enumeration(variants, variant_names) => {
+                    TypeDeclKind::Enumeration {
+                        variants: variants
+                            .into_iter()
+                            .map(|variant| {
+                                variant
+                                    .tys
+                                    .into_iter()
+                                    .map(|ty| self.convert_finalized_type_annotation(ty))
+                                    .collect()
+                            })
+                            .collect(),
+                        variant_names,
+                    }
+                }
+            },
+            attributes: decl.value.attributes,
+            uses: decl.uses,
+        };
+
+        f(self
+            .declarations
+            .borrow_mut()
+            .types
+            .entry(id)
+            .or_insert(decl))
+    }
+
+    fn with_trait_decl<T>(&mut self, id: TraitId, f: impl FnOnce(&TraitDecl) -> T) -> T {
+        if let Some(decl) = self.declarations.borrow().traits.get(&id) {
+            return f(decl);
+        }
+
+        let decl = self
+            .files
+            .get(&id.file)
+            .unwrap()
+            .declarations
+            .traits
+            .get(&id)
+            .unwrap()
+            .clone();
+
+        let decl = TraitDecl {
+            name: decl.name.expect("all traits have names"),
+            span: decl.span,
+            params: decl.value.parameters,
+            ty: self.convert_finalized_type_annotation(decl.value.ty),
+            attributes: decl.value.attributes,
+            uses: decl.uses,
+        };
+
+        f(self
+            .declarations
+            .borrow_mut()
+            .traits
+            .entry(id)
+            .or_insert(decl))
+    }
+
+    fn with_constant_decl<T>(
+        &mut self,
+        id: GenericConstantId,
+        f: impl FnOnce(&ConstantDecl) -> T,
+    ) -> T {
+        if let Some(decl) = self.declarations.borrow_mut().constants.get(&id) {
+            return f(decl);
+        }
+
+        let decl = self
+            .files
+            .get(&id.file)
+            .unwrap()
+            .declarations
+            .constants
+            .get(&id)
+            .unwrap_or_else(|| panic!("undefined constant {:?} in file {}", id, id.file))
+            .clone();
+
+        let body = decl.value.value.lock().as_ref().unwrap().clone();
+        self.generic_constants.insert(id, (false, body));
+
+        let ty = self.convert_finalized_type_annotation(decl.value.ty);
+
+        let bounds = decl
+            .value
+            .bounds
+            .into_iter()
+            .map(|bound| Bound {
+                span: bound.span,
+                trait_id: bound.tr,
+                params: bound
+                    .parameters
+                    .into_iter()
+                    .map(|ty| self.convert_finalized_type_annotation(ty).into())
+                    .collect(),
+            })
+            .collect::<Vec<_>>();
+
+        let decl = ConstantDecl {
+            name: decl.name.expect("all constants have names"),
+            span: decl.span,
+            params: decl.value.parameters,
+            bounds,
+            ty,
+            attributes: decl.value.attributes,
+            uses: decl.uses,
+        };
+
+        f(self
+            .declarations
+            .borrow_mut()
+            .constants
+            .entry(id)
+            .or_insert(decl))
+    }
+
+    fn with_instance_decl<T>(
+        &mut self,
+        id: GenericConstantId,
+        f: impl FnOnce(&InstanceDecl) -> T,
+    ) -> T {
+        let decl = self
+            .files
+            .get(&id.file)
+            .unwrap()
+            .declarations
+            .instances
+            .get(&id)
+            .unwrap()
+            .clone();
+
+        let trait_id = decl.value.tr;
+
+        if let Some(decl) = self
+            .declarations
+            .borrow_mut()
+            .instances
+            .entry(trait_id)
+            .or_default()
+            .get(&id)
+        {
+            return f(decl);
+        }
+
+        self.generic_constants.insert(id, (true, decl.value.value));
+
+        let params = decl
+            .value
+            .trait_params
+            .into_iter()
+            .map(|ty| self.convert_finalized_type_annotation(ty).into())
+            .collect();
+
+        let instance_ty = self.substitute_trait_params(trait_id, params);
+
+        let bounds = decl
+            .value
+            .bounds
+            .into_iter()
+            .map(|bound| Bound {
+                span: bound.span,
+                trait_id: bound.tr,
+                params: bound
+                    .parameters
+                    .into_iter()
+                    .map(|ty| self.convert_finalized_type_annotation(ty).into())
+                    .collect(),
+            })
+            .collect::<Vec<_>>();
+
+        let item = self.compiler.new_item_id(id.file);
+
+        assert!(decl.name.is_none(), "instances never have names");
+
+        let decl = InstanceDecl {
+            span: decl.span,
+            trait_id,
+            params: decl.value.params,
+            bounds,
+            ty: instance_ty
+                .finalize(
+                    &self.ctx,
+                    engine::FinalizeOptions {
+                        generic: true,
+                        ..Default::default()
+                    },
+                )
+                .unwrap(),
+            item,
+            uses: decl.uses,
+        };
+
+        f(self
+            .declarations
+            .borrow_mut()
+            .instances
+            .entry(trait_id)
+            .or_default()
+            .entry(id)
+            .or_insert(decl))
+    }
+
+    fn with_operator_decl<T>(&mut self, id: TemplateId, f: impl FnOnce(&OperatorDecl) -> T) -> T {
+        if let Some(decl) = self.declarations.borrow().operators.get(&id) {
+            return f(decl);
+        }
+
+        let operator = *self
+            .files
+            .get(&id.file)
+            .unwrap()
+            .declarations
+            .operators
+            .get(&id)
+            .unwrap();
+
+        let decl = self
+            .files
+            .get(&id.file)
+            .unwrap()
+            .declarations
+            .templates
+            .get(&operator.template)
+            .unwrap()
+            .clone();
+
+        let decl = OperatorDecl {
+            name: decl.name,
+            span: decl.span,
+            uses: decl.uses,
+        };
+
+        f(self
+            .declarations
+            .borrow_mut()
+            .operators
+            .entry(id)
+            .or_insert(decl))
+    }
+
+    fn with_template_decl<T>(&mut self, id: TemplateId, f: impl FnOnce(&TemplateDecl) -> T) -> T {
+        if let Some(decl) = self.declarations.borrow().templates.get(&id) {
+            return f(decl);
+        }
+
+        let decl = self
+            .files
+            .get(&id.file)
+            .unwrap()
+            .declarations
+            .templates
+            .get(&id)
+            .unwrap()
+            .clone();
+
+        let decl = TemplateDecl {
+            name: decl.name,
+            span: decl.span,
+            uses: decl.uses,
+        };
+
+        f(self
+            .declarations
+            .borrow_mut()
+            .templates
+            .entry(id)
+            .or_insert(decl))
+    }
+
+    fn with_builtin_type_decl<T>(
+        &mut self,
+        id: BuiltinTypeId,
+        f: impl FnOnce(&BuiltinTypeDecl) -> T,
+    ) -> T {
+        if let Some(decl) = self.declarations.borrow().builtin_types.get(&id) {
+            return f(decl);
+        }
+
+        let decl = self
+            .files
+            .get(&id.file)
+            .unwrap()
+            .declarations
+            .builtin_types
+            .get(&id)
+            .unwrap()
+            .clone();
+
+        let decl = BuiltinTypeDecl {
+            name: decl.name.expect("all builtin types have names"),
+            span: decl.span,
+            uses: decl.uses,
+        };
+
+        f(self
+            .declarations
+            .borrow_mut()
+            .builtin_types
+            .entry(id)
+            .or_insert(decl))
+    }
+
+    fn with_type_parameter_decl<T>(
+        &mut self,
+        id: TypeParameterId,
+        f: impl FnOnce(&TypeParameterDecl) -> T,
+    ) -> T {
+        if let Some(decl) = self.declarations.borrow().type_parameters.get(&id) {
+            return f(decl);
+        }
+
+        let decl = self
+            .files
+            .get(&id.file)
+            .unwrap()
+            .declarations
+            .type_parameters
+            .get(&id)
+            .unwrap()
+            .clone();
+
+        let decl = TypeParameterDecl {
+            name: decl.name.expect("all type parameters have names"),
+            span: decl.span,
+            uses: decl.uses,
+        };
+
+        f(self
+            .declarations
+            .borrow_mut()
+            .type_parameters
+            .entry(id)
+            .or_insert(decl))
+    }
+
+    fn with_variable_decl<T>(
+        &mut self,
+        id: VariableId,
+        ty: engine::Type,
+        file: FilePath,
+        f: impl FnOnce(&VariableDecl) -> T,
+    ) -> T {
+        if let Some(decl) = self.declarations.borrow().variables.get(&id) {
+            return f(decl);
+        }
+
+        let decl = self
+            .files
+            .get(&file)
+            .unwrap_or_else(|| panic!("cannot find file {}", file))
+            .declarations
+            .variables
+            .get(&id)
+            .unwrap()
+            .clone();
+
+        let decl = VariableDecl {
+            name: decl.name,
+            span: decl.span,
+            ty,
+            uses: decl.uses,
+        };
+
+        f(self
+            .declarations
+            .borrow_mut()
+            .variables
+            .entry(id)
+            .or_insert(decl))
+    }
+}
+
+impl<'a, 'l> Typechecker<'a, 'l> {
+    fn unify(
+        &mut self,
+        span: Span,
+        actual: engine::UnresolvedType,
+        expected: impl Into<engine::UnresolvedType>,
+    ) -> Result<(), Error> {
+        self.ctx
+            .unify(actual, expected)
+            .map_err(|e| Error::new(e, span))
+    }
+
+    fn add_substitutions(
+        &mut self,
+        ty: &mut engine::UnresolvedType,
+        substitutions: &mut HashMap<TypeParameterId, engine::UnresolvedType>,
+    ) {
+        ty.apply(&self.ctx);
+
+        for param in ty.params() {
+            substitutions
+                .entry(param)
+                .or_insert_with(|| engine::UnresolvedType::Variable(self.ctx.new_variable()));
+        }
+
+        ty.instantiate_with(&self.ctx, substitutions);
+    }
+
+    fn instantiate_generics(&mut self, ty: &mut engine::UnresolvedType) {
+        self.add_substitutions(ty, &mut HashMap::new());
+    }
+
+    fn convert_type_annotation(
+        &mut self,
+        annotation: lower::TypeAnnotation,
+    ) -> engine::UnresolvedType {
+        self.convert_type_annotation_inner(
+            annotation,
+            &|typechecker| Some(typechecker.ctx.new_variable()),
+            &mut Vec::new(),
+        )
+    }
+
+    fn convert_finalized_type_annotation(
+        &mut self,
+        annotation: lower::TypeAnnotation,
+    ) -> engine::Type {
+        let ty = self.convert_type_annotation_inner(annotation, &|_| None, &mut Vec::new());
+
+        ty.finalize(
+            &self.ctx,
+            engine::FinalizeOptions {
+                generic: true,
+                ..Default::default()
+            },
+        )
+        .expect("type should not contain variables")
+    }
+
+    fn convert_type_annotation_inner(
+        &mut self,
+        annotation: lower::TypeAnnotation,
+        convert_var: &impl Fn(&mut Self) -> Option<engine::TypeVariable>,
+        stack: &mut Vec<TypeId>,
+    ) -> engine::UnresolvedType {
+        match annotation.kind {
+            lower::TypeAnnotationKind::Error => {
+                engine::UnresolvedType::Bottom(engine::BottomTypeReason::Error)
+            }
+            lower::TypeAnnotationKind::Placeholder => {
+                if let Some(var) = convert_var(self) {
+                    engine::UnresolvedType::Variable(var)
+                } else {
+                    self.compiler.diagnostics.add(Diagnostic::error(
+                        "type placeholder is not allowed here",
+                        vec![Note::primary(
+                            annotation.span,
+                            "try providing an actual type in place of `_`",
+                        )],
+                    ));
+
+                    engine::UnresolvedType::Bottom(engine::BottomTypeReason::Error)
+                }
+            }
+            lower::TypeAnnotationKind::Named(id, params) => {
+                let params = params
+                    .into_iter()
+                    .map(|param| self.convert_type_annotation_inner(param, convert_var, stack))
+                    .collect::<Vec<_>>();
+
+                if stack.contains(&id) {
+                    return engine::UnresolvedType::Named(
+                        id,
+                        params,
+                        engine::TypeStructure::Recursive(id),
+                    );
+                }
+
+                stack.push(id);
+
+                let ty = self
+                    .files
+                    .get(&id.file)
+                    .unwrap()
+                    .declarations
+                    .types
+                    .get(&id)
+                    .unwrap()
+                    .clone();
+
+                let substitutions = ty
+                    .value
+                    .params
+                    .iter()
+                    .copied()
+                    .zip(params.iter().cloned())
+                    .collect::<HashMap<_, _>>();
+
+                let mut convert_and_instantiate = |ty| {
+                    let mut ty = self.convert_type_annotation_inner(ty, convert_var, stack);
+                    ty.instantiate_with(&self.ctx, &substitutions);
+                    ty
+                };
+
+                let structure = match &ty.value.kind {
+                    lower::TypeKind::Marker => engine::TypeStructure::Marker,
+                    lower::TypeKind::Structure(fields, _) => engine::TypeStructure::Structure(
+                        fields
+                            .iter()
+                            .map(|field| convert_and_instantiate(field.ty.clone()))
+                            .collect(),
+                    ),
+                    lower::TypeKind::Enumeration(variants, _) => {
+                        engine::TypeStructure::Enumeration(
+                            variants
+                                .iter()
+                                .map(|variant| {
+                                    variant
+                                        .tys
+                                        .iter()
+                                        .map(|ty| convert_and_instantiate(ty.clone()))
+                                        .collect()
+                                })
+                                .collect(),
+                        )
+                    }
+                };
+
+                stack.pop();
+
+                engine::UnresolvedType::Named(id, params, structure)
+            }
+            lower::TypeAnnotationKind::Parameter(id) => engine::UnresolvedType::Parameter(id),
+            lower::TypeAnnotationKind::Builtin(id, mut parameters) => {
+                let builtin_ty = self
+                    .files
+                    .get(&id.file)
+                    .unwrap()
+                    .declarations
+                    .builtin_types
+                    .get(&id)
+                    .unwrap()
+                    .clone();
+
+                match builtin_ty.value.kind {
+                    lower::BuiltinTypeKind::Never => {
+                        if !parameters.is_empty() {
+                            self.compiler.diagnostics.add(Diagnostic::error(
+                                "`!` does not accept parameters",
+                                vec![Note::primary(
+                                    annotation.span,
+                                    "try removing these parameters",
+                                )],
+                            ));
+                        }
+
+                        engine::UnresolvedType::Bottom(engine::BottomTypeReason::Annotated)
+                    }
+                    lower::BuiltinTypeKind::Number => {
+                        if !parameters.is_empty() {
+                            self.compiler.diagnostics.add(Diagnostic::error(
+                                "`Number` does not accept parameters",
+                                vec![Note::primary(
+                                    annotation.span,
+                                    "try removing these parameters",
+                                )],
+                            ));
+                        }
+
+                        engine::UnresolvedType::Builtin(engine::BuiltinType::Number)
+                    }
+                    lower::BuiltinTypeKind::Integer => {
+                        if !parameters.is_empty() {
+                            self.compiler.diagnostics.add(Diagnostic::error(
+                                "`Integer` does not accept parameters",
+                                vec![Note::primary(
+                                    annotation.span,
+                                    "try removing these parameters",
+                                )],
+                            ));
+                        }
+
+                        engine::UnresolvedType::Builtin(engine::BuiltinType::Integer)
+                    }
+                    lower::BuiltinTypeKind::Natural => {
+                        if !parameters.is_empty() {
+                            self.compiler.diagnostics.add(Diagnostic::error(
+                                "`Natural` does not accept parameters",
+                                vec![Note::primary(
+                                    annotation.span,
+                                    "try removing these parameters",
+                                )],
+                            ));
+                        }
+
+                        engine::UnresolvedType::Builtin(engine::BuiltinType::Natural)
+                    }
+                    lower::BuiltinTypeKind::Byte => {
+                        if !parameters.is_empty() {
+                            self.compiler.diagnostics.add(Diagnostic::error(
+                                "`Byte` does not accept parameters",
+                                vec![Note::primary(
+                                    annotation.span,
+                                    "try removing these parameters",
+                                )],
+                            ));
+                        }
+
+                        engine::UnresolvedType::Builtin(engine::BuiltinType::Byte)
+                    }
+                    lower::BuiltinTypeKind::Signed => {
+                        if !parameters.is_empty() {
+                            self.compiler.diagnostics.add(Diagnostic::error(
+                                "`Signed` does not accept parameters",
+                                vec![Note::primary(
+                                    annotation.span,
+                                    "try removing these parameters",
+                                )],
+                            ));
+                        }
+
+                        engine::UnresolvedType::Builtin(engine::BuiltinType::Signed)
+                    }
+                    lower::BuiltinTypeKind::Unsigned => {
+                        if !parameters.is_empty() {
+                            self.compiler.diagnostics.add(Diagnostic::error(
+                                "`Unsigned` does not accept parameters",
+                                vec![Note::primary(
+                                    annotation.span,
+                                    "try removing these parameters",
+                                )],
+                            ));
+                        }
+
+                        engine::UnresolvedType::Builtin(engine::BuiltinType::Unsigned)
+                    }
+                    lower::BuiltinTypeKind::Float => {
+                        if !parameters.is_empty() {
+                            self.compiler.diagnostics.add(Diagnostic::error(
+                                "`Float` does not accept parameters",
+                                vec![Note::primary(
+                                    annotation.span,
+                                    "try removing these parameters",
+                                )],
+                            ));
+                        }
+
+                        engine::UnresolvedType::Builtin(engine::BuiltinType::Float)
+                    }
+                    lower::BuiltinTypeKind::Double => {
+                        if !parameters.is_empty() {
+                            self.compiler.diagnostics.add(Diagnostic::error(
+                                "`Double` does not accept parameters",
+                                vec![Note::primary(
+                                    annotation.span,
+                                    "try removing these parameters",
+                                )],
+                            ));
+                        }
+
+                        engine::UnresolvedType::Builtin(engine::BuiltinType::Double)
+                    }
+                    lower::BuiltinTypeKind::Text => {
+                        if !parameters.is_empty() {
+                            self.compiler.diagnostics.add(Diagnostic::error(
+                                "`Text` does not accept parameters",
+                                vec![Note::primary(
+                                    annotation.span,
+                                    "try removing these parameters",
+                                )],
+                            ));
+                        }
+
+                        engine::UnresolvedType::Builtin(engine::BuiltinType::Text)
+                    }
+                    lower::BuiltinTypeKind::Boolean => {
+                        if !parameters.is_empty() {
+                            self.compiler.diagnostics.add(Diagnostic::error(
+                                "`Boolean` does not accept parameters",
+                                vec![Note::primary(
+                                    annotation.span,
+                                    "try removing these parameters",
+                                )],
+                            ));
+                        }
+
+                        engine::UnresolvedType::Builtin(engine::BuiltinType::Number)
+                    }
+                    lower::BuiltinTypeKind::List => {
+                        if parameters.is_empty() {
+                            self.compiler.diagnostics.add(Diagnostic::error(
+                                "`List` accepts 1 parameter, but none were provided",
+                                vec![Note::primary(
+                                    annotation.span,
+                                    "try adding `_` here to infer the type of `Element`",
+                                )],
+                            ));
+
+                            engine::UnresolvedType::Builtin(engine::BuiltinType::List(Box::new(
+                                engine::UnresolvedType::Bottom(engine::BottomTypeReason::Error),
+                            )))
+                        } else {
+                            if parameters.len() > 1 {
+                                self.compiler.diagnostics.add(Diagnostic::error(
+                                    format!(
+                                        "`List` accepts 1 parameter, but {} were provided",
+                                        parameters.len()
+                                    ),
+                                    vec![Note::primary(
+                                        annotation.span,
+                                        "try removing some of these",
+                                    )],
+                                ));
+                            }
+
+                            engine::UnresolvedType::Builtin(engine::BuiltinType::List(Box::new(
+                                self.convert_type_annotation_inner(
+                                    parameters.pop().unwrap(),
+                                    convert_var,
+                                    stack,
+                                ),
+                            )))
+                        }
+                    }
+                    lower::BuiltinTypeKind::Mutable => {
+                        if parameters.is_empty() {
+                            self.compiler.diagnostics.add(Diagnostic::error(
+                                "`Mutable` accepts 1 parameter, but none were provided",
+                                vec![Note::primary(
+                                    annotation.span,
+                                    "try adding `_` here to infer the type of `Value`",
+                                )],
+                            ));
+
+                            engine::UnresolvedType::Builtin(engine::BuiltinType::Mutable(Box::new(
+                                engine::UnresolvedType::Bottom(engine::BottomTypeReason::Error),
+                            )))
+                        } else {
+                            if parameters.len() > 1 {
+                                self.compiler.diagnostics.add(Diagnostic::error(
+                                    format!(
+                                        "`Mutable` accepts 1 parameter, but {} were provided",
+                                        parameters.len()
+                                    ),
+                                    vec![Note::primary(
+                                        annotation.span,
+                                        "try removing some of these",
+                                    )],
+                                ));
+                            }
+
+                            engine::UnresolvedType::Builtin(engine::BuiltinType::Mutable(Box::new(
+                                self.convert_type_annotation_inner(
+                                    parameters.pop().unwrap(),
+                                    convert_var,
+                                    stack,
+                                ),
+                            )))
+                        }
+                    }
+                }
+            }
+            lower::TypeAnnotationKind::Function(input, output) => engine::UnresolvedType::Function(
+                Box::new(self.convert_type_annotation_inner(*input, convert_var, stack)),
+                Box::new(self.convert_type_annotation_inner(*output, convert_var, stack)),
+            ),
+            lower::TypeAnnotationKind::Tuple(tys) => engine::UnresolvedType::Tuple(
+                tys.into_iter()
+                    .map(|ty| self.convert_type_annotation_inner(ty, convert_var, stack))
+                    .collect(),
+            ),
+        }
+    }
+
+    fn substitute_trait_params(
+        &mut self,
+        trait_id: TraitId,
+        params: Vec<engine::UnresolvedType>,
+    ) -> engine::UnresolvedType {
+        let (trait_ty, trait_params) =
+            self.with_trait_decl(trait_id, |decl| (decl.ty.clone(), decl.params.clone()));
+
+        let substitutions = trait_params
+            .into_iter()
+            .zip(params)
+            .collect::<HashMap<_, _>>();
+
+        let mut instance_ty = engine::UnresolvedType::from(trait_ty);
+        instance_ty.instantiate_with(&self.ctx, &substitutions);
+
+        instance_ty
+    }
+}
+
+impl<'a, 'l> Typechecker<'a, 'l> {
+    fn format_type(
+        &mut self,
+        ty: impl Into<format::FormattableType>,
+        surround_in_backticks: bool,
+    ) -> String {
+        let typechecker = RefCell::new(self);
+
+        macro_rules! getter {
+            ($x:ident) => {
+                paste::paste!(|id| {
+                    typechecker
+                        .borrow_mut()
+                        .[<with_ $x _decl>](id, |decl| decl.name.to_string())
+                })
+            };
+        }
+
+        let type_names = getter!(type);
+        let trait_names = getter!(trait);
+        let param_names = getter!(type_parameter);
+
+        format::format_type(
+            ty,
+            type_names,
+            trait_names,
+            param_names,
+            surround_in_backticks,
+        )
+    }
+
+    pub fn report_errors(&mut self) {
+        let (unresolved_type_errors, other_errors): (Vec<_>, Vec<_>) = mem::take(&mut self.errors)
+            .into_iter()
+            .partition(|e| matches!(e.error, engine::TypeError::UnresolvedType));
+
+        let should_report_unresolved_type_errors = other_errors.is_empty();
+
+        for error in other_errors {
+            self.report_error(error);
+        }
+
+        if should_report_unresolved_type_errors {
+            for error in unresolved_type_errors {
+                self.report_error(error);
+            }
+        }
+    }
+
+    fn report_error(&mut self, error: Error) {
+        #[allow(unused_mut)]
+        let mut diagnostic = match error.error {
+            engine::TypeError::ErrorExpression => return,
+            engine::TypeError::Recursive(_) => Diagnostic::error(
+                "recursive type",
+                vec![Note::primary(
+                    error.span,
+                    "the type of this references itself",
+                )],
+            ),
+            engine::TypeError::Mismatch(actual, expected) => Diagnostic::error(
+                "mismatched types",
+                vec![Note::primary(
+                    error.span,
+                    format!(
+                        "expected {}, but found {}",
+                        self.format_type(expected, true),
+                        self.format_type(actual, true)
+                    ),
+                )],
+            ),
+            engine::TypeError::MissingInstance(id, params, bound_span) => {
+                let trait_attributes = self
+                    .declarations
+                    .borrow()
+                    .traits
+                    .get(&id)
+                    .unwrap()
+                    .attributes
+                    .clone();
+
+                Diagnostic::error(
+                    "missing instance",
+                    std::iter::once(Note::primary(
+                        error.span,
+                        format!(
+                            "could not find instance {}",
+                            self.format_type(format::FormattableType::Trait(id, params), true)
+                        ),
+                    ))
+                    .chain(
+                        bound_span.map(|span| Note::secondary(span, "required by this bound here")),
+                    )
+                    .chain(
+                        trait_attributes
+                            .on_unimplemented
+                            .map(|message| Note::secondary(error.span, message)),
+                    )
+                    .collect(),
+                )
+            }
+            engine::TypeError::AmbiguousTrait(_, candidates) => Diagnostic::error(
+                "could not determine the type of this expression",
+                std::iter::once(Note::primary(
+                    error.span,
+                    "try annotating the type with `::`",
+                ))
+                .chain(
+                    candidates
+                        .into_iter()
+                        .map(|span| Note::secondary(span, "this instance could apply")),
+                )
+                .collect(),
+            ),
+            engine::TypeError::UnresolvedType => Diagnostic::error(
+                "could not determine the type of this expression",
+                vec![Note::primary(
+                    error.span,
+                    "try annotating the type with `::`",
+                )],
+            ),
+            engine::TypeError::InvalidNumericLiteral(ty) => Diagnostic::error(
+                format!("number does not fit into a {}", self.format_type(ty, true)),
+                vec![Note::primary(error.span, "invalid numeric literal")],
+            ),
+        };
+
+        #[cfg(debug_assertions)]
+        {
+            diagnostic.trace = error.trace;
+        }
+
+        self.compiler.diagnostics.add(diagnostic);
     }
 }

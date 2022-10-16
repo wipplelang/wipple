@@ -6,10 +6,10 @@ use "./mutable.wpl"
 
 [help "Implementations for the `list` function."]
 [on-unimplemented "lists may only be created from tuples where every value has the same type"]
-Tuple-To-List : Tuple List => trait (Tuple -> List)
+Tuple-To-List : Tuple Element => trait (Tuple -> List Element)
 
 tuple-to-list-impl : ty' tuple' ~>
-	(ty' => instance Tuple-To-List tuple' (List ty') : tuple -> external "runtime" "make-list" tuple)
+	(ty' => instance Tuple-To-List tuple' ty' : tuple -> external "runtime" "make-list" tuple)
 
 tuple-to-list-impl A ()
 tuple-to-list-impl A (A ,)
@@ -24,7 +24,7 @@ tuple-to-list-impl A (A , A , A , A , A , A , A , A , A)
 tuple-to-list-impl A (A , A , A , A , A , A , A , A , A , A)
 
 [help "Create a `List` from a tuple."]
-list :: Tuple List where (Tuple-To-List Tuple List) => Tuple -> List
+list :: Tuple Element where (Tuple-To-List Tuple Element) => Tuple -> List Element
 list : Tuple-To-List
 
 [help "Retrieve the first item inside a `List`, if it exists."]

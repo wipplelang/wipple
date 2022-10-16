@@ -19,7 +19,7 @@ set! : x -> m -> external "runtime" "set-mutable" m x
 swap! :: A => Mutable A -> Mutable A -> ()
 swap! : a -> b -> {
 	temp : get a
-	a . set! b
+	a . set! (get b)
 	b . set! temp
 }
 

@@ -1,16 +1,13 @@
-use crate::{
-    analysis, helpers::InternedString, parse::Span, Compiler, Loader, MonomorphizedConstantId,
-    VariableId,
-};
+use crate::{analysis, helpers::InternedString, parse::Span, Compiler, ItemId, VariableId};
 use std::{
-    collections::BTreeMap,
+    collections::{BTreeMap, HashMap},
     os::raw::{c_int, c_uint},
 };
 
 #[derive(Debug, Clone)]
 pub struct Program {
-    pub constants: BTreeMap<MonomorphizedConstantId, Expression>,
-    pub body: Vec<Expression>,
+    pub items: HashMap<ItemId, Expression>,
+    pub entrypoint: ItemId,
 }
 
 #[derive(Debug, Clone)]
@@ -41,7 +38,7 @@ pub enum ExpressionKind {
     Unsigned(c_uint),
     Float(f32),
     Double(f64),
-    Constant(MonomorphizedConstantId),
+    Constant(ItemId),
 }
 
 #[derive(Debug, Clone)]
@@ -77,22 +74,21 @@ pub enum PatternKind {
     Where(Box<Pattern>, Box<Expression>),
 }
 
-impl<L: Loader> Compiler<L> {
-    pub(super) fn convert_to_ssa(&mut self, program: &analysis::Program) -> Program {
+impl Compiler<'_> {
+    pub(super) fn convert_to_ssa(&self, program: &analysis::Program) -> Program {
+        assert!(program.complete);
+
         Program {
-            constants: program
-                .declarations
-                .monomorphized_constants
+            items: program
+                .items
                 .iter()
-                .map(|(id, (_, _, _, constant))| {
-                    (*id, self.convert_expr_to_ssa(&constant.value, true))
-                })
+                .map(|(id, item)| (*id, self.convert_expr_to_ssa(item, true)))
                 .collect(),
-            body: self.convert_block_to_ssa(&program.body, true),
+            entrypoint: program.entrypoint.expect("no entrypoint provided"),
         }
     }
 
-    fn convert_expr_to_ssa(&mut self, expr: &analysis::Expression, tail: bool) -> Expression {
+    fn convert_expr_to_ssa(&self, expr: &analysis::Expression, tail: bool) -> Expression {
         Expression {
             span: Some(expr.span),
             tail,
@@ -167,11 +163,7 @@ impl<L: Loader> Compiler<L> {
         }
     }
 
-    fn convert_block_to_ssa(
-        &mut self,
-        exprs: &[analysis::Expression],
-        tail: bool,
-    ) -> Vec<Expression> {
+    fn convert_block_to_ssa(&self, exprs: &[analysis::Expression], tail: bool) -> Vec<Expression> {
         let mut result = Vec::new();
         let count = exprs.len();
         for (index, expr) in exprs.iter().enumerate() {
@@ -210,7 +202,7 @@ impl<L: Loader> Compiler<L> {
         result
     }
 
-    fn convert_arm_to_ssa(&mut self, arm: &analysis::Arm, tail: bool) -> Arm {
+    fn convert_arm_to_ssa(&self, arm: &analysis::Arm, tail: bool) -> Arm {
         Arm {
             span: Some(arm.span),
             pattern: self.convert_pattern_to_ssa(&arm.pattern),
@@ -218,7 +210,7 @@ impl<L: Loader> Compiler<L> {
         }
     }
 
-    fn convert_pattern_to_ssa(&mut self, pattern: &analysis::Pattern) -> Pattern {
+    fn convert_pattern_to_ssa(&self, pattern: &analysis::Pattern) -> Pattern {
         Pattern {
             span: Some(pattern.span),
             kind: match &pattern.kind {

@@ -2,7 +2,7 @@ use super::*;
 
 impl std::fmt::Display for Label {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "#{}", self.0)
+        write!(f, "#{}", self.counter)
     }
 }
 
@@ -50,7 +50,7 @@ impl std::fmt::Display for Statement {
             Statement::VariantElement(variant, index) => {
                 write!(f, "variant element {} {}", variant, index)
             }
-            Statement::Initialize(initialize) => write!(f, "initialize ${}", initialize.0),
+            Statement::Initialize(initialize) => write!(f, "initialize ${}", initialize.counter),
             Statement::If(variant, label) => write!(f, "if {} {}", variant, label),
             Statement::Jump(label) => write!(f, "jump {}", label),
             Statement::Unreachable => write!(f, "unreachable"),
@@ -71,7 +71,7 @@ impl std::fmt::Display for Value {
             Value::Unsigned(unsigned) => write!(f, "unsigned {}", unsigned),
             Value::Float(float) => write!(f, "float {}", float),
             Value::Double(double) => write!(f, "double {}", double),
-            Value::Variable(variable) => write!(f, "variable ${}", variable.0),
+            Value::Variable(variable) => write!(f, "variable ${}", variable.counter),
             Value::Constant(label) => write!(f, "constant {}", label),
             Value::Function(label) => write!(f, "function {}", label),
             Value::Closure(label) => write!(f, "closure {}", label),

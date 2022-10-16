@@ -7,7 +7,7 @@ code: |
         F
     }
 
-    grade : Grade A
+    _ : Grade A
 
 output: |
 

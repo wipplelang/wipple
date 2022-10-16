@@ -1,6 +1,5 @@
 pub mod analysis;
 pub mod diagnostics;
-pub mod doc;
 pub mod helpers;
 pub mod ir;
 pub mod parse;
@@ -13,24 +12,23 @@ use serde::Serialize;
 use std::{
     borrow::Cow,
     collections::HashMap,
-    fmt,
+    fmt::{self, Debug},
     hash::Hash,
+    mem,
     sync::{atomic::AtomicUsize, Arc},
 };
 
 pub type SourceMap = HashMap<FilePath, Arc<str>>;
 
 #[async_trait]
-pub trait Loader: Clone + Send + Sync + 'static {
-    type Error: fmt::Display;
-
+pub trait Loader: Debug + Send + Sync + 'static {
     fn std_path(&self) -> Option<FilePath>;
 
-    fn resolve(&self, path: FilePath, current: Option<FilePath>) -> Result<FilePath, Self::Error>;
+    fn resolve(&self, path: FilePath, current: Option<FilePath>) -> anyhow::Result<FilePath>;
 
-    async fn load(&self, path: FilePath) -> Result<Arc<str>, Self::Error>;
+    async fn load(&self, path: FilePath) -> anyhow::Result<Arc<str>>;
 
-    fn cache(&self) -> Arc<Mutex<HashMap<FilePath, Arc<analysis::expand::File<Self>>>>>;
+    fn cache(&self) -> Arc<Mutex<HashMap<FilePath, Arc<analysis::expand::File>>>>;
 
     fn source_map(&self) -> Arc<Mutex<SourceMap>>;
 }
@@ -62,10 +60,55 @@ impl fmt::Display for FilePath {
 }
 
 #[derive(Debug, Clone)]
-pub struct Compiler<L: Loader> {
-    pub loader: L,
+pub struct Compiler<'l> {
+    loader: &'l dyn Loader,
+    #[cfg(debug_assertions)]
+    pub(crate) backtrace_enabled: bool,
     diagnostics: Diagnostics,
+    file_ids: FileIds,
     ids: Ids,
+    pub(crate) cache: Arc<Mutex<indexmap::IndexMap<FilePath, Arc<analysis::lower::File>>>>,
+}
+
+macro_rules! file_ids {
+    ($($(#[$meta:meta])* $id:ident),* $(,)?) => {
+        paste::paste! {
+            #[derive(Debug, Clone, Default)]
+            struct FileIds {
+                $([<next_ $id:snake>]: Arc<Mutex<HashMap<FilePath, usize>>>,)*
+            }
+
+            $(
+                $(#[$meta])*
+                #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
+                pub struct $id {
+                    pub file: FilePath,
+                    pub counter: usize,
+                }
+            )*
+
+            impl FileIds {
+                $(
+                    fn [<new_ $id:snake>](&self, file: FilePath) -> $id {
+                        let mut storage = self.[<next_ $id:snake>].lock();
+                        let storage = storage.entry(file).or_default();
+                        let counter = *storage;
+                        *storage += 1;
+
+                        $id { file, counter }
+                    }
+                )*
+            }
+
+            impl Compiler<'_> {
+                $(
+                    fn [<new_ $id:snake>](&self, file: FilePath) -> $id {
+                        self.file_ids.[<new_ $id:snake>](file)
+                    }
+                )*
+            }
+        }
+    };
 }
 
 macro_rules! ids {
@@ -79,22 +122,23 @@ macro_rules! ids {
             $(
                 $(#[$meta])*
                 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
-                pub struct $id(pub usize);
+                pub struct $id {
+                    pub counter: usize,
+                }
             )*
 
             impl Ids {
                 $(
                     fn [<new_ $id:snake>](&self) -> $id {
-                        let id = self
-                            .[<next_ $id:snake>]
+                        let counter = self.[<next_ $id:snake>]
                             .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
 
-                        $id(id)
+                        $id { counter }
                     }
                 )*
             }
 
-            impl<L: Loader> Compiler<L> {
+            impl Compiler<'_> {
                 $(
                     fn [<new_ $id:snake>](&self) -> $id {
                         self.ids.[<new_ $id:snake>]()
@@ -105,11 +149,10 @@ macro_rules! ids {
     };
 }
 
-ids!(
+file_ids!(
     BuiltinTypeId,
     GenericConstantId,
-    Label,
-    MonomorphizedConstantId,
+    ItemId,
     TemplateId,
     TraitId,
     TypeId,
@@ -117,19 +160,31 @@ ids!(
     VariableId,
 );
 
-impl<L: Loader> Compiler<L> {
-    pub fn new(loader: L) -> Self {
+ids!(Label);
+
+impl<'l> Compiler<'l> {
+    pub fn new(loader: &'l impl Loader) -> Self {
         Compiler {
             loader,
+            #[cfg(debug_assertions)]
+            backtrace_enabled: false,
             diagnostics: Default::default(),
             ids: Default::default(),
+            file_ids: Default::default(),
+            cache: Default::default(),
         }
     }
 
-    pub fn finish(&self) -> FinalizedDiagnostics<L> {
+    #[cfg(debug_assertions)]
+    pub fn set_backtrace_enabled(mut self, backtrace_enabled: bool) -> Self {
+        self.backtrace_enabled = backtrace_enabled;
+        self
+    }
+
+    pub fn finish(&self) -> FinalizedDiagnostics {
         FinalizedDiagnostics {
-            loader: self.loader.clone(),
-            diagnostics: self.diagnostics.diagnostics.lock().clone(),
+            source_map: self.loader.source_map().lock().clone(),
+            diagnostics: mem::take(&mut self.diagnostics.diagnostics.lock()),
         }
     }
 }

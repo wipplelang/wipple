@@ -8,11 +8,10 @@ mod format;
 mod ssa;
 
 use crate::{
-    analysis::typecheck, helpers::InternedString, parse::Span, Compiler, Label, Loader,
-    MonomorphizedConstantId, VariableId,
+    analysis::typecheck, helpers::InternedString, parse::Span, Compiler, ItemId, Label, VariableId,
 };
 use std::{
-    collections::BTreeMap,
+    collections::{BTreeMap, HashMap},
     os::raw::{c_int, c_uint},
 };
 
@@ -67,44 +66,46 @@ pub enum Value {
     Closure(Label),
 }
 
-impl<L: Loader> Compiler<L> {
-    pub fn ir_from(&mut self, program: &typecheck::Program) -> Program {
+impl Compiler<'_> {
+    pub fn ir_from(&self, program: &typecheck::Program) -> Program {
+        assert!(
+            program.complete,
+            "cannot generate IR from incomplete program"
+        );
+
         let program = self.convert_to_ssa(program);
 
         let mut gen = IrGen {
             compiler: self,
-            constants: Default::default(),
+            items: Default::default(),
             labels: Default::default(),
         };
 
-        for id in program.constants.keys() {
+        for id in program.items.keys() {
             let label = gen.compiler.new_label();
-            gen.constants.insert(*id, label);
+            gen.items.insert(*id, label);
         }
 
-        for (id, constant) in program.constants {
-            let mut label = *gen.constants.get(&id).unwrap();
+        for (id, constant) in program.items {
+            let mut label = *gen.items.get(&id).unwrap();
             gen.initialize_label(label, constant.span);
             gen.gen_expr(constant, &mut label);
         }
 
-        let entrypoint_label = gen.new_label(None);
-        gen.gen_block(program.body, &mut entrypoint_label.clone());
-
         Program {
             labels: gen.labels,
-            entrypoint: entrypoint_label,
+            entrypoint: *gen.items.get(&program.entrypoint).unwrap(),
         }
     }
 }
 
-struct IrGen<'a, L: Loader> {
-    compiler: &'a mut Compiler<L>,
-    constants: BTreeMap<MonomorphizedConstantId, Label>,
+struct IrGen<'a, 'l> {
+    compiler: &'a Compiler<'l>,
+    items: HashMap<ItemId, Label>,
     labels: BTreeMap<Label, (Option<Span>, Vec<Statement>)>,
 }
 
-impl<L: Loader> IrGen<'_, L> {
+impl IrGen<'_, '_> {
     fn new_label(&mut self, span: Option<Span>) -> Label {
         let label = self.compiler.new_label();
         self.initialize_label(label, span);
@@ -120,7 +121,7 @@ impl<L: Loader> IrGen<'_, L> {
     }
 }
 
-impl<L: Loader> IrGen<'_, L> {
+impl IrGen<'_, '_> {
     fn gen_expr(&mut self, expr: ssa::Expression, label: &mut Label) {
         match expr.kind {
             ssa::ExpressionKind::Marker => {
@@ -273,7 +274,7 @@ impl<L: Loader> IrGen<'_, L> {
                     .push(Statement::Variant(discriminant, count));
             }
             ssa::ExpressionKind::Constant(id) => {
-                let id = *self.constants.get(&id).unwrap();
+                let id = *self.items.get(&id).unwrap();
                 self.statements_for(*label)
                     .push(Statement::Value(Value::Constant(id)));
             }

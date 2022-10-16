@@ -19,7 +19,6 @@ Element => instance Iterate (Iterator Element) Element : it
 -- reduce :: Container Element Result where (Iterate Container Element) => (Element -> Result -> Result) -> Container -> Iterator Result
 -- reduce : TODO
 
--- TODO: Use higher-kinded types
 [help "Keep only the items that satisfy the provided condition."]
 filter :: Container Element where (Iterate Container Element) => (Element -> Boolean) -> Container -> Iterator Element
 filter : include? -> container -> {
@@ -38,8 +37,7 @@ filter : include? -> container -> {
 	}
 }
 
--- -- TODO: Use higher-kinded types
--- [help "Execute a function for each item in an iterator."]
+[help "Execute a function for each item in an iterator."]
 each :: Container Element where (Iterate Container Element) => (Element -> ()) -> Container -> ()
 each : f -> container -> {
 	{ next } : Iterate container
@@ -55,11 +53,9 @@ each : f -> container -> {
 	}
 }
 
--- TODO: Use higher-kinded types
 [help "Implement this trait to enable reducing an iterator into your collection type."]
 Collect : Element Container => trait (Iterator Element -> Container)
 
--- TODO: Use higher-kinded types
 [help "Collect an iterator into a single value, like a `List`."]
 collect :: Input Element Output where (Iterate Input Element) (Collect Element Output) => Input -> Output
 collect : input -> Collect (Iterate input)
@@ -77,21 +73,6 @@ Element => instance Collect Element (List Element) : { next } -> {
 	}
 
 	get list
-}
-
-Element => instance Collect Text Text : { next } -> {
-	text : mutable ""
-	loop {
-		when (next ()) {
-			Some x -> {
-				text . add! x
-				Continue
-			}
-			None -> Break ()
-		}
-	}
-
-	get text
 }
 
 A => instance Iterate (List A) A : list -> {

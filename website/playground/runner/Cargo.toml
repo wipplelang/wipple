@@ -12,8 +12,7 @@ debug_playground = ["rust-embed"]
 
 [dependencies]
 anyhow = "1"
-codemap = "=0.1.2"
-codemap-diagnostic = "0.1"
+codespan-reporting = "0.11"
 console_error_panic_hook = { version = "0.1.6", optional = true }
 force-send-sync = "1"
 itertools = "0.10"
