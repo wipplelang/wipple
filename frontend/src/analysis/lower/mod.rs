@@ -7,8 +7,8 @@ use crate::{
     diagnostics::*,
     helpers::InternedString,
     parse::Span,
-    BuiltinTypeId, Compiler, FilePath, GenericConstantId, TemplateId, TraitId, TypeId,
-    TypeParameterId, VariableId,
+    BuiltinTypeId, Compiler, ConstantId, FilePath, TemplateId, TraitId, TypeId, TypeParameterId,
+    Uses, VariableId,
 };
 use parking_lot::Mutex;
 use serde::Serialize;
@@ -38,8 +38,8 @@ pub struct Declarations {
     pub type_parameters: HashMap<TypeParameterId, Declaration<()>>,
     pub traits: HashMap<TraitId, Declaration<Trait>>,
     pub builtin_types: HashMap<BuiltinTypeId, Declaration<BuiltinType>>,
-    pub constants: HashMap<GenericConstantId, Declaration<Constant>>,
-    pub instances: HashMap<GenericConstantId, Declaration<Instance>>,
+    pub constants: HashMap<ConstantId, Declaration<Constant>>,
+    pub instances: HashMap<ConstantId, Declaration<Instance>>,
     pub variables: HashMap<VariableId, Declaration<()>>,
 }
 
@@ -51,8 +51,8 @@ struct UnresolvedDeclarations {
     pub type_parameters: HashMap<TypeParameterId, Declaration<()>>,
     pub traits: HashMap<TraitId, Declaration<Option<Trait>>>,
     pub builtin_types: HashMap<BuiltinTypeId, Declaration<BuiltinType>>,
-    pub constants: HashMap<GenericConstantId, Declaration<Option<Constant>>>,
-    pub instances: HashMap<GenericConstantId, Declaration<Option<Instance>>>,
+    pub constants: HashMap<ConstantId, Declaration<Option<Constant>>>,
+    pub instances: HashMap<ConstantId, Declaration<Option<Instance>>>,
     pub variables: HashMap<VariableId, Declaration<()>>,
 }
 
@@ -93,7 +93,6 @@ pub struct Declaration<T> {
     pub name: Option<InternedString>,
     pub span: Span,
     pub value: T,
-    pub uses: Vec<Span>,
 }
 
 impl<T> Declaration<Option<T>> {
@@ -102,7 +101,6 @@ impl<T> Declaration<Option<T>> {
             name,
             span,
             value: None,
-            uses: Vec::new(),
         }
     }
 
@@ -113,7 +111,6 @@ impl<T> Declaration<Option<T>> {
             value: self.value.unwrap_or_else(|| {
                 panic!("unresolved declaration: {:?} @ {:?}", self.name, self.span)
             }),
-            uses: self.uses,
         }
     }
 }
@@ -124,7 +121,6 @@ impl<T> Declaration<T> {
             name: self.name,
             span: self.span,
             value: Some(self.value),
-            uses: self.uses,
         }
     }
 }
@@ -158,7 +154,7 @@ pub struct TypeField {
 
 #[derive(Debug, Clone, Serialize)]
 pub struct TypeVariant {
-    pub constructor: GenericConstantId,
+    pub constructor: ConstantId,
     pub tys: Vec<TypeAnnotation>,
 }
 
@@ -246,7 +242,7 @@ pub struct Expression {
 pub enum ExpressionKind {
     Error,
     Marker(TypeId),
-    Constant(GenericConstantId),
+    Constant(ConstantId),
     Trait(TraitId),
     Variable(VariableId),
     Text(InternedString),
@@ -333,11 +329,13 @@ impl Compiler<'_> {
         &self,
         file: ast::File,
         dependencies: Vec<(Arc<File>, Option<HashMap<InternedString, Span>>)>,
+        uses: Arc<Mutex<Uses>>,
     ) -> File {
         let scope = Scope::root();
 
         let mut info = Info {
             file: file.path,
+            uses,
             declarations: Default::default(),
             attributes: Default::default(),
             scopes: Default::default(),
@@ -359,7 +357,6 @@ impl Compiler<'_> {
                         span: decl.span,
                         template: (),
                         attributes: decl.attributes,
-                        uses: decl.uses,
                     },
                 )
             })
@@ -370,16 +367,7 @@ impl Compiler<'_> {
                 ($($kind:ident$(($transform:expr))?),* $(,)?) => {
                     $(
                         for (id, decl) in dependency.declarations.$kind.clone() {
-                            use std::collections::hash_map::Entry;
-
-                            match info.declarations.$kind.entry(id) {
-                                Entry::Vacant(entry) => {
-                                    entry.insert($($transform)?(decl));
-                                }
-                                Entry::Occupied(mut entry) => {
-                                    entry.get_mut().uses.extend(decl.uses);
-                                }
-                            }
+                            info.declarations.$kind.entry(id).or_insert($($transform)?(decl));
                         }
                     )*
                 };
@@ -492,7 +480,7 @@ pub enum ScopeValue {
     BuiltinType(BuiltinTypeId),
     Trait(TraitId),
     TypeParameter(TypeParameterId),
-    Constant(GenericConstantId, Option<(TypeId, usize)>),
+    Constant(ConstantId, Option<(TypeId, usize)>),
     Variable(VariableId),
 }
 
@@ -586,6 +574,7 @@ impl<'a> Scope<'a> {
 
 struct Info {
     file: FilePath,
+    uses: Arc<Mutex<Uses>>,
     declarations: UnresolvedDeclarations,
     attributes: FileAttributes,
     scopes: Vec<(Span, ScopeValues)>,
@@ -600,8 +589,8 @@ struct StatementDeclaration {
 enum StatementDeclarationKind {
     Type(TypeId, ast::TypeDeclaration),
     Trait(TraitId, ast::TraitDeclaration),
-    Constant(GenericConstantId, ast::ConstantDeclaration),
-    Instance(GenericConstantId, ast::Instance),
+    Constant(ConstantId, ast::ConstantDeclaration),
+    Instance(ConstantId, ast::Instance),
     Use((Span, InternedString)),
     Queued(QueuedStatement),
 }
@@ -659,7 +648,6 @@ impl Compiler<'_> {
                                     name: Some(param.name),
                                     span: param.span,
                                     value: (),
-                                    uses: Vec::new(),
                                 },
                             );
 
@@ -715,7 +703,7 @@ impl Compiler<'_> {
                                     .map(|ty| self.lower_type_annotation(ty, scope, info))
                                     .collect::<Vec<_>>();
 
-                                let constructor_id = self.new_generic_constant_id(info.file);
+                                let constructor_id = self.new_constant_id(info.file);
 
                                 let constructor_ty = tys.iter().rev().fold(
                                     TypeAnnotation {
@@ -751,7 +739,6 @@ impl Compiler<'_> {
                                                 name: None,
                                                 span: ty.span,
                                                 value: (),
-                                                uses: Vec::new(),
                                             },
                                         );
 
@@ -802,7 +789,6 @@ impl Compiler<'_> {
                                             attributes: self
                                                 .lower_decl_attributes(&mut variant.attributes),
                                         }),
-                                        uses: Vec::new(),
                                     },
                                 );
 
@@ -852,12 +838,7 @@ impl Compiler<'_> {
                         .filter_map(|bound| {
                             let tr = match scope.get(bound.trait_name, bound.trait_span) {
                                 Some(ScopeValue::Trait(tr)) => {
-                                    info.declarations
-                                        .traits
-                                        .get_mut(&tr)
-                                        .unwrap()
-                                        .uses
-                                        .push(bound.trait_span);
+                                    info.uses.lock().record_use_of_trait(tr, bound.trait_span);
 
                                     tr
                                 }
@@ -922,12 +903,7 @@ impl Compiler<'_> {
                         .filter_map(|bound| {
                             let tr = match scope.get(bound.trait_name, bound.trait_span) {
                                 Some(ScopeValue::Trait(tr)) => {
-                                    info.declarations
-                                        .traits
-                                        .get_mut(&tr)
-                                        .unwrap()
-                                        .uses
-                                        .push(bound.trait_span);
+                                    info.uses.lock().record_use_of_trait(tr, bound.trait_span);
 
                                     tr
                                 }
@@ -971,12 +947,9 @@ impl Compiler<'_> {
 
                     let tr = match scope.get(instance.trait_name, instance.trait_span) {
                         Some(ScopeValue::Trait(tr)) => {
-                            info.declarations
-                                .traits
-                                .get_mut(&tr)
-                                .unwrap()
-                                .uses
-                                .push(instance.trait_span);
+                            info.uses
+                                .lock()
+                                .record_use_of_trait(tr, instance.trait_span);
 
                             tr
                         }
@@ -1026,12 +999,7 @@ impl Compiler<'_> {
                 StatementDeclarationKind::Use((span, name)) => {
                     let ty = match scope.get(name, span) {
                         Some(ScopeValue::Type(ty)) => {
-                            info.declarations
-                                .types
-                                .get_mut(&ty)
-                                .unwrap()
-                                .uses
-                                .push(span);
+                            info.uses.lock().record_use_of_type(ty, span);
 
                             ty
                         }
@@ -1165,12 +1133,14 @@ impl Compiler<'_> {
                                     return assign_pattern!();
                                 }
 
-                                associated_constant = Some((parameters, c));
+                                associated_constant = Some((id, parameters, c));
                             }
 
-                            if let Some((associated_parameters, associated_constant)) =
+                            if let Some((id, associated_parameters, associated_constant)) =
                                 associated_constant
                             {
+                                info.uses.lock().record_use_of_constant(id, pattern.span);
+
                                 let scope = scope.child();
 
                                 for id in associated_parameters {
@@ -1252,7 +1222,7 @@ impl Compiler<'_> {
                     })
                 }
                 ast::Declaration::Constant((span, name), declaration) => {
-                    let id = self.new_generic_constant_id(info.file);
+                    let id = self.new_constant_id(info.file);
                     scope.insert(name, ScopeValue::Constant(id, None));
 
                     info.declarations
@@ -1266,7 +1236,7 @@ impl Compiler<'_> {
                     })
                 }
                 ast::Declaration::Instance(instance) => {
-                    let id = self.new_generic_constant_id(info.file);
+                    let id = self.new_constant_id(info.file);
 
                     info.declarations
                         .instances
@@ -1365,12 +1335,7 @@ impl Compiler<'_> {
 
                     match scope.get(*ty_name, function.span) {
                         Some(ScopeValue::Type(id)) => {
-                            info.declarations
-                                .types
-                                .get_mut(&id)
-                                .unwrap()
-                                .uses
-                                .push(function.span);
+                            info.uses.lock().record_use_of_type(id, function.span);
 
                             match &input.kind {
                                 ast::ExpressionKind::Block(statements) => {
@@ -1498,12 +1463,9 @@ impl Compiler<'_> {
                             }
                         }
                         Some(ScopeValue::TypeParameter(id)) => {
-                            info.declarations
-                                .type_parameters
-                                .get_mut(&id)
-                                .unwrap()
-                                .uses
-                                .push(function.span);
+                            info.uses
+                                .lock()
+                                .record_use_of_type_parameter(id, function.span);
 
                             self.diagnostics.add(Diagnostic::error(
                                 "cannot instantiate type parameter",
@@ -1516,12 +1478,9 @@ impl Compiler<'_> {
                             ExpressionKind::Error
                         }
                         Some(ScopeValue::BuiltinType(id)) => {
-                            info.declarations
-                                .builtin_types
-                                .get_mut(&id)
-                                .unwrap()
-                                .uses
-                                .push(function.span);
+                            info.uses
+                                .lock()
+                                .record_use_of_builtin_type(id, function.span);
 
                             self.diagnostics.add(Diagnostic::error(
                                 "cannot instantiate builtin type",
@@ -1597,22 +1556,14 @@ impl Compiler<'_> {
 
                 match scope.get(name, ty.span) {
                     Some(ScopeValue::Type(id)) => {
-                        info.declarations
-                            .types
-                            .get_mut(&id)
-                            .unwrap()
-                            .uses
-                            .push(ty.span);
+                        info.uses.lock().record_use_of_type(id, ty.span);
 
                         TypeAnnotationKind::Named(id, parameters)
                     }
                     Some(ScopeValue::TypeParameter(param)) => {
-                        info.declarations
-                            .type_parameters
-                            .get_mut(&param)
-                            .unwrap()
-                            .uses
-                            .push(ty.span);
+                        info.uses
+                            .lock()
+                            .record_use_of_type_parameter(param, ty.span);
 
                         if !parameters.is_empty() {
                             // TODO: Higher-kinded types
@@ -1628,12 +1579,9 @@ impl Compiler<'_> {
                         TypeAnnotationKind::Parameter(param)
                     }
                     Some(ScopeValue::BuiltinType(builtin)) => {
-                        info.declarations
-                            .builtin_types
-                            .get_mut(&builtin)
-                            .unwrap()
-                            .uses
-                            .push(ty.span);
+                        info.uses
+                            .lock()
+                            .record_use_of_builtin_type(builtin, ty.span);
 
                         TypeAnnotationKind::Builtin(builtin, parameters)
                     }
@@ -1672,12 +1620,7 @@ impl Compiler<'_> {
             ast::PatternKind::Text(text) => PatternKind::Text(text),
             ast::PatternKind::Name(name) => match scope.peek(name, pattern.span) {
                 Some(ScopeValue::Constant(id, Some((ty, variant)))) => {
-                    info.declarations
-                        .constants
-                        .get_mut(&id)
-                        .unwrap()
-                        .uses
-                        .push(pattern.span);
+                    info.uses.lock().record_use_of_constant(id, pattern.span);
 
                     PatternKind::Variant(ty, variant, Vec::new())
                 }
@@ -1692,7 +1635,6 @@ impl Compiler<'_> {
                             name: Some(name),
                             span: pattern.span,
                             value: (),
-                            uses: Vec::new(),
                         },
                     );
 
@@ -1734,12 +1676,7 @@ impl Compiler<'_> {
 
                 match first {
                     ScopeValue::Type(ty) => {
-                        info.declarations
-                            .types
-                            .get_mut(&ty)
-                            .unwrap()
-                            .uses
-                            .push(name_span);
+                        info.uses.lock().record_use_of_type(ty, name_span);
 
                         let variants = match &info
                             .declarations
@@ -1819,12 +1756,7 @@ impl Compiler<'_> {
                         )
                     }
                     ScopeValue::Constant(id, Some((ty, variant))) => {
-                        info.declarations
-                            .constants
-                            .get_mut(&id)
-                            .unwrap()
-                            .uses
-                            .push(name_span);
+                        info.uses.lock().record_use_of_constant(id, name_span);
 
                         PatternKind::Variant(
                             ty,
@@ -1880,12 +1812,7 @@ impl Compiler<'_> {
         match scope.get(name, span) {
             Some(ScopeValue::Template(_) | ScopeValue::Operator(_)) => unreachable!(),
             Some(ScopeValue::Type(id)) => {
-                info.declarations
-                    .types
-                    .get_mut(&id)
-                    .unwrap()
-                    .uses
-                    .push(span);
+                info.uses.lock().record_use_of_type(id, span);
 
                 match info
                     .declarations
@@ -1909,12 +1836,7 @@ impl Compiler<'_> {
                 }
             }
             Some(ScopeValue::BuiltinType(id)) => {
-                info.declarations
-                    .builtin_types
-                    .get_mut(&id)
-                    .unwrap()
-                    .uses
-                    .push(span);
+                info.uses.lock().record_use_of_builtin_type(id, span);
 
                 self.diagnostics.add(Diagnostic::error(
                     "cannot use builtin type as value",
@@ -1924,22 +1846,12 @@ impl Compiler<'_> {
                 Some(ExpressionKind::Error)
             }
             Some(ScopeValue::Trait(id)) => {
-                info.declarations
-                    .traits
-                    .get_mut(&id)
-                    .unwrap()
-                    .uses
-                    .push(span);
+                info.uses.lock().record_use_of_trait(id, span);
 
                 Some(ExpressionKind::Trait(id))
             }
             Some(ScopeValue::TypeParameter(id)) => {
-                info.declarations
-                    .type_parameters
-                    .get_mut(&id)
-                    .unwrap()
-                    .uses
-                    .push(span);
+                info.uses.lock().record_use_of_type_parameter(id, span);
 
                 self.diagnostics.add(Diagnostic::error(
                     "cannot use type parameter as value",
@@ -1952,22 +1864,12 @@ impl Compiler<'_> {
                 Some(ExpressionKind::Error)
             }
             Some(ScopeValue::Constant(id, _)) => {
-                info.declarations
-                    .constants
-                    .get_mut(&id)
-                    .unwrap()
-                    .uses
-                    .push(span);
+                info.uses.lock().record_use_of_constant(id, span);
 
                 Some(ExpressionKind::Constant(id))
             }
             Some(ScopeValue::Variable(id)) => {
-                info.declarations
-                    .variables
-                    .get_mut(&id)
-                    .unwrap()
-                    .uses
-                    .push(span);
+                info.uses.lock().record_use_of_variable(id, span);
 
                 Some(ExpressionKind::Variable(id))
             }
@@ -1992,7 +1894,6 @@ impl Compiler<'_> {
                         name: Some(parameter.name),
                         span: parameter.span,
                         value: (),
-                        uses: Vec::new(),
                     },
                 );
 

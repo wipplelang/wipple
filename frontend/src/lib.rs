@@ -8,6 +8,7 @@ use async_trait::async_trait;
 use diagnostics::*;
 use helpers::InternedString;
 use parking_lot::Mutex;
+use parse::Span;
 use serde::Serialize;
 use std::{
     borrow::Cow,
@@ -75,13 +76,13 @@ macro_rules! file_ids {
         paste::paste! {
             #[derive(Debug, Clone, Default)]
             struct FileIds {
-                $([<next_ $id:snake>]: Arc<Mutex<HashMap<FilePath, usize>>>,)*
+                $([<next_ $id _id>]: Arc<Mutex<HashMap<FilePath, usize>>>,)*
             }
 
             $(
                 $(#[$meta])*
                 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
-                pub struct $id {
+                pub struct [<$id:camel Id>] {
                     pub file: FilePath,
                     pub counter: usize,
                 }
@@ -89,21 +90,21 @@ macro_rules! file_ids {
 
             impl FileIds {
                 $(
-                    fn [<new_ $id:snake>](&self, file: FilePath) -> $id {
-                        let mut storage = self.[<next_ $id:snake>].lock();
+                    fn [<new_ $id _id>](&self, file: FilePath) -> [<$id:camel Id>] {
+                        let mut storage = self.[<next_ $id _id>].lock();
                         let storage = storage.entry(file).or_default();
                         let counter = *storage;
                         *storage += 1;
 
-                        $id { file, counter }
+                        [<$id:camel Id>] { file, counter }
                     }
                 )*
             }
 
             impl Compiler<'_> {
                 $(
-                    fn [<new_ $id:snake>](&self, file: FilePath) -> $id {
-                        self.file_ids.[<new_ $id:snake>](file)
+                    fn [<new_ $id _id>](&self, file: FilePath) -> [<$id:camel Id>] {
+                        self.file_ids.[<new_ $id _id>](file)
                     }
                 )*
             }
@@ -116,32 +117,51 @@ macro_rules! ids {
         paste::paste! {
             #[derive(Debug, Clone, Default)]
             struct Ids {
-                $([<next_ $id:snake>]: Arc<AtomicUsize>,)*
+                $([<next_ $id _id>]: Arc<AtomicUsize>,)*
             }
 
             $(
                 $(#[$meta])*
                 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
-                pub struct $id {
+                pub struct [<$id:camel>] {
                     pub counter: usize,
                 }
             )*
 
             impl Ids {
                 $(
-                    fn [<new_ $id:snake>](&self) -> $id {
-                        let counter = self.[<next_ $id:snake>]
+                    fn [<new_ $id>](&self) -> [<$id:camel>] {
+                        let counter = self.[<next_ $id _id>]
                             .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
 
-                        $id { counter }
+                        [<$id:camel>] { counter }
                     }
                 )*
             }
 
             impl Compiler<'_> {
                 $(
-                    fn [<new_ $id:snake>](&self) -> $id {
-                        self.ids.[<new_ $id:snake>]()
+                    fn [<new_ $id>](&self) -> [<$id:camel>] {
+                        self.ids.[<new_ $id>]()
+                    }
+                )*
+            }
+        }
+    };
+}
+
+macro_rules! uses {
+    ($($(#[$meta:meta])* $id:ident),* $(,)?) => {
+        paste::paste! {
+            #[derive(Debug, Clone, Default)]
+            pub struct Uses {
+                $(pub [<$id _uses>]: HashMap<[<$id:camel Id>], Vec<Span>>,)*
+            }
+
+            impl Uses {
+                $(
+                    fn [<record_use_of_ $id>](&mut self, id: [<$id:camel Id>], span: Span) {
+                        self.[<$id _uses>].entry(id).or_default().push(span);
                     }
                 )*
             }
@@ -150,17 +170,27 @@ macro_rules! ids {
 }
 
 file_ids!(
-    BuiltinTypeId,
-    GenericConstantId,
-    ItemId,
-    TemplateId,
-    TraitId,
-    TypeId,
-    TypeParameterId,
-    VariableId,
+    builtin_type,
+    constant,
+    item,
+    template,
+    r#trait,
+    r#type,
+    type_parameter,
+    variable,
 );
 
-ids!(Label);
+ids!(label);
+
+uses!(
+    builtin_type,
+    constant,
+    template,
+    r#trait,
+    r#type,
+    type_parameter,
+    variable,
+);
 
 impl<'l> Compiler<'l> {
     pub fn new(loader: &'l impl Loader) -> Self {
@@ -169,8 +199,8 @@ impl<'l> Compiler<'l> {
             #[cfg(debug_assertions)]
             backtrace_enabled: false,
             diagnostics: Default::default(),
-            ids: Default::default(),
             file_ids: Default::default(),
+            ids: Default::default(),
             cache: Default::default(),
         }
     }

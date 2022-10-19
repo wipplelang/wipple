@@ -10,7 +10,7 @@ pub use typecheck::{
     Arm, Expression, ExpressionKind, Pattern, PatternKind, Program, TypecheckMode,
 };
 
-use crate::{diagnostics::*, parse::Span, Compiler, FilePath};
+use crate::{diagnostics::*, parse::Span, Compiler, FilePath, Uses};
 use async_recursion::async_recursion;
 use parking_lot::Mutex;
 use std::sync::{atomic::AtomicUsize, Arc};
@@ -51,7 +51,7 @@ pub enum Progress {
 }
 
 impl Compiler<'_> {
-    pub async fn analyze(&self, path: FilePath, options: Options) -> Program {
+    pub async fn analyze(&self, entrypoint: FilePath, options: Options) -> Program {
         let progress = Arc::new(Mutex::new(
             options.progress.unwrap_or_else(|| Box::new(|_| {})),
         ));
@@ -64,6 +64,7 @@ impl Compiler<'_> {
             path: FilePath,
             source_path: Option<FilePath>,
             source_span: Option<Span>,
+            entrypoint: FilePath,
             progress: Arc<Mutex<impl Fn(Progress) + Send + Sync + 'static>>,
             count: Arc<AtomicUsize>,
             files: Arc<Mutex<indexmap::IndexMap<FilePath, Arc<expand::File>>>>,
@@ -169,6 +170,7 @@ impl Compiler<'_> {
                                 new_path,
                                 Some(resolved_path),
                                 Some(source_span),
+                                entrypoint,
                                 progress,
                                 count,
                                 files,
@@ -184,8 +186,10 @@ impl Compiler<'_> {
 
             let file = Arc::new(file);
 
-            // Don't cache virtual or builtin paths
-            if !matches!(resolved_path, FilePath::Virtual(_) | FilePath::Builtin(_)) {
+            // Don't cache virtual or builtin paths, nor the entrypoint
+            if resolved_path != entrypoint
+                && !matches!(resolved_path, FilePath::Virtual(_) | FilePath::Builtin(_))
+            {
                 compiler
                     .loader
                     .cache()
@@ -200,9 +204,10 @@ impl Compiler<'_> {
 
         load(
             self,
-            path,
+            entrypoint,
             None,
             None,
+            entrypoint,
             progress.clone(),
             Default::default(),
             files.clone(),
@@ -212,7 +217,22 @@ impl Compiler<'_> {
 
         let files = Arc::try_unwrap(files).unwrap().into_inner();
 
-        fn lower(compiler: &Compiler, file: Arc<expand::File>) -> Arc<lower::File> {
+        let mut uses = Uses::default();
+        for (_, file) in &files {
+            for (id, spans) in &file.template_uses {
+                for span in spans {
+                    uses.record_use_of_template(*id, *span);
+                }
+            }
+        }
+
+        let uses = Arc::new(Mutex::new(uses));
+
+        fn lower(
+            compiler: &Compiler,
+            file: Arc<expand::File>,
+            uses: Arc<Mutex<Uses>>,
+        ) -> Arc<lower::File> {
             let path = file.path;
 
             if let Some(file) = compiler.cache.lock().get(&path) {
@@ -223,12 +243,12 @@ impl Compiler<'_> {
                 .dependencies
                 .clone()
                 .into_iter()
-                .map(|(file, imports)| (lower(compiler, file), imports))
+                .map(|(file, imports)| (lower(compiler, file, uses.clone()), imports))
                 .collect::<Vec<_>>();
 
             let file = compiler.build_ast((*file).clone());
 
-            let file = Arc::new(compiler.lower(file, dependencies));
+            let file = Arc::new(compiler.lower(file, dependencies, uses));
 
             // Only cache files already cached by loader
             if compiler.loader.cache().lock().contains_key(&path) {
@@ -240,13 +260,16 @@ impl Compiler<'_> {
 
         let lowered_files = files
             .into_values()
-            .map(|file| (*lower(self, file)).clone())
+            .map(|file| (*lower(self, file, uses.clone())).clone())
             .collect::<Vec<_>>();
+
+        let uses = Arc::try_unwrap(uses).unwrap().into_inner();
 
         let lowering_is_complete = !self.diagnostics.contains_errors();
 
         self.typecheck_with_progress(
             lowered_files,
+            uses,
             options.typecheck_mode,
             lowering_is_complete,
             move |p| progress.lock()(Progress::Typechecking(p)),

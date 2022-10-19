@@ -7,7 +7,7 @@
             "match": "\"(?:[^\"\\\\]|\\\\.)*\""
         },
         {
-            "name": "comment",
+            "name": "comment.line",
             "match": "--.*"
         },
         {

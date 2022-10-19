@@ -191,14 +191,12 @@ impl wipple_frontend::Loader for Loader {
                                 Ok(FilePath::Path(InternedString::new(path.to_str().unwrap())))
                             }
                             FilePath::Virtual(_) => {
-                                let base = match self.base {
-                                    Some(base) => base,
-                                    None => unimplemented!(),
+                                let path = match self.base {
+                                    Some(base) => PathBuf::from(base.as_str().as_ref())
+                                        .join(parsed_path)
+                                        .clean(),
+                                    None => parsed_path.clean(),
                                 };
-
-                                let path = PathBuf::from(base.as_str().as_ref())
-                                    .join(parsed_path)
-                                    .clean();
 
                                 Ok(FilePath::Path(InternedString::new(path.to_str().unwrap())))
                             }

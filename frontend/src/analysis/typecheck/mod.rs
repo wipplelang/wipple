@@ -4,16 +4,18 @@
 mod number;
 
 mod engine;
-mod format;
-mod traverse;
+pub mod format;
+pub mod traverse;
+
+pub use engine::{BottomTypeReason, BuiltinType, Type, TypeStructure};
 
 use crate::{
-    analysis::lower,
+    analysis::{expand, lower},
     diagnostics::{Diagnostic, Note},
     helpers::InternedString,
     parse::Span,
-    BuiltinTypeId, Compiler, FilePath, GenericConstantId, ItemId, TemplateId, TraitId, TypeId,
-    TypeParameterId, VariableId,
+    BuiltinTypeId, Compiler, ConstantId, FilePath, ItemId, TemplateId, TraitId, TypeId,
+    TypeParameterId, Uses, VariableId,
 };
 use serde::Serialize;
 use std::{
@@ -42,14 +44,16 @@ pub struct Program {
     pub items: HashMap<ItemId, Expression>,
     pub entrypoint: Option<ItemId>,
     pub declarations: Declarations,
+    pub exported: lower::ScopeValues,
+    pub scopes: Vec<(Span, lower::ScopeValues)>,
 }
 
 #[derive(Debug, Clone, Default, Serialize)]
 pub struct Declarations {
     pub types: im::HashMap<TypeId, TypeDecl>,
     pub traits: im::HashMap<TraitId, TraitDecl>,
-    pub constants: im::HashMap<GenericConstantId, ConstantDecl>,
-    pub instances: im::HashMap<TraitId, HashMap<GenericConstantId, InstanceDecl>>,
+    pub constants: im::HashMap<ConstantId, ConstantDecl>,
+    pub instances: im::HashMap<TraitId, HashMap<ConstantId, InstanceDecl>>,
     pub operators: im::HashMap<TemplateId, OperatorDecl>,
     pub templates: im::HashMap<TemplateId, TemplateDecl>,
     pub builtin_types: im::HashMap<BuiltinTypeId, BuiltinTypeDecl>,
@@ -110,7 +114,6 @@ pub struct InstanceDecl {
     pub bounds: Vec<Bound>,
     pub ty: engine::Type,
     pub item: ItemId,
-    pub uses: Vec<Span>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -131,6 +134,7 @@ pub struct OperatorDecl {
 pub struct TemplateDecl {
     pub name: InternedString,
     pub span: Span,
+    pub attributes: expand::TemplateAttributes,
     pub uses: Vec<Span>,
 }
 
@@ -138,6 +142,7 @@ pub struct TemplateDecl {
 pub struct BuiltinTypeDecl {
     pub name: InternedString,
     pub span: Span,
+    pub attributes: lower::DeclarationAttributes,
     pub uses: Vec<Span>,
 }
 
@@ -222,7 +227,7 @@ expr!(, "Unresolved", engine::UnresolvedType, {
     Error,
     Number(InternedString),
     Trait(TraitId),
-    Constant(GenericConstantId),
+    Constant(ConstantId),
 });
 
 expr!(, "Monomorphized", engine::UnresolvedType, {
@@ -296,14 +301,14 @@ impl Compiler<'_> {
     pub fn typecheck_with_progress(
         &self,
         files: Vec<lower::File>,
+        uses: Uses,
         mode: TypecheckMode,
         mut complete: bool,
         mut progress: impl FnMut(Progress),
     ) -> Program {
-        let mut typechecker = Typechecker::new(self, mode);
+        let mut typechecker = Typechecker::new(self, mode, uses);
 
         if files.is_empty() {
-            eprintln!("no files provided");
             complete = false;
         } else {
             let file_count = files.len();
@@ -332,12 +337,15 @@ impl Compiler<'_> {
 struct Typechecker<'a, 'l> {
     compiler: &'a Compiler<'l>,
     mode: TypecheckMode,
+    uses: Uses,
     is_complete: bool,
     ctx: engine::Context,
     files: im::HashMap<FilePath, lower::File>,
     declarations: RefCell<Declarations>,
-    instances: im::HashMap<TraitId, HashSet<GenericConstantId>>,
-    generic_constants: im::HashMap<GenericConstantId, (bool, lower::Expression)>,
+    exported: Option<lower::ScopeValues>,
+    scopes: RefCell<Vec<(Span, lower::ScopeValues)>>,
+    instances: im::HashMap<TraitId, HashSet<ConstantId>>,
+    generic_constants: im::HashMap<ConstantId, (bool, lower::Expression)>,
     item_queue: im::Vector<QueuedItem>,
     items: im::HashMap<ItemId, Expression>,
     entrypoint: Option<UnresolvedExpression>,
@@ -359,14 +367,17 @@ struct QueuedItem {
 }
 
 impl<'a, 'l> Typechecker<'a, 'l> {
-    pub fn new(compiler: &'a Compiler<'l>, mode: TypecheckMode) -> Self {
+    pub fn new(compiler: &'a Compiler<'l>, mode: TypecheckMode, uses: Uses) -> Self {
         Typechecker {
             compiler,
             mode,
+            uses,
             is_complete: true,
             ctx: Default::default(),
             files: Default::default(),
             declarations: Default::default(),
+            exported: None,
+            scopes: Default::default(),
             instances: Default::default(),
             generic_constants: Default::default(),
             item_queue: Default::default(),
@@ -435,7 +446,9 @@ impl<'a, 'l> Typechecker<'a, 'l> {
             complete: lowering_is_complete && self.is_complete,
             items: self.items.into_iter().collect(),
             entrypoint,
+            exported: self.exported.unwrap_or_default(),
             declarations: self.declarations.into_inner(),
+            scopes: self.scopes.into_inner(),
         }
     }
 }
@@ -444,6 +457,8 @@ impl<'a, 'l> Typechecker<'a, 'l> {
     pub fn typecheck_file(&mut self, mut file: lower::File, is_entrypoint: bool) {
         let file_span = file.span;
         let entrypoint = mem::take(&mut file.block);
+        let exported = mem::take(&mut file.exported);
+        self.scopes.borrow_mut().extend(mem::take(&mut file.scopes));
         self.files.insert(file_span.path, file);
 
         if is_entrypoint {
@@ -463,6 +478,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                 &mut info,
             );
 
+            self.exported = Some(exported);
             self.entrypoint = Some(expr);
         }
 
@@ -521,7 +537,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
 
     fn typecheck_generic_constant_expr(
         &mut self,
-        id: GenericConstantId,
+        id: ConstantId,
         instance: bool,
         expr: lower::Expression,
     ) {
@@ -579,7 +595,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
     fn typecheck_constant_expr(
         &mut self,
         is_instance: bool,
-        id: GenericConstantId,
+        id: ConstantId,
         use_span: Span,
         use_ty: engine::UnresolvedType,
         mut info: MonomorphizeInfo,
@@ -1229,9 +1245,8 @@ impl<'a, 'l> Typechecker<'a, 'l> {
 
 #[derive(Debug, Clone)]
 struct MonomorphizeInfo {
-    cache: HashMap<GenericConstantId, ItemId>,
-    bound_instances:
-        HashMap<TraitId, Vec<(Option<GenericConstantId>, engine::UnresolvedType, Span)>>,
+    cache: HashMap<ConstantId, ItemId>,
+    bound_instances: HashMap<TraitId, Vec<(Option<ConstantId>, engine::UnresolvedType, Span)>>,
 }
 
 impl<'a, 'l> Typechecker<'a, 'l> {
@@ -1782,7 +1797,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
         use_span: Span,
         bound_span: Option<Span>,
         info: &mut MonomorphizeInfo,
-    ) -> Result<Option<GenericConstantId>, Error> {
+    ) -> Result<Option<ConstantId>, Error> {
         let ty = ty.into();
         let tr_decl = self.with_trait_decl(tr, Clone::clone);
 
@@ -2053,7 +2068,6 @@ impl<'a, 'l> Typechecker<'a, 'l> {
             MonomorphizedExpressionKind::Variable(var) => ExpressionKind::Variable(var),
             MonomorphizedExpressionKind::Text(text) => ExpressionKind::Text(text),
             MonomorphizedExpressionKind::Number(number) => {
-                use engine::Type;
                 match parse_number!(number, ExpressionKind, &ty, Type) {
                     Ok(number) => number,
                     Err(error) => {
@@ -2157,7 +2171,6 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                 MonomorphizedPatternKind::Error => return None,
                 MonomorphizedPatternKind::Wildcard => PatternKind::Wildcard,
                 MonomorphizedPatternKind::Number(number) => {
-                    use engine::Type;
                     match parse_number!(number, PatternKind, input_ty, Type) {
                         Ok(number) => number,
                         Err(error) => {
@@ -2242,7 +2255,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
         let decl = self
             .files
             .get(&id.file)
-            .unwrap_or_else(|| panic!("cannot find file {}", id.file))
+            .unwrap()
             .declarations
             .types
             .get(&id)
@@ -2279,7 +2292,12 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                 }
             },
             attributes: decl.value.attributes,
-            uses: decl.uses,
+            uses: self
+                .uses
+                .type_uses
+                .get_mut(&id)
+                .cloned()
+                .unwrap_or_default(),
         };
 
         f(self
@@ -2311,7 +2329,12 @@ impl<'a, 'l> Typechecker<'a, 'l> {
             params: decl.value.parameters,
             ty: self.convert_finalized_type_annotation(decl.value.ty),
             attributes: decl.value.attributes,
-            uses: decl.uses,
+            uses: self
+                .uses
+                .trait_uses
+                .get_mut(&id)
+                .cloned()
+                .unwrap_or_default(),
         };
 
         f(self
@@ -2322,11 +2345,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
             .or_insert(decl))
     }
 
-    fn with_constant_decl<T>(
-        &mut self,
-        id: GenericConstantId,
-        f: impl FnOnce(&ConstantDecl) -> T,
-    ) -> T {
+    fn with_constant_decl<T>(&mut self, id: ConstantId, f: impl FnOnce(&ConstantDecl) -> T) -> T {
         if let Some(decl) = self.declarations.borrow_mut().constants.get(&id) {
             return f(decl);
         }
@@ -2341,7 +2360,17 @@ impl<'a, 'l> Typechecker<'a, 'l> {
             .unwrap_or_else(|| panic!("undefined constant {:?} in file {}", id, id.file))
             .clone();
 
-        let body = decl.value.value.lock().as_ref().unwrap().clone();
+        let body = decl
+            .value
+            .value
+            .lock()
+            .as_ref()
+            .cloned()
+            .unwrap_or(lower::Expression {
+                span: decl.span,
+                kind: lower::ExpressionKind::Error,
+            });
+
         self.generic_constants.insert(id, (false, body));
 
         let ty = self.convert_finalized_type_annotation(decl.value.ty);
@@ -2368,7 +2397,12 @@ impl<'a, 'l> Typechecker<'a, 'l> {
             bounds,
             ty,
             attributes: decl.value.attributes,
-            uses: decl.uses,
+            uses: self
+                .uses
+                .constant_uses
+                .get_mut(&id)
+                .cloned()
+                .unwrap_or_default(),
         };
 
         f(self
@@ -2379,11 +2413,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
             .or_insert(decl))
     }
 
-    fn with_instance_decl<T>(
-        &mut self,
-        id: GenericConstantId,
-        f: impl FnOnce(&InstanceDecl) -> T,
-    ) -> T {
+    fn with_instance_decl<T>(&mut self, id: ConstantId, f: impl FnOnce(&InstanceDecl) -> T) -> T {
         let decl = self
             .files
             .get(&id.file)
@@ -2452,7 +2482,6 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                 )
                 .unwrap(),
             item,
-            uses: decl.uses,
         };
 
         f(self
@@ -2492,7 +2521,12 @@ impl<'a, 'l> Typechecker<'a, 'l> {
         let decl = OperatorDecl {
             name: decl.name,
             span: decl.span,
-            uses: decl.uses,
+            uses: self
+                .uses
+                .template_uses
+                .get_mut(&id)
+                .cloned()
+                .unwrap_or_default(),
         };
 
         f(self
@@ -2521,7 +2555,13 @@ impl<'a, 'l> Typechecker<'a, 'l> {
         let decl = TemplateDecl {
             name: decl.name,
             span: decl.span,
-            uses: decl.uses,
+            attributes: decl.attributes,
+            uses: self
+                .uses
+                .template_uses
+                .get_mut(&id)
+                .cloned()
+                .unwrap_or_default(),
         };
 
         f(self
@@ -2554,7 +2594,13 @@ impl<'a, 'l> Typechecker<'a, 'l> {
         let decl = BuiltinTypeDecl {
             name: decl.name.expect("all builtin types have names"),
             span: decl.span,
-            uses: decl.uses,
+            attributes: decl.value.attributes,
+            uses: self
+                .uses
+                .builtin_type_uses
+                .get_mut(&id)
+                .cloned()
+                .unwrap_or_default(),
         };
 
         f(self
@@ -2587,7 +2633,12 @@ impl<'a, 'l> Typechecker<'a, 'l> {
         let decl = TypeParameterDecl {
             name: decl.name.expect("all type parameters have names"),
             span: decl.span,
-            uses: decl.uses,
+            uses: self
+                .uses
+                .type_parameter_uses
+                .get_mut(&id)
+                .cloned()
+                .unwrap_or_default(),
         };
 
         f(self
@@ -2623,7 +2674,12 @@ impl<'a, 'l> Typechecker<'a, 'l> {
             name: decl.name,
             span: decl.span,
             ty,
-            uses: decl.uses,
+            uses: self
+                .uses
+                .variable_uses
+                .get_mut(&id)
+                .cloned()
+                .unwrap_or_default(),
         };
 
         f(self

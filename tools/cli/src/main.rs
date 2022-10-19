@@ -1,3 +1,5 @@
+mod lsp;
+
 use clap::{Parser, ValueEnum};
 use serde::Serialize;
 use std::{
@@ -54,6 +56,7 @@ enum Args {
         #[clap(value_enum)]
         target: DumpTarget,
     },
+    Lsp,
 }
 
 #[derive(Parser)]
@@ -271,6 +274,9 @@ async fn run() -> anyhow::Result<()> {
             } else {
                 println!("{}", cache_dir.to_string_lossy());
             }
+        }
+        Args::Lsp => {
+            lsp::run().await;
         }
     }
 

@@ -215,7 +215,7 @@ fn format_type_with(
         &param_names,
         true,
         true,
-        show_params,
+        surround_in_backticks && show_params,
     );
 
     if show_params {

@@ -24,7 +24,7 @@ use std::{
 };
 use strum::EnumString;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct File {
     pub path: FilePath,
     pub span: Span,
@@ -32,23 +32,9 @@ pub struct File {
     pub declarations: Declarations<Template>,
     pub exported: ScopeValues,
     pub scopes: Vec<(Span, ScopeValues)>,
+    pub template_uses: HashMap<TemplateId, Vec<Span>>,
     pub statements: Vec<Statement>,
     pub dependencies: Vec<(Arc<File>, Option<HashMap<InternedString, Span>>)>,
-}
-
-impl Clone for File {
-    fn clone(&self) -> Self {
-        Self {
-            path: self.path,
-            span: self.span,
-            attributes: self.attributes.clone(),
-            declarations: self.declarations.clone(),
-            exported: self.exported.clone(),
-            scopes: self.scopes.clone(),
-            statements: self.statements.clone(),
-            dependencies: self.dependencies.clone(),
-        }
-    }
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -129,19 +115,10 @@ impl<T> Default for Declarations<T> {
 
 impl<T> Declarations<T> {
     fn merge(&mut self, other: Self) {
-        use std::collections::hash_map::Entry;
-
         self.operators.extend(other.operators);
 
         for (id, decl) in other.templates {
-            match self.templates.entry(id) {
-                Entry::Vacant(entry) => {
-                    entry.insert(decl);
-                }
-                Entry::Occupied(mut entry) => {
-                    entry.get_mut().uses.extend(decl.uses);
-                }
-            }
+            self.templates.entry(id).or_insert(decl);
         }
     }
 }
@@ -153,7 +130,6 @@ pub struct TemplateDeclaration<T> {
     #[serde(skip)]
     pub template: T,
     pub attributes: TemplateAttributes,
-    pub uses: Vec<Span>,
 }
 
 impl<T> TemplateDeclaration<T> {
@@ -163,7 +139,6 @@ impl<T> TemplateDeclaration<T> {
             span,
             template,
             attributes: Default::default(),
-            uses: Vec::new(),
         }
     }
 
@@ -194,6 +169,7 @@ impl<'l> Compiler<'l> {
             declarations: Default::default(),
             dependencies: Default::default(),
             scopes: Default::default(),
+            template_uses: Default::default(),
             load: Arc::new(load),
         };
 
@@ -215,7 +191,7 @@ impl<'l> Compiler<'l> {
                     "standard library is missing, but this file requires it",
                     vec![Note::primary(
                         file.span.with_end(file.span.start),
-                        "try adding [[no-std]] to this file to prevent automatically loading the standard library",
+                        "try adding `[[no-std]]` to this file to prevent automatically loading the standard library",
                     )],
                 ));
             }
@@ -231,6 +207,9 @@ impl<'l> Compiler<'l> {
             declarations: Arc::try_unwrap(expander.declarations).unwrap().into_inner(),
             exported,
             scopes: Arc::try_unwrap(expander.scopes).unwrap().into_inner(),
+            template_uses: Arc::try_unwrap(expander.template_uses)
+                .unwrap()
+                .into_inner(),
             dependencies: Arc::try_unwrap(expander.dependencies)
                 .unwrap()
                 .into_inner()
@@ -246,6 +225,7 @@ pub struct Expander<'a, 'l> {
     declarations: Arc<Mutex<Declarations<Template>>>,
     dependencies: Arc<Mutex<HashMap<FilePath, (Arc<File>, Option<HashMap<InternedString, Span>>)>>>,
     scopes: Arc<Mutex<Vec<(Span, ScopeValues)>>>,
+    template_uses: Arc<Mutex<HashMap<TemplateId, Vec<Span>>>>,
     load: Arc<
         dyn Fn(&'a Compiler<'l>, Span, FilePath) -> BoxFuture<'a, Option<Arc<File>>> + Send + Sync,
     >,
@@ -688,7 +668,11 @@ impl Expander<'_, '_> {
 
                             let mut exprs = exprs.into_iter();
 
-                            let first = exprs.next().unwrap();
+                            let first = match exprs.next() {
+                                Some(expr) => expr,
+                                None => continue 'attributes,
+                            };
+
                             let name = match first.kind {
                                 parse::ExprKind::Name(name) => name,
                                 _ => {
@@ -1108,11 +1092,13 @@ impl Expander<'_, '_> {
                 .get_mut(&id)
                 .unwrap_or_else(|| panic!("template `{}` ({:?}) not registered", name, id));
 
-            let template = decl.template.clone();
+            self.template_uses
+                .lock()
+                .entry(id)
+                .or_default()
+                .push(template_span);
 
-            decl.uses.push(template_span);
-
-            template
+            decl.template.clone()
         };
 
         match template {

@@ -16,7 +16,6 @@ impl Compiler<'_> {
                             name: Some(name),
                             span: $span,
                             value: $value,
-                            uses: Vec::new(),
                         },
                     );
 

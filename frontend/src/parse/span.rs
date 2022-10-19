@@ -41,6 +41,10 @@ impl Span {
             ..self
         }
     }
+
+    pub fn is_subspan_of(self, other: Span) -> bool {
+        self.path == other.path && self.start >= other.start && self.end <= other.end
+    }
 }
 
 impl fmt::Debug for Span {
