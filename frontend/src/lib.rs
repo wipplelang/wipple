@@ -123,26 +123,26 @@ macro_rules! ids {
             $(
                 $(#[$meta])*
                 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
-                pub struct [<$id:camel>] {
+                pub struct [<$id:camel Id>] {
                     pub counter: usize,
                 }
             )*
 
             impl Ids {
                 $(
-                    fn [<new_ $id>](&self) -> [<$id:camel>] {
+                    fn [<new_ $id _id>](&self) -> [<$id:camel Id>] {
                         let counter = self.[<next_ $id _id>]
                             .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
 
-                        [<$id:camel>] { counter }
+                        [<$id:camel Id>] { counter }
                     }
                 )*
             }
 
             impl Compiler<'_> {
                 $(
-                    fn [<new_ $id>](&self) -> [<$id:camel>] {
-                        self.ids.[<new_ $id>]()
+                    fn [<new_ $id _id>](&self) -> [<$id:camel Id>] {
+                        self.ids.[<new_ $id _id>]()
                     }
                 )*
             }
@@ -180,7 +180,7 @@ file_ids!(
     variable,
 );
 
-ids!(label);
+ids!(enumeration, structure);
 
 uses!(
     builtin_type,

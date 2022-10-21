@@ -8,12 +8,16 @@ mod format;
 mod ssa;
 
 use crate::{
-    analysis::typecheck, helpers::InternedString, parse::Span, Compiler, ItemId, Label, VariableId,
+    analysis::typecheck, helpers::InternedString, Compiler, EnumerationId, ItemId, StructureId,
+    VariableId,
 };
+use itertools::Itertools;
 use std::{
     collections::{BTreeMap, HashMap},
     os::raw::{c_int, c_uint},
 };
+
+pub use ssa::Type;
 
 pub mod abi {
     pub const RUNTIME: &str = "runtime";
@@ -21,35 +25,46 @@ pub mod abi {
 
 #[derive(Debug, Clone)]
 pub struct Program {
-    pub labels: BTreeMap<Label, (Option<Span>, Vec<Statement>)>,
-    pub entrypoint: Label,
+    pub labels: Vec<(LabelKind, usize, Vec<BasicBlock>)>,
+    pub structures: BTreeMap<StructureId, Vec<Type>>,
+    pub enumerations: BTreeMap<EnumerationId, Vec<Vec<Type>>>,
+    pub entrypoint: usize,
+}
+
+#[derive(Debug, Clone)]
+pub enum LabelKind {
+    Entrypoint,
+    Constant(Type),
+    Function(Type, Type),
+    Closure(CaptureList, Type, Type),
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct BasicBlock {
+    pub statements: Vec<Statement>,
+    pub terminator: Terminator,
 }
 
 #[derive(Debug, Clone)]
 pub enum Statement {
-    Comment(String),
-    Begin,
-    End,
     Copy,
     Drop,
-    Jump(Label),
-    If(usize, Label),
-    Unreachable,
-    Initialize(VariableId),
-    Value(Value),
-    Call,
-    TailCall,
-    External(InternedString, InternedString, usize),
-    Tuple(usize),
-    Structure(usize),
-    Variant(usize, usize),
-    TupleElement(usize),
-    StructureElement(usize),
-    VariantElement(usize, usize),
+    Initialize(usize),
+    Free(usize),
+    Unpack(CaptureList),
+    Expression(Type, Expression),
+}
+
+#[derive(Debug, Clone, Copy, Default)]
+pub enum Terminator {
+    #[default]
+    Return,
+    Jump(usize),
+    If(usize, usize, usize),
 }
 
 #[derive(Debug, Clone)]
-pub enum Value {
+pub enum Expression {
     Marker,
     Text(InternedString),
     Number(rust_decimal::Decimal),
@@ -60,11 +75,24 @@ pub enum Value {
     Unsigned(c_uint),
     Float(f32),
     Double(f64),
-    Variable(VariableId),
-    Constant(Label),
-    Function(Label),
-    Closure(Label),
+    Variable(usize),
+    Constant(usize),
+    Function(usize),
+    Closure(CaptureList, usize),
+    Call,
+    External(InternedString, InternedString, usize),
+    Tuple(usize),
+    Structure(usize),
+    Variant(usize, usize),
+    TupleElement(usize),
+    StructureElement(usize),
+    VariantElement(usize, usize),
+    Reference,
+    Dereference,
 }
+
+#[derive(Debug, Clone)]
+pub struct CaptureList(pub BTreeMap<usize, usize>);
 
 impl Compiler<'_> {
     pub fn ir_from(&self, program: &typecheck::Program) -> Program {
@@ -75,285 +103,378 @@ impl Compiler<'_> {
 
         let program = self.convert_to_ssa(program);
 
+        let structures = program.structures.clone();
+        let mut enumerations = program.enumerations.clone();
+
+        let bool_type = self.new_enumeration_id();
+        enumerations.insert(bool_type, vec![Vec::new(), Vec::new()]);
+
         let mut gen = IrGen {
-            compiler: self,
             items: Default::default(),
             labels: Default::default(),
+            scopes: Default::default(),
+            structures,
+            enumerations,
+            bool_type,
         };
 
-        for id in program.items.keys() {
-            let label = gen.compiler.new_label();
+        for (id, item) in &program.items {
+            let label = gen.new_label(|_, _| {
+                if *id == program.entrypoint {
+                    LabelKind::Entrypoint
+                } else {
+                    LabelKind::Constant(item.ty.clone())
+                }
+            });
+
             gen.items.insert(*id, label);
         }
 
         for (id, constant) in program.items {
-            let mut label = *gen.items.get(&id).unwrap();
-            gen.initialize_label(label, constant.span);
-            gen.gen_expr(constant, &mut label);
+            let label = *gen.items.get(&id).unwrap();
+            let mut pos = gen.new_basic_block(label);
+            gen.gen_expr(constant, label, &mut pos);
         }
 
         Program {
-            labels: gen.labels,
+            labels: gen
+                .labels
+                .into_iter()
+                .map(|(kind, vars, blocks)| (kind.unwrap(), vars.len(), blocks))
+                .collect(),
+            structures: gen.structures,
+            enumerations: gen.enumerations,
             entrypoint: *gen.items.get(&program.entrypoint).unwrap(),
         }
     }
 }
 
-struct IrGen<'a, 'l> {
-    compiler: &'a Compiler<'l>,
-    items: HashMap<ItemId, Label>,
-    labels: BTreeMap<Label, (Option<Span>, Vec<Statement>)>,
+struct IrGen {
+    items: HashMap<ItemId, usize>,
+    labels: Vec<(
+        Option<LabelKind>,
+        HashMap<VariableId, usize>,
+        Vec<BasicBlock>,
+    )>,
+    scopes: Vec<Vec<VariableId>>,
+    structures: BTreeMap<StructureId, Vec<Type>>,
+    enumerations: BTreeMap<EnumerationId, Vec<Vec<Type>>>,
+    bool_type: EnumerationId,
 }
 
-impl IrGen<'_, '_> {
-    fn new_label(&mut self, span: Option<Span>) -> Label {
-        let label = self.compiler.new_label();
-        self.initialize_label(label, span);
+impl IrGen {
+    fn new_label(&mut self, kind: impl FnOnce(&mut Self, usize) -> LabelKind) -> usize {
+        let label = self.labels.len();
+        self.labels.insert(label, Default::default());
+        let kind = kind(self, label);
+        self.labels[label].0 = Some(kind);
         label
     }
 
-    fn initialize_label(&mut self, label: Label, span: Option<Span>) {
-        self.labels.insert(label, (span, Vec::new()));
+    fn basic_blocks_for(&mut self, label: usize) -> &mut Vec<BasicBlock> {
+        &mut self.labels[label].2
     }
 
-    fn statements_for(&mut self, label: Label) -> &mut Vec<Statement> {
-        &mut self.labels.get_mut(&label).unwrap().1
+    fn new_basic_block(&mut self, label: usize) -> usize {
+        let basic_blocks = self.basic_blocks_for(label);
+        let pos = basic_blocks.len();
+        basic_blocks.push(BasicBlock::default());
+        pos
+    }
+
+    fn basic_block_for(&mut self, label: usize, pos: usize) -> &mut BasicBlock {
+        &mut self.basic_blocks_for(label)[pos]
+    }
+
+    fn statements_for(&mut self, label: usize, pos: usize) -> &mut Vec<Statement> {
+        &mut self.basic_block_for(label, pos).statements
+    }
+
+    fn terminator_for(&mut self, label: usize, pos: usize) -> &mut Terminator {
+        &mut self.basic_block_for(label, pos).terminator
+    }
+
+    fn variable_for(&mut self, label: usize, variable: VariableId) -> usize {
+        let vars = &mut self.labels[label].1;
+        let next = vars.len();
+        *vars.entry(variable).or_insert(next)
     }
 }
 
-impl IrGen<'_, '_> {
-    fn gen_expr(&mut self, expr: ssa::Expression, label: &mut Label) {
+impl IrGen {
+    fn gen_expr(&mut self, expr: ssa::Expression, label: usize, pos: &mut usize) {
         match expr.kind {
             ssa::ExpressionKind::Marker => {
-                self.statements_for(*label)
-                    .push(Statement::Value(Value::Marker));
+                self.statements_for(label, *pos)
+                    .push(Statement::Expression(expr.ty, Expression::Marker));
             }
             ssa::ExpressionKind::Variable(var) => {
-                self.statements_for(*label)
-                    .push(Statement::Value(Value::Variable(var)));
+                let var = self.variable_for(label, var);
+                self.statements_for(label, *pos)
+                    .push(Statement::Expression(expr.ty, Expression::Variable(var)));
             }
             ssa::ExpressionKind::Text(text) => {
-                self.statements_for(*label)
-                    .push(Statement::Value(Value::Text(text)));
+                self.statements_for(label, *pos)
+                    .push(Statement::Expression(expr.ty, Expression::Text(text)));
             }
             ssa::ExpressionKind::Number(number) => {
-                self.statements_for(*label)
-                    .push(Statement::Value(Value::Number(number)));
+                self.statements_for(label, *pos)
+                    .push(Statement::Expression(expr.ty, Expression::Number(number)));
             }
             ssa::ExpressionKind::Integer(integer) => {
-                self.statements_for(*label)
-                    .push(Statement::Value(Value::Integer(integer)));
+                self.statements_for(label, *pos)
+                    .push(Statement::Expression(expr.ty, Expression::Integer(integer)));
             }
             ssa::ExpressionKind::Natural(natural) => {
-                self.statements_for(*label)
-                    .push(Statement::Value(Value::Natural(natural)));
+                self.statements_for(label, *pos)
+                    .push(Statement::Expression(expr.ty, Expression::Natural(natural)));
             }
             ssa::ExpressionKind::Byte(byte) => {
-                self.statements_for(*label)
-                    .push(Statement::Value(Value::Byte(byte)));
+                self.statements_for(label, *pos)
+                    .push(Statement::Expression(expr.ty, Expression::Byte(byte)));
             }
             ssa::ExpressionKind::Signed(signed) => {
-                self.statements_for(*label)
-                    .push(Statement::Value(Value::Signed(signed)));
+                self.statements_for(label, *pos)
+                    .push(Statement::Expression(expr.ty, Expression::Signed(signed)));
             }
             ssa::ExpressionKind::Unsigned(unsigned) => {
-                self.statements_for(*label)
-                    .push(Statement::Value(Value::Unsigned(unsigned)));
+                self.statements_for(label, *pos).push(Statement::Expression(
+                    expr.ty,
+                    Expression::Unsigned(unsigned),
+                ));
             }
             ssa::ExpressionKind::Float(float) => {
-                self.statements_for(*label)
-                    .push(Statement::Value(Value::Float(float)));
+                self.statements_for(label, *pos)
+                    .push(Statement::Expression(expr.ty, Expression::Float(float)));
             }
             ssa::ExpressionKind::Double(double) => {
-                self.statements_for(*label)
-                    .push(Statement::Value(Value::Double(double)));
+                self.statements_for(label, *pos)
+                    .push(Statement::Expression(expr.ty, Expression::Double(double)));
             }
-            ssa::ExpressionKind::Block(exprs) => self.gen_block(exprs, label),
-            ssa::ExpressionKind::Call(function, input) => {
-                self.statements_for(*label)
-                    .push(Statement::Comment(String::from("evaluate function")));
-                self.gen_expr(*function, label);
-
-                self.statements_for(*label)
-                    .push(Statement::Comment(String::from("evaluate input")));
-                self.gen_expr(*input, label);
-
-                self.statements_for(*label).push(if expr.tail {
-                    Statement::TailCall
+            ssa::ExpressionKind::Block(exprs) => {
+                if exprs.is_empty() {
+                    self.statements_for(label, *pos).push(Statement::Expression(
+                        Type::Tuple(Vec::new()),
+                        Expression::Tuple(0),
+                    ));
                 } else {
-                    Statement::Call
-                });
+                    self.scopes.push(Vec::new());
+
+                    let mut drop_statement = None::<Statement>;
+                    for (index, expr) in exprs.into_iter().enumerate() {
+                        if index != 0 {
+                            self.statements_for(label, *pos)
+                                .push(drop_statement.as_ref().unwrap().clone());
+                        }
+
+                        drop_statement = Some(Statement::Drop);
+
+                        self.gen_expr(expr, label, pos);
+                    }
+
+                    for var in self.scopes.pop().unwrap().into_iter().rev() {
+                        let var = self.variable_for(label, var);
+                        self.statements_for(label, *pos).push(Statement::Free(var));
+                    }
+                }
+            }
+            ssa::ExpressionKind::Call(function, input) => {
+                self.gen_expr(*function, label, pos);
+                self.gen_expr(*input, label, pos);
+
+                self.statements_for(label, *pos)
+                    .push(Statement::Expression(expr.ty, Expression::Call));
             }
             ssa::ExpressionKind::Function(pattern, body, captures) => {
-                let function_label = self.new_label(pattern.span);
-
-                {
-                    let mut function_label = function_label;
-                    let mut body_label = self.new_label(body.span);
-
-                    self.statements_for(function_label)
-                        .push(Statement::Comment(String::from("function pattern")));
-
-                    self.gen_pattern(pattern, body_label, &mut function_label);
-
-                    self.statements_for(function_label)
-                        .push(Statement::Unreachable);
-
-                    self.statements_for(body_label)
-                        .push(Statement::Comment(String::from("function body")));
-
-                    self.gen_expr(*body, &mut body_label);
-                }
-
-                let value = if captures.is_empty() {
-                    Value::Function(function_label)
-                } else {
-                    Value::Closure(function_label)
+                let (input_ty, output_ty) = match &expr.ty {
+                    Type::FunctionReference(input, output) => (input.as_ref(), output.as_ref()),
+                    _ => unreachable!(),
                 };
 
-                self.statements_for(*label).push(Statement::Value(value));
+                let mut capture_list = None;
+                let function_label = self.new_label(|gen, function_label| {
+                    if captures.is_empty() {
+                        LabelKind::Function(input_ty.clone(), output_ty.clone())
+                    } else {
+                        let captures = CaptureList(
+                            captures
+                                .into_iter()
+                                .map(|(var, _)| {
+                                    (
+                                        gen.variable_for(label, var),
+                                        gen.variable_for(function_label, var),
+                                    )
+                                })
+                                .unique()
+                                .collect(),
+                        );
+
+                        capture_list = Some(captures.clone());
+
+                        LabelKind::Closure(captures, input_ty.clone(), output_ty.clone())
+                    }
+                });
+
+                let mut function_pos = self.new_basic_block(function_label);
+
+                if let Some(capture_list) = capture_list.as_ref() {
+                    self.statements_for(function_label, function_pos)
+                        .push(Statement::Unpack(capture_list.clone()));
+                }
+
+                {
+                    let mut body_pos = self.new_basic_block(function_label);
+
+                    self.scopes.push(Vec::new());
+                    self.gen_pattern(
+                        pattern,
+                        input_ty,
+                        body_pos,
+                        function_label,
+                        &mut function_pos,
+                    );
+                    self.gen_expr(*body, function_label, &mut body_pos);
+                    self.scopes.pop().unwrap();
+
+                    if let Some(capture_list) = capture_list.as_ref() {
+                        for var in capture_list.0.values() {
+                            self.statements_for(function_label, body_pos)
+                                .push(Statement::Free(*var));
+                        }
+                    }
+                }
+
+                self.statements_for(label, *pos).push(Statement::Expression(
+                    expr.ty,
+                    if let Some(capture_list) = capture_list {
+                        Expression::Closure(capture_list, function_label)
+                    } else {
+                        Expression::Function(function_label)
+                    },
+                ));
             }
             ssa::ExpressionKind::When(input, arms) => {
-                self.statements_for(*label)
-                    .push(Statement::Comment(String::from("evaluate `when` input")));
-                self.gen_expr(*input, label);
-
-                self.statements_for(*label)
-                    .push(Statement::Comment(String::from("`when` arms")));
-                self.gen_when(arms, label);
+                let ty = input.ty.clone();
+                self.gen_expr(*input, label, pos);
+                self.gen_when(arms, &ty, label, pos);
             }
             ssa::ExpressionKind::External(lib, identifier, exprs) => {
                 let count = exprs.len();
 
-                for (index, expr) in exprs.into_iter().enumerate() {
-                    self.statements_for(*label)
-                        .push(Statement::Comment(format!("input {} to `external`", index)));
-
-                    self.gen_expr(expr, label);
+                for expr in exprs {
+                    self.gen_expr(expr, label, pos);
                 }
 
-                self.statements_for(*label)
-                    .push(Statement::External(lib, identifier, count));
+                self.statements_for(label, *pos).push(Statement::Expression(
+                    expr.ty,
+                    Expression::External(lib, identifier, count),
+                ));
             }
             ssa::ExpressionKind::Structure(exprs) => {
                 let count = exprs.len();
 
-                for (index, expr) in exprs.into_iter().enumerate() {
-                    self.statements_for(*label)
-                        .push(Statement::Comment(format!("input {} to structure", index)));
-
-                    self.gen_expr(expr, label);
+                for expr in exprs {
+                    self.gen_expr(expr, label, pos);
                 }
 
-                self.statements_for(*label)
-                    .push(Statement::Structure(count));
+                self.statements_for(label, *pos)
+                    .push(Statement::Expression(expr.ty, Expression::Structure(count)));
             }
             ssa::ExpressionKind::Tuple(exprs) => {
                 let count = exprs.len();
 
-                for (index, expr) in exprs.into_iter().enumerate() {
-                    self.statements_for(*label)
-                        .push(Statement::Comment(format!("input {} to tuple", index)));
-
-                    self.gen_expr(expr, label);
+                for expr in exprs {
+                    self.gen_expr(expr, label, pos);
                 }
 
-                self.statements_for(*label).push(Statement::Tuple(count));
+                self.statements_for(label, *pos)
+                    .push(Statement::Expression(expr.ty, Expression::Tuple(count)));
             }
             ssa::ExpressionKind::Variant(discriminant, exprs) => {
                 let count = exprs.len();
 
-                for (index, expr) in exprs.into_iter().enumerate() {
-                    self.statements_for(*label)
-                        .push(Statement::Comment(format!("input {} to variant", index)));
-
-                    self.gen_expr(expr, label);
+                for expr in exprs {
+                    self.gen_expr(expr, label, pos);
                 }
 
-                self.statements_for(*label)
-                    .push(Statement::Variant(discriminant, count));
+                self.statements_for(label, *pos).push(Statement::Expression(
+                    expr.ty,
+                    Expression::Variant(discriminant, count),
+                ));
             }
             ssa::ExpressionKind::Constant(id) => {
                 let id = *self.items.get(&id).unwrap();
-                self.statements_for(*label)
-                    .push(Statement::Value(Value::Constant(id)));
+
+                self.statements_for(label, *pos)
+                    .push(Statement::Expression(expr.ty, Expression::Constant(id)));
             }
         }
     }
 
-    fn gen_block(&mut self, exprs: Vec<ssa::Expression>, label: &mut Label) {
-        if exprs.is_empty() {
-            self.statements_for(*label).push(Statement::Tuple(0));
-        } else {
-            self.statements_for(*label).push(Statement::Begin);
-
-            for (index, expr) in exprs.into_iter().enumerate() {
-                if index != 0 {
-                    self.statements_for(*label).push(Statement::Drop);
-                }
-
-                self.statements_for(*label)
-                    .push(Statement::Comment(format!("statement {} in block", index)));
-
-                self.gen_expr(expr, label);
-            }
-
-            self.statements_for(*label).push(Statement::End);
-        }
-    }
-
-    fn gen_when(&mut self, arms: Vec<ssa::Arm>, label: &mut Label) {
+    fn gen_when(&mut self, arms: Vec<ssa::Arm>, input_ty: &Type, label: usize, pos: &mut usize) {
         if arms.is_empty() {
-            self.statements_for(*label).push(Statement::Drop);
+            self.statements_for(label, *pos).push(Statement::Drop);
+
             return;
         }
 
-        let continue_label = self.new_label(None);
+        self.scopes.push(Vec::new());
 
-        for (index, arm) in arms.into_iter().enumerate() {
-            let mut body_label = self.new_label(arm.body.span);
+        let continue_pos = self.new_basic_block(label);
 
-            self.statements_for(*label)
-                .push(Statement::Comment(format!("arm {} in `when`", index)));
-            self.statements_for(*label).push(Statement::Copy);
-            self.gen_pattern(arm.pattern, body_label, label);
+        for arm in arms {
+            let mut body_pos = self.new_basic_block(label);
 
-            self.statements_for(body_label).push(Statement::Drop);
-            self.gen_expr(arm.body, &mut body_label);
-            self.statements_for(body_label)
-                .push(Statement::Jump(continue_label));
+            self.statements_for(label, *pos).push(Statement::Copy);
+            self.gen_pattern(arm.pattern, input_ty, body_pos, label, pos);
+
+            self.scopes.push(Vec::new());
+            self.statements_for(label, body_pos).push(Statement::Drop);
+            self.gen_expr(arm.body, label, &mut body_pos);
+            *self.terminator_for(label, body_pos) = Terminator::Jump(continue_pos);
+            self.scopes.pop();
         }
 
-        self.statements_for(*label)
-            .push(Statement::Comment(String::from("end of `when`")));
+        *pos = continue_pos;
 
-        self.statements_for(*label).push(Statement::Unreachable);
-
-        *label = continue_label;
+        self.scopes.pop().unwrap();
     }
 
-    fn gen_pattern(&mut self, pattern: ssa::Pattern, body_label: Label, label: &mut Label) {
+    fn gen_pattern(
+        &mut self,
+        pattern: ssa::Pattern,
+        input_ty: &Type,
+        body_pos: usize,
+        label: usize,
+        pos: &mut usize,
+    ) {
         macro_rules! match_number {
             ($kind:ident($n:expr), $comparison:literal) => {{
-                self.statements_for(*label)
-                    .push(Statement::Value(Value::$kind($n)));
+                self.statements_for(label, *pos)
+                    .push(Statement::Expression(Type::$kind, Expression::$kind($n)));
 
-                self.statements_for(*label).push(Statement::External(
-                    InternedString::new(abi::RUNTIME),
-                    InternedString::new($comparison),
-                    2,
+                let bool_type = Type::Enumeration(self.bool_type);
+
+                self.statements_for(label, *pos).push(Statement::Expression(
+                    bool_type,
+                    Expression::External(
+                        InternedString::new(abi::RUNTIME),
+                        InternedString::new($comparison),
+                        2,
+                    ),
                 ));
 
-                self.statements_for(*label)
-                    .push(Statement::If(1, body_label));
+                let else_pos = self.new_basic_block(label);
+                *self.terminator_for(label, *pos) = Terminator::If(1, body_pos, else_pos);
+                *pos = else_pos;
             }};
         }
 
         match pattern.kind {
             ssa::PatternKind::Wildcard => {
-                self.statements_for(*label).push(Statement::Drop);
-                self.statements_for(*label)
-                    .push(Statement::Jump(body_label));
+                self.statements_for(label, *pos).push(Statement::Drop);
+                *self.terminator_for(label, *pos) = Terminator::Jump(body_pos);
+                *pos = self.new_basic_block(label);
             }
             ssa::PatternKind::Number(number) => {
                 match_number!(Number(number), "number-equality");
@@ -380,167 +501,187 @@ impl IrGen<'_, '_> {
                 match_number!(Double(double), "double-equality");
             }
             ssa::PatternKind::Text(text) => {
-                self.statements_for(*label)
-                    .push(Statement::Value(Value::Text(text)));
-
-                self.statements_for(*label).push(Statement::External(
-                    InternedString::new(abi::RUNTIME),
-                    InternedString::new("text-equality"),
-                    2,
+                self.statements_for(label, *pos).push(Statement::Expression(
+                    Type::TextReference,
+                    Expression::Text(text),
                 ));
 
-                self.statements_for(*label)
-                    .push(Statement::If(1, body_label));
+                let bool_type = Type::Enumeration(self.bool_type);
+
+                self.statements_for(label, *pos).push(Statement::Expression(
+                    bool_type,
+                    Expression::External(
+                        InternedString::new(abi::RUNTIME),
+                        InternedString::new("text-equality"),
+                        2,
+                    ),
+                ));
+
+                let else_pos = self.new_basic_block(label);
+                *self.terminator_for(label, *pos) = Terminator::If(1, body_pos, else_pos);
+                *pos = else_pos;
             }
             ssa::PatternKind::Variable(var) => {
-                self.statements_for(*label).push(Statement::Initialize(var));
-                self.statements_for(*label)
-                    .push(Statement::Jump(body_label));
+                self.scopes.last_mut().unwrap().push(var);
+                let var = self.variable_for(label, var);
+                self.statements_for(label, *pos)
+                    .push(Statement::Initialize(var));
+                *self.terminator_for(label, *pos) = Terminator::Jump(body_pos);
+                *pos = self.new_basic_block(label);
             }
             ssa::PatternKind::Or(left, right) => {
-                let continue_label = self.new_label(None);
+                let continue_pos = self.new_basic_block(label);
 
-                self.statements_for(*label).push(Statement::Copy);
-                self.gen_pattern(*left, continue_label, label);
+                self.statements_for(label, *pos).push(Statement::Copy);
+                self.gen_pattern(*left, input_ty, continue_pos, label, pos);
 
-                self.statements_for(continue_label).push(Statement::Drop);
-                self.statements_for(continue_label)
-                    .push(Statement::Jump(body_label));
+                self.statements_for(label, continue_pos)
+                    .push(Statement::Drop);
+                *self.terminator_for(label, continue_pos) = Terminator::Jump(body_pos);
 
-                self.gen_pattern(*right, body_label, label);
+                self.gen_pattern(*right, input_ty, body_pos, label, pos);
             }
             ssa::PatternKind::Where(pattern, condition) => {
-                let condition_label = self.new_label(condition.span);
-                let else_label = self.new_label(None);
+                let condition_pos = self.new_basic_block(label);
+                let else_pos = self.new_basic_block(label);
 
-                self.gen_pattern(*pattern, condition_label, label);
-                self.statements_for(*label)
-                    .push(Statement::Jump(else_label));
+                self.gen_pattern(*pattern, input_ty, condition_pos, label, pos);
+                *self.terminator_for(label, *pos) = Terminator::Jump(else_pos);
 
-                *label = condition_label;
-                self.gen_expr(*condition, label);
-                self.statements_for(*label)
-                    .push(Statement::If(1, body_label));
-                self.statements_for(*label)
-                    .push(Statement::Jump(else_label));
+                *pos = condition_pos;
+                self.gen_expr(*condition, label, pos);
+                *self.terminator_for(label, *pos) = Terminator::If(1, body_pos, else_pos);
 
-                *label = else_label;
+                *pos = else_pos;
             }
             ssa::PatternKind::Tuple(patterns) => {
-                let else_label = self.new_label(None);
+                let tuple_tys = match input_ty {
+                    Type::Tuple(tys) => tys,
+                    _ => unreachable!(),
+                };
 
-                let mut patterns = patterns.into_iter().enumerate().peekable();
-                while let Some((index, pattern)) = patterns.next() {
-                    let next_label =
-                        self.new_label(patterns.peek().and_then(|(_, pattern)| pattern.span));
+                let else_pos = self.new_basic_block(label);
 
-                    self.statements_for(*label)
-                        .push(Statement::Comment(format!("pattern {} in tuple", index)));
+                for (index, pattern) in patterns.into_iter().enumerate() {
+                    let element_ty = &tuple_tys[index];
 
-                    self.statements_for(*label).push(Statement::Copy);
+                    let next_pos = self.new_basic_block(label);
 
-                    self.statements_for(*label)
-                        .push(Statement::TupleElement(index));
+                    self.statements_for(label, *pos).push(Statement::Copy);
 
-                    self.gen_pattern(pattern, next_label, label);
+                    self.statements_for(label, *pos).push(Statement::Expression(
+                        element_ty.clone(),
+                        Expression::TupleElement(index),
+                    ));
 
-                    self.statements_for(*label)
-                        .push(Statement::Jump(else_label));
+                    self.gen_pattern(pattern, element_ty, next_pos, label, pos);
 
-                    *label = next_label;
+                    *self.terminator_for(label, *pos) = Terminator::Jump(else_pos);
+
+                    *pos = next_pos;
                 }
 
-                self.statements_for(*label)
-                    .push(Statement::Comment(String::from("end of tuple pattern")));
+                self.statements_for(label, *pos).push(Statement::Drop);
 
-                self.statements_for(*label).push(Statement::Drop);
+                *self.terminator_for(label, *pos) = Terminator::Jump(body_pos);
 
-                self.statements_for(*label)
-                    .push(Statement::Jump(body_label));
-
-                *label = else_label;
-                self.statements_for(*label).push(Statement::Drop);
+                *pos = else_pos;
             }
             ssa::PatternKind::Destructure(fields) => {
-                let else_label = self.new_label(None);
+                let (id, needs_deref) = match input_ty {
+                    Type::Structure(id) => (id, false),
+                    Type::StructureReference(id) => (id, true),
+                    _ => unreachable!(),
+                };
 
-                let mut fields = fields.into_iter().peekable();
-                while let Some((index, field)) = fields.next() {
-                    let next_label =
-                        self.new_label(fields.peek().and_then(|(_, field)| field.span));
+                let field_tys = self.structures.get(id).unwrap().clone();
 
-                    self.statements_for(*label)
-                        .push(Statement::Comment(format!("field {} in structure", index)));
-
-                    self.statements_for(*label).push(Statement::Copy);
-
-                    self.statements_for(*label)
-                        .push(Statement::StructureElement(index));
-
-                    self.gen_pattern(field, next_label, label);
-
-                    self.statements_for(*label)
-                        .push(Statement::Jump(else_label));
-
-                    *label = next_label;
+                if needs_deref {
+                    self.statements_for(label, *pos).push(Statement::Expression(
+                        Type::Structure(*id),
+                        Expression::Dereference,
+                    ));
                 }
 
-                self.statements_for(*label)
-                    .push(Statement::Comment(String::from("end of structure pattern")));
+                let else_pos = self.new_basic_block(label);
 
-                self.statements_for(*label).push(Statement::Drop);
+                for (index, field) in fields {
+                    let field_ty = &field_tys[index];
 
-                self.statements_for(*label)
-                    .push(Statement::Jump(body_label));
+                    let next_pos = self.new_basic_block(label);
 
-                *label = else_label;
-                self.statements_for(*label).push(Statement::Drop);
+                    self.statements_for(label, *pos).push(Statement::Copy);
+
+                    self.statements_for(label, *pos).push(Statement::Expression(
+                        field_ty.clone(),
+                        Expression::StructureElement(index),
+                    ));
+
+                    self.gen_pattern(field, field_ty, next_pos, label, pos);
+
+                    *self.terminator_for(label, *pos) = Terminator::Jump(else_pos);
+
+                    *pos = next_pos;
+                }
+
+                self.statements_for(label, *pos).push(Statement::Drop);
+
+                *self.terminator_for(label, *pos) = Terminator::Jump(body_pos);
+
+                *pos = else_pos;
+                self.statements_for(label, *pos).push(Statement::Drop);
             }
             ssa::PatternKind::Variant(discriminant, patterns) => {
-                let element_label = self.new_label(None);
-                let else_label = self.new_label(None);
+                let (id, needs_deref) = match input_ty {
+                    Type::Enumeration(id) => (id, false),
+                    Type::EnumerationReference(id) => (id, true),
+                    _ => unreachable!(),
+                };
 
-                self.statements_for(*label).push(Statement::Copy);
+                let variant_tys = self.enumerations.get(id).unwrap()[discriminant].clone();
 
-                self.statements_for(*label)
-                    .push(Statement::If(discriminant, element_label));
-
-                self.statements_for(*label)
-                    .push(Statement::Jump(else_label));
-
-                *label = element_label;
-
-                let mut patterns = patterns.into_iter().enumerate().peekable();
-                while let Some((index, pattern)) = patterns.next() {
-                    let next_label =
-                        self.new_label(patterns.peek().and_then(|(_, pattern)| pattern.span));
-
-                    self.statements_for(*label)
-                        .push(Statement::Comment(format!("pattern {} in variant", index)));
-
-                    self.statements_for(*label).push(Statement::Copy);
-
-                    self.statements_for(*label)
-                        .push(Statement::VariantElement(discriminant, index));
-
-                    self.gen_pattern(pattern, next_label, label);
-
-                    self.statements_for(*label)
-                        .push(Statement::Jump(else_label));
-
-                    *label = next_label;
+                if needs_deref {
+                    self.statements_for(label, *pos).push(Statement::Expression(
+                        Type::Enumeration(*id),
+                        Expression::Dereference,
+                    ));
                 }
 
-                self.statements_for(*label)
-                    .push(Statement::Comment(String::from("end of variant pattern")));
+                let element_pos = self.new_basic_block(label);
+                let else_pos = self.new_basic_block(label);
 
-                self.statements_for(*label).push(Statement::Drop);
+                self.statements_for(label, *pos).push(Statement::Copy);
 
-                self.statements_for(*label)
-                    .push(Statement::Jump(body_label));
+                *self.terminator_for(label, *pos) =
+                    Terminator::If(discriminant, element_pos, else_pos);
 
-                *label = else_label;
-                self.statements_for(*label).push(Statement::Drop);
+                *pos = element_pos;
+
+                for (index, pattern) in patterns.into_iter().enumerate() {
+                    let element_ty = &variant_tys[index];
+
+                    let next_pos = self.new_basic_block(label);
+
+                    self.statements_for(label, *pos).push(Statement::Copy);
+
+                    self.statements_for(label, *pos).push(Statement::Expression(
+                        element_ty.clone(),
+                        Expression::VariantElement(discriminant, index),
+                    ));
+
+                    self.gen_pattern(pattern, element_ty, next_pos, label, pos);
+
+                    *self.terminator_for(label, *pos) = Terminator::Jump(else_pos);
+
+                    *pos = next_pos;
+                }
+
+                self.statements_for(label, *pos).push(Statement::Drop);
+
+                *self.terminator_for(label, *pos) = Terminator::Jump(body_pos);
+
+                *pos = else_pos;
+                self.statements_for(label, *pos).push(Statement::Drop);
             }
         }
     }

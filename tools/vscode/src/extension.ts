@@ -1,7 +1,6 @@
 import * as path from "path";
 import * as vscode from "vscode";
 import {
-    DocumentSemanticsTokensSignature,
     LanguageClient,
     LanguageClientOptions,
     ServerOptions,
@@ -12,7 +11,8 @@ let client: LanguageClient;
 export const activate = (context: vscode.ExtensionContext) => {
     const serverOptions: ServerOptions = {
         run: {
-            command: "wipple lsp",
+            command: "wipple",
+            args: ["lsp"],
         },
         debug: {
             command: "/bin/sh",

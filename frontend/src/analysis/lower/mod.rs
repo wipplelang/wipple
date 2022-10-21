@@ -761,20 +761,20 @@ impl Compiler<'_> {
                                     ),
                                 };
 
-                                let constructor =
-                                    variables.iter().rev().fold(result, |result, (var, span)| {
-                                        Expression {
-                                            span: variant.span,
-                                            kind: ExpressionKind::Function(
-                                                Pattern {
-                                                    span: *span,
-                                                    kind: PatternKind::Variable(*var),
-                                                },
-                                                Box::new(result),
-                                                variables.clone(),
-                                            ),
-                                        }
-                                    });
+                                let constructor = variables.iter().enumerate().rev().fold(
+                                    result,
+                                    |result, (index, (var, span))| Expression {
+                                        span: variant.span,
+                                        kind: ExpressionKind::Function(
+                                            Pattern {
+                                                span: *span,
+                                                kind: PatternKind::Variable(*var),
+                                            },
+                                            Box::new(result),
+                                            variables[..index].to_vec(),
+                                        ),
+                                    },
+                                );
 
                                 info.declarations.constants.insert(
                                     constructor_id,

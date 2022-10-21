@@ -7,7 +7,8 @@ pub mod lower;
 pub mod typecheck;
 
 pub use typecheck::{
-    Arm, Expression, ExpressionKind, Pattern, PatternKind, Program, TypecheckMode,
+    Arm, Expression, ExpressionKind, Pattern, PatternKind, Program, Type, TypeStructure,
+    TypecheckMode,
 };
 
 use crate::{diagnostics::*, parse::Span, Compiler, FilePath, Uses};

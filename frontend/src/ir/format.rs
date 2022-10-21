@@ -1,80 +1,108 @@
 use super::*;
 
-impl std::fmt::Display for Label {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "#{}", self.counter)
-    }
-}
-
 impl std::fmt::Display for Program {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        writeln!(f, "entrypoint: {}", self.entrypoint)?;
+        for (label, (kind, vars, blocks)) in self.labels.iter().enumerate() {
+            writeln!(f, "{} #{} ({} vars):", kind, label, vars)?;
 
-        for (label, (span, statements)) in &self.labels {
-            write!(f, "\n{}", label)?;
+            for (index, bb) in blocks.iter().enumerate() {
+                writeln!(f, "  bb{}:", index)?;
 
-            if let Some(span) = span {
-                write!(f, " ({:?})", span)?;
+                for statement in &bb.statements {
+                    writeln!(f, "    {}", statement)?;
+                }
+
+                writeln!(f, "    {}", bb.terminator)?;
             }
 
-            writeln!(f, ":")?;
-
-            for statement in statements {
-                writeln!(f, "  {}", statement)?;
-            }
+            writeln!(f)?;
         }
 
         Ok(())
     }
 }
 
-impl std::fmt::Display for Statement {
+impl std::fmt::Display for LabelKind {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
-            Statement::Comment(comment) => write!(f, ";; {}", comment),
-            Statement::Copy => write!(f, "copy"),
-            Statement::Drop => write!(f, "drop"),
-            Statement::Begin => write!(f, "begin"),
-            Statement::End => write!(f, "end"),
-            Statement::Value(value) => write!(f, "{}", value),
-            Statement::Call => write!(f, "call"),
-            Statement::TailCall => write!(f, "tail call"),
-            Statement::External(abi, identifier, count) => {
-                write!(f, "external {:?} {:?} {}", abi, identifier, count)
-            }
-            Statement::Tuple(count) => write!(f, "tuple {}", count),
-            Statement::Structure(count) => write!(f, "structure {}", count),
-            Statement::Variant(variant, count) => write!(f, "variant {} {}", variant, count),
-            Statement::TupleElement(index) => write!(f, "tuple element {}", index),
-            Statement::StructureElement(index) => write!(f, "structure element {}", index),
-            Statement::VariantElement(variant, index) => {
-                write!(f, "variant element {} {}", variant, index)
-            }
-            Statement::Initialize(initialize) => write!(f, "initialize ${}", initialize.counter),
-            Statement::If(variant, label) => write!(f, "if {} {}", variant, label),
-            Statement::Jump(label) => write!(f, "jump {}", label),
-            Statement::Unreachable => write!(f, "unreachable"),
+            LabelKind::Entrypoint => write!(f, "entrypoint"),
+            LabelKind::Constant(_) => write!(f, "constant"),
+            LabelKind::Function(_, _) => write!(f, "function"),
+            LabelKind::Closure(_, _, _) => write!(f, "closure"),
         }
     }
 }
 
-impl std::fmt::Display for Value {
+impl std::fmt::Display for Statement {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
-            Value::Marker => write!(f, "marker"),
-            Value::Text(text) => write!(f, "text {:?}", text),
-            Value::Number(number) => write!(f, "number {}", number),
-            Value::Integer(integer) => write!(f, "integer {}", integer),
-            Value::Natural(natural) => write!(f, "natural {}", natural),
-            Value::Byte(byte) => write!(f, "byte {}", byte),
-            Value::Signed(signed) => write!(f, "signed {}", signed),
-            Value::Unsigned(unsigned) => write!(f, "unsigned {}", unsigned),
-            Value::Float(float) => write!(f, "float {}", float),
-            Value::Double(double) => write!(f, "double {}", double),
-            Value::Variable(variable) => write!(f, "variable ${}", variable.counter),
-            Value::Constant(label) => write!(f, "constant {}", label),
-            Value::Function(label) => write!(f, "function {}", label),
-            Value::Closure(label) => write!(f, "closure {}", label),
+            Statement::Copy => write!(f, "copy"),
+            Statement::Drop => write!(f, "drop"),
+            Statement::Initialize(var) => write!(f, "initialize ${}", var),
+            Statement::Free(var) => write!(f, "free ${}", var),
+            Statement::Unpack(captures) => write!(f, "unpack {}", captures),
+            Statement::Expression(_, expr) => write!(f, "{}", expr),
         }
+    }
+}
+
+impl std::fmt::Display for Terminator {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Terminator::Return => write!(f, "return"),
+            Terminator::If(variant, then_label, else_label) => {
+                write!(f, "if {} bb{} bb{}", variant, then_label, else_label)
+            }
+            Terminator::Jump(label) => write!(f, "jump bb{}", label),
+        }
+    }
+}
+
+impl std::fmt::Display for Expression {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Expression::Marker => write!(f, "marker"),
+            Expression::Text(text) => write!(f, "text {:?}", text),
+            Expression::Number(number) => write!(f, "number {}", number),
+            Expression::Integer(integer) => write!(f, "integer {}", integer),
+            Expression::Natural(natural) => write!(f, "natural {}", natural),
+            Expression::Byte(byte) => write!(f, "byte {}", byte),
+            Expression::Signed(signed) => write!(f, "signed {}", signed),
+            Expression::Unsigned(unsigned) => write!(f, "unsigned {}", unsigned),
+            Expression::Float(float) => write!(f, "float {}", float),
+            Expression::Double(double) => write!(f, "double {}", double),
+            Expression::Variable(variable) => write!(f, "variable ${}", variable),
+            Expression::Constant(label) => write!(f, "constant #{}", label),
+            Expression::Function(label) => write!(f, "function #{}", label),
+            Expression::Closure(captures, label) => write!(f, "closure {} #{}", captures, label),
+            Expression::Call => write!(f, "call"),
+            Expression::External(abi, identifier, count) => {
+                write!(f, "external {:?} {:?} {}", abi, identifier, count)
+            }
+            Expression::Tuple(count) => write!(f, "tuple {}", count),
+            Expression::Structure(count) => write!(f, "structure {}", count),
+            Expression::Variant(variant, count) => write!(f, "variant {} {}", variant, count),
+            Expression::TupleElement(index) => write!(f, "tuple element {}", index),
+            Expression::StructureElement(index) => write!(f, "structure element {}", index),
+            Expression::VariantElement(variant, index) => {
+                write!(f, "variant element {} {}", variant, index)
+            }
+            Expression::Reference => write!(f, "reference"),
+            Expression::Dereference => write!(f, "dereference"),
+        }
+    }
+}
+
+impl std::fmt::Display for CaptureList {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(
+            f,
+            "({})",
+            self.0
+                .iter()
+                .map(|(captured, var)| format!("${} => ${}", captured, var))
+                .collect::<Vec<_>>()
+                .join(", ")
+        )
     }
 }

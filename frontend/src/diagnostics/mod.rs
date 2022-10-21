@@ -1,4 +1,5 @@
 use crate::{parse::Span, FilePath, SourceMap};
+use itertools::Itertools;
 use parking_lot::Mutex;
 use serde::Serialize;
 use std::{
@@ -41,7 +42,15 @@ impl PartialEq for Diagnostic {
 
 impl Eq for Diagnostic {}
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+impl std::hash::Hash for Diagnostic {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.level.hash(state);
+        self.message.hash(state);
+        self.notes.hash(state);
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
 pub enum DiagnosticLevel {
     Note,
     Warning,
@@ -58,14 +67,14 @@ impl From<DiagnosticLevel> for codespan_reporting::diagnostic::Severity {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
 pub struct Note {
     pub level: NoteLevel,
     pub span: Span,
     pub message: String,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
 pub enum NoteLevel {
     Primary,
     Secondary,
@@ -170,8 +179,10 @@ impl FinalizedDiagnostics {
         codespan_reporting::files::SimpleFiles<FilePath, Arc<str>>,
         Vec<codespan_reporting::diagnostic::Diagnostic<usize>>,
     ) {
-        let mut diagnostics = mem::take(&mut self.diagnostics);
-        diagnostics.dedup();
+        let diagnostics = mem::take(&mut self.diagnostics)
+            .into_iter()
+            .unique()
+            .collect::<Vec<_>>();
 
         let mut files = codespan_reporting::files::SimpleFiles::new();
         let mut console_diagnostics = Vec::new();

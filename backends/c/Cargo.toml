@@ -1,0 +1,7 @@
+[package]
+name = "wipple-c-backend"
+version = "0.0.0"
+edition = "2021"
+
+[dependencies]
+wipple-frontend = { path = "../../frontend" }

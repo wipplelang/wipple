@@ -26,4 +26,5 @@ tower-lsp = "0.17"
 which = "4"
 wipple-default-loader = { path = "../../loaders/default" }
 wipple-frontend = { path = "../../frontend", features = ["clap", "serde_json"] }
+# wipple-c-backend = { path = "../../backends/c" }
 wipple-interpreter-backend = { path = "../../backends/interpreter" }

@@ -1,7 +1,6 @@
-use itertools::Itertools;
-
 use super::engine::{BuiltinType, Type, UnresolvedType};
 use crate::{TraitId, TypeId, TypeParameterId};
+use itertools::Itertools;
 
 pub enum FormattableType {
     Type(UnresolvedType),
@@ -22,7 +21,7 @@ impl From<Type> for FormattableType {
 
 impl FormattableType {
     fn params(&self) -> Vec<UnresolvedType> {
-        let mut params = match self {
+        let params = match self {
             FormattableType::Type(ty) => ty
                 .params()
                 .into_iter()
@@ -31,12 +30,13 @@ impl FormattableType {
             FormattableType::Trait(_, params) => params.clone(),
         };
 
-        params.dedup_by_key(|ty| match ty {
-            UnresolvedType::Parameter(param) => Some(*param),
-            _ => None,
-        });
-
         params
+            .into_iter()
+            .unique_by(|ty| match ty {
+                UnresolvedType::Parameter(param) => Some(*param),
+                _ => None,
+            })
+            .collect()
     }
 }
 

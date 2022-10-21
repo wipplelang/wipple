@@ -234,8 +234,8 @@ impl LanguageServer for Backend {
         }
 
         semantic_tokens.reverse();
-        semantic_tokens.dedup_by_key(|(span, _)| *span);
         semantic_tokens.sort_by_key(|(span, _)| span.start);
+        semantic_tokens.dedup_by_key(|(span, _)| *span);
 
         let mut pre_line = 0;
         let mut pre_start = 0;

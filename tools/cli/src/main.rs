@@ -1,11 +1,10 @@
 mod lsp;
 
 use clap::{Parser, ValueEnum};
-use serde::Serialize;
 use std::{
     collections::HashSet,
     fs,
-    io::{self, Read},
+    io::{self, Read, Write},
     path::PathBuf,
     process::ExitCode,
     sync::Arc,
@@ -20,49 +19,39 @@ use wipple_frontend::Compiler;
     about = "The Wipple programming language"
 )]
 enum Args {
-    #[clap(trailing_var_arg = true)]
     Run {
+        path: String,
+
         #[clap(flatten)]
         options: BuildOptions,
-
-        #[clap(long, value_enum, default_value = "interpreter")]
-        backend: RunBackend,
-
-        #[clap(multiple_values = true)]
-        backend_args: Vec<std::ffi::OsString>,
     },
-    #[clap(trailing_var_arg = true)]
     Compile {
-        #[clap(flatten)]
-        options: BuildOptions,
+        path: String,
+
+        #[clap(short, value_enum, default_value = "c")]
+        format: CompileFormat,
 
         #[clap(short)]
-        output: PathBuf,
+        output: Option<PathBuf>,
 
-        #[clap(long, value_enum, /* default_value = ".." */)]
-        backend: CompileBackend,
-
-        #[clap(multiple_values = true)]
-        backend_args: Vec<std::ffi::OsString>,
+        #[clap(flatten)]
+        options: BuildOptions,
     },
     Cache {
         #[clap(long)]
         clear: bool,
     },
-    Dump {
+    Analyze {
+        path: String,
+
         #[clap(flatten)]
         options: BuildOptions,
-
-        #[clap(value_enum)]
-        target: DumpTarget,
     },
     Lsp,
 }
 
 #[derive(Parser)]
 struct BuildOptions {
-    path: String,
-
     #[cfg_attr(debug_assertions, clap(long))]
     #[cfg_attr(not(debug_assertions), clap(long, default_value = "true"))]
     progress: bool,
@@ -81,18 +70,10 @@ struct BuildOptions {
     ide: bool,
 }
 
-#[derive(Debug, Clone, Copy, ValueEnum)]
-enum RunBackend {
-    Interpreter,
-}
-
-#[derive(Debug, Clone, Copy, ValueEnum)]
-enum CompileBackend {}
-
-#[derive(Debug, Clone, Copy, ValueEnum)]
-enum DumpTarget {
-    Analysis,
+#[derive(Clone, Copy, ValueEnum)]
+enum CompileFormat {
     Ir,
+    C,
 }
 
 #[tokio::main]
@@ -153,107 +134,129 @@ async fn run() -> anyhow::Result<()> {
         };
 
     match args {
-        Args::Run {
-            options,
-            backend,
-            backend_args: _,
-        } => {
+        Args::Run { path, options } => {
             #[cfg(debug_assertions)]
             wipple_frontend::diagnostics::set_backtrace_enabled(options.trace);
 
             let progress_bar = options.progress.then(progress_bar);
 
-            let (ir, mut diagnostics) = generate_ir(&options, progress_bar.clone()).await;
+            let (ir, mut diagnostics) = generate_ir(&path, &options, progress_bar.clone()).await;
 
             let error = diagnostics.contains_errors();
             emit_diagnostics(&mut diagnostics, &options)?;
 
+            if let Some(progress_bar) = progress_bar.as_ref() {
+                progress_bar.finish_and_clear();
+            }
+
             let ir = match ir {
                 Some(ir) if !error => ir,
-                _ => {
-                    if let Some(progress_bar) = progress_bar.as_ref() {
-                        progress_bar.finish_and_clear();
-                    }
-
-                    return Err(anyhow::Error::msg(""));
-                }
+                _ => return Err(anyhow::Error::msg("")),
             };
 
-            match backend {
-                RunBackend::Interpreter => {
-                    if let Some(progress_bar) = progress_bar.as_ref() {
-                        progress_bar.finish_and_clear();
-                    }
+            let interpreter = wipple_interpreter_backend::Interpreter::handling_output(|text| {
+                print!("{}", text);
+            });
 
-                    let interpreter =
-                        wipple_interpreter_backend::Interpreter::handling_output(|text| {
-                            print!("{}", text);
-                        });
-
-                    if let Err(error) = interpreter.run(&ir) {
-                        eprintln!("fatal error: {}", error);
-                    }
-                }
+            if let Err(error) = interpreter.run(&ir) {
+                eprintln!("fatal error: {}", error);
             }
         }
         Args::Compile {
-            options: _,
-            output: _,
-            backend: _,
-            backend_args: _,
+            path,
+            format,
+            options,
+            output,
         } => {
-            unimplemented!();
+            let compile = |options: BuildOptions| async move {
+                #[cfg(debug_assertions)]
+                wipple_frontend::diagnostics::set_backtrace_enabled(options.trace);
+
+                let progress_bar = options.progress.then(progress_bar);
+
+                let (ir, mut diagnostics) =
+                    generate_ir(&path, &options, progress_bar.clone()).await;
+
+                let error = diagnostics.contains_errors();
+                emit_diagnostics(&mut diagnostics, &options)?;
+
+                match ir {
+                    Some(ir) if !error => Ok((ir, progress_bar)),
+                    _ => {
+                        if let Some(progress_bar) = progress_bar.as_ref() {
+                            progress_bar.finish_and_clear();
+                        }
+
+                        Err(anyhow::Error::msg(""))
+                    }
+                }
+            };
+
+            let (ir, progress_bar) = compile(options).await?;
+
+            match format {
+                CompileFormat::Ir => {
+                    if let Some(progress_bar) = progress_bar.as_ref() {
+                        progress_bar.finish_and_clear();
+                    }
+
+                    let mut output: Box<dyn Write> = match output {
+                        Some(output) => Box::new(std::fs::File::create(output)?),
+                        None => Box::new(std::io::stdout()),
+                    };
+
+                    output.write_all(ir.to_string().as_bytes())?;
+                }
+                CompileFormat::C => {
+                    // if let Some(progress_bar) = progress_bar.as_ref() {
+                    //     progress_bar.set_message("Compiling to C");
+                    // }
+
+                    // let code = wipple_c_backend::generate(&ir);
+
+                    // if let Some(progress_bar) = progress_bar.as_ref() {
+                    //     progress_bar.finish_and_clear();
+                    // }
+
+                    // let mut output: Box<dyn Write> = match output {
+                    //     Some(output) => Box::new(std::fs::File::create(output)?),
+                    //     None => Box::new(std::io::stdout()),
+                    // };
+
+                    // output.write_all(code.as_bytes())?;
+                }
+            }
         }
-        Args::Dump { options, target } => {
+        Args::Analyze { path, options } => {
             #[cfg(debug_assertions)]
             wipple_frontend::diagnostics::set_backtrace_enabled(options.trace);
 
             let progress_bar = options.progress.then(progress_bar);
 
-            match target {
-                DumpTarget::Analysis => {
-                    let (program, diagnostics) = analyze(&options, progress_bar.clone()).await;
+            let (program, diagnostics) = analyze(&path, &options, progress_bar.clone()).await;
 
-                    if let Some(progress_bar) = progress_bar.as_ref() {
-                        progress_bar.finish_and_clear();
-                    }
+            if let Some(progress_bar) = progress_bar.as_ref() {
+                progress_bar.finish_and_clear();
+            }
 
-                    #[derive(Serialize)]
-                    struct Output {
-                        program: wipple_frontend::analysis::Program,
-                        diagnostics: Vec<wipple_frontend::diagnostics::Diagnostic>,
-                    }
+            #[allow(dead_code)]
+            #[derive(Debug)]
+            struct Analysis {
+                program: wipple_frontend::analysis::Program,
+                diagnostics: Vec<wipple_frontend::diagnostics::Diagnostic>,
+            }
 
-                    let error = diagnostics.contains_errors();
+            let error = diagnostics.contains_errors();
 
-                    let output = Output {
-                        program,
-                        diagnostics: diagnostics.diagnostics,
-                    };
+            let output = Analysis {
+                program,
+                diagnostics: diagnostics.diagnostics,
+            };
 
-                    serde_json::to_writer(io::stdout(), &output).unwrap();
+            eprintln!("{:#?}", output);
 
-                    if error {
-                        return Err(anyhow::Error::msg(""));
-                    }
-                }
-                DumpTarget::Ir => {
-                    let (ir, mut diagnostics) = generate_ir(&options, progress_bar.clone()).await;
-
-                    if let Some(progress_bar) = progress_bar.as_ref() {
-                        progress_bar.finish_and_clear();
-                    }
-
-                    let error = diagnostics.contains_errors();
-                    emit_diagnostics(&mut diagnostics, &options)?;
-                    if error {
-                        return Err(anyhow::Error::msg(""));
-                    }
-
-                    if let Some(ir) = ir {
-                        print!("{}", ir);
-                    }
-                }
+            if error {
+                return Err(anyhow::Error::msg(""));
             }
         }
         Args::Cache { clear } => {
@@ -284,37 +287,44 @@ async fn run() -> anyhow::Result<()> {
 }
 
 async fn analyze(
+    path: &str,
     options: &BuildOptions,
     progress_bar: Option<Arc<indicatif::ProgressBar>>,
 ) -> (
     wipple_frontend::analysis::Program,
     wipple_frontend::diagnostics::FinalizedDiagnostics,
 ) {
-    build_with_passes(options, progress_bar, |_, _, program| program).await
+    build_with_passes(path, options, progress_bar, |_, _, program| program).await
 }
 
 async fn generate_ir(
+    path: &str,
     options: &BuildOptions,
     progress_bar: Option<Arc<indicatif::ProgressBar>>,
 ) -> (
     Option<wipple_frontend::ir::Program>,
     wipple_frontend::diagnostics::FinalizedDiagnostics,
 ) {
-    let (ir, diagnostics) =
-        build_with_passes(options, progress_bar, |progress_bar, compiler, program| {
+    let (ir, diagnostics) = build_with_passes(
+        path,
+        options,
+        progress_bar,
+        |progress_bar, compiler, program| {
             if let Some(progress_bar) = progress_bar {
                 progress_bar.set_message("Generating IR");
             }
 
             compiler.lint(&program);
             program.complete.then(|| compiler.ir_from(&program))
-        })
-        .await;
+        },
+    )
+    .await;
 
     (ir, diagnostics)
 }
 
 async fn build_with_passes<P>(
+    path: &str,
     options: &BuildOptions,
     progress_bar: Option<Arc<indicatif::ProgressBar>>,
     passes: impl FnOnce(
@@ -363,7 +373,7 @@ async fn build_with_passes<P>(
     let base = options
         .base_path
         .clone()
-        .unwrap_or_else(|| PathBuf::from(&options.path).parent().unwrap().to_path_buf())
+        .unwrap_or_else(|| PathBuf::from(path).parent().unwrap().to_path_buf())
         .to_string_lossy()
         .to_string();
 
@@ -399,7 +409,7 @@ async fn build_with_passes<P>(
         }),
     );
 
-    if options.path == "-" {
+    if path == "-" {
         let mut stdin = String::new();
         io::stdin().read_to_string(&mut stdin).unwrap();
 
@@ -411,10 +421,10 @@ async fn build_with_passes<P>(
 
     let compiler = Compiler::new(&loader);
 
-    let path = if options.path == "-" {
+    let path = if path == "-" {
         wipple_frontend::FilePath::Virtual(wipple_frontend::helpers::InternedString::new("stdin"))
     } else {
-        wipple_frontend::FilePath::Path(options.path.clone().into())
+        wipple_frontend::FilePath::Path(wipple_frontend::helpers::InternedString::new(path))
     };
 
     let program = compiler

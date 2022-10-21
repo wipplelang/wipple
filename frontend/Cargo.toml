@@ -20,6 +20,7 @@ logos = "0.12"
 parking_lot = { version = "0.12", features = ["serde"] }
 paste = "1"
 peg = "0.8"
+petgraph = "0.6"
 regex = "1"
 rust_decimal = "1"
 rustc_lexer = "0.1"

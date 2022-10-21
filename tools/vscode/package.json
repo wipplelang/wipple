@@ -3,6 +3,11 @@
     "displayName": "Wipple Language Support",
     "description": "IDE support for the Wipple programming language",
     "version": "0.3.0",
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/wipplelang/wipple.git"
+    },
     "engines": {
         "vscode": "^1.72.0"
     },
@@ -61,7 +66,6 @@
         "webpack-cli": "^4.9.2"
     },
     "dependencies": {
-        "vscode-languageclient": "^8.0.2",
-        "which": "^2.0.2"
+        "vscode-languageclient": "^8.0.2"
     }
 }

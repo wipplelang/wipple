@@ -17,6 +17,7 @@ use crate::{
     BuiltinTypeId, Compiler, ConstantId, FilePath, ItemId, TemplateId, TraitId, TypeId,
     TypeParameterId, Uses, VariableId,
 };
+use itertools::Itertools;
 use serde::Serialize;
 use std::{
     cell::RefCell,
@@ -347,7 +348,7 @@ struct Typechecker<'a, 'l> {
     instances: im::HashMap<TraitId, HashSet<ConstantId>>,
     generic_constants: im::HashMap<ConstantId, (bool, lower::Expression)>,
     item_queue: im::Vector<QueuedItem>,
-    items: im::HashMap<ItemId, Expression>,
+    items: im::HashMap<ItemId, (Option<ConstantId>, Expression)>,
     entrypoint: Option<UnresolvedExpression>,
     errors: im::Vector<Error>,
 }
@@ -361,6 +362,7 @@ pub enum TypecheckMode {
 
 #[derive(Debug, Clone)]
 struct QueuedItem {
+    generic_id: Option<ConstantId>,
     id: ItemId,
     expr: UnresolvedExpression,
     info: MonomorphizeInfo,
@@ -396,6 +398,8 @@ impl<'a, 'l> Typechecker<'a, 'l> {
         lowering_is_complete: bool,
         mut progress: impl FnMut(usize, usize),
     ) -> Program {
+        // Queue the entrypoint
+
         let entrypoint = mem::take(&mut self.entrypoint).map(|entrypoint| {
             let info = MonomorphizeInfo {
                 cache: Default::default(),
@@ -405,6 +409,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
             let entrypoint_id = self.compiler.new_item_id(entrypoint.span.path);
 
             self.item_queue.push_back(QueuedItem {
+                generic_id: None,
                 id: entrypoint_id,
                 expr: entrypoint,
                 info,
@@ -412,6 +417,8 @@ impl<'a, 'l> Typechecker<'a, 'l> {
 
             entrypoint_id
         });
+
+        // Monomorphize constants
 
         let mut count = 0;
         while let Some(mut item) = self.item_queue.pop_back() {
@@ -421,11 +428,13 @@ impl<'a, 'l> Typechecker<'a, 'l> {
             let expr = self.monomorphize_expr(item.expr, &mut item.info);
 
             if let Some(expr) = self.finalize_expr(expr) {
-                self.items.insert(item.id, expr);
+                self.items.insert(item.id, (item.generic_id, expr));
             } else {
                 self.is_complete = false;
             }
         }
+
+        // Typecheck generic constants
 
         let mut already_checked = HashSet::new();
         for (id, (instance, body)) in self.generic_constants.clone() {
@@ -438,13 +447,55 @@ impl<'a, 'l> Typechecker<'a, 'l> {
             self.typecheck_generic_constant_expr(id, instance, body);
         }
 
+        // Report errors if needed
+
         if lowering_is_complete {
             self.report_errors();
         }
 
+        // Consolidate constants based on their type
+
+        let mut cache = HashMap::new();
+        let mut cached = HashSet::new();
+        let mut map = HashMap::new();
+
+        let mut items = self.items.into_iter().collect::<HashMap<_, _>>();
+
+        for (id, (generic_id, expr)) in &items {
+            let cached_id = *cache
+                .entry((generic_id, expr.ty.clone()))
+                .or_insert_with(|| {
+                    cached.insert(*id);
+                    *id
+                });
+
+            map.insert(*id, cached_id);
+        }
+
+        for id in items.keys().cloned().collect::<Vec<_>>() {
+            if !cached.contains(&id) {
+                items.remove(&id);
+            }
+        }
+
+        for (_, expr) in items.values_mut() {
+            expr.traverse_mut(|expr| {
+                if let ExpressionKind::Constant(id) = &mut expr.kind {
+                    if let Some(mapped_id) = map.get(id) {
+                        *id = *mapped_id;
+                    }
+                }
+            })
+        }
+
+        // Build the final program
+
         Program {
             complete: lowering_is_complete && self.is_complete,
-            items: self.items.into_iter().collect(),
+            items: items
+                .into_iter()
+                .map(|(id, (_, expr))| (id, expr))
+                .collect(),
             entrypoint,
             exported: self.exported.unwrap_or_default(),
             declarations: self.declarations.into_inner(),
@@ -659,6 +710,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
         }
 
         self.item_queue.push_back(QueuedItem {
+            generic_id: Some(id),
             id: monomorphized_id,
             expr: generic_expr,
             info,
@@ -1832,7 +1884,10 @@ impl<'a, 'l> Typechecker<'a, 'l> {
             (@find $ty:expr, $resolve:expr) => {{
                 let mut candidates = Vec::new();
                 $resolve(&mut candidates, engine::UnresolvedType::from($ty));
-                candidates.dedup_by_key(|(_, id, _)| *id);
+                let mut candidates = candidates
+                    .into_iter()
+                    .unique_by(|(_, id, _)| *id)
+                    .collect::<Vec<_>>();
 
                 match candidates.len() {
                     0 => None,
