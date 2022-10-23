@@ -82,9 +82,7 @@ impl Stack {
     const SIZE: usize = 1024 * 1024; // 1 MB
 
     fn new() -> Self {
-        Stack(Vec::with_capacity(dbg!(
-            Self::SIZE / mem::size_of::<Value>()
-        )))
+        Stack(Vec::with_capacity(Self::SIZE / mem::size_of::<Value>()))
     }
 
     fn push(&mut self, value: Value) {
@@ -99,7 +97,6 @@ impl Stack {
         self.0.pop().expect("stack is empty")
     }
 
-    #[inline(never)] // FIXME: REMOVE ONCE DONE PROFILING
     fn popn(&mut self, n: usize) -> Vec<Value> {
         (0..n)
             .map(|_| self.pop())
