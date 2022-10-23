@@ -2140,13 +2140,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "wipple-c-backend"
-version = "0.0.0"
-dependencies = [
- "wipple-frontend",
-]
-
-[[package]]
 name = "wipple-cli"
 version = "0.0.0"
 dependencies = [

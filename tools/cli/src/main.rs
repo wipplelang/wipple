@@ -28,7 +28,7 @@ enum Args {
     Compile {
         path: String,
 
-        #[clap(short, value_enum, default_value = "c")]
+        #[clap(short, value_enum, /* default_value = "c" */)]
         format: CompileFormat,
 
         #[clap(short)]
@@ -73,7 +73,6 @@ struct BuildOptions {
 #[derive(Clone, Copy, ValueEnum)]
 enum CompileFormat {
     Ir,
-    C,
 }
 
 #[tokio::main]
@@ -206,24 +205,6 @@ async fn run() -> anyhow::Result<()> {
                     };
 
                     output.write_all(ir.to_string().as_bytes())?;
-                }
-                CompileFormat::C => {
-                    // if let Some(progress_bar) = progress_bar.as_ref() {
-                    //     progress_bar.set_message("Compiling to C");
-                    // }
-
-                    // let code = wipple_c_backend::generate(&ir);
-
-                    // if let Some(progress_bar) = progress_bar.as_ref() {
-                    //     progress_bar.finish_and_clear();
-                    // }
-
-                    // let mut output: Box<dyn Write> = match output {
-                    //     Some(output) => Box::new(std::fs::File::create(output)?),
-                    //     None => Box::new(std::io::stdout()),
-                    // };
-
-                    // output.write_all(code.as_bytes())?;
                 }
             }
         }

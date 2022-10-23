@@ -2,6 +2,7 @@ mod runtime;
 
 use std::{
     cell::RefCell,
+    mem,
     os::raw::{c_int, c_uint},
     rc::Rc,
 };
@@ -69,17 +70,21 @@ impl Scope {
     }
 }
 
-struct Info<'a> {
-    program: &'a ir::Program,
-    initialized_constants: Vec<Option<Value>>,
+struct Info {
+    labels: Vec<(usize, Vec<ir::BasicBlock>)>,
+    initialized_constants: Vec<RefCell<Option<Value>>>,
 }
 
 #[derive(Debug, Default)]
 struct Stack(Vec<Value>);
 
 impl Stack {
+    const SIZE: usize = 1024 * 1024; // 1 MB
+
     fn new() -> Self {
-        Stack(Vec::new())
+        Stack(Vec::with_capacity(dbg!(
+            Self::SIZE / mem::size_of::<Value>()
+        )))
     }
 
     fn push(&mut self, value: Value) {
@@ -94,6 +99,7 @@ impl Stack {
         self.0.pop().expect("stack is empty")
     }
 
+    #[inline(never)] // FIXME: REMOVE ONCE DONE PROFILING
     fn popn(&mut self, n: usize) -> Vec<Value> {
         (0..n)
             .map(|_| self.pop())
@@ -110,14 +116,18 @@ impl Stack {
 
 impl<'a> Interpreter<'a> {
     pub fn run(&self, program: &ir::Program) -> Result<(), Error> {
-        let mut info = Info {
-            program,
-            initialized_constants: vec![None; program.labels.len() - 1],
+        let info = Info {
+            labels: program
+                .labels
+                .iter()
+                .map(|(_, vars, blocks)| (*vars, blocks.clone()))
+                .collect(),
+            initialized_constants: vec![Default::default(); program.labels.len()],
         };
 
         let mut stack = Stack::new();
 
-        self.evaluate_label(program.entrypoint, &mut stack, &mut info)?;
+        self.evaluate_label(program.entrypoint, &mut stack, &info)?;
 
         stack.pop();
         assert!(stack.is_empty());
@@ -125,12 +135,7 @@ impl<'a> Interpreter<'a> {
         Ok(())
     }
 
-    fn evaluate_label(
-        &self,
-        label: usize,
-        stack: &mut Stack,
-        info: &mut Info,
-    ) -> Result<(), Error> {
+    fn evaluate_label(&self, label: usize, stack: &mut Stack, info: &Info) -> Result<(), Error> {
         self.evaluate_label_inner(label, stack, Scope::new(0), info)
     }
 
@@ -139,7 +144,7 @@ impl<'a> Interpreter<'a> {
         label: usize,
         stack: &mut Stack,
         scope: Scope,
-        info: &mut Info,
+        info: &Info,
     ) -> Result<(), Error> {
         self.evaluate_label_inner(label, stack, scope, info)
     }
@@ -149,19 +154,25 @@ impl<'a> Interpreter<'a> {
         label: usize,
         stack: &mut Stack,
         mut scope: Scope,
-        info: &mut Info,
+        info: &Info,
     ) -> Result<(), Error> {
-        let (_, vars, blocks) = &info.program.labels[label];
-        scope.0.extend(std::iter::repeat(None).take(*vars));
+        let (vars, blocks) = &info.labels[label];
+
+        scope.0.reserve(*vars);
+        for _ in 0..*vars {
+            scope.0.push(None);
+        }
+
         self.evaluate(blocks, stack, &mut scope, info)
     }
 
-    fn evaluate<'l>(
+    #[inline(never)] // FIXME: REMOVE ONCE DONE PROFILING
+    fn evaluate(
         &self,
-        blocks: &'l [ir::BasicBlock],
+        blocks: &[ir::BasicBlock],
         stack: &mut Stack,
         scope: &mut Scope,
-        info: &mut Info<'l>,
+        info: &Info,
     ) -> Result<(), Error> {
         let mut block = &blocks[0];
 
@@ -200,17 +211,13 @@ impl<'a> Interpreter<'a> {
                         ir::Expression::Double(double) => stack.push(Value::Double(*double)),
                         ir::Expression::Variable(var) => stack.push(scope.get(*var)),
                         ir::Expression::Constant(label) => {
-                            if let Some(value) = &info.initialized_constants[*label] {
+                            let constant = &mut *info.initialized_constants[*label].borrow_mut();
+                            if let Some(value) = constant {
                                 stack.push(value.clone());
                             } else {
-                                let value = {
-                                    let mut stack = Stack::new();
-                                    self.evaluate_label(*label, &mut stack, info)?;
-                                    let value = stack.pop();
-                                    info.initialized_constants[*label] = Some(value.clone());
-                                    value
-                                };
-
+                                self.evaluate_label(*label, stack, info)?;
+                                let value = stack.pop();
+                                *constant = Some(value.clone());
                                 stack.push(value);
                             }
                         }
@@ -232,14 +239,9 @@ impl<'a> Interpreter<'a> {
                                 _ => unreachable!(),
                             };
 
-                            let result = {
-                                let mut stack = Stack::new();
-                                stack.push(input);
-                                self.evaluate_label_in_scope(label, &mut stack, scope, info)?;
-                                stack.pop()
-                            };
+                            stack.push(input);
 
-                            stack.push(result);
+                            self.evaluate_label_in_scope(label, stack, scope, info)?;
                         }
                         ir::Expression::External(abi, identifier, inputs) => {
                             let inputs = stack.popn(*inputs);
