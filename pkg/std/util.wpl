@@ -19,6 +19,11 @@ Maybe : Value => type {
 
 use Maybe
 
+A B => instance Map A B (Maybe A) (Maybe B) : f -> m -> when m {
+	Some x -> Some (f x)
+	None -> None
+}
+
 [help "Represents the success or failure of an operation."]
 Result : Success Failure => type {
 	OK Success
@@ -26,6 +31,11 @@ Result : Success Failure => type {
 }
 
 use Result
+
+A B Failure => instance Map A B (Result A Failure) (Result B Failure) : f -> r -> when r {
+	OK x -> OK (f x)
+	Error e -> Error e
+}
 
 [help "Implement this trait to enable usage of your type in error handling."]
 Try : Value Success Failure => trait (Value -> Result Success Failure)

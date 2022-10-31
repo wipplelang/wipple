@@ -28,7 +28,7 @@ enum Args {
     Compile {
         path: String,
 
-        #[clap(short, value_enum, /* default_value = "c" */)]
+        #[clap(short, value_enum, default_value = "ir")]
         format: CompileFormat,
 
         #[clap(short)]
@@ -68,6 +68,9 @@ struct BuildOptions {
 
     #[clap(long)]
     ide: bool,
+
+    #[clap(short = 'O')]
+    optimize: bool,
 }
 
 #[derive(Clone, Copy, ValueEnum)]
@@ -193,16 +196,16 @@ async fn run() -> anyhow::Result<()> {
 
             let (ir, progress_bar) = compile(options).await?;
 
+            let mut output: Box<dyn Write> = match output {
+                Some(output) => Box::new(std::fs::File::create(output)?),
+                None => Box::new(std::io::stdout()),
+            };
+
             match format {
                 CompileFormat::Ir => {
                     if let Some(progress_bar) = progress_bar.as_ref() {
                         progress_bar.finish_and_clear();
                     }
-
-                    let mut output: Box<dyn Write> = match output {
-                        Some(output) => Box::new(std::fs::File::create(output)?),
-                        None => Box::new(std::io::stdout()),
-                    };
 
                     output.write_all(ir.to_string().as_bytes())?;
                 }
@@ -275,7 +278,23 @@ async fn analyze(
     wipple_frontend::analysis::Program,
     wipple_frontend::diagnostics::FinalizedDiagnostics,
 ) {
-    build_with_passes(path, options, progress_bar, |_, _, program| program).await
+    build_with_passes(
+        path,
+        options,
+        progress_bar,
+        |progress_bar, compiler, mut program| {
+            if options.optimize {
+                if let Some(progress_bar) = progress_bar {
+                    progress_bar.set_message("Optimizing");
+                }
+
+                program = compiler.optimize(program, Default::default());
+            }
+
+            program
+        },
+    )
+    .await
 }
 
 async fn generate_ir(
@@ -290,13 +309,28 @@ async fn generate_ir(
         path,
         options,
         progress_bar,
-        |progress_bar, compiler, program| {
+        |progress_bar, compiler, mut program| {
             if let Some(progress_bar) = progress_bar {
-                progress_bar.set_message("Generating IR");
+                progress_bar.set_message("Linting");
             }
 
             compiler.lint(&program);
-            program.complete.then(|| compiler.ir_from(&program))
+
+            program.complete.then(|| {
+                if options.optimize {
+                    if let Some(progress_bar) = progress_bar {
+                        progress_bar.set_message("Optimizing");
+                    }
+
+                    program = compiler.optimize(program, Default::default());
+                }
+
+                if let Some(progress_bar) = progress_bar {
+                    progress_bar.set_message("Generating IR");
+                }
+
+                compiler.ir_from(&program)
+            })
         },
     )
     .await;

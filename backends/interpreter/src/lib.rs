@@ -163,7 +163,6 @@ impl<'a> Interpreter<'a> {
         self.evaluate(blocks, stack, &mut scope, info)
     }
 
-    #[inline(never)] // FIXME: REMOVE ONCE DONE PROFILING
     fn evaluate(
         &self,
         blocks: &[ir::BasicBlock],

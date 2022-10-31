@@ -4,6 +4,7 @@ pub mod ast;
 pub mod expand;
 pub mod lint;
 pub mod lower;
+pub mod optimize;
 pub mod typecheck;
 
 pub use typecheck::{
