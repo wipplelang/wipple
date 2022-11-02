@@ -79,6 +79,9 @@ impl std::fmt::Display for Expression {
             Expression::External(abi, identifier, count) => {
                 write!(f, "external {:?} {:?} {}", abi, identifier, count)
             }
+            Expression::Runtime(func, count) => {
+                write!(f, "runtime {:?} {}", func.to_string(), count)
+            }
             Expression::Tuple(count) => write!(f, "tuple {}", count),
             Expression::Structure(count) => write!(f, "structure {}", count),
             Expression::Variant(variant, count) => write!(f, "variant {} {}", variant, count),

@@ -7,6 +7,8 @@ use std::{
     os::raw::{c_int, c_uint},
 };
 
+pub use crate::analysis::RuntimeFunction;
+
 #[derive(Debug, Clone)]
 pub struct Program {
     pub items: HashMap<ItemId, Expression>,
@@ -56,6 +58,7 @@ pub enum ExpressionKind {
     Function(Pattern, Box<Expression>, analysis::lower::CaptureList),
     When(Box<Expression>, Vec<Arm>),
     External(InternedString, InternedString, Vec<Expression>),
+    Runtime(RuntimeFunction, Vec<Expression>),
     Structure(Vec<Expression>),
     Variant(usize, Vec<Expression>),
     Tuple(Vec<Expression>),
@@ -202,6 +205,13 @@ impl Converter<'_, '_> {
                             .collect(),
                     )
                 }
+                analysis::ExpressionKind::Runtime(func, inputs) => ExpressionKind::Runtime(
+                    *func,
+                    inputs
+                        .iter()
+                        .map(|expr| self.convert_expr(expr, false))
+                        .collect(),
+                ),
                 analysis::ExpressionKind::Initialize(_, _) => {
                     unreachable!(
                         "variable initialization is handled specially by convert_block_to_ssa"

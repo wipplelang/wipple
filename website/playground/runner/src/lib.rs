@@ -172,7 +172,7 @@ pub async fn run(code: String) -> JsValue {
     if let Some(program) = program {
         if success {
             let result = {
-                let interpreter =
+                let mut interpreter =
                     wipple_interpreter_backend::Interpreter::handling_output(|text| {
                         write!(output, "{}", text).unwrap();
                     });

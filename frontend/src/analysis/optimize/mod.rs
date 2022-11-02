@@ -38,7 +38,7 @@ impl Default for Options {
 impl Compiler<'_> {
     pub fn optimize(&self, program: Program, options: Options) -> Program {
         macro_rules! passes {
-            ($ir:expr, [$($pass:ident),*]) => {
+            ($ir:expr, [$($pass:ident),* $(,)?]) => {
                 {
                     $(
                         let program = match options.$pass {
@@ -267,31 +267,6 @@ pub mod inline {
 
                                 inlined = true;
 
-                                if let PatternKind::Variable(input_var) = pattern.kind {
-                                    if input.is_simple() {
-                                        let input = input.as_ref().clone();
-
-                                        *expr = body.as_ref().clone();
-
-                                        expr.traverse_mut(|expr| match &mut expr.kind {
-                                            ExpressionKind::Variable(var) => {
-                                                if *var == input_var {
-                                                    *expr = input.clone();
-                                                }
-                                            }
-                                            ExpressionKind::Function(_, _, captures) => {
-                                                *captures = mem::take(captures)
-                                                    .into_iter()
-                                                    .filter(|(var, _)| *var != input_var)
-                                                    .collect();
-                                            }
-                                            _ => {}
-                                        });
-
-                                        return;
-                                    }
-                                }
-
                                 expr.kind = ExpressionKind::When(
                                     input.clone(),
                                     vec![Arm {
@@ -336,25 +311,22 @@ pub mod unused {
 
     impl Compiler<'_> {
         pub(super) fn unused(&self, mut program: Program, options: Options) -> Program {
-            let entrypoint = match program.entrypoint {
-                Some(item) => item,
-                None => return program,
-            };
-
             if options.constants {
-                let mut used = HashSet::from([entrypoint]);
+                if let Some(entrypoint) = program.entrypoint {
+                    let mut used = HashSet::from([entrypoint]);
 
-                for expr in program.items.values() {
-                    expr.traverse(|expr| {
-                        if let ExpressionKind::Constant(item) = &expr.kind {
-                            used.insert(*item);
+                    for expr in program.items.values() {
+                        expr.traverse(|expr| {
+                            if let ExpressionKind::Constant(item) = &expr.kind {
+                                used.insert(*item);
+                            }
+                        })
+                    }
+
+                    for item in program.items.keys().cloned().collect::<Vec<_>>() {
+                        if !used.contains(&item) {
+                            program.items.remove(&item);
                         }
-                    })
-                }
-
-                for item in program.items.keys().cloned().collect::<Vec<_>>() {
-                    if !used.contains(&item) {
-                        program.items.remove(&item);
                     }
                 }
             }
@@ -387,18 +359,19 @@ mod util {
                 | ExpressionKind::Float(_)
                 | ExpressionKind::Double(_)
                 | ExpressionKind::Function(_, _, _)
-                | ExpressionKind::Variable(_)
-                | ExpressionKind::Constant(_) => true,
+                | ExpressionKind::Variable(_) => true,
                 ExpressionKind::Block(exprs) => exprs.iter().all(Expression::is_simple),
                 ExpressionKind::Call(func, input) => func.is_simple() && input.is_simple(),
                 ExpressionKind::When(expr, arms) => {
                     expr.is_simple() && arms.iter().map(|arm| &arm.body).all(Expression::is_simple)
                 }
-                ExpressionKind::External(_, _, inputs) => inputs.iter().all(Expression::is_simple),
                 ExpressionKind::Structure(exprs) => exprs.iter().all(Expression::is_simple),
                 ExpressionKind::Variant(_, exprs) => exprs.iter().all(Expression::is_simple),
                 ExpressionKind::Tuple(exprs) => exprs.iter().all(Expression::is_simple),
-                ExpressionKind::Initialize(_, _) => false,
+                ExpressionKind::External(_, _, _)
+                | ExpressionKind::Runtime(_, _)
+                | ExpressionKind::Initialize(_, _)
+                | ExpressionKind::Constant(_) => false,
             }
         }
     }

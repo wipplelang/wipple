@@ -261,7 +261,6 @@ async fn run<'l>(
 
         if success {
             if let Some(program) = program {
-                #[allow(unused_mut)]
                 let mut interpreter =
                     wipple_interpreter_backend::Interpreter::handling_output(|text| {
                         write!(buf.borrow_mut(), "{}", text).unwrap()

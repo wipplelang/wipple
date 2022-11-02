@@ -42,6 +42,11 @@ macro_rules! traverse_impl {
                         input.$traverse(context.clone(), f);
                     }
                 }
+                Runtime(_, inputs) => {
+                    for input in inputs {
+                        input.$traverse(context.clone(), f);
+                    }
+                }
                 Structure(fields) => {
                     for field in fields {
                         field.$traverse(context.clone(), f);

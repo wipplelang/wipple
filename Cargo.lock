@@ -2217,9 +2217,9 @@ version = "0.0.0"
 dependencies = [
  "im",
  "itertools",
- "lazy_static",
  "num-traits",
  "rust_decimal",
+ "smallvec",
  "wipple-frontend",
 ]
 

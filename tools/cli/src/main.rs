@@ -156,9 +156,10 @@ async fn run() -> anyhow::Result<()> {
                 _ => return Err(anyhow::Error::msg("")),
             };
 
-            let interpreter = wipple_interpreter_backend::Interpreter::handling_output(|text| {
-                print!("{}", text);
-            });
+            let mut interpreter =
+                wipple_interpreter_backend::Interpreter::handling_output(|text| {
+                    print!("{}", text);
+                });
 
             if let Err(error) = interpreter.run(&ir) {
                 eprintln!("fatal error: {}", error);

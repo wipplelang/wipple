@@ -1,5 +1,6 @@
 mod runtime;
 
+use smallvec::SmallVec;
 use std::{
     cell::RefCell,
     mem,
@@ -40,8 +41,7 @@ enum Value {
     Float(f32),
     Double(f64),
     Text(Rc<str>),
-    Function(usize),
-    Closure(Scope, usize),
+    Function(Scope, usize),
     Variant(usize, Vec<Value>),
     Mutable(Rc<RefCell<Value>>),
     List(im::Vector<Value>),
@@ -76,27 +76,32 @@ struct Info {
 }
 
 #[derive(Debug, Default)]
-struct Stack(Vec<Value>);
+struct Stack(SmallVec<[Value; Self::SIZE]>);
 
 impl Stack {
-    const SIZE: usize = 1024 * 1024; // 1 MB
+    const SIZE: usize = 1024 * 1024 / mem::size_of::<Value>(); // 1 MB worth of values
 
+    #[inline(never)]
     fn new() -> Self {
-        Stack(Vec::with_capacity(Self::SIZE / mem::size_of::<Value>()))
+        Stack(SmallVec::with_capacity(Self::SIZE))
     }
 
+    #[inline(never)]
     fn push(&mut self, value: Value) {
         self.0.push(value);
     }
 
+    #[inline(never)]
     fn copy(&mut self) {
-        self.0.push(self.0.last().expect("stack is empty").clone());
+        self.push(self.0.last().expect("stack is empty").clone());
     }
 
+    #[inline(never)]
     fn pop(&mut self) -> Value {
         self.0.pop().expect("stack is empty")
     }
 
+    #[inline(never)]
     fn popn(&mut self, n: usize) -> Vec<Value> {
         (0..n)
             .map(|_| self.pop())
@@ -106,13 +111,14 @@ impl Stack {
             .collect()
     }
 
+    #[inline(never)]
     fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
 }
 
 impl<'a> Interpreter<'a> {
-    pub fn run(&self, program: &ir::Program) -> Result<(), Error> {
+    pub fn run(&mut self, program: &ir::Program) -> Result<(), Error> {
         let info = Info {
             labels: program
                 .labels
@@ -132,12 +138,19 @@ impl<'a> Interpreter<'a> {
         Ok(())
     }
 
-    fn evaluate_label(&self, label: usize, stack: &mut Stack, info: &Info) -> Result<(), Error> {
+    #[inline(never)]
+    fn evaluate_label(
+        &mut self,
+        label: usize,
+        stack: &mut Stack,
+        info: &Info,
+    ) -> Result<(), Error> {
         self.evaluate_label_inner(label, stack, Scope::new(0), info)
     }
 
+    #[inline(never)]
     fn evaluate_label_in_scope(
-        &self,
+        &mut self,
         label: usize,
         stack: &mut Stack,
         scope: Scope,
@@ -146,8 +159,9 @@ impl<'a> Interpreter<'a> {
         self.evaluate_label_inner(label, stack, scope, info)
     }
 
+    #[inline(never)]
     fn evaluate_label_inner(
-        &self,
+        &mut self,
         label: usize,
         stack: &mut Stack,
         mut scope: Scope,
@@ -163,8 +177,9 @@ impl<'a> Interpreter<'a> {
         self.evaluate(blocks, stack, &mut scope, info)
     }
 
+    #[inline(never)]
     fn evaluate(
-        &self,
+        &mut self,
         blocks: &[ir::BasicBlock],
         stack: &mut Stack,
         scope: &mut Scope,
@@ -207,31 +222,24 @@ impl<'a> Interpreter<'a> {
                         ir::Expression::Double(double) => stack.push(Value::Double(*double)),
                         ir::Expression::Variable(var) => stack.push(scope.get(*var)),
                         ir::Expression::Constant(label) => {
-                            let constant = &mut *info.initialized_constants[*label].borrow_mut();
-                            if let Some(value) = constant {
-                                stack.push(value.clone());
-                            } else {
-                                self.evaluate_label(*label, stack, info)?;
-                                let value = stack.pop();
-                                *constant = Some(value.clone());
-                                stack.push(value);
-                            }
+                            self.evaluate_constant(*label, stack, info)?
                         }
-                        ir::Expression::Function(label) => stack.push(Value::Function(*label)),
+                        ir::Expression::Function(label) => {
+                            stack.push(Value::Function(Scope::new(0), *label))
+                        }
                         ir::Expression::Closure(captures, label) => {
                             let mut closure_scope = Scope::new(captures.0.len());
                             for (captured, var) in &captures.0 {
                                 closure_scope.set(*var, scope.get(*captured));
                             }
 
-                            stack.push(Value::Closure(closure_scope, *label));
+                            stack.push(Value::Function(closure_scope, *label));
                         }
                         ir::Expression::Call => {
                             let input = stack.pop();
 
                             let (scope, label) = match stack.pop() {
-                                Value::Function(label) => (Scope::new(0), label),
-                                Value::Closure(scope, label) => (scope, label),
+                                Value::Function(scope, label) => (scope, label),
                                 _ => unreachable!(),
                             };
 
@@ -239,16 +247,12 @@ impl<'a> Interpreter<'a> {
 
                             self.evaluate_label_in_scope(label, stack, scope, info)?;
                         }
-                        ir::Expression::External(abi, identifier, inputs) => {
+                        ir::Expression::External(..) => {
+                            return Err(Error::from("'external' is currently unsupported"));
+                        }
+                        ir::Expression::Runtime(func, inputs) => {
                             let inputs = stack.popn(*inputs);
-
-                            if abi.as_str() != ir::abi::RUNTIME {
-                                return Err(Error::from(
-                                    "unknown ABI (only 'runtime' is supported in the interpreter)",
-                                ));
-                            }
-
-                            stack.push(self.call_runtime(identifier, inputs)?);
+                            stack.push(self.call_runtime(*func, inputs)?);
                         }
                         ir::Expression::Tuple(inputs) => {
                             let inputs = stack.popn(*inputs);
@@ -314,5 +318,26 @@ impl<'a> Interpreter<'a> {
                 }
             }
         }
+    }
+
+    #[inline(never)]
+    fn evaluate_constant(
+        &mut self,
+        label: usize,
+        stack: &mut Stack,
+        info: &Info,
+    ) -> Result<(), Error> {
+        let constant = &mut *info.initialized_constants[label].borrow_mut();
+
+        if let Some(value) = constant {
+            stack.push(value.clone());
+        } else {
+            self.evaluate_label(label, stack, info)?;
+            let value = stack.pop();
+            *constant = Some(value.clone());
+            stack.push(value);
+        }
+
+        Ok(())
     }
 }

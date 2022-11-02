@@ -18,10 +18,7 @@ use std::{
 };
 
 pub use ssa::Type;
-
-pub mod abi {
-    pub const RUNTIME: &str = "runtime";
-}
+pub use typecheck::RuntimeFunction;
 
 #[derive(Debug, Clone)]
 pub struct Program {
@@ -81,6 +78,7 @@ pub enum Expression {
     Closure(CaptureList, usize),
     Call,
     External(InternedString, InternedString, usize),
+    Runtime(RuntimeFunction, usize),
     Tuple(usize),
     Structure(usize),
     Variant(usize, usize),
@@ -370,6 +368,18 @@ impl IrGen {
                     Expression::External(lib, identifier, count),
                 ));
             }
+            ssa::ExpressionKind::Runtime(func, exprs) => {
+                let count = exprs.len();
+
+                for expr in exprs {
+                    self.gen_expr(expr, label, pos);
+                }
+
+                self.statements_for(label, *pos).push(Statement::Expression(
+                    expr.ty,
+                    Expression::Runtime(func, count),
+                ));
+            }
             ssa::ExpressionKind::Structure(exprs) => {
                 let count = exprs.len();
 
@@ -403,7 +413,10 @@ impl IrGen {
                 ));
             }
             ssa::ExpressionKind::Constant(id) => {
-                let id = *self.items.get(&id).unwrap();
+                let id = *self
+                    .items
+                    .get(&id)
+                    .unwrap_or_else(|| panic!("cannot find {:?}", id));
 
                 self.statements_for(label, *pos)
                     .push(Statement::Expression(expr.ty, Expression::Constant(id)));
@@ -449,7 +462,7 @@ impl IrGen {
         pos: &mut usize,
     ) {
         macro_rules! match_number {
-            ($kind:ident($n:expr), $comparison:literal) => {{
+            ($kind:ident($n:expr), $comparison:expr) => {{
                 self.statements_for(label, *pos)
                     .push(Statement::Expression(Type::$kind, Expression::$kind($n)));
 
@@ -457,11 +470,7 @@ impl IrGen {
 
                 self.statements_for(label, *pos).push(Statement::Expression(
                     bool_type,
-                    Expression::External(
-                        InternedString::new(abi::RUNTIME),
-                        InternedString::new($comparison),
-                        2,
-                    ),
+                    Expression::Runtime($comparison, 2),
                 ));
 
                 let else_pos = self.new_basic_block(label);
@@ -477,28 +486,28 @@ impl IrGen {
                 *pos = self.new_basic_block(label);
             }
             ssa::PatternKind::Number(number) => {
-                match_number!(Number(number), "number-equality");
+                match_number!(Number(number), RuntimeFunction::NumberEquality);
             }
             ssa::PatternKind::Integer(integer) => {
-                match_number!(Integer(integer), "integer-equality");
+                match_number!(Integer(integer), RuntimeFunction::IntegerEquality);
             }
             ssa::PatternKind::Natural(natural) => {
-                match_number!(Natural(natural), "natural-equality");
+                match_number!(Natural(natural), RuntimeFunction::NaturalEquality);
             }
             ssa::PatternKind::Byte(byte) => {
-                match_number!(Byte(byte), "byte-equality");
+                match_number!(Byte(byte), RuntimeFunction::ByteEquality);
             }
             ssa::PatternKind::Signed(signed) => {
-                match_number!(Signed(signed), "signed-equality");
+                match_number!(Signed(signed), RuntimeFunction::SignedEquality);
             }
             ssa::PatternKind::Unsigned(unsigned) => {
-                match_number!(Unsigned(unsigned), "unsigned-equality");
+                match_number!(Unsigned(unsigned), RuntimeFunction::UnsignedEquality);
             }
             ssa::PatternKind::Float(float) => {
-                match_number!(Float(float), "float-equality");
+                match_number!(Float(float), RuntimeFunction::FloatEquality);
             }
             ssa::PatternKind::Double(double) => {
-                match_number!(Double(double), "double-equality");
+                match_number!(Double(double), RuntimeFunction::DoubleEquality);
             }
             ssa::PatternKind::Text(text) => {
                 self.statements_for(label, *pos).push(Statement::Expression(
@@ -510,11 +519,7 @@ impl IrGen {
 
                 self.statements_for(label, *pos).push(Statement::Expression(
                     bool_type,
-                    Expression::External(
-                        InternedString::new(abi::RUNTIME),
-                        InternedString::new("text-equality"),
-                        2,
-                    ),
+                    Expression::Runtime(RuntimeFunction::TextEquality, 2),
                 ));
 
                 let else_pos = self.new_basic_block(label);

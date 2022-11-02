@@ -17,8 +17,10 @@ use std::{
     collections::{HashMap, HashSet},
     hash::Hash,
     mem,
+    str::FromStr,
     sync::Arc,
 };
+use strum::{Display, EnumString};
 
 #[derive(Debug, Clone)]
 pub struct File<Decls = Declarations> {
@@ -252,6 +254,7 @@ pub enum ExpressionKind {
     Function(Pattern, Box<Expression>, CaptureList),
     When(Box<Expression>, Vec<Arm>),
     External(InternedString, InternedString, Vec<Expression>),
+    Runtime(RuntimeFunction, Vec<Expression>),
     Annotate(Box<Expression>, TypeAnnotation),
     Initialize(Pattern, Box<Expression>),
     Instantiate(TypeId, Vec<(InternedString, Expression)>),
@@ -323,6 +326,102 @@ impl TypeAnnotation {
 }
 
 pub type CaptureList = Vec<(VariableId, Span)>;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, EnumString, Display)]
+#[strum(serialize_all = "kebab-case")]
+pub enum RuntimeFunction {
+    Crash,
+    WriteStdout,
+    Format,
+    NumberToText,
+    IntegerToText,
+    NaturalToText,
+    ByteToText,
+    SignedToText,
+    UnsignedToText,
+    FloatToText,
+    DoubleToText,
+    AddNumber,
+    SubtractNumber,
+    MultiplyNumber,
+    DivideNumber,
+    PowerNumber,
+    FloorNumber,
+    CeilNumber,
+    SqrtNumber,
+    AddInteger,
+    SubtractInteger,
+    MultiplyInteger,
+    DivideInteger,
+    PowerInteger,
+    AddNatural,
+    SubtractNatural,
+    MultiplyNatural,
+    DivideNatural,
+    PowerNatural,
+    AddByte,
+    SubtractByte,
+    MultiplyByte,
+    DivideByte,
+    PowerByte,
+    AddSigned,
+    SubtractSigned,
+    MultiplySigned,
+    DivideSigned,
+    PowerSigned,
+    AddUnsigned,
+    SubtractUnsigned,
+    MultiplyUnsigned,
+    DivideUnsigned,
+    PowerUnsigned,
+    AddFloat,
+    SubtractFloat,
+    MultiplyFloat,
+    DivideFloat,
+    PowerFloat,
+    FloorFloat,
+    CeilFloat,
+    SqrtFloat,
+    AddDouble,
+    SubtractDouble,
+    MultiplyDouble,
+    DivideDouble,
+    PowerDouble,
+    FloorDouble,
+    CeilDouble,
+    SqrtDouble,
+    TextEquality,
+    NumberEquality,
+    IntegerEquality,
+    NaturalEquality,
+    ByteEquality,
+    SignedEquality,
+    UnsignedEquality,
+    FloatEquality,
+    DoubleEquality,
+    TextOrdering,
+    NumberOrdering,
+    IntegerOrdering,
+    NaturalOrdering,
+    ByteOrdering,
+    SignedOrdering,
+    UnsignedOrdering,
+    FloatOrdering,
+    DoubleOrdering,
+    MakeMutable,
+    GetMutable,
+    SetMutable,
+    MakeList,
+    ListFirst,
+    ListLast,
+    ListInitial,
+    ListTail,
+    ListNth,
+    ListAppend,
+    ListPrepend,
+    ListInsert,
+    ListRemove,
+}
 
 impl Compiler<'_> {
     pub fn lower(
@@ -1513,14 +1612,30 @@ impl Compiler<'_> {
                     })
                     .collect(),
             ),
-            ast::ExpressionKind::External(lib, identifier, inputs) => ExpressionKind::External(
-                lib,
-                identifier,
-                inputs
+            ast::ExpressionKind::External(lib, identifier, inputs) => (|| {
+                let inputs = inputs
                     .into_iter()
                     .map(|expr| self.lower_expr(expr, scope, info))
-                    .collect(),
-            ),
+                    .collect::<Vec<_>>();
+
+                if lib.as_str() == "runtime" {
+                    let func = match RuntimeFunction::from_str(identifier.as_str()) {
+                        Ok(func) => func,
+                        Err(_) => {
+                            self.diagnostics.add(Diagnostic::error(
+                                "unknown runtime function",
+                                vec![Note::primary(expr.span, "check the Wipple source code for the latest list of runtime functions")],
+                            ));
+
+                            return ExpressionKind::Error;
+                        }
+                    };
+
+                    ExpressionKind::Runtime(func, inputs)
+                } else {
+                    ExpressionKind::External(lib, identifier, inputs)
+                }
+            })(),
             ast::ExpressionKind::Annotate(expr, ty) => ExpressionKind::Annotate(
                 Box::new(self.lower_expr(*expr, scope, info)),
                 self.lower_type_annotation(ty, scope, info),
