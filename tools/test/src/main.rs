@@ -18,6 +18,9 @@ struct Args {
     #[clap(long)]
     junit: bool,
 
+    #[clap(short = 'O')]
+    optimize: bool,
+
     #[cfg(debug_assertions)]
     #[clap(long)]
     trace: bool,
@@ -65,6 +68,7 @@ async fn main() -> anyhow::Result<()> {
             &test_case,
             &loader,
             &compiler,
+            args.optimize,
             #[cfg(debug_assertions)]
             args.trace,
         )
@@ -233,6 +237,7 @@ async fn run<'l>(
     test_case: &TestCase,
     loader: &'l loader::Loader,
     compiler: &wipple_frontend::Compiler<'l>,
+    optimize: bool,
     #[cfg(debug_assertions)] trace_diagnostics: bool,
 ) -> anyhow::Result<TestResult> {
     let test_path = wipple_frontend::helpers::InternedString::new("test");
@@ -242,7 +247,7 @@ async fn run<'l>(
         .lock()
         .insert(test_path, Arc::from(test_case.code.as_str()));
 
-    let program = compiler
+    let mut program = compiler
         .analyze(
             wipple_frontend::FilePath::Virtual(test_path),
             wipple_frontend::analysis::Options::default(),
@@ -250,6 +255,10 @@ async fn run<'l>(
         .await;
 
     compiler.lint(&program);
+
+    if optimize {
+        program = compiler.optimize(program, Default::default());
+    }
 
     let program = program.complete.then(|| compiler.ir_from(&program));
 

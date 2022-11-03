@@ -37,6 +37,10 @@ impl Default for Options {
 
 impl Compiler<'_> {
     pub fn optimize(&self, program: Program, options: Options) -> Program {
+        if !program.complete {
+            return program;
+        }
+
         macro_rules! passes {
             ($ir:expr, [$($pass:ident),* $(,)?]) => {
                 {

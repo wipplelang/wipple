@@ -424,33 +424,65 @@ impl IrGen {
         }
     }
 
-    fn gen_when(&mut self, arms: Vec<ssa::Arm>, input_ty: &Type, label: usize, pos: &mut usize) {
+    fn gen_when(
+        &mut self,
+        mut arms: Vec<ssa::Arm>,
+        input_ty: &Type,
+        label: usize,
+        pos: &mut usize,
+    ) {
         if arms.is_empty() {
             self.statements_for(label, *pos).push(Statement::Drop);
-
             return;
         }
 
-        self.scopes.push(Vec::new());
+        // HACK: Optimization for the common case of assigning to a single variable.
+        // In the future, we'll implement better optimizations that actually remove
+        // unnecessary copies
+        if arms.len() == 1 {
+            let arm = arms.first().unwrap();
+
+            if let ssa::PatternKind::Variable(var) = arm.pattern.kind {
+                let var = self.variable_for(label, var);
+                let arm = arms.pop().unwrap();
+
+                self.statements_for(label, *pos)
+                    .push(Statement::Initialize(var));
+
+                self.gen_expr(arm.body, label, pos);
+
+                self.statements_for(label, *pos).push(Statement::Free(var));
+
+                return;
+            }
+        }
 
         let continue_pos = self.new_basic_block(label);
 
         for arm in arms {
-            let mut body_pos = self.new_basic_block(label);
-
             self.statements_for(label, *pos).push(Statement::Copy);
+
+            let mut body_pos = self.new_basic_block(label);
+            self.scopes.push(Vec::new());
             self.gen_pattern(arm.pattern, input_ty, body_pos, label, pos);
 
-            self.scopes.push(Vec::new());
             self.statements_for(label, body_pos).push(Statement::Drop);
             self.gen_expr(arm.body, label, &mut body_pos);
-            *self.terminator_for(label, body_pos) = Terminator::Jump(continue_pos);
-            self.scopes.pop();
+
+            let free_pos = self.new_basic_block(label);
+
+            *self.terminator_for(label, body_pos) = Terminator::Jump(free_pos);
+
+            for var in self.scopes.pop().unwrap().into_iter().rev() {
+                let var = self.variable_for(label, var);
+                self.statements_for(label, free_pos)
+                    .push(Statement::Free(var));
+            }
+
+            *self.terminator_for(label, free_pos) = Terminator::Jump(continue_pos);
         }
 
         *pos = continue_pos;
-
-        self.scopes.pop().unwrap();
     }
 
     fn gen_pattern(
