@@ -368,7 +368,7 @@ struct Typechecker<'a, 'l> {
     is_complete: bool,
     ctx: engine::Context,
     files: im::HashMap<FilePath, lower::File>,
-    declarations: RefCell<Declarations>,
+    declarations: RefCell<DeclarationsInner>,
     exported: Option<lower::ScopeValues>,
     scopes: RefCell<Vec<(Span, lower::ScopeValues)>>,
     instances: im::HashMap<TraitId, HashSet<ConstantId>>,
@@ -524,7 +524,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                 .collect(),
             entrypoint,
             exported: self.exported.unwrap_or_default(),
-            declarations: self.declarations.into_inner(),
+            declarations: self.declarations.into_inner().into(),
             scopes: self.scopes.into_inner(),
         }
     }
