@@ -14,7 +14,7 @@ use parking_lot::Mutex;
 use serde::Serialize;
 use std::{
     cell::RefCell,
-    collections::{HashMap, HashSet},
+    collections::{BTreeMap, HashMap, HashSet},
     hash::Hash,
     mem,
     str::FromStr,
@@ -34,28 +34,28 @@ pub struct File<Decls = Declarations> {
 
 #[derive(Debug, Clone, Default)]
 pub struct Declarations {
-    pub operators: HashMap<TemplateId, expand::Operator>,
-    pub templates: HashMap<TemplateId, expand::TemplateDeclaration<()>>,
-    pub types: HashMap<TypeId, Declaration<Type>>,
-    pub type_parameters: HashMap<TypeParameterId, Declaration<()>>,
-    pub traits: HashMap<TraitId, Declaration<Trait>>,
-    pub builtin_types: HashMap<BuiltinTypeId, Declaration<BuiltinType>>,
-    pub constants: HashMap<ConstantId, Declaration<Constant>>,
-    pub instances: HashMap<ConstantId, Declaration<Instance>>,
-    pub variables: HashMap<VariableId, Declaration<()>>,
+    pub operators: BTreeMap<TemplateId, expand::Operator>,
+    pub templates: BTreeMap<TemplateId, expand::TemplateDeclaration<()>>,
+    pub types: BTreeMap<TypeId, Declaration<Type>>,
+    pub type_parameters: BTreeMap<TypeParameterId, Declaration<()>>,
+    pub traits: BTreeMap<TraitId, Declaration<Trait>>,
+    pub builtin_types: BTreeMap<BuiltinTypeId, Declaration<BuiltinType>>,
+    pub constants: BTreeMap<ConstantId, Declaration<Constant>>,
+    pub instances: BTreeMap<ConstantId, Declaration<Instance>>,
+    pub variables: BTreeMap<VariableId, Declaration<()>>,
 }
 
 #[derive(Debug, Clone, Default)]
 struct UnresolvedDeclarations {
-    pub operators: HashMap<TemplateId, expand::Operator>,
-    pub templates: HashMap<TemplateId, expand::TemplateDeclaration<()>>,
-    pub types: HashMap<TypeId, Declaration<Option<Type>>>,
-    pub type_parameters: HashMap<TypeParameterId, Declaration<()>>,
-    pub traits: HashMap<TraitId, Declaration<Option<Trait>>>,
-    pub builtin_types: HashMap<BuiltinTypeId, Declaration<BuiltinType>>,
-    pub constants: HashMap<ConstantId, Declaration<Option<Constant>>>,
-    pub instances: HashMap<ConstantId, Declaration<Option<Instance>>>,
-    pub variables: HashMap<VariableId, Declaration<()>>,
+    pub operators: BTreeMap<TemplateId, expand::Operator>,
+    pub templates: BTreeMap<TemplateId, expand::TemplateDeclaration<()>>,
+    pub types: BTreeMap<TypeId, Declaration<Option<Type>>>,
+    pub type_parameters: BTreeMap<TypeParameterId, Declaration<()>>,
+    pub traits: BTreeMap<TraitId, Declaration<Option<Trait>>>,
+    pub builtin_types: BTreeMap<BuiltinTypeId, Declaration<BuiltinType>>,
+    pub constants: BTreeMap<ConstantId, Declaration<Option<Constant>>>,
+    pub instances: BTreeMap<ConstantId, Declaration<Option<Instance>>>,
+    pub variables: BTreeMap<VariableId, Declaration<()>>,
 }
 
 impl UnresolvedDeclarations {

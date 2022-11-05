@@ -18,7 +18,7 @@ use parking_lot::Mutex;
 use serde::Serialize;
 use std::{
     cmp::Ordering,
-    collections::{HashMap, VecDeque},
+    collections::{BTreeMap, HashMap, VecDeque},
     fmt::Debug,
     sync::Arc,
 };
@@ -32,7 +32,7 @@ pub struct File {
     pub declarations: Declarations<Template>,
     pub exported: ScopeValues,
     pub scopes: Vec<(Span, ScopeValues)>,
-    pub template_uses: HashMap<TemplateId, Vec<Span>>,
+    pub template_uses: BTreeMap<TemplateId, Vec<Span>>,
     pub statements: Vec<Statement>,
     pub dependencies: Vec<(Arc<File>, Option<HashMap<InternedString, Span>>)>,
 }
@@ -100,8 +100,8 @@ pub enum NodeKind {
 
 #[derive(Debug, Clone)]
 pub struct Declarations<T> {
-    pub operators: HashMap<TemplateId, Operator>,
-    pub templates: HashMap<TemplateId, TemplateDeclaration<T>>,
+    pub operators: BTreeMap<TemplateId, Operator>,
+    pub templates: BTreeMap<TemplateId, TemplateDeclaration<T>>,
 }
 
 impl<T> Default for Declarations<T> {
@@ -225,7 +225,7 @@ pub struct Expander<'a, 'l> {
     declarations: Arc<Mutex<Declarations<Template>>>,
     dependencies: Arc<Mutex<HashMap<FilePath, (Arc<File>, Option<HashMap<InternedString, Span>>)>>>,
     scopes: Arc<Mutex<Vec<(Span, ScopeValues)>>>,
-    template_uses: Arc<Mutex<HashMap<TemplateId, Vec<Span>>>>,
+    template_uses: Arc<Mutex<BTreeMap<TemplateId, Vec<Span>>>>,
     load: Arc<
         dyn Fn(&'a Compiler<'l>, Span, FilePath) -> BoxFuture<'a, Option<Arc<File>>> + Send + Sync,
     >,

@@ -12,7 +12,7 @@ use parse::Span;
 use serde::Serialize;
 use std::{
     borrow::Cow,
-    collections::HashMap,
+    collections::{BTreeMap, HashMap},
     fmt::{self, Debug},
     hash::Hash,
     mem,
@@ -34,7 +34,7 @@ pub trait Loader: Debug + Send + Sync + 'static {
     fn source_map(&self) -> Arc<Mutex<SourceMap>>;
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
 #[serde(tag = "type", content = "value")]
 pub enum FilePath {
     Path(InternedString),
@@ -81,7 +81,7 @@ macro_rules! file_ids {
 
             $(
                 $(#[$meta])*
-                #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
+                #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
                 pub struct [<$id:camel Id>] {
                     pub file: FilePath,
                     pub counter: usize,
@@ -155,7 +155,7 @@ macro_rules! uses {
         paste::paste! {
             #[derive(Debug, Clone, Default)]
             pub struct Uses {
-                $(pub [<$id _uses>]: HashMap<[<$id:camel Id>], Vec<Span>>,)*
+                $(pub [<$id _uses>]: BTreeMap<[<$id:camel Id>], Vec<Span>>,)*
             }
 
             impl Uses {
@@ -216,5 +216,24 @@ impl<'l> Compiler<'l> {
             source_map: self.loader.source_map().lock().clone(),
             diagnostics: mem::take(&mut self.diagnostics.diagnostics.lock()),
         }
+    }
+}
+
+pub trait Optimize {
+    type Options;
+
+    fn optimize(self, options: Self::Options, compiler: &Compiler) -> Self;
+}
+
+impl Compiler<'_> {
+    pub fn optimize_with<T: Optimize>(&self, x: T, options: T::Options) -> T {
+        x.optimize(options, self)
+    }
+
+    pub fn optimize<T: Optimize>(&self, x: T) -> T
+    where
+        T::Options: Default,
+    {
+        self.optimize_with(x, Default::default())
     }
 }

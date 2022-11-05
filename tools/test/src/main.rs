@@ -257,10 +257,18 @@ async fn run<'l>(
     compiler.lint(&program);
 
     if optimize {
-        program = compiler.optimize(program, Default::default());
+        program = compiler.optimize(program);
     }
 
-    let program = program.complete.then(|| compiler.ir_from(&program));
+    let program = program.complete.then(|| {
+        let mut ir = compiler.ir_from(&program);
+
+        if optimize {
+            ir = compiler.optimize(ir);
+        }
+
+        ir
+    });
 
     let mut diagnostics = compiler.finish();
     let success = !diagnostics.contains_errors();

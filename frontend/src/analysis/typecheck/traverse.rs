@@ -62,6 +62,7 @@ macro_rules! traverse_impl {
                         value.$traverse(context.clone(), f);
                     }
                 }
+                // Deliberately ignore the contents of a BlackBox expression
                 _ => {}
             }
         }

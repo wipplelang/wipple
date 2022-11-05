@@ -5,6 +5,7 @@
 )]
 
 mod format;
+mod optimize;
 mod ssa;
 
 use crate::{
@@ -13,7 +14,7 @@ use crate::{
 };
 use itertools::Itertools;
 use std::{
-    collections::{BTreeMap, HashMap},
+    collections::BTreeMap,
     os::raw::{c_int, c_uint},
 };
 
@@ -148,10 +149,10 @@ impl Compiler<'_> {
 }
 
 struct IrGen {
-    items: HashMap<ItemId, usize>,
+    items: BTreeMap<ItemId, usize>,
     labels: Vec<(
         Option<LabelKind>,
-        HashMap<VariableId, usize>,
+        BTreeMap<VariableId, usize>,
         Vec<BasicBlock>,
     )>,
     scopes: Vec<Vec<VariableId>>,

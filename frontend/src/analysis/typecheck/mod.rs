@@ -7,7 +7,7 @@ mod engine;
 pub mod format;
 pub mod traverse;
 
-pub use engine::{BottomTypeReason, BuiltinType, Type, TypeStructure};
+pub use engine::{BottomTypeReason, BuiltinType, GenericSubstitutions, Type, TypeStructure};
 pub use lower::RuntimeFunction;
 
 use crate::{
@@ -43,24 +43,47 @@ pub enum Progress {
 #[derive(Debug, Clone, Default, Serialize)]
 pub struct Program {
     pub complete: bool,
-    pub items: HashMap<ItemId, Expression>,
+    pub items: BTreeMap<ItemId, Expression>,
     pub entrypoint: Option<ItemId>,
     pub declarations: Declarations,
     pub exported: lower::ScopeValues,
     pub scopes: Vec<(Span, lower::ScopeValues)>,
 }
 
-#[derive(Debug, Clone, Default, Serialize)]
-pub struct Declarations {
-    pub types: im::HashMap<TypeId, TypeDecl>,
-    pub traits: im::HashMap<TraitId, TraitDecl>,
-    pub constants: im::HashMap<ConstantId, ConstantDecl>,
-    pub instances: im::HashMap<TraitId, HashMap<ConstantId, InstanceDecl>>,
-    pub operators: im::HashMap<TemplateId, OperatorDecl>,
-    pub templates: im::HashMap<TemplateId, TemplateDecl>,
-    pub builtin_types: im::HashMap<BuiltinTypeId, BuiltinTypeDecl>,
-    pub type_parameters: im::HashMap<TypeParameterId, TypeParameterDecl>,
-    pub variables: im::HashMap<VariableId, VariableDecl>,
+macro_rules! declarations {
+    ($name:ident<$($container:ident)::+>) => {
+        #[derive(Debug, Clone, Default, Serialize)]
+        pub struct $name {
+            pub types: $($container)::+<TypeId, TypeDecl>,
+            pub traits: $($container)::+<TraitId, TraitDecl>,
+            pub constants: $($container)::+<ConstantId, ConstantDecl>,
+            pub instances: $($container)::+<TraitId, BTreeMap<ConstantId, InstanceDecl>>,
+            pub operators: $($container)::+<TemplateId, OperatorDecl>,
+            pub templates: $($container)::+<TemplateId, TemplateDecl>,
+            pub builtin_types: $($container)::+<BuiltinTypeId, BuiltinTypeDecl>,
+            pub type_parameters: $($container)::+<TypeParameterId, TypeParameterDecl>,
+            pub variables: $($container)::+<VariableId, VariableDecl>,
+        }
+    };
+}
+
+declarations!(DeclarationsInner<im::HashMap>);
+declarations!(Declarations<BTreeMap>);
+
+impl From<DeclarationsInner> for Declarations {
+    fn from(decls: DeclarationsInner) -> Self {
+        Declarations {
+            types: decls.types.into_iter().collect(),
+            traits: decls.traits.into_iter().collect(),
+            constants: decls.constants.into_iter().collect(),
+            instances: decls.instances.into_iter().collect(),
+            operators: decls.operators.into_iter().collect(),
+            templates: decls.templates.into_iter().collect(),
+            builtin_types: decls.builtin_types.into_iter().collect(),
+            type_parameters: decls.type_parameters.into_iter().collect(),
+            variables: decls.variables.into_iter().collect(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -249,6 +272,7 @@ expr!(pub, "", engine::Type, {
     Float(f32),
     Double(f64),
     Constant(ItemId),
+    ExpandedConstant(ItemId),
 });
 
 pattern!(, "Unresolved", {
@@ -723,7 +747,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
 }
 
 struct ConvertInfo {
-    variables: HashMap<VariableId, engine::UnresolvedType>,
+    variables: BTreeMap<VariableId, engine::UnresolvedType>,
 }
 
 impl<'a, 'l> Typechecker<'a, 'l> {
@@ -1311,8 +1335,8 @@ impl<'a, 'l> Typechecker<'a, 'l> {
 
 #[derive(Debug, Clone)]
 struct MonomorphizeInfo {
-    cache: HashMap<ConstantId, ItemId>,
-    bound_instances: HashMap<TraitId, Vec<(Option<ConstantId>, engine::UnresolvedType, Span)>>,
+    cache: BTreeMap<ConstantId, ItemId>,
+    bound_instances: BTreeMap<TraitId, Vec<(Option<ConstantId>, engine::UnresolvedType, Span)>>,
 }
 
 impl<'a, 'l> Typechecker<'a, 'l> {
@@ -1623,7 +1647,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                     .iter()
                     .copied()
                     .zip(params)
-                    .collect::<HashMap<_, _>>();
+                    .collect::<BTreeMap<_, _>>();
 
                 let field_match_sets = match match_set {
                     MatchSet::Structure(fields) => fields,
@@ -1722,7 +1746,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                     .iter()
                     .copied()
                     .zip(params.iter().cloned())
-                    .collect::<HashMap<_, _>>();
+                    .collect::<BTreeMap<_, _>>();
 
                 for ty in &mut variant_tys {
                     ty.instantiate_with(&self.ctx, &substitutions);
@@ -2791,7 +2815,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
     fn add_substitutions(
         &mut self,
         ty: &mut engine::UnresolvedType,
-        substitutions: &mut HashMap<TypeParameterId, engine::UnresolvedType>,
+        substitutions: &mut BTreeMap<TypeParameterId, engine::UnresolvedType>,
     ) {
         ty.apply(&self.ctx);
 
@@ -2805,7 +2829,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
     }
 
     fn instantiate_generics(&mut self, ty: &mut engine::UnresolvedType) {
-        self.add_substitutions(ty, &mut HashMap::new());
+        self.add_substitutions(ty, &mut GenericSubstitutions::new());
     }
 
     fn convert_type_annotation(
@@ -2892,7 +2916,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                     .iter()
                     .copied()
                     .zip(params.iter().cloned())
-                    .collect::<HashMap<_, _>>();
+                    .collect::<GenericSubstitutions>();
 
                 let mut convert_and_instantiate = |ty| {
                     let mut ty = self.convert_type_annotation_inner(ty, convert_var, stack);
@@ -3181,7 +3205,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
         let substitutions = trait_params
             .into_iter()
             .zip(params)
-            .collect::<HashMap<_, _>>();
+            .collect::<GenericSubstitutions>();
 
         let mut instance_ty = engine::UnresolvedType::from(trait_ty);
         instance_ty.instantiate_with(&self.ctx, &substitutions);

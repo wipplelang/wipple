@@ -81,37 +81,32 @@ struct Stack(SmallVec<[Value; Self::SIZE]>);
 impl Stack {
     const SIZE: usize = 1024 * 1024 / mem::size_of::<Value>(); // 1 MB worth of values
 
-    #[inline(never)]
     fn new() -> Self {
         Stack(SmallVec::with_capacity(Self::SIZE))
     }
 
-    #[inline(never)]
     fn push(&mut self, value: Value) {
         self.0.push(value);
     }
 
-    #[inline(never)]
     fn copy(&mut self) {
         self.push(self.0.last().expect("stack is empty").clone());
     }
 
-    #[inline(never)]
     fn pop(&mut self) -> Value {
         self.0.pop().expect("stack is empty")
     }
 
-    #[inline(never)]
     fn popn(&mut self, n: usize) -> Vec<Value> {
-        (0..n)
-            .map(|_| self.pop())
-            .collect::<Vec<_>>()
-            .into_iter()
-            .rev()
-            .collect()
+        let mut values = vec![Value::Marker; n];
+
+        for index in (0..n).rev() {
+            values[index] = self.pop();
+        }
+
+        values
     }
 
-    #[inline(never)]
     fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
@@ -138,7 +133,6 @@ impl<'a> Interpreter<'a> {
         Ok(())
     }
 
-    #[inline(never)]
     fn evaluate_label(
         &mut self,
         label: usize,
@@ -148,7 +142,6 @@ impl<'a> Interpreter<'a> {
         self.evaluate_label_inner(label, stack, Scope::new(0), info)
     }
 
-    #[inline(never)]
     fn evaluate_label_in_scope(
         &mut self,
         label: usize,
@@ -159,7 +152,6 @@ impl<'a> Interpreter<'a> {
         self.evaluate_label_inner(label, stack, scope, info)
     }
 
-    #[inline(never)]
     fn evaluate_label_inner(
         &mut self,
         label: usize,
@@ -177,7 +169,6 @@ impl<'a> Interpreter<'a> {
         self.evaluate(blocks, stack, &mut scope, info)
     }
 
-    #[inline(never)]
     fn evaluate(
         &mut self,
         blocks: &[ir::BasicBlock],
@@ -320,7 +311,6 @@ impl<'a> Interpreter<'a> {
         }
     }
 
-    #[inline(never)]
     fn evaluate_constant(
         &mut self,
         label: usize,

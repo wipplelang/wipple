@@ -3,7 +3,7 @@ use crate::{
     TypeId, VariableId,
 };
 use std::{
-    collections::{BTreeMap, HashMap},
+    collections::BTreeMap,
     os::raw::{c_int, c_uint},
 };
 
@@ -11,7 +11,7 @@ pub use crate::analysis::RuntimeFunction;
 
 #[derive(Debug, Clone)]
 pub struct Program {
-    pub items: HashMap<ItemId, Expression>,
+    pub items: BTreeMap<ItemId, Expression>,
     pub structures: BTreeMap<StructureId, Vec<Type>>,
     pub enumerations: BTreeMap<EnumerationId, Vec<Vec<Type>>>,
     pub entrypoint: ItemId,
@@ -162,9 +162,9 @@ struct Converter<'a, 'l> {
     compiler: &'a Compiler<'l>,
     program: &'a analysis::Program,
     structures: BTreeMap<StructureId, Vec<Type>>,
-    structure_ids: HashMap<TypeId, StructureId>,
+    structure_ids: BTreeMap<TypeId, StructureId>,
     enumerations: BTreeMap<EnumerationId, Vec<Vec<Type>>>,
-    enumeration_ids: HashMap<TypeId, EnumerationId>,
+    enumeration_ids: BTreeMap<TypeId, EnumerationId>,
 }
 
 impl Converter<'_, '_> {
@@ -244,7 +244,10 @@ impl Converter<'_, '_> {
                 analysis::ExpressionKind::Unsigned(unsigned) => ExpressionKind::Unsigned(*unsigned),
                 analysis::ExpressionKind::Float(float) => ExpressionKind::Float(*float),
                 analysis::ExpressionKind::Double(double) => ExpressionKind::Double(*double),
-                analysis::ExpressionKind::Constant(constant) => ExpressionKind::Constant(*constant),
+                analysis::ExpressionKind::Constant(constant)
+                | analysis::ExpressionKind::ExpandedConstant(constant) => {
+                    ExpressionKind::Constant(*constant)
+                }
             },
         }
     }

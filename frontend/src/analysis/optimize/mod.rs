@@ -1,6 +1,8 @@
 use crate::{
-    analysis::{Arm, Expression, ExpressionKind, Pattern, PatternKind, Program, Type},
-    Compiler, Span, VariableId,
+    analysis::{
+        Arm, Expression, ExpressionKind, Pattern, PatternKind, Program, RuntimeFunction, Type,
+    },
+    Compiler, Optimize, Span, VariableId,
 };
 use std::{
     collections::{HashMap, HashSet},
@@ -35,18 +37,22 @@ impl Default for Options {
     }
 }
 
-impl Compiler<'_> {
-    pub fn optimize(&self, program: Program, options: Options) -> Program {
-        if !program.complete {
-            return program;
+impl Optimize for Program {
+    type Options = Options;
+
+    fn optimize(self, options: Self::Options, compiler: &Compiler) -> Program {
+        if !self.complete {
+            return self;
         }
+
+        let program = self;
 
         macro_rules! passes {
             ($ir:expr, [$($pass:ident),* $(,)?]) => {
                 {
                     $(
                         let program = match options.$pass {
-                            Some(options) => self.$pass(program, options),
+                            Some(options) => program.$pass(options, compiler),
                             None => program,
                         };
                     )*
@@ -66,9 +72,9 @@ pub mod ssa {
     #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
     pub struct Options {}
 
-    impl Compiler<'_> {
-        pub(super) fn ssa(&self, mut program: Program, _options: Options) -> Program {
-            for expr in program.items.values_mut() {
+    impl Program {
+        pub(super) fn ssa(mut self, _options: Options, _compiler: &Compiler) -> Program {
+            for expr in self.items.values_mut() {
                 expr.traverse_mut(|expr| {
                     if let ExpressionKind::Block(exprs) = &mut expr.kind {
                         fn convert_block(exprs: &[Expression], span: Span) -> Vec<Expression> {
@@ -122,7 +128,7 @@ pub mod ssa {
                 });
             }
 
-            program
+            self
         }
     }
 }
@@ -137,9 +143,9 @@ pub mod propagate {
         pub pass_limit: Option<usize>,
     }
 
-    impl Compiler<'_> {
-        pub(super) fn propagate(&self, mut program: Program, options: Options) -> Program {
-            let mut items = program
+    impl Program {
+        pub(super) fn propagate(mut self, options: Options, _compiler: &Compiler) -> Program {
+            let mut items = self
                 .items
                 .into_iter()
                 .map(|(item, expr)| (item, Some(expr)))
@@ -147,57 +153,61 @@ pub mod propagate {
 
             let item_ids = items.keys().cloned().collect::<Vec<_>>();
 
-            let mut passes: usize = 1;
-            loop {
-                let mut propagated = false;
+            for &item in &item_ids {
+                let mut passes: usize = 1;
 
-                for &item in &item_ids {
+                loop {
+                    let mut propagated = false;
+
                     let mut expr = mem::take(items.get_mut(&item).unwrap()).unwrap();
 
-                    expr.traverse_mut(|expr| {
+                    expr.traverse_mut_with(Vec::new(), |expr, stack| {
                         let constant = match &expr.kind {
-                            ExpressionKind::Constant(item) => *item,
+                            ExpressionKind::Constant(constant)
+                                if *constant != item && !stack.contains(constant) =>
+                            {
+                                *constant
+                            }
                             _ => return,
                         };
 
+                        stack.push(constant);
+
                         let body = match items.get(&constant).unwrap() {
                             Some(expr) => expr,
-                            None => return, // don't propagate recursive constants
+                            None => return,
                         };
 
-                        if body.is_simple() {
-                            let mut recursive = false;
-                            body.traverse(|expr| {
+                        if body.is_pure() {
+                            propagated = true;
+                            *expr = body.clone();
+
+                            expr.traverse_mut(|expr| {
                                 if let ExpressionKind::Constant(c) = expr.kind {
                                     if c == constant {
-                                        recursive = true;
+                                        expr.kind = ExpressionKind::ExpandedConstant(c);
                                     }
                                 }
                             });
-
-                            if !recursive {
-                                propagated = true;
-                                *expr = body.clone();
-                            }
                         }
                     });
 
                     items.get_mut(&item).unwrap().replace(expr);
-                }
 
-                if !propagated || options.pass_limit.map_or(false, |limit| passes > limit) {
-                    break;
-                }
+                    if !propagated || options.pass_limit.map_or(false, |limit| passes > limit) {
+                        break;
+                    }
 
-                passes += 1;
+                    passes += 1;
+                }
             }
 
-            program.items = items
+            self.items = items
                 .into_iter()
                 .map(|(item, expr)| (item, expr.unwrap()))
                 .collect();
 
-            program
+            self
         }
     }
 }
@@ -225,13 +235,45 @@ pub mod inline {
         }
     }
 
-    impl Compiler<'_> {
-        pub(super) fn inline(&self, mut program: Program, options: Options) -> Program {
+    impl Program {
+        pub(super) fn inline(mut self, options: Options, _compiler: &Compiler) -> Program {
             let mut passes: usize = 1;
             loop {
                 let mut inlined = false;
 
-                for expr in program.items.values_mut() {
+                for expr in self.items.values_mut() {
+                    // Inline variables
+                    expr.traverse_mut(|expr| {
+                        if let ExpressionKind::When(input, arms) = &mut expr.kind {
+                            if input.is_pure() && arms.len() == 1 {
+                                let input = input.as_ref().clone();
+
+                                if let PatternKind::Variable(var) =
+                                    arms.first().unwrap().pattern.kind
+                                {
+                                    inlined = true;
+
+                                    *expr = arms.pop().unwrap().body;
+                                    expr.traverse_mut(|expr| match &mut expr.kind {
+                                        ExpressionKind::Variable(v) => {
+                                            if *v == var {
+                                                *expr = input.clone();
+                                            }
+                                        }
+                                        ExpressionKind::Function(_, _, captures) => {
+                                            *captures = mem::take(captures)
+                                                .into_iter()
+                                                .filter(|(v, _)| *v != var)
+                                                .collect();
+                                        }
+                                        _ => {}
+                                    });
+                                }
+                            }
+                        }
+                    });
+
+                    // Inline function calls
                     expr.traverse_mut_with(im::HashSet::new(), |expr, scope| {
                         // We only perform this optimization when the program is in SSA form, so we
                         // only need to check for functions and `when` expressions. In addition, we
@@ -292,7 +334,7 @@ pub mod inline {
                 passes += 1;
             }
 
-            program
+            self
         }
     }
 }
@@ -313,13 +355,13 @@ pub mod unused {
         }
     }
 
-    impl Compiler<'_> {
-        pub(super) fn unused(&self, mut program: Program, options: Options) -> Program {
+    impl Program {
+        pub(super) fn unused(mut self, options: Options, _compiler: &Compiler) -> Program {
             if options.constants {
-                if let Some(entrypoint) = program.entrypoint {
+                if let Some(entrypoint) = self.entrypoint {
                     let mut used = HashSet::from([entrypoint]);
 
-                    for expr in program.items.values() {
+                    for expr in self.items.values() {
                         expr.traverse(|expr| {
                             if let ExpressionKind::Constant(item) = &expr.kind {
                                 used.insert(*item);
@@ -327,15 +369,15 @@ pub mod unused {
                         })
                     }
 
-                    for item in program.items.keys().cloned().collect::<Vec<_>>() {
+                    for item in self.items.keys().cloned().collect::<Vec<_>>() {
                         if !used.contains(&item) {
-                            program.items.remove(&item);
+                            self.items.remove(&item);
                         }
                     }
                 }
             }
 
-            program
+            self
         }
     }
 }
@@ -350,7 +392,7 @@ mod util {
             count
         }
 
-        pub fn is_simple(&self) -> bool {
+        pub fn is_pure(&self) -> bool {
             match &self.kind {
                 ExpressionKind::Marker
                 | ExpressionKind::Text(_)
@@ -364,19 +406,71 @@ mod util {
                 | ExpressionKind::Double(_)
                 | ExpressionKind::Function(_, _, _)
                 | ExpressionKind::Variable(_) => true,
-                ExpressionKind::Block(exprs) => exprs.iter().all(Expression::is_simple),
-                ExpressionKind::Call(func, input) => func.is_simple() && input.is_simple(),
+                ExpressionKind::Block(exprs) => exprs.iter().all(Expression::is_pure),
+                ExpressionKind::Call(func, input) => func.is_pure() && input.is_pure(),
                 ExpressionKind::When(expr, arms) => {
-                    expr.is_simple() && arms.iter().map(|arm| &arm.body).all(Expression::is_simple)
+                    expr.is_pure() && arms.iter().map(|arm| &arm.body).all(Expression::is_pure)
                 }
-                ExpressionKind::Structure(exprs) => exprs.iter().all(Expression::is_simple),
-                ExpressionKind::Variant(_, exprs) => exprs.iter().all(Expression::is_simple),
-                ExpressionKind::Tuple(exprs) => exprs.iter().all(Expression::is_simple),
-                ExpressionKind::External(_, _, _)
-                | ExpressionKind::Runtime(_, _)
-                | ExpressionKind::Initialize(_, _)
-                | ExpressionKind::Constant(_) => false,
+                ExpressionKind::Structure(exprs) => exprs.iter().all(Expression::is_pure),
+                ExpressionKind::Variant(_, exprs) => exprs.iter().all(Expression::is_pure),
+                ExpressionKind::Tuple(exprs) => exprs.iter().all(Expression::is_pure),
+                ExpressionKind::Runtime(func, inputs) => {
+                    func.is_pure() && inputs.iter().all(Expression::is_pure)
+                }
+                ExpressionKind::External(_, _, _) | ExpressionKind::Initialize(_, _) => false,
+                ExpressionKind::Constant(_) | ExpressionKind::ExpandedConstant(_) => {
+                    // Constants are pure because, in the context in which we perform this check,
+                    // the original constant will have already been initialized
+                    true
+                }
             }
+        }
+
+        pub fn format_tree(&self) -> String {
+            let mut s = String::new();
+
+            self.traverse_with(0, |expr, indent| {
+                use std::fmt::Write;
+
+                for _ in 0..*indent {
+                    s.push('\t');
+                }
+
+                match expr.kind {
+                    ExpressionKind::Marker => write!(s, "Marker"),
+                    ExpressionKind::Variable(v) => write!(s, "Variable {}#{}", v.file, v.counter),
+                    ExpressionKind::Text(_) => write!(s, "Text"),
+                    ExpressionKind::Block(_) => write!(s, "Block"),
+                    ExpressionKind::Call(_, _) => write!(s, "Call"),
+                    ExpressionKind::Function(_, _, _) => write!(s, "Function"),
+                    ExpressionKind::When(_, _) => write!(s, "When"),
+                    ExpressionKind::External(_, _, _) => write!(s, "External"),
+                    ExpressionKind::Runtime(_, _) => write!(s, "Runtime"),
+                    ExpressionKind::Initialize(_, _) => write!(s, "Initialize"),
+                    ExpressionKind::Structure(_) => write!(s, "Structure"),
+                    ExpressionKind::Variant(_, _) => write!(s, "Variant"),
+                    ExpressionKind::Tuple(_) => write!(s, "Tuple"),
+                    ExpressionKind::Number(_) => write!(s, "Number"),
+                    ExpressionKind::Integer(_) => write!(s, "Integer"),
+                    ExpressionKind::Natural(_) => write!(s, "Natural"),
+                    ExpressionKind::Byte(_) => write!(s, "Byte"),
+                    ExpressionKind::Signed(_) => write!(s, "Signed"),
+                    ExpressionKind::Unsigned(_) => write!(s, "Unsigned"),
+                    ExpressionKind::Float(_) => write!(s, "Float"),
+                    ExpressionKind::Double(_) => write!(s, "Double"),
+                    ExpressionKind::Constant(c) => write!(s, "Constant {}#{}", c.file, c.counter),
+                    ExpressionKind::ExpandedConstant(c) => {
+                        write!(s, "ExpandedConstant {}#{}", c.file, c.counter)
+                    }
+                }
+                .unwrap();
+
+                s.push('\n');
+
+                *indent += 1;
+            });
+
+            s
         }
     }
 
@@ -425,6 +519,105 @@ mod util {
             let mut variables = HashSet::new();
             collect_variables(self, &mut variables);
             variables
+        }
+    }
+
+    impl RuntimeFunction {
+        // TODO: In the future, add a [pure] attribute instead of checking these manually
+        fn is_pure(&self) -> bool {
+            match self {
+                RuntimeFunction::Crash => false,
+                RuntimeFunction::WriteStdout => false,
+                RuntimeFunction::Format => true,
+                RuntimeFunction::NumberToText => true,
+                RuntimeFunction::IntegerToText => true,
+                RuntimeFunction::NaturalToText => true,
+                RuntimeFunction::ByteToText => true,
+                RuntimeFunction::SignedToText => true,
+                RuntimeFunction::UnsignedToText => true,
+                RuntimeFunction::FloatToText => true,
+                RuntimeFunction::DoubleToText => true,
+                RuntimeFunction::AddNumber => true,
+                RuntimeFunction::SubtractNumber => true,
+                RuntimeFunction::MultiplyNumber => true,
+                RuntimeFunction::DivideNumber => true,
+                RuntimeFunction::PowerNumber => true,
+                RuntimeFunction::FloorNumber => true,
+                RuntimeFunction::CeilNumber => true,
+                RuntimeFunction::SqrtNumber => true,
+                RuntimeFunction::AddInteger => true,
+                RuntimeFunction::SubtractInteger => true,
+                RuntimeFunction::MultiplyInteger => true,
+                RuntimeFunction::DivideInteger => true,
+                RuntimeFunction::PowerInteger => true,
+                RuntimeFunction::AddNatural => true,
+                RuntimeFunction::SubtractNatural => true,
+                RuntimeFunction::MultiplyNatural => true,
+                RuntimeFunction::DivideNatural => true,
+                RuntimeFunction::PowerNatural => true,
+                RuntimeFunction::AddByte => true,
+                RuntimeFunction::SubtractByte => true,
+                RuntimeFunction::MultiplyByte => true,
+                RuntimeFunction::DivideByte => true,
+                RuntimeFunction::PowerByte => true,
+                RuntimeFunction::AddSigned => true,
+                RuntimeFunction::SubtractSigned => true,
+                RuntimeFunction::MultiplySigned => true,
+                RuntimeFunction::DivideSigned => true,
+                RuntimeFunction::PowerSigned => true,
+                RuntimeFunction::AddUnsigned => true,
+                RuntimeFunction::SubtractUnsigned => true,
+                RuntimeFunction::MultiplyUnsigned => true,
+                RuntimeFunction::DivideUnsigned => true,
+                RuntimeFunction::PowerUnsigned => true,
+                RuntimeFunction::AddFloat => true,
+                RuntimeFunction::SubtractFloat => true,
+                RuntimeFunction::MultiplyFloat => true,
+                RuntimeFunction::DivideFloat => true,
+                RuntimeFunction::PowerFloat => true,
+                RuntimeFunction::FloorFloat => true,
+                RuntimeFunction::CeilFloat => true,
+                RuntimeFunction::SqrtFloat => true,
+                RuntimeFunction::AddDouble => true,
+                RuntimeFunction::SubtractDouble => true,
+                RuntimeFunction::MultiplyDouble => true,
+                RuntimeFunction::DivideDouble => true,
+                RuntimeFunction::PowerDouble => true,
+                RuntimeFunction::FloorDouble => true,
+                RuntimeFunction::CeilDouble => true,
+                RuntimeFunction::SqrtDouble => true,
+                RuntimeFunction::TextEquality => true,
+                RuntimeFunction::NumberEquality => true,
+                RuntimeFunction::IntegerEquality => true,
+                RuntimeFunction::NaturalEquality => true,
+                RuntimeFunction::ByteEquality => true,
+                RuntimeFunction::SignedEquality => true,
+                RuntimeFunction::UnsignedEquality => true,
+                RuntimeFunction::FloatEquality => true,
+                RuntimeFunction::DoubleEquality => true,
+                RuntimeFunction::TextOrdering => true,
+                RuntimeFunction::NumberOrdering => true,
+                RuntimeFunction::IntegerOrdering => true,
+                RuntimeFunction::NaturalOrdering => true,
+                RuntimeFunction::ByteOrdering => true,
+                RuntimeFunction::SignedOrdering => true,
+                RuntimeFunction::UnsignedOrdering => true,
+                RuntimeFunction::FloatOrdering => true,
+                RuntimeFunction::DoubleOrdering => true,
+                RuntimeFunction::MakeMutable => true,
+                RuntimeFunction::GetMutable => false,
+                RuntimeFunction::SetMutable => false,
+                RuntimeFunction::MakeList => true,
+                RuntimeFunction::ListFirst => true,
+                RuntimeFunction::ListLast => true,
+                RuntimeFunction::ListInitial => true,
+                RuntimeFunction::ListTail => true,
+                RuntimeFunction::ListNth => true,
+                RuntimeFunction::ListAppend => true,
+                RuntimeFunction::ListPrepend => true,
+                RuntimeFunction::ListInsert => true,
+                RuntimeFunction::ListRemove => true,
+            }
         }
     }
 }

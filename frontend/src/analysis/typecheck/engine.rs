@@ -1,6 +1,6 @@
 use crate::{parse::Span, TraitId, TypeId, TypeParameterId};
 use serde::Serialize;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
 #[serde(tag = "type", content = "value")]
@@ -111,7 +111,7 @@ pub enum BottomTypeReason {
     Error,
 }
 
-pub type GenericSubstitutions = HashMap<TypeParameterId, UnresolvedType>;
+pub type GenericSubstitutions = BTreeMap<TypeParameterId, UnresolvedType>;
 
 #[derive(Debug, Clone, Default)]
 pub struct Context {
@@ -152,11 +152,8 @@ impl Context {
         &mut self,
         actual: UnresolvedType,
         expected: impl Into<UnresolvedType>,
-    ) -> (
-        HashMap<TypeParameterId, UnresolvedType>,
-        Result<(), TypeError>,
-    ) {
-        let mut params = HashMap::new();
+    ) -> (GenericSubstitutions, Result<(), TypeError>) {
+        let mut params = GenericSubstitutions::new();
         let result = self.unify_internal(actual, expected.into(), false, &mut params);
         (params, result)
     }
@@ -166,7 +163,12 @@ impl Context {
         actual: UnresolvedType,
         expected: impl Into<UnresolvedType>,
     ) -> Result<(), TypeError> {
-        self.unify_internal(actual, expected.into(), false, &mut HashMap::new())
+        self.unify_internal(
+            actual,
+            expected.into(),
+            false,
+            &mut GenericSubstitutions::new(),
+        )
     }
 
     pub fn unify_generic(
@@ -174,7 +176,12 @@ impl Context {
         actual: UnresolvedType,
         expected: impl Into<UnresolvedType>,
     ) -> Result<(), TypeError> {
-        self.unify_internal(actual, expected.into(), true, &mut HashMap::new())
+        self.unify_internal(
+            actual,
+            expected.into(),
+            true,
+            &mut GenericSubstitutions::new(),
+        )
     }
 
     fn unify_internal(
@@ -182,7 +189,7 @@ impl Context {
         mut actual: UnresolvedType,
         mut expected: UnresolvedType,
         generic: bool,
-        params: &mut HashMap<TypeParameterId, UnresolvedType>,
+        params: &mut BTreeMap<TypeParameterId, UnresolvedType>,
     ) -> Result<(), TypeError> {
         actual.apply(self);
         expected.apply(self);

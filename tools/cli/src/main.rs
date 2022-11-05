@@ -289,7 +289,7 @@ async fn analyze(
                     progress_bar.set_message("Optimizing");
                 }
 
-                program = compiler.optimize(program, Default::default());
+                program = compiler.optimize(program);
             }
 
             program
@@ -323,14 +323,24 @@ async fn generate_ir(
                         progress_bar.set_message("Optimizing");
                     }
 
-                    program = compiler.optimize(program, Default::default());
+                    program = compiler.optimize(program);
                 }
 
                 if let Some(progress_bar) = progress_bar {
                     progress_bar.set_message("Generating IR");
                 }
 
-                compiler.ir_from(&program)
+                let mut ir = compiler.ir_from(&program);
+
+                if options.optimize {
+                    if let Some(progress_bar) = progress_bar {
+                        progress_bar.set_message("Optimizing IR");
+                    }
+
+                    ir = compiler.optimize(ir);
+                }
+
+                ir
             })
         },
     )
