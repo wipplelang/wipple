@@ -22,7 +22,7 @@ use itertools::Itertools;
 use serde::Serialize;
 use std::{
     cell::RefCell,
-    collections::{BTreeMap, HashMap, HashSet},
+    collections::{BTreeMap, BTreeSet, HashMap},
     mem,
     os::raw::{c_int, c_uint},
 };
@@ -371,7 +371,7 @@ struct Typechecker<'a, 'l> {
     declarations: RefCell<DeclarationsInner>,
     exported: Option<lower::ScopeValues>,
     scopes: RefCell<Vec<(Span, lower::ScopeValues)>>,
-    instances: im::HashMap<TraitId, HashSet<ConstantId>>,
+    instances: im::HashMap<TraitId, BTreeSet<ConstantId>>,
     generic_constants: im::HashMap<ConstantId, (bool, lower::Expression)>,
     item_queue: im::Vector<QueuedItem>,
     items: im::HashMap<ItemId, (Option<ConstantId>, Expression)>,
@@ -383,7 +383,7 @@ struct Typechecker<'a, 'l> {
 pub enum TypecheckMode {
     #[default]
     Everything,
-    Only(HashSet<FilePath>),
+    Only(BTreeSet<FilePath>),
 }
 
 #[derive(Debug, Clone)]
@@ -462,7 +462,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
 
         // Typecheck generic constants
 
-        let mut already_checked = HashSet::new();
+        let mut already_checked = BTreeSet::new();
         for (id, (instance, body)) in self.generic_constants.clone() {
             if already_checked.contains(&id) {
                 continue;
@@ -482,10 +482,10 @@ impl<'a, 'l> Typechecker<'a, 'l> {
         // Consolidate constants based on their type
 
         let mut cache = HashMap::new();
-        let mut cached = HashSet::new();
-        let mut map = HashMap::new();
+        let mut cached = BTreeSet::new();
+        let mut map = BTreeMap::new();
 
-        let mut items = self.items.into_iter().collect::<HashMap<_, _>>();
+        let mut items = self.items.into_iter().collect::<BTreeMap<_, _>>();
 
         for (id, (generic_id, expr)) in &items {
             let cached_id = *cache

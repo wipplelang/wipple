@@ -2,7 +2,7 @@ mod lsp;
 
 use clap::{Parser, ValueEnum};
 use std::{
-    collections::HashSet,
+    collections::BTreeSet,
     fs,
     io::{self, Read, Write},
     path::PathBuf,
@@ -459,7 +459,7 @@ async fn build_with_passes<P>(
             wipple_frontend::analysis::Options::default()
                 .tracking_progress(analysis_progress)
                 .typecheck_mode(if options.ide {
-                    wipple_frontend::analysis::TypecheckMode::Only(HashSet::from([path]))
+                    wipple_frontend::analysis::TypecheckMode::Only(BTreeSet::from([path]))
                 } else {
                     wipple_frontend::analysis::TypecheckMode::Everything
                 }),

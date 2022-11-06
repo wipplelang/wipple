@@ -1,7 +1,7 @@
 use ouroboros::self_referencing;
 use parking_lot::{MappedRwLockReadGuard, RwLock, RwLockReadGuard};
 use std::{
-    collections::{HashMap, HashSet},
+    collections::{BTreeSet, HashMap},
     sync::Arc,
 };
 use tower_lsp::{jsonrpc, lsp_types::*, Client, LanguageServer, LspService, Server};
@@ -733,7 +733,7 @@ impl Backend {
             .analyze(
                 path,
                 wipple_frontend::analysis::Options::default()
-                    .typecheck_mode(TypecheckMode::Only(HashSet::from([path]))),
+                    .typecheck_mode(TypecheckMode::Only(BTreeSet::from([path]))),
             )
             .await;
 

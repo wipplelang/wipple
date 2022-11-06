@@ -14,7 +14,7 @@ use parking_lot::Mutex;
 use serde::Serialize;
 use std::{
     cell::RefCell,
-    collections::{BTreeMap, HashMap, HashSet},
+    collections::{BTreeMap, BTreeSet, HashMap},
     hash::Hash,
     mem,
     str::FromStr,
@@ -558,7 +558,7 @@ impl LanguageItems {
 struct Scope<'a> {
     parent: Option<&'a Scope<'a>>,
     values: RefCell<ScopeValues>,
-    declared_variables: RefCell<HashSet<VariableId>>,
+    declared_variables: RefCell<BTreeSet<VariableId>>,
     used_variables: RefCell<CaptureList>,
 }
 

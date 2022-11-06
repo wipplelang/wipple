@@ -2,10 +2,10 @@ use crate::{
     analysis::{
         Arm, Expression, ExpressionKind, Pattern, PatternKind, Program, RuntimeFunction, Type,
     },
-    Compiler, Optimize, Span, VariableId,
+    Compiler, ItemId, Optimize, Span, VariableId,
 };
 use std::{
-    collections::{HashMap, HashSet},
+    collections::{BTreeMap, BTreeSet},
     mem,
 };
 
@@ -147,9 +147,9 @@ pub mod propagate {
         pub(super) fn propagate(mut self, options: Options, _compiler: &Compiler) -> Program {
             let mut items = self
                 .items
-                .into_iter()
-                .map(|(item, expr)| (item, Some(expr)))
-                .collect::<HashMap<_, _>>();
+                .iter()
+                .map(|(item, expr)| (*item, Some(expr.clone())))
+                .collect::<BTreeMap<_, _>>();
 
             let item_ids = items.keys().cloned().collect::<Vec<_>>();
 
@@ -178,7 +178,7 @@ pub mod propagate {
                             None => return,
                         };
 
-                        if body.is_pure() {
+                        if body.is_pure(&self, &mut Vec::new()) {
                             propagated = true;
                             *expr = body.clone();
 
@@ -236,42 +236,13 @@ pub mod inline {
     }
 
     impl Program {
-        pub(super) fn inline(mut self, options: Options, _compiler: &Compiler) -> Program {
+        pub(super) fn inline(mut self, options: Options, compiler: &Compiler) -> Program {
             let mut passes: usize = 1;
             loop {
                 let mut inlined = false;
 
-                for expr in self.items.values_mut() {
-                    // Inline variables
-                    expr.traverse_mut(|expr| {
-                        if let ExpressionKind::When(input, arms) = &mut expr.kind {
-                            if input.is_pure() && arms.len() == 1 {
-                                let input = input.as_ref().clone();
-
-                                if let PatternKind::Variable(var) =
-                                    arms.first().unwrap().pattern.kind
-                                {
-                                    inlined = true;
-
-                                    *expr = arms.pop().unwrap().body;
-                                    expr.traverse_mut(|expr| match &mut expr.kind {
-                                        ExpressionKind::Variable(v) => {
-                                            if *v == var {
-                                                *expr = input.clone();
-                                            }
-                                        }
-                                        ExpressionKind::Function(_, _, captures) => {
-                                            *captures = mem::take(captures)
-                                                .into_iter()
-                                                .filter(|(v, _)| *v != var)
-                                                .collect();
-                                        }
-                                        _ => {}
-                                    });
-                                }
-                            }
-                        }
-                    });
+                for item in self.items.keys().copied().collect::<Vec<_>>() {
+                    let mut expr = self.items.get(&item).unwrap().clone();
 
                     // Inline function calls
                     expr.traverse_mut_with(im::HashSet::new(), |expr, scope| {
@@ -313,18 +284,85 @@ pub mod inline {
 
                                 inlined = true;
 
+                                // Replace the variables in the inlined function with new variables
+                                // to prevent a cycle, where a variable references itself in its own
+                                // definition
+
+                                let new_vars = pattern
+                                    .variables()
+                                    .into_iter()
+                                    .map(|var| (var, compiler.new_variable_id(var.file)))
+                                    .collect::<BTreeMap<_, _>>();
+
+                                let mut pattern = pattern.clone();
+                                pattern.traverse_mut(|pattern| {
+                                    if let PatternKind::Variable(var) = &mut pattern.kind {
+                                        *var = *new_vars.get(var).unwrap();
+                                    }
+                                });
+
+                                let mut body = body.as_ref().clone();
+                                body.traverse_mut(|expr| match &mut expr.kind {
+                                    ExpressionKind::Variable(var) => {
+                                        if let Some(v) = new_vars.get(var) {
+                                            *var = *v;
+                                        }
+                                    }
+                                    ExpressionKind::Function(_, _, captures) => {
+                                        for (var, _) in captures {
+                                            if let Some(v) = new_vars.get(var) {
+                                                *var = *v;
+                                            }
+                                        }
+                                    }
+                                    _ => {}
+                                });
+
                                 expr.kind = ExpressionKind::When(
                                     input.clone(),
                                     vec![Arm {
                                         span: input.span,
-                                        pattern: pattern.clone(),
-                                        body: body.as_ref().clone(),
+                                        pattern,
+                                        body,
                                     }],
                                 );
                             }
                             _ => {}
                         }
                     });
+
+                    // Inline variables
+                    expr.traverse_mut(|expr| {
+                        if let ExpressionKind::When(input, arms) = &mut expr.kind {
+                            if input.is_pure(&self, &mut Vec::new()) && arms.len() == 1 {
+                                let input = input.as_ref().clone();
+
+                                if let PatternKind::Variable(var) =
+                                    arms.first().unwrap().pattern.kind
+                                {
+                                    inlined = true;
+
+                                    *expr = arms.pop().unwrap().body;
+                                    expr.traverse_mut(|expr| match &mut expr.kind {
+                                        ExpressionKind::Variable(v) => {
+                                            if *v == var {
+                                                *expr = input.clone();
+                                            }
+                                        }
+                                        ExpressionKind::Function(_, _, captures) => {
+                                            *captures = mem::take(captures)
+                                                .into_iter()
+                                                .filter(|(v, _)| *v != var)
+                                                .collect();
+                                        }
+                                        _ => {}
+                                    });
+                                }
+                            }
+                        }
+                    });
+
+                    self.items.insert(item, expr);
                 }
 
                 if !inlined || options.pass_limit.map_or(false, |limit| passes > limit) {
@@ -340,6 +378,8 @@ pub mod inline {
 }
 
 pub mod unused {
+    use std::collections::BTreeSet;
+
     use super::*;
 
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -359,7 +399,7 @@ pub mod unused {
         pub(super) fn unused(mut self, options: Options, _compiler: &Compiler) -> Program {
             if options.constants {
                 if let Some(entrypoint) = self.entrypoint {
-                    let mut used = HashSet::from([entrypoint]);
+                    let mut used = BTreeSet::from([entrypoint]);
 
                     for expr in self.items.values() {
                         expr.traverse(|expr| {
@@ -392,7 +432,7 @@ mod util {
             count
         }
 
-        pub fn is_pure(&self) -> bool {
+        pub fn is_pure(&self, program: &Program, stack: &mut Vec<ItemId>) -> bool {
             match &self.kind {
                 ExpressionKind::Marker
                 | ExpressionKind::Text(_)
@@ -406,22 +446,37 @@ mod util {
                 | ExpressionKind::Double(_)
                 | ExpressionKind::Function(_, _, _)
                 | ExpressionKind::Variable(_) => true,
-                ExpressionKind::Block(exprs) => exprs.iter().all(Expression::is_pure),
-                ExpressionKind::Call(func, input) => func.is_pure() && input.is_pure(),
-                ExpressionKind::When(expr, arms) => {
-                    expr.is_pure() && arms.iter().map(|arm| &arm.body).all(Expression::is_pure)
+                ExpressionKind::Block(exprs) => {
+                    exprs.iter().all(|expr| expr.is_pure(program, stack))
                 }
-                ExpressionKind::Structure(exprs) => exprs.iter().all(Expression::is_pure),
-                ExpressionKind::Variant(_, exprs) => exprs.iter().all(Expression::is_pure),
-                ExpressionKind::Tuple(exprs) => exprs.iter().all(Expression::is_pure),
+                ExpressionKind::Call(func, input) => {
+                    func.is_pure(program, stack) && input.is_pure(program, stack)
+                }
+                ExpressionKind::When(expr, arms) => {
+                    expr.is_pure(program, stack)
+                        && arms
+                            .iter()
+                            .map(|arm| &arm.body)
+                            .all(|expr| expr.is_pure(program, stack))
+                }
+                ExpressionKind::Structure(exprs) => {
+                    exprs.iter().all(|expr| expr.is_pure(program, stack))
+                }
+                ExpressionKind::Variant(_, exprs) => {
+                    exprs.iter().all(|expr| expr.is_pure(program, stack))
+                }
+                ExpressionKind::Tuple(exprs) => {
+                    exprs.iter().all(|expr| expr.is_pure(program, stack))
+                }
                 ExpressionKind::Runtime(func, inputs) => {
-                    func.is_pure() && inputs.iter().all(Expression::is_pure)
+                    func.is_pure() && inputs.iter().all(|expr| expr.is_pure(program, stack))
                 }
                 ExpressionKind::External(_, _, _) | ExpressionKind::Initialize(_, _) => false,
-                ExpressionKind::Constant(_) | ExpressionKind::ExpandedConstant(_) => {
-                    // Constants are pure because, in the context in which we perform this check,
-                    // the original constant will have already been initialized
-                    true
+                ExpressionKind::Constant(constant) | ExpressionKind::ExpandedConstant(constant) => {
+                    stack.push(*constant);
+                    let is_pure = program.items.get(constant).unwrap().is_pure(program, stack);
+                    stack.pop();
+                    is_pure
                 }
             }
         }
@@ -475,49 +530,14 @@ mod util {
     }
 
     impl Pattern {
-        pub fn variables(&self) -> HashSet<VariableId> {
-            fn collect_variables(pattern: &Pattern, variables: &mut HashSet<VariableId>) {
-                match &pattern.kind {
-                    PatternKind::Variable(var) => {
-                        variables.insert(*var);
-                    }
-                    PatternKind::Or(left, right) => {
-                        collect_variables(left, variables);
-                        collect_variables(right, variables);
-                    }
-                    PatternKind::Where(pattern, _) => {
-                        collect_variables(pattern, variables);
-                    }
-                    PatternKind::Tuple(patterns) => {
-                        for pattern in patterns {
-                            collect_variables(pattern, variables);
-                        }
-                    }
-                    PatternKind::Destructure(fields) => {
-                        for pattern in fields.values() {
-                            collect_variables(pattern, variables);
-                        }
-                    }
-                    PatternKind::Variant(_, patterns) => {
-                        for pattern in patterns {
-                            collect_variables(pattern, variables);
-                        }
-                    }
-                    PatternKind::Wildcard
-                    | PatternKind::Text(_)
-                    | PatternKind::Number(_)
-                    | PatternKind::Integer(_)
-                    | PatternKind::Natural(_)
-                    | PatternKind::Byte(_)
-                    | PatternKind::Signed(_)
-                    | PatternKind::Unsigned(_)
-                    | PatternKind::Float(_)
-                    | PatternKind::Double(_) => {}
+        pub fn variables(&self) -> BTreeSet<VariableId> {
+            let mut variables = BTreeSet::new();
+            self.traverse(|pattern| {
+                if let PatternKind::Variable(var) = &pattern.kind {
+                    variables.insert(*var);
                 }
-            }
+            });
 
-            let mut variables = HashSet::new();
-            collect_variables(self, &mut variables);
             variables
         }
     }
@@ -604,7 +624,7 @@ mod util {
                 RuntimeFunction::UnsignedOrdering => true,
                 RuntimeFunction::FloatOrdering => true,
                 RuntimeFunction::DoubleOrdering => true,
-                RuntimeFunction::MakeMutable => true,
+                RuntimeFunction::MakeMutable => false,
                 RuntimeFunction::GetMutable => false,
                 RuntimeFunction::SetMutable => false,
                 RuntimeFunction::MakeList => true,
