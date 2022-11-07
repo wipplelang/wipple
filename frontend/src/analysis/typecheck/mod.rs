@@ -900,7 +900,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                     let first_type = arms.iter().find_map(|arm| {
                         let mut ty = arm.body.ty.clone();
                         ty.apply(&self.ctx);
-                        (!matches!(ty, engine::UnresolvedType::Bottom(_))).then(|| ty)
+                        (!matches!(ty, engine::UnresolvedType::Bottom(_))).then_some(ty)
                     });
 
                     if let Some(first_type) = first_type {
@@ -1417,7 +1417,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
 
                             input_ty.apply(&self.ctx);
 
-                            let mut match_set = self.match_set_from(&input_ty, info);
+                            let mut match_set = self.match_set_from(&input_ty);
 
                             let pattern =
                                 self.monomorphize_pattern(pattern, input_ty, &mut match_set, info);
@@ -1442,7 +1442,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                     let mut input = self.monomorphize_expr(*input, info);
                     input.ty.apply(&self.ctx);
 
-                    let mut match_set = self.match_set_from(&input.ty, info);
+                    let mut match_set = self.match_set_from(&input.ty);
 
                     let arms = arms
                         .into_iter()
@@ -1479,7 +1479,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                     let mut value = self.monomorphize_expr(*value, info);
                     value.ty.apply(&self.ctx);
 
-                    let mut match_set = self.match_set_from(&value.ty, info);
+                    let mut match_set = self.match_set_from(&value.ty);
 
                     let pattern =
                         self.monomorphize_pattern(pattern, value.ty.clone(), &mut match_set, info);
@@ -1653,7 +1653,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                     MatchSet::Structure(fields) => fields,
                     _ => {
                         ty.apply(&self.ctx);
-                        *match_set = self.match_set_from(&ty, info);
+                        *match_set = self.match_set_from(&ty);
 
                         match match_set {
                             MatchSet::Structure(fields) => fields,
@@ -1774,7 +1774,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                     MatchSet::Enumeration(variants) => &mut variants[variant],
                     _ => {
                         ty.apply(&self.ctx);
-                        *match_set = self.match_set_from(&ty, info);
+                        *match_set = self.match_set_from(&ty);
 
                         match match_set {
                             MatchSet::Enumeration(variants) => &mut variants[variant],
@@ -1861,7 +1861,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                     MatchSet::Tuple(sets) => sets,
                     _ => {
                         ty.apply(&self.ctx);
-                        *match_set = self.match_set_from(&ty, info);
+                        *match_set = self.match_set_from(&ty);
 
                         match match_set {
                             MatchSet::Tuple(sets) => sets,
@@ -2016,19 +2016,14 @@ enum MatchSet {
 }
 
 impl<'a, 'l> Typechecker<'a, 'l> {
-    fn match_set_from(
-        &mut self,
-        ty: &engine::UnresolvedType,
-        info: &mut MonomorphizeInfo,
-    ) -> MatchSet {
-        self.match_set_from_inner(ty, &mut Vec::new(), info)
+    fn match_set_from(&mut self, ty: &engine::UnresolvedType) -> MatchSet {
+        self.match_set_from_inner(ty, &mut Vec::new())
     }
 
     fn match_set_from_inner(
         &mut self,
         ty: &engine::UnresolvedType,
         stack: &mut Vec<TypeId>,
-        info: &mut MonomorphizeInfo,
     ) -> MatchSet {
         match ty {
             engine::UnresolvedType::Named(id, _, _) => {
@@ -2048,7 +2043,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                     TypeDeclKind::Structure { fields, .. } => MatchSet::Structure(
                         fields
                             .into_iter()
-                            .map(|ty| (false, self.match_set_from_inner(&ty.into(), stack, info)))
+                            .map(|ty| (false, self.match_set_from_inner(&ty.into(), stack)))
                             .collect(),
                     ),
                     TypeDeclKind::Enumeration { variants, .. } => MatchSet::Enumeration(
@@ -2058,9 +2053,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                                 (
                                     false,
                                     tys.into_iter()
-                                        .map(|ty| {
-                                            self.match_set_from_inner(&ty.into(), stack, info)
-                                        })
+                                        .map(|ty| self.match_set_from_inner(&ty.into(), stack))
                                         .collect(),
                                 )
                             })
@@ -2074,7 +2067,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
             }
             engine::UnresolvedType::Tuple(tys) => MatchSet::Tuple(
                 tys.iter()
-                    .map(|ty| self.match_set_from_inner(ty, stack, info))
+                    .map(|ty| self.match_set_from_inner(ty, stack))
                     .collect(),
             ),
             engine::UnresolvedType::Bottom(_) => MatchSet::Never,

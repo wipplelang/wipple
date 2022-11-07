@@ -216,7 +216,7 @@ impl<'src> Parser<'src> {
             }
         };
 
-        (!error).then(|| (statements, end_span))
+        (!error).then_some((statements, end_span))
     }
 
     pub fn try_parse_attribute(&mut self) -> Option<Expr> {
@@ -455,7 +455,7 @@ impl<'src> Parser<'src> {
             return None;
         }
 
-        (!error).then(|| (lines, end_span))
+        (!error).then_some((lines, end_span))
     }
 
     pub fn try_parse_block(&mut self) -> Result<Expr, ParseError> {

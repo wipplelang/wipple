@@ -740,7 +740,7 @@ impl Expander<'_, '_> {
                     node.kind,
                     NodeKind::Placeholder | NodeKind::TemplateDeclaration(_)
                 ))
-                .then(|| Statement {
+                .then_some(Statement {
                     attributes,
                     node,
                     treat_as_expr,
@@ -943,7 +943,7 @@ impl Expander<'_, '_> {
                                                 let operator_span = operators
                                                     .iter()
                                                     .find_map(|(index, _, span, _)| {
-                                                        (*index == operator_index).then(|| *span)
+                                                        (*index == operator_index).then_some(*span)
                                                     })
                                                     .unwrap();
 
