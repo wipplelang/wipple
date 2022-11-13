@@ -1,9 +1,7 @@
 mod runtime;
 
-use smallvec::SmallVec;
 use std::{
     cell::RefCell,
-    mem,
     os::raw::{c_int, c_uint},
     rc::Rc,
 };
@@ -76,13 +74,11 @@ struct Info {
 }
 
 #[derive(Debug, Default)]
-struct Stack(SmallVec<[Value; Self::SIZE]>);
+struct Stack(Vec<Value>);
 
 impl Stack {
-    const SIZE: usize = 1024 * 1024 / mem::size_of::<Value>(); // 1 MB worth of values
-
     fn new() -> Self {
-        Stack(SmallVec::with_capacity(Self::SIZE))
+        Stack(Vec::new())
     }
 
     fn push(&mut self, value: Value) {

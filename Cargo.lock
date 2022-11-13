@@ -2219,7 +2219,6 @@ dependencies = [
  "itertools",
  "num-traits",
  "rust_decimal",
- "smallvec",
  "wipple-frontend",
 ]
 

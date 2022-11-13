@@ -8,5 +8,4 @@ im = "15"
 itertools = "0.10"
 num-traits = "0.2"
 rust_decimal = { version = "1", features = ["maths"] }
-smallvec = { version = "1", features = ["const_generics", "union"] }
 wipple-frontend = { path = "../../frontend" }
