@@ -5,7 +5,7 @@ macro_rules! parse_number {
 
         let builtin = match $ty {
             $expr_ty::Builtin(builtin) => builtin,
-            x => unreachable!("{:#?}", x),
+            _ => return None,
         };
 
         macro_rules! parse {
@@ -17,7 +17,7 @@ macro_rules! parse_number {
             };
         }
 
-        match builtin {
+        Some(match builtin {
             BuiltinType::Number => parse!(Number),
             BuiltinType::Integer => parse!(Integer),
             BuiltinType::Natural => parse!(Natural),
@@ -26,10 +26,7 @@ macro_rules! parse_number {
             BuiltinType::Unsigned => parse!(Unsigned),
             BuiltinType::Float => parse!(Float),
             BuiltinType::Double => parse!(Double),
-            _ => panic!(
-                "`parse_number` was provided a non-number type: {:#?}",
-                builtin
-            ),
-        }
+            _ => return None,
+        })
     }};
 }

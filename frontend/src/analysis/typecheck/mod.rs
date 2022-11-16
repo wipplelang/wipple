@@ -2163,7 +2163,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
             MonomorphizedExpressionKind::Variable(var) => ExpressionKind::Variable(var),
             MonomorphizedExpressionKind::Text(text) => ExpressionKind::Text(text),
             MonomorphizedExpressionKind::Number(number) => {
-                match parse_number!(number, ExpressionKind, &ty, Type) {
+                match parse_number!(number, ExpressionKind, &ty, Type)? {
                     Ok(number) => number,
                     Err(error) => {
                         self.add_error(Error::new(error, expr.span));
@@ -2273,7 +2273,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                 MonomorphizedPatternKind::Error => return None,
                 MonomorphizedPatternKind::Wildcard => PatternKind::Wildcard,
                 MonomorphizedPatternKind::Number(number) => {
-                    match parse_number!(number, PatternKind, input_ty, Type) {
+                    match parse_number!(number, PatternKind, input_ty, Type)? {
                         Ok(number) => number,
                         Err(error) => {
                             self.add_error(Error::new(error, pattern.span));
