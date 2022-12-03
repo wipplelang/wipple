@@ -1,27 +1,88 @@
 [[no-std]]
 
+use "./logic.wpl"
+use "./loop.wpl"
 use "./util.wpl"
 use "./fp.wpl"
 use "./mutable.wpl"
+use "./math.wpl"
+
+[help "Represents a collection of values. `List` is generic, meaning you can put any value inside a list (as long as all values in the list have the same type). You can create a list using the `list` function: `list (1 , 2 , 3)`."]
+List : Element => type {
+	buffer :: Slice Element
+	count :: Natural
+}
 
 [help "Implementations for the `list` function."]
 [on-unimplemented "lists may only be created from tuples where every value has the same type"]
 Tuple-To-List : Tuple Element => trait (Tuple -> List Element)
 
-tuple-to-list-impl : ty' tuple' ~>
-	(ty' => instance Tuple-To-List tuple' ty' : tuple -> external "runtime" "make-list" tuple)
+-- TODO: Use a template once templates support repetition
 
-tuple-to-list-impl A ()
-tuple-to-list-impl A (A ,)
-tuple-to-list-impl A (A , A)
-tuple-to-list-impl A (A , A , A)
-tuple-to-list-impl A (A , A , A , A)
-tuple-to-list-impl A (A , A , A , A , A)
-tuple-to-list-impl A (A , A , A , A , A , A)
-tuple-to-list-impl A (A , A , A , A , A , A , A)
-tuple-to-list-impl A (A , A , A , A , A , A , A , A)
-tuple-to-list-impl A (A , A , A , A , A , A , A , A , A)
-tuple-to-list-impl A (A , A , A , A , A , A , A , A , A , A)
+A => instance Tuple-To-List () A : tuple -> List {
+	buffer : external "runtime" "make-slice" 0
+	count : 0
+}
+
+A => instance Tuple-To-List (A ,) A : (a ,) -> {
+	buffer : external "runtime" "make-slice" 1
+	external "runtime" "set-slice-index" buffer 0 a :: ()
+
+	List {
+		buffer : buffer
+		count : 1
+	}
+}
+
+A => instance Tuple-To-List (A , A) A : (a , b) -> {
+	buffer : external "runtime" "make-slice" 2
+	external "runtime" "set-slice-index" buffer 0 a :: ()
+	external "runtime" "set-slice-index" buffer 1 b :: ()
+
+	List {
+		buffer : buffer
+		count : 2
+	}
+}
+
+A => instance Tuple-To-List (A , A , A) A : (a , b , c) -> {
+	buffer : external "runtime" "make-slice" 3
+	external "runtime" "set-slice-index" buffer 0 a :: ()
+	external "runtime" "set-slice-index" buffer 1 b :: ()
+	external "runtime" "set-slice-index" buffer 2 c :: ()
+
+	List {
+		buffer : buffer
+		count : 3
+	}
+}
+
+A => instance Tuple-To-List (A , A , A , A) A : (a , b , c , d) -> {
+	buffer : external "runtime" "make-slice" 3
+	external "runtime" "set-slice-index" buffer 0 a :: ()
+	external "runtime" "set-slice-index" buffer 1 b :: ()
+	external "runtime" "set-slice-index" buffer 2 c :: ()
+	external "runtime" "set-slice-index" buffer 3 d :: ()
+
+	List {
+		buffer : buffer
+		count : 4
+	}
+}
+
+A => instance Tuple-To-List (A , A , A , A , A) A : (a , b , c , d , e) -> {
+	buffer : external "runtime" "make-slice" 3
+	external "runtime" "set-slice-index" buffer 0 a :: ()
+	external "runtime" "set-slice-index" buffer 1 b :: ()
+	external "runtime" "set-slice-index" buffer 2 c :: ()
+	external "runtime" "set-slice-index" buffer 3 d :: ()
+	external "runtime" "set-slice-index" buffer 4 e :: ()
+
+	List {
+		buffer : buffer
+		count : 5
+	}
+}
 
 [help "Create a `List` from a tuple."]
 list :: Tuple Element where (Tuple-To-List Tuple Element) => Tuple -> List Element
@@ -29,58 +90,90 @@ list : Tuple-To-List
 
 [help "Retrieve the first item inside a `List`, if it exists."]
 first :: A => List A -> Maybe A
-first : list -> external "runtime" "list-first" list
+first : { buffer count } -> {
+	if (count = 0) {
+		None
+	} {
+		Some (external "runtime" "slice-index" buffer 0)
+	}
+}
 
 [help "Retrieve the last item inside a `List`, if it exists."]
 last :: A => List A -> Maybe A
-last : list -> external "runtime" "list-last" list
-
-[help "Retrieve all but the last item inside a `List`."]
-initial :: A => List A -> Maybe (List A)
-initial : list -> external "runtime" "list-initial" list
-
-[help "Retrieve all but the first item inside a `List`."]
-tail :: A => List A -> Maybe (List A)
-tail : list -> external "runtime" "list-tail" list
+last : { buffer count } -> {
+	if (count = 0) {
+		None
+	} {
+		Some (external "runtime" "slice-index" buffer (count - 1))
+	}
+}
 
 Index-Error : type
 
 [help "Retrieve the value in a `List` at a particular index, if it exists."]
 nth :: A => Natural -> List A -> Result A Index-Error
-nth : index -> list -> external "runtime" "list-nth" list index
+nth : index -> { buffer count } -> {
+	if (index >= count) {
+		Error Index-Error
+	} {
+		OK (external "runtime" "slice-index" buffer index)
+	}
+}
 
 [help "Add a new item to the end of a `List`."]
 append :: A => A -> List A -> List A
-append : new -> list -> external "runtime" "list-append" list new
+append : new -> { buffer count } -> {
+	-- TODO: Checking if the slice is uniquely referenced and mutate it directly
+	-- if so
+
+	length : external "runtime" "slice-length" buffer :: Natural
+	count : count + 1
+
+	new-buffer : when (Order count length) {
+		Ordering Greater -> unreachable
+		Ordering Equal -> (external "runtime" "make-slice" (length * 2) :: Slice A)
+		Ordering Less -> (external "runtime" "make-slice" length :: Slice A)
+	}
+
+	i : mutable 0
+	loop {
+		if (get i = count) {
+			Break ()
+		} {
+			value : (external "runtime" "slice-index" buffer i :: A)
+			external "runtime" "set-slice-index" new-buffer i value :: ()
+
+			increment! i
+			Continue
+		}
+	}
+
+	List {
+		buffer : new-buffer
+		count : count
+	}
+}
 
 [help "Add a new item to the end of a `Mutable List`."]
 append! :: A => A -> Mutable (List A) -> ()
-append! : new -> list -> list . set! (list . get . append new)
+append! : new -> list -> ...
 
 [help "Insert a new item at a particular index inside a `List`."]
 insert :: A => Natural -> A -> List A -> Result (List A) Index-Error
-insert : index -> new -> list -> external "runtime" "list-insert" list index new
+insert : index -> new -> { buffer count } -> ...
 
 [help "Insert a new item at a particular index inside a `Mutable List`."]
 insert! :: A => Natural -> A -> Mutable (List A) -> Result () Index-Error
-insert! : index -> new -> list -> when (list . get . insert index new) {
-	OK new-list -> {
-		list . set! new-list
-		OK ()
-	}
-	Error e -> Error e
-}
+insert! : index -> new -> list -> ...
 
 [help "Remove the item at a particular index inside a `List`."]
 remove :: A => Natural -> List A -> Result (List A) Index-Error
-remove : index -> list -> external "runtime" "list-remove" list index
+remove : index -> list -> ...
 
 [help "Remove the item at a particular index inside a `Mutable List`."]
 remove! :: A => Natural -> Mutable (List A) -> Result () Index-Error
-remove! : index -> list -> when (list . get . remove index) {
-	OK new-list -> {
-		list . set! new-list
-		OK ()
-	}
-	Error e -> Error e
-}
+remove! : index -> list -> ...
+
+use "./output.wpl"
+x : list (1 , 2 , 3)
+show (x . nth 0)

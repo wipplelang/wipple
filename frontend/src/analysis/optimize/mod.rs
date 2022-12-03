@@ -548,7 +548,6 @@ mod util {
             match self {
                 RuntimeFunction::Crash => false,
                 RuntimeFunction::WriteStdout => false,
-                RuntimeFunction::Format => true,
                 RuntimeFunction::NumberToText => true,
                 RuntimeFunction::IntegerToText => true,
                 RuntimeFunction::NaturalToText => true,
@@ -626,17 +625,12 @@ mod util {
                 RuntimeFunction::DoubleOrdering => true,
                 RuntimeFunction::MakeMutable => false,
                 RuntimeFunction::GetMutable => false,
-                RuntimeFunction::SetMutable => false,
-                RuntimeFunction::MakeList => true,
-                RuntimeFunction::ListFirst => true,
-                RuntimeFunction::ListLast => true,
-                RuntimeFunction::ListInitial => true,
-                RuntimeFunction::ListTail => true,
-                RuntimeFunction::ListNth => true,
-                RuntimeFunction::ListAppend => true,
-                RuntimeFunction::ListPrepend => true,
-                RuntimeFunction::ListInsert => true,
-                RuntimeFunction::ListRemove => true,
+                RuntimeFunction::SetMutable => true,
+                RuntimeFunction::MakeSlice => false,
+                RuntimeFunction::SliceLength => true,
+                RuntimeFunction::SliceIndex => true,
+                RuntimeFunction::SetSliceIndex => true,
+                RuntimeFunction::DeleteSliceIndex => true,
             }
         }
     }

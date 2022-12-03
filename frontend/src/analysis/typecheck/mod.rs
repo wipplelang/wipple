@@ -3101,24 +3101,24 @@ impl<'a, 'l> Typechecker<'a, 'l> {
 
                         engine::UnresolvedType::Builtin(engine::BuiltinType::Number)
                     }
-                    lower::BuiltinTypeKind::List => {
+                    lower::BuiltinTypeKind::Slice => {
                         if parameters.is_empty() {
                             self.compiler.diagnostics.add(Diagnostic::error(
-                                "`List` accepts 1 parameter, but none were provided",
+                                "`Slice` accepts 1 parameter, but none were provided",
                                 vec![Note::primary(
                                     annotation.span,
-                                    "try adding `_` here to infer the type of `Element`",
+                                    "try adding `_` here to infer the type of `Slice`",
                                 )],
                             ));
 
-                            engine::UnresolvedType::Builtin(engine::BuiltinType::List(Box::new(
+                            engine::UnresolvedType::Builtin(engine::BuiltinType::Slice(Box::new(
                                 engine::UnresolvedType::Bottom(engine::BottomTypeReason::Error),
                             )))
                         } else {
                             if parameters.len() > 1 {
                                 self.compiler.diagnostics.add(Diagnostic::error(
                                     format!(
-                                        "`List` accepts 1 parameter, but {} were provided",
+                                        "`Slice` accepts 1 parameter, but {} were provided",
                                         parameters.len()
                                     ),
                                     vec![Note::primary(
@@ -3128,7 +3128,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                                 ));
                             }
 
-                            engine::UnresolvedType::Builtin(engine::BuiltinType::List(Box::new(
+                            engine::UnresolvedType::Builtin(engine::BuiltinType::Slice(Box::new(
                                 self.convert_type_annotation_inner(
                                     parameters.pop().unwrap(),
                                     convert_var,

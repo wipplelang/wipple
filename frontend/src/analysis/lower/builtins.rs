@@ -174,13 +174,13 @@ impl Compiler<'_> {
 
         add!(
             builtin_type,
-            Span::builtin("`List` type"),
-            "List",
+            Span::builtin("`Slice` type"),
+            "Slice",
             BuiltinType {
-                kind: BuiltinTypeKind::List,
+                kind: BuiltinTypeKind::Slice,
                 attributes: DeclarationAttributes {
                     help: vec![InternedString::new(
-                        "Represents a collection of values. `List` is generic, meaning you can use any value inside a list (as long as all the values have the same type). You can create a list using the list function: `list (1 , 2 , 3)`.",
+                        "Represents a contiguous slice of memory in which to store values.",
                     )],
                     ..Default::default()
                 }
@@ -195,7 +195,7 @@ impl Compiler<'_> {
                 kind: BuiltinTypeKind::Mutable,
                 attributes: DeclarationAttributes {
                     help: vec![InternedString::new(
-                        "A container for a value that can change at runtime. Functions that change a `Mutable` value end in `!`. You should generally use functions that return a new value instead of functions that mutate their input, but `Mutable` is useful for improving performance or storing global state.",
+                        "A container for a value that can change at runtime. By convention, functions that change a `Mutable` value end in `!`. You should generally use functions that return a new value instead of functions that mutate their input, but `Mutable` is useful for improving performance or storing global state.",
                     )],
                     ..Default::default()
                 }

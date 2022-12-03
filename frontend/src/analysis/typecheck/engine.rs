@@ -60,7 +60,7 @@ impl From<Type> for UnresolvedType {
                 BuiltinType::Float => BuiltinType::Float,
                 BuiltinType::Double => BuiltinType::Double,
                 BuiltinType::Text => BuiltinType::Text,
-                BuiltinType::List(ty) => BuiltinType::List(Box::new((*ty).into())),
+                BuiltinType::Slice(ty) => BuiltinType::Slice(Box::new((*ty).into())),
                 BuiltinType::Mutable(ty) => BuiltinType::Mutable(Box::new((*ty).into())),
             }),
             Type::Bottom(reason) => UnresolvedType::Bottom(reason),
@@ -101,7 +101,7 @@ pub enum BuiltinType<Ty> {
     Float,
     Double,
     Text,
-    List(Ty),
+    Slice(Ty),
     Mutable(Ty),
 }
 
@@ -386,7 +386,7 @@ impl Context {
                 | (BuiltinType::Float, BuiltinType::Float)
                 | (BuiltinType::Double, BuiltinType::Double)
                 | (BuiltinType::Text, BuiltinType::Text) => Ok(()),
-                (BuiltinType::List(actual_element), BuiltinType::List(expected_element)) => {
+                (BuiltinType::Slice(actual_element), BuiltinType::Slice(expected_element)) => {
                     if let Err(error) = self.unify_internal(
                         (*actual_element).clone(),
                         (*expected_element).clone(),
@@ -395,8 +395,8 @@ impl Context {
                     ) {
                         return Err(if let TypeError::Mismatch(_, _) = error {
                             TypeError::Mismatch(
-                                UnresolvedType::Builtin(BuiltinType::List(actual_element)),
-                                UnresolvedType::Builtin(BuiltinType::List(expected_element)),
+                                UnresolvedType::Builtin(BuiltinType::Slice(actual_element)),
+                                UnresolvedType::Builtin(BuiltinType::Slice(expected_element)),
                             )
                         } else {
                             error
@@ -450,7 +450,7 @@ impl UnresolvedType {
             UnresolvedType::Named(_, params, _) => params.iter().any(|param| param.contains(var)),
             UnresolvedType::Tuple(tys) => tys.iter().any(|ty| ty.contains(var)),
             UnresolvedType::Builtin(ty) => match ty {
-                BuiltinType::List(ty) | BuiltinType::Mutable(ty) => ty.contains(var),
+                BuiltinType::Slice(ty) | BuiltinType::Mutable(ty) => ty.contains(var),
                 _ => false,
             },
             _ => false,
@@ -468,7 +468,7 @@ impl UnresolvedType {
             }
             UnresolvedType::Tuple(tys) => tys.iter().any(|ty| ty.contains_error()),
             UnresolvedType::Builtin(ty) => match ty {
-                BuiltinType::List(ty) | BuiltinType::Mutable(ty) => ty.contains_error(),
+                BuiltinType::Slice(ty) | BuiltinType::Mutable(ty) => ty.contains_error(),
                 _ => false,
             },
             _ => false,
@@ -506,7 +506,7 @@ impl UnresolvedType {
                 }
             }
             UnresolvedType::Builtin(ty) => match ty {
-                BuiltinType::List(ty) | BuiltinType::Mutable(ty) => ty.apply(ctx),
+                BuiltinType::Slice(ty) | BuiltinType::Mutable(ty) => ty.apply(ctx),
                 _ => {}
             },
             _ => {}
@@ -540,7 +540,7 @@ impl UnresolvedType {
                 }
             }
             UnresolvedType::Builtin(ty) => match ty {
-                BuiltinType::List(ty) | BuiltinType::Mutable(ty) => {
+                BuiltinType::Slice(ty) | BuiltinType::Mutable(ty) => {
                     ty.instantiate_with(ctx, substitutions)
                 }
                 _ => {}
@@ -564,7 +564,7 @@ impl UnresolvedType {
                 .collect(),
             UnresolvedType::Tuple(tys) => tys.iter().flat_map(|ty| ty.params()).collect(),
             UnresolvedType::Builtin(ty) => match ty {
-                BuiltinType::List(ty) | BuiltinType::Mutable(ty) => ty.params(),
+                BuiltinType::Slice(ty) | BuiltinType::Mutable(ty) => ty.params(),
                 _ => Vec::new(),
             },
             _ => Vec::new(),
@@ -604,7 +604,7 @@ impl UnresolvedType {
                 }
             }
             UnresolvedType::Builtin(ty) => match ty {
-                BuiltinType::List(ty) | BuiltinType::Mutable(ty) => {
+                BuiltinType::Slice(ty) | BuiltinType::Mutable(ty) => {
                     ty.finalize_numeric_variables(ctx)
                 }
                 _ => {}
@@ -654,7 +654,7 @@ impl UnresolvedType {
                 BuiltinType::Float => BuiltinType::Float,
                 BuiltinType::Double => BuiltinType::Double,
                 BuiltinType::Text => BuiltinType::Text,
-                BuiltinType::List(ty) => BuiltinType::List(Box::new(ty.finalize(ctx, options)?)),
+                BuiltinType::Slice(ty) => BuiltinType::Slice(Box::new(ty.finalize(ctx, options)?)),
                 BuiltinType::Mutable(ty) => {
                     BuiltinType::Mutable(Box::new(ty.finalize(ctx, options)?))
                 }

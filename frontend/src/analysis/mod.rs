@@ -127,7 +127,7 @@ impl Compiler<'_> {
                         .chain(std::iter::once(&resolved_path))
                         .map(|path| path.to_string())
                         .collect::<Vec<_>>()
-                        .join(", which imports");
+                        .join(", which imports ");
 
                     compiler.diagnostics.add(Diagnostic::error(
                         "import cycle detected",

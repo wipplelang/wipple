@@ -124,7 +124,7 @@ fn format_type_with(
                 BuiltinType::Float => format_named_type!("Float", Vec::new()),
                 BuiltinType::Double => format_named_type!("Double", Vec::new()),
                 BuiltinType::Text => format_named_type!("Text", Vec::new()),
-                BuiltinType::List(ty) => format_named_type!("List", vec![*ty]),
+                BuiltinType::Slice(ty) => format_named_type!("Slice", vec![*ty]),
                 BuiltinType::Mutable(ty) => format_named_type!("Mutable", vec![*ty]),
             },
             FormattableType::Type(UnresolvedType::Function(input, output)) => {

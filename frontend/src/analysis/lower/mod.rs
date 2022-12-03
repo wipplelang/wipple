@@ -179,7 +179,7 @@ pub enum BuiltinTypeKind {
     Double,
     Boolean,
     Text,
-    List,
+    Slice,
     Mutable,
 }
 
@@ -332,7 +332,6 @@ pub type CaptureList = Vec<(VariableId, Span)>;
 pub enum RuntimeFunction {
     Crash,
     WriteStdout,
-    Format,
     NumberToText,
     IntegerToText,
     NaturalToText,
@@ -411,16 +410,11 @@ pub enum RuntimeFunction {
     MakeMutable,
     GetMutable,
     SetMutable,
-    MakeList,
-    ListFirst,
-    ListLast,
-    ListInitial,
-    ListTail,
-    ListNth,
-    ListAppend,
-    ListPrepend,
-    ListInsert,
-    ListRemove,
+    MakeSlice,
+    SliceLength,
+    SliceIndex,
+    SetSliceIndex,
+    DeleteSliceIndex,
 }
 
 impl Compiler<'_> {

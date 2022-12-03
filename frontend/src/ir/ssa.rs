@@ -407,7 +407,7 @@ impl Converter<'_, '_> {
                 analysis::typecheck::BuiltinType::Float => Type::Float,
                 analysis::typecheck::BuiltinType::Double => Type::Double,
                 analysis::typecheck::BuiltinType::Text => Type::TextReference,
-                analysis::typecheck::BuiltinType::List(ty) => {
+                analysis::typecheck::BuiltinType::Slice(ty) => {
                     Type::ListReference(Box::new(self.convert_type(ty)))
                 }
                 analysis::typecheck::BuiltinType::Mutable(ty) => {

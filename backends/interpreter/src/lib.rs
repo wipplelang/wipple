@@ -40,11 +40,11 @@ enum Value {
     Double(f64),
     Text(Rc<str>),
     Function(Scope, usize),
-    Variant(usize, Vec<Value>),
+    Variant(usize, Rc<[Value]>),
     Mutable(Rc<RefCell<Value>>),
-    List(im::Vector<Value>),
-    Structure(Vec<Value>),
-    Tuple(Vec<Value>),
+    Slice(Rc<[RefCell<Option<Value>>]>),
+    Structure(Rc<[Value]>),
+    Tuple(Rc<[Value]>),
 }
 
 #[derive(Debug, Clone, Default)]
@@ -243,15 +243,15 @@ impl<'a> Interpreter<'a> {
                         }
                         ir::Expression::Tuple(inputs) => {
                             let inputs = stack.popn(*inputs);
-                            stack.push(Value::Tuple(inputs));
+                            stack.push(Value::Tuple(inputs.into()));
                         }
                         ir::Expression::Structure(inputs) => {
                             let inputs = stack.popn(*inputs);
-                            stack.push(Value::Structure(inputs));
+                            stack.push(Value::Structure(inputs.into()));
                         }
                         ir::Expression::Variant(discriminant, inputs) => {
                             let inputs = stack.popn(*inputs);
-                            stack.push(Value::Variant(*discriminant, inputs));
+                            stack.push(Value::Variant(*discriminant, inputs.into()));
                         }
                         ir::Expression::TupleElement(index) => {
                             let tuple = match stack.pop() {

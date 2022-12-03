@@ -2215,7 +2215,6 @@ dependencies = [
 name = "wipple-interpreter-backend"
 version = "0.0.0"
 dependencies = [
- "im",
  "itertools",
  "num-traits",
  "rust_decimal",

@@ -11,6 +11,10 @@ crash : message -> external "runtime" "crash" message
 ... :: !
 ... : crash "not yet implemented"
 
+[help "Indicates unreachable code. Crashes the program upon evaluation."]
+unreachable :: !
+unreachable : crash "unreachable"
+
 [help "Represents the presence or absence of a value."]
 Maybe : Value => type {
 	None
