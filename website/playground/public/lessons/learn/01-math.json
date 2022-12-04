@@ -48,10 +48,10 @@
     ],
     "previous": {
         "name": "The Wipple Playground",
-        "link": "/?lesson=learn/00-the-wipple-playground"
+        "link": "?lesson=learn/00-the-wipple-playground"
     },
     "next": {
         "name": "Variables",
-        "link": "/?lesson=learn/02-variables"
+        "link": "?lesson=learn/02-variables"
     }
 }

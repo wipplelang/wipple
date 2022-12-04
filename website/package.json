@@ -1,0 +1,19 @@
+{
+    "private": true,
+    "scripts": {
+        "postinstall": "(cd playground && npm i)",
+        "dev": "concurrently 'eleventy --serve' 'watch \"npm run tailwind:process\" ./home'",
+        "build": "eleventy && npm run tailwind:process && (cd guide && mdbook build) && (rm -rf _site/playground && cd playground && scripts/build.sh && mv out ../_site/playground)",
+        "tailwind:process": "npx postcss ./home/styles/global.css -o ./_site/styles/global.css"
+    },
+    "devDependencies": {
+        "@11ty/eleventy": "^1.0.1",
+        "@11ty/eleventy-plugin-syntaxhighlight": "^4.1.0",
+        "@tailwindcss/typography": "^0.5.4",
+        "autoprefixer": "^10.4.8",
+        "concurrently": "^7.3.0",
+        "postcss-cli": "^10.0.0",
+        "tailwindcss": "^3.1.7",
+        "watch": "^1.0.2"
+    }
+}

@@ -44,10 +44,10 @@
     ],
     "previous": {
         "name": "Functions",
-        "link": "/?lesson=learn/05-functions"
+        "link": "?lesson=learn/05-functions"
     },
     "next": {
         "name": "Type functions",
-        "link": "/?lesson=learn/07-type-functions"
+        "link": "?lesson=learn/07-type-functions"
     }
 }

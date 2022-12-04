@@ -44,10 +44,10 @@
     ],
     "previous": {
         "name": "Types",
-        "link": "/?lesson=learn/06-types"
+        "link": "?lesson=learn/06-types"
     },
     "next": {
         "name": "Structures",
-        "link": "/?lesson=learn/08-structures"
+        "link": "?lesson=learn/08-structures"
     }
 }

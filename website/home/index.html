@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+        <title>The Wipple Programming Language</title>
+
+        <meta
+            name="description"
+            content="Wipple is a programming language that’s natural to read, write and learn."
+        />
+
+        <link rel="icon" href="/images/favicon.ico" />
+
+        <link rel="stylesheet" href="/styles/global.css" />
+        <link rel="stylesheet" href="/styles/prism.css" />
+
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link
+            rel="stylesheet"
+            href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=JetBrains+Mono:ital@0;1&display=swap"
+        />
+    </head>
+    <body>
+        <section
+            style="
+                background: url(/images/background.svg);
+                background-size: cover;
+                background-position: 50%;
+            "
+        >
+            <div class="container max-w-6xl mx-auto">
+                <div class="flex flex-col items-start gap-4 p-10 md:p-20">
+                    <img src="/images/logo.svg" alt="Wipple logo" />
+
+                    <h1
+                        class="text-3xl md:text-5xl leading-tight md:leading-tight font-bold text-white"
+                    >
+                        Wipple is a programming language that’s natural to read, write and learn.
+                    </h1>
+
+                    <a target="_blank" href="/playground" class="btn btn-white">Start coding now -></a>
+                </div>
+            </div>
+        </section>
+
+        <section class="container max-w-6xl mx-auto">
+            <div class="example">
+                <div class="example-text">
+                    <h2>Natural syntax</h2>
+
+                    <p>
+                        Wipple’s syntax was designed with just a few rules and balances punctuation
+                        with English words, making it a great first programming language. Instead of
+                        sticking with conventional names like <code>print</code>, Wipple uses more
+                        intuitive names like <code>show</code>.
+                    </p>
+                </div>
+
+                <div class="example-code">
+                    {% highlight "wipple" %}
+greet : name -> format "Hello, _!" name
+show (greet "world") -- Hello, world!
+                    {% endhighlight %}
+                </div>
+            </div>
+
+            <div class="example">
+                <div class="example-text">
+                    <h2>Type system</h2>
+
+                    <p>
+                        Wipple has a powerful type system that checks your mistakes to prevent
+                        crashes at runtime. You can document a function’s behavior using a type
+                        annotation, or let Wipple figure out the types for you. And you can use
+                        traits to extend existing code with new behavior.
+                    </p>
+                </div>
+
+                <div class="example-code">
+                    {% highlight "wipple" %}
+Person : type {
+    name :: Text
+    age :: Number
+}
+
+instance Show Person : { name age } ->
+    format "_ is _ years old" name age
+
+bob : Person {
+    name : "Bob"
+    age : 30
+}
+
+show bob -- Bob is 30 years old
+                    {% endhighlight %}
+                </div>
+            </div>
+
+            <div class="example">
+                <div class="example-text">
+                    <h2>Pattern matching</h2>
+
+                    <p>
+                        Instead of using <code>if</code>, Wipple’s <code>when</code> expression
+                        enables you to check complex conditions with ease. Before your code even
+                        runs, Wipple ensures that it handles all possible conditions — no surprises
+                        in production.
+                    </p>
+                </div>
+
+                <div class="example-code">
+                    {% highlight "wipple" %}
+report-card :: Grade -> Text
+report-card : grade -> when grade {
+    A -> "top of the class"
+    B -> "good job"
+    C -> "need to study"
+    D or F -> "didn't pass"
+}
+                    {% endhighlight %}
+                </div>
+            </div>
+        </section>
+
+        <section class="container max-w-3xl mx-auto px-10 pt-10 pb-24 md:px-20 text-center">
+            <div class="mt-14">
+                <h2 class="text-2xl font-bold mb-2">No setup required</h2>
+
+                <p>Start coding right now in the Wipple Playground. Works on any device.</p>
+
+                <div class="mt-6">
+                    <a href="/playground" target="_blank" class="btn btn-blue">Get started -></a>
+                </div>
+            </div>
+
+            <div class="mt-14">
+                <h2 class="text-2xl font-bold mb-2">Coming from another language?</h2>
+
+                <p>The Wipple Guide has tutorials for experienced programmers coming from languages like JavaScript and Python.</p>
+
+                <div class="mt-6">
+                    <a href="/guide" target="_blank" class="btn btn-blue">Read the guide -></a>
+                </div>
+            </div>
+
+            <div class="mt-14">
+                <h2 class="text-2xl font-bold mb-2">Help make Wipple better</h2>
+
+                <p>Wipple is open-source on GitHub. Contributions are welcomed!</p>
+
+                <div class="mt-6">
+                    <a href="https://github.com/wipplelang/wipple" target="_blank" class="btn btn-blue">Contribute -></a>
+                </div>
+            </div>
+        </section>
+
+        <section class="mb-8 text-secondary text-center">
+            Made by
+            <strong>
+                <a href="https://gramer.dev" style="text-decoration: none">Wilson Gramer</a>
+            </strong>
+        </section>
+    </body>
+</html>

@@ -52,10 +52,10 @@
     ],
     "previous": {
         "name": "So how does Wipple actually work?",
-        "link": "/?lesson=learn/04-so-how-does-wipple-actually-work"
+        "link": "?lesson=learn/04-so-how-does-wipple-actually-work"
     },
     "next": {
         "name": "Types",
-        "link": "/?lesson=learn/06-types"
+        "link": "?lesson=learn/06-types"
     }
 }

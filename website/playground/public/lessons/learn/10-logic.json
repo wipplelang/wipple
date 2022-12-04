@@ -28,10 +28,10 @@
     ],
     "previous": {
         "name": "Traits",
-        "link": "/?lesson=learn/09-traits"
+        "link": "?lesson=learn/09-traits"
     },
     "next": {
         "name": "Enumerations and pattern matching",
-        "link": "/?lesson=learn/11-enumerations-and-pattern-matching"
+        "link": "?lesson=learn/11-enumerations-and-pattern-matching"
     }
 }

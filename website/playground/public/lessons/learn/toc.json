@@ -3,7 +3,7 @@
         {
             "id": "o8l_95Dk",
             "type": "text",
-            "value": "# Learn Wipple\n\n- [The Wipple Playground](/?lesson=learn/00-the-wipple-playground)\n- [Math](/?lesson=learn/01-math)\n- [Variables](/?lesson=learn/02-variables)\n- [Text](/?lesson=learn/03-text)\n- [So how does Wipple actually work?](/?lesson=learn/04-so-how-does-wipple-actually-work)\n- [Functions](/?lesson=learn/05-functions)\n- [Types](/?lesson=learn/06-types)\n- [Type functions](?lesson=learn/07-type-functions)\n- [Structures](?lesson=learn/08-structures)\n- [Traits](?lesson=learn/09-traits)\n- [Logic](?lesson=learn/10-logic)\n- [Enumerations and pattern matching](?lesson=learn/11-enumerations-and-pattern-matching)\n- [`Maybe` and `Result`](?lesson=learn/12-maybe-and-result)\n- [Tuples](?lesson=learn/13-tuples)\n- [Working with lists](?lesson=learn/14-working-with-lists)"
+            "value": "# Learn Wipple\n\n- [The Wipple Playground](?lesson=learn/00-the-wipple-playground)\n- [Math](?lesson=learn/01-math)\n- [Variables](?lesson=learn/02-variables)\n- [Text](?lesson=learn/03-text)\n- [So how does Wipple actually work?](?lesson=learn/04-so-how-does-wipple-actually-work)\n- [Functions](?lesson=learn/05-functions)\n- [Types](?lesson=learn/06-types)\n- [Type functions](?lesson=learn/07-type-functions)\n- [Structures](?lesson=learn/08-structures)\n- [Traits](?lesson=learn/09-traits)\n- [Logic](?lesson=learn/10-logic)\n- [Enumerations and pattern matching](?lesson=learn/11-enumerations-and-pattern-matching)\n- [`Maybe` and `Result`](?lesson=learn/12-maybe-and-result)\n- [Tuples](?lesson=learn/13-tuples)\n- [Working with lists](?lesson=learn/14-working-with-lists)"
         }
     ]
 }

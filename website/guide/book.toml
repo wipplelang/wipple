@@ -5,7 +5,11 @@ multilingual = false
 src = "src"
 title = "The Wipple Guide"
 
+[build]
+build-dir = "../_site/guide"
+
 [output.html]
+site-url = "/guide/"
 no-section-label = true
 copy-fonts = false
 curly-quotes = true

@@ -68,10 +68,10 @@
     ],
     "previous": {
         "name": "Traits",
-        "link": "/?lesson=learn/10-logic"
+        "link": "?lesson=learn/10-logic"
     },
     "next": {
         "name": "Maybe and Result",
-        "link": "/?lesson=learn/12-maybe-and-result"
+        "link": "?lesson=learn/12-maybe-and-result"
     }
 }

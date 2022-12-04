@@ -48,10 +48,10 @@
     ],
     "previous": {
         "name": "Math",
-        "link": "/?lesson=learn/01-math"
+        "link": "?lesson=learn/01-math"
     },
     "next": {
         "name": "Text",
-        "link": "/?lesson=learn/03-text"
+        "link": "?lesson=learn/03-text"
     }
 }
