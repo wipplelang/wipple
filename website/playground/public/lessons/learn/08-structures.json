@@ -28,10 +28,10 @@
     ],
     "previous": {
         "name": "Type functions",
-        "link": "/?lesson=learn/07-type-functions"
+        "link": "?lesson=learn/07-type-functions"
     },
     "next": {
         "name": "Traits",
-        "link": "/?lesson=learn/09-traits"
+        "link": "?lesson=learn/09-traits"
     }
 }

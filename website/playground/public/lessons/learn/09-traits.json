@@ -54,10 +54,10 @@
     ],
     "previous": {
         "name": "Structures",
-        "link": "/?lesson=learn/08-structures"
+        "link": "?lesson=learn/08-structures"
     },
     "next": {
         "name": "Logic",
-        "link": "/?lesson=learn/10-logic"
+        "link": "?lesson=learn/10-logic"
     }
 }

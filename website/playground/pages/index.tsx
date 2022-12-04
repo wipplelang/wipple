@@ -82,7 +82,7 @@ const App: NextPage = () => {
 
         const lessonParam = query.get("lesson");
         if (lessonParam) {
-            const data = await (await fetch(`/lessons/${lessonParam}.json`)).text();
+            const data = await (await fetch(`./lessons/${lessonParam}.json`)).text();
 
             const lesson: {
                 sections: Section[];
@@ -128,6 +128,8 @@ const App: NextPage = () => {
             <Head>
                 <title>Wipple Playground</title>
 
+                <link rel="icon" href="/images/favicon.ico" />
+
                 <link rel="preconnect" href="https://fonts.googleapis.com" />
                 <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="crossorigin" />
                 <link
@@ -145,15 +147,15 @@ const App: NextPage = () => {
 
             <div className="mx-auto p-6 max-w-4xl">
                 <div className="flex items-center justify-between pb-4">
-                    <a href="/" className="flex items-center gap-3 text-black dark:text-white">
+                    <a href="/playground" className="flex items-center gap-3 text-black dark:text-white">
                         <img src="/images/logo.svg" alt="Wipple Playground" className="h-10" />
                         <h1 className="font-semibold">Wipple Playground</h1>
                     </a>
 
                     <div className="flex gap-4 text-gray-500 dark:text-gray-400">
-                        <a href="/?lesson=learn/toc">Learn</a>
+                        <a href="?lesson=learn/toc">Learn</a>
 
-                        <a target="_blank" href="https://guide.wipple.gramer.dev">
+                        <a target="_blank" href="/guide">
                             Guide
                         </a>
 

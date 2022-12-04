@@ -1,0 +1,75 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    scroll-behavior: smooth;
+}
+
+body {
+    font-family: Inter, sans-serif;
+    @apply bg-white dark:bg-gray-900 text-black dark:text-white;
+}
+
+main {
+    @apply max-w-4xl mx-auto px-4;
+}
+
+a {
+    @apply underline underline-offset-1 decoration-2 decoration-sky-500;
+}
+
+code {
+    font-family: "JetBrains Mono", monospace;
+}
+
+code:not(pre code) {
+    @apply bg-gray-50 dark:bg-gray-800 px-1.5 py-0.5 rounded-md;
+}
+
+pre {
+    @apply bg-gray-50 p-4 overflow-x-scroll;
+}
+
+pre code {
+    @apply block m-4;
+}
+
+.btn {
+    @apply font-bold py-2 px-4 rounded;
+    text-decoration: none;
+}
+
+.btn.btn-white {
+    @apply bg-white text-black;
+}
+
+.btn.btn-blue {
+    @apply bg-sky-500 text-white;
+}
+
+.example {
+    @apply px-10 md:px-20 pt-12 flex flex-col md:flex-row md:items-start;
+}
+
+.example .example-text {
+    @apply md:w-2/5;
+}
+
+.example .example-text h2 {
+    @apply text-2xl font-bold mb-2;
+}
+
+.example .example-code {
+    @apply md:w-3/5;
+}
+
+.example .example-code {
+    @apply mt-8 md:mt-0 md:ml-8 border-2 border-gray-100 dark:border-gray-800 rounded-lg shadow-lg;
+}
+
+.example .example-code pre {
+    @apply bg-transparent;
+}

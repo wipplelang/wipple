@@ -1,0 +1,69 @@
+pre[class*="language-"] {
+    color: #24292e;
+}
+
+pre[class*="language-"] .token.string {
+    color: #032f62;
+}
+
+pre[class*="language-"] .token.comment {
+    color: #6a737d;
+}
+
+pre[class*="language-"] .token.keyword {
+    color: #d73a49;
+}
+
+pre[class*="language-"] .token.class-name {
+    color: #6f42c1;
+}
+
+pre[class*="language-"] .token.operator {
+    color: #005cc5;
+}
+
+pre[class*="language-"] .token.function {
+    color: #6f42c1;
+}
+
+pre[class*="language-"] .token.number {
+    color: #005cc5;
+}
+
+pre[class*="language-"] .token.punctuation {
+    color: #24292e;
+}
+
+@media (prefers-color-scheme: dark) {
+    pre[class*="language-"] {
+        color: #e1e4e8;
+    }
+
+    pre[class*="language-"] .token.string {
+        color: #9ecbff;
+    }
+
+    pre[class*="language-"] .token.comment {
+        color: #6a737d;
+    }
+
+    pre[class*="language-"] .token.keyword {
+        color: #f97583;
+    }
+
+    pre[class*="language-"] .token.class-name {
+        color: #a473ff;
+    }
+
+    pre[class*="language-"] .token.operator {
+        color: #79b8ff;
+    }
+
+    pre[class*="language-"] .token.number {
+        color: #79b8ff;
+    }
+
+    pre[class*="language-"] .token.punctuation {
+        color: #e1e4e8;
+    }
+}

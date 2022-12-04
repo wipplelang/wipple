@@ -18,10 +18,10 @@
     ],
     "previous": {
         "name": "Text",
-        "link": "/?lesson=learn/03-text"
+        "link": "?lesson=learn/03-text"
     },
     "next": {
         "name": "Functions",
-        "link": "/?lesson=learn/05-functions"
+        "link": "?lesson=learn/05-functions"
     }
 }

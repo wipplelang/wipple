@@ -73,10 +73,10 @@
     ],
     "previous": {
         "name": "Enumerations and pattern matching",
-        "link": "/?lesson=learn/11-enumerations-and-pattern-matching"
+        "link": "?lesson=learn/11-enumerations-and-pattern-matching"
     },
     "next": {
         "name": "Tuples",
-        "link": "/?lesson=learn/13-tuples"
+        "link": "?lesson=learn/13-tuples"
     }
 }

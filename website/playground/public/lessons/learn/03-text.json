@@ -19,10 +19,10 @@
     ],
     "previous": {
         "name": "Variables",
-        "link": "/?lesson=learn/02-variables"
+        "link": "?lesson=learn/02-variables"
     },
     "next": {
         "name": "So how does Wipple actually work?",
-        "link": "/?lesson=learn/04-so-how-does-wipple-actually-work"
+        "link": "?lesson=learn/04-so-how-does-wipple-actually-work"
     }
 }

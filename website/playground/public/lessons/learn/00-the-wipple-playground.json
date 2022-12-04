@@ -18,6 +18,6 @@
     ],
     "next": {
         "name": "Math",
-        "link": "/?lesson=learn/01-math"
+        "link": "?lesson=learn/01-math"
     }
 }

@@ -28,10 +28,10 @@
     ],
     "previous": {
         "name": "Maybe and Result",
-        "link": "/?lesson=learn/12-maybe-and-result"
+        "link": "?lesson=learn/12-maybe-and-result"
     },
     "next": {
         "name": "Working with lists",
-        "link": "/?lesson=learn/14-working-with-lists"
+        "link": "?lesson=learn/14-working-with-lists"
     }
 }
