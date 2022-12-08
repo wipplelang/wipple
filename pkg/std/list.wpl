@@ -173,7 +173,3 @@ remove : index -> list -> ...
 [help "Remove the item at a particular index inside a `Mutable List`."]
 remove! :: A => Natural -> Mutable (List A) -> Result () Index-Error
 remove! : index -> list -> ...
-
-use "./output.wpl"
-x : list (1 , 2 , 3)
-show (x . nth 0)
