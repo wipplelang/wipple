@@ -12,7 +12,7 @@ show "Hello, world!"
 
 Notice that there's no semicolons in Wipple code — just put each statement on its own line.
 
-#### Comments, numbers and strings
+## Comments, numbers and strings
 
 You can write a comment using `--`. Wipple only has line comments:
 
@@ -71,7 +71,7 @@ show (if valid? "Access granted" "Access denied") -- Access denied
 
 ## Basic types
 
-Wipple is a strongly-typed language, which means that your code is verified at compile-time. Luckily, Wipple has type inference, so you usually don't need to think about types at all! You can use `::` to annotate the type of a value.
+Wipple is a statically-typed language, which means that your code is verified at compile-time. Luckily, Wipple has type inference, so you usually don't need to think about types at all! You can use `::` to annotate the type of a value.
 
 ```wipple
 42 :: Number
@@ -139,7 +139,7 @@ Wipple doesn't allow you to add methods to an object (although you can store fun
 
 ```wipple
 greet :: Person -> Text
-greet : { name } -> format ("Hello, _!") name
+greet : { name } -> format "Hello, _!" name
 
 greet bob -- Hello, Bob!
 ```

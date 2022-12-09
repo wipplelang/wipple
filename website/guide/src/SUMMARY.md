@@ -5,6 +5,8 @@
 # Quick Start
 
 -   [For JavaScript developers](01-quick-start/00-for-javascript-developers.md)
+-   [For Python developers](01-quick-start/01-for-python-developers.md)
+-   [For Java developers](01-quick-start/02-for-java-developers.md)
 
 # Advanced Wipple
 
