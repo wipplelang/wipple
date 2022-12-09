@@ -7,6 +7,7 @@ module.exports = (eleventy) => {
         },
     });
 
+    eleventy.addPassthroughCopy("home/robots.txt");
     eleventy.addPassthroughCopy("home/styles/prism.css");
 
     return {
