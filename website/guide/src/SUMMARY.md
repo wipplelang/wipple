@@ -7,6 +7,7 @@
 -   [For JavaScript developers](01-quick-start/00-for-javascript-developers.md)
 -   [For Python developers](01-quick-start/01-for-python-developers.md)
 -   [For Java developers](01-quick-start/02-for-java-developers.md)
+-   [For Rust developers](01-quick-start/03-for-rust-developers.md)
 
 # Advanced Wipple
 
