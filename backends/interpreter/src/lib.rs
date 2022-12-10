@@ -74,23 +74,47 @@ struct Info {
 }
 
 #[derive(Debug, Default)]
-struct Stack(Vec<Value>);
+struct Stack(Vec<Vec<Value>>);
 
 impl Stack {
     fn new() -> Self {
-        Stack(Vec::new())
+        Stack(vec![Vec::new()])
+    }
+
+    fn current_frame(&self) -> &[Value] {
+        self.0.last().unwrap()
+    }
+
+    fn current_frame_mut(&mut self) -> &mut Vec<Value> {
+        self.0.last_mut().unwrap()
+    }
+
+    fn push_frame(&mut self) {
+        self.0.push(Vec::new());
+    }
+
+    fn pop_frame(&mut self) {
+        let value = self
+            .0
+            .pop()
+            .expect("stack is empty")
+            .pop()
+            .expect("stack is empty");
+
+        self.push(value);
     }
 
     fn push(&mut self, value: Value) {
-        self.0.push(value);
+        self.current_frame_mut().push(value);
     }
 
     fn copy(&mut self) {
-        self.push(self.0.last().expect("stack is empty").clone());
+        let value = self.current_frame().last().expect("stack is empty").clone();
+        self.current_frame_mut().push(value);
     }
 
     fn pop(&mut self) -> Value {
-        self.0.pop().expect("stack is empty")
+        self.current_frame_mut().pop().expect("stack is empty")
     }
 
     fn popn(&mut self, n: usize) -> Vec<Value> {
@@ -104,7 +128,7 @@ impl Stack {
     }
 
     fn is_empty(&self) -> bool {
-        self.0.is_empty()
+        self.current_frame().is_empty()
     }
 }
 
@@ -182,6 +206,12 @@ impl<'a> Interpreter<'a> {
                     }
                     ir::Statement::Drop => {
                         stack.pop();
+                    }
+                    ir::Statement::PushFrame => {
+                        stack.push_frame();
+                    }
+                    ir::Statement::PopFrame => {
+                        stack.pop_frame();
                     }
                     ir::Statement::Initialize(var) => {
                         scope.set(*var, stack.pop());

@@ -250,6 +250,7 @@ pub enum ExpressionKind {
     Text(InternedString),
     Number(InternedString),
     Block(Vec<Expression>),
+    End(Box<Expression>),
     Call(Box<Expression>, Box<Expression>),
     Function(Pattern, Box<Expression>, CaptureList),
     When(Box<Expression>, Vec<Arm>),
@@ -1427,6 +1428,9 @@ impl Compiler<'_> {
                 let scope = scope.child();
                 let block = self.lower_block(expr.span, statements, &scope, info);
                 ExpressionKind::Block(block)
+            }
+            ast::ExpressionKind::End(value) => {
+                ExpressionKind::End(Box::new(self.lower_expr(*value, scope, info)))
             }
             ast::ExpressionKind::Call(function, inputs) => match &function.kind {
                 ast::ExpressionKind::Name(ty_name) => {

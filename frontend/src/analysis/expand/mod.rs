@@ -96,6 +96,7 @@ pub enum NodeKind {
     When(Box<Node>, Vec<Statement>),
     Or(Box<Node>, Box<Node>),
     Tuple(Vec<Node>),
+    End(Box<Node>),
 }
 
 #[derive(Debug, Clone)]

@@ -449,6 +449,7 @@ mod util {
                 ExpressionKind::Block(exprs) => {
                     exprs.iter().all(|expr| expr.is_pure(program, stack))
                 }
+                ExpressionKind::End(expr) => expr.is_pure(program, stack),
                 ExpressionKind::Call(func, input) => {
                     func.is_pure(program, stack) && input.is_pure(program, stack)
                 }
@@ -479,53 +480,6 @@ mod util {
                     is_pure
                 }
             }
-        }
-
-        pub fn format_tree(&self) -> String {
-            let mut s = String::new();
-
-            self.traverse_with(0, |expr, indent| {
-                use std::fmt::Write;
-
-                for _ in 0..*indent {
-                    s.push('\t');
-                }
-
-                match expr.kind {
-                    ExpressionKind::Marker => write!(s, "Marker"),
-                    ExpressionKind::Variable(v) => write!(s, "Variable {}#{}", v.file, v.counter),
-                    ExpressionKind::Text(_) => write!(s, "Text"),
-                    ExpressionKind::Block(_) => write!(s, "Block"),
-                    ExpressionKind::Call(_, _) => write!(s, "Call"),
-                    ExpressionKind::Function(_, _, _) => write!(s, "Function"),
-                    ExpressionKind::When(_, _) => write!(s, "When"),
-                    ExpressionKind::External(_, _, _) => write!(s, "External"),
-                    ExpressionKind::Runtime(_, _) => write!(s, "Runtime"),
-                    ExpressionKind::Initialize(_, _) => write!(s, "Initialize"),
-                    ExpressionKind::Structure(_) => write!(s, "Structure"),
-                    ExpressionKind::Variant(_, _) => write!(s, "Variant"),
-                    ExpressionKind::Tuple(_) => write!(s, "Tuple"),
-                    ExpressionKind::Number(_) => write!(s, "Number"),
-                    ExpressionKind::Integer(_) => write!(s, "Integer"),
-                    ExpressionKind::Natural(_) => write!(s, "Natural"),
-                    ExpressionKind::Byte(_) => write!(s, "Byte"),
-                    ExpressionKind::Signed(_) => write!(s, "Signed"),
-                    ExpressionKind::Unsigned(_) => write!(s, "Unsigned"),
-                    ExpressionKind::Float(_) => write!(s, "Float"),
-                    ExpressionKind::Double(_) => write!(s, "Double"),
-                    ExpressionKind::Constant(c) => write!(s, "Constant {}#{}", c.file, c.counter),
-                    ExpressionKind::ExpandedConstant(c) => {
-                        write!(s, "ExpandedConstant {}#{}", c.file, c.counter)
-                    }
-                }
-                .unwrap();
-
-                s.push('\n');
-
-                *indent += 1;
-            });
-
-            s
         }
     }
 

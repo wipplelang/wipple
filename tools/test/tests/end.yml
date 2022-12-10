@@ -1,0 +1,12 @@
+code: |
+    f : x -> {
+      end x
+      x + 1
+    }
+
+    show (f 1)
+
+output: |
+    1
+
+diagnostics: |

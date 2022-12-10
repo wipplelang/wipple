@@ -38,6 +38,8 @@ impl std::fmt::Display for Statement {
         match self {
             Statement::Copy => write!(f, "copy"),
             Statement::Drop => write!(f, "drop"),
+            Statement::PushFrame => write!(f, "push frame"),
+            Statement::PopFrame => write!(f, "pop frame"),
             Statement::Initialize(var) => write!(f, "initialize ${}", var),
             Statement::Free(var) => write!(f, "free ${}", var),
             Statement::Unpack(captures) => write!(f, "unpack {}", captures),

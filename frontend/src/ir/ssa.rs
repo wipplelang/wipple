@@ -54,6 +54,7 @@ pub enum ExpressionKind {
     Variable(VariableId),
     Text(InternedString),
     Block(Vec<Expression>),
+    End(Box<Expression>),
     Call(Box<Expression>, Box<Expression>),
     Function(Pattern, Box<Expression>, analysis::lower::CaptureList),
     When(Box<Expression>, Vec<Arm>),
@@ -179,6 +180,9 @@ impl Converter<'_, '_> {
                 analysis::ExpressionKind::Text(text) => ExpressionKind::Text(*text),
                 analysis::ExpressionKind::Block(exprs) => {
                     ExpressionKind::Block(self.convert_block(exprs, tail))
+                }
+                analysis::ExpressionKind::End(value) => {
+                    ExpressionKind::End(Box::new(self.convert_expr(value, tail)))
                 }
                 analysis::ExpressionKind::Call(func, input) => ExpressionKind::Call(
                     Box::new(self.convert_expr(func, false)),

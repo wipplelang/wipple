@@ -203,6 +203,7 @@ macro_rules! expr {
                 Variable(VariableId),
                 Text(InternedString),
                 Block(Vec<[<$prefix Expression>]>),
+                End(Box<[<$prefix Expression>]>),
                 Call(Box<[<$prefix Expression>]>, Box<[<$prefix Expression>]>),
                 Function([<$prefix Pattern>], Box<[<$prefix Expression>]>, lower::CaptureList),
                 When(Box<[<$prefix Expression>]>, Vec<[<$prefix Arm>]>),
@@ -371,6 +372,7 @@ struct Typechecker<'a, 'l> {
     declarations: RefCell<DeclarationsInner>,
     exported: Option<lower::ScopeValues>,
     scopes: RefCell<Vec<(Span, lower::ScopeValues)>>,
+    block_end: Option<Option<(Span, engine::UnresolvedType)>>,
     instances: im::HashMap<TraitId, BTreeSet<ConstantId>>,
     generic_constants: im::HashMap<ConstantId, (bool, lower::Expression)>,
     item_queue: im::Vector<QueuedItem>,
@@ -406,6 +408,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
             declarations: Default::default(),
             exported: None,
             scopes: Default::default(),
+            block_end: None,
             instances: Default::default(),
             generic_constants: Default::default(),
             item_queue: Default::default(),
@@ -830,20 +833,58 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                 kind: UnresolvedExpressionKind::Number(number),
             },
             lower::ExpressionKind::Block(statements) => {
+                let prev_block_end = mem::replace(&mut self.block_end, Some(None));
+
                 let statements = statements
                     .into_iter()
                     .map(|statement| self.convert_expr(statement, info))
                     .collect::<Vec<_>>();
 
-                let ty = statements
+                let mut ty = statements
                     .last()
                     .map(|statement| statement.ty.clone())
                     .unwrap_or_else(|| engine::UnresolvedType::Tuple(Vec::new()));
+
+                if let Some((end_span, end_ty)) =
+                    mem::replace(&mut self.block_end, prev_block_end).unwrap()
+                {
+                    if let Err(error) = self.unify(end_span, end_ty.clone(), ty) {
+                        self.add_error(error);
+                    }
+
+                    ty = end_ty;
+                }
 
                 UnresolvedExpression {
                     span: expr.span,
                     ty,
                     kind: UnresolvedExpressionKind::Block(statements),
+                }
+            }
+            lower::ExpressionKind::End(value) => {
+                let value = self.convert_expr(*value, info);
+
+                match self.block_end {
+                    Some(Some((_, ref existing_end_ty))) => {
+                        if let Err(error) =
+                            self.unify(value.span, value.ty.clone(), existing_end_ty.clone())
+                        {
+                            self.add_error(error);
+                        }
+                    }
+                    Some(ref mut end @ None) => *end = Some((value.span, value.ty.clone())),
+                    None => {
+                        self.compiler.diagnostics.add(Diagnostic::error(
+                            "`end` outside block",
+                            vec![Note::primary(expr.span, "cannot use `end` here")],
+                        ));
+                    }
+                }
+
+                UnresolvedExpression {
+                    span: expr.span,
+                    ty: engine::UnresolvedType::Bottom(BottomTypeReason::Annotated),
+                    kind: UnresolvedExpressionKind::End(Box::new(value)),
                 }
             }
             lower::ExpressionKind::Call(function, input) => {
@@ -877,7 +918,10 @@ impl<'a, 'l> Typechecker<'a, 'l> {
             lower::ExpressionKind::Function(pattern, body, captures) => {
                 let input_ty = engine::UnresolvedType::Variable(self.ctx.new_variable());
                 let pattern = self.convert_pattern(pattern, input_ty.clone(), info);
+
+                let prev_block_end = mem::replace(&mut self.block_end, None);
                 let body = self.convert_expr(*body, info);
+                self.block_end = prev_block_end;
 
                 UnresolvedExpression {
                     span: expr.span,
@@ -1379,6 +1423,9 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                         .map(|expr| self.monomorphize_expr(expr, info))
                         .collect(),
                 ),
+                UnresolvedExpressionKind::End(value) => {
+                    MonomorphizedExpressionKind::End(Box::new(self.monomorphize_expr(*value, info)))
+                }
                 UnresolvedExpressionKind::Call(func, input) => {
                     let func = *func;
                     let input = *input;
@@ -2177,6 +2224,9 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                     .map(|expr| self.finalize_expr(expr))
                     .collect::<Option<_>>()?,
             ),
+            MonomorphizedExpressionKind::End(value) => {
+                ExpressionKind::End(Box::new(self.finalize_expr(*value)?))
+            }
             MonomorphizedExpressionKind::Call(func, input) => ExpressionKind::Call(
                 Box::new(self.finalize_expr(*func)?),
                 Box::new(self.finalize_expr(*input)?),
@@ -3239,6 +3289,10 @@ impl<'a, 'l> Typechecker<'a, 'l> {
     }
 
     pub fn report_errors(&mut self) {
+        if self.compiler.diagnostics.contains_errors() {
+            return;
+        }
+
         let (unresolved_type_errors, other_errors): (Vec<_>, Vec<_>) = mem::take(&mut self.errors)
             .into_iter()
             .partition(|e| matches!(e.error, engine::TypeError::UnresolvedType));

@@ -1,0 +1,11 @@
+code: |
+    f : x -> end x
+
+output: |
+
+diagnostics: |
+    error: `end` outside block
+      ┌─ test:1:10
+      │
+    1 │ f : x -> end x
+      │          ^^^^^ cannot use `end` here

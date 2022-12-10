@@ -47,6 +47,8 @@ pub struct BasicBlock {
 pub enum Statement {
     Copy,
     Drop,
+    PushFrame,
+    PopFrame,
     Initialize(usize),
     Free(usize),
     Unpack(CaptureList),
@@ -258,6 +260,7 @@ impl IrGen {
                     ));
                 } else {
                     self.scopes.push(Vec::new());
+                    self.statements_for(label, *pos).push(Statement::PushFrame);
 
                     let mut drop_statement = None::<Statement>;
                     for (index, expr) in exprs.into_iter().enumerate() {
@@ -271,11 +274,13 @@ impl IrGen {
                         self.gen_expr(expr, label, pos);
                     }
 
-                    for var in self.scopes.pop().unwrap().into_iter().rev() {
-                        let var = self.variable_for(label, var);
-                        self.statements_for(label, *pos).push(Statement::Free(var));
-                    }
+                    self.gen_end(label, pos);
+                    self.scopes.pop().unwrap();
                 }
+            }
+            ssa::ExpressionKind::End(value) => {
+                self.gen_expr(*value, label, pos);
+                self.gen_end(label, pos);
             }
             ssa::ExpressionKind::Call(function, input) => {
                 self.gen_expr(*function, label, pos);
@@ -423,6 +428,17 @@ impl IrGen {
                     .push(Statement::Expression(expr.ty, Expression::Constant(id)));
             }
         }
+    }
+
+    fn gen_end(&mut self, label: usize, pos: &mut usize) {
+        for var in self.scopes.last().unwrap().clone().into_iter().rev() {
+            let var = self.variable_for(label, var);
+            self.statements_for(label, *pos).push(Statement::Free(var));
+        }
+
+        self.statements_for(label, *pos).push(Statement::PopFrame);
+
+        *pos = self.new_basic_block(label);
     }
 
     fn gen_when(

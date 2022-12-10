@@ -35,7 +35,7 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
         TemplateDeclaration::new(
             ":",
             Span::builtin("`:` operator"),
-            Template::function(move |expander, span, mut inputs, _, _, scope| {
+            Template::function(|expander, span, mut inputs, _, _, scope| {
                 Box::pin(async move {
                     let rhs = inputs.pop().unwrap();
                     let lhs = inputs.pop().unwrap();
@@ -57,7 +57,7 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
                                 }
                             };
 
-                            let id = expander.compiler.new_template_id(file);
+                            let id = expander.compiler.new_template_id(span.path);
 
                             expander.declarations.lock().templates.insert(
                                 id,
@@ -91,7 +91,7 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
                                 }
                             };
 
-                            let id = expander.compiler.new_template_id(file);
+                            let id = expander.compiler.new_template_id(span.path);
 
                             expander.declarations.lock().templates.insert(
                                 id,
@@ -772,7 +772,7 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
         TemplateDeclaration::new(
             "format",
             Span::builtin("`format` template"),
-            Template::function(move |expander, span, inputs, _, _, _| Box::pin(async move {
+            Template::function(|expander, span, inputs, _, _, _| Box::pin(async move {
                 if inputs.is_empty() {
                     expander.compiler.diagnostics.add(Diagnostic::error(
                         "expected at least 1 input to template `format`",
@@ -896,6 +896,45 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
                     ),
                 }
             })),
+        ),
+    );
+
+    // `end` template
+
+    let id = expander.compiler.new_template_id(file);
+
+    scope_values.insert(InternedString::new("end"), ScopeValue::Template(id));
+
+    declarations.templates.insert(
+        id,
+        TemplateDeclaration::new(
+            "end",
+            Span::builtin("`end` template"),
+            Template::function(|expander, span, mut inputs, _, _, _| {
+                Box::pin(async move {
+                    if inputs.len() != 1 {
+                        expander.compiler.diagnostics.add(Diagnostic::error(
+                            "expected 1 input to template `end`",
+                            vec![Note::primary(
+                                span,
+                                "`end` accepts a value to exit a block with",
+                            )],
+                        ));
+
+                        return Node {
+                            span,
+                            kind: NodeKind::Error,
+                        };
+                    }
+
+                    let value = inputs.pop().unwrap();
+
+                    Node {
+                        span,
+                        kind: NodeKind::End(Box::new(value)),
+                    }
+                })
+            }),
         ),
     );
 

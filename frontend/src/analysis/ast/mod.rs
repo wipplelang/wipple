@@ -69,6 +69,7 @@ pub enum ExpressionKind {
     Number(InternedString),
     Text(InternedString),
     Block(Vec<Statement>),
+    End(Box<Expression>),
     Call(Box<Expression>, Vec<Expression>),
     Function(Pattern, Box<Expression>),
     When(Box<Expression>, Vec<Arm>),
@@ -629,6 +630,9 @@ impl Compiler<'_> {
                         .map(|node| self.build_expression(node))
                         .collect(),
                 ),
+                NodeKind::End(value) => {
+                    ExpressionKind::End(Box::new(self.build_expression(*value)))
+                }
                 _ => {
                     self.diagnostics.add(Diagnostic::error(
                         "expected expression",
