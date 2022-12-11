@@ -1,87 +1,69 @@
 # Syntax
 
-Wipple has a minimal syntax fundamentally inspired by Lisp. Wipple code consists of seven kinds of expressions:
+Wipple has a minimal syntax with just a few constructs:
 
--   **Names** (`x`, `do-something!`, `->`) are used to identify variables. When quoted, they represent data similar to text.
--   **Numbers** (`42`, `3.14`, `-1`) are used for calculations and are stored in decimal format.
--   **Text** (`"Hello, world"`, `"😀"`) is used to represent human-readable data and is stored in Unicode format.
--   **Lists** (`(a b c)`) are used to group expressions together. Inside blocks, the parentheses are inferred.
--   **Attributes** (`[a b c]`) are used to apply additional information to an expression at compile-time.
--   **Blocks** (`{ a b c }`) are used to execute a series of lists in order. Source files are inferred as blocks.
--   **Quoted forms** (`'a`, `'(a b c)`, `''(a b c)`) are used to insert expressions into the structure of another expression, or to represent code as data.
+-   **Comments** are ignored.
+-   **Blocks** represent a sequence of lists.
+-   **Lists** represent a sequence of expressions.
+-   **Operators** and **attributes** change how lists are parsed.
 
-Comments begin with `--` and are ignored.
+## Comments
 
-For example, this source file consists of the following expressions:
+A comment begins with `--` and continues until the end of the line. The contents of a comment are ignored. For example, writing `x -- y` is equivalent to writing `x`.
 
-<table>
-    <thead>
-        <tr>
-            <td>Source code</td>
-            <td>Expression tree</td>
-        </tr>
-    </thead>
-    <tbody>
-        <tr>
-            <td>
+## Blocks
+
+A block begins with `{` and ends with `}`. The top level of a file is also implicitly a block.
+
+Each line in a block is parsed into a list, so `{ (a b c) }` is equivalent to `{ a b c }`. If a line is indented using a tab character, then it becomes part of the previous line. For example:
 
 ```wipple
-[help "A person named bob"]
-bob : Person "Bob"
-
-test {
-    -- Ensure math works
-    assert (2 + 2 = 4)
-}
-```
-
-            </td>
-            <td>
-
-```wipple
-Block
-  List (attributes: doc "A person named bob")
-    Name "bob"
-    Name ":"
-    Name "Person"
-    Text "Bob"
-  List
-    Name "test"
-    Block
-      List
-        Name "assert"
-        List
-          Number 2
-          Name "+"
-          Number 2
-          Name "="
-          Number 4
-```
-
-            </td>
-        </tr>
-    </tbody>
-
-</table>
-
-#### A note on lists
-
-Lists may span multiple lines, but the way they are parsed depends on whether they belong to a block or are between parentheses.
-
-Inside a block, you can use indentation to merge multiple lines into a single list:
-
-```wipple
--- Parsed as two lists
+-- This:
 a b c
-d e f
+  d e f
 
--- Parsed as one list
-a b c
-    d e f
+-- is equivalent to:
+a b c d e f
 ```
 
-Between parentheses, you can use any indentation you wish — all expressions belong to the list until the ending `)`.
+## Lists
 
-#### How do operators work if they aren't part of the syntax?
+A list begins with `(` and ends with `)`. Each statement in a block is also implicitly a list.
 
-Lists are evaluated based on the operators defined in the code. You can even define your own operators to change how lists are evaluated! (TODO: Section on defining operators)
+If the list contains no operators, then it is evaluated in one of three ways:
+
+-   If the list is empty, then it evaluates to itself.
+-   If the list contains one expression, then the list is replaced by the expression. For example, `(foo)` is the same as `foo` and `((foo) (bar) (baz))` is the same as `(foo bar baz)`.
+-   If the list contains two or more expressions, then the first expression is called with the remaining expressions.
+
+If the first item in a list is a template, then the template is expanded with the remaining items in the list at compile time. Otherwise, the list is evaluated at runtime. For example, consider a template `duplicate` that accepts an input `x` and evaluates to `(x x)` — writing `duplicate a` is equivalent to writing `a a`.
+
+## Operators
+
+Operators are a type of template that are written between one or more expressions on each side. For example, consider an operator `o` that is placed between two expressions `x` and `yf` and evaluates to `y x` — writing `a o b` is equivalent to writing `b a`.
+
+Every operator has a "precedence", where higher-precedence operators have priority over lower-precedence ones. For example, consider an operator `a` that has a higher precedence than an operator `b` — writing `x a y b c` is equivalent to writing `x a (y b c)`.
+
+Every precedence defines an "associativity", indicating which direction the operators of that precedence should be parsed if there are more than one. For example, consider an operator `o` that is left-associative — writing `x o y o b` is equivalent to writing `(x o y) o b`. Operators do not need to have an associativity; in that case, writing more than one operator in the same list is an error.
+
+## Attributes
+
+Attributes are an alternative way to use templates. An attribute begins with with `[` and ends with `]`, and applies to the line below it. For example:
+
+```
+-- This:
+[a x]
+[b y]
+z
+
+-- Is equivalent to:
+a x (b y z)
+```
+
+## Atoms
+
+Atoms allow you to fill a list with information. There are three kinds of atoms:
+
+-   **Names**: `x`, `foo`, `favorite-color`, `set!`
+-   **Numbers**: `42`, `-5`, `3.14`
+-   **Text**: `""`, `"Hello, world!"`, `"line 1\nline2"`
