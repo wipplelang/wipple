@@ -60,8 +60,8 @@ impl<'src> fmt::Display for Token<'src> {
         match self {
             Token::LeftParenthesis => write!(f, "`(`"),
             Token::RightParenthesis => write!(f, "`)`"),
-            Token::LeftFileBracket => write!(f, "`[:`"),
-            Token::RightFileBracket => write!(f, "`:]`"),
+            Token::LeftFileBracket => write!(f, "`[[`"),
+            Token::RightFileBracket => write!(f, "`]]`"),
             Token::LeftAttrBracket => write!(f, "`[`"),
             Token::RightAttrBracket => write!(f, "`]`"),
             Token::LeftBrace => write!(f, "`{{`"),
