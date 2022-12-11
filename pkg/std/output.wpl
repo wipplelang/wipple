@@ -16,33 +16,33 @@ Show : A => trait (A -> Text)
 show :: A where (Show A) => A -> ()
 show : x -> write-stdout (format "_\n" x)
 
-instance Show Text : it
-instance Show Number : n -> external "runtime" "number-to-text" n
-instance Show Integer : n -> external "runtime" "integer-to-text" n
-instance Show Natural : n -> external "runtime" "natural-to-text" n
-instance Show Byte : n -> external "runtime" "byte-to-text" n
-instance Show Signed : n -> external "runtime" "signed-to-text" n
-instance Show Unsigned : n -> external "runtime" "unsigned-to-text" n
-instance Show Float : n -> external "runtime" "float-to-text" n
-instance Show Double : n -> external "runtime" "double-to-text" n
-instance Show Boolean : x? -> if x? "True" "False"
-instance Show Index-Error : just "invalid index"
-instance Show None-Error : just "found `None`"
+instance (Show Text) : it
+instance (Show Number) : n -> external "runtime" "number-to-text" n
+instance (Show Integer) : n -> external "runtime" "integer-to-text" n
+instance (Show Natural) : n -> external "runtime" "natural-to-text" n
+instance (Show Byte) : n -> external "runtime" "byte-to-text" n
+instance (Show Signed) : n -> external "runtime" "signed-to-text" n
+instance (Show Unsigned) : n -> external "runtime" "unsigned-to-text" n
+instance (Show Float) : n -> external "runtime" "float-to-text" n
+instance (Show Double) : n -> external "runtime" "double-to-text" n
+instance (Show Boolean) : x? -> if x? "True" "False"
+instance (Show Index-Error) : just "invalid index"
+instance (Show None-Error) : just "found `None`"
 
-Value where (Show Value) => instance Show (Maybe Value) : x? -> when x? {
+Value where (Show Value) => instance (Show (Maybe Value)) : x? -> when x? {
 	Some x -> format "Some _" (Show x)
 	None -> "None"
 }
 
 Success Failure where (Show Success) (Show Failure) =>
-	instance Show (Result Success Failure) :
+	instance (Show (Result Success Failure)) :
 		x? -> when x? {
 		OK x -> format "OK _" (Show x)
 		Error e -> format "Error _" (Show e)
 	}
 
 Success Failure where (Show Failure) =>
-	instance Expect (Result Success Failure) Success :
+	instance (Expect (Result Success Failure) Success) :
 		message -> x? -> when x? {
 			OK x -> x
 			Error e -> crash (format "_: _" message e)

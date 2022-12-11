@@ -12,7 +12,7 @@ User : type {
     age :: Number
 }
 
-instance Equal : User { id : id1 } -> User { id : id2 } -> id1 = id2
+instance (Equal User) : { id : id1 } -> User { id : id2 } -> id1 = id2
 ```
 
 To use a trait, refer to it by its name:
@@ -31,10 +31,10 @@ alice . equals? bob
 Another useful trait is `Default`, which provides a "default value" for a type. For example:
 
 ```wipple
-instance Default : 0
-instance Default : ""
-instance Default : False
-instance Default : None
+instance (Default Number) : 0
+instance (Default Text) : ""
+instance (Default Boolean) : False
+A => instance (Default (Maybe A)) : None
 ...
 
 

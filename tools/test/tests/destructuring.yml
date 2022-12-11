@@ -16,7 +16,7 @@ code: |
     show (get-name bob)
 
 
-    instance Show Person : { name } -> name
+    instance (Show Person) : { name } -> name
 
     charlie : Person { name : "Charlie" }
     show charlie

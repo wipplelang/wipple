@@ -262,13 +262,13 @@ Person : type {
 }
 
 -- Greet for Person values is defined as the person's name
-instance Greet Person : { name } -> name
+instance (Greet Person) : { name } -> name
 
 
 Earth : type
 
 -- Greet for Earth values is defined as "world"
-instance Greet Earth : just "world"
+instance (Greet Earth) : just "world"
 
 
 show (greet (Person { name : "Bob" })) -- Hello, Bob!
@@ -296,7 +296,7 @@ Database-Error : type {
     message :: Text
 }
 
-instance Show Database-Error : { message } -> format "database error: _" message
+instance (Show Database-Error) : { message } -> format "database error: _" message
 
 
 fetch-user :: Integer -> Database -> Result User Database-Error

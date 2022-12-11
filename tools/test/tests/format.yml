@@ -3,7 +3,7 @@ code: |
       name :: Text
     }
 
-    instance Show Person : { name } -> name
+    instance (Show Person) : { name } -> name
 
     bob : Person { name : "Bob" }
     show (format "Hello, _!" bob)

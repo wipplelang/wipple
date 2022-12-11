@@ -5,7 +5,7 @@ code: |
 
     Foo : A B => trait (A -> B)
 
-    A => instance Foo (Container A) A : { value } -> value
+    A => instance (Foo (Container A) A) : { value } -> value
 
     show (Foo (Container {
         value : "Hello, world!"

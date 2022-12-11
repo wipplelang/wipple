@@ -14,7 +14,7 @@ Iterator : Element => type {
 [help "Implement this trait to enable traversing your collection type."]
 Iterate : Container Element => trait (Container -> Iterator Element)
 
-Element => instance Iterate (Iterator Element) Element : it
+Element => instance (Iterate (Iterator Element) Element) : it
 
 -- reduce :: Container Element Result where (Iterate Container Element) => (Element -> Result -> Result) -> Container -> Iterator Result
 -- reduce : TODO
@@ -60,7 +60,7 @@ Collect : Element Container => trait (Iterator Element -> Container)
 collect :: Input Element Output where (Iterate Input Element) (Collect Element Output) => Input -> Output
 collect : input -> Collect (Iterate input)
 
-Element => instance Collect Element (List Element) : { next } -> {
+Element => instance (Collect Element (List Element)) : { next } -> {
 	list : mutable (list ())
 	loop {
 		when (next ()) {
@@ -75,7 +75,7 @@ Element => instance Collect Element (List Element) : { next } -> {
 	get list
 }
 
-A => instance Iterate (List A) A : list -> {
+A => instance (Iterate (List A) A) : list -> {
 	index : mutable 0
 
 	Iterator {

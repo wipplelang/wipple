@@ -7,7 +7,7 @@ code: |
         F
     }
 
-    instance Show Grade : grade -> when grade {
+    instance (Show Grade) : grade -> when grade {
         Grade A -> "A"
         Grade B -> "B"
         Grade C -> "C"
@@ -19,10 +19,10 @@ output: |
 
 diagnostics: |
     error: `when` expression is not exhaustive
-       ┌─ test:9:32
+       ┌─ test:9:34
        │  
-     9 │   instance Show Grade : grade -> when grade {
-       │ ╭────────────────────────────────^
+     9 │   instance (Show Grade) : grade -> when grade {
+       │ ╭──────────────────────────────────^
     10 │ │     Grade A -> "A"
     11 │ │     Grade B -> "B"
     12 │ │     Grade C -> "C"

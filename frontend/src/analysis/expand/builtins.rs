@@ -730,15 +730,12 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
         TemplateDeclaration::keyword(
             "instance",
             Span::builtin("`instance` template"),
-            Template::function(|expander, span, inputs, _, _, _| {
+            Template::function(|expander, span, mut inputs, _, _, _| {
                 Box::pin(async move {
-                    if inputs.is_empty() {
+                    if inputs.len() != 1 {
                         expander.compiler.diagnostics.add(Diagnostic::error(
-                            "expected at least 1 input to template `instance`",
-                            vec![Note::primary(
-                                span,
-                                "`instance` requires the name of a trait and its parameters",
-                            )],
+                            "expected 1 input to template `instance`",
+                            vec![Note::primary(span, "`instance` requires a trait")],
                         ));
 
                         return Node {
@@ -747,10 +744,26 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
                         };
                     }
 
-                    let mut inputs = VecDeque::from(inputs);
+                    let input = inputs.pop().unwrap();
 
-                    let trait_name = inputs.pop_front().unwrap();
-                    let parameters = Vec::from(inputs);
+                    let (trait_name, parameters) = match input.kind {
+                        NodeKind::Name(_) => (input, Vec::new()),
+                        NodeKind::List(inputs) if inputs.len() > 1 => {
+                            let mut inputs = VecDeque::from(inputs);
+                            (inputs.pop_front().unwrap(), Vec::from(inputs))
+                        }
+                        _ => {
+                            expander.compiler.diagnostics.add(Diagnostic::error(
+                                "malformed `instance` declaration",
+                                vec![Note::primary(span, "`instance` requires a trait")],
+                            ));
+
+                            return Node {
+                                span,
+                                kind: NodeKind::Error,
+                            };
+                        }
+                    };
 
                     Node {
                         span,

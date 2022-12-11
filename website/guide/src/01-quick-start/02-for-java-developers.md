@@ -255,13 +255,13 @@ Person : type {
 }
 
 -- Greet for Person values is defined as the person's name
-instance Greet Person : { name } -> name
+instance (Greet Person) : { name } -> name
 
 
 Earth : type
 
 -- Greet for Earth values is defined as "world"
-instance Greet Earth : just "world"
+instance (Greet Earth) : just "world"
 
 
 show (greet (Person { name : "Bob" })) -- Hello, Bob!
@@ -276,11 +276,11 @@ Person : type {
     age :: Number
 }
 
-instance Equal Person : p1 -> p2 ->
+instance (Equal Person) : p1 -> p2 ->
     name of p1 = name of p2
         and age of p1 = age of p2
 
-instance Show Person : { name age } ->
+instance (Show Person) : { name age } ->
     format "_ is _ years old" name age
 ```
 
@@ -343,7 +343,7 @@ Button : type {
     color :: Color
 }
 
-instance View Button : window -> { title color } ->
+instance (View Button) : window -> { title color } ->
     window
         . set-color color
         . draw-text title
@@ -353,7 +353,7 @@ Red-Button : type {
     title :: Text
 }
 
-instance View Red-Button : window -> { title } -> {
+instance (View Red-Button) : window -> { title } -> {
     button : Button {
         title
         color : Red
@@ -367,7 +367,7 @@ Blue-Button : type {
     title :: Text
 }
 
-instance View Blue-Button : window -> { title } -> {
+instance (View Blue-Button) : window -> { title } -> {
     button : Button {
         title
         color : Blue
@@ -387,7 +387,7 @@ Button : type {
     color :: Color
 }
 
-instance View Button : window -> { title color } ->
+instance (View Button) : window -> { title color } ->
     window
         . set-color color
         . draw-text title
@@ -487,7 +487,7 @@ Database-Error : type {
     message :: Text
 }
 
-instance Show Database-Error : { message } -> format "database error: _" message
+instance (Show Database-Error) : { message } -> format "database error: _" message
 
 
 fetch-user :: Integer -> Database -> Result User Database-Error

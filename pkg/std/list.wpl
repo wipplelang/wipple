@@ -9,7 +9,7 @@ use "./mutable.wpl"
 Tuple-To-List : Tuple Element => trait (Tuple -> List Element)
 
 tuple-to-list-impl : ty' tuple' ~>
-	(ty' => instance Tuple-To-List tuple' ty' : tuple -> external "runtime" "make-list" tuple)
+	(ty' => instance (Tuple-To-List tuple' ty') : tuple -> external "runtime" "make-list" tuple)
 
 tuple-to-list-impl A ()
 tuple-to-list-impl A (A ,)

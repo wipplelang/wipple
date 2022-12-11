@@ -8,7 +8,7 @@ Range : N => type {
 	step :: N
 }
 
--- N where (Add N N N) (Order N) (Numeric N) => instance Iterate (Range N) : range -> {
+-- N where (Add N N N) (Order N) (Numeric N) => instance (Iterate (Range N)) : range -> {
 -- 	{ zero } : Numeric
 -- 	range : mutable range
 -- 	{ min max step } : get range

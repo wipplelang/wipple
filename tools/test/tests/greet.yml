@@ -12,18 +12,17 @@ code: |
     }
 
     -- Greet for Person values is defined as the person's name
-    instance Greet Person : { name } -> name
+    instance (Greet Person) : { name } -> name
 
 
     Earth : type
 
     -- Greet for Earth values is defined as "world"
-    instance Greet Earth : just "world"
+    instance (Greet Earth) : just "world"
 
 
     show (greet (Person { name : "Bob" })) -- Hello, Bob!
     show (greet Earth) -- Hello, world!
-
 
 output: |
     Hello, Bob!

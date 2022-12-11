@@ -5,7 +5,7 @@ code: |
     foo : x -> T x
 
     A : type
-    instance T A : _ -> "Hello, world!"
+    instance (T A) : _ -> "Hello, world!"
 
     show (foo A)
 
