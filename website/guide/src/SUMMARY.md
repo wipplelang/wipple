@@ -17,12 +17,7 @@
 # Reference
 
 -   [Syntax](03-reference/00-syntax.md)
--   [Variables](03-reference/01-variables.md)
--   [Patterns and logic](03-reference/02-patterns-and-logic.md)
--   [Functions](03-reference/03-functions.md)
--   [Loops](03-reference/04-loops.md)
--   [Types](03-reference/05-types.md)
--   [Traits](03-reference/06-traits.md)
--   [Quoting](03-reference/07-quoting.md)
--   [Templates](03-reference/08-templates.md)
--   [Naming conventions](03-reference/09-naming-conventions.md)
+-   [Variables and patterns](03-reference/01-variables-and-patterns.md)
+-   [Types and generics](03-reference/02-types-and-generics.md)
+-   [Files and constants](03-reference/03-files-and-constants.md)
+-   [Traits](03-reference/04-traits.md)

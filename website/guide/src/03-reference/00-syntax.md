@@ -5,7 +5,10 @@ Wipple has a minimal syntax with just a few constructs:
 -   **Comments** are ignored.
 -   **Blocks** represent a sequence of lists.
 -   **Lists** represent a sequence of expressions.
+-   **Templates** transform a list into an expression.
 -   **Operators** and **attributes** change how lists are parsed.
+
+All of Wipple's "keywords" are implemented as templates, operators and attributes that produce expressions or special forms.
 
 ## Comments
 
@@ -26,7 +29,7 @@ a b c
 a b c d e f
 ```
 
-## Lists
+## Lists and templates
 
 A list begins with `(` and ends with `)`. Each statement in a block is also implicitly a list.
 
@@ -38,6 +41,15 @@ If the list contains no operators, then it is evaluated in one of three ways:
 
 If the first item in a list is a template, then the template is expanded with the remaining items in the list at compile time. Otherwise, the list is evaluated at runtime. For example, consider a template `duplicate` that accepts an input `x` and evaluates to `(x x)` — writing `duplicate a` is equivalent to writing `a a`.
 
+### Defining a template
+
+You can define a template using the `~>` operator:
+
+```wipple
+swap : a b ~> b a
+swap x y -- equivalent to (y x)
+```
+
 ## Operators
 
 Operators are a type of template that are written between one or more expressions on each side. For example, consider an operator `o` that is placed between two expressions `x` and `yf` and evaluates to `y x` — writing `a o b` is equivalent to writing `b a`.
@@ -45,6 +57,15 @@ Operators are a type of template that are written between one or more expression
 Every operator has a "precedence", where higher-precedence operators have priority over lower-precedence ones. For example, consider an operator `a` that has a higher precedence than an operator `b` — writing `x a y b c` is equivalent to writing `x a (y b c)`.
 
 Every precedence defines an "associativity", indicating which direction the operators of that precedence should be parsed if there are more than one. For example, consider an operator `o` that is left-associative — writing `x o y o b` is equivalent to writing `(x o y) o b`. Operators do not need to have an associativity; in that case, writing more than one operator in the same list is an error.
+
+### Defining an operator
+
+You can define an operator using the `operator` operator:
+
+```wipple
+swap : dot operator (a b ~> b a)
+x swap y -- equivalent to (y x)
+```
 
 ## Attributes
 
@@ -60,10 +81,20 @@ z
 a x (b y z)
 ```
 
+Some attributes may also be placed at the beginning of a file using `[[` and `]]`. For example, the `no-std` file attribute prevents automatically importing the standard library:
+
+```wipple
+[[no-std]]
+
+show "Hello, world!" -- error: cannot find `show`
+```
+
+There's no special syntax to define an attribute; all templates may be used as attributes.
+
 ## Atoms
 
 Atoms allow you to fill a list with information. There are three kinds of atoms:
 
--   **Names**: `x`, `foo`, `favorite-color`, `set!`
+-   **Names**: `x`, `foo`, `favorite-color`, `set!`, `+`, `:`
 -   **Numbers**: `42`, `-5`, `3.14`
 -   **Text**: `""`, `"Hello, world!"`, `"line 1\nline2"`
