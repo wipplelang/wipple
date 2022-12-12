@@ -2600,6 +2600,8 @@ impl<'a, 'l> Typechecker<'a, 'l> {
 
         let instance_ty = self.substitute_trait_params(trait_id, params);
 
+        let has_bounds = !decl.value.bounds.is_empty();
+
         let bounds = decl
             .value
             .bounds
@@ -2618,6 +2620,47 @@ impl<'a, 'l> Typechecker<'a, 'l> {
         let item = self.compiler.new_item_id(id.file);
 
         assert!(decl.name.is_none(), "instances never have names");
+
+        // Check if the instance collides with any other instances -- there's no
+        // need to check the bounds because there's no way to ensure a type
+        // doesn't satisfy the bounds specified in both instances
+
+        let colliding_instances = self
+            .declarations
+            .borrow_mut()
+            .instances
+            .entry(trait_id)
+            .or_default()
+            .values()
+            .filter_map(|other| {
+                let mut temp_ctx = self.ctx.clone();
+                temp_ctx
+                    .unify(instance_ty.clone(), other.ty.clone())
+                    .is_ok()
+                    .then_some(other.span)
+            })
+            .collect::<Vec<_>>();
+
+        if !colliding_instances.is_empty() {
+            self.compiler.diagnostics.add(Diagnostic::error(
+                format!(
+                    "this instance collides with {} other instances",
+                    colliding_instances.len()
+                ),
+                std::iter::once(Note::primary(
+                    decl.span,
+                    if has_bounds {
+                        "this instance may have different bounds than the others, but one type could satisfy the bounds on more than one of these instances simultaneously"
+                    } else {
+                        "try making this instance more specific"
+                    },
+                ))
+                .chain(colliding_instances.into_iter().map(|span| {
+                    Note::secondary(span, "this instance could apply to the same type(s)")
+                }))
+                .collect(),
+            ));
+        }
 
         let decl = InstanceDecl {
             span: decl.span,
