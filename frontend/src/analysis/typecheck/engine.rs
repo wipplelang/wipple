@@ -126,8 +126,8 @@ pub enum TypeError {
     Recursive(TypeVariable),
     Mismatch(UnresolvedType, UnresolvedType),
     MissingInstance(TraitId, Vec<UnresolvedType>, Option<Span>),
-    AmbiguousTrait(TraitId, Vec<Span>),
-    UnresolvedType,
+    AmbiguousTrait(UnresolvedType, TraitId, Vec<Span>),
+    UnresolvedType(UnresolvedType),
     InvalidNumericLiteral(UnresolvedType),
 }
 
@@ -154,7 +154,7 @@ impl Context {
         expected: impl Into<UnresolvedType>,
     ) -> (GenericSubstitutions, Result<(), TypeError>) {
         let mut params = GenericSubstitutions::new();
-        let result = self.unify_internal(actual, expected.into(), false, &mut params);
+        let result = self.unify_internal(actual, expected.into(), false, false, &mut params);
         (params, result)
     }
 
@@ -167,6 +167,21 @@ impl Context {
             actual,
             expected.into(),
             false,
+            false,
+            &mut GenericSubstitutions::new(),
+        )
+    }
+
+    pub fn unify_reverse(
+        &mut self,
+        actual: impl Into<UnresolvedType>,
+        expected: UnresolvedType,
+    ) -> Result<(), TypeError> {
+        self.unify_internal(
+            actual.into(),
+            expected,
+            false,
+            true,
             &mut GenericSubstitutions::new(),
         )
     }
@@ -180,6 +195,7 @@ impl Context {
             actual,
             expected.into(),
             true,
+            false,
             &mut GenericSubstitutions::new(),
         )
     }
@@ -189,6 +205,7 @@ impl Context {
         mut actual: UnresolvedType,
         mut expected: UnresolvedType,
         generic: bool,
+        reverse: bool,
         params: &mut BTreeMap<TypeParameterId, UnresolvedType>,
     ) -> Result<(), TypeError> {
         actual.apply(self);
@@ -200,7 +217,35 @@ impl Context {
             }
         }
 
+        macro_rules! mismatch {
+            ($actual:expr, $expected:expr $(,)?) => {
+                if reverse {
+                    TypeError::Mismatch($expected, $actual)
+                } else {
+                    TypeError::Mismatch($actual, $expected)
+                }
+            };
+        }
+
         match (actual, expected) {
+            (
+                UnresolvedType::Parameter(actual_param),
+                UnresolvedType::Parameter(expected_param),
+            ) if generic => {
+                if actual_param == expected_param {
+                    Ok(())
+                } else {
+                    Err(mismatch!(
+                        UnresolvedType::Parameter(actual_param),
+                        UnresolvedType::Parameter(expected_param),
+                    ))
+                }
+            }
+            (_, UnresolvedType::Parameter(_)) if !generic => Ok(()),
+            // FIXME: Determine if removing this is sound
+            // (UnresolvedType::Parameter(actual), expected) if !generic => {
+            //     Err(mismatch!(UnresolvedType::Parameter(actual), expected))
+            // }
             (UnresolvedType::Variable(var), ty) | (ty, UnresolvedType::Variable(var)) => {
                 if let UnresolvedType::Variable(other) = ty {
                     if var == other {
@@ -215,25 +260,6 @@ impl Context {
                     Ok(())
                 }
             }
-            (
-                UnresolvedType::Parameter(actual_param),
-                UnresolvedType::Parameter(expected_param),
-            ) if generic => {
-                if actual_param == expected_param {
-                    Ok(())
-                } else {
-                    Err(TypeError::Mismatch(
-                        UnresolvedType::Parameter(actual_param),
-                        UnresolvedType::Parameter(expected_param),
-                    ))
-                }
-            }
-            (_, UnresolvedType::Parameter(_)) if !generic => Ok(()),
-            // FIXME: Determine if removing this is sound
-            // (UnresolvedType::Parameter(actual), expected) if !generic => Err(TypeError::Mismatch(
-            //     UnresolvedType::Parameter(actual),
-            //     expected,
-            // )),
             (UnresolvedType::NumericVariable(var), ty) => {
                 match &ty {
                     UnresolvedType::NumericVariable(other) => {
@@ -243,10 +269,7 @@ impl Context {
                     }
                     UnresolvedType::Builtin(ty) if ty.is_numeric() => {}
                     _ => {
-                        return Err(TypeError::Mismatch(
-                            UnresolvedType::NumericVariable(var),
-                            ty,
-                        ));
+                        return Err(mismatch!(UnresolvedType::NumericVariable(var), ty,));
                     }
                 }
 
@@ -263,10 +286,7 @@ impl Context {
                     }
                     UnresolvedType::Builtin(ty) if ty.is_numeric() => {}
                     _ => {
-                        return Err(TypeError::Mismatch(
-                            ty,
-                            UnresolvedType::NumericVariable(var),
-                        ));
+                        return Err(mismatch!(ty, UnresolvedType::NumericVariable(var),));
                     }
                 }
 
@@ -280,11 +300,15 @@ impl Context {
             ) => {
                 if actual_id == expected_id {
                     for (actual, expected) in actual_params.iter().zip(&expected_params) {
-                        if let Err(error) =
-                            self.unify_internal(actual.clone(), expected.clone(), generic, params)
-                        {
+                        if let Err(error) = self.unify_internal(
+                            actual.clone(),
+                            expected.clone(),
+                            generic,
+                            reverse,
+                            params,
+                        ) {
                             return Err(if let TypeError::Mismatch(_, _) = error {
-                                TypeError::Mismatch(
+                                mismatch!(
                                     UnresolvedType::Named(
                                         actual_id,
                                         actual_params,
@@ -304,7 +328,7 @@ impl Context {
 
                     Ok(())
                 } else {
-                    Err(TypeError::Mismatch(
+                    Err(mismatch!(
                         UnresolvedType::Named(actual_id, actual_params, actual_structure),
                         UnresolvedType::Named(expected_id, expected_params, expected_structure),
                     ))
@@ -318,10 +342,11 @@ impl Context {
                     (*actual_input).clone(),
                     (*expected_input).clone(),
                     generic,
+                    reverse,
                     params,
                 ) {
                     return Err(if let TypeError::Mismatch(_, _) = error {
-                        TypeError::Mismatch(
+                        mismatch!(
                             UnresolvedType::Function(actual_input, actual_output),
                             UnresolvedType::Function(expected_input, expected_output),
                         )
@@ -334,10 +359,11 @@ impl Context {
                     (*actual_output).clone(),
                     (*expected_output).clone(),
                     generic,
+                    reverse,
                     params,
                 ) {
                     return Err(if let TypeError::Mismatch(_, _) = error {
-                        TypeError::Mismatch(
+                        mismatch!(
                             UnresolvedType::Function(actual_input, actual_output),
                             UnresolvedType::Function(expected_input, expected_output),
                         )
@@ -350,18 +376,22 @@ impl Context {
             }
             (UnresolvedType::Tuple(actual_tys), UnresolvedType::Tuple(expected_tys)) => {
                 if actual_tys.len() != expected_tys.len() {
-                    return Err(TypeError::Mismatch(
+                    return Err(mismatch!(
                         UnresolvedType::Tuple(actual_tys),
                         UnresolvedType::Tuple(expected_tys),
                     ));
                 }
 
                 for (actual, expected) in std::iter::zip(&actual_tys, &expected_tys) {
-                    if let Err(error) =
-                        self.unify_internal(actual.clone(), expected.clone(), generic, params)
-                    {
+                    if let Err(error) = self.unify_internal(
+                        actual.clone(),
+                        expected.clone(),
+                        generic,
+                        reverse,
+                        params,
+                    ) {
                         return Err(if let TypeError::Mismatch(_, _) = error {
-                            TypeError::Mismatch(
+                            mismatch!(
                                 UnresolvedType::Tuple(actual_tys),
                                 UnresolvedType::Tuple(expected_tys),
                             )
@@ -391,10 +421,11 @@ impl Context {
                         (*actual_element).clone(),
                         (*expected_element).clone(),
                         generic,
+                        reverse,
                         params,
                     ) {
                         return Err(if let TypeError::Mismatch(_, _) = error {
-                            TypeError::Mismatch(
+                            mismatch!(
                                 UnresolvedType::Builtin(BuiltinType::List(actual_element)),
                                 UnresolvedType::Builtin(BuiltinType::List(expected_element)),
                             )
@@ -410,10 +441,11 @@ impl Context {
                         (*actual_element).clone(),
                         (*expected_element).clone(),
                         generic,
+                        reverse,
                         params,
                     ) {
                         return Err(if let TypeError::Mismatch(_, _) = error {
-                            TypeError::Mismatch(
+                            mismatch!(
                                 UnresolvedType::Builtin(BuiltinType::Mutable(actual_element)),
                                 UnresolvedType::Builtin(BuiltinType::Mutable(expected_element)),
                             )
@@ -424,13 +456,13 @@ impl Context {
 
                     Ok(())
                 }
-                (actual_builtin, expected_builtin) => Err(TypeError::Mismatch(
+                (actual_builtin, expected_builtin) => Err(mismatch!(
                     UnresolvedType::Builtin(actual_builtin),
                     UnresolvedType::Builtin(expected_builtin),
                 )),
             },
-            (UnresolvedType::Bottom(_), _) | (_, UnresolvedType::Bottom(_)) => Ok(()),
-            (actual, expected) => Err(TypeError::Mismatch(actual, expected)),
+            (_, UnresolvedType::Bottom(_)) => Ok(()),
+            (actual, expected) => Err(mismatch!(actual, expected)),
         }
     }
 }
@@ -549,6 +581,28 @@ impl UnresolvedType {
         }
     }
 
+    pub fn vars(&self) -> Vec<TypeVariable> {
+        match self {
+            UnresolvedType::Variable(var) => vec![*var],
+            UnresolvedType::Function(input, output) => {
+                let mut vars = input.vars();
+                vars.extend(output.vars());
+                vars
+            }
+            UnresolvedType::Named(_, params, structure) => params
+                .iter()
+                .flat_map(|ty| ty.vars())
+                .chain(structure.vars())
+                .collect(),
+            UnresolvedType::Tuple(tys) => tys.iter().flat_map(|ty| ty.vars()).collect(),
+            UnresolvedType::Builtin(ty) => match ty {
+                BuiltinType::List(ty) | BuiltinType::Mutable(ty) => ty.vars(),
+                _ => Vec::new(),
+            },
+            _ => Vec::new(),
+        }
+    }
+
     pub fn params(&self) -> Vec<TypeParameterId> {
         match self {
             UnresolvedType::Parameter(param) => vec![*param],
@@ -618,12 +672,12 @@ impl UnresolvedType {
         self.finalize_numeric_variables(ctx);
 
         Ok(match self {
-            UnresolvedType::Variable(_) => return Err(TypeError::UnresolvedType),
+            UnresolvedType::Variable(_) => return Err(TypeError::UnresolvedType(self)),
             UnresolvedType::Parameter(param) => {
                 if options.generic {
                     Type::Parameter(param)
                 } else {
-                    return Err(TypeError::UnresolvedType);
+                    return Err(TypeError::UnresolvedType(self));
                 }
             }
             UnresolvedType::NumericVariable(_) => unreachable!(),
@@ -698,6 +752,17 @@ impl TypeStructure<UnresolvedType> {
                     }
                 }
             }
+        }
+    }
+
+    pub fn vars(&self) -> Vec<TypeVariable> {
+        match self {
+            TypeStructure::Marker | TypeStructure::Recursive(_) => Vec::new(),
+            TypeStructure::Structure(tys) => tys.iter().flat_map(|ty| ty.vars()).collect(),
+            TypeStructure::Enumeration(variants) => variants
+                .iter()
+                .flat_map(|tys| tys.iter().flat_map(|ty| ty.vars()))
+                .collect(),
         }
     }
 

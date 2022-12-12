@@ -9,7 +9,10 @@ use wipple_default_loader::Loader;
 use wipple_frontend::{
     analysis::{
         lower::{ScopeValue, ScopeValues},
-        typecheck::{format::format_type, TemplateDecl, TraitDecl, Type, TypeDecl, TypeDeclKind},
+        typecheck::{
+            format::{format_type, Format, TypeFunctionFormat},
+            TemplateDecl, TraitDecl, Type, TypeDecl, TypeDeclKind,
+        },
         ExpressionKind, Program, TypecheckMode,
     },
     diagnostics::DiagnosticLevel,
@@ -313,7 +316,7 @@ impl LanguageServer for Backend {
             })
         }
 
-        let format_type = |ty: Type| {
+        let format_type = |ty: Type, format: Format| {
             macro_rules! getter {
                 ($kind:ident) => {
                     |id| {
@@ -334,7 +337,7 @@ impl LanguageServer for Backend {
                 getter!(types),
                 getter!(traits),
                 getter!(type_parameters),
-                false,
+                format,
             )
         };
 
@@ -363,7 +366,7 @@ impl LanguageServer for Backend {
                 }
 
                 let range = range_from(expr.span);
-                let contents = code_segment(format_type(expr.ty.clone()));
+                let contents = code_segment(format_type(expr.ty.clone(), Format::default()));
 
                 hovers.push((
                     expr.span,
@@ -427,10 +430,15 @@ impl LanguageServer for Backend {
 
                 let range = range_from(span);
 
+                let format = Format {
+                    type_function: TypeFunctionFormat::Arrow,
+                    ..Default::default()
+                };
+
                 let mut contents = vec![code_segment(format!(
                     "{} :: {}",
                     decl.name,
-                    format_type(decl.ty.clone())
+                    format_type(decl.ty.clone(), format)
                 ))];
 
                 contents.extend(
@@ -464,8 +472,11 @@ impl LanguageServer for Backend {
                     None => continue,
                 };
 
-                let contents =
-                    code_segment(format!("{} :: {}", name, format_type(decl.ty.clone())));
+                let contents = code_segment(format!(
+                    "{} :: {}",
+                    name,
+                    format_type(decl.ty.clone(), Format::default())
+                ));
 
                 hovers.push((
                     span,
@@ -496,7 +507,7 @@ impl LanguageServer for Backend {
 
         let within_cursor = |span: Span| cursor_span.is_subspan_of(span);
 
-        let format_type = |ty: Type| {
+        let format_type = |ty: Type, format: Format| {
             macro_rules! getter {
                 ($kind:ident) => {
                     |id| {
@@ -517,7 +528,7 @@ impl LanguageServer for Backend {
                 getter!(types),
                 getter!(traits),
                 getter!(type_parameters),
-                false,
+                format,
             )
         };
 
@@ -528,6 +539,7 @@ impl LanguageServer for Backend {
                 let mut kind = None;
                 let mut help = Vec::new();
                 let mut ty = None;
+                let mut format = Format::default();
 
                 match value {
                     ScopeValue::Operator(operator) => {
@@ -632,6 +644,8 @@ impl LanguageServer for Backend {
                         help = decl.attributes.help.clone();
 
                         ty = Some(decl.ty.clone());
+
+                        format.type_function = TypeFunctionFormat::Arrow;
                     }
                     ScopeValue::Variable(id) => {
                         kind = Some(CompletionItemKind::VARIABLE);
@@ -649,7 +663,7 @@ impl LanguageServer for Backend {
                     let item = CompletionItem {
                         label: name.to_string(),
                         kind: Some(kind),
-                        detail: ty.map(format_type),
+                        detail: ty.map(|ty| format_type(ty, format)),
                         documentation: Some(Documentation::MarkupContent(MarkupContent {
                             kind: MarkupKind::Markdown,
                             value: help

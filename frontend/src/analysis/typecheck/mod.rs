@@ -627,40 +627,24 @@ impl<'a, 'l> Typechecker<'a, 'l> {
             self.with_constant_decl(id, |decl| (decl.ty.clone(), decl.bounds.clone()))
         };
 
-        let mut instantiated_ty = engine::UnresolvedType::from(generic_ty.clone());
-
-        let mut substitutions = engine::GenericSubstitutions::new();
-
-        let mut convert_info = ConvertInfo {
-            variables: Default::default(),
-        };
-
         let mut monomorphize_info = MonomorphizeInfo {
             cache: Default::default(),
             bound_instances: Default::default(),
         };
 
         for bound in bounds {
-            let mut ty = self.substitute_trait_params(bound.trait_id, bound.params);
+            let ty = self.substitute_trait_params(bound.trait_id, bound.params);
 
             monomorphize_info
                 .bound_instances
                 .entry(bound.trait_id)
                 .or_default()
                 .push((None, ty.clone(), bound.span));
-
-            self.add_substitutions(&mut ty, &mut substitutions);
         }
 
-        self.add_substitutions(&mut instantiated_ty, &mut substitutions);
+        let expr = self.convert_expr(expr, &mut ConvertInfo::default());
 
-        let mut expr = self.convert_expr(expr, &mut convert_info);
-
-        expr.traverse_mut(|expr| {
-            expr.ty.instantiate_with(&self.ctx, &substitutions);
-        });
-
-        if let Err(error) = self.unify(expr.span, expr.ty.clone(), instantiated_ty.clone()) {
+        if let Err(error) = self.unify_reverse(expr.span, generic_ty.clone(), expr.ty.clone()) {
             self.add_error(error);
         }
 
@@ -749,6 +733,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
     }
 }
 
+#[derive(Default)]
 struct ConvertInfo {
     variables: BTreeMap<VariableId, engine::UnresolvedType>,
 }
@@ -1976,8 +1961,9 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                 }
             }};
             (@find $ty:expr, $resolve:expr) => {{
+                let ty = engine::UnresolvedType::from($ty);
                 let mut candidates = Vec::new();
-                $resolve(&mut candidates, engine::UnresolvedType::from($ty));
+                $resolve(&mut candidates, ty.clone());
                 let mut candidates = candidates
                     .into_iter()
                     .unique_by(|(_, id, _)| *id)
@@ -1993,6 +1979,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                     }
                     _ => Some(Err(Error::new(
                         engine::TypeError::AmbiguousTrait(
+                            ty,
                             tr,
                             candidates.into_iter().map(|(_, _, span)| span).collect(),
                         ),
@@ -2898,6 +2885,17 @@ impl<'a, 'l> Typechecker<'a, 'l> {
             .map_err(|e| Error::new(e, span))
     }
 
+    fn unify_reverse(
+        &mut self,
+        span: Span,
+        actual: impl Into<engine::UnresolvedType>,
+        expected: engine::UnresolvedType,
+    ) -> Result<(), Error> {
+        self.ctx
+            .unify_reverse(actual, expected)
+            .map_err(|e| Error::new(e, span))
+    }
+
     fn add_substitutions(
         &mut self,
         ty: &mut engine::UnresolvedType,
@@ -3304,7 +3302,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
     fn format_type(
         &mut self,
         ty: impl Into<format::FormattableType>,
-        surround_in_backticks: bool,
+        format: format::Format,
     ) -> String {
         let typechecker = RefCell::new(self);
 
@@ -3322,13 +3320,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
         let trait_names = getter!(trait);
         let param_names = getter!(type_parameter);
 
-        format::format_type(
-            ty,
-            type_names,
-            trait_names,
-            param_names,
-            surround_in_backticks,
-        )
+        format::format_type(ty, type_names, trait_names, param_names, format)
     }
 
     pub fn report_errors(&mut self) {
@@ -3338,7 +3330,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
 
         let (unresolved_type_errors, other_errors): (Vec<_>, Vec<_>) = mem::take(&mut self.errors)
             .into_iter()
-            .partition(|e| matches!(e.error, engine::TypeError::UnresolvedType));
+            .partition(|e| matches!(e.error, engine::TypeError::UnresolvedType(_)));
 
         let should_report_unresolved_type_errors = other_errors.is_empty();
 
@@ -3354,6 +3346,12 @@ impl<'a, 'l> Typechecker<'a, 'l> {
     }
 
     fn report_error(&mut self, error: Error) {
+        let format = format::Format {
+            type_function: format::TypeFunctionFormat::Description,
+            type_variable: format::TypeVariableFormat::Description,
+            surround_in_backticks: true,
+        };
+
         #[allow(unused_mut)]
         let mut diagnostic = match error.error {
             engine::TypeError::ErrorExpression => return,
@@ -3370,8 +3368,8 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                     error.span,
                     format!(
                         "expected {}, but found {}",
-                        self.format_type(expected, true),
-                        self.format_type(actual, true)
+                        self.format_type(expected, format),
+                        self.format_type(actual, format)
                     ),
                 )],
             ),
@@ -3391,7 +3389,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                         error.span,
                         format!(
                             "could not find instance {}",
-                            self.format_type(format::FormattableType::Trait(id, params), true)
+                            self.format_type(format::FormattableType::r#trait(id, params), format)
                         ),
                     ))
                     .chain(
@@ -3405,28 +3403,56 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                     .collect(),
                 )
             }
-            engine::TypeError::AmbiguousTrait(_, candidates) => Diagnostic::error(
-                "could not determine the type of this expression",
-                std::iter::once(Note::primary(
-                    error.span,
-                    "try annotating the type with `::`",
-                ))
-                .chain(
-                    candidates
-                        .into_iter()
-                        .map(|span| Note::secondary(span, "this instance could apply")),
+            engine::TypeError::AmbiguousTrait(mut ty, _, candidates) => {
+                ty.apply(&self.ctx);
+
+                Diagnostic::error(
+                    "could not determine the type of this expression",
+                    std::iter::once(Note::primary(
+                        error.span,
+                        "try annotating the type with `::`",
+                    ))
+                    .chain(
+                        (!matches!(ty, engine::UnresolvedType::Variable(_))).then(|| {
+                            Note::primary(
+                                error.span,
+                                format!("this has type {}", self.format_type(ty, format)),
+                            )
+                        }),
+                    )
+                    .chain(
+                        candidates
+                            .into_iter()
+                            .map(|span| Note::secondary(span, "this instance could apply")),
+                    )
+                    .collect(),
                 )
-                .collect(),
-            ),
-            engine::TypeError::UnresolvedType => Diagnostic::error(
-                "could not determine the type of this expression",
-                vec![Note::primary(
-                    error.span,
-                    "try annotating the type with `::`",
-                )],
-            ),
+            }
+            engine::TypeError::UnresolvedType(mut ty) => {
+                ty.apply(&self.ctx);
+
+                Diagnostic::error(
+                    "could not determine the type of this expression",
+                    std::iter::once(Note::primary(
+                        error.span,
+                        "try annotating the type with `::`",
+                    ))
+                    .chain(
+                        (!matches!(ty, engine::UnresolvedType::Variable(_))).then(|| {
+                            Note::primary(
+                                error.span,
+                                format!("this has type {}", self.format_type(ty, format)),
+                            )
+                        }),
+                    )
+                    .collect(),
+                )
+            }
             engine::TypeError::InvalidNumericLiteral(ty) => Diagnostic::error(
-                format!("number does not fit into a {}", self.format_type(ty, true)),
+                format!(
+                    "number does not fit into a {}",
+                    self.format_type(ty, format)
+                ),
                 vec![Note::primary(error.span, "invalid numeric literal")],
             ),
         };
