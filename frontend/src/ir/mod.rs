@@ -281,6 +281,7 @@ impl IrGen {
             ssa::ExpressionKind::End(value) => {
                 self.gen_expr(*value, label, pos);
                 self.gen_end(label, pos);
+                *pos = self.new_basic_block(label);
             }
             ssa::ExpressionKind::Call(function, input) => {
                 self.gen_expr(*function, label, pos);
@@ -437,8 +438,6 @@ impl IrGen {
         }
 
         self.statements_for(label, *pos).push(Statement::PopFrame);
-
-        *pos = self.new_basic_block(label);
     }
 
     fn gen_when(
