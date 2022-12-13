@@ -1,8 +1,8 @@
 [[no-std]]
 
-use "./util.wpl"
-use "./fp.wpl"
-use "./mutable.wpl"
+use "util.wpl"
+use "fp.wpl"
+use "mutable.wpl"
 
 [help "Implementations for the `list` function."]
 [on-unimplemented "lists may only be created from tuples where every value has the same type"]

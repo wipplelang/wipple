@@ -163,39 +163,36 @@ impl wipple_frontend::Loader for Loader {
                 if is_url(path) {
                     Ok(FilePath::Url(path))
                 } else {
-                    let base = match current {
-                        Some(path) => path,
-                        _ => match self.base {
-                            Some(base) => base,
-                            None => return Ok(FilePath::Path(path)),
-                        },
-                    };
-
                     let parsed_path = PathBuf::from(path.as_str());
 
                     if parsed_path.has_root() {
                         Ok(FilePath::Path(path))
                     } else {
+                        let base = match current {
+                            Some(path) => path,
+                            None => match self.base {
+                                Some(base) => base,
+                                None => return Ok(FilePath::Path(path)),
+                            },
+                        };
+
                         match base {
                             FilePath::Url(url) => {
                                 let url = Url::from_str(&url).unwrap().join(path.as_str())?;
                                 Ok(FilePath::Url(InternedString::from(url.to_string())))
                             }
                             FilePath::Path(path) => {
-                                let path = PathBuf::from(path.as_str())
-                                    .parent()
-                                    .unwrap()
-                                    .join(parsed_path)
-                                    .clean();
+                                let path = match PathBuf::from(path.as_str()).parent() {
+                                    Some(path) => path.join(parsed_path).clean(),
+                                    None => parsed_path,
+                                };
 
                                 Ok(FilePath::Path(InternedString::new(path.to_str().unwrap())))
                             }
-                            FilePath::Virtual(_) => {
-                                let path = match self.base {
-                                    Some(base) => PathBuf::from(base.as_str().as_ref())
-                                        .join(parsed_path)
-                                        .clean(),
-                                    None => parsed_path.clean(),
+                            FilePath::Virtual(path) => {
+                                let path = match PathBuf::from(path.as_str()).parent() {
+                                    Some(path) => path.join(parsed_path).clean(),
+                                    None => parsed_path,
                                 };
 
                                 Ok(FilePath::Path(InternedString::new(path.to_str().unwrap())))

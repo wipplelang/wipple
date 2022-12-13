@@ -1,7 +1,7 @@
 [[no-std]]
 
-use "./fp.wpl"
-use "./logic.wpl"
+use "fp.wpl"
+use "logic.wpl"
 
 [help "Crash the program with the provided message."]
 crash :: Text -> !

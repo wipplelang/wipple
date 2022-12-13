@@ -1,9 +1,9 @@
 [[no-std]]
 
-use "./fp.wpl"
-use "./list.wpl"
-use "./logic.wpl"
-use "./util.wpl"
+use "fp.wpl"
+use "list.wpl"
+use "logic.wpl"
+use "util.wpl"
 
 [help "Display text on the screen. `write-stdout` writes directly to the standard output with no trailing newline."]
 write-stdout :: Text -> ()

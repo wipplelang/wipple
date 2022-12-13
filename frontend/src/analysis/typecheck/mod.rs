@@ -563,39 +563,47 @@ impl<'a, 'l> Typechecker<'a, 'l> {
         }
 
         if self.should_typecheck_everything_in_file(file_span.path) {
-            let mut instances = mem::take(&mut self.instances);
-
-            macro_rules! declarations {
+            macro_rules! declaration {
                 ($kind:ident) => {
-                    declarations!($kind(|_, _| {}))
-                };
-                ($kind:ident($f:expr)) => {
                     paste::paste! {
-                        for id in self
-                            .files
+                        self.files
                             .get(&file_span.path)
                             .unwrap()
                             .declarations
-                            .[<$kind s>]
+                            .$kind
                             .keys()
                             .cloned()
                             .collect::<Vec<_>>()
-                        {
-                            self.[<with_ $kind _decl>](id, |decl| $f(id, decl));
+                    }
+                };
+            }
+
+            let mut instances = mem::take(&mut self.instances);
+
+            for id in declaration!(instances) {
+                self.with_instance_decl(id, |decl| {
+                    instances.entry(decl.trait_id).or_default().insert(id);
+                });
+            }
+
+            self.instances = instances;
+
+            macro_rules! check {
+                ($kind:ident) => {
+                    paste::paste! {
+                        for id in declaration!([<$kind s>]) {
+                            self.[<with_ $kind _decl>](id, |_| {});
                         }
                     }
                 };
-                ($($kind:ident$(($f:expr))?),* $(,)?) => {
-                    $(declarations!($kind$(($f))?);)*
+                ($($kind:ident),* $(,)?) => {
+                    $(check!($kind);)*
                 }
             }
 
-            declarations!(
+            check!(
                 type,
                 trait,
-                instance(|id, decl: &InstanceDecl| {
-                    instances.entry(decl.trait_id).or_default().insert(id);
-                }),
                 constant,
                 operator,
                 template,
@@ -603,8 +611,6 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                 type_parameter,
                 // variables are handled inside `finalize_pattern`
             );
-
-            self.instances = instances;
         }
     }
 

@@ -1,7 +1,7 @@
 [[no-std]]
 
-use "./fp.wpl"
-use "./math.wpl"
+use "fp.wpl"
+use "math.wpl"
 
 [help "Create a new `Mutable` value."]
 mutable :: A => A -> Mutable A

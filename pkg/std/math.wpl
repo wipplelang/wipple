@@ -1,7 +1,7 @@
 [[no-std]]
 
-use "./fp.wpl"
-use "./util.wpl"
+use "fp.wpl"
+use "util.wpl"
 
 [help "Implements the `+` operator."]
 Add : Left Right Sum => trait (Left -> Right -> Sum)

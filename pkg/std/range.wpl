@@ -1,6 +1,6 @@
 [[no-std]]
 
-use "./iterate.wpl"
+use "iterate.wpl"
 
 Range : N => type {
 	min :: N
