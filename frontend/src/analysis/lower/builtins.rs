@@ -32,7 +32,7 @@ impl Compiler<'_> {
                 kind: BuiltinTypeKind::Never,
                 attributes: DeclarationAttributes {
                     help: vec![InternedString::new(
-                        "The type of expressions which always diverge (eg. `return`) or crash the program (eg. `crash`). Because there are no values of this type, you may use a `!` expression in place of any other expression. For example, you can use `...` to indicate unfinished code.",
+                        "The type of expressions which always diverge (eg. `end`) or crash the program (eg. `crash`). Because there are no values of this type, you may use a `!` expression in place of any other expression. For example, you can use `...` (which has type `!`) to indicate unfinished code.",
                     )],
                     ..Default::default()
                 }

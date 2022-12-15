@@ -413,7 +413,7 @@ impl LanguageServer for Backend {
         }
 
         type_decls!(types, "type", |decl: &TypeDecl| {
-            decl.attributes.help.clone()
+            decl.attributes.decl_attributes.help.clone()
         });
 
         type_decls!(type_parameters, "type");
@@ -603,6 +603,7 @@ impl LanguageServer for Backend {
                             .get(id)
                             .unwrap()
                             .attributes
+                            .decl_attributes
                             .help
                             .clone();
                     }

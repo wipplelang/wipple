@@ -1262,6 +1262,98 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
         ))
     );
 
+    // `on-mismatch` attribute
+
+    let id = expander.compiler.new_template_id(file);
+
+    scope_values.insert(InternedString::new("on-mismatch"), ScopeValue::Template(id));
+
+    declarations.templates.insert(
+        id,
+        TemplateDeclaration::new(
+            "on-mismatch",
+            Span::builtin("`on-mismatch` attribute"),
+            Template::function(|expander, span, mut inputs, _, attributes, _| {
+                Box::pin(async move {
+                    if !matches!(inputs.len(), 2..=3) {
+                        expander.compiler.diagnostics.add(Diagnostic::error(
+                            "expected 2-3 inputs to template `on-mismatch`",
+                            vec![Note::primary(
+                                span,
+                                "`on-mismatch` accepts a type parameter, message and a declaration",
+                            )],
+                        ));
+
+                        return Node {
+                            span,
+                            kind: NodeKind::Error,
+                        };
+                    }
+
+                    let node = inputs.pop().unwrap();
+                    let (type_parameter, message) = match inputs.len() {
+                        1 => (None, inputs.pop().unwrap()),
+                        2 => {
+                            let message = inputs.pop().unwrap();
+                            let type_parameter = inputs.pop().unwrap();
+                            (Some(type_parameter), message)
+                        }
+                        _ => unreachable!(),
+                    };
+
+                    let type_parameter = match type_parameter {
+                        Some(node) => match node.kind {
+                            NodeKind::Name(name) => Some((node.span, name)),
+                            _ => {
+                                expander.compiler.diagnostics.add(Diagnostic::error(
+                                    "`on-mismatch` expects a type parameter name",
+                                    vec![Note::primary(
+                                        message.span,
+                                        "expected type parameter here",
+                                    )],
+                                ));
+
+                                return node;
+                            }
+                        },
+                        None => None,
+                    };
+
+                    let message = match message.kind {
+                        NodeKind::Text(text) => text,
+                        _ => {
+                            expander.compiler.diagnostics.add(Diagnostic::error(
+                                "`on-mismatch` expects a text value",
+                                vec![Note::primary(message.span, "expected text here")],
+                            ));
+
+                            return node;
+                        }
+                    };
+
+                    let attributes = match attributes {
+                        Some(attributes) => attributes,
+                        None => {
+                            expander.compiler.diagnostics.add(Diagnostic::error(
+                                "`on-mismatch` may only be used as an attribute",
+                                vec![Note::primary(
+                                    span,
+                                    r#"try putting this between brackets: (`[on-mismatch "..."]`)"#,
+                                )],
+                            ));
+
+                            return node;
+                        }
+                    };
+
+                    attributes.on_mismatch.push_front((type_parameter, message));
+
+                    node
+                })
+            }),
+        ),
+    );
+
     // `no-std` attribute
 
     let id = expander.compiler.new_template_id(file);

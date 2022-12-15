@@ -137,7 +137,14 @@ pub struct DeclarationAttributes {
 pub struct Type {
     pub kind: TypeKind,
     pub params: Vec<TypeParameterId>,
-    pub attributes: DeclarationAttributes,
+    pub attributes: TypeAttributes,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[non_exhaustive]
+pub struct TypeAttributes {
+    pub decl_attributes: DeclarationAttributes,
+    pub on_mismatch: Vec<(Option<TypeParameterId>, InternedString)>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -773,7 +780,11 @@ impl Compiler<'_> {
                         ast::TypeKind::Marker => Type {
                             kind: TypeKind::Marker,
                             params: parameters,
-                            attributes: self.lower_decl_attributes(&mut decl.attributes),
+                            attributes: self.lower_type_attributes(
+                                &mut decl.attributes,
+                                scope,
+                                info,
+                            ),
                         },
                         ast::TypeKind::Structure(fields) => {
                             let mut field_tys = Vec::with_capacity(fields.len());
@@ -781,7 +792,11 @@ impl Compiler<'_> {
                             for (index, mut field) in fields.into_iter().enumerate() {
                                 field_tys.push(TypeField {
                                     ty: self.lower_type_annotation(field.ty, scope, info),
-                                    attributes: self.lower_decl_attributes(&mut field.attributes),
+                                    attributes: self.lower_decl_attributes(
+                                        &mut field.attributes,
+                                        scope,
+                                        info,
+                                    ),
                                 });
 
                                 field_names.insert(field.name, index);
@@ -790,7 +805,11 @@ impl Compiler<'_> {
                             Type {
                                 kind: TypeKind::Structure(field_tys, field_names),
                                 params: parameters,
-                                attributes: self.lower_decl_attributes(&mut decl.attributes),
+                                attributes: self.lower_type_attributes(
+                                    &mut decl.attributes,
+                                    scope,
+                                    info,
+                                ),
                             }
                         }
                         ast::TypeKind::Enumeration(variants) => {
@@ -876,6 +895,12 @@ impl Compiler<'_> {
                                     },
                                 );
 
+                                let attributes = self.lower_decl_attributes(
+                                    &mut variant.attributes,
+                                    scope,
+                                    info,
+                                );
+
                                 info.declarations.constants.insert(
                                     constructor_id,
                                     Declaration {
@@ -886,8 +911,7 @@ impl Compiler<'_> {
                                             bounds: Vec::new(),
                                             ty: constructor_ty,
                                             value: Arc::new(Mutex::new(Some(constructor))),
-                                            attributes: self
-                                                .lower_decl_attributes(&mut variant.attributes),
+                                            attributes,
                                         }),
                                     },
                                 );
@@ -903,7 +927,11 @@ impl Compiler<'_> {
                             Type {
                                 kind: TypeKind::Enumeration(variant_tys, variant_names),
                                 params: parameters,
-                                attributes: self.lower_decl_attributes(&mut decl.attributes),
+                                attributes: self.lower_type_attributes(
+                                    &mut decl.attributes,
+                                    scope,
+                                    info,
+                                ),
                             }
                         }
                     };
@@ -920,7 +948,7 @@ impl Compiler<'_> {
                     let tr = Trait {
                         parameters,
                         ty: self.lower_type_annotation(declaration.ty, &scope, info),
-                        attributes: self.lower_trait_attributes(&mut decl.attributes),
+                        attributes: self.lower_trait_attributes(&mut decl.attributes, &scope, info),
                     };
 
                     info.declarations.traits.get_mut(&id).unwrap().value = Some(tr);
@@ -985,7 +1013,7 @@ impl Compiler<'_> {
                         bounds,
                         ty: self.lower_type_annotation(declaration.ty, &scope, info),
                         value: Default::default(),
-                        attributes: self.lower_decl_attributes(&mut decl.attributes),
+                        attributes: self.lower_decl_attributes(&mut decl.attributes, &scope, info),
                     };
 
                     info.declarations.constants.get_mut(&id).unwrap().value = Some(constant);
@@ -1370,6 +1398,8 @@ impl Compiler<'_> {
     fn lower_decl_attributes(
         &self,
         statement_attributes: &mut ast::StatementAttributes,
+        _scope: &Scope,
+        _info: &mut Info,
     ) -> DeclarationAttributes {
         // TODO: Raise errors for misused attributes
 
@@ -1380,14 +1410,53 @@ impl Compiler<'_> {
         }
     }
 
+    fn lower_type_attributes(
+        &self,
+        statement_attributes: &mut ast::StatementAttributes,
+        scope: &Scope,
+        info: &mut Info,
+    ) -> TypeAttributes {
+        // TODO: Raise errors for misused attributes
+
+        TypeAttributes {
+            decl_attributes: self.lower_decl_attributes(statement_attributes, scope, info),
+            on_mismatch: mem::take(&mut statement_attributes.on_mismatch)
+                .into_iter()
+                .filter_map(|(param, message)| {
+                    let param = match param {
+                        Some((span, param)) => match scope.get(param, span) {
+                            Some(ScopeValue::TypeParameter(param)) => {
+                                info.uses.lock().record_use_of_type_parameter(param, span);
+                                Some(param)
+                            }
+                            _ => {
+                                self.diagnostics.add(Diagnostic::error(
+                                    format!("cannot find type parameter `{}`", param),
+                                    vec![Note::primary(span, "no such type")],
+                                ));
+
+                                return None;
+                            }
+                        },
+                        None => None,
+                    };
+
+                    Some((param, message))
+                })
+                .collect::<Vec<_>>(),
+        }
+    }
+
     fn lower_trait_attributes(
         &self,
         statement_attributes: &mut ast::StatementAttributes,
+        scope: &Scope,
+        info: &mut Info,
     ) -> TraitAttributes {
         // TODO: Raise errors for misused attributes
 
         TraitAttributes {
-            decl_attributes: self.lower_decl_attributes(statement_attributes),
+            decl_attributes: self.lower_decl_attributes(statement_attributes, scope, info),
             on_unimplemented: mem::take(&mut statement_attributes.on_unimplemented),
         }
     }

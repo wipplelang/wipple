@@ -12,6 +12,7 @@ crash : message -> external "runtime" "crash" message
 ... : crash "not yet implemented"
 
 [help "Represents the presence or absence of a value."]
+[on-mismatch Value "try handling the case where the `Maybe` is `None`, eg. by using `when` or `expect`"]
 Maybe : Value => type {
 	None
 	Some Value
@@ -25,6 +26,8 @@ A B => instance (Map A B (Maybe A) (Maybe B)) : f -> m -> when m {
 }
 
 [help "Represents the success or failure of an operation."]
+[on-mismatch Success "try handling the case where the `Result` is `Error`, eg. by using `when` or `expect`"]
+[on-mismatch Failure "try converting the error to the correct type using `as` or `try`"]
 Result : Success Failure => type {
 	OK Success
 	Error Failure

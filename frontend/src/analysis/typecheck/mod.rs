@@ -92,7 +92,7 @@ pub struct TypeDecl {
     pub span: Span,
     pub params: Vec<TypeParameterId>,
     pub kind: TypeDeclKind,
-    pub attributes: lower::DeclarationAttributes,
+    pub attributes: lower::TypeAttributes,
     pub uses: Vec<Span>,
 }
 
@@ -3368,17 +3368,50 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                     "the type of this references itself",
                 )],
             ),
-            engine::TypeError::Mismatch(actual, expected) => Diagnostic::error(
-                "mismatched types",
-                vec![Note::primary(
-                    error.span,
-                    format!(
-                        "expected {}, but found {}",
-                        self.format_type(expected, format),
-                        self.format_type(actual, format)
-                    ),
-                )],
-            ),
+            engine::TypeError::Mismatch(actual, expected) => {
+                let actual_ty = match &actual {
+                    engine::UnresolvedType::Named(id, params, _) => Some((
+                        self.declarations.borrow().types.get(id).unwrap().clone(),
+                        params.clone(),
+                    )),
+                    _ => None,
+                };
+
+                Diagnostic::error(
+                    "mismatched types",
+                    std::iter::once(Note::primary(
+                        error.span,
+                        format!(
+                            "expected {}, but found {}",
+                            self.format_type(expected.clone(), format),
+                            self.format_type(actual, format)
+                        ),
+                    ))
+                    .chain(actual_ty.and_then(|(actual_ty, mut actual_params)| {
+                        actual_ty
+                            .attributes
+                            .on_mismatch
+                            .iter()
+                            .find_map(|(param, message)| {
+                                param
+                                    .as_ref()
+                                    .map_or(true, |param| {
+                                        let param = actual_ty
+                                            .params
+                                            .iter()
+                                            .position(|p| p == param)
+                                            .expect("type parameter associated with wrong type");
+
+                                        let inner_ty = actual_params[param].clone();
+
+                                        self.ctx.clone().unify(inner_ty, expected.clone()).is_ok()
+                                    })
+                                    .then(|| Note::secondary(error.span, message))
+                            })
+                    }))
+                    .collect(),
+                )
+            }
             engine::TypeError::MissingInstance(id, params, bound_span) => {
                 let trait_attributes = self
                     .declarations
