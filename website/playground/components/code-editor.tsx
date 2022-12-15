@@ -48,6 +48,7 @@ export const CodeEditor = (props: CodeEditorProps) => {
                     fontFamily: "'JetBrains Mono', monospace",
                     fontStyle: props.code ? "normal" : "italic",
                     fontVariantLigatures: "none",
+                    wordWrap: "break-word",
                 }}
                 value={props.code}
                 onValueChange={props.onChange}
@@ -66,7 +67,7 @@ export const CodeEditor = (props: CodeEditorProps) => {
                             : "bg-red-50 dark:bg-red-900 dark:opacity-50 text-red-900 dark:text-red-50"
                     }`}
                 >
-                    <pre className="whitespace-pre-wrap break-all">{output?.value}</pre>
+                    <pre className="whitespace-pre-wrap break-words">{output?.value}</pre>
                 </div>
             </animated.div>
         </div>
