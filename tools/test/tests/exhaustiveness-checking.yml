@@ -7,24 +7,37 @@ code: |
         F
     }
 
-    instance (Show Grade) : grade -> when grade {
-        Grade A -> "A"
-        Grade B -> "B"
-        Grade C -> "C"
+    report-card :: Grade -> Text
+    report-card : grade -> when grade {
+        Grade A -> "top of the class"
+        Grade B -> "good job"
+        Grade C -> "need to study"
     }
 
-    show (Grade A)
+    unwrap :: A => Maybe A -> A
+    unwrap : x -> when x {
+        Some x -> x
+    }
 
 output: |
 
 diagnostics: |
     error: `when` expression is not exhaustive
-       ┌─ test:9:34
+       ┌─ test:10:24
        │  
-     9 │   instance (Show Grade) : grade -> when grade {
-       │ ╭──────────────────────────────────^
-    10 │ │     Grade A -> "A"
-    11 │ │     Grade B -> "B"
-    12 │ │     Grade C -> "C"
-    13 │ │ }
-       │ ╰─^ try adding some more patterns to cover all possible values
+    10 │   report-card : grade -> when grade {
+       │ ╭────────────────────────^
+    11 │ │     Grade A -> "top of the class"
+    12 │ │     Grade B -> "good job"
+    13 │ │     Grade C -> "need to study"
+    14 │ │ }
+       │ ╰─^ try adding cases for the `Grade D` and `Grade F` patterns
+
+    error: `when` expression is not exhaustive
+       ┌─ test:17:15
+       │  
+    17 │   unwrap : x -> when x {
+       │ ╭───────────────^
+    18 │ │     Some x -> x
+    19 │ │ }
+       │ ╰─^ try adding a case for the `Maybe None` pattern

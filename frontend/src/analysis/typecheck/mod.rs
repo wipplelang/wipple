@@ -1455,12 +1455,16 @@ impl<'a, 'l> Typechecker<'a, 'l> {
 
                             input_ty.apply(&self.ctx);
 
-                            let mut match_set = self.match_set_from(&input_ty);
+                            let mut match_set = MatchSet::new(&input_ty);
 
-                            let pattern =
-                                self.monomorphize_pattern(pattern, input_ty, &mut match_set, info);
+                            let pattern = self.monomorphize_pattern(
+                                pattern,
+                                input_ty.clone(),
+                                &mut match_set,
+                                info,
+                            );
 
-                            self.assert_matched(&match_set, pattern.span, true);
+                            self.assert_matched(&match_set, &input_ty, pattern.span, true);
 
                             pattern
                         }
@@ -1480,7 +1484,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                     let mut input = self.monomorphize_expr(*input, info);
                     input.ty.apply(&self.ctx);
 
-                    let mut match_set = self.match_set_from(&input.ty);
+                    let mut match_set = MatchSet::new(&input.ty);
 
                     let arms = arms
                         .into_iter()
@@ -1489,7 +1493,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                         })
                         .collect();
 
-                    self.assert_matched(&match_set, expr.span, false);
+                    self.assert_matched(&match_set, &input.ty, expr.span, false);
 
                     MonomorphizedExpressionKind::When(Box::new(input), arms)
                 }
@@ -1517,12 +1521,12 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                     let mut value = self.monomorphize_expr(*value, info);
                     value.ty.apply(&self.ctx);
 
-                    let mut match_set = self.match_set_from(&value.ty);
+                    let mut match_set = MatchSet::new(&value.ty);
 
                     let pattern =
                         self.monomorphize_pattern(pattern, value.ty.clone(), &mut match_set, info);
 
-                    self.assert_matched(&match_set, pattern.span, true);
+                    self.assert_matched(&match_set, &value.ty, pattern.span, true);
 
                     MonomorphizedExpressionKind::Initialize(pattern, Box::new(value))
                 }
@@ -1691,7 +1695,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                     MatchSet::Structure(fields) => fields,
                     _ => {
                         ty.apply(&self.ctx);
-                        *match_set = self.match_set_from(&ty);
+                        *match_set = MatchSet::new(&ty);
 
                         match match_set {
                             MatchSet::Structure(fields) => fields,
@@ -1812,7 +1816,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                     MatchSet::Enumeration(variants) => &mut variants[variant],
                     _ => {
                         ty.apply(&self.ctx);
-                        *match_set = self.match_set_from(&ty);
+                        *match_set = MatchSet::new(&ty);
 
                         match match_set {
                             MatchSet::Enumeration(variants) => &mut variants[variant],
@@ -1899,7 +1903,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                     MatchSet::Tuple(sets) => sets,
                     _ => {
                         ty.apply(&self.ctx);
-                        *match_set = self.match_set_from(&ty);
+                        *match_set = MatchSet::new(&ty);
 
                         match match_set {
                             MatchSet::Tuple(sets) => sets,
@@ -2055,67 +2059,44 @@ enum MatchSet {
     Tuple(Vec<MatchSet>),
 }
 
-impl<'a, 'l> Typechecker<'a, 'l> {
-    fn match_set_from(&mut self, ty: &engine::UnresolvedType) -> MatchSet {
-        self.match_set_from_inner(ty, &mut Vec::new())
-    }
-
-    fn match_set_from_inner(
-        &mut self,
-        ty: &engine::UnresolvedType,
-        stack: &mut Vec<TypeId>,
-    ) -> MatchSet {
+impl MatchSet {
+    fn new(ty: &engine::UnresolvedType) -> Self {
         match ty {
-            engine::UnresolvedType::Named(id, _, _) => {
-                if stack.contains(id) {
+            engine::UnresolvedType::Named(_, _, structure) => match structure {
+                TypeStructure::Marker => MatchSet::Marker(false),
+                TypeStructure::Structure(fields) => MatchSet::Structure(
+                    fields.iter().map(|ty| (false, MatchSet::new(ty))).collect(),
+                ),
+                TypeStructure::Enumeration(variants) => MatchSet::Enumeration(
+                    variants
+                        .iter()
+                        .map(|tys| (false, tys.iter().map(MatchSet::new).collect()))
+                        .collect(),
+                ),
+                TypeStructure::Recursive(_) => {
                     // Returning Never is OK because the user has to stop matching on the structure
                     // of the type at some point -- eventually they will refer to the rest of the
                     // structure using a name, which always matches (FIXME: Verify that this is correct)
-                    return MatchSet::Never;
+                    MatchSet::Never
                 }
-
-                stack.push(*id);
-
-                let kind = self.with_type_decl(*id, |ty| ty.kind.clone());
-
-                let set = match kind {
-                    TypeDeclKind::Marker => MatchSet::Marker(false),
-                    TypeDeclKind::Structure { fields, .. } => MatchSet::Structure(
-                        fields
-                            .into_iter()
-                            .map(|ty| (false, self.match_set_from_inner(&ty.into(), stack)))
-                            .collect(),
-                    ),
-                    TypeDeclKind::Enumeration { variants, .. } => MatchSet::Enumeration(
-                        variants
-                            .into_iter()
-                            .map(|tys| {
-                                (
-                                    false,
-                                    tys.into_iter()
-                                        .map(|ty| self.match_set_from_inner(&ty.into(), stack))
-                                        .collect(),
-                                )
-                            })
-                            .collect(),
-                    ),
-                };
-
-                stack.pop();
-
-                set
+            },
+            engine::UnresolvedType::Tuple(tys) => {
+                MatchSet::Tuple(tys.iter().map(MatchSet::new).collect())
             }
-            engine::UnresolvedType::Tuple(tys) => MatchSet::Tuple(
-                tys.iter()
-                    .map(|ty| self.match_set_from_inner(ty, stack))
-                    .collect(),
-            ),
             engine::UnresolvedType::Bottom(_) => MatchSet::Never,
             _ => MatchSet::Marker(false),
         }
     }
+}
 
-    fn assert_matched(&mut self, match_set: &MatchSet, span: Span, for_exhaustive_pattern: bool) {
+impl<'a, 'l> Typechecker<'a, 'l> {
+    fn assert_matched(
+        &mut self,
+        match_set: &MatchSet,
+        ty: &engine::UnresolvedType,
+        span: Span,
+        for_exhaustive_pattern: bool,
+    ) {
         if !match_set.is_matched() {
             if for_exhaustive_pattern {
                 self.compiler.diagnostics.add(Diagnostic::error(
@@ -2126,11 +2107,37 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                     )],
                 ));
             } else {
+                let mut ty = ty.clone();
+                ty.apply(&self.ctx);
+
+                let mut missing_patterns = match_set
+                    .unmatched_patterns(&ty)
+                    .unique()
+                    .map(|pattern| format!("`{}`", self.format_unmatched_pattern(&pattern, false)))
+                    .collect::<Vec<_>>();
+
                 self.compiler.diagnostics.add(Diagnostic::error(
                     "`when` expression is not exhaustive",
                     vec![Note::primary(
                         span,
-                        "try adding some more patterns to cover all possible values",
+                        match missing_patterns.len() {
+                            0 => String::from(
+                                "try adding some more patterns to cover all possible values",
+                            ),
+                            1 => format!(
+                                "try adding a case for the {} pattern",
+                                missing_patterns.pop().unwrap()
+                            ),
+                            _ => {
+                                let last_missing_pattern = missing_patterns.pop().unwrap();
+
+                                format!(
+                                    "try adding cases for the {} and {} patterns",
+                                    missing_patterns.join(", "),
+                                    last_missing_pattern
+                                )
+                            }
+                        },
                     )],
                 ));
             }
@@ -2176,6 +2183,259 @@ impl MatchSet {
                 }
             }
             _ => {}
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+struct UnmatchedPattern<'a> {
+    ty: &'a engine::UnresolvedType,
+    kind: UnmatchedPatternKind<'a>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+enum UnmatchedPatternKind<'a> {
+    Wildcard,
+    Marker,
+    Structure(usize, Option<Box<UnmatchedPattern<'a>>>),
+    Variant(usize, Vec<UnmatchedPattern<'a>>),
+    Tuple(Vec<UnmatchedPattern<'a>>),
+}
+
+impl MatchSet {
+    fn unmatched_patterns<'a>(
+        &'a self,
+        ty: &'a engine::UnresolvedType,
+    ) -> Box<dyn Iterator<Item = UnmatchedPattern<'a>> + 'a> {
+        if self.is_matched() {
+            return Box::new(std::iter::empty());
+        }
+
+        match self {
+            MatchSet::Never => Box::new(std::iter::once(UnmatchedPattern {
+                ty,
+                kind: UnmatchedPatternKind::Wildcard,
+            })),
+            MatchSet::Marker(_) => Box::new(std::iter::once(UnmatchedPattern {
+                ty,
+                kind: UnmatchedPatternKind::Marker,
+            })),
+            MatchSet::Structure(fields) => {
+                let field_tys = match ty {
+                    engine::UnresolvedType::Named(_, _, TypeStructure::Structure(field_tys)) => {
+                        field_tys
+                    }
+                    _ => unreachable!(),
+                };
+
+                Box::new(fields.iter().enumerate().flat_map(
+                    move |(index, (matched, field))| -> Box<dyn Iterator<Item = UnmatchedPattern>> {
+                        if !matched {
+                            return Box::new(std::iter::once(UnmatchedPattern {
+                                ty,
+                                kind: UnmatchedPatternKind::Structure(index, None),
+                            }));
+                        }
+
+                        let field_ty = &field_tys[index];
+
+                        Box::new(field.unmatched_patterns(field_ty).map(move |item| {
+                            UnmatchedPattern {
+                                ty: field_ty,
+                                kind: UnmatchedPatternKind::Structure(index, Some(Box::new(item))),
+                            }
+                        }))
+                    },
+                ))
+            }
+            MatchSet::Enumeration(variants) => {
+                let variants_tys = match ty {
+                    engine::UnresolvedType::Named(
+                        _,
+                        _,
+                        TypeStructure::Enumeration(variants_tys),
+                    ) => variants_tys,
+                    _ => unreachable!(),
+                };
+
+                let mut patterns = vec![BTreeMap::new()];
+
+                // First, collect all variants with unmatched associated values
+                for (variant_index, (_, items)) in variants.iter().enumerate() {
+                    let variant_tys = &variants_tys[variant_index];
+
+                    for (item_index, item) in items.iter().enumerate() {
+                        let item_ty = &variant_tys[item_index];
+
+                        for (pattern_index, pattern) in item.unmatched_patterns(item_ty).enumerate()
+                        {
+                            if patterns.len() == pattern_index {
+                                patterns.push(BTreeMap::new());
+                            }
+
+                            patterns[pattern_index]
+                                .entry(variant_index)
+                                .or_insert_with(|| {
+                                    let item_ty = &variant_tys[item_index];
+
+                                    vec![
+                                        UnmatchedPattern {
+                                            ty: item_ty,
+                                            kind: UnmatchedPatternKind::Wildcard
+                                        };
+                                        items.len()
+                                    ]
+                                })[item_index] = pattern;
+                        }
+                    }
+                }
+
+                // Then, collect all unmatched variants without associated values
+                for (variant_index, (matched, items)) in variants.iter().enumerate() {
+                    if !matched && items.is_empty() {
+                        for variants in &mut patterns {
+                            *variants.entry(variant_index).or_default() = Vec::new();
+                        }
+                    }
+                }
+
+                Box::new(patterns.into_iter().flat_map(|variants| {
+                    variants
+                        .into_iter()
+                        .map(|(variant, items)| UnmatchedPattern {
+                            ty,
+                            kind: UnmatchedPatternKind::Variant(variant, items),
+                        })
+                }))
+            }
+            MatchSet::Tuple(items) => {
+                let item_tys = match ty {
+                    engine::UnresolvedType::Tuple(tys) => tys,
+                    _ => unreachable!(),
+                };
+
+                let mut patterns = Vec::new();
+                for (item_index, item) in items.iter().enumerate() {
+                    let item_ty = &item_tys[item_index];
+
+                    for (pattern_index, pattern) in item.unmatched_patterns(item_ty).enumerate() {
+                        if patterns.len() == pattern_index {
+                            patterns.push(vec![
+                                UnmatchedPattern {
+                                    ty: item_ty,
+                                    kind: UnmatchedPatternKind::Wildcard,
+                                };
+                                items.len()
+                            ]);
+                        }
+
+                        patterns[pattern_index][item_index] = pattern;
+                    }
+                }
+
+                Box::new(patterns.into_iter().map(|items| UnmatchedPattern {
+                    ty,
+                    kind: UnmatchedPatternKind::Tuple(items),
+                }))
+            }
+        }
+    }
+}
+
+impl<'a, 'l> Typechecker<'a, 'l> {
+    fn format_unmatched_pattern(&self, pattern: &UnmatchedPattern, parenthesize: bool) -> String {
+        match &pattern.kind {
+            UnmatchedPatternKind::Wildcard => String::from("_"),
+            UnmatchedPatternKind::Marker => {
+                let id = match pattern.ty {
+                    engine::UnresolvedType::Named(id, _, _) => id,
+                    _ => return String::from("_"),
+                };
+
+                let name = self.declarations.borrow().types.get(id).unwrap().name;
+
+                name.to_string()
+            }
+            UnmatchedPatternKind::Structure(index, field) => {
+                let id = match pattern.ty {
+                    engine::UnresolvedType::Named(id, _, _) => id,
+                    _ => return String::from("_"),
+                };
+
+                let declarations = self.declarations.borrow();
+
+                let field_names = match &declarations.types.get(id).unwrap().kind {
+                    TypeDeclKind::Structure { field_names, .. } => field_names,
+                    _ => return String::from("_"),
+                };
+
+                let field_name = field_names
+                    .iter()
+                    .find_map(|(name, i)| (i == index).then_some(name))
+                    .unwrap();
+
+                if let Some(pattern) = field {
+                    format!(
+                        "{{ {} : {} }}",
+                        field_name,
+                        self.format_unmatched_pattern(pattern, false)
+                    )
+                } else {
+                    format!("{{ {} }}", field_name)
+                }
+            }
+            UnmatchedPatternKind::Variant(index, patterns) => {
+                let id = match pattern.ty {
+                    engine::UnresolvedType::Named(id, _, _) => id,
+                    _ => return String::from("_"),
+                };
+
+                let declarations = self.declarations.borrow();
+                let ty = declarations.types.get(id).unwrap();
+                let variant_names = match &ty.kind {
+                    TypeDeclKind::Enumeration { variant_names, .. } => variant_names,
+                    _ => return String::from("_"),
+                };
+
+                let variant_name = variant_names
+                    .iter()
+                    .find_map(|(name, i)| (i == index).then_some(name))
+                    .unwrap();
+
+                let formatted = if patterns.is_empty() {
+                    format!("{} {}", ty.name, variant_name)
+                } else {
+                    format!(
+                        "{} {} {}",
+                        ty.name,
+                        variant_name,
+                        patterns
+                            .iter()
+                            .map(|pattern| self.format_unmatched_pattern(pattern, true))
+                            .collect::<Vec<_>>()
+                            .join(" ")
+                    )
+                };
+
+                if parenthesize {
+                    format!("({})", formatted)
+                } else {
+                    formatted
+                }
+            }
+            UnmatchedPatternKind::Tuple(patterns) => {
+                let formatted = patterns
+                    .iter()
+                    .map(|pattern| self.format_unmatched_pattern(pattern, true))
+                    .collect::<Vec<_>>()
+                    .join(" , ");
+
+                if parenthesize {
+                    format!("({})", formatted)
+                } else {
+                    formatted
+                }
+            }
         }
     }
 }
