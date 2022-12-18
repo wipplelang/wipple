@@ -741,26 +741,9 @@ impl Compiler<'_> {
 
             let scope_value = match decl.kind {
                 StatementDeclarationKind::Type(id, ty) => {
-                    let parameters = ty
-                        .parameters
-                        .into_iter()
-                        .map(|param| {
-                            let id = self.new_type_parameter_id(info.file);
+                    let scope = scope.child();
 
-                            scope.insert(param.name, ScopeValue::TypeParameter(id));
-
-                            info.declarations.type_parameters.insert(
-                                id,
-                                Declaration {
-                                    name: Some(param.name),
-                                    span: param.span,
-                                    value: (),
-                                },
-                            );
-
-                            id
-                        })
-                        .collect();
+                    let parameters = self.with_parameters(ty.parameters, &scope, info);
 
                     if !ty.bounds.is_empty() {
                         self.diagnostics.add(Diagnostic::error(
@@ -782,7 +765,7 @@ impl Compiler<'_> {
                             params: parameters,
                             attributes: self.lower_type_attributes(
                                 &mut decl.attributes,
-                                scope,
+                                &scope,
                                 info,
                             ),
                         },
@@ -791,10 +774,10 @@ impl Compiler<'_> {
                             let mut field_names = HashMap::with_capacity(fields.len());
                             for (index, mut field) in fields.into_iter().enumerate() {
                                 field_tys.push(TypeField {
-                                    ty: self.lower_type_annotation(field.ty, scope, info),
+                                    ty: self.lower_type_annotation(field.ty, &scope, info),
                                     attributes: self.lower_decl_attributes(
                                         &mut field.attributes,
-                                        scope,
+                                        &scope,
                                         info,
                                     ),
                                 });
@@ -807,7 +790,7 @@ impl Compiler<'_> {
                                 params: parameters,
                                 attributes: self.lower_type_attributes(
                                     &mut decl.attributes,
-                                    scope,
+                                    &scope,
                                     info,
                                 ),
                             }
@@ -819,7 +802,7 @@ impl Compiler<'_> {
                                 let tys = variant
                                     .values
                                     .into_iter()
-                                    .map(|ty| self.lower_type_annotation(ty, scope, info))
+                                    .map(|ty| self.lower_type_annotation(ty, &scope, info))
                                     .collect::<Vec<_>>();
 
                                 let constructor_id = self.new_constant_id(info.file);
@@ -897,7 +880,7 @@ impl Compiler<'_> {
 
                                 let attributes = self.lower_decl_attributes(
                                     &mut variant.attributes,
-                                    scope,
+                                    &scope,
                                     info,
                                 );
 
@@ -929,7 +912,7 @@ impl Compiler<'_> {
                                 params: parameters,
                                 attributes: self.lower_type_attributes(
                                     &mut decl.attributes,
-                                    scope,
+                                    &scope,
                                     info,
                                 ),
                             }
