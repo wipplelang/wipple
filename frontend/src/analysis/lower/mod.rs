@@ -1507,42 +1507,79 @@ impl Compiler<'_> {
                                         ));
                                     }
 
-                                    let fields = statements
-                                        .iter()
-                                        .filter_map(|s| match &s.kind {
-                                            ast::StatementKind::Assign(pattern, expr) => match &pattern.kind {
-                                                ast::PatternKind::Name(name) => Some((*name, expr)),
+                                    let fields = 'parse: {
+                                        if statements.len() == 1 {
+                                            let statement = statements.last().unwrap();
+
+                                            if let ast::StatementKind::Expression(
+                                                ast::ExpressionKind::Call(first, rest),
+                                            ) = &statement.kind
+                                            {
+                                                if let Some(fields) =
+                                                    std::iter::once(first.as_ref())
+                                                        .chain(rest)
+                                                        .map(|expr| match &expr.kind {
+                                                            ast::ExpressionKind::Name(name) => {
+                                                                Some((*name, expr.clone()))
+                                                            }
+                                                            _ => None,
+                                                        })
+                                                        .collect::<Option<Vec<_>>>()
+                                                {
+                                                    break 'parse fields
+                                                        .into_iter()
+                                                        .map(|(name, expr)| {
+                                                            (
+                                                                name,
+                                                                self.lower_expr(expr, scope, info),
+                                                            )
+                                                        })
+                                                        .collect();
+                                                }
+                                            };
+                                        }
+
+                                        statements
+                                            .iter()
+                                            .filter_map(|s| match &s.kind {
+                                                ast::StatementKind::Assign(pattern, expr) => match &pattern.kind {
+                                                    ast::PatternKind::Name(name) => Some((*name, expr.clone())),
+                                                    _ => {
+                                                        self.diagnostics.add(Diagnostic::error(
+                                                            "structure instantiation may not contain complex patterns",
+                                                            vec![Note::primary(
+                                                                s.span,
+                                                                "try splitting this pattern into multiple names",
+                                                            )]
+                                                        ));
+
+                                                        None
+                                                    },
+                                                },
+                                                ast::StatementKind::Expression(expr @ ast::ExpressionKind::Name(name)) => {
+                                                    let expr = ast::Expression { span: s.span, kind: expr.clone() };
+                                                    Some((*name, expr))
+                                                },
+                                                // TODO: 'use' inside instantiation
                                                 _ => {
                                                     self.diagnostics.add(Diagnostic::error(
-                                                        "structure instantiation may not contain complex patterns",
+                                                        "structure instantiation may not contain executable statements",
                                                         vec![Note::primary(
                                                             s.span,
-                                                            "try splitting this pattern into multiple names",
+                                                            "try removing this",
                                                         )]
                                                     ));
 
                                                     None
-                                                },
-                                            },
-                                            // TODO: 'use' inside instantiation
-                                            _ => {
-                                                self.diagnostics.add(Diagnostic::error(
-                                                    "structure instantiation may not contain executable statements",
-                                                    vec![Note::primary(
-                                                        s.span,
-                                                        "try removing this",
-                                                    )]
-                                                ));
-
-                                                None
-                                            }
-                                        })
-                                        .collect::<Vec<_>>()
-                                        .into_iter()
-                                        .map(|(name, value)| {
-                                            (name, self.lower_expr(value.clone(), scope, info))
-                                        })
-                                        .collect();
+                                                }
+                                            })
+                                            .collect::<Vec<_>>()
+                                            .into_iter()
+                                            .map(|(name, value)| {
+                                                (name, self.lower_expr(value, scope, info))
+                                            })
+                                            .collect()
+                                    };
 
                                     let ty = info
                                         .declarations
@@ -1552,6 +1589,7 @@ impl Compiler<'_> {
                                         .value
                                         .as_ref()
                                         .unwrap();
+
                                     if !matches!(ty.kind, TypeKind::Structure(_, _)) {
                                         self.diagnostics.add(Diagnostic::error(
                                             "only structures may be instantiated like this",
