@@ -419,13 +419,15 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
                         "comparison" => OperatorPrecedence::Comparison,
                         "conjunction" => OperatorPrecedence::Conjunction,
                         "disjunction" => OperatorPrecedence::Disjunction,
+                        "accessor" => OperatorPrecedence::Accessor,
                         "dot" => OperatorPrecedence::Dot,
+                        "comma" => OperatorPrecedence::Comma,
                         _ => {
                             expander.compiler.diagnostics.add(Diagnostic::error(
                                 "invalid precedence name",
                                 vec![Note::primary(
                                     lhs.span,
-                                    "try providing a valid precedence name, like `function` or `addition`",
+                                    "try providing a valid precedence name, like `addition` or `comparison`",
                                 )],
                             ));
 
