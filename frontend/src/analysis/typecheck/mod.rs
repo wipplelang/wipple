@@ -1907,7 +1907,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
 
                         match match_set {
                             MatchSet::Tuple(sets) => sets,
-                            _ => unreachable!(),
+                            _ => return MonomorphizedPatternKind::Error,
                         }
                     }
                 };

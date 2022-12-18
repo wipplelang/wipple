@@ -1853,19 +1853,7 @@ impl Compiler<'_> {
             ast::PatternKind::Destructure(fields) => PatternKind::Destructure(
                 fields
                     .into_iter()
-                    .map(|(span, name)| {
-                        (
-                            name,
-                            self.lower_pattern(
-                                ast::Pattern {
-                                    span,
-                                    kind: ast::PatternKind::Name(name),
-                                },
-                                scope,
-                                info,
-                            ),
-                        )
-                    })
+                    .map(|(name, pattern)| (name, self.lower_pattern(pattern, scope, info)))
                     .collect(),
             ),
             ast::PatternKind::Variant((name_span, name), values) => {

@@ -120,7 +120,7 @@ pub enum PatternKind {
     Number(InternedString),
     Text(InternedString),
     Name(InternedString),
-    Destructure(Vec<(Span, InternedString)>),
+    Destructure(Vec<(InternedString, Pattern)>),
     Variant((Span, InternedString), Vec<Pattern>),
     Annotate(Box<Pattern>, TypeAnnotation),
     Or(Box<Pattern>, Box<Pattern>),
@@ -648,132 +648,163 @@ impl Compiler<'_> {
     fn build_pattern(&self, node: Node) -> Pattern {
         Pattern {
             span: node.span,
-            kind: (|| match node.kind {
-                NodeKind::Error => PatternKind::Error,
-                NodeKind::Underscore => PatternKind::Wildcard,
-                NodeKind::Name(name) => PatternKind::Name(name),
-                NodeKind::Block(mut statements) => {
-                    // TODO: Support renaming destructured fields
-                    if statements.len() > 1 {
-                        self.diagnostics.add(Diagnostic::error(
-                            "destructuring pattern does not yet support multiple lines",
-                            vec![Note::primary(
-                                node.span,
-                                "try grouping all of these onto a single line",
-                            )],
-                        ));
-
-                        return PatternKind::Error;
-                    }
-
-                    let statement = match statements.pop() {
-                        Some(statement) => statement,
-                        None => return PatternKind::Destructure(Vec::new()),
-                    };
-
-                    if statement.attributes != StatementAttributes::default() {
-                        self.diagnostics.add(Diagnostic::error(
-                            "attributes are not supported inside patterns",
-                            vec![Note::primary(statement.node.span, "try removing this")],
-                        ));
-                    }
-
-                    match statement.node.kind {
-                        NodeKind::Error => PatternKind::Error,
-                        NodeKind::List(nodes) => PatternKind::Destructure(
-                            nodes
+            kind: (|| {
+                match node.kind {
+                    NodeKind::Error => PatternKind::Error,
+                    NodeKind::Underscore => PatternKind::Wildcard,
+                    NodeKind::Name(name) => PatternKind::Name(name),
+                    NodeKind::Block(statements) => {
+                        PatternKind::Destructure(
+                            statements
                                 .into_iter()
-                                .filter_map(|node| {
-                                    let name = match node.kind {
-                                        NodeKind::Error => return None,
-                                        NodeKind::Name(name) => name,
-                                        _ => {
+                                .filter_map(
+                                    |statement| -> Option<
+                                        Box<dyn Iterator<Item = (InternedString, Pattern)>>,
+                                    > {
+                                        if statement.attributes != StatementAttributes::default() {
                                             self.diagnostics.add(Diagnostic::error(
-                                                "invalid pattern in destructuring pattern",
+                                                "attributes are not supported inside patterns",
                                                 vec![Note::primary(
-                                                    node.span,
-                                                    "expected name here",
+                                                    statement.node.span,
+                                                    "try removing this",
                                                 )],
                                             ));
-
-                                            return None;
                                         }
-                                    };
 
-                                    Some((node.span, name))
-                                })
+                                        match statement.node.kind {
+                                            NodeKind::Error => None,
+                                            NodeKind::List(nodes) => Some(Box::new(
+                                                nodes.into_iter().filter_map(|node| {
+                                                    let (name, pattern) = match node.kind {
+                                                        NodeKind::Error => return None,
+                                                        NodeKind::Name(name) => (
+                                                            name,
+                                                            Pattern {
+                                                                span: node.span,
+                                                                kind: PatternKind::Name(name),
+                                                            },
+                                                        ),
+                                                        _ => {
+                                                            self.diagnostics.add(Diagnostic::error(
+                                                                "invalid pattern in destructuring pattern",
+                                                                vec![Note::primary(
+                                                                    node.span,
+                                                                    "expected name here",
+                                                                )],
+                                                            ));
+
+                                                            return None;
+                                                        }
+                                                    };
+
+                                                    Some((name, pattern))
+                                                }),
+                                            )),
+                                            NodeKind::Name(name) => {
+                                                Some(Box::new(std::iter::once((
+                                                    name,
+                                                    Pattern {
+                                                        span: statement.node.span,
+                                                        kind: PatternKind::Name(name),
+                                                    },
+                                                ))))
+                                            }
+                                            NodeKind::Assign(left, right) => {
+                                                let name = match left.kind {
+                                                    NodeKind::Name(name) => name,
+                                                    _ => {
+                                                        self.diagnostics.add(Diagnostic::error(
+                                                            "invalid pattern in destructuring pattern",
+                                                            vec![Note::primary(
+                                                                left.span,
+                                                                "expected name here",
+                                                            )],
+                                                        ));
+
+                                                        return None;
+                                                    }
+                                                };
+
+                                                let pattern = self.build_pattern(*right);
+
+                                                Some(Box::new(std::iter::once((name, pattern))))
+                                            }
+                                            _ => {
+                                                self.diagnostics.add(Diagnostic::error(
+                                                    "invalid pattern in destructuring pattern",
+                                                    vec![Note::primary(
+                                                        node.span,
+                                                        "try removing this",
+                                                    )],
+                                                ));
+
+                                                None
+                                            }
+                                        }
+                                    },
+                                )
+                                .flatten()
                                 .collect(),
-                        ),
-                        NodeKind::Name(name) => {
-                            PatternKind::Destructure(vec![(statement.node.span, name)])
-                        }
-                        _ => {
-                            self.diagnostics.add(Diagnostic::error(
-                                "invalid pattern in destructuring pattern",
-                                vec![Note::primary(node.span, "try removing this")],
-                            ));
-
-                            PatternKind::Error
-                        }
+                        )
                     }
-                }
-                NodeKind::List(nodes) => {
-                    let mut nodes = nodes.into_iter();
+                    NodeKind::List(nodes) => {
+                        let mut nodes = nodes.into_iter();
 
-                    let name = nodes.next().unwrap();
-                    let name_span = name.span;
-                    let name = match name.kind {
-                        NodeKind::Name(name) => name,
-                        _ => {
-                            self.diagnostics.add(Diagnostic::error(
-                                "expected variant name",
-                                vec![Note::primary(
-                                    node.span,
-                                    "only variants may be used in this kind of pattern",
-                                )],
-                            ));
+                        let name = nodes.next().unwrap();
+                        let name_span = name.span;
+                        let name = match name.kind {
+                            NodeKind::Name(name) => name,
+                            _ => {
+                                self.diagnostics.add(Diagnostic::error(
+                                    "expected variant name",
+                                    vec![Note::primary(
+                                        node.span,
+                                        "only variants may be used in this kind of pattern",
+                                    )],
+                                ));
 
-                            return PatternKind::Error;
-                        }
-                    };
+                                return PatternKind::Error;
+                            }
+                        };
 
-                    let rest = nodes.map(|node| self.build_pattern(node)).collect();
+                        let rest = nodes.map(|node| self.build_pattern(node)).collect();
 
-                    PatternKind::Variant((name_span, name), rest)
-                }
-                NodeKind::Empty => PatternKind::Tuple(Vec::new()),
-                NodeKind::Number(number) => PatternKind::Number(number),
-                NodeKind::Text(text) => PatternKind::Text(text),
-                NodeKind::Annotate(node, ty) => {
-                    let inner = self.build_pattern(*node);
-                    let ty = self.build_type_annotation(*ty);
+                        PatternKind::Variant((name_span, name), rest)
+                    }
+                    NodeKind::Empty => PatternKind::Tuple(Vec::new()),
+                    NodeKind::Number(number) => PatternKind::Number(number),
+                    NodeKind::Text(text) => PatternKind::Text(text),
+                    NodeKind::Annotate(node, ty) => {
+                        let inner = self.build_pattern(*node);
+                        let ty = self.build_type_annotation(*ty);
 
-                    PatternKind::Annotate(Box::new(inner), ty)
-                }
-                NodeKind::Or(lhs, rhs) => PatternKind::Or(
-                    Box::new(self.build_pattern(*lhs)),
-                    Box::new(self.build_pattern(*rhs)),
-                ),
-                NodeKind::Where(pattern, condition) => PatternKind::Where(
-                    Box::new(self.build_pattern(*pattern)),
-                    Box::new(self.build_expression(*condition)),
-                ),
-                NodeKind::Tuple(nodes) => PatternKind::Tuple(
-                    nodes
-                        .into_iter()
-                        .map(|node| self.build_pattern(node))
-                        .collect(),
-                ),
-                _ => {
-                    self.diagnostics.add(Diagnostic::error(
-                        "expected pattern",
-                        vec![Note::primary(
+                        PatternKind::Annotate(Box::new(inner), ty)
+                    }
+                    NodeKind::Or(lhs, rhs) => PatternKind::Or(
+                        Box::new(self.build_pattern(*lhs)),
+                        Box::new(self.build_pattern(*rhs)),
+                    ),
+                    NodeKind::Where(pattern, condition) => PatternKind::Where(
+                        Box::new(self.build_pattern(*pattern)),
+                        Box::new(self.build_expression(*condition)),
+                    ),
+                    NodeKind::Tuple(nodes) => PatternKind::Tuple(
+                        nodes
+                            .into_iter()
+                            .map(|node| self.build_pattern(node))
+                            .collect(),
+                    ),
+                    _ => {
+                        self.diagnostics.add(Diagnostic::error(
+                            "expected pattern",
+                            vec![Note::primary(
                             node.span,
                             "values may not appear on the left-hand side of a variable assignment",
                         )],
-                    ));
+                        ));
 
-                    PatternKind::Error
+                        PatternKind::Error
+                    }
                 }
             })(),
         }
