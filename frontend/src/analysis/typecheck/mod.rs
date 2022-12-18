@@ -2844,12 +2844,30 @@ impl<'a, 'l> Typechecker<'a, 'l> {
 
         self.generic_constants.insert(id, (true, decl.value.value));
 
-        let params = decl
+        let mut params = decl
             .value
             .trait_params
             .into_iter()
             .map(|ty| self.convert_finalized_type_annotation(ty).into())
-            .collect();
+            .collect::<Vec<_>>();
+
+        let tr = self.with_trait_decl(decl.value.tr, Clone::clone);
+
+        for param in tr.params.iter().skip(params.len()) {
+            let name = self.with_type_parameter_decl(*param, |decl| decl.name);
+
+            self.compiler.diagnostics.add(Diagnostic::error(
+                format!("missing type for trait parameter `{}`", name),
+                vec![Note::primary(
+                    decl.span,
+                    "try adding another type after the trait provided to `instance`",
+                )],
+            ));
+
+            params.push(engine::UnresolvedType::Bottom(
+                engine::BottomTypeReason::Error,
+            ));
+        }
 
         let instance_ty = self.substitute_trait_params(trait_id, params);
 
@@ -3235,20 +3253,10 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                 }
             }
             lower::TypeAnnotationKind::Named(id, params) => {
-                let params = params
+                let mut params = params
                     .into_iter()
                     .map(|param| self.convert_type_annotation_inner(param, convert_var, stack))
                     .collect::<Vec<_>>();
-
-                if stack.contains(&id) {
-                    return engine::UnresolvedType::Named(
-                        id,
-                        params,
-                        engine::TypeStructure::Recursive(id),
-                    );
-                }
-
-                stack.push(id);
 
                 let ty = self
                     .files
@@ -3259,6 +3267,32 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                     .get(&id)
                     .unwrap()
                     .clone();
+
+                for param in ty.value.params.iter().skip(params.len()) {
+                    let name = self.with_type_parameter_decl(*param, |decl| decl.name);
+
+                    self.compiler.diagnostics.add(Diagnostic::error(
+                        format!("missing type for type parameter `{}`", name),
+                        vec![Note::primary(
+                            annotation.span,
+                            "try adding another type after this",
+                        )],
+                    ));
+
+                    params.push(engine::UnresolvedType::Bottom(
+                        engine::BottomTypeReason::Error,
+                    ));
+                }
+
+                if stack.contains(&id) {
+                    return engine::UnresolvedType::Named(
+                        id,
+                        params,
+                        engine::TypeStructure::Recursive(id),
+                    );
+                }
+
+                stack.push(id);
 
                 let substitutions = ty
                     .value
@@ -3551,6 +3585,8 @@ impl<'a, 'l> Typechecker<'a, 'l> {
     ) -> engine::UnresolvedType {
         let (trait_ty, trait_params) =
             self.with_trait_decl(trait_id, |decl| (decl.ty.clone(), decl.params.clone()));
+
+        assert!(trait_params.len() == params.len());
 
         let substitutions = trait_params
             .into_iter()
