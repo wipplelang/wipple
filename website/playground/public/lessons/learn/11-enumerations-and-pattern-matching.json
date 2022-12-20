@@ -3,7 +3,8 @@
         {
             "id": "wrFvsznN",
             "type": "text",
-            "value": "# Enumerations and pattern matching\n\nIn the last section, we learned how to use the `if` function to make a choice in our program. Now, we'll take a look at the `when` function, which is like a more powerful version of `if`!\n\n`when` allows you to make a choice out of many possibilities at once. For example, let's say we have a number we want to describe:"
+            "value": "# Enumerations and pattern matching\n\nIn the last section, we learned how to use the `if` function to make a choice in our program. Now, we'll take a look at the `when` function, which is like a more powerful version of `if`!\n\n`when` allows you to make a choice out of many possibilities at once. For example, let's say we have a number we want to describe:",
+            "locked": true
         },
         {
             "id": "Tos2GcCk",
@@ -13,7 +14,8 @@
         {
             "id": "HmKdvwFY",
             "type": "text",
-            "value": "As you can see, `when` accepts an input and a bunch of functions to choose from. On the left-hand side of the `->`, we provide a number, and on the right-hand side, a value that `when` will pick if the input matches the number. This concept is aptly called \"pattern matching\"!\n\nYou can also use pattern matching on text:"
+            "value": "As you can see, `when` accepts an input and a bunch of functions to choose from. On the left-hand side of the `->`, we provide a number, and on the right-hand side, a value that `when` will pick if the input matches the number. This concept is aptly called \"pattern matching\"!\n\nYou can also use pattern matching on text:",
+            "locked": true
         },
         {
             "id": "QVU5aka-",
@@ -23,7 +25,8 @@
         {
             "id": "HxSfls6m",
             "type": "text",
-            "value": "Pattern matching on text is common in other languages where the text is used to represent the type of data we're dealing with. But what happens if we provide a piece of text we don't know how to deal with?"
+            "value": "Pattern matching on text is common in other languages where the text is used to represent the type of data we're dealing with. But what happens if we provide a piece of text we don't know how to deal with?",
+            "locked": true
         },
         {
             "id": "C6t_PBWr",
@@ -33,7 +36,8 @@
         {
             "id": "A0cBefNz",
             "type": "text",
-            "value": "Here, providing a grade of \"E\" gives us \"need to study\", but \"E\" isn't a grade! In most languages, you would crash the program when receiving an input you don't know how to deal with:"
+            "value": "Here, providing a grade of \"E\" gives us \"need to study\", but \"E\" isn't a grade! In most languages, you would crash the program when receiving an input you don't know how to deal with:",
+            "locked": true
         },
         {
             "id": "FL-GXHBQ",
@@ -43,7 +47,8 @@
         {
             "id": "5ohOsenq",
             "type": "text",
-            "value": "In Wipple, we can do better. Wipple's type system allows us to define a fixed set of possibilities using a `type`!"
+            "value": "In Wipple, we can do better. Wipple's type system allows us to define a fixed set of possibilities using a `type`!",
+            "locked": true
         },
         {
             "id": "41oa2iMZ",
@@ -53,7 +58,8 @@
         {
             "id": "42X6Zhy0",
             "type": "text",
-            "value": "By the way, if you want to avoid writing `Grade` every time, you can write `use Grade` and then refer to `A` through `F` directly:"
+            "value": "By the way, if you want to avoid writing `Grade` every time, you can write `use Grade` and then refer to `A` through `F` directly:",
+            "locked": true
         },
         {
             "id": "hbuhbrtL",
@@ -63,15 +69,10 @@
         {
             "id": "Y10Jf4jg",
             "type": "text",
-            "value": "Types that provide a fixed set of possibilities are called **enumerations** (or \"enums\" for short), and each possibility is called a **variant**. Try making some of your own enums!\n\nWipple's enums have one more trick up their sleeve... go to the next section when you're ready!"
+            "value": "Types that provide a fixed set of possibilities are called **enumerations** (or \"enums\" for short), and each possibility is called a **variant**. Try making some of your own enums!\n\nWipple's enums have one more trick up their sleeve... go to the next section when you're ready!",
+            "locked": true
         }
     ],
-    "previous": {
-        "name": "Traits",
-        "link": "?lesson=learn/10-logic"
-    },
-    "next": {
-        "name": "Maybe and Result",
-        "link": "?lesson=learn/12-maybe-and-result"
-    }
+    "previous": { "name": "Traits", "link": "?lesson=learn/10-logic" },
+    "next": { "name": "Maybe and Result", "link": "?lesson=learn/12-maybe-and-result" }
 }

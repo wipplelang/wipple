@@ -3,27 +3,22 @@
         {
             "id": "fTD9Vbq_",
             "type": "text",
-            "value": "# Math\n\nTo get familiar with the Wipple Playground, let's start by writing a simple calculator!"
+            "value": "# Math\n\nTo get familiar with the Wipple Playground, let's start by writing a simple calculator!",
+            "locked": true
         },
-        {
-            "id": "WSkWDvFh",
-            "type": "code",
-            "value": "2 + 2"
-        },
+        { "id": "WSkWDvFh", "type": "code", "value": "2 + 2" },
         {
             "id": "1U5cPJ-D",
             "type": "text",
-            "value": "...wait, nothing happened. Why not?\n\n## Computers do exactly what you tell them to do\n\nThe problem is that you told the computer to add 2 and 2 together, but you didn't tell it what to do with the result! So the answer (`4`) is just discarded. Remember that computers always do exactly what you tell them to do, and never anything you don't. To fix this, we can add `show` to the front of our calculation, which instructs the computer to display it on the screen:"
+            "value": "...wait, nothing happened. Why not?\n\n## Computers do exactly what you tell them to do\n\nThe problem is that you told the computer to add 2 and 2 together, but you didn't tell it what to do with the result! So the answer (`4`) is just discarded. Remember that computers always do exactly what you tell them to do, and never anything you don't. To fix this, we can add `show` to the front of our calculation, which instructs the computer to display it on the screen:",
+            "locked": true
         },
-        {
-            "id": "eIJx5z-I",
-            "type": "code",
-            "value": "show (2 + 2)"
-        },
+        { "id": "eIJx5z-I", "type": "code", "value": "show (2 + 2)" },
         {
             "id": "qIsxU1wP",
             "type": "text",
-            "value": "Hooray, now `4` appears on the screen! Try changing the numbers and experiment with other symbols, and see what happens.\n\n### Some more examples\n\nWhat do you notice about writing code over multiple lines?"
+            "value": "Hooray, now `4` appears on the screen! Try changing the numbers and experiment with other symbols, and see what happens.\n\n### Some more examples\n\nWhat do you notice about writing code over multiple lines?",
+            "locked": true
         },
         {
             "id": "D8Snbtt9",
@@ -33,7 +28,8 @@
         {
             "id": "Ec99uMNv",
             "type": "text",
-            "value": "### More complex calculations\n\nYou can use Wipple as a full calculator by grouping calculations with parentheses. Try it out!"
+            "value": "### More complex calculations\n\nYou can use Wipple as a full calculator by grouping calculations with parentheses. Try it out!",
+            "locked": true
         },
         {
             "id": "a5JnU1Jj",
@@ -43,15 +39,13 @@
         {
             "id": "YUJ4RHKq",
             "type": "text",
-            "value": "OK, now that you've hopefully got the hang of the playground, let's move on to something more interesting!"
+            "value": "OK, now that you've hopefully got the hang of the playground, let's move on to something more interesting!",
+            "locked": true
         }
     ],
     "previous": {
         "name": "The Wipple Playground",
         "link": "?lesson=learn/00-the-wipple-playground"
     },
-    "next": {
-        "name": "Variables",
-        "link": "?lesson=learn/02-variables"
-    }
+    "next": { "name": "Variables", "link": "?lesson=learn/02-variables" }
 }

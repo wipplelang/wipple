@@ -3,25 +3,17 @@
         {
             "id": "u8mtvPD0",
             "type": "text",
-            "value": "Now that we're familiar with the Wipple Playground, we can start learning how to write some \"real\" Wipple code.\n\n# So how does Wipple actually work?\n\nImagine you're having a conversation with another person. In order to understand one another, you both have to be speaking the same language. The job of a language is to provide rules on what words you can use, what they mean, and what happens when they are used together in different ways. \"I love Wipple\" is a valid sentence in English, but [Jabberwocky](https://www.poetryfoundation.org/poems/42916/jabberwocky) is nonsense!\n\nWipple is really two things — the **syntax**, which provides the rules on what's valid to type in, and the **semantics**, which provides the rules on what actually happens when you run your program. Every piece of valid syntax has its own semantics.\n\nLet's try out a simple example:"
+            "value": "Now that we're familiar with the Wipple Playground, we can start learning how to write some \"real\" Wipple code.\n\n# So how does Wipple actually work?\n\nImagine you're having a conversation with another person. In order to understand one another, you both have to be speaking the same language. The job of a language is to provide rules on what words you can use, what they mean, and what happens when they are used together in different ways. \"I love Wipple\" is a valid sentence in English, but [Jabberwocky](https://www.poetryfoundation.org/poems/42916/jabberwocky) is nonsense!\n\nWipple is really two things — the **syntax**, which provides the rules on what's valid to type in, and the **semantics**, which provides the rules on what actually happens when you run your program. Every piece of valid syntax has its own semantics.\n\nLet's try out a simple example:",
+            "locked": true
         },
-        {
-            "id": "M7fS_7-6",
-            "type": "code",
-            "value": "sum : 1 + 2\nshow sum"
-        },
+        { "id": "M7fS_7-6", "type": "code", "value": "sum : 1 + 2\nshow sum" },
         {
             "id": "lFYARx27",
             "type": "text",
-            "value": "There are a couple of things happening here. First the text you type is **parsed** into a format the computer can understand (kind of like how when we hear the world \"cookie\", we think about the smell of fresh cookies baking in the oven). The format looks something like this:\n\n-   The name `sum`\n-   The `:` symbol\n-   The number `1`\n-   The `+` symbol\n-   The number `2`\n-   and so on.\n\nThese individual items are called **tokens**. The computer then uses these tokens to build up a list of **instructions** to execute — for example, `1 + 2` is converted to an \"add\" instruction. Pretty cool!\n\nWait a moment, how does the computer know that `1 + 2` means \"add\"? Well, it contains a big table of all the names and symbols in the program and what they mean. It works just like a dictionary, where each word has a definition.\n\n<table>\n    <tbody>\n        <tr>\n            <td><b>Name</b></td>\n            <td><b>Meaning</b></td>\n        </tr>\n        <tr>\n            <td><code>sum</code></td>\n            <td>The result of <code>1 + 2</code></td>\n        </tr>\n        <tr>\n            <td><code>+</code></td>\n            <td>Code to add two numbers</td>\n        </tr>\n        <tr>\n            <td><code>show</code></td>\n            <td>Code to display things on the screen</td>\n        </tr>\n    </tbody>\n</table>\n\nThat's why referring to any old name doesn't work in Wipple — you have to use a name that's in the table.\n\nThere's one more special name in Wipple — the `:` symbol. It adds new entries into the table, allowing you to define your own names!\n\nNow that we have a better understanding of what's actually going on when you write Wipple code, we can start looking at one of the foundational Wipple concepts: the function. Take a quick break, and then click the arrow to go to the next page!"
+            "value": "There are a couple of things happening here. First the text you type is **parsed** into a format the computer can understand (kind of like how when we hear the world \"cookie\", we think about the smell of fresh cookies baking in the oven). The format looks something like this:\n\n-   The name `sum`\n-   The `:` symbol\n-   The number `1`\n-   The `+` symbol\n-   The number `2`\n-   and so on.\n\nThese individual items are called **tokens**. The computer then uses these tokens to build up a list of **instructions** to execute — for example, `1 + 2` is converted to an \"add\" instruction. Pretty cool!\n\nWait a moment, how does the computer know that `1 + 2` means \"add\"? Well, it contains a big table of all the names and symbols in the program and what they mean. It works just like a dictionary, where each word has a definition.\n\n<table>\n    <tbody>\n        <tr>\n            <td><b>Name</b></td>\n            <td><b>Meaning</b></td>\n        </tr>\n        <tr>\n            <td><code>sum</code></td>\n            <td>The result of <code>1 + 2</code></td>\n        </tr>\n        <tr>\n            <td><code>+</code></td>\n            <td>Code to add two numbers</td>\n        </tr>\n        <tr>\n            <td><code>show</code></td>\n            <td>Code to display things on the screen</td>\n        </tr>\n    </tbody>\n</table>\n\nThat's why referring to any old name doesn't work in Wipple — you have to use a name that's in the table.\n\nThere's one more special name in Wipple — the `:` symbol. It adds new entries into the table, allowing you to define your own names!\n\nNow that we have a better understanding of what's actually going on when you write Wipple code, we can start looking at one of the foundational Wipple concepts: the function. Take a quick break, and then click the arrow to go to the next page!",
+            "locked": true
         }
     ],
-    "previous": {
-        "name": "Text",
-        "link": "?lesson=learn/03-text"
-    },
-    "next": {
-        "name": "Functions",
-        "link": "?lesson=learn/05-functions"
-    }
+    "previous": { "name": "Text", "link": "?lesson=learn/03-text" },
+    "next": { "name": "Functions", "link": "?lesson=learn/05-functions" }
 }

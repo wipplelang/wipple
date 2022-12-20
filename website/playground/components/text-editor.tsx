@@ -10,6 +10,7 @@ import { TextareaAutosize } from "@mui/material";
 export interface TextEditorProps {
     content: string;
     onChange: (content: string) => void;
+    isLocked: boolean;
 }
 
 export const TextEditor = (props: TextEditorProps) => {
@@ -20,14 +21,24 @@ export const TextEditor = (props: TextEditorProps) => {
     const editorRef = useRef<HTMLTextAreaElement>(null);
 
     useEffect(() => {
-        window.addEventListener("click", (e) => {
+        const listener = (e: MouseEvent) => {
             if (document.elementFromPoint(e.clientX, e.clientY) instanceof HTMLAnchorElement) {
                 return;
             }
 
-            setEditing(containerRef.current?.contains(e.target as Node) ?? false);
-        });
-    }, []);
+            const willBeginEditing = containerRef.current?.contains(e.target as Node) ?? false;
+
+            if (!props.isLocked || !willBeginEditing) {
+                setEditing(willBeginEditing);
+            }
+        };
+
+        window.addEventListener("click", listener);
+
+        return () => {
+            window.removeEventListener("click", listener);
+        };
+    }, [props.isLocked, setEditing, containerRef]);
 
     useEffect(() => {
         if (isEditing) {

@@ -20,6 +20,8 @@ import DragIndicatorIcon from "@mui/icons-material/DragIndicator";
 import AddIcon from "@mui/icons-material/AddRounded";
 import TextIcon from "@mui/icons-material/TextFormatRounded";
 import DeleteIcon from "@mui/icons-material/DeleteOutlineRounded";
+import LockIcon from "@mui/icons-material/Lock";
+import LockOpenIcon from "@mui/icons-material/LockOpen";
 import PopupState, { bindMenu, bindTrigger } from "material-ui-popup-state";
 import { Menu, MenuItem } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
@@ -28,11 +30,10 @@ import { nanoid } from "nanoid";
 import { CodeEditor, TextEditor } from "../components";
 import { useAsyncEffect, useRefState } from "../helpers";
 
-interface Section {
-    id: string;
-    type: "code" | "text";
-    value: string;
-}
+type Section = { id: string; value: string } & (
+    | { type: "code" }
+    | { type: "text"; locked?: boolean }
+);
 
 interface PageLink {
     name: string;
@@ -147,7 +148,10 @@ const App: NextPage = () => {
 
             <div className="mx-auto p-6 max-w-4xl">
                 <div className="flex items-center justify-between pb-4">
-                    <a href="/playground" className="flex items-center gap-3 text-black dark:text-white">
+                    <a
+                        href="/playground"
+                        className="flex items-center gap-3 text-black dark:text-white"
+                    >
                         <img src="/images/logo.svg" alt="Wipple Playground" className="h-10" />
                         <h1 className="font-semibold">Wipple Playground</h1>
                     </a>
@@ -197,6 +201,7 @@ const App: NextPage = () => {
                                         id: nanoid(8),
                                         type,
                                         value: "",
+                                        locked: type === "text" ? false : undefined,
                                     });
                                     setSections(newSections);
                                 }}
@@ -206,6 +211,21 @@ const App: NextPage = () => {
                                               const newSections = [...sections];
                                               newSections.splice(index, 1);
                                               setSections(newSections);
+                                          }
+                                        : undefined
+                                }
+                                lock={
+                                    section.type === "text"
+                                        ? {
+                                              isLocked: section.locked ?? false,
+                                              onChangeLocked: (locked) => {
+                                                  const newSections = [...sections];
+                                                  newSections.splice(index, 1, {
+                                                      ...section,
+                                                      locked,
+                                                  });
+                                                  setSections(newSections);
+                                              },
                                           }
                                         : undefined
                                 }
@@ -289,6 +309,10 @@ const SideMenu = (props: {
     grabberProps?: any;
     onPressAdd?: (type: Section["type"]) => void;
     onPressRemove?: () => void;
+    lock?: {
+        isLocked: boolean;
+        onChangeLocked: (locked: boolean) => void;
+    };
 }) => (
     <div className="w-6 -mt-4 -ml-6">
         <div {...props.grabberProps}>
@@ -320,6 +344,25 @@ const SideMenu = (props: {
                                 <TextIcon /> Add Text
                             </MenuItem>
 
+                            {props.lock && (
+                                <MenuItem
+                                    onClick={() => {
+                                        popupState.close();
+                                        props.lock?.onChangeLocked(!props.lock.isLocked);
+                                    }}
+                                >
+                                    {props.lock.isLocked ? (
+                                        <>
+                                            <LockOpenIcon /> Unlock
+                                        </>
+                                    ) : (
+                                        <>
+                                            <LockIcon /> Lock
+                                        </>
+                                    )}
+                                </MenuItem>
+                            )}
+
                             <MenuItem
                                 disabled={props.onPressRemove == null}
                                 onClick={() => {
@@ -341,6 +384,10 @@ const SortableItem = (props: {
     id: string;
     onPressAdd?: (type: Section["type"]) => void;
     onPressRemove?: () => void;
+    lock?: {
+        isLocked: boolean;
+        onChangeLocked: (locked: boolean) => void;
+    };
     children: React.ReactNode;
 }) => {
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
@@ -369,6 +416,7 @@ const SortableItem = (props: {
                         grabberProps={{ ...attributes, ...listeners }}
                         onPressAdd={props.onPressAdd}
                         onPressRemove={props.onPressRemove}
+                        lock={props.lock}
                     />
                 </div>
             ) : null}
@@ -404,6 +452,7 @@ const SectionContainer = (props: { section: Section; onChange: (section: Section
                             value: text,
                         });
                     }}
+                    isLocked={props.section.locked ?? false}
                 />
             );
             break;

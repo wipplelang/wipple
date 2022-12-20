@@ -3,7 +3,8 @@
         {
             "id": "D3pPV-nz",
             "type": "text",
-            "value": "# Traits\n\nEarlier, we figured out that the type of `show` is `Text -> ()` — that is, it accepts text and returns nothing. Well, that's a lie! `show` also accepts numbers and anything else that's \"showable\". So how does `show` work? Let's try a revised type:"
+            "value": "# Traits\n\nEarlier, we figured out that the type of `show` is `Text -> ()` — that is, it accepts text and returns nothing. Well, that's a lie! `show` also accepts numbers and anything else that's \"showable\". So how does `show` work? Let's try a revised type:",
+            "locked": true
         },
         {
             "id": "-BJVsDAV",
@@ -13,7 +14,8 @@
         {
             "id": "JGwG_RDX",
             "type": "text",
-            "value": "Hmm, that's a bit _too_ general. `A` can be any type, but not everything is \"showable\" — `Person` and `Pair` values certainly aren't. (Try running `show bob` to see!)\n\nTo figure out the true type of `show`, we need one more piece of the puzzle: **traits**. Traits allow us to describe the behavior of a _type_ in the same way functions describe the behavior of a value. The true type of `show` is as follows:"
+            "value": "Hmm, that's a bit _too_ general. `A` can be any type, but not everything is \"showable\" — `Person` and `Pair` values certainly aren't. (Try running `show bob` to see!)\n\nTo figure out the true type of `show`, we need one more piece of the puzzle: **traits**. Traits allow us to describe the behavior of a _type_ in the same way functions describe the behavior of a value. The true type of `show` is as follows:",
+            "locked": true
         },
         {
             "id": "sc-_6ASs",
@@ -23,13 +25,15 @@
         {
             "id": "cxv_XkX6",
             "type": "text",
-            "value": "The `where` clause means \"Any `A` as long as `A` is `Show`-able\". What's `Show`? That's our trait!"
+            "value": "The `where` clause means \"Any `A` as long as `A` is `Show`-able\". What's `Show`? That's our trait!",
+            "locked": true
         },
         { "id": "qaRvVIlX", "type": "code", "value": "Show : A => trait (A -> Text)" },
         {
             "id": "bGNZ-oaV",
             "type": "text",
-            "value": "This piece of code means \"for any type `A`, to `Show` an `A` means to implement a function that, given a value of type `A`, produces a `Text`\". Phew!\n\nSo how exactly do we \"implement a function\"? We need to learn one more command: `instance`."
+            "value": "This piece of code means \"for any type `A`, to `Show` an `A` means to implement a function that, given a value of type `A`, produces a `Text`\". Phew!\n\nSo how exactly do we \"implement a function\"? We need to learn one more command: `instance`.",
+            "locked": true
         },
         {
             "id": "RUYaV_pW",
@@ -39,7 +43,8 @@
         {
             "id": "otRW0clO",
             "type": "text",
-            "value": "Pretty neat! Traits and instances allow us to define **new functionality** for **existing code**, even code we didn't write!\n\nAnd to combine all of our knowledge so far, here's a line taken straight out of the builtin Wipple functions:"
+            "value": "Pretty neat! Traits and instances allow us to define **new functionality** for **existing code**, even code we didn't write!\n\nAnd to combine all of our knowledge so far, here's a line taken straight out of the builtin Wipple functions:",
+            "locked": true
         },
         {
             "id": "jndWVmgp",
@@ -49,15 +54,10 @@
         {
             "id": "2RPvbbo1",
             "type": "text",
-            "value": "If you understand what's going on there, great job! If you don't quite yet, don't worry — you'll figure it out as you keep coding.\n\nTake another quick break, and then let's move on to something different!"
+            "value": "If you understand what's going on there, great job! If you don't quite yet, don't worry — you'll figure it out as you keep coding.\n\nTake another quick break, and then let's move on to something different!",
+            "locked": true
         }
     ],
-    "previous": {
-        "name": "Structures",
-        "link": "?lesson=learn/08-structures"
-    },
-    "next": {
-        "name": "Logic",
-        "link": "?lesson=learn/10-logic"
-    }
+    "previous": { "name": "Structures", "link": "?lesson=learn/08-structures" },
+    "next": { "name": "Logic", "link": "?lesson=learn/10-logic" }
 }

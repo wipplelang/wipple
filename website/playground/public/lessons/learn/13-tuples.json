@@ -3,7 +3,8 @@
         {
             "id": "dWe0zd4B",
             "type": "text",
-            "value": "# Tuples\n\nTuples are another way to group values together. They're similar to structures, but don't have a name associated with each item. Tuples can come in handy when you want to return more than one value from a function without needing to create a whole new type.\n\nYou can create a tuple using the `,` operator:\n\n```\nmy-tuple : 1 , \"hello\"\n```\n\nAnd you can retrieve the values inside the tuple using `,` as well:"
+            "value": "# Tuples\n\nTuples are another way to group values together. They're similar to structures, but don't have a name associated with each item. Tuples can come in handy when you want to return more than one value from a function without needing to create a whole new type.\n\nYou can create a tuple using the `,` operator:\n\n```\nmy-tuple : 1 , \"hello\"\n```\n\nAnd you can retrieve the values inside the tuple using `,` as well:",
+            "locked": true
         },
         {
             "id": "lkruPPuP",
@@ -13,7 +14,8 @@
         {
             "id": "w71SAhqs",
             "type": "text",
-            "value": "A good example of tuples in action is to represent a point in space:"
+            "value": "A good example of tuples in action is to represent a point in space:",
+            "locked": true
         },
         {
             "id": "pvtHgnie",
@@ -23,15 +25,10 @@
         {
             "id": "SixGUN9N",
             "type": "text",
-            "value": "Try changing the example to support 3-dimensional points!"
+            "value": "Try changing the example to support 3-dimensional points!",
+            "locked": true
         }
     ],
-    "previous": {
-        "name": "Maybe and Result",
-        "link": "?lesson=learn/12-maybe-and-result"
-    },
-    "next": {
-        "name": "Working with lists",
-        "link": "?lesson=learn/14-working-with-lists"
-    }
+    "previous": { "name": "Maybe and Result", "link": "?lesson=learn/12-maybe-and-result" },
+    "next": { "name": "Working with lists", "link": "?lesson=learn/14-working-with-lists" }
 }

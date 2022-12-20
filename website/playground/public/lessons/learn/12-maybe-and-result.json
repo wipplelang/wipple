@@ -3,7 +3,8 @@
         {
             "id": "Gv0dbzMx",
             "type": "text",
-            "value": "# `Maybe` and `Result`\n\nIt's time to put together all of our knowledge and learn about two fundamental types in Wipple, `Maybe` and `Result`. Almost every Wipple program uses these two types extensively!\n\n## `Maybe`\n\nLet's say we have a program that asks you to input a number. But what happens if you _don't_ provide a number? How can we represent the _absence_ of a value in our program?\n\nYour first thought might be to designate a special number to represent the absence, like `0` or `-1`. But this isn't just confusing, it also invites bugs. Luckily, Wipple has a special enumeration, called `Maybe`, that's designed to handle this situation! Here is `Maybe` in its entirety:"
+            "value": "# `Maybe` and `Result`\n\nIt's time to put together all of our knowledge and learn about two fundamental types in Wipple, `Maybe` and `Result`. Almost every Wipple program uses these two types extensively!\n\n## `Maybe`\n\nLet's say we have a program that asks you to input a number. But what happens if you _don't_ provide a number? How can we represent the _absence_ of a value in our program?\n\nYour first thought might be to designate a special number to represent the absence, like `0` or `-1`. But this isn't just confusing, it also invites bugs. Luckily, Wipple has a special enumeration, called `Maybe`, that's designed to handle this situation! Here is `Maybe` in its entirety:",
+            "locked": true
         },
         {
             "id": "nSZPzNke",
@@ -13,7 +14,8 @@
         {
             "id": "cd1whHeN",
             "type": "text",
-            "value": "What's that `A` after the `Some`? Well, in Wipple, enums can store values alongside the variant. This is an extremely powerful concept that makes it impossible for your program to be in an invalid state. `A` represents the type of the value to be stored alongside `Some`! You might see where this is going — `None` has no associated values and thus represents the absence of one.\n\nSo how do we get the value out of the `Some`? We can use pattern matching!"
+            "value": "What's that `A` after the `Some`? Well, in Wipple, enums can store values alongside the variant. This is an extremely powerful concept that makes it impossible for your program to be in an invalid state. `A` represents the type of the value to be stored alongside `Some`! You might see where this is going — `None` has no associated values and thus represents the absence of one.\n\nSo how do we get the value out of the `Some`? We can use pattern matching!",
+            "locked": true
         },
         {
             "id": "sQT-kiJh",
@@ -23,7 +25,8 @@
         {
             "id": "1kFjJKHv",
             "type": "text",
-            "value": "If you're sure that there's a value inside a `Maybe`, then you can crash the program if `None` is found instead."
+            "value": "If you're sure that there's a value inside a `Maybe`, then you can crash the program if `None` is found instead.",
+            "locked": true
         },
         {
             "id": "1XPz17r5",
@@ -33,7 +36,8 @@
         {
             "id": "0hz1Fw5X",
             "type": "text",
-            "value": "This can be expressed more succinctly using `expect`, which will crash the program with the provided error message if `None` is found:"
+            "value": "This can be expressed more succinctly using `expect`, which will crash the program with the provided error message if `None` is found:",
+            "locked": true
         },
         {
             "id": "Ei08FaY7",
@@ -43,7 +47,8 @@
         {
             "id": "Fe6Traj1",
             "type": "text",
-            "value": "Or you can use `unwrap`, which provides a default error message:"
+            "value": "Or you can use `unwrap`, which provides a default error message:",
+            "locked": true
         },
         {
             "id": "54q45Gas",
@@ -53,7 +58,8 @@
         {
             "id": "A71Q3sue",
             "type": "text",
-            "value": "## `Result`\n\nReturning `Maybe` from a function is useful if there's an error while processing the input — for example, if the user's input is `five` instead of `5`. But there's a better way to express errors in Wipple, and that's with the `Result` type!"
+            "value": "## `Result`\n\nReturning `Maybe` from a function is useful if there's an error while processing the input — for example, if the user's input is `five` instead of `5`. But there's a better way to express errors in Wipple, and that's with the `Result` type!",
+            "locked": true
         },
         {
             "id": "ZsHEajlX",
@@ -63,7 +69,8 @@
         {
             "id": "ePivF0Dz",
             "type": "text",
-            "value": "Instead of `Some` and `None`, `Result` has `OK` (representing success) and `Error` (representing failure). Otherwise, you use them in the same way!\n\nHere's an example that \"clamps\" an number, ensuring it is within the provided range:"
+            "value": "Instead of `Some` and `None`, `Result` has `OK` (representing success) and `Error` (representing failure). Otherwise, you use them in the same way!\n\nHere's an example that \"clamps\" an number, ensuring it is within the provided range:",
+            "locked": true
         },
         {
             "id": "NzQuwdVl",
@@ -75,8 +82,5 @@
         "name": "Enumerations and pattern matching",
         "link": "?lesson=learn/11-enumerations-and-pattern-matching"
     },
-    "next": {
-        "name": "Tuples",
-        "link": "?lesson=learn/13-tuples"
-    }
+    "next": { "name": "Tuples", "link": "?lesson=learn/13-tuples" }
 }

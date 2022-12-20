@@ -3,7 +3,8 @@
         {
             "id": "6ovXgASj",
             "type": "text",
-            "value": "# Structures\n\nSo far, we've been writing programs that deal with \"simple\" data — numbers, text, functions, and so on. Now, we'll learn how to model complex data using **structures**!\n\nThis is a larger program that builds upon each example, so follow along by reading the comments in the code!"
+            "value": "# Structures\n\nSo far, we've been writing programs that deal with \"simple\" data — numbers, text, functions, and so on. Now, we'll learn how to model complex data using **structures**!\n\nThis is a larger program that builds upon each example, so follow along by reading the comments in the code!",
+            "locked": true
         },
         {
             "id": "MRVKlCoP",
@@ -13,7 +14,8 @@
         {
             "id": "JqK0Jmzg",
             "type": "text",
-            "value": "How about a more complicated example? Let's add in type functions!"
+            "value": "How about a more complicated example? Let's add in type functions!",
+            "locked": true
         },
         {
             "id": "Z0Fc_ffR",
@@ -23,15 +25,10 @@
         {
             "id": "H2WuiY_L",
             "type": "text",
-            "value": "\nLet's conclude our journey with types by talking about **traits**!"
+            "value": "\nLet's conclude our journey with types by talking about **traits**!",
+            "locked": true
         }
     ],
-    "previous": {
-        "name": "Type functions",
-        "link": "?lesson=learn/07-type-functions"
-    },
-    "next": {
-        "name": "Traits",
-        "link": "?lesson=learn/09-traits"
-    }
+    "previous": { "name": "Type functions", "link": "?lesson=learn/07-type-functions" },
+    "next": { "name": "Traits", "link": "?lesson=learn/09-traits" }
 }
