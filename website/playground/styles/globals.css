@@ -25,15 +25,3 @@ code {
     white-space: pre-wrap !important;
     word-break: break-all !important;
 }
-
-:root {
-    --code-bg: #f9fafb;
-    --code-fg: #374151;
-}
-
-@media (prefers-color-scheme: dark) {
-    :root {
-        --code-bg: #374151;
-        --code-fg: #f9fafb;
-    }
-}
