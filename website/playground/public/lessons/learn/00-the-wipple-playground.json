@@ -9,7 +9,7 @@
         {
             "id": "BgAxEaN9",
             "type": "code",
-            "value": "name : \"<add your name here>\"\nshow (format \"Welcome, _!\" name)"
+            "value": "name : \"your name here\"\nshow (format \"Welcome, _!\" name)"
         },
         {
             "id": "u-tb0FFF",
