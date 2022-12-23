@@ -1,0 +1,15 @@
+code: |
+    T : A B => trait (A , B)
+
+    foo :: A where (T A _) => A -> ()
+    foo : just ()
+
+    A : type
+    instance (T A A) : ...
+
+    B : type
+    A where (T A _) => instance (T B B) : ...
+
+output: |
+
+diagnostics: |

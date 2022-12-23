@@ -131,12 +131,6 @@ pub enum TypeError {
     InvalidNumericLiteral(UnresolvedType),
 }
 
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
-pub struct FinalizeOptions {
-    pub generic: bool,
-    pub replace_variables_with_errors: bool,
-}
-
 impl Context {
     pub fn new() -> Self {
         Default::default()
@@ -667,35 +661,29 @@ impl UnresolvedType {
         }
     }
 
-    pub fn finalize(mut self, ctx: &Context, options: FinalizeOptions) -> Result<Type, TypeError> {
+    pub fn finalize(mut self, ctx: &Context) -> Result<Type, TypeError> {
         self.apply(ctx);
         self.finalize_numeric_variables(ctx);
 
         Ok(match self {
             UnresolvedType::Variable(_) => return Err(TypeError::UnresolvedType(self)),
-            UnresolvedType::Parameter(param) => {
-                if options.generic {
-                    Type::Parameter(param)
-                } else {
-                    return Err(TypeError::UnresolvedType(self));
-                }
-            }
+            UnresolvedType::Parameter(param) => Type::Parameter(param),
             UnresolvedType::NumericVariable(_) => unreachable!(),
             UnresolvedType::Named(id, params, structure) => Type::Named(
                 id,
                 params
                     .into_iter()
-                    .map(|param| param.finalize(ctx, options))
+                    .map(|param| param.finalize(ctx))
                     .collect::<Result<_, _>>()?,
-                structure.finalize(ctx, options)?,
+                structure.finalize(ctx)?,
             ),
             UnresolvedType::Function(input, output) => Type::Function(
-                Box::new(input.finalize(ctx, options)?),
-                Box::new(output.finalize(ctx, options)?),
+                Box::new(input.finalize(ctx)?),
+                Box::new(output.finalize(ctx)?),
             ),
             UnresolvedType::Tuple(tys) => Type::Tuple(
                 tys.into_iter()
-                    .map(|ty| ty.finalize(ctx, options))
+                    .map(|ty| ty.finalize(ctx))
                     .collect::<Result<_, _>>()?,
             ),
             UnresolvedType::Builtin(builtin) => Type::Builtin(match builtin {
@@ -708,10 +696,8 @@ impl UnresolvedType {
                 BuiltinType::Float => BuiltinType::Float,
                 BuiltinType::Double => BuiltinType::Double,
                 BuiltinType::Text => BuiltinType::Text,
-                BuiltinType::List(ty) => BuiltinType::List(Box::new(ty.finalize(ctx, options)?)),
-                BuiltinType::Mutable(ty) => {
-                    BuiltinType::Mutable(Box::new(ty.finalize(ctx, options)?))
-                }
+                BuiltinType::List(ty) => BuiltinType::List(Box::new(ty.finalize(ctx)?)),
+                BuiltinType::Mutable(ty) => BuiltinType::Mutable(Box::new(ty.finalize(ctx)?)),
             }),
             UnresolvedType::Bottom(is_error) => Type::Bottom(is_error),
         })
@@ -795,16 +781,12 @@ impl TypeStructure<UnresolvedType> {
         }
     }
 
-    pub fn finalize(
-        self,
-        ctx: &Context,
-        options: FinalizeOptions,
-    ) -> Result<TypeStructure<Type>, TypeError> {
+    pub fn finalize(self, ctx: &Context) -> Result<TypeStructure<Type>, TypeError> {
         Ok(match self {
             TypeStructure::Marker => TypeStructure::Marker,
             TypeStructure::Structure(tys) => TypeStructure::Structure(
                 tys.into_iter()
-                    .map(|ty| ty.finalize(ctx, options))
+                    .map(|ty| ty.finalize(ctx))
                     .collect::<Result<_, _>>()?,
             ),
             TypeStructure::Enumeration(variants) => TypeStructure::Enumeration(
@@ -812,7 +794,7 @@ impl TypeStructure<UnresolvedType> {
                     .into_iter()
                     .map(|tys| {
                         tys.into_iter()
-                            .map(|ty| ty.finalize(ctx, options))
+                            .map(|ty| ty.finalize(ctx))
                             .collect::<Result<_, _>>()
                     })
                     .collect::<Result<_, _>>()?,

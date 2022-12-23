@@ -2442,13 +2442,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
 
 impl<'a, 'l> Typechecker<'a, 'l> {
     fn finalize_expr(&mut self, expr: MonomorphizedExpression) -> Option<Expression> {
-        let ty = match expr.ty.clone().finalize(
-            &self.ctx,
-            engine::FinalizeOptions {
-                generic: true,
-                ..Default::default()
-            },
-        ) {
+        let ty = match expr.ty.clone().finalize(&self.ctx) {
             Ok(ty) => ty,
             Err(error) => {
                 self.add_error(Error::new(error, expr.span));
@@ -2790,7 +2784,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                 params: bound
                     .parameters
                     .into_iter()
-                    .map(|ty| self.convert_finalized_type_annotation(ty).into())
+                    .map(|ty| self.convert_bound_type_annotation(ty, id.file).into())
                     .collect(),
             })
             .collect::<Vec<_>>();
@@ -2883,7 +2877,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                 params: bound
                     .parameters
                     .into_iter()
-                    .map(|ty| self.convert_finalized_type_annotation(ty).into())
+                    .map(|ty| self.convert_bound_type_annotation(ty, id.file).into())
                     .collect(),
             })
             .collect::<Vec<_>>();
@@ -2938,15 +2932,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
             trait_id,
             params: decl.value.params,
             bounds,
-            ty: instance_ty
-                .finalize(
-                    &self.ctx,
-                    engine::FinalizeOptions {
-                        generic: true,
-                        ..Default::default()
-                    },
-                )
-                .unwrap(),
+            ty: instance_ty.finalize(&self.ctx).unwrap(),
             item,
         };
 
@@ -3206,9 +3192,32 @@ impl<'a, 'l> Typechecker<'a, 'l> {
     ) -> engine::UnresolvedType {
         self.convert_type_annotation_inner(
             annotation,
-            &|typechecker| Some(typechecker.ctx.new_variable()),
+            &|typechecker| {
+                Some(engine::UnresolvedType::Variable(
+                    typechecker.ctx.new_variable(),
+                ))
+            },
             &mut Vec::new(),
         )
+    }
+
+    fn convert_bound_type_annotation(
+        &mut self,
+        annotation: lower::TypeAnnotation,
+        file: FilePath,
+    ) -> engine::Type {
+        let ty = self.convert_type_annotation_inner(
+            annotation,
+            &|typechecker| {
+                Some(engine::UnresolvedType::Parameter(
+                    typechecker.compiler.new_type_parameter_id(file),
+                ))
+            },
+            &mut Vec::new(),
+        );
+
+        ty.finalize(&self.ctx)
+            .expect("type should not contain variables")
     }
 
     fn convert_finalized_type_annotation(
@@ -3217,20 +3226,14 @@ impl<'a, 'l> Typechecker<'a, 'l> {
     ) -> engine::Type {
         let ty = self.convert_type_annotation_inner(annotation, &|_| None, &mut Vec::new());
 
-        ty.finalize(
-            &self.ctx,
-            engine::FinalizeOptions {
-                generic: true,
-                ..Default::default()
-            },
-        )
-        .expect("type should not contain variables")
+        ty.finalize(&self.ctx)
+            .expect("type should not contain variables")
     }
 
     fn convert_type_annotation_inner(
         &mut self,
         annotation: lower::TypeAnnotation,
-        convert_var: &impl Fn(&mut Self) -> Option<engine::TypeVariable>,
+        convert_placeholder: &impl Fn(&mut Self) -> Option<engine::UnresolvedType>,
         stack: &mut Vec<TypeId>,
     ) -> engine::UnresolvedType {
         match annotation.kind {
@@ -3238,8 +3241,8 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                 engine::UnresolvedType::Bottom(engine::BottomTypeReason::Error)
             }
             lower::TypeAnnotationKind::Placeholder => {
-                if let Some(var) = convert_var(self) {
-                    engine::UnresolvedType::Variable(var)
+                if let Some(ty) = convert_placeholder(self) {
+                    ty
                 } else {
                     self.compiler.diagnostics.add(Diagnostic::error(
                         "type placeholder is not allowed here",
@@ -3255,7 +3258,9 @@ impl<'a, 'l> Typechecker<'a, 'l> {
             lower::TypeAnnotationKind::Named(id, params) => {
                 let mut params = params
                     .into_iter()
-                    .map(|param| self.convert_type_annotation_inner(param, convert_var, stack))
+                    .map(|param| {
+                        self.convert_type_annotation_inner(param, convert_placeholder, stack)
+                    })
                     .collect::<Vec<_>>();
 
                 let ty = self
@@ -3303,7 +3308,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                     .collect::<GenericSubstitutions>();
 
                 let mut convert_and_instantiate = |ty| {
-                    let mut ty = self.convert_type_annotation_inner(ty, convert_var, stack);
+                    let mut ty = self.convert_type_annotation_inner(ty, convert_placeholder, stack);
                     ty.instantiate_with(&self.ctx, &substitutions);
                     ty
                 };
@@ -3522,7 +3527,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                             engine::UnresolvedType::Builtin(engine::BuiltinType::List(Box::new(
                                 self.convert_type_annotation_inner(
                                     parameters.pop().unwrap(),
-                                    convert_var,
+                                    convert_placeholder,
                                     stack,
                                 ),
                             )))
@@ -3558,7 +3563,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                             engine::UnresolvedType::Builtin(engine::BuiltinType::Mutable(Box::new(
                                 self.convert_type_annotation_inner(
                                     parameters.pop().unwrap(),
-                                    convert_var,
+                                    convert_placeholder,
                                     stack,
                                 ),
                             )))
@@ -3567,12 +3572,12 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                 }
             }
             lower::TypeAnnotationKind::Function(input, output) => engine::UnresolvedType::Function(
-                Box::new(self.convert_type_annotation_inner(*input, convert_var, stack)),
-                Box::new(self.convert_type_annotation_inner(*output, convert_var, stack)),
+                Box::new(self.convert_type_annotation_inner(*input, convert_placeholder, stack)),
+                Box::new(self.convert_type_annotation_inner(*output, convert_placeholder, stack)),
             ),
             lower::TypeAnnotationKind::Tuple(tys) => engine::UnresolvedType::Tuple(
                 tys.into_iter()
-                    .map(|ty| self.convert_type_annotation_inner(ty, convert_var, stack))
+                    .map(|ty| self.convert_type_annotation_inner(ty, convert_placeholder, stack))
                     .collect(),
             ),
         }
