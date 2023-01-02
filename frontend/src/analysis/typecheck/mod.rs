@@ -2772,7 +2772,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
 
         self.generic_constants.insert(id, (false, body));
 
-        let ty = self.convert_finalized_type_annotation(decl.value.ty);
+        let ty = self.convert_generic_type_annotation(decl.value.ty, id.file);
 
         let bounds = decl
             .value
@@ -2784,7 +2784,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                 params: bound
                     .parameters
                     .into_iter()
-                    .map(|ty| self.convert_bound_type_annotation(ty, id.file).into())
+                    .map(|ty| self.convert_generic_type_annotation(ty, id.file).into())
                     .collect(),
             })
             .collect::<Vec<_>>();
@@ -2842,7 +2842,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
             .value
             .trait_params
             .into_iter()
-            .map(|ty| self.convert_finalized_type_annotation(ty).into())
+            .map(|ty| self.convert_generic_type_annotation(ty, id.file).into())
             .collect::<Vec<_>>();
 
         let tr = self.with_trait_decl(decl.value.tr, Clone::clone);
@@ -2877,7 +2877,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                 params: bound
                     .parameters
                     .into_iter()
-                    .map(|ty| self.convert_bound_type_annotation(ty, id.file).into())
+                    .map(|ty| self.convert_generic_type_annotation(ty, id.file).into())
                     .collect(),
             })
             .collect::<Vec<_>>();
@@ -3201,7 +3201,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
         )
     }
 
-    fn convert_bound_type_annotation(
+    fn convert_generic_type_annotation(
         &mut self,
         annotation: lower::TypeAnnotation,
         file: FilePath,
