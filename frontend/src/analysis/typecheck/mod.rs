@@ -124,7 +124,6 @@ pub struct TraitDecl {
 pub struct ConstantDecl {
     pub name: InternedString,
     pub span: Span,
-    pub params: Vec<TypeParameterId>,
     pub bounds: Vec<Bound>,
     pub ty: engine::Type,
     pub attributes: lower::DeclarationAttributes,
@@ -135,7 +134,6 @@ pub struct ConstantDecl {
 pub struct InstanceDecl {
     pub span: Span,
     pub trait_id: TraitId,
-    pub params: Vec<TypeParameterId>,
     pub bounds: Vec<Bound>,
     pub ty: engine::Type,
     pub item: ItemId,
@@ -173,7 +171,7 @@ pub struct BuiltinTypeDecl {
 
 #[derive(Debug, Clone, Serialize)]
 pub struct TypeParameterDecl {
-    pub name: InternedString,
+    pub name: Option<InternedString>,
     pub span: Span,
     pub uses: Vec<Span>,
 }
@@ -2792,7 +2790,6 @@ impl<'a, 'l> Typechecker<'a, 'l> {
         let decl = ConstantDecl {
             name: decl.name.expect("all constants have names"),
             span: decl.span,
-            params: decl.value.parameters,
             bounds,
             ty,
             attributes: decl.value.attributes,
@@ -2851,7 +2848,10 @@ impl<'a, 'l> Typechecker<'a, 'l> {
             let name = self.with_type_parameter_decl(*param, |decl| decl.name);
 
             self.compiler.diagnostics.add(Diagnostic::error(
-                format!("missing type for trait parameter `{}`", name),
+                format!(
+                    "missing type for trait parameter `{}`",
+                    name.as_deref().unwrap_or("_")
+                ),
                 vec![Note::primary(
                     decl.span,
                     "try adding another type after the trait provided to `instance`",
@@ -2930,7 +2930,6 @@ impl<'a, 'l> Typechecker<'a, 'l> {
         let decl = InstanceDecl {
             span: decl.span,
             trait_id,
-            params: decl.value.params,
             bounds,
             ty: instance_ty.finalize(&self.ctx).unwrap(),
             item,
@@ -3083,7 +3082,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
             .clone();
 
         let decl = TypeParameterDecl {
-            name: decl.name.expect("all type parameters have names"),
+            name: decl.name,
             span: decl.span,
             uses: self
                 .uses
@@ -3192,7 +3191,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
     ) -> engine::UnresolvedType {
         self.convert_type_annotation_inner(
             annotation,
-            &|typechecker| {
+            &|typechecker, _| {
                 Some(engine::UnresolvedType::Variable(
                     typechecker.ctx.new_variable(),
                 ))
@@ -3208,10 +3207,23 @@ impl<'a, 'l> Typechecker<'a, 'l> {
     ) -> engine::Type {
         let ty = self.convert_type_annotation_inner(
             annotation,
-            &|typechecker| {
-                Some(engine::UnresolvedType::Parameter(
-                    typechecker.compiler.new_type_parameter_id(file),
-                ))
+            &|typechecker, span| {
+                let param = typechecker.compiler.new_type_parameter_id(file);
+
+                typechecker
+                    .declarations
+                    .borrow_mut()
+                    .type_parameters
+                    .insert(
+                        param,
+                        TypeParameterDecl {
+                            name: None,
+                            span,
+                            uses: vec![span],
+                        },
+                    );
+
+                Some(engine::UnresolvedType::Parameter(param))
             },
             &mut Vec::new(),
         );
@@ -3224,7 +3236,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
         &mut self,
         annotation: lower::TypeAnnotation,
     ) -> engine::Type {
-        let ty = self.convert_type_annotation_inner(annotation, &|_| None, &mut Vec::new());
+        let ty = self.convert_type_annotation_inner(annotation, &|_, _| None, &mut Vec::new());
 
         ty.finalize(&self.ctx)
             .expect("type should not contain variables")
@@ -3233,7 +3245,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
     fn convert_type_annotation_inner(
         &mut self,
         annotation: lower::TypeAnnotation,
-        convert_placeholder: &impl Fn(&mut Self) -> Option<engine::UnresolvedType>,
+        convert_placeholder: &impl Fn(&mut Self, Span) -> Option<engine::UnresolvedType>,
         stack: &mut Vec<TypeId>,
     ) -> engine::UnresolvedType {
         match annotation.kind {
@@ -3241,7 +3253,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                 engine::UnresolvedType::Bottom(engine::BottomTypeReason::Error)
             }
             lower::TypeAnnotationKind::Placeholder => {
-                if let Some(ty) = convert_placeholder(self) {
+                if let Some(ty) = convert_placeholder(self, annotation.span) {
                     ty
                 } else {
                     self.compiler.diagnostics.add(Diagnostic::error(
@@ -3277,7 +3289,10 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                     let name = self.with_type_parameter_decl(*param, |decl| decl.name);
 
                     self.compiler.diagnostics.add(Diagnostic::error(
-                        format!("missing type for type parameter `{}`", name),
+                        format!(
+                            "missing type for type parameter `{}`",
+                            name.expect("all type parameters on named types are named")
+                        ),
                         vec![Note::primary(
                             annotation.span,
                             "try adding another type after this",
@@ -3614,18 +3629,20 @@ impl<'a, 'l> Typechecker<'a, 'l> {
         let typechecker = RefCell::new(self);
 
         macro_rules! getter {
-            ($x:ident) => {
+            ($x:ident, $f:expr) => {
                 paste::paste!(|id| {
                     typechecker
                         .borrow_mut()
-                        .[<with_ $x _decl>](id, |decl| decl.name.to_string())
+                        .[<with_ $x _decl>](id, |decl| $f(decl.name))
                 })
             };
         }
 
-        let type_names = getter!(type);
-        let trait_names = getter!(trait);
-        let param_names = getter!(type_parameter);
+        let type_names = getter!(type, |name: InternedString| name.to_string());
+        let trait_names = getter!(trait, |name: InternedString| name.to_string());
+        let param_names = getter!(type_parameter, |name: Option<_>| {
+            name.as_ref().map(ToString::to_string)
+        });
 
         format::format_type(ty, type_names, trait_names, param_names, format)
     }

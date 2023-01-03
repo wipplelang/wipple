@@ -82,18 +82,28 @@ impl FormattableType {
         vars
     }
 
-    fn param_names(&self, get_name: impl Fn(TypeParameterId) -> String) -> Vec<String> {
+    fn param_names(&self, get_name: impl Fn(TypeParameterId) -> Option<String>) -> Vec<String> {
         let mut names = BTreeMap::new();
         match &self.kind {
             FormattableTypeKind::Type(ty) => {
                 for param in ty.params() {
-                    names.insert(param, get_name(param));
+                    let name = match get_name(param) {
+                        Some(name) => name,
+                        None => continue,
+                    };
+
+                    names.insert(param, name);
                 }
             }
             FormattableTypeKind::Trait(_, tys) => {
                 for ty in tys {
                     for param in ty.params() {
-                        names.insert(param, get_name(param));
+                        let name = match get_name(param) {
+                            Some(name) => name,
+                            None => continue,
+                        };
+
+                        names.insert(param, name);
                     }
                 }
             }
@@ -128,7 +138,7 @@ pub fn format_type(
     ty: impl Into<FormattableType>,
     type_names: impl Fn(TypeId) -> String,
     trait_names: impl Fn(TraitId) -> String,
-    param_names: impl Fn(TypeParameterId) -> String,
+    param_names: impl Fn(TypeParameterId) -> Option<String>,
     format: Format,
 ) -> String {
     format_type_with(ty, type_names, trait_names, param_names, format)
@@ -138,7 +148,7 @@ fn format_type_with(
     ty: impl Into<FormattableType>,
     type_names: impl Fn(TypeId) -> String,
     trait_names: impl Fn(TraitId) -> String,
-    param_names: impl Fn(TypeParameterId) -> String,
+    param_names: impl Fn(TypeParameterId) -> Option<String>,
     mut format: Format,
 ) -> String {
     let mut ty: FormattableType = ty.into();
@@ -163,7 +173,7 @@ fn format_type_with(
         ty: FormattableType,
         type_names: &impl Fn(TypeId) -> String,
         trait_names: &impl Fn(TraitId) -> String,
-        param_names: &impl Fn(TypeParameterId) -> String,
+        param_names: &impl Fn(TypeParameterId) -> Option<String>,
         var_names: &impl Fn(TypeVariable) -> String,
         is_top_level: bool,
         is_return: bool,
@@ -205,7 +215,9 @@ fn format_type_with(
             FormattableTypeKind::Type(UnresolvedType::NumericVariable(_)) => {
                 format_named_type!("Number", Vec::new())
             }
-            FormattableTypeKind::Type(UnresolvedType::Parameter(param)) => param_names(param),
+            FormattableTypeKind::Type(UnresolvedType::Parameter(param)) => {
+                param_names(param).unwrap_or_else(|| String::from("_"))
+            }
             FormattableTypeKind::Type(UnresolvedType::Bottom(_)) => String::from("!"),
             FormattableTypeKind::Type(UnresolvedType::Named(id, params, _)) => {
                 format_named_type!(type_names(id), params)

@@ -318,25 +318,18 @@ impl LanguageServer for Backend {
 
         let format_type = |ty: Type, format: Format| {
             macro_rules! getter {
-                ($kind:ident) => {
-                    |id| {
-                        document
-                            .program
-                            .declarations
-                            .$kind
-                            .get(&id)
-                            .unwrap()
-                            .name
-                            .to_string()
-                    }
+                ($kind:ident, $f:expr) => {
+                    |id| $f(document.program.declarations.$kind.get(&id).unwrap().name)
                 };
             }
 
             format_type(
                 ty,
-                getter!(types),
-                getter!(traits),
-                getter!(type_parameters),
+                getter!(types, |name: InternedString| name.to_string()),
+                getter!(traits, |name: InternedString| name.to_string()),
+                getter!(type_parameters, |name: Option<_>| {
+                    name.as_ref().map(ToString::to_string)
+                }),
                 format,
             )
         };
@@ -379,7 +372,7 @@ impl LanguageServer for Backend {
         }
 
         macro_rules! type_decls {
-            ($kind:ident, $str:literal $(, $help:expr)?) => {
+            ($kind:ident $(($opt:tt))?, $str:literal $(, $help:expr)?) => {
                 for decl in document.program.declarations.$kind.values() {
                     for span in std::iter::once(decl.span).chain(decl.uses.iter().copied()) {
                         if !within_hover(span) {
@@ -415,8 +408,6 @@ impl LanguageServer for Backend {
         type_decls!(types, "type", |decl: &TypeDecl| {
             decl.attributes.decl_attributes.help.clone()
         });
-
-        type_decls!(type_parameters, "type");
 
         type_decls!(traits, "trait", |decl: &TraitDecl| {
             decl.attributes.decl_attributes.help.clone()
@@ -509,25 +500,18 @@ impl LanguageServer for Backend {
 
         let format_type = |ty: Type, format: Format| {
             macro_rules! getter {
-                ($kind:ident) => {
-                    |id| {
-                        document
-                            .program
-                            .declarations
-                            .$kind
-                            .get(&id)
-                            .unwrap()
-                            .name
-                            .to_string()
-                    }
+                ($kind:ident, $f:expr) => {
+                    |id| $f(document.program.declarations.$kind.get(&id).unwrap().name)
                 };
             }
 
             format_type(
                 ty,
-                getter!(types),
-                getter!(traits),
-                getter!(type_parameters),
+                getter!(types, |name: InternedString| name.to_string()),
+                getter!(traits, |name: InternedString| name.to_string()),
+                getter!(type_parameters, |name: Option<_>| {
+                    name.as_ref().map(ToString::to_string)
+                }),
                 format,
             )
         };
