@@ -15,7 +15,10 @@ pub use typecheck::{
 use crate::{diagnostics::*, parse::Span, Compiler, FilePath, Uses};
 use async_recursion::async_recursion;
 use parking_lot::Mutex;
-use std::sync::{atomic::AtomicUsize, Arc};
+use std::{
+    mem,
+    sync::{atomic::AtomicUsize, Arc},
+};
 
 #[derive(Default)]
 pub struct Options {
@@ -260,12 +263,15 @@ impl Compiler<'_> {
             file
         }
 
-        let lowered_files = files
+        let mut lowered_files = files
             .into_values()
             .map(|file| (*lower(self, file, uses.clone())).clone())
             .collect::<Vec<_>>();
 
-        let uses = Arc::try_unwrap(uses).unwrap().into_inner();
+        let mut uses = Arc::try_unwrap(uses).unwrap().into_inner();
+        for file in &mut lowered_files {
+            uses.merge(mem::take(&mut file.uses));
+        }
 
         let lowering_is_complete = !self.diagnostics.contains_errors();
 

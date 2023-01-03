@@ -727,8 +727,9 @@ impl Backend {
             Arc::from(document.text.as_str()),
         );
 
-        let program = self
-            .borrow_compiler()
+        let compiler = self.borrow_compiler();
+
+        let program = compiler
             .analyze(
                 path,
                 wipple_frontend::analysis::Options::default()
@@ -736,7 +737,9 @@ impl Backend {
             )
             .await;
 
-        let diagnostics = self.borrow_compiler().finish();
+        compiler.lint(&program);
+
+        let diagnostics = compiler.finish();
 
         (program, diagnostics.diagnostics)
     }

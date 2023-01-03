@@ -30,6 +30,7 @@ pub struct File<Decls = Declarations> {
     pub exported: ScopeValues,
     pub scopes: Vec<(Span, ScopeValues)>,
     pub block: Vec<Expression>,
+    pub uses: Uses,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -537,6 +538,8 @@ impl Compiler<'_> {
             }
         }
 
+        let uses = info.uses.lock();
+
         File {
             span: file.span,
             declarations: info.declarations.resolve(),
@@ -544,6 +547,7 @@ impl Compiler<'_> {
             exported: scope.values.take(),
             scopes: info.scopes,
             block,
+            uses: uses.clone(),
         }
     }
 }

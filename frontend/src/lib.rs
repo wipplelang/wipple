@@ -12,7 +12,7 @@ use parse::Span;
 use serde::Serialize;
 use std::{
     borrow::Cow,
-    collections::{BTreeMap, HashMap},
+    collections::{BTreeMap, HashMap, HashSet},
     fmt::{self, Debug},
     hash::Hash,
     mem,
@@ -155,15 +155,21 @@ macro_rules! uses {
         paste::paste! {
             #[derive(Debug, Clone, Default)]
             pub struct Uses {
-                $(pub [<$id _uses>]: BTreeMap<[<$id:camel Id>], Vec<Span>>,)*
+                $(pub [<$id _uses>]: BTreeMap<[<$id:camel Id>], HashSet<Span>>,)*
             }
 
             impl Uses {
                 $(
-                    fn [<record_use_of_ $id>](&mut self, id: [<$id:camel Id>], span: Span) {
-                        self.[<$id _uses>].entry(id).or_default().push(span);
+                    pub fn [<record_use_of_ $id>](&mut self, id: [<$id:camel Id>], span: Span) {
+                        self.[<$id _uses>].entry(id).or_default().insert(span);
                     }
                 )*
+
+                pub fn merge(&mut self, other: Uses) {
+                    $(
+                        self.[<$id _uses>].extend(other.[<$id _uses>]);
+                    )*
+                }
             }
         }
     };

@@ -22,7 +22,7 @@ use itertools::Itertools;
 use serde::Serialize;
 use std::{
     cell::RefCell,
-    collections::{BTreeMap, BTreeSet, HashMap},
+    collections::{BTreeMap, BTreeSet, HashMap, HashSet},
     mem,
     os::raw::{c_int, c_uint},
 };
@@ -93,7 +93,7 @@ pub struct TypeDecl {
     pub params: Vec<TypeParameterId>,
     pub kind: TypeDeclKind,
     pub attributes: lower::TypeAttributes,
-    pub uses: Vec<Span>,
+    pub uses: HashSet<Span>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -117,7 +117,7 @@ pub struct TraitDecl {
     pub params: Vec<TypeParameterId>,
     pub ty: engine::Type,
     pub attributes: lower::TraitAttributes,
-    pub uses: Vec<Span>,
+    pub uses: HashSet<Span>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -127,7 +127,7 @@ pub struct ConstantDecl {
     pub bounds: Vec<Bound>,
     pub ty: engine::Type,
     pub attributes: lower::DeclarationAttributes,
-    pub uses: Vec<Span>,
+    pub uses: HashSet<Span>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -150,7 +150,7 @@ pub struct Bound {
 pub struct OperatorDecl {
     pub name: InternedString,
     pub span: Span,
-    pub uses: Vec<Span>,
+    pub uses: HashSet<Span>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -158,7 +158,7 @@ pub struct TemplateDecl {
     pub name: InternedString,
     pub span: Span,
     pub attributes: expand::TemplateAttributes,
-    pub uses: Vec<Span>,
+    pub uses: HashSet<Span>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -166,14 +166,14 @@ pub struct BuiltinTypeDecl {
     pub name: InternedString,
     pub span: Span,
     pub attributes: lower::DeclarationAttributes,
-    pub uses: Vec<Span>,
+    pub uses: HashSet<Span>,
 }
 
 #[derive(Debug, Clone, Serialize)]
 pub struct TypeParameterDecl {
     pub name: Option<InternedString>,
     pub span: Span,
-    pub uses: Vec<Span>,
+    pub uses: HashSet<Span>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -181,7 +181,7 @@ pub struct VariableDecl {
     pub name: Option<InternedString>,
     pub span: Span,
     pub ty: engine::Type,
-    pub uses: Vec<Span>,
+    pub uses: HashSet<Span>,
 }
 
 macro_rules! expr {
@@ -3219,7 +3219,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                         TypeParameterDecl {
                             name: None,
                             span,
-                            uses: vec![span],
+                            uses: HashSet::from([span]),
                         },
                     );
 
