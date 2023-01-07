@@ -166,6 +166,7 @@ pub struct DataVariant {
 
 #[derive(Debug, Clone)]
 pub struct ConstantDeclaration {
+    pub name: InternedString,
     pub parameters: Vec<TypeParameter>,
     pub bounds: Vec<Bound>,
     pub ty: TypeAnnotation,
@@ -399,7 +400,7 @@ impl Compiler<'_> {
                     },
                     NodeKind::Template(_, _) => unreachable!(),
                     NodeKind::Annotate(expr, ty) => {
-                        let name = match expr.kind {
+                        let (span, name) = match expr.kind {
                             NodeKind::Name(name) => (expr.span, name),
                             _ => {
                                 return StatementKind::Expression(
@@ -428,8 +429,9 @@ impl Compiler<'_> {
                         };
 
                         StatementKind::Declaration(Declaration::Constant(
-                            name,
+                            (span, name),
                             ConstantDeclaration {
+                                name,
                                 parameters,
                                 bounds,
                                 ty,

@@ -126,7 +126,8 @@ pub struct ConstantDecl {
     pub span: Span,
     pub bounds: Vec<Bound>,
     pub ty: engine::Type,
-    pub attributes: lower::DeclarationAttributes,
+    pub specializations: Vec<ConstantId>,
+    pub attributes: lower::ConstantAttributes,
     pub uses: HashSet<Span>,
 }
 
@@ -448,9 +449,10 @@ impl<'a, 'l> Typechecker<'a, 'l> {
         // Monomorphize constants
 
         let mut count = 0;
+        let total = self.item_queue.len();
         while let Some(mut item) = self.item_queue.pop_back() {
             count += 1;
-            progress(count, self.item_queue.len());
+            progress(count, total);
 
             let expr = self.monomorphize_expr(item.expr, &mut item.info);
 
@@ -669,69 +671,106 @@ impl<'a, 'l> Typechecker<'a, 'l> {
         mut info: MonomorphizeInfo,
     ) -> ItemId {
         let monomorphized_id = self.compiler.new_item_id(id.file);
-        info.cache.insert(id, monomorphized_id);
 
-        let (generic_ty, mut bounds) = if is_instance {
-            self.with_instance_decl(id, |decl| (decl.ty.clone(), decl.bounds.clone()))
-        } else {
-            self.with_constant_decl(id, |decl| (decl.ty.clone(), decl.bounds.clone()))
-        };
-
-        let mut generic_ty = engine::UnresolvedType::from(generic_ty);
-
-        let mut substitutions = engine::GenericSubstitutions::new();
-        self.add_substitutions(&mut generic_ty, &mut substitutions);
-        for bound in &mut bounds {
-            for param in &mut bound.params {
-                self.add_substitutions(param, &mut substitutions);
-            }
+        let mut candidates = Vec::with_capacity(1);
+        if !is_instance {
+            self.with_constant_decl(id, |decl| {
+                candidates.append(&mut decl.specializations.clone());
+            });
         }
+        candidates.push(id);
 
-        let (_, body) = self.generic_constants.get(&id).unwrap().clone();
+        let last_index = candidates.len() - 1;
+        let is_last_candidate = |index: usize| index == last_index;
 
-        let mut convert_info = ConvertInfo {
-            variables: Default::default(),
-        };
+        'check: for (index, candidate) in candidates.into_iter().enumerate() {
+            info.cache.insert(candidate, monomorphized_id);
 
-        let generic_expr = self.convert_expr(body, &mut convert_info);
+            let mut info = info.clone();
 
-        if let Err(error) = self.unify(use_span, use_ty, generic_ty.clone()) {
-            self.add_error(error);
-        }
-
-        if let Err(error) = self.unify(use_span, generic_ty, generic_expr.ty.clone()) {
-            self.add_error(error);
-        }
-
-        for bound in &mut bounds {
-            let ty = self.substitute_trait_params(bound.trait_id, bound.params.clone());
-
-            let instance_info = match self.instance_for(
-                bound.trait_id,
-                ty.clone(),
-                use_span,
-                Some(bound.span),
-                &mut info,
-            ) {
-                Ok(info) => info,
-                Err(error) => {
-                    self.add_error(error);
-                    None
-                }
+            let (generic_ty, mut bounds) = if is_instance {
+                self.with_instance_decl(candidate, |decl| (decl.ty.clone(), decl.bounds.clone()))
+            } else {
+                self.with_constant_decl(candidate, |decl| (decl.ty.clone(), decl.bounds.clone()))
             };
 
-            info.bound_instances
-                .entry(bound.trait_id)
-                .or_default()
-                .push((instance_info, ty, bound.span));
-        }
+            let mut generic_ty = engine::UnresolvedType::from(generic_ty);
 
-        self.item_queue.push_back(QueuedItem {
-            generic_id: Some(id),
-            id: monomorphized_id,
-            expr: generic_expr,
-            info,
-        });
+            let mut substitutions = engine::GenericSubstitutions::new();
+            self.add_substitutions(&mut generic_ty, &mut substitutions);
+            for bound in &mut bounds {
+                for param in &mut bound.params {
+                    self.add_substitutions(param, &mut substitutions);
+                }
+            }
+
+            let (_, body) = self.generic_constants.get(&candidate).unwrap().clone();
+
+            let mut convert_info = ConvertInfo {
+                variables: Default::default(),
+            };
+
+            let temp_ctx = self.ctx.clone();
+            let prev_ctx = mem::replace(&mut self.ctx, temp_ctx);
+
+            if let Err(error) = self.unify(use_span, use_ty.clone(), generic_ty.clone()) {
+                if is_last_candidate(index) {
+                    self.add_error(error);
+                } else {
+                    self.ctx = prev_ctx;
+                    continue 'check;
+                }
+            }
+
+            let generic_expr = self.convert_expr(body, &mut convert_info);
+
+            if let Err(error) = self.unify(use_span, generic_ty, generic_expr.ty.clone()) {
+                if is_last_candidate(index) {
+                    self.add_error(error);
+                } else {
+                    self.ctx = prev_ctx;
+                    continue 'check;
+                }
+            }
+
+            for bound in &mut bounds {
+                let ty = self.substitute_trait_params(bound.trait_id, bound.params.clone());
+
+                let instance_info = match self.instance_for(
+                    bound.trait_id,
+                    ty.clone(),
+                    use_span,
+                    Some(bound.span),
+                    &mut info,
+                ) {
+                    Ok(info) => info,
+                    Err(error) => {
+                        if is_last_candidate(index) {
+                            self.add_error(error);
+                        } else {
+                            self.ctx = prev_ctx;
+                            continue 'check;
+                        }
+
+                        None
+                    }
+                };
+
+                info.bound_instances
+                    .entry(bound.trait_id)
+                    .or_default()
+                    .push((instance_info, ty, bound.span));
+            }
+
+            self.item_queue.push_back(QueuedItem {
+                generic_id: Some(candidate),
+                id: monomorphized_id,
+                expr: generic_expr,
+                info,
+            });
+
+            break 'check;
+        }
 
         monomorphized_id
     }
@@ -2792,6 +2831,14 @@ impl<'a, 'l> Typechecker<'a, 'l> {
             span: decl.span,
             bounds,
             ty,
+            specializations: self
+                .files
+                .get(&id.file)
+                .unwrap()
+                .specializations
+                .get(&id)
+                .cloned()
+                .unwrap_or_default(),
             attributes: decl.value.attributes,
             uses: self
                 .uses

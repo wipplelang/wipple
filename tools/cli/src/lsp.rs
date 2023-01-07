@@ -434,6 +434,7 @@ impl LanguageServer for Backend {
 
                 contents.extend(
                     decl.attributes
+                        .decl_attributes
                         .help
                         .iter()
                         .map(|line| MarkedString::String(line.to_string()))
@@ -626,7 +627,7 @@ impl LanguageServer for Backend {
 
                         let decl = document.program.declarations.constants.get(id).unwrap();
 
-                        help = decl.attributes.help.clone();
+                        help = decl.attributes.decl_attributes.help.clone();
 
                         ty = Some(decl.ty.clone());
 

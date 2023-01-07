@@ -29,6 +29,7 @@ pub struct File<Decls = Declarations> {
     pub global_attributes: FileAttributes,
     pub exported: ScopeValues,
     pub scopes: Vec<(Span, ScopeValues)>,
+    pub specializations: BTreeMap<ConstantId, Vec<ConstantId>>,
     pub block: Vec<Expression>,
     pub uses: Uses,
 }
@@ -211,7 +212,14 @@ pub struct Constant {
     pub bounds: Vec<Bound>,
     pub ty: TypeAnnotation,
     pub value: Arc<Mutex<Option<Expression>>>,
-    pub attributes: DeclarationAttributes,
+    pub attributes: ConstantAttributes,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[non_exhaustive]
+pub struct ConstantAttributes {
+    pub decl_attributes: DeclarationAttributes,
+    pub is_specialization: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -447,6 +455,7 @@ impl Compiler<'_> {
             declarations: Default::default(),
             attributes: Default::default(),
             scopes: Default::default(),
+            specializations: Default::default(),
         };
 
         self.load_builtins(&scope, &mut info);
@@ -546,6 +555,17 @@ impl Compiler<'_> {
             global_attributes: info.attributes,
             exported: scope.values.take(),
             scopes: info.scopes,
+            specializations: {
+                let mut result = BTreeMap::<ConstantId, Vec<ConstantId>>::new();
+                for (constant, specialized_constant) in info.specializations {
+                    result
+                        .entry(specialized_constant)
+                        .or_default()
+                        .push(constant);
+                }
+
+                result
+            },
             block,
             uses: uses.clone(),
         }
@@ -689,14 +709,17 @@ struct Info {
     declarations: UnresolvedDeclarations,
     attributes: FileAttributes,
     scopes: Vec<(Span, ScopeValues)>,
+    specializations: BTreeMap<ConstantId, ConstantId>,
 }
 
+#[derive(Debug)]
 struct StatementDeclaration {
     span: Span,
     kind: StatementDeclarationKind,
     attributes: ast::StatementAttributes,
 }
 
+#[derive(Debug)]
 enum StatementDeclarationKind {
     Type(TypeId, ast::TypeDeclaration),
     Trait(TraitId, ast::TraitDeclaration),
@@ -706,6 +729,7 @@ enum StatementDeclarationKind {
     Queued(QueuedStatement),
 }
 
+#[derive(Debug)]
 enum QueuedStatement {
     Assign(ast::Pattern, ast::Expression),
     Expression(ast::ExpressionKind),
@@ -737,11 +761,17 @@ impl Compiler<'_> {
             .collect::<Vec<_>>();
 
         let mut queue = Vec::new();
+        let mut current_constant = None;
+
         for decl in declarations {
             let mut decl = match decl {
                 Some(decl) => decl,
                 None => continue,
             };
+
+            if !matches!(decl.kind, StatementDeclarationKind::Queued(_)) {
+                current_constant = None;
+            }
 
             let scope_value = match decl.kind {
                 StatementDeclarationKind::Type(id, ty) => {
@@ -882,7 +912,7 @@ impl Compiler<'_> {
                                     },
                                 );
 
-                                let attributes = self.lower_decl_attributes(
+                                let attributes = self.lower_constant_attributes(
                                     &mut variant.attributes,
                                     &scope,
                                     info,
@@ -1000,10 +1030,15 @@ impl Compiler<'_> {
                         bounds,
                         ty: self.lower_type_annotation(declaration.ty, &scope, info),
                         value: Default::default(),
-                        attributes: self.lower_decl_attributes(&mut decl.attributes, &scope, info),
+                        attributes: self.lower_constant_attributes(
+                            &mut decl.attributes,
+                            &scope,
+                            info,
+                        ),
                     };
 
                     info.declarations.constants.get_mut(&id).unwrap().value = Some(constant);
+                    current_constant = Some((declaration.name, decl.span, id));
 
                     Some(ScopeValue::Constant(id, None))
                 }
@@ -1169,7 +1204,8 @@ impl Compiler<'_> {
                     None
                 }
                 StatementDeclarationKind::Queued(queued) => {
-                    queue.push((decl.span, queued));
+                    queue.push((decl.span, queued, current_constant));
+                    current_constant = None;
                     None
                 }
             };
@@ -1214,8 +1250,8 @@ impl Compiler<'_> {
 
         queue
             .into_iter()
-            .filter_map(|(span, statement)| match statement {
-                QueuedStatement::Assign(pattern, expr) => (|| {
+            .filter_map(|(span, statement, prev_constant)| (|| match statement {
+                QueuedStatement::Assign(pattern, expr) => {
                     macro_rules! assign_pattern {
                         () => {{
                             let value = self.lower_expr(expr, scope, info);
@@ -1230,31 +1266,31 @@ impl Compiler<'_> {
 
                     match &pattern.kind {
                         ast::PatternKind::Name(name) => {
-                            let mut associated_constant = None;
-
-                            let c = scope.values.borrow().get(name).cloned();
-                            if let Some(ScopeValue::Constant(id, _)) = c {
-                                let decl = info.declarations.constants.get(&id).unwrap();
-                                let value = decl.value.as_ref().unwrap();
-                                let (parameters, c) =
-                                    (value.parameters.clone(), value.value.clone());
-
-                                let constant_already_assigned = {
-                                    let c = c.lock();
-                                    c.is_some()
-                                };
-
-                                if constant_already_assigned {
+                            if let Some((prev_constant_name, prev_constant_span, prev_constant_id)) = prev_constant {
+                                if *name != prev_constant_name {
                                     return assign_pattern!();
                                 }
 
-                                associated_constant = Some((id, parameters, c));
-                            }
+                                let decl = info.declarations.constants.get(&prev_constant_id).unwrap();
+                                let value = decl.value.as_ref().unwrap();
+                                let associated_parameters = value.parameters.clone();
+                                let associated_constant = value.value.clone();
 
-                            if let Some((id, associated_parameters, associated_constant)) =
-                                associated_constant
-                            {
-                                info.uses.lock().record_use_of_constant(id, pattern.span);
+                                if let ScopeValue::Constant(id, _) = scope.get(prev_constant_name, prev_constant_span).unwrap() {
+                                    if id == prev_constant_id && associated_constant.lock().is_some() {
+                                        self.diagnostics.add(Diagnostic::error(
+                                            format!("constant `{}` already exists in this file", name),
+                                            vec![
+                                                Note::primary(prev_constant_span, "try giving this constant a unique name"),
+                                                Note::secondary(prev_constant_span, "other constant declared here")
+                                            ],
+                                        ));
+
+                                        return assign_pattern!();
+                                    }
+                                }
+
+                                info.uses.lock().record_use_of_constant(prev_constant_id, pattern.span);
 
                                 let scope = scope.child();
 
@@ -1291,11 +1327,18 @@ impl Compiler<'_> {
                         }
                         _ => assign_pattern!(),
                     }
-                })(),
+                },
                 QueuedStatement::Expression(expr) => {
+                    if let Some((_, span, _)) = prev_constant {
+                        self.diagnostics.add(Diagnostic::error(
+                            "constant must be initialized immediately following its type annotation",
+                            vec![Note::primary(span, "try initializing the constant below this")],
+                        ));
+                    }
+
                     Some(self.lower_expr(ast::Expression { span, kind: expr }, scope, info))
                 }
-            })
+            })())
             .collect()
     }
 
@@ -1338,7 +1381,52 @@ impl Compiler<'_> {
                 }
                 ast::Declaration::Constant((span, name), declaration) => {
                     let id = self.new_constant_id(info.file);
-                    scope.insert(name, ScopeValue::Constant(id, None));
+
+                    if let Some(ScopeValue::Constant(existing_id, variant_info)) =
+                        scope.get(name, span)
+                    {
+                        if statement.attributes.specialize {
+                            if variant_info.is_some() {
+                                self.diagnostics.add(Diagnostic::error(
+                                    "cannot specialize a `type` variant",
+                                    vec![Note::primary(span, "cannot specialize this")],
+                                ));
+
+                                return None;
+                            }
+
+                            if info.specializations.contains_key(&existing_id) {
+                                self.diagnostics.add(Diagnostic::error(
+                                    "cannot specialize constant which is a specialization of another constant",
+                                    vec![Note::primary(span, "cannot specialize this")],
+                                ));
+
+                                return None;
+                            }
+
+                            info.specializations.insert(id, existing_id);
+                        } else if existing_id.file == info.file {
+                            let existing_span =
+                                info.declarations.constants.get(&existing_id).unwrap().span;
+
+                            self.diagnostics.add(Diagnostic::error(
+                                format!("constant `{}` already exists in this file", name),
+                                vec![
+                                    Note::primary(
+                                        span,
+                                        "try giving this constant a different name",
+                                    ),
+                                    Note::primary(existing_span, "original constant declared here"),
+                                ],
+                            ));
+
+                            return None;
+                        } else {
+                            scope.insert(name, ScopeValue::Constant(id, None));
+                        }
+                    } else {
+                        scope.insert(name, ScopeValue::Constant(id, None));
+                    }
 
                     info.declarations
                         .constants
@@ -1445,6 +1533,20 @@ impl Compiler<'_> {
         TraitAttributes {
             decl_attributes: self.lower_decl_attributes(statement_attributes, scope, info),
             on_unimplemented: mem::take(&mut statement_attributes.on_unimplemented),
+        }
+    }
+
+    fn lower_constant_attributes(
+        &self,
+        statement_attributes: &mut ast::StatementAttributes,
+        scope: &Scope,
+        info: &mut Info,
+    ) -> ConstantAttributes {
+        // TODO: Raise errors for misused attributes
+
+        ConstantAttributes {
+            decl_attributes: self.lower_decl_attributes(statement_attributes, scope, info),
+            is_specialization: statement_attributes.specialize,
         }
     }
 

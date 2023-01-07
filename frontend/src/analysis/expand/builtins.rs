@@ -1481,4 +1481,86 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
             }),
         ),
     );
+
+    // `specialize` attribute
+
+    let id = expander.compiler.new_template_id(file);
+
+    scope_values.insert(InternedString::new("specialize"), ScopeValue::Template(id));
+
+    declarations.templates.insert(
+        id,
+        TemplateDeclaration::new(
+            "specialize",
+            Span::builtin("`specialize` attribute"),
+            Template::function(|expander, span, mut inputs, _, attributes, _| {
+                Box::pin(async move {
+                    if inputs.len() != 1 {
+                        expander.compiler.diagnostics.add(Diagnostic::error(
+                            "expected 1 input to template `keyword`",
+                            vec![Note::primary(
+                                span,
+                                "`keyword` accepts a constant declaration",
+                            )],
+                        ));
+
+                        return Node {
+                            span,
+                            kind: NodeKind::Error,
+                        };
+                    }
+
+                    let node = inputs.pop().unwrap();
+
+                    let add_error = || {
+                        expander.compiler.diagnostics.add(Diagnostic::error(
+                            "`specialize` may only be used on a constant declaration",
+                            vec![Note::primary(span, "expected a constant declaration here")],
+                        ))
+                    };
+
+                    if let NodeKind::Annotate(lhs, _) = &node.kind {
+                        if !matches!(&lhs.kind, NodeKind::Name(_)) {
+                            add_error();
+                            return node;
+                        }
+                    } else {
+                        add_error();
+                        return node;
+                    }
+
+                    let attributes = match attributes {
+                        Some(attributes) => attributes,
+                        None => {
+                            expander.compiler.diagnostics.add(Diagnostic::error(
+                                "`specialize` may only be used as an attribute",
+                                vec![Note::primary(
+                                    span,
+                                    r#"try putting this between brackets: (`[specialize]`)"#,
+                                )],
+                            ));
+
+                            return node;
+                        }
+                    };
+
+                    if attributes.specialize {
+                        expander.compiler.diagnostics.add(Diagnostic::error(
+                            "`specialize` attribute is already set for this statement",
+                            vec![Note::primary(
+                                span,
+                                "cannot use more than one `specialize` attribute per statement",
+                            )],
+                        ));
+
+                        return node;
+                    }
+
+                    attributes.specialize = true;
+
+                    node
+                })
+            }),
+        ),
+    );
 }
