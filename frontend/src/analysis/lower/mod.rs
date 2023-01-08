@@ -526,6 +526,12 @@ impl Compiler<'_> {
 
             info.attributes.merge(&dependency.global_attributes);
 
+            for (&id, specializations) in &dependency.specializations {
+                for &specialization in specializations {
+                    info.specializations.insert(specialization, id);
+                }
+            }
+
             if let Some(imports) = imports {
                 for (name, span) in imports {
                     if let Some(value) = dependency.exported.get(&name) {

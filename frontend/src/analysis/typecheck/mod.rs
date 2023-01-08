@@ -803,7 +803,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
 
         let generic_constant_decl = self.with_constant_decl(generic_id, |decl| decl.clone());
 
-        let params = match self.ctx.unify_params(
+        let mut params = match self.ctx.unify_params(
             specialized_constant_decl.ty.into(),
             generic_constant_decl.ty,
         ) {
@@ -832,7 +832,16 @@ impl<'a, 'l> Typechecker<'a, 'l> {
         }
 
         for bound in generic_constant_decl.bounds {
-            let mut ty = self.substitute_trait_params(bound.trait_id, bound.params.clone());
+            let mut ty = self.substitute_trait_params(bound.trait_id, bound.params);
+
+            // HACK: Any type parameters not unified with the specialized
+            // constant won't appear here, so add them in manually
+            for param in ty.params() {
+                params
+                    .entry(param)
+                    .or_insert_with(|| engine::UnresolvedType::Variable(self.ctx.new_variable()));
+            }
+
             ty.instantiate_with(&self.ctx, &params);
 
             let instance_info = match self.instance_for(
