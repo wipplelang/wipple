@@ -817,8 +817,6 @@ impl<'a, 'l> Typechecker<'a, 'l> {
             }
         };
 
-        let mut info = MonomorphizeInfo::default();
-
         let mut monomorphize_info = MonomorphizeInfo::default();
         for bound in specialized_constant_decl.bounds {
             let ty = self.substitute_trait_params(bound.trait_id, bound.params);
@@ -839,7 +837,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                 ty.clone(),
                 specialized_constant_decl.span,
                 Some(bound.span),
-                &mut info,
+                &mut monomorphize_info,
             ) {
                 Ok(info) => info,
                 Err(error) => {
@@ -852,7 +850,8 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                 }
             };
 
-            info.bound_instances
+            monomorphize_info
+                .bound_instances
                 .entry(bound.trait_id)
                 .or_default()
                 .push((instance_info, ty, bound.span));
