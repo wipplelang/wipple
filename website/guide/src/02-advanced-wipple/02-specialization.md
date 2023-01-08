@@ -22,20 +22,20 @@ greet :: A where (Greet A) => A -> Text
 greet : x -> format "Hello, _!" (Greet x)
 
 Foo : type
-instance (Greet Foo) : just "Foo's implementation"
+instance (Greet Foo) : just "Foo"
 
 Bar : type
-instance (Greet Bar) : just "Bar's implementation"
+instance (Greet Bar) : just "Bar"
 
 [specialize]
 greet :: Bar -> Text
-greet : just "specialized implementation"
+greet : just "Greetings!"
 
-show (greet Foo) -- prints "Foo's implementation"
-show (greet Bar) -- prints "specialized implementation"
+show (greet Foo) -- prints "Hello, Foo!"
+show (greet Bar) -- prints "Greetings!"
 ```
 
-When the program reaches `greet Bar`, it uses the specialized `greet` function for `Bar` instead of the generic one that works on both `Foo` and `Bar`. As a result, the program outputs `specialized implementation` instead of `Bar's implementation`!
+When the program reaches `greet Bar`, it uses the specialized `greet` function for `Bar` instead of the generic one that works on both `Foo` and `Bar`. As a result, the program outputs `Greetings!` instead of `Hello, Bar!`.
 
 ## Rules and conventions
 
@@ -45,4 +45,7 @@ Because specialization is intended solely for performance, it's supposed to be i
 -   They must have the same type as the generic constant and satisfy all of its bounds.
 -   You can't specialize a constant that is a specialization of another constant.
 
-In addition, you should only specialize a constant you created, or your specialization should operate at least one type you created. This convention prevents conflicts between libraries. If two specialized constants share the same type, there is no guarantee that Wipple will pick one over the other.
+In addition, there are some conventions that Wipple can't check, but you should follow:
+
+-   The specialized constant should have the same behavior as the generic constant; it should be a "drop-in replacement".
+-   You should only specialize a constant you created, or your specialization should operate at least one type you created. This prevents conflicts between libraries.

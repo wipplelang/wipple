@@ -1,0 +1,24 @@
+code: |
+    Greet : A => trait (A -> Text)
+
+    greet :: A where (Greet A) => A -> Text
+    greet : x -> format "Hello, _!" (Greet x)
+
+    Foo : type
+    instance (Greet Foo) : just "Foo"
+
+    Bar : type
+    instance (Greet Bar) : just "Bar"
+
+    [specialize]
+    greet :: Bar -> Text
+    greet : just "Greetings!"
+
+    show (greet Foo)
+    show (greet Bar)
+
+output: |
+    Hello, Foo!
+    Greetings!
+
+diagnostics: |

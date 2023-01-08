@@ -1,0 +1,50 @@
+code: |
+    Greet : A => trait (A -> Text)
+
+    greet :: A where (Greet A) => A -> Text
+    greet : x -> format "Hello, _!" (Greet x)
+
+    Foo : type
+    instance (Greet Foo) : just "Foo"
+
+    Bar : type
+    instance (Greet Bar) : just "Bar"
+
+    Baz : type
+    -- no instance (Greet Baz)
+
+    [specialize]
+    greet :: Bar -> Number
+    greet : just 42
+
+    [specialize]
+    greet :: Baz -> Text
+    greet : ...
+
+    show (greet Foo)
+    show (greet Bar)
+    show (greet Baz)
+
+output: |
+
+diagnostics: |
+    error: mismatched types
+       ┌─ test:16:1
+       │
+    16 │ greet :: Bar -> Number
+       │ ^^^^^
+       │ │
+       │ expected `A -> Text` for any type `A`, but found `Bar -> Number`
+       │ this constant must have a more specific type than the original constant
+
+    error: missing instance
+       ┌─ test:20:1
+       │
+     3 │ greet :: A where (Greet A) => A -> Text
+       │                  --------- required by this bound here
+       ·
+    20 │ greet :: Baz -> Text
+       │ ^^^^^
+       │ │
+       │ could not find instance `Greet Baz`
+       │ this constant must satisfy the bounds of the original constant

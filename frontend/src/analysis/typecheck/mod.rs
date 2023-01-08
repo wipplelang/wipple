@@ -309,6 +309,7 @@ pattern!(pub, "", {
 pub struct Error {
     pub error: engine::TypeError,
     pub span: Span,
+    pub notes: Vec<Note>,
     #[cfg(debug_assertions)]
     pub trace: Option<backtrace::Backtrace>,
 }
@@ -318,9 +319,15 @@ impl Error {
         Error {
             error,
             span,
+            notes: Vec::new(),
             #[cfg(debug_assertions)]
             trace: crate::diagnostics::backtrace_enabled().then(backtrace::Backtrace::new),
         }
+    }
+
+    pub fn with_note(mut self, note: Note) -> Self {
+        self.notes.push(note);
+        self
     }
 }
 
@@ -374,6 +381,7 @@ struct Typechecker<'a, 'l> {
     block_end: Option<Option<(Span, engine::UnresolvedType)>>,
     instances: im::HashMap<TraitId, BTreeSet<ConstantId>>,
     generic_constants: im::HashMap<ConstantId, (bool, lower::Expression)>,
+    specialized_constants: im::HashMap<ConstantId, ConstantId>,
     item_queue: im::Vector<QueuedItem>,
     items: im::HashMap<ItemId, (Option<ConstantId>, Expression)>,
     entrypoint: Option<UnresolvedExpression>,
@@ -410,6 +418,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
             block_end: None,
             instances: Default::default(),
             generic_constants: Default::default(),
+            specialized_constants: Default::default(),
             item_queue: Default::default(),
             items: Default::default(),
             entrypoint: Default::default(),
@@ -429,10 +438,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
         // Queue the entrypoint
 
         let entrypoint = mem::take(&mut self.entrypoint).map(|entrypoint| {
-            let info = MonomorphizeInfo {
-                cache: Default::default(),
-                bound_instances: Default::default(),
-            };
+            let info = MonomorphizeInfo::default();
 
             let entrypoint_id = self.compiler.new_item_id(entrypoint.span.path);
 
@@ -463,16 +469,15 @@ impl<'a, 'l> Typechecker<'a, 'l> {
             }
         }
 
+        // Ensure specialized constants unify with their generic counterparts
+
+        for (specialized_id, generic_id) in self.specialized_constants.clone() {
+            self.typecheck_specialized_constant(specialized_id, generic_id);
+        }
+
         // Typecheck generic constants
 
-        let mut already_checked = BTreeSet::new();
         for (id, (instance, body)) in self.generic_constants.clone() {
-            if already_checked.contains(&id) {
-                continue;
-            }
-
-            already_checked.insert(id);
-
             self.typecheck_generic_constant_expr(id, instance, body);
         }
 
@@ -579,14 +584,22 @@ impl<'a, 'l> Typechecker<'a, 'l> {
             }
 
             let mut instances = mem::take(&mut self.instances);
-
             for id in declaration!(instances) {
                 self.with_instance_decl(id, |decl| {
                     instances.entry(decl.trait_id).or_default().insert(id);
                 });
             }
-
             self.instances = instances;
+
+            let mut specialized_constants = mem::take(&mut self.specialized_constants);
+            for generic_id in declaration!(constants) {
+                self.with_constant_decl(generic_id, |decl| {
+                    for &specialized_id in &decl.specializations {
+                        specialized_constants.insert(specialized_id, generic_id);
+                    }
+                });
+            }
+            self.specialized_constants = specialized_constants;
 
             macro_rules! check {
                 ($kind:ident) => {
@@ -604,7 +617,6 @@ impl<'a, 'l> Typechecker<'a, 'l> {
             check!(
                 type,
                 trait,
-                constant,
                 operator,
                 template,
                 builtin_type,
@@ -633,11 +645,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
             self.with_constant_decl(id, |decl| (decl.ty.clone(), decl.bounds.clone()))
         };
 
-        let mut monomorphize_info = MonomorphizeInfo {
-            cache: Default::default(),
-            bound_instances: Default::default(),
-        };
-
+        let mut monomorphize_info = MonomorphizeInfo::default();
         for bound in bounds {
             let ty = self.substitute_trait_params(bound.trait_id, bound.params);
 
@@ -678,6 +686,11 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                 candidates.append(&mut decl.specializations.clone());
             });
         }
+
+        for &candidate in &candidates {
+            self.specialized_constants.insert(candidate, id);
+        }
+
         candidates.push(id);
 
         let last_index = candidates.len() - 1;
@@ -773,6 +786,79 @@ impl<'a, 'l> Typechecker<'a, 'l> {
         }
 
         monomorphized_id
+    }
+
+    fn typecheck_specialized_constant(
+        &mut self,
+        specialized_id: ConstantId,
+        generic_id: ConstantId,
+    ) {
+        let prev_ctx = self.ctx.clone();
+
+        let specialized_constant_decl =
+            self.with_constant_decl(specialized_id, |decl| decl.clone());
+
+        let generic_constant_decl = self.with_constant_decl(generic_id, |decl| decl.clone());
+
+        let params = match self.ctx.unify_params(
+            specialized_constant_decl.ty.into(),
+            generic_constant_decl.ty,
+        ) {
+            (params, Ok(())) => params,
+            (_, Err(error)) => {
+                self.add_error(Error::new(error, specialized_constant_decl.span).with_note(
+                    Note::secondary(
+                        specialized_constant_decl.span,
+                        "this constant must have a more specific type than the original constant",
+                    ),
+                ));
+
+                return;
+            }
+        };
+
+        let mut info = MonomorphizeInfo::default();
+
+        let mut monomorphize_info = MonomorphizeInfo::default();
+        for bound in specialized_constant_decl.bounds {
+            let ty = self.substitute_trait_params(bound.trait_id, bound.params);
+
+            monomorphize_info
+                .bound_instances
+                .entry(bound.trait_id)
+                .or_default()
+                .push((None, ty.clone(), bound.span));
+        }
+
+        for bound in generic_constant_decl.bounds {
+            let mut ty = self.substitute_trait_params(bound.trait_id, bound.params.clone());
+            ty.instantiate_with(&self.ctx, &params);
+
+            let instance_info = match self.instance_for(
+                bound.trait_id,
+                ty.clone(),
+                specialized_constant_decl.span,
+                Some(bound.span),
+                &mut info,
+            ) {
+                Ok(info) => info,
+                Err(error) => {
+                    self.add_error(error.with_note(Note::secondary(
+                        specialized_constant_decl.span,
+                        "this constant must satisfy the bounds of the original constant",
+                    )));
+
+                    continue;
+                }
+            };
+
+            info.bound_instances
+                .entry(bound.trait_id)
+                .or_default()
+                .push((instance_info, ty, bound.span));
+        }
+
+        self.ctx = prev_ctx;
     }
 }
 
@@ -1405,7 +1491,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 struct MonomorphizeInfo {
     cache: BTreeMap<ConstantId, ItemId>,
     bound_instances: BTreeMap<TraitId, Vec<(Option<ConstantId>, engine::UnresolvedType, Span)>>,
@@ -3716,7 +3802,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
         }
     }
 
-    fn report_error(&mut self, error: Error) {
+    fn report_error(&mut self, mut error: Error) {
         let format = format::Format {
             type_function: format::TypeFunctionFormat::Description,
             type_variable: format::TypeVariableFormat::Description,
@@ -3860,6 +3946,8 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                 vec![Note::primary(error.span, "invalid numeric literal")],
             ),
         };
+
+        diagnostic.notes.append(&mut error.notes);
 
         #[cfg(debug_assertions)]
         {
