@@ -804,6 +804,43 @@ impl TypeStructure<UnresolvedType> {
     }
 }
 
+impl TypeStructure<Type> {
+    pub fn params(&self) -> Vec<TypeParameterId> {
+        match self {
+            TypeStructure::Marker | TypeStructure::Recursive(_) => Vec::new(),
+            TypeStructure::Structure(tys) => tys.iter().flat_map(|ty| ty.params()).collect(),
+            TypeStructure::Enumeration(variants) => variants
+                .iter()
+                .flat_map(|tys| tys.iter().flat_map(|ty| ty.params()))
+                .collect(),
+        }
+    }
+}
+
+impl Type {
+    pub fn params(&self) -> Vec<TypeParameterId> {
+        match self {
+            Type::Parameter(param) => vec![*param],
+            Type::Function(input, output) => {
+                let mut params = input.params();
+                params.extend(output.params());
+                params
+            }
+            Type::Named(_, params, structure) => params
+                .iter()
+                .flat_map(|ty| ty.params())
+                .chain(structure.params())
+                .collect(),
+            Type::Tuple(tys) => tys.iter().flat_map(|ty| ty.params()).collect(),
+            Type::Builtin(ty) => match ty {
+                BuiltinType::List(ty) | BuiltinType::Mutable(ty) => ty.params(),
+                _ => Vec::new(),
+            },
+            _ => Vec::new(),
+        }
+    }
+}
+
 impl<Ty> BuiltinType<Ty> {
     fn is_numeric(&self) -> bool {
         matches!(

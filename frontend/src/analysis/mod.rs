@@ -9,7 +9,7 @@ pub mod typecheck;
 
 pub use typecheck::{
     Arm, Expression, ExpressionKind, Pattern, PatternKind, Program, RuntimeFunction, Type,
-    TypeStructure, TypecheckMode,
+    TypeAnnotation, TypeAnnotationKind, TypeStructure, TypecheckMode,
 };
 
 use crate::{diagnostics::*, parse::Span, Compiler, FilePath, Uses};

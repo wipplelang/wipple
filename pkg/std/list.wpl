@@ -76,7 +76,7 @@ remove :: A => Natural -> List A -> Result (List A) Index-Error
 remove : index -> list -> external "runtime" "list-remove" list index
 
 [help "Remove the item at a particular index inside a `Mutable List`."]
-remove! :: A => Natural -> Mutable (List A) -> Result () Index-Error
+remove! :: Natural -> Mutable (List _) -> Result () Index-Error
 remove! : index -> list -> when (list . get . remove index) {
 	OK new-list -> {
 		list . set! new-list

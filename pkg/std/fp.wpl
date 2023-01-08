@@ -5,7 +5,7 @@ it :: A => A -> A
 it : x -> x
 
 [help "Ignores its second input."]
-just :: A B => A -> B -> A
+just :: A => A -> _ -> A
 just : x -> _ -> x
 
 . : dot operator (x f ~> f x)

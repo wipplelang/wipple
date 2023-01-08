@@ -138,7 +138,7 @@ pub struct DeclarationAttributes {
 #[derive(Debug, Clone)]
 pub struct Type {
     pub kind: TypeKind,
-    pub params: Vec<TypeParameterId>,
+    pub params: Vec<(Span, TypeParameterId)>,
     pub attributes: TypeAttributes,
 }
 
@@ -194,7 +194,7 @@ pub enum BuiltinTypeKind {
 
 #[derive(Debug, Clone)]
 pub struct Trait {
-    pub parameters: Vec<TypeParameterId>,
+    pub parameters: Vec<(Span, TypeParameterId)>,
     pub ty: TypeAnnotation,
     pub attributes: TraitAttributes,
 }
@@ -208,7 +208,7 @@ pub struct TraitAttributes {
 
 #[derive(Debug, Clone)]
 pub struct Constant {
-    pub parameters: Vec<TypeParameterId>,
+    pub parameters: Vec<(Span, TypeParameterId)>,
     pub bounds: Vec<Bound>,
     pub ty: TypeAnnotation,
     pub value: Arc<Mutex<Option<Expression>>>,
@@ -231,7 +231,7 @@ pub struct Bound {
 
 #[derive(Debug, Clone)]
 pub struct Instance {
-    pub params: Vec<TypeParameterId>,
+    pub params: Vec<(Span, TypeParameterId)>,
     pub bounds: Vec<Bound>,
     pub tr: TraitId,
     pub trait_params: Vec<TypeAnnotation>,
@@ -316,13 +316,13 @@ pub enum PatternKind {
     Tuple(Vec<Pattern>),
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct TypeAnnotation {
     pub span: Span,
     pub kind: TypeAnnotationKind,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub enum TypeAnnotationKind {
     Error,
     Placeholder,
@@ -338,6 +338,26 @@ impl TypeAnnotation {
         TypeAnnotation {
             span,
             kind: TypeAnnotationKind::Error,
+        }
+    }
+
+    pub fn span_of(&self, other: &TypeAnnotationKind) -> Option<Span> {
+        if &self.kind == other {
+            return Some(self.span);
+        }
+
+        match &self.kind {
+            TypeAnnotationKind::Error
+            | TypeAnnotationKind::Placeholder
+            | TypeAnnotationKind::Parameter(_) => None,
+            TypeAnnotationKind::Named(_, annotations)
+            | TypeAnnotationKind::Builtin(_, annotations)
+            | TypeAnnotationKind::Tuple(annotations) => annotations
+                .iter()
+                .find_map(|annotation| annotation.span_of(other)),
+            TypeAnnotationKind::Function(left, right) => {
+                left.span_of(other).or_else(|| right.span_of(other))
+            }
         }
     }
 }
@@ -848,9 +868,9 @@ impl Compiler<'_> {
                                             id,
                                             parameters
                                                 .iter()
-                                                .map(|param| TypeAnnotation {
-                                                    span: variant.span,
-                                                    kind: TypeAnnotationKind::Parameter(*param),
+                                                .map(|&(span, param)| TypeAnnotation {
+                                                    span,
+                                                    kind: TypeAnnotationKind::Parameter(param),
                                                 })
                                                 .collect(),
                                         ),
@@ -1294,7 +1314,7 @@ impl Compiler<'_> {
 
                                 let scope = scope.child();
 
-                                for id in associated_parameters {
+                                for (_, id) in associated_parameters {
                                     let parameter =
                                         info.declarations.type_parameters.get(&id).unwrap();
 
@@ -2185,7 +2205,7 @@ impl Compiler<'_> {
         parameters: Vec<ast::TypeParameter>,
         scope: &Scope,
         info: &mut Info,
-    ) -> Vec<TypeParameterId> {
+    ) -> Vec<(Span, TypeParameterId)> {
         parameters
             .into_iter()
             .map(|parameter| {
@@ -2202,7 +2222,7 @@ impl Compiler<'_> {
 
                 scope.insert(parameter.name, ScopeValue::TypeParameter(id));
 
-                id
+                (parameter.span, id)
             })
             .collect()
     }

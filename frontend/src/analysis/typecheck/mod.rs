@@ -8,7 +8,7 @@ pub mod format;
 pub mod traverse;
 
 pub use engine::{BottomTypeReason, BuiltinType, GenericSubstitutions, Type, TypeStructure};
-pub use lower::RuntimeFunction;
+pub use lower::{RuntimeFunction, TypeAnnotation, TypeAnnotationKind};
 
 use crate::{
     analysis::{expand, lower},
@@ -90,7 +90,7 @@ impl From<DeclarationsInner> for Declarations {
 pub struct TypeDecl {
     pub name: InternedString,
     pub span: Span,
-    pub params: Vec<TypeParameterId>,
+    pub params: Vec<(Span, TypeParameterId)>,
     pub kind: TypeDeclKind,
     pub attributes: lower::TypeAttributes,
     pub uses: HashSet<Span>,
@@ -101,11 +101,11 @@ pub struct TypeDecl {
 pub enum TypeDeclKind {
     Marker,
     Structure {
-        fields: Vec<engine::Type>,
+        fields: Vec<(TypeAnnotation, engine::Type)>,
         field_names: HashMap<InternedString, usize>,
     },
     Enumeration {
-        variants: Vec<Vec<engine::Type>>,
+        variants: Vec<Vec<(TypeAnnotation, engine::Type)>>,
         variant_names: HashMap<InternedString, usize>,
     },
 }
@@ -114,7 +114,8 @@ pub enum TypeDeclKind {
 pub struct TraitDecl {
     pub name: InternedString,
     pub span: Span,
-    pub params: Vec<TypeParameterId>,
+    pub params: Vec<(Span, TypeParameterId)>,
+    pub ty_annotation: TypeAnnotation,
     pub ty: engine::Type,
     pub attributes: lower::TraitAttributes,
     pub uses: HashSet<Span>,
@@ -124,7 +125,9 @@ pub struct TraitDecl {
 pub struct ConstantDecl {
     pub name: InternedString,
     pub span: Span,
+    pub params: Vec<(Span, TypeParameterId)>,
     pub bounds: Vec<Bound>,
+    pub ty_annotation: TypeAnnotation,
     pub ty: engine::Type,
     pub specializations: Vec<ConstantId>,
     pub attributes: lower::ConstantAttributes,
@@ -885,7 +888,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                     id,
                     params
                         .into_iter()
-                        .map(engine::UnresolvedType::Parameter)
+                        .map(|(_, param)| engine::UnresolvedType::Parameter(param))
                         .collect(),
                     engine::TypeStructure::Marker,
                 );
@@ -1140,7 +1143,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                     } => (
                         fields
                             .into_iter()
-                            .map(engine::UnresolvedType::from)
+                            .map(|(_, ty)| ty.into())
                             .collect::<Vec<_>>(),
                         field_names,
                     ),
@@ -1151,7 +1154,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                     id,
                     params
                         .into_iter()
-                        .map(engine::UnresolvedType::Parameter)
+                        .map(|(_, param)| engine::UnresolvedType::Parameter(param))
                         .collect(),
                     engine::TypeStructure::Structure(structure_field_tys.clone()),
                 );
@@ -1257,7 +1260,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                         .map(|variant| {
                             variant
                                 .into_iter()
-                                .map(engine::UnresolvedType::from)
+                                .map(|(_, ty)| ty.into())
                                 .collect::<Vec<_>>()
                         })
                         .collect::<Vec<_>>(),
@@ -1268,7 +1271,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                     id,
                     params
                         .into_iter()
-                        .map(engine::UnresolvedType::Parameter)
+                        .map(|(_, param)| engine::UnresolvedType::Parameter(param))
                         .collect(),
                     engine::TypeStructure::Enumeration(variants_tys.clone()),
                 );
@@ -1399,14 +1402,14 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                     let mut variant_tys = variants_tys[variant]
                         .clone()
                         .into_iter()
-                        .map(engine::UnresolvedType::from)
+                        .map(|(_, ty)| engine::UnresolvedType::from(ty))
                         .collect::<Vec<_>>();
 
                     let enumeration_ty = engine::UnresolvedType::Named(
                         id,
                         params
                             .into_iter()
-                            .map(|param| {
+                            .map(|(_, param)| {
                                 let mut ty = engine::UnresolvedType::Parameter(param);
                                 self.add_substitutions(&mut ty, &mut substitutions);
                                 ty
@@ -1417,7 +1420,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                                 .into_iter()
                                 .map(|tys| {
                                     tys.into_iter()
-                                        .map(|ty| {
+                                        .map(|(_, ty)| {
                                             let mut ty = engine::UnresolvedType::from(ty);
                                             ty.instantiate_with(&self.ctx, &substitutions);
                                             ty
@@ -1809,7 +1812,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                 let substitutions = structure
                     .params
                     .iter()
-                    .copied()
+                    .map(|(_, param)| *param)
                     .zip(params)
                     .collect::<BTreeMap<_, _>>();
 
@@ -1842,7 +1845,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                         };
 
                         let mut member_ty =
-                            engine::UnresolvedType::from(structure_field_tys[index].clone());
+                            engine::UnresolvedType::from(structure_field_tys[index].1.clone());
 
                         member_ty.instantiate_with(&self.ctx, &substitutions);
 
@@ -1900,7 +1903,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                     TypeDeclKind::Enumeration { mut variants, .. } => variants
                         .swap_remove(variant)
                         .into_iter()
-                        .map(engine::UnresolvedType::from)
+                        .map(|(_, ty)| engine::UnresolvedType::from(ty))
                         .collect::<Vec<_>>(),
                     _ => unreachable!(),
                 };
@@ -1908,7 +1911,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                 let substitutions = enumeration
                     .params
                     .iter()
-                    .copied()
+                    .map(|(_, param)| *param)
                     .zip(params.iter().cloned())
                     .collect::<BTreeMap<_, _>>();
 
@@ -1924,7 +1927,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                         enumeration
                             .params
                             .iter()
-                            .map(|param| substitutions.get(param).unwrap().clone())
+                            .map(|(_, param)| substitutions.get(param).unwrap().clone())
                             .collect(),
                         // HACK: Optimization because unification doesn't take structure into
                         // account -- the structure can be applied during finalization
@@ -2157,7 +2160,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
         let params = tr_decl
             .params
             .into_iter()
-            .map(|param| {
+            .map(|(_, param)| {
                 params
                     .get(&param)
                     .cloned()
@@ -2792,7 +2795,12 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                 lower::TypeKind::Structure(fields, field_names) => TypeDeclKind::Structure {
                     fields: fields
                         .into_iter()
-                        .map(|field| self.convert_finalized_type_annotation(field.ty))
+                        .map(|field| {
+                            (
+                                field.ty.clone(),
+                                self.convert_finalized_type_annotation(field.ty),
+                            )
+                        })
                         .collect(),
                     field_names,
                 },
@@ -2804,7 +2812,9 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                                 variant
                                     .tys
                                     .into_iter()
-                                    .map(|ty| self.convert_finalized_type_annotation(ty))
+                                    .map(|ty| {
+                                        (ty.clone(), self.convert_finalized_type_annotation(ty))
+                                    })
                                     .collect()
                             })
                             .collect(),
@@ -2848,6 +2858,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
             name: decl.name.expect("all traits have names"),
             span: decl.span,
             params: decl.value.parameters,
+            ty_annotation: decl.value.ty.clone(),
             ty: self.convert_finalized_type_annotation(decl.value.ty),
             attributes: decl.value.attributes,
             uses: self
@@ -2894,7 +2905,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
 
         self.generic_constants.insert(id, (false, body));
 
-        let ty = self.convert_generic_type_annotation(decl.value.ty, id.file);
+        let ty = self.convert_generic_type_annotation(decl.value.ty.clone(), id.file);
 
         let bounds = decl
             .value
@@ -2914,7 +2925,9 @@ impl<'a, 'l> Typechecker<'a, 'l> {
         let decl = ConstantDecl {
             name: decl.name.expect("all constants have names"),
             span: decl.span,
+            params: decl.value.parameters,
             bounds,
+            ty_annotation: decl.value.ty,
             ty,
             specializations: self
                 .files
@@ -2976,7 +2989,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
 
         let tr = self.with_trait_decl(decl.value.tr, Clone::clone);
 
-        for param in tr.params.iter().skip(params.len()) {
+        for (_, param) in tr.params.iter().skip(params.len()) {
             let name = self.with_type_parameter_decl(*param, |decl| decl.name);
 
             self.compiler.diagnostics.add(Diagnostic::error(
@@ -3317,10 +3330,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
         self.add_substitutions(ty, &mut GenericSubstitutions::new());
     }
 
-    fn convert_type_annotation(
-        &mut self,
-        annotation: lower::TypeAnnotation,
-    ) -> engine::UnresolvedType {
+    fn convert_type_annotation(&mut self, annotation: TypeAnnotation) -> engine::UnresolvedType {
         self.convert_type_annotation_inner(
             annotation,
             &|typechecker, _| {
@@ -3334,7 +3344,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
 
     fn convert_generic_type_annotation(
         &mut self,
-        annotation: lower::TypeAnnotation,
+        annotation: TypeAnnotation,
         file: FilePath,
     ) -> engine::Type {
         let ty = self.convert_type_annotation_inner(
@@ -3364,10 +3374,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
             .expect("type should not contain variables")
     }
 
-    fn convert_finalized_type_annotation(
-        &mut self,
-        annotation: lower::TypeAnnotation,
-    ) -> engine::Type {
+    fn convert_finalized_type_annotation(&mut self, annotation: TypeAnnotation) -> engine::Type {
         let ty = self.convert_type_annotation_inner(annotation, &|_, _| None, &mut Vec::new());
 
         ty.finalize(&self.ctx)
@@ -3376,15 +3383,15 @@ impl<'a, 'l> Typechecker<'a, 'l> {
 
     fn convert_type_annotation_inner(
         &mut self,
-        annotation: lower::TypeAnnotation,
+        annotation: TypeAnnotation,
         convert_placeholder: &impl Fn(&mut Self, Span) -> Option<engine::UnresolvedType>,
         stack: &mut Vec<TypeId>,
     ) -> engine::UnresolvedType {
         match annotation.kind {
-            lower::TypeAnnotationKind::Error => {
+            TypeAnnotationKind::Error => {
                 engine::UnresolvedType::Bottom(engine::BottomTypeReason::Error)
             }
-            lower::TypeAnnotationKind::Placeholder => {
+            TypeAnnotationKind::Placeholder => {
                 if let Some(ty) = convert_placeholder(self, annotation.span) {
                     ty
                 } else {
@@ -3399,7 +3406,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                     engine::UnresolvedType::Bottom(engine::BottomTypeReason::Error)
                 }
             }
-            lower::TypeAnnotationKind::Named(id, params) => {
+            TypeAnnotationKind::Named(id, params) => {
                 let mut params = params
                     .into_iter()
                     .map(|param| {
@@ -3417,7 +3424,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                     .unwrap()
                     .clone();
 
-                for param in ty.value.params.iter().skip(params.len()) {
+                for (_, param) in ty.value.params.iter().skip(params.len()) {
                     let name = self.with_type_parameter_decl(*param, |decl| decl.name);
 
                     self.compiler.diagnostics.add(Diagnostic::error(
@@ -3450,7 +3457,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                     .value
                     .params
                     .iter()
-                    .copied()
+                    .map(|(_, param)| *param)
                     .zip(params.iter().cloned())
                     .collect::<GenericSubstitutions>();
 
@@ -3488,8 +3495,8 @@ impl<'a, 'l> Typechecker<'a, 'l> {
 
                 engine::UnresolvedType::Named(id, params, structure)
             }
-            lower::TypeAnnotationKind::Parameter(id) => engine::UnresolvedType::Parameter(id),
-            lower::TypeAnnotationKind::Builtin(id, mut parameters) => {
+            TypeAnnotationKind::Parameter(id) => engine::UnresolvedType::Parameter(id),
+            TypeAnnotationKind::Builtin(id, mut parameters) => {
                 let builtin_ty = self
                     .files
                     .get(&id.file)
@@ -3718,11 +3725,11 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                     }
                 }
             }
-            lower::TypeAnnotationKind::Function(input, output) => engine::UnresolvedType::Function(
+            TypeAnnotationKind::Function(input, output) => engine::UnresolvedType::Function(
                 Box::new(self.convert_type_annotation_inner(*input, convert_placeholder, stack)),
                 Box::new(self.convert_type_annotation_inner(*output, convert_placeholder, stack)),
             ),
-            lower::TypeAnnotationKind::Tuple(tys) => engine::UnresolvedType::Tuple(
+            TypeAnnotationKind::Tuple(tys) => engine::UnresolvedType::Tuple(
                 tys.into_iter()
                     .map(|ty| self.convert_type_annotation_inner(ty, convert_placeholder, stack))
                     .collect(),
@@ -3742,6 +3749,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
 
         let substitutions = trait_params
             .into_iter()
+            .map(|(_, param)| param)
             .zip(params)
             .collect::<GenericSubstitutions>();
 
@@ -3849,7 +3857,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                                         let param = actual_ty
                                             .params
                                             .iter()
-                                            .position(|p| p == param)
+                                            .position(|(_, p)| p == param)
                                             .expect("type parameter associated with wrong type");
 
                                         let inner_ty = actual_params[param].clone();
