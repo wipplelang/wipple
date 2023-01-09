@@ -50,9 +50,8 @@ impl std::hash::Hash for Diagnostic {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
 pub enum DiagnosticLevel {
-    Note,
     Warning,
     Error,
 }
@@ -60,7 +59,6 @@ pub enum DiagnosticLevel {
 impl From<DiagnosticLevel> for codespan_reporting::diagnostic::Severity {
     fn from(level: DiagnosticLevel) -> Self {
         match level {
-            DiagnosticLevel::Note => codespan_reporting::diagnostic::Severity::Note,
             DiagnosticLevel::Warning => codespan_reporting::diagnostic::Severity::Warning,
             DiagnosticLevel::Error => codespan_reporting::diagnostic::Severity::Error,
         }
@@ -99,10 +97,6 @@ impl Diagnostic {
             #[cfg(debug_assertions)]
             trace: backtrace_enabled().then(backtrace::Backtrace::new),
         }
-    }
-
-    pub fn note(message: impl ToString, notes: Vec<Note>) -> Self {
-        Diagnostic::new(DiagnosticLevel::Note, message, notes)
     }
 
     pub fn warning(message: impl ToString, notes: Vec<Note>) -> Self {
@@ -152,6 +146,10 @@ impl Diagnostics {
             .iter()
             .any(|d| matches!(d.level, DiagnosticLevel::Error))
     }
+
+    pub fn highest_level(&self) -> Option<DiagnosticLevel> {
+        self.diagnostics.lock().iter().map(|d| d.level).max()
+    }
 }
 
 #[derive(Debug)]
@@ -165,6 +163,10 @@ impl FinalizedDiagnostics {
         self.diagnostics
             .iter()
             .any(|d| matches!(d.level, DiagnosticLevel::Error))
+    }
+
+    pub fn highest_level(&self) -> Option<DiagnosticLevel> {
+        self.diagnostics.iter().map(|d| d.level).max()
     }
 
     #[cfg(feature = "serde_json")]

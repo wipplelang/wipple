@@ -783,7 +783,6 @@ impl Backend {
                 }
 
                 let severity = match diagnostic.level {
-                    DiagnosticLevel::Note => DiagnosticSeverity::INFORMATION,
                     DiagnosticLevel::Warning => DiagnosticSeverity::WARNING,
                     DiagnosticLevel::Error => DiagnosticSeverity::ERROR,
                 };

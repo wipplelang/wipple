@@ -22,6 +22,8 @@ import TextIcon from "@mui/icons-material/TextFormatRounded";
 import DeleteIcon from "@mui/icons-material/DeleteOutlineRounded";
 import LockIcon from "@mui/icons-material/Lock";
 import LockOpenIcon from "@mui/icons-material/LockOpen";
+import CodeIcon from "@mui/icons-material/Code";
+import CodeOffIcon from "@mui/icons-material/CodeOff";
 import PopupState, { bindMenu, bindTrigger } from "material-ui-popup-state";
 import { Menu, MenuItem } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
@@ -31,7 +33,7 @@ import { CodeEditor, TextEditor } from "../components";
 import { useAsyncEffect, useRefState } from "../helpers";
 
 type Section = { id: string; value: string } & (
-    | { type: "code" }
+    | { type: "code"; lint?: boolean }
     | { type: "text"; locked?: boolean }
 );
 
@@ -229,6 +231,21 @@ const App: NextPage = () => {
                                           }
                                         : undefined
                                 }
+                                lint={
+                                    section.type === "code"
+                                        ? {
+                                              lintEnabled: section.lint ?? true,
+                                              onChangeLintEnabled: (lint) => {
+                                                  const newSections = [...sections];
+                                                  newSections.splice(index, 1, {
+                                                      ...section,
+                                                      lint,
+                                                  });
+                                                  setSections(newSections);
+                                              },
+                                          }
+                                        : undefined
+                                }
                             >
                                 <SectionContainer
                                     section={section}
@@ -313,6 +330,10 @@ const SideMenu = (props: {
         isLocked: boolean;
         onChangeLocked: (locked: boolean) => void;
     };
+    lint?: {
+        lintEnabled: boolean;
+        onChangeLintEnabled: (lint: boolean) => void;
+    };
 }) => (
     <div className="w-6 -mt-4 -ml-6">
         <div {...props.grabberProps}>
@@ -363,6 +384,25 @@ const SideMenu = (props: {
                                 </MenuItem>
                             )}
 
+                            {props.lint && (
+                                <MenuItem
+                                    onClick={() => {
+                                        popupState.close();
+                                        props.lint?.onChangeLintEnabled(!props.lint.lintEnabled);
+                                    }}
+                                >
+                                    {props.lint.lintEnabled ? (
+                                        <>
+                                            <CodeOffIcon /> Disable Lints
+                                        </>
+                                    ) : (
+                                        <>
+                                            <CodeIcon /> Enable Lints
+                                        </>
+                                    )}
+                                </MenuItem>
+                            )}
+
                             <MenuItem
                                 disabled={props.onPressRemove == null}
                                 onClick={() => {
@@ -387,6 +427,10 @@ const SortableItem = (props: {
     lock?: {
         isLocked: boolean;
         onChangeLocked: (locked: boolean) => void;
+    };
+    lint?: {
+        lintEnabled: boolean;
+        onChangeLintEnabled: (lint: boolean) => void;
     };
     children: React.ReactNode;
 }) => {
@@ -417,6 +461,7 @@ const SortableItem = (props: {
                         onPressAdd={props.onPressAdd}
                         onPressRemove={props.onPressRemove}
                         lock={props.lock}
+                        lint={props.lint}
                     />
                 </div>
             ) : null}
@@ -433,6 +478,7 @@ const SectionContainer = (props: { section: Section; onChange: (section: Section
             content = (
                 <CodeEditor
                     code={props.section.value}
+                    lint={props.section.lint ?? true}
                     onChange={(code) => {
                         props.onChange({
                             ...props.section,

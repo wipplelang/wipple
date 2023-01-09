@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 
 export interface Output {
-    success: boolean;
+    status: "success" | "warning" | "error";
     value: string;
 }
 
@@ -15,7 +15,7 @@ export const useRunner = () => {
     }, []);
 
     return {
-        run: (code: string): Promise<Output> => {
+        run: (code: string, lint: boolean): Promise<Output> => {
             active = new Promise(async (resolve, reject) => {
                 if (active) {
                     await active;
@@ -31,7 +31,7 @@ export const useRunner = () => {
                     active = undefined;
                 };
 
-                runner!.postMessage(code);
+                runner!.postMessage(JSON.stringify({ code, lint }));
             });
 
             return active;

@@ -9,7 +9,8 @@
         {
             "id": "-BJVsDAV",
             "type": "code",
-            "value": "show :: A => A -> ()\nshow : ... -- the `...` means the code is unfinished (we only care about the\n           -- type for now)"
+            "value": "show :: A => A -> ()\nshow : ... -- the `...` means the code is unfinished (we only care about the\n           -- type for now)",
+            "lint": false
         },
         {
             "id": "JGwG_RDX",

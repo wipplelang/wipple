@@ -38,7 +38,8 @@
         {
             "id": "t0f7nCKf",
             "type": "code",
-            "value": "just :: A B => A -> B -> A\njust : x -> _ -> x\n\ngeneric-greeting : just \"Hello there!\"\n\nshow (generic-greeting \"Alice\")\nshow (generic-greeting \"Bob\")\nshow (generic-greeting \"Charlie\")"
+            "value": "just :: A B => A -> B -> A\njust : x -> _ -> x\n\ngeneric-greeting : just \"Hello there!\"\n\nshow (generic-greeting \"Alice\")\nshow (generic-greeting \"Bob\")\nshow (generic-greeting \"Charlie\")",
+            "lint": false
         },
         {
             "id": "tRDQefwj",

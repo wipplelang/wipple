@@ -9,8 +9,16 @@ use wipple_default_loader as loader;
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct Output {
-    success: bool,
+    status: Status,
     value: String,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+enum Status {
+    Success,
+    Warning,
+    Error,
 }
 
 // SAFETY: This is safe because Wasm is single-threaded
@@ -120,7 +128,7 @@ lazy_static! {
 }
 
 #[wasm_bindgen]
-pub async fn run(code: String) -> JsValue {
+pub async fn run(code: String, lint: bool) -> JsValue {
     #[cfg(feature = "console_error_panic_hook")]
     console_error_panic_hook::set_once();
 
@@ -142,12 +150,18 @@ pub async fn run(code: String) -> JsValue {
         .analyze(wipple_frontend::FilePath::Virtual(playground_path))
         .await;
 
-    compiler.lint(&program);
+    if lint {
+        compiler.lint(&program);
+    }
 
     let program = program.complete.then(|| compiler.ir_from(&program));
 
     let mut diagnostics = compiler.finish();
-    let success = !diagnostics.contains_errors();
+    let status = match diagnostics.highest_level() {
+        None => Status::Success,
+        Some(wipple_frontend::diagnostics::DiagnosticLevel::Warning) => Status::Warning,
+        Some(wipple_frontend::diagnostics::DiagnosticLevel::Error) => Status::Error,
+    };
 
     let (files, diagnostics) = diagnostics.into_console_friendly(
         #[cfg(debug_assertions)]
@@ -167,7 +181,7 @@ pub async fn run(code: String) -> JsValue {
     }
 
     if let Some(program) = program {
-        if success {
+        if matches!(status, Status::Success | Status::Warning) {
             let result = {
                 let mut interpreter =
                     wipple_interpreter_backend::Interpreter::handling_output(|text| {
@@ -184,7 +198,7 @@ pub async fn run(code: String) -> JsValue {
     }
 
     let output = Output {
-        success,
+        status,
         value: String::from_utf8(output).unwrap().trim().to_string(),
     };
 

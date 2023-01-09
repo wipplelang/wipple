@@ -1,4 +1,5 @@
 onmessage = async (event) => {
     const runner = await import("./pkg");
-    postMessage(await runner.run(event.data));
+    const { code, lint } = JSON.parse(event.data);
+    postMessage(await runner.run(code, lint));
 };

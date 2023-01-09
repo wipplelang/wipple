@@ -9,6 +9,7 @@ import { useAsyncEffect } from "../helpers";
 
 export interface CodeEditorProps {
     code: string;
+    lint: boolean;
     onChange: (code: string) => void;
 }
 
@@ -31,19 +32,14 @@ export const CodeEditor = (props: CodeEditorProps) => {
 
     const run = useMemo(
         () =>
-            debounce(async (code: string) => {
-                try {
-                    const output = await runner.run(code);
-                    console.log("#### OUTPUT:", output);
-                    setOutput(output);
-                } catch (error) {
-                    console.error("#### ERROR:", error);
-                }
+            debounce(async (code: string, lint: boolean) => {
+                const output = await runner.run(code, lint);
+                setOutput(output);
             }, 750),
         []
     );
 
-    useAsyncEffect(() => run(props.code), [props.code]);
+    useAsyncEffect(() => run(props.code, props.lint), [props.code, props.lint]);
 
     return (
         <div className="bg-white dark:bg-gray-900 border-2 border-gray-100 dark:border-gray-700 rounded-lg overflow-clip">
@@ -68,11 +64,25 @@ export const CodeEditor = (props: CodeEditorProps) => {
             <animated.div style={animatedOutputStyle}>
                 <div
                     ref={outputRef}
-                    className={`p-4 ${
-                        output?.success ?? true
-                            ? "bg-gray-50 dark:bg-gray-800 text-black dark:text-white"
-                            : "bg-red-50 dark:bg-red-900 dark:opacity-50 text-red-900 dark:text-red-50"
-                    }`}
+                    className={`p-4 ${(() => {
+                        const successClasses =
+                            "bg-gray-50 dark:bg-gray-800 text-black dark:text-white";
+                        const warningClasses =
+                            "bg-yellow-50 dark:bg-yellow-900 dark:opacity-50 text-yellow-900 dark:text-yellow-50";
+                        const errorClasses =
+                            "bg-red-50 dark:bg-red-900 dark:opacity-50 text-red-900 dark:text-red-50";
+
+                        switch (output?.status) {
+                            case "success":
+                                return successClasses;
+                            case "warning":
+                                return warningClasses;
+                            case "error":
+                                return errorClasses;
+                            default:
+                                return "";
+                        }
+                    })()}`}
                 >
                     <pre className="whitespace-pre-wrap break-words">{output?.value}</pre>
                 </div>
