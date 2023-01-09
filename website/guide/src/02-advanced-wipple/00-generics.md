@@ -30,6 +30,8 @@ You can provide as many parameters and bounds as you want:
 A B C where (T A) (U B) (V C) => ...
 ```
 
+## Unused type parameters
+
 In a type declaration, you don't need to actually use the parameters anywhere in the type. This is useful for creating "type states" that represent data at the type level:
 
 ```wipple
@@ -51,3 +53,17 @@ my-drone : Drone
 my-drone . take-off . land -- works!
 my-drone . land -- cannot land because drone is already idle
 ```
+
+## Implicit type parameters
+
+In constants, instance definitions, and `where` bounds, you can replace a type parameter with a type placeholder (`_`). There, `_` indicates an implicit type parameter. For example, `Element` is only used once in the signature of `count`, so you can replace it with a type placeholder:
+
+```wipple
+-- explicit type parameter
+count :: Collection Element where (Iterate Collection Element) => Collection -> Natural
+
+-- implicit type parameter
+count :: Collection where (Iterate Collection _) => Collection -> Natural
+```
+
+Note that you cannot use implicit type parameters in type or trait definitions, because that would prevent you from calling their type functions.

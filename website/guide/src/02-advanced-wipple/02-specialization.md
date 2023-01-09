@@ -9,33 +9,30 @@ count : ... -- iterate over each item and increment a counter
 
 And if you implement `Iterate` on, say, a `List`, you get `count` for free!
 
-There's one problem with this approach, and that's performance. While `count`'s current implementation (iterating over each item and incrementing a counter) is indeed the most generic and flexible way to do it, it's very inefficient for types that already know the number of elements they contain (like `List`s). Luckily, Wipple has a solution to this problem, and it's called **specialization**!
+There's one problem with this approach, and that's performance. While `count`'s current implementation (iterating over each item and incrementing a counter) is indeed the most generic and flexible way to do it, it's very inefficient for types that already know the number of elements they contain. Let's say we have a type called `Repeat` that produces a value `count` times:
 
-## What is specialization?
+```wipple
+Repeat : A => type {
+    value :: A
+    count :: Natural
+}
+
+A => instance (Iterate (Repeat A) A) : ...
+```
+
+Because `Repeat` implements `Iterate`, `count` will work just fine. But we can eliminate a bunch of unnecessary work because `Repeat` already knows its `count`! To accomplish this, we can use **specialization**.
+
+## How does specialization work?
 
 Specialization allows you to declare a new constant for a more specific type and tell Wipple to use it instead of the generic implementation. This is done using the `[specialize]` attribute:
 
 ```wipple
-Greet : A => trait (A -> Text)
-
-greet :: A where (Greet A) => A -> Text
-greet : x -> format "Hello, _!" (Greet x)
-
-Foo : type
-instance (Greet Foo) : just "Foo"
-
-Bar : type
-instance (Greet Bar) : just "Bar"
-
 [specialize]
-greet :: Bar -> Text
-greet : just "Greetings!"
-
-show (greet Foo) -- prints "Hello, Foo!"
-show (greet Bar) -- prints "Greetings!"
+count :: Repeat _ -> Natural
+count : { count } -> count
 ```
 
-When the program reaches `greet Bar`, it uses the specialized `greet` function for `Bar` instead of the generic one that works on both `Foo` and `Bar`. As a result, the program outputs `Greetings!` instead of `Hello, Bar!`.
+Now Wipple will use the specialized implementation of `count` whenever it's called with a `Repeat` value.
 
 ## Rules and conventions
 

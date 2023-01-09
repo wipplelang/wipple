@@ -169,3 +169,13 @@ You can use `_` to represent a placeholder, the type of which Wipple should dete
 ```wipple
 Left 42 :: Either _ Text
 ```
+
+In a type function, you can use `_` to create an implicit type parameter:
+
+```wipple
+left :: Left => Either Left _ -> Maybe Left
+left : ...
+
+right :: Right => Either _ Right -> Maybe Right
+right : ...
+```
