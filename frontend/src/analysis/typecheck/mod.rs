@@ -19,7 +19,6 @@ use crate::{
     VariableId,
 };
 use itertools::Itertools;
-use serde::Serialize;
 use std::{
     cell::RefCell,
     collections::{BTreeMap, BTreeSet, HashMap, HashSet},
@@ -33,10 +32,10 @@ pub enum Progress {
     ResolvingDeclarations { count: usize, remaining: usize },
 }
 
-#[derive(Debug, Clone, Default, Serialize)]
+#[derive(Debug, Clone, Default)]
 pub struct Program {
     pub complete: bool,
-    pub items: BTreeMap<ItemId, Expression>,
+    pub items: BTreeMap<ItemId, (Option<ConstantId>, Expression)>,
     pub entrypoint: Option<ItemId>,
     pub declarations: Declarations,
     pub exported: lower::ScopeValues,
@@ -45,7 +44,7 @@ pub struct Program {
 
 macro_rules! declarations {
     ($name:ident<$($container:ident)::+>) => {
-        #[derive(Debug, Clone, Default, Serialize)]
+        #[derive(Debug, Clone, Default)]
         pub struct $name {
             pub types: $($container)::+<TypeId, TypeDecl>,
             pub traits: $($container)::+<TraitId, TraitDecl>,
@@ -79,7 +78,7 @@ impl From<DeclarationsInner> for Declarations {
     }
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone)]
 pub struct TypeDecl {
     pub name: InternedString,
     pub span: Span,
@@ -89,8 +88,7 @@ pub struct TypeDecl {
     pub uses: HashSet<Span>,
 }
 
-#[derive(Debug, Clone, Serialize)]
-#[serde(tag = "type", content = "value")]
+#[derive(Debug, Clone)]
 pub enum TypeDeclKind {
     Marker,
     Structure {
@@ -103,7 +101,7 @@ pub enum TypeDeclKind {
     },
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone)]
 pub struct TraitDecl {
     pub name: InternedString,
     pub span: Span,
@@ -114,7 +112,7 @@ pub struct TraitDecl {
     pub uses: HashSet<Span>,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone)]
 pub struct ConstantDecl {
     pub name: InternedString,
     pub span: Span,
@@ -124,33 +122,35 @@ pub struct ConstantDecl {
     pub ty: engine::Type,
     pub specializations: Vec<ConstantId>,
     pub attributes: lower::ConstantAttributes,
+    pub body: Option<Expression>,
     pub uses: HashSet<Span>,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone)]
 pub struct InstanceDecl {
     pub span: Span,
     pub trait_id: TraitId,
     pub bounds: Vec<Bound>,
     pub ty: engine::Type,
+    pub body: Option<Expression>,
     pub item: ItemId,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone)]
 pub struct Bound {
     pub span: Span,
     pub trait_id: TraitId,
     pub params: Vec<engine::UnresolvedType>,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone)]
 pub struct OperatorDecl {
     pub name: InternedString,
     pub span: Span,
     pub uses: HashSet<Span>,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone)]
 pub struct TemplateDecl {
     pub name: InternedString,
     pub span: Span,
@@ -158,7 +158,7 @@ pub struct TemplateDecl {
     pub uses: HashSet<Span>,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone)]
 pub struct BuiltinTypeDecl {
     pub name: InternedString,
     pub span: Span,
@@ -166,14 +166,14 @@ pub struct BuiltinTypeDecl {
     pub uses: HashSet<Span>,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone)]
 pub struct TypeParameterDecl {
     pub name: Option<InternedString>,
     pub span: Span,
     pub uses: HashSet<Span>,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone)]
 pub struct VariableDecl {
     pub name: Option<InternedString>,
     pub span: Span,
@@ -184,16 +184,16 @@ pub struct VariableDecl {
 macro_rules! expr {
     ($vis:vis, $prefix:literal, $type:ty, { $($kinds:tt)* }) => {
         paste::paste! {
-            #[derive(Debug, Clone, Serialize)]
+            #[derive(Debug, Clone)]
             $vis struct [<$prefix Expression>] {
                 $vis span: Span,
                 $vis ty: $type,
                 $vis kind: [<$prefix ExpressionKind>],
             }
 
-            #[derive(Debug, Clone, Serialize)]
-            #[serde(tag = "type", content = "value")]
+            #[derive(Debug, Clone)]
             $vis enum [<$prefix ExpressionKind>] {
+                Error,
                 Marker,
                 Variable(VariableId),
                 Text(InternedString),
@@ -211,7 +211,7 @@ macro_rules! expr {
                 $($kinds)*
             }
 
-            #[derive(Debug, Clone, Serialize)]
+            #[derive(Debug, Clone)]
             $vis struct [<$prefix Arm>] {
                 $vis span: Span,
                 $vis pattern: [<$prefix Pattern>],
@@ -224,15 +224,15 @@ macro_rules! expr {
 macro_rules! pattern {
     ($vis:vis, $prefix:literal, { $($kinds:tt)* }) => {
         paste::paste! {
-            #[derive(Debug, Clone, Serialize)]
+            #[derive(Debug, Clone)]
             $vis struct [<$prefix Pattern>] {
                 $vis span: Span,
                 $vis kind: [<$prefix PatternKind>],
             }
 
-            #[derive(Debug, Clone, Serialize)]
-            #[serde(tag = "type", content = "value")]
+            #[derive(Debug, Clone)]
             $vis enum [<$prefix PatternKind>] {
+                Error,
                 Wildcard,
                 Text(InternedString),
                 Variable(VariableId),
@@ -246,14 +246,12 @@ macro_rules! pattern {
 }
 
 expr!(, "Unresolved", engine::UnresolvedType, {
-    Error,
     Number(InternedString),
     Trait(TraitId),
     Constant(ConstantId),
 });
 
 expr!(, "Monomorphized", engine::UnresolvedType, {
-    Error,
     Number(InternedString),
     Constant(ItemId),
 });
@@ -271,8 +269,28 @@ expr!(pub, "", engine::Type, {
     ExpandedConstant(ItemId),
 });
 
+impl Expression {
+    pub fn contains_error(&self) -> bool {
+        let mut contains_error = false;
+        self.traverse(|expr| {
+            contains_error &= matches!(expr.kind, ExpressionKind::Error);
+
+            contains_error &= match &expr.kind {
+                ExpressionKind::Error => true,
+                ExpressionKind::Function(pattern, _, _)
+                | ExpressionKind::Initialize(pattern, _) => pattern.contains_error(),
+                ExpressionKind::When(_, arms) => {
+                    arms.iter().any(|arm| arm.pattern.contains_error())
+                }
+                _ => false,
+            };
+        });
+
+        contains_error
+    }
+}
+
 pattern!(, "Unresolved", {
-    Error,
     Number(InternedString),
     Destructure(
         engine::UnresolvedType,
@@ -282,7 +300,6 @@ pattern!(, "Unresolved", {
 });
 
 pattern!(, "Monomorphized", {
-    Error,
     Number(InternedString),
     Destructure(BTreeMap<usize, MonomorphizedPattern>),
     Variant(usize, Vec<MonomorphizedPattern>),
@@ -300,6 +317,17 @@ pattern!(pub, "", {
     Destructure(BTreeMap<usize, Pattern>),
     Variant(usize, Vec<Pattern>)
 });
+
+impl Pattern {
+    pub fn contains_error(&self) -> bool {
+        let mut contains_error = false;
+        self.traverse(|pattern| {
+            contains_error &= matches!(pattern.kind, PatternKind::Error);
+        });
+
+        contains_error
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct Error {
@@ -331,11 +359,10 @@ impl Compiler<'_> {
     pub fn typecheck_with_progress(
         &self,
         entrypoint: lower::File,
-        ide: bool,
         complete: bool,
         mut progress: impl FnMut(Progress),
     ) -> Program {
-        let mut typechecker = Typechecker::new(self, entrypoint, ide);
+        let mut typechecker = Typechecker::new(self, entrypoint);
 
         progress(Progress::CollectingTypes);
         typechecker.collect_types();
@@ -349,7 +376,6 @@ impl Compiler<'_> {
 #[derive(Debug, Clone)]
 struct Typechecker<'a, 'l> {
     compiler: &'a Compiler<'l>,
-    ide: bool,
     entrypoint: lower::File,
     is_complete: bool,
     ctx: engine::Context,
@@ -375,10 +401,9 @@ struct QueuedItem {
 }
 
 impl<'a, 'l> Typechecker<'a, 'l> {
-    pub fn new(compiler: &'a Compiler<'l>, entrypoint: lower::File, ide: bool) -> Self {
+    pub fn new(compiler: &'a Compiler<'l>, entrypoint: lower::File) -> Self {
         Typechecker {
             compiler,
-            ide,
             entrypoint,
             is_complete: true,
             ctx: Default::default(),
@@ -431,12 +456,13 @@ impl<'a, 'l> Typechecker<'a, 'l> {
             progress(count, total);
 
             let expr = self.monomorphize_expr(item.expr, &mut item.info);
+            let expr = self.finalize_expr(expr);
 
-            if let Some(expr) = self.finalize_expr(expr) {
-                self.items.insert(item.id, (item.generic_id, expr));
-            } else {
+            if expr.contains_error() {
                 self.is_complete = false;
             }
+
+            self.items.insert(item.id, (item.generic_id, expr));
         }
 
         // Ensure specialized constants unify with their generic counterparts
@@ -496,10 +522,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
 
         Program {
             complete: lowering_is_complete && self.is_complete,
-            items: items
-                .into_iter()
-                .map(|(id, (_, expr))| (id, expr))
-                .collect(),
+            items,
             entrypoint: entrypoint_item,
             exported: self.exported.unwrap_or_default(),
             declarations: self.declarations.into_inner().into(),
@@ -531,61 +554,59 @@ impl<'a, 'l> Typechecker<'a, 'l> {
         self.exported = Some(exported);
         self.entrypoint_expr = Some(expr);
 
-        if !self.ide {
-            macro_rules! declaration {
-                ($kind:ident) => {
-                    paste::paste! {
-                        self.entrypoint
-                            .declarations
-                            .$kind
-                            .keys()
-                            .cloned()
-                            .collect::<Vec<_>>()
-                    }
-                };
-            }
-
-            let mut instances = mem::take(&mut self.instances);
-            for id in declaration!(instances) {
-                self.with_instance_decl(id, |decl| {
-                    instances.entry(decl.trait_id).or_default().insert(id);
-                });
-            }
-            self.instances = instances;
-
-            let mut specialized_constants = mem::take(&mut self.specialized_constants);
-            for generic_id in declaration!(constants) {
-                self.with_constant_decl(generic_id, |decl| {
-                    for &specialized_id in &decl.specializations {
-                        specialized_constants.insert(specialized_id, generic_id);
-                    }
-                });
-            }
-            self.specialized_constants = specialized_constants;
-
-            macro_rules! check {
-                ($kind:ident) => {
-                    paste::paste! {
-                        for id in declaration!([<$kind s>]) {
-                            self.[<with_ $kind _decl>](id, |_| {});
-                        }
-                    }
-                };
-                ($($kind:ident),* $(,)?) => {
-                    $(check!($kind);)*
+        macro_rules! declaration {
+            ($kind:ident) => {
+                paste::paste! {
+                    self.entrypoint
+                        .declarations
+                        .$kind
+                        .keys()
+                        .cloned()
+                        .collect::<Vec<_>>()
                 }
-            }
-
-            check!(
-                type,
-                trait,
-                operator,
-                template,
-                builtin_type,
-                type_parameter,
-                // variables are handled inside `finalize_pattern`
-            );
+            };
         }
+
+        let mut instances = mem::take(&mut self.instances);
+        for id in declaration!(instances) {
+            self.with_instance_decl(id, |decl| {
+                instances.entry(decl.trait_id).or_default().insert(id);
+            });
+        }
+        self.instances = instances;
+
+        let mut specialized_constants = mem::take(&mut self.specialized_constants);
+        for generic_id in declaration!(constants) {
+            self.with_constant_decl(generic_id, |decl| {
+                for &specialized_id in &decl.specializations {
+                    specialized_constants.insert(specialized_id, generic_id);
+                }
+            });
+        }
+        self.specialized_constants = specialized_constants;
+
+        macro_rules! check {
+            ($kind:ident) => {
+                paste::paste! {
+                    for id in declaration!([<$kind s>]) {
+                        self.[<with_ $kind _decl>](id, |_| {});
+                    }
+                }
+            };
+            ($($kind:ident),* $(,)?) => {
+                $(check!($kind);)*
+            }
+        }
+
+        check!(
+            type,
+            trait,
+            operator,
+            template,
+            builtin_type,
+            type_parameter,
+            // variables are handled inside `finalize_pattern`
+        );
     }
 
     fn typecheck_generic_constant_expr(
@@ -594,10 +615,12 @@ impl<'a, 'l> Typechecker<'a, 'l> {
         instance: bool,
         expr: lower::Expression,
     ) {
-        let (generic_ty, bounds) = if instance {
-            self.with_instance_decl(id, |decl| (decl.ty.clone(), decl.bounds.clone()))
+        let (tr, generic_ty, bounds) = if instance {
+            self.with_instance_decl(id, |decl| {
+                (Some(decl.trait_id), decl.ty.clone(), decl.bounds.clone())
+            })
         } else {
-            self.with_constant_decl(id, |decl| (decl.ty.clone(), decl.bounds.clone()))
+            self.with_constant_decl(id, |decl| (None, decl.ty.clone(), decl.bounds.clone()))
         };
 
         let mut monomorphize_info = MonomorphizeInfo::default();
@@ -622,7 +645,25 @@ impl<'a, 'l> Typechecker<'a, 'l> {
         // Before finalizing, substitute the generics back in
         let _ = self.ctx.unify(expr.ty.clone(), generic_ty);
 
-        self.finalize_expr(expr);
+        let expr = self.finalize_expr(expr);
+
+        if let Some(tr) = tr {
+            self.declarations
+                .borrow_mut()
+                .instances
+                .get_mut(&tr)
+                .unwrap()
+                .get_mut(&id)
+                .unwrap()
+                .body = Some(expr);
+        } else {
+            self.declarations
+                .borrow_mut()
+                .constants
+                .get_mut(&id)
+                .unwrap()
+                .body = Some(expr);
+        }
     }
 
     fn typecheck_constant_expr(
@@ -2520,27 +2561,27 @@ impl<'a, 'l> Typechecker<'a, 'l> {
 }
 
 impl<'a, 'l> Typechecker<'a, 'l> {
-    fn finalize_expr(&mut self, expr: MonomorphizedExpression) -> Option<Expression> {
+    fn finalize_expr(&mut self, expr: MonomorphizedExpression) -> Expression {
         let ty = match expr.ty.clone().finalize(&self.ctx) {
             Ok(ty) => ty,
             Err(error) => {
                 self.add_error(Error::new(error, expr.span));
-                return None;
+                engine::Type::Bottom(BottomTypeReason::Error)
             }
         };
 
-        let kind = match expr.kind {
-            MonomorphizedExpressionKind::Error => return None,
+        let kind = (|| match expr.kind {
+            MonomorphizedExpressionKind::Error => ExpressionKind::Error,
             MonomorphizedExpressionKind::Marker => ExpressionKind::Marker,
             MonomorphizedExpressionKind::Constant(id) => ExpressionKind::Constant(id),
             MonomorphizedExpressionKind::Variable(var) => ExpressionKind::Variable(var),
             MonomorphizedExpressionKind::Text(text) => ExpressionKind::Text(text),
             MonomorphizedExpressionKind::Number(number) => {
-                match parse_number!(number, ExpressionKind, &ty, Type)? {
+                match parse_number!(number, ExpressionKind, &ty, Type) {
                     Ok(number) => number,
                     Err(error) => {
                         self.add_error(Error::new(error, expr.span));
-                        return None;
+                        ExpressionKind::Error
                     }
                 }
             }
@@ -2548,40 +2589,38 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                 statements
                     .into_iter()
                     .map(|expr| self.finalize_expr(expr))
-                    .collect::<Option<_>>()?,
+                    .collect(),
             ),
             MonomorphizedExpressionKind::End(value) => {
-                ExpressionKind::End(Box::new(self.finalize_expr(*value)?))
+                ExpressionKind::End(Box::new(self.finalize_expr(*value)))
             }
             MonomorphizedExpressionKind::Call(func, input) => ExpressionKind::Call(
-                Box::new(self.finalize_expr(*func)?),
-                Box::new(self.finalize_expr(*input)?),
+                Box::new(self.finalize_expr(*func)),
+                Box::new(self.finalize_expr(*input)),
             ),
             MonomorphizedExpressionKind::Function(pattern, body, captures) => {
                 let input_ty = match &ty {
                     engine::Type::Function(input, _) => input.clone(),
-                    _ => unreachable!(),
+                    _ => return ExpressionKind::Error,
                 };
 
                 ExpressionKind::Function(
-                    self.finalize_pattern(pattern, &input_ty)?,
-                    Box::new(self.finalize_expr(*body)?),
+                    self.finalize_pattern(pattern, &input_ty),
+                    Box::new(self.finalize_expr(*body)),
                     captures,
                 )
             }
             MonomorphizedExpressionKind::When(input, arms) => {
-                let input = self.finalize_expr(*input)?;
+                let input = self.finalize_expr(*input);
 
                 let arms = arms
                     .into_iter()
-                    .map(|arm| {
-                        Some(Arm {
-                            span: arm.span,
-                            pattern: self.finalize_pattern(arm.pattern, &input.ty)?,
-                            body: self.finalize_expr(arm.body)?,
-                        })
+                    .map(|arm| Arm {
+                        span: arm.span,
+                        pattern: self.finalize_pattern(arm.pattern, &input.ty),
+                        body: self.finalize_expr(arm.body),
                     })
-                    .collect::<Option<_>>()?;
+                    .collect::<Vec<_>>();
 
                 ExpressionKind::When(Box::new(input), arms)
             }
@@ -2592,7 +2631,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                     inputs
                         .into_iter()
                         .map(|expr| self.finalize_expr(expr))
-                        .collect::<Option<_>>()?,
+                        .collect(),
                 )
             }
             MonomorphizedExpressionKind::Runtime(func, inputs) => ExpressionKind::Runtime(
@@ -2600,13 +2639,13 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                 inputs
                     .into_iter()
                     .map(|expr| self.finalize_expr(expr))
-                    .collect::<Option<_>>()?,
+                    .collect(),
             ),
             MonomorphizedExpressionKind::Initialize(pattern, value) => {
-                let value = self.finalize_expr(*value)?;
+                let value = self.finalize_expr(*value);
 
                 ExpressionKind::Initialize(
-                    self.finalize_pattern(pattern, &value.ty)?,
+                    self.finalize_pattern(pattern, &value.ty),
                     Box::new(value),
                 )
             }
@@ -2614,46 +2653,46 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                 fields
                     .into_iter()
                     .map(|expr| self.finalize_expr(expr))
-                    .collect::<Option<_>>()?,
+                    .collect(),
             ),
             MonomorphizedExpressionKind::Variant(index, values) => ExpressionKind::Variant(
                 index,
                 values
                     .into_iter()
                     .map(|expr| self.finalize_expr(expr))
-                    .collect::<Option<_>>()?,
+                    .collect(),
             ),
             MonomorphizedExpressionKind::Tuple(exprs) => ExpressionKind::Tuple(
                 exprs
                     .into_iter()
                     .map(|expr| self.finalize_expr(expr))
-                    .collect::<Option<_>>()?,
+                    .collect(),
             ),
-        };
+        })();
 
-        Some(Expression {
+        Expression {
             span: expr.span,
             ty,
             kind,
-        })
+        }
     }
 
     fn finalize_pattern(
         &mut self,
         pattern: MonomorphizedPattern,
         input_ty: &engine::Type,
-    ) -> Option<Pattern> {
-        Some(Pattern {
+    ) -> Pattern {
+        Pattern {
             span: pattern.span,
-            kind: match pattern.kind {
-                MonomorphizedPatternKind::Error => return None,
+            kind: (|| match pattern.kind {
+                MonomorphizedPatternKind::Error => PatternKind::Error,
                 MonomorphizedPatternKind::Wildcard => PatternKind::Wildcard,
                 MonomorphizedPatternKind::Number(number) => {
-                    match parse_number!(number, PatternKind, input_ty, Type)? {
+                    match parse_number!(number, PatternKind, input_ty, Type) {
                         Ok(number) => number,
                         Err(error) => {
                             self.add_error(Error::new(error, pattern.span));
-                            return None;
+                            PatternKind::Error
                         }
                     }
                 }
@@ -2667,17 +2706,15 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                         engine::Type::Named(_, _, engine::TypeStructure::Structure(fields)) => {
                             fields
                         }
-                        _ => return None,
+                        _ => return PatternKind::Error,
                     };
 
                     PatternKind::Destructure(
                         fields
                             .into_iter()
                             .zip(input_tys)
-                            .map(|((index, field), ty)| {
-                                Some((index, self.finalize_pattern(field, ty)?))
-                            })
-                            .collect::<Option<_>>()?,
+                            .map(|((index, field), ty)| (index, self.finalize_pattern(field, ty)))
+                            .collect(),
                     )
                 }
                 MonomorphizedPatternKind::Variant(index, values) => {
@@ -2685,7 +2722,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                         engine::Type::Named(_, _, engine::TypeStructure::Enumeration(variants)) => {
                             &variants[index]
                         }
-                        _ => return None,
+                        _ => return PatternKind::Error,
                     };
 
                     PatternKind::Variant(
@@ -2694,21 +2731,21 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                             .into_iter()
                             .zip(input_tys)
                             .map(|(value, ty)| self.finalize_pattern(value, ty))
-                            .collect::<Option<_>>()?,
+                            .collect(),
                     )
                 }
                 MonomorphizedPatternKind::Or(lhs, rhs) => PatternKind::Or(
-                    Box::new(self.finalize_pattern(*lhs, input_ty)?),
-                    Box::new(self.finalize_pattern(*rhs, input_ty)?),
+                    Box::new(self.finalize_pattern(*lhs, input_ty)),
+                    Box::new(self.finalize_pattern(*rhs, input_ty)),
                 ),
                 MonomorphizedPatternKind::Where(pattern, condition) => PatternKind::Where(
-                    Box::new(self.finalize_pattern(*pattern, input_ty)?),
-                    Box::new(self.finalize_expr(*condition)?),
+                    Box::new(self.finalize_pattern(*pattern, input_ty)),
+                    Box::new(self.finalize_expr(*condition)),
                 ),
                 MonomorphizedPatternKind::Tuple(patterns) => {
                     let input_tys = match input_ty {
                         engine::Type::Tuple(tys) => tys,
-                        _ => return None,
+                        _ => return PatternKind::Error,
                     };
 
                     PatternKind::Tuple(
@@ -2716,11 +2753,11 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                             .into_iter()
                             .zip(input_tys)
                             .map(|(pattern, ty)| self.finalize_pattern(pattern, ty))
-                            .collect::<Option<_>>()?,
+                            .collect(),
                     )
                 }
-            },
-        })
+            })(),
+        }
     }
 }
 
@@ -2868,6 +2905,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                 .cloned()
                 .unwrap_or_default(),
             attributes: decl.value.attributes,
+            body: None,
             uses: decl.uses,
         };
 
@@ -3000,6 +3038,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
             trait_id,
             bounds,
             ty: instance_ty.finalize(&self.ctx).unwrap(),
+            body: None,
             item,
         };
 

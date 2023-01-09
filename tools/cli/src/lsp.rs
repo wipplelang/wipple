@@ -10,7 +10,7 @@ use wipple_frontend::{
             format::{format_type, Format, TypeFunctionFormat},
             TemplateDecl, TraitDecl, Type, TypeDecl, TypeDeclKind,
         },
-        ExpressionKind, Program,
+        Expression, ExpressionKind, Program,
     },
     diagnostics::DiagnosticLevel,
     helpers::InternedString,
@@ -217,20 +217,33 @@ impl LanguageServer for Backend {
         insert_semantic_tokens!(type_parameters, |_| SemanticTokenType::TYPE_PARAMETER);
         insert_semantic_tokens!(variables, |_| SemanticTokenType::VARIABLE);
 
-        for expr in document.program.items.values() {
-            expr.traverse(|expr| {
-                if expr.span.path != document.path {
-                    return;
-                }
+        let mut traverse_semantic_tokens = |expr: &Expression| {
+            if expr.span.path != document.path {
+                return;
+            }
 
-                if matches!(
-                    expr.kind,
-                    ExpressionKind::Variable(_) | ExpressionKind::Constant(_)
-                ) && matches!(expr.ty, Type::Function(_, _))
-                {
-                    semantic_tokens.push((expr.span, SemanticTokenType::FUNCTION));
-                }
-            });
+            if matches!(
+                expr.kind,
+                ExpressionKind::Variable(_) | ExpressionKind::Constant(_)
+            ) && matches!(expr.ty, Type::Function(_, _))
+            {
+                semantic_tokens.push((expr.span, SemanticTokenType::FUNCTION));
+            }
+        };
+
+        for decl in document.program.declarations.constants.values() {
+            if let Some(expr) = &decl.body {
+                expr.traverse(&mut traverse_semantic_tokens);
+            }
+        }
+
+        for (constant, expr) in document.program.items.values() {
+            if constant.is_some() {
+                // Skip monomorphized constant types
+                continue;
+            }
+
+            expr.traverse(&mut traverse_semantic_tokens);
         }
 
         semantic_tokens.reverse();
@@ -333,11 +346,16 @@ impl LanguageServer for Backend {
 
         let mut hovers = Vec::new();
 
-        for expr in document.program.items.values() {
+        for (constant, expr) in document.program.items.values() {
+            if constant.is_some() {
+                // Skip monomorphized constant types
+                continue;
+            }
+
             expr.traverse(|expr| {
                 // Don't show type of entire file
                 if let Some(entrypoint) = document.program.entrypoint {
-                    if let Some(item) = document.program.items.get(&entrypoint) {
+                    if let Some((_, item)) = document.program.items.get(&entrypoint) {
                         if expr.span == item.span {
                             return;
                         }
@@ -727,12 +745,7 @@ impl Backend {
 
         let compiler = self.borrow_compiler();
 
-        let program = compiler
-            .analyze(
-                path,
-                wipple_frontend::analysis::Options::default().ide(true),
-            )
-            .await;
+        let program = compiler.analyze(path).await;
 
         compiler.lint(&program);
 

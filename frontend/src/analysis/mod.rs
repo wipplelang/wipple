@@ -20,7 +20,6 @@ use std::sync::{atomic::AtomicUsize, Arc};
 #[derive(Default)]
 pub struct Options {
     progress: Option<Box<dyn Fn(Progress) + Send + Sync>>,
-    ide: bool,
 }
 
 impl Options {
@@ -33,11 +32,6 @@ impl Options {
         progress: impl Fn(Progress) + Send + Sync + 'static,
     ) -> Self {
         self.progress = Some(Box::new(progress));
-        self
-    }
-
-    pub fn ide(mut self, ide: bool) -> Self {
-        self.ide = ide;
         self
     }
 }
@@ -57,7 +51,11 @@ pub enum Progress {
 }
 
 impl Compiler<'_> {
-    pub async fn analyze(&self, entrypoint: FilePath, options: Options) -> Program {
+    pub async fn analyze(&self, entrypoint: FilePath) -> Program {
+        self.analyze_with(entrypoint, Options::new()).await
+    }
+
+    pub async fn analyze_with(&self, entrypoint: FilePath, options: Options) -> Program {
         let progress = Arc::new(Mutex::new(
             options.progress.unwrap_or_else(|| Box::new(|_| {})),
         ));
@@ -258,7 +256,7 @@ impl Compiler<'_> {
 
         let entrypoint = lowered_files.pop().unwrap();
 
-        self.typecheck_with_progress(entrypoint, options.ide, lowering_is_complete, move |p| {
+        self.typecheck_with_progress(entrypoint, lowering_is_complete, move |p| {
             progress.lock()(Progress::Typechecking(p))
         })
     }

@@ -74,7 +74,7 @@ pub mod ssa {
 
     impl Program {
         pub(super) fn ssa(mut self, _options: Options, _compiler: &Compiler) -> Program {
-            for expr in self.items.values_mut() {
+            for (_, expr) in self.items.values_mut() {
                 expr.traverse_mut(|expr| {
                     if let ExpressionKind::Block(exprs) = &mut expr.kind {
                         fn convert_block(exprs: &[Expression], span: Span) -> Vec<Expression> {
@@ -148,7 +148,7 @@ pub mod propagate {
             let mut items = self
                 .items
                 .iter()
-                .map(|(item, expr)| (*item, Some(expr.clone())))
+                .map(|(item, (constant, expr))| (*item, (*constant, Some(expr.clone()))))
                 .collect::<BTreeMap<_, _>>();
 
             let item_ids = items.keys().cloned().collect::<Vec<_>>();
@@ -159,7 +159,7 @@ pub mod propagate {
                 loop {
                     let mut propagated = false;
 
-                    let mut expr = mem::take(items.get_mut(&item).unwrap()).unwrap();
+                    let mut expr = mem::take(&mut items.get_mut(&item).unwrap().1).unwrap();
 
                     expr.traverse_mut_with(Vec::new(), |expr, stack| {
                         let constant = match &expr.kind {
@@ -173,7 +173,7 @@ pub mod propagate {
 
                         stack.push(constant);
 
-                        let body = match items.get(&constant).unwrap() {
+                        let body = match &items.get(&constant).unwrap().1 {
                             Some(expr) => expr,
                             None => return,
                         };
@@ -192,7 +192,7 @@ pub mod propagate {
                         }
                     });
 
-                    items.get_mut(&item).unwrap().replace(expr);
+                    items.get_mut(&item).unwrap().1.replace(expr);
 
                     if !propagated || options.pass_limit.map_or(false, |limit| passes > limit) {
                         break;
@@ -204,7 +204,7 @@ pub mod propagate {
 
             self.items = items
                 .into_iter()
-                .map(|(item, expr)| (item, expr.unwrap()))
+                .map(|(item, (constant, expr))| (item, (constant, expr.unwrap())))
                 .collect();
 
             self
@@ -242,7 +242,7 @@ pub mod inline {
                 let mut inlined = false;
 
                 for item in self.items.keys().copied().collect::<Vec<_>>() {
-                    let mut expr = self.items.get(&item).unwrap().clone();
+                    let (constant, mut expr) = self.items.get(&item).unwrap().clone();
 
                     // Inline function calls
                     expr.traverse_mut_with(im::HashSet::new(), |expr, scope| {
@@ -362,7 +362,7 @@ pub mod inline {
                         }
                     });
 
-                    self.items.insert(item, expr);
+                    self.items.insert(item, (constant, expr));
                 }
 
                 if !inlined || options.pass_limit.map_or(false, |limit| passes > limit) {
@@ -401,7 +401,7 @@ pub mod unused {
                 if let Some(entrypoint) = self.entrypoint {
                     let mut used = BTreeSet::from([entrypoint]);
 
-                    for expr in self.items.values() {
+                    for (_, expr) in self.items.values() {
                         expr.traverse(|expr| {
                             if let ExpressionKind::Constant(item) = &expr.kind {
                                 used.insert(*item);
@@ -434,6 +434,7 @@ mod util {
 
         pub fn is_pure(&self, program: &Program, stack: &mut Vec<ItemId>) -> bool {
             match &self.kind {
+                ExpressionKind::Error => unreachable!(),
                 ExpressionKind::Marker
                 | ExpressionKind::Text(_)
                 | ExpressionKind::Number(_)
@@ -475,8 +476,16 @@ mod util {
                 ExpressionKind::External(_, _, _) | ExpressionKind::Initialize(_, _) => false,
                 ExpressionKind::Constant(constant) | ExpressionKind::ExpandedConstant(constant) => {
                     stack.push(*constant);
-                    let is_pure = program.items.get(constant).unwrap().is_pure(program, stack);
+
+                    let is_pure = program
+                        .items
+                        .get(constant)
+                        .unwrap()
+                        .1
+                        .is_pure(program, stack);
+
                     stack.pop();
+
                     is_pure
                 }
             }

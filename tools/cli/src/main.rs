@@ -450,11 +450,9 @@ async fn build_with_passes<P>(
     };
 
     let program = compiler
-        .analyze(
+        .analyze_with(
             path,
-            wipple_frontend::analysis::Options::default()
-                .tracking_progress(analysis_progress)
-                .ide(options.ide),
+            wipple_frontend::analysis::Options::new().tracking_progress(analysis_progress),
         )
         .await;
 

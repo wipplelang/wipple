@@ -139,10 +139,7 @@ pub async fn run(code: String) -> JsValue {
     let compiler = wipple_frontend::Compiler::new(&loader);
 
     let program = compiler
-        .analyze(
-            wipple_frontend::FilePath::Virtual(playground_path),
-            wipple_frontend::analysis::Options::default(),
-        )
+        .analyze(wipple_frontend::FilePath::Virtual(playground_path))
         .await;
 
     compiler.lint(&program);

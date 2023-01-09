@@ -124,7 +124,7 @@ impl Compiler<'_> {
             items: program
                 .items
                 .iter()
-                .map(|(id, item)| (*id, converter.convert_expr(item, true)))
+                .map(|(id, (_, item))| (*id, converter.convert_expr(item, true)))
                 .collect(),
             structures: converter.structures,
             enumerations: converter.enumerations,
@@ -175,6 +175,7 @@ impl Converter<'_, '_> {
             tail,
             ty: self.convert_type(&expr.ty),
             kind: match &expr.kind {
+                analysis::ExpressionKind::Error => unreachable!(),
                 analysis::ExpressionKind::Marker => ExpressionKind::Marker,
                 analysis::ExpressionKind::Variable(var) => ExpressionKind::Variable(*var),
                 analysis::ExpressionKind::Text(text) => ExpressionKind::Text(*text),
@@ -310,6 +311,7 @@ impl Converter<'_, '_> {
         Pattern {
             span: Some(pattern.span),
             kind: match &pattern.kind {
+                analysis::PatternKind::Error => unreachable!(),
                 analysis::PatternKind::Wildcard => PatternKind::Wildcard,
                 analysis::PatternKind::Variable(var) => PatternKind::Variable(*var),
                 analysis::PatternKind::Text(text) => PatternKind::Text(*text),

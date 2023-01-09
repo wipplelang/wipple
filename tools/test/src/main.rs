@@ -248,10 +248,7 @@ async fn run<'l>(
         .insert(test_path, Arc::from(test_case.code.as_str()));
 
     let mut program = compiler
-        .analyze(
-            wipple_frontend::FilePath::Virtual(test_path),
-            wipple_frontend::analysis::Options::default(),
-        )
+        .analyze(wipple_frontend::FilePath::Virtual(test_path))
         .await;
 
     compiler.lint(&program);
