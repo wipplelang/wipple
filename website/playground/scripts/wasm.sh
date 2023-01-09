@@ -13,4 +13,4 @@ else
     FLAGS="--features debug_playground"
 fi
 
-(cd runner && wasm-pack build -- $FLAGS)
+(cd runner && BINARYEN_PASS_DEBUG=1 wasm-pack build -- $FLAGS)
