@@ -26,3 +26,6 @@ wipple-default-loader = { path = "../../../loaders/default" }
 wipple-frontend = { path = "../../../frontend" }
 wipple-interpreter-backend = { path = "../../../backends/interpreter" }
 rust-embed = { version = "6", features = ["debug-embed", "interpolate-folder-path"], optional = true }
+
+[package.metadata.wasm-pack.profile.release]
+wasm-opt = ['-O1']  # FIXME: wasm-opt's inlining-optimizing pass is very slow; -O1 disables it
