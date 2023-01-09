@@ -28,14 +28,21 @@ export const CodeEditor = (props: CodeEditorProps) => {
     }, [prefersReducedMotion]);
 
     const runner = useRunner();
-    const runImmediately = async (code: string) => {
-        const output = await runner.run(code);
-        setOutput(output);
-    };
 
-    useAsyncEffect(() => runImmediately(props.code), []);
+    const run = useMemo(
+        () =>
+            debounce(async (code: string) => {
+                try {
+                    const output = await runner.run(code);
+                    console.log("#### OUTPUT:", output);
+                    setOutput(output);
+                } catch (error) {
+                    console.error("#### ERROR:", error);
+                }
+            }, 750),
+        []
+    );
 
-    const run = useMemo(() => debounce(runImmediately, 750), []);
     useAsyncEffect(() => run(props.code), [props.code]);
 
     return (

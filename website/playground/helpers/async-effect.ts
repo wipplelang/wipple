@@ -1,7 +1,11 @@
-import { DependencyList, useEffect, useLayoutEffect } from "react";
+import { DependencyList, useEffect } from "react";
 
 export const useAsyncEffect = (callback: () => Promise<void>, deps?: DependencyList) => {
     useEffect(() => {
-        callback();
+        try {
+            callback();
+        } catch (error) {
+            console.error(error);
+        }
     }, deps);
 };
