@@ -19,7 +19,7 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
 
     // `:` operator
 
-    let id = expander.compiler.new_template_id(file);
+    let id = expander.compiler.new_template_id_in(file);
 
     let operator = Operator {
         precedence: OperatorPrecedence::Assignment,
@@ -57,7 +57,7 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
                                 }
                             };
 
-                            let id = expander.compiler.new_template_id(span.path);
+                            let id = expander.compiler.new_template_id_in(span.path);
 
                             expander.declarations.lock().templates.insert(
                                 id,
@@ -91,7 +91,7 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
                                 }
                             };
 
-                            let id = expander.compiler.new_template_id(span.path);
+                            let id = expander.compiler.new_template_id_in(span.path);
 
                             expander.declarations.lock().templates.insert(
                                 id,
@@ -190,7 +190,7 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
 
     // `->` operator
 
-    let id = expander.compiler.new_template_id(file);
+    let id = expander.compiler.new_template_id_in(file);
 
     let operator = Operator {
         precedence: OperatorPrecedence::Function,
@@ -222,7 +222,7 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
 
     // `=>` operator
 
-    let id = expander.compiler.new_template_id(file);
+    let id = expander.compiler.new_template_id_in(file);
 
     let operator = Operator {
         precedence: OperatorPrecedence::TypeFunction,
@@ -254,7 +254,7 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
 
     // `where` operator
 
-    let id = expander.compiler.new_template_id(file);
+    let id = expander.compiler.new_template_id_in(file);
 
     let operator = Operator {
         precedence: OperatorPrecedence::Where,
@@ -286,7 +286,7 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
 
     // `::` operator
 
-    let id = expander.compiler.new_template_id(file);
+    let id = expander.compiler.new_template_id_in(file);
 
     let operator = Operator {
         precedence: OperatorPrecedence::Annotation,
@@ -318,7 +318,7 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
 
     // `~>` operator
 
-    let id = expander.compiler.new_template_id(file);
+    let id = expander.compiler.new_template_id_in(file);
 
     let operator = Operator {
         precedence: OperatorPrecedence::Function,
@@ -387,7 +387,7 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
 
     // `operator` operator
 
-    let id = expander.compiler.new_template_id(file);
+    let id = expander.compiler.new_template_id_in(file);
 
     let operator = Operator {
         precedence: OperatorPrecedence::Function,
@@ -475,7 +475,7 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
 
     // `or` operator
 
-    let id = expander.compiler.new_template_id(file);
+    let id = expander.compiler.new_template_id_in(file);
 
     let operator = Operator {
         precedence: OperatorPrecedence::Disjunction,
@@ -507,7 +507,7 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
 
     // `,` operator
 
-    let id = expander.compiler.new_template_id(file);
+    let id = expander.compiler.new_template_id_in(file);
 
     let operator = Operator {
         precedence: OperatorPrecedence::Comma,
@@ -536,7 +536,7 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
 
     // `use` template
 
-    let id = expander.compiler.new_template_id(file);
+    let id = expander.compiler.new_template_id_in(file);
 
     scope_values.insert(InternedString::new("use"), ScopeValue::Template(id));
 
@@ -585,7 +585,7 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
 
     // `external` template
 
-    let id = expander.compiler.new_template_id(file);
+    let id = expander.compiler.new_template_id_in(file);
 
     scope_values.insert(InternedString::new("external"), ScopeValue::Template(id));
 
@@ -628,7 +628,7 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
 
     // `type` template
 
-    let id = expander.compiler.new_template_id(file);
+    let id = expander.compiler.new_template_id_in(file);
 
     scope_values.insert(InternedString::new("type"), ScopeValue::Template(id));
 
@@ -687,7 +687,7 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
 
     // `trait` template
 
-    let id = expander.compiler.new_template_id(file);
+    let id = expander.compiler.new_template_id_in(file);
 
     scope_values.insert(InternedString::new("trait"), ScopeValue::Template(id));
 
@@ -723,7 +723,7 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
 
     // `instance` template
 
-    let id = expander.compiler.new_template_id(file);
+    let id = expander.compiler.new_template_id_in(file);
 
     scope_values.insert(InternedString::new("instance"), ScopeValue::Template(id));
 
@@ -778,7 +778,7 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
 
     // `format` template
 
-    let id = expander.compiler.new_template_id(file);
+    let id = expander.compiler.new_template_id_in(file);
 
     scope_values.insert(InternedString::new("format"), ScopeValue::Template(id));
 
@@ -916,7 +916,7 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
 
     // `end` template
 
-    let id = expander.compiler.new_template_id(file);
+    let id = expander.compiler.new_template_id_in(file);
 
     scope_values.insert(InternedString::new("end"), ScopeValue::Template(id));
 
@@ -955,7 +955,7 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
 
     // `when` template
 
-    let id = expander.compiler.new_template_id(file);
+    let id = expander.compiler.new_template_id_in(file);
 
     scope_values.insert(InternedString::new("when"), ScopeValue::Template(id));
 
@@ -1013,7 +1013,7 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
 
     // `language` attribute
 
-    let id = expander.compiler.new_template_id(file);
+    let id = expander.compiler.new_template_id_in(file);
 
     scope_values.insert(InternedString::new("language"), ScopeValue::Template(id));
 
@@ -1109,7 +1109,7 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
 
     // `help` attribute
 
-    let id = expander.compiler.new_template_id(file);
+    let id = expander.compiler.new_template_id_in(file);
 
     scope_values.insert(InternedString::new("help"), ScopeValue::Template(id));
 
@@ -1185,7 +1185,7 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
 
     // `on-unimplemented` attribute
 
-    let id = expander.compiler.new_template_id(file);
+    let id = expander.compiler.new_template_id_in(file);
 
     scope_values.insert(
         InternedString::new("on-unimplemented"),
@@ -1266,7 +1266,7 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
 
     // `on-mismatch` attribute
 
-    let id = expander.compiler.new_template_id(file);
+    let id = expander.compiler.new_template_id_in(file);
 
     scope_values.insert(InternedString::new("on-mismatch"), ScopeValue::Template(id));
 
@@ -1358,7 +1358,7 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
 
     // `no-std` attribute
 
-    let id = expander.compiler.new_template_id(file);
+    let id = expander.compiler.new_template_id_in(file);
 
     scope_values.insert(InternedString::new("no-std"), ScopeValue::Template(id));
 
@@ -1419,7 +1419,7 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
 
     // `keyword` attribute
 
-    let id = expander.compiler.new_template_id(file);
+    let id = expander.compiler.new_template_id_in(file);
 
     scope_values.insert(InternedString::new("keyword"), ScopeValue::Template(id));
 
@@ -1484,7 +1484,7 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
 
     // `specialize` attribute
 
-    let id = expander.compiler.new_template_id(file);
+    let id = expander.compiler.new_template_id_in(file);
 
     scope_values.insert(InternedString::new("specialize"), ScopeValue::Template(id));
 

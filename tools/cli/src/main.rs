@@ -2,7 +2,6 @@ mod lsp;
 
 use clap::{Parser, ValueEnum};
 use std::{
-    collections::BTreeSet,
     fs,
     io::{self, Read, Write},
     path::PathBuf,
@@ -376,20 +375,17 @@ async fn build_with_passes<P>(
                         total,
                     } => progress_bar.set_message(format!("({current}/{total}) Lowering {path}")),
                     analysis::Progress::Typechecking(progress) => match progress {
-                        analysis::typecheck::Progress::Collecting {
-                            path,
-                            current,
-                            total,
-                        } => progress_bar.set_message(format!(
-                            "({current}/{total}) Collecting types for {path}"
-                        )),
-                        analysis::typecheck::Progress::Resolving { count, remaining } => {
-                            progress_bar.set_message(format!(
-                                "({}/{}) Typechecking declarations",
-                                count,
-                                count + remaining
-                            ))
+                        analysis::typecheck::Progress::CollectingTypes => {
+                            progress_bar.set_message("Collecting types")
                         }
+                        analysis::typecheck::Progress::ResolvingDeclarations {
+                            count,
+                            remaining,
+                        } => progress_bar.set_message(format!(
+                            "({}/{}) Resolving declarations",
+                            count,
+                            count + remaining
+                        )),
                     },
                 }
             }
@@ -458,11 +454,7 @@ async fn build_with_passes<P>(
             path,
             wipple_frontend::analysis::Options::default()
                 .tracking_progress(analysis_progress)
-                .typecheck_mode(if options.ide {
-                    wipple_frontend::analysis::TypecheckMode::Only(BTreeSet::from([path]))
-                } else {
-                    wipple_frontend::analysis::TypecheckMode::Everything
-                }),
+                .ide(options.ide),
         )
         .await;
 

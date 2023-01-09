@@ -818,7 +818,7 @@ impl Compiler<'_> {
             kind: match node.kind {
                 NodeKind::Empty => TypeAnnotationKind::Tuple(Vec::new()),
                 NodeKind::Underscore => TypeAnnotationKind::Placeholder,
-                NodeKind::Name(name) => TypeAnnotationKind::Named(name, Vec::new()), // TODO: Parameters
+                NodeKind::Name(name) => TypeAnnotationKind::Named(name, Vec::new()),
                 NodeKind::Function(input, output) => TypeAnnotationKind::Function(
                     Box::new(self.build_type_annotation(*input)),
                     Box::new(self.build_type_annotation(*output)),

@@ -1,9 +1,6 @@
 use ouroboros::self_referencing;
 use parking_lot::{MappedRwLockReadGuard, RwLock, RwLockReadGuard};
-use std::{
-    collections::{BTreeSet, HashMap},
-    sync::Arc,
-};
+use std::{collections::HashMap, sync::Arc};
 use tower_lsp::{jsonrpc, lsp_types::*, Client, LanguageServer, LspService, Server};
 use wipple_default_loader::Loader;
 use wipple_frontend::{
@@ -13,7 +10,7 @@ use wipple_frontend::{
             format::{format_type, Format, TypeFunctionFormat},
             TemplateDecl, TraitDecl, Type, TypeDecl, TypeDeclKind,
         },
-        ExpressionKind, Program, TypecheckMode,
+        ExpressionKind, Program,
     },
     diagnostics::DiagnosticLevel,
     helpers::InternedString,
@@ -733,8 +730,7 @@ impl Backend {
         let program = compiler
             .analyze(
                 path,
-                wipple_frontend::analysis::Options::default()
-                    .typecheck_mode(TypecheckMode::Only(BTreeSet::from([path]))),
+                wipple_frontend::analysis::Options::default().ide(true),
             )
             .await;
 

@@ -18,7 +18,7 @@ use parking_lot::Mutex;
 use serde::Serialize;
 use std::{
     cmp::Ordering,
-    collections::{BTreeMap, HashMap, VecDeque},
+    collections::{BTreeMap, HashMap, HashSet, VecDeque},
     fmt::Debug,
     sync::Arc,
 };
@@ -130,6 +130,7 @@ impl<T> Declarations<T> {
 pub struct TemplateDeclaration<T> {
     pub name: InternedString,
     pub span: Span,
+    pub uses: HashSet<Span>,
     #[serde(skip)]
     pub template: T,
     pub attributes: TemplateAttributes,
@@ -140,6 +141,7 @@ impl<T> TemplateDeclaration<T> {
         TemplateDeclaration {
             name: InternedString::new(name),
             span,
+            uses: Default::default(),
             template,
             attributes: Default::default(),
         }

@@ -291,7 +291,7 @@ pub mod inline {
                                 let new_vars = pattern
                                     .variables()
                                     .into_iter()
-                                    .map(|var| (var, compiler.new_variable_id(var.file)))
+                                    .map(|var| (var, compiler.new_variable_id()))
                                     .collect::<BTreeMap<_, _>>();
 
                                 let mut pattern = pattern.clone();

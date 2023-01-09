@@ -12,7 +12,7 @@ use parse::Span;
 use serde::Serialize;
 use std::{
     borrow::Cow,
-    collections::{BTreeMap, HashMap, HashSet},
+    collections::HashMap,
     fmt::{self, Debug},
     hash::Hash,
     mem,
@@ -76,21 +76,30 @@ macro_rules! file_ids {
         paste::paste! {
             #[derive(Debug, Clone, Default)]
             struct FileIds {
-                $([<next_ $id _id>]: Arc<Mutex<HashMap<FilePath, usize>>>,)*
+                $([<next_ $id _id>]: Arc<Mutex<HashMap<Option<FilePath>, usize>>>,)*
             }
 
             $(
                 $(#[$meta])*
                 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
                 pub struct [<$id:camel Id>] {
-                    pub file: FilePath,
+                    pub file: Option<FilePath>,
                     pub counter: usize,
                 }
             )*
 
+            #[allow(unused)]
             impl FileIds {
                 $(
-                    fn [<new_ $id _id>](&self, file: FilePath) -> [<$id:camel Id>] {
+                    fn [<new_ $id _id>](&self) -> [<$id:camel Id>] {
+                        self.[<new_ $id _id_with>](None)
+                    }
+
+                    fn [<new_ $id _id_in>](&self, file: FilePath) -> [<$id:camel Id>] {
+                        self.[<new_ $id _id_with>](Some(file))
+                    }
+
+                    fn [<new_ $id _id_with>](&self, file: Option<FilePath>) -> [<$id:camel Id>] {
                         let mut storage = self.[<next_ $id _id>].lock();
                         let storage = storage.entry(file).or_default();
                         let counter = *storage;
@@ -101,10 +110,19 @@ macro_rules! file_ids {
                 )*
             }
 
+            #[allow(unused)]
             impl Compiler<'_> {
                 $(
-                    fn [<new_ $id _id>](&self, file: FilePath) -> [<$id:camel Id>] {
-                        self.file_ids.[<new_ $id _id>](file)
+                    fn [<new_ $id _id>](&self) -> [<$id:camel Id>] {
+                        self.file_ids.[<new_ $id _id>]()
+                    }
+
+                    fn [<new_ $id _id_in>](&self, file: FilePath) -> [<$id:camel Id>] {
+                        self.file_ids.[<new_ $id _id_in>](file)
+                    }
+
+                    fn [<new_ $id _id_with>](&self, file: Option<FilePath>) -> [<$id:camel Id>] {
+                        self.file_ids.[<new_ $id _id_with>](file)
                     }
                 )*
             }
@@ -150,31 +168,6 @@ macro_rules! ids {
     };
 }
 
-macro_rules! uses {
-    ($($(#[$meta:meta])* $id:ident),* $(,)?) => {
-        paste::paste! {
-            #[derive(Debug, Clone, Default)]
-            pub struct Uses {
-                $(pub [<$id _uses>]: BTreeMap<[<$id:camel Id>], HashSet<Span>>,)*
-            }
-
-            impl Uses {
-                $(
-                    pub fn [<record_use_of_ $id>](&mut self, id: [<$id:camel Id>], span: Span) {
-                        self.[<$id _uses>].entry(id).or_default().insert(span);
-                    }
-                )*
-
-                pub fn merge(&mut self, other: Uses) {
-                    $(
-                        self.[<$id _uses>].extend(other.[<$id _uses>]);
-                    )*
-                }
-            }
-        }
-    };
-}
-
 file_ids!(
     builtin_type,
     constant,
@@ -187,16 +180,6 @@ file_ids!(
 );
 
 ids!(enumeration, structure);
-
-uses!(
-    builtin_type,
-    constant,
-    template,
-    r#trait,
-    r#type,
-    type_parameter,
-    variable,
-);
 
 impl<'l> Compiler<'l> {
     pub fn new(loader: &'l impl Loader) -> Self {

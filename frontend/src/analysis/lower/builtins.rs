@@ -8,15 +8,11 @@ impl Compiler<'_> {
             ($kind:ident, $span:expr, $name:expr, $value:expr $(,)?) => {{
                 paste::paste! {
                     let name = InternedString::new($name);
-                    let id = self.[<new_ $kind _id>](info.file);
+                    let id = self.[<new_ $kind _id_in>](info.file);
 
                     info.declarations.[<$kind s>].insert(
                         id,
-                        Declaration {
-                            name: Some(name),
-                            span: $span,
-                            value: $value,
-                        },
+                        Declaration::resolved(Some(name), $span, $value),
                     );
 
                     scope_values.insert(name, ScopeValue::[<$kind:camel>](id));

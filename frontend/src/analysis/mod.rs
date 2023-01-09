@@ -9,24 +9,25 @@ pub mod typecheck;
 
 pub use typecheck::{
     Arm, Expression, ExpressionKind, Pattern, PatternKind, Program, RuntimeFunction, Type,
-    TypeAnnotation, TypeAnnotationKind, TypeStructure, TypecheckMode,
+    TypeAnnotation, TypeAnnotationKind, TypeStructure,
 };
 
-use crate::{diagnostics::*, parse::Span, Compiler, FilePath, Uses};
+use crate::{diagnostics::*, parse::Span, Compiler, FilePath};
 use async_recursion::async_recursion;
 use parking_lot::Mutex;
-use std::{
-    mem,
-    sync::{atomic::AtomicUsize, Arc},
-};
+use std::sync::{atomic::AtomicUsize, Arc};
 
 #[derive(Default)]
 pub struct Options {
     progress: Option<Box<dyn Fn(Progress) + Send + Sync>>,
-    typecheck_mode: typecheck::TypecheckMode,
+    ide: bool,
 }
 
 impl Options {
+    pub fn new() -> Self {
+        Options::default()
+    }
+
     pub fn tracking_progress(
         mut self,
         progress: impl Fn(Progress) + Send + Sync + 'static,
@@ -35,8 +36,8 @@ impl Options {
         self
     }
 
-    pub fn typecheck_mode(mut self, mode: typecheck::TypecheckMode) -> Self {
-        self.typecheck_mode = mode;
+    pub fn ide(mut self, ide: bool) -> Self {
+        self.ide = ide;
         self
     }
 }
@@ -222,22 +223,7 @@ impl Compiler<'_> {
 
         let files = Arc::try_unwrap(files).unwrap().into_inner();
 
-        let mut uses = Uses::default();
-        for (_, file) in &files {
-            for (id, spans) in &file.template_uses {
-                for span in spans {
-                    uses.record_use_of_template(*id, *span);
-                }
-            }
-        }
-
-        let uses = Arc::new(Mutex::new(uses));
-
-        fn lower(
-            compiler: &Compiler,
-            file: Arc<expand::File>,
-            uses: Arc<Mutex<Uses>>,
-        ) -> Arc<lower::File> {
+        fn lower(compiler: &Compiler, file: Arc<expand::File>) -> Arc<lower::File> {
             let path = file.path;
 
             if let Some(file) = compiler.cache.lock().get(&path) {
@@ -248,12 +234,12 @@ impl Compiler<'_> {
                 .dependencies
                 .clone()
                 .into_iter()
-                .map(|(file, imports)| (lower(compiler, file, uses.clone()), imports))
+                .map(|(file, imports)| (lower(compiler, file), imports))
                 .collect::<Vec<_>>();
 
             let file = compiler.build_ast((*file).clone());
 
-            let file = Arc::new(compiler.lower(file, dependencies, uses));
+            let file = Arc::new(compiler.lower(file, dependencies));
 
             // Only cache files already cached by loader
             if compiler.loader.cache().lock().contains_key(&path) {
@@ -265,22 +251,15 @@ impl Compiler<'_> {
 
         let mut lowered_files = files
             .into_values()
-            .map(|file| (*lower(self, file, uses.clone())).clone())
+            .map(|file| (*lower(self, file)).clone())
             .collect::<Vec<_>>();
-
-        let mut uses = Arc::try_unwrap(uses).unwrap().into_inner();
-        for file in &mut lowered_files {
-            uses.merge(mem::take(&mut file.uses));
-        }
 
         let lowering_is_complete = !self.diagnostics.contains_errors();
 
-        self.typecheck_with_progress(
-            lowered_files,
-            uses,
-            options.typecheck_mode,
-            lowering_is_complete,
-            move |p| progress.lock()(Progress::Typechecking(p)),
-        )
+        let entrypoint = lowered_files.pop().unwrap();
+
+        self.typecheck_with_progress(entrypoint, options.ide, lowering_is_complete, move |p| {
+            progress.lock()(Progress::Typechecking(p))
+        })
     }
 }

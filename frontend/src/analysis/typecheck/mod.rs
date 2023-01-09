@@ -15,8 +15,8 @@ use crate::{
     diagnostics::{Diagnostic, Note},
     helpers::InternedString,
     parse::Span,
-    BuiltinTypeId, Compiler, ConstantId, FilePath, ItemId, TemplateId, TraitId, TypeId,
-    TypeParameterId, Uses, VariableId,
+    BuiltinTypeId, Compiler, ConstantId, ItemId, TemplateId, TraitId, TypeId, TypeParameterId,
+    VariableId,
 };
 use itertools::Itertools;
 use serde::Serialize;
@@ -29,15 +29,8 @@ use std::{
 
 #[derive(Debug)]
 pub enum Progress {
-    Collecting {
-        path: FilePath,
-        current: usize,
-        total: usize,
-    },
-    Resolving {
-        count: usize,
-        remaining: usize,
-    },
+    CollectingTypes,
+    ResolvingDeclarations { count: usize, remaining: usize },
 }
 
 #[derive(Debug, Clone, Default, Serialize)]
@@ -337,35 +330,18 @@ impl Error {
 impl Compiler<'_> {
     pub fn typecheck_with_progress(
         &self,
-        files: Vec<lower::File>,
-        uses: Uses,
-        mode: TypecheckMode,
-        mut complete: bool,
+        entrypoint: lower::File,
+        ide: bool,
+        complete: bool,
         mut progress: impl FnMut(Progress),
     ) -> Program {
-        let mut typechecker = Typechecker::new(self, mode, uses);
+        let mut typechecker = Typechecker::new(self, entrypoint, ide);
 
-        if files.is_empty() {
-            complete = false;
-        } else {
-            let file_count = files.len();
-            let mut current_file = 1;
-            for (index, file) in files.into_iter().enumerate() {
-                progress(Progress::Collecting {
-                    path: file.span.path,
-                    current: current_file,
-                    total: file_count,
-                });
-
-                let is_entrypoint = index + 1 == file_count;
-                typechecker.typecheck_file(file, is_entrypoint);
-
-                current_file += 1;
-            }
-        }
+        progress(Progress::CollectingTypes);
+        typechecker.collect_types();
 
         typechecker.resolve(complete, |count, remaining| {
-            progress(Progress::Resolving { count, remaining })
+            progress(Progress::ResolvingDeclarations { count, remaining });
         })
     }
 }
@@ -373,11 +349,10 @@ impl Compiler<'_> {
 #[derive(Debug, Clone)]
 struct Typechecker<'a, 'l> {
     compiler: &'a Compiler<'l>,
-    mode: TypecheckMode,
-    uses: Uses,
+    ide: bool,
+    entrypoint: lower::File,
     is_complete: bool,
     ctx: engine::Context,
-    files: im::HashMap<FilePath, lower::File>,
     declarations: RefCell<DeclarationsInner>,
     exported: Option<lower::ScopeValues>,
     scopes: RefCell<Vec<(Span, lower::ScopeValues)>>,
@@ -387,15 +362,8 @@ struct Typechecker<'a, 'l> {
     specialized_constants: im::HashMap<ConstantId, ConstantId>,
     item_queue: im::Vector<QueuedItem>,
     items: im::HashMap<ItemId, (Option<ConstantId>, Expression)>,
-    entrypoint: Option<UnresolvedExpression>,
+    entrypoint_expr: Option<UnresolvedExpression>,
     errors: im::Vector<Error>,
-}
-
-#[derive(Debug, Clone, Default)]
-pub enum TypecheckMode {
-    #[default]
-    Everything,
-    Only(BTreeSet<FilePath>),
 }
 
 #[derive(Debug, Clone)]
@@ -407,14 +375,13 @@ struct QueuedItem {
 }
 
 impl<'a, 'l> Typechecker<'a, 'l> {
-    pub fn new(compiler: &'a Compiler<'l>, mode: TypecheckMode, uses: Uses) -> Self {
+    pub fn new(compiler: &'a Compiler<'l>, entrypoint: lower::File, ide: bool) -> Self {
         Typechecker {
             compiler,
-            mode,
-            uses,
+            ide,
+            entrypoint,
             is_complete: true,
             ctx: Default::default(),
-            files: Default::default(),
             declarations: Default::default(),
             exported: None,
             scopes: Default::default(),
@@ -424,7 +391,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
             specialized_constants: Default::default(),
             item_queue: Default::default(),
             items: Default::default(),
-            entrypoint: Default::default(),
+            entrypoint_expr: Default::default(),
             errors: Default::default(),
         }
     }
@@ -440,10 +407,10 @@ impl<'a, 'l> Typechecker<'a, 'l> {
     ) -> Program {
         // Queue the entrypoint
 
-        let entrypoint = mem::take(&mut self.entrypoint).map(|entrypoint| {
+        let entrypoint_item = mem::take(&mut self.entrypoint_expr).map(|entrypoint| {
             let info = MonomorphizeInfo::default();
 
-            let entrypoint_id = self.compiler.new_item_id(entrypoint.span.path);
+            let entrypoint_id = self.compiler.new_item_id_in(entrypoint.span.path);
 
             self.item_queue.push_back(QueuedItem {
                 generic_id: None,
@@ -533,7 +500,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                 .into_iter()
                 .map(|(id, (_, expr))| (id, expr))
                 .collect(),
-            entrypoint,
+            entrypoint: entrypoint_item,
             exported: self.exported.unwrap_or_default(),
             declarations: self.declarations.into_inner().into(),
             scopes: self.scopes.into_inner(),
@@ -542,41 +509,33 @@ impl<'a, 'l> Typechecker<'a, 'l> {
 }
 
 impl<'a, 'l> Typechecker<'a, 'l> {
-    pub fn typecheck_file(&mut self, mut file: lower::File, is_entrypoint: bool) {
-        let file_span = file.span;
-        let entrypoint = mem::take(&mut file.block);
-        let exported = mem::take(&mut file.exported);
-        self.scopes.borrow_mut().extend(mem::take(&mut file.scopes));
-        self.files.insert(file_span.path, file);
+    pub fn collect_types(&mut self) {
+        let entrypoint = mem::take(&mut self.entrypoint.block);
+        let exported = mem::take(&mut self.entrypoint.exported);
+        self.scopes
+            .borrow_mut()
+            .extend(mem::take(&mut self.entrypoint.scopes));
 
-        if is_entrypoint {
-            if self.entrypoint.is_some() {
-                panic!("entrypoint already provided");
-            }
+        let mut info = ConvertInfo {
+            variables: Default::default(),
+        };
 
-            let mut info = ConvertInfo {
-                variables: Default::default(),
-            };
+        let expr = self.convert_expr(
+            lower::Expression {
+                span: self.entrypoint.span,
+                kind: lower::ExpressionKind::Block(entrypoint),
+            },
+            &mut info,
+        );
 
-            let expr = self.convert_expr(
-                lower::Expression {
-                    span: file_span,
-                    kind: lower::ExpressionKind::Block(entrypoint),
-                },
-                &mut info,
-            );
+        self.exported = Some(exported);
+        self.entrypoint_expr = Some(expr);
 
-            self.exported = Some(exported);
-            self.entrypoint = Some(expr);
-        }
-
-        if self.should_typecheck_everything_in_file(file_span.path) {
+        if !self.ide {
             macro_rules! declaration {
                 ($kind:ident) => {
                     paste::paste! {
-                        self.files
-                            .get(&file_span.path)
-                            .unwrap()
+                        self.entrypoint
                             .declarations
                             .$kind
                             .keys()
@@ -629,13 +588,6 @@ impl<'a, 'l> Typechecker<'a, 'l> {
         }
     }
 
-    fn should_typecheck_everything_in_file(&mut self, file: FilePath) -> bool {
-        match &self.mode {
-            TypecheckMode::Everything => true,
-            TypecheckMode::Only(files) => files.contains(&file),
-        }
-    }
-
     fn typecheck_generic_constant_expr(
         &mut self,
         id: ConstantId,
@@ -681,7 +633,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
         use_ty: engine::UnresolvedType,
         mut info: MonomorphizeInfo,
     ) -> ItemId {
-        let monomorphized_id = self.compiler.new_item_id(id.file);
+        let monomorphized_id = self.compiler.new_item_id();
 
         let mut candidates = Vec::with_capacity(1);
         if !is_instance {
@@ -834,8 +786,8 @@ impl<'a, 'l> Typechecker<'a, 'l> {
         for bound in generic_constant_decl.bounds {
             let mut ty = self.substitute_trait_params(bound.trait_id, bound.params);
 
-            // HACK: Any type parameters not unified with the specialized
-            // constant won't appear here, so add them in manually
+            // Any type parameters not unified with the specialized constant
+            // won't appear here, so add them in manually
             for param in ty.params() {
                 params
                     .entry(param)
@@ -1984,14 +1936,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                 let condition_span = condition.span;
                 let condition = self.monomorphize_expr(*condition, info);
 
-                if let Some(boolean_ty) = self
-                    .files
-                    .get(&pattern.span.path)
-                    .unwrap()
-                    .global_attributes
-                    .language_items
-                    .boolean
-                {
+                if let Some(boolean_ty) = self.entrypoint.global_attributes.language_items.boolean {
                     if let Err(error) = self.unify(
                         condition.span,
                         condition.ty.clone(),
@@ -2714,7 +2659,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                 }
                 MonomorphizedPatternKind::Text(text) => PatternKind::Text(text),
                 MonomorphizedPatternKind::Variable(var) => {
-                    self.with_variable_decl(var, input_ty.clone(), pattern.span.path, |_| {});
+                    self.with_variable_decl(var, input_ty.clone(), |_| {});
                     PatternKind::Variable(var)
                 }
                 MonomorphizedPatternKind::Destructure(fields) => {
@@ -2785,15 +2730,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
             return f(decl);
         }
 
-        let decl = self
-            .files
-            .get(&id.file)
-            .unwrap()
-            .declarations
-            .types
-            .get(&id)
-            .unwrap()
-            .clone();
+        let decl = self.entrypoint.declarations.types.get(&id).unwrap().clone();
 
         let decl = TypeDecl {
             name: decl.name.expect("all types have names"),
@@ -2832,12 +2769,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                 }
             },
             attributes: decl.value.attributes,
-            uses: self
-                .uses
-                .type_uses
-                .get_mut(&id)
-                .cloned()
-                .unwrap_or_default(),
+            uses: decl.uses,
         };
 
         f(self
@@ -2854,9 +2786,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
         }
 
         let decl = self
-            .files
-            .get(&id.file)
-            .unwrap()
+            .entrypoint
             .declarations
             .traits
             .get(&id)
@@ -2870,12 +2800,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
             ty_annotation: decl.value.ty.clone(),
             ty: self.convert_finalized_type_annotation(decl.value.ty),
             attributes: decl.value.attributes,
-            uses: self
-                .uses
-                .trait_uses
-                .get_mut(&id)
-                .cloned()
-                .unwrap_or_default(),
+            uses: decl.uses,
         };
 
         f(self
@@ -2892,13 +2817,11 @@ impl<'a, 'l> Typechecker<'a, 'l> {
         }
 
         let decl = self
-            .files
-            .get(&id.file)
-            .unwrap()
+            .entrypoint
             .declarations
             .constants
             .get(&id)
-            .unwrap_or_else(|| panic!("undefined constant {:?} in file {}", id, id.file))
+            .unwrap()
             .clone();
 
         let body = decl
@@ -2914,7 +2837,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
 
         self.generic_constants.insert(id, (false, body));
 
-        let ty = self.convert_generic_type_annotation(decl.value.ty.clone(), id.file);
+        let ty = self.convert_generic_type_annotation(decl.value.ty.clone());
 
         let bounds = decl
             .value
@@ -2926,7 +2849,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                 params: bound
                     .parameters
                     .into_iter()
-                    .map(|ty| self.convert_generic_type_annotation(ty, id.file).into())
+                    .map(|ty| self.convert_generic_type_annotation(ty).into())
                     .collect(),
             })
             .collect::<Vec<_>>();
@@ -2939,20 +2862,13 @@ impl<'a, 'l> Typechecker<'a, 'l> {
             ty_annotation: decl.value.ty,
             ty,
             specializations: self
-                .files
-                .get(&id.file)
-                .unwrap()
+                .entrypoint
                 .specializations
                 .get(&id)
                 .cloned()
                 .unwrap_or_default(),
             attributes: decl.value.attributes,
-            uses: self
-                .uses
-                .constant_uses
-                .get_mut(&id)
-                .cloned()
-                .unwrap_or_default(),
+            uses: decl.uses,
         };
 
         f(self
@@ -2965,9 +2881,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
 
     fn with_instance_decl<T>(&mut self, id: ConstantId, f: impl FnOnce(&InstanceDecl) -> T) -> T {
         let decl = self
-            .files
-            .get(&id.file)
-            .unwrap()
+            .entrypoint
             .declarations
             .instances
             .get(&id)
@@ -2993,7 +2907,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
             .value
             .trait_params
             .into_iter()
-            .map(|ty| self.convert_generic_type_annotation(ty, id.file).into())
+            .map(|ty| self.convert_generic_type_annotation(ty).into())
             .collect::<Vec<_>>();
 
         let tr = self.with_trait_decl(decl.value.tr, Clone::clone);
@@ -3031,12 +2945,12 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                 params: bound
                     .parameters
                     .into_iter()
-                    .map(|ty| self.convert_generic_type_annotation(ty, id.file).into())
+                    .map(|ty| self.convert_generic_type_annotation(ty).into())
                     .collect(),
             })
             .collect::<Vec<_>>();
 
-        let item = self.compiler.new_item_id(id.file);
+        let item = self.compiler.new_item_id();
 
         assert!(decl.name.is_none(), "instances never have names");
 
@@ -3104,19 +3018,10 @@ impl<'a, 'l> Typechecker<'a, 'l> {
             return f(decl);
         }
 
-        let operator = *self
-            .files
-            .get(&id.file)
-            .unwrap()
-            .declarations
-            .operators
-            .get(&id)
-            .unwrap();
+        let operator = *self.entrypoint.declarations.operators.get(&id).unwrap();
 
         let decl = self
-            .files
-            .get(&id.file)
-            .unwrap()
+            .entrypoint
             .declarations
             .templates
             .get(&operator.template)
@@ -3126,12 +3031,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
         let decl = OperatorDecl {
             name: decl.name,
             span: decl.span,
-            uses: self
-                .uses
-                .template_uses
-                .get_mut(&id)
-                .cloned()
-                .unwrap_or_default(),
+            uses: decl.uses,
         };
 
         f(self
@@ -3148,9 +3048,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
         }
 
         let decl = self
-            .files
-            .get(&id.file)
-            .unwrap()
+            .entrypoint
             .declarations
             .templates
             .get(&id)
@@ -3161,12 +3059,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
             name: decl.name,
             span: decl.span,
             attributes: decl.attributes,
-            uses: self
-                .uses
-                .template_uses
-                .get_mut(&id)
-                .cloned()
-                .unwrap_or_default(),
+            uses: decl.uses,
         };
 
         f(self
@@ -3187,9 +3080,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
         }
 
         let decl = self
-            .files
-            .get(&id.file)
-            .unwrap()
+            .entrypoint
             .declarations
             .builtin_types
             .get(&id)
@@ -3200,12 +3091,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
             name: decl.name.expect("all builtin types have names"),
             span: decl.span,
             attributes: decl.value.attributes,
-            uses: self
-                .uses
-                .builtin_type_uses
-                .get_mut(&id)
-                .cloned()
-                .unwrap_or_default(),
+            uses: decl.uses,
         };
 
         f(self
@@ -3226,9 +3112,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
         }
 
         let decl = self
-            .files
-            .get(&id.file)
-            .unwrap()
+            .entrypoint
             .declarations
             .type_parameters
             .get(&id)
@@ -3238,12 +3122,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
         let decl = TypeParameterDecl {
             name: decl.name,
             span: decl.span,
-            uses: self
-                .uses
-                .type_parameter_uses
-                .get_mut(&id)
-                .cloned()
-                .unwrap_or_default(),
+            uses: decl.uses,
         };
 
         f(self
@@ -3258,7 +3137,6 @@ impl<'a, 'l> Typechecker<'a, 'l> {
         &mut self,
         id: VariableId,
         ty: engine::Type,
-        file: FilePath,
         f: impl FnOnce(&VariableDecl) -> T,
     ) -> T {
         if let Some(decl) = self.declarations.borrow().variables.get(&id) {
@@ -3266,9 +3144,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
         }
 
         let decl = self
-            .files
-            .get(&file)
-            .unwrap_or_else(|| panic!("cannot find file {}", file))
+            .entrypoint
             .declarations
             .variables
             .get(&id)
@@ -3279,12 +3155,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
             name: decl.name,
             span: decl.span,
             ty,
-            uses: self
-                .uses
-                .variable_uses
-                .get_mut(&id)
-                .cloned()
-                .unwrap_or_default(),
+            uses: decl.uses,
         };
 
         f(self
@@ -3351,15 +3222,11 @@ impl<'a, 'l> Typechecker<'a, 'l> {
         )
     }
 
-    fn convert_generic_type_annotation(
-        &mut self,
-        annotation: TypeAnnotation,
-        file: FilePath,
-    ) -> engine::Type {
+    fn convert_generic_type_annotation(&mut self, annotation: TypeAnnotation) -> engine::Type {
         let ty = self.convert_type_annotation_inner(
             annotation,
             &|typechecker, span| {
-                let param = typechecker.compiler.new_type_parameter_id(file);
+                let param = typechecker.compiler.new_type_parameter_id();
 
                 typechecker
                     .declarations
@@ -3423,15 +3290,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                     })
                     .collect::<Vec<_>>();
 
-                let ty = self
-                    .files
-                    .get(&id.file)
-                    .unwrap()
-                    .declarations
-                    .types
-                    .get(&id)
-                    .unwrap()
-                    .clone();
+                let ty = self.entrypoint.declarations.types.get(&id).unwrap().clone();
 
                 for (_, param) in ty.value.params.iter().skip(params.len()) {
                     let name = self.with_type_parameter_decl(*param, |decl| decl.name);
@@ -3507,9 +3366,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
             TypeAnnotationKind::Parameter(id) => engine::UnresolvedType::Parameter(id),
             TypeAnnotationKind::Builtin(id, mut parameters) => {
                 let builtin_ty = self
-                    .files
-                    .get(&id.file)
-                    .unwrap()
+                    .entrypoint
                     .declarations
                     .builtin_types
                     .get(&id)
