@@ -34,7 +34,6 @@ pub enum Progress {
 
 #[derive(Debug, Clone, Default)]
 pub struct Program {
-    pub complete: bool,
     pub items: BTreeMap<ItemId, (Option<ConstantId>, Expression)>,
     pub entrypoint: Option<ItemId>,
     pub declarations: Declarations,
@@ -118,6 +117,7 @@ pub struct ConstantDecl {
     pub span: Span,
     pub params: Vec<(Span, TypeParameterId)>,
     pub bounds: Vec<Bound>,
+    pub bound_annotations: Vec<(TraitId, Vec<TypeAnnotation>)>,
     pub ty_annotation: TypeAnnotation,
     pub ty: engine::Type,
     pub specializations: Vec<ConstantId>,
@@ -129,8 +129,11 @@ pub struct ConstantDecl {
 #[derive(Debug, Clone)]
 pub struct InstanceDecl {
     pub span: Span,
-    pub trait_id: TraitId,
+    pub params: Vec<(Span, TypeParameterId)>,
     pub bounds: Vec<Bound>,
+    pub bound_annotations: Vec<(TraitId, Vec<TypeAnnotation>)>,
+    pub trait_id: TraitId,
+    pub trait_params: Vec<engine::Type>,
     pub ty: engine::Type,
     pub body: Option<Expression>,
     pub item: ItemId,
@@ -377,7 +380,6 @@ impl Compiler<'_> {
 struct Typechecker<'a, 'l> {
     compiler: &'a Compiler<'l>,
     entrypoint: lower::File,
-    is_complete: bool,
     ctx: engine::Context,
     declarations: RefCell<DeclarationsInner>,
     exported: Option<lower::ScopeValues>,
@@ -405,7 +407,6 @@ impl<'a, 'l> Typechecker<'a, 'l> {
         Typechecker {
             compiler,
             entrypoint,
-            is_complete: true,
             ctx: Default::default(),
             declarations: Default::default(),
             exported: None,
@@ -457,10 +458,6 @@ impl<'a, 'l> Typechecker<'a, 'l> {
 
             let expr = self.monomorphize_expr(item.expr, &mut item.info);
             let expr = self.finalize_expr(expr);
-
-            if expr.contains_error() {
-                self.is_complete = false;
-            }
 
             self.items.insert(item.id, (item.generic_id, expr));
         }
@@ -521,7 +518,6 @@ impl<'a, 'l> Typechecker<'a, 'l> {
         // Build the final program
 
         Program {
-            complete: lowering_is_complete && self.is_complete,
             items,
             entrypoint: entrypoint_item,
             exported: self.exported.unwrap_or_default(),
@@ -1119,7 +1115,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                 }
 
                 UnresolvedExpression {
-                    span: expr.span,
+                    span: value.span,
                     ty,
                     kind: value.kind,
                 }
@@ -2578,9 +2574,20 @@ impl<'a, 'l> Typechecker<'a, 'l> {
             MonomorphizedExpressionKind::Text(text) => ExpressionKind::Text(text),
             MonomorphizedExpressionKind::Number(number) => {
                 match parse_number!(number, ExpressionKind, &ty, Type) {
-                    Ok(number) => number,
-                    Err(error) => {
+                    Some(Ok(number)) => number,
+                    Some(Err(error)) => {
                         self.add_error(Error::new(error, expr.span));
+                        ExpressionKind::Error
+                    }
+                    None => {
+                        self.add_error(Error::new(
+                            engine::TypeError::Mismatch(
+                                engine::UnresolvedType::Builtin(engine::BuiltinType::Number),
+                                expr.ty,
+                            ),
+                            expr.span,
+                        ));
+
                         ExpressionKind::Error
                     }
                 }
@@ -2689,9 +2696,20 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                 MonomorphizedPatternKind::Wildcard => PatternKind::Wildcard,
                 MonomorphizedPatternKind::Number(number) => {
                     match parse_number!(number, PatternKind, input_ty, Type) {
-                        Ok(number) => number,
-                        Err(error) => {
+                        Some(Ok(number)) => number,
+                        Some(Err(error)) => {
                             self.add_error(Error::new(error, pattern.span));
+                            PatternKind::Error
+                        }
+                        None => {
+                            self.add_error(Error::new(
+                                engine::TypeError::Mismatch(
+                                    engine::UnresolvedType::Builtin(engine::BuiltinType::Number),
+                                    input_ty.clone().into(),
+                                ),
+                                pattern.span,
+                            ));
+
                             PatternKind::Error
                         }
                     }
@@ -2879,6 +2897,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
         let bounds = decl
             .value
             .bounds
+            .clone()
             .into_iter()
             .map(|bound| Bound {
                 span: bound.span,
@@ -2896,6 +2915,12 @@ impl<'a, 'l> Typechecker<'a, 'l> {
             span: decl.span,
             params: decl.value.parameters,
             bounds,
+            bound_annotations: decl
+                .value
+                .bounds
+                .into_iter()
+                .map(|bound| (bound.tr, bound.parameters))
+                .collect(),
             ty_annotation: decl.value.ty,
             ty,
             specializations: self
@@ -2945,7 +2970,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
             .value
             .trait_params
             .into_iter()
-            .map(|ty| self.convert_generic_type_annotation(ty).into())
+            .map(|ty| self.convert_generic_type_annotation(ty))
             .collect::<Vec<_>>();
 
         let tr = self.with_trait_decl(decl.value.tr, Clone::clone);
@@ -2964,18 +2989,20 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                 )],
             ));
 
-            params.push(engine::UnresolvedType::Bottom(
-                engine::BottomTypeReason::Error,
-            ));
+            params.push(engine::Type::Bottom(engine::BottomTypeReason::Error));
         }
 
-        let instance_ty = self.substitute_trait_params(trait_id, params);
+        let instance_ty = self.substitute_trait_params(
+            trait_id,
+            params.clone().into_iter().map(From::from).collect(),
+        );
 
         let has_bounds = !decl.value.bounds.is_empty();
 
         let bounds = decl
             .value
             .bounds
+            .clone()
             .into_iter()
             .map(|bound| Bound {
                 span: bound.span,
@@ -3035,8 +3062,16 @@ impl<'a, 'l> Typechecker<'a, 'l> {
 
         let decl = InstanceDecl {
             span: decl.span,
-            trait_id,
+            params: decl.value.params,
             bounds,
+            bound_annotations: decl
+                .value
+                .bounds
+                .into_iter()
+                .map(|bound| (bound.tr, bound.parameters))
+                .collect(),
+            trait_id,
+            trait_params: params,
             ty: instance_ty.finalize(&self.ctx).unwrap(),
             body: None,
             item,

@@ -109,8 +109,6 @@ pub enum PatternKind {
 
 impl Compiler<'_> {
     pub(super) fn convert_to_ssa(&self, program: &analysis::Program) -> Program {
-        assert!(program.complete);
-
         let mut converter = Converter {
             compiler: self,
             program,

@@ -97,11 +97,6 @@ pub struct CaptureList(pub BTreeMap<usize, usize>);
 
 impl Compiler<'_> {
     pub fn ir_from(&self, program: &typecheck::Program) -> Program {
-        assert!(
-            program.complete,
-            "cannot generate IR from incomplete program"
-        );
-
         let program = self.convert_to_ssa(program);
 
         let structures = program.structures.clone();

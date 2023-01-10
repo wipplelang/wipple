@@ -6,15 +6,17 @@ macro_rules! parse_number {
 
             let builtin = match $ty {
                 $expr_ty::Builtin(builtin) => builtin,
-                _ => return Err(TypeError::InvalidNumericLiteral($ty.clone().into())),
+                _ => return None,
             };
 
             macro_rules! parse {
                 ($kind:ident) => {
-                    $number
-                        .parse()
-                        .map($number_ty::$kind)
-                        .map_err(|_| TypeError::InvalidNumericLiteral($ty.clone().into()))
+                    Some(
+                        $number
+                            .parse()
+                            .map($number_ty::$kind)
+                            .map_err(|_| TypeError::InvalidNumericLiteral($ty.clone().into())),
+                    )
                 };
             }
 
@@ -27,7 +29,7 @@ macro_rules! parse_number {
                 BuiltinType::Unsigned => parse!(Unsigned),
                 BuiltinType::Float => parse!(Float),
                 BuiltinType::Double => parse!(Double),
-                _ => return Err(TypeError::InvalidNumericLiteral($ty.clone().into())),
+                _ => return None,
             }
         })()
     };

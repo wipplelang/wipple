@@ -109,30 +109,29 @@ async fn run() -> anyhow::Result<()> {
         })
     };
 
-    let emit_diagnostics =
-        |diagnostics: &mut wipple_frontend::diagnostics::FinalizedDiagnostics,
-         options: &BuildOptions|
-         -> anyhow::Result<()> {
-            #[cfg(not(debug_assertions))]
-            let _ = options;
+    let emit_diagnostics = |diagnostics: wipple_frontend::diagnostics::FinalizedDiagnostics,
+                            options: &BuildOptions|
+     -> anyhow::Result<()> {
+        #[cfg(not(debug_assertions))]
+        let _ = options;
 
-            let (files, diagnostics) = diagnostics.into_console_friendly(
-                #[cfg(debug_assertions)]
-                options.trace,
-            );
+        let (files, diagnostics) = diagnostics.into_console_friendly(
+            #[cfg(debug_assertions)]
+            options.trace,
+        );
 
-            let writer = codespan_reporting::term::termcolor::StandardStream::stderr(
-                codespan_reporting::term::termcolor::ColorChoice::Auto,
-            );
+        let writer = codespan_reporting::term::termcolor::StandardStream::stderr(
+            codespan_reporting::term::termcolor::ColorChoice::Auto,
+        );
 
-            let config = codespan_reporting::term::Config::default();
+        let config = codespan_reporting::term::Config::default();
 
-            for diagnostic in diagnostics {
-                codespan_reporting::term::emit(&mut writer.lock(), &config, &files, &diagnostic)?;
-            }
+        for diagnostic in diagnostics {
+            codespan_reporting::term::emit(&mut writer.lock(), &config, &files, &diagnostic)?;
+        }
 
-            Ok(())
-        };
+        Ok(())
+    };
 
     match args {
         Args::Run { path, options } => {
@@ -141,17 +140,17 @@ async fn run() -> anyhow::Result<()> {
 
             let progress_bar = options.progress.then(progress_bar);
 
-            let (ir, mut diagnostics) = generate_ir(&path, &options, progress_bar.clone()).await;
+            let (ir, diagnostics) = generate_ir(&path, &options, progress_bar.clone()).await;
 
-            let error = diagnostics.contains_errors();
-            emit_diagnostics(&mut diagnostics, &options)?;
+            let success = !diagnostics.contains_errors();
+            emit_diagnostics(diagnostics, &options)?;
 
             if let Some(progress_bar) = progress_bar.as_ref() {
                 progress_bar.finish_and_clear();
             }
 
             let ir = match ir {
-                Some(ir) if !error => ir,
+                Some(ir) if success => ir,
                 _ => return Err(anyhow::Error::msg("")),
             };
 
@@ -176,11 +175,10 @@ async fn run() -> anyhow::Result<()> {
 
                 let progress_bar = options.progress.then(progress_bar);
 
-                let (ir, mut diagnostics) =
-                    generate_ir(&path, &options, progress_bar.clone()).await;
+                let (ir, diagnostics) = generate_ir(&path, &options, progress_bar.clone()).await;
 
                 let error = diagnostics.contains_errors();
-                emit_diagnostics(&mut diagnostics, &options)?;
+                emit_diagnostics(diagnostics, &options)?;
 
                 match ir {
                     Some(ir) if !error => Ok((ir, progress_bar)),
@@ -282,7 +280,11 @@ async fn analyze(
         path,
         options,
         progress_bar,
-        |progress_bar, compiler, mut program| {
+        |progress_bar, compiler, success, mut program| {
+            if !success {
+                return program;
+            }
+
             if options.optimize {
                 if let Some(progress_bar) = progress_bar {
                     progress_bar.set_message("Optimizing");
@@ -309,38 +311,34 @@ async fn generate_ir(
         path,
         options,
         progress_bar,
-        |progress_bar, compiler, mut program| {
-            if let Some(progress_bar) = progress_bar {
-                progress_bar.set_message("Linting");
+        |progress_bar, compiler, success, mut program| {
+            if !success {
+                return None;
             }
 
-            compiler.lint(&program);
-
-            program.complete.then(|| {
-                if options.optimize {
-                    if let Some(progress_bar) = progress_bar {
-                        progress_bar.set_message("Optimizing");
-                    }
-
-                    program = compiler.optimize(program);
-                }
-
+            if options.optimize {
                 if let Some(progress_bar) = progress_bar {
-                    progress_bar.set_message("Generating IR");
+                    progress_bar.set_message("Optimizing");
                 }
 
-                let mut ir = compiler.ir_from(&program);
+                program = compiler.optimize(program);
+            }
 
-                if options.optimize {
-                    if let Some(progress_bar) = progress_bar {
-                        progress_bar.set_message("Optimizing IR");
-                    }
+            if let Some(progress_bar) = progress_bar {
+                progress_bar.set_message("Generating IR");
+            }
 
-                    ir = compiler.optimize(ir);
+            let mut ir = compiler.ir_from(&program);
+
+            if options.optimize {
+                if let Some(progress_bar) = progress_bar {
+                    progress_bar.set_message("Optimizing IR");
                 }
 
-                ir
-            })
+                ir = compiler.optimize(ir);
+            }
+
+            Some(ir)
         },
     )
     .await;
@@ -355,6 +353,7 @@ async fn build_with_passes<P>(
     passes: impl FnOnce(
         Option<&indicatif::ProgressBar>,
         &Compiler,
+        bool,
         wipple_frontend::analysis::Program,
     ) -> P,
 ) -> (P, wipple_frontend::diagnostics::FinalizedDiagnostics) {
@@ -449,22 +448,16 @@ async fn build_with_passes<P>(
         wipple_frontend::FilePath::Path(wipple_frontend::helpers::InternedString::new(path))
     };
 
-    let program = compiler
+    let (program, diagnostics) = compiler
         .analyze_with(
             path,
             wipple_frontend::analysis::Options::new().tracking_progress(analysis_progress),
         )
         .await;
 
-    if let Some(progress_bar) = progress_bar.as_deref() {
-        progress_bar.set_message("Linting");
-    }
+    let success = !diagnostics.contains_errors();
 
-    compiler.lint(&program);
-
-    let program = passes(progress_bar.as_deref(), &compiler, program);
-
-    let diagnostics = compiler.finish();
+    let program = passes(progress_bar.as_deref(), &compiler, success, program);
 
     (program, diagnostics)
 }

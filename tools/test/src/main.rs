@@ -247,42 +247,29 @@ async fn run<'l>(
         .lock()
         .insert(test_path, Arc::from(test_case.code.as_str()));
 
-    let mut program = compiler
+    let (program, diagnostics) = compiler
         .analyze(wipple_frontend::FilePath::Virtual(test_path))
         .await;
 
-    compiler.lint(&program);
-
-    if optimize {
-        program = compiler.optimize(program);
-    }
-
-    let program = program.complete.then(|| {
-        let mut ir = compiler.ir_from(&program);
-
-        if optimize {
-            ir = compiler.optimize(ir);
-        }
-
-        ir
-    });
-
-    let mut diagnostics = compiler.finish();
     let success = !diagnostics.contains_errors();
 
     let output = {
         let buf = RefCell::new(Vec::new());
 
         if success {
-            if let Some(program) = program {
-                let mut interpreter =
-                    wipple_interpreter_backend::Interpreter::handling_output(|text| {
-                        write!(buf.borrow_mut(), "{}", text).unwrap()
-                    });
+            let mut ir = compiler.ir_from(&program);
 
-                if let Err(error) = interpreter.run(&program) {
-                    write!(buf.borrow_mut(), "fatal error: {}", error)?;
-                }
+            if optimize {
+                ir = compiler.optimize(ir);
+            }
+
+            let mut interpreter =
+                wipple_interpreter_backend::Interpreter::handling_output(|text| {
+                    write!(buf.borrow_mut(), "{}", text).unwrap()
+                });
+
+            if let Err(error) = interpreter.run(&ir) {
+                write!(buf.borrow_mut(), "fatal error: {}", error)?;
             }
         }
 

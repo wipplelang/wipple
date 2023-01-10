@@ -199,8 +199,10 @@ impl<'l> Compiler<'l> {
         self.backtrace_enabled = backtrace_enabled;
         self
     }
+}
 
-    pub fn finish(&self) -> FinalizedDiagnostics {
+impl<'l> Compiler<'l> {
+    fn finish_analysis(&self) -> FinalizedDiagnostics {
         FinalizedDiagnostics {
             source_map: self.loader.source_map().lock().clone(),
             diagnostics: mem::take(&mut self.diagnostics.diagnostics.lock()),

@@ -5,7 +5,6 @@ use serde::Serialize;
 use std::{
     cmp::Ordering,
     collections::{hash_map::Entry, HashMap},
-    mem,
     sync::Arc,
 };
 
@@ -175,16 +174,13 @@ impl FinalizedDiagnostics {
     }
 
     pub fn into_console_friendly(
-        &mut self,
+        self,
         #[cfg(debug_assertions)] include_trace: bool,
     ) -> (
         codespan_reporting::files::SimpleFiles<FilePath, Arc<str>>,
         Vec<codespan_reporting::diagnostic::Diagnostic<usize>>,
     ) {
-        let diagnostics = mem::take(&mut self.diagnostics)
-            .into_iter()
-            .unique()
-            .collect::<Vec<_>>();
+        let diagnostics = self.diagnostics.into_iter().unique().collect::<Vec<_>>();
 
         let mut files = codespan_reporting::files::SimpleFiles::new();
         let mut console_diagnostics = Vec::new();

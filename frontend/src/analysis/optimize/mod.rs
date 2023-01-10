@@ -41,10 +41,6 @@ impl Optimize for Program {
     type Options = Options;
 
     fn optimize(self, options: Self::Options, compiler: &Compiler) -> Program {
-        if !self.complete {
-            return self;
-        }
-
         let program = self;
 
         macro_rules! passes {

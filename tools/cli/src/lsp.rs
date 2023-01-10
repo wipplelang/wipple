@@ -745,11 +745,7 @@ impl Backend {
 
         let compiler = self.borrow_compiler();
 
-        let program = compiler.analyze(path).await;
-
-        compiler.lint(&program);
-
-        let diagnostics = compiler.finish();
+        let (program, diagnostics) = compiler.analyze(path).await;
 
         (program, diagnostics.diagnostics)
     }

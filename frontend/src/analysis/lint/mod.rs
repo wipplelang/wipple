@@ -19,7 +19,7 @@ macro_rules! lints {
 use crate::{analysis, Compiler};
 
 lints!(
-    constant_unused_unnecessary_type_parameter,
+    unused_unnecessary_type_parameter,
     unused_variable,
-    useless_bounds
+    useless_bounds,
 );
