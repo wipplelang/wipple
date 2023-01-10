@@ -532,6 +532,7 @@ impl Compiler<'_> {
                 .extend(dependency.declarations.operators.clone());
 
             merge_dependency!(
+                templates,
                 types(Declaration::make_unresolved),
                 type_parameters,
                 traits(Declaration::make_unresolved),
