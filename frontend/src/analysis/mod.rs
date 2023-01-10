@@ -1,4 +1,4 @@
-#![allow(clippy::too_many_arguments)]
+#![allow(clippy::too_many_arguments, clippy::type_complexity)]
 
 pub mod ast;
 pub mod expand;
@@ -12,13 +12,13 @@ pub use typecheck::{
     TypeAnnotation, TypeAnnotationKind, TypeStructure,
 };
 
-use crate::{diagnostics::*, parse::Span, Compiler, FilePath};
+use crate::{diagnostics::*, helpers::Shared, parse::Span, Compiler, FilePath};
 use async_recursion::async_recursion;
-use parking_lot::Mutex;
 use std::sync::{atomic::AtomicUsize, Arc};
 
+#[derive(Clone)]
 pub struct Options {
-    progress: Option<Box<dyn Fn(Progress) + Send + Sync>>,
+    progress: Option<Shared<Box<dyn Fn(Progress) + Send + Sync>>>,
     lint: bool,
 }
 
@@ -34,7 +34,7 @@ impl Options {
         mut self,
         progress: impl Fn(Progress) + Send + Sync + 'static,
     ) -> Self {
-        self.progress = Some(Box::new(progress));
+        self.progress = Some(Shared::new(Box::new(progress)));
         self
     }
 
@@ -65,32 +65,36 @@ pub enum Progress {
 }
 
 impl Compiler<'_> {
-    pub async fn analyze(&self, entrypoint: FilePath) -> (Program, FinalizedDiagnostics) {
-        self.analyze_with(entrypoint, Options::new()).await
-    }
-
     pub async fn analyze_with(
         &self,
         entrypoint: FilePath,
-        options: Options,
+        options: &Options,
     ) -> (Program, FinalizedDiagnostics) {
-        let progress = Arc::new(Mutex::new(
-            options.progress.unwrap_or_else(|| Box::new(|_| {})),
-        ));
+        let files = self.expand_with(entrypoint, options).await;
+        let (entrypoint, lowering_is_complete) = self.lower_with(files, options);
+        let program = self.typecheck_with(entrypoint, lowering_is_complete, options);
+        self.lint_with(&program, options);
 
-        let files: Arc<Mutex<indexmap::IndexMap<FilePath, Arc<expand::File>>>> = Default::default();
+        let diagnostics = self.finish_analysis();
+        (program, diagnostics)
+    }
 
+    pub async fn expand_with(
+        &self,
+        entrypoint: FilePath,
+        options: &Options,
+    ) -> indexmap::IndexMap<FilePath, Arc<expand::File>> {
         #[async_recursion]
-        async fn load<'a, 'l>(
-            compiler: &'a Compiler<'l>,
+        async fn load(
+            compiler: &Compiler,
             path: FilePath,
             source_path: Option<FilePath>,
             source_span: Option<Span>,
             entrypoint: FilePath,
-            progress: Arc<Mutex<impl Fn(Progress) + Send + Sync + 'static>>,
             count: Arc<AtomicUsize>,
-            files: Arc<Mutex<indexmap::IndexMap<FilePath, Arc<expand::File>>>>,
-            stack: Arc<Mutex<Vec<FilePath>>>,
+            files: Shared<indexmap::IndexMap<FilePath, Arc<expand::File>>>,
+            stack: Shared<Vec<FilePath>>,
+            options: &Options,
         ) -> Option<Arc<expand::File>> {
             macro_rules! try_load {
                 ($expr:expr) => {
@@ -133,10 +137,13 @@ impl Compiler<'_> {
 
             {
                 let count = count.fetch_add(1, std::sync::atomic::Ordering::Relaxed) + 1;
-                progress.lock()(Progress::Resolving {
-                    path: resolved_path,
-                    count,
-                });
+
+                if let Some(progress) = &options.progress {
+                    progress.lock()(Progress::Resolving {
+                        path: resolved_path,
+                        count,
+                    });
+                }
             }
 
             {
@@ -175,16 +182,16 @@ impl Compiler<'_> {
 
             let file = compiler
                 .expand(file, {
-                    let progress = progress.clone();
                     let count = count.clone();
                     let files = files.clone();
                     let stack = stack.clone();
+                    let options = options.clone();
 
                     move |compiler, source_span, new_path| {
-                        let progress = progress.clone();
                         let count = count.clone();
                         let files = files.clone();
                         let stack = stack.clone();
+                        let options = options.clone();
 
                         Box::pin(async move {
                             load(
@@ -193,10 +200,10 @@ impl Compiler<'_> {
                                 Some(resolved_path),
                                 Some(source_span),
                                 entrypoint,
-                                progress,
                                 count,
                                 files,
                                 stack,
+                                &options,
                             )
                             .await
                         })
@@ -224,21 +231,29 @@ impl Compiler<'_> {
             Some(file)
         }
 
+        let files = Shared::default();
+
         load(
             self,
             entrypoint,
             None,
             None,
             entrypoint,
-            progress.clone(),
             Default::default(),
             files.clone(),
             Default::default(),
+            options,
         )
         .await;
 
-        let files = Arc::try_unwrap(files).unwrap().into_inner();
+        files.into_unique()
+    }
 
+    pub fn lower_with(
+        &self,
+        files: indexmap::IndexMap<FilePath, Arc<expand::File>>,
+        _options: &Options,
+    ) -> (lower::File, bool) {
         fn lower(compiler: &Compiler, file: Arc<expand::File>) -> Arc<lower::File> {
             let path = file.path;
 
@@ -271,19 +286,27 @@ impl Compiler<'_> {
             .collect::<Vec<_>>();
 
         let lowering_is_complete = !self.diagnostics.contains_errors();
-
         let entrypoint = lowered_files.pop().unwrap();
 
-        let program = self.typecheck_with_progress(entrypoint, lowering_is_complete, move |p| {
-            progress.lock()(Progress::Typechecking(p))
-        });
+        (entrypoint, lowering_is_complete)
+    }
 
+    pub fn typecheck_with(
+        &self,
+        entrypoint: lower::File,
+        lowering_is_complete: bool,
+        options: &Options,
+    ) -> Program {
+        self.typecheck_with_progress(entrypoint, lowering_is_complete, move |p| {
+            if let Some(progress) = &options.progress {
+                progress.lock()(Progress::Typechecking(p))
+            }
+        })
+    }
+
+    pub fn lint_with(&self, program: &Program, options: &Options) {
         if options.lint {
-            self.lint(&program);
+            self.lint(program);
         }
-
-        let diagnostics = self.finish_analysis();
-
-        (program, diagnostics)
     }
 }

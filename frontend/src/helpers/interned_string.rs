@@ -73,3 +73,10 @@ impl fmt::Debug for InternedString {
         write!(f, "{:?}", self.as_str())
     }
 }
+
+#[cfg(feature = "arbitrary")]
+impl<'a> arbitrary::Arbitrary<'a> for InternedString {
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        Ok(Self::new(String::arbitrary(u)?))
+    }
+}

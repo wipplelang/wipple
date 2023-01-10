@@ -745,7 +745,7 @@ impl Backend {
 
         let compiler = self.borrow_compiler();
 
-        let (program, diagnostics) = compiler.analyze(path).await;
+        let (program, diagnostics) = compiler.analyze_with(path, &Default::default()).await;
 
         (program, diagnostics.diagnostics)
     }

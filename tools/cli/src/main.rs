@@ -290,7 +290,7 @@ async fn analyze(
                     progress_bar.set_message("Optimizing");
                 }
 
-                program = compiler.optimize(program);
+                program = compiler.optimize_with(program, Default::default());
             }
 
             program
@@ -321,7 +321,7 @@ async fn generate_ir(
                     progress_bar.set_message("Optimizing");
                 }
 
-                program = compiler.optimize(program);
+                program = compiler.optimize_with(program, Default::default());
             }
 
             if let Some(progress_bar) = progress_bar {
@@ -335,7 +335,7 @@ async fn generate_ir(
                     progress_bar.set_message("Optimizing IR");
                 }
 
-                ir = compiler.optimize(ir);
+                ir = compiler.optimize_with(ir, Default::default());
             }
 
             Some(ir)
@@ -451,7 +451,7 @@ async fn build_with_passes<P>(
     let (program, diagnostics) = compiler
         .analyze_with(
             path,
-            wipple_frontend::analysis::Options::new().tracking_progress(analysis_progress),
+            &wipple_frontend::analysis::Options::new().tracking_progress(analysis_progress),
         )
         .await;
 

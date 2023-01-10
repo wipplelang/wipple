@@ -359,7 +359,7 @@ impl Error {
 }
 
 impl Compiler<'_> {
-    pub fn typecheck_with_progress(
+    pub(crate) fn typecheck_with_progress(
         &self,
         entrypoint: lower::File,
         complete: bool,

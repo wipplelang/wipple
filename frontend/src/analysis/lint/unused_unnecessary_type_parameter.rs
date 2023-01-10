@@ -2,7 +2,7 @@ use crate::{analysis, diagnostics::*, Compiler};
 use std::collections::BTreeMap;
 
 impl Compiler<'_> {
-    pub fn unused_unnecessary_type_parameter_lint(&self, program: &analysis::Program) {
+    pub(super) fn unused_unnecessary_type_parameter_lint(&self, program: &analysis::Program) {
         let add_diagnostic = |decl_span, use_span| {
             self.diagnostics.add(Diagnostic::warning(
                 "unnecessary type parameter",

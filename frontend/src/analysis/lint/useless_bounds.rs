@@ -1,7 +1,7 @@
 use crate::{analysis, diagnostics::*, Compiler};
 
 impl Compiler<'_> {
-    pub fn useless_bounds_lint(&self, program: &analysis::Program) {
+    pub(super) fn useless_bounds_lint(&self, program: &analysis::Program) {
         for constant in program.declarations.constants.values() {
             for bound in &constant.bounds {
                 if bound.params.iter().all(|ty| ty.params().is_empty()) {

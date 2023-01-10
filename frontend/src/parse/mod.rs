@@ -10,7 +10,7 @@ pub use span::*;
 use crate::{helpers::InternedString, Compiler, FilePath};
 
 impl Compiler<'_> {
-    pub fn parse(&self, file: FilePath, code: &str) -> Option<File> {
+    pub(crate) fn parse(&self, file: FilePath, code: &str) -> Option<File> {
         let code = code.replace("\r\n", "\n");
 
         let (shebang, code) = match grammar::parse_shebang(&code) {

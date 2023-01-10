@@ -5,6 +5,7 @@ members = [
     "frontend",
     "loaders/default",
     "tools/cli",
+    "tools/fuzz",
     "tools/test",
     "website/playground/runner",
 ]

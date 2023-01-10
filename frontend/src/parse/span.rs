@@ -3,6 +3,7 @@ use serde::Serialize;
 use std::{fmt, ops::Range};
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Serialize)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub struct Span {
     pub path: FilePath,
     pub start: usize,

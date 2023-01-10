@@ -5,12 +5,11 @@ mod builtins;
 use crate::{
     analysis::{ast, expand},
     diagnostics::*,
-    helpers::InternedString,
+    helpers::{InternedString, Shared},
     parse::Span,
     BuiltinTypeId, Compiler, ConstantId, FilePath, TemplateId, TraitId, TypeId, TypeParameterId,
     VariableId,
 };
-use parking_lot::Mutex;
 use serde::Serialize;
 use std::{
     cell::RefCell,
@@ -23,6 +22,7 @@ use std::{
 use strum::{Display, EnumString};
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub struct File<Decls = Declarations> {
     pub span: Span,
     pub declarations: Decls,
@@ -34,6 +34,7 @@ pub struct File<Decls = Declarations> {
 }
 
 #[derive(Debug, Clone, Default)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub struct Declarations {
     pub operators: BTreeMap<TemplateId, expand::Operator>,
     pub templates: BTreeMap<TemplateId, expand::TemplateDeclaration<()>>,
@@ -92,6 +93,7 @@ impl UnresolvedDeclarations {
 }
 
 #[derive(Debug, Clone, Serialize)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub struct Declaration<T> {
     pub name: Option<InternedString>,
     pub span: Span,
@@ -142,12 +144,14 @@ impl<T> Declaration<T> {
 }
 
 #[derive(Debug, Clone, Default, Serialize)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 #[non_exhaustive]
 pub struct DeclarationAttributes {
     pub help: Vec<InternedString>,
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub struct Type {
     pub kind: TypeKind,
     pub params: Vec<(Span, TypeParameterId)>,
@@ -155,6 +159,7 @@ pub struct Type {
 }
 
 #[derive(Debug, Clone, Serialize)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 #[non_exhaustive]
 pub struct TypeAttributes {
     pub decl_attributes: DeclarationAttributes,
@@ -162,6 +167,7 @@ pub struct TypeAttributes {
 }
 
 #[derive(Debug, Clone, Serialize)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 #[serde(tag = "type", content = "value")]
 pub enum TypeKind {
     Marker,
@@ -170,24 +176,28 @@ pub enum TypeKind {
 }
 
 #[derive(Debug, Clone, Serialize)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub struct TypeField {
     pub ty: TypeAnnotation,
     pub attributes: DeclarationAttributes,
 }
 
 #[derive(Debug, Clone, Serialize)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub struct TypeVariant {
     pub constructor: ConstantId,
     pub tys: Vec<TypeAnnotation>,
 }
 
 #[derive(Debug, Clone, Serialize)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub struct BuiltinType {
     pub kind: BuiltinTypeKind,
     pub attributes: DeclarationAttributes,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub enum BuiltinTypeKind {
     Never,
     Number,
@@ -205,6 +215,7 @@ pub enum BuiltinTypeKind {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub struct Trait {
     pub parameters: Vec<(Span, TypeParameterId)>,
     pub ty: TypeAnnotation,
@@ -212,6 +223,7 @@ pub struct Trait {
 }
 
 #[derive(Debug, Clone, Serialize)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 #[non_exhaustive]
 pub struct TraitAttributes {
     pub decl_attributes: DeclarationAttributes,
@@ -219,15 +231,17 @@ pub struct TraitAttributes {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub struct Constant {
     pub parameters: Vec<(Span, TypeParameterId)>,
     pub bounds: Vec<Bound>,
     pub ty: TypeAnnotation,
-    pub value: Arc<Mutex<Option<Expression>>>,
+    pub value: Shared<Option<Expression>>,
     pub attributes: ConstantAttributes,
 }
 
 #[derive(Debug, Clone, Serialize)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 #[non_exhaustive]
 pub struct ConstantAttributes {
     pub decl_attributes: DeclarationAttributes,
@@ -235,6 +249,7 @@ pub struct ConstantAttributes {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub struct Bound {
     pub span: Span,
     pub tr: TraitId,
@@ -242,6 +257,7 @@ pub struct Bound {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub struct Instance {
     pub params: Vec<(Span, TypeParameterId)>,
     pub bounds: Vec<Bound>,
@@ -251,24 +267,28 @@ pub struct Instance {
 }
 
 #[derive(Debug, Clone, Default)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 #[non_exhaustive]
 pub struct FileAttributes {
     pub language_items: LanguageItems,
 }
 
 #[derive(Debug, Clone, Default)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 #[non_exhaustive]
 pub struct LanguageItems {
     pub boolean: Option<TypeId>,
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub struct Expression {
     pub span: Span,
     pub kind: ExpressionKind,
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub enum ExpressionKind {
     Error,
     Marker(TypeId),
@@ -301,6 +321,7 @@ impl Expression {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub struct Arm {
     pub span: Span,
     pub pattern: Pattern,
@@ -308,12 +329,14 @@ pub struct Arm {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub struct Pattern {
     pub span: Span,
     pub kind: PatternKind,
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub enum PatternKind {
     Error,
     Wildcard,
@@ -329,12 +352,14 @@ pub enum PatternKind {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub struct TypeAnnotation {
     pub span: Span,
     pub kind: TypeAnnotationKind,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub enum TypeAnnotationKind {
     Error,
     Placeholder,
@@ -377,6 +402,7 @@ impl TypeAnnotation {
 pub type CaptureList = Vec<(VariableId, Span)>;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, EnumString, Display)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 #[strum(serialize_all = "kebab-case")]
 pub enum RuntimeFunction {
     Crash,
@@ -473,7 +499,7 @@ pub enum RuntimeFunction {
 }
 
 impl Compiler<'_> {
-    pub fn lower(
+    pub(crate) fn lower(
         &self,
         file: ast::File,
         dependencies: Vec<(Arc<File>, Option<HashMap<InternedString, Span>>)>,
@@ -644,6 +670,7 @@ pub enum ScopeKind {
 }
 
 #[derive(Debug, Clone, Serialize)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 #[serde(tag = "type", content = "value")]
 pub enum ScopeValue {
     Operator(expand::Operator),
@@ -962,7 +989,7 @@ impl Compiler<'_> {
                                             parameters: parameters.clone(),
                                             bounds: Vec::new(),
                                             ty: constructor_ty,
-                                            value: Arc::new(Mutex::new(Some(constructor))),
+                                            value: Shared::new(Some(constructor)),
                                             attributes,
                                         },
                                     )
@@ -1657,7 +1684,20 @@ impl Compiler<'_> {
             }
             ast::ExpressionKind::Call(function, inputs) => match &function.kind {
                 ast::ExpressionKind::Name(ty_name) => {
-                    let input = inputs.first().unwrap();
+                    let input = match inputs.first() {
+                        Some(input) => input,
+                        None => {
+                            self.diagnostics.add(Diagnostic::error(
+                                "function received no input",
+                                vec![Note::primary(
+                                    function.span,
+                                    "try providing an input to this function",
+                                )],
+                            ));
+
+                            return Expression::error(expr.span);
+                        }
+                    };
 
                     match scope.get(*ty_name, function.span) {
                         Some(ScopeValue::Type(id)) => {

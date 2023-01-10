@@ -8,13 +8,12 @@ mod builtins;
 
 use crate::{
     diagnostics::*,
-    helpers::InternedString,
+    helpers::{InternedString, Shared},
     parse::{self, Span},
     Compiler, FilePath, TemplateId,
 };
 use async_recursion::async_recursion;
 use futures::{future::BoxFuture, stream, StreamExt};
-use parking_lot::Mutex;
 use serde::Serialize;
 use std::{
     cmp::Ordering,
@@ -25,6 +24,7 @@ use std::{
 use strum::EnumString;
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub struct File {
     pub path: FilePath,
     pub span: Span,
@@ -38,11 +38,13 @@ pub struct File {
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub struct FileAttributes {
     pub no_std: bool,
 }
 
 #[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub struct Statement {
     pub attributes: StatementAttributes,
     pub node: Node,
@@ -50,6 +52,7 @@ pub struct Statement {
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub struct StatementAttributes {
     pub language_item: Option<LanguageItem>,
     pub help: VecDeque<InternedString>,
@@ -59,18 +62,21 @@ pub struct StatementAttributes {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, EnumString)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 #[strum(serialize_all = "kebab-case")]
 pub enum LanguageItem {
     Boolean,
 }
 
 #[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub struct Node {
     pub span: Span,
     pub kind: NodeKind,
 }
 
 #[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub enum NodeKind {
     Error,
     Placeholder,
@@ -102,6 +108,7 @@ pub enum NodeKind {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub struct Declarations<T> {
     pub operators: BTreeMap<TemplateId, Operator>,
     pub templates: BTreeMap<TemplateId, TemplateDeclaration<T>>,
@@ -127,6 +134,7 @@ impl<T> Declarations<T> {
 }
 
 #[derive(Debug, Clone, Serialize)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub struct TemplateDeclaration<T> {
     pub name: InternedString,
     pub span: Span,
@@ -155,13 +163,14 @@ impl<T> TemplateDeclaration<T> {
 }
 
 #[derive(Debug, Clone, Default, Serialize)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub struct TemplateAttributes {
     pub keyword: bool,
     pub help: VecDeque<InternedString>,
 }
 
 impl<'l> Compiler<'l> {
-    pub async fn expand(
+    pub(crate) async fn expand(
         &self,
         file: parse::File,
         load: impl for<'a> Fn(&'a Compiler<'l>, Span, FilePath) -> BoxFuture<'a, Option<Arc<File>>>
@@ -209,17 +218,11 @@ impl<'l> Compiler<'l> {
             span: file.span,
             statements,
             attributes,
-            declarations: Arc::try_unwrap(expander.declarations).unwrap().into_inner(),
+            declarations: expander.declarations.into_unique(),
             exported,
-            scopes: Arc::try_unwrap(expander.scopes).unwrap().into_inner(),
-            template_uses: Arc::try_unwrap(expander.template_uses)
-                .unwrap()
-                .into_inner(),
-            dependencies: Arc::try_unwrap(expander.dependencies)
-                .unwrap()
-                .into_inner()
-                .into_values()
-                .collect(),
+            scopes: expander.scopes.into_unique(),
+            template_uses: expander.template_uses.into_unique(),
+            dependencies: expander.dependencies.into_unique().into_values().collect(),
         })
     }
 }
@@ -227,10 +230,10 @@ impl<'l> Compiler<'l> {
 #[derive(Clone)]
 pub struct Expander<'a, 'l> {
     compiler: &'a Compiler<'l>,
-    declarations: Arc<Mutex<Declarations<Template>>>,
-    dependencies: Arc<Mutex<HashMap<FilePath, (Arc<File>, Option<HashMap<InternedString, Span>>)>>>,
-    scopes: Arc<Mutex<Vec<(Span, ScopeValues)>>>,
-    template_uses: Arc<Mutex<BTreeMap<TemplateId, Vec<Span>>>>,
+    declarations: Shared<Declarations<Template>>,
+    dependencies: Shared<HashMap<FilePath, (Arc<File>, Option<HashMap<InternedString, Span>>)>>,
+    scopes: Shared<Vec<(Span, ScopeValues)>>,
+    template_uses: Shared<BTreeMap<TemplateId, Vec<Span>>>,
     load: Arc<
         dyn Fn(&'a Compiler<'l>, Span, FilePath) -> BoxFuture<'a, Option<Arc<File>>> + Send + Sync,
     >,
@@ -239,12 +242,13 @@ pub struct Expander<'a, 'l> {
 #[derive(Debug, Clone, Default)]
 pub struct Scope<'a> {
     parent: Option<&'a Scope<'a>>,
-    values: Arc<Mutex<ScopeValues>>,
+    values: Shared<ScopeValues>,
 }
 
 pub type ScopeValues = HashMap<InternedString, ScopeValue>;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub enum ScopeValue {
     Operator(Operator),
     Template(TemplateId),
@@ -293,6 +297,13 @@ pub enum Template {
     ),
 }
 
+#[cfg(feature = "arbitrary")]
+impl<'a> arbitrary::Arbitrary<'a> for Template {
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        Ok(Template::Syntax(Vec::arbitrary(u)?, Node::arbitrary(u)?))
+    }
+}
+
 impl Clone for Template {
     fn clone(&self) -> Self {
         match self {
@@ -336,12 +347,14 @@ impl Template {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub struct Operator {
     pub precedence: OperatorPrecedence,
     pub template: TemplateId,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub enum OperatorPrecedence {
     Cast,
     Power,
@@ -361,6 +374,7 @@ pub enum OperatorPrecedence {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub enum OperatorAssociativity {
     Left,
     Right,
@@ -759,10 +773,7 @@ impl Expander<'_, '_> {
             .flatten()
             .collect();
 
-        (
-            statements,
-            Arc::try_unwrap(scope.values).unwrap().into_inner(),
-        )
+        (statements, scope.values.into_unique())
     }
 
     #[async_recursion]

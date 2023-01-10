@@ -1,6 +1,5 @@
-use crate::{parse::Span, FilePath, SourceMap};
+use crate::{helpers::Shared, parse::Span, FilePath, SourceMap};
 use itertools::Itertools;
-use parking_lot::Mutex;
 use serde::Serialize;
 use std::{
     cmp::Ordering,
@@ -127,7 +126,7 @@ impl Note {
 
 #[derive(Debug, Clone, Default)]
 pub struct Diagnostics {
-    pub diagnostics: Arc<Mutex<Vec<Diagnostic>>>,
+    pub diagnostics: Shared<Vec<Diagnostic>>,
 }
 
 impl Diagnostics {

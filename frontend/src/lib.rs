@@ -6,8 +6,7 @@ pub mod parse;
 
 use async_trait::async_trait;
 use diagnostics::*;
-use helpers::InternedString;
-use parking_lot::Mutex;
+use helpers::{InternedString, Shared};
 use parse::Span;
 use serde::Serialize;
 use std::{
@@ -29,13 +28,14 @@ pub trait Loader: Debug + Send + Sync + 'static {
 
     async fn load(&self, path: FilePath) -> anyhow::Result<Arc<str>>;
 
-    fn cache(&self) -> Arc<Mutex<HashMap<FilePath, Arc<analysis::expand::File>>>>;
+    fn cache(&self) -> Shared<HashMap<FilePath, Arc<analysis::expand::File>>>;
 
-    fn source_map(&self) -> Arc<Mutex<SourceMap>>;
+    fn source_map(&self) -> Shared<SourceMap>;
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
 #[serde(tag = "type", content = "value")]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub enum FilePath {
     Path(InternedString),
     Url(InternedString),
@@ -68,7 +68,7 @@ pub struct Compiler<'l> {
     diagnostics: Diagnostics,
     file_ids: FileIds,
     ids: Ids,
-    pub(crate) cache: Arc<Mutex<indexmap::IndexMap<FilePath, Arc<analysis::lower::File>>>>,
+    pub(crate) cache: Shared<indexmap::IndexMap<FilePath, Arc<analysis::lower::File>>>,
 }
 
 macro_rules! file_ids {
@@ -76,12 +76,13 @@ macro_rules! file_ids {
         paste::paste! {
             #[derive(Debug, Clone, Default)]
             struct FileIds {
-                $([<next_ $id _id>]: Arc<Mutex<HashMap<Option<FilePath>, usize>>>,)*
+                $([<next_ $id _id>]: Shared<HashMap<Option<FilePath>, usize>>,)*
             }
 
             $(
                 $(#[$meta])*
                 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
+                #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
                 pub struct [<$id:camel Id>] {
                     pub file: Option<FilePath>,
                     pub counter: usize,
@@ -134,6 +135,7 @@ macro_rules! ids {
     ($($(#[$meta:meta])* $id:ident),* $(,)?) => {
         paste::paste! {
             #[derive(Debug, Clone, Default)]
+            #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
             struct Ids {
                 $([<next_ $id _id>]: Arc<AtomicUsize>,)*
             }
@@ -141,6 +143,7 @@ macro_rules! ids {
             $(
                 $(#[$meta])*
                 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
+                #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
                 pub struct [<$id:camel Id>] {
                     pub counter: usize,
                 }
@@ -219,12 +222,5 @@ pub trait Optimize {
 impl Compiler<'_> {
     pub fn optimize_with<T: Optimize>(&self, x: T, options: T::Options) -> T {
         x.optimize(options, self)
-    }
-
-    pub fn optimize<T: Optimize>(&self, x: T) -> T
-    where
-        T::Options: Default,
-    {
-        self.optimize_with(x, Default::default())
     }
 }

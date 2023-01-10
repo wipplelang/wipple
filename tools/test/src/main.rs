@@ -248,7 +248,10 @@ async fn run<'l>(
         .insert(test_path, Arc::from(test_case.code.as_str()));
 
     let (program, diagnostics) = compiler
-        .analyze(wipple_frontend::FilePath::Virtual(test_path))
+        .analyze_with(
+            wipple_frontend::FilePath::Virtual(test_path),
+            &Default::default(),
+        )
         .await;
 
     let success = !diagnostics.contains_errors();
@@ -260,7 +263,7 @@ async fn run<'l>(
             let mut ir = compiler.ir_from(&program);
 
             if optimize {
-                ir = compiler.optimize(ir);
+                ir = compiler.optimize_with(ir, Default::default());
             }
 
             let mut interpreter =

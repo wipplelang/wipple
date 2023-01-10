@@ -2,22 +2,25 @@
 
 use async_trait::async_trait;
 use futures::future::BoxFuture;
-use parking_lot::Mutex;
 use path_clean::PathClean;
 use std::{collections::HashMap, path::PathBuf, str::FromStr, sync::Arc};
 use url::Url;
-use wipple_frontend::{analysis, helpers::InternedString, FilePath, SourceMap};
+use wipple_frontend::{
+    analysis,
+    helpers::{InternedString, Shared},
+    FilePath, SourceMap,
+};
 
 pub const STD_URL: &str = "https://pkg.wipple.gramer.dev/std/std.wpl";
 
 #[derive(Debug, Clone)]
 pub struct Loader {
-    pub virtual_paths: Arc<Mutex<HashMap<InternedString, Arc<str>>>>,
-    fetcher: Arc<Mutex<Fetcher>>,
+    pub virtual_paths: Shared<HashMap<InternedString, Arc<str>>>,
+    fetcher: Shared<Fetcher>,
     base: Option<FilePath>,
     std_path: Option<FilePath>,
-    source_map: Arc<Mutex<SourceMap>>,
-    cache: Arc<Mutex<HashMap<FilePath, Arc<analysis::expand::File>>>>,
+    source_map: Shared<SourceMap>,
+    cache: Shared<HashMap<FilePath, Arc<analysis::expand::File>>>,
 }
 
 #[derive(Default)]
@@ -138,7 +141,7 @@ impl Loader {
     ) -> Self {
         Loader {
             virtual_paths: Default::default(),
-            fetcher: Arc::new(Mutex::new(fetcher)),
+            fetcher: Shared::new(fetcher),
             base,
             std_path,
             source_map: Default::default(),
@@ -237,11 +240,11 @@ impl wipple_frontend::Loader for Loader {
         Ok(code)
     }
 
-    fn cache(&self) -> Arc<Mutex<HashMap<FilePath, Arc<analysis::expand::File>>>> {
+    fn cache(&self) -> Shared<HashMap<FilePath, Arc<analysis::expand::File>>> {
         self.cache.clone()
     }
 
-    fn source_map(&self) -> Arc<Mutex<SourceMap>> {
+    fn source_map(&self) -> Shared<SourceMap> {
         self.source_map.clone()
     }
 }

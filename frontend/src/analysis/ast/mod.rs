@@ -181,7 +181,7 @@ pub struct Bound {
 }
 
 impl Compiler<'_> {
-    pub fn build_ast(&self, file: expand::File) -> File {
+    pub(crate) fn build_ast(&self, file: expand::File) -> File {
         File {
             path: file.path,
             span: file.span,
@@ -266,7 +266,17 @@ impl Compiler<'_> {
 
                                     StatementKind::Expression(ExpressionKind::Error)
                                 }
-                                NodeKind::Template(_, _) => unreachable!("unexpanded template"),
+                                NodeKind::Template(_, _) => {
+                                    self.diagnostics.add(Diagnostic::error(
+                                        "unexpanded template",
+                                        vec![Note::primary(
+                                            value.span,
+                                            "this template was never expanded",
+                                        )],
+                                    ));
+
+                                    StatementKind::Expression(ExpressionKind::Error)
+                                }
                                 NodeKind::Type(fields) => {
                                     let name = match pattern.kind {
                                         PatternKind::Name(name) => name,
@@ -398,7 +408,10 @@ impl Compiler<'_> {
                             }
                         }
                     },
-                    NodeKind::Template(_, _) => unreachable!(),
+                    NodeKind::Template(_, _) => {
+                        // Templates are stripped during the expansion phase
+                        StatementKind::Empty
+                    }
                     NodeKind::Annotate(expr, ty) => {
                         let (span, name) = match expr.kind {
                             NodeKind::Name(name) => (expr.span, name),
@@ -513,11 +526,13 @@ impl Compiler<'_> {
                 NodeKind::Number(number) => ExpressionKind::Number(number),
                 NodeKind::List(exprs) => {
                     let mut exprs = exprs.into_iter();
-
-                    ExpressionKind::Call(
-                        Box::new(self.build_expression(exprs.next().unwrap())),
-                        exprs.map(|expr| self.build_expression(expr)).collect(),
-                    )
+                    match exprs.next() {
+                        Some(func) => ExpressionKind::Call(
+                            Box::new(self.build_expression(func)),
+                            exprs.map(|expr| self.build_expression(expr)).collect(),
+                        ),
+                        None => ExpressionKind::Error,
+                    }
                 }
                 NodeKind::Block(statements) => ExpressionKind::Block(
                     statements
@@ -752,8 +767,23 @@ impl Compiler<'_> {
                     NodeKind::List(nodes) => {
                         let mut nodes = nodes.into_iter();
 
-                        let name = nodes.next().unwrap();
+                        let name = match nodes.next() {
+                            Some(node) => node,
+                            None => {
+                                self.diagnostics.add(Diagnostic::error(
+                                    "expected variant name",
+                                    vec![Note::primary(
+                                        node.span,
+                                        "only variants may be used in this kind of pattern",
+                                    )],
+                                ));
+
+                                return PatternKind::Error;
+                            },
+                        };
+
                         let name_span = name.span;
+
                         let name = match name.kind {
                             NodeKind::Name(name) => name,
                             _ => {
@@ -815,7 +845,7 @@ impl Compiler<'_> {
     fn build_type_annotation(&self, node: Node) -> TypeAnnotation {
         TypeAnnotation {
             span: node.span,
-            kind: match node.kind {
+            kind: (|| match node.kind {
                 NodeKind::Empty => TypeAnnotationKind::Tuple(Vec::new()),
                 NodeKind::Underscore => TypeAnnotationKind::Placeholder,
                 NodeKind::Name(name) => TypeAnnotationKind::Named(name, Vec::new()),
@@ -825,22 +855,27 @@ impl Compiler<'_> {
                 ),
                 NodeKind::List(nodes) => {
                     let mut nodes = nodes.into_iter();
-                    let ty = nodes.next().unwrap();
+                    let ty = match nodes.next() {
+                        Some(ty) => ty,
+                        None => return TypeAnnotationKind::Tuple(Vec::new()),
+                    };
 
-                    match ty.kind {
-                        NodeKind::Name(name) => TypeAnnotationKind::Named(
-                            name,
-                            nodes.map(|node| self.build_type_annotation(node)).collect(),
-                        ),
+                    let name = match ty.kind {
+                        NodeKind::Name(name) => name,
                         _ => {
                             self.diagnostics.add(Diagnostic::error(
                                 "expected type",
                                 vec![Note::primary(ty.span, "this is not a type")],
                             ));
 
-                            TypeAnnotationKind::Error
+                            return TypeAnnotationKind::Error;
                         }
-                    }
+                    };
+
+                    TypeAnnotationKind::Named(
+                        name,
+                        nodes.map(|node| self.build_type_annotation(node)).collect(),
+                    )
                 }
                 NodeKind::Tuple(nodes) => TypeAnnotationKind::Tuple(
                     nodes
@@ -856,7 +891,7 @@ impl Compiler<'_> {
 
                     TypeAnnotationKind::Error
                 }
-            },
+            })(),
         }
     }
 

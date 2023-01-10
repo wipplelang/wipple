@@ -6,7 +6,7 @@ macro_rules! lints {
 
         paste::paste! {
             impl Compiler<'_> {
-                pub fn lint(&self, program: &analysis::Program) {
+                pub(crate) fn lint(&self, program: &analysis::Program) {
                     $(
                         self.[<$lint _lint>](program);
                     )*
