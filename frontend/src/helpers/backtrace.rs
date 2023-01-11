@@ -46,6 +46,8 @@ impl Eq for Backtrace {}
 #[cfg(feature = "arbitrary")]
 impl<'a> arbitrary::Arbitrary<'a> for Backtrace {
     fn arbitrary(_: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
-        Ok(Backtrace(None))
+        // Prevent fuzzing from generating error expressions without
+        // accompanying diagnostics
+        Err(arbitrary::Error::IncorrectFormat)
     }
 }

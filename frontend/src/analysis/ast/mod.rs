@@ -550,7 +550,7 @@ impl Compiler<'_> {
                             Box::new(self.build_expression(func)),
                             exprs.map(|expr| self.build_expression(expr)).collect(),
                         ),
-                        None => ExpressionKind::error(self),
+                        None => ExpressionKind::Tuple(Vec::new()),
                     }
                 }
                 NodeKind::Block(statements) => ExpressionKind::Block(

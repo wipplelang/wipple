@@ -53,7 +53,7 @@ impl Expr {
     }
 }
 
-pub struct Parser<'a, 'src> {
+pub(crate) struct Parser<'a, 'src> {
     pub compiler: &'a Compiler<'a>,
     pub lexer: Peekable<SpannedIter<'src, Token<'src>>>,
     pub len: usize,

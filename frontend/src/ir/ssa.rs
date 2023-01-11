@@ -173,13 +173,11 @@ impl Converter<'_, '_> {
             tail,
             ty: self.convert_type(&expr.ty),
             kind: match &expr.kind {
-                #[cfg(debug_assertions)]
                 analysis::ExpressionKind::Error(trace) => {
-                    panic!("found error expression in program: {:?}", trace)
-                }
-                #[cfg(not(debug_assertions))]
-                analysis::ExpressionKind::Error(trace) => {
-                    panic!("found error expression in program")
+                    panic!(
+                        "found error expression in program: {:?}",
+                        trace.clone().into_inner()
+                    )
                 }
                 analysis::ExpressionKind::Marker => ExpressionKind::Marker,
                 analysis::ExpressionKind::Variable(var) => ExpressionKind::Variable(*var),

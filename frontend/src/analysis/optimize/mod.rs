@@ -430,12 +430,12 @@ mod util {
 
         pub fn is_pure(&self, program: &Program, stack: &mut Vec<ItemId>) -> bool {
             match &self.kind {
-                #[cfg(debug_assertions)]
                 ExpressionKind::Error(trace) => {
-                    panic!("found error expression in program: {:?}", trace)
+                    panic!(
+                        "found error expression in program: {:?}",
+                        trace.clone().into_inner()
+                    )
                 }
-                #[cfg(not(debug_assertions))]
-                ExpressionKind::Error(trace) => panic!("found error expression in program"),
                 ExpressionKind::Marker
                 | ExpressionKind::Text(_)
                 | ExpressionKind::Number(_)

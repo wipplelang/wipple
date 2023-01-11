@@ -19,6 +19,7 @@ use std::{
     cmp::Ordering,
     collections::{BTreeMap, HashMap, HashSet, VecDeque},
     fmt::Debug,
+    panic::RefUnwindSafe,
     sync::Arc,
 };
 use strum::EnumString;
@@ -297,7 +298,8 @@ pub enum Template {
                     &'a Scope,
                 ) -> BoxFuture<'a, Node>
                 + Send
-                + Sync,
+                + Sync
+                + RefUnwindSafe,
         >,
     ),
 }
@@ -345,7 +347,8 @@ impl Template {
             ) -> BoxFuture<'a, Node>
             + 'static
             + Send
-            + Sync,
+            + Sync
+            + RefUnwindSafe,
     ) -> Self {
         Template::Function(Arc::new(f))
     }
