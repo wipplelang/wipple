@@ -26,5 +26,3 @@ jobs:
           check_name: Wipple Test Report
           require_tests: true
           fail_on_failure: true
-
-      - run: .github/scripts/fuzz.sh

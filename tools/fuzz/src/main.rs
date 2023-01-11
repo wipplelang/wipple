@@ -16,16 +16,19 @@ use std::{
 };
 use wipple_frontend::{analysis::expand, helpers::Shared};
 
-#[derive(Debug, clap::Parser)]
+#[derive(Debug, Clone, Copy, clap::Parser)]
 struct Args {
     #[clap(long, arg_enum)]
     test: Test,
 
     #[clap(long)]
     limit: Option<usize>,
+
+    #[clap(long)]
+    quiet: bool,
 }
 
-#[derive(Debug, Clone, clap::ArgEnum)]
+#[derive(Debug, Clone, Copy, clap::ArgEnum)]
 enum Test {
     Parsing,
     Compiling,
@@ -35,14 +38,14 @@ fn main() -> ExitCode {
     let args = Args::parse();
 
     match args.test {
-        Test::Parsing => fuzz::<String, _>(parsing::fuzz, args.limit),
-        Test::Compiling => fuzz::<expand::File, _>(compiling::fuzz, args.limit),
+        Test::Parsing => fuzz::<String, _>(parsing::fuzz, args),
+        Test::Compiling => fuzz::<expand::File, _>(compiling::fuzz, args),
     }
 }
 
 fn fuzz<T: Debug + RefUnwindSafe + Borrow<U> + for<'b> arbitrary::Arbitrary<'b>, U: ?Sized>(
     f: fn(&U),
-    limit: Option<usize>,
+    args: Args,
 ) -> ExitCode {
     let task = move || loop {
         let data = std::iter::repeat_with(rand::random)
@@ -69,10 +72,12 @@ fn fuzz<T: Debug + RefUnwindSafe + Borrow<U> + for<'b> arbitrary::Arbitrary<'b>,
     let record_iteration = move || {
         let iteration = iteration.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
 
-        clearscreen::clear().ok();
-        println!("#{} iterations complete", iteration);
+        if !args.quiet {
+            clearscreen::clear().ok();
+            println!("#{} iterations complete", iteration);
+        }
 
-        limit.map_or(true, |limit| iteration < limit)
+        args.limit.map_or(true, |limit| iteration < limit)
     };
 
     let backtrace = Shared::new(None);
