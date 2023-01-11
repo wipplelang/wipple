@@ -1,7 +1,7 @@
 use crate::{
     diagnostics::*,
     parse::{Span, Token},
-    FilePath, InternedString,
+    Compiler, FilePath, InternedString,
 };
 use lazy_static::lazy_static;
 use logos::SpannedIter;
@@ -53,12 +53,12 @@ impl Expr {
     }
 }
 
-pub struct Parser<'src> {
+pub struct Parser<'a, 'src> {
+    pub compiler: &'a Compiler<'a>,
     pub lexer: Peekable<SpannedIter<'src, Token<'src>>>,
     pub len: usize,
     pub offset: usize,
     pub file: FilePath,
-    pub diagnostics: Diagnostics,
 }
 
 #[derive(Clone, Copy)]
@@ -68,7 +68,7 @@ pub enum ParseError {
     EndOfFile,
 }
 
-impl<'src> Parser<'src> {
+impl<'a, 'src> Parser<'a, 'src> {
     pub fn parse_file(&mut self) -> Option<(Vec<Expr>, Vec<Statement>)> {
         while let (_, Some(Token::Comment(_) | Token::LineBreak)) = self.peek() {
             self.consume();
@@ -79,14 +79,13 @@ impl<'src> Parser<'src> {
         let (statements, _) = self.parse_statements(None)?;
 
         if let (span, Some(token)) = self.consume() {
-            self.diagnostics.add(Diagnostic::new(
-                DiagnosticLevel::Error,
+            self.compiler.add_error(
                 "syntax error",
                 vec![Note::primary(
                     span,
                     format!("expected end of file, found {}", token),
                 )],
-            ));
+            );
 
             return None;
         }
@@ -179,14 +178,13 @@ impl<'src> Parser<'src> {
 
             if let Some(end_token) = end_token {
                 if parsed_end_token.is_none() {
-                    self.diagnostics.add(Diagnostic::new(
-                        DiagnosticLevel::Error,
+                    self.compiler.add_error(
                         "syntax error",
                         vec![Note::primary(
                             self.eof_span(),
                             format!("expected {}, found end of file", end_token),
                         )],
-                    ));
+                    );
 
                     return None;
                 }
@@ -240,11 +238,10 @@ impl<'src> Parser<'src> {
                     Err(ParseError::WrongTokenType) => parse_each!($($rest),*),
                     Err(ParseError::InvalidExpr) => None,
                     Err(ParseError::EndOfFile) => {
-                        self.diagnostics.add(Diagnostic::new(
-                            DiagnosticLevel::Error,
+                        self.compiler.add_error(
                             "syntax error",
                             vec![Note::primary(self.eof_span(), "expected expression, found end of file")],
-                        ));
+                        );
 
                         None
                     }
@@ -253,8 +250,7 @@ impl<'src> Parser<'src> {
             () => {{
                 let (span, token) = self.consume();
 
-                self.diagnostics.add(Diagnostic::new(
-                    DiagnosticLevel::Error,
+                self.compiler.add_error(
                     "syntax error",
                     vec![Note::primary(
                         span,
@@ -266,7 +262,7 @@ impl<'src> Parser<'src> {
                                 .unwrap_or("end of file")
                         ),
                     )],
-                ));
+                );
 
                 None
             }};
@@ -325,14 +321,13 @@ impl<'src> Parser<'src> {
                     Err(e) => {
                         error = true;
 
-                        self.diagnostics.add(Diagnostic::new(
-                            DiagnosticLevel::Error,
+                        self.compiler.add_error(
                             "syntax error",
                             vec![Note::primary(
                                 Span::new(self.file, range).offset(span.start),
                                 format!("invalid character sequence in string literal ({:?})", e),
                             )],
-                        ));
+                        );
                     }
                 });
 
@@ -443,14 +438,13 @@ impl<'src> Parser<'src> {
         };
 
         if parsed_end_token.is_none() {
-            self.diagnostics.add(Diagnostic::new(
-                DiagnosticLevel::Error,
+            self.compiler.add_error(
                 "syntax error",
                 vec![Note::primary(
                     self.eof_span(),
                     format!("expected {}, found end of file", end_token),
                 )],
-            ));
+            );
 
             return None;
         }

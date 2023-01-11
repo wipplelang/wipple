@@ -30,9 +30,6 @@ struct Args {
 async fn main() -> anyhow::Result<()> {
     let args = Args::parse();
 
-    #[cfg(debug_assertions)]
-    wipple_frontend::diagnostics::set_backtrace_enabled(args.trace);
-
     let loader = loader::Loader::new(
         None,
         Some(wipple_frontend::FilePath::Path(
@@ -48,6 +45,9 @@ async fn main() -> anyhow::Result<()> {
     );
 
     let compiler = wipple_frontend::Compiler::new(&loader);
+
+    #[cfg(debug_assertions)]
+    let compiler = compiler.set_backtrace_enabled(args.trace);
 
     let pass_count = AtomicUsize::new(0);
     let fail_count = AtomicUsize::new(0);

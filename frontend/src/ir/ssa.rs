@@ -173,7 +173,14 @@ impl Converter<'_, '_> {
             tail,
             ty: self.convert_type(&expr.ty),
             kind: match &expr.kind {
-                analysis::ExpressionKind::Error => unreachable!(),
+                #[cfg(debug_assertions)]
+                analysis::ExpressionKind::Error(trace) => {
+                    panic!("found error expression in program: {:?}", trace)
+                }
+                #[cfg(not(debug_assertions))]
+                analysis::ExpressionKind::Error(trace) => {
+                    panic!("found error expression in program")
+                }
                 analysis::ExpressionKind::Marker => ExpressionKind::Marker,
                 analysis::ExpressionKind::Variable(var) => ExpressionKind::Variable(*var),
                 analysis::ExpressionKind::Text(text) => ExpressionKind::Text(*text),
@@ -309,7 +316,12 @@ impl Converter<'_, '_> {
         Pattern {
             span: Some(pattern.span),
             kind: match &pattern.kind {
-                analysis::PatternKind::Error => unreachable!(),
+                #[cfg(debug_assertions)]
+                analysis::PatternKind::Error(trace) => {
+                    panic!("found error pattern in program: {:?}", trace)
+                }
+                #[cfg(not(debug_assertions))]
+                analysis::PatternKind::Error(trace) => panic!("found error pattern in program"),
                 analysis::PatternKind::Wildcard => PatternKind::Wildcard,
                 analysis::PatternKind::Variable(var) => PatternKind::Variable(*var),
                 analysis::PatternKind::Text(text) => PatternKind::Text(*text),

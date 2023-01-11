@@ -101,13 +101,13 @@ impl Compiler<'_> {
                     match $expr {
                         Ok(x) => x,
                         Err(error) => {
-                            compiler.diagnostics.add(Diagnostic::error(
+                            compiler.add_error(
                                 format!("cannot load file `{}`: {}", path, error),
                                 source_span
                                     .map(|span| Note::primary(span, "try fixing this import"))
                                     .into_iter()
                                     .collect(),
-                            ));
+                            );
 
                             return None;
                         }
@@ -156,13 +156,13 @@ impl Compiler<'_> {
                         .collect::<Vec<_>>()
                         .join(", which imports");
 
-                    compiler.diagnostics.add(Diagnostic::error(
+                    compiler.add_error(
                         "import cycle detected",
                         vec![Note::primary(
                             source_span.unwrap(),
                             format!("this imports {}", stack),
                         )],
-                    ));
+                    );
 
                     return None;
                 }

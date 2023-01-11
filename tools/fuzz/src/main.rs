@@ -1,31 +1,35 @@
-mod lowering;
+mod compiling;
+mod parsing;
 
 use clap::Parser;
-use std::mem;
+use std::{mem, process::ExitCode};
 use wipple_frontend::helpers::Shared;
 
 #[derive(Debug, clap::Parser)]
 struct Args {
     #[clap(long, arg_enum)]
     test: Test,
+
+    #[clap(long)]
+    limit: Option<usize>,
 }
 
 #[derive(Debug, Clone, clap::ArgEnum)]
 enum Test {
     Parsing,
-    Lowering,
+    Compiling,
 }
 
-fn main() {
+fn main() -> ExitCode {
     let args = Args::parse();
 
     match args.test {
-        Test::Parsing => todo!(),
-        Test::Lowering => fuzz(lowering::fuzz),
+        Test::Parsing => fuzz(parsing::fuzz, args.limit),
+        Test::Compiling => fuzz(compiling::fuzz, args.limit),
     }
 }
 
-fn fuzz(f: fn()) {
+fn fuzz(f: fn(), limit: Option<usize>) -> ExitCode {
     let backtrace = Shared::new(None);
 
     std::panic::set_hook({
@@ -35,14 +39,13 @@ fn fuzz(f: fn()) {
         })
     });
 
-    let mut iteration = 0usize;
+    let mut iteration: usize = 1;
 
     loop {
-        print!("\rIteration #{}", iteration);
+        clearscreen::clear().ok();
+        println!("Iteration #{}", iteration);
 
         if let Err(error) = std::panic::catch_unwind(f) {
-            println!();
-
             if let Some(msg) = error
                 .downcast_ref::<&str>()
                 .copied()
@@ -56,8 +59,18 @@ fn fuzz(f: fn()) {
             if let Some(backtrace) = mem::take(&mut *backtrace.lock()) {
                 println!("{:?}", backtrace);
             }
+
+            return ExitCode::FAILURE;
         }
 
         iteration += 1;
+
+        if let Some(limit) = limit {
+            if iteration > limit {
+                break;
+            }
+        }
     }
+
+    ExitCode::SUCCESS
 }

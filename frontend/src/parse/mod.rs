@@ -19,11 +19,11 @@ impl Compiler<'_> {
         };
 
         let mut parser = Parser {
+            compiler: self,
             lexer: Lexer::new(code).spanned().peekable(),
             len: code.len(),
             offset: shebang.map(|s| "#!".len() + s.len()).unwrap_or(0),
             file,
-            diagnostics: self.diagnostics.clone(),
         };
 
         parser.parse_file().map(|(attributes, statements)| File {

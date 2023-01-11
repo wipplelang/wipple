@@ -5,7 +5,7 @@ mod builtins;
 use crate::{
     analysis::{ast, expand},
     diagnostics::*,
-    helpers::{InternedString, Shared},
+    helpers::{Backtrace, InternedString, Shared},
     parse::Span,
     BuiltinTypeId, Compiler, ConstantId, FilePath, TemplateId, TraitId, TypeId, TypeParameterId,
     VariableId,
@@ -290,7 +290,7 @@ pub struct Expression {
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub enum ExpressionKind {
-    Error,
+    Error(Backtrace),
     Marker(TypeId),
     Constant(ConstantId),
     Trait(TraitId),
@@ -312,10 +312,10 @@ pub enum ExpressionKind {
 }
 
 impl Expression {
-    fn error(span: Span) -> Self {
+    pub(crate) fn error(compiler: &Compiler, span: Span) -> Self {
         Expression {
             span,
-            kind: ExpressionKind::Error,
+            kind: ExpressionKind::Error(compiler.backtrace()),
         }
     }
 }
@@ -338,7 +338,7 @@ pub struct Pattern {
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub enum PatternKind {
-    Error,
+    Error(Backtrace),
     Wildcard,
     Number(InternedString),
     Text(InternedString),
@@ -349,6 +349,12 @@ pub enum PatternKind {
     Or(Box<Pattern>, Box<Pattern>),
     Where(Box<Pattern>, Box<Expression>),
     Tuple(Vec<Pattern>),
+}
+
+impl PatternKind {
+    fn error(compiler: &Compiler) -> Self {
+        PatternKind::Error(compiler.backtrace())
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -581,10 +587,10 @@ impl Compiler<'_> {
                     if let Some(value) = dependency.exported.get(&name) {
                         scope.insert(name, value.clone());
                     } else {
-                        self.diagnostics.add(Diagnostic::error(
+                        self.add_error(
                             format!("file does not export a value named '{}'", name),
                             vec![Note::primary(span, "no such export")],
-                        ));
+                        );
                     }
                 }
             } else {
@@ -604,7 +610,7 @@ impl Compiler<'_> {
                 .as_ref()
                 .is_none()
             {
-                self.diagnostics.add(Diagnostic::error(
+                self.add_error(
                     "uninitialized constant",
                     vec![Note::primary(
                         constant.span,
@@ -613,7 +619,7 @@ impl Compiler<'_> {
                             constant.name.unwrap()
                         ),
                     )],
-                ));
+                );
             }
         }
 
@@ -847,7 +853,7 @@ impl Compiler<'_> {
                     let parameters = self.with_parameters(ty.parameters, &scope, info);
 
                     if !ty.bounds.is_empty() {
-                        self.diagnostics.add(Diagnostic::error(
+                        self.add_error(
                             "bounds are not allowed on types",
                             vec![Note::primary(
                                 ty.bounds
@@ -857,7 +863,7 @@ impl Compiler<'_> {
                                     .with_end(ty.bounds.last().unwrap().span.end),
                                 "try moving these to the respective functions instead",
                             )],
-                        ));
+                        );
                     }
 
                     let ty = match ty.kind {
@@ -1056,24 +1062,24 @@ impl Compiler<'_> {
                                     tr
                                 }
                                 Some(_) => {
-                                    self.diagnostics.add(Diagnostic::error(
+                                    self.add_error(
                                         format!("`{}` is not a trait", bound.trait_name),
                                         vec![Note::primary(
                                             bound.trait_span,
                                             "expected a trait here",
                                         )],
-                                    ));
+                                    );
 
                                     return None;
                                 }
                                 None => {
-                                    self.diagnostics.add(Diagnostic::error(
+                                    self.add_error(
                                         format!("cannot find `{}`", bound.trait_name),
                                         vec![Note::primary(
                                             bound.trait_span,
                                             "this name is not defined",
                                         )],
-                                    ));
+                                    );
 
                                     return None;
                                 }
@@ -1131,24 +1137,24 @@ impl Compiler<'_> {
                                     tr
                                 }
                                 Some(_) => {
-                                    self.diagnostics.add(Diagnostic::error(
+                                    self.add_error(
                                         format!("`{}` is not a trait", bound.trait_name),
                                         vec![Note::primary(
                                             bound.trait_span,
                                             "expected a trait here",
                                         )],
-                                    ));
+                                    );
 
                                     return None;
                                 }
                                 None => {
-                                    self.diagnostics.add(Diagnostic::error(
+                                    self.add_error(
                                         format!("cannot find `{}`", bound.trait_name),
                                         vec![Note::primary(
                                             bound.trait_span,
                                             "this name is not defined",
                                         )],
-                                    ));
+                                    );
 
                                     return None;
                                 }
@@ -1180,22 +1186,22 @@ impl Compiler<'_> {
                             tr
                         }
                         Some(_) => {
-                            self.diagnostics.add(Diagnostic::error(
+                            self.add_error(
                                 format!("`{}` is not a trait", instance.trait_name),
                                 vec![Note::primary(instance.trait_span, "expected a trait here")],
-                            ));
+                            );
 
                             info.declarations.instances.remove(&id);
                             continue;
                         }
                         None => {
-                            self.diagnostics.add(Diagnostic::error(
+                            self.add_error(
                                 format!("cannot find `{}`", instance.trait_name),
                                 vec![Note::primary(
                                     instance.trait_span,
                                     "this name is not defined",
                                 )],
-                            ));
+                            );
 
                             info.declarations.instances.remove(&id);
                             continue;
@@ -1235,18 +1241,18 @@ impl Compiler<'_> {
                             ty
                         }
                         Some(_) => {
-                            self.diagnostics.add(Diagnostic::error(
+                            self.add_error(
                                 format!("`{}` is not a type", name),
                                 vec![Note::primary(span, "expected a type here")],
-                            ));
+                            );
 
                             continue;
                         }
                         None => {
-                            self.diagnostics.add(Diagnostic::error(
+                            self.add_error(
                                 format!("cannot find `{}`", name),
                                 vec![Note::primary(span, "this name is not defined")],
-                            ));
+                            );
 
                             continue;
                         }
@@ -1264,13 +1270,13 @@ impl Compiler<'_> {
                     {
                         TypeKind::Enumeration(constructors, names) => (constructors, names),
                         _ => {
-                            self.diagnostics.add(Diagnostic::error(
+                            self.add_error(
                                 "only enumerations may be `use`d",
                                 vec![Note::primary(
                                     span,
                                     format!("`{}` is not an enumeration", name),
                                 )],
-                            ));
+                            );
 
                             continue;
                         }
@@ -1298,26 +1304,26 @@ impl Compiler<'_> {
                             let ty = match scope_value {
                                 Some(ScopeValue::Type(id)) => id,
                                 _ => {
-                                    self.diagnostics.add(Diagnostic::error(
+                                    self.add_error(
                                         "`boolean` language item expects a type",
                                         vec![Note::primary(
                                             decl.span,
                                             "expected type declaration here",
                                         )],
-                                    ));
+                                    );
 
                                     return;
                                 }
                             };
 
                             if info.attributes.language_items.boolean.is_some() {
-                                self.diagnostics.add(Diagnostic::error(
+                                self.add_error(
                                     "`language` item may only be defined once",
                                     vec![Note::primary(
                                         decl.span,
                                         "`language` item already defined elsewhere",
                                     )],
-                                ));
+                                );
 
                                 return;
                             }
@@ -1359,13 +1365,12 @@ impl Compiler<'_> {
 
                                 if let ScopeValue::Constant(id, _) = scope.get(prev_constant_name, prev_constant_span).unwrap() {
                                     if id == prev_constant_id && associated_constant.lock().is_some() {
-                                        self.diagnostics.add(Diagnostic::error(
-                                            format!("constant `{}` already exists in this file", name),
-                                            vec![
+                                        self.add_error(
+                                            format!("constant `{}` already exists in this file", name), vec![
                                                 Note::primary(prev_constant_span, "try giving this constant a unique name"),
                                                 Note::secondary(prev_constant_span, "other constant declared here")
                                             ],
-                                        ));
+                                        );
 
                                         return assign_pattern!();
                                     }
@@ -1394,15 +1399,14 @@ impl Compiler<'_> {
 
                                 let used_variables = scope.used_variables();
                                 if !used_variables.is_empty() {
-                                    self.diagnostics.add(Diagnostic::error(
-                                        "constant cannot capture outside variables",
-                                        used_variables
+                                    self.add_error(
+                                        "constant cannot capture outside variables", used_variables
                                             .into_iter()
                                             .map(|(_, span)| {
                                                 Note::primary(span, "captured variable")
                                             })
                                             .collect(),
-                                    ));
+                                    );
                                 }
 
                                 *associated_constant.lock() = Some(value);
@@ -1416,10 +1420,9 @@ impl Compiler<'_> {
                 },
                 QueuedStatement::Expression(expr) => {
                     if let Some((_, span, _)) = prev_constant {
-                        self.diagnostics.add(Diagnostic::error(
-                            "constant must be initialized immediately following its type annotation",
-                            vec![Note::primary(span, "try initializing the constant below this")],
-                        ));
+                        self.add_error(
+                            "constant must be initialized immediately following its type annotation", vec![Note::primary(span, "try initializing the constant below this")],
+                        );
                     }
 
                     Some(self.lower_expr(ast::Expression { span, kind: expr }, scope, info))
@@ -1473,19 +1476,18 @@ impl Compiler<'_> {
                     {
                         if statement.attributes.specialize {
                             if variant_info.is_some() {
-                                self.diagnostics.add(Diagnostic::error(
+                                self.add_error(
                                     "cannot specialize a `type` variant",
                                     vec![Note::primary(span, "cannot specialize this")],
-                                ));
+                                );
 
                                 return None;
                             }
 
                             if info.specializations.contains_key(&existing_id) {
-                                self.diagnostics.add(Diagnostic::error(
-                                    "cannot specialize constant which is a specialization of another constant",
-                                    vec![Note::primary(span, "cannot specialize this")],
-                                ));
+                                self.add_error(
+                                    "cannot specialize constant which is a specialization of another constant", vec![Note::primary(span, "cannot specialize this")],
+                                );
 
                                 return None;
                             }
@@ -1495,7 +1497,7 @@ impl Compiler<'_> {
                             let existing_span =
                                 info.declarations.constants.get(&existing_id).unwrap().span;
 
-                            self.diagnostics.add(Diagnostic::error(
+                            self.add_error(
                                 format!("constant `{}` already exists in this file", name),
                                 vec![
                                     Note::primary(
@@ -1504,7 +1506,7 @@ impl Compiler<'_> {
                                     ),
                                     Note::primary(existing_span, "original constant declared here"),
                                 ],
-                            ));
+                            );
 
                             return None;
                         } else {
@@ -1597,10 +1599,10 @@ impl Compiler<'_> {
                                 Some(param)
                             }
                             _ => {
-                                self.diagnostics.add(Diagnostic::error(
+                                self.add_error(
                                     format!("cannot find type parameter `{}`", param),
                                     vec![Note::primary(span, "no such type")],
-                                ));
+                                );
 
                                 return None;
                             }
@@ -1658,19 +1660,19 @@ impl Compiler<'_> {
         }
 
         let kind = match expr.kind {
-            ast::ExpressionKind::Error => ExpressionKind::Error,
+            ast::ExpressionKind::Error(trace) => ExpressionKind::Error(trace),
             ast::ExpressionKind::Text(text) => ExpressionKind::Text(text),
             ast::ExpressionKind::Number(number) => ExpressionKind::Number(number),
             ast::ExpressionKind::Name(name) => {
                 match self.resolve_value(expr.span, name, scope, info) {
                     Some(value) => value,
                     None => {
-                        self.diagnostics.add(Diagnostic::error(
+                        self.add_error(
                             format!("cannot find `{name}`"),
                             vec![Note::primary(expr.span, "this name is not defined")],
-                        ));
+                        );
 
-                        return Expression::error(expr.span);
+                        return Expression::error(self, expr.span);
                     }
                 }
             }
@@ -1687,15 +1689,15 @@ impl Compiler<'_> {
                     let input = match inputs.first() {
                         Some(input) => input,
                         None => {
-                            self.diagnostics.add(Diagnostic::error(
+                            self.add_error(
                                 "function received no input",
                                 vec![Note::primary(
                                     function.span,
                                     "try providing an input to this function",
                                 )],
-                            ));
+                            );
 
-                            return Expression::error(expr.span);
+                            return Expression::error(self, expr.span);
                         }
                     };
 
@@ -1711,16 +1713,15 @@ impl Compiler<'_> {
                             match &input.kind {
                                 ast::ExpressionKind::Block(statements) => {
                                     if inputs.len() > 1 {
-                                        self.diagnostics.add(Diagnostic::error(
-                                            "too many inputs in structure instantiation",
-                                            vec![Note::primary(
+                                        self.add_error(
+                                            "too many inputs in structure instantiation", vec![Note::primary(
                                                 Span::join(
                                                     inputs.first().unwrap().span,
                                                     inputs.last().unwrap().span,
                                                 ),
                                                 "this structure requires a single block containing its fields",
                                             )],
-                                        ));
+                                        );
                                     }
 
                                     let fields = 'parse: {
@@ -1761,13 +1762,12 @@ impl Compiler<'_> {
                                                 ast::StatementKind::Assign(pattern, expr) => match &pattern.kind {
                                                     ast::PatternKind::Name(name) => Some((*name, expr.clone())),
                                                     _ => {
-                                                        self.diagnostics.add(Diagnostic::error(
-                                                            "structure instantiation may not contain complex patterns",
-                                                            vec![Note::primary(
+                                                        self.add_error(
+                                                            "structure instantiation may not contain complex patterns", vec![Note::primary(
                                                                 s.span,
                                                                 "try splitting this pattern into multiple names",
                                                             )]
-                                                        ));
+                                                        );
 
                                                         None
                                                     },
@@ -1778,13 +1778,12 @@ impl Compiler<'_> {
                                                 },
                                                 // TODO: 'use' inside instantiation
                                                 _ => {
-                                                    self.diagnostics.add(Diagnostic::error(
-                                                        "structure instantiation may not contain executable statements",
-                                                        vec![Note::primary(
+                                                    self.add_error(
+                                                        "structure instantiation may not contain executable statements", vec![Note::primary(
                                                             s.span,
                                                             "try removing this",
                                                         )]
-                                                    ));
+                                                    );
 
                                                     None
                                                 }
@@ -1807,12 +1806,12 @@ impl Compiler<'_> {
                                         .unwrap();
 
                                     if !matches!(ty.kind, TypeKind::Structure(_, _)) {
-                                        self.diagnostics.add(Diagnostic::error(
+                                        self.add_error(
                                             "only structures may be instantiated like this",
                                             vec![Note::primary(function.span, "not a structure")],
-                                        ));
+                                        );
 
-                                        return Expression::error(expr.span);
+                                        return Expression::error(self, expr.span);
                                     }
 
                                     ExpressionKind::Instantiate(id, fields)
@@ -1826,31 +1825,30 @@ impl Compiler<'_> {
                                                 (types, variants)
                                             }
                                             _ => {
-                                                self.diagnostics.add(Diagnostic::error(
+                                                self.add_error(
                                                 "only enumerations may be instantiated like this",
                                                 vec![Note::primary(
                                                     function.span,
                                                     "not an enumeration",
                                                 )],
-                                            ));
+                                            );
 
-                                                return Expression::error(expr.span);
+                                                return Expression::error(self, expr.span);
                                             }
                                         };
 
                                     let index = match variants.get(name) {
                                         Some(index) => *index,
                                         None => {
-                                            self.diagnostics.add(Diagnostic::error(
+                                            self.add_error(
                                             format!(
                                                 "enumeration `{}` does not declare a variant named `{}`",
                                                 ty_name,
                                                 name
-                                            ),
-                                            vec![Note::primary(input.span, "no such variant")],
-                                        ));
+                                            ), vec![Note::primary(input.span, "no such variant")],
+                                        );
 
-                                            return Expression::error(expr.span);
+                                            return Expression::error(self, expr.span);
                                         }
                                     };
 
@@ -1879,15 +1877,15 @@ impl Compiler<'_> {
                                 .uses
                                 .insert(function.span);
 
-                            self.diagnostics.add(Diagnostic::error(
+                            self.add_error(
                                 "cannot instantiate type parameter",
                                 vec![Note::primary(
                                     function.span,
                                     "the actual type this represents is not known here",
                                 )],
-                            ));
+                            );
 
-                            ExpressionKind::Error
+                            return Expression::error(self, expr.span);
                         }
                         Some(ScopeValue::BuiltinType(id)) => {
                             info.declarations
@@ -1897,12 +1895,12 @@ impl Compiler<'_> {
                                 .uses
                                 .insert(function.span);
 
-                            self.diagnostics.add(Diagnostic::error(
+                            self.add_error(
                                 "cannot instantiate builtin type",
                                 vec![Note::primary(function.span, "try using a literal instead")],
-                            ));
+                            );
 
-                            ExpressionKind::Error
+                            return Expression::error(self, expr.span);
                         }
                         _ => function_call!(self.lower_expr(*function, scope, info), inputs).kind,
                     }
@@ -1938,12 +1936,11 @@ impl Compiler<'_> {
                     let func = match RuntimeFunction::from_str(identifier.as_str()) {
                         Ok(func) => func,
                         Err(_) => {
-                            self.diagnostics.add(Diagnostic::error(
-                                "unknown runtime function",
-                                vec![Note::primary(expr.span, "check the Wipple source code for the latest list of runtime functions")],
-                            ));
+                            self.add_error(
+                                "unknown runtime function", vec![Note::primary(expr.span, "check the Wipple source code for the latest list of runtime functions")],
+                            );
 
-                            return ExpressionKind::Error;
+                            return Expression::error(self, expr.span).kind;
                         }
                     };
 
@@ -2006,13 +2003,13 @@ impl Compiler<'_> {
 
                         if !parameters.is_empty() {
                             // TODO: Higher-kinded types
-                            self.diagnostics.add(Diagnostic::error(
+                            self.add_error(
                                 "higher-kinded types are not yet supported",
                                 vec![Note::primary(
                                     ty.span,
                                     "try writing this on its own, with no parameters",
                                 )],
-                            ));
+                            );
                         }
 
                         TypeAnnotationKind::Parameter(param)
@@ -2028,10 +2025,10 @@ impl Compiler<'_> {
                         TypeAnnotationKind::Builtin(builtin, parameters)
                     }
                     _ => {
-                        self.diagnostics.add(Diagnostic::error(
+                        self.add_error(
                             format!("cannot find type `{}`", name),
                             vec![Note::primary(ty.span, "no such type")],
-                        ));
+                        );
 
                         return TypeAnnotation::error(ty.span);
                     }
@@ -2056,7 +2053,7 @@ impl Compiler<'_> {
 
     fn lower_pattern(&self, pattern: ast::Pattern, scope: &Scope, info: &mut Info) -> Pattern {
         let kind = (|| match pattern.kind {
-            ast::PatternKind::Error => PatternKind::Error,
+            ast::PatternKind::Error(trace) => PatternKind::Error(trace),
             ast::PatternKind::Wildcard => PatternKind::Wildcard,
             ast::PatternKind::Number(number) => PatternKind::Number(number),
             ast::PatternKind::Text(text) => PatternKind::Text(text),
@@ -2093,12 +2090,12 @@ impl Compiler<'_> {
                 let first = match scope.get(name, name_span) {
                     Some(name) => name,
                     None => {
-                        self.diagnostics.add(Diagnostic::error(
+                        self.add_error(
                             format!("cannot find `{}`", name),
                             vec![Note::primary(name_span, "this name is not defined")],
-                        ));
+                        );
 
-                        return PatternKind::Error;
+                        return PatternKind::error(self);
                     }
                 };
 
@@ -2125,60 +2122,60 @@ impl Compiler<'_> {
                         {
                             TypeKind::Enumeration(_, variants) => variants,
                             _ => {
-                                self.diagnostics.add(Diagnostic::error(
+                                self.add_error(
                                     format!("cannot use `{}` in pattern", name),
                                     vec![Note::primary(
                                         name_span,
                                         "only enumeration types may be used in patterns",
                                     )],
-                                ));
+                                );
 
-                                return PatternKind::Error;
+                                return PatternKind::error(self);
                             }
                         };
 
                         let second = match values.next() {
                             Some(value) => value,
                             None => {
-                                self.diagnostics.add(Diagnostic::error(
+                                self.add_error(
                                     "incomplete pattern",
                                     vec![Note::primary(
                                         name_span,
                                         "expected a variant name after this",
                                     )],
-                                ));
+                                );
 
-                                return PatternKind::Error;
+                                return PatternKind::error(self);
                             }
                         };
 
                         let variant_name = match second.kind {
                             ast::PatternKind::Name(name) => name,
                             _ => {
-                                self.diagnostics.add(Diagnostic::error(
+                                self.add_error(
                                     "invalid pattern",
                                     vec![Note::primary(
                                         second.span,
                                         "expected a variant name here",
                                     )],
-                                ));
+                                );
 
-                                return PatternKind::Error;
+                                return PatternKind::error(self);
                             }
                         };
 
                         let variant = match variants.get(&variant_name) {
                             Some(variant) => *variant,
                             None => {
-                                self.diagnostics.add(Diagnostic::error(
+                                self.add_error(
                                     format!(
                                         "enumeration `{}` does not declare a variant named `{}`",
                                         name, variant_name
                                     ),
                                     vec![Note::primary(second.span, "no such variant")],
-                                ));
+                                );
 
-                                return PatternKind::Error;
+                                return PatternKind::error(self);
                             }
                         };
 
@@ -2207,12 +2204,12 @@ impl Compiler<'_> {
                         )
                     }
                     _ => {
-                        self.diagnostics.add(Diagnostic::error(
+                        self.add_error(
                             format!("cannot use `{}` in pattern", name),
                             vec![Note::primary(name_span, "expected a type or variant here")],
-                        ));
+                        );
 
-                        PatternKind::Error
+                        PatternKind::error(self)
                     }
                 }
             }
@@ -2271,12 +2268,12 @@ impl Compiler<'_> {
                 {
                     TypeKind::Marker => Some(ExpressionKind::Marker(id)),
                     _ => {
-                        self.diagnostics.add(Diagnostic::error(
+                        self.add_error(
                             "cannot use type as value",
                             vec![Note::primary(span, "try instantiating the type")],
-                        ));
+                        );
 
-                        Some(ExpressionKind::Error)
+                        Some(Expression::error(self, span).kind)
                     }
                 }
             }
@@ -2288,12 +2285,12 @@ impl Compiler<'_> {
                     .uses
                     .insert(span);
 
-                self.diagnostics.add(Diagnostic::error(
+                self.add_error(
                     "cannot use builtin type as value",
                     vec![Note::primary(span, "try using a literal instead")],
-                ));
+                );
 
-                Some(ExpressionKind::Error)
+                Some(Expression::error(self, span).kind)
             }
             Some(ScopeValue::Trait(id)) => {
                 info.declarations
@@ -2313,15 +2310,14 @@ impl Compiler<'_> {
                     .uses
                     .insert(span);
 
-                self.diagnostics.add(Diagnostic::error(
-                    "cannot use type parameter as value",
-                    vec![Note::primary(
+                self.add_error(
+                    "cannot use type parameter as value", vec![Note::primary(
                         span,
                         "type parameters cannot be instantiated because the actual type is not known here",
                     )],
-                ));
+                );
 
-                Some(ExpressionKind::Error)
+                Some(Expression::error(self, span).kind)
             }
             Some(ScopeValue::Constant(id, _)) => {
                 info.declarations

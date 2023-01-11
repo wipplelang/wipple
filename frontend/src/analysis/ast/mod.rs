@@ -1,7 +1,7 @@
 use crate::{
     analysis::expand::{self, Node, NodeKind},
     diagnostics::*,
-    helpers::InternedString,
+    helpers::{Backtrace, InternedString},
     parse::Span,
     Compiler, FilePath,
 };
@@ -64,7 +64,7 @@ pub struct Expression {
 
 #[derive(Debug, Clone)]
 pub enum ExpressionKind {
-    Error,
+    Error(Backtrace),
     Name(InternedString),
     Number(InternedString),
     Text(InternedString),
@@ -76,6 +76,12 @@ pub enum ExpressionKind {
     External(InternedString, InternedString, Vec<Expression>),
     Annotate(Box<Expression>, TypeAnnotation),
     Tuple(Vec<Expression>),
+}
+
+impl ExpressionKind {
+    fn error(compiler: &Compiler) -> Self {
+        ExpressionKind::Error(compiler.backtrace())
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -115,7 +121,7 @@ pub struct Pattern {
 
 #[derive(Debug, Clone)]
 pub enum PatternKind {
-    Error,
+    Error(Backtrace),
     Wildcard,
     Number(InternedString),
     Text(InternedString),
@@ -126,6 +132,12 @@ pub enum PatternKind {
     Or(Box<Pattern>, Box<Pattern>),
     Where(Box<Pattern>, Box<Expression>),
     Tuple(Vec<Pattern>),
+}
+
+impl PatternKind {
+    fn error(compiler: &Compiler) -> Self {
+        PatternKind::Error(compiler.backtrace())
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -206,7 +218,9 @@ impl Compiler<'_> {
                         NodeKind::TypeFunction(lhs, rhs) => {
                             let (params, bounds) = match self.build_type_function(*lhs) {
                                 Some((params, bounds)) => (params, bounds),
-                                None => return StatementKind::Expression(ExpressionKind::Error),
+                                None => {
+                                    return StatementKind::Expression(ExpressionKind::error(self))
+                                }
                             };
 
                             match rhs.kind {
@@ -221,19 +235,21 @@ impl Compiler<'_> {
                                         Some(instance) => StatementKind::Declaration(
                                             Declaration::Instance(instance),
                                         ),
-                                        None => StatementKind::Expression(ExpressionKind::Error),
+                                        None => {
+                                            StatementKind::Expression(ExpressionKind::error(self))
+                                        }
                                     }
                                 }
                                 _ => {
-                                    self.diagnostics.add(Diagnostic::error(
+                                    self.add_error(
                                         "expected instance here",
                                         vec![Note::primary(
                                             rhs.span,
                                             "try adding `instance` to the left-hand side of `:`",
                                         )],
-                                    ));
+                                    );
 
-                                    StatementKind::Expression(ExpressionKind::Error)
+                                    StatementKind::Expression(ExpressionKind::error(self))
                                 }
                             }
                         }
@@ -248,7 +264,7 @@ impl Compiler<'_> {
                                 Some(instance) => {
                                     StatementKind::Declaration(Declaration::Instance(instance))
                                 }
-                                None => StatementKind::Expression(ExpressionKind::Error),
+                                None => StatementKind::Expression(ExpressionKind::error(self)),
                             }
                         }
                         _ => {
@@ -256,41 +272,41 @@ impl Compiler<'_> {
 
                             match value.kind {
                                 NodeKind::Assign(_, _) => {
-                                    self.diagnostics.add(Diagnostic::error(
+                                    self.add_error(
                                         "expected expression, found assignment",
                                         vec![Note::primary(
                                             value.span,
                                             "try moving this variable assignment onto its own line",
                                         )],
-                                    ));
+                                    );
 
-                                    StatementKind::Expression(ExpressionKind::Error)
+                                    StatementKind::Expression(ExpressionKind::error(self))
                                 }
                                 NodeKind::Template(_, _) => {
-                                    self.diagnostics.add(Diagnostic::error(
+                                    self.add_error(
                                         "unexpanded template",
                                         vec![Note::primary(
                                             value.span,
                                             "this template was never expanded",
                                         )],
-                                    ));
+                                    );
 
-                                    StatementKind::Expression(ExpressionKind::Error)
+                                    StatementKind::Expression(ExpressionKind::error(self))
                                 }
                                 NodeKind::Type(fields) => {
                                     let name = match pattern.kind {
                                         PatternKind::Name(name) => name,
                                         _ => {
-                                            self.diagnostics.add(Diagnostic::error(
+                                            self.add_error(
                                                 "type declaration must be assigned to a name",
                                                 vec![Note::primary(
                                                     value.span,
                                                     "try providing a name here",
                                                 )],
-                                            ));
+                                            );
 
                                             return StatementKind::Expression(
-                                                ExpressionKind::Error,
+                                                ExpressionKind::error(self),
                                             );
                                         }
                                     };
@@ -306,23 +322,25 @@ impl Compiler<'_> {
                                                 },
                                             ))
                                         }
-                                        None => StatementKind::Expression(ExpressionKind::Error),
+                                        None => {
+                                            StatementKind::Expression(ExpressionKind::error(self))
+                                        }
                                     }
                                 }
                                 NodeKind::Trait(ty) => {
                                     let name = match pattern.kind {
                                         PatternKind::Name(name) => name,
                                         _ => {
-                                            self.diagnostics.add(Diagnostic::error(
+                                            self.add_error(
                                                 "trait declaration must be assigned to a name",
                                                 vec![Note::primary(
                                                     value.span,
                                                     "try providing a name here",
                                                 )],
-                                            ));
+                                            );
 
                                             return StatementKind::Expression(
-                                                ExpressionKind::Error,
+                                                ExpressionKind::error(self),
                                             );
                                         }
                                     };
@@ -340,28 +358,28 @@ impl Compiler<'_> {
                                     let name = match pattern.kind {
                                         PatternKind::Name(name) => name,
                                         _ => {
-                                            self.diagnostics.add(Diagnostic::error(
-                                            "type or trait declaration must be assigned to a name",
-                                            vec![Note::primary(
+                                            self.add_error(
+                                            "type or trait declaration must be assigned to a name", vec![Note::primary(
                                                 value.span,
                                                 "try providing a name here",
                                             )],
-                                        ));
+                                        );
 
                                             return StatementKind::Expression(
-                                                ExpressionKind::Error,
+                                                ExpressionKind::error(self),
                                             );
                                         }
                                     };
 
-                                    let (parameters, bounds) = match self
-                                        .build_type_function(*parameters)
-                                    {
-                                        Some((parameters, bounds)) => (parameters, bounds),
-                                        None => {
-                                            return StatementKind::Expression(ExpressionKind::Error)
-                                        }
-                                    };
+                                    let (parameters, bounds) =
+                                        match self.build_type_function(*parameters) {
+                                            Some((parameters, bounds)) => (parameters, bounds),
+                                            None => {
+                                                return StatementKind::Expression(
+                                                    ExpressionKind::error(self),
+                                                )
+                                            }
+                                        };
 
                                     match node.kind {
                                         NodeKind::Type(fields) => {
@@ -376,9 +394,9 @@ impl Compiler<'_> {
                                                         },
                                                     ))
                                                 }
-                                                None => {
-                                                    StatementKind::Expression(ExpressionKind::Error)
-                                                }
+                                                None => StatementKind::Expression(
+                                                    ExpressionKind::error(self),
+                                                ),
                                             }
                                         }
                                         NodeKind::Trait(ty) => {
@@ -392,15 +410,14 @@ impl Compiler<'_> {
                                             ))
                                         }
                                         _ => {
-                                            self.diagnostics.add(Diagnostic::error(
-                                            "expected type or trait declaration in type function",
-                                            vec![Note::primary(
+                                            self.add_error(
+                                            "expected type or trait declaration in type function", vec![Note::primary(
                                                 node.span,
                                                 "only types and traits may have type parameters",
                                             )],
-                                        ));
+                                        );
 
-                                            StatementKind::Expression(ExpressionKind::Error)
+                                            StatementKind::Expression(ExpressionKind::error(self))
                                         }
                                     }
                                 }
@@ -432,7 +449,9 @@ impl Compiler<'_> {
                                     match self.build_type_function(*parameters) {
                                         Some((parameters, bounds)) => (parameters, bounds),
                                         None => {
-                                            return StatementKind::Expression(ExpressionKind::Error)
+                                            return StatementKind::Expression(
+                                                ExpressionKind::error(self),
+                                            )
                                         }
                                     };
 
@@ -456,12 +475,12 @@ impl Compiler<'_> {
                         let name = match expr.kind {
                             NodeKind::Name(name) => name,
                             _ => {
-                                self.diagnostics.add(Diagnostic::error(
+                                self.add_error(
                                     "`use` expects a path to a file or a name of a type",
                                     vec![Note::primary(expr.span, "expected a path or type here")],
-                                ));
+                                );
 
-                                return StatementKind::Expression(ExpressionKind::Error);
+                                return StatementKind::Expression(ExpressionKind::error(self));
                             }
                         };
 
@@ -483,16 +502,16 @@ impl Compiler<'_> {
     ) -> Option<Instance> {
         let trait_span = trait_name.span;
         let trait_name = match trait_name.kind {
-            NodeKind::Error => return None,
+            NodeKind::Error(_) => return None,
             NodeKind::Name(name) => name,
             _ => {
-                self.diagnostics.add(Diagnostic::error(
+                self.add_error(
                     "expected trait name",
                     vec![Note::primary(
                         trait_name.span,
                         "`instance` requires the name of a trait",
                     )],
-                ));
+                );
 
                 return None;
             }
@@ -519,7 +538,7 @@ impl Compiler<'_> {
         Expression {
             span: node.span,
             kind: (|| match node.kind {
-                NodeKind::Error => ExpressionKind::Error,
+                NodeKind::Error(trace) => ExpressionKind::Error(trace),
                 NodeKind::Empty => ExpressionKind::Tuple(Vec::new()),
                 NodeKind::Name(name) => ExpressionKind::Name(name),
                 NodeKind::Text(text) => ExpressionKind::Text(text),
@@ -531,7 +550,7 @@ impl Compiler<'_> {
                             Box::new(self.build_expression(func)),
                             exprs.map(|expr| self.build_expression(expr)).collect(),
                         ),
-                        None => ExpressionKind::Error,
+                        None => ExpressionKind::error(self),
                     }
                 }
                 NodeKind::Block(statements) => ExpressionKind::Block(
@@ -546,31 +565,31 @@ impl Compiler<'_> {
                 ),
                 NodeKind::External(lib, identifier, inputs) => {
                     let lib = match lib.kind {
-                        NodeKind::Error => return ExpressionKind::Error,
+                        NodeKind::Error(trace) => return ExpressionKind::Error(trace),
                         NodeKind::Text(text) => text,
                         _ => {
-                            self.diagnostics.add(Diagnostic::error(
+                            self.add_error(
                                 "expected text here",
                                 vec![Note::primary(lib.span, "`external` requires an ABI")],
-                            ));
+                            );
 
-                            return ExpressionKind::Error;
+                            return ExpressionKind::error(self);
                         }
                     };
 
                     let identifier = match identifier.kind {
-                        NodeKind::Error => return ExpressionKind::Error,
+                        NodeKind::Error(trace) => return ExpressionKind::Error(trace),
                         NodeKind::Text(text) => text,
                         _ => {
-                            self.diagnostics.add(Diagnostic::error(
+                            self.add_error(
                                 "expected text here",
                                 vec![Note::primary(
                                     identifier.span,
                                     "`external` requires an identifier",
                                 )],
-                            ));
+                            );
 
-                            return ExpressionKind::Error;
+                            return ExpressionKind::error(self);
                         }
                     };
 
@@ -603,10 +622,10 @@ impl Compiler<'_> {
                                     body: *body,
                                 }),
                                 _ => {
-                                    self.diagnostics.add(Diagnostic::error(
+                                    self.add_error(
                                         "expected function",
                                         vec![Note::primary(expr.span, "this is not a function")],
-                                    ));
+                                    );
 
                                     None
                                 }
@@ -651,12 +670,12 @@ impl Compiler<'_> {
                     ExpressionKind::End(Box::new(self.build_expression(*value)))
                 }
                 _ => {
-                    self.diagnostics.add(Diagnostic::error(
+                    self.add_error(
                         "expected expression",
                         vec![Note::primary(node.span, "this is not an expression")],
-                    ));
+                    );
 
-                    ExpressionKind::Error
+                    ExpressionKind::error(self)
                 }
             })(),
         }
@@ -667,7 +686,7 @@ impl Compiler<'_> {
             span: node.span,
             kind: (|| {
                 match node.kind {
-                    NodeKind::Error => PatternKind::Error,
+                    NodeKind::Error(trace) => PatternKind::Error(trace),
                     NodeKind::Underscore => PatternKind::Wildcard,
                     NodeKind::Name(name) => PatternKind::Name(name),
                     NodeKind::Block(statements) => {
@@ -679,21 +698,20 @@ impl Compiler<'_> {
                                         Box<dyn Iterator<Item = (InternedString, Pattern)>>,
                                     > {
                                         if statement.attributes != StatementAttributes::default() {
-                                            self.diagnostics.add(Diagnostic::error(
-                                                "attributes are not supported inside patterns",
-                                                vec![Note::primary(
+                                            self.add_error(
+                                                "attributes are not supported inside patterns", vec![Note::primary(
                                                     statement.node.span,
                                                     "try removing this",
                                                 )],
-                                            ));
+                                            );
                                         }
 
                                         match statement.node.kind {
-                                            NodeKind::Error => None,
+                                            NodeKind::Error(_) => None,
                                             NodeKind::List(nodes) => Some(Box::new(
                                                 nodes.into_iter().filter_map(|node| {
                                                     let (name, pattern) = match node.kind {
-                                                        NodeKind::Error => return None,
+                                                        NodeKind::Error(_) => return None,
                                                         NodeKind::Name(name) => (
                                                             name,
                                                             Pattern {
@@ -702,13 +720,12 @@ impl Compiler<'_> {
                                                             },
                                                         ),
                                                         _ => {
-                                                            self.diagnostics.add(Diagnostic::error(
-                                                                "invalid pattern in destructuring pattern",
-                                                                vec![Note::primary(
+                                                            self.add_error(
+                                                                "invalid pattern in destructuring pattern", vec![Note::primary(
                                                                     node.span,
                                                                     "expected name here",
                                                                 )],
-                                                            ));
+                                                            );
 
                                                             return None;
                                                         }
@@ -730,13 +747,12 @@ impl Compiler<'_> {
                                                 let name = match left.kind {
                                                     NodeKind::Name(name) => name,
                                                     _ => {
-                                                        self.diagnostics.add(Diagnostic::error(
-                                                            "invalid pattern in destructuring pattern",
-                                                            vec![Note::primary(
+                                                        self.add_error(
+                                                            "invalid pattern in destructuring pattern", vec![Note::primary(
                                                                 left.span,
                                                                 "expected name here",
                                                             )],
-                                                        ));
+                                                        );
 
                                                         return None;
                                                     }
@@ -747,13 +763,12 @@ impl Compiler<'_> {
                                                 Some(Box::new(std::iter::once((name, pattern))))
                                             }
                                             _ => {
-                                                self.diagnostics.add(Diagnostic::error(
-                                                    "invalid pattern in destructuring pattern",
-                                                    vec![Note::primary(
+                                                self.add_error(
+                                                    "invalid pattern in destructuring pattern", vec![Note::primary(
                                                         node.span,
                                                         "try removing this",
                                                     )],
-                                                ));
+                                                );
 
                                                 None
                                             }
@@ -770,15 +785,14 @@ impl Compiler<'_> {
                         let name = match nodes.next() {
                             Some(node) => node,
                             None => {
-                                self.diagnostics.add(Diagnostic::error(
-                                    "expected variant name",
-                                    vec![Note::primary(
+                                self.add_error(
+                                    "expected variant name", vec![Note::primary(
                                         node.span,
                                         "only variants may be used in this kind of pattern",
                                     )],
-                                ));
+                                );
 
-                                return PatternKind::Error;
+                                return PatternKind::error(self);
                             },
                         };
 
@@ -787,15 +801,14 @@ impl Compiler<'_> {
                         let name = match name.kind {
                             NodeKind::Name(name) => name,
                             _ => {
-                                self.diagnostics.add(Diagnostic::error(
-                                    "expected variant name",
-                                    vec![Note::primary(
+                                self.add_error(
+                                    "expected variant name", vec![Note::primary(
                                         node.span,
                                         "only variants may be used in this kind of pattern",
                                     )],
-                                ));
+                                );
 
-                                return PatternKind::Error;
+                                return PatternKind::error(self);
                             }
                         };
 
@@ -827,15 +840,15 @@ impl Compiler<'_> {
                             .collect(),
                     ),
                     _ => {
-                        self.diagnostics.add(Diagnostic::error(
+                        self.add_error(
                             "expected pattern",
                             vec![Note::primary(
-                            node.span,
-                            "values may not appear on the left-hand side of a variable assignment",
-                        )],
-                        ));
+                                node.span,
+                                "values may not appear on the left-hand side of a variable assignment",
+                            )],
+                        );
 
-                        PatternKind::Error
+                        PatternKind::error(self)
                     }
                 }
             })(),
@@ -863,10 +876,10 @@ impl Compiler<'_> {
                     let name = match ty.kind {
                         NodeKind::Name(name) => name,
                         _ => {
-                            self.diagnostics.add(Diagnostic::error(
+                            self.add_error(
                                 "expected type",
                                 vec![Note::primary(ty.span, "this is not a type")],
-                            ));
+                            );
 
                             return TypeAnnotationKind::Error;
                         }
@@ -884,10 +897,10 @@ impl Compiler<'_> {
                         .collect(),
                 ),
                 _ => {
-                    self.diagnostics.add(Diagnostic::error(
+                    self.add_error(
                         "expected type",
                         vec![Note::primary(node.span, "this is not a type")],
-                    ));
+                    );
 
                     TypeAnnotationKind::Error
                 }
@@ -900,16 +913,16 @@ impl Compiler<'_> {
             ($tys:expr) => {
                 $tys.into_iter()
                     .map(|node| match node.kind {
-                        NodeKind::Error => None,
+                        NodeKind::Error(_) => None,
                         NodeKind::Name(name) => Some(TypeParameter {
                             span: node.span,
                             name,
                         }),
                         _ => {
-                            self.diagnostics.add(Diagnostic::error(
+                            self.add_error(
                                 "expected type parameter",
                                 vec![Note::primary(node.span, "try removing this")],
-                            ));
+                            );
 
                             None
                         }
@@ -926,13 +939,13 @@ impl Compiler<'_> {
                     let trait_name = list.next().unwrap();
                     let trait_span = trait_name.span;
                     let trait_name = match trait_name.kind {
-                        NodeKind::Error => return None,
+                        NodeKind::Error(_) => return None,
                         NodeKind::Name(name) => name,
                         _ => {
-                            self.diagnostics.add(Diagnostic::error(
+                            self.add_error(
                                 "expected trait name in `where` clause",
                                 vec![Note::primary(trait_name.span, "try adding a name here")],
-                            ));
+                            );
 
                             return None;
                         }
@@ -951,7 +964,7 @@ impl Compiler<'_> {
         }
 
         match lhs.kind {
-            NodeKind::Error => None,
+            NodeKind::Error(_) => None,
             NodeKind::Name(name) => Some((
                 vec![TypeParameter {
                     span: lhs.span,
@@ -962,20 +975,20 @@ impl Compiler<'_> {
             NodeKind::List(tys) => Some((build_parameter_list!(tys)?, Vec::new())),
             NodeKind::Where(lhs, bounds) => {
                 let tys = match lhs.kind {
-                    NodeKind::Error => return None,
+                    NodeKind::Error(_) => return None,
                     NodeKind::Name(name) => vec![TypeParameter {
                         span: lhs.span,
                         name,
                     }],
                     NodeKind::List(tys) => build_parameter_list!(tys)?,
                     _ => {
-                        self.diagnostics.add(Diagnostic::error(
+                        self.add_error(
                             "expected type parameters on left-hand side of `where` clause",
                             vec![Note::primary(
                                 lhs.span,
                                 "try providing a list of names here",
                             )],
-                        ));
+                        );
 
                         return None;
                     }
@@ -1002,13 +1015,12 @@ impl Compiler<'_> {
                                         }),
                                         NodeKind::List(list) => build_bound!(bound.span, list),
                                         _ => {
-                                            self.diagnostics.add(Diagnostic::error(
-                                                "expected bound",
-                                                vec![Note::primary(
+                                            self.add_error(
+                                                "expected bound", vec![Note::primary(
                                                     bounds_span,
                                                     "`where` bound must be in the format `(T A B ...)`",
                                                 )],
-                                            ));
+                                            );
 
                                             None
                                         }
@@ -1029,13 +1041,13 @@ impl Compiler<'_> {
                             }])
                         }
                         _ => {
-                            self.diagnostics.add(Diagnostic::error(
+                            self.add_error(
                                 "expected bounds",
                                 vec![Note::primary(
                                     bounds_span,
                                     "`where` bounds must be in the format `(T A) (T B) ...`",
                                 )],
-                            ));
+                            );
 
                             None
                         }
@@ -1045,13 +1057,13 @@ impl Compiler<'_> {
                 Some((tys, bounds))
             }
             _ => {
-                self.diagnostics.add(Diagnostic::error(
+                self.add_error(
                     "expected type parameters",
                     vec![Note::primary(
                         lhs.span,
                         "try providing a list of names and optionally a `where` clause",
                     )],
-                ));
+                );
 
                 None
             }
@@ -1069,13 +1081,13 @@ impl Compiler<'_> {
         };
 
         if fields.is_empty() {
-            self.diagnostics.add(Diagnostic::error(
+            self.add_error(
                 "type must not be empty",
                 vec![Note::primary(
                     span,
                     "try adding some fields or variants here",
                 )],
-            ));
+            );
 
             return None;
         }
@@ -1098,7 +1110,7 @@ impl Compiler<'_> {
                 let span = field.node.span;
 
                 match field.node.kind {
-                    NodeKind::Error => None,
+                    NodeKind::Error(_) => None,
                     NodeKind::Name(name) => Some(Field {
                         span,
                         attributes: field.attributes,
@@ -1113,13 +1125,13 @@ impl Compiler<'_> {
                         let name = match name.kind {
                             NodeKind::Name(name) => name,
                             _ => {
-                                self.diagnostics.add(Diagnostic::error(
+                                self.add_error(
                                     "expected a name here",
                                     vec![Note::primary(
                                         name.span,
                                         "variants must be in the form `Name Type ...`",
                                     )],
-                                ));
+                                );
 
                                 return None;
                             }
@@ -1140,13 +1152,13 @@ impl Compiler<'_> {
                         let name = match name.kind {
                             NodeKind::Name(name) => name,
                             _ => {
-                                self.diagnostics.add(Diagnostic::error(
+                                self.add_error(
                                     "expected a name here",
                                     vec![Note::primary(
                                         name.span,
                                         "fields must be in the form `name :: Type`",
                                     )],
-                                ));
+                                );
 
                                 return None;
                             }
@@ -1162,13 +1174,13 @@ impl Compiler<'_> {
                         })
                     }
                     _ => {
-                        self.diagnostics.add(Diagnostic::error(
+                        self.add_error(
                             "expected a field or variant declaration",
                             vec![Note::primary(
                                 span,
                                 "fields must be in the form `name :: Type`",
                             )],
-                        ));
+                        );
 
                         None
                     }
@@ -1202,10 +1214,10 @@ impl Compiler<'_> {
                     let fields = match &mut kind {
                         TypeKind::Structure(fields) => fields,
                         TypeKind::Enumeration(_) => {
-                            self.diagnostics.add(Diagnostic::error(
+                            self.add_error(
                                 "expected field, found variant",
                                 vec![Note::primary(field.span, "expected a field here")],
-                            ));
+                            );
 
                             continue;
                         }
@@ -1221,10 +1233,10 @@ impl Compiler<'_> {
                 FieldKind::Variant(values) => {
                     let variants = match &mut kind {
                         TypeKind::Structure(_) => {
-                            self.diagnostics.add(Diagnostic::error(
+                            self.add_error(
                                 "expected variant, found field",
                                 vec![Note::primary(field.span, "expected a variant here")],
-                            ));
+                            );
 
                             continue;
                         }

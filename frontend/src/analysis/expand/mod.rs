@@ -8,7 +8,7 @@ mod builtins;
 
 use crate::{
     diagnostics::*,
-    helpers::{InternedString, Shared},
+    helpers::{Backtrace, InternedString, Shared},
     parse::{self, Span},
     Compiler, FilePath, TemplateId,
 };
@@ -78,7 +78,7 @@ pub struct Node {
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub enum NodeKind {
-    Error,
+    Error(Backtrace),
     Placeholder,
     TemplateDeclaration(TemplateId),
     Empty,
@@ -105,6 +105,12 @@ pub enum NodeKind {
     Or(Box<Node>, Box<Node>),
     Tuple(Vec<Node>),
     End(Box<Node>),
+}
+
+impl NodeKind {
+    fn error(compiler: &Compiler) -> Self {
+        NodeKind::Error(compiler.backtrace())
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -200,14 +206,13 @@ impl<'l> Compiler<'l> {
                 let file = (expander.load)(expander.compiler, file.span, std_path).await?;
                 expander.add_dependency(file, &scope);
             } else {
-                expander.compiler.diagnostics.add(Diagnostic::new(
-                    DiagnosticLevel::Error,
+                expander.compiler.add_error(
                     "standard library is missing, but this file requires it",
                     vec![Note::primary(
                         file.span.with_end(file.span.start),
                         "try adding `[[no-std]]` to this file to prevent automatically loading the standard library",
                     )],
-                ));
+                );
             }
         }
 
@@ -421,15 +426,14 @@ impl Expander<'_, '_> {
     ) -> FileAttributes {
         macro_rules! assert_empty {
             ($node:expr, $span:expr) => {
-                if !matches!($node.kind, NodeKind::Empty | NodeKind::Error) {
-                    self.compiler.diagnostics.add(Diagnostic::new(
-                        DiagnosticLevel::Error,
+                if !matches!($node.kind, NodeKind::Empty | NodeKind::Error(_)) {
+                    self.compiler.add_error(
                         "invalid file attribute",
                         vec![Note::primary(
                             $span,
                             "this attribute must expand to an empty expression",
                         )],
-                    ));
+                    );
                 }
             };
         }
@@ -464,14 +468,13 @@ impl Expander<'_, '_> {
                     for expr in &exprs {
                         if let parse::ExprKind::Name(name) = expr.kind {
                             if let Some(ScopeValue::Operator(_)) = scope.get(name) {
-                                self.compiler.diagnostics.add(Diagnostic::new(
-                                    DiagnosticLevel::Error,
+                                self.compiler.add_error(
                                     "unexpected operator",
                                     vec![Note::primary(
                                         attribute.span,
                                         "operators aren't allowed within attributes",
                                     )],
-                                ));
+                                );
 
                                 continue 'attributes;
                             }
@@ -484,14 +487,13 @@ impl Expander<'_, '_> {
                     let name = match first.kind {
                         parse::ExprKind::Name(name) => name,
                         _ => {
-                            self.compiler.diagnostics.add(Diagnostic::new(
-                                DiagnosticLevel::Error,
+                            self.compiler.add_error(
                                 "expected name in attribute",
                                 vec![Note::primary(
                                     attribute.span,
                                     "expected name of template here",
                                 )],
-                            ));
+                            );
 
                             continue 'attributes;
                         }
@@ -503,10 +505,10 @@ impl Expander<'_, '_> {
                             unreachable!("operators trigger an error above");
                         }
                         None => {
-                            self.compiler.diagnostics.add(Diagnostic::error(
+                            self.compiler.add_error(
                                 format!("cannot find template `{}`", name),
                                 vec![Note::primary(first.span, "no such template")],
-                            ));
+                            );
 
                             continue 'attributes;
                         }
@@ -534,14 +536,13 @@ impl Expander<'_, '_> {
                     assert_empty!(node, attribute.span);
                 }
                 _ => {
-                    self.compiler.diagnostics.add(Diagnostic::new(
-                        DiagnosticLevel::Error,
+                    self.compiler.add_error(
                         "invalid attribute",
                         vec![Note::primary(
                             attribute.span,
                             "expected a call to a template here",
                         )],
-                    ));
+                    );
                 }
             }
         }
@@ -608,14 +609,13 @@ impl Expander<'_, '_> {
                 let exprs = std::iter::once(first_exprs)
                     .chain(lines.map(|line| {
                         for attribute in line.attributes {
-                            self.compiler.diagnostics.add(Diagnostic::new(
-                                DiagnosticLevel::Error,
+                            self.compiler.add_error(
                                 "unexpected attribute",
                                 vec![Note::primary(
                                     attribute.span,
                                     "try placing this attribute before the statement",
                                 )],
-                            ));
+                            );
                         }
 
                         line.exprs
@@ -625,14 +625,13 @@ impl Expander<'_, '_> {
 
                 if exprs.is_empty() {
                     for attribute in first_attributes {
-                        self.compiler.diagnostics.add(Diagnostic::new(
-                            DiagnosticLevel::Error,
+                        self.compiler.add_error(
                             "unexpected attribute",
                             vec![Note::primary(
                                 attribute.span,
                                 "try adding an expression after this attribute",
                             )],
-                        ));
+                        );
                     }
 
                     return None;
@@ -673,14 +672,13 @@ impl Expander<'_, '_> {
                             for expr in &exprs {
                                 if let parse::ExprKind::Name(name) = expr.kind {
                                     if let Some(ScopeValue::Operator(_)) = scope.get(name) {
-                                        self.compiler.diagnostics.add(Diagnostic::new(
-                                            DiagnosticLevel::Error,
+                                        self.compiler.add_error(
                                             "unexpected operator",
                                             vec![Note::primary(
                                                 attribute.span,
                                                 "operators aren't allowed within attributes",
                                             )],
-                                        ));
+                                        );
 
                                         continue 'attributes;
                                     }
@@ -697,14 +695,13 @@ impl Expander<'_, '_> {
                             let name = match first.kind {
                                 parse::ExprKind::Name(name) => name,
                                 _ => {
-                                    self.compiler.diagnostics.add(Diagnostic::new(
-                                        DiagnosticLevel::Error,
+                                    self.compiler.add_error(
                                         "expected name in attribute",
                                         vec![Note::primary(
                                             attribute.span,
                                             "expected name of template here",
                                         )],
-                                    ));
+                                    );
 
                                     continue 'attributes;
                                 }
@@ -716,10 +713,10 @@ impl Expander<'_, '_> {
                                     unreachable!("operators trigger an error above");
                                 }
                                 None => {
-                                    self.compiler.diagnostics.add(Diagnostic::error(
+                                    self.compiler.add_error(
                                         format!("cannot find template `{}`", name),
                                         vec![Note::primary(first.span, "no such template")],
-                                    ));
+                                    );
 
                                     continue 'attributes;
                                 }
@@ -745,14 +742,13 @@ impl Expander<'_, '_> {
                                 .await;
                         }
                         _ => {
-                            self.compiler.diagnostics.add(Diagnostic::new(
-                                DiagnosticLevel::Error,
+                            self.compiler.add_error(
                                 "invalid attribute",
                                 vec![Note::primary(
                                     attribute.span,
                                     "expected a call to a template here",
                                 )],
-                            ));
+                            );
                         }
                     }
                 }
@@ -808,18 +804,17 @@ impl Expander<'_, '_> {
                                 .await;
                         }
                         Some(ScopeValue::Operator(_)) => {
-                            self.compiler.diagnostics.add(Diagnostic::new(
-                                DiagnosticLevel::Error,
+                            self.compiler.add_error(
                                 "expected values on both sides of operator",
                                 vec![Note::primary(
                                     expr.span,
                                     "try providing values on either side of this",
                                 )],
-                            ));
+                            );
 
                             return Node {
                                 span: list_span,
-                                kind: NodeKind::Error,
+                                kind: NodeKind::error(self.compiler),
                             };
                         }
                         _ => {}
@@ -898,10 +893,7 @@ impl Expander<'_, '_> {
                                 }
                                 OperatorAssociativity::None { error } => {
                                     if error {
-                                        self.compiler.diagnostics.add(Diagnostic::new(
-                                            DiagnosticLevel::Error,
-                                            "operator ambiguity",
-                                            vec![
+                                        self.compiler.add_error("operator ambiguity", vec![
                                                 Note::primary(
                                                     exprs[index].span,
                                                     "only one of this operator may be provided at a time",
@@ -911,11 +903,11 @@ impl Expander<'_, '_> {
                                                     "first use of this operator",
                                                 ),
                                             ],
-                                        ));
+                                        );
 
                                         return Node {
                                             span: list_span,
-                                            kind: NodeKind::Error,
+                                            kind: NodeKind::error(self.compiler),
                                         };
                                     }
                                 }
@@ -965,30 +957,24 @@ impl Expander<'_, '_> {
                                                     })
                                                     .unwrap();
 
-                                                self.compiler.diagnostics.add(Diagnostic::new(
-                                                    DiagnosticLevel::Error,
-                                                        "expected values on right side of operator",
-                                                        vec![Note::primary(
+                                                self.compiler.add_error("expected values on right side of operator", vec![Note::primary(
                                                         operator_span,
                                                         "try providing a value to the right of this",
                                                     )],
-                                                ));
+                                                );
                                             } else {
                                                 let operator_span = operators.front().unwrap().2;
 
-                                                self.compiler.diagnostics.add(Diagnostic::new(
-                                                    DiagnosticLevel::Error,
-                                                        "expected values on left side of operator",
-                                                        vec![Note::primary(
+                                                self.compiler.add_error("expected values on left side of operator", vec![Note::primary(
                                                         operator_span,
                                                         "try providing a value to the left of this",
                                                     )],
-                                                ));
+                                                );
                                             }
 
                                             return Node {
                                                 span: list_span,
-                                                kind: NodeKind::Error,
+                                                kind: NodeKind::error(self.compiler),
                                             };
                                         }
 
@@ -1026,32 +1012,30 @@ impl Expander<'_, '_> {
                         lhs.pop().unwrap();
 
                         if rhs.is_empty() {
-                            self.compiler.diagnostics.add(Diagnostic::new(
-                                DiagnosticLevel::Error,
+                            self.compiler.add_error(
                                 "expected values on right side of operator",
                                 vec![Note::primary(
                                     max_span,
                                     "try providing a value to the right of this",
                                 )],
-                            ));
+                            );
 
                             Node {
                                 span: list_span,
-                                kind: NodeKind::Error,
+                                kind: NodeKind::error(self.compiler),
                             }
                         } else if lhs.is_empty() {
-                            self.compiler.diagnostics.add(Diagnostic::new(
-                                DiagnosticLevel::Error,
+                            self.compiler.add_error(
                                 "expected values on left side of operator",
                                 vec![Note::primary(
                                     max_span,
                                     "try providing a value to the left of this",
                                 )],
-                            ));
+                            );
 
                             Node {
                                 span: list_span,
-                                kind: NodeKind::Error,
+                                kind: NodeKind::error(self.compiler),
                             }
                         } else {
                             let span =
@@ -1126,7 +1110,7 @@ impl Expander<'_, '_> {
 
                     return Node {
                         span,
-                        kind: NodeKind::Error,
+                        kind: NodeKind::error(self.compiler),
                     };
                 }
 
@@ -1234,7 +1218,7 @@ impl Expander<'_, '_> {
         actual: usize,
         expected: usize,
     ) {
-        self.compiler.diagnostics.add(Diagnostic::error(
+        self.compiler.add_error(
             format!(
                 "template `{}` expects {} inputs, but only {} were given",
                 template_name, expected, actual,
@@ -1247,6 +1231,6 @@ impl Expander<'_, '_> {
                     "try adding some inputs"
                 },
             )],
-        ));
+        );
     }
 }

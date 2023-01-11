@@ -135,9 +135,6 @@ async fn run() -> anyhow::Result<()> {
 
     match args {
         Args::Run { path, options } => {
-            #[cfg(debug_assertions)]
-            wipple_frontend::diagnostics::set_backtrace_enabled(options.trace);
-
             let progress_bar = options.progress.then(progress_bar);
 
             let (ir, diagnostics) = generate_ir(&path, &options, progress_bar.clone()).await;
@@ -170,9 +167,6 @@ async fn run() -> anyhow::Result<()> {
             output,
         } => {
             let compile = |options: BuildOptions| async move {
-                #[cfg(debug_assertions)]
-                wipple_frontend::diagnostics::set_backtrace_enabled(options.trace);
-
                 let progress_bar = options.progress.then(progress_bar);
 
                 let (ir, diagnostics) = generate_ir(&path, &options, progress_bar.clone()).await;
@@ -210,9 +204,6 @@ async fn run() -> anyhow::Result<()> {
             }
         }
         Args::Analyze { path, options } => {
-            #[cfg(debug_assertions)]
-            wipple_frontend::diagnostics::set_backtrace_enabled(options.trace);
-
             let progress_bar = options.progress.then(progress_bar);
 
             let (program, diagnostics) = analyze(&path, &options, progress_bar.clone()).await;
@@ -441,6 +432,9 @@ async fn build_with_passes<P>(
     }
 
     let compiler = Compiler::new(&loader);
+
+    #[cfg(debug_assertions)]
+    let compiler = compiler.set_backtrace_enabled(options.trace);
 
     let path = if path == "-" {
         wipple_frontend::FilePath::Virtual(wipple_frontend::helpers::InternedString::new("stdin"))

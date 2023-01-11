@@ -12,8 +12,8 @@ pub use lower::{RuntimeFunction, TypeAnnotation, TypeAnnotationKind};
 
 use crate::{
     analysis::{expand, lower},
-    diagnostics::{Diagnostic, Note},
-    helpers::InternedString,
+    diagnostics::Note,
+    helpers::{Backtrace, InternedString},
     parse::Span,
     BuiltinTypeId, Compiler, ConstantId, ItemId, TemplateId, TraitId, TypeId, TypeParameterId,
     VariableId,
@@ -196,7 +196,7 @@ macro_rules! expr {
 
             #[derive(Debug, Clone)]
             $vis enum [<$prefix ExpressionKind>] {
-                Error,
+                Error(Backtrace),
                 Marker,
                 Variable(VariableId),
                 Text(InternedString),
@@ -220,6 +220,13 @@ macro_rules! expr {
                 $vis pattern: [<$prefix Pattern>],
                 $vis body: [<$prefix Expression>],
             }
+
+            #[allow(unused)]
+            impl [<$prefix ExpressionKind>] {
+                pub(crate) fn error(compiler: &Compiler) -> Self {
+                    [<$prefix ExpressionKind>]::Error(compiler.backtrace())
+                }
+            }
         }
     };
 }
@@ -235,7 +242,7 @@ macro_rules! pattern {
 
             #[derive(Debug, Clone)]
             $vis enum [<$prefix PatternKind>] {
-                Error,
+                Error(Backtrace),
                 Wildcard,
                 Text(InternedString),
                 Variable(VariableId),
@@ -243,6 +250,13 @@ macro_rules! pattern {
                 Where(Box<[<$prefix Pattern>]>, Box<[<$prefix Expression>]>),
                 Tuple(Vec<[<$prefix Pattern>]>),
                 $($kinds)*
+            }
+
+            #[allow(unused)]
+            impl [<$prefix PatternKind>] {
+                $vis fn error(compiler: &Compiler) -> Self {
+                    [<$prefix PatternKind>]::Error(compiler.backtrace())
+                }
             }
         }
     };
@@ -276,10 +290,10 @@ impl Expression {
     pub fn contains_error(&self) -> bool {
         let mut contains_error = false;
         self.traverse(|expr| {
-            contains_error &= matches!(expr.kind, ExpressionKind::Error);
+            contains_error &= matches!(expr.kind, ExpressionKind::Error(_));
 
             contains_error &= match &expr.kind {
-                ExpressionKind::Error => true,
+                ExpressionKind::Error(_) => true,
                 ExpressionKind::Function(pattern, _, _)
                 | ExpressionKind::Initialize(pattern, _) => pattern.contains_error(),
                 ExpressionKind::When(_, arms) => {
@@ -325,7 +339,7 @@ impl Pattern {
     pub fn contains_error(&self) -> bool {
         let mut contains_error = false;
         self.traverse(|pattern| {
-            contains_error &= matches!(pattern.kind, PatternKind::Error);
+            contains_error &= matches!(pattern.kind, PatternKind::Error(_));
         });
 
         contains_error
@@ -337,21 +351,10 @@ pub struct Error {
     pub error: engine::TypeError,
     pub span: Span,
     pub notes: Vec<Note>,
-    #[cfg(debug_assertions)]
-    pub trace: Option<backtrace::Backtrace>,
+    pub trace: Backtrace,
 }
 
 impl Error {
-    pub fn new(error: engine::TypeError, span: Span) -> Self {
-        Error {
-            error,
-            span,
-            notes: Vec::new(),
-            #[cfg(debug_assertions)]
-            trace: crate::diagnostics::backtrace_enabled().then(backtrace::Backtrace::new),
-        }
-    }
-
     pub fn with_note(mut self, note: Note) -> Self {
         self.notes.push(note);
         self
@@ -400,6 +403,17 @@ struct QueuedItem {
     id: ItemId,
     expr: UnresolvedExpression,
     info: MonomorphizeInfo,
+}
+
+impl<'a, 'l> Typechecker<'a, 'l> {
+    fn error(&self, error: engine::TypeError, span: Span) -> Error {
+        Error {
+            error,
+            span,
+            notes: Vec::new(),
+            trace: self.compiler.backtrace(),
+        }
+    }
 }
 
 impl<'a, 'l> Typechecker<'a, 'l> {
@@ -798,7 +812,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
         ) {
             (params, Ok(())) => params,
             (_, Err(error)) => {
-                self.add_error(Error::new(error, specialized_constant_decl.span).with_note(
+                self.add_error(self.error(error, specialized_constant_decl.span).with_note(
                     Note::secondary(
                         specialized_constant_decl.span,
                         "this constant must have a more specific type than the original constant",
@@ -874,10 +888,10 @@ impl<'a, 'l> Typechecker<'a, 'l> {
         info: &mut ConvertInfo,
     ) -> UnresolvedExpression {
         match expr.kind {
-            lower::ExpressionKind::Error => UnresolvedExpression {
+            lower::ExpressionKind::Error(trace) => UnresolvedExpression {
                 span: expr.span,
                 ty: engine::UnresolvedType::Bottom(engine::BottomTypeReason::Error),
-                kind: UnresolvedExpressionKind::Error,
+                kind: UnresolvedExpressionKind::Error(trace),
             },
             lower::ExpressionKind::Marker(id) => {
                 let params = self.with_type_decl(id, |ty| ty.params.clone());
@@ -988,10 +1002,10 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                     }
                     Some(ref mut end @ None) => *end = Some((value.span, value.ty.clone())),
                     None => {
-                        self.compiler.diagnostics.add(Diagnostic::error(
+                        self.compiler.add_error(
                             "`end` outside block",
                             vec![Note::primary(expr.span, "cannot use `end` here")],
-                        ));
+                        );
                     }
                 }
 
@@ -1195,7 +1209,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                 }
 
                 if !extra_fields.is_empty() {
-                    self.compiler.diagnostics.add(Diagnostic::error(
+                    self.compiler.add_error(
                         "extra fields",
                         vec![Note::primary(
                             expr.span,
@@ -1208,7 +1222,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                                     .join(", ")
                             ),
                         )],
-                    ));
+                    );
                 }
 
                 let mut missing_fields = Vec::new();
@@ -1226,7 +1240,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                     .collect::<Vec<_>>();
 
                 if !missing_fields.is_empty() {
-                    self.compiler.diagnostics.add(Diagnostic::error(
+                    self.compiler.add_error(
                         "missing fields",
                         vec![Note::primary(
                             expr.span,
@@ -1239,7 +1253,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                                     .join(", ")
                             ),
                         )],
-                    ));
+                    );
                 }
 
                 UnresolvedExpression {
@@ -1347,7 +1361,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
         UnresolvedPattern {
             span: pattern.span,
             kind: match pattern.kind {
-                lower::PatternKind::Error => UnresolvedPatternKind::Error,
+                lower::PatternKind::Error(trace) => UnresolvedPatternKind::Error(trace),
                 lower::PatternKind::Wildcard => UnresolvedPatternKind::Wildcard,
                 lower::PatternKind::Number(number) => {
                     let numeric_ty =
@@ -1509,7 +1523,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
             span: expr.span,
             ty: expr.ty.clone(),
             kind: (|| match expr.kind {
-                UnresolvedExpressionKind::Error => MonomorphizedExpressionKind::Error,
+                UnresolvedExpressionKind::Error(trace) => MonomorphizedExpressionKind::Error(trace),
                 UnresolvedExpressionKind::Marker => MonomorphizedExpressionKind::Marker,
                 UnresolvedExpressionKind::Constant(generic_id) => {
                     let id = info.cache.get(&generic_id).copied().unwrap_or_else(|| {
@@ -1676,7 +1690,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                             Ok(instance) => instance,
                             Err(error) => {
                                 self.add_error(error);
-                                return MonomorphizedExpressionKind::Error;
+                                return MonomorphizedExpressionKind::error(self.compiler);
                             }
                         };
 
@@ -1688,7 +1702,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                             expr.ty.clone(),
                             info.clone(),
                         ),
-                        None => return MonomorphizedExpressionKind::Error,
+                        None => return MonomorphizedExpressionKind::error(self.compiler),
                     };
 
                     MonomorphizedExpressionKind::Constant(monomorphized_id)
@@ -1727,9 +1741,15 @@ impl<'a, 'l> Typechecker<'a, 'l> {
         ty.apply(&self.ctx);
 
         let kind = (|| match pattern.kind {
-            UnresolvedPatternKind::Error => {
+            #[cfg(debug_assertions)]
+            UnresolvedPatternKind::Error(trace) => {
                 match_set.set_matched(true);
-                MonomorphizedPatternKind::Error
+                MonomorphizedPatternKind::Error(trace)
+            }
+            #[cfg(not(debug_assertions))]
+            UnresolvedPatternKind::Error() => {
+                match_set.set_matched(true);
+                MonomorphizedPatternKind::Error()
             }
             UnresolvedPatternKind::Number(number) => {
                 let numeric_ty = engine::UnresolvedType::NumericVariable(self.ctx.new_variable());
@@ -1769,10 +1789,10 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                 let (id, params) = match ty.clone() {
                     engine::UnresolvedType::Named(id, params, _) => (id, params),
                     _ => {
-                        self.compiler.diagnostics.add(Diagnostic::error(
+                        self.compiler.add_error(
                             "cannot destructure this value",
                             vec![Note::primary(pattern.span, "value is not a data structure")],
-                        ));
+                        );
 
                         match_set.set_matched(true);
 
@@ -1833,10 +1853,10 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                         let index = match structure_field_names.get(&name) {
                             Some(index) => *index,
                             None => {
-                                self.compiler.diagnostics.add(Diagnostic::error(
+                                self.compiler.add_error(
                                     format!("value has no member named '{}'", name),
                                     vec![Note::primary(pattern.span, "no such member")],
-                                ));
+                                );
 
                                 return None;
                             }
@@ -1988,13 +2008,13 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                         self.add_error(error);
                     }
                 } else {
-                    self.compiler.diagnostics.add(Diagnostic::error(
+                    self.compiler.add_error(
                         "cannot find `boolean` language item",
                         vec![Note::primary(
                             condition_span,
                             "typechecking this condition requires the `boolean` language item",
                         )],
-                    ))
+                    )
                 }
 
                 match_set.set_matched(false);
@@ -2023,7 +2043,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
 
                         match match_set {
                             MatchSet::Tuple(sets) => sets,
-                            _ => return MonomorphizedPatternKind::Error,
+                            _ => return MonomorphizedPatternKind::error(self.compiler),
                         }
                     }
                 };
@@ -2103,7 +2123,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
 
                         Some(Ok(info))
                     }
-                    _ => Some(Err(Error::new(
+                    _ => Some(Err(self.error(
                         engine::TypeError::AmbiguousTrait(
                             ty,
                             tr,
@@ -2159,7 +2179,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
             })
             .collect();
 
-        Err(Error::new(
+        Err(self.error(
             engine::TypeError::MissingInstance(tr, params, bound_span),
             use_span,
         ))
@@ -2215,13 +2235,13 @@ impl<'a, 'l> Typechecker<'a, 'l> {
     ) {
         if !match_set.is_matched() {
             if for_exhaustive_pattern {
-                self.compiler.diagnostics.add(Diagnostic::error(
+                self.compiler.add_error(
                     "pattern is not exhaustive",
                     vec![Note::primary(
                         span,
                         "this pattern does not handle all possible values",
                     )],
-                ));
+                );
             } else {
                 let mut ty = ty.clone();
                 ty.apply(&self.ctx);
@@ -2232,7 +2252,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                     .map(|pattern| format!("`{}`", self.format_unmatched_pattern(&pattern, false)))
                     .collect::<Vec<_>>();
 
-                self.compiler.diagnostics.add(Diagnostic::error(
+                self.compiler.add_error(
                     "`when` expression is not exhaustive",
                     vec![Note::primary(
                         span,
@@ -2255,7 +2275,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                             }
                         },
                     )],
-                ));
+                );
             }
         }
     }
@@ -2561,13 +2581,13 @@ impl<'a, 'l> Typechecker<'a, 'l> {
         let ty = match expr.ty.clone().finalize(&self.ctx) {
             Ok(ty) => ty,
             Err(error) => {
-                self.add_error(Error::new(error, expr.span));
+                self.add_error(self.error(error, expr.span));
                 engine::Type::Bottom(BottomTypeReason::Error)
             }
         };
 
         let kind = (|| match expr.kind {
-            MonomorphizedExpressionKind::Error => ExpressionKind::Error,
+            MonomorphizedExpressionKind::Error(trace) => ExpressionKind::Error(trace),
             MonomorphizedExpressionKind::Marker => ExpressionKind::Marker,
             MonomorphizedExpressionKind::Constant(id) => ExpressionKind::Constant(id),
             MonomorphizedExpressionKind::Variable(var) => ExpressionKind::Variable(var),
@@ -2576,11 +2596,11 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                 match parse_number!(number, ExpressionKind, &ty, Type) {
                     Some(Ok(number)) => number,
                     Some(Err(error)) => {
-                        self.add_error(Error::new(error, expr.span));
-                        ExpressionKind::Error
+                        self.add_error(self.error(error, expr.span));
+                        ExpressionKind::error(self.compiler)
                     }
                     None => {
-                        self.add_error(Error::new(
+                        self.add_error(self.error(
                             engine::TypeError::Mismatch(
                                 engine::UnresolvedType::Builtin(engine::BuiltinType::Number),
                                 expr.ty,
@@ -2588,7 +2608,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                             expr.span,
                         ));
 
-                        ExpressionKind::Error
+                        ExpressionKind::error(self.compiler)
                     }
                 }
             }
@@ -2608,7 +2628,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
             MonomorphizedExpressionKind::Function(pattern, body, captures) => {
                 let input_ty = match &ty {
                     engine::Type::Function(input, _) => input.clone(),
-                    _ => return ExpressionKind::Error,
+                    _ => return ExpressionKind::error(self.compiler),
                 };
 
                 ExpressionKind::Function(
@@ -2692,17 +2712,17 @@ impl<'a, 'l> Typechecker<'a, 'l> {
         Pattern {
             span: pattern.span,
             kind: (|| match pattern.kind {
-                MonomorphizedPatternKind::Error => PatternKind::Error,
+                MonomorphizedPatternKind::Error(trace) => PatternKind::Error(trace),
                 MonomorphizedPatternKind::Wildcard => PatternKind::Wildcard,
                 MonomorphizedPatternKind::Number(number) => {
                     match parse_number!(number, PatternKind, input_ty, Type) {
                         Some(Ok(number)) => number,
                         Some(Err(error)) => {
-                            self.add_error(Error::new(error, pattern.span));
-                            PatternKind::Error
+                            self.add_error(self.error(error, pattern.span));
+                            PatternKind::error(self.compiler)
                         }
                         None => {
-                            self.add_error(Error::new(
+                            self.add_error(self.error(
                                 engine::TypeError::Mismatch(
                                     engine::UnresolvedType::Builtin(engine::BuiltinType::Number),
                                     input_ty.clone().into(),
@@ -2710,7 +2730,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                                 pattern.span,
                             ));
 
-                            PatternKind::Error
+                            PatternKind::error(self.compiler)
                         }
                     }
                 }
@@ -2724,7 +2744,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                         engine::Type::Named(_, _, engine::TypeStructure::Structure(fields)) => {
                             fields
                         }
-                        _ => return PatternKind::Error,
+                        _ => return PatternKind::error(self.compiler),
                     };
 
                     PatternKind::Destructure(
@@ -2740,7 +2760,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                         engine::Type::Named(_, _, engine::TypeStructure::Enumeration(variants)) => {
                             &variants[index]
                         }
-                        _ => return PatternKind::Error,
+                        _ => return PatternKind::error(self.compiler),
                     };
 
                     PatternKind::Variant(
@@ -2763,7 +2783,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                 MonomorphizedPatternKind::Tuple(patterns) => {
                     let input_tys = match input_ty {
                         engine::Type::Tuple(tys) => tys,
-                        _ => return PatternKind::Error,
+                        _ => return PatternKind::error(self.compiler),
                     };
 
                     PatternKind::Tuple(
@@ -2885,10 +2905,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
             .lock()
             .as_ref()
             .cloned()
-            .unwrap_or(lower::Expression {
-                span: decl.span,
-                kind: lower::ExpressionKind::Error,
-            });
+            .unwrap_or_else(|| lower::Expression::error(self.compiler, decl.span));
 
         self.generic_constants.insert(id, (false, body));
 
@@ -2978,7 +2995,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
         for (_, param) in tr.params.iter().skip(params.len()) {
             let name = self.with_type_parameter_decl(*param, |decl| decl.name);
 
-            self.compiler.diagnostics.add(Diagnostic::error(
+            self.compiler.add_error(
                 format!(
                     "missing type for trait parameter `{}`",
                     name.as_deref().unwrap_or("_")
@@ -2987,7 +3004,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                     decl.span,
                     "try adding another type after the trait provided to `instance`",
                 )],
-            ));
+            );
 
             params.push(engine::Type::Bottom(engine::BottomTypeReason::Error));
         }
@@ -3040,12 +3057,11 @@ impl<'a, 'l> Typechecker<'a, 'l> {
             .collect::<Vec<_>>();
 
         if !colliding_instances.is_empty() {
-            self.compiler.diagnostics.add(Diagnostic::error(
+            self.compiler.add_error(
                 format!(
                     "this instance collides with {} other instances",
                     colliding_instances.len()
-                ),
-                std::iter::once(Note::primary(
+                ), std::iter::once(Note::primary(
                     decl.span,
                     if has_bounds {
                         "this instance may have different bounds than the others, but one type could satisfy the bounds on more than one of these instances simultaneously"
@@ -3057,7 +3073,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                     Note::secondary(span, "this instance could apply to the same type(s)")
                 }))
                 .collect(),
-            ));
+            );
         }
 
         let decl = InstanceDecl {
@@ -3087,9 +3103,13 @@ impl<'a, 'l> Typechecker<'a, 'l> {
             .or_insert(decl))
     }
 
-    fn with_operator_decl<T>(&mut self, id: TemplateId, f: impl FnOnce(&OperatorDecl) -> T) -> T {
+    fn with_operator_decl<T>(
+        &mut self,
+        id: TemplateId,
+        f: impl FnOnce(&OperatorDecl) -> T,
+    ) -> Option<T> {
         if let Some(decl) = self.declarations.borrow().operators.get(&id) {
-            return f(decl);
+            return Some(f(decl));
         }
 
         let operator = *self.entrypoint.declarations.operators.get(&id).unwrap();
@@ -3098,8 +3118,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
             .entrypoint
             .declarations
             .templates
-            .get(&operator.template)
-            .unwrap()
+            .get(&operator.template)?
             .clone();
 
         let decl = OperatorDecl {
@@ -3108,26 +3127,24 @@ impl<'a, 'l> Typechecker<'a, 'l> {
             uses: decl.uses,
         };
 
-        f(self
+        Some(f(self
             .declarations
             .borrow_mut()
             .operators
             .entry(id)
-            .or_insert(decl))
+            .or_insert(decl)))
     }
 
-    fn with_template_decl<T>(&mut self, id: TemplateId, f: impl FnOnce(&TemplateDecl) -> T) -> T {
+    fn with_template_decl<T>(
+        &mut self,
+        id: TemplateId,
+        f: impl FnOnce(&TemplateDecl) -> T,
+    ) -> Option<T> {
         if let Some(decl) = self.declarations.borrow().templates.get(&id) {
-            return f(decl);
+            return Some(f(decl));
         }
 
-        let decl = self
-            .entrypoint
-            .declarations
-            .templates
-            .get(&id)
-            .unwrap()
-            .clone();
+        let decl = self.entrypoint.declarations.templates.get(&id)?.clone();
 
         let decl = TemplateDecl {
             name: decl.name,
@@ -3136,12 +3153,12 @@ impl<'a, 'l> Typechecker<'a, 'l> {
             uses: decl.uses,
         };
 
-        f(self
+        Some(f(self
             .declarations
             .borrow_mut()
             .templates
             .entry(id)
-            .or_insert(decl))
+            .or_insert(decl)))
     }
 
     fn with_builtin_type_decl<T>(
@@ -3250,7 +3267,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
     ) -> Result<(), Error> {
         self.ctx
             .unify(actual, expected)
-            .map_err(|e| Error::new(e, span))
+            .map_err(|e| self.error(e, span))
     }
 
     fn unify_reverse(
@@ -3261,7 +3278,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
     ) -> Result<(), Error> {
         self.ctx
             .unify_reverse(actual, expected)
-            .map_err(|e| Error::new(e, span))
+            .map_err(|e| self.error(e, span))
     }
 
     fn add_substitutions(
@@ -3345,13 +3362,13 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                 if let Some(ty) = convert_placeholder(self, annotation.span) {
                     ty
                 } else {
-                    self.compiler.diagnostics.add(Diagnostic::error(
+                    self.compiler.add_error(
                         "type placeholder is not allowed here",
                         vec![Note::primary(
                             annotation.span,
                             "try providing an actual type in place of `_`",
                         )],
-                    ));
+                    );
 
                     engine::UnresolvedType::Bottom(engine::BottomTypeReason::Error)
                 }
@@ -3369,7 +3386,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                 for (_, param) in ty.value.params.iter().skip(params.len()) {
                     let name = self.with_type_parameter_decl(*param, |decl| decl.name);
 
-                    self.compiler.diagnostics.add(Diagnostic::error(
+                    self.compiler.add_error(
                         format!(
                             "missing type for type parameter `{}`",
                             name.expect("all type parameters on named types are named")
@@ -3378,7 +3395,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                             annotation.span,
                             "try adding another type after this",
                         )],
-                    ));
+                    );
 
                     params.push(engine::UnresolvedType::Bottom(
                         engine::BottomTypeReason::Error,
@@ -3450,163 +3467,163 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                 match builtin_ty.value.kind {
                     lower::BuiltinTypeKind::Never => {
                         if !parameters.is_empty() {
-                            self.compiler.diagnostics.add(Diagnostic::error(
+                            self.compiler.add_error(
                                 "`!` does not accept parameters",
                                 vec![Note::primary(
                                     annotation.span,
                                     "try removing these parameters",
                                 )],
-                            ));
+                            );
                         }
 
                         engine::UnresolvedType::Bottom(engine::BottomTypeReason::Annotated)
                     }
                     lower::BuiltinTypeKind::Number => {
                         if !parameters.is_empty() {
-                            self.compiler.diagnostics.add(Diagnostic::error(
+                            self.compiler.add_error(
                                 "`Number` does not accept parameters",
                                 vec![Note::primary(
                                     annotation.span,
                                     "try removing these parameters",
                                 )],
-                            ));
+                            );
                         }
 
                         engine::UnresolvedType::Builtin(engine::BuiltinType::Number)
                     }
                     lower::BuiltinTypeKind::Integer => {
                         if !parameters.is_empty() {
-                            self.compiler.diagnostics.add(Diagnostic::error(
+                            self.compiler.add_error(
                                 "`Integer` does not accept parameters",
                                 vec![Note::primary(
                                     annotation.span,
                                     "try removing these parameters",
                                 )],
-                            ));
+                            );
                         }
 
                         engine::UnresolvedType::Builtin(engine::BuiltinType::Integer)
                     }
                     lower::BuiltinTypeKind::Natural => {
                         if !parameters.is_empty() {
-                            self.compiler.diagnostics.add(Diagnostic::error(
+                            self.compiler.add_error(
                                 "`Natural` does not accept parameters",
                                 vec![Note::primary(
                                     annotation.span,
                                     "try removing these parameters",
                                 )],
-                            ));
+                            );
                         }
 
                         engine::UnresolvedType::Builtin(engine::BuiltinType::Natural)
                     }
                     lower::BuiltinTypeKind::Byte => {
                         if !parameters.is_empty() {
-                            self.compiler.diagnostics.add(Diagnostic::error(
+                            self.compiler.add_error(
                                 "`Byte` does not accept parameters",
                                 vec![Note::primary(
                                     annotation.span,
                                     "try removing these parameters",
                                 )],
-                            ));
+                            );
                         }
 
                         engine::UnresolvedType::Builtin(engine::BuiltinType::Byte)
                     }
                     lower::BuiltinTypeKind::Signed => {
                         if !parameters.is_empty() {
-                            self.compiler.diagnostics.add(Diagnostic::error(
+                            self.compiler.add_error(
                                 "`Signed` does not accept parameters",
                                 vec![Note::primary(
                                     annotation.span,
                                     "try removing these parameters",
                                 )],
-                            ));
+                            );
                         }
 
                         engine::UnresolvedType::Builtin(engine::BuiltinType::Signed)
                     }
                     lower::BuiltinTypeKind::Unsigned => {
                         if !parameters.is_empty() {
-                            self.compiler.diagnostics.add(Diagnostic::error(
+                            self.compiler.add_error(
                                 "`Unsigned` does not accept parameters",
                                 vec![Note::primary(
                                     annotation.span,
                                     "try removing these parameters",
                                 )],
-                            ));
+                            );
                         }
 
                         engine::UnresolvedType::Builtin(engine::BuiltinType::Unsigned)
                     }
                     lower::BuiltinTypeKind::Float => {
                         if !parameters.is_empty() {
-                            self.compiler.diagnostics.add(Diagnostic::error(
+                            self.compiler.add_error(
                                 "`Float` does not accept parameters",
                                 vec![Note::primary(
                                     annotation.span,
                                     "try removing these parameters",
                                 )],
-                            ));
+                            );
                         }
 
                         engine::UnresolvedType::Builtin(engine::BuiltinType::Float)
                     }
                     lower::BuiltinTypeKind::Double => {
                         if !parameters.is_empty() {
-                            self.compiler.diagnostics.add(Diagnostic::error(
+                            self.compiler.add_error(
                                 "`Double` does not accept parameters",
                                 vec![Note::primary(
                                     annotation.span,
                                     "try removing these parameters",
                                 )],
-                            ));
+                            );
                         }
 
                         engine::UnresolvedType::Builtin(engine::BuiltinType::Double)
                     }
                     lower::BuiltinTypeKind::Text => {
                         if !parameters.is_empty() {
-                            self.compiler.diagnostics.add(Diagnostic::error(
+                            self.compiler.add_error(
                                 "`Text` does not accept parameters",
                                 vec![Note::primary(
                                     annotation.span,
                                     "try removing these parameters",
                                 )],
-                            ));
+                            );
                         }
 
                         engine::UnresolvedType::Builtin(engine::BuiltinType::Text)
                     }
                     lower::BuiltinTypeKind::Boolean => {
                         if !parameters.is_empty() {
-                            self.compiler.diagnostics.add(Diagnostic::error(
+                            self.compiler.add_error(
                                 "`Boolean` does not accept parameters",
                                 vec![Note::primary(
                                     annotation.span,
                                     "try removing these parameters",
                                 )],
-                            ));
+                            );
                         }
 
                         engine::UnresolvedType::Builtin(engine::BuiltinType::Number)
                     }
                     lower::BuiltinTypeKind::List => {
                         if parameters.is_empty() {
-                            self.compiler.diagnostics.add(Diagnostic::error(
+                            self.compiler.add_error(
                                 "`List` accepts 1 parameter, but none were provided",
                                 vec![Note::primary(
                                     annotation.span,
                                     "try adding `_` here to infer the type of `Element`",
                                 )],
-                            ));
+                            );
 
                             engine::UnresolvedType::Builtin(engine::BuiltinType::List(Box::new(
                                 engine::UnresolvedType::Bottom(engine::BottomTypeReason::Error),
                             )))
                         } else {
                             if parameters.len() > 1 {
-                                self.compiler.diagnostics.add(Diagnostic::error(
+                                self.compiler.add_error(
                                     format!(
                                         "`List` accepts 1 parameter, but {} were provided",
                                         parameters.len()
@@ -3615,7 +3632,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                                         annotation.span,
                                         "try removing some of these",
                                     )],
-                                ));
+                                );
                             }
 
                             engine::UnresolvedType::Builtin(engine::BuiltinType::List(Box::new(
@@ -3629,20 +3646,20 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                     }
                     lower::BuiltinTypeKind::Mutable => {
                         if parameters.is_empty() {
-                            self.compiler.diagnostics.add(Diagnostic::error(
+                            self.compiler.add_error(
                                 "`Mutable` accepts 1 parameter, but none were provided",
                                 vec![Note::primary(
                                     annotation.span,
                                     "try adding `_` here to infer the type of `Value`",
                                 )],
-                            ));
+                            );
 
                             engine::UnresolvedType::Builtin(engine::BuiltinType::Mutable(Box::new(
                                 engine::UnresolvedType::Bottom(engine::BottomTypeReason::Error),
                             )))
                         } else {
                             if parameters.len() > 1 {
-                                self.compiler.diagnostics.add(Diagnostic::error(
+                                self.compiler.add_error(
                                     format!(
                                         "`Mutable` accepts 1 parameter, but {} were provided",
                                         parameters.len()
@@ -3651,7 +3668,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                                         annotation.span,
                                         "try removing some of these",
                                     )],
-                                ));
+                                );
                             }
 
                             engine::UnresolvedType::Builtin(engine::BuiltinType::Mutable(Box::new(
@@ -3759,7 +3776,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
         #[allow(unused_mut)]
         let mut diagnostic = match error.error {
             engine::TypeError::ErrorExpression => return,
-            engine::TypeError::Recursive(_) => Diagnostic::error(
+            engine::TypeError::Recursive(_) => self.compiler.error(
                 "recursive type",
                 vec![Note::primary(
                     error.span,
@@ -3775,7 +3792,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                     _ => None,
                 };
 
-                Diagnostic::error(
+                self.compiler.error_with(
                     "mismatched types",
                     std::iter::once(Note::primary(
                         error.span,
@@ -3808,6 +3825,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                             })
                     }))
                     .collect(),
+                    error.trace,
                 )
             }
             engine::TypeError::MissingInstance(id, params, bound_span) => {
@@ -3820,7 +3838,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                     .attributes
                     .clone();
 
-                Diagnostic::error(
+                self.compiler.error_with(
                     "missing instance",
                     std::iter::once(Note::primary(
                         error.span,
@@ -3838,12 +3856,13 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                             .map(|message| Note::secondary(error.span, message)),
                     )
                     .collect(),
+                    error.trace,
                 )
             }
             engine::TypeError::AmbiguousTrait(mut ty, _, candidates) => {
                 ty.apply(&self.ctx);
 
-                Diagnostic::error(
+                self.compiler.error_with(
                     "could not determine the type of this expression",
                     std::iter::once(Note::primary(
                         error.span,
@@ -3863,12 +3882,13 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                             .map(|span| Note::secondary(span, "this instance could apply")),
                     )
                     .collect(),
+                    error.trace,
                 )
             }
             engine::TypeError::UnresolvedType(mut ty) => {
                 ty.apply(&self.ctx);
 
-                Diagnostic::error(
+                self.compiler.error_with(
                     "could not determine the type of this expression",
                     std::iter::once(Note::primary(
                         error.span,
@@ -3883,23 +3903,20 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                         }),
                     )
                     .collect(),
+                    error.trace,
                 )
             }
-            engine::TypeError::InvalidNumericLiteral(ty) => Diagnostic::error(
+            engine::TypeError::InvalidNumericLiteral(ty) => self.compiler.error_with(
                 format!(
                     "number does not fit into a {}",
                     self.format_type(ty, format)
                 ),
                 vec![Note::primary(error.span, "invalid numeric literal")],
+                error.trace,
             ),
         };
 
         diagnostic.notes.append(&mut error.notes);
-
-        #[cfg(debug_assertions)]
-        {
-            diagnostic.trace = error.trace;
-        }
 
         self.compiler.diagnostics.add(diagnostic);
     }

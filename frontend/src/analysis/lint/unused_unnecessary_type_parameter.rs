@@ -4,13 +4,13 @@ use std::collections::BTreeMap;
 impl Compiler<'_> {
     pub(super) fn unused_unnecessary_type_parameter_lint(&self, program: &analysis::Program) {
         let add_diagnostic = |decl_span, use_span| {
-            self.diagnostics.add(Diagnostic::warning(
+            self.add_warning(
                 "unnecessary type parameter",
                 vec![
                     Note::primary(decl_span, "try removing this..."),
                     Note::primary(use_span, "...and replacing this with `_`"),
                 ],
-            ));
+            )
         };
 
         macro_rules! lint {
@@ -59,10 +59,10 @@ impl Compiler<'_> {
 
                 for &(span, param) in &$decl.params {
                     if param_count.get(&param).copied().unwrap_or(0) == 0 {
-                        self.diagnostics.add(Diagnostic::warning(
+                        self.add_warning(
                             "unused type parameter",
                             vec![Note::primary(span, "try removing this")],
-                        ));
+                        );
                     }
                 }
 

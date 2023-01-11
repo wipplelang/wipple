@@ -1,4 +1,8 @@
-use crate::{helpers::Shared, parse::Span, FilePath, SourceMap};
+use crate::{
+    helpers::{Backtrace, Shared},
+    parse::Span,
+    Compiler, FilePath, SourceMap,
+};
 use itertools::Itertools;
 use serde::Serialize;
 use std::{
@@ -7,29 +11,12 @@ use std::{
     sync::Arc,
 };
 
-#[cfg(debug_assertions)]
-lazy_static::lazy_static! {
-    static ref BACKTRACE_ENABLED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(true);
-}
-
-#[cfg(debug_assertions)]
-pub fn backtrace_enabled() -> bool {
-    BACKTRACE_ENABLED.load(std::sync::atomic::Ordering::Relaxed)
-}
-
-#[cfg(debug_assertions)]
-pub fn set_backtrace_enabled(enabled: bool) {
-    BACKTRACE_ENABLED.store(enabled, std::sync::atomic::Ordering::Relaxed);
-}
-
 #[derive(Debug, Clone, Serialize)]
 pub struct Diagnostic {
     pub level: DiagnosticLevel,
     pub message: String,
     pub notes: Vec<Note>,
-
-    #[cfg(debug_assertions)]
-    pub trace: Option<backtrace::Backtrace>,
+    pub trace: Backtrace,
 }
 
 impl PartialEq for Diagnostic {
@@ -85,24 +72,102 @@ impl From<NoteLevel> for codespan_reporting::diagnostic::LabelStyle {
     }
 }
 
-impl Diagnostic {
-    pub fn new(level: DiagnosticLevel, message: impl ToString, notes: Vec<Note>) -> Self {
+#[allow(unused)]
+impl Compiler<'_> {
+    pub(crate) fn diagnostic(
+        &self,
+        level: DiagnosticLevel,
+        message: impl ToString,
+        notes: Vec<Note>,
+    ) -> Diagnostic {
+        self.diagnostic_with(level, message, notes, self.backtrace())
+    }
+
+    pub(crate) fn diagnostic_with(
+        &self,
+        level: DiagnosticLevel,
+        message: impl ToString,
+        notes: Vec<Note>,
+        trace: Backtrace,
+    ) -> Diagnostic {
         Diagnostic {
             level,
             message: message.to_string(),
             notes,
-
-            #[cfg(debug_assertions)]
-            trace: backtrace_enabled().then(backtrace::Backtrace::new),
+            trace,
         }
     }
 
-    pub fn warning(message: impl ToString, notes: Vec<Note>) -> Self {
-        Diagnostic::new(DiagnosticLevel::Warning, message, notes)
+    pub(crate) fn warning(&self, message: impl ToString, notes: Vec<Note>) -> Diagnostic {
+        self.diagnostic(DiagnosticLevel::Warning, message, notes)
     }
 
-    pub fn error(message: impl ToString, notes: Vec<Note>) -> Self {
-        Diagnostic::new(DiagnosticLevel::Error, message, notes)
+    pub(crate) fn error(&self, message: impl ToString, notes: Vec<Note>) -> Diagnostic {
+        self.diagnostic(DiagnosticLevel::Error, message, notes)
+    }
+
+    pub(crate) fn warning_with(
+        &self,
+        message: impl ToString,
+        notes: Vec<Note>,
+        trace: Backtrace,
+    ) -> Diagnostic {
+        self.diagnostic_with(DiagnosticLevel::Warning, message, notes, trace)
+    }
+
+    pub(crate) fn error_with(
+        &self,
+        message: impl ToString,
+        notes: Vec<Note>,
+        trace: Backtrace,
+    ) -> Diagnostic {
+        self.diagnostic_with(DiagnosticLevel::Error, message, notes, trace)
+    }
+
+    pub(crate) fn add_diagnostic(
+        &self,
+        level: DiagnosticLevel,
+        message: impl ToString,
+        notes: Vec<Note>,
+    ) {
+        self.add_diagnostic_with(level, message, notes, self.backtrace());
+    }
+
+    pub(crate) fn add_diagnostic_with(
+        &self,
+        level: DiagnosticLevel,
+        message: impl ToString,
+        notes: Vec<Note>,
+        trace: Backtrace,
+    ) {
+        self.diagnostics
+            .add(self.diagnostic_with(level, message, notes, trace));
+    }
+
+    pub(crate) fn add_warning(&self, message: impl ToString, notes: Vec<Note>) {
+        self.add_diagnostic(DiagnosticLevel::Warning, message, notes);
+    }
+
+    pub(crate) fn add_error(&self, message: impl ToString, notes: Vec<Note>) {
+        self.add_diagnostic(DiagnosticLevel::Error, message, notes);
+    }
+
+    pub(crate) fn add_warning_with(
+        &self,
+        message: impl ToString,
+        notes: Vec<Note>,
+        trace: Backtrace,
+    ) {
+        self.add_diagnostic_with(DiagnosticLevel::Warning, message, notes, trace);
+    }
+
+    pub(crate) fn add_error_with(
+        &self,
+        message: impl ToString,
+        notes: Vec<Note>,
+        trace: Backtrace,
+    ) {
+        self.add_diagnostic_with(DiagnosticLevel::Error, message, notes, trace);
     }
 }
 
@@ -223,7 +288,7 @@ impl FinalizedDiagnostics {
                     .with_message((|| {
                         #[cfg(debug_assertions)]
                         if include_trace {
-                            if let Some(trace) = diagnostic.trace {
+                            if let Some(trace) = diagnostic.trace.into_inner() {
                                 return diagnostic.message + &format!("\n{:?}", trace);
                             }
                         }

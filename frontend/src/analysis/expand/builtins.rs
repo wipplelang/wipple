@@ -45,14 +45,14 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
                             let name = match lhs.kind {
                                 NodeKind::Name(name) => name,
                                 _ => {
-                                    expander.compiler.diagnostics.add(Diagnostic::error(
+                                    expander.compiler.add_error(
                                         "template declaration must be assigned to a name",
                                         vec![Note::primary(lhs.span, "try providing a name here")],
-                                    ));
+                                    );
 
                                     return Node {
                                         span,
-                                        kind: NodeKind::Error,
+                                        kind: NodeKind::error(expander.compiler),
                                     };
                                 }
                             };
@@ -79,14 +79,14 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
                             let name = match lhs.kind {
                                 NodeKind::Name(name) => name,
                                 _ => {
-                                    expander.compiler.diagnostics.add(Diagnostic::error(
+                                    expander.compiler.add_error(
                                         "operator declaration must be assigned to a name",
                                         vec![Note::primary(lhs.span, "try providing a name here")],
-                                    ));
+                                    );
 
                                     return Node {
                                         span,
-                                        kind: NodeKind::Error,
+                                        kind: NodeKind::error(expander.compiler),
                                     };
                                 }
                             };
@@ -121,10 +121,10 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
 
                             let mut insert_import = |name, span| {
                                 if imports.contains_key(&name) {
-                                    expander.compiler.diagnostics.add(Diagnostic::error(
+                                    expander.compiler.add_error(
                                         "duplicate import",
                                         vec![Note::primary(span, "this name is already imported")],
-                                    ));
+                                    );
 
                                     return;
                                 }
@@ -133,10 +133,10 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
                             };
 
                             let report_invalid_import = |span| {
-                                expander.compiler.diagnostics.add(Diagnostic::error(
+                                expander.compiler.add_error(
                                     "only names may be specified in a destructuring pattern",
                                     vec![Note::primary(span, "expected name here")],
-                                ));
+                                );
                             };
 
                             match lhs.kind {
@@ -152,17 +152,17 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
                                                         NodeKind::Name(name) => {
                                                             insert_import(name, node.span)
                                                         }
-                                                        NodeKind::Error => {}
+                                                        NodeKind::Error(_) => {}
                                                         _ => report_invalid_import(node.span),
                                                     }
                                                 }
                                             }
-                                            NodeKind::Error => {}
+                                            NodeKind::Error(_) => {}
                                             _ => report_invalid_import(statement.node.span),
                                         }
                                     }
                                 }
-                                NodeKind::Error => {}
+                                NodeKind::Error(_) => {}
                                 _ => {
                                     todo!();
                                 }
@@ -340,10 +340,10 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
                     let lhs = inputs.pop().unwrap();
 
                     let inputs = match lhs.kind {
-                        NodeKind::Error => {
+                        NodeKind::Error(trace) => {
                             return Node {
                                 span,
-                                kind: NodeKind::Error,
+                                kind: NodeKind::Error(trace),
                             }
                         }
                         NodeKind::Empty => Vec::new(),
@@ -351,27 +351,27 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
                         NodeKind::List(names) => names
                             .into_iter()
                             .filter_map(|node| match node.kind {
-                                NodeKind::Error => None,
+                                NodeKind::Error(_) => None,
                                 NodeKind::Name(name) => Some(name),
                                 _ => {
-                                    expander.compiler.diagnostics.add(Diagnostic::error(
+                                    expander.compiler.add_error(
                                         "expected name of template input",
                                         vec![Note::primary(node.span, "expected name here")],
-                                    ));
+                                    );
 
                                     None
                                 }
                             })
                             .collect(),
                         _ => {
-                            expander.compiler.diagnostics.add(Diagnostic::error(
+                            expander.compiler.add_error(
                                 "expected template inputs",
                                 vec![Note::primary(span, "try providing some names")],
-                            ));
+                            );
 
                             return Node {
                                 span,
-                                kind: NodeKind::Error,
+                                kind: NodeKind::error(expander.compiler),
                             };
                         }
                     };
@@ -423,29 +423,27 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
                         "dot" => OperatorPrecedence::Dot,
                         "comma" => OperatorPrecedence::Comma,
                         _ => {
-                            expander.compiler.diagnostics.add(Diagnostic::error(
-                                "invalid precedence name",
-                                vec![Note::primary(
+                            expander.compiler.add_error(
+                                "invalid precedence name", vec![Note::primary(
                                     lhs.span,
                                     "try providing a valid precedence name, like `addition` or `comparison`",
                                 )],
-                            ));
+                            );
 
                             return Node {
                                 span,
-                                kind: NodeKind::Error,
+                                kind: NodeKind::error(expander.compiler),
                             };
                         }
                     }
                     _ => {
-                        expander.compiler.diagnostics.add(Diagnostic::error(
-                            "expected precedence on left-hand side of operator declaration",
-                            vec![Note::primary(lhs.span, "expected a valid precedence name here, like `function` or `addition`")],
-                        ));
+                        expander.compiler.add_error(
+                            "expected precedence on left-hand side of operator declaration", vec![Note::primary(lhs.span, "expected a valid precedence name here, like `function` or `addition`")],
+                        );
 
                         return Node {
                             span,
-                            kind: NodeKind::Error,
+                            kind: NodeKind::error(expander.compiler),
                         };
                     }
                 };
@@ -453,14 +451,13 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
                 let (inputs, body) = match rhs.kind {
                     NodeKind::Template(inputs, body) => (inputs, body),
                     _ => {
-                        expander.compiler.diagnostics.add(Diagnostic::error(
-                            "expected template on right-hand side of operator declaration",
-                            vec![Note::primary(rhs.span, "expected a template here")],
-                        ));
+                        expander.compiler.add_error(
+                            "expected template on right-hand side of operator declaration", vec![Note::primary(rhs.span, "expected a template here")],
+                        );
 
                         return Node {
                             span,
-                            kind: NodeKind::Error,
+                            kind: NodeKind::error(expander.compiler),
                         };
                     }
                 };
@@ -552,7 +549,7 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
 
                         return Node {
                             span,
-                            kind: NodeKind::Error,
+                            kind: NodeKind::error(expander.compiler),
                         };
                     }
 
@@ -597,17 +594,17 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
             Template::function(|expander, span, inputs, _, _, _| {
                 Box::pin(async move {
                     if inputs.len() < 2 {
-                        expander.compiler.diagnostics.add(Diagnostic::error(
+                        expander.compiler.add_error(
                             "expected at least 2 inputs to template `external`",
                             vec![Note::primary(
                                 span,
                                 "`external` requires an ABI and identifier",
                             )],
-                        ));
+                        );
 
                         return Node {
                             span,
-                            kind: NodeKind::Error,
+                            kind: NodeKind::error(expander.compiler),
                         };
                     }
 
@@ -643,17 +640,16 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
                 }
 
                 if inputs.len() != 1 {
-                    expander.compiler.diagnostics.add(Diagnostic::error(
-                        "expected 0 or 1 inputs to template `type`",
-                        vec![Note::primary(
+                    expander.compiler.add_error(
+                        "expected 0 or 1 inputs to template `type`", vec![Note::primary(
                             span,
                             "`type` may be used standalone, or with a block denoting the type's fields or variants",
                         )],
-                    ));
+                    );
 
                     return Node {
                         span,
-                        kind: NodeKind::Error,
+                        kind: NodeKind::error(expander.compiler),
                     };
                 }
 
@@ -662,17 +658,16 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
                 let fields = match block.kind {
                     NodeKind::Block(statements) => statements,
                     _ => {
-                        expander.compiler.diagnostics.add(Diagnostic::error(
-                            "expected a block here",
-                            vec![Note::primary(
+                        expander.compiler.add_error(
+                            "expected a block here", vec![Note::primary(
                                 block.span,
                                 "`when` requires a block containing functions",
                             )],
-                        ));
+                        );
 
                         return Node {
                             span,
-                            kind: NodeKind::Error,
+                            kind: NodeKind::error(expander.compiler),
                         };
                     }
                 };
@@ -699,14 +694,14 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
             Template::function(|expander, span, mut inputs, _, _, _| {
                 Box::pin(async move {
                     if inputs.len() != 1 {
-                        expander.compiler.diagnostics.add(Diagnostic::error(
+                        expander.compiler.add_error(
                             "expected 1 input to template `trait`",
                             vec![Note::primary(span, "`trait` requires a type")],
-                        ));
+                        );
 
                         return Node {
                             span,
-                            kind: NodeKind::Error,
+                            kind: NodeKind::error(expander.compiler),
                         };
                     }
 
@@ -735,14 +730,14 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
             Template::function(|expander, span, mut inputs, _, _, _| {
                 Box::pin(async move {
                     if inputs.len() != 1 {
-                        expander.compiler.diagnostics.add(Diagnostic::error(
+                        expander.compiler.add_error(
                             "expected 1 input to template `instance`",
                             vec![Note::primary(span, "`instance` requires a trait")],
-                        ));
+                        );
 
                         return Node {
                             span,
-                            kind: NodeKind::Error,
+                            kind: NodeKind::error(expander.compiler),
                         };
                     }
 
@@ -755,14 +750,14 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
                             (inputs.pop_front().unwrap(), Vec::from(inputs))
                         }
                         _ => {
-                            expander.compiler.diagnostics.add(Diagnostic::error(
+                            expander.compiler.add_error(
                                 "malformed `instance` declaration",
                                 vec![Note::primary(span, "`instance` requires a trait")],
-                            ));
+                            );
 
                             return Node {
                                 span,
-                                kind: NodeKind::Error,
+                                kind: NodeKind::error(expander.compiler),
                             };
                         }
                     };
@@ -789,17 +784,16 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
             Span::builtin("`format` template"),
             Template::function(|expander, span, inputs, _, _, _| Box::pin(async move {
                 if inputs.is_empty() {
-                    expander.compiler.diagnostics.add(Diagnostic::error(
-                        "expected at least 1 input to template `format`",
-                        vec![Note::primary(
+                    expander.compiler.add_error(
+                        "expected at least 1 input to template `format`", vec![Note::primary(
                             span,
                             "`instance` requires text containing `_` placeholders",
                         )],
-                    ));
+                    );
 
                     return Node {
                         span,
-                        kind: NodeKind::Error,
+                        kind: NodeKind::error(expander.compiler),
                     };
                 }
 
@@ -811,9 +805,8 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
                     let placeholder_count = text.split('_').count() - 1;
 
                     if placeholder_count != inputs.len() {
-                        expander.compiler.diagnostics.add(Diagnostic::error(
-                            "wrong number of inputs to `format` text",
-                            vec![Note::primary(
+                        expander.compiler.add_error(
+                            "wrong number of inputs to `format` text", vec![Note::primary(
                                 span,
                                 format!(
                                     "text contains {} placeholders, but {} inputs were provided",
@@ -821,20 +814,19 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
                                     inputs.len()
                                 ),
                             )],
-                        ));
+                        );
                     }
                 } else {
-                    expander.compiler.diagnostics.add(Diagnostic::error(
-                        "expected text",
-                        vec![Note::primary(
+                    expander.compiler.add_error(
+                        "expected text", vec![Note::primary(
                             span,
                             "`instance` requires text containing `_` placeholders",
                         )],
-                    ));
+                    );
 
                     return Node {
                         span,
-                        kind: NodeKind::Error,
+                        kind: NodeKind::error(expander.compiler),
                     };
                 };
 
@@ -928,17 +920,17 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
             Template::function(|expander, span, mut inputs, _, _, _| {
                 Box::pin(async move {
                     if inputs.len() != 1 {
-                        expander.compiler.diagnostics.add(Diagnostic::error(
+                        expander.compiler.add_error(
                             "expected 1 input to template `end`",
                             vec![Note::primary(
                                 span,
                                 "`end` accepts a value to exit a block with",
                             )],
-                        ));
+                        );
 
                         return Node {
                             span,
-                            kind: NodeKind::Error,
+                            kind: NodeKind::error(expander.compiler),
                         };
                     }
 
@@ -967,17 +959,16 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
             Template::function(|expander, span, mut inputs, _, _, _| {
                 Box::pin(async move {
                     if inputs.len() != 2 {
-                        expander.compiler.diagnostics.add(Diagnostic::error(
-                            "expected 2 inputs to template `when`",
-                            vec![Note::primary(
+                        expander.compiler.add_error(
+                            "expected 2 inputs to template `when`", vec![Note::primary(
                                 span,
                                 "`when` accepts a value to match and a block containing functions",
                             )],
-                        ));
+                        );
 
                         return Node {
                             span,
-                            kind: NodeKind::Error,
+                            kind: NodeKind::error(expander.compiler),
                         };
                     }
 
@@ -987,17 +978,16 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
                     let block = match block.kind {
                         NodeKind::Block(statements) => statements,
                         _ => {
-                            expander.compiler.diagnostics.add(Diagnostic::error(
-                                "expected a block here",
-                                vec![Note::primary(
+                            expander.compiler.add_error(
+                                "expected a block here", vec![Note::primary(
                                     block.span,
                                     "`type` requires a block denoting the type's fields or variants",
                                 )],
-                            ));
+                            );
 
                             return Node {
                                 span,
-                                kind: NodeKind::Error,
+                                kind: NodeKind::error(expander.compiler),
                             };
                         }
                     };
@@ -1025,17 +1015,17 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
             Template::function(|expander, span, mut inputs, _, attributes, _| {
                 Box::pin(async move {
                     if inputs.len() != 2 {
-                        expander.compiler.diagnostics.add(Diagnostic::error(
+                        expander.compiler.add_error(
                             "expected 2 inputs to template `language`",
                             vec![Note::primary(
                                 span,
                                 "`language` accepts the name of a language item and a declaration",
                             )],
-                        ));
+                        );
 
                         return Node {
                             span,
-                            kind: NodeKind::Error,
+                            kind: NodeKind::error(expander.compiler),
                         };
                     }
 
@@ -1045,10 +1035,10 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
                     let name = match item.kind {
                         NodeKind::Text(text) => text,
                         _ => {
-                            expander.compiler.diagnostics.add(Diagnostic::error(
+                            expander.compiler.add_error(
                                 "`language` expects a text value",
                                 vec![Note::primary(item.span, "expected text here")],
-                            ));
+                            );
 
                             return node;
                         }
@@ -1057,13 +1047,13 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
                     let language_item = match LanguageItem::from_str(&name) {
                         Ok(item) => item,
                         Err(_) => {
-                            expander.compiler.diagnostics.add(Diagnostic::error(
+                            expander.compiler.add_error(
                                 "invalid `language` item",
                                 vec![Note::primary(
                                     item.span,
                                     "expected a valid `language` item here",
                                 )],
-                            ));
+                            );
 
                             return node;
                         }
@@ -1072,7 +1062,7 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
                     let attributes = match attributes {
                         Some(attributes) => attributes,
                         None => {
-                            expander.compiler.diagnostics.add(Diagnostic::error(
+                            expander.compiler.add_error(
                                 "`language` may only be used as an attribute",
                                 vec![Note::primary(
                                     span,
@@ -1081,20 +1071,20 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
                                         name
                                     ),
                                 )],
-                            ));
+                            );
 
                             return node;
                         }
                     };
 
                     if attributes.language_item.is_some() {
-                        expander.compiler.diagnostics.add(Diagnostic::error(
+                        expander.compiler.add_error(
                             "`language` item is already set for this statement",
                             vec![Note::primary(
                                 span,
                                 "cannot use more than one `language` item per statement",
                             )],
-                        ));
+                        );
 
                         return node;
                     }
@@ -1121,17 +1111,17 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
             Template::function(|expander, span, mut inputs, _, attributes, _| {
                 Box::pin(async move {
                     if inputs.len() != 2 {
-                        expander.compiler.diagnostics.add(Diagnostic::error(
+                        expander.compiler.add_error(
                             "expected 2 inputs to template `help`",
                             vec![Note::primary(
                                 span,
                                 "`help` accepts documentation text and a declaration",
                             )],
-                        ));
+                        );
 
                         return Node {
                             span,
-                            kind: NodeKind::Error,
+                            kind: NodeKind::error(expander.compiler),
                         };
                     }
 
@@ -1141,10 +1131,10 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
                     let doc = match item.kind {
                         NodeKind::Text(text) => text,
                         _ => {
-                            expander.compiler.diagnostics.add(Diagnostic::error(
+                            expander.compiler.add_error(
                                 "`help` expects a text value",
                                 vec![Note::primary(item.span, "expected text here")],
-                            ));
+                            );
 
                             return node;
                         }
@@ -1166,13 +1156,13 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
                                     .help
                                     .push_front(doc);
                             } else {
-                                expander.compiler.diagnostics.add(Diagnostic::error(
+                                expander.compiler.add_error(
                                     "`help` may only be used as an attribute",
                                     vec![Note::primary(
                                         span,
                                         r#"try putting this between brackets: (`[help "..."]`)"#,
                                     )],
-                                ));
+                                );
                             }
                         }
                     }
@@ -1200,17 +1190,16 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
             Template::function(|expander, span, mut inputs, _, attributes, _| {
                 Box::pin(async move {
                     if inputs.len() != 2 {
-                        expander.compiler.diagnostics.add(Diagnostic::error(
-                            "expected 2 inputs to template `on-unimplemented`",
-                            vec![Note::primary(
+                        expander.compiler.add_error(
+                            "expected 2 inputs to template `on-unimplemented`", vec![Note::primary(
                                 span,
                                 "`on-unimplemented` accepts a message and a declaration",
                             )],
-                        ));
+                        );
 
                         return Node {
                             span,
-                            kind: NodeKind::Error,
+                            kind: NodeKind::error(expander.compiler),
                         };
                     }
 
@@ -1220,10 +1209,9 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
                     let message = match item.kind {
                         NodeKind::Text(text) => text,
                         _ => {
-                            expander.compiler.diagnostics.add(Diagnostic::error(
-                                "`on-unimplemented` expects a text value",
-                                vec![Note::primary(item.span, "expected text here")],
-                            ));
+                            expander.compiler.add_error(
+                                "`on-unimplemented` expects a text value", vec![Note::primary(item.span, "expected text here")],
+                            );
 
                             return node;
                         }
@@ -1232,26 +1220,24 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
                     let attributes = match attributes {
                         Some(attributes) => attributes,
                         None => {
-                            expander.compiler.diagnostics.add(Diagnostic::error(
-                                "`on-unimplemented` may only be used as an attribute",
-                                vec![Note::primary(
+                            expander.compiler.add_error(
+                                "`on-unimplemented` may only be used as an attribute", vec![Note::primary(
                                     span,
                                     r#"try putting this between brackets: (`[on-unimplemented "..."]`)"#,
                                 )],
-                            ));
+                            );
 
                             return node;
                         }
                     };
 
                     if attributes.on_unimplemented.is_some() {
-                        expander.compiler.diagnostics.add(Diagnostic::error(
-                            "`on-unimplemented` item is already set for this statement",
-                            vec![Note::primary(
+                        expander.compiler.add_error(
+                            "`on-unimplemented` item is already set for this statement", vec![Note::primary(
                                 span,
                                 "cannot use more than one `on-unimplemented` item per statement",
                             )],
-                        ));
+                        );
 
                         return node;
                     }
@@ -1278,17 +1264,17 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
             Template::function(|expander, span, mut inputs, _, attributes, _| {
                 Box::pin(async move {
                     if !matches!(inputs.len(), 2..=3) {
-                        expander.compiler.diagnostics.add(Diagnostic::error(
+                        expander.compiler.add_error(
                             "expected 2-3 inputs to template `on-mismatch`",
                             vec![Note::primary(
                                 span,
                                 "`on-mismatch` accepts a type parameter, message and a declaration",
                             )],
-                        ));
+                        );
 
                         return Node {
                             span,
-                            kind: NodeKind::Error,
+                            kind: NodeKind::error(expander.compiler),
                         };
                     }
 
@@ -1307,13 +1293,13 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
                         Some(node) => match node.kind {
                             NodeKind::Name(name) => Some((node.span, name)),
                             _ => {
-                                expander.compiler.diagnostics.add(Diagnostic::error(
+                                expander.compiler.add_error(
                                     "`on-mismatch` expects a type parameter name",
                                     vec![Note::primary(
                                         message.span,
                                         "expected type parameter here",
                                     )],
-                                ));
+                                );
 
                                 return node;
                             }
@@ -1324,10 +1310,10 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
                     let message = match message.kind {
                         NodeKind::Text(text) => text,
                         _ => {
-                            expander.compiler.diagnostics.add(Diagnostic::error(
+                            expander.compiler.add_error(
                                 "`on-mismatch` expects a text value",
                                 vec![Note::primary(message.span, "expected text here")],
-                            ));
+                            );
 
                             return node;
                         }
@@ -1336,13 +1322,13 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
                     let attributes = match attributes {
                         Some(attributes) => attributes,
                         None => {
-                            expander.compiler.diagnostics.add(Diagnostic::error(
+                            expander.compiler.add_error(
                                 "`on-mismatch` may only be used as an attribute",
                                 vec![Note::primary(
                                     span,
                                     r#"try putting this between brackets: (`[on-mismatch "..."]`)"#,
                                 )],
-                            ));
+                            );
 
                             return node;
                         }
@@ -1370,7 +1356,7 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
             Template::function(|expander, span, inputs, attributes, _, _| {
                 Box::pin(async move {
                     if !inputs.is_empty() {
-                        expander.compiler.diagnostics.add(Diagnostic::error(
+                        expander.compiler.add_error(
                             "`no-std` attribute does not accept inputs",
                             vec![Note::primary(
                                 inputs
@@ -1380,28 +1366,28 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
                                     .with_end(inputs.last().unwrap().span.end),
                                 "try removing these",
                             )],
-                        ));
+                        );
 
                         return Node {
                             span,
-                            kind: NodeKind::Error,
+                            kind: NodeKind::error(expander.compiler),
                         };
                     }
 
                     let attributes = match attributes {
                         Some(attributes) => attributes,
                         None => {
-                            expander.compiler.diagnostics.add(Diagnostic::error(
+                            expander.compiler.add_error(
                                 "`no-std` may only be used as an attribute",
                                 vec![Note::primary(
                                     span,
                                     r#"try putting this between double brackets: (`[[no-std]]`)"#,
                                 )],
-                            ));
+                            );
 
                             return Node {
                                 span,
-                                kind: NodeKind::Error,
+                                kind: NodeKind::error(expander.compiler),
                             };
                         }
                     };
@@ -1431,17 +1417,17 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
             Template::function(|expander, span, mut inputs, _, _, _| {
                 Box::pin(async move {
                     if inputs.len() != 1 {
-                        expander.compiler.diagnostics.add(Diagnostic::error(
+                        expander.compiler.add_error(
                             "expected 1 input to template `keyword`",
                             vec![Note::primary(
                                 span,
                                 "`keyword` accepts a template declaration",
                             )],
-                        ));
+                        );
 
                         return Node {
                             span,
-                            kind: NodeKind::Error,
+                            kind: NodeKind::error(expander.compiler),
                         };
                     }
 
@@ -1450,14 +1436,14 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
                     let template = match node.kind {
                         NodeKind::TemplateDeclaration(id) => id,
                         _ => {
-                            expander.compiler.diagnostics.add(Diagnostic::error(
+                            expander.compiler.add_error(
                                 "`keyword` may only be used on a template declaration",
                                 vec![Note::primary(span, "expected a template declaration here")],
-                            ));
+                            );
 
                             return Node {
                                 span,
-                                kind: NodeKind::Error,
+                                kind: NodeKind::error(expander.compiler),
                             };
                         }
                     };
@@ -1466,10 +1452,10 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
                     let decl = declarations.templates.get_mut(&template).unwrap();
 
                     if decl.attributes.keyword {
-                        expander.compiler.diagnostics.add(Diagnostic::error(
+                        expander.compiler.add_error(
                             "cannot apply `keyword` attribute multiple times",
                             vec![Note::primary(span, "try removing this")],
-                        ));
+                        );
 
                         return node;
                     }
@@ -1496,27 +1482,27 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
             Template::function(|expander, span, mut inputs, _, attributes, _| {
                 Box::pin(async move {
                     if inputs.len() != 1 {
-                        expander.compiler.diagnostics.add(Diagnostic::error(
+                        expander.compiler.add_error(
                             "expected 1 input to template `keyword`",
                             vec![Note::primary(
                                 span,
                                 "`keyword` accepts a constant declaration",
                             )],
-                        ));
+                        );
 
                         return Node {
                             span,
-                            kind: NodeKind::Error,
+                            kind: NodeKind::error(expander.compiler),
                         };
                     }
 
                     let node = inputs.pop().unwrap();
 
                     let add_error = || {
-                        expander.compiler.diagnostics.add(Diagnostic::error(
+                        expander.compiler.add_error(
                             "`specialize` may only be used on a constant declaration",
                             vec![Note::primary(span, "expected a constant declaration here")],
-                        ))
+                        )
                     };
 
                     if let NodeKind::Annotate(lhs, _) = &node.kind {
@@ -1532,26 +1518,26 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
                     let attributes = match attributes {
                         Some(attributes) => attributes,
                         None => {
-                            expander.compiler.diagnostics.add(Diagnostic::error(
+                            expander.compiler.add_error(
                                 "`specialize` may only be used as an attribute",
                                 vec![Note::primary(
                                     span,
                                     r#"try putting this between brackets: (`[specialize]`)"#,
                                 )],
-                            ));
+                            );
 
                             return node;
                         }
                     };
 
                     if attributes.specialize {
-                        expander.compiler.diagnostics.add(Diagnostic::error(
+                        expander.compiler.add_error(
                             "`specialize` attribute is already set for this statement",
                             vec![Note::primary(
                                 span,
                                 "cannot use more than one `specialize` attribute per statement",
                             )],
-                        ));
+                        );
 
                         return node;
                     }

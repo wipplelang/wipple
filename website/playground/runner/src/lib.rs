@@ -132,9 +132,6 @@ pub async fn run(code: String, lint: bool) -> JsValue {
     #[cfg(feature = "console_error_panic_hook")]
     console_error_panic_hook::set_once();
 
-    #[cfg(debug_assertions)]
-    wipple_frontend::diagnostics::set_backtrace_enabled(false);
-
     let loader = LOADER.clone();
 
     let playground_path = wipple_frontend::helpers::InternedString::new("playground");
@@ -145,6 +142,9 @@ pub async fn run(code: String, lint: bool) -> JsValue {
         .insert(playground_path, Arc::from(code));
 
     let compiler = wipple_frontend::Compiler::new(&loader);
+
+    #[cfg(debug_assertions)]
+    let compiler = compiler.set_backtrace_enabled(false);
 
     let (program, diagnostics) = compiler
         .analyze_with(

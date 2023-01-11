@@ -5,13 +5,13 @@ impl Compiler<'_> {
         for variable in program.declarations.variables.values() {
             if let Some(name) = variable.name {
                 if variable.uses.is_empty() {
-                    self.diagnostics.add(Diagnostic::warning(
+                    self.add_warning(
                         "unused variable",
                         vec![Note::primary(
                             variable.span,
                             format!("`{}` is never used", name),
                         )],
-                    ))
+                    );
                 }
             }
         }
