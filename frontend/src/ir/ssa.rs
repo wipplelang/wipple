@@ -314,12 +314,9 @@ impl Converter<'_, '_> {
         Pattern {
             span: Some(pattern.span),
             kind: match &pattern.kind {
-                #[cfg(debug_assertions)]
                 analysis::PatternKind::Error(trace) => {
-                    panic!("found error pattern in program: {:?}", trace)
+                    panic!("found error pattern in program: {:?}", trace);
                 }
-                #[cfg(not(debug_assertions))]
-                analysis::PatternKind::Error(trace) => panic!("found error pattern in program"),
                 analysis::PatternKind::Wildcard => PatternKind::Wildcard,
                 analysis::PatternKind::Variable(var) => PatternKind::Variable(*var),
                 analysis::PatternKind::Text(text) => PatternKind::Text(*text),

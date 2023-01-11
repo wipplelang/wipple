@@ -1741,15 +1741,9 @@ impl<'a, 'l> Typechecker<'a, 'l> {
         ty.apply(&self.ctx);
 
         let kind = (|| match pattern.kind {
-            #[cfg(debug_assertions)]
             UnresolvedPatternKind::Error(trace) => {
                 match_set.set_matched(true);
                 MonomorphizedPatternKind::Error(trace)
-            }
-            #[cfg(not(debug_assertions))]
-            UnresolvedPatternKind::Error() => {
-                match_set.set_matched(true);
-                MonomorphizedPatternKind::Error()
             }
             UnresolvedPatternKind::Number(number) => {
                 let numeric_ty = engine::UnresolvedType::NumericVariable(self.ctx.new_variable());

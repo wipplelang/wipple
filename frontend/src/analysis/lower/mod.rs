@@ -10,7 +10,6 @@ use crate::{
     BuiltinTypeId, Compiler, ConstantId, FilePath, TemplateId, TraitId, TypeId, TypeParameterId,
     VariableId,
 };
-use serde::Serialize;
 use std::{
     cell::RefCell,
     collections::{BTreeMap, BTreeSet, HashMap, HashSet},
@@ -92,7 +91,7 @@ impl UnresolvedDeclarations {
     }
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub struct Declaration<T> {
     pub name: Option<InternedString>,
@@ -143,7 +142,8 @@ impl<T> Declaration<T> {
     }
 }
 
-#[derive(Debug, Clone, Default, Serialize)]
+#[derive(Debug, Clone, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 #[non_exhaustive]
 pub struct DeclarationAttributes {
@@ -158,7 +158,8 @@ pub struct Type {
     pub attributes: TypeAttributes,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 #[non_exhaustive]
 pub struct TypeAttributes {
@@ -166,37 +167,42 @@ pub struct TypeAttributes {
     pub on_mismatch: Vec<(Option<TypeParameterId>, InternedString)>,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
-#[serde(tag = "type", content = "value")]
+#[cfg_attr(feature = "serde", serde(tag = "type", content = "value"))]
 pub enum TypeKind {
     Marker,
     Structure(Vec<TypeField>, HashMap<InternedString, usize>),
     Enumeration(Vec<TypeVariant>, HashMap<InternedString, usize>),
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub struct TypeField {
     pub ty: TypeAnnotation,
     pub attributes: DeclarationAttributes,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub struct TypeVariant {
     pub constructor: ConstantId,
     pub tys: Vec<TypeAnnotation>,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub struct BuiltinType {
     pub kind: BuiltinTypeKind,
     pub attributes: DeclarationAttributes,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub enum BuiltinTypeKind {
     Never,
@@ -222,7 +228,8 @@ pub struct Trait {
     pub attributes: TraitAttributes,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 #[non_exhaustive]
 pub struct TraitAttributes {
@@ -240,7 +247,8 @@ pub struct Constant {
     pub attributes: ConstantAttributes,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 #[non_exhaustive]
 pub struct ConstantAttributes {
@@ -357,14 +365,16 @@ impl PatternKind {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub struct TypeAnnotation {
     pub span: Span,
     pub kind: TypeAnnotationKind,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub enum TypeAnnotationKind {
     Error,
@@ -407,7 +417,7 @@ impl TypeAnnotation {
 
 pub type CaptureList = Vec<(VariableId, Span)>;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, EnumString, Display)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, EnumString, Display)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 #[strum(serialize_all = "kebab-case")]
 pub enum RuntimeFunction {
@@ -675,9 +685,10 @@ pub enum ScopeKind {
     Function,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
-#[serde(tag = "type", content = "value")]
+#[cfg_attr(feature = "serde", serde(tag = "type", content = "value"))]
 pub enum ScopeValue {
     Operator(expand::Operator),
     Template(TemplateId),

@@ -1,7 +1,7 @@
 use crate::Compiler;
-use serde::Serialize;
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct Backtrace(#[cfg(debug_assertions)] Option<backtrace::Backtrace>);
 
 impl Compiler<'_> {
@@ -30,8 +30,11 @@ impl Backtrace {
 }
 
 impl From<backtrace::Backtrace> for Backtrace {
-    fn from(trace: backtrace::Backtrace) -> Self {
-        Backtrace(Some(trace))
+    fn from(#[allow(unused)] trace: backtrace::Backtrace) -> Self {
+        Backtrace(
+            #[cfg(debug_assertions)]
+            Some(trace),
+        )
     }
 }
 

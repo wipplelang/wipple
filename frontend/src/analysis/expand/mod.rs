@@ -14,7 +14,6 @@ use crate::{
 };
 use async_recursion::async_recursion;
 use futures::{future::BoxFuture, stream, StreamExt};
-use serde::Serialize;
 use std::{
     cmp::Ordering,
     collections::{BTreeMap, HashMap, HashSet, VecDeque},
@@ -140,13 +139,14 @@ impl<T> Declarations<T> {
     }
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub struct TemplateDeclaration<T> {
     pub name: InternedString,
     pub span: Span,
     pub uses: HashSet<Span>,
-    #[serde(skip)]
+    #[cfg_attr(feature = "serde", serde(skip))]
     pub template: T,
     pub attributes: TemplateAttributes,
 }
@@ -169,7 +169,8 @@ impl<T> TemplateDeclaration<T> {
     }
 }
 
-#[derive(Debug, Clone, Default, Serialize)]
+#[derive(Debug, Clone, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub struct TemplateAttributes {
     pub keyword: bool,
@@ -354,14 +355,16 @@ impl Template {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub struct Operator {
     pub precedence: OperatorPrecedence,
     pub template: TemplateId,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub enum OperatorPrecedence {
     Cast,

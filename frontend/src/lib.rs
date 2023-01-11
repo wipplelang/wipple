@@ -8,7 +8,6 @@ use async_trait::async_trait;
 use diagnostics::*;
 use helpers::{InternedString, Shared};
 use parse::Span;
-use serde::Serialize;
 use std::{
     borrow::Cow,
     collections::HashMap,
@@ -33,8 +32,9 @@ pub trait Loader: Debug + Send + Sync + 'static {
     fn source_map(&self) -> Shared<SourceMap>;
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
-#[serde(tag = "type", content = "value")]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
+#[cfg_attr(feature = "serde", serde(tag = "type", content = "value"))]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub enum FilePath {
     Path(InternedString),
@@ -81,7 +81,8 @@ macro_rules! file_ids {
 
             $(
                 $(#[$meta])*
-                #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
+                #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+                #[cfg_attr(feature = "serde", derive(serde::Serialize))]
                 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
                 pub struct [<$id:camel Id>] {
                     pub file: Option<FilePath>,
@@ -142,7 +143,8 @@ macro_rules! ids {
 
             $(
                 $(#[$meta])*
-                #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
+                #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+                #[cfg_attr(feature = "serde", derive(serde::Serialize))]
                 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
                 pub struct [<$id:camel Id>] {
                     pub counter: usize,

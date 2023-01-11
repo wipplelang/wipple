@@ -1,8 +1,8 @@
 use crate::{helpers::InternedString, FilePath};
-use serde::Serialize;
 use std::{fmt, ops::Range};
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Serialize)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub struct Span {
     pub path: FilePath,

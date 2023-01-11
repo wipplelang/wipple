@@ -1,6 +1,5 @@
 use lasso::ThreadedRodeo;
 use lazy_static::lazy_static;
-use serde::{Deserialize, Serialize};
 use std::{fmt, ops::Deref};
 
 lazy_static! {
@@ -44,7 +43,8 @@ impl From<String> for InternedString {
     }
 }
 
-impl Serialize for InternedString {
+#[cfg(feature = "serde")]
+impl serde::Serialize for InternedString {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
@@ -53,7 +53,8 @@ impl Serialize for InternedString {
     }
 }
 
-impl<'de> Deserialize<'de> for InternedString {
+#[cfg(feature = "serde")]
+impl<'de> serde::Deserialize<'de> for InternedString {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
