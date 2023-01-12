@@ -257,18 +257,13 @@ impl FinalizedDiagnostics {
             let labels = diagnostic
                 .notes
                 .into_iter()
-                .map(|note| {
+                .filter_map(|note| {
                     let file = match tracked_files.entry(note.span.path) {
                         Entry::Occupied(entry) => *entry.get(),
                         Entry::Vacant(entry) => {
                             let file = files.add(
                                 note.span.path,
-                                self.source_map
-                                    .get(&note.span.path)
-                                    .unwrap_or_else(|| {
-                                        panic!("file {:?} not loaded", note.span.path)
-                                    })
-                                    .clone(),
+                                self.source_map.get(&note.span.path)?.clone(),
                             );
 
                             entry.insert(file);
@@ -277,12 +272,14 @@ impl FinalizedDiagnostics {
                         }
                     };
 
-                    codespan_reporting::diagnostic::Label::new(
-                        note.level.into(),
-                        file,
-                        note.span.start..note.span.end,
+                    Some(
+                        codespan_reporting::diagnostic::Label::new(
+                            note.level.into(),
+                            file,
+                            note.span.start..note.span.end,
+                        )
+                        .with_message(note.message),
                     )
-                    .with_message(note.message)
                 })
                 .collect();
 

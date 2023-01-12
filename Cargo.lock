@@ -2449,6 +2449,7 @@ dependencies = [
  "backtrace",
  "clap",
  "clearscreen",
+ "codespan-reporting",
  "rand 0.8.5",
  "tokio",
  "wipple-default-loader",

@@ -6,7 +6,17 @@ use std::{fmt, ops::Range};
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub struct Span {
     pub path: FilePath,
+
+    #[cfg_attr(
+        feature = "arbitrary",
+        arbitrary(with = |u: &mut arbitrary::Unstructured| u.int_in_range(0..=100))
+    )]
     pub start: usize,
+
+    #[cfg_attr(
+        feature = "arbitrary",
+        arbitrary(with = |u: &mut arbitrary::Unstructured| u.int_in_range(0..=100))
+    )]
     pub end: usize,
 }
 

@@ -78,6 +78,17 @@ impl fmt::Debug for InternedString {
 #[cfg(feature = "arbitrary")]
 impl<'a> arbitrary::Arbitrary<'a> for InternedString {
     fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
-        Ok(Self::new(String::arbitrary(u)?))
+        const NUM_CHARS: usize = 'Z' as usize - 'A' as usize;
+        const MAX_LEN: usize = 2;
+
+        Ok(Self::new(
+            (0..u.int_in_range::<usize>(1..=MAX_LEN)?)
+                .map(|_| {
+                    Ok(('A'..='Z')
+                        .nth(u.int_in_range(0..=(NUM_CHARS - 1))?)
+                        .unwrap())
+                })
+                .collect::<Result<String, _>>()?,
+        ))
     }
 }

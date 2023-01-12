@@ -35,7 +35,6 @@ pub trait Loader: Debug + Send + Sync + 'static {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]
 #[cfg_attr(feature = "serde", serde(tag = "type", content = "value"))]
-#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub enum FilePath {
     Path(InternedString),
     Url(InternedString),
@@ -57,6 +56,13 @@ impl FilePath {
 impl fmt::Display for FilePath {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(&self.as_str())
+    }
+}
+
+#[cfg(feature = "arbitrary")]
+impl<'a> arbitrary::Arbitrary<'a> for FilePath {
+    fn arbitrary(_: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        Ok(FilePath::Virtual(InternedString::new("fuzz")))
     }
 }
 
@@ -85,7 +91,9 @@ macro_rules! file_ids {
                 #[cfg_attr(feature = "serde", derive(serde::Serialize))]
                 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
                 pub struct [<$id:camel Id>] {
+                    #[cfg_attr(feature = "arbitrary", arbitrary(default))]
                     pub file: Option<FilePath>,
+                    #[cfg_attr(feature = "arbitrary", arbitrary(with = |u: &mut arbitrary::Unstructured| u.int_in_range(0..=63)))]
                     pub counter: usize,
                 }
             )*
