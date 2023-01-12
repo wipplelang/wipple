@@ -7,8 +7,8 @@ use crate::{
     diagnostics::*,
     helpers::{InternedString, Shared},
     parse::Span,
-    BuiltinTypeId, Compiler, ConstantId, FileIds, FilePath, TemplateId, TraitId, TypeId,
-    TypeParameterId, VariableId,
+    BuiltinTypeId, Compiler, ConstantId, FieldIndex, FileIds, FilePath, TemplateId, TraitId,
+    TypeId, TypeParameterId, VariableId, VariantIndex,
 };
 use std::{
     cell::RefCell,
@@ -212,8 +212,24 @@ pub struct TypeAttributes {
 #[cfg_attr(feature = "serde", serde(tag = "type", content = "value"))]
 pub enum TypeKind {
     Marker,
-    Structure(Vec<TypeField>, HashMap<InternedString, usize>),
-    Enumeration(Vec<TypeVariant>, HashMap<InternedString, usize>),
+    Structure(
+        #[cfg_attr(feature = "arbitrary", arbitrary(with = |u: &mut arbitrary::Unstructured| {
+            FieldIndex::list_arbitrary()
+                .map(|_| TypeField::arbitrary(u))
+                .collect::<Result<_, _>>()
+        }))]
+        Vec<TypeField>,
+        HashMap<InternedString, FieldIndex>,
+    ),
+    Enumeration(
+        #[cfg_attr(feature = "arbitrary", arbitrary(with = |u: &mut arbitrary::Unstructured| {
+            VariantIndex::list_arbitrary()
+                .map(|_| TypeVariant::arbitrary(u))
+                .collect::<Result<_, _>>()
+        }))]
+        Vec<TypeVariant>,
+        HashMap<InternedString, VariantIndex>,
+    ),
 }
 
 #[derive(Debug, Clone)]
@@ -358,7 +374,7 @@ non_error_kind! {
         Annotate(expr: Box<Expression>, ty: TypeAnnotation),
         Initialize(var: Pattern, value: Box<Expression>),
         Instantiate(id: TypeId, fields: Vec<(InternedString, Expression)>),
-        Variant(id: TypeId, variant: usize, values: Vec<Expression>),
+        Variant(id: TypeId, variant: VariantIndex, values: Vec<Expression>),
         Tuple(exprs: Vec<Expression>),
     }
 }
@@ -400,7 +416,7 @@ non_error_kind! {
         Text(value: InternedString),
         Variable(id: VariableId),
         Destructure(fields: HashMap<InternedString, Pattern>),
-        Variant(id: TypeId, variant: usize /* FIXME: Make this a `VariantIndex` type instead of an arbitrary `usize` */, values: Vec<Pattern>),
+        Variant(id: TypeId, variant: VariantIndex, values: Vec<Pattern>),
         Annotate(pat: Box<Pattern>, ty: TypeAnnotation),
         Or(left: Box<Pattern>, right: Box<Pattern>),
         Where(pat: Box<Pattern>, expr: Box<Expression>),
@@ -745,7 +761,7 @@ pub enum ScopeValue {
     BuiltinType(BuiltinTypeId),
     Trait(TraitId),
     TypeParameter(TypeParameterId),
-    Constant(ConstantId, Option<(TypeId, usize)>),
+    Constant(ConstantId, Option<(TypeId, VariantIndex)>),
     Variable(VariableId),
 }
 
@@ -949,7 +965,7 @@ impl Compiler<'_> {
                                     ),
                                 });
 
-                                field_names.insert(field.name, index);
+                                field_names.insert(field.name, FieldIndex::new(index));
                             }
 
                             Type {
@@ -1014,7 +1030,7 @@ impl Compiler<'_> {
                                     span: variant.span,
                                     kind: ExpressionKind::Variant(
                                         id,
-                                        index,
+                                        VariantIndex::new(index),
                                         variables
                                             .iter()
                                             .map(|(var, span)| Expression {
@@ -1067,7 +1083,7 @@ impl Compiler<'_> {
                                     tys,
                                 });
 
-                                variant_names.insert(variant.name, index);
+                                variant_names.insert(variant.name, VariantIndex::new(index));
                             }
 
                             Type {
@@ -1343,7 +1359,7 @@ impl Compiler<'_> {
                     };
 
                     for (name, index) in names {
-                        let variant = constructors[*index].constructor;
+                        let variant = constructors[index.into_inner()].constructor;
 
                         scope.insert(*name, ScopeValue::Constant(variant, Some((ty, *index))));
                     }
@@ -1916,7 +1932,7 @@ impl Compiler<'_> {
                                         Expression {
                                             span: expr.span,
                                             kind: ExpressionKind::Constant(
-                                                variant_types[index].constructor
+                                                variant_types[index.into_inner()].constructor
                                             )
                                         },
                                         inputs.into_iter().skip(1)

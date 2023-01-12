@@ -160,6 +160,17 @@ macro_rules! file_ids {
     };
 }
 
+file_ids!(
+    builtin_type,
+    constant,
+    item,
+    template,
+    r#trait,
+    r#type,
+    type_parameter,
+    variable,
+);
+
 macro_rules! ids {
     ($($(#[$meta:meta])* $id:ident),* $(,)?) => {
         paste::paste! {
@@ -201,18 +212,46 @@ macro_rules! ids {
     };
 }
 
-file_ids!(
-    builtin_type,
-    constant,
-    item,
-    template,
-    r#trait,
-    r#type,
-    type_parameter,
-    variable,
-);
-
 ids!(enumeration, structure);
+
+macro_rules! indexes {
+    ($($(#[$meta:meta])* $id:ident),* $(,)?) => {
+        paste::paste! {
+            $(
+                $(#[$meta])*
+                #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+                #[cfg_attr(feature = "serde", derive(serde::Serialize))]
+                #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+                pub struct [<$id:camel Index>](
+                    #[cfg_attr(
+                        feature = "arbitrary",
+                        arbitrary(with = |u: &mut arbitrary::Unstructured| {
+                            u.choose_index(ARBITRARY_MAX_ID_COUNTER)
+                        })
+                    )]
+                    usize
+                );
+
+                impl [<$id:camel Index>] {
+                    pub fn new(n: usize) -> Self {
+                        [<$id:camel Index>](n)
+                    }
+
+                    pub fn into_inner(self) -> usize {
+                        self.0
+                    }
+
+                    #[cfg(feature = "arbitrary")]
+                    fn [<list_arbitrary>]() -> impl Iterator<Item = [<$id:camel Index>]> {
+                        (0..ARBITRARY_MAX_ID_COUNTER).map([<$id:camel Index>]::new)
+                    }
+                }
+            )*
+        }
+    };
+}
+
+indexes!(field, variant);
 
 impl<'l> Compiler<'l> {
     pub fn new(loader: &'l impl Loader) -> Self {

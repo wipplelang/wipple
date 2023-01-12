@@ -5,7 +5,7 @@ use std::{
     os::raw::{c_int, c_uint},
     rc::Rc,
 };
-use wipple_frontend::ir;
+use wipple_frontend::{ir, VariantIndex};
 
 type Error = String;
 
@@ -40,7 +40,7 @@ enum Value {
     Double(f64),
     Text(Rc<str>),
     Function(Scope, usize),
-    Variant(usize, Vec<Value>),
+    Variant(VariantIndex, Vec<Value>),
     Mutable(Rc<RefCell<Value>>),
     List(im::Vector<Value>),
     Structure(Vec<Value>),
@@ -297,7 +297,7 @@ impl<'a> Interpreter<'a> {
                                 _ => unreachable!(),
                             };
 
-                            stack.push(structure[*index].clone());
+                            stack.push(structure[index.into_inner()].clone());
                         }
                         ir::Expression::VariantElement(_, index) => {
                             let variant = match stack.pop() {

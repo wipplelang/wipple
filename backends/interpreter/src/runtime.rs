@@ -4,30 +4,30 @@ use num_traits::pow::Pow;
 use rust_decimal::Decimal;
 use rust_decimal::MathematicalOps;
 use std::{cell::RefCell, rc::Rc};
-use wipple_frontend::ir;
+use wipple_frontend::{ir, VariantIndex};
 
 fn r#false() -> Value {
-    Value::Variant(0, Vec::new())
+    Value::Variant(VariantIndex::new(0), Vec::new())
 }
 
 fn r#true() -> Value {
-    Value::Variant(1, Vec::new())
+    Value::Variant(VariantIndex::new(1), Vec::new())
 }
 
 fn none() -> Value {
-    Value::Variant(0, Vec::new())
+    Value::Variant(VariantIndex::new(0), Vec::new())
 }
 
 fn some(value: Value) -> Value {
-    Value::Variant(1, vec![value])
+    Value::Variant(VariantIndex::new(1), vec![value])
 }
 
 fn ok(value: Value) -> Value {
-    Value::Variant(0, vec![value])
+    Value::Variant(VariantIndex::new(0), vec![value])
 }
 
 fn error(value: Value) -> Value {
-    Value::Variant(1, vec![value])
+    Value::Variant(VariantIndex::new(1), vec![value])
 }
 
 impl<'a> Interpreter<'a> {
@@ -82,9 +82,9 @@ impl<'a> Interpreter<'a> {
             (($($input:pat),*) => $result:expr) => {
                 runtime_fn!(($($input),*) => {
                     let index = match $result {
-                        std::cmp::Ordering::Less => 0,
-                        std::cmp::Ordering::Equal => 1,
-                        std::cmp::Ordering::Greater => 2,
+                        std::cmp::Ordering::Less => VariantIndex::new(0),
+                        std::cmp::Ordering::Equal => VariantIndex::new(1),
+                        std::cmp::Ordering::Greater => VariantIndex::new(2),
                     };
 
                     Ok(Value::Variant(index, Vec::new()))

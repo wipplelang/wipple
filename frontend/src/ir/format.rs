@@ -53,7 +53,13 @@ impl std::fmt::Display for Terminator {
         match self {
             Terminator::Return => write!(f, "return"),
             Terminator::If(variant, then_label, else_label) => {
-                write!(f, "if {} bb{} bb{}", variant, then_label, else_label)
+                write!(
+                    f,
+                    "if {} bb{} bb{}",
+                    variant.into_inner(),
+                    then_label,
+                    else_label
+                )
             }
             Terminator::Jump(label) => write!(f, "jump bb{}", label),
         }
@@ -86,11 +92,15 @@ impl std::fmt::Display for Expression {
             }
             Expression::Tuple(count) => write!(f, "tuple {}", count),
             Expression::Structure(count) => write!(f, "structure {}", count),
-            Expression::Variant(variant, count) => write!(f, "variant {} {}", variant, count),
+            Expression::Variant(variant, count) => {
+                write!(f, "variant {} {}", variant.into_inner(), count)
+            }
             Expression::TupleElement(index) => write!(f, "tuple element {}", index),
-            Expression::StructureElement(index) => write!(f, "structure element {}", index),
+            Expression::StructureElement(index) => {
+                write!(f, "structure element {}", index.into_inner())
+            }
             Expression::VariantElement(variant, index) => {
-                write!(f, "variant element {} {}", variant, index)
+                write!(f, "variant element {} {}", variant.into_inner(), index)
             }
             Expression::Reference => write!(f, "reference"),
             Expression::Dereference => write!(f, "dereference"),

@@ -9,8 +9,8 @@ mod optimize;
 mod ssa;
 
 use crate::{
-    analysis::typecheck, helpers::InternedString, Compiler, EnumerationId, ItemId, StructureId,
-    VariableId,
+    analysis::typecheck, helpers::InternedString, Compiler, EnumerationId, FieldIndex, ItemId,
+    StructureId, VariableId, VariantIndex,
 };
 use itertools::Itertools;
 use std::{
@@ -60,7 +60,7 @@ pub enum Terminator {
     #[default]
     Return,
     Jump(usize),
-    If(usize, usize, usize),
+    If(VariantIndex, usize, usize),
 }
 
 #[derive(Debug, Clone)]
@@ -84,10 +84,10 @@ pub enum Expression {
     Runtime(RuntimeFunction, usize),
     Tuple(usize),
     Structure(usize),
-    Variant(usize, usize),
+    Variant(VariantIndex, usize),
     TupleElement(usize),
-    StructureElement(usize),
-    VariantElement(usize, usize),
+    StructureElement(FieldIndex),
+    VariantElement(VariantIndex, usize),
     Reference,
     Dereference,
 }
@@ -97,7 +97,10 @@ pub struct CaptureList(pub BTreeMap<usize, usize>);
 
 impl Compiler<'_> {
     pub fn ir_from(&self, program: &typecheck::Program) -> Program {
-        assert!(!self.has_errors(), "cannot generate IR for program containing errors");
+        assert!(
+            !self.has_errors(),
+            "cannot generate IR for program containing errors"
+        );
 
         let program = self.convert_to_ssa(program);
 
@@ -519,7 +522,8 @@ impl IrGen {
                 ));
 
                 let else_pos = self.new_basic_block(label);
-                *self.terminator_for(label, *pos) = Terminator::If(1, body_pos, else_pos);
+                *self.terminator_for(label, *pos) =
+                    Terminator::If(VariantIndex::new(1), body_pos, else_pos);
                 *pos = else_pos;
             }};
         }
@@ -568,7 +572,8 @@ impl IrGen {
                 ));
 
                 let else_pos = self.new_basic_block(label);
-                *self.terminator_for(label, *pos) = Terminator::If(1, body_pos, else_pos);
+                *self.terminator_for(label, *pos) =
+                    Terminator::If(VariantIndex::new(1), body_pos, else_pos);
                 *pos = else_pos;
             }
             ssa::PatternKind::Variable(var) => {
@@ -600,7 +605,8 @@ impl IrGen {
 
                 *pos = condition_pos;
                 self.gen_expr(*condition, label, pos);
-                *self.terminator_for(label, *pos) = Terminator::If(1, body_pos, else_pos);
+                *self.terminator_for(label, *pos) =
+                    Terminator::If(VariantIndex::new(1), body_pos, else_pos);
 
                 *pos = else_pos;
             }
@@ -656,7 +662,7 @@ impl IrGen {
                 let else_pos = self.new_basic_block(label);
 
                 for (index, field) in fields {
-                    let field_ty = &field_tys[index];
+                    let field_ty = &field_tys[index.into_inner()];
 
                     let next_pos = self.new_basic_block(label);
 
@@ -688,7 +694,8 @@ impl IrGen {
                     _ => unreachable!(),
                 };
 
-                let variant_tys = self.enumerations.get(id).unwrap()[discriminant].clone();
+                let variant_tys =
+                    self.enumerations.get(id).unwrap()[discriminant.into_inner()].clone();
 
                 if needs_deref {
                     self.statements_for(label, *pos).push(Statement::Expression(

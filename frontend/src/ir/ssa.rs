@@ -1,6 +1,6 @@
 use crate::{
-    analysis, helpers::InternedString, parse::Span, Compiler, EnumerationId, ItemId, StructureId,
-    TypeId, VariableId,
+    analysis, helpers::InternedString, parse::Span, Compiler, EnumerationId, FieldIndex, ItemId,
+    StructureId, TypeId, VariableId, VariantIndex,
 };
 use std::{
     collections::BTreeMap,
@@ -61,7 +61,7 @@ pub enum ExpressionKind {
     External(InternedString, InternedString, Vec<Expression>),
     Runtime(RuntimeFunction, Vec<Expression>),
     Structure(Vec<Expression>),
-    Variant(usize, Vec<Expression>),
+    Variant(VariantIndex, Vec<Expression>),
     Tuple(Vec<Expression>),
     Number(rust_decimal::Decimal),
     Integer(i64),
@@ -101,8 +101,8 @@ pub enum PatternKind {
     Float(f32),
     Double(f64),
     Tuple(Vec<Pattern>),
-    Destructure(BTreeMap<usize, Pattern>),
-    Variant(usize, Vec<Pattern>),
+    Destructure(BTreeMap<FieldIndex, Pattern>),
+    Variant(VariantIndex, Vec<Pattern>),
     Or(Box<Pattern>, Box<Pattern>),
     Where(Box<Pattern>, Box<Expression>),
 }

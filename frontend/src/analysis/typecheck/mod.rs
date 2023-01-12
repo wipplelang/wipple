@@ -15,8 +15,8 @@ use crate::{
     diagnostics::Note,
     helpers::{Backtrace, InternedString},
     parse::Span,
-    BuiltinTypeId, Compiler, ConstantId, ItemId, TemplateId, TraitId, TypeId, TypeParameterId,
-    VariableId,
+    BuiltinTypeId, Compiler, ConstantId, FieldIndex, ItemId, TemplateId, TraitId, TypeId,
+    TypeParameterId, VariableId, VariantIndex,
 };
 use itertools::Itertools;
 use std::{
@@ -92,11 +92,11 @@ pub enum TypeDeclKind {
     Marker,
     Structure {
         fields: Vec<(TypeAnnotation, engine::Type)>,
-        field_names: HashMap<InternedString, usize>,
+        field_names: HashMap<InternedString, FieldIndex>,
     },
     Enumeration {
         variants: Vec<Vec<(TypeAnnotation, engine::Type)>>,
-        variant_names: HashMap<InternedString, usize>,
+        variant_names: HashMap<InternedString, VariantIndex>,
     },
 }
 
@@ -209,7 +209,7 @@ macro_rules! expr {
                 Runtime(RuntimeFunction, Vec<[<$prefix Expression>]>),
                 Initialize([<$prefix Pattern>], Box<[<$prefix Expression>]>),
                 Structure(Vec<[<$prefix Expression>]>),
-                Variant(usize, Vec<[<$prefix Expression>]>),
+                Variant(VariantIndex, Vec<[<$prefix Expression>]>),
                 Tuple(Vec<[<$prefix Expression>]>),
                 $($kinds)*
             }
@@ -313,13 +313,13 @@ pattern!(, "Unresolved", {
         engine::UnresolvedType,
         HashMap<InternedString, (UnresolvedPattern, engine::UnresolvedType)>,
     ),
-    Variant(TypeId, usize, Vec<UnresolvedPattern>),
+    Variant(TypeId, VariantIndex, Vec<UnresolvedPattern>),
 });
 
 pattern!(, "Monomorphized", {
     Number(InternedString),
-    Destructure(BTreeMap<usize, MonomorphizedPattern>),
-    Variant(usize, Vec<MonomorphizedPattern>),
+    Destructure(BTreeMap<FieldIndex, MonomorphizedPattern>),
+    Variant(VariantIndex, Vec<MonomorphizedPattern>),
 });
 
 pattern!(pub, "", {
@@ -331,8 +331,8 @@ pattern!(pub, "", {
     Unsigned(c_uint),
     Float(f32),
     Double(f64),
-    Destructure(BTreeMap<usize, Pattern>),
-    Variant(usize, Vec<Pattern>)
+    Destructure(BTreeMap<FieldIndex, Pattern>),
+    Variant(VariantIndex, Vec<Pattern>)
 });
 
 impl Pattern {
@@ -1054,7 +1054,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
             }
             lower::ExpressionKind::Function(pattern, body, captures) => {
                 let input_ty = engine::UnresolvedType::Variable(self.ctx.new_variable());
-                let pattern = self.convert_pattern(pattern, input_ty.clone(), info);
+                let pattern = self.convert_pattern(pattern, input_ty.clone(), None, info);
 
                 let prev_block_end = mem::replace(&mut self.block_end, None);
                 let body = self.convert_expr(*body, info);
@@ -1074,7 +1074,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
 
                 let arms = arms
                     .into_iter()
-                    .map(|arm| self.convert_arm(arm, input.ty.clone(), info))
+                    .map(|arm| self.convert_arm(arm, input.ty.clone(), input.span, info))
                     .collect::<Vec<_>>();
 
                 let ty = {
@@ -1145,7 +1145,8 @@ impl<'a, 'l> Typechecker<'a, 'l> {
             }
             lower::ExpressionKind::Initialize(pattern, value) => {
                 let value = self.convert_expr(*value, info);
-                let pattern = self.convert_pattern(pattern, value.ty.clone(), info);
+                let pattern =
+                    self.convert_pattern(pattern, value.ty.clone(), Some(value.span), info);
 
                 UnresolvedExpression {
                     span: expr.span,
@@ -1168,7 +1169,18 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                             .collect::<Vec<_>>(),
                         field_names,
                     ),
-                    _ => unreachable!(), // or do we need to display an error like above?
+                    _ => {
+                        self.compiler.add_error(
+                            "cannot instantiate this type as a structure",
+                            vec![Note::primary(expr.span, "this is not a structure type")],
+                        );
+
+                        return UnresolvedExpression {
+                            span: expr.span,
+                            ty: engine::UnresolvedType::Bottom(engine::BottomTypeReason::Error),
+                            kind: UnresolvedExpressionKind::error(self.compiler),
+                        };
+                    }
                 };
 
                 let mut ty = engine::UnresolvedType::Named(
@@ -1184,7 +1196,10 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                 self.add_substitutions(&mut ty, &mut substitutions);
 
                 for index in structure_field_names.values() {
-                    self.add_substitutions(&mut structure_field_tys[*index], &mut substitutions);
+                    self.add_substitutions(
+                        &mut structure_field_tys[index.into_inner()],
+                        &mut substitutions,
+                    );
                 }
 
                 let mut fields_by_index = structure_field_names.iter().collect::<Vec<_>>();
@@ -1195,7 +1210,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
 
                 for (name, expr) in fields {
                     let (index, ty) = match structure_field_names.get(&name) {
-                        Some(index) => (*index, structure_field_tys[*index].clone()),
+                        Some(index) => (*index, structure_field_tys[index.into_inner()].clone()),
                         None => {
                             extra_fields.push(name);
                             continue;
@@ -1214,7 +1229,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
 
                     value.ty = ty;
 
-                    unpopulated_fields[index] = Some(value);
+                    unpopulated_fields[index.into_inner()] = Some(value);
                 }
 
                 if !extra_fields.is_empty() {
@@ -1285,7 +1300,18 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                                 .collect::<Vec<_>>()
                         })
                         .collect::<Vec<_>>(),
-                    _ => unreachable!(), // or do we need to display an error like above?
+                    _ => {
+                        self.compiler.add_error(
+                            "cannot instantiate this type as an enumeration",
+                            vec![Note::primary(expr.span, "this is not an enumeration type")],
+                        );
+
+                        return UnresolvedExpression {
+                            span: expr.span,
+                            ty: engine::UnresolvedType::Bottom(engine::BottomTypeReason::Error),
+                            kind: UnresolvedExpressionKind::error(self.compiler),
+                        };
+                    }
                 };
 
                 let mut ty = engine::UnresolvedType::Named(
@@ -1300,7 +1326,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                 let mut substitutions = engine::GenericSubstitutions::new();
                 self.add_substitutions(&mut ty, &mut substitutions);
 
-                let mut variant_tys = variants_tys[index].clone();
+                let mut variant_tys = variants_tys[index.into_inner()].clone();
 
                 for ty in &mut variant_tys {
                     self.add_substitutions(ty, &mut substitutions);
@@ -1352,11 +1378,12 @@ impl<'a, 'l> Typechecker<'a, 'l> {
         &mut self,
         arm: lower::Arm,
         input_ty: engine::UnresolvedType,
+        input_span: Span,
         info: &mut ConvertInfo,
     ) -> UnresolvedArm {
         UnresolvedArm {
             span: arm.span,
-            pattern: self.convert_pattern(arm.pattern, input_ty, info),
+            pattern: self.convert_pattern(arm.pattern, input_ty, Some(input_span), info),
             body: self.convert_expr(arm.body, info),
         }
     }
@@ -1365,11 +1392,12 @@ impl<'a, 'l> Typechecker<'a, 'l> {
         &mut self,
         pattern: lower::Pattern,
         ty: engine::UnresolvedType,
+        input_span: Option<Span>,
         info: &mut ConvertInfo,
     ) -> UnresolvedPattern {
         UnresolvedPattern {
             span: pattern.span,
-            kind: match pattern.kind {
+            kind: (|| match pattern.kind {
                 lower::PatternKind::Error(trace) => UnresolvedPatternKind::Error(trace),
                 lower::PatternKind::Wildcard => UnresolvedPatternKind::Wildcard,
                 lower::PatternKind::Number(number) => {
@@ -1403,7 +1431,13 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                         .into_iter()
                         .map(|(name, pattern)| {
                             let ty = engine::UnresolvedType::Variable(self.ctx.new_variable());
-                            (name, (self.convert_pattern(pattern, ty.clone(), info), ty))
+                            (
+                                name,
+                                (
+                                    self.convert_pattern(pattern, ty.clone(), input_span, info),
+                                    ty,
+                                ),
+                            )
                         })
                         .collect(),
                 ),
@@ -1412,15 +1446,38 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                         (
                             decl.params.clone(),
                             match &decl.kind {
-                                TypeDeclKind::Enumeration { variants, .. } => variants.clone(),
-                                _ => unreachable!(),
+                                TypeDeclKind::Enumeration { variants, .. } => {
+                                    Some(variants.clone())
+                                }
+                                _ => None,
                             },
                         )
                     });
 
+                    let variants_tys = match variants_tys {
+                        Some(tys) => tys,
+                        None => {
+                            self.compiler.add_error(
+                                "cannot use variant pattern here",
+                                match input_span {
+                                    Some(span) => vec![
+                                        Note::primary(pattern.span, "incorrect pattern"),
+                                        Note::secondary(span, "this is not a variant"),
+                                    ],
+                                    None => vec![Note::primary(
+                                        pattern.span,
+                                        "the input to this function is not a variant",
+                                    )],
+                                },
+                            );
+
+                            return UnresolvedPatternKind::error(self.compiler);
+                        }
+                    };
+
                     let mut substitutions = engine::GenericSubstitutions::new();
 
-                    let mut variant_tys = variants_tys[variant]
+                    let mut variant_tys = variants_tys[variant.into_inner()]
                         .clone()
                         .into_iter()
                         .map(|(_, ty)| engine::UnresolvedType::from(ty))
@@ -1466,7 +1523,9 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                         values
                             .into_iter()
                             .zip(variant_tys)
-                            .map(|(pattern, ty)| self.convert_pattern(pattern, ty, info))
+                            .map(|(pattern, ty)| {
+                                self.convert_pattern(pattern, ty, input_span, info)
+                            })
                             .collect(),
                     )
                 }
@@ -1477,14 +1536,15 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                         self.add_error(error);
                     }
 
-                    self.convert_pattern(*inner, target_ty, info).kind
+                    self.convert_pattern(*inner, target_ty, input_span, info)
+                        .kind
                 }
                 lower::PatternKind::Or(lhs, rhs) => UnresolvedPatternKind::Or(
-                    Box::new(self.convert_pattern(*lhs, ty.clone(), info)),
-                    Box::new(self.convert_pattern(*rhs, ty, info)),
+                    Box::new(self.convert_pattern(*lhs, ty.clone(), input_span, info)),
+                    Box::new(self.convert_pattern(*rhs, ty, input_span, info)),
                 ),
                 lower::PatternKind::Where(pattern, condition) => UnresolvedPatternKind::Where(
-                    Box::new(self.convert_pattern(*pattern, ty, info)),
+                    Box::new(self.convert_pattern(*pattern, ty, input_span, info)),
                     Box::new(self.convert_expr(*condition, info)),
                 ),
                 lower::PatternKind::Tuple(patterns) => {
@@ -1505,11 +1565,13 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                         patterns
                             .into_iter()
                             .zip(tuple_tys)
-                            .map(|(pattern, ty)| self.convert_pattern(pattern, ty, info))
+                            .map(|(pattern, ty)| {
+                                self.convert_pattern(pattern, ty, input_span, info)
+                            })
                             .collect(),
                     )
                 }
-            },
+            })(),
         }
     }
 }
@@ -1794,7 +1856,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                     _ => {
                         self.compiler.add_error(
                             "cannot destructure this value",
-                            vec![Note::primary(pattern.span, "value is not a data structure")],
+                            vec![Note::primary(pattern.span, "value is not a structure")],
                         );
 
                         match_set.set_matched(true);
@@ -1804,7 +1866,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                                 .into_iter()
                                 .map(|(_, (pattern, _))| {
                                     (
-                                        0,
+                                        FieldIndex::new(0),
                                         self.monomorphize_pattern(
                                             pattern,
                                             engine::UnresolvedType::Bottom(
@@ -1865,8 +1927,9 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                             }
                         };
 
-                        let mut member_ty =
-                            engine::UnresolvedType::from(structure_field_tys[index].1.clone());
+                        let mut member_ty = engine::UnresolvedType::from(
+                            structure_field_tys[index.into_inner()].1.clone(),
+                        );
 
                         member_ty.instantiate_with(&mut self.ctx, &substitutions);
 
@@ -1874,7 +1937,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                             self.add_error(error);
                         }
 
-                        let (matches, match_set) = &mut field_match_sets[index];
+                        let (matches, match_set) = &mut field_match_sets[index.into_inner()];
                         *matches = true;
 
                         let pattern =
@@ -1922,11 +1985,18 @@ impl<'a, 'l> Typechecker<'a, 'l> {
 
                 let mut variant_tys = match enumeration.kind {
                     TypeDeclKind::Enumeration { mut variants, .. } => variants
-                        .swap_remove(variant)
+                        .swap_remove(variant.into_inner())
                         .into_iter()
                         .map(|(_, ty)| engine::UnresolvedType::from(ty))
                         .collect::<Vec<_>>(),
-                    _ => unreachable!(),
+                    _ => {
+                        self.compiler.add_error(
+                            "cannot match a variant on this value",
+                            vec![Note::primary(pattern.span, "value is not an enumeration")],
+                        );
+
+                        return MonomorphizedPatternKind::error(self.compiler);
+                    }
                 };
 
                 let substitutions = enumeration
@@ -1959,13 +2029,13 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                 }
 
                 let (matches, variant_match_sets) = match match_set {
-                    MatchSet::Enumeration(variants) => &mut variants[variant],
+                    MatchSet::Enumeration(variants) => &mut variants[variant.into_inner()],
                     _ => {
                         ty.apply(&self.ctx);
                         *match_set = MatchSet::new(&ty);
 
                         match match_set {
-                            MatchSet::Enumeration(variants) => &mut variants[variant],
+                            MatchSet::Enumeration(variants) => &mut variants[variant.into_inner()],
                             _ => unreachable!(),
                         }
                     }
@@ -2336,8 +2406,8 @@ struct UnmatchedPattern<'a> {
 enum UnmatchedPatternKind<'a> {
     Wildcard,
     Marker,
-    Structure(usize, Option<Box<UnmatchedPattern<'a>>>),
-    Variant(usize, Vec<UnmatchedPattern<'a>>),
+    Structure(FieldIndex, Option<Box<UnmatchedPattern<'a>>>),
+    Variant(VariantIndex, Vec<UnmatchedPattern<'a>>),
     Tuple(Vec<UnmatchedPattern<'a>>),
 }
 
@@ -2372,7 +2442,7 @@ impl MatchSet {
                         if !matched {
                             return Box::new(std::iter::once(UnmatchedPattern {
                                 ty,
-                                kind: UnmatchedPatternKind::Structure(index, None),
+                                kind: UnmatchedPatternKind::Structure(FieldIndex::new(index), None),
                             }));
                         }
 
@@ -2381,7 +2451,10 @@ impl MatchSet {
                         Box::new(field.unmatched_patterns(field_ty).map(move |item| {
                             UnmatchedPattern {
                                 ty: field_ty,
-                                kind: UnmatchedPatternKind::Structure(index, Some(Box::new(item))),
+                                kind: UnmatchedPatternKind::Structure(
+                                    FieldIndex::new(index),
+                                    Some(Box::new(item)),
+                                ),
                             }
                         }))
                     },
@@ -2413,7 +2486,7 @@ impl MatchSet {
                             }
 
                             patterns[pattern_index]
-                                .entry(variant_index)
+                                .entry(VariantIndex::new(variant_index))
                                 .or_insert_with(|| {
                                     let item_ty = &variant_tys[item_index];
 
@@ -2433,7 +2506,9 @@ impl MatchSet {
                 for (variant_index, (matched, items)) in variants.iter().enumerate() {
                     if !matched && items.is_empty() {
                         for variants in &mut patterns {
-                            *variants.entry(variant_index).or_default() = Vec::new();
+                            *variants
+                                .entry(VariantIndex::new(variant_index))
+                                .or_default() = Vec::new();
                         }
                     }
                 }
@@ -2538,8 +2613,8 @@ impl<'a, 'l> Typechecker<'a, 'l> {
 
                 let variant_name = variant_names
                     .iter()
-                    .find_map(|(name, i)| (i == index).then_some(name))
-                    .unwrap();
+                    .find_map(|(name, i)| (i == index).then_some(name.as_str()))
+                    .unwrap_or("<unknown>");
 
                 let formatted = if patterns.is_empty() {
                     format!("{} {}", ty.name, variant_name)
@@ -2761,7 +2836,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                 MonomorphizedPatternKind::Variant(index, values) => {
                     let input_tys = match input_ty {
                         engine::Type::Named(_, _, engine::TypeStructure::Enumeration(variants)) => {
-                            &variants[index]
+                            &variants[index.into_inner()]
                         }
                         _ => return PatternKind::error(self.compiler),
                     };
