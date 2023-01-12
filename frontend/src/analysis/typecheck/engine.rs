@@ -544,15 +544,16 @@ impl UnresolvedType {
         }
     }
 
-    pub fn instantiate_with(&mut self, ctx: &Context, substitutions: &GenericSubstitutions) {
+    pub fn instantiate_with(&mut self, ctx: &mut Context, substitutions: &GenericSubstitutions) {
         self.apply(ctx);
 
         match self {
             UnresolvedType::Parameter(param) => {
-                *self = substitutions
-                    .get(param)
-                    .cloned()
-                    .unwrap_or_else(|| panic!("could not find {:?} in substitutions", param));
+                *self = substitutions.get(param).cloned().unwrap_or_else(|| {
+                    // HACK: If the typechecker behaves erratically, try panicking here instead
+                    // of returning a new type variable to get to the root cause earlier.
+                    UnresolvedType::Variable(ctx.new_variable())
+                });
             }
             UnresolvedType::Function(input, output) => {
                 input.instantiate_with(ctx, substitutions);
@@ -666,12 +667,13 @@ impl UnresolvedType {
         }
     }
 
-    pub fn finalize(mut self, ctx: &Context) -> Result<Type, TypeError> {
-        self.apply(ctx);
-        self.finalize_numeric_variables(ctx);
+    pub fn finalize(&self, ctx: &Context) -> Result<Type, TypeError> {
+        let mut ty = self.clone();
+        ty.apply(ctx);
+        ty.finalize_numeric_variables(ctx);
 
-        Ok(match self {
-            UnresolvedType::Variable(_) => return Err(TypeError::UnresolvedType(self)),
+        Ok(match ty {
+            UnresolvedType::Variable(_) => return Err(TypeError::UnresolvedType(ty)),
             UnresolvedType::Parameter(param) => Type::Parameter(param),
             UnresolvedType::NumericVariable(_) => unreachable!(),
             UnresolvedType::Named(id, params, structure) => Type::Named(
@@ -728,7 +730,7 @@ impl TypeStructure<UnresolvedType> {
         }
     }
 
-    pub fn instantiate_with(&mut self, ctx: &Context, substitutions: &GenericSubstitutions) {
+    pub fn instantiate_with(&mut self, ctx: &mut Context, substitutions: &GenericSubstitutions) {
         match self {
             TypeStructure::Marker | TypeStructure::Recursive(_) => {}
             TypeStructure::Structure(tys) => {

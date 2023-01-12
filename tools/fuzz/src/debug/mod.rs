@@ -1,8 +1,9 @@
 mod compiling;
 mod parsing;
+mod typechecking;
 
 use clap::Parser;
-use std::{fmt::Debug, mem, panic::UnwindSafe};
+use std::{fmt::Debug, mem, panic::AssertUnwindSafe};
 use wipple_frontend::{diagnostics::FinalizedDiagnostics, helpers::Shared};
 
 #[derive(Debug, Clone, Copy, clap::Parser)]
@@ -24,6 +25,7 @@ struct Args {
 enum Test {
     Parsing,
     Compiling,
+    Typechecking,
 }
 
 pub fn main() {
@@ -32,28 +34,51 @@ pub fn main() {
     match args.test {
         Test::Parsing => fuzz(parsing::fuzz, args),
         Test::Compiling => fuzz(compiling::fuzz, args),
+        Test::Typechecking => fuzz(typechecking::fuzz, args),
     }
 }
 
-fn fuzz<T: Debug + UnwindSafe + for<'b> arbitrary::Arbitrary<'b>>(
+fn fuzz<T: Debug + for<'b> arbitrary::Arbitrary<'b>>(
     f: fn(T, bool) -> FinalizedDiagnostics,
     args: Args,
 ) {
-    let task = move || loop {
-        let data = std::iter::repeat_with(rand::random)
-            .take(1024)
-            .collect::<Vec<u8>>();
+    let backtrace = Shared::new(None);
 
-        let mut u = arbitrary::Unstructured::new(&data);
+    let task = {
+        let backtrace = backtrace.clone();
 
-        // Only proceed if the function was able to successfully generate an
-        // `Arbitrary` value
-        let input = match T::arbitrary(&mut u) {
-            Ok(file) => file,
-            Err(_) => continue,
-        };
+        move || loop {
+            let data = std::iter::repeat_with(rand::random)
+                .take(1048576)
+                .collect::<Vec<u8>>();
 
-        break std::panic::catch_unwind(|| f(input, args.quiet));
+            let mut u = arbitrary::Unstructured::new(&data);
+
+            // Only proceed if the function was able to successfully generate an
+            // `Arbitrary` value
+            let input = match T::arbitrary(&mut u) {
+                Ok(file) => dbg!(file),
+                Err(e) => {
+                    dbg!(e);
+                    continue;
+                }
+            };
+
+            std::panic::set_hook({
+                let backtrace = backtrace.clone();
+                Box::new(move |_| {
+                    *backtrace.lock() = Some(backtrace::Backtrace::new());
+                })
+            });
+
+            // SAFETY: `AssertUnwindSafe` is OK here because `f` does not rely on
+            // global mutable state -- there is none in the compiler
+            let result = std::panic::catch_unwind(AssertUnwindSafe(|| f(input, args.quiet)));
+
+            let _ = std::panic::take_hook();
+
+            break result;
+        }
     };
 
     let mut iteration = 1;
@@ -63,19 +88,7 @@ fn fuzz<T: Debug + UnwindSafe + for<'b> arbitrary::Arbitrary<'b>>(
             println!("Iteration #{}", iteration);
         }
 
-        let backtrace = Shared::new(None);
-        std::panic::set_hook({
-            let backtrace = backtrace.clone();
-            Box::new(move |_| {
-                *backtrace.lock() = Some(backtrace::Backtrace::new());
-            })
-        });
-
-        let result = task();
-
-        let _ = std::panic::take_hook();
-
-        let has_diagnostics = match result {
+        let has_diagnostics = match task() {
             Ok(diagnostics) => {
                 let (files, diagnostics) = diagnostics.into_console_friendly(false);
                 let has_diagnostics = !diagnostics.is_empty();
@@ -103,7 +116,7 @@ fn fuzz<T: Debug + UnwindSafe + for<'b> arbitrary::Arbitrary<'b>>(
             Err(error) => {
                 let backtrace = match mem::take(&mut *backtrace.lock()) {
                     Some(trace) => trace,
-                    None => panic!(),
+                    None => unreachable!(),
                 };
 
                 if let Some(msg) = error

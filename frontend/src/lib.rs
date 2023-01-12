@@ -1,3 +1,6 @@
+#[macro_use]
+mod macros;
+
 pub mod analysis;
 pub mod diagnostics;
 pub mod helpers;
@@ -77,6 +80,9 @@ pub struct Compiler<'l> {
     pub(crate) cache: Shared<indexmap::IndexMap<FilePath, Arc<analysis::lower::File>>>,
 }
 
+#[cfg(feature = "arbitrary")]
+pub(crate) const ARBITRARY_MAX_ID_COUNTER: usize = 4;
+
 macro_rules! file_ids {
     ($($(#[$meta:meta])* $id:ident),* $(,)?) => {
         paste::paste! {
@@ -93,7 +99,13 @@ macro_rules! file_ids {
                 pub struct [<$id:camel Id>] {
                     #[cfg_attr(feature = "arbitrary", arbitrary(default))]
                     pub file: Option<FilePath>,
-                    #[cfg_attr(feature = "arbitrary", arbitrary(with = |u: &mut arbitrary::Unstructured| u.int_in_range(0..=63)))]
+
+                    #[cfg_attr(
+                        feature = "arbitrary",
+                        arbitrary(with = |u: &mut arbitrary::Unstructured| {
+                            u.choose_index(ARBITRARY_MAX_ID_COUNTER)
+                        })
+                    )]
                     pub counter: usize,
                 }
             )*
@@ -116,6 +128,14 @@ macro_rules! file_ids {
                         *storage += 1;
 
                         [<$id:camel Id>] { file, counter }
+                    }
+
+                    #[cfg(feature = "arbitrary")]
+                    fn [<list_arbitrary_ $id _ids>]() -> impl Iterator<Item = [<$id:camel Id>]> {
+                        (0..ARBITRARY_MAX_ID_COUNTER).map(|id| [<$id:camel Id>] {
+                            file: None,
+                            counter: id,
+                        })
                     }
                 )*
             }

@@ -5,10 +5,10 @@ mod builtins;
 use crate::{
     analysis::{ast, expand},
     diagnostics::*,
-    helpers::{Backtrace, InternedString, Shared},
+    helpers::{InternedString, Shared},
     parse::Span,
-    BuiltinTypeId, Compiler, ConstantId, FilePath, TemplateId, TraitId, TypeId, TypeParameterId,
-    VariableId,
+    BuiltinTypeId, Compiler, ConstantId, FileIds, FilePath, TemplateId, TraitId, TypeId,
+    TypeParameterId, VariableId,
 };
 use std::{
     cell::RefCell,
@@ -21,7 +21,6 @@ use std::{
 use strum::{Display, EnumString};
 
 #[derive(Debug, Clone)]
-#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub struct File<Decls = Declarations> {
     pub span: Span,
     pub declarations: Decls,
@@ -32,8 +31,48 @@ pub struct File<Decls = Declarations> {
     pub block: Vec<Expression>,
 }
 
+#[cfg(feature = "arbitrary")]
+impl<'a> arbitrary::Arbitrary<'a> for File {
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
+        // Ensure the program only refers to existing declarations by generating
+        // every possible declaration
+        macro_rules! arbitrary_declarations {
+            ($($kind:ident($id:ident) => $fn:path),* $(,)?) => {
+                paste::paste! {
+                    Declarations {
+                        $(
+                            [<$kind s>]: FileIds::[<list_arbitrary_ $id s>]()
+                                .map(|id| Ok((id, $fn(u)?)))
+                                .collect::<Result<_, _>>()?,
+                        )*
+                    }
+                }
+            };
+        }
+
+        Ok(File {
+            span: Span::arbitrary(u)?,
+            declarations: arbitrary_declarations!(
+                operator(template_id) => expand::Operator::arbitrary,
+                template(template_id) => expand::TemplateDeclaration::arbitrary,
+                type(type_id) => Declaration::arbitrary,
+                type_parameter(type_parameter_id) => Declaration::arbitrary,
+                trait(trait_id) => Declaration::arbitrary,
+                builtin_type(builtin_type_id) => Declaration::arbitrary,
+                constant(constant_id) => Declaration::arbitrary,
+                instance(constant_id) => Declaration::arbitrary,
+                variable(variable_id) => Declaration::arbitrary,
+            ),
+            global_attributes: FileAttributes::arbitrary(u)?,
+            exported: ScopeValues::new(),
+            scopes: Vec::arbitrary(u)?,
+            specializations: BTreeMap::arbitrary(u)?,
+            block: Vec::arbitrary(u)?,
+        })
+    }
+}
+
 #[derive(Debug, Clone, Default)]
-#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub struct Declarations {
     pub operators: BTreeMap<TemplateId, expand::Operator>,
     pub templates: BTreeMap<TemplateId, expand::TemplateDeclaration<()>>,
@@ -292,31 +331,36 @@ pub struct LanguageItems {
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub struct Expression {
     pub span: Span,
+
+    #[arbitrary(with = |u: &mut arbitrary::Unstructured| {
+        Ok(NonErrorExpressionKind::arbitrary(u)?.into())
+    })]
     pub kind: ExpressionKind,
 }
 
-#[derive(Debug, Clone)]
-#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
-pub enum ExpressionKind {
-    Error(Backtrace),
-    Marker(TypeId),
-    Constant(ConstantId),
-    Trait(TraitId),
-    Variable(VariableId),
-    Text(InternedString),
-    Number(InternedString),
-    Block(Vec<Expression>),
-    End(Box<Expression>),
-    Call(Box<Expression>, Box<Expression>),
-    Function(Pattern, Box<Expression>, CaptureList),
-    When(Box<Expression>, Vec<Arm>),
-    External(InternedString, InternedString, Vec<Expression>),
-    Runtime(RuntimeFunction, Vec<Expression>),
-    Annotate(Box<Expression>, TypeAnnotation),
-    Initialize(Pattern, Box<Expression>),
-    Instantiate(TypeId, Vec<(InternedString, Expression)>),
-    Variant(TypeId, usize, Vec<Expression>),
-    Tuple(Vec<Expression>),
+non_error_kind! {
+    #[derive(Debug, Clone)]
+    #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+    pub enum ExpressionKind {
+        Marker(id: TypeId),
+        Constant(id: ConstantId),
+        Trait(id: TraitId),
+        Variable(id: VariableId),
+        Text(value: InternedString),
+        Number(value: InternedString),
+        Block(exprs: Vec<Expression>),
+        End(expr: Box<Expression>),
+        Call(func: Box<Expression>, input: Box<Expression>),
+        Function(input: Pattern, body: Box<Expression>, captures: CaptureList),
+        When(expr: Box<Expression>, arms: Vec<Arm>),
+        External(namespace: InternedString, identifier: InternedString, inputs: Vec<Expression>),
+        Runtime(func: RuntimeFunction, inputs: Vec<Expression>),
+        Annotate(expr: Box<Expression>, ty: TypeAnnotation),
+        Initialize(var: Pattern, value: Box<Expression>),
+        Instantiate(id: TypeId, fields: Vec<(InternedString, Expression)>),
+        Variant(id: TypeId, variant: usize, values: Vec<Expression>),
+        Tuple(exprs: Vec<Expression>),
+    }
 }
 
 impl Expression {
@@ -340,23 +384,28 @@ pub struct Arm {
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub struct Pattern {
     pub span: Span,
+
+    #[arbitrary(with = |u: &mut arbitrary::Unstructured| {
+        Ok(NonErrorPatternKind::arbitrary(u)?.into())
+    })]
     pub kind: PatternKind,
 }
 
-#[derive(Debug, Clone)]
-#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
-pub enum PatternKind {
-    Error(Backtrace),
-    Wildcard,
-    Number(InternedString),
-    Text(InternedString),
-    Variable(VariableId),
-    Destructure(HashMap<InternedString, Pattern>),
-    Variant(TypeId, usize, Vec<Pattern>),
-    Annotate(Box<Pattern>, TypeAnnotation),
-    Or(Box<Pattern>, Box<Pattern>),
-    Where(Box<Pattern>, Box<Expression>),
-    Tuple(Vec<Pattern>),
+non_error_kind! {
+    #[derive(Debug, Clone)]
+    #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+    pub enum PatternKind {
+        Wildcard,
+        Number(value: InternedString),
+        Text(value: InternedString),
+        Variable(id: VariableId),
+        Destructure(fields: HashMap<InternedString, Pattern>),
+        Variant(id: TypeId, variant: usize /* FIXME: Make this a `VariantIndex` type instead of an arbitrary `usize` */, values: Vec<Pattern>),
+        Annotate(pat: Box<Pattern>, ty: TypeAnnotation),
+        Or(left: Box<Pattern>, right: Box<Pattern>),
+        Where(pat: Box<Pattern>, expr: Box<Expression>),
+        Tuple(values: Vec<Pattern>),
+    }
 }
 
 impl PatternKind {
