@@ -130,7 +130,7 @@ pub enum TypeError {
     ErrorExpression,
     Recursive(TypeVariable),
     Mismatch(UnresolvedType, UnresolvedType),
-    MissingInstance(TraitId, Vec<UnresolvedType>, Option<Span>),
+    MissingInstance(TraitId, Vec<UnresolvedType>, Option<Span>, Vec<Span>),
     AmbiguousTrait(UnresolvedType, TraitId, Vec<Span>),
     UnresolvedType(UnresolvedType),
     InvalidNumericLiteral(UnresolvedType),
@@ -298,31 +298,28 @@ impl Context {
                 UnresolvedType::Named(expected_id, expected_params, expected_structure),
             ) => {
                 if actual_id == expected_id {
+                    let mut error = false;
                     for (actual, expected) in actual_params.iter().zip(&expected_params) {
-                        if let Err(error) = self.unify_internal(
+                        if let Err(e) = self.unify_internal(
                             actual.clone(),
                             expected.clone(),
                             generic,
                             reverse,
                             params,
                         ) {
-                            return Err(if let TypeError::Mismatch(_, _) = error {
-                                mismatch!(
-                                    UnresolvedType::Named(
-                                        actual_id,
-                                        actual_params,
-                                        actual_structure,
-                                    ),
-                                    UnresolvedType::Named(
-                                        expected_id,
-                                        expected_params,
-                                        expected_structure,
-                                    ),
-                                )
+                            if let TypeError::Mismatch(_, _) = e {
+                                error = true;
                             } else {
-                                error
-                            });
+                                return Err(e);
+                            }
                         }
+                    }
+
+                    if error {
+                        return Err(mismatch!(
+                            UnresolvedType::Named(actual_id, actual_params, actual_structure),
+                            UnresolvedType::Named(expected_id, expected_params, expected_structure),
+                        ));
                     }
 
                     Ok(())
@@ -337,38 +334,41 @@ impl Context {
                 UnresolvedType::Function(actual_input, actual_output),
                 UnresolvedType::Function(expected_input, expected_output),
             ) => {
-                if let Err(error) = self.unify_internal(
+                let mut error = false;
+
+                if let Err(e) = self.unify_internal(
                     (*actual_input).clone(),
                     (*expected_input).clone(),
                     generic,
                     reverse,
                     params,
                 ) {
-                    return Err(if let TypeError::Mismatch(_, _) = error {
-                        mismatch!(
-                            UnresolvedType::Function(actual_input, actual_output),
-                            UnresolvedType::Function(expected_input, expected_output),
-                        )
+                    if let TypeError::Mismatch(_, _) = e {
+                        error = true;
                     } else {
-                        error
-                    });
+                        return Err(e);
+                    }
                 }
 
-                if let Err(error) = self.unify_internal(
+                if let Err(e) = self.unify_internal(
                     (*actual_output).clone(),
                     (*expected_output).clone(),
                     generic,
                     reverse,
                     params,
                 ) {
-                    return Err(if let TypeError::Mismatch(_, _) = error {
-                        mismatch!(
-                            UnresolvedType::Function(actual_input, actual_output),
-                            UnresolvedType::Function(expected_input, expected_output),
-                        )
+                    if let TypeError::Mismatch(_, _) = e {
+                        error = true;
                     } else {
-                        error
-                    });
+                        return Err(e);
+                    }
+                }
+
+                if error {
+                    return Err(mismatch!(
+                        UnresolvedType::Function(actual_input, actual_output),
+                        UnresolvedType::Function(expected_input, expected_output),
+                    ));
                 }
 
                 Ok(())
@@ -381,23 +381,28 @@ impl Context {
                     ));
                 }
 
+                let mut error = false;
                 for (actual, expected) in std::iter::zip(&actual_tys, &expected_tys) {
-                    if let Err(error) = self.unify_internal(
+                    if let Err(e) = self.unify_internal(
                         actual.clone(),
                         expected.clone(),
                         generic,
                         reverse,
                         params,
                     ) {
-                        return Err(if let TypeError::Mismatch(_, _) = error {
-                            mismatch!(
-                                UnresolvedType::Tuple(actual_tys),
-                                UnresolvedType::Tuple(expected_tys),
-                            )
+                        if let TypeError::Mismatch(_, _) = e {
+                            error = true;
                         } else {
-                            error
-                        });
+                            return Err(e);
+                        }
                     }
+                }
+
+                if error {
+                    return Err(mismatch!(
+                        UnresolvedType::Tuple(actual_tys),
+                        UnresolvedType::Tuple(expected_tys),
+                    ));
                 }
 
                 Ok(())
@@ -672,42 +677,51 @@ impl UnresolvedType {
         ty.apply(ctx);
         ty.finalize_numeric_variables(ctx);
 
-        Ok(match ty {
-            UnresolvedType::Variable(_) => return Err(TypeError::UnresolvedType(ty)),
-            UnresolvedType::Parameter(param) => Type::Parameter(param),
-            UnresolvedType::NumericVariable(_) => unreachable!(),
-            UnresolvedType::Named(id, params, structure) => Type::Named(
-                id,
-                params
-                    .into_iter()
-                    .map(|param| param.finalize(ctx))
-                    .collect::<Result<_, _>>()?,
-                structure.finalize(ctx)?,
-            ),
-            UnresolvedType::Function(input, output) => Type::Function(
-                Box::new(input.finalize(ctx)?),
-                Box::new(output.finalize(ctx)?),
-            ),
-            UnresolvedType::Tuple(tys) => Type::Tuple(
-                tys.into_iter()
-                    .map(|ty| ty.finalize(ctx))
-                    .collect::<Result<_, _>>()?,
-            ),
-            UnresolvedType::Builtin(builtin) => Type::Builtin(match builtin {
-                BuiltinType::Number => BuiltinType::Number,
-                BuiltinType::Integer => BuiltinType::Integer,
-                BuiltinType::Natural => BuiltinType::Natural,
-                BuiltinType::Byte => BuiltinType::Byte,
-                BuiltinType::Signed => BuiltinType::Signed,
-                BuiltinType::Unsigned => BuiltinType::Unsigned,
-                BuiltinType::Float => BuiltinType::Float,
-                BuiltinType::Double => BuiltinType::Double,
-                BuiltinType::Text => BuiltinType::Text,
-                BuiltinType::List(ty) => BuiltinType::List(Box::new(ty.finalize(ctx)?)),
-                BuiltinType::Mutable(ty) => BuiltinType::Mutable(Box::new(ty.finalize(ctx)?)),
-            }),
-            UnresolvedType::Bottom(is_error) => Type::Bottom(is_error),
-        })
+        let result = (|| {
+            Ok(match ty.clone() {
+                UnresolvedType::Variable(var) => {
+                    return Err(TypeError::UnresolvedType(UnresolvedType::Variable(var)));
+                }
+                UnresolvedType::Parameter(param) => Type::Parameter(param),
+                UnresolvedType::NumericVariable(_) => unreachable!(),
+                UnresolvedType::Named(id, params, structure) => Type::Named(
+                    id,
+                    params
+                        .into_iter()
+                        .map(|param| param.finalize(ctx))
+                        .collect::<Result<_, _>>()?,
+                    structure.finalize(ctx)?,
+                ),
+                UnresolvedType::Function(input, output) => Type::Function(
+                    Box::new(input.finalize(ctx)?),
+                    Box::new(output.finalize(ctx)?),
+                ),
+                UnresolvedType::Tuple(tys) => Type::Tuple(
+                    tys.into_iter()
+                        .map(|ty| ty.finalize(ctx))
+                        .collect::<Result<_, _>>()?,
+                ),
+                UnresolvedType::Builtin(builtin) => Type::Builtin(match builtin {
+                    BuiltinType::Number => BuiltinType::Number,
+                    BuiltinType::Integer => BuiltinType::Integer,
+                    BuiltinType::Natural => BuiltinType::Natural,
+                    BuiltinType::Byte => BuiltinType::Byte,
+                    BuiltinType::Signed => BuiltinType::Signed,
+                    BuiltinType::Unsigned => BuiltinType::Unsigned,
+                    BuiltinType::Float => BuiltinType::Float,
+                    BuiltinType::Double => BuiltinType::Double,
+                    BuiltinType::Text => BuiltinType::Text,
+                    BuiltinType::List(ty) => BuiltinType::List(Box::new(ty.finalize(ctx)?)),
+                    BuiltinType::Mutable(ty) => BuiltinType::Mutable(Box::new(ty.finalize(ctx)?)),
+                }),
+                UnresolvedType::Bottom(is_error) => Type::Bottom(is_error),
+            })
+        })();
+
+        match result {
+            Ok(ty) => Ok(ty),
+            Err(_) => Err(TypeError::UnresolvedType(ty)),
+        }
     }
 }
 

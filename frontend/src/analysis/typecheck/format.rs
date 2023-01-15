@@ -34,6 +34,7 @@ pub enum TypeFunctionFormat {
 pub enum TypeVariableFormat {
     #[default]
     None,
+    Numeric,
     Description,
 }
 
@@ -164,8 +165,9 @@ fn format_type_with(
     if ty_var_names.is_empty() {
         format.type_variable = TypeVariableFormat::None;
     }
-    let var_names = |var| match format.type_variable {
+    let var_names = |var: TypeVariable| match format.type_variable {
         TypeVariableFormat::None => String::from("_"),
+        TypeVariableFormat::Numeric => format!("{{{}}}", var.0),
         TypeVariableFormat::Description => ty_vars.get(&var).unwrap().clone(),
     };
 
@@ -377,7 +379,7 @@ fn format_type_with(
     };
 
     let var_description = || match format.type_variable {
-        TypeVariableFormat::None => unreachable!(),
+        TypeVariableFormat::None | TypeVariableFormat::Numeric => unreachable!(),
         TypeVariableFormat::Description => match ty_vars.len() {
             0 => unreachable!(),
             1 => format!(
@@ -398,11 +400,15 @@ fn format_type_with(
     };
 
     match (format.type_function, format.type_variable) {
-        (TypeFunctionFormat::None | TypeFunctionFormat::Arrow, TypeVariableFormat::None) => {
-            formatted
-        }
+        (
+            TypeFunctionFormat::None | TypeFunctionFormat::Arrow,
+            TypeVariableFormat::None | TypeVariableFormat::Numeric,
+        ) => formatted,
         (TypeFunctionFormat::None, _) => format!("{} {}", formatted, var_description()),
-        (TypeFunctionFormat::Description, TypeVariableFormat::None) => {
+        (
+            TypeFunctionFormat::Description,
+            TypeVariableFormat::None | TypeVariableFormat::Numeric,
+        ) => {
             format!("{} {}", formatted, param_description())
         }
         (TypeFunctionFormat::Arrow, _) => format!("{} {}", formatted, var_description()),

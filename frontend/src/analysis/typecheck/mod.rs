@@ -2160,6 +2160,8 @@ impl<'a, 'l> Typechecker<'a, 'l> {
             self.add_error(error);
         }
 
+        let mut error_candidates = Vec::new();
+
         macro_rules! find_instance {
             ($resolve:expr) => {{
                 // First try with numeric variables...
@@ -2183,9 +2185,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
             }};
             (@find $ty:expr, $resolve:expr) => {{
                 let ty = engine::UnresolvedType::from($ty);
-                let mut candidates = Vec::new();
-                $resolve(&mut candidates, ty.clone());
-                let mut candidates = candidates
+                let mut candidates = $resolve(ty.clone())
                     .into_iter()
                     .unique_by(|(_, id, _)| *id)
                     .collect::<Vec<_>>();
@@ -2193,10 +2193,10 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                 match candidates.len() {
                     0 => None,
                     1 => {
-                        let (ctx, info, _) = candidates.pop().unwrap();
+                        let (ctx, id, _) = candidates.pop().unwrap();
                         self.ctx = ctx;
 
-                        Some(Ok(info))
+                        Some(Ok(id))
                     }
                     _ => Some(Err(self.error(
                         engine::TypeError::AmbiguousTrait(
@@ -2211,34 +2211,71 @@ impl<'a, 'l> Typechecker<'a, 'l> {
         }
 
         let bound_instances = info.bound_instances.get(&tr).cloned().unwrap_or_default();
-
-        find_instance!(|candidates: &mut Vec<_>, ty: engine::UnresolvedType| {
-            for (info, instance_ty, span) in bound_instances.clone() {
+        find_instance!(|ty: engine::UnresolvedType| {
+            let mut candidates = Vec::new();
+            for (id, instance_ty, span) in bound_instances.clone() {
                 let mut ctx = self.ctx.clone();
                 if ctx.unify_generic(ty.clone(), instance_ty.clone()).is_ok() {
-                    candidates.push((ctx, info, span));
+                    candidates.push((ctx, id, span));
                 }
             }
+
+            candidates
         });
 
         let declared_instances = self.instances.get(&tr).cloned().unwrap_or_default();
+        find_instance!(|ty: engine::UnresolvedType| {
+            let mut candidates = Vec::new();
+            'check: for id in declared_instances.clone() {
+                let (mut instance_ty, instance_span, mut bounds) =
+                    self.with_instance_decl(id, |instance| {
+                        (
+                            engine::UnresolvedType::from(instance.ty.clone()),
+                            instance.span,
+                            instance.bounds.clone(),
+                        )
+                    });
 
-        find_instance!(|candidates: &mut Vec<_>, ty: engine::UnresolvedType| {
-            for id in declared_instances.clone() {
-                let (mut instance_ty, instance_span) = self.with_instance_decl(id, |instance| {
-                    (
-                        engine::UnresolvedType::from(instance.ty.clone()),
-                        instance.span,
-                    )
-                });
+                let mut substitutions = engine::GenericSubstitutions::new();
+                self.add_substitutions(&mut instance_ty, &mut substitutions);
 
-                self.instantiate_generics(&mut instance_ty);
-
-                let mut ctx = self.ctx.clone();
-                if ctx.unify(ty.clone(), instance_ty.clone()).is_ok() {
-                    candidates.push((ctx, Some(id), instance_span));
+                let prev_ctx = self.ctx.clone();
+                if self.ctx.unify(ty.clone(), instance_ty.clone()).is_err() {
+                    self.ctx = prev_ctx;
+                    continue 'check;
                 }
+
+                for bound in &mut bounds {
+                    let mut ty = self.substitute_trait_params(
+                        bound.trait_id,
+                        bound.params.clone(),
+                        bound.span,
+                    );
+
+                    self.add_substitutions(&mut ty, &mut substitutions);
+
+                    if self
+                        .instance_for(
+                            bound.trait_id,
+                            ty.clone(),
+                            bound.span,
+                            Some(bound.span),
+                            info,
+                        )
+                        .is_err()
+                    {
+                        self.ctx = prev_ctx;
+                        error_candidates.push(instance_span);
+                        continue 'check;
+                    }
+                }
+
+                let ctx = mem::replace(&mut self.ctx, prev_ctx);
+
+                candidates.push((ctx, Some(id), instance_span));
             }
+
+            candidates
         });
 
         let params = self.ctx.unify_params(ty, tr_decl.ty).0;
@@ -2255,7 +2292,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
             .collect();
 
         Err(self.error(
-            engine::TypeError::MissingInstance(tr, params, bound_span),
+            engine::TypeError::MissingInstance(tr, params, bound_span, error_candidates),
             use_span,
         ))
     }
@@ -3948,7 +3985,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                     error.trace,
                 )
             }
-            engine::TypeError::MissingInstance(id, params, bound_span) => {
+            engine::TypeError::MissingInstance(id, params, bound_span, error_candidates) => {
                 let trait_attributes = self
                     .declarations
                     .borrow()
@@ -3970,6 +4007,12 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                     .chain(
                         bound_span.map(|span| Note::secondary(span, "required by this bound here")),
                     )
+                    .chain(error_candidates.into_iter().map(|span| {
+                        Note::secondary(
+                            span,
+                            "this instance could apply, but its bounds weren't satisfied",
+                        )
+                    }))
                     .chain(
                         trait_attributes
                             .on_unimplemented
