@@ -5,8 +5,8 @@ use wipple_frontend::{
     diagnostics::FinalizedDiagnostics, helpers::InternedString, Compiler, FilePath, Loader as _,
 };
 
-pub fn fuzz(source: String, quiet: bool) -> FinalizedDiagnostics {
-    if !quiet {
+pub(super) fn fuzz(source: String, args: super::Args) -> FinalizedDiagnostics {
+    if !args.quiet {
         println!("Source:\n{}", source);
     }
 
@@ -23,7 +23,9 @@ pub fn fuzz(source: String, quiet: bool) -> FinalizedDiagnostics {
         .lock()
         .insert(path, Arc::from(source.as_str()));
 
-    let compiler = Compiler::new(&loader).set_backtrace_enabled(true);
+    let compiler = Compiler::new(&loader);
+    #[cfg(debug_assertions)]
+    let compiler = compiler.set_backtrace_enabled(true);
 
     compiler.parse(path, &source);
 

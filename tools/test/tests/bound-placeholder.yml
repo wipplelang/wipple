@@ -5,12 +5,10 @@ code: |
     foo : just ()
 
     A : type
-
     B : type
-    instance (T B A) : ...
 
-    C : type
-    X where (T _ A) => instance (T X A) : ...
+    instance (T B A) : ...
+    X where (T _ A) => instance (T X B) : ...
 
 output: |
 

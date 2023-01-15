@@ -6,7 +6,7 @@ code: |
 
     use Linked-List
 
-    reduce :: A R => (A -> R -> R) -> R -> (Linked-List A) -> R
+    reduce :: A R => (A -> R -> R) -> R -> Linked-List A -> R
     reduce : f -> result -> list -> when list {
         Nil -> result
         Cons x rest -> reduce f (f x result) rest

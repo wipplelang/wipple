@@ -137,6 +137,22 @@ macro_rules! file_ids {
                             counter: id,
                         })
                     }
+
+                    #[cfg(feature = "arbitrary")]
+                    fn [<split_arbitrary_ $id _ids>]() -> (impl Iterator<Item = [<$id:camel Id>]>, impl Iterator<Item = [<$id:camel Id>]>) {
+                        const SPLIT: usize = ARBITRARY_MAX_ID_COUNTER / 2;
+
+                        (
+                            (0..SPLIT).map(|id| [<$id:camel Id>] {
+                                file: None,
+                                counter: id,
+                            }),
+                            (SPLIT..ARBITRARY_MAX_ID_COUNTER).map(|id| [<$id:camel Id>] {
+                                file: None,
+                                counter: id,
+                            }),
+                        )
+                    }
                 )*
             }
 

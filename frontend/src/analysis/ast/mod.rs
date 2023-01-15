@@ -868,6 +868,7 @@ impl Compiler<'_> {
                 ),
                 NodeKind::List(nodes) => {
                     let mut nodes = nodes.into_iter();
+
                     let ty = match nodes.next() {
                         Some(ty) => ty,
                         None => return TypeAnnotationKind::Tuple(Vec::new()),

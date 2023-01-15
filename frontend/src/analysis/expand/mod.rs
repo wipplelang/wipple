@@ -39,6 +39,7 @@ pub struct File {
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub struct FileAttributes {
+    #[cfg_attr(feature = "arbitrary", arbitrary(with = |_: &mut arbitrary::Unstructured| Ok(true)))]
     pub no_std: bool,
 }
 
@@ -775,6 +776,23 @@ impl Expander<'_, '_> {
         (statements, scope.values.into_unique())
     }
 
+    fn operators_in_list<'a>(
+        &self,
+        exprs: impl IntoIterator<Item = (usize, &'a parse::Expr)>,
+        scope: &Scope<'_>,
+    ) -> VecDeque<(usize, InternedString, Span, Operator)> {
+        let mut operators = VecDeque::new();
+        for (index, expr) in exprs {
+            if let parse::ExprKind::Name(name) = &expr.kind {
+                if let Some(ScopeValue::Operator(operator)) = scope.get(*name) {
+                    operators.push_back((index, *name, expr.span, operator))
+                }
+            }
+        }
+
+        operators
+    }
+
     #[async_recursion]
     async fn expand_list(
         &self,
@@ -827,14 +845,7 @@ impl Expander<'_, '_> {
                 self.expand_expr(expr, scope).await
             }
             _ => {
-                let mut operators = VecDeque::new();
-                for (index, expr) in exprs.iter().enumerate() {
-                    if let parse::ExprKind::Name(name) = &expr.kind {
-                        if let Some(ScopeValue::Operator(operator)) = scope.get(*name) {
-                            operators.push_back((index, *name, expr.span, operator))
-                        }
-                    }
-                }
+                let operators = self.operators_in_list(exprs.iter().enumerate(), scope);
 
                 if operators.is_empty() {
                     let mut exprs = exprs.into_iter();
@@ -1010,7 +1021,7 @@ impl Expander<'_, '_> {
                         )
                         .await
                     } else {
-                        let rhs = exprs.split_off(max_index + 1);
+                        let mut rhs = exprs.split_off(max_index + 1);
                         let mut lhs = exprs;
                         lhs.pop().unwrap();
 
@@ -1044,21 +1055,52 @@ impl Expander<'_, '_> {
                             let span =
                                 Span::join(lhs.first().unwrap().span, rhs.last().unwrap().span);
 
-                            let lhs = self
-                                .expand_list(
-                                    Span::join(lhs.first().unwrap().span, lhs.last().unwrap().span),
-                                    lhs,
-                                    scope,
-                                )
-                                .await;
+                            macro_rules! expand_list {
+                                ($exprs:ident) => {
+                                    (|| async {
+                                        // Prevent flattening of a single parenthesized expression that
+                                        // doesn't contain any operators
+                                        if $exprs.len() == 1 {
+                                            let expr = $exprs.first().unwrap();
 
-                            let rhs = self
-                                .expand_list(
-                                    Span::join(rhs.first().unwrap().span, rhs.last().unwrap().span),
-                                    rhs,
-                                    scope,
-                                )
-                                .await;
+                                            if let parse::ExprKind::List(lines) = &expr.kind {
+                                                let exprs = lines
+                                                    .iter()
+                                                    .flat_map(|line| &line.exprs)
+                                                    .enumerate();
+
+                                                if exprs.clone().next().is_none() {
+                                                    return Node {
+                                                        span: expr.span,
+                                                        kind: NodeKind::Empty,
+                                                    };
+                                                }
+
+                                                if self.operators_in_list(exprs.clone(), scope).is_empty() {
+                                                    let expr = $exprs.pop().unwrap();
+
+                                                    return Node {
+                                                        span: expr.span,
+                                                        kind: NodeKind::List(vec![
+                                                            self.expand_expr(expr, scope).await,
+                                                        ]),
+                                                    };
+                                                }
+                                            }
+                                        }
+
+                                        let span = Span::join(
+                                            $exprs.first().unwrap().span,
+                                            $exprs.last().unwrap().span,
+                                        );
+
+                                        self.expand_list(span, $exprs, scope).await
+                                    })()
+                                };
+                            }
+
+                            let lhs = expand_list!(lhs).await;
+                            let rhs = expand_list!(rhs).await;
 
                             self.expand_template(
                                 max_name,

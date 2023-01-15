@@ -1,23 +1,33 @@
 use crate::Compiler;
 
-#[derive(Debug, Clone)]
+#[cfg(debug_assertions)]
+use crate::helpers::Shared;
+
+#[derive(Clone)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]
-pub struct Backtrace(#[cfg(debug_assertions)] Option<backtrace::Backtrace>);
+pub struct Backtrace {
+    #[cfg(debug_assertions)]
+    #[cfg_attr(feature = "serde", serde(skip))]
+    trace: Option<Shared<backtrace::Backtrace>>,
+}
 
 impl Compiler<'_> {
     pub(crate) fn backtrace(&self) -> Backtrace {
-        Backtrace(
+        Backtrace {
             #[cfg(debug_assertions)]
-            self.backtrace_enabled
-                .then(backtrace::Backtrace::new_unresolved),
-        )
+            trace: self
+                .backtrace_enabled
+                .then(backtrace::Backtrace::new_unresolved)
+                .map(Shared::new),
+        }
     }
 }
 
 impl Backtrace {
     #[cfg(debug_assertions)]
     pub fn into_inner(self) -> Option<backtrace::Backtrace> {
-        self.0.map(|mut trace| {
+        self.trace.map(|trace| {
+            let mut trace = trace.lock().clone();
             trace.resolve();
             trace
         })
@@ -31,10 +41,28 @@ impl Backtrace {
 
 impl From<backtrace::Backtrace> for Backtrace {
     fn from(#[allow(unused)] trace: backtrace::Backtrace) -> Self {
-        Backtrace(
+        Backtrace {
             #[cfg(debug_assertions)]
-            Some(trace),
-        )
+            trace: Some(Shared::new(trace)),
+        }
+    }
+}
+
+impl std::fmt::Debug for Backtrace {
+    #[cfg(debug_assertions)]
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if let Some(trace) = &self.trace {
+            let mut trace = trace.lock().clone();
+            trace.resolve();
+            trace.fmt(f)
+        } else {
+            f.debug_tuple("Backtrace").finish()
+        }
+    }
+
+    #[cfg(not(debug_assertions))]
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_tuple("Backtrace").finish()
     }
 }
 

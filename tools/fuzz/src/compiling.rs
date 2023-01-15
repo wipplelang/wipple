@@ -8,10 +8,8 @@ use wipple_frontend::{
 };
 
 #[tokio::main]
-pub async fn fuzz(mut file: analysis::expand::File, quiet: bool) -> FinalizedDiagnostics {
-    file.attributes.no_std = true; // test only this file (FIXME: Move to Arbitrary implementation)
-
-    if !quiet {
+pub(super) async fn fuzz(file: analysis::expand::File, args: super::Args) -> FinalizedDiagnostics {
+    if !args.quiet {
         println!("File: {:#?}", file);
     }
 
@@ -23,7 +21,9 @@ pub async fn fuzz(mut file: analysis::expand::File, quiet: bool) -> FinalizedDia
 
     loader.source_map().lock().insert(file.path, Arc::from(""));
 
-    let compiler = Compiler::new(&loader).set_backtrace_enabled(true);
+    let compiler = Compiler::new(&loader);
+    #[cfg(debug_assertions)]
+    let compiler = compiler.set_backtrace_enabled(true);
 
     let files = IndexMap::from([(file.span.path, Arc::new(file))]);
     let options = analysis::Options::default();

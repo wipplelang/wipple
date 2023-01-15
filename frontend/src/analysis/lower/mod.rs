@@ -7,8 +7,8 @@ use crate::{
     diagnostics::*,
     helpers::{InternedString, Shared},
     parse::Span,
-    BuiltinTypeId, Compiler, ConstantId, FieldIndex, FileIds, FilePath, TemplateId, TraitId,
-    TypeId, TypeParameterId, VariableId, VariantIndex,
+    BuiltinTypeId, Compiler, ConstantId, FieldIndex, FilePath, TemplateId, TraitId, TypeId,
+    TypeParameterId, VariableId, VariantIndex,
 };
 use std::{
     cell::RefCell,
@@ -34,40 +34,53 @@ pub struct File<Decls = Declarations> {
 #[cfg(feature = "arbitrary")]
 impl<'a> arbitrary::Arbitrary<'a> for File {
     fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
-        // Ensure the program only refers to existing declarations by generating
-        // every possible declaration
-        macro_rules! arbitrary_declarations {
-            ($($kind:ident($id:ident) => $fn:path),* $(,)?) => {
-                paste::paste! {
-                    Declarations {
-                        $(
-                            [<$kind s>]: FileIds::[<list_arbitrary_ $id s>]()
-                                .map(|id| Ok((id, $fn(u)?)))
-                                .collect::<Result<_, _>>()?,
-                        )*
-                    }
-                }
-            };
-        }
+        use crate::FileIds;
 
         Ok(File {
             span: Span::arbitrary(u)?,
-            declarations: arbitrary_declarations!(
-                operator(template_id) => expand::Operator::arbitrary,
-                template(template_id) => expand::TemplateDeclaration::arbitrary,
-                type(type_id) => Declaration::arbitrary,
-                type_parameter(type_parameter_id) => Declaration::arbitrary,
-                trait(trait_id) => Declaration::arbitrary,
-                builtin_type(builtin_type_id) => Declaration::arbitrary,
-                constant(constant_id) => Declaration::arbitrary,
-                instance(constant_id) => Declaration::arbitrary,
-                variable(variable_id) => Declaration::arbitrary,
-            ),
+            // Ensure the program only refers to existing declarations by
+            //  generating every possible declaration
+            declarations: {
+                let (operator_ids, template_ids) = FileIds::split_arbitrary_template_ids();
+                let (constant_ids, instance_ids) = FileIds::split_arbitrary_constant_ids();
+
+                Declarations {
+                    operators: operator_ids
+                        .map(|id| Ok((id, expand::Operator::arbitrary(u)?)))
+                        .collect::<Result<_, _>>()?,
+                    templates: template_ids
+                        .map(|id| Ok((id, expand::TemplateDeclaration::arbitrary(u)?)))
+                        .collect::<Result<_, _>>()?,
+                    types: FileIds::list_arbitrary_type_ids()
+                        .map(|id| Ok((id, Declaration::arbitrary(u)?)))
+                        .collect::<Result<_, _>>()?,
+                    type_parameters: FileIds::list_arbitrary_type_parameter_ids()
+                        .map(|id| Ok((id, Declaration::arbitrary(u)?)))
+                        .collect::<Result<_, _>>()?,
+                    traits: FileIds::list_arbitrary_trait_ids()
+                        .map(|id| Ok((id, Declaration::arbitrary(u)?)))
+                        .collect::<Result<_, _>>()?,
+                    builtin_types: FileIds::list_arbitrary_builtin_type_ids()
+                        .map(|id| Ok((id, Declaration::arbitrary(u)?)))
+                        .collect::<Result<_, _>>()?,
+                    constants: constant_ids
+                        .map(|id| Ok((id, Declaration::arbitrary(u)?)))
+                        .collect::<Result<_, _>>()?,
+                    instances: instance_ids
+                        .map(|id| Ok((id, Declaration::arbitrary(u)?)))
+                        .collect::<Result<_, _>>()?,
+                    variables: FileIds::list_arbitrary_variable_ids()
+                        .map(|id| Ok((id, Declaration::arbitrary(u)?)))
+                        .collect::<Result<_, _>>()?,
+                }
+            },
             global_attributes: FileAttributes::arbitrary(u)?,
             exported: ScopeValues::new(),
             scopes: Vec::arbitrary(u)?,
             specializations: BTreeMap::arbitrary(u)?,
-            block: Vec::arbitrary(u)?,
+            block: (0..u.int_in_range(64..=128)?)
+                .map(|_| Expression::arbitrary(u))
+                .collect::<Result<_, _>>()?,
         })
     }
 }
@@ -348,9 +361,9 @@ pub struct LanguageItems {
 pub struct Expression {
     pub span: Span,
 
-    #[arbitrary(with = |u: &mut arbitrary::Unstructured| {
+    #[cfg_attr(feature = "arbitrary", arbitrary(with = |u: &mut arbitrary::Unstructured| {
         Ok(NonErrorExpressionKind::arbitrary(u)?.into())
-    })]
+    }))]
     pub kind: ExpressionKind,
 }
 
@@ -401,9 +414,9 @@ pub struct Arm {
 pub struct Pattern {
     pub span: Span,
 
-    #[arbitrary(with = |u: &mut arbitrary::Unstructured| {
+    #[cfg_attr(feature = "arbitrary",arbitrary(with = |u: &mut arbitrary::Unstructured| {
         Ok(NonErrorPatternKind::arbitrary(u)?.into())
-    })]
+    }))]
     pub kind: PatternKind,
 }
 

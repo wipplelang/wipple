@@ -3,6 +3,7 @@
 #[macro_use]
 mod number;
 
+pub mod display;
 mod engine;
 pub mod format;
 pub mod traverse;
@@ -134,6 +135,7 @@ pub struct InstanceDecl {
     pub bound_annotations: Vec<(TraitId, Vec<TypeAnnotation>)>,
     pub trait_id: TraitId,
     pub trait_params: Vec<engine::Type>,
+    pub trait_param_annotations: Vec<lower::TypeAnnotation>,
     pub ty: engine::Type,
     pub body: Option<Expression>,
     pub item: ItemId,
@@ -3070,6 +3072,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
         let mut params = decl
             .value
             .trait_params
+            .clone()
             .into_iter()
             .map(|ty| self.convert_generic_type_annotation(ty))
             .collect::<Vec<_>>();
@@ -3178,6 +3181,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                     engine::Type::Bottom(BottomTypeReason::Error)
                 }
             },
+            trait_param_annotations: decl.value.trait_params,
             body: None,
             item,
         };

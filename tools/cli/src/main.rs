@@ -70,10 +70,14 @@ struct BuildOptions {
 
     #[clap(short = 'O')]
     optimize: bool,
+
+    #[clap(long)]
+    no_lint: bool,
 }
 
 #[derive(Clone, Copy, ValueEnum)]
 enum CompileFormat {
+    Analysis,
     Ir,
 }
 
@@ -166,35 +170,48 @@ async fn run() -> anyhow::Result<()> {
             options,
             output,
         } => {
-            let compile = |options: BuildOptions| async move {
-                let progress_bar = options.progress.then(progress_bar);
-
-                let (ir, diagnostics) = generate_ir(&path, &options, progress_bar.clone()).await;
-
-                let error = diagnostics.contains_errors();
-                emit_diagnostics(diagnostics, &options)?;
-
-                match ir {
-                    Some(ir) if !error => Ok((ir, progress_bar)),
-                    _ => {
-                        if let Some(progress_bar) = progress_bar.as_ref() {
-                            progress_bar.finish_and_clear();
-                        }
-
-                        Err(anyhow::Error::msg(""))
-                    }
-                }
-            };
-
-            let (ir, progress_bar) = compile(options).await?;
-
             let mut output: Box<dyn Write> = match output {
                 Some(output) => Box::new(std::fs::File::create(output)?),
                 None => Box::new(std::io::stdout()),
             };
 
             match format {
+                CompileFormat::Analysis => {
+                    let progress_bar = options.progress.then(progress_bar);
+
+                    let (program, diagnostics) =
+                        analyze(&path, &options, progress_bar.clone()).await;
+
+                    emit_diagnostics(diagnostics, &options)?;
+
+                    if let Some(progress_bar) = progress_bar.as_ref() {
+                        progress_bar.finish_and_clear();
+                    }
+
+                    output.write_all(program.to_string().as_bytes())?;
+                }
                 CompileFormat::Ir => {
+                    let (ir, progress_bar) = {
+                        let progress_bar = options.progress.then(progress_bar);
+
+                        let (ir, diagnostics) =
+                            generate_ir(&path, &options, progress_bar.clone()).await;
+
+                        let error = diagnostics.contains_errors();
+                        emit_diagnostics(diagnostics, &options)?;
+
+                        match ir {
+                            Some(ir) if !error => (ir, progress_bar),
+                            _ => {
+                                if let Some(progress_bar) = progress_bar.as_ref() {
+                                    progress_bar.finish_and_clear();
+                                }
+
+                                return Err(anyhow::Error::msg(""));
+                            }
+                        }
+                    };
+
                     if let Some(progress_bar) = progress_bar.as_ref() {
                         progress_bar.finish_and_clear();
                     }
@@ -445,7 +462,9 @@ async fn build_with_passes<P>(
     let (program, diagnostics) = compiler
         .analyze_with(
             path,
-            &wipple_frontend::analysis::Options::new().tracking_progress(analysis_progress),
+            &wipple_frontend::analysis::Options::new()
+                .tracking_progress(analysis_progress)
+                .lint(!options.no_lint),
         )
         .await;
 

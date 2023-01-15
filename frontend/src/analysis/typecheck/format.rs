@@ -380,7 +380,10 @@ fn format_type_with(
         TypeVariableFormat::None => unreachable!(),
         TypeVariableFormat::Description => match ty_vars.len() {
             0 => unreachable!(),
-            1 => format!("for some type `{}`", ty_vars.iter().next().unwrap().1),
+            1 => format!(
+                "for some unknown type `{}`",
+                ty_vars.iter().next().unwrap().1
+            ),
             _ => {
                 let mut vars = ty_var_names
                     .into_iter()
@@ -389,7 +392,7 @@ fn format_type_with(
 
                 let last = vars.pop().unwrap();
 
-                format!("for some types {} and {}", vars.join(", "), last)
+                format!("for some unknown types {} and {}", vars.join(", "), last)
             }
         },
     };
