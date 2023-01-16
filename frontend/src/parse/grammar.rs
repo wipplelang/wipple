@@ -69,14 +69,14 @@ pub enum ParseError {
 }
 
 impl<'a, 'src> Parser<'a, 'src> {
-    pub fn parse_file(&mut self) -> Option<(Vec<Expr>, Vec<Statement>)> {
+    pub fn parse_file(&mut self) -> (Vec<Expr>, Vec<Statement>) {
         while let (_, Some(Token::Comment(_) | Token::LineBreak)) = self.peek() {
             self.consume();
         }
 
         let attributes = self.parse_file_attributes();
 
-        let (statements, _) = self.parse_statements(None)?;
+        let (statements, _) = self.parse_statements(None);
 
         if let (span, Some(token)) = self.consume() {
             self.compiler.add_error(
@@ -86,11 +86,9 @@ impl<'a, 'src> Parser<'a, 'src> {
                     format!("expected end of file, found {}", token),
                 )],
             );
-
-            return None;
         }
 
-        Some((attributes, statements))
+        (attributes, statements)
     }
 
     pub fn parse_file_attributes(&mut self) -> Vec<Expr> {
@@ -106,14 +104,15 @@ impl<'a, 'src> Parser<'a, 'src> {
 
         self.consume();
 
-        self.parse_list_contents(Token::RightFileBracket)
-            .map(|(lines, end_span)| Expr::new(span.with_end(end_span.end), ExprKind::List(lines)))
+        let (lines, end_span) = self.parse_list_contents(Token::RightFileBracket);
+
+        Some(Expr::new(
+            span.with_end(end_span.end),
+            ExprKind::List(lines),
+        ))
     }
 
-    pub fn parse_statements(
-        &mut self,
-        end_token: Option<Token<'src>>,
-    ) -> Option<(Vec<Statement>, Span)> {
+    pub fn parse_statements(&mut self, end_token: Option<Token<'src>>) -> (Vec<Statement>, Span) {
         let mut statements = Vec::<Statement>::new();
         let mut error = false;
 
@@ -185,8 +184,6 @@ impl<'a, 'src> Parser<'a, 'src> {
                             format!("expected {}, found end of file", end_token),
                         )],
                     );
-
-                    return None;
                 }
             }
 
@@ -214,7 +211,7 @@ impl<'a, 'src> Parser<'a, 'src> {
             }
         };
 
-        (!error).then_some((statements, end_span))
+        (statements, end_span)
     }
 
     pub fn try_parse_attribute(&mut self) -> Option<Expr> {
@@ -226,8 +223,12 @@ impl<'a, 'src> Parser<'a, 'src> {
 
         self.consume();
 
-        self.parse_list_contents(Token::RightAttrBracket)
-            .map(|(lines, end_span)| Expr::new(span.with_end(end_span.end), ExprKind::List(lines)))
+        let (lines, end_span) = self.parse_list_contents(Token::RightAttrBracket);
+
+        Some(Expr::new(
+            span.with_end(end_span.end),
+            ExprKind::List(lines),
+        ))
     }
 
     pub fn parse_expr(&mut self) -> Option<Expr> {
@@ -366,21 +367,19 @@ impl<'a, 'src> Parser<'a, 'src> {
             Some(Token::LeftParenthesis) => {
                 self.consume();
 
-                if let Some((lines, end_span)) = self.parse_list_contents(Token::RightParenthesis) {
-                    Ok(Expr::new(
-                        span.with_end(end_span.end),
-                        ExprKind::List(lines),
-                    ))
-                } else {
-                    Err(ParseError::InvalidExpr)
-                }
+                let (lines, end_span) = self.parse_list_contents(Token::RightParenthesis);
+
+                Ok(Expr::new(
+                    span.with_end(end_span.end),
+                    ExprKind::List(lines),
+                ))
             }
             Some(_) => Err(ParseError::WrongTokenType),
             None => Err(ParseError::EndOfFile),
         }
     }
 
-    pub fn parse_list_contents(&mut self, end_token: Token) -> Option<(Vec<ListLine>, Span)> {
+    pub fn parse_list_contents(&mut self, end_token: Token) -> (Vec<ListLine>, Span) {
         let mut lines = Vec::<ListLine>::new();
         let mut error = false;
 
@@ -445,11 +444,9 @@ impl<'a, 'src> Parser<'a, 'src> {
                     format!("expected {}, found end of file", end_token),
                 )],
             );
-
-            return None;
         }
 
-        (!error).then_some((lines, end_span))
+        (lines, end_span)
     }
 
     pub fn try_parse_block(&mut self) -> Result<Expr, ParseError> {
@@ -459,13 +456,12 @@ impl<'a, 'src> Parser<'a, 'src> {
             Some(Token::LeftBrace) => {
                 self.consume();
 
-                match self.parse_statements(Some(Token::RightBrace)) {
-                    Some((statements, end_range)) => Ok(Expr::new(
-                        span.with_end(end_range.end),
-                        ExprKind::Block(statements),
-                    )),
-                    None => Err(ParseError::InvalidExpr),
-                }
+                let (statements, end_range) = self.parse_statements(Some(Token::RightBrace));
+
+                Ok(Expr::new(
+                    span.with_end(end_range.end),
+                    ExprKind::Block(statements),
+                ))
             }
             Some(_) => Err(ParseError::WrongTokenType),
             None => Err(ParseError::EndOfFile),

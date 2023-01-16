@@ -185,7 +185,7 @@ impl<'l> Compiler<'l> {
             + 'static
             + Send
             + Sync,
-    ) -> Option<File> {
+    ) -> File {
         let mut expander = Expander {
             compiler: self,
             declarations: Default::default(),
@@ -205,8 +205,9 @@ impl<'l> Compiler<'l> {
         if !attributes.no_std {
             let std_path = expander.compiler.loader.std_path();
             if let Some(std_path) = std_path {
-                let file = (expander.load)(expander.compiler, file.span, std_path).await?;
-                expander.add_dependency(file, &scope);
+                if let Some(file) = (expander.load)(expander.compiler, file.span, std_path).await {
+                    expander.add_dependency(file, &scope);
+                }
             } else {
                 expander.compiler.add_error(
                     "standard library is missing, but this file requires it",
@@ -220,7 +221,7 @@ impl<'l> Compiler<'l> {
 
         let (statements, exported) = expander.expand_block(file.statements, &scope).await;
 
-        Some(File {
+        File {
             path: file.path,
             span: file.span,
             statements,
@@ -230,7 +231,7 @@ impl<'l> Compiler<'l> {
             scopes: expander.scopes.into_unique(),
             template_uses: expander.template_uses.into_unique(),
             dependencies: expander.dependencies.into_unique().into_values().collect(),
-        })
+        }
     }
 }
 

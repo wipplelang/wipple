@@ -176,7 +176,7 @@ impl Compiler<'_> {
                 .lock()
                 .insert(resolved_path, code.clone());
 
-            let file = compiler.parse(resolved_path, &code)?;
+            let file = compiler.parse(resolved_path, &code);
 
             stack.lock().push(resolved_path);
 
@@ -209,7 +209,7 @@ impl Compiler<'_> {
                         })
                     }
                 })
-                .await?;
+                .await;
 
             stack.lock().pop();
 
