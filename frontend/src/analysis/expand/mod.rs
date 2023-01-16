@@ -59,6 +59,7 @@ pub struct StatementAttributes {
     pub on_unimplemented: Option<InternedString>,
     pub on_mismatch: VecDeque<(Option<(Span, InternedString)>, InternedString)>,
     pub specialize: bool,
+    pub sealed: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, EnumString)]

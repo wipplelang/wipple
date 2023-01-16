@@ -1,0 +1,47 @@
+code: |
+    Z : type
+    S : N => type
+
+    True : type
+    False : type
+
+    [sealed]
+    Less-Than : A B R => trait (A , B , R)
+    N => instance (Less-Than N N False) : ...
+    instance (Less-Than (S _) Z False) : ...
+    instance (Less-Than Z (S _) True) : ...
+    A B R where (Less-Than A B R) => instance (Less-Than (S A) (S B) R) : ...
+
+    _ : _ -> (Less-Than :: Z , Z , _)
+    _ : _ -> (Less-Than :: S Z , Z , _)
+    _ : _ -> (Less-Than :: S (S Z) , S (S (S Z)) , _)
+
+output: |
+
+diagnostics: |
+  error: could not determine the type of this expression
+     ┌─ test:14:5
+     │
+  14 │ _ : _ -> (Less-Than :: Z , Z , _)
+     │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     │     │
+     │     try annotating the type with `::`
+     │     this has type `a -> Z , Z , False` for some unknown type `a`
+  
+  error: could not determine the type of this expression
+     ┌─ test:15:5
+     │
+  15 │ _ : _ -> (Less-Than :: S Z , Z , _)
+     │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     │     │
+     │     try annotating the type with `::`
+     │     this has type `a -> S Z , Z , False` for some unknown type `a`
+  
+  error: could not determine the type of this expression
+     ┌─ test:16:5
+     │
+  16 │ _ : _ -> (Less-Than :: S (S Z) , S (S (S Z)) , _)
+     │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+     │     │
+     │     try annotating the type with `::`
+     │     this has type `a -> S (S Z) , S (S (S Z)) , True` for some unknown type `a`

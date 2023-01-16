@@ -303,6 +303,7 @@ pub struct Trait {
 pub struct TraitAttributes {
     pub decl_attributes: DeclarationAttributes,
     pub on_unimplemented: Option<InternedString>,
+    pub sealed: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -707,6 +708,20 @@ impl Compiler<'_> {
                             constant.name.unwrap()
                         ),
                     )],
+                );
+            }
+        }
+
+        for instance in info.declarations.instances.values() {
+            let tr = instance.value.as_ref().unwrap().tr;
+            let tr_decl = info.declarations.traits.get(&tr).unwrap();
+
+            if tr_decl.value.as_ref().unwrap().attributes.sealed
+                && instance.span.path != tr_decl.span.path
+            {
+                self.add_error(
+                    "instance of `sealed` trait must occur in the same file as the trait",
+                    vec![Note::primary(instance.span, "instance disallowed here")],
                 );
             }
         }
@@ -1716,6 +1731,7 @@ impl Compiler<'_> {
         TraitAttributes {
             decl_attributes: self.lower_decl_attributes(statement_attributes, scope, info),
             on_unimplemented: mem::take(&mut statement_attributes.on_unimplemented),
+            sealed: mem::take(&mut statement_attributes.sealed),
         }
     }
 

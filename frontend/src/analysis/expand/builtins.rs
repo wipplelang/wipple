@@ -1498,23 +1498,6 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
 
                     let node = inputs.pop().unwrap();
 
-                    let add_error = || {
-                        expander.compiler.add_error(
-                            "`specialize` may only be used on a constant declaration",
-                            vec![Note::primary(span, "expected a constant declaration here")],
-                        )
-                    };
-
-                    if let NodeKind::Annotate(lhs, _) = &node.kind {
-                        if !matches!(&lhs.kind, NodeKind::Name(_)) {
-                            add_error();
-                            return node;
-                        }
-                    } else {
-                        add_error();
-                        return node;
-                    }
-
                     let attributes = match attributes {
                         Some(attributes) => attributes,
                         None => {
@@ -1543,6 +1526,68 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
                     }
 
                     attributes.specialize = true;
+
+                    node
+                })
+            }),
+        ),
+    );
+
+    // `sealed` attribute
+
+    let id = expander.compiler.new_template_id_in(file);
+
+    scope_values.insert(InternedString::new("sealed"), ScopeValue::Template(id));
+
+    declarations.templates.insert(
+        id,
+        TemplateDeclaration::new(
+            "sealed",
+            Span::builtin("`sealed` attribute"),
+            Template::function(|expander, span, mut inputs, _, attributes, _| {
+                Box::pin(async move {
+                    if inputs.len() != 1 {
+                        expander.compiler.add_error(
+                            "expected 1 input to template `sealed`",
+                            vec![Note::primary(span, "`sealed` accepts a trait declaration")],
+                        );
+
+                        return Node {
+                            span,
+                            kind: NodeKind::error(expander.compiler),
+                        };
+                    }
+
+                    let node = inputs.pop().unwrap();
+
+                    let attributes = match attributes {
+                        Some(attributes) => attributes,
+                        None => {
+                            expander.compiler.add_error(
+                                "`sealed` may only be used as an attribute",
+                                vec![Note::primary(
+                                    span,
+                                    r#"try putting this between brackets: (`[sealed]`)"#,
+                                )],
+                            );
+
+                            return node;
+                        }
+                    };
+
+                    if attributes.specialize {
+                        expander.compiler.add_error(
+                            "`sealed` attribute is already set for this statement",
+                            vec![Note::primary(
+                                span,
+                                "cannot use more than one `sealed` attribute per statement",
+                            )],
+                        );
+
+                        return node;
+                    }
+
+                    attributes.sealed = true;
 
                     node
                 })

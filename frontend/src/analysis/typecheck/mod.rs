@@ -390,7 +390,7 @@ struct Typechecker<'a, 'l> {
     exported: Option<lower::ScopeValues>,
     scopes: RefCell<Vec<(Span, lower::ScopeValues)>>,
     block_end: Option<Option<(Span, engine::UnresolvedType)>>,
-    instances: im::HashMap<TraitId, BTreeSet<ConstantId>>,
+    instances: im::HashMap<TraitId, Vec<ConstantId>>,
     generic_constants: im::HashMap<ConstantId, (bool, lower::Expression)>,
     specialized_constants: im::HashMap<ConstantId, ConstantId>,
     item_queue: im::Vector<QueuedItem>,
@@ -582,7 +582,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
         let mut instances = mem::take(&mut self.instances);
         for id in declaration!(instances) {
             self.with_instance_decl(id, |decl| {
-                instances.entry(decl.trait_id).or_default().insert(id);
+                instances.entry(decl.trait_id).or_default().push(id);
             });
         }
         self.instances = instances;
@@ -2298,6 +2298,10 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                 let ctx = mem::replace(&mut self.ctx, prev_ctx);
 
                 candidates.push((ctx, Some(id), instance_span));
+
+                if tr_decl.attributes.sealed {
+                    break 'check; // use the first available instance
+                }
             }
 
             candidates
@@ -3184,44 +3188,46 @@ impl<'a, 'l> Typechecker<'a, 'l> {
 
         let item = self.compiler.new_item_id();
 
-        // Check if the instance collides with any other instances -- there's no
-        // need to check the bounds because there's no way to ensure a type
-        // doesn't satisfy the bounds specified in both instances
+        if !tr.attributes.sealed {
+            // Check if the instance collides with any other instances -- there's no
+            // need to check the bounds because there's no way to ensure a type
+            // doesn't satisfy the bounds specified in both instances
 
-        let colliding_instances = self
-            .declarations
-            .borrow_mut()
-            .instances
-            .entry(trait_id)
-            .or_default()
-            .values()
-            .filter_map(|other| {
-                let mut temp_ctx = self.ctx.clone();
-                temp_ctx
-                    .unify(instance_ty.clone(), other.ty.clone())
-                    .is_ok()
-                    .then_some(other.span)
-            })
-            .collect::<Vec<_>>();
+            let colliding_instances = self
+                .declarations
+                .borrow_mut()
+                .instances
+                .entry(trait_id)
+                .or_default()
+                .values()
+                .filter_map(|other| {
+                    let mut temp_ctx = self.ctx.clone();
+                    temp_ctx
+                        .unify(instance_ty.clone(), other.ty.clone())
+                        .is_ok()
+                        .then_some(other.span)
+                })
+                .collect::<Vec<_>>();
 
-        if !colliding_instances.is_empty() {
-            self.compiler.add_error(
-                format!(
-                    "this instance collides with {} other instances",
-                    colliding_instances.len()
-                ), std::iter::once(Note::primary(
-                    decl.span,
-                    if has_bounds {
-                        "this instance may have different bounds than the others, but one type could satisfy the bounds on more than one of these instances simultaneously"
-                    } else {
-                        "try making this instance more specific"
-                    },
-                ))
-                .chain(colliding_instances.into_iter().map(|span| {
-                    Note::secondary(span, "this instance could apply to the same type(s)")
-                }))
-                .collect(),
-            );
+            if !colliding_instances.is_empty() {
+                self.compiler.add_error(
+                    format!(
+                        "this instance collides with {} other instances",
+                        colliding_instances.len()
+                    ), std::iter::once(Note::primary(
+                        decl.span,
+                        if has_bounds {
+                            "this instance may have different bounds than the others, but one type could satisfy the bounds on more than one of these instances simultaneously"
+                        } else {
+                            "try making this instance more specific"
+                        },
+                    ))
+                    .chain(colliding_instances.into_iter().map(|span| {
+                        Note::secondary(span, "this instance could apply to the same type(s)")
+                    }))
+                    .collect(),
+                );
+            }
         }
 
         let decl = InstanceDecl {
