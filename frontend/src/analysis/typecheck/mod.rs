@@ -2160,7 +2160,10 @@ impl<'a, 'l> Typechecker<'a, 'l> {
             .iter()
             .find_map(|(id, t)| {
                 let mut ctx = self.ctx.clone();
-                ctx.unify(ty.clone(), t.clone()).is_ok().then_some(*id)
+
+                ctx.unify_generic(ty.clone(), t.clone())
+                    .is_ok()
+                    .then_some(*id)
             })
         {
             return Ok(Some(id));
