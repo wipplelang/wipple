@@ -254,6 +254,8 @@ impl Compiler<'_> {
         files: indexmap::IndexMap<FilePath, Arc<expand::File>>,
         _options: &Options,
     ) -> (lower::File, bool) {
+        assert!(!files.is_empty(), "expected at least one file");
+
         fn lower(compiler: &Compiler, file: Arc<expand::File>) -> Arc<lower::File> {
             let path = file.path;
 

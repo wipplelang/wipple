@@ -1582,6 +1582,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
 struct MonomorphizeInfo {
     cache: BTreeMap<ConstantId, ItemId>,
     bound_instances: BTreeMap<TraitId, Vec<(Option<ConstantId>, engine::UnresolvedType, Span)>>,
+    instance_stack: BTreeMap<TraitId, Vec<(ConstantId, engine::UnresolvedType)>>,
 }
 
 impl<'a, 'l> Typechecker<'a, 'l> {
@@ -1640,19 +1641,18 @@ impl<'a, 'l> Typechecker<'a, 'l> {
 
                         let errors = mem::take(&mut typechecker.errors);
 
-                        let monomorphized_func = typechecker.monomorphize_expr(func.clone(), info);
                         let monomorphized_input =
                             typechecker.monomorphize_expr(input.clone(), info);
+                        let monomorphized_func = typechecker.monomorphize_expr(func.clone(), info);
 
                         if typechecker.errors.is_empty() {
                             typechecker.errors = errors;
                             *self = typechecker;
                             (monomorphized_func, monomorphized_input)
                         } else {
-                            let input = self.monomorphize_expr(input, info);
-                            let func = self.monomorphize_expr(func, info);
-
-                            (func, input)
+                            let monomorphized_func = self.monomorphize_expr(func, info);
+                            let monomorphized_input = self.monomorphize_expr(input, info);
+                            (monomorphized_func, monomorphized_input)
                         }
                     };
 
@@ -2151,6 +2151,21 @@ impl<'a, 'l> Typechecker<'a, 'l> {
         info: &mut MonomorphizeInfo,
     ) -> Result<Option<ConstantId>, Error> {
         let ty = ty.into();
+
+        // If a bound refers to itself, assume that the bound is satisfied
+        if let Some(id) = info
+            .instance_stack
+            .entry(tr)
+            .or_default()
+            .iter()
+            .find_map(|(id, t)| {
+                let mut ctx = self.ctx.clone();
+                ctx.unify(ty.clone(), t.clone()).is_ok().then_some(*id)
+            })
+        {
+            return Ok(Some(id));
+        }
+
         let tr_decl = self.with_trait_decl(tr, Clone::clone);
 
         let mut trait_ty = tr_decl.ty.clone().into();
@@ -2236,6 +2251,11 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                         )
                     });
 
+                info.instance_stack
+                    .entry(tr)
+                    .or_default()
+                    .push((id, instance_ty.clone()));
+
                 let mut substitutions = engine::GenericSubstitutions::new();
                 self.add_substitutions(&mut instance_ty, &mut substitutions);
 
@@ -2269,6 +2289,8 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                         continue 'check;
                     }
                 }
+
+                info.instance_stack.entry(tr).or_default().pop();
 
                 let ctx = mem::replace(&mut self.ctx, prev_ctx);
 
