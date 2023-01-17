@@ -194,7 +194,7 @@ error: mismatched types
    ┌─ playground:22:7
    │
 22 │ first (rest (rest (rest my-list))) -- fails!
-   │       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `List a (S b)` for some unknown types `b` and `a`, but found `List Number Z`
+   │       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `List Number (S a)` for some unknown type `a`, but found `List Number Z`
 ```
 
 Awesome, now we have compile-time bounds checking!
