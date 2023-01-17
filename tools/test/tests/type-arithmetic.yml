@@ -2,21 +2,24 @@ code: |
     Z : type
     S : N => type
 
-    Add : A B AB => trait (A , B , AB)
-    A => instance (Add Z A A) : ...
-    A B AB where (Add A B AB) => instance (Add (S A) B (S AB)) : ...
+    Add : A B AB => trait
+    A => instance (Add Z A A)
+    A B AB where (Add A B AB) => instance (Add (S A) B (S AB))
 
 
-    _ : _ -> (Add :: (S (S (S Z)) , S (S Z) , _))
+    result :: A where (Add (S (S (S Z))) (S (S Z)) A) => A
+    result : ...
+
+    _ : _ -> result
 
 output: |
 
 diagnostics: |
     error: could not determine the type of this expression
-      ┌─ test:9:5
-      │
-    9 │ _ : _ -> (Add :: (S (S (S Z)) , S (S Z) , _))
-      │     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-      │     │
-      │     try annotating the type with `::`
-      │     this has type `a -> S (S (S Z)) , S (S Z) , S (S (S (S (S Z))))` for some unknown type `a`
+       ┌─ test:12:5
+       │
+    12 │ _ : _ -> result
+       │     ^^^^^^^^^^^
+       │     │
+       │     try annotating the type with `::`
+       │     this has type `a -> S (S (S (S (S Z))))` for some unknown type `a`
