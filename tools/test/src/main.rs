@@ -308,8 +308,18 @@ async fn run<'l>(
 }
 
 fn diff(old: &str, new: &str) -> Diff {
+    // Remove trailing whitespace
+    let trim = |str: &str| {
+        str.lines()
+            .map(|line| line.trim_end_matches(' '))
+            .collect::<String>()
+    };
+
+    let old = trim(old);
+    let new = trim(new);
+
     Diff(
-        similar::TextDiff::from_lines(old, new)
+        similar::TextDiff::from_lines(&old, &new)
             .iter_all_changes()
             .map(|change| (change.tag(), change.to_string_lossy().into_owned()))
             .collect(),

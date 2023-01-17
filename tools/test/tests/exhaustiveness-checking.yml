@@ -24,7 +24,7 @@ output: |
 diagnostics: |
     error: `when` expression is not exhaustive
        ┌─ test:10:24
-       │  
+       │
     10 │   report-card : grade -> when grade {
        │ ╭────────────────────────^
     11 │ │     Grade A -> "top of the class"
@@ -35,7 +35,7 @@ diagnostics: |
 
     error: `when` expression is not exhaustive
        ┌─ test:17:15
-       │  
+       │
     17 │   unwrap : x -> when x {
        │ ╭───────────────^
     18 │ │     Some x -> x

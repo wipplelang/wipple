@@ -28,7 +28,7 @@ diagnostics: |
       │ ------------------- this instance could apply to the same type(s)
     5 │ instance (T X) : ()
       │ ------------------- this instance could apply to the same type(s)
-    6 │ 
+    6 │
     7 │ instance (T _) : ()
       │ ^^^^^^^^^^^^^^^^^^^ try making this instance more specific
 
@@ -39,7 +39,7 @@ diagnostics: |
        │ ------------------- this instance could apply to the same type(s)
      5 │ instance (T X) : ()
        │ ------------------- this instance could apply to the same type(s)
-     6 │ 
+     6 │
      7 │ instance (T _) : ()
        │ ------------------- this instance could apply to the same type(s)
        ·
