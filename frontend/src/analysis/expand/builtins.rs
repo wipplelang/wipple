@@ -1536,23 +1536,29 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
         ),
     );
 
-    // `sealed` attribute
+    // `allow-overlapping-instances` attribute
 
     let id = expander.compiler.new_template_id_in(file);
 
-    scope_values.insert(InternedString::new("sealed"), ScopeValue::Template(id));
+    scope_values.insert(
+        InternedString::new("allow-overlapping-instances"),
+        ScopeValue::Template(id),
+    );
 
     declarations.templates.insert(
         id,
         TemplateDeclaration::new(
-            "sealed",
-            Span::builtin("`sealed` attribute"),
+            "allow-overlapping-instances",
+            Span::builtin("`allow-overlapping-instances` attribute"),
             Template::function(|expander, span, mut inputs, _, attributes, _| {
                 Box::pin(async move {
                     if inputs.len() != 1 {
                         expander.compiler.add_error(
-                            "expected 1 input to template `sealed`",
-                            vec![Note::primary(span, "`sealed` accepts a trait declaration")],
+                            "expected 1 input to template `allow-overlapping-instances`",
+                            vec![Note::primary(
+                                span,
+                                "`allow-overlapping-instances` accepts a trait declaration",
+                            )],
                         );
 
                         return Node {
@@ -1567,10 +1573,10 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
                         Some(attributes) => attributes,
                         None => {
                             expander.compiler.add_error(
-                                "`sealed` may only be used as an attribute",
+                                "`allow-overlapping-instances` may only be used as an attribute",
                                 vec![Note::primary(
                                     span,
-                                    r#"try putting this between brackets: (`[sealed]`)"#,
+                                    r#"try putting this between brackets: (`[allow-overlapping-instances]`)"#,
                                 )],
                             );
 
@@ -1580,17 +1586,17 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
 
                     if attributes.specialize {
                         expander.compiler.add_error(
-                            "`sealed` attribute is already set for this statement",
+                            "`allow-overlapping-instances` attribute is already set for this statement",
                             vec![Note::primary(
                                 span,
-                                "cannot use more than one `sealed` attribute per statement",
+                                "cannot use more than one `allow-overlapping-instances` attribute per statement",
                             )],
                         );
 
                         return node;
                     }
 
-                    attributes.sealed = true;
+                    attributes.allow_overlapping_instances = true;
 
                     node
                 })

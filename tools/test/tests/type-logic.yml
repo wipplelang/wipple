@@ -5,7 +5,7 @@ code: |
    True : type
    False : type
 
-   [sealed]
+   [allow-overlapping-instances]
    Less-Than : A B R => trait
    N => instance (Less-Than N N False)
    instance (Less-Than (S _) Z False)
@@ -35,7 +35,7 @@ diagnostics: |
       │     │
       │     try annotating the type with `::`
       │     this has type `a -> False` for some unknown type `a`
-   
+
    error: could not determine the type of this expression
       ┌─ test:20:5
       │
@@ -44,7 +44,7 @@ diagnostics: |
       │     │
       │     try annotating the type with `::`
       │     this has type `a -> False` for some unknown type `a`
-   
+
    error: could not determine the type of this expression
       ┌─ test:24:5
       │

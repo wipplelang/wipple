@@ -2434,7 +2434,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
 
                 candidates.push((ctx, Some(id), instance_span));
 
-                if tr_decl.attributes.sealed {
+                if tr_decl.attributes.allow_overlapping_instances {
                     break 'check; // use the first available instance
                 }
             }
@@ -3338,7 +3338,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
 
         let item = self.compiler.new_item_id();
 
-        if !tr.attributes.sealed {
+        if !tr.attributes.allow_overlapping_instances {
             // Check if the instance collides with any other instances -- there's no
             // need to check the bounds because there's no way to ensure a type
             // doesn't satisfy the bounds specified in both instances
