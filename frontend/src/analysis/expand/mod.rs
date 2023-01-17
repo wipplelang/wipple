@@ -96,7 +96,7 @@ pub enum NodeKind {
     External(Box<Node>, Box<Node>, Vec<Node>),
     Annotate(Box<Node>, Box<Node>),
     Type(Option<Vec<Statement>>),
-    Trait(Box<Node>),
+    Trait(Option<Box<Node>>),
     TypeFunction(Box<Node>, Box<Node>),
     Where(Box<Node>, Box<Node>),
     Instance(Box<Node>, Vec<Node>),
@@ -1206,7 +1206,11 @@ impl Expander<'_, '_> {
                                 }
                             }
                         }
-                        NodeKind::Trait(node) => replace(node, map),
+                        NodeKind::Trait(node) => {
+                            if let Some(node) = node {
+                                replace(node, map);
+                            }
+                        }
                         NodeKind::TypeFunction(lhs, rhs) => {
                             replace(lhs, map);
                             replace(rhs, map);

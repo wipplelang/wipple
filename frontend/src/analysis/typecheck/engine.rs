@@ -12,7 +12,7 @@ pub enum UnresolvedType {
     Function(Box<UnresolvedType>, Box<UnresolvedType>),
     Tuple(Vec<UnresolvedType>),
     Builtin(BuiltinType<Box<UnresolvedType>>),
-    Bottom(BottomTypeReason),
+    Error,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -24,7 +24,7 @@ pub enum Type {
     Function(Box<Type>, Box<Type>),
     Tuple(Vec<Type>),
     Builtin(BuiltinType<Box<Type>>),
-    Bottom(BottomTypeReason),
+    Error,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -65,7 +65,7 @@ impl From<Type> for UnresolvedType {
                 BuiltinType::List(ty) => BuiltinType::List(Box::new((*ty).into())),
                 BuiltinType::Mutable(ty) => BuiltinType::Mutable(Box::new((*ty).into())),
             }),
-            Type::Bottom(reason) => UnresolvedType::Bottom(reason),
+            Type::Error => UnresolvedType::Error,
         }
     }
 }
@@ -131,7 +131,7 @@ pub enum TypeError {
     Recursive(TypeVariable),
     Mismatch(UnresolvedType, UnresolvedType),
     MissingInstance(TraitId, Vec<UnresolvedType>, Option<Span>, Vec<Span>),
-    AmbiguousTrait(UnresolvedType, TraitId, Vec<Span>),
+    AmbiguousTrait(TraitId, Vec<UnresolvedType>, Vec<Span>),
     UnresolvedType(UnresolvedType),
     InvalidNumericLiteral(UnresolvedType),
 }
@@ -465,7 +465,7 @@ impl Context {
                     UnresolvedType::Builtin(expected_builtin),
                 )),
             },
-            (_, UnresolvedType::Bottom(_)) => Ok(()),
+            (_, UnresolvedType::Error) | (UnresolvedType::Error, _) => Ok(()),
             (actual, expected) => Err(mismatch!(actual, expected)),
         }
     }
@@ -498,7 +498,7 @@ impl UnresolvedType {
             UnresolvedType::Function(input, output) => {
                 input.contains_error() || output.contains_error()
             }
-            UnresolvedType::Bottom(BottomTypeReason::Error) => true,
+            UnresolvedType::Error => true,
             UnresolvedType::Named(_, params, _) => {
                 params.iter().any(|param| param.contains_error())
             }
@@ -714,7 +714,7 @@ impl UnresolvedType {
                     BuiltinType::List(ty) => BuiltinType::List(Box::new(ty.finalize(ctx)?)),
                     BuiltinType::Mutable(ty) => BuiltinType::Mutable(Box::new(ty.finalize(ctx)?)),
                 }),
-                UnresolvedType::Bottom(is_error) => Type::Bottom(is_error),
+                UnresolvedType::Error => Type::Error,
             })
         })();
 

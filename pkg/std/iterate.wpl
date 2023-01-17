@@ -58,7 +58,7 @@ Collect : Element Container => trait (Iterator Element -> Container)
 
 [help "Collect an iterator into a single value, like a `List`."]
 collect :: Input Element Output where (Iterate Input Element) (Collect Element Output) => Input -> Output
-collect : input -> Collect (Iterate input)
+collect : input -> Collect ((Iterate :: _ -> Iterator Element) input) -- FIXME: Remove type annotation once we have functional dependencies
 
 Element => instance (Collect Element (List Element)) : { next } -> {
 	list : mutable (list ())

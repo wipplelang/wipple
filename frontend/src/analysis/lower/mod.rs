@@ -273,7 +273,6 @@ pub struct BuiltinType {
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub enum BuiltinTypeKind {
-    Never,
     Number,
     Integer,
     Natural,
@@ -292,7 +291,7 @@ pub enum BuiltinTypeKind {
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub struct Trait {
     pub parameters: Vec<(Span, TypeParameterId)>,
-    pub ty: TypeAnnotation,
+    pub ty: Option<TypeAnnotation>,
     pub attributes: TraitAttributes,
 }
 
@@ -340,7 +339,7 @@ pub struct Instance {
     pub bounds: Vec<Bound>,
     pub tr: TraitId,
     pub trait_params: Vec<TypeAnnotation>,
-    pub value: Expression,
+    pub value: Option<Expression>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -712,7 +711,7 @@ impl Compiler<'_> {
             }
         }
 
-        for instance in info.declarations.instances.values() {
+        for instance in info.declarations.instances.values_mut() {
             let tr = instance.value.as_ref().unwrap().tr;
             let tr_decl = info.declarations.traits.get(&tr).unwrap();
 
@@ -723,6 +722,34 @@ impl Compiler<'_> {
                     "instance of `sealed` trait must occur in the same file as the trait",
                     vec![Note::primary(instance.span, "instance disallowed here")],
                 );
+            }
+
+            let trait_has_value = tr_decl.value.as_ref().unwrap().ty.is_some();
+            let instance_has_value = instance.value.as_ref().unwrap().value.is_some();
+
+            match (trait_has_value, instance_has_value) {
+                (true, false) => {
+                    self.add_error(
+                        "expected instance to have value",
+                        vec![Note::primary(
+                            instance.span,
+                            "try adding `:` after the instance declaration to give it a value",
+                        )],
+                    );
+
+                    instance.value.as_mut().unwrap().value =
+                        Some(Expression::error(self, instance.span));
+                }
+                (false, true) => {
+                    self.add_error(
+                        "instance has value, but the trait doesn't store a value",
+                        vec![Note::primary(
+                            instance.span,
+                            "try removing this instance's value",
+                        )],
+                    );
+                }
+                _ => {}
             }
         }
 
@@ -956,20 +983,6 @@ impl Compiler<'_> {
 
                     let parameters = self.with_parameters(ty.parameters, &scope, info);
 
-                    if !ty.bounds.is_empty() {
-                        self.add_error(
-                            "bounds are not allowed on types",
-                            vec![Note::primary(
-                                ty.bounds
-                                    .first()
-                                    .unwrap()
-                                    .span
-                                    .with_end(ty.bounds.last().unwrap().span.end),
-                                "try moving these to the respective functions instead",
-                            )],
-                        );
-                    }
-
                     let ty = match ty.kind {
                         ast::TypeKind::Marker => Type {
                             kind: TypeKind::Marker,
@@ -1137,7 +1150,9 @@ impl Compiler<'_> {
 
                     let tr = Trait {
                         parameters,
-                        ty: self.lower_type_annotation(declaration.ty, &scope, info),
+                        ty: declaration
+                            .ty
+                            .map(|ty| self.lower_type_annotation(ty, &scope, info)),
                         attributes: self.lower_trait_attributes(&mut decl.attributes, &scope, info),
                     };
 
@@ -1318,7 +1333,9 @@ impl Compiler<'_> {
                         .map(|ty| self.lower_type_annotation(ty, &scope, info))
                         .collect();
 
-                    let value = self.lower_expr(instance.value, &scope, info);
+                    let value = instance
+                        .value
+                        .map(|value| self.lower_expr(value, &scope, info));
 
                     let instance = Instance {
                         params,

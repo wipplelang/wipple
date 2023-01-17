@@ -10,11 +10,11 @@ of : accessor operator (field value ~> {
 })
 
 [help "Crash the program with the provided message."]
-crash :: Text -> !
+crash :: Text -> _
 crash : message -> external "runtime" "crash" message
 
 [help "Indicates unfinished code. Crashes the program upon evaluation."]
-... :: !
+... :: _
 ... : crash "not yet implemented"
 
 [help "Represents the presence or absence of a value."]

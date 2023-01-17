@@ -22,21 +22,6 @@ impl Compiler<'_> {
 
         add!(
             builtin_type,
-            Span::builtin("`!` type"),
-            "!",
-            BuiltinType {
-                kind: BuiltinTypeKind::Never,
-                attributes: DeclarationAttributes {
-                    help: vec![InternedString::new(
-                        "The type of expressions which always diverge (eg. `end`) or crash the program (eg. `crash`). Because there are no values of this type, you may use a `!` expression in place of any other expression. For example, you can use `...` (which has type `!`) to indicate unfinished code.",
-                    )],
-                    ..Default::default()
-                }
-            },
-        );
-
-        add!(
-            builtin_type,
             Span::builtin("`Number` type"),
             "Number",
             BuiltinType {

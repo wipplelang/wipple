@@ -27,7 +27,6 @@ pub struct Expression {
 
 #[derive(Debug, Clone)]
 pub enum Type {
-    Unreachable,
     Marker,
     Number,
     Integer,
@@ -134,8 +133,7 @@ impl Compiler<'_> {
 impl Type {
     pub fn is_reference(&self) -> bool {
         match self {
-            Type::Unreachable
-            | Type::Marker
+            Type::Marker
             | Type::Number
             | Type::Integer
             | Type::Natural
@@ -425,7 +423,7 @@ impl Converter<'_, '_> {
                     Type::MutableReference(Box::new(self.convert_type(ty)))
                 }
             },
-            analysis::Type::Bottom(_) => Type::Unreachable,
+            analysis::Type::Error => unreachable!(),
         }
     }
 }

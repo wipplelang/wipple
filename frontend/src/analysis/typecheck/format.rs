@@ -220,7 +220,7 @@ fn format_type_with(
             FormattableTypeKind::Type(UnresolvedType::Parameter(param)) => {
                 param_names(param).unwrap_or_else(|| String::from("_"))
             }
-            FormattableTypeKind::Type(UnresolvedType::Bottom(_)) => String::from("!"),
+            FormattableTypeKind::Type(UnresolvedType::Error) => String::from("_"),
             FormattableTypeKind::Type(UnresolvedType::Named(id, params, _)) => {
                 format_named_type!(type_names(id), params)
             }

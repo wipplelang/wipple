@@ -53,7 +53,7 @@ pub struct Instance {
     pub trait_span: Span,
     pub trait_name: InternedString,
     pub trait_parameters: Vec<TypeAnnotation>,
-    pub value: Expression,
+    pub value: Option<Expression>,
 }
 
 #[derive(Debug, Clone)]
@@ -143,15 +143,13 @@ impl PatternKind {
 #[derive(Debug, Clone)]
 pub struct TypeDeclaration {
     pub parameters: Vec<TypeParameter>,
-    pub bounds: Vec<Bound>,
     pub kind: TypeKind,
 }
 
 #[derive(Debug, Clone)]
 pub struct TraitDeclaration {
     pub parameters: Vec<TypeParameter>,
-    pub bounds: Vec<Bound>,
-    pub ty: TypeAnnotation,
+    pub ty: Option<TypeAnnotation>,
 }
 
 #[derive(Debug, Clone)]
@@ -230,7 +228,7 @@ impl Compiler<'_> {
                                         bounds,
                                         *trait_name,
                                         trait_parameters,
-                                        *value,
+                                        Some(*value),
                                     ) {
                                         Some(instance) => StatementKind::Declaration(
                                             Declaration::Instance(instance),
@@ -259,7 +257,7 @@ impl Compiler<'_> {
                                 Vec::new(),
                                 *trait_name,
                                 trait_parameters,
-                                *value,
+                                Some(*value),
                             ) {
                                 Some(instance) => {
                                     StatementKind::Declaration(Declaration::Instance(instance))
@@ -317,7 +315,6 @@ impl Compiler<'_> {
                                                 (pattern.span, name),
                                                 TypeDeclaration {
                                                     parameters: Vec::new(),
-                                                    bounds: Vec::new(),
                                                     kind,
                                                 },
                                             ))
@@ -349,8 +346,7 @@ impl Compiler<'_> {
                                         (pattern.span, name),
                                         TraitDeclaration {
                                             parameters: Vec::new(),
-                                            bounds: Vec::new(),
-                                            ty: self.build_type_annotation(*ty),
+                                            ty: ty.map(|ty| self.build_type_annotation(*ty)),
                                         },
                                     ))
                                 }
@@ -359,11 +355,11 @@ impl Compiler<'_> {
                                         PatternKind::Name(name) => name,
                                         _ => {
                                             self.add_error(
-                                            "type or trait declaration must be assigned to a name", vec![Note::primary(
-                                                value.span,
-                                                "try providing a name here",
-                                            )],
-                                        );
+                                                "type or trait declaration must be assigned to a name", vec![Note::primary(
+                                                    value.span,
+                                                    "try providing a name here",
+                                                )],
+                                            );
 
                                             return StatementKind::Expression(
                                                 ExpressionKind::error(self),
@@ -381,17 +377,31 @@ impl Compiler<'_> {
                                             }
                                         };
 
+                                    let check_bounds = |kind: &str| {
+                                        if !bounds.is_empty() {
+                                            self.add_error(
+                                                format!("bounds are not allowed on {}", kind),
+                                                vec![Note::primary(
+                                                    bounds
+                                                        .first()
+                                                        .unwrap()
+                                                        .span
+                                                        .with_end(bounds.last().unwrap().span.end),
+                                                    "try moving these to the respective functions instead",
+                                                )],
+                                            );
+                                        }
+                                    };
+
                                     match node.kind {
                                         NodeKind::Type(fields) => {
+                                            check_bounds("types");
+
                                             match self.build_type_declaration(node.span, fields) {
                                                 Some(kind) => {
                                                     StatementKind::Declaration(Declaration::Type(
                                                         (pattern.span, name),
-                                                        TypeDeclaration {
-                                                            parameters,
-                                                            bounds,
-                                                            kind,
-                                                        },
+                                                        TypeDeclaration { parameters, kind },
                                                     ))
                                                 }
                                                 None => StatementKind::Expression(
@@ -400,22 +410,24 @@ impl Compiler<'_> {
                                             }
                                         }
                                         NodeKind::Trait(ty) => {
+                                            check_bounds("traits");
+
                                             StatementKind::Declaration(Declaration::Trait(
                                                 (pattern.span, name),
                                                 TraitDeclaration {
                                                     parameters,
-                                                    bounds,
-                                                    ty: self.build_type_annotation(*ty),
+                                                    ty: ty
+                                                        .map(|ty| self.build_type_annotation(*ty)),
                                                 },
                                             ))
                                         }
                                         _ => {
                                             self.add_error(
-                                            "expected type or trait declaration in type function", vec![Note::primary(
-                                                node.span,
-                                                "only types and traits may have type parameters",
-                                            )],
-                                        );
+                                                "expected type or trait declaration in type function", vec![Note::primary(
+                                                    node.span,
+                                                    "only types and traits may have type parameters",
+                                                )],
+                                            );
 
                                             StatementKind::Expression(ExpressionKind::error(self))
                                         }
@@ -486,6 +498,54 @@ impl Compiler<'_> {
 
                         StatementKind::Use((expr.span, name))
                     }
+                    NodeKind::TypeFunction(lhs, rhs) => {
+                        let (params, bounds) = match self.build_type_function(*lhs) {
+                            Some((params, bounds)) => (params, bounds),
+                            None => return StatementKind::Expression(ExpressionKind::error(self)),
+                        };
+
+                        match rhs.kind {
+                            NodeKind::Instance(trait_name, trait_parameters) => {
+                                match self.build_instance(
+                                    params,
+                                    bounds,
+                                    *trait_name,
+                                    trait_parameters,
+                                    None,
+                                ) {
+                                    Some(instance) => {
+                                        StatementKind::Declaration(Declaration::Instance(instance))
+                                    }
+                                    None => StatementKind::Expression(ExpressionKind::error(self)),
+                                }
+                            }
+                            _ => {
+                                self.add_error(
+                                    "expected instance here",
+                                    vec![Note::primary(
+                                        rhs.span,
+                                        "try adding `instance` to the left-hand side of `:`",
+                                    )],
+                                );
+
+                                StatementKind::Expression(ExpressionKind::error(self))
+                            }
+                        }
+                    }
+                    NodeKind::Instance(trait_name, trait_parameters) => {
+                        match self.build_instance(
+                            Vec::new(),
+                            Vec::new(),
+                            *trait_name,
+                            trait_parameters,
+                            None,
+                        ) {
+                            Some(instance) => {
+                                StatementKind::Declaration(Declaration::Instance(instance))
+                            }
+                            None => StatementKind::Expression(ExpressionKind::error(self)),
+                        }
+                    }
                     _ => StatementKind::Expression(self.build_expression(statement.node).kind),
                 })()
             },
@@ -498,7 +558,7 @@ impl Compiler<'_> {
         bounds: Vec<Bound>,
         trait_name: Node,
         trait_parameters: Vec<Node>,
-        value: Node,
+        value: Option<Node>,
     ) -> Option<Instance> {
         let trait_span = trait_name.span;
         let trait_name = match trait_name.kind {
@@ -522,7 +582,7 @@ impl Compiler<'_> {
             .map(|node| self.build_type_annotation(node))
             .collect();
 
-        let value = self.build_expression(value);
+        let value = value.map(|value| self.build_expression(value));
 
         Some(Instance {
             parameters,

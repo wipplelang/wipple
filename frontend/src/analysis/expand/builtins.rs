@@ -693,10 +693,13 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
             Span::builtin("`trait` template"),
             Template::function(|expander, span, mut inputs, _, _, _| {
                 Box::pin(async move {
-                    if inputs.len() != 1 {
+                    if inputs.len() > 1 {
                         expander.compiler.add_error(
-                            "expected 1 input to template `trait`",
-                            vec![Note::primary(span, "`trait` requires a type")],
+                            "expected 0 or 1 inputs to template `trait`",
+                            vec![Note::primary(
+                                span,
+                                "`trait` may be used standalone or with a type",
+                            )],
                         );
 
                         return Node {
@@ -705,11 +708,11 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
                         };
                     }
 
-                    let ty = inputs.pop().unwrap();
+                    let ty = inputs.pop();
 
                     Node {
                         span,
-                        kind: NodeKind::Trait(Box::new(ty)),
+                        kind: NodeKind::Trait(ty.map(Box::new)),
                     }
                 })
             }),

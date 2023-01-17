@@ -1,3 +1,5 @@
+use crate::{analysis, Compiler};
+
 macro_rules! lints {
     ($($lint:ident),* $(,)?) => {
         $(
@@ -16,10 +18,4 @@ macro_rules! lints {
     };
 }
 
-use crate::{analysis, Compiler};
-
-lints!(
-    unused_unnecessary_type_parameter,
-    unused_variable,
-    useless_bounds,
-);
+lints!(unused_variable, useless_bounds);
