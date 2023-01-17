@@ -4112,7 +4112,10 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                     "the type of this references itself",
                 )],
             ),
-            engine::TypeError::Mismatch(actual, expected) => {
+            engine::TypeError::Mismatch(mut actual, mut expected) => {
+                actual.apply(&self.ctx);
+                expected.apply(&self.ctx);
+
                 let actual_ty = match &actual {
                     engine::UnresolvedType::Named(id, params, _) => Some((
                         self.declarations.borrow().types.get(id).unwrap().clone(),
