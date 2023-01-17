@@ -72,12 +72,13 @@ impl<'a> arbitrary::Arbitrary<'a> for FilePath {
 #[derive(Debug, Clone)]
 pub struct Compiler<'l> {
     loader: &'l dyn Loader,
-    #[cfg(debug_assertions)]
-    pub(crate) backtrace_enabled: bool,
     diagnostics: Diagnostics,
     file_ids: FileIds,
     ids: Ids,
     pub(crate) cache: Shared<indexmap::IndexMap<FilePath, Arc<analysis::lower::File>>>,
+    pub(crate) recursion_limit: usize,
+    #[cfg(debug_assertions)]
+    pub(crate) backtrace_enabled: bool,
 }
 
 #[cfg(feature = "arbitrary")]
@@ -273,13 +274,19 @@ impl<'l> Compiler<'l> {
     pub fn new(loader: &'l impl Loader) -> Self {
         Compiler {
             loader,
-            #[cfg(debug_assertions)]
-            backtrace_enabled: false,
             diagnostics: Default::default(),
             file_ids: Default::default(),
             ids: Default::default(),
             cache: Default::default(),
+            recursion_limit: 64,
+            #[cfg(debug_assertions)]
+            backtrace_enabled: false,
         }
+    }
+
+    pub fn set_recursion_limit(mut self, recursion_limit: usize) -> Self {
+        self.recursion_limit = recursion_limit;
+        self
     }
 
     #[cfg(debug_assertions)]

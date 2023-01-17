@@ -758,14 +758,14 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                 let ty =
                     self.substitute_trait_params(bound.trait_id, bound.params.clone(), bound.span);
 
-                let instance_info = match self.instance_for(
+                let instance_id = match self.instance_for(
                     bound.trait_id,
                     ty.clone(),
                     use_span,
                     Some(bound.span),
                     &mut info,
                 ) {
-                    Ok(info) => info,
+                    Ok(id) => id,
                     Err(error) => {
                         if is_last_candidate(index) {
                             self.add_error(error);
@@ -781,7 +781,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                 info.bound_instances
                     .entry(bound.trait_id)
                     .or_default()
-                    .push((instance_info, ty, bound.span));
+                    .push((instance_id, ty, bound.span));
             }
 
             self.item_queue.push_back(QueuedItem {
@@ -858,14 +858,14 @@ impl<'a, 'l> Typechecker<'a, 'l> {
 
             ty.instantiate_with(&mut self.ctx, &params);
 
-            let instance_info = match self.instance_for(
+            let instance_id = match self.instance_for(
                 bound.trait_id,
                 ty.clone(),
                 specialized_constant_decl.span,
                 Some(bound.span),
                 &mut monomorphize_info,
             ) {
-                Ok(info) => info,
+                Ok(id) => id,
                 Err(error) => {
                     self.add_error(error.with_note(Note::secondary(
                         specialized_constant_decl.span,
@@ -880,7 +880,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                 .bound_instances
                 .entry(bound.trait_id)
                 .or_default()
-                .push((instance_info, ty, bound.span));
+                .push((instance_id, ty, bound.span));
         }
 
         self.ctx = prev_ctx;
@@ -1583,6 +1583,7 @@ struct MonomorphizeInfo {
     cache: BTreeMap<ConstantId, ItemId>,
     bound_instances: BTreeMap<TraitId, Vec<(Option<ConstantId>, engine::UnresolvedType, Span)>>,
     instance_stack: BTreeMap<TraitId, Vec<(ConstantId, engine::UnresolvedType)>>,
+    recursion_count: usize,
 }
 
 impl<'a, 'l> Typechecker<'a, 'l> {
@@ -1758,7 +1759,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                     )
                 }
                 UnresolvedExpressionKind::Trait(tr) => {
-                    let instance_info =
+                    let instance_id =
                         match self.instance_for(tr, expr.ty.clone(), expr.span, None, info) {
                             Ok(instance) => instance,
                             Err(error) => {
@@ -1767,7 +1768,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                             }
                         };
 
-                    let monomorphized_id = match instance_info {
+                    let monomorphized_id = match instance_id {
                         Some(id) => self.typecheck_constant_expr(
                             true,
                             id,
@@ -2150,6 +2151,15 @@ impl<'a, 'l> Typechecker<'a, 'l> {
         bound_span: Option<Span>,
         info: &mut MonomorphizeInfo,
     ) -> Result<Option<ConstantId>, Error> {
+        if info.recursion_count > self.compiler.recursion_limit {
+            self.compiler.add_error(
+                "recursion limit reached",
+                vec![Note::primary(use_span, "try simplifying this")],
+            );
+
+            return Ok(None);
+        }
+
         let ty = ty.into();
 
         // If a bound refers to itself, assume that the bound is satisfied
@@ -2254,6 +2264,8 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                         )
                     });
 
+                info.recursion_count += 1;
+
                 info.instance_stack
                     .entry(tr)
                     .or_default()
@@ -2294,6 +2306,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                 }
 
                 info.instance_stack.entry(tr).or_default().pop();
+                info.recursion_count -= 1;
 
                 let ctx = mem::replace(&mut self.ctx, prev_ctx);
 
