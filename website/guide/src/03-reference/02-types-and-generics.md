@@ -2,14 +2,13 @@
 
 A **type** is a way to identify what "kind" of value something is. For example, the expression `"hello"` has type `Text`, and `1 + 2` has type `Number`.
 
-There are six main kinds of types in Wipple:
+There are five main kinds of types in Wipple:
 
 -   **Marker types** have a single value and contain no information.
 -   **Structure types** represent a collection of values ("fields"), where each field has a name and stores a single value.
 -   **Enumeration types** represent a fixed set of values ("variants"), where each variant has zero or more associated values.
 -   **Tuple types** represent a fixed-size, heterogeneous collection of values.
 -   **Function types** represent a function that accepts a value of one type and returns a value of another type.
--   The **bottom type** represents a computation that will never resolve to a value (eg. when the program crashes or enters an infinite loop).
 
 ## Type annotations
 
@@ -122,26 +121,6 @@ f : (x -> y -> x + y) :: (Number -> Number -> Number)
 g : (f 1) :: (Number -> Number)
 h : (g 2) :: Number
 ```
-
-### The bottom type
-
-The bottom type (`!`) has no values and cannot be constructed. Instead, you use type annotations to indicate that a computation has no result:
-
-```wipple
-x : (crash "oh no") :: !
-```
-
-Because `!` has no values, an expression of type `!` may be used in place of an expression of any type. For example:
-
-```wipple
-binary : x -> when x {
-    "0" -> 0
-    "1" -> 1
-    _ -> crash "invalid binary digit"
-}
-```
-
-Here, `crash` has type `!`, but the `when` expression has type `Number`. Normally, all branches must produce a value of the same type, but `crash` (and other constructs that never produce a value) is an exception.
 
 ## Generics
 

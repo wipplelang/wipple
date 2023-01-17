@@ -14,6 +14,7 @@
 -   [Generics](02-advanced-wipple/00-generics.md)
 -   [Mutability](02-advanced-wipple/01-mutability.md)
 -   [Specialization](02-advanced-wipple/02-specialization.md)
+-   [Type-level programming](02-advanced-wipple/03-type-level-programming.md)
 
 # Reference
 
