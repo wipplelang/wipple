@@ -6,20 +6,15 @@ use crate::{
     Compiler, FilePath,
 };
 
-pub use crate::analysis::expand::{Declarations, StatementAttributes};
+pub use crate::analysis::expand::{Declarations, FileAttributes, StatementAttributes};
 
 #[derive(Debug, Clone)]
 pub struct File {
     pub path: FilePath,
     pub span: Span,
+    pub attributes: FileAttributes,
     pub declarations: Declarations<expand::Template>,
     pub statements: Vec<Statement>,
-}
-
-#[derive(Debug, Clone)]
-pub struct FileAttribute {
-    pub span: Span,
-    pub name: InternedString,
 }
 
 #[derive(Debug, Clone)]
@@ -195,6 +190,7 @@ impl Compiler<'_> {
         File {
             path: file.path,
             span: file.span,
+            attributes: file.attributes,
             declarations: file.declarations,
             statements: file
                 .statements

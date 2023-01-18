@@ -1406,6 +1406,100 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
         ),
     );
 
+    // `recursion-limit` attribute
+
+    let id = expander.compiler.new_template_id_in(file);
+
+    scope_values.insert(
+        InternedString::new("recursion-limit"),
+        ScopeValue::Template(id),
+    );
+
+    declarations.templates.insert(
+        id,
+        TemplateDeclaration::new(
+            "recursion-limit",
+            Span::builtin("`recursion-limit` attribute"),
+            Template::function(|expander, span, mut inputs, attributes, _, _| {
+                Box::pin(async move {
+                    if inputs.len() != 1 {
+                        expander.compiler.add_error(
+                            "`recursion-limit` attribute accepts 1 input",
+                            vec![Note::primary(
+                                inputs
+                                    .first()
+                                    .unwrap()
+                                    .span
+                                    .with_end(inputs.last().unwrap().span.end),
+                                "`recursion-limit` accepts an integer",
+                            )],
+                        );
+
+                        return Node {
+                            span,
+                            kind: NodeKind::error(expander.compiler),
+                        };
+                    }
+
+                    let node = inputs.pop().unwrap();
+
+                    let limit = match (|| {
+                        match node.kind {
+                            NodeKind::Number(n) => {
+                                if let Ok(n) = n.parse::<usize>() {
+                                    return Some(n);
+                                }
+                            }
+                            _ => {}
+                        }
+
+                        expander.compiler.add_error(
+                            "`recursion-limit` expects a positive integer",
+                            vec![Note::primary(
+                                node.span,
+                                "this is not an integer",
+                            )],
+                        );
+
+                        None
+                    })() {
+                        Some(n) => n,
+                        None => return Node {
+                            span,
+                            kind: NodeKind::error(expander.compiler),
+                        }
+                    };
+
+
+                    let attributes = match attributes {
+                        Some(attributes) => attributes,
+                        None => {
+                            expander.compiler.add_error(
+                                "`recursion-limit` may only be used as an attribute",
+                                vec![Note::primary(
+                                    span,
+                                    r#"try putting this between double brackets: (`[[recursion-limit]]`)"#,
+                                )],
+                            );
+
+                            return Node {
+                                span,
+                                kind: NodeKind::error(expander.compiler),
+                            };
+                        }
+                    };
+
+                    attributes.recursion_limit = Some(limit);
+
+                    Node {
+                        span,
+                        kind: NodeKind::Empty,
+                    }
+                })
+            }),
+        ),
+    );
+
     // `keyword` attribute
 
     let id = expander.compiler.new_template_id_in(file);

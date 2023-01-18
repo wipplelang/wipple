@@ -76,7 +76,6 @@ pub struct Compiler<'l> {
     file_ids: FileIds,
     ids: Ids,
     pub(crate) cache: Shared<indexmap::IndexMap<FilePath, Arc<analysis::lower::File>>>,
-    pub(crate) recursion_limit: usize,
     #[cfg(debug_assertions)]
     pub(crate) backtrace_enabled: bool,
 }
@@ -278,15 +277,9 @@ impl<'l> Compiler<'l> {
             file_ids: Default::default(),
             ids: Default::default(),
             cache: Default::default(),
-            recursion_limit: 64,
             #[cfg(debug_assertions)]
             backtrace_enabled: false,
         }
-    }
-
-    pub fn set_recursion_limit(mut self, recursion_limit: usize) -> Self {
-        self.recursion_limit = recursion_limit;
-        self
     }
 
     #[cfg(debug_assertions)]
@@ -294,6 +287,8 @@ impl<'l> Compiler<'l> {
         self.backtrace_enabled = backtrace_enabled;
         self
     }
+
+    pub const DEFAULT_RECURSION_LIMIT: usize = 64;
 }
 
 impl<'l> Compiler<'l> {

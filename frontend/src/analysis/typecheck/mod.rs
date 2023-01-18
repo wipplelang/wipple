@@ -2347,7 +2347,13 @@ impl<'a, 'l> Typechecker<'a, 'l> {
         bound_span: Option<Span>,
         info: &mut MonomorphizeInfo,
     ) -> Result<Option<ConstantId>, Error> {
-        if info.recursion_count > self.compiler.recursion_limit {
+        if info.recursion_count
+            > self
+                .entrypoint
+                .global_attributes
+                .recursion_limit
+                .unwrap_or(Compiler::DEFAULT_RECURSION_LIMIT)
+        {
             self.compiler.add_error(
                 "recursion limit reached",
                 vec![Note::primary(use_span, "try simplifying this")],

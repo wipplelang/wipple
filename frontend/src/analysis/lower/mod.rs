@@ -399,6 +399,7 @@ pub struct Instance {
 #[non_exhaustive]
 pub struct FileAttributes {
     pub language_items: LanguageItems,
+    pub recursion_limit: Option<usize>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -662,6 +663,8 @@ impl Compiler<'_> {
 
         self.load_builtins(&scope, &mut info);
 
+        info.attributes.recursion_limit = file.attributes.recursion_limit;
+
         info.declarations.operators = file.declarations.operators;
 
         info.declarations.templates = file
@@ -832,6 +835,12 @@ impl Compiler<'_> {
 impl FileAttributes {
     fn merge(&mut self, other: &Self) {
         self.language_items.merge(&other.language_items);
+
+        self.recursion_limit = match (self.recursion_limit, other.recursion_limit) {
+            (Some(a), Some(b)) => Some(a.max(b)),
+            (Some(l), None) | (None, Some(l)) => Some(l),
+            (None, None) => None,
+        }
     }
 }
 

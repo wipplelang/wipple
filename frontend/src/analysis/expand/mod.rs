@@ -40,6 +40,9 @@ pub struct File {
 pub struct FileAttributes {
     #[cfg_attr(feature = "arbitrary", arbitrary(with = |_: &mut arbitrary::Unstructured| Ok(true)))]
     pub no_std: bool,
+
+    #[cfg_attr(feature = "arbitrary", arbitrary(with = |_: &mut arbitrary::Unstructured| Ok(None)))]
+    pub recursion_limit: Option<usize>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
