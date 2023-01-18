@@ -2464,6 +2464,8 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                 if all_unify {
                     let ctx = mem::replace(&mut self.ctx, prev_ctx);
                     candidates.push((ctx, instance_id, span));
+                } else {
+                    self.ctx = prev_ctx;
                 }
             }
 
@@ -2511,8 +2513,8 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                 for (mut param_ty, mut instance_param_ty) in
                     params.clone().into_iter().zip(instance_params)
                 {
-                    self.instantiate_generics(&mut param_ty);
-                    self.instantiate_generics(&mut instance_param_ty);
+                    self.add_substitutions(&mut param_ty, &mut substitutions);
+                    self.add_substitutions(&mut instance_param_ty, &mut substitutions);
 
                     if self.ctx.unify(param_ty, instance_param_ty).is_err() {
                         all_unify = false;
