@@ -31,7 +31,6 @@ pub struct File {
     pub declarations: Declarations<Template>,
     pub exported: ScopeValues,
     pub scopes: Vec<(Span, ScopeValues)>,
-    pub template_uses: BTreeMap<TemplateId, Vec<Span>>,
     pub statements: Vec<Statement>,
     pub dependencies: Vec<(Arc<File>, Option<HashMap<InternedString, Span>>)>,
 }
@@ -192,7 +191,6 @@ impl<'l> Compiler<'l> {
             declarations: Default::default(),
             dependencies: Default::default(),
             scopes: Default::default(),
-            template_uses: Default::default(),
             load: Arc::new(load),
         };
 
@@ -230,7 +228,6 @@ impl<'l> Compiler<'l> {
             declarations: expander.declarations.into_unique(),
             exported,
             scopes: expander.scopes.into_unique(),
-            template_uses: expander.template_uses.into_unique(),
             dependencies: expander.dependencies.into_unique().into_values().collect(),
         }
     }
@@ -242,7 +239,6 @@ pub struct Expander<'a, 'l> {
     declarations: Shared<Declarations<Template>>,
     dependencies: Shared<HashMap<FilePath, (Arc<File>, Option<HashMap<InternedString, Span>>)>>,
     scopes: Shared<Vec<(Span, ScopeValues)>>,
-    template_uses: Shared<BTreeMap<TemplateId, Vec<Span>>>,
     load: Arc<
         dyn Fn(&'a Compiler<'l>, Span, FilePath) -> BoxFuture<'a, Option<Arc<File>>> + Send + Sync,
     >,
@@ -1141,11 +1137,7 @@ impl Expander<'_, '_> {
                 .get_mut(&id)
                 .unwrap_or_else(|| panic!("template `{}` ({:?}) not registered", name, id));
 
-            self.template_uses
-                .lock()
-                .entry(id)
-                .or_default()
-                .push(template_span);
+            decl.uses.insert(template_span);
 
             decl.template.clone()
         };
