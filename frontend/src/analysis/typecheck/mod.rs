@@ -54,6 +54,7 @@ macro_rules! declarations {
             pub templates: $($container)::+<TemplateId, TemplateDecl>,
             pub builtin_types: $($container)::+<BuiltinTypeId, BuiltinTypeDecl>,
             pub type_parameters: $($container)::+<TypeParameterId, TypeParameterDecl>,
+            /// NOTE: Not all variables will be listed here, only ones that passed typechecking
             pub variables: $($container)::+<VariableId, VariableDecl>,
         }
     };
@@ -627,27 +628,52 @@ impl<'a, 'l> Typechecker<'a, 'l> {
         expr: lower::Expression,
     ) {
         let (tr, generic_ty, bounds) = if instance {
-            let (tr, trait_params, span, bounds) = self.with_instance_decl(id, |decl| {
-                (
-                    decl.trait_id,
-                    decl.trait_params.clone(),
-                    decl.span,
-                    decl.bounds.clone(),
-                )
-            });
+            let (tr, trait_params, span, bounds) = self
+                .with_instance_decl(id, |decl| {
+                    (
+                        decl.trait_id,
+                        decl.trait_params.clone(),
+                        decl.span,
+                        decl.bounds.clone(),
+                    )
+                })
+                .expect("instance should have already been accessed at least once");
 
-            let ty = self
+            let ty = match self
                 .substitute_trait_params(
                     tr,
                     trait_params.clone().into_iter().map(From::from).collect(),
                     span,
                 )
                 .finalize(&self.ctx)
-                .unwrap();
+            {
+                Ok(ty) => ty,
+                Err(error) => {
+                    self.add_error(self.error(error, span));
+
+                    let expr = Some(Expression {
+                        span: expr.span,
+                        ty: engine::Type::Error,
+                        kind: ExpressionKind::error(self.compiler),
+                    });
+
+                    self.declarations
+                        .borrow_mut()
+                        .instances
+                        .get_mut(&tr)
+                        .unwrap()
+                        .get_mut(&id)
+                        .unwrap()
+                        .body = expr;
+
+                    return;
+                }
+            };
 
             (Some(tr), ty, bounds)
         } else {
             self.with_constant_decl(id, |decl| (None, decl.ty.clone(), decl.bounds.clone()))
+                .expect("constant should have already been accessed at least once")
         };
 
         let mut monomorphize_info = MonomorphizeInfo::default();
@@ -727,27 +753,41 @@ impl<'a, 'l> Typechecker<'a, 'l> {
             let mut info = info.clone();
 
             let (generic_ty, mut bounds) = if is_instance {
-                let (tr, trait_params, span, bounds) = self.with_instance_decl(id, |decl| {
+                let (tr, trait_params, span, bounds) = match self.with_instance_decl(id, |decl| {
                     (
                         decl.trait_id,
                         decl.trait_params.clone(),
                         decl.span,
                         decl.bounds.clone(),
                     )
-                });
+                }) {
+                    Some((tr, trait_params, span, bounds)) => (tr, trait_params, span, bounds),
+                    None => continue,
+                };
 
-                let ty = self
+                let ty = match self
                     .substitute_trait_params(
                         tr,
                         trait_params.clone().into_iter().map(From::from).collect(),
                         span,
                     )
                     .finalize(&self.ctx)
-                    .unwrap();
+                {
+                    Ok(ty) => ty,
+                    Err(error) => {
+                        self.add_error(self.error(error, span));
+                        continue;
+                    }
+                };
 
                 (ty, bounds)
             } else {
-                self.with_constant_decl(candidate, |decl| (decl.ty.clone(), decl.bounds.clone()))
+                match self
+                    .with_constant_decl(candidate, |decl| (decl.ty.clone(), decl.bounds.clone()))
+                {
+                    Some(constant) => constant,
+                    None => continue,
+                }
             };
 
             let mut generic_ty = engine::UnresolvedType::from(generic_ty);
@@ -837,9 +877,15 @@ impl<'a, 'l> Typechecker<'a, 'l> {
         let prev_ctx = self.ctx.clone();
 
         let specialized_constant_decl =
-            self.with_constant_decl(specialized_id, |decl| decl.clone());
+            match self.with_constant_decl(specialized_id, |decl| decl.clone()) {
+                Some(decl) => decl,
+                None => return,
+            };
 
-        let generic_constant_decl = self.with_constant_decl(generic_id, |decl| decl.clone());
+        let generic_constant_decl = match self.with_constant_decl(generic_id, |decl| decl.clone()) {
+            Some(decl) => decl,
+            None => return,
+        };
 
         let mut params = match self.ctx.unify_params(
             specialized_constant_decl.ty.into(),
@@ -927,16 +973,21 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                 kind: UnresolvedExpressionKind::Error(trace),
             },
             lower::ExpressionKind::Marker(id) => {
-                let params = self.with_type_decl(id, |ty| ty.params.clone());
-
-                let mut ty = engine::UnresolvedType::Named(
-                    id,
-                    params
-                        .into_iter()
-                        .map(|(_, param)| engine::UnresolvedType::Parameter(param))
-                        .collect(),
-                    engine::TypeStructure::Marker,
-                );
+                let mut ty = {
+                    self.with_type_decl(id, |ty| ty.params.clone()).map_or(
+                        engine::UnresolvedType::Error,
+                        |params| {
+                            engine::UnresolvedType::Named(
+                                id,
+                                params
+                                    .into_iter()
+                                    .map(|(_, param)| engine::UnresolvedType::Parameter(param))
+                                    .collect(),
+                                engine::TypeStructure::Marker,
+                            )
+                        },
+                    )
+                };
 
                 self.instantiate_generics(&mut ty);
 
@@ -947,9 +998,11 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                 }
             }
             lower::ExpressionKind::Constant(id) => {
-                let mut ty = self.with_constant_decl(id, |constant| {
-                    engine::UnresolvedType::from(constant.ty.clone())
-                });
+                let mut ty = self
+                    .with_constant_decl(id, |constant| {
+                        engine::UnresolvedType::from(constant.ty.clone())
+                    })
+                    .unwrap_or(engine::UnresolvedType::Error);
 
                 self.instantiate_generics(&mut ty);
 
@@ -963,8 +1016,8 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                 let mut ty = match self.with_trait_decl(id, |decl| {
                     (decl.span, decl.ty.clone().map(engine::UnresolvedType::from))
                 }) {
-                    (_, Some(ty)) => ty,
-                    (span, None) => {
+                    Some((_, Some(ty))) => ty,
+                    Some((span, None)) => {
                         self.compiler.add_error(
                             "cannot use this trait as a value",
                             vec![
@@ -982,6 +1035,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                             kind: UnresolvedExpressionKind::error(self.compiler),
                         };
                     }
+                    None => engine::UnresolvedType::Error,
                 };
 
                 self.instantiate_generics(&mut ty);
@@ -1208,8 +1262,18 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                 }
             }
             lower::ExpressionKind::Instantiate(id, fields) => {
-                let (kind, params) =
-                    self.with_type_decl(id, |decl| (decl.kind.clone(), decl.params.clone()));
+                let (kind, params) = match self
+                    .with_type_decl(id, |decl| (decl.kind.clone(), decl.params.clone()))
+                {
+                    Some((kind, params)) => (kind, params),
+                    None => {
+                        return UnresolvedExpression {
+                            span: expr.span,
+                            ty: engine::UnresolvedType::Error,
+                            kind: UnresolvedExpressionKind::error(self.compiler),
+                        }
+                    }
+                };
 
                 let (mut structure_field_tys, structure_field_names) = match kind {
                     TypeDeclKind::Structure {
@@ -1263,8 +1327,10 @@ impl<'a, 'l> Typechecker<'a, 'l> {
 
                 for (name, expr) in fields {
                     let (index, ty) = match structure_field_names.get(&name) {
-                        Some(index) => (*index, structure_field_tys[index.into_inner()].clone()),
-                        None => {
+                        Some(index) if index.into_inner() < fields_by_index.len() => {
+                            (*index, structure_field_tys[index.into_inner()].clone())
+                        }
+                        _ => {
                             extra_fields.push(name);
                             continue;
                         }
@@ -1273,12 +1339,9 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                     let span = expr.span;
                     let mut value = self.convert_expr(expr, info);
 
-                    match self.unify(span, value.ty.clone(), ty.clone()) {
-                        Ok(ty) => ty,
-                        Err(error) => {
-                            self.add_error(error);
-                        }
-                    };
+                    if let Err(error) = self.unify(span, value.ty.clone(), ty.clone()) {
+                        self.add_error(error);
+                    }
 
                     value.ty = ty;
 
@@ -1340,8 +1403,18 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                 }
             }
             lower::ExpressionKind::Variant(id, index, values) => {
-                let (kind, params) =
-                    self.with_type_decl(id, |decl| (decl.kind.clone(), decl.params.clone()));
+                let (kind, params) = match self
+                    .with_type_decl(id, |decl| (decl.kind.clone(), decl.params.clone()))
+                {
+                    Some((kind, params)) => (kind, params),
+                    None => {
+                        return UnresolvedExpression {
+                            span: expr.span,
+                            ty: engine::UnresolvedType::Error,
+                            kind: UnresolvedExpressionKind::error(self.compiler),
+                        };
+                    }
+                };
 
                 let variants_tys = match kind {
                     TypeDeclKind::Enumeration { variants, .. } => variants
@@ -1495,7 +1568,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                         .collect(),
                 ),
                 lower::PatternKind::Variant(id, variant, values) => {
-                    let (params, variants_tys) = self.with_type_decl(id, |decl| {
+                    let (params, variants_tys) = match self.with_type_decl(id, |decl| {
                         (
                             decl.params.clone(),
                             match &decl.kind {
@@ -1505,7 +1578,10 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                                 _ => None,
                             },
                         )
-                    });
+                    }) {
+                        Some((params, variants_tys)) => (params, variants_tys),
+                        None => return UnresolvedPatternKind::error(self.compiler),
+                    };
 
                     let variants_tys = match variants_tys {
                         Some(tys) => tys,
@@ -1933,14 +2009,23 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                     }
                 };
 
-                let structure = self.with_type_decl(id, Clone::clone);
+                let structure = self
+                    .with_type_decl(id, Clone::clone)
+                    .expect("structure should have already been accessed at least once");
 
                 let (structure_field_tys, structure_field_names) = match &structure.kind {
                     TypeDeclKind::Structure {
                         fields,
                         field_names,
                     } => (fields.clone(), field_names.clone()),
-                    _ => unreachable!(),
+                    _ => {
+                        self.compiler.add_error(
+                            "cannot destructure this value",
+                            vec![Note::primary(pattern.span, "value is not a structure")],
+                        );
+
+                        return MonomorphizedPatternKind::error(self.compiler);
+                    }
                 };
 
                 let substitutions = structure
@@ -1958,7 +2043,14 @@ impl<'a, 'l> Typechecker<'a, 'l> {
 
                         match match_set {
                             MatchSet::Structure(fields) => fields,
-                            _ => unreachable!(),
+                            _ => {
+                                self.compiler.add_error(
+                                    "cannot destructure this value",
+                                    vec![Note::primary(pattern.span, "value is not a structure")],
+                                );
+
+                                return MonomorphizedPatternKind::error(self.compiler);
+                            }
                         }
                     }
                 };
@@ -2030,7 +2122,9 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                     }
                 };
 
-                let enumeration = self.with_type_decl(*id, Clone::clone);
+                let enumeration = self
+                    .with_type_decl(*id, Clone::clone)
+                    .expect("enumeration should have already been accessed at least once");
 
                 let mut variant_tys = match enumeration.kind {
                     TypeDeclKind::Enumeration { mut variants, .. } => variants
@@ -2085,7 +2179,17 @@ impl<'a, 'l> Typechecker<'a, 'l> {
 
                         match match_set {
                             MatchSet::Enumeration(variants) => &mut variants[variant.into_inner()],
-                            _ => unreachable!(),
+                            _ => {
+                                self.compiler.add_error(
+                                    "cannot match a variant on this value",
+                                    vec![Note::primary(
+                                        pattern.span,
+                                        "value is not an enumeration",
+                                    )],
+                                );
+
+                                return MonomorphizedPatternKind::error(self.compiler);
+                            }
                         }
                     }
                 };
@@ -2197,7 +2301,10 @@ impl<'a, 'l> Typechecker<'a, 'l> {
         bound_span: Option<Span>,
         info: &mut MonomorphizeInfo,
     ) -> Result<Option<ConstantId>, Error> {
-        let tr_decl = self.with_trait_decl(tr, Clone::clone);
+        let tr_decl = match self.with_trait_decl(tr, Clone::clone) {
+            Some(decl) => decl,
+            None => return Ok(None),
+        };
 
         let mut trait_ty = tr_decl
             .ty
@@ -2223,7 +2330,10 @@ impl<'a, 'l> Typechecker<'a, 'l> {
         bound_span: Option<Span>,
         info: &mut MonomorphizeInfo,
     ) -> Result<Option<ConstantId>, Error> {
-        let tr_decl = self.with_trait_decl(tr, Clone::clone);
+        let tr_decl = match self.with_trait_decl(tr, Clone::clone) {
+            Some(decl) => decl,
+            None => return Ok(None),
+        };
 
         self.instance_for_inner(tr, tr_decl, Err(params), use_span, bound_span, info)
     }
@@ -2365,7 +2475,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
             let mut candidates = Vec::new();
             'check: for id in declared_instances.clone() {
                 let (mut instance_params, instance_span, bounds) =
-                    self.with_instance_decl(id, |instance| {
+                    match self.with_instance_decl(id, |instance| {
                         (
                             instance
                                 .trait_params
@@ -2376,7 +2486,12 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                             instance.span,
                             instance.bounds.clone(),
                         )
-                    });
+                    }) {
+                        Some((instance_params, instance_span, bounds)) => {
+                            (instance_params, instance_span, bounds)
+                        }
+                        None => continue,
+                    };
 
                 info.recursion_count += 1;
 
@@ -2456,15 +2571,17 @@ impl<'a, 'l> Typechecker<'a, 'l> {
         tr: TraitId,
         ty: engine::UnresolvedType,
     ) -> Vec<engine::UnresolvedType> {
-        let (tr_ty, tr_params) = self.with_trait_decl(tr, |decl| {
-            (
-                decl.ty
-                    .as_ref()
-                    .expect("`extract_params` may only be used with traits that have values")
-                    .clone(),
-                decl.params.clone(),
-            )
-        });
+        let (tr_ty, tr_params) = self
+            .with_trait_decl(tr, |decl| {
+                (
+                    decl.ty
+                        .as_ref()
+                        .expect("`extract_params` may only be used with traits that have values")
+                        .clone(),
+                    decl.params.clone(),
+                )
+            })
+            .expect("trait should have already been accessed at least once");
 
         let params = self.ctx.unify_params(ty, tr_ty).0;
 
@@ -2655,7 +2772,7 @@ impl MatchSet {
                     engine::UnresolvedType::Named(_, _, TypeStructure::Structure(field_tys)) => {
                         field_tys
                     }
-                    _ => unreachable!(),
+                    _ => return Box::new(std::iter::empty()),
                 };
 
                 Box::new(fields.iter().enumerate().flat_map(
@@ -2688,7 +2805,7 @@ impl MatchSet {
                         _,
                         TypeStructure::Enumeration(variants_tys),
                     ) => variants_tys,
-                    _ => unreachable!(),
+                    _ => return Box::new(std::iter::empty()),
                 };
 
                 let mut patterns = vec![BTreeMap::new()];
@@ -2746,7 +2863,7 @@ impl MatchSet {
             MatchSet::Tuple(items) => {
                 let item_tys = match ty {
                     engine::UnresolvedType::Tuple(tys) => tys,
-                    _ => unreachable!(),
+                    _ => return Box::new(std::iter::empty()),
                 };
 
                 let mut patterns = Vec::new();
@@ -2806,8 +2923,8 @@ impl<'a, 'l> Typechecker<'a, 'l> {
 
                 let field_name = field_names
                     .iter()
-                    .find_map(|(name, i)| (i == index).then_some(name))
-                    .unwrap();
+                    .find_map(|(name, i)| (i == index).then_some(name.to_string()))
+                    .unwrap_or_else(|| String::from("<unknown>"));
 
                 if let Some(pattern) = field {
                     format!(
@@ -3099,12 +3216,12 @@ impl<'a, 'l> Typechecker<'a, 'l> {
 }
 
 impl<'a, 'l> Typechecker<'a, 'l> {
-    fn with_type_decl<T>(&mut self, id: TypeId, f: impl FnOnce(&TypeDecl) -> T) -> T {
+    fn with_type_decl<T>(&mut self, id: TypeId, f: impl FnOnce(&TypeDecl) -> T) -> Option<T> {
         if let Some(decl) = self.declarations.borrow().types.get(&id) {
-            return f(decl);
+            return Some(f(decl));
         }
 
-        let decl = self.entrypoint.declarations.types.get(&id).unwrap().clone();
+        let decl = self.entrypoint.declarations.types.get(&id)?.clone();
 
         let decl = TypeDecl {
             name: decl
@@ -3148,26 +3265,20 @@ impl<'a, 'l> Typechecker<'a, 'l> {
             uses: decl.uses,
         };
 
-        f(self
+        Some(f(self
             .declarations
             .borrow_mut()
             .types
             .entry(id)
-            .or_insert(decl))
+            .or_insert(decl)))
     }
 
-    fn with_trait_decl<T>(&mut self, id: TraitId, f: impl FnOnce(&TraitDecl) -> T) -> T {
+    fn with_trait_decl<T>(&mut self, id: TraitId, f: impl FnOnce(&TraitDecl) -> T) -> Option<T> {
         if let Some(decl) = self.declarations.borrow().traits.get(&id) {
-            return f(decl);
+            return Some(f(decl));
         }
 
-        let decl = self
-            .entrypoint
-            .declarations
-            .traits
-            .get(&id)
-            .unwrap()
-            .clone();
+        let decl = self.entrypoint.declarations.traits.get(&id)?.clone();
 
         let decl = TraitDecl {
             name: decl
@@ -3184,36 +3295,26 @@ impl<'a, 'l> Typechecker<'a, 'l> {
             uses: decl.uses,
         };
 
-        f(self
+        Some(f(self
             .declarations
             .borrow_mut()
             .traits
             .entry(id)
-            .or_insert(decl))
+            .or_insert(decl)))
     }
 
-    fn with_constant_decl<T>(&mut self, id: ConstantId, f: impl FnOnce(&ConstantDecl) -> T) -> T {
+    fn with_constant_decl<T>(
+        &mut self,
+        id: ConstantId,
+        f: impl FnOnce(&ConstantDecl) -> T,
+    ) -> Option<T> {
         if let Some(decl) = self.declarations.borrow_mut().constants.get(&id) {
-            return f(decl);
+            return Some(f(decl));
         }
 
-        let decl = self
-            .entrypoint
-            .declarations
-            .constants
-            .get(&id)
-            .unwrap()
-            .clone();
+        let decl = self.entrypoint.declarations.constants.get(&id)?.clone();
 
-        let body = decl
-            .value
-            .value
-            .lock()
-            .as_ref()
-            .cloned()
-            .unwrap_or_else(|| lower::Expression::error(self.compiler, decl.span));
-
-        self.generic_constants.insert(id, (false, body));
+        self.generic_constants.insert(id, (false, decl.value.value));
 
         let ty = self.convert_generic_type_annotation(decl.value.ty.clone());
 
@@ -3259,22 +3360,20 @@ impl<'a, 'l> Typechecker<'a, 'l> {
             uses: decl.uses,
         };
 
-        f(self
+        Some(f(self
             .declarations
             .borrow_mut()
             .constants
             .entry(id)
-            .or_insert(decl))
+            .or_insert(decl)))
     }
 
-    fn with_instance_decl<T>(&mut self, id: ConstantId, f: impl FnOnce(&InstanceDecl) -> T) -> T {
-        let decl = self
-            .entrypoint
-            .declarations
-            .instances
-            .get(&id)
-            .unwrap()
-            .clone();
+    fn with_instance_decl<T>(
+        &mut self,
+        id: ConstantId,
+        f: impl FnOnce(&InstanceDecl) -> T,
+    ) -> Option<T> {
+        let decl = self.entrypoint.declarations.instances.get(&id)?.clone();
 
         let trait_id = decl.value.tr;
 
@@ -3286,14 +3385,21 @@ impl<'a, 'l> Typechecker<'a, 'l> {
             .or_default()
             .get(&id)
         {
-            return f(decl);
+            return Some(f(decl));
         }
 
-        let tr = self.with_trait_decl(decl.value.tr, Clone::clone);
+        let tr = self.with_trait_decl(trait_id, Clone::clone)?;
 
         if tr.ty.is_some() {
-            self.generic_constants
-                .insert(id, (true, decl.value.value.unwrap()));
+            self.generic_constants.insert(
+                id,
+                (
+                    true,
+                    decl.value
+                        .value
+                        .unwrap_or_else(|| lower::Expression::error(self.compiler, decl.span)),
+                ),
+            );
         }
 
         let mut params = decl
@@ -3305,7 +3411,13 @@ impl<'a, 'l> Typechecker<'a, 'l> {
             .collect::<Vec<_>>();
 
         for (_, param) in tr.params.iter().skip(params.len()) {
-            let name = self.with_type_parameter_decl(*param, |decl| decl.name);
+            let name = match self.with_type_parameter_decl(*param, |decl| decl.name) {
+                Some(name) => name,
+                None => {
+                    params.push(engine::Type::Error);
+                    continue;
+                }
+            };
 
             self.compiler.add_error(
                 format!(
@@ -3417,14 +3529,14 @@ impl<'a, 'l> Typechecker<'a, 'l> {
             item,
         };
 
-        f(self
+        Some(f(self
             .declarations
             .borrow_mut()
             .instances
             .entry(trait_id)
             .or_default()
             .entry(id)
-            .or_insert(decl))
+            .or_insert(decl)))
     }
 
     fn with_operator_decl<T>(
@@ -3436,7 +3548,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
             return Some(f(decl));
         }
 
-        let operator = *self.entrypoint.declarations.operators.get(&id).unwrap();
+        let operator = *self.entrypoint.declarations.operators.get(&id)?;
 
         let decl = self
             .entrypoint
@@ -3489,18 +3601,12 @@ impl<'a, 'l> Typechecker<'a, 'l> {
         &mut self,
         id: BuiltinTypeId,
         f: impl FnOnce(&BuiltinTypeDecl) -> T,
-    ) -> T {
+    ) -> Option<T> {
         if let Some(decl) = self.declarations.borrow().builtin_types.get(&id) {
-            return f(decl);
+            return Some(f(decl));
         }
 
-        let decl = self
-            .entrypoint
-            .declarations
-            .builtin_types
-            .get(&id)
-            .unwrap()
-            .clone();
+        let decl = self.entrypoint.declarations.builtin_types.get(&id)?.clone();
 
         let decl = BuiltinTypeDecl {
             name: decl
@@ -3511,29 +3617,28 @@ impl<'a, 'l> Typechecker<'a, 'l> {
             uses: decl.uses,
         };
 
-        f(self
+        Some(f(self
             .declarations
             .borrow_mut()
             .builtin_types
             .entry(id)
-            .or_insert(decl))
+            .or_insert(decl)))
     }
 
     fn with_type_parameter_decl<T>(
         &mut self,
         id: TypeParameterId,
         f: impl FnOnce(&TypeParameterDecl) -> T,
-    ) -> T {
+    ) -> Option<T> {
         if let Some(decl) = self.declarations.borrow().type_parameters.get(&id) {
-            return f(decl);
+            return Some(f(decl));
         }
 
         let decl = self
             .entrypoint
             .declarations
             .type_parameters
-            .get(&id)
-            .unwrap()
+            .get(&id)?
             .clone();
 
         let decl = TypeParameterDecl {
@@ -3542,12 +3647,12 @@ impl<'a, 'l> Typechecker<'a, 'l> {
             uses: decl.uses,
         };
 
-        f(self
+        Some(f(self
             .declarations
             .borrow_mut()
             .type_parameters
             .entry(id)
-            .or_insert(decl))
+            .or_insert(decl)))
     }
 
     fn with_variable_decl<T>(
@@ -3555,18 +3660,12 @@ impl<'a, 'l> Typechecker<'a, 'l> {
         id: VariableId,
         ty: engine::Type,
         f: impl FnOnce(&VariableDecl) -> T,
-    ) -> T {
+    ) -> Option<T> {
         if let Some(decl) = self.declarations.borrow().variables.get(&id) {
-            return f(decl);
+            return Some(f(decl));
         }
 
-        let decl = self
-            .entrypoint
-            .declarations
-            .variables
-            .get(&id)
-            .unwrap()
-            .clone();
+        let decl = self.entrypoint.declarations.variables.get(&id)?.clone();
 
         let decl = VariableDecl {
             name: decl.name,
@@ -3575,12 +3674,12 @@ impl<'a, 'l> Typechecker<'a, 'l> {
             uses: decl.uses,
         };
 
-        f(self
+        Some(f(self
             .declarations
             .borrow_mut()
             .variables
             .entry(id)
-            .or_insert(decl))
+            .or_insert(decl)))
     }
 }
 
@@ -3711,7 +3810,13 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                 let ty = self.entrypoint.declarations.types.get(&id).unwrap().clone();
 
                 for (_, param) in ty.value.params.iter().skip(params.len()) {
-                    let name = self.with_type_parameter_decl(*param, |decl| decl.name);
+                    let name = match self.with_type_parameter_decl(*param, |decl| decl.name) {
+                        Some(name) => name,
+                        None => {
+                            params.push(engine::UnresolvedType::Error);
+                            continue;
+                        }
+                    };
 
                     self.compiler.add_error(
                         format!(
@@ -4012,8 +4117,9 @@ impl<'a, 'l> Typechecker<'a, 'l> {
         params: Vec<engine::UnresolvedType>,
         span: Span,
     ) -> engine::UnresolvedType {
-        let (trait_span, trait_ty, trait_params) = self.with_trait_decl(trait_id, |decl| {
-            (
+        let (trait_span, trait_ty, trait_params) = self
+            .with_trait_decl(trait_id, |decl| {
+                (
                 decl.span,
                 decl.ty
                     .as_ref()
@@ -4023,7 +4129,8 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                     .clone(),
                 decl.params.clone(),
             )
-        });
+            })
+            .expect("instance should have already been accessed at least once");
 
         if trait_params.len() != params.len() {
             self.compiler.add_error(
@@ -4058,20 +4165,36 @@ impl<'a, 'l> Typechecker<'a, 'l> {
         let typechecker = RefCell::new(self);
 
         macro_rules! getter {
-            ($x:ident, $f:expr) => {
+            ($x:ident, $f:expr, $default:expr) => {
                 paste::paste!(|id| {
-                    typechecker
+                    match typechecker
                         .borrow_mut()
                         .[<with_ $x _decl>](id, |decl| $f(decl.name))
+                    {
+                        Some(name) => name,
+                        None => $default,
+                    }
                 })
             };
         }
 
-        let type_names = getter!(type, |name: InternedString| name.to_string());
-        let trait_names = getter!(trait, |name: InternedString| name.to_string());
-        let param_names = getter!(type_parameter, |name: Option<_>| {
-            name.as_ref().map(ToString::to_string)
-        });
+        let type_names = getter!(
+            type,
+            |name: InternedString| name.to_string(),
+            String::from("<unknown>")
+        );
+
+        let trait_names = getter!(
+            trait,
+            |name: InternedString| name.to_string(),
+            String::from("<unknown>")
+        );
+
+        let param_names = getter!(
+            type_parameter,
+            |name: Option<_>| name.as_ref().map(ToString::to_string),
+            Some(String::from("<unknown>"))
+        );
 
         format::format_type(ty, type_names, trait_names, param_names, format)
     }

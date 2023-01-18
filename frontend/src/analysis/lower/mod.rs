@@ -106,7 +106,7 @@ struct UnresolvedDeclarations {
     pub type_parameters: BTreeMap<TypeParameterId, Declaration<()>>,
     pub traits: BTreeMap<TraitId, Declaration<Option<Trait>>>,
     pub builtin_types: BTreeMap<BuiltinTypeId, Declaration<BuiltinType>>,
-    pub constants: BTreeMap<ConstantId, Declaration<Option<Constant>>>,
+    pub constants: BTreeMap<ConstantId, Declaration<Option<UnresolvedConstant>>>,
     pub instances: BTreeMap<ConstantId, Declaration<Option<Instance>>>,
     pub variables: BTreeMap<VariableId, Declaration<()>>,
 }
@@ -152,6 +152,16 @@ pub struct Declaration<T> {
     pub value: T,
 }
 
+trait Resolve<T> {
+    fn resolve(self) -> T;
+}
+
+impl<T> Resolve<T> for T {
+    fn resolve(self) -> T {
+        self
+    }
+}
+
 impl<T> Declaration<Option<T>> {
     fn unresolved(name: Option<InternedString>, span: Span) -> Self {
         Declaration {
@@ -162,14 +172,20 @@ impl<T> Declaration<Option<T>> {
         }
     }
 
-    fn resolve(self) -> Declaration<T> {
+    fn resolve<U>(self) -> Declaration<U>
+    where
+        T: Resolve<U>,
+    {
         Declaration {
             name: self.name,
             span: self.span,
             uses: self.uses,
-            value: self.value.unwrap_or_else(|| {
-                panic!("unresolved declaration: {:?} @ {:?}", self.name, self.span)
-            }),
+            value: self
+                .value
+                .unwrap_or_else(|| {
+                    panic!("unresolved declaration: {:?} @ {:?}", self.name, self.span)
+                })
+                .resolve(),
         }
     }
 }
@@ -184,12 +200,15 @@ impl<T> Declaration<T> {
         }
     }
 
-    fn make_unresolved(self) -> Declaration<Option<T>> {
+    fn make_unresolved<U>(self) -> Declaration<Option<U>>
+    where
+        U: From<T>,
+    {
         Declaration {
             name: self.name,
             span: self.span,
             uses: self.uses,
-            value: Some(self.value),
+            value: Some(self.value.into()),
         }
     }
 }
@@ -306,13 +325,46 @@ pub struct TraitAttributes {
 }
 
 #[derive(Debug, Clone)]
-#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
-pub struct Constant {
+struct UnresolvedConstant {
     pub parameters: Vec<(Span, TypeParameterId)>,
     pub bounds: Vec<Bound>,
     pub ty: TypeAnnotation,
     pub value: Shared<Option<Expression>>,
     pub attributes: ConstantAttributes,
+}
+
+#[derive(Debug, Clone)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+pub struct Constant {
+    pub parameters: Vec<(Span, TypeParameterId)>,
+    pub bounds: Vec<Bound>,
+    pub ty: TypeAnnotation,
+    pub value: Expression,
+    pub attributes: ConstantAttributes,
+}
+
+impl From<Constant> for UnresolvedConstant {
+    fn from(constant: Constant) -> Self {
+        UnresolvedConstant {
+            parameters: constant.parameters,
+            bounds: constant.bounds,
+            ty: constant.ty,
+            value: Shared::new(Some(constant.value)),
+            attributes: constant.attributes,
+        }
+    }
+}
+
+impl Resolve<Constant> for UnresolvedConstant {
+    fn resolve(self) -> Constant {
+        Constant {
+            parameters: self.parameters,
+            bounds: self.bounds,
+            ty: self.ty,
+            value: self.value.into_unique().expect("uninitialized constant"),
+            attributes: self.attributes,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -689,25 +741,22 @@ impl Compiler<'_> {
         let block = self.lower_statements(file.statements, &scope, &mut info);
 
         for constant in info.declarations.constants.values() {
-            if constant
-                .value
-                .as_ref()
-                .unwrap()
-                .value
-                .lock()
-                .as_ref()
-                .is_none()
-            {
-                self.add_error(
-                    "uninitialized constant",
-                    vec![Note::primary(
-                        constant.span,
-                        format!(
-                            "`{}` is never initialized with a value",
-                            constant.name.unwrap()
-                        ),
-                    )],
-                );
+            match &mut *constant.value.as_ref().unwrap().value.lock() {
+                Some(_) => continue,
+                value @ None => {
+                    self.add_error(
+                        "uninitialized constant",
+                        vec![Note::primary(
+                            constant.span,
+                            format!(
+                                "`{}` is never initialized with a value",
+                                constant.name.unwrap()
+                            ),
+                        )],
+                    );
+
+                    *value = Some(Expression::error(self, constant.span));
+                }
             }
         }
 
@@ -1113,7 +1162,7 @@ impl Compiler<'_> {
                                     Declaration::resolved(
                                         Some(variant.name),
                                         variant.span,
-                                        Constant {
+                                        UnresolvedConstant {
                                             parameters: parameters.clone(),
                                             bounds: Vec::new(),
                                             ty: constructor_ty,
@@ -1223,7 +1272,7 @@ impl Compiler<'_> {
                         })
                         .collect::<Vec<_>>();
 
-                    let constant = Constant {
+                    let constant = UnresolvedConstant {
                         parameters,
                         bounds,
                         ty: self.lower_type_annotation(declaration.ty, &scope, info),
