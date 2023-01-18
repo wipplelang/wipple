@@ -699,6 +699,10 @@ impl<'a, 'l> Typechecker<'a, 'l> {
         use_ty: engine::UnresolvedType,
         mut info: MonomorphizeInfo,
     ) -> ItemId {
+        if let Some(monomorphized_id) = info.cache.get(&id) {
+            return *monomorphized_id;
+        }
+
         let monomorphized_id = self.compiler.new_item_id();
 
         let mut candidates = Vec::with_capacity(1);
@@ -1649,15 +1653,13 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                 UnresolvedExpressionKind::Error(trace) => MonomorphizedExpressionKind::Error(trace),
                 UnresolvedExpressionKind::Marker => MonomorphizedExpressionKind::Marker,
                 UnresolvedExpressionKind::Constant(generic_id) => {
-                    let id = info.cache.get(&generic_id).copied().unwrap_or_else(|| {
-                        self.typecheck_constant_expr(
-                            false,
-                            generic_id,
-                            expr.span,
-                            expr.ty.clone(),
-                            info.clone(),
-                        )
-                    });
+                    let id = self.typecheck_constant_expr(
+                        false,
+                        generic_id,
+                        expr.span,
+                        expr.ty.clone(),
+                        info.clone(),
+                    );
 
                     MonomorphizedExpressionKind::Constant(id)
                 }
@@ -2266,6 +2268,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                     {
                         if ctx.unify_generic(param, stack_param).is_err() {
                             error = true;
+                            break;
                         }
                     }
 
