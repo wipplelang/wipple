@@ -214,6 +214,9 @@ fn format_type_with(
 
         let formatted = match ty.kind {
             FormattableTypeKind::Type(UnresolvedType::Variable(var)) => var_names(var),
+            FormattableTypeKind::Type(UnresolvedType::TerminatingVariable(_)) => {
+                format_named_type!("()", Vec::new())
+            }
             FormattableTypeKind::Type(UnresolvedType::NumericVariable(_)) => {
                 format_named_type!("Number", Vec::new())
             }

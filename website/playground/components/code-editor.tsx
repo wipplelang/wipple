@@ -67,7 +67,7 @@ export const CodeEditor = (props: CodeEditorProps) => {
     useAsyncEffect(() => run(props.code, props.lint), [props.code, props.lint]);
 
     const [hover, setHover_] = useState<Hover>();
-    const setHover = useMemo(() => debounce(setHover_, 500), []);
+    const setHover = useMemo(() => debounce(setHover_, 250), []);
     const clearHover = () => setHover_(undefined);
 
     const textEditor = document.getElementById(textAreaID) as HTMLTextAreaElement | null;

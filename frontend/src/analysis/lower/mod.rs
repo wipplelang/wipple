@@ -430,7 +430,7 @@ non_error_kind! {
         Variable(id: VariableId),
         Text(value: InternedString),
         Number(value: InternedString),
-        Block(exprs: Vec<Expression>),
+        Block(exprs: Vec<Expression>, top_level: bool),
         End(expr: Box<Expression>),
         Call(func: Box<Expression>, input: Box<Expression>),
         Function(input: Pattern, body: Box<Expression>, captures: CaptureList),
@@ -1866,7 +1866,7 @@ impl Compiler<'_> {
             ast::ExpressionKind::Block(statements) => {
                 let scope = scope.child();
                 let block = self.lower_block(expr.span, statements, &scope, info);
-                ExpressionKind::Block(block)
+                ExpressionKind::Block(block, false)
             }
             ast::ExpressionKind::End(value) => {
                 ExpressionKind::End(Box::new(self.lower_expr(*value, scope, info)))

@@ -7,6 +7,7 @@ use std::collections::BTreeMap;
 pub enum UnresolvedType {
     Variable(TypeVariable),
     Parameter(TypeParameterId),
+    TerminatingVariable(TypeVariable),
     NumericVariable(TypeVariable),
     Named(TypeId, Vec<UnresolvedType>, TypeStructure<UnresolvedType>),
     Function(Box<UnresolvedType>, Box<UnresolvedType>),
@@ -122,6 +123,7 @@ pub type GenericSubstitutions = BTreeMap<TypeParameterId, UnresolvedType>;
 pub struct Context {
     pub next_var: usize,
     pub substitutions: im::HashMap<TypeVariable, UnresolvedType>,
+    pub terminating_substitutions: im::HashMap<TypeVariable, UnresolvedType>,
     pub numeric_substitutions: im::HashMap<TypeVariable, UnresolvedType>,
 }
 
@@ -259,6 +261,35 @@ impl Context {
                     Ok(())
                 }
             }
+            (UnresolvedType::TerminatingVariable(var), ty) => {
+                match &ty {
+                    UnresolvedType::TerminatingVariable(other) => {
+                        if var == *other {
+                            return Ok(());
+                        }
+                    }
+                    _ => {}
+                }
+
+                self.terminating_substitutions.insert(var, ty);
+
+                Ok(())
+            }
+            (ty, UnresolvedType::TerminatingVariable(var)) => {
+                match &ty {
+                    UnresolvedType::TerminatingVariable(other) => {
+                        if var == *other {
+                            return Ok(());
+                        }
+                    }
+                    UnresolvedType::Tuple(tys) if tys.is_empty() => {}
+                    _ => return Err(mismatch!(ty, UnresolvedType::TerminatingVariable(var))),
+                }
+
+                self.terminating_substitutions.insert(var, ty);
+
+                Ok(())
+            }
             (UnresolvedType::NumericVariable(var), ty) => {
                 match &ty {
                     UnresolvedType::NumericVariable(other) => {
@@ -268,7 +299,7 @@ impl Context {
                     }
                     UnresolvedType::Builtin(ty) if ty.is_numeric() => {}
                     _ => {
-                        return Err(mismatch!(UnresolvedType::NumericVariable(var), ty,));
+                        return Err(mismatch!(UnresolvedType::NumericVariable(var), ty));
                     }
                 }
 
@@ -285,7 +316,7 @@ impl Context {
                     }
                     UnresolvedType::Builtin(ty) if ty.is_numeric() => {}
                     _ => {
-                        return Err(mismatch!(ty, UnresolvedType::NumericVariable(var),));
+                        return Err(mismatch!(ty, UnresolvedType::NumericVariable(var)));
                     }
                 }
 
@@ -519,6 +550,12 @@ impl UnresolvedType {
                     self.apply(ctx);
                 }
             }
+            UnresolvedType::TerminatingVariable(var) => {
+                if let Some(ty) = ctx.terminating_substitutions.get(var) {
+                    *self = ty.clone();
+                    self.apply(ctx);
+                }
+            }
             UnresolvedType::NumericVariable(var) => {
                 if let Some(ty) = ctx.numeric_substitutions.get(var) {
                     *self = ty.clone();
@@ -630,41 +667,49 @@ impl UnresolvedType {
         }
     }
 
-    pub fn finalize_numeric_variables(&mut self, ctx: &Context) {
+    pub fn finalize_default_variables(&mut self, ctx: &Context) {
         match self {
             UnresolvedType::Variable(var) => {
                 if let Some(ty) = ctx.substitutions.get(var) {
                     *self = ty.clone();
-                    self.finalize_numeric_variables(ctx);
+                    self.finalize_default_variables(ctx);
+                }
+            }
+            UnresolvedType::TerminatingVariable(var) => {
+                if let Some(ty) = ctx.numeric_substitutions.get(var) {
+                    *self = ty.clone();
+                    self.finalize_default_variables(ctx);
+                } else {
+                    *self = UnresolvedType::Tuple(Vec::new());
                 }
             }
             UnresolvedType::NumericVariable(var) => {
                 if let Some(ty) = ctx.numeric_substitutions.get(var) {
                     *self = ty.clone();
-                    self.finalize_numeric_variables(ctx);
+                    self.finalize_default_variables(ctx);
                 } else {
                     *self = UnresolvedType::Builtin(BuiltinType::Number);
                 }
             }
             UnresolvedType::Function(input, output) => {
-                input.finalize_numeric_variables(ctx);
-                output.finalize_numeric_variables(ctx);
+                input.finalize_default_variables(ctx);
+                output.finalize_default_variables(ctx);
             }
             UnresolvedType::Named(_, params, structure) => {
                 for param in params {
-                    param.finalize_numeric_variables(ctx);
+                    param.finalize_default_variables(ctx);
                 }
 
                 structure.finalize_numeric_variables(ctx);
             }
             UnresolvedType::Tuple(tys) => {
                 for ty in tys {
-                    ty.finalize_numeric_variables(ctx);
+                    ty.finalize_default_variables(ctx);
                 }
             }
             UnresolvedType::Builtin(ty) => match ty {
                 BuiltinType::List(ty) | BuiltinType::Mutable(ty) => {
-                    ty.finalize_numeric_variables(ctx)
+                    ty.finalize_default_variables(ctx)
                 }
                 _ => {}
             },
@@ -675,7 +720,7 @@ impl UnresolvedType {
     pub fn finalize(&self, ctx: &Context) -> Result<Type, TypeError> {
         let mut ty = self.clone();
         ty.apply(ctx);
-        ty.finalize_numeric_variables(ctx);
+        ty.finalize_default_variables(ctx);
 
         let result = (|| {
             Ok(match ty.clone() {
@@ -683,7 +728,9 @@ impl UnresolvedType {
                     return Err(TypeError::UnresolvedType(UnresolvedType::Variable(var)));
                 }
                 UnresolvedType::Parameter(param) => Type::Parameter(param),
-                UnresolvedType::NumericVariable(_) => unreachable!(),
+                UnresolvedType::TerminatingVariable(_) | UnresolvedType::NumericVariable(_) => {
+                    unreachable!()
+                }
                 UnresolvedType::Named(id, params, structure) => Type::Named(
                     id,
                     params
@@ -789,13 +836,13 @@ impl TypeStructure<UnresolvedType> {
             TypeStructure::Marker | TypeStructure::Recursive(_) => {}
             TypeStructure::Structure(tys) => {
                 for ty in tys {
-                    ty.finalize_numeric_variables(ctx);
+                    ty.finalize_default_variables(ctx);
                 }
             }
             TypeStructure::Enumeration(variants) => {
                 for tys in variants {
                     for ty in tys {
-                        ty.finalize_numeric_variables(ctx);
+                        ty.finalize_default_variables(ctx);
                     }
                 }
             }

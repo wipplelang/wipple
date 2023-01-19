@@ -311,7 +311,7 @@ fn diff(old: &str, new: &str) -> Diff {
     // Remove trailing whitespace
     let trim = |str: &str| {
         str.lines()
-            .map(|line| line.trim_end_matches(' '))
+            .map(|line| line.trim_end_matches(' ').to_string() + "\n")
             .collect::<String>()
     };
 

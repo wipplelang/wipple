@@ -558,7 +558,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
         let expr = self.convert_expr(
             lower::Expression {
                 span: self.entrypoint.span,
-                kind: lower::ExpressionKind::Block(entrypoint),
+                kind: lower::ExpressionKind::Block(entrypoint, true),
             },
             &mut info,
         );
@@ -1068,7 +1068,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                 ty: engine::UnresolvedType::NumericVariable(self.ctx.new_variable()),
                 kind: UnresolvedExpressionKind::Number(number),
             },
-            lower::ExpressionKind::Block(statements) => {
+            lower::ExpressionKind::Block(statements, top_level) => {
                 let prev_block_end = mem::replace(&mut self.block_end, Some(None));
 
                 let mut statements = statements
@@ -1092,17 +1092,18 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                 }
 
                 // Non-terminator statements by default have a type of `()`
-                for statement in statements.iter_mut().dropping_back(1) {
-                    statement.ty.apply(&self.ctx);
+                for statement in statements
+                    .iter_mut()
+                    .dropping_back(if top_level { 0 } else { 1 })
+                {
+                    let var = self.ctx.new_variable();
 
-                    if matches!(statement.ty, engine::UnresolvedType::Variable(_)) {
-                        self.ctx
-                            .unify(
-                                statement.ty.clone(),
-                                engine::UnresolvedType::Tuple(Vec::new()),
-                            )
-                            .unwrap();
-                    }
+                    self.ctx
+                        .unify(
+                            engine::UnresolvedType::TerminatingVariable(var),
+                            statement.ty.clone(),
+                        )
+                        .unwrap();
                 }
 
                 UnresolvedExpression {
@@ -2402,14 +2403,14 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                 match find_instance!(@find params.clone(), $resolve) {
                     // ...if there is a single candidate, return it.
                     Some(Ok(candidate)) => return Ok(candidate),
-                    // ...if there are multiple candiates, try again finalizing numeric variables.
+                    // ...if there are multiple candiates, try again finalizing default variables.
                     Some(Err(_)) => {
                         let params = params
                             .clone()
                             .into_iter()
                             .map(|mut ty| {
                                 ty.apply(&self.ctx);
-                                ty.finalize_numeric_variables(&self.ctx);
+                                ty.finalize_default_variables(&self.ctx);
                                 ty
                             })
                             .collect::<Vec<_>>();
