@@ -26,100 +26,108 @@ export const useRunner = () => {
         analyze: async (id: string, code: string, lint: boolean) => {
             await semaphore.acquire();
 
-            const analysis: AnalysisOutput = await new Promise(async (resolve, reject) => {
-                runner!.onmessage = (event) => {
-                    resolve(event.data);
-                };
+            try {
+                const analysis: AnalysisOutput = await new Promise(async (resolve, reject) => {
+                    runner!.onmessage = (event) => {
+                        resolve(event.data);
+                    };
 
-                runner!.onerror = (event) => {
-                    reject(event.error);
-                };
+                    runner!.onerror = (event) => {
+                        reject(event.error);
+                    };
 
-                runner!.postMessage(
-                    JSON.stringify({
-                        operation: "analyze",
-                        id,
-                        code,
-                        lint,
-                    })
-                );
-            });
+                    runner!.postMessage(
+                        JSON.stringify({
+                            operation: "analyze",
+                            id,
+                            code,
+                            lint,
+                        })
+                    );
+                });
 
-            semaphore.release();
-
-            return analysis;
+                return analysis;
+            } finally {
+                semaphore.release();
+            }
         },
         run: async (id: string) => {
             await semaphore.acquire();
 
-            const output: string = await new Promise(async (resolve, reject) => {
-                runner!.onmessage = (event) => {
-                    resolve(event.data);
-                };
+            try {
+                const output: string = await new Promise(async (resolve, reject) => {
+                    runner!.onmessage = (event) => {
+                        resolve(event.data);
+                    };
 
-                runner!.onerror = (event) => {
-                    reject(event.error);
-                };
+                    runner!.onerror = (event) => {
+                        reject(event.error);
+                    };
 
-                runner!.postMessage(
-                    JSON.stringify({
-                        operation: "run",
-                        id,
-                    })
-                );
-            });
+                    runner!.postMessage(
+                        JSON.stringify({
+                            operation: "run",
+                            id,
+                        })
+                    );
+                });
 
-            semaphore.release();
-
-            return output;
+                return output;
+            } finally {
+                semaphore.release();
+            }
         },
         hover: async (id: string, start: number, end: number) => {
             await semaphore.acquire();
 
-            const hover: HoverOutput = await new Promise(async (resolve, reject) => {
-                runner!.onmessage = (event) => {
-                    resolve(event.data);
-                };
+            try {
+                const hover: HoverOutput = await new Promise(async (resolve, reject) => {
+                    runner!.onmessage = (event) => {
+                        resolve(event.data);
+                    };
 
-                runner!.onerror = (event) => {
-                    reject(event.error);
-                };
+                    runner!.onerror = (event) => {
+                        reject(event.error);
+                    };
 
-                runner!.postMessage(
-                    JSON.stringify({
-                        operation: "hover",
-                        id,
-                        start,
-                        end,
-                    })
-                );
-            });
+                    runner!.postMessage(
+                        JSON.stringify({
+                            operation: "hover",
+                            id,
+                            start,
+                            end,
+                        })
+                    );
+                });
 
-            semaphore.release();
-
-            return hover;
+                return hover;
+            } finally {
+                semaphore.release();
+            }
         },
         remove: async (id: string) => {
             await semaphore.acquire();
 
-            await new Promise<void>(async (resolve, reject) => {
-                runner!.onmessage = (event) => {
-                    resolve(event.data);
-                };
+            try {
+                await new Promise<void>(async (resolve, reject) => {
+                    runner!.onmessage = (event) => {
+                        resolve(event.data);
+                    };
 
-                runner!.onerror = (event) => {
-                    reject(event.error);
-                };
+                    runner!.onerror = (event) => {
+                        reject(event.error);
+                    };
 
-                runner!.postMessage(
-                    JSON.stringify({
-                        operation: "delete",
-                        id,
-                    })
-                );
-            });
-
-            semaphore.release();
+                    runner!.postMessage(
+                        JSON.stringify({
+                            operation: "delete",
+                            id,
+                        })
+                    );
+                });
+            } finally {
+                semaphore.release();
+            }
         },
     };
 };
