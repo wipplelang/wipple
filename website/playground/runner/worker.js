@@ -21,6 +21,10 @@ onmessage = async (event) => {
                 const hover = runner.hover(id, start, end);
                 postMessage(hover);
                 break;
+            case "remove":
+                runner.remove(id);
+                postMessage(null);
+                break;
             default:
                 throw new Error("invalid operation");
         }
