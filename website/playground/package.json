@@ -33,8 +33,7 @@
         "remark-gfm": "^3.0.1",
         "remark-math": "^5.1.1",
         "remark-rehype": "^10.1.0",
-        "remark-smartypants": "^2.0.0",
-        "wipple-website-shared": "../shared"
+        "remark-smartypants": "^2.0.0"
     },
     "devDependencies": {
         "@tailwindcss/typography": "^0.5.2",
@@ -43,6 +42,7 @@
         "@types/prismjs": "^1.26.0",
         "@types/react": "18.0.14",
         "@types/react-dom": "18.0.5",
+        "@types/textarea-caret": "^3.0.1",
         "autoprefixer": "^10.4.7",
         "eslint": "8.18.0",
         "eslint-config-next": "12.1.6",

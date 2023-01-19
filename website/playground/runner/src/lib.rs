@@ -1,24 +1,30 @@
 use lazy_static::lazy_static;
 use loader::Fetcher;
 use serde::Serialize;
-use std::{future::Future, io::Write, pin::Pin, sync::Arc};
+use std::{
+    collections::HashMap,
+    future::Future,
+    io::Write,
+    pin::Pin,
+    sync::{Arc, Mutex},
+};
 use wasm_bindgen::{prelude::*, JsCast};
 use wasm_bindgen_futures::JsFuture;
 use wipple_default_loader as loader;
 
 #[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-struct Output {
-    status: Status,
-    value: String,
+#[serde(tag = "type", content = "diagnostics", rename_all = "camelCase")]
+enum AnalysisOutput {
+    Success,
+    Warning(String),
+    Error(String),
 }
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
-enum Status {
-    Success,
-    Warning,
-    Error,
+struct HoverOutput {
+    code: String,
+    help: String,
 }
 
 // SAFETY: This is safe because Wasm is single-threaded
@@ -38,6 +44,8 @@ impl<F: Future> Future for SendSyncFuture<F> {
 }
 
 lazy_static! {
+    static ref PLAYGROUND_PATH: wipple_frontend::helpers::InternedString = wipple_frontend::helpers::InternedString::new("playground");
+
     static ref LOADER: loader::Loader = {
         loader::Loader::new_with_fetcher(
             None,
@@ -125,63 +133,102 @@ lazy_static! {
                 }),
         )
     };
+
+    #[allow(clippy::let_and_return)]
+    static ref COMPILER: wipple_frontend::Compiler<'static> = {
+        let compiler = wipple_frontend::Compiler::new(&*LOADER);
+
+        #[cfg(debug_assertions)]
+        let compiler = compiler.set_backtrace_enabled(false);
+
+        compiler
+    };
+
+
+    static ref ANALYSIS: Mutex<HashMap<String, Arc<Analysis>>> = Default::default();
+}
+
+#[derive(Debug)]
+struct Analysis {
+    program: wipple_frontend::analysis::Program,
+    success: bool,
+}
+
+fn save_analysis(id: impl ToString, analysis: Analysis) {
+    ANALYSIS
+        .lock()
+        .unwrap()
+        .insert(id.to_string(), Arc::new(analysis));
+}
+
+fn get_analysis(id: &str) -> Option<Arc<Analysis>> {
+    ANALYSIS.lock().unwrap().get(id).cloned()
 }
 
 #[wasm_bindgen]
-pub async fn run(code: String, lint: bool) -> JsValue {
+pub async fn analyze(id: String, code: String, lint: bool) -> JsValue {
     #[cfg(feature = "console_error_panic_hook")]
     console_error_panic_hook::set_once();
 
-    let loader = LOADER.clone();
-
-    let playground_path = wipple_frontend::helpers::InternedString::new("playground");
-
-    loader
+    LOADER
         .virtual_paths
         .lock()
-        .insert(playground_path, Arc::from(code));
+        .insert(*PLAYGROUND_PATH, Arc::from(code));
 
-    let compiler = wipple_frontend::Compiler::new(&loader);
-
-    #[cfg(debug_assertions)]
-    let compiler = compiler.set_backtrace_enabled(false);
-
-    let (program, diagnostics) = compiler
+    let (program, diagnostics) = COMPILER
         .analyze_with(
-            wipple_frontend::FilePath::Virtual(playground_path),
+            wipple_frontend::FilePath::Virtual(*PLAYGROUND_PATH),
             &wipple_frontend::analysis::Options::new().lint(lint),
         )
         .await;
 
     let success = !diagnostics.contains_errors();
-
-    let program = success.then(|| compiler.ir_from(&program));
-
-    let status = match diagnostics.highest_level() {
-        None => Status::Success,
-        Some(wipple_frontend::diagnostics::DiagnosticLevel::Warning) => Status::Warning,
-        Some(wipple_frontend::diagnostics::DiagnosticLevel::Error) => Status::Error,
-    };
+    let highest_level = diagnostics.highest_level();
 
     let (files, diagnostics) = diagnostics.into_console_friendly(
         #[cfg(debug_assertions)]
         false,
     );
 
-    let mut output = Vec::new();
-
-    if !diagnostics.is_empty() {
+    let output = if diagnostics.is_empty() {
+        AnalysisOutput::Success
+    } else {
+        let mut output = Vec::new();
         let mut writer = codespan_reporting::term::termcolor::NoColor::new(&mut output);
-
         let config = codespan_reporting::term::Config::default();
 
         for diagnostic in diagnostics {
             codespan_reporting::term::emit(&mut writer, &config, &files, &diagnostic).unwrap();
         }
-    }
+
+        let output = String::from_utf8(output).unwrap().trim().to_string();
+
+        match highest_level {
+            Some(wipple_frontend::diagnostics::DiagnosticLevel::Warning) => {
+                AnalysisOutput::Warning(output)
+            }
+            Some(wipple_frontend::diagnostics::DiagnosticLevel::Error) => {
+                AnalysisOutput::Error(output)
+            }
+            None => AnalysisOutput::Success,
+        }
+    };
+
+    save_analysis(id, Analysis { program, success });
+
+    JsValue::from_serde(&output).unwrap()
+}
+
+#[wasm_bindgen]
+pub fn run(id: String) -> Option<String> {
+    let Analysis { program, success } = &*get_analysis(&id)?;
+
+    let program = success.then(|| COMPILER.ir_from(&program));
+
+    let mut output = Vec::new();
 
     if let Some(program) = program {
-        if matches!(status, Status::Success | Status::Warning) {
+        if *success {
             let result = {
                 let mut interpreter =
                     wipple_interpreter_backend::Interpreter::handling_output(|text| {
@@ -197,10 +244,189 @@ pub async fn run(code: String, lint: bool) -> JsValue {
         }
     }
 
-    let output = Output {
-        status,
-        value: String::from_utf8(output).unwrap().trim().to_string(),
+    Some(String::from_utf8(output).unwrap().trim().to_string())
+}
+
+#[wasm_bindgen]
+pub fn hover(id: String, start: usize, end: usize) -> JsValue {
+    use wipple_frontend::{
+        analysis::{
+            typecheck::{
+                format::{format_type, Format, TypeFunctionFormat},
+                TraitDecl, TypeDecl,
+            },
+            ExpressionKind, Type,
+        },
+        helpers::InternedString,
+        parse::Span,
+        FilePath,
     };
 
-    JsValue::from_serde(&output).unwrap()
+    let analysis = match get_analysis(&id) {
+        Some(analysis) => analysis,
+        None => return JsValue::NULL,
+    };
+
+    let within_hover = |span: Span| {
+        span.path == FilePath::Virtual(*PLAYGROUND_PATH) && start >= span.start && end <= span.end
+    };
+
+    let format_type = |ty: Type, format: Format| {
+        macro_rules! getter {
+            ($kind:ident, $f:expr) => {
+                |id| $f(analysis.program.declarations.$kind.get(&id).unwrap().name)
+            };
+        }
+
+        format_type(
+            ty,
+            getter!(types, |name: InternedString| name.to_string()),
+            getter!(traits, |name: InternedString| name.to_string()),
+            getter!(type_parameters, |name: Option<_>| {
+                name.as_ref().map(ToString::to_string)
+            }),
+            format,
+        )
+    };
+
+    let mut hovers = Vec::new();
+
+    for (constant, expr) in analysis.program.items.values() {
+        if constant.is_some() {
+            // Skip monomorphized constant types
+            continue;
+        }
+
+        expr.traverse(|expr| {
+            // Don't show type of entire file
+            if let Some(entrypoint) = &analysis.program.entrypoint {
+                if let Some((_, item)) = analysis.program.items.get(&entrypoint) {
+                    if expr.span == item.span {
+                        return;
+                    }
+                }
+            }
+
+            if matches!(
+                expr.kind,
+                ExpressionKind::Variable(_) | ExpressionKind::Constant(_)
+            ) {
+                return;
+            }
+
+            if !within_hover(expr.span) {
+                return;
+            }
+
+            hovers.push((
+                expr.span,
+                HoverOutput {
+                    code: format_type(expr.ty.clone(), Format::default()),
+                    help: String::new(),
+                },
+            ));
+        })
+    }
+
+    macro_rules! type_decls {
+        ($kind:ident $(($opt:tt))?, $str:literal $(, $help:expr)?) => {
+            for decl in analysis.program.declarations.$kind.values() {
+                for span in std::iter::once(decl.span).chain(decl.uses.iter().copied()) {
+                    if !within_hover(span) {
+                        continue;
+                    }
+
+                    hovers.push((
+                        span,
+                        HoverOutput {
+                            code: format!("{} : {}", decl.name, $str),
+                            help: type_decls!(@help decl, $($help)?),
+                        },
+                    ));
+                }
+            }
+        };
+        (@help $decl:ident, $help:expr) => {
+            $help($decl)
+                .into_iter()
+                .map(|line| line.to_string())
+                .collect::<Vec<_>>()
+                .join("\n")
+        };
+        (@help $decl:ident) => {
+            String::new()
+        }
+    }
+
+    type_decls!(types, "type", |decl: &TypeDecl| {
+        decl.attributes.decl_attributes.help.clone()
+    });
+
+    type_decls!(traits, "trait", |decl: &TraitDecl| {
+        decl.attributes.decl_attributes.help.clone()
+    });
+
+    for decl in analysis.program.declarations.constants.values() {
+        for span in std::iter::once(decl.span).chain(decl.uses.iter().copied()) {
+            if !within_hover(span) {
+                continue;
+            }
+
+            let format = Format {
+                type_function: TypeFunctionFormat::Arrow,
+                ..Default::default()
+            };
+            hovers.push((
+                span,
+                HoverOutput {
+                    code: format!("{} :: {}", decl.name, format_type(decl.ty.clone(), format)),
+                    help: decl
+                        .attributes
+                        .decl_attributes
+                        .help
+                        .iter()
+                        .map(|line| line.to_string())
+                        .collect::<Vec<_>>()
+                        .join("\n"),
+                },
+            ));
+        }
+    }
+
+    for decl in analysis.program.declarations.variables.values() {
+        for span in std::iter::once(decl.span).chain(decl.uses.iter().copied()) {
+            if !within_hover(span) {
+                continue;
+            }
+
+            let name = match decl.name {
+                Some(name) => name,
+                None => continue,
+            };
+
+            hovers.push((
+                span,
+                HoverOutput {
+                    code: format!(
+                        "{} :: {}",
+                        name,
+                        format_type(decl.ty.clone(), Format::default())
+                    ),
+                    help: String::new(),
+                },
+            ));
+        }
+    }
+
+    let hover = hovers
+        .into_iter()
+        .min_by_key(|(span, _)| span.end - span.start)
+        .map(|(_, hover)| hover);
+
+    JsValue::from_serde(&hover).unwrap()
+}
+
+#[wasm_bindgen]
+pub fn remove(id: String) {
+    ANALYSIS.lock().unwrap().remove(&id);
 }

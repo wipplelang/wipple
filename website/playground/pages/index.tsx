@@ -31,6 +31,7 @@ import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import { nanoid } from "nanoid";
 import { CodeEditor, TextEditor } from "../components";
 import { useAsyncEffect, useRefState } from "../helpers";
+import { useRunner } from "../runner";
 
 type Section = { id: string; value: string } & (
     | { type: "code"; lint?: boolean }
@@ -126,6 +127,8 @@ const App: NextPage = () => {
     const [activeId, setActiveId] = useState<string | undefined>(undefined);
     const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 1 } }));
 
+    const runner = useRunner();
+
     return (
         <main>
             <Head>
@@ -209,10 +212,11 @@ const App: NextPage = () => {
                                 }}
                                 onPressRemove={
                                     sections.length > 1
-                                        ? () => {
+                                        ? async () => {
                                               const newSections = [...sections];
                                               newSections.splice(index, 1);
                                               setSections(newSections);
+                                              await runner.remove(section.id);
                                           }
                                         : undefined
                                 }
@@ -483,6 +487,7 @@ const SectionContainer = (props: {
         case "code":
             content = (
                 <CodeEditor
+                    id={props.section.id}
                     code={props.section.value}
                     lint={props.section.lint ?? true}
                     autoFocus={props.autoFocus}
