@@ -10,6 +10,7 @@ import { useAsyncEffect } from "../helpers";
 export interface CodeEditorProps {
     code: string;
     lint: boolean;
+    autoFocus: boolean;
     onChange: (code: string) => void;
 }
 
@@ -59,6 +60,7 @@ export const CodeEditor = (props: CodeEditorProps) => {
                 tabSize={2}
                 insertSpaces={false}
                 placeholder="Write your code here!"
+                autoFocus={props.autoFocus}
             />
 
             <animated.div style={animatedOutputStyle}>

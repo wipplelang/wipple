@@ -249,6 +249,7 @@ const App: NextPage = () => {
                             >
                                 <SectionContainer
                                     section={section}
+                                    autoFocus={index === 0}
                                     onChange={(section) => {
                                         const newSections = [...sections];
                                         newSections.splice(index, 1, section);
@@ -266,6 +267,7 @@ const App: NextPage = () => {
 
                                 <SectionContainer
                                     section={sections.find((s) => s.id === activeId)!}
+                                    autoFocus={false}
                                     onChange={() => {}}
                                 />
                             </div>
@@ -471,7 +473,11 @@ const SortableItem = (props: {
     );
 };
 
-const SectionContainer = (props: { section: Section; onChange: (section: Section) => void }) => {
+const SectionContainer = (props: {
+    section: Section;
+    autoFocus: boolean;
+    onChange: (section: Section) => void;
+}) => {
     let content: JSX.Element;
     switch (props.section.type) {
         case "code":
@@ -479,6 +485,7 @@ const SectionContainer = (props: { section: Section; onChange: (section: Section
                 <CodeEditor
                     code={props.section.value}
                     lint={props.section.lint ?? true}
+                    autoFocus={props.autoFocus}
                     onChange={(code) => {
                         props.onChange({
                             ...props.section,
