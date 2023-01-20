@@ -230,7 +230,7 @@ async fn run() -> anyhow::Result<()> {
             }
 
             #[allow(dead_code)]
-            #[derive(Debug)]
+            #[derive(Debug, serde::Serialize)]
             struct Analysis {
                 program: wipple_frontend::analysis::Program,
                 diagnostics: Vec<wipple_frontend::diagnostics::Diagnostic>,
@@ -243,7 +243,7 @@ async fn run() -> anyhow::Result<()> {
                 diagnostics: diagnostics.diagnostics,
             };
 
-            eprintln!("{:#?}", output);
+            serde_json::to_writer_pretty(io::stdout(), &output)?;
 
             if error {
                 return Err(anyhow::Error::msg(""));

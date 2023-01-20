@@ -34,6 +34,7 @@ pub enum Progress {
 }
 
 #[derive(Debug, Clone, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct Program {
     pub items: BTreeMap<ItemId, (Option<ConstantId>, Expression)>,
     pub entrypoint: Option<ItemId>,
@@ -45,6 +46,7 @@ pub struct Program {
 macro_rules! declarations {
     ($name:ident<$($container:ident)::+>) => {
         #[derive(Debug, Clone, Default)]
+        #[cfg_attr(feature = "serde", derive(serde::Serialize))]
         pub struct $name {
             pub types: $($container)::+<TypeId, TypeDecl>,
             pub traits: $($container)::+<TraitId, TraitDecl>,
@@ -80,6 +82,7 @@ impl From<DeclarationsInner> for Declarations {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct TypeDecl {
     pub name: InternedString,
     pub span: Span,
@@ -90,6 +93,7 @@ pub struct TypeDecl {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub enum TypeDeclKind {
     Marker,
     Structure {
@@ -103,6 +107,7 @@ pub enum TypeDeclKind {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct TraitDecl {
     pub name: InternedString,
     pub span: Span,
@@ -114,6 +119,7 @@ pub struct TraitDecl {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct ConstantDecl {
     pub name: InternedString,
     pub span: Span,
@@ -129,6 +135,7 @@ pub struct ConstantDecl {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct InstanceDecl {
     pub span: Span,
     pub params: Vec<(Span, TypeParameterId)>,
@@ -142,6 +149,7 @@ pub struct InstanceDecl {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct Bound {
     pub span: Span,
     pub trait_id: TraitId,
@@ -149,6 +157,7 @@ pub struct Bound {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct OperatorDecl {
     pub name: InternedString,
     pub span: Span,
@@ -156,6 +165,7 @@ pub struct OperatorDecl {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct TemplateDecl {
     pub name: InternedString,
     pub span: Span,
@@ -164,6 +174,7 @@ pub struct TemplateDecl {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct BuiltinTypeDecl {
     pub name: InternedString,
     pub span: Span,
@@ -172,6 +183,7 @@ pub struct BuiltinTypeDecl {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct TypeParameterDecl {
     pub name: Option<InternedString>,
     pub span: Span,
@@ -179,6 +191,7 @@ pub struct TypeParameterDecl {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct VariableDecl {
     pub name: Option<InternedString>,
     pub span: Span,
@@ -190,6 +203,7 @@ macro_rules! expr {
     ($vis:vis, $prefix:literal, $type:ty, { $($kinds:tt)* }) => {
         paste::paste! {
             #[derive(Debug, Clone)]
+            #[cfg_attr(feature = "serde", derive(serde::Serialize))]
             $vis struct [<$prefix Expression>] {
                 $vis span: Span,
                 $vis ty: $type,
@@ -197,6 +211,8 @@ macro_rules! expr {
             }
 
             #[derive(Debug, Clone)]
+            #[cfg_attr(feature = "serde", derive(serde::Serialize))]
+            #[cfg_attr(feature = "serde", serde(tag = "type", content = "value"))]
             $vis enum [<$prefix ExpressionKind>] {
                 Error(Backtrace),
                 Marker,
@@ -217,6 +233,7 @@ macro_rules! expr {
             }
 
             #[derive(Debug, Clone)]
+            #[cfg_attr(feature = "serde", derive(serde::Serialize))]
             $vis struct [<$prefix Arm>] {
                 $vis span: Span,
                 $vis pattern: [<$prefix Pattern>],
@@ -237,12 +254,15 @@ macro_rules! pattern {
     ($vis:vis, $prefix:literal, { $($kinds:tt)* }) => {
         paste::paste! {
             #[derive(Debug, Clone)]
+            #[cfg_attr(feature = "serde", derive(serde::Serialize))]
             $vis struct [<$prefix Pattern>] {
                 $vis span: Span,
                 $vis kind: [<$prefix PatternKind>],
             }
 
             #[derive(Debug, Clone)]
+            #[cfg_attr(feature = "serde", derive(serde::Serialize))]
+            #[cfg_attr(feature = "serde", serde(tag = "type", content = "value"))]
             $vis enum [<$prefix PatternKind>] {
                 Error(Backtrace),
                 Wildcard,

@@ -550,6 +550,7 @@ pub type CaptureList = Vec<(VariableId, Span)>;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, EnumString, Display)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 #[strum(serialize_all = "kebab-case")]
 pub enum RuntimeFunction {
     Crash,

@@ -94,10 +94,11 @@ macro_rules! file_ids {
             $(
                 $(#[$meta])*
                 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-                #[cfg_attr(feature = "serde", derive(serde::Serialize))]
+                #[cfg_attr(feature = "serde", derive(serde::Serialize), serde(transparent))]
                 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
                 pub struct [<$id:camel Id>] {
                     #[cfg_attr(feature = "arbitrary", arbitrary(default))]
+                    #[cfg_attr(feature = "serde", serde(skip))]
                     pub file: Option<FilePath>,
 
                     #[cfg_attr(
@@ -199,7 +200,7 @@ macro_rules! ids {
             $(
                 $(#[$meta])*
                 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-                #[cfg_attr(feature = "serde", derive(serde::Serialize))]
+                #[cfg_attr(feature = "serde", derive(serde::Serialize), serde(transparent))]
                 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
                 pub struct [<$id:camel Id>] {
                     pub counter: usize,
@@ -236,7 +237,7 @@ macro_rules! indexes {
             $(
                 $(#[$meta])*
                 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-                #[cfg_attr(feature = "serde", derive(serde::Serialize))]
+                #[cfg_attr(feature = "serde", derive(serde::Serialize), serde(transparent))]
                 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
                 pub struct [<$id:camel Index>](
                     #[cfg_attr(

@@ -5,7 +5,7 @@ edition = "2021"
 
 [features]
 default = []
-serde = ["dep:serde", "lasso/serialize", "backtrace/serialize-serde"]
+serde = ["dep:serde", "lasso/serialize", "backtrace/serialize-serde", "im/serde"]
 
 [dependencies]
 anyhow = "1"
