@@ -2521,13 +2521,6 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                         None => continue,
                     };
 
-                info.recursion_count += 1;
-
-                info.instance_stack
-                    .entry(tr)
-                    .or_default()
-                    .push((id, instance_params.clone()));
-
                 let mut substitutions = engine::GenericSubstitutions::new();
                 for ty in &mut instance_params {
                     self.add_substitutions(ty, &mut substitutions);
@@ -2537,7 +2530,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
 
                 let mut all_unify = true;
                 for (mut param_ty, mut instance_param_ty) in
-                    params.clone().into_iter().zip(instance_params)
+                    params.clone().into_iter().zip(instance_params.clone())
                 {
                     self.add_substitutions(&mut param_ty, &mut substitutions);
                     self.add_substitutions(&mut instance_param_ty, &mut substitutions);
@@ -2551,6 +2544,13 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                     self.ctx = prev_ctx;
                     continue 'check;
                 }
+
+                info.recursion_count += 1;
+
+                info.instance_stack
+                    .entry(tr)
+                    .or_default()
+                    .push((id, instance_params));
 
                 for mut bound in bounds {
                     for ty in &mut bound.params {
