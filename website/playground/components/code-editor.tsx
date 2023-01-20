@@ -16,7 +16,8 @@ export interface CodeEditorProps {
 }
 
 interface Hover {
-    source: DOMRect;
+    x: number;
+    y: number;
     output: HoverOutput;
 }
 
@@ -138,7 +139,8 @@ export const CodeEditor = (props: CodeEditorProps) => {
         }
 
         setHover({
-            source: hoverElement.getBoundingClientRect(),
+            x: hoverElement.getBoundingClientRect().x,
+            y: hoverElement.getBoundingClientRect().bottom + window.scrollY,
             output,
         });
     }, [props.id, mousePosition]);
@@ -225,28 +227,15 @@ export const CodeEditor = (props: CodeEditorProps) => {
             {hover && (
                 <div>
                     <div
-                        className="bg-slate-300 bg-opacity-25"
+                        className="absolute mt-2 p-2 overflow-clip bg-white dark:bg-gray-900 border-2 border-gray-100 dark:border-gray-700 rounded-lg text-black dark:text-white"
                         style={{
-                            position: "fixed",
-                            top: hover.source.top,
-                            left: hover.source.left,
-                            width: hover.source.width,
-                            height: hover.source.height,
-                            pointerEvents: "none",
-                        }}
-                    />
-
-                    <div
-                        className="bg-white dark:bg-gray-900 border-2 border-gray-100 dark:border-gray-700 rounded-lg overflow-clip mt-2 p-2 text-black dark:text-white"
-                        style={{
-                            position: "fixed",
-                            left: hover.source.left,
-                            top: hover.source.bottom,
+                            left: hover.x,
+                            top: hover.y,
                             maxWidth: 400,
                         }}
                     >
                         {hover.output.code ? (
-                            <div>
+                            <div className="pointer-events-none">
                                 <SimpleCodeEditor
                                     className="code-editor dark:caret-white"
                                     textareaClassName="outline-0"
