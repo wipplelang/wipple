@@ -668,6 +668,8 @@ impl UnresolvedType {
     }
 
     pub fn finalize_default_variables(&mut self, ctx: &Context) {
+        self.apply(ctx);
+
         match self {
             UnresolvedType::Variable(var) => {
                 if let Some(ty) = ctx.substitutions.get(var) {
@@ -676,7 +678,7 @@ impl UnresolvedType {
                 }
             }
             UnresolvedType::TerminatingVariable(var) => {
-                if let Some(ty) = ctx.numeric_substitutions.get(var) {
+                if let Some(ty) = ctx.terminating_substitutions.get(var) {
                     *self = ty.clone();
                     self.finalize_default_variables(ctx);
                 } else {
@@ -700,7 +702,7 @@ impl UnresolvedType {
                     param.finalize_default_variables(ctx);
                 }
 
-                structure.finalize_numeric_variables(ctx);
+                structure.finalize_default_variables(ctx);
             }
             UnresolvedType::Tuple(tys) => {
                 for ty in tys {
@@ -831,7 +833,7 @@ impl TypeStructure<UnresolvedType> {
         }
     }
 
-    pub fn finalize_numeric_variables(&mut self, ctx: &Context) {
+    pub fn finalize_default_variables(&mut self, ctx: &Context) {
         match self {
             TypeStructure::Marker | TypeStructure::Recursive(_) => {}
             TypeStructure::Structure(tys) => {

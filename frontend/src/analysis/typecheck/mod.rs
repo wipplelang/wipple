@@ -2429,7 +2429,6 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                             .clone()
                             .into_iter()
                             .map(|mut ty| {
-                                ty.apply(&self.ctx);
                                 ty.finalize_default_variables(&self.ctx);
                                 ty
                             })
