@@ -13,11 +13,26 @@ use wasm_bindgen_futures::JsFuture;
 use wipple_default_loader as loader;
 
 #[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AnalysisOutput {
+    diagnostics: AnalysisOutputDiagnostics,
+    syntax_highlighting: Vec<AnalysisOutputSyntaxHighlightingItem>,
+}
+
+#[derive(Serialize)]
 #[serde(tag = "type", content = "diagnostics", rename_all = "camelCase")]
-enum AnalysisOutput {
+enum AnalysisOutputDiagnostics {
     Success,
     Warning(String),
     Error(String),
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AnalysisOutputSyntaxHighlightingItem {
+    start: usize,
+    end: usize,
+    kind: &'static str,
 }
 
 #[derive(Serialize)]
@@ -190,8 +205,8 @@ pub async fn analyze(id: String, code: String, lint: bool) -> JsValue {
         false,
     );
 
-    let output = if diagnostics.is_empty() {
-        AnalysisOutput::Success
+    let diagnostics = if diagnostics.is_empty() {
+        AnalysisOutputDiagnostics::Success
     } else {
         let mut output = Vec::new();
         let mut writer = codespan_reporting::term::termcolor::NoColor::new(&mut output);
@@ -205,18 +220,121 @@ pub async fn analyze(id: String, code: String, lint: bool) -> JsValue {
 
         match highest_level {
             Some(wipple_frontend::diagnostics::DiagnosticLevel::Warning) => {
-                AnalysisOutput::Warning(output)
+                AnalysisOutputDiagnostics::Warning(output)
             }
             Some(wipple_frontend::diagnostics::DiagnosticLevel::Error) => {
-                AnalysisOutput::Error(output)
+                AnalysisOutputDiagnostics::Error(output)
             }
-            None => AnalysisOutput::Success,
+            None => AnalysisOutputDiagnostics::Success,
         }
     };
 
+    let syntax_highlighting = get_syntax_highlighting(&program);
+
     save_analysis(id, Analysis { program, success });
 
+    let output = AnalysisOutput {
+        diagnostics,
+        syntax_highlighting,
+    };
+
     JsValue::from_serde(&output).unwrap()
+}
+
+fn get_syntax_highlighting(
+    program: &wipple_frontend::analysis::Program,
+) -> Vec<AnalysisOutputSyntaxHighlightingItem> {
+    let playground_path = wipple_frontend::FilePath::Virtual(*PLAYGROUND_PATH);
+
+    let mut items = Vec::new();
+
+    macro_rules! insert_semantic_tokens {
+        ($kind:ident, $condition:expr, $token:expr) => {
+            for (id, decl) in &program.declarations.$kind {
+                if $condition(id, decl) {
+                    if decl.span.path == playground_path {
+                        items.push(AnalysisOutputSyntaxHighlightingItem {
+                            start: decl.span.start,
+                            end: decl.span.end,
+                            kind: $token(decl),
+                        });
+                    }
+
+                    for &span in &decl.uses {
+                        if span.path == playground_path {
+                            items.push(AnalysisOutputSyntaxHighlightingItem {
+                                start: span.start,
+                                end: span.end,
+                                kind: $token(decl),
+                            });
+                        }
+                    }
+                }
+            }
+        };
+        ($kind:ident, $token:expr) => {
+            insert_semantic_tokens!($kind, |_, _| true, $token)
+        };
+    }
+
+    insert_semantic_tokens!(types, |_| "type");
+    insert_semantic_tokens!(traits, |_| "trait");
+    insert_semantic_tokens!(constants, |_| "variable");
+    insert_semantic_tokens!(operators, |_| "operator");
+    insert_semantic_tokens!(
+        templates,
+        |id, _| !program.declarations.operators.contains_key(id),
+        |decl: &wipple_frontend::analysis::typecheck::TemplateDecl| {
+            if decl.attributes.keyword {
+                "keyword"
+            } else {
+                "template"
+            }
+        }
+    );
+    insert_semantic_tokens!(builtin_types, |_| "type");
+    insert_semantic_tokens!(type_parameters, |_| "type-parameter");
+    insert_semantic_tokens!(variables, |_| "variable");
+
+    let mut traverse_semantic_tokens = |expr: &wipple_frontend::analysis::Expression| {
+        if expr.span.path != playground_path {
+            return;
+        }
+
+        if matches!(
+            expr.kind,
+            wipple_frontend::analysis::ExpressionKind::Variable(_)
+                | wipple_frontend::analysis::ExpressionKind::Constant(_)
+        ) && matches!(expr.ty, wipple_frontend::analysis::Type::Function(_, _))
+        {
+            items.push(AnalysisOutputSyntaxHighlightingItem {
+                start: expr.span.start,
+                end: expr.span.end,
+                kind: "function",
+            });
+        }
+    };
+
+    for decl in program.declarations.constants.values() {
+        if let Some(expr) = &decl.body {
+            expr.traverse(&mut traverse_semantic_tokens);
+        }
+    }
+
+    for (constant, expr) in program.items.values() {
+        if constant.is_some() {
+            // Skip monomorphized constant types
+            continue;
+        }
+
+        expr.traverse(&mut traverse_semantic_tokens);
+    }
+
+    items.reverse();
+    items.sort_by_key(|item| item.start);
+    items.dedup_by_key(|item| (item.start, item.end));
+
+    items
 }
 
 #[wasm_bindgen]

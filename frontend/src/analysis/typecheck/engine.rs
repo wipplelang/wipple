@@ -271,9 +271,12 @@ impl Context {
                     _ => {}
                 }
 
-                self.terminating_substitutions.insert(var, ty);
-
-                Ok(())
+                if ty.contains(&var) {
+                    Err(TypeError::Recursive(var))
+                } else {
+                    self.terminating_substitutions.insert(var, ty);
+                    Ok(())
+                }
             }
             (ty, UnresolvedType::TerminatingVariable(var)) => {
                 match &ty {
@@ -286,9 +289,12 @@ impl Context {
                     _ => return Err(mismatch!(ty, UnresolvedType::TerminatingVariable(var))),
                 }
 
-                self.terminating_substitutions.insert(var, ty);
-
-                Ok(())
+                if ty.contains(&var) {
+                    Err(TypeError::Recursive(var))
+                } else {
+                    self.terminating_substitutions.insert(var, ty);
+                    Ok(())
+                }
             }
             (UnresolvedType::NumericVariable(var), ty) => {
                 match &ty {
@@ -303,9 +309,12 @@ impl Context {
                     }
                 }
 
-                self.numeric_substitutions.insert(var, ty);
-
-                Ok(())
+                if ty.contains(&var) {
+                    Err(TypeError::Recursive(var))
+                } else {
+                    self.numeric_substitutions.insert(var, ty);
+                    Ok(())
+                }
             }
             (ty, UnresolvedType::NumericVariable(var)) => {
                 match &ty {
@@ -320,9 +329,12 @@ impl Context {
                     }
                 }
 
-                self.numeric_substitutions.insert(var, ty);
-
-                Ok(())
+                if ty.contains(&var) {
+                    Err(TypeError::Recursive(var))
+                } else {
+                    self.numeric_substitutions.insert(var, ty);
+                    Ok(())
+                }
             }
             (
                 UnresolvedType::Named(actual_id, actual_params, actual_structure),
@@ -512,7 +524,9 @@ impl UnresolvedType {
 
     pub fn contains(&self, var: &TypeVariable) -> bool {
         match self {
-            UnresolvedType::Variable(v) => v == var,
+            UnresolvedType::Variable(v)
+            | UnresolvedType::TerminatingVariable(v)
+            | UnresolvedType::NumericVariable(v) => v == var,
             UnresolvedType::Function(input, output) => input.contains(var) || output.contains(var),
             UnresolvedType::Named(_, params, _) => params.iter().any(|param| param.contains(var)),
             UnresolvedType::Tuple(tys) => tys.iter().any(|ty| ty.contains(var)),

@@ -1,9 +1,20 @@
 import { Semaphore, useAsyncEffect } from "../helpers";
 
-export type AnalysisOutput =
+export interface AnalysisOutput {
+    diagnostics: AnalysisOutputDiagnostics;
+    syntaxHighlighting: AnalysisOutputSyntaxHighlightingItem[];
+}
+
+export type AnalysisOutputDiagnostics =
     | { type: "success" }
     | { type: "warning"; diagnostics: string }
     | { type: "error"; diagnostics: string };
+
+export interface AnalysisOutputSyntaxHighlightingItem {
+    start: number;
+    end: number;
+    kind: string;
+}
 
 export interface HoverOutput {
     code: string;

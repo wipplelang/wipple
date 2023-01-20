@@ -4,7 +4,13 @@ import * as prism from "prismjs";
 import { debounce, useMediaQuery } from "@mui/material";
 import { Globals as SpringGlobals, useSpring, animated } from "react-spring";
 import useMeasure from "react-use-measure";
-import { AnalysisOutput, HoverOutput, useRunner } from "../runner";
+import {
+    AnalysisOutput,
+    AnalysisOutputDiagnostics,
+    AnalysisOutputSyntaxHighlightingItem,
+    HoverOutput,
+    useRunner,
+} from "../runner";
 import { useAsyncEffect } from "../helpers";
 
 export interface CodeEditorProps {
@@ -25,7 +31,11 @@ export const CodeEditor = (props: CodeEditorProps) => {
     const editorID = `code-editor-${props.id}`;
     const textAreaID = `code-editor-text-${props.id}`;
 
-    const [output, setOutput_] = useState<AnalysisOutput | string | undefined>();
+    const [syntaxHighlighting, setSyntaxHighlighting] = useState<
+        AnalysisOutputSyntaxHighlightingItem[]
+    >([]);
+
+    const [output, setOutput_] = useState<AnalysisOutputDiagnostics | string | undefined>();
     const setOutput = debounce(setOutput_, 100);
 
     const [outputRef, { height: outputHeight }] = useMeasure();
@@ -46,10 +56,15 @@ export const CodeEditor = (props: CodeEditorProps) => {
         () =>
             debounce(async (code: string, lint: boolean) => {
                 try {
+                    setSyntaxHighlighting([]); // FIXME: Prevent flashing
+                    console.log("start");
                     const analysis = await runner.analyze(props.id, code, lint);
-                    setOutput(analysis);
+                    console.log("end");
+                    setSyntaxHighlighting(analysis.syntaxHighlighting);
+                    setOutput(analysis.diagnostics);
+                    console.warn(analysis.diagnostics);
 
-                    if (analysis.type !== "error") {
+                    if (analysis.diagnostics.type !== "error") {
                         const output = await runner.run(props.id);
                         setOutput(output);
                     }
@@ -144,6 +159,10 @@ export const CodeEditor = (props: CodeEditorProps) => {
             output,
         });
     }, [props.id, mousePosition]);
+
+    useEffect(() => {
+        console.log(syntaxHighlighting);
+    }, [syntaxHighlighting]);
 
     return (
         <div className="bg-white dark:bg-gray-900 border-2 border-gray-100 dark:border-gray-700 rounded-lg overflow-clip">

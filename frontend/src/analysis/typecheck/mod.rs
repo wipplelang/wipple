@@ -671,11 +671,11 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                 Err(error) => {
                     self.add_error(self.error(error, span));
 
-                    let expr = Some(Expression {
+                    let expr = Expression {
                         span: expr.span,
                         ty: engine::Type::Error,
                         kind: ExpressionKind::error(self.compiler),
-                    });
+                    };
 
                     self.declarations
                         .borrow_mut()
@@ -684,7 +684,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                         .unwrap()
                         .get_mut(&id)
                         .unwrap()
-                        .body = expr;
+                        .body = Some(expr);
 
                     return;
                 }
@@ -1033,32 +1033,24 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                 }
             }
             lower::ExpressionKind::Trait(id) => {
-                let mut ty = match self.with_trait_decl(id, |decl| {
-                    (decl.span, decl.ty.clone().map(engine::UnresolvedType::from))
-                }) {
-                    Some((_, Some(ty))) => ty,
-                    Some((span, None)) => {
-                        self.compiler.add_error(
-                            "cannot use this trait as a value",
-                            vec![
-                                Note::primary(
-                                    expr.span,
-                                    "this trait does not store a value and may only be used at the type level"
-                                ),
-                                Note::secondary(span, "trait defined here"),
-                            ],
-                        );
+                let ty = if let Some((span, false)) =
+                    self.with_trait_decl(id, |decl| (decl.span, decl.ty.is_some()))
+                {
+                    self.compiler.add_error(
+                        "cannot use this trait as a value",
+                        vec![
+                            Note::primary(
+                                expr.span,
+                                "this trait does not store a value and may only be used at the type level"
+                            ),
+                            Note::secondary(span, "trait defined here"),
+                        ],
+                    );
 
-                        return UnresolvedExpression {
-                            span: expr.span,
-                            ty: engine::UnresolvedType::Error,
-                            kind: UnresolvedExpressionKind::error(self.compiler),
-                        };
-                    }
-                    None => engine::UnresolvedType::Error,
+                    engine::UnresolvedType::Error
+                } else {
+                    engine::UnresolvedType::Variable(self.ctx.new_variable())
                 };
-
-                self.instantiate_generics(&mut ty);
 
                 UnresolvedExpression {
                     span: expr.span,
@@ -1777,32 +1769,10 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                     MonomorphizedExpressionKind::End(Box::new(self.monomorphize_expr(*value, info)))
                 }
                 UnresolvedExpressionKind::Call(func, input) => {
-                    let func = *func;
-                    let input = *input;
-
-                    // HACK: Resolve function calls in both orders to match as
-                    // many instances as possible
-                    let (func, input) = {
-                        // This is cheap because typechecker uses persistent
-                        // data structures
-                        let mut typechecker = self.clone();
-
-                        let errors = mem::take(&mut typechecker.errors);
-
-                        let monomorphized_input =
-                            typechecker.monomorphize_expr(input.clone(), info);
-                        let monomorphized_func = typechecker.monomorphize_expr(func.clone(), info);
-
-                        if typechecker.errors.is_empty() {
-                            typechecker.errors = errors;
-                            *self = typechecker;
-                            (monomorphized_func, monomorphized_input)
-                        } else {
-                            let monomorphized_func = self.monomorphize_expr(func, info);
-                            let monomorphized_input = self.monomorphize_expr(input, info);
-                            (monomorphized_func, monomorphized_input)
-                        }
-                    };
+                    // NOTE: The input must be monomorphized before the function
+                    // so traits are resolved correctly
+                    let input = self.monomorphize_expr(*input, info);
+                    let func = self.monomorphize_expr(*func, info);
 
                     MonomorphizedExpressionKind::Call(Box::new(func), Box::new(input))
                 }
@@ -2327,13 +2297,10 @@ impl<'a, 'l> Typechecker<'a, 'l> {
             None => return Ok(None),
         };
 
-        let mut trait_ty = tr_decl
+        let trait_ty = tr_decl
             .ty
             .clone()
-            .expect("`instance_for_ty` may only be used with traits that have values")
-            .into();
-
-        self.instantiate_generics(&mut trait_ty);
+            .expect("`instance_for_ty` may only be used with traits that have values");
 
         if let Err(error) = self.unify(use_span, ty.clone(), trait_ty) {
             self.add_error(error);
@@ -2377,7 +2344,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
         {
             self.compiler.add_error(
                 "recursion limit reached",
-                vec![Note::primary(use_span, "try simplifying this")],
+                vec![Note::primary(use_span, "while computing this")],
             );
 
             return Ok(None);
@@ -2477,13 +2444,11 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                 let prev_ctx = self.ctx.clone();
 
                 let mut all_unify = true;
-                for (param_ty, mut instance_param_ty) in
-                    params.clone().into_iter().zip(instance_params)
+                for (param_ty, instance_param_ty) in params.clone().into_iter().zip(instance_params)
                 {
-                    self.instantiate_generics(&mut instance_param_ty);
-
                     if self.ctx.unify(param_ty, instance_param_ty).is_err() {
                         all_unify = false;
+                        break;
                     }
                 }
 
@@ -2518,7 +2483,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                         Some((instance_params, instance_span, bounds)) => {
                             (instance_params, instance_span, bounds)
                         }
-                        None => continue,
+                        None => continue 'check,
                     };
 
                 let mut substitutions = engine::GenericSubstitutions::new();
@@ -2569,6 +2534,10 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                     {
                         self.ctx = prev_ctx;
                         error_candidates.push(instance_span);
+
+                        info.instance_stack.entry(tr).or_default().pop();
+                        info.recursion_count -= 1;
+
                         continue 'check;
                     }
                 }
@@ -3503,14 +3472,17 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                     for (instance_param_ty, other_param_ty) in
                         params.clone().into_iter().zip(other.trait_params)
                     {
+                        let mut substitutions = engine::GenericSubstitutions::new();
+
                         let mut instance_param_ty = engine::UnresolvedType::from(instance_param_ty);
-                        self.instantiate_generics(&mut instance_param_ty);
+                        self.add_substitutions(&mut instance_param_ty, &mut substitutions);
 
                         let mut other_param_ty = engine::UnresolvedType::from(other_param_ty);
-                        self.instantiate_generics(&mut other_param_ty);
+                        self.add_substitutions(&mut other_param_ty, &mut substitutions);
 
                         if self.ctx.unify(instance_param_ty, other_param_ty).is_err() {
                             all_unify = false;
+                            break;
                         }
                     }
 
