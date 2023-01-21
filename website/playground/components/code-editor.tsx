@@ -57,12 +57,9 @@ export const CodeEditor = (props: CodeEditorProps) => {
             debounce(async (code: string, lint: boolean) => {
                 try {
                     setSyntaxHighlighting([]); // FIXME: Prevent flashing
-                    console.log("start");
                     const analysis = await runner.analyze(props.id, code, lint);
-                    console.log("end");
                     setSyntaxHighlighting(analysis.syntaxHighlighting);
                     setOutput(analysis.diagnostics);
-                    console.warn(analysis.diagnostics);
 
                     if (analysis.diagnostics.type !== "error") {
                         const output = await runner.run(props.id);
@@ -161,7 +158,28 @@ export const CodeEditor = (props: CodeEditorProps) => {
     }, [props.id, mousePosition]);
 
     useEffect(() => {
-        console.log(syntaxHighlighting);
+        const nodes = [
+            ...document.querySelectorAll<HTMLSpanElement>(
+                `#${editorID} .language-wipple span.token`
+            ),
+        ];
+
+        let currentNode = nodes.shift();
+        if (!currentNode) return;
+
+        let start = 0;
+
+        outer: for (const item of syntaxHighlighting) {
+            while (item.start !== start && item.end !== start + currentNode.innerText.length) {
+                start += currentNode.innerText.length;
+                currentNode = nodes.shift();
+                if (!currentNode) break outer;
+            }
+
+            currentNode.classList.add(item.kind);
+        }
+
+        console.log(nodes);
     }, [syntaxHighlighting]);
 
     return (

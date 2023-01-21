@@ -293,7 +293,7 @@ fn get_syntax_highlighting(
         }
     );
     insert_semantic_tokens!(builtin_types, |_| "type");
-    insert_semantic_tokens!(type_parameters, |_| "type-parameter");
+    insert_semantic_tokens!(type_parameters, |_| "type");
     insert_semantic_tokens!(variables, |_| "variable");
 
     let mut traverse_semantic_tokens = |expr: &wipple_frontend::analysis::Expression| {
