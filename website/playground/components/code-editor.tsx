@@ -169,17 +169,15 @@ export const CodeEditor = (props: CodeEditorProps) => {
 
         let start = 0;
 
-        outer: for (const item of syntaxHighlighting) {
+        for (const item of syntaxHighlighting) {
             while (item.start !== start && item.end !== start + currentNode.innerText.length) {
                 start += currentNode.innerText.length;
                 currentNode = nodes.shift();
-                if (!currentNode) break outer;
+                if (!currentNode) return;
             }
 
             currentNode.classList.add(item.kind);
         }
-
-        console.log(nodes);
     }, [syntaxHighlighting]);
 
     return (
