@@ -14,7 +14,7 @@
         {
             "id": "xnCvI0N6",
             "type": "text",
-            "value": "Uh-oh, we get an error! Wipple's type inference determined that `it` has the type `Number -> Number` based on its usage in `show (it 42)`. So that means we can't use `it` with `Text` at the same time! Ideally, we could have `it` accept _any value_.\n\nTo make `it` more general, we can provide a type function:",
+            "value": "Uh-oh, we get an error! Wipple's type inference determined that `it` has the type `Number -> Number` based on its usage in `show (it 42)` (try double-clicking on `it` to see). So that means we can't use `it` with `Text` at the same time! Ideally, we could have `it` accept _any value_.\n\nTo make `it` more general, we can provide a type function:",
             "locked": true
         },
         { "id": "DahaLo0J", "type": "code", "value": "it :: A => A -> A\nit : x -> x" },

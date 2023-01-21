@@ -14,7 +14,7 @@
         {
             "id": "HmKdvwFY",
             "type": "text",
-            "value": "As you can see, `when` accepts an input and a bunch of functions to choose from. On the left-hand side of the `->`, we provide a number, and on the right-hand side, a value that `when` will pick if the input matches the number. This concept is aptly called \"pattern matching\"!\n\nYou can also use pattern matching on text:",
+            "value": "As you can see, `when` accepts an input and a bunch of functions to choose from. On the left-hand side of the `->`, we provide a number, and on the right-hand side, a value that `when` will pick if the input matches the number. If none of the numbers are matched, the `_` pattern serves as a catch-all. This concept is aptly called \"pattern matching\"!\n\nYou can also use pattern matching on text:",
             "locked": true
         },
         {

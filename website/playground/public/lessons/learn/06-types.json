@@ -3,7 +3,19 @@
         {
             "id": "X8fvwv7g",
             "type": "text",
-            "value": "# Types\n\nWipple has a powerful system to detect bugs in your code, called the **type system**. The type system assigns every value in your program a **type**, which represents the \"kind of thing\" each value is.\n\nJust like `:` is used to assign a name a value, the `::` symbol (pronounced _\"is a\"_) is used to assign a value a type. Here's a simple example:\n\n```\n42 :: Number -- \"42 is a Number\"\n\"hello\" :: Text -- \"'hello' is a Text\"\n```\n\nLet's see what happens if we make a mistake:",
+            "value": "# Types\n\nWipple has a powerful system to detect bugs in your code, called the **type system**. The type system assigns every value in your program a **type**, which represents the \"kind of thing\" each value is.\n\nJust like `:` is used to assign a name a value, the `::` symbol (pronounced _\"is a\"_) is used to assign a value a type. Here's a simple example:",
+            "locked": true
+        },
+        {
+            "id": "9C0MC2wR",
+            "type": "code",
+            "value": "42 :: Number -- \"42 is a Number\"\n\"hello\" :: Text -- \"'hello' is a Text\"",
+            "lint": false
+        },
+        {
+            "id": "Wnu-SFH5",
+            "type": "text",
+            "value": "Let’s see what happens if we make a mistake:",
             "locked": true
         },
         { "id": "iFmWOhj8", "type": "code", "value": "42 :: Text" },
@@ -43,7 +55,7 @@
         {
             "id": "xeNcxT2r",
             "type": "text",
-            "value": "Wipple was able to determine that `greet` has type `Text -> Text` based on its usage!\n\nOne last note — what's the type of `show`? `show` accepts `Text`, sure, but it doesn't produce any result. Wipple has a special type for functions that produce no result: the empty list `()`. So the type of `show` is `show :: Text -> ()`! If you aren't convinced, try assigning `show \"hello\"` to a variable and add `:: ()` to explicitly state the type.\n\nOn the next page, we'll take an even deeper dive into types!",
+            "value": "Try double-clicking on `greet`. You'll see that Wipple was able to determine its type is `Text -> Text` based on its usage!\n\nOne last note — what's the type of `show greeting`? `show` accepts `Text`, sure, but it doesn't produce any result. Wipple has a special type for functions that produce no result: the empty list `()`. So the type of `show greeting` is `()`! If you aren't convinced, try assigning `show greeting` to a variable, `result`, and double-clicking on it.\n\nOn the next page, we’ll take an even deeper dive into types!",
             "locked": true
         }
     ],

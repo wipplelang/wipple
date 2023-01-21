@@ -256,7 +256,7 @@ fn get_syntax_highlighting(
                         items.push(AnalysisOutputSyntaxHighlightingItem {
                             start: decl.span.start,
                             end: decl.span.end,
-                            kind: $token(decl),
+                            kind: $token(id, decl),
                         });
                     }
 
@@ -265,7 +265,7 @@ fn get_syntax_highlighting(
                             items.push(AnalysisOutputSyntaxHighlightingItem {
                                 start: span.start,
                                 end: span.end,
-                                kind: $token(decl),
+                                kind: $token(id, decl),
                             });
                         }
                     }
@@ -277,14 +277,25 @@ fn get_syntax_highlighting(
         };
     }
 
-    insert_semantic_tokens!(types, |_| "type");
-    insert_semantic_tokens!(traits, |_| "trait");
-    insert_semantic_tokens!(constants, |_| "variable");
-    insert_semantic_tokens!(operators, |_| "operator");
+    insert_semantic_tokens!(types, |_, _| "type");
+    insert_semantic_tokens!(traits, |_, _| "trait");
+    insert_semantic_tokens!(constants, |_, _| "variable");
+    insert_semantic_tokens!(operators, |id, _| {
+        if program
+            .declarations
+            .templates
+            .get(id)
+            .map_or(false, |decl| decl.attributes.keyword)
+        {
+            "keyword"
+        } else {
+            "operator"
+        }
+    });
     insert_semantic_tokens!(
         templates,
         |id, _| !program.declarations.operators.contains_key(id),
-        |decl: &wipple_frontend::analysis::typecheck::TemplateDecl| {
+        |_, decl: &wipple_frontend::analysis::typecheck::TemplateDecl| {
             if decl.attributes.keyword {
                 "keyword"
             } else {
@@ -292,9 +303,9 @@ fn get_syntax_highlighting(
             }
         }
     );
-    insert_semantic_tokens!(builtin_types, |_| "type");
-    insert_semantic_tokens!(type_parameters, |_| "type");
-    insert_semantic_tokens!(variables, |_| "variable");
+    insert_semantic_tokens!(builtin_types, |_, _| "type");
+    insert_semantic_tokens!(type_parameters, |_, _| "type");
+    insert_semantic_tokens!(variables, |_, _| "variable");
 
     let mut traverse_semantic_tokens = |expr: &wipple_frontend::analysis::Expression| {
         if expr.span.path != playground_path {

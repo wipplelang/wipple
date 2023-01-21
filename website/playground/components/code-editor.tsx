@@ -260,39 +260,38 @@ export const CodeEditor = (props: CodeEditorProps) => {
             </animated.div>
 
             {hover && (
-                <div>
-                    <div
-                        className="absolute mt-2 p-2 overflow-clip bg-white dark:bg-gray-900 border-2 border-gray-100 dark:border-gray-700 rounded-lg text-black dark:text-white"
-                        style={{
-                            left: hover.x,
-                            top: hover.y,
-                            maxWidth: 400,
-                        }}
-                    >
-                        {hover.output.code ? (
-                            <div className="pointer-events-none">
-                                <SimpleCodeEditor
-                                    className="code-editor dark:caret-white"
-                                    textareaClassName="outline-0"
-                                    preClassName="language-wipple"
-                                    style={{
-                                        fontFamily: "'JetBrains Mono', monospace",
-                                        fontStyle: props.code ? "normal" : "italic",
-                                        fontVariantLigatures: "none",
-                                        wordWrap: "break-word",
-                                    }}
-                                    value={hover.output.code}
-                                    highlight={(code) =>
-                                        prism.highlight(code, prism.languages.wipple, "wipple")
-                                    }
-                                    onValueChange={() => {}}
-                                    contentEditable={false}
-                                />
+                <div
+                    className="absolute mt-2 p-2 overflow-clip bg-white dark:bg-gray-900 border-2 border-gray-100 dark:border-gray-700 rounded-lg text-black dark:text-white"
+                    style={{
+                        left: hover.x,
+                        top: hover.y,
+                        maxWidth: 400,
+                        zIndex: 9999,
+                    }}
+                >
+                    {hover.output.code ? (
+                        <div className="pointer-events-none">
+                            <SimpleCodeEditor
+                                className="code-editor dark:caret-white"
+                                textareaClassName="outline-0"
+                                preClassName="language-wipple"
+                                style={{
+                                    fontFamily: "'JetBrains Mono', monospace",
+                                    fontStyle: props.code ? "normal" : "italic",
+                                    fontVariantLigatures: "none",
+                                    wordWrap: "break-word",
+                                }}
+                                value={hover.output.code}
+                                highlight={(code) =>
+                                    prism.highlight(code, prism.languages.wipple, "wipple")
+                                }
+                                onValueChange={() => {}}
+                                contentEditable={false}
+                            />
 
-                                {hover.output.help ? <p>{hover.output.help}</p> : null}
-                            </div>
-                        ) : null}
-                    </div>
+                            {hover.output.help ? <p>{hover.output.help}</p> : null}
+                        </div>
+                    ) : null}
                 </div>
             )}
         </div>
