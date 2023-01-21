@@ -706,16 +706,11 @@ impl<'a, 'l> Typechecker<'a, 'l> {
         }
 
         let expr = self.convert_expr(expr, &mut ConvertInfo::default());
-
         if let Err(error) = self.ctx.unify_generic(expr.ty.clone(), generic_ty.clone()) {
             self.add_error(self.error(error, expr.span));
         }
 
         let expr = self.monomorphize_expr(expr, &mut monomorphize_info);
-
-        // Before finalizing, substitute the generics back in
-        let _ = self.ctx.unify(expr.ty.clone(), generic_ty);
-
         let expr = self.finalize_expr(expr);
 
         if let Some(tr) = tr {
@@ -826,8 +821,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                 variables: Default::default(),
             };
 
-            let temp_ctx = self.ctx.clone();
-            let prev_ctx = mem::replace(&mut self.ctx, temp_ctx);
+            let prev_ctx = self.ctx.clone();
 
             if let Err(error) = self.unify(use_span, use_ty.clone(), generic_ty.clone()) {
                 if is_last_candidate(index) {
@@ -1033,7 +1027,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                 }
             }
             lower::ExpressionKind::Trait(id) => {
-                let ty = if let Some((span, false)) =
+                let mut ty = if let Some((span, false)) =
                     self.with_trait_decl(id, |decl| (decl.span, decl.ty.is_some()))
                 {
                     self.compiler.add_error(
@@ -1051,6 +1045,8 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                 } else {
                     engine::UnresolvedType::Variable(self.ctx.new_variable())
                 };
+
+                self.instantiate_generics(&mut ty);
 
                 UnresolvedExpression {
                     span: expr.span,
@@ -1769,10 +1765,27 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                     MonomorphizedExpressionKind::End(Box::new(self.monomorphize_expr(*value, info)))
                 }
                 UnresolvedExpressionKind::Call(func, input) => {
-                    // NOTE: The input must be monomorphized before the function
-                    // so traits are resolved correctly
-                    let input = self.monomorphize_expr(*input, info);
-                    let func = self.monomorphize_expr(*func, info);
+                    // If the input is another function, monomorphize the outer
+                    // function first for optimal type inference
+
+                    let func = *func;
+                    let input = *input;
+
+                    let input_is_function = {
+                        let mut input_ty = input.ty.clone();
+                        input_ty.apply(&self.ctx);
+                        matches!(input_ty, engine::UnresolvedType::Function(_, _))
+                    };
+
+                    let (func, input) = if input_is_function {
+                        let func = self.monomorphize_expr(func, info);
+                        let input = self.monomorphize_expr(input, info);
+                        (func, input)
+                    } else {
+                        let input = self.monomorphize_expr(input, info);
+                        let func = self.monomorphize_expr(func, info);
+                        (func, input)
+                    };
 
                     MonomorphizedExpressionKind::Call(Box::new(func), Box::new(input))
                 }
@@ -1780,7 +1793,6 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                     let pattern = match expr.ty {
                         engine::UnresolvedType::Function(input_ty, _) => {
                             let mut input_ty = *input_ty;
-
                             input_ty.apply(&self.ctx);
 
                             let mut match_set = MatchSet::new(&input_ty);
@@ -2297,10 +2309,13 @@ impl<'a, 'l> Typechecker<'a, 'l> {
             None => return Ok(None),
         };
 
-        let trait_ty = tr_decl
+        let mut trait_ty = tr_decl
             .ty
             .clone()
-            .expect("`instance_for_ty` may only be used with traits that have values");
+            .expect("`instance_for_ty` may only be used with traits that have values")
+            .into();
+
+        self.instantiate_generics(&mut trait_ty);
 
         if let Err(error) = self.unify(use_span, ty.clone(), trait_ty) {
             self.add_error(error);
