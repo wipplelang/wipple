@@ -2335,13 +2335,13 @@ impl<'a, 'l> Typechecker<'a, 'l> {
         bound_span: Option<Span>,
         info: &mut MonomorphizeInfo,
     ) -> Result<Option<ConstantId>, Error> {
-        if info.recursion_count
-            > self
-                .entrypoint
-                .global_attributes
-                .recursion_limit
-                .unwrap_or(Compiler::DEFAULT_RECURSION_LIMIT)
-        {
+        let recursion_limit = self
+            .entrypoint
+            .global_attributes
+            .recursion_limit
+            .unwrap_or(Compiler::DEFAULT_RECURSION_LIMIT);
+
+        if info.recursion_count > recursion_limit {
             self.compiler.add_error(
                 "recursion limit reached",
                 vec![Note::primary(use_span, "while computing this")],
@@ -2510,40 +2510,36 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                     continue 'check;
                 }
 
-                info.recursion_count += 1;
-
-                info.instance_stack
-                    .entry(tr)
-                    .or_default()
-                    .push((id, instance_params));
-
                 for mut bound in bounds {
+                    info.recursion_count += 1;
+
+                    info.instance_stack
+                        .entry(tr)
+                        .or_default()
+                        .push((id, bound.params.clone()));
+
                     for ty in &mut bound.params {
                         self.add_substitutions(ty, &mut substitutions);
                     }
 
-                    if self
-                        .instance_for_params(
-                            bound.trait_id,
-                            bound.params,
-                            bound.span,
-                            Some(bound.span),
-                            info,
-                        )
-                        .is_err()
-                    {
+                    let result = self.instance_for_params(
+                        bound.trait_id,
+                        bound.params,
+                        bound.span,
+                        Some(bound.span),
+                        info,
+                    );
+
+                    info.instance_stack.entry(tr).or_default().pop();
+                    info.recursion_count -= 1;
+
+                    if result.is_err() {
                         self.ctx = prev_ctx;
                         error_candidates.push(instance_span);
-
-                        info.instance_stack.entry(tr).or_default().pop();
-                        info.recursion_count -= 1;
 
                         continue 'check;
                     }
                 }
-
-                info.instance_stack.entry(tr).or_default().pop();
-                info.recursion_count -= 1;
 
                 let ctx = mem::replace(&mut self.ctx, prev_ctx);
 

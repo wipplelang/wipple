@@ -102,6 +102,14 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
                                 ),
                             );
 
+                            expander.declarations.lock().operators.insert(
+                                id,
+                                Operator {
+                                    precedence,
+                                    template: id,
+                                },
+                            );
+
                             scope.values.lock().insert(
                                 name,
                                 ScopeValue::Operator(Operator {
