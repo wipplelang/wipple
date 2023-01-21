@@ -218,7 +218,7 @@ macro_rules! expr {
                 Marker,
                 Variable(VariableId),
                 Text(InternedString),
-                Block(Vec<[<$prefix Expression>]>),
+                Block(Vec<[<$prefix Expression>]>, bool),
                 End(Box<[<$prefix Expression>]>),
                 Call(Box<[<$prefix Expression>]>, Box<[<$prefix Expression>]>),
                 Function([<$prefix Pattern>], Box<[<$prefix Expression>]>, lower::CaptureList),
@@ -1079,7 +1079,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
             lower::ExpressionKind::Block(statements, top_level) => {
                 let prev_block_end = mem::replace(&mut self.block_end, Some(None));
 
-                let mut statements = statements
+                let statements = statements
                     .into_iter()
                     .map(|statement| self.convert_expr(statement, info))
                     .collect::<Vec<_>>();
@@ -1099,25 +1099,10 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                     ty = end_ty;
                 }
 
-                // Non-terminator statements by default have a type of `()`
-                for statement in statements
-                    .iter_mut()
-                    .dropping_back(if top_level { 0 } else { 1 })
-                {
-                    let var = self.ctx.new_variable();
-
-                    self.ctx
-                        .unify(
-                            engine::UnresolvedType::TerminatingVariable(var),
-                            statement.ty.clone(),
-                        )
-                        .unwrap();
-                }
-
                 UnresolvedExpression {
                     span: expr.span,
                     ty,
-                    kind: UnresolvedExpressionKind::Block(statements),
+                    kind: UnresolvedExpressionKind::Block(statements, top_level),
                 }
             }
             lower::ExpressionKind::End(value) => {
@@ -1755,12 +1740,30 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                 UnresolvedExpressionKind::Number(number) => {
                     MonomorphizedExpressionKind::Number(number)
                 }
-                UnresolvedExpressionKind::Block(statements) => MonomorphizedExpressionKind::Block(
-                    statements
+                UnresolvedExpressionKind::Block(statements, top_level) => {
+                    let mut statements = statements
                         .into_iter()
                         .map(|expr| self.monomorphize_expr(expr, info))
-                        .collect(),
-                ),
+                        .collect::<Vec<_>>();
+
+                    // Non-terminator statements by default have a type of `()`
+                    for statement in
+                        statements
+                            .iter_mut()
+                            .dropping_back(if top_level { 0 } else { 1 })
+                    {
+                        let var = self.ctx.new_variable();
+
+                        self.ctx
+                            .unify(
+                                engine::UnresolvedType::TerminatingVariable(var),
+                                statement.ty.clone(),
+                            )
+                            .unwrap();
+                    }
+
+                    MonomorphizedExpressionKind::Block(statements, top_level)
+                }
                 UnresolvedExpressionKind::End(value) => {
                     MonomorphizedExpressionKind::End(Box::new(self.monomorphize_expr(*value, info)))
                 }
@@ -3036,11 +3039,12 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                     }
                 }
             }
-            MonomorphizedExpressionKind::Block(statements) => ExpressionKind::Block(
+            MonomorphizedExpressionKind::Block(statements, top_level) => ExpressionKind::Block(
                 statements
                     .into_iter()
                     .map(|expr| self.finalize_expr(expr))
                     .collect(),
+                top_level,
             ),
             MonomorphizedExpressionKind::End(value) => {
                 ExpressionKind::End(Box::new(self.finalize_expr(*value)))

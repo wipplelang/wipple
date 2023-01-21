@@ -180,7 +180,7 @@ impl Converter<'_, '_> {
                 analysis::ExpressionKind::Marker => ExpressionKind::Marker,
                 analysis::ExpressionKind::Variable(var) => ExpressionKind::Variable(*var),
                 analysis::ExpressionKind::Text(text) => ExpressionKind::Text(*text),
-                analysis::ExpressionKind::Block(exprs) => {
+                analysis::ExpressionKind::Block(exprs, _) => {
                     ExpressionKind::Block(self.convert_block(exprs, tail))
                 }
                 analysis::ExpressionKind::End(value) => {

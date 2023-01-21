@@ -15,7 +15,7 @@ macro_rules! traverse_expr_impl {
             f(expr, &mut context);
 
             match &$($mut)? expr.kind {
-                Block(statements) => {
+                Block(statements, _) => {
                     for statement in statements {
                         statement.$traverse(context.clone(), f);
                     }

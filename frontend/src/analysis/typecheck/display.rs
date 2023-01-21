@@ -149,7 +149,7 @@ impl Expression {
             ExpressionKind::Unsigned(value) => write!(f, "{}", value)?,
             ExpressionKind::Float(value) => write!(f, "{}", value)?,
             ExpressionKind::Double(value) => write!(f, "{}", value)?,
-            ExpressionKind::Block(exprs) => {
+            ExpressionKind::Block(exprs, _) => {
                 writeln!(f, "{{")?;
                 for expr in exprs {
                     write!(f, "{}", "\t".repeat(indent + 1))?;

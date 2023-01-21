@@ -72,7 +72,7 @@ pub mod ssa {
         pub(super) fn ssa(mut self, _options: Options, _compiler: &Compiler) -> Program {
             for (_, expr) in self.items.values_mut() {
                 expr.traverse_mut(|expr| {
-                    if let ExpressionKind::Block(exprs) = &mut expr.kind {
+                    if let ExpressionKind::Block(exprs, _) = &mut expr.kind {
                         fn convert_block(exprs: &[Expression], span: Span) -> Vec<Expression> {
                             let mut result = Vec::new();
                             for (index, expr) in exprs.iter().enumerate() {
@@ -93,14 +93,24 @@ pub mod ssa {
                                                         .map(|expr| expr.ty.clone())
                                                         .unwrap_or_else(|| Type::Tuple(Vec::new())),
                                                     span,
-                                                    kind: ExpressionKind::Block(convert_block(
-                                                        remaining,
-                                                        remaining.first().map_or(span, |expr| {
-                                                            expr.span.with_end(
-                                                                remaining.last().unwrap().span.end,
-                                                            )
-                                                        }),
-                                                    )),
+                                                    kind: ExpressionKind::Block(
+                                                        convert_block(
+                                                            remaining,
+                                                            remaining.first().map_or(
+                                                                span,
+                                                                |expr| {
+                                                                    expr.span.with_end(
+                                                                        remaining
+                                                                            .last()
+                                                                            .unwrap()
+                                                                            .span
+                                                                            .end,
+                                                                    )
+                                                                },
+                                                            ),
+                                                        ),
+                                                        false,
+                                                    ),
                                                 },
                                             }],
                                         ),
@@ -448,7 +458,7 @@ mod util {
                 | ExpressionKind::Double(_)
                 | ExpressionKind::Function(_, _, _)
                 | ExpressionKind::Variable(_) => true,
-                ExpressionKind::Block(exprs) => {
+                ExpressionKind::Block(exprs, _) => {
                     exprs.iter().all(|expr| expr.is_pure(program, stack))
                 }
                 ExpressionKind::End(expr) => expr.is_pure(program, stack),
