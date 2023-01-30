@@ -1,13 +1,12 @@
 #![allow(clippy::too_many_arguments, clippy::type_complexity)]
 
 pub mod ast;
-pub mod expand_v2;
+pub mod expand;
 pub mod lint;
 pub mod lower;
 pub mod optimize;
 pub mod typecheck;
 
-pub use expand_v2 as expand;
 pub use typecheck::{
     Arm, Expression, ExpressionKind, Pattern, PatternKind, Program, RuntimeFunction, Type,
     TypeAnnotation, TypeAnnotationKind, TypeStructure,
@@ -120,26 +119,18 @@ impl Compiler<'_> {
 
             if let Some(cached) = compiler.loader.cache().lock().get(&resolved_path) {
                 fn insert(
-                    file: &Arc<expand::File>,
+                    file: Arc<expand::File>,
                     files: &mut indexmap::IndexMap<FilePath, Arc<expand::File>>,
-                    compiler: &Compiler,
                 ) {
-                    for (path, _) in &file.dependencies {
-                        let dependency = compiler
-                            .loader
-                            .cache()
-                            .lock()
-                            .get(&path)
-                            .expect("file was loaded without its dependencies");
-
-                        insert(dependency, files, compiler);
+                    for (dependency, _) in &file.dependencies {
+                        insert(dependency.clone(), files);
                     }
 
                     files.insert(file.span.path, file.clone());
                 }
 
                 let mut files = files.lock();
-                insert(cached, &mut files, compiler);
+                insert(cached.clone(), &mut files);
 
                 return Some(cached.clone());
             }
@@ -265,11 +256,7 @@ impl Compiler<'_> {
     ) -> (lower::File, bool) {
         assert!(!files.is_empty(), "expected at least one file");
 
-        fn lower(
-            compiler: &Compiler,
-            file: Arc<expand::File>,
-            files: indexmap::IndexMap<FilePath, Arc<expand::File>>,
-        ) -> Arc<lower::File> {
+        fn lower(compiler: &Compiler, file: Arc<expand::File>) -> Arc<lower::File> {
             let path = file.span.path;
 
             if let Some(file) = compiler.cache.lock().get(&path) {
@@ -280,10 +267,7 @@ impl Compiler<'_> {
                 .dependencies
                 .clone()
                 .into_iter()
-                .map(|(id, imports)| {
-                    let file = files.get(&id).unwrap().clone();
-                    (lower(compiler, file, files), imports)
-                })
+                .map(|(file, imports)| (lower(compiler, file), imports))
                 .collect::<Vec<_>>();
 
             let file = compiler.build_ast((*file).clone());
@@ -300,7 +284,7 @@ impl Compiler<'_> {
 
         let mut lowered_files = files
             .values()
-            .map(|file| (*lower(self, file.clone(), files)).clone())
+            .map(|file| (*lower(self, file.clone())).clone())
             .collect::<Vec<_>>();
 
         let lowering_is_complete = !self.diagnostics.contains_errors();

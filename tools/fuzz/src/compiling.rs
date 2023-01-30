@@ -17,9 +17,12 @@ pub(super) async fn fuzz(file: analysis::expand::File, args: super::Args) -> Fin
     loader
         .virtual_paths
         .lock()
-        .insert(InternedString::new(file.path.as_str()), Arc::from(""));
+        .insert(InternedString::new(file.span.path.as_str()), Arc::from(""));
 
-    loader.source_map().lock().insert(file.path, Arc::from(""));
+    loader
+        .source_map()
+        .lock()
+        .insert(file.span.path, Arc::from(""));
 
     let compiler = Compiler::new(&loader);
     #[cfg(debug_assertions)]

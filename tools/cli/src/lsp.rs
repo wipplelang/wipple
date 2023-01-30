@@ -536,56 +536,12 @@ impl LanguageServer for Backend {
 
         let mut add = |scope: &ScopeValues| {
             for (name, value) in scope {
-                let mut kind = None;
+                let kind;
                 let mut help = Vec::new();
                 let mut ty = None;
                 let mut format = Format::default();
 
                 match value {
-                    ScopeValue::Operator(operator) => {
-                        kind = Some(CompletionItemKind::OPERATOR);
-
-                        help = document
-                            .program
-                            .declarations
-                            .templates
-                            .get(&operator.template)
-                            .unwrap()
-                            .attributes
-                            .help
-                            .clone()
-                            .into_iter()
-                            .collect();
-                    }
-                    ScopeValue::Template(id) => {
-                        if !document.program.declarations.operators.contains_key(id) {
-                            if document
-                                .program
-                                .declarations
-                                .templates
-                                .get(id)
-                                .unwrap()
-                                .attributes
-                                .keyword
-                            {
-                                kind = Some(CompletionItemKind::KEYWORD);
-                            } else {
-                                kind = Some(CompletionItemKind::FUNCTION);
-                            }
-                        }
-
-                        help = document
-                            .program
-                            .declarations
-                            .templates
-                            .get(id)
-                            .unwrap()
-                            .attributes
-                            .help
-                            .clone()
-                            .into_iter()
-                            .collect();
-                    }
                     ScopeValue::Type(id) => {
                         kind = Some(
                             match document.program.declarations.types.get(id).unwrap().kind {

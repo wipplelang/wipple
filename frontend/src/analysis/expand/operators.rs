@@ -1,5 +1,5 @@
 use crate::{
-    analysis::expand_v2::{
+    analysis::expand::{
         syntax::{Expression, ExpressionKind},
         Expander, Operator, ScopeValueKind, Syntax,
     },
@@ -68,6 +68,7 @@ impl OperatorPrecedence {
     }
 }
 
+#[derive(Debug)]
 pub(super) enum ExpandOperatorsResult {
     Error(Backtrace),
     Empty,

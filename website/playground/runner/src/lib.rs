@@ -352,7 +352,7 @@ fn get_syntax_highlighting(
 pub fn run(id: String) -> Option<String> {
     let Analysis { program, success } = &*get_analysis(&id)?;
 
-    let program = success.then(|| COMPILER.ir_from(&program));
+    let program = success.then(|| COMPILER.ir_from(program));
 
     let mut output = Vec::new();
 
@@ -429,7 +429,7 @@ pub fn hover(id: String, start: usize, end: usize) -> JsValue {
         expr.traverse(|expr| {
             // Don't show type of entire file
             if let Some(entrypoint) = &analysis.program.entrypoint {
-                if let Some((_, item)) = analysis.program.items.get(&entrypoint) {
+                if let Some((_, item)) = analysis.program.items.get(entrypoint) {
                     if expr.span == item.span {
                         return;
                     }

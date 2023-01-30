@@ -12,8 +12,14 @@ use std::{iter::Peekable, ops::Range};
 pub struct File {
     pub span: Span,
     pub shebang: Option<InternedString>,
-    pub attributes: Vec<Expr>,
+    pub attributes: Vec<Attribute>,
     pub statements: Vec<Statement>,
+}
+
+#[derive(Debug, Clone)]
+pub struct Attribute {
+    pub span: Span,
+    pub exprs: Vec<Expr>,
 }
 
 #[derive(Debug, Clone)]
@@ -41,7 +47,7 @@ pub struct Statement {
 
 #[derive(Debug, Clone)]
 pub struct ListLine {
-    pub attributes: Vec<Expr>,
+    pub attributes: Vec<Attribute>,
     pub exprs: Vec<Expr>,
     pub comment: Option<InternedString>,
 }
@@ -68,7 +74,7 @@ pub enum ParseError {
 }
 
 impl<'a, 'src> Parser<'a, 'src> {
-    pub fn parse_file(&mut self) -> (Vec<Expr>, Vec<Statement>) {
+    pub fn parse_file(&mut self) -> (Vec<Attribute>, Vec<Statement>) {
         while let (_, Some(Token::Comment(_) | Token::LineBreak)) = self.peek() {
             self.consume();
         }
@@ -90,11 +96,11 @@ impl<'a, 'src> Parser<'a, 'src> {
         (attributes, statements)
     }
 
-    pub fn parse_file_attributes(&mut self) -> Vec<Expr> {
+    pub fn parse_file_attributes(&mut self) -> Vec<Attribute> {
         std::iter::from_fn(|| self.try_parse_file_attribute()).collect()
     }
 
-    pub fn try_parse_file_attribute(&mut self) -> Option<Expr> {
+    pub fn try_parse_file_attribute(&mut self) -> Option<Attribute> {
         let (span, token) = self.peek();
 
         if !matches!(token, Some(Token::LeftFileBracket)) {
@@ -105,10 +111,10 @@ impl<'a, 'src> Parser<'a, 'src> {
 
         let (lines, end_span) = self.parse_list_contents(Token::RightFileBracket);
 
-        Some(Expr::new(
-            span.with_end(end_span.end),
-            ExprKind::List(lines),
-        ))
+        Some(Attribute {
+            span: span.with_end(end_span.end),
+            exprs: lines.into_iter().flat_map(|line| line.exprs).collect(),
+        })
     }
 
     pub fn parse_statements(&mut self, end_token: Option<Token<'src>>) -> (Vec<Statement>, Span) {
@@ -213,7 +219,7 @@ impl<'a, 'src> Parser<'a, 'src> {
         (statements, end_span)
     }
 
-    pub fn try_parse_attribute(&mut self) -> Option<Expr> {
+    pub fn try_parse_attribute(&mut self) -> Option<Attribute> {
         let (span, token) = self.peek();
 
         if !matches!(token, Some(Token::LeftAttrBracket)) {
@@ -224,10 +230,10 @@ impl<'a, 'src> Parser<'a, 'src> {
 
         let (lines, end_span) = self.parse_list_contents(Token::RightAttrBracket);
 
-        Some(Expr::new(
-            span.with_end(end_span.end),
-            ExprKind::List(lines),
-        ))
+        Some(Attribute {
+            span: span.with_end(end_span.end),
+            exprs: lines.into_iter().flat_map(|line| line.exprs).collect(),
+        })
     }
 
     pub fn parse_expr(&mut self) -> Option<Expr> {
