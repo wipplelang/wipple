@@ -10,7 +10,6 @@ use std::{iter::Peekable, ops::Range};
 
 #[derive(Debug, Clone)]
 pub struct File {
-    pub path: FilePath,
     pub span: Span,
     pub shebang: Option<InternedString>,
     pub attributes: Vec<Expr>,

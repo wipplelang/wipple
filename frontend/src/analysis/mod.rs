@@ -1,12 +1,13 @@
 #![allow(clippy::too_many_arguments, clippy::type_complexity)]
 
 pub mod ast;
-pub mod expand;
+pub mod expand_v2;
 pub mod lint;
 pub mod lower;
 pub mod optimize;
 pub mod typecheck;
 
+pub use expand_v2 as expand;
 pub use typecheck::{
     Arm, Expression, ExpressionKind, Pattern, PatternKind, Program, RuntimeFunction, Type,
     TypeAnnotation, TypeAnnotationKind, TypeStructure,
@@ -121,16 +122,24 @@ impl Compiler<'_> {
                 fn insert(
                     file: &Arc<expand::File>,
                     files: &mut indexmap::IndexMap<FilePath, Arc<expand::File>>,
+                    compiler: &Compiler,
                 ) {
-                    for (dependency, _) in &file.dependencies {
-                        insert(dependency, files);
+                    for (path, _) in &file.dependencies {
+                        let dependency = compiler
+                            .loader
+                            .cache()
+                            .lock()
+                            .get(&path)
+                            .expect("file was loaded without its dependencies");
+
+                        insert(dependency, files, compiler);
                     }
 
-                    files.insert(file.path, file.clone());
+                    files.insert(file.span.path, file.clone());
                 }
 
                 let mut files = files.lock();
-                insert(cached, &mut files);
+                insert(cached, &mut files, compiler);
 
                 return Some(cached.clone());
             }
@@ -217,7 +226,7 @@ impl Compiler<'_> {
 
             // Don't cache virtual or builtin paths, nor the entrypoint
             if resolved_path != entrypoint
-                && !matches!(resolved_path, FilePath::Virtual(_) | FilePath::Builtin(_))
+                && !matches!(resolved_path, FilePath::Virtual(_) | FilePath::Builtin)
             {
                 compiler
                     .loader
@@ -256,8 +265,12 @@ impl Compiler<'_> {
     ) -> (lower::File, bool) {
         assert!(!files.is_empty(), "expected at least one file");
 
-        fn lower(compiler: &Compiler, file: Arc<expand::File>) -> Arc<lower::File> {
-            let path = file.path;
+        fn lower(
+            compiler: &Compiler,
+            file: Arc<expand::File>,
+            files: indexmap::IndexMap<FilePath, Arc<expand::File>>,
+        ) -> Arc<lower::File> {
+            let path = file.span.path;
 
             if let Some(file) = compiler.cache.lock().get(&path) {
                 return file.clone();
@@ -267,7 +280,10 @@ impl Compiler<'_> {
                 .dependencies
                 .clone()
                 .into_iter()
-                .map(|(file, imports)| (lower(compiler, file), imports))
+                .map(|(id, imports)| {
+                    let file = files.get(&id).unwrap().clone();
+                    (lower(compiler, file, files), imports)
+                })
                 .collect::<Vec<_>>();
 
             let file = compiler.build_ast((*file).clone());
@@ -283,8 +299,8 @@ impl Compiler<'_> {
         }
 
         let mut lowered_files = files
-            .into_values()
-            .map(|file| (*lower(self, file)).clone())
+            .values()
+            .map(|file| (*lower(self, file.clone(), files)).clone())
             .collect::<Vec<_>>();
 
         let lowering_is_complete = !self.diagnostics.contains_errors();

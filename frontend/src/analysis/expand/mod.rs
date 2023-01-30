@@ -82,7 +82,7 @@ pub struct Node {
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub enum NodeKind {
     Error(Backtrace),
-    Placeholder,
+    Placeholder, // new name: `Empty`
     TemplateDeclaration(TemplateId),
     Empty,
     Underscore,
@@ -198,7 +198,7 @@ impl<'l> Compiler<'l> {
         };
 
         let scope = Scope::default();
-        builtins::load_builtins(&mut expander, file.path, &scope);
+        builtins::load_builtins(&mut expander, file.span.path, &scope);
 
         let attributes = expander
             .expand_file_attributes(file.attributes, &scope)
@@ -224,7 +224,7 @@ impl<'l> Compiler<'l> {
         let (statements, exported) = expander.expand_block(file.statements, &scope).await;
 
         File {
-            path: file.path,
+            path: file.span.path,
             span: file.span,
             statements,
             attributes,

@@ -12,7 +12,6 @@ use diagnostics::*;
 use helpers::{InternedString, Shared};
 use parse::Span;
 use std::{
-    borrow::Cow,
     collections::HashMap,
     fmt::{self, Debug},
     hash::Hash,
@@ -42,16 +41,16 @@ pub enum FilePath {
     Path(InternedString),
     Url(InternedString),
     Virtual(InternedString),
-    Builtin(InternedString),
+    Builtin,
 }
 
 impl FilePath {
-    pub fn as_str(&self) -> Cow<'static, str> {
+    pub fn as_str(&self) -> &'static str {
         match self {
-            FilePath::Path(path) => Cow::Borrowed(path.as_str()),
-            FilePath::Url(url) => Cow::Borrowed(url.as_str()),
-            FilePath::Virtual(name) => Cow::Borrowed(name.as_str()),
-            FilePath::Builtin(location) => Cow::Owned(format!("builtin ({})", location)),
+            FilePath::Path(path) => path.as_str(),
+            FilePath::Url(url) => url.as_str(),
+            FilePath::Virtual(name) => name.as_str(),
+            FilePath::Builtin => "builtin",
         }
     }
 }
@@ -181,7 +180,8 @@ file_ids!(
     builtin_type,
     constant,
     item,
-    template,
+    scope,
+    template, // TODO: Rename to `syntax`
     r#trait,
     r#type,
     type_parameter,

@@ -262,13 +262,10 @@ impl Context {
                 }
             }
             (UnresolvedType::TerminatingVariable(var), ty) => {
-                match &ty {
-                    UnresolvedType::TerminatingVariable(other) => {
-                        if var == *other {
-                            return Ok(());
-                        }
+                if let UnresolvedType::TerminatingVariable(other) = &ty {
+                    if var == *other {
+                        return Ok(());
                     }
-                    _ => {}
                 }
 
                 if ty.contains(&var) {

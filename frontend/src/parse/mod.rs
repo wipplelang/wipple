@@ -29,7 +29,6 @@ impl Compiler<'_> {
         let (attributes, statements) = parser.parse_file();
 
         File {
-            path: file,
             span: parser.file_span(),
             shebang: shebang.map(InternedString::new),
             attributes,

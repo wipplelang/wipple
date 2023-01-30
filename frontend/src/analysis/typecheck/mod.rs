@@ -12,7 +12,7 @@ pub use engine::{BottomTypeReason, BuiltinType, GenericSubstitutions, Type, Type
 pub use lower::{RuntimeFunction, TypeAnnotation, TypeAnnotationKind};
 
 use crate::{
-    analysis::{expand, lower},
+    analysis::lower,
     diagnostics::Note,
     helpers::{Backtrace, InternedString},
     parse::Span,
@@ -169,7 +169,7 @@ pub struct OperatorDecl {
 pub struct TemplateDecl {
     pub name: InternedString,
     pub span: Span,
-    pub attributes: expand::TemplateAttributes,
+    pub attributes: lower::SyntaxDeclarationAttributes,
     pub uses: HashSet<Span>,
 }
 
@@ -620,21 +620,25 @@ impl<'a, 'l> Typechecker<'a, 'l> {
         macro_rules! check {
             ($kind:ident) => {
                 paste::paste! {
-                    for id in declaration!([<$kind s>]) {
+                    check!($kind as [<$kind s>]);
+                }
+            };
+            ($kind:ident as $plural:ident) => {
+                paste::paste! {
+                    for id in declaration!($plural) {
                         self.[<with_ $kind _decl>](id, |_| {});
                     }
                 }
             };
-            ($($kind:ident),* $(,)?) => {
-                $(check!($kind);)*
+            ($($kind:ident$(as $plural:ident)?),* $(,)?) => {
+                $(check!($kind$(as $plural)?);)*
             }
         }
 
         check!(
             type,
             trait,
-            operator,
-            template,
+            syntax as syntaxes,
             builtin_type,
             type_parameter,
             // variables are handled inside `finalize_pattern`
@@ -662,7 +666,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
             let ty = match self
                 .substitute_trait_params(
                     tr,
-                    trait_params.clone().into_iter().map(From::from).collect(),
+                    trait_params.into_iter().map(From::from).collect(),
                     span,
                 )
                 .finalize(&self.ctx)
@@ -706,7 +710,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
         }
 
         let expr = self.convert_expr(expr, &mut ConvertInfo::default());
-        if let Err(error) = self.ctx.unify_generic(expr.ty.clone(), generic_ty.clone()) {
+        if let Err(error) = self.ctx.unify_generic(expr.ty.clone(), generic_ty) {
             self.add_error(self.error(error, expr.span));
         }
 
@@ -1747,6 +1751,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                         .collect::<Vec<_>>();
 
                     // Non-terminator statements by default have a type of `()`
+                    #[allow(clippy::bool_to_int_with_if)] // more clear this way
                     for statement in
                         statements
                             .iter_mut()
@@ -3554,39 +3559,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
             .or_insert(decl)))
     }
 
-    fn with_operator_decl<T>(
-        &mut self,
-        id: TemplateId,
-        f: impl FnOnce(&OperatorDecl) -> T,
-    ) -> Option<T> {
-        if let Some(decl) = self.declarations.borrow().operators.get(&id) {
-            return Some(f(decl));
-        }
-
-        let operator = *self.entrypoint.declarations.operators.get(&id)?;
-
-        let decl = self
-            .entrypoint
-            .declarations
-            .templates
-            .get(&operator.template)?
-            .clone();
-
-        let decl = OperatorDecl {
-            name: decl.name,
-            span: decl.span,
-            uses: decl.uses,
-        };
-
-        Some(f(self
-            .declarations
-            .borrow_mut()
-            .operators
-            .entry(id)
-            .or_insert(decl)))
-    }
-
-    fn with_template_decl<T>(
+    fn with_syntax_decl<T>(
         &mut self,
         id: TemplateId,
         f: impl FnOnce(&TemplateDecl) -> T,
@@ -3595,7 +3568,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
             return Some(f(decl));
         }
 
-        let decl = self.entrypoint.declarations.templates.get(&id)?.clone();
+        let decl = self.entrypoint.declarations.syntaxes.get(&id)?.clone();
 
         let decl = TemplateDecl {
             name: decl.name,

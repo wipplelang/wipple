@@ -34,7 +34,7 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
         id,
         TemplateDeclaration::new(
             ":",
-            Span::builtin("`:` operator"),
+            Span::builtin(),
             Template::function(|expander, span, mut inputs, _, _, scope| {
                 Box::pin(async move {
                     let rhs = inputs.pop().unwrap();
@@ -213,7 +213,7 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
         id,
         TemplateDeclaration::new(
             "->",
-            Span::builtin("`->` operator"),
+            Span::builtin(),
             Template::function(|_, span, mut inputs, _, _, _| {
                 Box::pin(async move {
                     let rhs = inputs.pop().unwrap();
@@ -245,7 +245,7 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
         id,
         TemplateDeclaration::new(
             "=>",
-            Span::builtin("`=>` operator"),
+            Span::builtin(),
             Template::function(|_, span, mut inputs, _, _, _| {
                 Box::pin(async move {
                     let rhs = inputs.pop().unwrap();
@@ -277,7 +277,7 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
         id,
         TemplateDeclaration::new(
             "where",
-            Span::builtin("`where` operator"),
+            Span::builtin(),
             Template::function(|_, span, mut inputs, _, _, _| {
                 Box::pin(async move {
                     let rhs = inputs.pop().unwrap();
@@ -309,7 +309,7 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
         id,
         TemplateDeclaration::new(
             "::",
-            Span::builtin("`::` operator"),
+            Span::builtin(),
             Template::function(|_, span, mut inputs, _, _, _| {
                 Box::pin(async move {
                     let rhs = inputs.pop().unwrap();
@@ -341,7 +341,7 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
         id,
         TemplateDeclaration::new(
             "~>",
-            Span::builtin("`~>` operator"),
+            Span::builtin(),
             Template::function(|expander, span, mut inputs, _, _, _| {
                 Box::pin(async move {
                     let rhs = inputs.pop().unwrap();
@@ -413,7 +413,7 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
         id,
         TemplateDeclaration::new(
             "operator",
-            Span::builtin("`operator` operator"),
+            Span::builtin(),
             Template::function(|expander, span, mut inputs, _, _, _| Box::pin(async move {
                 let rhs = inputs.pop().unwrap();
                 let lhs = inputs.pop().unwrap();
@@ -495,7 +495,7 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
         id,
         TemplateDeclaration::new(
             "or",
-            Span::builtin("`or` operator"),
+            Span::builtin(),
             Template::function(|_, span, mut inputs, _, _, _| {
                 Box::pin(async move {
                     let rhs = inputs.pop().unwrap();
@@ -527,7 +527,7 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
         id,
         TemplateDeclaration::new(
             ",",
-            Span::builtin("`,` operator"),
+            Span::builtin(),
             Template::function(|_, span, inputs, _, _, _| {
                 Box::pin(async move {
                     Node {
@@ -549,7 +549,7 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
         id,
         TemplateDeclaration::keyword(
             "use",
-            Span::builtin("`use` template"),
+            Span::builtin(),
             Template::function(|expander, span, mut inputs, _, _, scope| {
                 Box::pin(async move {
                     if inputs.len() != 1 {
@@ -598,7 +598,7 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
         id,
         TemplateDeclaration::keyword(
             "external",
-            Span::builtin("`external` template"),
+            Span::builtin(),
             Template::function(|expander, span, inputs, _, _, _| {
                 Box::pin(async move {
                     if inputs.len() < 2 {
@@ -641,7 +641,7 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
         id,
         TemplateDeclaration::keyword(
             "type",
-            Span::builtin("`type` template"),
+            Span::builtin(),
             Template::function(|expander, span, mut inputs, _, _, _| Box::pin(async move {
                 if inputs.is_empty() {
                     return Node { span, kind: NodeKind::Type(None) }
@@ -698,7 +698,7 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
         id,
         TemplateDeclaration::keyword(
             "trait",
-            Span::builtin("`trait` template"),
+            Span::builtin(),
             Template::function(|expander, span, mut inputs, _, _, _| {
                 Box::pin(async move {
                     if inputs.len() > 1 {
@@ -737,7 +737,7 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
         id,
         TemplateDeclaration::keyword(
             "instance",
-            Span::builtin("`instance` template"),
+            Span::builtin(),
             Template::function(|expander, span, mut inputs, _, _, _| {
                 Box::pin(async move {
                     if inputs.len() != 1 {
@@ -792,7 +792,7 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
         id,
         TemplateDeclaration::new(
             "format",
-            Span::builtin("`format` template"),
+            Span::builtin(),
             Template::function(|expander, span, inputs, _, _, _| Box::pin(async move {
                 if inputs.is_empty() {
                     expander.compiler.add_error(
@@ -927,7 +927,7 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
         id,
         TemplateDeclaration::new(
             "end",
-            Span::builtin("`end` template"),
+            Span::builtin(),
             Template::function(|expander, span, mut inputs, _, _, _| {
                 Box::pin(async move {
                     if inputs.len() != 1 {
@@ -966,7 +966,7 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
         id,
         TemplateDeclaration::keyword(
             "when",
-            Span::builtin("`when` template"),
+            Span::builtin(),
             Template::function(|expander, span, mut inputs, _, _, _| {
                 Box::pin(async move {
                     if inputs.len() != 2 {
@@ -1022,7 +1022,7 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
         id,
         TemplateDeclaration::new(
             "language",
-            Span::builtin("`language` attribute"),
+            Span::builtin(),
             Template::function(|expander, span, mut inputs, _, attributes, _| {
                 Box::pin(async move {
                     if inputs.len() != 2 {
@@ -1118,7 +1118,7 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
         id,
         TemplateDeclaration::new(
             "help",
-            Span::builtin("`help` attribute"),
+            Span::builtin(),
             Template::function(|expander, span, mut inputs, _, attributes, _| {
                 Box::pin(async move {
                     if inputs.len() != 2 {
@@ -1197,7 +1197,7 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
         id,
         TemplateDeclaration::new(
             "on-unimplemented",
-            Span::builtin("`on-unimplemented` attribute"),
+            Span::builtin(),
             Template::function(|expander, span, mut inputs, _, attributes, _| {
                 Box::pin(async move {
                     if inputs.len() != 2 {
@@ -1271,7 +1271,7 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
         id,
         TemplateDeclaration::new(
             "on-mismatch",
-            Span::builtin("`on-mismatch` attribute"),
+            Span::builtin(),
             Template::function(|expander, span, mut inputs, _, attributes, _| {
                 Box::pin(async move {
                     if !matches!(inputs.len(), 2..=3) {
@@ -1363,7 +1363,7 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
         id,
         TemplateDeclaration::new(
             "no-std",
-            Span::builtin("`no-std` attribute"),
+            Span::builtin(),
             Template::function(|expander, span, inputs, attributes, _, _| {
                 Box::pin(async move {
                     if !inputs.is_empty() {
@@ -1427,7 +1427,7 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
         id,
         TemplateDeclaration::new(
             "recursion-limit",
-            Span::builtin("`recursion-limit` attribute"),
+            Span::builtin(),
             Template::function(|expander, span, mut inputs, attributes, _, _| {
                 Box::pin(async move {
                     if inputs.len() != 1 {
@@ -1452,13 +1452,10 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
                     let node = inputs.pop().unwrap();
 
                     let limit = match (|| {
-                        match node.kind {
-                            NodeKind::Number(n) => {
-                                if let Ok(n) = n.parse::<usize>() {
-                                    return Some(n);
-                                }
+                        if let NodeKind::Number(n) = node.kind {
+                            if let Ok(n) = n.parse::<usize>() {
+                                return Some(n);
                             }
-                            _ => {}
                         }
 
                         expander.compiler.add_error(
@@ -1518,7 +1515,7 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
         id,
         TemplateDeclaration::new(
             "keyword",
-            Span::builtin("`keyword` attribute"),
+            Span::builtin(),
             Template::function(|expander, span, mut inputs, _, _, _| {
                 Box::pin(async move {
                     if inputs.len() != 1 {
@@ -1583,7 +1580,7 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
         id,
         TemplateDeclaration::new(
             "specialize",
-            Span::builtin("`specialize` attribute"),
+            Span::builtin(),
             Template::function(|expander, span, mut inputs, _, attributes, _| {
                 Box::pin(async move {
                     if inputs.len() != 1 {
@@ -1651,7 +1648,7 @@ pub(super) fn load_builtins(expander: &mut Expander, file: FilePath, scope: &Sco
         id,
         TemplateDeclaration::new(
             "allow-overlapping-instances",
-            Span::builtin("`allow-overlapping-instances` attribute"),
+            Span::builtin(),
             Template::function(|expander, span, mut inputs, _, attributes, _| {
                 Box::pin(async move {
                     if inputs.len() != 1 {

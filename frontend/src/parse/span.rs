@@ -1,4 +1,4 @@
-use crate::{helpers::InternedString, FilePath};
+use crate::FilePath;
 use std::{fmt, ops::Range};
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
@@ -29,8 +29,8 @@ impl Span {
         }
     }
 
-    pub fn builtin(location: impl AsRef<str>) -> Self {
-        Span::new(FilePath::Builtin(InternedString::new(location)), 0..0)
+    pub fn builtin() -> Self {
+        Span::new(FilePath::Builtin, 0..0)
     }
 
     pub fn join(left: Span, right: Span) -> Self {

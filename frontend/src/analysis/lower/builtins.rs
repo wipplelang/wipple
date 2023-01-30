@@ -22,7 +22,7 @@ impl Compiler<'_> {
 
         add!(
             builtin_type,
-            Span::builtin("`Number` type"),
+            Span::builtin(),
             "Number",
             BuiltinType {
                 kind: BuiltinTypeKind::Number,
@@ -35,7 +35,7 @@ impl Compiler<'_> {
 
         add!(
             builtin_type,
-            Span::builtin("`Integer` type"),
+            Span::builtin(),
             "Integer",
             BuiltinType {
                 kind: BuiltinTypeKind::Integer,
@@ -50,7 +50,7 @@ impl Compiler<'_> {
 
         add!(
             builtin_type,
-            Span::builtin("`Natural` type"),
+            Span::builtin(),
             "Natural",
             BuiltinType {
                 kind: BuiltinTypeKind::Natural,
@@ -65,7 +65,7 @@ impl Compiler<'_> {
 
         add!(
             builtin_type,
-            Span::builtin("`Byte` type"),
+            Span::builtin(),
             "Byte",
             BuiltinType {
                 kind: BuiltinTypeKind::Byte,
@@ -80,7 +80,7 @@ impl Compiler<'_> {
 
         add!(
             builtin_type,
-            Span::builtin("`Signed` type"),
+            Span::builtin(),
             "Signed",
             BuiltinType {
                 kind: BuiltinTypeKind::Signed,
@@ -95,7 +95,7 @@ impl Compiler<'_> {
 
         add!(
             builtin_type,
-            Span::builtin("`Unsigned` type"),
+            Span::builtin(),
             "Unsigned",
             BuiltinType {
                 kind: BuiltinTypeKind::Unsigned,
@@ -110,7 +110,7 @@ impl Compiler<'_> {
 
         add!(
             builtin_type,
-            Span::builtin("`Float` type"),
+            Span::builtin(),
             "Float",
             BuiltinType {
                 kind: BuiltinTypeKind::Float,
@@ -125,7 +125,7 @@ impl Compiler<'_> {
 
         add!(
             builtin_type,
-            Span::builtin("`Double` type"),
+            Span::builtin(),
             "Double",
             BuiltinType {
                 kind: BuiltinTypeKind::Double,
@@ -140,7 +140,7 @@ impl Compiler<'_> {
 
         add!(
             builtin_type,
-            Span::builtin("`Text` type"),
+            Span::builtin(),
             "Text",
             BuiltinType {
                 kind: BuiltinTypeKind::Text,
@@ -155,7 +155,7 @@ impl Compiler<'_> {
 
         add!(
             builtin_type,
-            Span::builtin("`List` type"),
+            Span::builtin(),
             "List",
             BuiltinType {
                 kind: BuiltinTypeKind::List,
@@ -170,7 +170,7 @@ impl Compiler<'_> {
 
         add!(
             builtin_type,
-            Span::builtin("`Mutable` type"),
+            Span::builtin(),
             "Mutable",
             BuiltinType {
                 kind: BuiltinTypeKind::Mutable,
