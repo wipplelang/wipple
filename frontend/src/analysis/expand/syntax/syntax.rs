@@ -7,7 +7,7 @@ use crate::{
     diagnostics::Note,
     helpers::InternedString,
     parse::Span,
-    ScopeId,
+    ScopeId, TemplateId,
 };
 use async_trait::async_trait;
 use std::collections::HashMap;
@@ -67,6 +67,7 @@ impl SyntaxSyntax {
     pub(crate) async fn try_parse_syntax_definition(
         span: Span,
         mut exprs: Vec<Expression>,
+        operator_pattern: Option<(TemplateId, ScopeId)>,
         scope: ScopeId,
         expander: &Expander<'_, '_>,
     ) -> Option<SyntaxDefinition> {
@@ -112,9 +113,36 @@ impl SyntaxSyntax {
                         _,
                         _,
                         Syntax::Builtin(BuiltinSyntax::Function(_)),
-                        lhs,
+                        mut lhs,
                         rhs,
-                    ) => (lhs, rhs),
+                    ) => {
+                        // Implicitly convert `a b c + d e f` to `(a b c) + (d e f)` in pattern
+                        if let ExpressionKind::List(exprs) = &lhs.kind {
+                            if let Some((operator_id, scope)) = operator_pattern {
+                                if let ExpandOperatorsResult::Operator(
+                                    operator_span,
+                                    operator_name,
+                                    Syntax::Defined(id),
+                                    pattern_lhs,
+                                    pattern_rhs,
+                                ) = expander.expand_operators(lhs.span, exprs.clone(), scope)
+                                {
+                                    if id == operator_id {
+                                        lhs.kind = ExpressionKind::List(vec![
+                                            pattern_lhs,
+                                            Expression {
+                                                span: operator_span,
+                                                kind: ExpressionKind::Name(None, operator_name),
+                                            },
+                                            pattern_rhs,
+                                        ]);
+                                    }
+                                }
+                            }
+                        }
+
+                        (lhs, rhs)
+                    }
                     _ => {
                         expander.compiler.add_error(
                             "malformed `syntax` rule",

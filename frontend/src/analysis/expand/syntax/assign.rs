@@ -105,18 +105,51 @@ impl BuiltinSyntaxVisitor for AssignSyntax {
                     }
                 }
                 BuiltinSyntax::Syntax(_) => {
-                    if let Some(syntax_definition) =
-                        SyntaxSyntax::try_parse_syntax_definition(span, exprs, scope, expander)
-                            .await
-                    {
-                        if lhs_exprs.len() == 1 {
-                            if let ExpressionKind::Name(_, name) = lhs_exprs.first().unwrap().kind {
+                    if lhs_exprs.len() == 1 {
+                        if let ExpressionKind::Name(_, name) = lhs_exprs.first().unwrap().kind {
+                            let (id, syntax_definition) = if let Some(precedence) =
+                                statement_attributes.operator_precedence
+                            {
                                 let id = expander.compiler.new_template_id_in(expander.file);
+                                let parse_scope = expander.child_scope(scope);
 
+                                expander.set_name(
+                                    name,
+                                    ScopeValueKind::Operator(Operator {
+                                        precedence,
+                                        syntax: Syntax::Defined(id),
+                                    }),
+                                    parse_scope,
+                                );
+
+                                let definition = SyntaxSyntax::try_parse_syntax_definition(
+                                    span,
+                                    exprs,
+                                    Some((id, parse_scope)),
+                                    scope,
+                                    expander,
+                                )
+                                .await;
+
+                                (Some(id), definition)
+                            } else {
+                                let definition = SyntaxSyntax::try_parse_syntax_definition(
+                                    span, exprs, None, scope, expander,
+                                )
+                                .await;
+
+                                (None, definition)
+                            };
+
+                            if let Some(syntax_definition) = syntax_definition {
                                 let attributes = SyntaxDeclarationAttributes {
                                     keyword: statement_attributes.keyword,
                                     help: statement_attributes.help.clone(),
                                 };
+
+                                let id = id.unwrap_or_else(|| {
+                                    expander.compiler.new_template_id_in(expander.file)
+                                });
 
                                 if let Some(precedence) = statement_attributes.operator_precedence {
                                     expander.declarations.lock().operators.insert(
@@ -147,7 +180,16 @@ impl BuiltinSyntaxVisitor for AssignSyntax {
 
                                 expander.set_name(
                                     name,
-                                    ScopeValueKind::Syntax(Syntax::Defined(id)),
+                                    if let Some(precedence) =
+                                        statement_attributes.operator_precedence
+                                    {
+                                        ScopeValueKind::Operator(Operator {
+                                            precedence,
+                                            syntax: Syntax::Defined(id),
+                                        })
+                                    } else {
+                                        ScopeValueKind::Syntax(Syntax::Defined(id))
+                                    },
                                     scope,
                                 );
 
