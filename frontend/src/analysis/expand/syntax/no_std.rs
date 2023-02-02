@@ -35,7 +35,7 @@ impl BuiltinSyntaxVisitor for NoStdSyntax {
         expander: &Expander<'_, '_>,
     ) -> Expression {
         let file_attributes = match context {
-            Some(Context::File(attributes)) => attributes,
+            Some(Context::FileAttributes(attributes)) => attributes,
             _ => {
                 return Expression {
                     span,

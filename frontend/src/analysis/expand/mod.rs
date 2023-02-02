@@ -49,6 +49,7 @@ pub struct StatementAttributes {
     pub on_mismatch: VecDeque<(Option<(Span, InternedString)>, InternedString)>,
     pub specialize: bool,
     pub allow_overlapping_instances: bool,
+    pub operator_precedence: Option<OperatorPrecedence>,
     pub keyword: bool,
 }
 
@@ -81,23 +82,6 @@ pub struct SyntaxDeclaration<T> {
     pub uses: HashSet<Span>,
     pub attributes: SyntaxDeclarationAttributes,
     pub value: T,
-}
-
-impl<T> SyntaxDeclaration<T> {
-    fn new(name: impl AsRef<str>, span: Span, value: T) -> Self {
-        SyntaxDeclaration {
-            name: InternedString::new(name),
-            span,
-            uses: Default::default(),
-            attributes: Default::default(),
-            value,
-        }
-    }
-
-    fn keyword(mut self) -> Self {
-        self.attributes.keyword = true;
-        self
-    }
 }
 
 #[derive(Debug, Clone, Default)]
@@ -162,7 +146,7 @@ impl<'l> Compiler<'l> {
             // Expand any new templates and operators found in the program
 
             statements = stream::iter(statements)
-                .then(|statement| expander.expand_statement(statement, expansion_count == 0, scope))
+                .then(|statement| expander.expand_statement(statement, scope))
                 .collect::<Vec<_>>()
                 .await;
 
@@ -300,6 +284,8 @@ impl<'a, 'l> Expander<'a, 'l> {
 
 impl<'a, 'l> Expander<'a, 'l> {
     pub(crate) fn add_dependency(&self, file: Arc<File>, scope: ScopeId) {
+        self.declarations.lock().merge(file.declarations.clone());
+
         for decl in file.declarations.operators.values() {
             self.set_name(decl.name, ScopeValueKind::Operator(decl.value), scope);
         }
@@ -319,8 +305,9 @@ impl<'a, 'l> Expander<'a, 'l> {
 }
 
 enum Context<'a> {
-    File(&'a mut FileAttributes),
-    Statement(&'a mut StatementAttributes),
+    FileAttributes(&'a mut FileAttributes),
+    StatementAttributes(&'a mut StatementAttributes),
+    Statement(&'a StatementAttributes),
 }
 
 impl<'a, 'l> Expander<'a, 'l> {
@@ -369,7 +356,7 @@ impl<'a, 'l> Expander<'a, 'l> {
                         syntax_span,
                         syntax,
                         input,
-                        Some(Context::File(&mut file_attributes)),
+                        Some(Context::FileAttributes(&mut file_attributes)),
                         scope,
                     )
                     .await;
@@ -380,12 +367,7 @@ impl<'a, 'l> Expander<'a, 'l> {
         file_attributes
     }
 
-    async fn expand_statement(
-        &self,
-        mut statement: Statement,
-        first_expansion: bool,
-        scope: ScopeId,
-    ) -> Statement {
+    async fn expand_statement(&self, mut statement: Statement, scope: ScopeId) -> Statement {
         for attribute in mem::take(&mut statement.unexpanded_attributes) {
             match self.expand_operators(attribute.span, attribute.exprs, scope) {
                 ExpandOperatorsResult::Error(_) => {}
@@ -428,7 +410,7 @@ impl<'a, 'l> Expander<'a, 'l> {
                             syntax_span,
                             syntax,
                             input,
-                            Some(Context::Statement(&mut statement.attributes)),
+                            Some(Context::StatementAttributes(&mut statement.attributes)),
                             scope,
                         )
                         .await;
@@ -437,17 +419,17 @@ impl<'a, 'l> Expander<'a, 'l> {
         }
 
         statement.expr = match statement.expr.kind {
-            ExpressionKind::List(exprs) => {
-                let context =
-                    first_expansion.then_some(Context::Statement(&mut statement.attributes));
-
-                Expression {
-                    span: statement.expr.span,
-                    kind: self
-                        .expand_list(statement.expr.span, exprs, context, scope)
-                        .await,
-                }
-            }
+            ExpressionKind::List(exprs) => Expression {
+                span: statement.expr.span,
+                kind: self
+                    .expand_list(
+                        statement.expr.span,
+                        exprs,
+                        Some(Context::Statement(&statement.attributes)),
+                        scope,
+                    )
+                    .await,
+            },
             _ => self.expand_expr(statement.expr, scope).await,
         };
 
@@ -489,7 +471,7 @@ impl<'a, 'l> Expander<'a, 'l> {
                     ExpressionKind::Block(
                         Some(scope),
                         stream::iter(statements)
-                            .then(|statement| self.expand_statement(statement, false, scope))
+                            .then(|statement| self.expand_statement(statement, scope))
                             .collect()
                             .await,
                     )

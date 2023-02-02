@@ -10,24 +10,39 @@ use crate::{
 };
 use std::{cmp::Ordering, collections::VecDeque};
 
-// TODO: Custom precedences
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+// TODO: User-defined precedences
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, strum::EnumString)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub enum OperatorPrecedence {
+    #[strum(serialize = "Cast-Precedence")]
     Cast,
+    #[strum(serialize = "Power-Precedence")]
     Power,
+    #[strum(serialize = "Multiplication-Precedence")]
     Multiplication,
+    #[strum(serialize = "Addition-Precedence")]
     Addition,
+    #[strum(serialize = "Comparison-Precedence")]
     Comparison,
+    #[strum(serialize = "Conjunction-Precedence")]
     Conjunction,
+    #[strum(serialize = "Disjunction-Precedence")]
     Disjunction,
+    #[strum(serialize = "Accessor-Precedence")]
     Accessor,
+    #[strum(serialize = "Dot-Precedence")]
     Dot,
+    #[strum(serialize = "Comma-Precedence")]
     Comma,
+    #[strum(serialize = "Where-Precedence")]
     Where,
+    #[strum(serialize = "Function-Precedence")]
     Function,
+    #[strum(serialize = "Type-Function-Precedence")]
     TypeFunction,
+    #[strum(serialize = "Annotation-Precedence")]
     Annotation,
+    #[strum(serialize = "Assignment-Precedence")]
     Assignment,
 }
 

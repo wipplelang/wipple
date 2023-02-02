@@ -1,8 +1,17 @@
+#![allow(clippy::module_inception)]
+
+mod annotate;
 mod assign;
 mod comma;
+mod external;
 mod function;
 mod no_std;
+mod operator;
+mod or;
+mod syntax;
+mod type_function;
 mod r#use;
+mod r#where;
 
 use crate::{
     analysis::expand::{Context, Expander, Scope, ScopeValueKind, StatementAttributes, Syntax},
@@ -63,7 +72,6 @@ pub enum ExpressionKind {
     Use(Box<Expression>),
     When(Box<Expression>, Box<Expression>),
     Or(Box<Expression>, Box<Expression>),
-    // NOTE (TODO: remove): no Syntax, Operator, or UseFile -- these will be parsed directly by the `:` operator
     End(Box<Expression>),
 }
 
@@ -320,7 +328,6 @@ impl Expression {
     }
 }
 
-#[allow(unused)]
 impl Expression {
     pub(crate) fn traverse_mut(&mut self, mut f: impl FnMut(&mut Expression)) {
         self.traverse_mut_with_inner((), &mut |expr, ()| f(expr));
@@ -434,11 +441,18 @@ where
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 #[enum_dispatch(BuiltinSyntaxVisitor)]
 pub enum BuiltinSyntax {
+    Annotate(annotate::AnnotateSyntax),
     Assign(assign::AssignSyntax),
     Comma(comma::CommaSyntax),
+    External(external::ExternalSyntax),
     Function(function::FunctionSyntax),
     NoStd(no_std::NoStdSyntax),
+    Operator(operator::OperatorSyntax),
+    Or(or::OrSyntax),
+    Syntax(syntax::SyntaxSyntax),
+    TypeFunction(type_function::TypeFunctionSyntax),
     Use(r#use::UseSyntax),
+    Where(r#where::WhereSyntax),
 }
 
 impl BuiltinSyntax {

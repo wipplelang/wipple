@@ -1,9 +1,14 @@
 use crate::{
-    analysis::expand::{
-        operators::{ExpandOperatorsResult, OperatorPrecedence},
-        syntax::{r#use::UseSyntax, BuiltinSyntax, BuiltinSyntaxVisitor},
-        Context, Expander, Expression, ExpressionKind, Operator, ScopeValueKind, Syntax,
+    analysis::{
+        expand::{
+            operators::{ExpandOperatorsResult, OperatorPrecedence},
+            syntax::{r#use::UseSyntax, syntax::SyntaxSyntax, BuiltinSyntax, BuiltinSyntaxVisitor},
+            Context, Expander, Expression, ExpressionKind, Operator, ScopeValueKind, Syntax,
+            SyntaxDeclaration,
+        },
+        lower::SyntaxDeclarationAttributes,
     },
+    diagnostics::Note,
     helpers::InternedString,
     parse::Span,
     ScopeId,
@@ -52,10 +57,25 @@ impl BuiltinSyntaxVisitor for AssignSyntax {
         self,
         span: Span,
         mut vars: HashMap<InternedString, Expression>,
-        _context: Option<Context<'_>>,
+        context: Option<Context<'_>>,
         scope: ScopeId,
         expander: &Expander<'_, '_>,
     ) -> Expression {
+        let statement_attributes = match context {
+            Some(Context::Statement(attributes)) => attributes,
+            _ => {
+                expander.compiler.add_error(
+                    "`:` may not be nested inside another expression",
+                    vec![Note::primary(span, "try making this its own statement")],
+                );
+
+                return Expression {
+                    span,
+                    kind: ExpressionKind::error(expander.compiler),
+                };
+            }
+        };
+
         let lhs = vars.remove(&InternedString::new("lhs")).unwrap();
         let rhs = vars.remove(&InternedString::new("rhs")).unwrap();
 
@@ -69,21 +89,92 @@ impl BuiltinSyntaxVisitor for AssignSyntax {
             _ => unreachable!(),
         };
 
-        if let ExpandOperatorsResult::Syntax(
-            span,
-            _,
-            Syntax::Builtin(BuiltinSyntax::Use(_)),
-            exprs,
-        ) = expander.expand_operators(rhs.span, rhs_exprs, scope)
+        if let ExpandOperatorsResult::Syntax(span, _, Syntax::Builtin(syntax), exprs) =
+            expander.expand_operators(rhs.span, rhs_exprs, scope)
         {
-            if UseSyntax::try_import(Some(lhs_exprs), span, exprs, scope, expander)
-                .await
-                .is_ok()
-            {
-                return Expression {
-                    span,
-                    kind: ExpressionKind::EmptySideEffect,
-                };
+            match syntax {
+                BuiltinSyntax::Use(_) => {
+                    if UseSyntax::try_import(Some(lhs_exprs), span, exprs, scope, expander)
+                        .await
+                        .is_ok()
+                    {
+                        return Expression {
+                            span,
+                            kind: ExpressionKind::EmptySideEffect,
+                        };
+                    }
+                }
+                BuiltinSyntax::Syntax(_) => {
+                    if let Some(syntax_definition) =
+                        SyntaxSyntax::try_parse_syntax_definition(span, exprs, scope, expander)
+                            .await
+                    {
+                        if lhs_exprs.len() == 1 {
+                            if let ExpressionKind::Name(_, name) = lhs_exprs.first().unwrap().kind {
+                                let id = expander.compiler.new_template_id_in(expander.file);
+
+                                let attributes = SyntaxDeclarationAttributes {
+                                    keyword: statement_attributes.keyword,
+                                    help: statement_attributes.help.clone(),
+                                };
+
+                                if let Some(precedence) = statement_attributes.operator_precedence {
+                                    expander.declarations.lock().operators.insert(
+                                        id,
+                                        SyntaxDeclaration {
+                                            name,
+                                            span: lhs.span,
+                                            uses: Default::default(),
+                                            attributes: attributes.clone(),
+                                            value: Operator {
+                                                precedence,
+                                                syntax: Syntax::Defined(id),
+                                            },
+                                        },
+                                    );
+                                }
+
+                                expander.declarations.lock().syntaxes.insert(
+                                    id,
+                                    SyntaxDeclaration {
+                                        name,
+                                        span: lhs.span,
+                                        uses: Default::default(),
+                                        attributes,
+                                        value: syntax_definition,
+                                    },
+                                );
+
+                                expander.set_name(
+                                    name,
+                                    ScopeValueKind::Syntax(Syntax::Defined(id)),
+                                    scope,
+                                );
+
+                                return Expression {
+                                    span,
+                                    kind: ExpressionKind::EmptySideEffect,
+                                };
+                            }
+                        }
+
+                        expander.compiler.add_error(
+                            "`syntax` definitions may only be assigned to a name",
+                            vec![Note::primary(
+                                lhs.span,
+                                "try changing this to be a single name",
+                            )],
+                        );
+
+                        return Expression {
+                            span,
+                            kind: ExpressionKind::error(expander.compiler),
+                        };
+                    }
+
+                    todo!()
+                }
+                _ => {}
             }
         }
 

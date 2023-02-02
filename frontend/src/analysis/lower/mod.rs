@@ -962,12 +962,7 @@ impl<'l> Compiler<'l> {
                 previous_scopes.push(scope);
             }
 
-            let scope = info.scopes.get(&scope).unwrap_or_else(|| {
-                panic!(
-                    "no such scope: {:?}, available scopes: {:#?}",
-                    scope, info.scopes
-                )
-            });
+            let scope = info.scopes.get(&scope).unwrap();
 
             if let Some(value) = scope.values.borrow().get(&name).cloned() {
                 result = Some(value);
