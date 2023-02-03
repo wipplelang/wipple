@@ -476,6 +476,10 @@ impl<'a, 'l> Expander<'a, 'l> {
                             .await,
                     )
                 }
+                ExpressionKind::AssignToName(name, expr) => ExpressionKind::AssignToName(
+                    name,
+                    Box::new(self.expand_expr(*expr, inherited_scope).await),
+                ),
                 ExpressionKind::Assign(lhs, rhs) => ExpressionKind::Assign(
                     Box::new(self.expand_expr(*lhs, inherited_scope).await),
                     Box::new(self.expand_expr(*rhs, inherited_scope).await),

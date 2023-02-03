@@ -220,6 +220,17 @@ impl BuiltinSyntaxVisitor for AssignSyntax {
             }
         }
 
+        if lhs_exprs.len() == 1 {
+            let lhs = lhs_exprs.first().unwrap();
+
+            if let ExpressionKind::Name(_, name) = lhs.kind {
+                return Expression {
+                    span,
+                    kind: ExpressionKind::AssignToName((lhs.span, name), Box::new(rhs)),
+                };
+            }
+        }
+
         Expression {
             span,
             kind: ExpressionKind::Assign(Box::new(lhs), Box::new(rhs)),

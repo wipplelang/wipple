@@ -59,6 +59,7 @@ pub enum ExpressionKind {
     Number(InternedString),
     List(Vec<Expression>),
     Block(Option<ScopeId>, Vec<Statement>),
+    AssignToName((Span, InternedString), Box<Expression>),
     Assign(Box<Expression>, Box<Expression>),
     Function(Option<ScopeId>, Box<Expression>, Box<Expression>),
     Tuple(Vec<Expression>),
@@ -404,7 +405,8 @@ impl Expression {
                 input.traverse_mut_with_inner(context.clone(), f);
                 arms.traverse_mut_with_inner(context, f);
             }
-            ExpressionKind::Instance(expr)
+            ExpressionKind::AssignToName(_, expr)
+            | ExpressionKind::Instance(expr)
             | ExpressionKind::Use(expr)
             | ExpressionKind::End(expr) => {
                 expr.traverse_mut_with_inner(context, f);
