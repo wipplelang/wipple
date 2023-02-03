@@ -111,7 +111,7 @@ impl BuiltinSyntaxVisitor for AssignSyntax {
                                 statement_attributes.operator_precedence
                             {
                                 let id = expander.compiler.new_template_id_in(expander.file);
-                                let parse_scope = expander.child_scope(scope);
+                                let parse_scope = expander.child_scope(span, scope);
 
                                 expander.set_name(
                                     name,

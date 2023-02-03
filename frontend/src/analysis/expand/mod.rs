@@ -29,7 +29,8 @@ pub struct File {
     pub dependencies: Vec<(Arc<File>, Option<HashMap<InternedString, Span>>)>,
     pub attributes: FileAttributes,
     pub declarations: Declarations,
-    pub scope: ScopeId,
+    pub root_scope: ScopeId,
+    pub scopes: BTreeMap<ScopeId, (Span, Option<ScopeId>)>,
     pub statements: Vec<Statement>,
 }
 
@@ -112,7 +113,7 @@ impl<'l> Compiler<'l> {
             expanded: Default::default(),
         };
 
-        let scope = expander.new_scope();
+        let scope = expander.root_scope(file.span);
 
         let file_attributes = expander
             .expand_file_attributes(file.attributes.into_iter().map(Attribute::from), scope)
@@ -184,7 +185,13 @@ impl<'l> Compiler<'l> {
             dependencies: expander.dependencies.into_unique().into_values().collect(),
             attributes: expander.attributes.into_unique(),
             declarations: expander.declarations.into_unique(),
-            scope,
+            root_scope: scope,
+            scopes: expander
+                .scopes
+                .into_unique()
+                .into_iter()
+                .map(|(id, scope)| (id, (scope.span, scope.parent)))
+                .collect(),
             statements,
         }
     }
@@ -206,6 +213,7 @@ pub(crate) struct Expander<'a, 'l> {
 #[derive(Debug, Clone)]
 pub(crate) struct Scope {
     pub(crate) id: ScopeId,
+    pub(crate) span: Span,
     pub(crate) parent: Option<ScopeId>,
     pub(crate) values: HashMap<InternedString, ScopeValueKind>,
 }
@@ -231,8 +239,8 @@ pub enum Syntax {
 }
 
 impl<'a, 'l> Expander<'a, 'l> {
-    pub(crate) fn new_scope(&self) -> ScopeId {
-        let mut scope = self.create_scope();
+    pub(crate) fn root_scope(&self, span: Span) -> ScopeId {
+        let mut scope = self.create_scope(span);
         BuiltinSyntax::load_into(&mut scope);
 
         let id = scope.id;
@@ -241,8 +249,8 @@ impl<'a, 'l> Expander<'a, 'l> {
         id
     }
 
-    pub(crate) fn child_scope(&self, parent: ScopeId) -> ScopeId {
-        let mut scope = self.create_scope();
+    pub(crate) fn child_scope(&self, span: Span, parent: ScopeId) -> ScopeId {
+        let mut scope = self.create_scope(span);
         scope.parent = Some(parent);
 
         let id = scope.id;
@@ -251,9 +259,10 @@ impl<'a, 'l> Expander<'a, 'l> {
         id
     }
 
-    fn create_scope(&self) -> Scope {
+    fn create_scope(&self, span: Span) -> Scope {
         Scope {
             id: self.compiler.new_scope_id_in(self.file),
+            span,
             parent: None,
             values: Default::default(),
         }
@@ -466,7 +475,8 @@ impl<'a, 'l> Expander<'a, 'l> {
                         .await
                 }
                 ExpressionKind::Block(scope, statements) => {
-                    let scope = scope.unwrap_or_else(|| self.child_scope(inherited_scope));
+                    let scope =
+                        scope.unwrap_or_else(|| self.child_scope(expr.span, inherited_scope));
 
                     ExpressionKind::Block(
                         Some(scope),
@@ -597,7 +607,7 @@ impl<'a, 'l> Expander<'a, 'l> {
                     kind: ExpressionKind::List(vec![left, name, right]),
                 };
 
-                self.expand_syntax(operator_span, syntax, input, context, scope)
+                self.expand_operator(operator_span, syntax, input, context, scope)
                     .await
                     .kind
             }
@@ -631,12 +641,45 @@ impl<'a, 'l> Expander<'a, 'l> {
         context: Option<Context<'_>>,
         scope: ScopeId,
     ) -> Expression {
+        self.expand_syntax_inner(span, syntax, input, false, context, scope)
+            .await
+    }
+
+    async fn expand_operator(
+        &self,
+        span: Span,
+        syntax: Syntax,
+        input: Expression,
+        context: Option<Context<'_>>,
+        scope: ScopeId,
+    ) -> Expression {
+        self.expand_syntax_inner(span, syntax, input, true, context, scope)
+            .await
+    }
+
+    async fn expand_syntax_inner(
+        &self,
+        span: Span,
+        syntax: Syntax,
+        input: Expression,
+        operator: bool,
+        context: Option<Context<'_>>,
+        scope: ScopeId,
+    ) -> Expression {
         self.expanded.lock().insert(span);
 
         match syntax {
             Syntax::Defined(id) => {
-                let declarations = self.declarations.lock();
-                let decl = &declarations.syntaxes.get(&id).unwrap();
+                let mut declarations = self.declarations.lock();
+
+                if operator {
+                    let decl = declarations.operators.get_mut(&id).unwrap();
+                    decl.uses.insert(span);
+                }
+
+                let decl = declarations.syntaxes.get_mut(&id).unwrap();
+                decl.uses.insert(span);
+
                 for rule in &decl.value.rules {
                     if let Some(vars) = input.unify(&rule.pattern) {
                         let mut body = rule.body.clone();

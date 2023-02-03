@@ -15,7 +15,8 @@ pub struct File {
     pub span: Span,
     pub attributes: FileAttributes,
     pub syntax_declarations: BTreeMap<TemplateId, SyntaxDeclaration>,
-    pub scope: ScopeId,
+    pub root_scope: ScopeId,
+    pub scopes: BTreeMap<ScopeId, (Span, Option<ScopeId>)>,
     pub statements: Vec<Statement>,
 }
 
@@ -206,11 +207,12 @@ impl Compiler<'_> {
             span: file.span,
             attributes: file.attributes,
             syntax_declarations: self.build_syntax_declarations(file.declarations),
-            scope: file.scope,
+            root_scope: file.root_scope,
+            scopes: file.scopes,
             statements: file
                 .statements
                 .into_iter()
-                .filter_map(|expr| self.build_statement(expr, file.scope))
+                .filter_map(|expr| self.build_statement(expr, file.root_scope))
                 .collect(),
         }
     }

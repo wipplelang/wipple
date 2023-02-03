@@ -5,10 +5,13 @@ mod assign;
 mod comma;
 mod external;
 mod function;
+mod instance;
 mod no_std;
 mod operator;
 mod or;
 mod syntax;
+mod r#trait;
+mod r#type;
 mod type_function;
 mod r#use;
 mod r#where;
@@ -448,10 +451,13 @@ pub enum BuiltinSyntax {
     Comma(comma::CommaSyntax),
     External(external::ExternalSyntax),
     Function(function::FunctionSyntax),
+    Instance(instance::InstanceSyntax),
     NoStd(no_std::NoStdSyntax),
     Operator(operator::OperatorSyntax),
     Or(or::OrSyntax),
     Syntax(syntax::SyntaxSyntax),
+    Trait(r#trait::TraitSyntax),
+    Type(r#type::TypeSyntax),
     TypeFunction(type_function::TypeFunctionSyntax),
     Use(r#use::UseSyntax),
     Where(r#where::WhereSyntax),

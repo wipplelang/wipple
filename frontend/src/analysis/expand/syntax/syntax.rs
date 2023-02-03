@@ -192,7 +192,7 @@ fn convert_variables(expr: &mut Expression, inherited_scope: ScopeId, expander: 
             | ExpressionKind::TypeFunction(scope, _, _) => {
                 assert!(scope.is_none());
 
-                let child_scope = expander.child_scope(inherited_scope);
+                let child_scope = expander.child_scope(expr.span, inherited_scope);
                 *scope = Some(child_scope);
 
                 child_scope

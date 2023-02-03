@@ -1,8 +1,8 @@
 use crate::{
     analysis::expand::{
-        operators::OperatorPrecedence, syntax::BuiltinSyntaxVisitor, Context, Expander, Expression,
-        ExpressionKind, Operator, ScopeValueKind, Syntax,
+        syntax::BuiltinSyntaxVisitor, Context, Expander, Expression, ExpressionKind,
     },
+    diagnostics::Note,
     helpers::InternedString,
     parse::Span,
     ScopeId,
@@ -12,19 +12,12 @@ use std::collections::HashMap;
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
-pub struct FunctionSyntax;
+pub struct TraitSyntax;
 
 #[async_trait]
-impl BuiltinSyntaxVisitor for FunctionSyntax {
+impl BuiltinSyntaxVisitor for TraitSyntax {
     fn name(self) -> &'static str {
-        "->"
-    }
-
-    fn kind(self, syntax: Syntax) -> ScopeValueKind {
-        ScopeValueKind::Operator(Operator {
-            precedence: OperatorPrecedence::Function,
-            syntax,
-        })
+        "trait"
     }
 
     fn pattern(self) -> Expression {
@@ -33,15 +26,11 @@ impl BuiltinSyntaxVisitor for FunctionSyntax {
             kind: ExpressionKind::List(vec![
                 Expression {
                     span: Span::builtin(),
-                    kind: ExpressionKind::Variable(InternedString::new("lhs")),
-                },
-                Expression {
-                    span: Span::builtin(),
                     kind: ExpressionKind::Name(None, InternedString::new(self.name())),
                 },
                 Expression {
                     span: Span::builtin(),
-                    kind: ExpressionKind::Variable(InternedString::new("rhs")),
+                    kind: ExpressionKind::RepeatedVariable(InternedString::new("exprs")),
                 },
             ]),
         }
@@ -55,15 +44,25 @@ impl BuiltinSyntaxVisitor for FunctionSyntax {
         scope: ScopeId,
         expander: &Expander<'_, '_>,
     ) -> Expression {
-        let lhs = vars.remove(&InternedString::new("lhs")).unwrap();
-        let rhs = vars.remove(&InternedString::new("rhs")).unwrap();
+        let mut exprs = match vars.remove(&InternedString::new("exprs")).unwrap().kind {
+            ExpressionKind::List(exprs) => exprs,
+            _ => unreachable!(),
+        };
+
+        for expr in exprs.split_off(1) {
+            expander.compiler.add_error(
+                "unexpected input to `trait`",
+                vec![Note::primary(expr.span, "try removing this")],
+            );
+        }
+
+        let expr = exprs.pop();
 
         Expression {
             span,
-            kind: ExpressionKind::Function(
+            kind: ExpressionKind::Trait(
                 Some(expander.child_scope(span, scope)),
-                Box::new(lhs),
-                Box::new(rhs),
+                expr.map(Box::new),
             ),
         }
     }

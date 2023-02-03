@@ -61,7 +61,7 @@ impl BuiltinSyntaxVisitor for TypeFunctionSyntax {
         Expression {
             span,
             kind: ExpressionKind::TypeFunction(
-                Some(expander.child_scope(scope)),
+                Some(expander.child_scope(span, scope)),
                 Box::new(lhs),
                 Box::new(rhs),
             ),
