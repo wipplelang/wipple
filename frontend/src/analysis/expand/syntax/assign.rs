@@ -33,24 +33,21 @@ impl BuiltinSyntaxVisitor for AssignSyntax {
         })
     }
 
-    fn pattern(self) -> Expression {
-        Expression {
-            span: Span::builtin(),
-            kind: ExpressionKind::List(vec![
-                Expression {
-                    span: Span::builtin(),
-                    kind: ExpressionKind::Variable(InternedString::new("lhs")),
-                },
-                Expression {
-                    span: Span::builtin(),
-                    kind: ExpressionKind::Name(None, InternedString::new(self.name())),
-                },
-                Expression {
-                    span: Span::builtin(),
-                    kind: ExpressionKind::Variable(InternedString::new("rhs")),
-                },
-            ]),
-        }
+    fn pattern(self) -> Vec<Expression> {
+        vec![
+            Expression {
+                span: Span::builtin(),
+                kind: ExpressionKind::Variable(InternedString::new("lhs")),
+            },
+            Expression {
+                span: Span::builtin(),
+                kind: ExpressionKind::Name(None, InternedString::new(self.name())),
+            },
+            Expression {
+                span: Span::builtin(),
+                kind: ExpressionKind::Variable(InternedString::new("rhs")),
+            },
+        ]
     }
 
     async fn expand(
@@ -220,20 +217,12 @@ impl BuiltinSyntaxVisitor for AssignSyntax {
             }
         }
 
-        if lhs_exprs.len() == 1 {
-            let lhs = lhs_exprs.first().unwrap();
-
-            if let ExpressionKind::Name(_, name) = lhs.kind {
-                return Expression {
-                    span,
-                    kind: ExpressionKind::AssignToName((lhs.span, name), Box::new(rhs)),
-                };
-            }
-        }
-
         Expression {
             span,
-            kind: ExpressionKind::Assign(Box::new(lhs), Box::new(rhs)),
+            kind: match expander.expand_pattern(lhs, scope).await {
+                Ok(pattern) => ExpressionKind::AssignToPattern(pattern, Box::new(rhs)),
+                Err(lhs) => ExpressionKind::Assign(Box::new(lhs), Box::new(rhs)),
+            },
         }
     }
 }

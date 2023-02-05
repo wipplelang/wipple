@@ -37,8 +37,11 @@ Range : N => type {
 -- 	}
 -- }
 
-to : dot operator (min' max' ~> Range {
-	min : min'
-	max : max'
-	step : 1
-})
+[operator Dot-Precedence]
+to : syntax {
+	'min to 'max -> Range {
+		min : 'min
+		max : 'max
+		step : 1
+	}
+}

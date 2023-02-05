@@ -27,24 +27,21 @@ impl BuiltinSyntaxVisitor for TypeFunctionSyntax {
         })
     }
 
-    fn pattern(self) -> Expression {
-        Expression {
-            span: Span::builtin(),
-            kind: ExpressionKind::List(vec![
-                Expression {
-                    span: Span::builtin(),
-                    kind: ExpressionKind::Variable(InternedString::new("lhs")),
-                },
-                Expression {
-                    span: Span::builtin(),
-                    kind: ExpressionKind::Name(None, InternedString::new(self.name())),
-                },
-                Expression {
-                    span: Span::builtin(),
-                    kind: ExpressionKind::Variable(InternedString::new("rhs")),
-                },
-            ]),
-        }
+    fn pattern(self) -> Vec<Expression> {
+        vec![
+            Expression {
+                span: Span::builtin(),
+                kind: ExpressionKind::Variable(InternedString::new("lhs")),
+            },
+            Expression {
+                span: Span::builtin(),
+                kind: ExpressionKind::Name(None, InternedString::new(self.name())),
+            },
+            Expression {
+                span: Span::builtin(),
+                kind: ExpressionKind::Variable(InternedString::new("rhs")),
+            },
+        ]
     }
 
     async fn expand(
@@ -56,13 +53,21 @@ impl BuiltinSyntaxVisitor for TypeFunctionSyntax {
         expander: &Expander<'_, '_>,
     ) -> Expression {
         let lhs = vars.remove(&InternedString::new("lhs")).unwrap();
-        let rhs = vars.remove(&InternedString::new("rhs")).unwrap();
+        let mut rhs = vars.remove(&InternedString::new("rhs")).unwrap();
+
+        let type_function_scope = expander.child_scope(span, scope);
+
+        let (params, bounds) = expander
+            .expand_type_function(lhs, type_function_scope)
+            .await;
+
+        expander.update_scopes_for_type_function(&params, &mut rhs, type_function_scope);
 
         Expression {
             span,
             kind: ExpressionKind::TypeFunction(
-                Some(expander.child_scope(span, scope)),
-                Box::new(lhs),
+                Some(type_function_scope),
+                (params, bounds),
                 Box::new(rhs),
             ),
         }

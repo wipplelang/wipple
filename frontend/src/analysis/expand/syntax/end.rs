@@ -19,20 +19,17 @@ impl BuiltinSyntaxVisitor for EndSyntax {
         "end"
     }
 
-    fn pattern(self) -> Expression {
-        Expression {
-            span: Span::builtin(),
-            kind: ExpressionKind::List(vec![
-                Expression {
-                    span: Span::builtin(),
-                    kind: ExpressionKind::Name(None, InternedString::new(self.name())),
-                },
-                Expression {
-                    span: Span::builtin(),
-                    kind: ExpressionKind::Variable(InternedString::new("expr")),
-                },
-            ]),
-        }
+    fn pattern(self) -> Vec<Expression> {
+        vec![
+            Expression {
+                span: Span::builtin(),
+                kind: ExpressionKind::Name(None, InternedString::new(self.name())),
+            },
+            Expression {
+                span: Span::builtin(),
+                kind: ExpressionKind::Variable(InternedString::new("expr")),
+            },
+        ]
     }
 
     async fn expand(

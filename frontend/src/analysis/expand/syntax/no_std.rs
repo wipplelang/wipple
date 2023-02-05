@@ -20,11 +20,11 @@ impl BuiltinSyntaxVisitor for NoStdSyntax {
         "no-std"
     }
 
-    fn pattern(self) -> Expression {
-        Expression {
+    fn pattern(self) -> Vec<Expression> {
+        vec![Expression {
             span: Span::builtin(),
             kind: ExpressionKind::Name(None, InternedString::new(self.name())),
-        }
+        }]
     }
 
     async fn expand(

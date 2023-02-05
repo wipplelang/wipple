@@ -1097,8 +1097,7 @@ impl Compiler<'_> {
             let scope_value = match decl.kind {
                 StatementDeclarationKind::Type(id, ty) => {
                     let (parameters, _) = self.with_parameters(
-                        ty.parameters
-                            .map(|(scope, params)| (scope, params, Vec::new())),
+                        ty.parameters.map(|params| (scope, params, Vec::new())),
                         info,
                     );
 
@@ -1266,7 +1265,7 @@ impl Compiler<'_> {
                     let (parameters, _) = self.with_parameters(
                         declaration
                             .parameters
-                            .map(|(scope, params)| (scope, params, Vec::new())),
+                            .map(|params| (scope, params, Vec::new())),
                         info,
                     );
 
@@ -1733,28 +1732,26 @@ impl Compiler<'_> {
                 .into_iter()
                 .filter_map(|(param, message)| {
                     let param = match param {
-                        Some((span, scope, param)) => {
-                            match self.get_in_scope(scope.unwrap(), param, span, info) {
-                                Some(ScopeValue::TypeParameter(param)) => {
-                                    info.declarations
-                                        .type_parameters
-                                        .get_mut(&param)
-                                        .unwrap()
-                                        .uses
-                                        .insert(span);
+                        Some((span, param)) => match self.get_in_scope(scope, param, span, info) {
+                            Some(ScopeValue::TypeParameter(param)) => {
+                                info.declarations
+                                    .type_parameters
+                                    .get_mut(&param)
+                                    .unwrap()
+                                    .uses
+                                    .insert(span);
 
-                                    Some(param)
-                                }
-                                _ => {
-                                    self.add_error(
-                                        format!("cannot find type parameter `{}`", param),
-                                        vec![Note::primary(span, "no such type")],
-                                    );
-
-                                    return None;
-                                }
+                                Some(param)
                             }
-                        }
+                            _ => {
+                                self.add_error(
+                                    format!("cannot find type parameter `{}`", param),
+                                    vec![Note::primary(span, "no such type")],
+                                );
+
+                                return None;
+                            }
+                        },
                         None => None,
                     };
 
@@ -2061,12 +2058,12 @@ impl Compiler<'_> {
 
                 ExpressionKind::Function(pattern, Box::new(body), captures)
             }
-            ast::ExpressionKind::When(input, arms) => ExpressionKind::When(
+            ast::ExpressionKind::When(input, scope, arms) => ExpressionKind::When(
                 Box::new(self.lower_expr(*input, info)),
                 arms.into_iter()
                     .map(|arm| Arm {
                         span: arm.span,
-                        pattern: self.lower_pattern(arm.pattern, arm.scope, info),
+                        pattern: self.lower_pattern(arm.pattern, scope, info),
                         body: self.lower_expr(arm.body, info),
                     })
                     .collect(),

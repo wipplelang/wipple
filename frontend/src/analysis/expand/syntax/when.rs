@@ -19,24 +19,21 @@ impl BuiltinSyntaxVisitor for WhenSyntax {
         "when"
     }
 
-    fn pattern(self) -> Expression {
-        Expression {
-            span: Span::builtin(),
-            kind: ExpressionKind::List(vec![
-                Expression {
-                    span: Span::builtin(),
-                    kind: ExpressionKind::Name(None, InternedString::new(self.name())),
-                },
-                Expression {
-                    span: Span::builtin(),
-                    kind: ExpressionKind::Variable(InternedString::new("expr")),
-                },
-                Expression {
-                    span: Span::builtin(),
-                    kind: ExpressionKind::Variable(InternedString::new("arms")),
-                },
-            ]),
-        }
+    fn pattern(self) -> Vec<Expression> {
+        vec![
+            Expression {
+                span: Span::builtin(),
+                kind: ExpressionKind::Name(None, InternedString::new(self.name())),
+            },
+            Expression {
+                span: Span::builtin(),
+                kind: ExpressionKind::Variable(InternedString::new("expr")),
+            },
+            Expression {
+                span: Span::builtin(),
+                kind: ExpressionKind::Variable(InternedString::new("arms")),
+            },
+        ]
     }
 
     async fn expand(
@@ -44,15 +41,19 @@ impl BuiltinSyntaxVisitor for WhenSyntax {
         span: Span,
         mut vars: HashMap<InternedString, Expression>,
         _context: Option<Context<'_>>,
-        _scope: ScopeId,
-        _expander: &Expander<'_, '_>,
+        scope: ScopeId,
+        expander: &Expander<'_, '_>,
     ) -> Expression {
         let expr = vars.remove(&InternedString::new("expr")).unwrap();
         let arms = vars.remove(&InternedString::new("arms")).unwrap();
 
         Expression {
             span,
-            kind: ExpressionKind::When(Box::new(expr), Box::new(arms)),
+            kind: ExpressionKind::When(
+                Box::new(expr),
+                Some(expander.child_scope(span, scope)),
+                Box::new(arms),
+            ),
         }
     }
 }

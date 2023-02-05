@@ -28,7 +28,10 @@ mod when;
 mod r#where;
 
 use crate::{
-    analysis::expand::{Context, Expander, Scope, ScopeValueKind, StatementAttributes, Syntax},
+    analysis::expand::{
+        Bound, Context, Expander, Pattern, PatternKind, Scope, ScopeValueKind, StatementAttributes,
+        Syntax, TypeParameter,
+    },
     diagnostics::Note,
     helpers::{Backtrace, InternedString},
     parse::{self, Span},
@@ -73,19 +76,30 @@ pub enum ExpressionKind {
     Number(InternedString),
     List(Vec<Expression>),
     Block(Option<ScopeId>, Vec<Statement>),
-    AssignToName((Span, InternedString), Box<Expression>),
+    AssignToPattern(Pattern, Box<Expression>),
     Assign(Box<Expression>, Box<Expression>),
-    Function(Option<ScopeId>, Box<Expression>, Box<Expression>),
+    Function(
+        // HACK: Function syntax can be used in both value and type position,
+        // and in type position we need to treat both sides as expressions
+        // without introducing any variables. So we just store both
+        // possibilities.
+        Option<(Option<ScopeId>, Pattern, Box<Expression>)>,
+        (Box<Expression>, Box<Expression>),
+    ),
     Tuple(Vec<Expression>),
     External(Box<Expression>, Box<Expression>, Vec<Expression>),
     Annotate(Box<Expression>, Box<Expression>),
-    Type(Option<ScopeId>, Option<Box<Expression>>),
-    Trait(Option<ScopeId>, Option<Box<Expression>>),
-    TypeFunction(Option<ScopeId>, Box<Expression>, Box<Expression>),
+    Type(Option<Box<Expression>>),
+    Trait(Option<Box<Expression>>),
+    TypeFunction(
+        Option<ScopeId>,
+        (Vec<TypeParameter>, Vec<Bound>),
+        Box<Expression>,
+    ),
     Where(Box<Expression>, Box<Expression>),
     Instance(Box<Expression>),
     Use(Box<Expression>),
-    When(Box<Expression>, Box<Expression>),
+    When(Box<Expression>, Option<ScopeId>, Box<Expression>),
     Or(Box<Expression>, Box<Expression>),
     End(Box<Expression>),
 }
@@ -392,9 +406,7 @@ impl Expression {
                 }
             }
             ExpressionKind::Assign(lhs, rhs)
-            | ExpressionKind::Function(_, lhs, rhs)
             | ExpressionKind::Annotate(lhs, rhs)
-            | ExpressionKind::TypeFunction(_, lhs, rhs)
             | ExpressionKind::Where(lhs, rhs)
             | ExpressionKind::Or(lhs, rhs) => {
                 lhs.traverse_mut_with_inner(context.clone(), f);
@@ -413,20 +425,43 @@ impl Expression {
                     expr.traverse_mut_with_inner(context.clone(), f);
                 }
             }
-            ExpressionKind::Type(_, expr) | ExpressionKind::Trait(_, expr) => {
+            ExpressionKind::Type(expr) | ExpressionKind::Trait(expr) => {
                 if let Some(expr) = expr {
                     expr.traverse_mut_with_inner(context, f);
                 }
             }
-            ExpressionKind::When(input, arms) => {
+            ExpressionKind::When(input, _, arms) => {
                 input.traverse_mut_with_inner(context.clone(), f);
                 arms.traverse_mut_with_inner(context, f);
             }
-            ExpressionKind::AssignToName(_, expr)
-            | ExpressionKind::Instance(expr)
+            ExpressionKind::Instance(expr)
+            | ExpressionKind::TypeFunction(_, _, expr)
             | ExpressionKind::Use(expr)
             | ExpressionKind::End(expr) => {
                 expr.traverse_mut_with_inner(context, f);
+            }
+            ExpressionKind::AssignToPattern(pattern, expr) => {
+                if let PatternKind::Annotate(_, expr) | PatternKind::Where(_, expr) =
+                    &mut pattern.kind
+                {
+                    expr.traverse_mut_with_inner(context.clone(), f);
+                }
+
+                expr.traverse_mut_with_inner(context, f);
+            }
+            ExpressionKind::Function(pattern, (lhs, rhs)) => {
+                if let Some((_, pattern, expr)) = pattern {
+                    if let PatternKind::Annotate(_, expr) | PatternKind::Where(_, expr) =
+                        &mut pattern.kind
+                    {
+                        expr.traverse_mut_with_inner(context.clone(), f);
+                    }
+
+                    expr.traverse_mut_with_inner(context.clone(), f);
+                }
+
+                lhs.traverse_mut_with_inner(context.clone(), f);
+                rhs.traverse_mut_with_inner(context, f);
             }
         }
     }
@@ -444,7 +479,7 @@ where
         ScopeValueKind::Syntax(syntax)
     }
 
-    fn pattern(self) -> Expression;
+    fn pattern(self) -> Vec<Expression>;
 
     async fn expand(
         self,

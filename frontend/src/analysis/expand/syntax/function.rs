@@ -27,24 +27,21 @@ impl BuiltinSyntaxVisitor for FunctionSyntax {
         })
     }
 
-    fn pattern(self) -> Expression {
-        Expression {
-            span: Span::builtin(),
-            kind: ExpressionKind::List(vec![
-                Expression {
-                    span: Span::builtin(),
-                    kind: ExpressionKind::Variable(InternedString::new("lhs")),
-                },
-                Expression {
-                    span: Span::builtin(),
-                    kind: ExpressionKind::Name(None, InternedString::new(self.name())),
-                },
-                Expression {
-                    span: Span::builtin(),
-                    kind: ExpressionKind::Variable(InternedString::new("rhs")),
-                },
-            ]),
-        }
+    fn pattern(self) -> Vec<Expression> {
+        vec![
+            Expression {
+                span: Span::builtin(),
+                kind: ExpressionKind::Variable(InternedString::new("lhs")),
+            },
+            Expression {
+                span: Span::builtin(),
+                kind: ExpressionKind::Name(None, InternedString::new(self.name())),
+            },
+            Expression {
+                span: Span::builtin(),
+                kind: ExpressionKind::Variable(InternedString::new("rhs")),
+            },
+        ]
     }
 
     async fn expand(
@@ -58,13 +55,20 @@ impl BuiltinSyntaxVisitor for FunctionSyntax {
         let lhs = vars.remove(&InternedString::new("lhs")).unwrap();
         let rhs = vars.remove(&InternedString::new("rhs")).unwrap();
 
+        let function_scope = expander.child_scope(span, scope);
+        let pattern = expander
+            .expand_pattern(lhs.clone(), function_scope)
+            .await
+            .ok()
+            .map(|mut pattern| {
+                let mut expr = rhs.clone();
+                expander.update_scopes_for_pattern(&mut pattern, &mut expr, function_scope);
+                (Some(function_scope), pattern, Box::new(expr))
+            });
+
         Expression {
             span,
-            kind: ExpressionKind::Function(
-                Some(expander.child_scope(span, scope)),
-                Box::new(lhs),
-                Box::new(rhs),
-            ),
+            kind: ExpressionKind::Function(pattern, (Box::new(lhs), Box::new(rhs))),
         }
     }
 }

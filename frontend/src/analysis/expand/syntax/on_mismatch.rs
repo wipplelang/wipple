@@ -20,28 +20,25 @@ impl BuiltinSyntaxVisitor for OnMismatchSyntax {
         "on-mismatch"
     }
 
-    fn pattern(self) -> Expression {
-        Expression {
-            span: Span::builtin(),
-            kind: ExpressionKind::List(vec![
-                Expression {
-                    span: Span::builtin(),
-                    kind: ExpressionKind::Name(None, InternedString::new(self.name())),
-                },
-                Expression {
-                    span: Span::builtin(),
-                    kind: ExpressionKind::Variable(InternedString::new("parameter")),
-                },
-                Expression {
-                    span: Span::builtin(),
-                    kind: ExpressionKind::Variable(InternedString::new("message")),
-                },
-                Expression {
-                    span: Span::builtin(),
-                    kind: ExpressionKind::Variable(InternedString::new("expr")),
-                },
-            ]),
-        }
+    fn pattern(self) -> Vec<Expression> {
+        vec![
+            Expression {
+                span: Span::builtin(),
+                kind: ExpressionKind::Name(None, InternedString::new(self.name())),
+            },
+            Expression {
+                span: Span::builtin(),
+                kind: ExpressionKind::Variable(InternedString::new("parameter")),
+            },
+            Expression {
+                span: Span::builtin(),
+                kind: ExpressionKind::Variable(InternedString::new("message")),
+            },
+            Expression {
+                span: Span::builtin(),
+                kind: ExpressionKind::Variable(InternedString::new("expr")),
+            },
+        ]
     }
 
     async fn expand(
@@ -49,7 +46,7 @@ impl BuiltinSyntaxVisitor for OnMismatchSyntax {
         span: Span,
         mut vars: HashMap<InternedString, Expression>,
         context: Option<Context<'_>>,
-        scope: ScopeId,
+        _scope: ScopeId,
         expander: &Expander<'_, '_>,
     ) -> Expression {
         let parameter = vars.remove(&InternedString::new("parameter")).unwrap();
@@ -72,7 +69,7 @@ impl BuiltinSyntaxVisitor for OnMismatchSyntax {
         };
 
         let parameter = match parameter.kind {
-            ExpressionKind::Name(_, name) => (parameter.span, Some(scope), name),
+            ExpressionKind::Name(_, name) => (parameter.span, name),
             _ => {
                 expander.compiler.add_error(
                     "`on-mismatch` requires the name of a type parameter for its first input",

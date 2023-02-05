@@ -20,20 +20,17 @@ impl BuiltinSyntaxVisitor for TypeSyntax {
         "type"
     }
 
-    fn pattern(self) -> Expression {
-        Expression {
-            span: Span::builtin(),
-            kind: ExpressionKind::List(vec![
-                Expression {
-                    span: Span::builtin(),
-                    kind: ExpressionKind::Name(None, InternedString::new(self.name())),
-                },
-                Expression {
-                    span: Span::builtin(),
-                    kind: ExpressionKind::RepeatedVariable(InternedString::new("exprs")),
-                },
-            ]),
-        }
+    fn pattern(self) -> Vec<Expression> {
+        vec![
+            Expression {
+                span: Span::builtin(),
+                kind: ExpressionKind::Name(None, InternedString::new(self.name())),
+            },
+            Expression {
+                span: Span::builtin(),
+                kind: ExpressionKind::RepeatedVariable(InternedString::new("exprs")),
+            },
+        ]
     }
 
     async fn expand(
@@ -41,7 +38,7 @@ impl BuiltinSyntaxVisitor for TypeSyntax {
         span: Span,
         mut vars: HashMap<InternedString, Expression>,
         _context: Option<Context<'_>>,
-        scope: ScopeId,
+        _scope: ScopeId,
         expander: &Expander<'_, '_>,
     ) -> Expression {
         let mut exprs = match vars.remove(&InternedString::new("exprs")).unwrap().kind {
@@ -62,7 +59,7 @@ impl BuiltinSyntaxVisitor for TypeSyntax {
 
         Expression {
             span,
-            kind: ExpressionKind::Type(Some(expander.child_scope(span, scope)), expr.map(Box::new)),
+            kind: ExpressionKind::Type(expr.map(Box::new)),
         }
     }
 }

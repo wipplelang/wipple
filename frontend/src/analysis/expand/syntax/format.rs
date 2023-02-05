@@ -20,24 +20,21 @@ impl BuiltinSyntaxVisitor for FormatSyntax {
         "format"
     }
 
-    fn pattern(self) -> Expression {
-        Expression {
-            span: Span::builtin(),
-            kind: ExpressionKind::List(vec![
-                Expression {
-                    span: Span::builtin(),
-                    kind: ExpressionKind::Name(None, InternedString::new(self.name())),
-                },
-                Expression {
-                    span: Span::builtin(),
-                    kind: ExpressionKind::Variable(InternedString::new("text")),
-                },
-                Expression {
-                    span: Span::builtin(),
-                    kind: ExpressionKind::RepeatedVariable(InternedString::new("inputs")),
-                },
-            ]),
-        }
+    fn pattern(self) -> Vec<Expression> {
+        vec![
+            Expression {
+                span: Span::builtin(),
+                kind: ExpressionKind::Name(None, InternedString::new(self.name())),
+            },
+            Expression {
+                span: Span::builtin(),
+                kind: ExpressionKind::Variable(InternedString::new("text")),
+            },
+            Expression {
+                span: Span::builtin(),
+                kind: ExpressionKind::RepeatedVariable(InternedString::new("inputs")),
+            },
+        ]
     }
 
     async fn expand(

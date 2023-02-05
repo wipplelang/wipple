@@ -5,7 +5,7 @@ pub use syntax::{Expression, ExpressionKind, Statement};
 
 use crate::{
     diagnostics::Note,
-    helpers::{InternedString, Shared},
+    helpers::{Backtrace, InternedString, Shared},
     parse::{self, Span},
     Compiler, FilePath, ScopeId, TemplateId,
 };
@@ -52,10 +52,7 @@ pub struct StatementAttributes {
     pub language_item: Option<LanguageItem>,
     pub help: VecDeque<InternedString>,
     pub on_unimplemented: Option<InternedString>,
-    pub on_mismatch: VecDeque<(
-        Option<(Span, Option<ScopeId>, InternedString)>,
-        InternedString,
-    )>,
+    pub on_mismatch: VecDeque<(Option<(Span, InternedString)>, InternedString)>,
     pub specialize: bool,
     pub allow_overlapping_instances: bool,
     pub operator_precedence: Option<OperatorPrecedence>,
@@ -99,6 +96,100 @@ pub struct SyntaxDeclaration<T> {
 pub struct SyntaxDeclarationAttributes {
     pub keyword: bool,
     pub help: VecDeque<InternedString>,
+}
+
+#[derive(Debug, Clone)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+pub struct Pattern {
+    pub span: Span,
+    pub kind: PatternKind,
+}
+
+#[derive(Debug, Clone)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+pub enum PatternKind {
+    Error(Backtrace),
+    Wildcard,
+    Number(InternedString),
+    Text(InternedString),
+    Name(InternedString),
+    Destructure(Vec<(InternedString, Pattern)>),
+    Variant((Span, InternedString), Vec<Pattern>),
+    Annotate(Box<Pattern>, Box<Expression>),
+    Or(Box<Pattern>, Box<Pattern>),
+    Where(Box<Pattern>, Box<Expression>),
+    Tuple(Vec<Pattern>),
+}
+
+impl PatternKind {
+    pub(crate) fn error(compiler: &Compiler) -> Self {
+        PatternKind::Error(compiler.backtrace())
+    }
+}
+
+#[allow(unused)]
+impl Pattern {
+    pub(crate) fn traverse_mut(&mut self, mut f: impl FnMut(&mut Pattern)) {
+        self.traverse_mut_with_inner((), &mut |expr, ()| f(expr));
+    }
+
+    pub(crate) fn traverse_mut_with<T: Clone>(
+        &mut self,
+        context: T,
+        mut f: impl FnMut(&mut Pattern, T) -> T,
+    ) {
+        self.traverse_mut_with_inner(context, &mut f);
+    }
+
+    fn traverse_mut_with_inner<T: Clone>(
+        &mut self,
+        context: T,
+        f: &mut impl FnMut(&mut Pattern, T) -> T,
+    ) {
+        let context = f(self, context);
+
+        match &mut self.kind {
+            PatternKind::Error(_)
+            | PatternKind::Wildcard
+            | PatternKind::Number(_)
+            | PatternKind::Text(_)
+            | PatternKind::Name(_) => {}
+            PatternKind::Destructure(fields) => {
+                for (_, pattern) in fields {
+                    pattern.traverse_mut_with_inner(context.clone(), f);
+                }
+            }
+            PatternKind::Variant(_, patterns) | PatternKind::Tuple(patterns) => {
+                for pattern in patterns {
+                    pattern.traverse_mut_with_inner(context.clone(), f);
+                }
+            }
+            PatternKind::Annotate(pattern, _) | PatternKind::Where(pattern, _) => {
+                pattern.traverse_mut_with_inner(context, f);
+            }
+            PatternKind::Or(lhs, rhs) => {
+                lhs.traverse_mut_with_inner(context.clone(), f);
+                rhs.traverse_mut_with_inner(context, f);
+            }
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+pub struct TypeParameter {
+    pub span: Span,
+    pub name: InternedString,
+}
+
+#[derive(Debug, Clone)]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+pub struct Bound {
+    pub span: Span,
+    pub trait_span: Span,
+    pub trait_scope: ScopeId,
+    pub trait_name: InternedString,
+    pub parameters: Vec<Expression>,
 }
 
 impl<'l> Compiler<'l> {
@@ -173,12 +264,24 @@ impl<'l> Compiler<'l> {
 
         let mut expansion_count = 0usize;
         loop {
-            // Expand any new templates and operators found in the program
+            // Expand any new syntaxes and operators found in the program
 
             statements = stream::iter(statements)
                 .then(|statement| expander.expand_statement(statement, scope))
                 .collect::<Vec<_>>()
                 .await;
+
+            let mut block = Expression {
+                span: file.span,
+                kind: ExpressionKind::Block(Some(scope), statements),
+            };
+
+            expander.update_scopes(&mut block, scope);
+
+            statements = match block.kind {
+                ExpressionKind::Block(_, statements) => statements,
+                _ => unreachable!(),
+            };
 
             // Prevent infinite recursion
 
@@ -208,18 +311,6 @@ impl<'l> Compiler<'l> {
 
             expansion_count += 1;
         }
-
-        let mut block = Expression {
-            span: file.span,
-            kind: ExpressionKind::Block(Some(scope), statements),
-        };
-
-        expander.update_scopes(&mut block, scope);
-
-        statements = match block.kind {
-            ExpressionKind::Block(_, statements) => statements,
-            _ => unreachable!(),
-        };
 
         File {
             span: file.span,
@@ -407,15 +498,9 @@ impl<'a, 'l> Expander<'a, 'l> {
                         kind: ExpressionKind::Name(None, syntax_name),
                     };
 
-                    let input = if inputs.is_empty() {
-                        name
-                    } else {
-                        Expression {
-                            span: attribute.span,
-                            kind: ExpressionKind::List(
-                                std::iter::once(name).chain(inputs).collect(),
-                            ),
-                        }
+                    let input = Expression {
+                        span: attribute.span,
+                        kind: ExpressionKind::List(std::iter::once(name).chain(inputs).collect()),
                     };
 
                     self.expand_syntax(
@@ -539,21 +624,35 @@ impl<'a, 'l> Expander<'a, 'l> {
                             .await,
                     )
                 }
-                ExpressionKind::AssignToName(name, expr) => ExpressionKind::AssignToName(
-                    name,
+                ExpressionKind::AssignToPattern(pattern, expr) => ExpressionKind::AssignToPattern(
+                    pattern,
                     Box::new(self.expand_expr(*expr, inherited_scope).await),
                 ),
                 ExpressionKind::Assign(lhs, rhs) => ExpressionKind::Assign(
                     Box::new(self.expand_expr(*lhs, inherited_scope).await),
                     Box::new(self.expand_expr(*rhs, inherited_scope).await),
                 ),
-                ExpressionKind::Function(scope, lhs, rhs) => {
-                    let scope = scope.expect("should have been created by syntax definition");
+                ExpressionKind::Function(pattern, (lhs, rhs)) => {
+                    let pattern = OptionFuture::from(pattern.map(
+                        |(function_scope, pattern, expr)| async move {
+                            let function_scope = function_scope
+                                .expect("should have been created by syntax definition");
+
+                            (
+                                Some(function_scope),
+                                pattern,
+                                Box::new(self.expand_expr(*expr, function_scope).await),
+                            )
+                        },
+                    ))
+                    .await;
 
                     ExpressionKind::Function(
-                        Some(scope),
-                        Box::new(self.expand_expr(*lhs, scope).await),
-                        Box::new(self.expand_expr(*rhs, scope).await),
+                        pattern,
+                        (
+                            Box::new(self.expand_expr(*lhs, inherited_scope).await),
+                            Box::new(self.expand_expr(*rhs, inherited_scope).await),
+                        ),
                     )
                 }
                 ExpressionKind::Tuple(exprs) => ExpressionKind::Tuple(
@@ -576,34 +675,24 @@ impl<'a, 'l> Expander<'a, 'l> {
                     Box::new(self.expand_expr(*lhs, inherited_scope).await),
                     Box::new(self.expand_expr(*rhs, inherited_scope).await),
                 ),
-                ExpressionKind::Type(scope, fields) => {
-                    let scope = scope.expect("should have been created by syntax definition");
-
-                    ExpressionKind::Type(
-                        Some(scope),
-                        OptionFuture::from(fields.map(|fields| async {
-                            Box::new(self.expand_expr(*fields, scope).await)
-                        }))
-                        .await,
-                    )
-                }
-                ExpressionKind::Trait(scope, value) => {
-                    let scope = scope.expect("should have been created by syntax definition");
-
-                    ExpressionKind::Trait(
-                        Some(scope),
-                        OptionFuture::from(value.map(|value| async {
-                            Box::new(self.expand_expr(*value, scope).await)
-                        }))
-                        .await,
-                    )
-                }
-                ExpressionKind::TypeFunction(scope, lhs, rhs) => {
+                ExpressionKind::Type(fields) => ExpressionKind::Type(
+                    OptionFuture::from(fields.map(|fields| async {
+                        Box::new(self.expand_expr(*fields, inherited_scope).await)
+                    }))
+                    .await,
+                ),
+                ExpressionKind::Trait(value) => ExpressionKind::Trait(
+                    OptionFuture::from(value.map(|value| async {
+                        Box::new(self.expand_expr(*value, inherited_scope).await)
+                    }))
+                    .await,
+                ),
+                ExpressionKind::TypeFunction(scope, (params, bounds), rhs) => {
                     let scope = scope.expect("should have been created by syntax definition");
 
                     ExpressionKind::TypeFunction(
                         Some(scope),
-                        Box::new(self.expand_expr(*lhs, scope).await),
+                        (params, bounds),
                         Box::new(self.expand_expr(*rhs, scope).await),
                     )
                 }
@@ -617,10 +706,15 @@ impl<'a, 'l> Expander<'a, 'l> {
                 ExpressionKind::Use(expr) => {
                     ExpressionKind::Use(Box::new(self.expand_expr(*expr, inherited_scope).await))
                 }
-                ExpressionKind::When(input, arms) => ExpressionKind::When(
-                    Box::new(self.expand_expr(*input, inherited_scope).await),
-                    Box::new(self.expand_expr(*arms, inherited_scope).await),
-                ),
+                ExpressionKind::When(input, scope, arms) => {
+                    let scope = scope.expect("should have been created by syntax definition");
+
+                    ExpressionKind::When(
+                        Box::new(self.expand_expr(*input, inherited_scope).await),
+                        Some(scope),
+                        Box::new(self.expand_expr(*arms, scope).await),
+                    )
+                }
                 ExpressionKind::Or(lhs, rhs) => ExpressionKind::Or(
                     Box::new(self.expand_expr(*lhs, inherited_scope).await),
                     Box::new(self.expand_expr(*rhs, inherited_scope).await),
@@ -670,13 +764,9 @@ impl<'a, 'l> Expander<'a, 'l> {
                     kind: ExpressionKind::Name(None, syntax_name),
                 };
 
-                let input = if inputs.is_empty() {
-                    name
-                } else {
-                    Expression {
-                        span,
-                        kind: ExpressionKind::List(std::iter::once(name).chain(inputs).collect()),
-                    }
+                let input = Expression {
+                    span,
+                    kind: ExpressionKind::List(std::iter::once(name).chain(inputs).collect()),
                 };
 
                 self.expand_syntax(syntax_span, syntax, input, context, scope)
@@ -684,6 +774,69 @@ impl<'a, 'l> Expander<'a, 'l> {
                     .kind
             }
         }
+    }
+
+    async fn expand_completely(&self, mut expr: Expression, scope: ScopeId) -> Expression {
+        let mut expanded = self.expanded.lock().clone();
+
+        let mut expansion_count = 0usize;
+        loop {
+            // Expand any new syntaxes and operators found in the program
+
+            expr = self.expand_expr(expr, scope).await;
+            self.update_scopes(&mut expr, scope);
+
+            // Prevent infinite recursion
+
+            let expanded = mem::take(&mut expanded);
+
+            if expanded.is_empty() {
+                break;
+            }
+
+            if expansion_count
+                > self
+                    .attributes
+                    .lock()
+                    .recursion_limit
+                    .unwrap_or(Compiler::DEFAULT_RECURSION_LIMIT)
+            {
+                self.compiler.add_error(
+                    "recursion limit reached",
+                    expanded
+                        .into_iter()
+                        .map(|span| Note::primary(span, "while expanding this"))
+                        .collect(),
+                );
+
+                break;
+            }
+
+            expansion_count += 1;
+        }
+
+        expr
+    }
+
+    async fn expand_pattern(
+        &self,
+        mut expr: Expression,
+        scope: ScopeId,
+    ) -> Result<Pattern, Expression> {
+        expr = self.expand_completely(expr, scope).await;
+        self.compiler.parse_pattern_from_expander_expr(expr, false)
+    }
+
+    async fn expand_type_function(
+        &self,
+        mut lhs: Expression,
+        scope: ScopeId,
+    ) -> (Vec<TypeParameter>, Vec<Bound>) {
+        lhs = self.expand_completely(lhs, scope).await;
+
+        self.compiler
+            .parse_type_function_from_expander_expr(lhs)
+            .unwrap_or_default()
     }
 
     async fn expand_syntax(
@@ -749,8 +902,13 @@ impl<'a, 'l> Expander<'a, 'l> {
                 }
             }
             Syntax::Builtin(syntax) => {
+                let pattern = Expression {
+                    span: Span::builtin(),
+                    kind: ExpressionKind::List(syntax.pattern()),
+                };
+
                 // TODO: Allow builtin syntax definitions to have multiple rules
-                let vars = match input.unify(&syntax.pattern()) {
+                let vars = match input.unify(&pattern) {
                     Some(vars) => vars,
                     None => {
                         self.report_syntax_error(span, None);
@@ -778,19 +936,460 @@ impl<'a, 'l> Expander<'a, 'l> {
 }
 
 impl<'a, 'l> Expander<'a, 'l> {
-    fn update_scopes(&self, expr: &mut Expression, scope: ScopeId) {
+    fn update_scopes_for_pattern(
+        &self,
+        pattern: &mut Pattern,
+        expr: &mut Expression,
+        scope: ScopeId,
+    ) {
+        let mut declared_variables = HashSet::new();
+        pattern.traverse_mut(|pattern| {
+            if let PatternKind::Name(name) = pattern.kind {
+                declared_variables.insert(name);
+            }
+        });
+
+        expr.traverse_mut(|expr| {
+            if let ExpressionKind::Name(name_scope, name) = &mut expr.kind {
+                if declared_variables.contains(name) {
+                    *name_scope = Some(scope);
+                }
+            }
+        });
+    }
+
+    fn update_scopes_for_type_function(
+        &self,
+        params: &[TypeParameter],
+        rhs: &mut Expression,
+        scope: ScopeId,
+    ) {
+        let declared_tys = params
+            .iter()
+            .map(|param| param.name)
+            .collect::<HashSet<_>>();
+
+        rhs.traverse_mut(|expr| {
+            if let ExpressionKind::Name(name_scope, name) = &mut expr.kind {
+                if declared_tys.contains(name) {
+                    *name_scope = Some(scope);
+                }
+            }
+        });
+    }
+}
+
+impl<'l> Compiler<'l> {
+    // HACK: Allows parsing patterns in both the expander and the AST builder
+    pub(crate) fn parse_pattern_from_expander_expr(
+        &self,
+        expr: Expression,
+        show_errors: bool,
+    ) -> Result<Pattern, Expression> {
+        let original_expr = expr.clone();
+
+        let kind = (|| {
+            Some(match expr.kind {
+                ExpressionKind::Error(trace) => PatternKind::Error(trace),
+                ExpressionKind::Underscore => PatternKind::Wildcard,
+                ExpressionKind::Name(_, name) => PatternKind::Name(name),
+                ExpressionKind::Block(_, statements) => {
+                    PatternKind::Destructure(
+                        statements
+                            .into_iter()
+                            .filter_map(
+                                |statement| -> Option<
+                                    Box<dyn Iterator<Item = (InternedString, Pattern)>>,
+                                > {
+                                    // TODO: Handle attributes
+
+                                    match statement.expr.kind {
+                                        ExpressionKind::Error(_) => None,
+                                        ExpressionKind::List(exprs) => Some(Box::new(
+                                            exprs.into_iter().filter_map(|expr| {
+                                                let (name, pattern) = match expr.kind {
+                                                    ExpressionKind::Error(_) => return None,
+                                                    ExpressionKind::Name(_, name) => (
+                                                        name,
+                                                        Pattern {
+                                                            span: expr.span,
+                                                            kind: PatternKind::Name(name),
+                                                        },
+                                                    ),
+                                                    _ => {
+                                                        if show_errors {
+                                                            self.add_error(
+                                                                "invalid pattern in destructuring pattern", vec![Note::primary(
+                                                                    expr.span,
+                                                                    "expected name here",
+                                                                )],
+                                                            );
+                                                        }
+
+                                                        return None;
+                                                    }
+                                                };
+
+                                                Some((name, pattern))
+                                            }),
+                                        )),
+                                        ExpressionKind::Name(_, name) => {
+                                            Some(Box::new(std::iter::once((
+                                                name,
+                                                Pattern {
+                                                    span: statement.expr.span,
+                                                    kind: PatternKind::Name(name),
+                                                },
+                                            ))))
+                                        }
+                                        ExpressionKind::AssignToPattern(Pattern { kind: PatternKind::Name(name), .. }, expr) => {
+                                            let pattern = self.parse_pattern_from_expander_expr(*expr, show_errors).ok()?;
+                                            Some(Box::new(std::iter::once((name, pattern))))
+                                        }
+                                        ExpressionKind::Assign(left, _) => {
+                                            if show_errors {
+                                                self.add_error(
+                                                    "invalid pattern in destructuring pattern", vec![Note::primary(
+                                                        left.span,
+                                                        "expected name here",
+                                                    )],
+                                                );
+                                            }
+
+                                            None
+                                        }
+                                        _ => {
+                                            if show_errors {
+                                                self.add_error(
+                                                    "invalid pattern in destructuring pattern", vec![Note::primary(
+                                                        expr.span,
+                                                        "try removing this",
+                                                    )],
+                                                );
+                                            }
+
+                                            None
+                                        }
+                                    }
+                                },
+                            )
+                            .flatten()
+                            .collect(),
+                    )
+                }
+                ExpressionKind::List(exprs) => {
+                    let mut exprs = exprs.into_iter();
+
+                    let name = match exprs.next() {
+                        Some(expr) => expr,
+                        None => return Some(PatternKind::Tuple(Vec::new())),
+                    };
+
+                    let name_span = name.span;
+
+                    let name = match name.kind {
+                        ExpressionKind::Name(_, name) => name,
+                        _ => {
+                            if show_errors {
+                                self.add_error(
+                                    "expected variant name",
+                                    vec![Note::primary(
+                                        expr.span,
+                                        "only variants may be used in this kind of pattern",
+                                    )],
+                                );
+                            }
+
+                            return None;
+                        }
+                    };
+
+                    let rest = exprs
+                        .map(|expr| {
+                            self.parse_pattern_from_expander_expr(expr, show_errors)
+                                .ok()
+                        })
+                        .collect::<Option<_>>()?;
+
+                    PatternKind::Variant((name_span, name), rest)
+                }
+                ExpressionKind::Number(number) => PatternKind::Number(number),
+                ExpressionKind::Text(text) => PatternKind::Text(text),
+                ExpressionKind::Annotate(expr, ty) => {
+                    let inner = self
+                        .parse_pattern_from_expander_expr(*expr, show_errors)
+                        .ok()?;
+
+                    PatternKind::Annotate(Box::new(inner), ty)
+                }
+                ExpressionKind::Or(lhs, rhs) => PatternKind::Or(
+                    Box::new(
+                        self.parse_pattern_from_expander_expr(*lhs, show_errors)
+                            .ok()?,
+                    ),
+                    Box::new(
+                        self.parse_pattern_from_expander_expr(*rhs, show_errors)
+                            .ok()?,
+                    ),
+                ),
+                ExpressionKind::Where(pattern, condition) => PatternKind::Where(
+                    Box::new(
+                        self.parse_pattern_from_expander_expr(*pattern, show_errors)
+                            .ok()?,
+                    ),
+                    condition,
+                ),
+                ExpressionKind::Tuple(exprs) => PatternKind::Tuple(
+                    exprs
+                        .into_iter()
+                        .map(|expr| {
+                            self.parse_pattern_from_expander_expr(expr, show_errors)
+                                .ok()
+                        })
+                        .collect::<Option<_>>()?,
+                ),
+                _ => {
+                    if show_errors {
+                        self.add_error(
+                            "expected pattern",
+                            vec![Note::primary(
+                                expr.span,
+                                "values may not appear on the left-hand side of a variable assignment",
+                            )],
+                        );
+                    }
+
+                    return None;
+                }
+            })
+        })();
+
+        kind.map(|kind| Pattern {
+            span: expr.span,
+            kind,
+        })
+        .ok_or(original_expr)
+    }
+
+    pub(crate) fn parse_type_function_from_expander_expr(
+        &self,
+        lhs: Expression,
+    ) -> Option<(Vec<TypeParameter>, Vec<Bound>)> {
+        macro_rules! build_parameter_list {
+            ($tys:expr) => {
+                $tys.into_iter()
+                    .map(|expr| match expr.kind {
+                        ExpressionKind::Error(_) => None,
+                        ExpressionKind::Name(_, name) => Some(TypeParameter {
+                            span: expr.span,
+                            name,
+                        }),
+                        _ => {
+                            self.add_error(
+                                "expected type parameter",
+                                vec![Note::primary(expr.span, "try removing this")],
+                            );
+
+                            None
+                        }
+                    })
+                    .collect::<Option<Vec<_>>>()
+            };
+        }
+
+        macro_rules! build_bound {
+            ($span:expr, $list:expr) => {
+                (|| {
+                    let mut list = $list.into_iter();
+
+                    let trait_name = list.next().unwrap();
+                    let trait_span = trait_name.span;
+                    let (trait_scope, trait_name) = match trait_name.kind {
+                        ExpressionKind::Error(_) => return None,
+                        ExpressionKind::Name(scope, name) => (scope.unwrap(), name),
+                        _ => {
+                            self.add_error(
+                                "expected trait name in `where` clause",
+                                vec![Note::primary(trait_name.span, "try adding a name here")],
+                            );
+
+                            return None;
+                        }
+                    };
+
+                    Some(Bound {
+                        span: $span,
+                        trait_span,
+                        trait_scope,
+                        trait_name,
+                        parameters: list.collect(),
+                    })
+                })()
+            };
+        }
+
+        match lhs.kind {
+            ExpressionKind::Error(_) => None,
+            ExpressionKind::Name(_, name) => Some((
+                vec![TypeParameter {
+                    span: lhs.span,
+                    name,
+                }],
+                Vec::new(),
+            )),
+            ExpressionKind::List(tys) => Some((build_parameter_list!(tys)?, Vec::new())),
+            ExpressionKind::Where(lhs, bounds) => {
+                let tys = match lhs.kind {
+                    ExpressionKind::Error(_) => return None,
+                    ExpressionKind::Name(_, name) => vec![TypeParameter {
+                        span: lhs.span,
+                        name,
+                    }],
+                    ExpressionKind::List(tys) => build_parameter_list!(tys)?,
+                    _ => {
+                        self.add_error(
+                            "expected type parameters on left-hand side of `where` clause",
+                            vec![Note::primary(
+                                lhs.span,
+                                "try providing a list of names here",
+                            )],
+                        );
+
+                        return None;
+                    }
+                };
+
+                let bounds_span = bounds.span;
+
+                let bounds = (|| {
+                    match bounds.kind {
+                        ExpressionKind::List(bounds) => {
+                            if bounds
+                                .iter()
+                                .any(|bound| matches!(bound.kind, ExpressionKind::List(_)))
+                            {
+                                // The bounds clause matches the pattern `(T A) (T B) ...`
+                                bounds
+                                    .into_iter()
+                                    .map(|bound| match bound.kind {
+                                        ExpressionKind::Name(trait_scope, trait_name) => Some(Bound {
+                                            span: bound.span,
+                                            trait_span: bound.span,
+                                            trait_scope: trait_scope.unwrap(),
+                                            trait_name,
+                                            parameters: Vec::new(),
+                                        }),
+                                        ExpressionKind::List(list) => build_bound!(bound.span, list),
+                                        _ => {
+                                            self.add_error(
+                                                "expected bound", vec![Note::primary(
+                                                    bounds_span,
+                                                    "`where` bound must be in the format `(T A B ...)`",
+                                                )],
+                                            );
+
+                                            None
+                                        }
+                                    })
+                                    .collect::<Option<_>>()
+                            } else {
+                                // The bounds clause matches the pattern `T A B ...`
+                                Some(vec![build_bound!(bounds_span, bounds)?])
+                            }
+                        }
+                        ExpressionKind::Name(trait_scope, trait_name) => {
+                            // The bounds clause matches the pattern `T`
+                            Some(vec![Bound {
+                                span: bounds_span,
+                                trait_span: bounds_span,
+                                trait_scope: trait_scope.unwrap(),
+                                trait_name,
+                                parameters: Vec::new(),
+                            }])
+                        }
+                        _ => {
+                            self.add_error(
+                                "expected bounds",
+                                vec![Note::primary(
+                                    bounds_span,
+                                    "`where` bounds must be in the format `(T A) (T B) ...`",
+                                )],
+                            );
+
+                            None
+                        }
+                    }
+                })()?;
+
+                Some((tys, bounds))
+            }
+            _ => {
+                self.add_error(
+                    "expected type parameters",
+                    vec![Note::primary(
+                        lhs.span,
+                        "try providing a list of names and optionally a `where` clause",
+                    )],
+                );
+
+                None
+            }
+        }
+    }
+}
+
+enum WithScopesResult<'a> {
+    NameLike(InternedString, &'a mut Option<ScopeId>, ScopeId),
+    BlockLike(&'a mut Option<ScopeId>, ScopeId),
+    Inherited(ScopeId),
+}
+
+impl Expression {
+    fn owned_scope(&mut self) -> Option<&mut Option<ScopeId>> {
         // NOTE: Make sure to update this any time a new expression with its own
         // scope is added
-        expr.traverse_mut_with(scope, |expr, inherited_scope| match &mut expr.kind {
-            ExpressionKind::Name(scope, _) => *scope.get_or_insert(inherited_scope),
+        match &mut self.kind {
             ExpressionKind::Block(scope, _)
-            | ExpressionKind::Function(scope, _, _)
-            | ExpressionKind::Type(scope, _)
-            | ExpressionKind::Trait(scope, _)
-            | ExpressionKind::TypeFunction(scope, _, _) => {
-                *scope.get_or_insert_with(|| self.child_scope(expr.span, inherited_scope))
+            | ExpressionKind::Function(Some((scope, _, _)), (_, _))
+            | ExpressionKind::TypeFunction(scope, _, _)
+            | ExpressionKind::When(_, scope, _) => Some(scope),
+            _ => None,
+        }
+    }
+}
+
+impl<'a, 'l> Expander<'a, 'l> {
+    fn with_scopes(
+        &self,
+        expr: &mut Expression,
+        scope: ScopeId,
+        mut f: impl FnMut(Span, WithScopesResult) -> ScopeId,
+    ) {
+        expr.traverse_mut_with(scope, |expr, inherited_scope| {
+            let span = expr.span;
+
+            if let ExpressionKind::Name(scope, name) = &mut expr.kind {
+                f(
+                    span,
+                    WithScopesResult::NameLike(*name, scope, inherited_scope),
+                )
+            } else if let Some(scope) = expr.owned_scope() {
+                f(span, WithScopesResult::BlockLike(scope, inherited_scope))
+            } else {
+                f(span, WithScopesResult::Inherited(inherited_scope))
             }
-            _ => inherited_scope,
+        });
+    }
+
+    fn update_scopes(&self, expr: &mut Expression, scope: ScopeId) {
+        self.with_scopes(expr, scope, |span, result| match result {
+            WithScopesResult::NameLike(_, scope, inherited_scope) => {
+                *scope.get_or_insert(inherited_scope)
+            }
+            WithScopesResult::BlockLike(scope, inherited_scope) => {
+                *scope.get_or_insert_with(|| self.child_scope(span, inherited_scope))
+            }
+            WithScopesResult::Inherited(inherited_scope) => inherited_scope,
         });
     }
 }
