@@ -2,6 +2,7 @@ use crate::{
     analysis::expand::{
         syntax::BuiltinSyntaxVisitor, Context, Expander, Expression, ExpressionKind,
     },
+    diagnostics::Note,
     helpers::InternedString,
     parse::Span,
     ScopeId,
@@ -37,6 +38,14 @@ impl BuiltinSyntaxVisitor for NoStdSyntax {
         let file_attributes = match context {
             Some(Context::FileAttributes(attributes)) => attributes,
             _ => {
+                expander.compiler.add_error(
+                    "`no-std` may only be used as a file attribute",
+                    vec![Note::primary(
+                        span,
+                        "try putting this between `[[` and `]]` brackets",
+                    )],
+                );
+
                 return Expression {
                     span,
                     kind: ExpressionKind::error(expander.compiler),

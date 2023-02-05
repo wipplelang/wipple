@@ -153,8 +153,11 @@ impl SyntaxSyntax {
                     }
                 };
 
-            convert_variables(&mut lhs, scope, expander);
-            convert_variables(&mut rhs, scope, expander);
+            convert_variables(&mut lhs);
+            expander.update_scopes(&mut lhs, scope);
+
+            convert_variables(&mut rhs);
+            expander.update_scopes(&mut rhs, scope);
 
             rules.push(SyntaxRule {
                 span: statement.span,
@@ -167,37 +170,14 @@ impl SyntaxSyntax {
     }
 }
 
-fn convert_variables(expr: &mut Expression, inherited_scope: ScopeId, expander: &Expander) {
-    // NOTE: Make sure to update this any time a new expression with its own
-    // scope is added
-    expr.traverse_mut_with(inherited_scope, |expr, inherited_scope| {
-        match &mut expr.kind {
-            ExpressionKind::Name(scope, name) => {
-                assert!(scope.is_none());
-
-                *scope = Some(inherited_scope);
-
-                if name.starts_with('\'') {
-                    expr.kind = ExpressionKind::Variable(*name);
-                } else if name.starts_with("...") {
-                    expr.kind = ExpressionKind::RepeatedVariable(*name);
-                }
-
-                inherited_scope
+fn convert_variables(expr: &mut Expression) {
+    expr.traverse_mut(|expr| {
+        if let ExpressionKind::Name(_, name) = expr.kind {
+            if name.starts_with('\'') {
+                expr.kind = ExpressionKind::Variable(name);
+            } else if name.starts_with("...") {
+                expr.kind = ExpressionKind::RepeatedVariable(name);
             }
-            ExpressionKind::Block(scope, _)
-            | ExpressionKind::Function(scope, _, _)
-            | ExpressionKind::Type(scope, _)
-            | ExpressionKind::Trait(scope, _)
-            | ExpressionKind::TypeFunction(scope, _, _) => {
-                assert!(scope.is_none());
-
-                let child_scope = expander.child_scope(expr.span, inherited_scope);
-                *scope = Some(child_scope);
-
-                child_scope
-            }
-            _ => inherited_scope,
         }
-    })
+    });
 }

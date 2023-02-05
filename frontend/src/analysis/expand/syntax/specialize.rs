@@ -12,12 +12,12 @@ use std::collections::HashMap;
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
-pub struct TypeSyntax;
+pub struct SpecializeSyntax;
 
 #[async_trait]
-impl BuiltinSyntaxVisitor for TypeSyntax {
+impl BuiltinSyntaxVisitor for SpecializeSyntax {
     fn name(self) -> &'static str {
-        "type"
+        "specialize"
     }
 
     fn pattern(self) -> Expression {
@@ -30,7 +30,7 @@ impl BuiltinSyntaxVisitor for TypeSyntax {
                 },
                 Expression {
                     span: Span::builtin(),
-                    kind: ExpressionKind::RepeatedVariable(InternedString::new("exprs")),
+                    kind: ExpressionKind::Variable(InternedString::new("expr")),
                 },
             ]),
         }
@@ -40,29 +40,29 @@ impl BuiltinSyntaxVisitor for TypeSyntax {
         self,
         span: Span,
         mut vars: HashMap<InternedString, Expression>,
-        _context: Option<Context<'_>>,
-        scope: ScopeId,
+        context: Option<Context<'_>>,
+        _scope: ScopeId,
         expander: &Expander<'_, '_>,
     ) -> Expression {
-        let mut exprs = match vars.remove(&InternedString::new("exprs")).unwrap().kind {
-            ExpressionKind::List(exprs) => exprs,
-            _ => unreachable!(),
+        let expr = vars.remove(&InternedString::new("expr")).unwrap();
+
+        let statement_attributes = match context {
+            Some(Context::StatementAttributes(attributes)) => attributes,
+            _ => {
+                expander.compiler.add_error(
+                    "`specialize` may only be used as an attribute",
+                    vec![Note::primary(
+                        span,
+                        "try putting this between `[` and `]` brackets",
+                    )],
+                );
+
+                return expr;
+            }
         };
 
-        if !exprs.is_empty() {
-            for expr in exprs.split_off(1) {
-                expander.compiler.add_error(
-                    "unexpected input to `type`",
-                    vec![Note::primary(expr.span, "try removing this")],
-                );
-            }
-        }
+        statement_attributes.specialize = true;
 
-        let expr = exprs.pop();
-
-        Expression {
-            span,
-            kind: ExpressionKind::Type(Some(expander.child_scope(span, scope)), expr.map(Box::new)),
-        }
+        expr
     }
 }

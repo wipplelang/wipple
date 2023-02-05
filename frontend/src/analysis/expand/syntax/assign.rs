@@ -94,7 +94,7 @@ impl BuiltinSyntaxVisitor for AssignSyntax {
         {
             match syntax {
                 BuiltinSyntax::Use(_) => {
-                    if UseSyntax::try_import(Some(lhs_exprs), span, exprs, scope, expander)
+                    if UseSyntax::try_import(Some(lhs_exprs), span, exprs, expander)
                         .await
                         .is_ok()
                     {

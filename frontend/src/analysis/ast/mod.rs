@@ -16,7 +16,7 @@ pub struct File {
     pub attributes: FileAttributes,
     pub syntax_declarations: BTreeMap<TemplateId, SyntaxDeclaration>,
     pub root_scope: ScopeId,
-    pub scopes: BTreeMap<ScopeId, (Span, Option<ScopeId>)>,
+    pub scopes: BTreeMap<ScopeId, (Option<Span>, Option<ScopeId>)>,
     pub statements: Vec<Statement>,
 }
 

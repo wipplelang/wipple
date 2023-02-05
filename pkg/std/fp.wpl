@@ -8,7 +8,14 @@ it : x -> x
 just :: A => A -> _ -> A
 just : x -> _ -> x
 
-. : dot operator (x f ~> f x)
+[operator Dot-Precedence]
+. : syntax {
+	'x . 'f -> 'f 'x
+}
 
 Map : A B Input Output => trait ((A -> B) -> Input -> Output)
-| : dot operator (x f ~> Map f x)
+
+[operator Dot-Precedence]
+| : syntax {
+	'x | 'f -> Map 'f 'x
+}

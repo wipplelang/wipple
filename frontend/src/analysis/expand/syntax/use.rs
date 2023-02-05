@@ -41,13 +41,13 @@ impl BuiltinSyntaxVisitor for UseSyntax {
         span: Span,
         mut vars: HashMap<InternedString, Expression>,
         context: Option<Context<'_>>,
-        scope: ScopeId,
+        _scope: ScopeId,
         expander: &Expander<'_, '_>,
     ) -> Expression {
         let expr = vars.remove(&InternedString::new("expr")).unwrap();
 
         if let Some(Context::Statement(_)) = context {
-            if UseSyntax::try_import(None, expr.span, vec![expr.clone()], scope, expander)
+            if UseSyntax::try_import(None, expr.span, vec![expr.clone()], expander)
                 .await
                 .is_ok()
             {
@@ -70,7 +70,6 @@ impl UseSyntax {
         lhs: Option<&[Expression]>,
         span: Span,
         exprs: Vec<Expression>,
-        scope: ScopeId,
         expander: &Expander<'_, '_>,
     ) -> Result<(), ()> {
         if exprs.len() == 1 {
@@ -80,7 +79,7 @@ impl UseSyntax {
                     (expander.load)(expander.compiler, span, FilePath::Path(path)).await
                 {
                     resolved_path = Some(file.span.path);
-                    expander.add_dependency(file, scope);
+                    expander.add_dependency(file);
                 }
 
                 if let Some(lhs) = lhs {

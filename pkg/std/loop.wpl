@@ -14,17 +14,23 @@ loop' : body -> when (body ()) {
 }
 
 [keyword]
-loop : body ~> loop' (() -> body)
+loop : syntax {
+	loop 'body -> loop' (() -> 'body)
+}
 
 [keyword]
-while : condition body ~> loop {
-	if condition {
-		body
-		Continue :: Control-Flow ()
-	} {
-		Break ()
+while : syntax {
+	while 'condition 'body -> loop {
+		if 'condition {
+			'body
+			Continue :: Control-Flow ()
+		} {
+			Break ()
+		}
 	}
 }
 
 [keyword]
-unless : condition body ~> while (not condition) body
+unless : syntax {
+	unless 'condition 'body -> while (not 'condition) 'body
+}

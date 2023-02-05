@@ -4,7 +4,8 @@ use crate::{
         ExpressionKind, Operator, ScopeValueKind, Syntax,
     },
     helpers::InternedString,
-    parse::Span, ScopeId,
+    parse::Span,
+    ScopeId,
 };
 use async_trait::async_trait;
 use std::collections::HashMap;

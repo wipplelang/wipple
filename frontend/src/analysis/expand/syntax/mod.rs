@@ -1,19 +1,30 @@
 #![allow(clippy::module_inception)]
 
+mod allow_overlapping_instances;
 mod annotate;
 mod assign;
 mod comma;
+mod end;
 mod external;
+mod format;
 mod function;
+mod help;
 mod instance;
+mod keyword;
+mod language;
 mod no_std;
+mod on_mismatch;
+mod on_unimplemented;
 mod operator;
 mod or;
+mod recursion_limit;
+mod specialize;
 mod syntax;
 mod r#trait;
 mod r#type;
 mod type_function;
 mod r#use;
+mod when;
 mod r#where;
 
 use crate::{
@@ -310,7 +321,10 @@ impl Expression {
                     None => {
                         expander.compiler.add_error(
                             format!("cannot find `{}`", var),
-                            vec![Note::primary(expr.span, "this name is not defined")],
+                            vec![Note::primary(
+                                expr.span,
+                                "this syntax variable is not defined",
+                            )],
                         );
 
                         expr.kind = ExpressionKind::error(expander.compiler);
@@ -446,20 +460,31 @@ where
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 #[enum_dispatch(BuiltinSyntaxVisitor)]
 pub enum BuiltinSyntax {
+    AllowOverlappingInstances(allow_overlapping_instances::AllowOverlappingInstancesSyntax),
     Annotate(annotate::AnnotateSyntax),
     Assign(assign::AssignSyntax),
     Comma(comma::CommaSyntax),
+    End(end::EndSyntax),
     External(external::ExternalSyntax),
+    Format(format::FormatSyntax),
     Function(function::FunctionSyntax),
+    Help(help::HelpSyntax),
     Instance(instance::InstanceSyntax),
+    Keyword(keyword::KeywordSyntax),
+    Language(language::LanguageSyntax),
     NoStd(no_std::NoStdSyntax),
+    OnMismatch(on_mismatch::OnMismatchSyntax),
+    OnUnimplemented(on_unimplemented::OnUnimplementedSyntax),
     Operator(operator::OperatorSyntax),
     Or(or::OrSyntax),
+    RecursionLimit(recursion_limit::RecursionLimitSyntax),
+    Specialize(specialize::SpecializeSyntax),
     Syntax(syntax::SyntaxSyntax),
     Trait(r#trait::TraitSyntax),
     Type(r#type::TypeSyntax),
     TypeFunction(type_function::TypeFunctionSyntax),
     Use(r#use::UseSyntax),
+    When(when::WhenSyntax),
     Where(r#where::WhereSyntax),
 }
 

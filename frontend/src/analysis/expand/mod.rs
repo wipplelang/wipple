@@ -22,6 +22,11 @@ use std::{
 };
 use syntax::*;
 
+pub(crate) const GLOBAL_ROOT_SCOPE: ScopeId = ScopeId {
+    file: None,
+    counter: 0,
+};
+
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub struct File {
@@ -30,7 +35,7 @@ pub struct File {
     pub attributes: FileAttributes,
     pub declarations: Declarations,
     pub root_scope: ScopeId,
-    pub scopes: BTreeMap<ScopeId, (Span, Option<ScopeId>)>,
+    pub scopes: BTreeMap<ScopeId, (Option<Span>, Option<ScopeId>)>,
     pub statements: Vec<Statement>,
 }
 
@@ -47,7 +52,10 @@ pub struct StatementAttributes {
     pub language_item: Option<LanguageItem>,
     pub help: VecDeque<InternedString>,
     pub on_unimplemented: Option<InternedString>,
-    pub on_mismatch: VecDeque<(Option<(Span, InternedString)>, InternedString)>,
+    pub on_mismatch: VecDeque<(
+        Option<(Span, Option<ScopeId>, InternedString)>,
+        InternedString,
+    )>,
     pub specialize: bool,
     pub allow_overlapping_instances: bool,
     pub operator_precedence: Option<OperatorPrecedence>,
@@ -102,18 +110,37 @@ impl<'l> Compiler<'l> {
             + Send
             + Sync,
     ) -> File {
-        let expander = Expander {
+        let mut expander = Expander {
             compiler: self,
             file: file.span.path,
             dependencies: Default::default(),
             attributes: Default::default(),
             declarations: Default::default(),
             scopes: Default::default(),
+            file_scope: None,
             load: Arc::new(load),
             expanded: Default::default(),
         };
 
-        let scope = expander.root_scope(file.span);
+        // Load the global builtins
+
+        let mut scope = Scope {
+            id: GLOBAL_ROOT_SCOPE,
+            span: None,
+            parent: None,
+            values: Default::default(),
+        };
+
+        BuiltinSyntax::load_into(&mut scope);
+
+        expander.scopes.lock().insert(scope.id, scope);
+
+        // Initialize the file's own scope
+
+        let scope = expander.child_scope(file.span, GLOBAL_ROOT_SCOPE);
+        expander.file_scope = Some(scope);
+
+        // Expand file attributes
 
         let file_attributes = expander
             .expand_file_attributes(file.attributes.into_iter().map(Attribute::from), scope)
@@ -123,7 +150,7 @@ impl<'l> Compiler<'l> {
             let std_path = expander.compiler.loader.std_path();
             if let Some(std_path) = std_path {
                 if let Some(file) = (expander.load)(expander.compiler, file.span, std_path).await {
-                    expander.add_dependency(file, scope);
+                    expander.add_dependency(file);
                 }
             } else {
                 expander.compiler.add_error(
@@ -135,6 +162,8 @@ impl<'l> Compiler<'l> {
                 );
             }
         }
+
+        // Expand the file's contents
 
         let mut statements = file
             .statements
@@ -180,6 +209,18 @@ impl<'l> Compiler<'l> {
             expansion_count += 1;
         }
 
+        let mut block = Expression {
+            span: file.span,
+            kind: ExpressionKind::Block(Some(scope), statements),
+        };
+
+        expander.update_scopes(&mut block, scope);
+
+        statements = match block.kind {
+            ExpressionKind::Block(_, statements) => statements,
+            _ => unreachable!(),
+        };
+
         File {
             span: file.span,
             dependencies: expander.dependencies.into_unique().into_values().collect(),
@@ -190,6 +231,7 @@ impl<'l> Compiler<'l> {
                 .scopes
                 .into_unique()
                 .into_iter()
+                .filter(|(id, _)| *id != GLOBAL_ROOT_SCOPE)
                 .map(|(id, scope)| (id, (scope.span, scope.parent)))
                 .collect(),
             statements,
@@ -204,6 +246,7 @@ pub(crate) struct Expander<'a, 'l> {
     attributes: Shared<FileAttributes>,
     declarations: Shared<Declarations>,
     scopes: Shared<BTreeMap<ScopeId, Scope>>,
+    file_scope: Option<ScopeId>,
     load: Arc<
         dyn Fn(&'a Compiler<'l>, Span, FilePath) -> BoxFuture<'a, Option<Arc<File>>> + Send + Sync,
     >,
@@ -213,7 +256,7 @@ pub(crate) struct Expander<'a, 'l> {
 #[derive(Debug, Clone)]
 pub(crate) struct Scope {
     pub(crate) id: ScopeId,
-    pub(crate) span: Span,
+    pub(crate) span: Option<Span>,
     pub(crate) parent: Option<ScopeId>,
     pub(crate) values: HashMap<InternedString, ScopeValueKind>,
 }
@@ -239,16 +282,6 @@ pub enum Syntax {
 }
 
 impl<'a, 'l> Expander<'a, 'l> {
-    pub(crate) fn root_scope(&self, span: Span) -> ScopeId {
-        let mut scope = self.create_scope(span);
-        BuiltinSyntax::load_into(&mut scope);
-
-        let id = scope.id;
-        self.scopes.lock().insert(id, scope);
-
-        id
-    }
-
     pub(crate) fn child_scope(&self, span: Span, parent: ScopeId) -> ScopeId {
         let mut scope = self.create_scope(span);
         scope.parent = Some(parent);
@@ -262,7 +295,7 @@ impl<'a, 'l> Expander<'a, 'l> {
     fn create_scope(&self, span: Span) -> Scope {
         Scope {
             id: self.compiler.new_scope_id_in(self.file),
-            span,
+            span: Some(span),
             parent: None,
             values: Default::default(),
         }
@@ -272,7 +305,9 @@ impl<'a, 'l> Expander<'a, 'l> {
         let mut parent = Some(scope);
         while let Some(scope) = parent {
             let scopes = self.scopes.lock();
-            let scope = scopes.get(&scope).unwrap();
+            let scope = scopes
+                .get(&scope)
+                .unwrap_or_else(|| panic!("unregistered scope {:?}", scope));
 
             if let Some(value) = scope.values.get(&name).cloned() {
                 return Some(value);
@@ -292,18 +327,36 @@ impl<'a, 'l> Expander<'a, 'l> {
 }
 
 impl<'a, 'l> Expander<'a, 'l> {
-    pub(crate) fn add_dependency(&self, file: Arc<File>, scope: ScopeId) {
+    pub(crate) fn add_dependency(&self, file: Arc<File>) {
         self.declarations.lock().merge(file.declarations.clone());
 
-        for decl in file.declarations.operators.values() {
-            self.set_name(decl.name, ScopeValueKind::Operator(decl.value), scope);
-        }
+        self.scopes
+            .lock()
+            .extend(file.scopes.iter().map(|(&id, &(span, parent))| {
+                (
+                    id,
+                    Scope {
+                        id,
+                        span,
+                        parent,
+                        values: Default::default(), // never used
+                    },
+                )
+            }));
 
         for (&id, decl) in &file.declarations.syntaxes {
             self.set_name(
                 decl.name,
                 ScopeValueKind::Syntax(Syntax::Defined(id)),
-                scope,
+                self.file_scope.unwrap(),
+            );
+        }
+
+        for decl in file.declarations.operators.values() {
+            self.set_name(
+                decl.name,
+                ScopeValueKind::Operator(decl.value),
+                self.file_scope.unwrap(),
             );
         }
 
@@ -327,7 +380,11 @@ impl<'a, 'l> Expander<'a, 'l> {
     ) -> FileAttributes {
         let mut file_attributes = FileAttributes::default();
 
-        for attribute in attributes {
+        for mut attribute in attributes {
+            for expr in &mut attribute.exprs {
+                self.update_scopes(expr, scope);
+            }
+
             match self.expand_operators(attribute.span, attribute.exprs, scope) {
                 ExpandOperatorsResult::Error(_) => {}
                 ExpandOperatorsResult::Empty
@@ -400,18 +457,14 @@ impl<'a, 'l> Expander<'a, 'l> {
                         kind: ExpressionKind::Name(None, syntax_name),
                     };
 
-                    let input = if inputs.is_empty() {
-                        name
-                    } else {
-                        Expression {
-                            span: attribute.span,
-                            kind: ExpressionKind::List(
-                                std::iter::once(name)
-                                    .chain(inputs)
-                                    .chain(std::iter::once(statement.expr))
-                                    .collect(),
-                            ),
-                        }
+                    let input = Expression {
+                        span: attribute.span,
+                        kind: ExpressionKind::List(
+                            std::iter::once(name)
+                                .chain(inputs)
+                                .chain(std::iter::once(statement.expr))
+                                .collect(),
+                        ),
                     };
 
                     statement.expr = self
@@ -696,6 +749,7 @@ impl<'a, 'l> Expander<'a, 'l> {
                 }
             }
             Syntax::Builtin(syntax) => {
+                // TODO: Allow builtin syntax definitions to have multiple rules
                 let vars = match input.unify(&syntax.pattern()) {
                     Some(vars) => vars,
                     None => {
@@ -720,5 +774,23 @@ impl<'a, 'l> Expander<'a, 'l> {
                 .chain(syntax_span.map(|span| Note::secondary(span, "syntax defined here")))
                 .collect::<Vec<_>>(),
         );
+    }
+}
+
+impl<'a, 'l> Expander<'a, 'l> {
+    fn update_scopes(&self, expr: &mut Expression, scope: ScopeId) {
+        // NOTE: Make sure to update this any time a new expression with its own
+        // scope is added
+        expr.traverse_mut_with(scope, |expr, inherited_scope| match &mut expr.kind {
+            ExpressionKind::Name(scope, _) => *scope.get_or_insert(inherited_scope),
+            ExpressionKind::Block(scope, _)
+            | ExpressionKind::Function(scope, _, _)
+            | ExpressionKind::Type(scope, _)
+            | ExpressionKind::Trait(scope, _)
+            | ExpressionKind::TypeFunction(scope, _, _) => {
+                *scope.get_or_insert_with(|| self.child_scope(expr.span, inherited_scope))
+            }
+            _ => inherited_scope,
+        });
     }
 }

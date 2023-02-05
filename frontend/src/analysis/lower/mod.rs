@@ -656,13 +656,15 @@ impl Compiler<'_> {
             specializations: Default::default(),
         };
 
-        let scope = self.root_scope(file.root_scope, file.span, &mut info);
+        self.root_scope(expand::GLOBAL_ROOT_SCOPE, &mut info);
 
         for (id, (span, parent)) in file.scopes {
             if let Some(parent) = parent {
                 self.child_scope(id, parent, span, &mut info);
             }
         }
+
+        let scope = file.root_scope;
 
         info.attributes.recursion_limit = file.attributes.recursion_limit;
 
@@ -797,7 +799,7 @@ impl Compiler<'_> {
             scopes: info
                 .scopes
                 .into_values()
-                .map(|scope| (scope.span, scope.values.take()))
+                .filter_map(|scope| Some((scope.span?, scope.values.take())))
                 .collect(),
             specializations: {
                 let mut specializations = BTreeMap::<ConstantId, Vec<ConstantId>>::new();
@@ -838,7 +840,7 @@ impl LanguageItems {
 #[derive(Debug, Clone)]
 struct Scope {
     parent: Option<ScopeId>,
-    span: Span,
+    span: Option<Span>,
     values: RefCell<ScopeValues>,
     declared_variables: RefCell<BTreeSet<VariableId>>,
     used_variables: RefCell<CaptureList>,
@@ -866,8 +868,8 @@ pub enum ScopeValue {
 }
 
 impl<'l> Compiler<'l> {
-    fn root_scope(&self, id: ScopeId, span: Span, info: &mut Info) -> ScopeId {
-        let scope = self.create_scope(span);
+    fn root_scope(&self, id: ScopeId, info: &mut Info) -> ScopeId {
+        let scope = self.create_scope(None);
         self.load_builtins(&scope, info);
 
         info.scopes.insert(id, scope);
@@ -875,7 +877,13 @@ impl<'l> Compiler<'l> {
         id
     }
 
-    fn child_scope(&self, id: ScopeId, parent: ScopeId, span: Span, info: &mut Info) -> ScopeId {
+    fn child_scope(
+        &self,
+        id: ScopeId,
+        parent: ScopeId,
+        span: Option<Span>,
+        info: &mut Info,
+    ) -> ScopeId {
         let mut scope = self.create_scope(span);
         scope.parent = Some(parent);
 
@@ -884,7 +892,7 @@ impl<'l> Compiler<'l> {
         id
     }
 
-    fn create_scope(&self, span: Span) -> Scope {
+    fn create_scope(&self, span: Option<Span>) -> Scope {
         Scope {
             parent: None,
             span,
@@ -968,7 +976,12 @@ impl<'l> Compiler<'l> {
                 previous_scopes.push(scope);
             }
 
-            let scope = info.scopes.get(&scope).unwrap();
+            let scope = info.scopes.get(&scope).unwrap_or_else(|| {
+                panic!(
+                    "cannot find scope {:#?}, current file = {:?}",
+                    scope, info.file
+                )
+            });
 
             if let Some(value) = scope.values.borrow().get(&name).cloned() {
                 result = Some(value);
@@ -1720,26 +1733,28 @@ impl Compiler<'_> {
                 .into_iter()
                 .filter_map(|(param, message)| {
                     let param = match param {
-                        Some((span, param)) => match self.get_in_scope(scope, param, span, info) {
-                            Some(ScopeValue::TypeParameter(param)) => {
-                                info.declarations
-                                    .type_parameters
-                                    .get_mut(&param)
-                                    .unwrap()
-                                    .uses
-                                    .insert(span);
+                        Some((span, scope, param)) => {
+                            match self.get_in_scope(scope.unwrap(), param, span, info) {
+                                Some(ScopeValue::TypeParameter(param)) => {
+                                    info.declarations
+                                        .type_parameters
+                                        .get_mut(&param)
+                                        .unwrap()
+                                        .uses
+                                        .insert(span);
 
-                                Some(param)
-                            }
-                            _ => {
-                                self.add_error(
-                                    format!("cannot find type parameter `{}`", param),
-                                    vec![Note::primary(span, "no such type")],
-                                );
+                                    Some(param)
+                                }
+                                _ => {
+                                    self.add_error(
+                                        format!("cannot find type parameter `{}`", param),
+                                        vec![Note::primary(span, "no such type")],
+                                    );
 
-                                return None;
+                                    return None;
+                                }
                             }
-                        },
+                        }
                         None => None,
                     };
 
@@ -1804,7 +1819,7 @@ impl Compiler<'_> {
                     Some(value) => value,
                     None => {
                         self.add_error(
-                            format!("cannot find `{name}`"),
+                            format!("cannot find `{name}` in scope {scope:?}"),
                             vec![Note::primary(expr.span, "this name is not defined")],
                         );
 
