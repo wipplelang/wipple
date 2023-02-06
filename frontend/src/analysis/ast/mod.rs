@@ -33,7 +33,6 @@ pub struct SyntaxDeclaration {
 #[derive(Debug, Clone)]
 pub struct Statement {
     pub span: Span,
-    pub scope: ScopeId,
     pub attributes: StatementAttributes,
     pub kind: StatementKind,
 }
@@ -247,7 +246,6 @@ impl Compiler<'_> {
     ) -> Option<Statement> {
         Some(Statement {
             span: statement.span,
-            scope: statement.expr.scope.unwrap(),
             attributes: statement.attributes,
             kind: (|| {
                 Some(match statement.expr.kind {

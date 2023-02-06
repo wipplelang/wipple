@@ -2,7 +2,7 @@ use super::*;
 
 impl Compiler<'_> {
     pub(super) fn load_builtins(&self, scope: &Scope, info: &mut Info) {
-        let mut scope_values = scope.values.borrow_mut();
+        let mut scope_values = scope.values.lock();
 
         macro_rules! add {
             ($kind:ident, $span:expr, $name:expr, $value:expr $(,)?) => {{

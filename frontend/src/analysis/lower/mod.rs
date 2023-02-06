@@ -13,7 +13,6 @@ use crate::{
     TypeId, TypeParameterId, VariableId, VariantIndex,
 };
 use std::{
-    cell::RefCell,
     collections::{BTreeMap, BTreeSet, HashMap, HashSet},
     hash::Hash,
     mem,
@@ -28,7 +27,7 @@ pub struct File<Decls = Declarations> {
     pub declarations: Decls,
     pub global_attributes: FileAttributes,
     pub exported: ScopeValues,
-    pub scopes: Vec<(Span, ScopeValues)>,
+    pub scopes: BTreeMap<ScopeId, Scope>,
     pub specializations: BTreeMap<ConstantId, Vec<ConstantId>>,
     pub block: Vec<Expression>,
 }
@@ -75,7 +74,7 @@ impl<'a> arbitrary::Arbitrary<'a> for File {
             },
             global_attributes: FileAttributes::arbitrary(u)?,
             exported: ScopeValues::new(),
-            scopes: Vec::arbitrary(u)?,
+            scopes: BTreeMap::new(),
             specializations: BTreeMap::arbitrary(u)?,
             block: (0..u.int_in_range(64..=128)?)
                 .map(|_| Expression::arbitrary(u))
@@ -698,6 +697,8 @@ impl Compiler<'_> {
                 variables,
             );
 
+            info.scopes.extend(dependency.scopes.clone());
+
             info.attributes.merge(&dependency.global_attributes);
 
             for (&id, specializations) in &dependency.specializations {
@@ -791,16 +792,14 @@ impl Compiler<'_> {
             }
         }
 
+        let exported = info.scopes.get(&scope).unwrap().values.lock().clone();
+
         File {
             span: file.span,
             declarations: info.declarations.resolve(),
             global_attributes: info.attributes,
-            exported: info.scopes.get(&scope).unwrap().values.take(),
-            scopes: info
-                .scopes
-                .into_values()
-                .filter_map(|scope| Some((scope.span?, scope.values.take())))
-                .collect(),
+            exported,
+            scopes: info.scopes,
             specializations: {
                 let mut specializations = BTreeMap::<ConstantId, Vec<ConstantId>>::new();
                 for (constant, specialized_constant) in info.specializations {
@@ -838,12 +837,12 @@ impl LanguageItems {
 }
 
 #[derive(Debug, Clone)]
-struct Scope {
-    parent: Option<ScopeId>,
-    span: Option<Span>,
-    values: RefCell<ScopeValues>,
-    declared_variables: RefCell<BTreeSet<VariableId>>,
-    used_variables: RefCell<CaptureList>,
+pub struct Scope {
+    pub parent: Option<ScopeId>,
+    pub span: Option<Span>,
+    pub values: Shared<ScopeValues>,
+    pub declared_variables: Shared<BTreeSet<VariableId>>,
+    pub used_variables: Shared<CaptureList>,
 }
 
 pub type ScopeValues = HashMap<InternedString, ScopeValue>;
@@ -912,10 +911,10 @@ impl<'l> Compiler<'l> {
         let scope = info.scopes.get(&scope).unwrap();
 
         if let ScopeValue::Variable(var) = value {
-            scope.declared_variables.borrow_mut().insert(var);
+            scope.declared_variables.lock().insert(var);
         }
 
-        scope.values.borrow_mut().insert(name, value);
+        scope.values.lock().insert(name, value);
     }
 
     fn extend_scope(
@@ -983,7 +982,7 @@ impl<'l> Compiler<'l> {
                 )
             });
 
-            if let Some(value) = scope.values.borrow().get(&name).cloned() {
+            if let Some(value) = scope.values.lock().get(&name).cloned() {
                 result = Some(value);
                 break;
             }
@@ -998,7 +997,7 @@ impl<'l> Compiler<'l> {
         if track_use {
             if let Some(ScopeValue::Variable(id)) = result {
                 for u in used_variables {
-                    u.borrow_mut().push((id, span));
+                    u.lock().push((id, span));
                 }
             }
         }
@@ -1009,7 +1008,7 @@ impl<'l> Compiler<'l> {
     fn used_variables_in_scope(&self, scope: ScopeId, info: &mut Info) -> Vec<(VariableId, Span)> {
         let mut parent = Some(scope);
         let mut used_variables = Vec::new();
-        let declared_variables = info.scopes.get(&scope).unwrap().declared_variables.borrow();
+        let declared_variables = info.scopes.get(&scope).unwrap().declared_variables.lock();
         while let Some(scope) = parent {
             let scope = info.scopes.get(&scope).unwrap();
 
@@ -1017,7 +1016,7 @@ impl<'l> Compiler<'l> {
                 scope
                     .used_variables
                     .clone()
-                    .into_inner()
+                    .into_unique()
                     .into_iter()
                     .filter(|(var, _)| !declared_variables.contains(var)),
             );
@@ -1040,7 +1039,6 @@ struct Info {
 #[derive(Debug)]
 struct StatementDeclaration {
     span: Span,
-    scope: ScopeId,
     kind: StatementDeclarationKind,
     attributes: ast::StatementAttributes,
 }
@@ -1079,7 +1077,7 @@ impl Compiler<'_> {
     ) -> Vec<Expression> {
         let declarations = statements
             .into_iter()
-            .map(|statement| self.lower_statement(statement, info))
+            .map(|statement| self.lower_statement(scope, statement, info))
             .collect::<Vec<_>>();
 
         let mut queue = Vec::new();
@@ -1421,10 +1419,8 @@ impl Compiler<'_> {
                     for (name, index) in names {
                         let variant = constructors[index.into_inner()].constructor;
 
-                        dbg!(&name, decl.scope);
-
                         self.insert_into_scope(
-                            decl.scope,
+                            scope,
                             *name,
                             ScopeValue::Constant(variant, Some((ty, *index))),
                             info,
@@ -1576,6 +1572,7 @@ impl Compiler<'_> {
 
     fn lower_statement(
         &self,
+        scope: ScopeId,
         statement: ast::Statement,
         info: &mut Info,
     ) -> Option<StatementDeclaration> {
@@ -1584,7 +1581,7 @@ impl Compiler<'_> {
             ast::StatementKind::Declaration(decl) => match decl {
                 ast::Declaration::Type((span, name), ty) => {
                     let id = self.new_type_id_in(info.file);
-                    self.insert_into_scope(statement.scope, name, ScopeValue::Type(id), info);
+                    self.insert_into_scope(scope, name, ScopeValue::Type(id), info);
 
                     info.declarations
                         .types
@@ -1592,14 +1589,13 @@ impl Compiler<'_> {
 
                     Some(StatementDeclaration {
                         span: statement.span,
-                        scope: statement.scope,
                         kind: StatementDeclarationKind::Type(id, ty),
                         attributes: statement.attributes,
                     })
                 }
                 ast::Declaration::Trait((span, name), declaration) => {
                     let id = self.new_trait_id_in(info.file);
-                    self.insert_into_scope(statement.scope, name, ScopeValue::Trait(id), info);
+                    self.insert_into_scope(scope, name, ScopeValue::Trait(id), info);
 
                     info.declarations
                         .traits
@@ -1607,7 +1603,6 @@ impl Compiler<'_> {
 
                     Some(StatementDeclaration {
                         span: statement.span,
-                        scope: statement.scope,
                         kind: StatementDeclarationKind::Trait(id, declaration),
                         attributes: statement.attributes,
                     })
@@ -1616,7 +1611,7 @@ impl Compiler<'_> {
                     let id = self.new_constant_id_in(info.file);
 
                     if let Some(ScopeValue::Constant(existing_id, variant_info)) =
-                        self.get_in_scope(statement.scope, name, span, info)
+                        self.get_in_scope(scope, name, span, info)
                     {
                         if statement.attributes.specialize {
                             if variant_info.is_some() {
@@ -1655,19 +1650,14 @@ impl Compiler<'_> {
                             return None;
                         } else {
                             self.insert_into_scope(
-                                statement.scope,
+                                scope,
                                 name,
                                 ScopeValue::Constant(id, None),
                                 info,
                             );
                         }
                     } else {
-                        self.insert_into_scope(
-                            statement.scope,
-                            name,
-                            ScopeValue::Constant(id, None),
-                            info,
-                        );
+                        self.insert_into_scope(scope, name, ScopeValue::Constant(id, None), info);
                     }
 
                     info.declarations
@@ -1676,7 +1666,6 @@ impl Compiler<'_> {
 
                     Some(StatementDeclaration {
                         span: statement.span,
-                        scope: statement.scope,
                         kind: StatementDeclarationKind::Constant(id, declaration),
                         attributes: statement.attributes,
                     })
@@ -1690,7 +1679,6 @@ impl Compiler<'_> {
 
                     Some(StatementDeclaration {
                         span: statement.span,
-                        scope: statement.scope,
                         kind: StatementDeclarationKind::Instance(id, instance),
                         attributes: statement.attributes,
                     })
@@ -1698,19 +1686,16 @@ impl Compiler<'_> {
             },
             ast::StatementKind::Assign(pattern, expr) => Some(StatementDeclaration {
                 span: statement.span,
-                scope: statement.scope,
                 kind: StatementDeclarationKind::Queued(QueuedStatement::Assign(pattern, expr)),
                 attributes: statement.attributes,
             }),
             ast::StatementKind::Use((span, scope, name)) => Some(StatementDeclaration {
                 span: statement.span,
-                scope: statement.scope,
                 kind: StatementDeclarationKind::Use((span, scope, name)),
                 attributes: statement.attributes,
             }),
             ast::StatementKind::Expression(expr) => Some(StatementDeclaration {
                 span: statement.span,
-                scope: statement.scope,
                 kind: StatementDeclarationKind::Queued(QueuedStatement::Expression(expr)),
                 attributes: statement.attributes,
             }),
@@ -2209,9 +2194,7 @@ impl Compiler<'_> {
             ast::PatternKind::Number(number) => PatternKind::Number(number),
             ast::PatternKind::Text(text) => PatternKind::Text(text),
             ast::PatternKind::Name(name_scope, name) => {
-                dbg!(name_scope, name, &info.scopes);
-
-                match dbg!(self.peek_in_scope(name_scope, name, pattern.span, info)) {
+                match self.peek_in_scope(name_scope, name, pattern.span, info) {
                     Some(ScopeValue::Constant(id, Some((ty, variant)))) => {
                         info.declarations
                             .constants

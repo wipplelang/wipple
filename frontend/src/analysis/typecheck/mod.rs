@@ -567,9 +567,11 @@ impl<'a, 'l> Typechecker<'a, 'l> {
     pub fn collect_types(&mut self) {
         let entrypoint = mem::take(&mut self.entrypoint.block);
         let exported = mem::take(&mut self.entrypoint.exported);
-        self.scopes
-            .borrow_mut()
-            .extend(mem::take(&mut self.entrypoint.scopes));
+        self.scopes.borrow_mut().extend(
+            mem::take(&mut self.entrypoint.scopes)
+                .into_values()
+                .filter_map(|scope| Some((scope.span?, mem::take(&mut *scope.values.lock())))),
+        );
 
         let mut info = ConvertInfo {
             variables: Default::default(),
