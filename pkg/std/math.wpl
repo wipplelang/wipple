@@ -2,6 +2,7 @@
 
 use "fp.wpl"
 use "util.wpl"
+use "logic.wpl"
 
 [help "Implements the `+` operator."]
 Add : Left Right Sum => trait (Left -> Right -> Sum)

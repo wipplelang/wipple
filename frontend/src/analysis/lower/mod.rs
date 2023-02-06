@@ -1534,6 +1534,9 @@ impl Compiler<'_> {
                                     .uses
                                     .insert(pattern.span);
 
+                                // HACK: Insert type parameters temporarily without affecting rest of file
+                                let prev_scope_values = info.scopes.get(&scope).unwrap().values.lock().clone();
+
                                 for (_, id) in associated_parameters {
                                     let parameter =
                                         info.declarations.type_parameters.get(&id).unwrap();
@@ -1559,6 +1562,9 @@ impl Compiler<'_> {
                                             .collect(),
                                     );
                                 }
+
+                                // HACK: See above
+                                *info.scopes.get(&scope).unwrap().values.lock() = prev_scope_values;
 
                                 *associated_constant.lock() = Some(value);
                                 None

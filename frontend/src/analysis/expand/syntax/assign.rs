@@ -210,8 +210,6 @@ impl BuiltinSyntaxVisitor for AssignSyntax {
                             kind: ExpressionKind::error(expander.compiler),
                         };
                     }
-
-                    todo!()
                 }
                 _ => {}
             }
