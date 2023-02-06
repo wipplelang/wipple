@@ -56,7 +56,8 @@ pub enum Declaration {
 
 #[derive(Debug, Clone)]
 pub struct Instance {
-    pub parameters: Option<(ScopeId, Vec<TypeParameter>, Vec<Bound>)>,
+    pub scope: ScopeId,
+    pub parameters: Option<(Vec<TypeParameter>, Vec<Bound>)>,
     pub trait_span: Span,
     pub trait_scope: ScopeId,
     pub trait_name: InternedString,
@@ -139,12 +140,14 @@ pub enum PatternKind {
 
 #[derive(Debug, Clone)]
 pub struct TypeDeclaration {
+    pub scope: ScopeId,
     pub parameters: Option<Vec<TypeParameter>>,
     pub kind: TypeKind,
 }
 
 #[derive(Debug, Clone)]
 pub struct TraitDeclaration {
+    pub scope: ScopeId,
     pub parameters: Option<Vec<TypeParameter>>,
     pub ty: Option<TypeAnnotation>,
 }
@@ -173,8 +176,9 @@ pub struct DataVariant {
 
 #[derive(Debug, Clone)]
 pub struct ConstantDeclaration {
+    pub scope: ScopeId,
     pub name: InternedString,
-    pub parameters: Option<(ScopeId, Vec<TypeParameter>, Vec<Bound>)>,
+    pub parameters: Option<(Vec<TypeParameter>, Vec<Bound>)>,
     pub ty: TypeAnnotation,
 }
 
@@ -199,7 +203,7 @@ impl Compiler<'_> {
             statements: file
                 .statements
                 .into_iter()
-                .filter_map(|expr| self.build_statement(expr, file.root_scope))
+                .filter_map(|expr| self.build_statement(expr, file.root_scope, file.root_scope))
                 .collect(),
         }
     }
@@ -242,6 +246,7 @@ impl Compiler<'_> {
     fn build_statement(
         &self,
         statement: expand::Statement,
+        inherited_scope: ScopeId,
         file_scope: ScopeId,
     ) -> Option<Statement> {
         Some(Statement {
@@ -251,20 +256,19 @@ impl Compiler<'_> {
                 Some(match statement.expr.kind {
                     expand::ExpressionKind::EmptySideEffect => return None,
                     expand::ExpressionKind::AssignToPattern(pattern, value) => {
-                        self.build_pattern_assignment(pattern, *value, file_scope)?
+                        self.build_pattern_assignment(pattern, *value, inherited_scope, file_scope)?
                     }
                     expand::ExpressionKind::Assign(pattern, value) => {
-                        self.build_assignment(*pattern, *value, file_scope)?
+                        self.build_assignment(*pattern, *value, inherited_scope, file_scope)?
                     }
                     expand::ExpressionKind::Annotate(expr, ty) => {
-                        let (span, name) = match expr.kind {
-                            expand::ExpressionKind::Name(_, name) => (expr.span, name),
+                        let (span, scope, name) = match expr.kind {
+                            expand::ExpressionKind::Name(scope, name) => (expr.span, scope, name),
                             _ => {
                                 return Some(StatementKind::Expression(
                                     self.build_expression(
                                         expand::Expression {
                                             span: statement.expr.span,
-                                            scope: statement.expr.scope,
                                             kind: expand::ExpressionKind::Annotate(expr, ty),
                                         },
                                         file_scope,
@@ -274,25 +278,23 @@ impl Compiler<'_> {
                             }
                         };
 
-                        let (parameters, ty) = match ty.kind {
+                        let (scope, parameters, ty) = match ty.kind {
                             expand::ExpressionKind::TypeFunction(
                                 type_function_scope,
                                 (parameters, bounds),
                                 ty,
                             ) => (
-                                Some((
-                                    type_function_scope.unwrap(),
-                                    parameters,
-                                    self.build_bounds(bounds),
-                                )),
+                                type_function_scope.unwrap(),
+                                Some((parameters, self.build_bounds(bounds))),
                                 self.build_type_annotation(*ty),
                             ),
-                            _ => (None, self.build_type_annotation(*ty)),
+                            _ => (scope.unwrap(), None, self.build_type_annotation(*ty)),
                         };
 
                         StatementKind::Declaration(Declaration::Constant(
                             (span, name),
                             ConstantDeclaration {
+                                scope,
                                 name,
                                 parameters,
                                 ty,
@@ -324,9 +326,10 @@ impl Compiler<'_> {
                         match rhs.kind {
                             expand::ExpressionKind::Instance(tr) => {
                                 match self.build_instance(
-                                    Some((scope, params, bounds)),
+                                    Some((params, bounds)),
                                     *tr,
                                     None,
+                                    scope,
                                     file_scope,
                                 ) {
                                     Some(instance) => {
@@ -349,7 +352,7 @@ impl Compiler<'_> {
                         }
                     }
                     expand::ExpressionKind::Instance(tr) => {
-                        match self.build_instance(None, *tr, None, file_scope) {
+                        match self.build_instance(None, *tr, None, inherited_scope, file_scope) {
                             Some(instance) => {
                                 StatementKind::Declaration(Declaration::Instance(instance))
                             }
@@ -368,20 +371,20 @@ impl Compiler<'_> {
         &self,
         pattern: expand::Expression,
         value: expand::Expression,
+        inherited_scope: ScopeId,
         file_scope: ScopeId,
     ) -> Option<StatementKind> {
         Some(match pattern.kind {
             expand::ExpressionKind::TypeFunction(scope, (params, bounds), rhs) => {
-                let scope = scope.unwrap();
-
                 let bounds = self.build_bounds(bounds);
 
                 match rhs.kind {
                     expand::ExpressionKind::Instance(tr) => {
                         match self.build_instance(
-                            Some((scope, params, bounds)),
+                            Some((params, bounds)),
                             *tr,
                             Some(value),
+                            scope.unwrap(),
                             file_scope,
                         ) {
                             Some(instance) => {
@@ -404,7 +407,7 @@ impl Compiler<'_> {
                 }
             }
             expand::ExpressionKind::Instance(tr) => {
-                match self.build_instance(None, *tr, Some(value), file_scope) {
+                match self.build_instance(None, *tr, Some(value), inherited_scope, file_scope) {
                     Some(instance) => StatementKind::Declaration(Declaration::Instance(instance)),
                     None => StatementKind::Expression(ExpressionKind::error(self)),
                 }
@@ -417,7 +420,7 @@ impl Compiler<'_> {
                         kind: expand::PatternKind::error(self),
                     });
 
-                self.build_pattern_assignment(pattern, value, file_scope)
+                self.build_pattern_assignment(pattern, value, inherited_scope, file_scope)
                     .unwrap_or_else(|| StatementKind::Expression(ExpressionKind::error(self)))
             }
         })
@@ -427,6 +430,7 @@ impl Compiler<'_> {
         &self,
         pattern: expand::Pattern,
         value: expand::Expression,
+        inherited_scope: ScopeId,
         file_scope: ScopeId,
     ) -> Option<StatementKind> {
         let pattern = self.build_pattern(pattern, file_scope);
@@ -461,6 +465,7 @@ impl Compiler<'_> {
                     Some(kind) => StatementKind::Declaration(Declaration::Type(
                         (pattern.span, name),
                         TypeDeclaration {
+                            scope: inherited_scope,
                             parameters: None,
                             kind,
                         },
@@ -484,12 +489,13 @@ impl Compiler<'_> {
                 StatementKind::Declaration(Declaration::Trait(
                     (pattern.span, name),
                     TraitDeclaration {
+                        scope: inherited_scope,
                         parameters: None,
                         ty: ty.map(|ty| self.build_type_annotation(*ty)),
                     },
                 ))
             }
-            expand::ExpressionKind::TypeFunction(_, (parameters, bounds), expr) => {
+            expand::ExpressionKind::TypeFunction(scope, (parameters, bounds), expr) => {
                 let name = match pattern.kind {
                     PatternKind::Name(_, name) => name,
                     _ => {
@@ -528,6 +534,7 @@ impl Compiler<'_> {
                             Some(kind) => StatementKind::Declaration(Declaration::Type(
                                 (pattern.span, name),
                                 TypeDeclaration {
+                                    scope: scope.unwrap(),
                                     parameters: Some(parameters),
                                     kind,
                                 },
@@ -541,6 +548,7 @@ impl Compiler<'_> {
                         StatementKind::Declaration(Declaration::Trait(
                             (pattern.span, name),
                             TraitDeclaration {
+                                scope: scope.unwrap(),
                                 parameters: Some(parameters),
                                 ty: ty.map(|ty| self.build_type_annotation(*ty)),
                             },
@@ -565,9 +573,10 @@ impl Compiler<'_> {
 
     fn build_instance(
         &self,
-        parameters: Option<(ScopeId, Vec<TypeParameter>, Vec<Bound>)>,
+        parameters: Option<(Vec<TypeParameter>, Vec<Bound>)>,
         tr: expand::Expression,
         value: Option<expand::Expression>,
+        inherited_scope: ScopeId,
         file_scope: ScopeId,
     ) -> Option<Instance> {
         let annotation = self.build_type_annotation(tr);
@@ -590,6 +599,7 @@ impl Compiler<'_> {
         let value = value.map(|value| self.build_expression(value, file_scope));
 
         Some(Instance {
+            scope: inherited_scope,
             parameters,
             trait_span: annotation.span,
             trait_scope,
@@ -625,7 +635,7 @@ impl Compiler<'_> {
                     scope.unwrap(),
                     statements
                         .into_iter()
-                        .filter_map(|expr| self.build_statement(expr, file_scope))
+                        .filter_map(|expr| self.build_statement(expr, scope.unwrap(), file_scope))
                         .collect(),
                 ),
                 expand::ExpressionKind::Function(Some((scope, input, body)), _) => {

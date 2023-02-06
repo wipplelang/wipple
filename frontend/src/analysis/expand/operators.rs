@@ -295,7 +295,6 @@ impl<'a, 'l> Expander<'a, 'l> {
 
                                 return Expression {
                                     span: list_span,
-                                    scope: Some(inherited_scope),
                                     kind: ExpressionKind::error(self.compiler),
                                 };
                             }
@@ -305,7 +304,6 @@ impl<'a, 'l> Expander<'a, 'l> {
 
                             Expression {
                                 span,
-                                scope: Some(inherited_scope),
                                 kind: ExpressionKind::List(exprs),
                             }
                         })
@@ -328,7 +326,7 @@ impl<'a, 'l> Expander<'a, 'l> {
                             )],
                         );
 
-                        ExpandOperatorsResult::error(self.compiler)
+                        return ExpandOperatorsResult::error(self.compiler);
                     } else if lhs.is_empty() {
                         self.compiler.add_error(
                             "expected values on left side of operator",
@@ -338,67 +336,64 @@ impl<'a, 'l> Expander<'a, 'l> {
                             )],
                         );
 
-                        ExpandOperatorsResult::error(self.compiler)
-                    } else {
-                        macro_rules! expand_list {
-                            ($exprs:ident) => {
-                                (|| {
-                                    // Prevent flattening of a single parenthesized expression that
-                                    // doesn't contain any operators
-                                    if $exprs.len() == 1 {
-                                        let expr = $exprs.first().unwrap();
+                        return ExpandOperatorsResult::error(self.compiler);
+                    }
 
-                                        if let ExpressionKind::List(exprs) = &expr.kind {
-                                            let exprs = exprs.into_iter().enumerate();
+                    macro_rules! expand_list {
+                        ($exprs:ident) => {
+                            (|| {
+                                // Prevent flattening of a single parenthesized expression that
+                                // doesn't contain any operators
+                                if $exprs.len() == 1 {
+                                    let expr = $exprs.first().unwrap();
 
-                                            if exprs.clone().next().is_none() {
-                                                return Expression {
-                                                    span: expr.span,
-                                                    scope: Some(inherited_scope),
-                                                    kind: ExpressionKind::List(Vec::new()),
-                                                };
-                                            }
+                                    if let ExpressionKind::List(exprs) = &expr.kind {
+                                        let exprs = exprs.into_iter().enumerate();
 
-                                            if self
-                                                .operators_in_list(exprs.clone(), inherited_scope)
-                                                .is_empty()
-                                            {
-                                                let expr = $exprs.pop().unwrap();
+                                        if exprs.clone().next().is_none() {
+                                            return Expression {
+                                                span: expr.span,
+                                                kind: ExpressionKind::List(Vec::new()),
+                                            };
+                                        }
 
-                                                return Expression {
-                                                    span: expr.span,
-                                                    scope: Some(inherited_scope),
-                                                    kind: ExpressionKind::List(vec![expr]),
-                                                };
-                                            }
+                                        if self
+                                            .operators_in_list(exprs.clone(), inherited_scope)
+                                            .is_empty()
+                                        {
+                                            let expr = $exprs.pop().unwrap();
+
+                                            return Expression {
+                                                span: expr.span,
+                                                kind: ExpressionKind::List(vec![expr]),
+                                            };
                                         }
                                     }
+                                }
 
-                                    let span = Span::join(
-                                        $exprs.first().unwrap().span,
-                                        $exprs.last().unwrap().span,
-                                    );
+                                let span = Span::join(
+                                    $exprs.first().unwrap().span,
+                                    $exprs.last().unwrap().span,
+                                );
 
-                                    Expression {
-                                        span,
-                                        scope: Some(inherited_scope),
-                                        kind: ExpressionKind::List($exprs),
-                                    }
-                                })()
-                            };
-                        }
-
-                        let lhs = expand_list!(lhs);
-                        let rhs = expand_list!(rhs);
-
-                        ExpandOperatorsResult::Operator(
-                            max_span,
-                            max_name,
-                            max_operator.syntax,
-                            lhs,
-                            rhs,
-                        )
+                                Expression {
+                                    span,
+                                    kind: ExpressionKind::List($exprs),
+                                }
+                            })()
+                        };
                     }
+
+                    let lhs = expand_list!(lhs);
+                    let rhs = expand_list!(rhs);
+
+                    ExpandOperatorsResult::Operator(
+                        max_span,
+                        max_name,
+                        max_operator.syntax,
+                        lhs,
+                        rhs,
+                    )
                 }
             }
         }

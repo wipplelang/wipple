@@ -189,6 +189,7 @@ async fn run() -> anyhow::Result<()> {
                     }
 
                     output.write_all(program.to_string().as_bytes())?;
+                    writeln!(output)?;
                 }
                 CompileFormat::Ir => {
                     let (ir, progress_bar) = {

@@ -52,7 +52,7 @@ pub struct StatementAttributes {
     pub language_item: Option<LanguageItem>,
     pub help: VecDeque<InternedString>,
     pub on_unimplemented: Option<InternedString>,
-    pub on_mismatch: VecDeque<(Option<(Span, InternedString)>, InternedString)>,
+    pub on_mismatch: VecDeque<(Option<TypeParameter>, InternedString)>,
     pub specialize: bool,
     pub allow_overlapping_instances: bool,
     pub operator_precedence: Option<OperatorPrecedence>,
@@ -273,7 +273,6 @@ impl<'l> Compiler<'l> {
 
             let mut block = Expression {
                 span: file.span,
-                scope: Some(scope),
                 kind: ExpressionKind::Block(Some(scope), statements),
             };
 
@@ -496,13 +495,11 @@ impl<'a, 'l> Expander<'a, 'l> {
                 ExpandOperatorsResult::Syntax(syntax_span, syntax_name, syntax, inputs) => {
                     let name = Expression {
                         span: attribute.span,
-                        scope: Some(scope),
                         kind: ExpressionKind::Name(None, syntax_name),
                     };
 
                     let input = Expression {
                         span: attribute.span,
-                        scope: Some(scope),
                         kind: ExpressionKind::List(std::iter::once(name).chain(inputs).collect()),
                     };
 
@@ -542,13 +539,11 @@ impl<'a, 'l> Expander<'a, 'l> {
                 ExpandOperatorsResult::Syntax(syntax_span, syntax_name, syntax, inputs) => {
                     let name = Expression {
                         span: attribute.span,
-                        scope: Some(scope),
                         kind: ExpressionKind::Name(None, syntax_name),
                     };
 
                     let input = Expression {
                         span: attribute.span,
-                        scope: Some(scope),
                         kind: ExpressionKind::List(
                             std::iter::once(name)
                                 .chain(inputs)
@@ -573,7 +568,6 @@ impl<'a, 'l> Expander<'a, 'l> {
         statement.expr = match statement.expr.kind {
             ExpressionKind::List(exprs) => Expression {
                 span: statement.expr.span,
-                scope: statement.expr.scope,
                 kind: self
                     .expand_list(
                         statement.expr.span,
@@ -593,7 +587,6 @@ impl<'a, 'l> Expander<'a, 'l> {
     async fn expand_expr(&self, expr: Expression, inherited_scope: ScopeId) -> Expression {
         Expression {
             span: expr.span,
-            scope: expr.scope,
             kind: match expr.kind {
                 ExpressionKind::Error(_)
                 | ExpressionKind::EmptySideEffect
@@ -746,32 +739,26 @@ impl<'a, 'l> Expander<'a, 'l> {
                     .await,
             ),
             ExpandOperatorsResult::Operator(operator_span, operator_name, syntax, left, right) => {
-                let name = Expression {
-                    span: operator_span,
-                    scope: Some(scope),
-                    kind: ExpressionKind::Name(None, operator_name),
-                };
-
-                let input = Expression {
-                    span,
-                    scope: Some(scope),
-                    kind: ExpressionKind::List(vec![left, name, right]),
-                };
-
-                self.expand_operator(operator_span, syntax, input, context, scope)
-                    .await
-                    .kind
+                self.expand_operator(
+                    operator_span,
+                    operator_name,
+                    syntax,
+                    left,
+                    right,
+                    context,
+                    scope,
+                )
+                .await
+                .kind
             }
             ExpandOperatorsResult::Syntax(syntax_span, syntax_name, syntax, inputs) => {
                 let name = Expression {
                     span: syntax_span,
-                    scope: Some(scope),
                     kind: ExpressionKind::Name(None, syntax_name),
                 };
 
                 let input = Expression {
                     span,
-                    scope: Some(scope),
                     kind: ExpressionKind::List(std::iter::once(name).chain(inputs).collect()),
                 };
 
@@ -837,12 +824,11 @@ impl<'a, 'l> Expander<'a, 'l> {
         &self,
         mut lhs: Expression,
         scope: ScopeId,
-    ) -> (Vec<TypeParameter>, Vec<Bound>) {
+    ) -> Option<(Vec<TypeParameter>, Vec<Bound>)> {
         lhs = self.expand_completely(lhs, scope).await;
 
         self.compiler
-            .parse_type_function_from_expander_expr(lhs)
-            .unwrap_or_default()
+            .parse_type_function_from_expander_expr(lhs, false)
     }
 
     async fn expand_syntax(
@@ -860,11 +846,23 @@ impl<'a, 'l> Expander<'a, 'l> {
     async fn expand_operator(
         &self,
         span: Span,
+        name: InternedString,
         syntax: Syntax,
-        input: Expression,
+        left: Expression,
+        right: Expression,
         context: Option<Context<'_>>,
         scope: ScopeId,
     ) -> Expression {
+        let name = Expression {
+            span,
+            kind: ExpressionKind::Name(None, name),
+        };
+
+        let input = Expression {
+            span,
+            kind: ExpressionKind::List(vec![left, name, right]),
+        };
+
         self.expand_syntax_inner(span, syntax, input, true, context, scope)
             .await
     }
@@ -896,6 +894,7 @@ impl<'a, 'l> Expander<'a, 'l> {
                     if let Some(vars) = input.unify(&rule.pattern) {
                         let mut body = rule.body.clone();
                         body.expand(&vars, self);
+
                         return body;
                     }
                 }
@@ -904,14 +903,12 @@ impl<'a, 'l> Expander<'a, 'l> {
 
                 Expression {
                     span,
-                    scope: Some(scope),
                     kind: ExpressionKind::error(self.compiler),
                 }
             }
             Syntax::Builtin(syntax) => {
                 let pattern = Expression {
                     span: Span::builtin(),
-                    scope: Some(scope),
                     kind: ExpressionKind::List(syntax.pattern()),
                 };
 
@@ -923,7 +920,6 @@ impl<'a, 'l> Expander<'a, 'l> {
 
                         return Expression {
                             span,
-                            scope: Some(scope),
                             kind: ExpressionKind::error(self.compiler),
                         };
                     }
@@ -945,8 +941,7 @@ impl<'a, 'l> Expander<'a, 'l> {
 }
 
 impl<'a, 'l> Expander<'a, 'l> {
-    fn update_scopes_for_pattern(
-        &self,
+    pub(crate) fn update_scopes_for_pattern(
         pattern: &mut Pattern,
         expr: &mut Expression,
         scope: ScopeId,
@@ -967,8 +962,7 @@ impl<'a, 'l> Expander<'a, 'l> {
         });
     }
 
-    fn update_scopes_for_type_function(
-        &self,
+    pub(crate) fn update_scopes_for_type_function(
         params: &[TypeParameter],
         rhs: &mut Expression,
         scope: ScopeId,
@@ -1183,6 +1177,7 @@ impl<'l> Compiler<'l> {
     pub(crate) fn parse_type_function_from_expander_expr(
         &self,
         lhs: Expression,
+        show_errors: bool,
     ) -> Option<(Vec<TypeParameter>, Vec<Bound>)> {
         macro_rules! build_parameter_list {
             ($tys:expr) => {
@@ -1194,10 +1189,12 @@ impl<'l> Compiler<'l> {
                             name,
                         }),
                         _ => {
-                            self.add_error(
-                                "expected type parameter",
-                                vec![Note::primary(expr.span, "try removing this")],
-                            );
+                            if show_errors {
+                                self.add_error(
+                                    "expected type parameter",
+                                    vec![Note::primary(expr.span, "try removing this")],
+                                );
+                            }
 
                             None
                         }
@@ -1217,10 +1214,12 @@ impl<'l> Compiler<'l> {
                         ExpressionKind::Error(_) => return None,
                         ExpressionKind::Name(scope, name) => (scope.unwrap(), name),
                         _ => {
-                            self.add_error(
-                                "expected trait name in `where` clause",
-                                vec![Note::primary(trait_name.span, "try adding a name here")],
-                            );
+                            if show_errors {
+                                self.add_error(
+                                    "expected trait name in `where` clause",
+                                    vec![Note::primary(trait_name.span, "try adding a name here")],
+                                );
+                            }
 
                             return None;
                         }
@@ -1256,13 +1255,15 @@ impl<'l> Compiler<'l> {
                     }],
                     ExpressionKind::List(tys) => build_parameter_list!(tys)?,
                     _ => {
-                        self.add_error(
-                            "expected type parameters on left-hand side of `where` clause",
-                            vec![Note::primary(
-                                lhs.span,
-                                "try providing a list of names here",
-                            )],
-                        );
+                        if show_errors {
+                            self.add_error(
+                                "expected type parameters on left-hand side of `where` clause",
+                                vec![Note::primary(
+                                    lhs.span,
+                                    "try providing a list of names here",
+                                )],
+                            );
+                        }
 
                         return None;
                     }
@@ -1290,12 +1291,14 @@ impl<'l> Compiler<'l> {
                                         }),
                                         ExpressionKind::List(list) => build_bound!(bound.span, list),
                                         _ => {
-                                            self.add_error(
-                                                "expected bound", vec![Note::primary(
-                                                    bounds_span,
-                                                    "`where` bound must be in the format `(T A B ...)`",
-                                                )],
-                                            );
+                                            if show_errors {
+                                                self.add_error(
+                                                    "expected bound", vec![Note::primary(
+                                                        bounds_span,
+                                                        "`where` bound must be in the format `(T A B ...)`",
+                                                    )],
+                                                );
+                                            }
 
                                             None
                                         }
@@ -1317,13 +1320,15 @@ impl<'l> Compiler<'l> {
                             }])
                         }
                         _ => {
-                            self.add_error(
-                                "expected bounds",
-                                vec![Note::primary(
-                                    bounds_span,
-                                    "`where` bounds must be in the format `(T A) (T B) ...`",
-                                )],
-                            );
+                            if show_errors {
+                                self.add_error(
+                                    "expected bounds",
+                                    vec![Note::primary(
+                                        bounds_span,
+                                        "`where` bounds must be in the format `(T A) (T B) ...`",
+                                    )],
+                                );
+                            }
 
                             None
                         }
@@ -1333,13 +1338,15 @@ impl<'l> Compiler<'l> {
                 Some((tys, bounds))
             }
             _ => {
-                self.add_error(
-                    "expected type parameters",
-                    vec![Note::primary(
-                        lhs.span,
-                        "try providing a list of names and optionally a `where` clause",
-                    )],
-                );
+                if show_errors {
+                    self.add_error(
+                        "expected type parameters",
+                        vec![Note::primary(
+                            lhs.span,
+                            "try providing a list of names and optionally a `where` clause",
+                        )],
+                    );
+                }
 
                 None
             }

@@ -1,6 +1,6 @@
 use crate::{
     analysis::expand::{
-        syntax::BuiltinSyntaxVisitor, Context, Expander, Expression, ExpressionKind,
+        syntax::BuiltinSyntaxVisitor, Context, Expander, Expression, ExpressionKind, TypeParameter,
     },
     diagnostics::Note,
     helpers::InternedString,
@@ -24,22 +24,18 @@ impl BuiltinSyntaxVisitor for OnMismatchSyntax {
         vec![
             Expression {
                 span: Span::builtin(),
-                scope: None,
                 kind: ExpressionKind::Name(None, InternedString::new(self.name())),
             },
             Expression {
                 span: Span::builtin(),
-                scope: None,
                 kind: ExpressionKind::Variable(InternedString::new("parameter")),
             },
             Expression {
                 span: Span::builtin(),
-                scope: None,
                 kind: ExpressionKind::Variable(InternedString::new("message")),
             },
             Expression {
                 span: Span::builtin(),
-                scope: None,
                 kind: ExpressionKind::Variable(InternedString::new("expr")),
             },
         ]
@@ -73,7 +69,10 @@ impl BuiltinSyntaxVisitor for OnMismatchSyntax {
         };
 
         let parameter = match parameter.kind {
-            ExpressionKind::Name(_, name) => (parameter.span, name),
+            ExpressionKind::Name(_, name) => TypeParameter {
+                span: parameter.span,
+                name,
+            },
             _ => {
                 expander.compiler.add_error(
                     "`on-mismatch` requires the name of a type parameter for its first input",

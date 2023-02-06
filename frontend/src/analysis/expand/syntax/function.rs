@@ -31,17 +31,14 @@ impl BuiltinSyntaxVisitor for FunctionSyntax {
         vec![
             Expression {
                 span: Span::builtin(),
-                scope: None,
                 kind: ExpressionKind::Variable(InternedString::new("lhs")),
             },
             Expression {
                 span: Span::builtin(),
-                scope: None,
                 kind: ExpressionKind::Name(None, InternedString::new(self.name())),
             },
             Expression {
                 span: Span::builtin(),
-                scope: None,
                 kind: ExpressionKind::Variable(InternedString::new("rhs")),
             },
         ]
@@ -65,13 +62,12 @@ impl BuiltinSyntaxVisitor for FunctionSyntax {
             .ok()
             .map(|mut pattern| {
                 let mut expr = rhs.clone();
-                expander.update_scopes_for_pattern(&mut pattern, &mut expr, function_scope);
+                Expander::update_scopes_for_pattern(&mut pattern, &mut expr, function_scope);
                 (Some(function_scope), pattern, Box::new(expr))
             });
 
         Expression {
             span,
-            scope: Some(scope),
             kind: ExpressionKind::Function(pattern, (Box::new(lhs), Box::new(rhs))),
         }
     }

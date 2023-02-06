@@ -24,12 +24,10 @@ impl BuiltinSyntaxVisitor for RecursionLimitSyntax {
         vec![
             Expression {
                 span: Span::builtin(),
-                scope: None,
                 kind: ExpressionKind::Name(None, InternedString::new(self.name())),
             },
             Expression {
                 span: Span::builtin(),
-                scope: None,
                 kind: ExpressionKind::Variable(InternedString::new("limit")),
             },
         ]
@@ -40,7 +38,7 @@ impl BuiltinSyntaxVisitor for RecursionLimitSyntax {
         span: Span,
         mut vars: HashMap<InternedString, Expression>,
         context: Option<Context<'_>>,
-        scope: ScopeId,
+        _scope: ScopeId,
         expander: &Expander<'_, '_>,
     ) -> Expression {
         let file_attributes = match context {
@@ -56,7 +54,6 @@ impl BuiltinSyntaxVisitor for RecursionLimitSyntax {
 
                 return Expression {
                     span,
-                    scope: Some(scope),
                     kind: ExpressionKind::error(expander.compiler),
                 };
             }
@@ -82,7 +79,6 @@ impl BuiltinSyntaxVisitor for RecursionLimitSyntax {
             None => {
                 return Expression {
                     span,
-                    scope: Some(scope),
                     kind: ExpressionKind::error(expander.compiler),
                 }
             }
@@ -92,7 +88,6 @@ impl BuiltinSyntaxVisitor for RecursionLimitSyntax {
 
         Expression {
             span,
-            scope: Some(scope),
             kind: ExpressionKind::EmptySideEffect,
         }
     }

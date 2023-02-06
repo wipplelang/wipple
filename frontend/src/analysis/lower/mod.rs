@@ -321,6 +321,7 @@ pub struct TraitAttributes {
 
 #[derive(Debug, Clone)]
 struct UnresolvedConstant {
+    pub scope: ScopeId,
     pub parameters: Vec<(Span, TypeParameterId)>,
     pub bounds: Vec<Bound>,
     pub ty: TypeAnnotation,
@@ -331,6 +332,7 @@ struct UnresolvedConstant {
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub struct Constant {
+    pub scope: ScopeId,
     pub parameters: Vec<(Span, TypeParameterId)>,
     pub bounds: Vec<Bound>,
     pub ty: TypeAnnotation,
@@ -341,6 +343,7 @@ pub struct Constant {
 impl From<Constant> for UnresolvedConstant {
     fn from(constant: Constant) -> Self {
         UnresolvedConstant {
+            scope: constant.scope,
             parameters: constant.parameters,
             bounds: constant.bounds,
             ty: constant.ty,
@@ -353,6 +356,7 @@ impl From<Constant> for UnresolvedConstant {
 impl Resolve<Constant> for UnresolvedConstant {
     fn resolve(self) -> Constant {
         Constant {
+            scope: self.scope,
             parameters: self.parameters,
             bounds: self.bounds,
             ty: self.ty,
@@ -982,13 +986,13 @@ impl<'l> Compiler<'l> {
                 )
             });
 
+            if track_use {
+                used_variables.push(&scope.used_variables);
+            }
+
             if let Some(value) = scope.values.lock().get(&name).cloned() {
                 result = Some(value);
                 break;
-            }
-
-            if track_use {
-                used_variables.push(&scope.used_variables);
             }
 
             parent = scope.parent;
@@ -1015,10 +1019,10 @@ impl<'l> Compiler<'l> {
             used_variables.extend(
                 scope
                     .used_variables
-                    .clone()
-                    .into_unique()
-                    .into_iter()
-                    .filter(|(var, _)| !declared_variables.contains(var)),
+                    .lock()
+                    .iter()
+                    .filter(|(var, _)| !declared_variables.contains(var))
+                    .copied(),
             );
 
             parent = scope.parent;
@@ -1096,7 +1100,8 @@ impl Compiler<'_> {
             let scope_value = match decl.kind {
                 StatementDeclarationKind::Type(id, ty) => {
                     let (parameters, _) = self.with_parameters(
-                        ty.parameters.map(|params| (scope, params, Vec::new())),
+                        ty.scope,
+                        ty.parameters.map(|params| (params, Vec::new())),
                         info,
                     );
 
@@ -1106,7 +1111,7 @@ impl Compiler<'_> {
                             params: parameters,
                             attributes: self.lower_type_attributes(
                                 &mut decl.attributes,
-                                scope,
+                                ty.scope,
                                 info,
                             ),
                         },
@@ -1118,7 +1123,7 @@ impl Compiler<'_> {
                                     ty: self.lower_type_annotation(field.ty, info),
                                     attributes: self.lower_decl_attributes(
                                         &mut field.attributes,
-                                        scope,
+                                        ty.scope,
                                         info,
                                     ),
                                 });
@@ -1131,7 +1136,7 @@ impl Compiler<'_> {
                                 params: parameters,
                                 attributes: self.lower_type_attributes(
                                     &mut decl.attributes,
-                                    scope,
+                                    ty.scope,
                                     info,
                                 ),
                             }
@@ -1216,7 +1221,7 @@ impl Compiler<'_> {
 
                                 let attributes = self.lower_constant_attributes(
                                     &mut variant.attributes,
-                                    scope,
+                                    ty.scope,
                                     info,
                                 );
 
@@ -1226,6 +1231,7 @@ impl Compiler<'_> {
                                         Some(variant.name),
                                         variant.span,
                                         UnresolvedConstant {
+                                            scope: ty.scope,
                                             parameters: parameters.clone(),
                                             bounds: Vec::new(),
                                             ty: constructor_ty,
@@ -1249,7 +1255,7 @@ impl Compiler<'_> {
                                 params: parameters,
                                 attributes: self.lower_type_attributes(
                                     &mut decl.attributes,
-                                    scope,
+                                    ty.scope,
                                     info,
                                 ),
                             }
@@ -1262,9 +1268,8 @@ impl Compiler<'_> {
                 }
                 StatementDeclarationKind::Trait(id, declaration) => {
                     let (parameters, _) = self.with_parameters(
-                        declaration
-                            .parameters
-                            .map(|params| (scope, params, Vec::new())),
+                        declaration.scope,
+                        declaration.parameters.map(|params| (params, Vec::new())),
                         info,
                     );
 
@@ -1273,7 +1278,11 @@ impl Compiler<'_> {
                         ty: declaration
                             .ty
                             .map(|ty| self.lower_type_annotation(ty, info)),
-                        attributes: self.lower_trait_attributes(&mut decl.attributes, scope, info),
+                        attributes: self.lower_trait_attributes(
+                            &mut decl.attributes,
+                            declaration.scope,
+                            info,
+                        ),
                     };
 
                     info.declarations.traits.get_mut(&id).unwrap().value = Some(tr);
@@ -1281,9 +1290,11 @@ impl Compiler<'_> {
                     Some(ScopeValue::Trait(id))
                 }
                 StatementDeclarationKind::Constant(id, declaration) => {
-                    let (parameters, bounds) = self.with_parameters(declaration.parameters, info);
+                    let (parameters, bounds) =
+                        self.with_parameters(declaration.scope, declaration.parameters, info);
 
                     let constant = UnresolvedConstant {
+                        scope: declaration.scope,
                         parameters,
                         bounds,
                         ty: self.lower_type_annotation(declaration.ty, info),
@@ -1301,7 +1312,8 @@ impl Compiler<'_> {
                     Some(ScopeValue::Constant(id, None))
                 }
                 StatementDeclarationKind::Instance(id, instance) => {
-                    let (params, bounds) = self.with_parameters(instance.parameters, info);
+                    let (params, bounds) =
+                        self.with_parameters(instance.scope, instance.parameters, info);
 
                     let tr = match self.get_in_scope(
                         scope,
@@ -1729,28 +1741,30 @@ impl Compiler<'_> {
             decl_attributes: self.lower_decl_attributes(statement_attributes, scope, info),
             on_mismatch: mem::take(&mut statement_attributes.on_mismatch)
                 .into_iter()
-                .filter_map(|(param, message)| {
-                    let param = match param {
-                        Some((span, param)) => match self.get_in_scope(scope, param, span, info) {
-                            Some(ScopeValue::TypeParameter(param)) => {
-                                info.declarations
-                                    .type_parameters
-                                    .get_mut(&param)
-                                    .unwrap()
-                                    .uses
-                                    .insert(span);
+                .filter_map(|(parameter, message)| {
+                    let param = match parameter {
+                        Some(parameter) => {
+                            match self.get_in_scope(scope, parameter.name, parameter.span, info) {
+                                Some(ScopeValue::TypeParameter(param)) => {
+                                    info.declarations
+                                        .type_parameters
+                                        .get_mut(&param)
+                                        .unwrap()
+                                        .uses
+                                        .insert(parameter.span);
 
-                                Some(param)
-                            }
-                            _ => {
-                                self.add_error(
-                                    format!("cannot find type parameter `{}`", param),
-                                    vec![Note::primary(span, "no such type")],
-                                );
+                                    Some(param)
+                                }
+                                _ => {
+                                    self.add_error(
+                                        format!("cannot find type parameter `{}`", parameter.name),
+                                        vec![Note::primary(parameter.span, "no such type")],
+                                    );
 
-                                return None;
+                                    return None;
+                                }
                             }
-                        },
+                        }
                         None => None,
                     };
 
@@ -1815,7 +1829,7 @@ impl Compiler<'_> {
                     Some(value) => value,
                     None => {
                         self.add_error(
-                            format!("cannot find `{name}` in scope {scope:?}"),
+                            format!("cannot find `{name}`"),
                             vec![Note::primary(expr.span, "this name is not defined")],
                         );
 
@@ -2482,11 +2496,12 @@ impl Compiler<'_> {
 
     fn with_parameters(
         &self,
-        parameters: Option<(ScopeId, Vec<ast::TypeParameter>, Vec<ast::Bound>)>,
+        scope: ScopeId,
+        parameters: Option<(Vec<ast::TypeParameter>, Vec<ast::Bound>)>,
         info: &mut Info,
     ) -> (Vec<(Span, TypeParameterId)>, Vec<Bound>) {
-        let (scope, parameters, bounds) = match parameters {
-            Some((scope, parameters, bounds)) => (scope, parameters, bounds),
+        let (parameters, bounds) = match parameters {
+            Some((parameters, bounds)) => (parameters, bounds),
             None => return (Vec::new(), Vec::new()),
         };
 

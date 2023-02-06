@@ -24,12 +24,10 @@ impl BuiltinSyntaxVisitor for TraitSyntax {
         vec![
             Expression {
                 span: Span::builtin(),
-                scope: None,
                 kind: ExpressionKind::Name(None, InternedString::new(self.name())),
             },
             Expression {
                 span: Span::builtin(),
-                scope: None,
                 kind: ExpressionKind::RepeatedVariable(InternedString::new("exprs")),
             },
         ]
@@ -40,7 +38,7 @@ impl BuiltinSyntaxVisitor for TraitSyntax {
         span: Span,
         mut vars: HashMap<InternedString, Expression>,
         _context: Option<Context<'_>>,
-        scope: ScopeId,
+        _scope: ScopeId,
         expander: &Expander<'_, '_>,
     ) -> Expression {
         let mut exprs = match vars.remove(&InternedString::new("exprs")).unwrap().kind {
@@ -48,18 +46,19 @@ impl BuiltinSyntaxVisitor for TraitSyntax {
             _ => unreachable!(),
         };
 
-        for expr in exprs.split_off(1) {
-            expander.compiler.add_error(
-                "unexpected input to `trait`",
-                vec![Note::primary(expr.span, "try removing this")],
-            );
+        if !exprs.is_empty() {
+            for expr in exprs.split_off(1) {
+                expander.compiler.add_error(
+                    "unexpected input to `trait`",
+                    vec![Note::primary(expr.span, "try removing this")],
+                );
+            }
         }
 
         let expr = exprs.pop();
 
         Expression {
             span,
-            scope: Some(scope),
             kind: ExpressionKind::Trait(expr.map(Box::new)),
         }
     }

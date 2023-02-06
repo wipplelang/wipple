@@ -31,17 +31,14 @@ impl BuiltinSyntaxVisitor for TypeFunctionSyntax {
         vec![
             Expression {
                 span: Span::builtin(),
-                scope: None,
                 kind: ExpressionKind::Variable(InternedString::new("lhs")),
             },
             Expression {
                 span: Span::builtin(),
-                scope: None,
                 kind: ExpressionKind::Name(None, InternedString::new(self.name())),
             },
             Expression {
                 span: Span::builtin(),
-                scope: None,
                 kind: ExpressionKind::Variable(InternedString::new("rhs")),
             },
         ]
@@ -60,15 +57,21 @@ impl BuiltinSyntaxVisitor for TypeFunctionSyntax {
 
         let type_function_scope = expander.child_scope(span, scope);
 
-        let (params, bounds) = expander
+        let (params, mut bounds) = expander
             .expand_type_function(lhs, type_function_scope)
-            .await;
+            .await
+            .unwrap_or_default();
 
-        expander.update_scopes_for_type_function(&params, &mut rhs, type_function_scope);
+        Expander::update_scopes_for_type_function(&params, &mut rhs, type_function_scope);
+
+        for bound in &mut bounds {
+            for ty in &mut bound.parameters {
+                Expander::update_scopes_for_type_function(&params, ty, type_function_scope);
+            }
+        }
 
         Expression {
             span,
-            scope: Some(scope),
             kind: ExpressionKind::TypeFunction(
                 Some(type_function_scope),
                 (params, bounds),

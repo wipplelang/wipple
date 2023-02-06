@@ -26,12 +26,10 @@ impl BuiltinSyntaxVisitor for SyntaxSyntax {
         vec![
             Expression {
                 span: Span::builtin(),
-                scope: None,
                 kind: ExpressionKind::Name(None, InternedString::new(self.name())),
             },
             Expression {
                 span: Span::builtin(),
-                scope: None,
                 kind: ExpressionKind::Variable(InternedString::new("definition")),
             },
         ]
@@ -42,7 +40,7 @@ impl BuiltinSyntaxVisitor for SyntaxSyntax {
         span: Span,
         _vars: HashMap<InternedString, Expression>,
         _context: Option<Context<'_>>,
-        scope: ScopeId,
+        _scope: ScopeId,
         expander: &Expander<'_, '_>,
     ) -> Expression {
         // Syntax definitions are handled by the assignment operator
@@ -57,7 +55,6 @@ impl BuiltinSyntaxVisitor for SyntaxSyntax {
 
         Expression {
             span,
-            scope: Some(scope),
             kind: ExpressionKind::error(expander.compiler),
         }
     }
@@ -123,16 +120,31 @@ impl SyntaxSyntax {
                                     operator_span,
                                     operator_name,
                                     Syntax::Defined(id),
-                                    pattern_lhs,
-                                    pattern_rhs,
+                                    mut pattern_lhs,
+                                    mut pattern_rhs,
                                 ) = expander.expand_operators(lhs.span, exprs.clone(), scope)
                                 {
+                                    // If the pattern contains a single expression, flatten it (only
+                                    // do this for operator syntax patterns so they can accept
+                                    // multiple expressions on either side)
+                                    // TODO: Remove this once syntactic support for repeated
+                                    // variables is added
+                                    for pattern in [&mut pattern_lhs, &mut pattern_rhs] {
+                                        let exprs = match &mut pattern.kind {
+                                            ExpressionKind::List(exprs) => exprs,
+                                            _ => unreachable!(),
+                                        };
+
+                                        if exprs.len() == 1 {
+                                            *pattern = exprs.pop().unwrap();
+                                        }
+                                    }
+
                                     if id == operator_id {
                                         lhs.kind = ExpressionKind::List(vec![
                                             pattern_lhs,
                                             Expression {
                                                 span: operator_span,
-                                                scope: Some(scope),
                                                 kind: ExpressionKind::Name(None, operator_name),
                                             },
                                             pattern_rhs,

@@ -31,17 +31,14 @@ impl BuiltinSyntaxVisitor for WhereSyntax {
         vec![
             Expression {
                 span: Span::builtin(),
-                scope: None,
                 kind: ExpressionKind::Variable(InternedString::new("lhs")),
             },
             Expression {
                 span: Span::builtin(),
-                scope: None,
                 kind: ExpressionKind::Name(None, InternedString::new(self.name())),
             },
             Expression {
                 span: Span::builtin(),
-                scope: None,
                 kind: ExpressionKind::Variable(InternedString::new("rhs")),
             },
         ]
@@ -52,7 +49,7 @@ impl BuiltinSyntaxVisitor for WhereSyntax {
         span: Span,
         mut vars: HashMap<InternedString, Expression>,
         _context: Option<Context<'_>>,
-        scope: ScopeId,
+        _scope: ScopeId,
         _expander: &Expander<'_, '_>,
     ) -> Expression {
         let lhs = vars.remove(&InternedString::new("lhs")).unwrap();
@@ -60,7 +57,6 @@ impl BuiltinSyntaxVisitor for WhereSyntax {
 
         Expression {
             span,
-            scope: Some(scope),
             kind: ExpressionKind::Where(Box::new(lhs), Box::new(rhs)),
         }
     }

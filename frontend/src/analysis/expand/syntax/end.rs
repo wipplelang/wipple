@@ -23,12 +23,10 @@ impl BuiltinSyntaxVisitor for EndSyntax {
         vec![
             Expression {
                 span: Span::builtin(),
-                scope: None,
                 kind: ExpressionKind::Name(None, InternedString::new(self.name())),
             },
             Expression {
                 span: Span::builtin(),
-                scope: None,
                 kind: ExpressionKind::Variable(InternedString::new("expr")),
             },
         ]
@@ -39,14 +37,13 @@ impl BuiltinSyntaxVisitor for EndSyntax {
         span: Span,
         mut vars: HashMap<InternedString, Expression>,
         _context: Option<Context<'_>>,
-        scope: ScopeId,
+        _scope: ScopeId,
         _expander: &Expander<'_, '_>,
     ) -> Expression {
         let expr = vars.remove(&InternedString::new("expr")).unwrap();
 
         Expression {
             span,
-            scope: Some(scope),
             kind: ExpressionKind::End(Box::new(expr)),
         }
     }

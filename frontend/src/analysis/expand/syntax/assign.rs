@@ -37,17 +37,14 @@ impl BuiltinSyntaxVisitor for AssignSyntax {
         vec![
             Expression {
                 span: Span::builtin(),
-                scope: None,
                 kind: ExpressionKind::Variable(InternedString::new("lhs")),
             },
             Expression {
                 span: Span::builtin(),
-                scope: None,
                 kind: ExpressionKind::Name(None, InternedString::new(self.name())),
             },
             Expression {
                 span: Span::builtin(),
-                scope: None,
                 kind: ExpressionKind::Variable(InternedString::new("rhs")),
             },
         ]
@@ -71,14 +68,13 @@ impl BuiltinSyntaxVisitor for AssignSyntax {
 
                 return Expression {
                     span,
-                    scope: Some(scope),
                     kind: ExpressionKind::error(expander.compiler),
                 };
             }
         };
 
         let lhs = vars.remove(&InternedString::new("lhs")).unwrap();
-        let rhs = vars.remove(&InternedString::new("rhs")).unwrap();
+        let mut rhs = vars.remove(&InternedString::new("rhs")).unwrap();
 
         let lhs_exprs = match &lhs.kind {
             ExpressionKind::List(exprs) => exprs,
@@ -101,7 +97,6 @@ impl BuiltinSyntaxVisitor for AssignSyntax {
                     {
                         return Expression {
                             span,
-                            scope: Some(scope),
                             kind: ExpressionKind::EmptySideEffect,
                         };
                     }
@@ -197,7 +192,6 @@ impl BuiltinSyntaxVisitor for AssignSyntax {
 
                                 return Expression {
                                     span,
-                                    scope: Some(scope),
                                     kind: ExpressionKind::EmptySideEffect,
                                 };
                             }
@@ -213,7 +207,6 @@ impl BuiltinSyntaxVisitor for AssignSyntax {
 
                         return Expression {
                             span,
-                            scope: Some(scope),
                             kind: ExpressionKind::error(expander.compiler),
                         };
                     }
@@ -226,10 +219,38 @@ impl BuiltinSyntaxVisitor for AssignSyntax {
 
         Expression {
             span,
-            scope: Some(scope),
             kind: match expander.expand_pattern(lhs, scope).await {
                 Ok(pattern) => ExpressionKind::AssignToPattern(pattern, Box::new(rhs)),
-                Err(lhs) => ExpressionKind::Assign(Box::new(lhs), Box::new(rhs)),
+                Err(lhs) => {
+                    let expanded_lhs = expander.expand_completely(lhs.clone(), scope).await;
+
+                    let type_function_scope = expander.child_scope(span, scope);
+
+                    if let Some((params, mut bounds)) = expander
+                        .expand_type_function(expanded_lhs.clone(), type_function_scope)
+                        .await
+                    {
+                        Expander::update_scopes_for_type_function(
+                            &params,
+                            &mut rhs,
+                            type_function_scope,
+                        );
+
+                        for bound in &mut bounds {
+                            for ty in &mut bound.parameters {
+                                Expander::update_scopes_for_type_function(
+                                    &params,
+                                    ty,
+                                    type_function_scope,
+                                );
+                            }
+                        }
+
+                        ExpressionKind::Assign(Box::new(expanded_lhs), Box::new(rhs))
+                    } else {
+                        ExpressionKind::Assign(Box::new(lhs), Box::new(rhs))
+                    }
+                }
             },
         }
     }

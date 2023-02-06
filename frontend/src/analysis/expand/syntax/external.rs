@@ -23,22 +23,18 @@ impl BuiltinSyntaxVisitor for ExternalSyntax {
         vec![
             Expression {
                 span: Span::builtin(),
-                scope: None,
                 kind: ExpressionKind::Name(None, InternedString::new(self.name())),
             },
             Expression {
                 span: Span::builtin(),
-                scope: None,
                 kind: ExpressionKind::Variable(InternedString::new("namespace")),
             },
             Expression {
                 span: Span::builtin(),
-                scope: None,
                 kind: ExpressionKind::Variable(InternedString::new("identifier")),
             },
             Expression {
                 span: Span::builtin(),
-                scope: None,
                 kind: ExpressionKind::RepeatedVariable(InternedString::new("exprs")),
             },
         ]
@@ -49,7 +45,7 @@ impl BuiltinSyntaxVisitor for ExternalSyntax {
         span: Span,
         mut vars: HashMap<InternedString, Expression>,
         _context: Option<Context<'_>>,
-        scope: ScopeId,
+        _scope: ScopeId,
         _expander: &Expander<'_, '_>,
     ) -> Expression {
         let namespace = vars.remove(&InternedString::new("namespace")).unwrap();
@@ -62,7 +58,6 @@ impl BuiltinSyntaxVisitor for ExternalSyntax {
 
         Expression {
             span,
-            scope: Some(scope),
             kind: ExpressionKind::External(Box::new(namespace), Box::new(identifier), exprs),
         }
     }

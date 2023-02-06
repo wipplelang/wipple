@@ -60,7 +60,6 @@ pub struct SyntaxRule {
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub struct Expression {
     pub span: Span,
-    pub scope: Option<ScopeId>,
     pub kind: ExpressionKind,
 }
 
@@ -115,7 +114,6 @@ impl From<parse::Expr> for Expression {
     fn from(expr: parse::Expr) -> Self {
         Expression {
             span: expr.span,
-            scope: None,
             kind: match expr.kind {
                 parse::ExprKind::Underscore => ExpressionKind::Underscore,
                 parse::ExprKind::Name(name) => ExpressionKind::Name(None, name),
@@ -177,7 +175,6 @@ impl TryFrom<parse::Statement> for Statement {
             attributes: Default::default(),
             expr: Expression {
                 span,
-                scope: None,
                 kind: ExpressionKind::List(exprs),
             },
         })
@@ -227,7 +224,6 @@ impl Expression {
                     *var,
                     Expression {
                         span: self.span,
-                        scope: self.scope,
                         kind: ExpressionKind::List(vec![self.clone()]),
                     },
                 );
@@ -239,7 +235,6 @@ impl Expression {
                     *var,
                     Expression {
                         span: other.span,
-                        scope: self.scope,
                         kind: ExpressionKind::List(vec![other.clone()]),
                     },
                 );
@@ -306,7 +301,6 @@ impl Expression {
                     *var,
                     Expression {
                         span,
-                        scope: other.scope,
                         kind: ExpressionKind::List(exprs),
                     },
                 );
