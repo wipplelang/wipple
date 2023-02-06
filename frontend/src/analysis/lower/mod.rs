@@ -1040,6 +1040,7 @@ struct Info {
 #[derive(Debug)]
 struct StatementDeclaration {
     span: Span,
+    scope: ScopeId,
     kind: StatementDeclarationKind,
     attributes: ast::StatementAttributes,
 }
@@ -1078,7 +1079,7 @@ impl Compiler<'_> {
     ) -> Vec<Expression> {
         let declarations = statements
             .into_iter()
-            .map(|statement| self.lower_statement(statement, scope, info))
+            .map(|statement| self.lower_statement(statement, info))
             .collect::<Vec<_>>();
 
         let mut queue = Vec::new();
@@ -1363,8 +1364,8 @@ impl Compiler<'_> {
 
                     Some(ScopeValue::Constant(id, None))
                 }
-                StatementDeclarationKind::Use((span, scope, name)) => {
-                    let ty = match self.get_in_scope(scope, name, span, info) {
+                StatementDeclarationKind::Use((span, name_scope, name)) => {
+                    let ty = match self.get_in_scope(name_scope, name, span, info) {
                         Some(ScopeValue::Type(ty)) => {
                             info.declarations
                                 .types
@@ -1420,8 +1421,10 @@ impl Compiler<'_> {
                     for (name, index) in names {
                         let variant = constructors[index.into_inner()].constructor;
 
+                        dbg!(&name, decl.scope);
+
                         self.insert_into_scope(
-                            scope,
+                            decl.scope,
                             *name,
                             ScopeValue::Constant(variant, Some((ty, *index))),
                             info,
@@ -1492,7 +1495,7 @@ impl Compiler<'_> {
                     }
 
                     match &pattern.kind {
-                        ast::PatternKind::Name(name) => {
+                        ast::PatternKind::Name(_, name) => {
                             if let Some((prev_constant_name, prev_constant_span, prev_constant_id)) = prev_constant {
                                 if *name != prev_constant_name {
                                     return assign_pattern!();
@@ -1574,7 +1577,6 @@ impl Compiler<'_> {
     fn lower_statement(
         &self,
         statement: ast::Statement,
-        scope: ScopeId,
         info: &mut Info,
     ) -> Option<StatementDeclaration> {
         match statement.kind {
@@ -1582,7 +1584,7 @@ impl Compiler<'_> {
             ast::StatementKind::Declaration(decl) => match decl {
                 ast::Declaration::Type((span, name), ty) => {
                     let id = self.new_type_id_in(info.file);
-                    self.insert_into_scope(scope, name, ScopeValue::Type(id), info);
+                    self.insert_into_scope(statement.scope, name, ScopeValue::Type(id), info);
 
                     info.declarations
                         .types
@@ -1590,13 +1592,14 @@ impl Compiler<'_> {
 
                     Some(StatementDeclaration {
                         span: statement.span,
+                        scope: statement.scope,
                         kind: StatementDeclarationKind::Type(id, ty),
                         attributes: statement.attributes,
                     })
                 }
                 ast::Declaration::Trait((span, name), declaration) => {
                     let id = self.new_trait_id_in(info.file);
-                    self.insert_into_scope(scope, name, ScopeValue::Trait(id), info);
+                    self.insert_into_scope(statement.scope, name, ScopeValue::Trait(id), info);
 
                     info.declarations
                         .traits
@@ -1604,6 +1607,7 @@ impl Compiler<'_> {
 
                     Some(StatementDeclaration {
                         span: statement.span,
+                        scope: statement.scope,
                         kind: StatementDeclarationKind::Trait(id, declaration),
                         attributes: statement.attributes,
                     })
@@ -1612,7 +1616,7 @@ impl Compiler<'_> {
                     let id = self.new_constant_id_in(info.file);
 
                     if let Some(ScopeValue::Constant(existing_id, variant_info)) =
-                        self.get_in_scope(scope, name, span, info)
+                        self.get_in_scope(statement.scope, name, span, info)
                     {
                         if statement.attributes.specialize {
                             if variant_info.is_some() {
@@ -1651,14 +1655,19 @@ impl Compiler<'_> {
                             return None;
                         } else {
                             self.insert_into_scope(
-                                scope,
+                                statement.scope,
                                 name,
                                 ScopeValue::Constant(id, None),
                                 info,
                             );
                         }
                     } else {
-                        self.insert_into_scope(scope, name, ScopeValue::Constant(id, None), info);
+                        self.insert_into_scope(
+                            statement.scope,
+                            name,
+                            ScopeValue::Constant(id, None),
+                            info,
+                        );
                     }
 
                     info.declarations
@@ -1667,6 +1676,7 @@ impl Compiler<'_> {
 
                     Some(StatementDeclaration {
                         span: statement.span,
+                        scope: statement.scope,
                         kind: StatementDeclarationKind::Constant(id, declaration),
                         attributes: statement.attributes,
                     })
@@ -1680,6 +1690,7 @@ impl Compiler<'_> {
 
                     Some(StatementDeclaration {
                         span: statement.span,
+                        scope: statement.scope,
                         kind: StatementDeclarationKind::Instance(id, instance),
                         attributes: statement.attributes,
                     })
@@ -1687,16 +1698,19 @@ impl Compiler<'_> {
             },
             ast::StatementKind::Assign(pattern, expr) => Some(StatementDeclaration {
                 span: statement.span,
+                scope: statement.scope,
                 kind: StatementDeclarationKind::Queued(QueuedStatement::Assign(pattern, expr)),
                 attributes: statement.attributes,
             }),
             ast::StatementKind::Use((span, scope, name)) => Some(StatementDeclaration {
                 span: statement.span,
+                scope: statement.scope,
                 kind: StatementDeclarationKind::Use((span, scope, name)),
                 attributes: statement.attributes,
             }),
             ast::StatementKind::Expression(expr) => Some(StatementDeclaration {
                 span: statement.span,
+                scope: statement.scope,
                 kind: StatementDeclarationKind::Queued(QueuedStatement::Expression(expr)),
                 attributes: statement.attributes,
             }),
@@ -1906,7 +1920,7 @@ impl Compiler<'_> {
                                             .iter()
                                             .filter_map(|s| match &s.kind {
                                                 ast::StatementKind::Assign(pattern, expr) => match &pattern.kind {
-                                                    ast::PatternKind::Name(name) => Some((*name, expr.clone())),
+                                                    ast::PatternKind::Name(_, name) => Some((*name, expr.clone())),
                                                     _ => {
                                                         self.add_error(
                                                             "structure instantiation may not contain complex patterns", vec![Note::primary(
@@ -2058,12 +2072,12 @@ impl Compiler<'_> {
 
                 ExpressionKind::Function(pattern, Box::new(body), captures)
             }
-            ast::ExpressionKind::When(input, scope, arms) => ExpressionKind::When(
+            ast::ExpressionKind::When(input, arms) => ExpressionKind::When(
                 Box::new(self.lower_expr(*input, info)),
                 arms.into_iter()
                     .map(|arm| Arm {
                         span: arm.span,
-                        pattern: self.lower_pattern(arm.pattern, scope, info),
+                        pattern: self.lower_pattern(arm.pattern, arm.scope, info),
                         body: self.lower_expr(arm.body, info),
                     })
                     .collect(),
@@ -2194,8 +2208,10 @@ impl Compiler<'_> {
             ast::PatternKind::Wildcard => PatternKind::Wildcard,
             ast::PatternKind::Number(number) => PatternKind::Number(number),
             ast::PatternKind::Text(text) => PatternKind::Text(text),
-            ast::PatternKind::Name(name) => {
-                match self.peek_in_scope(scope, name, pattern.span, info) {
+            ast::PatternKind::Name(name_scope, name) => {
+                dbg!(name_scope, name, &info.scopes);
+
+                match dbg!(self.peek_in_scope(name_scope, name, pattern.span, info)) {
                     Some(ScopeValue::Constant(id, Some((ty, variant)))) => {
                         info.declarations
                             .constants
@@ -2225,8 +2241,8 @@ impl Compiler<'_> {
                     .map(|(name, pattern)| (name, self.lower_pattern(pattern, scope, info)))
                     .collect(),
             ),
-            ast::PatternKind::Variant((name_span, name), values) => {
-                let first = match self.get_in_scope(scope, name, name_span, info) {
+            ast::PatternKind::Variant((name_span, name_scope, name), values) => {
+                let first = match self.get_in_scope(name_scope, name, name_span, info) {
                     Some(name) => name,
                     None => {
                         self.add_error(
@@ -2289,7 +2305,7 @@ impl Compiler<'_> {
                         };
 
                         let variant_name = match second.kind {
-                            ast::PatternKind::Name(name) => name,
+                            ast::PatternKind::Name(_, name) => name,
                             _ => {
                                 self.add_error(
                                     "invalid pattern",

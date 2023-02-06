@@ -31,14 +31,17 @@ impl BuiltinSyntaxVisitor for FunctionSyntax {
         vec![
             Expression {
                 span: Span::builtin(),
+                scope: None,
                 kind: ExpressionKind::Variable(InternedString::new("lhs")),
             },
             Expression {
                 span: Span::builtin(),
+                scope: None,
                 kind: ExpressionKind::Name(None, InternedString::new(self.name())),
             },
             Expression {
                 span: Span::builtin(),
+                scope: None,
                 kind: ExpressionKind::Variable(InternedString::new("rhs")),
             },
         ]
@@ -68,6 +71,7 @@ impl BuiltinSyntaxVisitor for FunctionSyntax {
 
         Expression {
             span,
+            scope: Some(scope),
             kind: ExpressionKind::Function(pattern, (Box::new(lhs), Box::new(rhs))),
         }
     }

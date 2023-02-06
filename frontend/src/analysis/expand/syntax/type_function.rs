@@ -31,14 +31,17 @@ impl BuiltinSyntaxVisitor for TypeFunctionSyntax {
         vec![
             Expression {
                 span: Span::builtin(),
+                scope: None,
                 kind: ExpressionKind::Variable(InternedString::new("lhs")),
             },
             Expression {
                 span: Span::builtin(),
+                scope: None,
                 kind: ExpressionKind::Name(None, InternedString::new(self.name())),
             },
             Expression {
                 span: Span::builtin(),
+                scope: None,
                 kind: ExpressionKind::Variable(InternedString::new("rhs")),
             },
         ]
@@ -65,6 +68,7 @@ impl BuiltinSyntaxVisitor for TypeFunctionSyntax {
 
         Expression {
             span,
+            scope: Some(scope),
             kind: ExpressionKind::TypeFunction(
                 Some(type_function_scope),
                 (params, bounds),

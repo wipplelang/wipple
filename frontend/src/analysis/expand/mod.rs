@@ -112,9 +112,9 @@ pub enum PatternKind {
     Wildcard,
     Number(InternedString),
     Text(InternedString),
-    Name(InternedString),
+    Name(Option<ScopeId>, InternedString),
     Destructure(Vec<(InternedString, Pattern)>),
-    Variant((Span, InternedString), Vec<Pattern>),
+    Variant((Span, Option<ScopeId>, InternedString), Vec<Pattern>),
     Annotate(Box<Pattern>, Box<Expression>),
     Or(Box<Pattern>, Box<Pattern>),
     Where(Box<Pattern>, Box<Expression>),
@@ -153,7 +153,7 @@ impl Pattern {
             | PatternKind::Wildcard
             | PatternKind::Number(_)
             | PatternKind::Text(_)
-            | PatternKind::Name(_) => {}
+            | PatternKind::Name(_, _) => {}
             PatternKind::Destructure(fields) => {
                 for (_, pattern) in fields {
                     pattern.traverse_mut_with_inner(context.clone(), f);
@@ -273,6 +273,7 @@ impl<'l> Compiler<'l> {
 
             let mut block = Expression {
                 span: file.span,
+                scope: Some(scope),
                 kind: ExpressionKind::Block(Some(scope), statements),
             };
 
@@ -495,11 +496,13 @@ impl<'a, 'l> Expander<'a, 'l> {
                 ExpandOperatorsResult::Syntax(syntax_span, syntax_name, syntax, inputs) => {
                     let name = Expression {
                         span: attribute.span,
+                        scope: Some(scope),
                         kind: ExpressionKind::Name(None, syntax_name),
                     };
 
                     let input = Expression {
                         span: attribute.span,
+                        scope: Some(scope),
                         kind: ExpressionKind::List(std::iter::once(name).chain(inputs).collect()),
                     };
 
@@ -539,11 +542,13 @@ impl<'a, 'l> Expander<'a, 'l> {
                 ExpandOperatorsResult::Syntax(syntax_span, syntax_name, syntax, inputs) => {
                     let name = Expression {
                         span: attribute.span,
+                        scope: Some(scope),
                         kind: ExpressionKind::Name(None, syntax_name),
                     };
 
                     let input = Expression {
                         span: attribute.span,
+                        scope: Some(scope),
                         kind: ExpressionKind::List(
                             std::iter::once(name)
                                 .chain(inputs)
@@ -568,6 +573,7 @@ impl<'a, 'l> Expander<'a, 'l> {
         statement.expr = match statement.expr.kind {
             ExpressionKind::List(exprs) => Expression {
                 span: statement.expr.span,
+                scope: statement.expr.scope,
                 kind: self
                     .expand_list(
                         statement.expr.span,
@@ -587,6 +593,7 @@ impl<'a, 'l> Expander<'a, 'l> {
     async fn expand_expr(&self, expr: Expression, inherited_scope: ScopeId) -> Expression {
         Expression {
             span: expr.span,
+            scope: expr.scope,
             kind: match expr.kind {
                 ExpressionKind::Error(_)
                 | ExpressionKind::EmptySideEffect
@@ -706,15 +713,10 @@ impl<'a, 'l> Expander<'a, 'l> {
                 ExpressionKind::Use(expr) => {
                     ExpressionKind::Use(Box::new(self.expand_expr(*expr, inherited_scope).await))
                 }
-                ExpressionKind::When(input, scope, arms) => {
-                    let scope = scope.expect("should have been created by syntax definition");
-
-                    ExpressionKind::When(
-                        Box::new(self.expand_expr(*input, inherited_scope).await),
-                        Some(scope),
-                        Box::new(self.expand_expr(*arms, scope).await),
-                    )
-                }
+                ExpressionKind::When(input, arms) => ExpressionKind::When(
+                    Box::new(self.expand_expr(*input, inherited_scope).await),
+                    Box::new(self.expand_expr(*arms, inherited_scope).await),
+                ),
                 ExpressionKind::Or(lhs, rhs) => ExpressionKind::Or(
                     Box::new(self.expand_expr(*lhs, inherited_scope).await),
                     Box::new(self.expand_expr(*rhs, inherited_scope).await),
@@ -746,11 +748,13 @@ impl<'a, 'l> Expander<'a, 'l> {
             ExpandOperatorsResult::Operator(operator_span, operator_name, syntax, left, right) => {
                 let name = Expression {
                     span: operator_span,
+                    scope: Some(scope),
                     kind: ExpressionKind::Name(None, operator_name),
                 };
 
                 let input = Expression {
                     span,
+                    scope: Some(scope),
                     kind: ExpressionKind::List(vec![left, name, right]),
                 };
 
@@ -761,11 +765,13 @@ impl<'a, 'l> Expander<'a, 'l> {
             ExpandOperatorsResult::Syntax(syntax_span, syntax_name, syntax, inputs) => {
                 let name = Expression {
                     span: syntax_span,
+                    scope: Some(scope),
                     kind: ExpressionKind::Name(None, syntax_name),
                 };
 
                 let input = Expression {
                     span,
+                    scope: Some(scope),
                     kind: ExpressionKind::List(std::iter::once(name).chain(inputs).collect()),
                 };
 
@@ -898,12 +904,14 @@ impl<'a, 'l> Expander<'a, 'l> {
 
                 Expression {
                     span,
+                    scope: Some(scope),
                     kind: ExpressionKind::error(self.compiler),
                 }
             }
             Syntax::Builtin(syntax) => {
                 let pattern = Expression {
                     span: Span::builtin(),
+                    scope: Some(scope),
                     kind: ExpressionKind::List(syntax.pattern()),
                 };
 
@@ -915,6 +923,7 @@ impl<'a, 'l> Expander<'a, 'l> {
 
                         return Expression {
                             span,
+                            scope: Some(scope),
                             kind: ExpressionKind::error(self.compiler),
                         };
                     }
@@ -944,7 +953,7 @@ impl<'a, 'l> Expander<'a, 'l> {
     ) {
         let mut declared_variables = HashSet::new();
         pattern.traverse_mut(|pattern| {
-            if let PatternKind::Name(name) = pattern.kind {
+            if let PatternKind::Name(_, name) = pattern.kind {
                 declared_variables.insert(name);
             }
         });
@@ -992,7 +1001,7 @@ impl<'l> Compiler<'l> {
             Some(match expr.kind {
                 ExpressionKind::Error(trace) => PatternKind::Error(trace),
                 ExpressionKind::Underscore => PatternKind::Wildcard,
-                ExpressionKind::Name(_, name) => PatternKind::Name(name),
+                ExpressionKind::Name(scope, name) => PatternKind::Name(scope, name),
                 ExpressionKind::Block(_, statements) => {
                     PatternKind::Destructure(
                         statements
@@ -1009,11 +1018,11 @@ impl<'l> Compiler<'l> {
                                             exprs.into_iter().filter_map(|expr| {
                                                 let (name, pattern) = match expr.kind {
                                                     ExpressionKind::Error(_) => return None,
-                                                    ExpressionKind::Name(_, name) => (
+                                                    ExpressionKind::Name(scope, name) => (
                                                         name,
                                                         Pattern {
                                                             span: expr.span,
-                                                            kind: PatternKind::Name(name),
+                                                            kind: PatternKind::Name(scope, name),
                                                         },
                                                     ),
                                                     _ => {
@@ -1033,16 +1042,16 @@ impl<'l> Compiler<'l> {
                                                 Some((name, pattern))
                                             }),
                                         )),
-                                        ExpressionKind::Name(_, name) => {
+                                        ExpressionKind::Name(scope, name) => {
                                             Some(Box::new(std::iter::once((
                                                 name,
                                                 Pattern {
                                                     span: statement.expr.span,
-                                                    kind: PatternKind::Name(name),
+                                                    kind: PatternKind::Name(scope, name),
                                                 },
                                             ))))
                                         }
-                                        ExpressionKind::AssignToPattern(Pattern { kind: PatternKind::Name(name), .. }, expr) => {
+                                        ExpressionKind::AssignToPattern(Pattern { kind: PatternKind::Name(_, name), .. }, expr) => {
                                             let pattern = self.parse_pattern_from_expander_expr(*expr, show_errors).ok()?;
                                             Some(Box::new(std::iter::once((name, pattern))))
                                         }
@@ -1087,8 +1096,8 @@ impl<'l> Compiler<'l> {
 
                     let name_span = name.span;
 
-                    let name = match name.kind {
-                        ExpressionKind::Name(_, name) => name,
+                    let (name_scope, name) = match name.kind {
+                        ExpressionKind::Name(scope, name) => (scope, name),
                         _ => {
                             if show_errors {
                                 self.add_error(
@@ -1111,7 +1120,7 @@ impl<'l> Compiler<'l> {
                         })
                         .collect::<Option<_>>()?;
 
-                    PatternKind::Variant((name_span, name), rest)
+                    PatternKind::Variant((name_span, name_scope, name), rest)
                 }
                 ExpressionKind::Number(number) => PatternKind::Number(number),
                 ExpressionKind::Text(text) => PatternKind::Text(text),
@@ -1351,8 +1360,7 @@ impl Expression {
         match &mut self.kind {
             ExpressionKind::Block(scope, _)
             | ExpressionKind::Function(Some((scope, _, _)), (_, _))
-            | ExpressionKind::TypeFunction(scope, _, _)
-            | ExpressionKind::When(_, scope, _) => Some(scope),
+            | ExpressionKind::TypeFunction(scope, _, _) => Some(scope),
             _ => None,
         }
     }

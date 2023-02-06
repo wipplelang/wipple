@@ -26,10 +26,12 @@ impl BuiltinSyntaxVisitor for SyntaxSyntax {
         vec![
             Expression {
                 span: Span::builtin(),
+                scope: None,
                 kind: ExpressionKind::Name(None, InternedString::new(self.name())),
             },
             Expression {
                 span: Span::builtin(),
+                scope: None,
                 kind: ExpressionKind::Variable(InternedString::new("definition")),
             },
         ]
@@ -40,7 +42,7 @@ impl BuiltinSyntaxVisitor for SyntaxSyntax {
         span: Span,
         _vars: HashMap<InternedString, Expression>,
         _context: Option<Context<'_>>,
-        _scope: ScopeId,
+        scope: ScopeId,
         expander: &Expander<'_, '_>,
     ) -> Expression {
         // Syntax definitions are handled by the assignment operator
@@ -55,6 +57,7 @@ impl BuiltinSyntaxVisitor for SyntaxSyntax {
 
         Expression {
             span,
+            scope: Some(scope),
             kind: ExpressionKind::error(expander.compiler),
         }
     }
@@ -129,6 +132,7 @@ impl SyntaxSyntax {
                                             pattern_lhs,
                                             Expression {
                                                 span: operator_span,
+                                                scope: Some(scope),
                                                 kind: ExpressionKind::Name(None, operator_name),
                                             },
                                             pattern_rhs,

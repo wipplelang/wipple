@@ -24,10 +24,12 @@ impl BuiltinSyntaxVisitor for UseSyntax {
         vec![
             Expression {
                 span: Span::builtin(),
+                scope: None,
                 kind: ExpressionKind::Name(None, InternedString::new(self.name())),
             },
             Expression {
                 span: Span::builtin(),
+                scope: None,
                 kind: ExpressionKind::Variable(InternedString::new("expr")),
             },
         ]
@@ -38,7 +40,7 @@ impl BuiltinSyntaxVisitor for UseSyntax {
         span: Span,
         mut vars: HashMap<InternedString, Expression>,
         context: Option<Context<'_>>,
-        _scope: ScopeId,
+        scope: ScopeId,
         expander: &Expander<'_, '_>,
     ) -> Expression {
         let expr = vars.remove(&InternedString::new("expr")).unwrap();
@@ -50,6 +52,7 @@ impl BuiltinSyntaxVisitor for UseSyntax {
             {
                 return Expression {
                     span,
+                    scope: Some(scope),
                     kind: ExpressionKind::EmptySideEffect,
                 };
             }
@@ -57,6 +60,7 @@ impl BuiltinSyntaxVisitor for UseSyntax {
 
         Expression {
             span,
+            scope: Some(scope),
             kind: ExpressionKind::Use(Box::new(expr)),
         }
     }

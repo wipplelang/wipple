@@ -295,6 +295,7 @@ impl<'a, 'l> Expander<'a, 'l> {
 
                                 return Expression {
                                     span: list_span,
+                                    scope: Some(inherited_scope),
                                     kind: ExpressionKind::error(self.compiler),
                                 };
                             }
@@ -304,6 +305,7 @@ impl<'a, 'l> Expander<'a, 'l> {
 
                             Expression {
                                 span,
+                                scope: Some(inherited_scope),
                                 kind: ExpressionKind::List(exprs),
                             }
                         })
@@ -352,6 +354,7 @@ impl<'a, 'l> Expander<'a, 'l> {
                                             if exprs.clone().next().is_none() {
                                                 return Expression {
                                                     span: expr.span,
+                                                    scope: Some(inherited_scope),
                                                     kind: ExpressionKind::List(Vec::new()),
                                                 };
                                             }
@@ -364,6 +367,7 @@ impl<'a, 'l> Expander<'a, 'l> {
 
                                                 return Expression {
                                                     span: expr.span,
+                                                    scope: Some(inherited_scope),
                                                     kind: ExpressionKind::List(vec![expr]),
                                                 };
                                             }
@@ -377,6 +381,7 @@ impl<'a, 'l> Expander<'a, 'l> {
 
                                     Expression {
                                         span,
+                                        scope: Some(inherited_scope),
                                         kind: ExpressionKind::List($exprs),
                                     }
                                 })()

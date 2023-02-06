@@ -23,6 +23,7 @@ impl BuiltinSyntaxVisitor for NoStdSyntax {
     fn pattern(self) -> Vec<Expression> {
         vec![Expression {
             span: Span::builtin(),
+            scope: None,
             kind: ExpressionKind::Name(None, InternedString::new(self.name())),
         }]
     }
@@ -32,7 +33,7 @@ impl BuiltinSyntaxVisitor for NoStdSyntax {
         span: Span,
         _vars: HashMap<InternedString, Expression>,
         context: Option<Context<'_>>,
-        _scope: ScopeId,
+        scope: ScopeId,
         expander: &Expander<'_, '_>,
     ) -> Expression {
         let file_attributes = match context {
@@ -48,6 +49,7 @@ impl BuiltinSyntaxVisitor for NoStdSyntax {
 
                 return Expression {
                     span,
+                    scope: Some(scope),
                     kind: ExpressionKind::error(expander.compiler),
                 };
             }
@@ -57,6 +59,7 @@ impl BuiltinSyntaxVisitor for NoStdSyntax {
 
         Expression {
             span,
+            scope: Some(scope),
             kind: ExpressionKind::EmptySideEffect,
         }
     }

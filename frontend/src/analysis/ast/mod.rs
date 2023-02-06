@@ -33,6 +33,7 @@ pub struct SyntaxDeclaration {
 #[derive(Debug, Clone)]
 pub struct Statement {
     pub span: Span,
+    pub scope: ScopeId,
     pub attributes: StatementAttributes,
     pub kind: StatementKind,
 }
@@ -80,7 +81,7 @@ pub enum ExpressionKind {
     End(Box<Expression>),
     Call(Box<Expression>, Vec<Expression>),
     Function(ScopeId, Pattern, Box<Expression>),
-    When(Box<Expression>, ScopeId, Vec<Arm>),
+    When(Box<Expression>, Vec<Arm>),
     External(InternedString, InternedString, Vec<Expression>),
     Annotate(Box<Expression>, TypeAnnotation),
     Tuple(Vec<Expression>),
@@ -94,6 +95,7 @@ impl ExpressionKind {
 
 #[derive(Debug, Clone)]
 pub struct Arm {
+    pub scope: ScopeId,
     pub span: Span,
     pub attributes: StatementAttributes,
     pub pattern: Pattern,
@@ -127,9 +129,9 @@ pub enum PatternKind {
     Wildcard,
     Number(InternedString),
     Text(InternedString),
-    Name(InternedString),
+    Name(ScopeId, InternedString),
     Destructure(Vec<(InternedString, Pattern)>),
-    Variant((Span, InternedString), Vec<Pattern>),
+    Variant((Span, ScopeId, InternedString), Vec<Pattern>),
     Annotate(Box<Pattern>, TypeAnnotation),
     Or(Box<Pattern>, Box<Pattern>),
     Where(Box<Pattern>, Box<Expression>),
@@ -245,6 +247,7 @@ impl Compiler<'_> {
     ) -> Option<Statement> {
         Some(Statement {
             span: statement.span,
+            scope: statement.expr.scope.unwrap(),
             attributes: statement.attributes,
             kind: (|| {
                 Some(match statement.expr.kind {
@@ -263,6 +266,7 @@ impl Compiler<'_> {
                                     self.build_expression(
                                         expand::Expression {
                                             span: statement.expr.span,
+                                            scope: statement.expr.scope,
                                             kind: expand::ExpressionKind::Annotate(expr, ty),
                                         },
                                         file_scope,
@@ -444,7 +448,7 @@ impl Compiler<'_> {
             }
             expand::ExpressionKind::Type(fields) => {
                 let name = match pattern.kind {
-                    PatternKind::Name(name) => name,
+                    PatternKind::Name(_, name) => name,
                     _ => {
                         self.add_error(
                             "type declaration must be assigned to a name",
@@ -468,7 +472,7 @@ impl Compiler<'_> {
             }
             expand::ExpressionKind::Trait(ty) => {
                 let name = match pattern.kind {
-                    PatternKind::Name(name) => name,
+                    PatternKind::Name(_, name) => name,
                     _ => {
                         self.add_error(
                             "trait declaration must be assigned to a name",
@@ -489,7 +493,7 @@ impl Compiler<'_> {
             }
             expand::ExpressionKind::TypeFunction(_, (parameters, bounds), expr) => {
                 let name = match pattern.kind {
-                    PatternKind::Name(name) => name,
+                    PatternKind::Name(_, name) => name,
                     _ => {
                         self.add_error(
                             "type or trait declaration must be assigned to a name",
@@ -680,7 +684,7 @@ impl Compiler<'_> {
                     Box::new(self.build_expression(*value, file_scope)),
                     self.build_type_annotation(*ty),
                 ),
-                expand::ExpressionKind::When(input, scope, block) => {
+                expand::ExpressionKind::When(input, block) => {
                     let input = self.build_expression(*input, file_scope);
 
                     let block = match block.kind {
@@ -701,7 +705,8 @@ impl Compiler<'_> {
                             let expr = self.build_expression(statement.expr, file_scope);
 
                             match expr.kind {
-                                ExpressionKind::Function(_, pattern, body) => Some(Arm {
+                                ExpressionKind::Function(scope, pattern, body) => Some(Arm {
+                                    scope,
                                     span: expr.span,
                                     attributes: Default::default(), // TODO: Handle attributes
                                     pattern,
@@ -719,7 +724,7 @@ impl Compiler<'_> {
                         })
                         .collect();
 
-                    ExpressionKind::When(Box::new(input), scope.unwrap(), arms)
+                    ExpressionKind::When(Box::new(input), arms)
                 }
                 expand::ExpressionKind::Or(lhs, rhs) => {
                     // Use the `Or` trait defined in the prelude
@@ -776,15 +781,15 @@ impl Compiler<'_> {
                 expand::PatternKind::Wildcard => PatternKind::Wildcard,
                 expand::PatternKind::Number(number) => PatternKind::Number(number),
                 expand::PatternKind::Text(text) => PatternKind::Text(text),
-                expand::PatternKind::Name(name) => PatternKind::Name(name),
+                expand::PatternKind::Name(scope, name) => PatternKind::Name(scope.unwrap(), name),
                 expand::PatternKind::Destructure(fields) => PatternKind::Destructure(
                     fields
                         .into_iter()
                         .map(|(name, pattern)| (name, self.build_pattern(pattern, file_scope)))
                         .collect(),
                 ),
-                expand::PatternKind::Variant((span, name), values) => PatternKind::Variant(
-                    (span, name),
+                expand::PatternKind::Variant((span, scope, name), values) => PatternKind::Variant(
+                    (span, scope.unwrap(), name),
                     values
                         .into_iter()
                         .map(|pattern| self.build_pattern(pattern, file_scope))

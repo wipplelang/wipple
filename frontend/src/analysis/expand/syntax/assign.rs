@@ -37,14 +37,17 @@ impl BuiltinSyntaxVisitor for AssignSyntax {
         vec![
             Expression {
                 span: Span::builtin(),
+                scope: None,
                 kind: ExpressionKind::Variable(InternedString::new("lhs")),
             },
             Expression {
                 span: Span::builtin(),
+                scope: None,
                 kind: ExpressionKind::Name(None, InternedString::new(self.name())),
             },
             Expression {
                 span: Span::builtin(),
+                scope: None,
                 kind: ExpressionKind::Variable(InternedString::new("rhs")),
             },
         ]
@@ -68,6 +71,7 @@ impl BuiltinSyntaxVisitor for AssignSyntax {
 
                 return Expression {
                     span,
+                    scope: Some(scope),
                     kind: ExpressionKind::error(expander.compiler),
                 };
             }
@@ -97,6 +101,7 @@ impl BuiltinSyntaxVisitor for AssignSyntax {
                     {
                         return Expression {
                             span,
+                            scope: Some(scope),
                             kind: ExpressionKind::EmptySideEffect,
                         };
                     }
@@ -192,6 +197,7 @@ impl BuiltinSyntaxVisitor for AssignSyntax {
 
                                 return Expression {
                                     span,
+                                    scope: Some(scope),
                                     kind: ExpressionKind::EmptySideEffect,
                                 };
                             }
@@ -207,6 +213,7 @@ impl BuiltinSyntaxVisitor for AssignSyntax {
 
                         return Expression {
                             span,
+                            scope: Some(scope),
                             kind: ExpressionKind::error(expander.compiler),
                         };
                     }
@@ -219,6 +226,7 @@ impl BuiltinSyntaxVisitor for AssignSyntax {
 
         Expression {
             span,
+            scope: Some(scope),
             kind: match expander.expand_pattern(lhs, scope).await {
                 Ok(pattern) => ExpressionKind::AssignToPattern(pattern, Box::new(rhs)),
                 Err(lhs) => ExpressionKind::Assign(Box::new(lhs), Box::new(rhs)),

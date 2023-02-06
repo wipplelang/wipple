@@ -23,14 +23,17 @@ impl BuiltinSyntaxVisitor for WhenSyntax {
         vec![
             Expression {
                 span: Span::builtin(),
+                scope: None,
                 kind: ExpressionKind::Name(None, InternedString::new(self.name())),
             },
             Expression {
                 span: Span::builtin(),
+                scope: None,
                 kind: ExpressionKind::Variable(InternedString::new("expr")),
             },
             Expression {
                 span: Span::builtin(),
+                scope: None,
                 kind: ExpressionKind::Variable(InternedString::new("arms")),
             },
         ]
@@ -42,18 +45,15 @@ impl BuiltinSyntaxVisitor for WhenSyntax {
         mut vars: HashMap<InternedString, Expression>,
         _context: Option<Context<'_>>,
         scope: ScopeId,
-        expander: &Expander<'_, '_>,
+        _expander: &Expander<'_, '_>,
     ) -> Expression {
         let expr = vars.remove(&InternedString::new("expr")).unwrap();
         let arms = vars.remove(&InternedString::new("arms")).unwrap();
 
         Expression {
             span,
-            kind: ExpressionKind::When(
-                Box::new(expr),
-                Some(expander.child_scope(span, scope)),
-                Box::new(arms),
-            ),
+            scope: Some(scope),
+            kind: ExpressionKind::When(Box::new(expr), Box::new(arms)),
         }
     }
 }
