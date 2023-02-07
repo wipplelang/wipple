@@ -41,7 +41,7 @@ impl BuiltinSyntaxVisitor for AssignSyntax {
             },
             Expression {
                 span: Span::builtin(),
-                kind: ExpressionKind::Name(None, InternedString::new(self.name())),
+                kind: ExpressionKind::Name(InternedString::new(self.name())),
             },
             Expression {
                 span: Span::builtin(),
@@ -74,7 +74,7 @@ impl BuiltinSyntaxVisitor for AssignSyntax {
         };
 
         let lhs = vars.remove(&InternedString::new("lhs")).unwrap();
-        let mut rhs = vars.remove(&InternedString::new("rhs")).unwrap();
+        let rhs = vars.remove(&InternedString::new("rhs")).unwrap();
 
         let lhs_exprs = match &lhs.kind {
             ExpressionKind::List(exprs) => exprs,
@@ -103,7 +103,7 @@ impl BuiltinSyntaxVisitor for AssignSyntax {
                 }
                 BuiltinSyntax::Syntax(_) => {
                     if lhs_exprs.len() == 1 {
-                        if let ExpressionKind::Name(_, name) = lhs_exprs.first().unwrap().kind {
+                        if let ExpressionKind::Name(name) = lhs_exprs.first().unwrap().kind {
                             let (id, syntax_definition) = if let Some(precedence) =
                                 statement_attributes.operator_precedence
                             {
@@ -215,41 +215,20 @@ impl BuiltinSyntaxVisitor for AssignSyntax {
             }
         }
 
+        if lhs_exprs.len() == 1 {
+            let lhs = lhs_exprs.first().unwrap();
+
+            if let ExpressionKind::Name(name) = lhs.kind {
+                return Expression {
+                    span,
+                    kind: ExpressionKind::AssignToName((lhs.span, name), Box::new(rhs)),
+                };
+            }
+        }
+
         Expression {
             span,
-            kind: match expander.expand_pattern(lhs, scope).await {
-                Ok(pattern) => ExpressionKind::AssignToPattern(pattern, Box::new(rhs)),
-                Err(lhs) => {
-                    let expanded_lhs = expander.expand_completely(lhs.clone(), scope).await;
-
-                    let type_function_scope = expander.child_scope(span, scope);
-
-                    if let Some((params, mut bounds)) = expander
-                        .expand_type_function(expanded_lhs.clone(), type_function_scope)
-                        .await
-                    {
-                        Expander::update_scopes_for_type_function(
-                            &params,
-                            &mut rhs,
-                            type_function_scope,
-                        );
-
-                        for bound in &mut bounds {
-                            for ty in &mut bound.parameters {
-                                Expander::update_scopes_for_type_function(
-                                    &params,
-                                    ty,
-                                    type_function_scope,
-                                );
-                            }
-                        }
-
-                        ExpressionKind::Assign(Box::new(expanded_lhs), Box::new(rhs))
-                    } else {
-                        ExpressionKind::Assign(Box::new(lhs), Box::new(rhs))
-                    }
-                }
-            },
+            kind: ExpressionKind::Assign(Box::new(lhs), Box::new(rhs)),
         }
     }
 }

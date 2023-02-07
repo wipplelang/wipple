@@ -28,10 +28,7 @@ mod when;
 mod r#where;
 
 use crate::{
-    analysis::expand::{
-        Bound, Context, Expander, Pattern, PatternKind, Scope, ScopeValueKind, StatementAttributes,
-        Syntax, TypeParameter,
-    },
+    analysis::expand::{Context, Expander, Scope, ScopeValueKind, StatementAttributes, Syntax},
     diagnostics::Note,
     helpers::{Backtrace, InternedString},
     parse::{self, Span},
@@ -66,36 +63,26 @@ pub struct Expression {
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub enum ExpressionKind {
+    // TODO: `Scope`, `fn into_scope(self) -> (ScopeId, Expression)`
     Error(Backtrace),
     EmptySideEffect,
     Variable(InternedString),
     RepeatedVariable(InternedString),
     Underscore,
-    Name(Option<ScopeId>, InternedString),
+    Name(InternedString),
     Text(InternedString),
     Number(InternedString),
     List(Vec<Expression>),
-    Block(Option<ScopeId>, Vec<Statement>),
-    AssignToPattern(Pattern, Box<Expression>),
+    Block(Vec<Statement>),
+    AssignToName((Span, InternedString), Box<Expression>),
     Assign(Box<Expression>, Box<Expression>),
-    Function(
-        // HACK: Function syntax can be used in both value and type position,
-        // and in type position we need to treat both sides as expressions
-        // without introducing any variables. So we just store both
-        // possibilities.
-        Option<(Option<ScopeId>, Pattern, Box<Expression>)>,
-        (Box<Expression>, Box<Expression>),
-    ),
+    Function(Box<Expression>, Box<Expression>),
     Tuple(Vec<Expression>),
     External(Box<Expression>, Box<Expression>, Vec<Expression>),
     Annotate(Box<Expression>, Box<Expression>),
     Type(Option<Box<Expression>>),
     Trait(Option<Box<Expression>>),
-    TypeFunction(
-        Option<ScopeId>,
-        (Vec<TypeParameter>, Vec<Bound>),
-        Box<Expression>,
-    ),
+    TypeFunction(Box<Expression>, Box<Expression>),
     Where(Box<Expression>, Box<Expression>),
     Instance(Box<Expression>),
     Use(Box<Expression>),
@@ -116,7 +103,7 @@ impl From<parse::Expr> for Expression {
             span: expr.span,
             kind: match expr.kind {
                 parse::ExprKind::Underscore => ExpressionKind::Underscore,
-                parse::ExprKind::Name(name) => ExpressionKind::Name(None, name),
+                parse::ExprKind::Name(name) => ExpressionKind::Name(name),
                 parse::ExprKind::Text(text) => ExpressionKind::Text(text),
                 parse::ExprKind::Number(number) => ExpressionKind::Number(number),
                 parse::ExprKind::List(lines) => ExpressionKind::List(
@@ -127,7 +114,6 @@ impl From<parse::Expr> for Expression {
                         .collect(),
                 ),
                 parse::ExprKind::Block(statements) => ExpressionKind::Block(
-                    None,
                     statements
                         .into_iter()
                         .flat_map(|statement| statement.try_into().ok())
@@ -242,13 +228,13 @@ impl Expression {
                 true
             }
             (ExpressionKind::Underscore, ExpressionKind::Underscore) => true,
-            (ExpressionKind::Name(_, name), ExpressionKind::Name(_, other)) => name == other,
+            (ExpressionKind::Name(name), ExpressionKind::Name(other)) => name == other,
             (ExpressionKind::Number(number), ExpressionKind::Number(other)) => number == other,
             (ExpressionKind::Text(text), ExpressionKind::Text(other)) => text == other,
             (ExpressionKind::List(exprs), ExpressionKind::List(other)) => {
                 self.unify_lists(exprs, other, vars)
             }
-            (ExpressionKind::Block(_, statements), ExpressionKind::Block(_, other)) => {
+            (ExpressionKind::Block(statements), ExpressionKind::Block(other)) => {
                 statements.len() == other.len()
                     && statements.iter().zip(other).all(|(statement, other)| {
                         statement.unexpanded_attributes.len() == other.unexpanded_attributes.len()
@@ -360,6 +346,7 @@ impl Expression {
     }
 }
 
+#[allow(unused)]
 impl Expression {
     pub(crate) fn traverse_mut(&mut self, mut f: impl FnMut(&mut Expression)) {
         self.traverse_mut_with_inner((), &mut |expr, ()| f(expr));
@@ -386,7 +373,7 @@ impl Expression {
             | ExpressionKind::Variable(_)
             | ExpressionKind::RepeatedVariable(_)
             | ExpressionKind::Underscore
-            | ExpressionKind::Name(_, _)
+            | ExpressionKind::Name(_)
             | ExpressionKind::Text(_)
             | ExpressionKind::Number(_) => {}
             ExpressionKind::List(exprs) => {
@@ -394,7 +381,7 @@ impl Expression {
                     expr.traverse_mut_with_inner(context.clone(), f);
                 }
             }
-            ExpressionKind::Block(_, statements) => {
+            ExpressionKind::Block(statements) => {
                 for statement in statements {
                     for attribute in &mut statement.unexpanded_attributes {
                         for expr in &mut attribute.exprs {
@@ -435,31 +422,14 @@ impl Expression {
                 arms.traverse_mut_with_inner(context, f);
             }
             ExpressionKind::Instance(expr)
-            | ExpressionKind::TypeFunction(_, _, expr)
             | ExpressionKind::Use(expr)
             | ExpressionKind::End(expr) => {
                 expr.traverse_mut_with_inner(context, f);
             }
-            ExpressionKind::AssignToPattern(pattern, expr) => {
-                if let PatternKind::Annotate(_, expr) | PatternKind::Where(_, expr) =
-                    &mut pattern.kind
-                {
-                    expr.traverse_mut_with_inner(context.clone(), f);
-                }
-
+            ExpressionKind::AssignToName(_, expr) => {
                 expr.traverse_mut_with_inner(context, f);
             }
-            ExpressionKind::Function(pattern, (lhs, rhs)) => {
-                if let Some((_, pattern, expr)) = pattern {
-                    if let PatternKind::Annotate(_, expr) | PatternKind::Where(_, expr) =
-                        &mut pattern.kind
-                    {
-                        expr.traverse_mut_with_inner(context.clone(), f);
-                    }
-
-                    expr.traverse_mut_with_inner(context.clone(), f);
-                }
-
+            ExpressionKind::Function(lhs, rhs) | ExpressionKind::TypeFunction(lhs, rhs) => {
                 lhs.traverse_mut_with_inner(context.clone(), f);
                 rhs.traverse_mut_with_inner(context, f);
             }

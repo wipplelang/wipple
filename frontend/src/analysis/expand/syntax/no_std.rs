@@ -23,7 +23,7 @@ impl BuiltinSyntaxVisitor for NoStdSyntax {
     fn pattern(self) -> Vec<Expression> {
         vec![Expression {
             span: Span::builtin(),
-            kind: ExpressionKind::Name(None, InternedString::new(self.name())),
+            kind: ExpressionKind::Name(InternedString::new(self.name())),
         }]
     }
 

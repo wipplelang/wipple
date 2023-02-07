@@ -26,7 +26,7 @@ impl BuiltinSyntaxVisitor for SyntaxSyntax {
         vec![
             Expression {
                 span: Span::builtin(),
-                kind: ExpressionKind::Name(None, InternedString::new(self.name())),
+                kind: ExpressionKind::Name(InternedString::new(self.name())),
             },
             Expression {
                 span: Span::builtin(),
@@ -76,7 +76,7 @@ impl SyntaxSyntax {
         let expr = exprs.pop().unwrap();
 
         let block = match expr.kind {
-            ExpressionKind::Block(_, statements) => statements,
+            ExpressionKind::Block(statements) => statements,
             _ => {
                 expander.report_syntax_error(span, None);
                 return None;
@@ -145,7 +145,7 @@ impl SyntaxSyntax {
                                             pattern_lhs,
                                             Expression {
                                                 span: operator_span,
-                                                kind: ExpressionKind::Name(None, operator_name),
+                                                kind: ExpressionKind::Name(operator_name),
                                             },
                                             pattern_rhs,
                                         ]);
@@ -167,10 +167,7 @@ impl SyntaxSyntax {
                 };
 
             convert_variables(&mut lhs);
-            expander.update_scopes(&mut lhs, scope);
-
             convert_variables(&mut rhs);
-            expander.update_scopes(&mut rhs, scope);
 
             rules.push(SyntaxRule {
                 span: statement.span,
@@ -185,7 +182,7 @@ impl SyntaxSyntax {
 
 fn convert_variables(expr: &mut Expression) {
     expr.traverse_mut(|expr| {
-        if let ExpressionKind::Name(_, name) = expr.kind {
+        if let ExpressionKind::Name(name) = expr.kind {
             if name.starts_with('\'') {
                 expr.kind = ExpressionKind::Variable(name);
             } else if name.starts_with("...") {

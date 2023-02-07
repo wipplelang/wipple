@@ -35,7 +35,7 @@ impl BuiltinSyntaxVisitor for TypeFunctionSyntax {
             },
             Expression {
                 span: Span::builtin(),
-                kind: ExpressionKind::Name(None, InternedString::new(self.name())),
+                kind: ExpressionKind::Name(InternedString::new(self.name())),
             },
             Expression {
                 span: Span::builtin(),
@@ -49,34 +49,15 @@ impl BuiltinSyntaxVisitor for TypeFunctionSyntax {
         span: Span,
         mut vars: HashMap<InternedString, Expression>,
         _context: Option<Context<'_>>,
-        scope: ScopeId,
-        expander: &Expander<'_, '_>,
+        _scope: ScopeId,
+        _expander: &Expander<'_, '_>,
     ) -> Expression {
         let lhs = vars.remove(&InternedString::new("lhs")).unwrap();
-        let mut rhs = vars.remove(&InternedString::new("rhs")).unwrap();
-
-        let type_function_scope = expander.child_scope(span, scope);
-
-        let (params, mut bounds) = expander
-            .expand_type_function(lhs, type_function_scope)
-            .await
-            .unwrap_or_default();
-
-        Expander::update_scopes_for_type_function(&params, &mut rhs, type_function_scope);
-
-        for bound in &mut bounds {
-            for ty in &mut bound.parameters {
-                Expander::update_scopes_for_type_function(&params, ty, type_function_scope);
-            }
-        }
+        let rhs = vars.remove(&InternedString::new("rhs")).unwrap();
 
         Expression {
             span,
-            kind: ExpressionKind::TypeFunction(
-                Some(type_function_scope),
-                (params, bounds),
-                Box::new(rhs),
-            ),
+            kind: ExpressionKind::TypeFunction(Box::new(lhs), Box::new(rhs)),
         }
     }
 }

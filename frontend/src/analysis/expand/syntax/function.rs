@@ -35,7 +35,7 @@ impl BuiltinSyntaxVisitor for FunctionSyntax {
             },
             Expression {
                 span: Span::builtin(),
-                kind: ExpressionKind::Name(None, InternedString::new(self.name())),
+                kind: ExpressionKind::Name(InternedString::new(self.name())),
             },
             Expression {
                 span: Span::builtin(),
@@ -49,26 +49,15 @@ impl BuiltinSyntaxVisitor for FunctionSyntax {
         span: Span,
         mut vars: HashMap<InternedString, Expression>,
         _context: Option<Context<'_>>,
-        scope: ScopeId,
-        expander: &Expander<'_, '_>,
+        _scope: ScopeId,
+        _expander: &Expander<'_, '_>,
     ) -> Expression {
         let lhs = vars.remove(&InternedString::new("lhs")).unwrap();
         let rhs = vars.remove(&InternedString::new("rhs")).unwrap();
 
-        let function_scope = expander.child_scope(span, scope);
-        let pattern = expander
-            .expand_pattern(lhs.clone(), function_scope)
-            .await
-            .ok()
-            .map(|mut pattern| {
-                let mut expr = rhs.clone();
-                Expander::update_scopes_for_pattern(&mut pattern, &mut expr, function_scope);
-                (Some(function_scope), pattern, Box::new(expr))
-            });
-
         Expression {
             span,
-            kind: ExpressionKind::Function(pattern, (Box::new(lhs), Box::new(rhs))),
+            kind: ExpressionKind::Function(Box::new(lhs), Box::new(rhs)),
         }
     }
 }

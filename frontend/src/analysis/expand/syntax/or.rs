@@ -35,7 +35,7 @@ impl BuiltinSyntaxVisitor for OrSyntax {
             },
             Expression {
                 span: Span::builtin(),
-                kind: ExpressionKind::Name(None, InternedString::new(self.name())),
+                kind: ExpressionKind::Name(InternedString::new(self.name())),
             },
             Expression {
                 span: Span::builtin(),

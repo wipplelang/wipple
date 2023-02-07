@@ -111,8 +111,8 @@ impl<'a, 'l> Expander<'a, 'l> {
             1 => {
                 let expr = exprs.pop().unwrap();
 
-                if let ExpressionKind::Name(scope, name) = expr.kind {
-                    match self.get_name(name, scope.unwrap_or(inherited_scope)) {
+                if let ExpressionKind::Name(name) = expr.kind {
+                    match self.get_name(name, inherited_scope) {
                         Some(ScopeValueKind::Syntax(syntax)) => {
                             return ExpandOperatorsResult::Syntax(
                                 expr.span,
@@ -146,11 +146,10 @@ impl<'a, 'l> Expander<'a, 'l> {
                     let first = rest.pop_front().unwrap();
 
                     let syntax_name = match &first.kind {
-                        ExpressionKind::Name(scope, name) => Some((*scope, *name)),
+                        ExpressionKind::Name(name) => Some(*name),
                         ExpressionKind::List(exprs) if exprs.len() == 1 => {
-                            if let ExpressionKind::Name(scope, name) = &exprs.first().unwrap().kind
-                            {
-                                Some((*scope, *name))
+                            if let ExpressionKind::Name(name) = &exprs.first().unwrap().kind {
+                                Some(*name)
                             } else {
                                 None
                             }
@@ -158,8 +157,8 @@ impl<'a, 'l> Expander<'a, 'l> {
                         _ => None,
                     };
 
-                    if let Some((scope, name)) = syntax_name {
-                        match self.get_name(name, scope.unwrap_or(inherited_scope)) {
+                    if let Some(name) = syntax_name {
+                        match self.get_name(name, inherited_scope) {
                             Some(ScopeValueKind::Syntax(syntax)) => {
                                 return ExpandOperatorsResult::Syntax(
                                     first.span,
@@ -406,9 +405,9 @@ impl<'a, 'l> Expander<'a, 'l> {
     ) -> VecDeque<(usize, Span, InternedString, Operator)> {
         let mut operators = VecDeque::new();
         for (index, expr) in exprs {
-            if let ExpressionKind::Name(scope, name) = expr.kind {
+            if let ExpressionKind::Name(name) = expr.kind {
                 if let Some(ScopeValueKind::Operator(operator)) =
-                    self.get_name(name, scope.unwrap_or(inherited_scope))
+                    self.get_name(name, inherited_scope)
                 {
                     operators.push_back((index, expr.span, name, operator))
                 }

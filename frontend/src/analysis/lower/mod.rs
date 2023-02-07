@@ -321,7 +321,6 @@ pub struct TraitAttributes {
 
 #[derive(Debug, Clone)]
 struct UnresolvedConstant {
-    pub scope: ScopeId,
     pub parameters: Vec<(Span, TypeParameterId)>,
     pub bounds: Vec<Bound>,
     pub ty: TypeAnnotation,
@@ -332,7 +331,6 @@ struct UnresolvedConstant {
 #[derive(Debug, Clone)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub struct Constant {
-    pub scope: ScopeId,
     pub parameters: Vec<(Span, TypeParameterId)>,
     pub bounds: Vec<Bound>,
     pub ty: TypeAnnotation,
@@ -343,7 +341,6 @@ pub struct Constant {
 impl From<Constant> for UnresolvedConstant {
     fn from(constant: Constant) -> Self {
         UnresolvedConstant {
-            scope: constant.scope,
             parameters: constant.parameters,
             bounds: constant.bounds,
             ty: constant.ty,
@@ -356,7 +353,6 @@ impl From<Constant> for UnresolvedConstant {
 impl Resolve<Constant> for UnresolvedConstant {
     fn resolve(self) -> Constant {
         Constant {
-            scope: self.scope,
             parameters: self.parameters,
             bounds: self.bounds,
             ty: self.ty,
@@ -986,13 +982,13 @@ impl<'l> Compiler<'l> {
                 )
             });
 
-            if track_use {
-                used_variables.push(&scope.used_variables);
-            }
-
             if let Some(value) = scope.values.lock().get(&name).cloned() {
                 result = Some(value);
                 break;
+            }
+
+            if track_use {
+                used_variables.push(&scope.used_variables);
             }
 
             parent = scope.parent;
@@ -1053,7 +1049,7 @@ enum StatementDeclarationKind {
     Trait(TraitId, ast::TraitDeclaration),
     Constant(ConstantId, ast::ConstantDeclaration),
     Instance(ConstantId, ast::Instance),
-    Use((Span, ScopeId, InternedString)),
+    Use((Span, InternedString)),
     Queued(QueuedStatement),
 }
 
@@ -1100,7 +1096,7 @@ impl Compiler<'_> {
             let scope_value = match decl.kind {
                 StatementDeclarationKind::Type(id, ty) => {
                     let (parameters, _) = self.with_parameters(
-                        ty.scope,
+                        scope,
                         ty.parameters.map(|params| (params, Vec::new())),
                         info,
                     );
@@ -1111,7 +1107,7 @@ impl Compiler<'_> {
                             params: parameters,
                             attributes: self.lower_type_attributes(
                                 &mut decl.attributes,
-                                ty.scope,
+                                scope,
                                 info,
                             ),
                         },
@@ -1120,10 +1116,10 @@ impl Compiler<'_> {
                             let mut field_names = HashMap::with_capacity(fields.len());
                             for (index, mut field) in fields.into_iter().enumerate() {
                                 field_tys.push(TypeField {
-                                    ty: self.lower_type_annotation(field.ty, info),
+                                    ty: self.lower_type_annotation(field.ty, scope, info),
                                     attributes: self.lower_decl_attributes(
                                         &mut field.attributes,
-                                        ty.scope,
+                                        scope,
                                         info,
                                     ),
                                 });
@@ -1136,7 +1132,7 @@ impl Compiler<'_> {
                                 params: parameters,
                                 attributes: self.lower_type_attributes(
                                     &mut decl.attributes,
-                                    ty.scope,
+                                    scope,
                                     info,
                                 ),
                             }
@@ -1148,7 +1144,7 @@ impl Compiler<'_> {
                                 let tys = variant
                                     .values
                                     .into_iter()
-                                    .map(|ty| self.lower_type_annotation(ty, info))
+                                    .map(|ty| self.lower_type_annotation(ty, scope, info))
                                     .collect::<Vec<_>>();
 
                                 let constructor_id = self.new_constant_id_in(info.file);
@@ -1221,7 +1217,7 @@ impl Compiler<'_> {
 
                                 let attributes = self.lower_constant_attributes(
                                     &mut variant.attributes,
-                                    ty.scope,
+                                    scope,
                                     info,
                                 );
 
@@ -1231,7 +1227,6 @@ impl Compiler<'_> {
                                         Some(variant.name),
                                         variant.span,
                                         UnresolvedConstant {
-                                            scope: ty.scope,
                                             parameters: parameters.clone(),
                                             bounds: Vec::new(),
                                             ty: constructor_ty,
@@ -1255,7 +1250,7 @@ impl Compiler<'_> {
                                 params: parameters,
                                 attributes: self.lower_type_attributes(
                                     &mut decl.attributes,
-                                    ty.scope,
+                                    scope,
                                     info,
                                 ),
                             }
@@ -1268,7 +1263,7 @@ impl Compiler<'_> {
                 }
                 StatementDeclarationKind::Trait(id, declaration) => {
                     let (parameters, _) = self.with_parameters(
-                        declaration.scope,
+                        scope,
                         declaration.parameters.map(|params| (params, Vec::new())),
                         info,
                     );
@@ -1277,12 +1272,8 @@ impl Compiler<'_> {
                         parameters,
                         ty: declaration
                             .ty
-                            .map(|ty| self.lower_type_annotation(ty, info)),
-                        attributes: self.lower_trait_attributes(
-                            &mut decl.attributes,
-                            declaration.scope,
-                            info,
-                        ),
+                            .map(|ty| self.lower_type_annotation(ty, scope, info)),
+                        attributes: self.lower_trait_attributes(&mut decl.attributes, scope, info),
                     };
 
                     info.declarations.traits.get_mut(&id).unwrap().value = Some(tr);
@@ -1291,13 +1282,12 @@ impl Compiler<'_> {
                 }
                 StatementDeclarationKind::Constant(id, declaration) => {
                     let (parameters, bounds) =
-                        self.with_parameters(declaration.scope, declaration.parameters, info);
+                        self.with_parameters(scope, declaration.parameters, info);
 
                     let constant = UnresolvedConstant {
-                        scope: declaration.scope,
                         parameters,
                         bounds,
-                        ty: self.lower_type_annotation(declaration.ty, info),
+                        ty: self.lower_type_annotation(declaration.ty, scope, info),
                         value: Default::default(),
                         attributes: self.lower_constant_attributes(
                             &mut decl.attributes,
@@ -1312,8 +1302,7 @@ impl Compiler<'_> {
                     Some(ScopeValue::Constant(id, None))
                 }
                 StatementDeclarationKind::Instance(id, instance) => {
-                    let (params, bounds) =
-                        self.with_parameters(instance.scope, instance.parameters, info);
+                    let (params, bounds) = self.with_parameters(scope, instance.parameters, info);
 
                     let tr = match self.get_in_scope(
                         scope,
@@ -1357,10 +1346,12 @@ impl Compiler<'_> {
                     let trait_params = instance
                         .trait_parameters
                         .into_iter()
-                        .map(|ty| self.lower_type_annotation(ty, info))
+                        .map(|ty| self.lower_type_annotation(ty, scope, info))
                         .collect();
 
-                    let value = instance.value.map(|value| self.lower_expr(value, info));
+                    let value = instance
+                        .value
+                        .map(|value| self.lower_expr(value, scope, info));
 
                     let instance = Instance {
                         params,
@@ -1374,8 +1365,8 @@ impl Compiler<'_> {
 
                     Some(ScopeValue::Constant(id, None))
                 }
-                StatementDeclarationKind::Use((span, name_scope, name)) => {
-                    let ty = match self.get_in_scope(name_scope, name, span, info) {
+                StatementDeclarationKind::Use((span, name)) => {
+                    let ty = match self.get_in_scope(scope, name, span, info) {
                         Some(ScopeValue::Type(ty)) => {
                             info.declarations
                                 .types
@@ -1492,7 +1483,7 @@ impl Compiler<'_> {
                 QueuedStatement::Assign(pattern, expr) => {
                     macro_rules! assign_pattern {
                         () => {{
-                            let value = self.lower_expr(expr, info);
+                            let value = self.lower_expr(expr, scope, info);
                             let pattern = self.lower_pattern(pattern, scope, info);
 
                             Some(Expression {
@@ -1503,7 +1494,7 @@ impl Compiler<'_> {
                     }
 
                     match &pattern.kind {
-                        ast::PatternKind::Name(_, name) => {
+                        ast::PatternKind::Name(name) => {
                             if let Some((prev_constant_name, prev_constant_span, prev_constant_id)) = prev_constant {
                                 if *name != prev_constant_name {
                                     return assign_pattern!();
@@ -1549,7 +1540,7 @@ impl Compiler<'_> {
                                     );
                                 }
 
-                                let value = self.lower_expr(expr, info);
+                                let value = self.lower_expr(expr, scope, info);
 
                                 let used_variables = self.used_variables_in_scope(scope, info);
                                 if !used_variables.is_empty() {
@@ -1582,7 +1573,7 @@ impl Compiler<'_> {
                         );
                     }
 
-                    Some(self.lower_expr(ast::Expression { span, kind: expr }, info))
+                    Some(self.lower_expr(ast::Expression { span, kind: expr }, scope, info))
                 }
             })())
             .collect()
@@ -1707,9 +1698,9 @@ impl Compiler<'_> {
                 kind: StatementDeclarationKind::Queued(QueuedStatement::Assign(pattern, expr)),
                 attributes: statement.attributes,
             }),
-            ast::StatementKind::Use((span, scope, name)) => Some(StatementDeclaration {
+            ast::StatementKind::Use((span, name)) => Some(StatementDeclaration {
                 span: statement.span,
-                kind: StatementDeclarationKind::Use((span, scope, name)),
+                kind: StatementDeclarationKind::Use((span, name)),
                 attributes: statement.attributes,
             }),
             ast::StatementKind::Expression(expr) => Some(StatementDeclaration {
@@ -1811,7 +1802,7 @@ impl Compiler<'_> {
         }
     }
 
-    fn lower_expr(&self, expr: ast::Expression, info: &mut Info) -> Expression {
+    fn lower_expr(&self, expr: ast::Expression, scope: ScopeId, info: &mut Info) -> Expression {
         macro_rules! function_call {
             ($function:expr, $inputs:expr) => {
                 $inputs
@@ -1820,7 +1811,7 @@ impl Compiler<'_> {
                         span: Span::join(result.span, next.span),
                         kind: ExpressionKind::Call(
                             Box::new(result),
-                            Box::new(self.lower_expr(next, info)),
+                            Box::new(self.lower_expr(next, scope, info)),
                         ),
                     })
             };
@@ -1830,7 +1821,7 @@ impl Compiler<'_> {
             ast::ExpressionKind::Error(trace) => ExpressionKind::Error(trace),
             ast::ExpressionKind::Text(text) => ExpressionKind::Text(text),
             ast::ExpressionKind::Number(number) => ExpressionKind::Number(number),
-            ast::ExpressionKind::Name(scope, name) => {
+            ast::ExpressionKind::Name(name) => {
                 match self.resolve_value(expr.span, name, scope, info) {
                     Some(value) => value,
                     None => {
@@ -1843,17 +1834,15 @@ impl Compiler<'_> {
                     }
                 }
             }
-            ast::ExpressionKind::Block(block_scope, statements) => {
-                let block = self.lower_block(block_scope, statements, info);
+            ast::ExpressionKind::Block(statements) => {
+                let block = self.lower_block(scope, statements, info);
                 ExpressionKind::Block(block, false)
             }
             ast::ExpressionKind::End(value) => {
-                ExpressionKind::End(Box::new(self.lower_expr(*value, info)))
+                ExpressionKind::End(Box::new(self.lower_expr(*value, scope, info)))
             }
             ast::ExpressionKind::Call(function, inputs) => match &function.kind {
-                ast::ExpressionKind::Name(scope, ty_name) => {
-                    let scope = *scope;
-
+                ast::ExpressionKind::Name(ty_name) => {
                     let input = match inputs.first() {
                         Some(input) => input,
                         None => {
@@ -1879,7 +1868,7 @@ impl Compiler<'_> {
                                 .insert(function.span);
 
                             match &input.kind {
-                                ast::ExpressionKind::Block(_, statements) => {
+                                ast::ExpressionKind::Block(statements) => {
                                     if inputs.len() > 1 {
                                         self.add_error(
                                             "too many inputs in structure instantiation", vec![Note::primary(
@@ -1904,7 +1893,7 @@ impl Compiler<'_> {
                                                     std::iter::once(first.as_ref())
                                                         .chain(rest)
                                                         .map(|expr| match &expr.kind {
-                                                            ast::ExpressionKind::Name(_, name) => {
+                                                            ast::ExpressionKind::Name(name) => {
                                                                 Some((*name, expr.clone()))
                                                             }
                                                             _ => None,
@@ -1914,7 +1903,10 @@ impl Compiler<'_> {
                                                     break 'parse fields
                                                         .into_iter()
                                                         .map(|(name, expr)| {
-                                                            (name, self.lower_expr(expr, info))
+                                                            (
+                                                                name,
+                                                                self.lower_expr(expr, scope, info),
+                                                            )
                                                         })
                                                         .collect();
                                                 }
@@ -1925,7 +1917,7 @@ impl Compiler<'_> {
                                             .iter()
                                             .filter_map(|s| match &s.kind {
                                                 ast::StatementKind::Assign(pattern, expr) => match &pattern.kind {
-                                                    ast::PatternKind::Name(_, name) => Some((*name, expr.clone())),
+                                                    ast::PatternKind::Name(name) => Some((*name, expr.clone())),
                                                     _ => {
                                                         self.add_error(
                                                             "structure instantiation may not contain complex patterns", vec![Note::primary(
@@ -1937,7 +1929,7 @@ impl Compiler<'_> {
                                                         None
                                                     },
                                                 },
-                                                ast::StatementKind::Expression(expr @ ast::ExpressionKind::Name(_, name)) => {
+                                                ast::StatementKind::Expression(expr @ ast::ExpressionKind::Name(name)) => {
                                                     let expr = ast::Expression { span: s.span, kind: expr.clone() };
                                                     Some((*name, expr))
                                                 },
@@ -1956,7 +1948,7 @@ impl Compiler<'_> {
                                             .collect::<Vec<_>>()
                                             .into_iter()
                                             .map(|(name, value)| {
-                                                (name, self.lower_expr(value, info))
+                                                (name, self.lower_expr(value, scope, info))
                                             })
                                             .collect()
                                     };
@@ -1981,7 +1973,7 @@ impl Compiler<'_> {
 
                                     ExpressionKind::Instantiate(id, fields)
                                 }
-                                ast::ExpressionKind::Name(_, name) => {
+                                ast::ExpressionKind::Name(name) => {
                                     let ty_decl = info.declarations.types.get(&id).unwrap();
 
                                     let (variant_types, variants) =
@@ -2028,7 +2020,10 @@ impl Compiler<'_> {
                                     )
                                     .kind
                                 }
-                                _ => function_call!(self.lower_expr(*function, info), inputs).kind,
+                                _ => {
+                                    function_call!(self.lower_expr(*function, scope, info), inputs)
+                                        .kind
+                                }
                             }
                         }
                         Some(ScopeValue::TypeParameter(id)) => {
@@ -2064,33 +2059,33 @@ impl Compiler<'_> {
 
                             return Expression::error(self, expr.span);
                         }
-                        _ => function_call!(self.lower_expr(*function, info), inputs).kind,
+                        _ => function_call!(self.lower_expr(*function, scope, info), inputs).kind,
                     }
                 }
-                _ => function_call!(self.lower_expr(*function, info), inputs).kind,
+                _ => function_call!(self.lower_expr(*function, scope, info), inputs).kind,
             },
-            ast::ExpressionKind::Function(scope, input, body) => {
+            ast::ExpressionKind::Function(input, body) => {
                 let pattern = self.lower_pattern(input, scope, info);
-                let body = self.lower_expr(*body, info);
+                let body = self.lower_expr(*body, scope, info);
 
                 let captures = self.used_variables_in_scope(scope, info);
 
                 ExpressionKind::Function(pattern, Box::new(body), captures)
             }
             ast::ExpressionKind::When(input, arms) => ExpressionKind::When(
-                Box::new(self.lower_expr(*input, info)),
+                Box::new(self.lower_expr(*input, scope, info)),
                 arms.into_iter()
                     .map(|arm| Arm {
                         span: arm.span,
-                        pattern: self.lower_pattern(arm.pattern, arm.scope, info),
-                        body: self.lower_expr(arm.body, info),
+                        pattern: self.lower_pattern(arm.pattern, scope, info),
+                        body: self.lower_expr(arm.body, scope, info),
                     })
                     .collect(),
             ),
             ast::ExpressionKind::External(lib, identifier, inputs) => (|| {
                 let inputs = inputs
                     .into_iter()
-                    .map(|expr| self.lower_expr(expr, info))
+                    .map(|expr| self.lower_expr(expr, scope, info))
                     .collect::<Vec<_>>();
 
                 if lib.as_str() == "runtime" {
@@ -2111,13 +2106,13 @@ impl Compiler<'_> {
                 }
             })(),
             ast::ExpressionKind::Annotate(expr, ty) => ExpressionKind::Annotate(
-                Box::new(self.lower_expr(*expr, info)),
-                self.lower_type_annotation(ty, info),
+                Box::new(self.lower_expr(*expr, scope, info)),
+                self.lower_type_annotation(ty, scope, info),
             ),
             ast::ExpressionKind::Tuple(exprs) => ExpressionKind::Tuple(
                 exprs
                     .into_iter()
-                    .map(|expr| self.lower_expr(expr, info))
+                    .map(|expr| self.lower_expr(expr, scope, info))
                     .collect(),
             ),
         };
@@ -2128,14 +2123,19 @@ impl Compiler<'_> {
         }
     }
 
-    fn lower_type_annotation(&self, ty: ast::TypeAnnotation, info: &mut Info) -> TypeAnnotation {
+    fn lower_type_annotation(
+        &self,
+        ty: ast::TypeAnnotation,
+        scope: ScopeId,
+        info: &mut Info,
+    ) -> TypeAnnotation {
         let kind = match ty.kind {
             ast::TypeAnnotationKind::Error => TypeAnnotationKind::Error,
             ast::TypeAnnotationKind::Placeholder => TypeAnnotationKind::Placeholder,
-            ast::TypeAnnotationKind::Named(scope, name, parameters) => {
+            ast::TypeAnnotationKind::Named(name, parameters) => {
                 let parameters = parameters
                     .into_iter()
-                    .map(|parameter| self.lower_type_annotation(parameter, info))
+                    .map(|parameter| self.lower_type_annotation(parameter, scope, info))
                     .collect();
 
                 match self.get_in_scope(scope, name, ty.span, info) {
@@ -2191,12 +2191,12 @@ impl Compiler<'_> {
                 }
             }
             ast::TypeAnnotationKind::Function(input, output) => TypeAnnotationKind::Function(
-                Box::new(self.lower_type_annotation(*input, info)),
-                Box::new(self.lower_type_annotation(*output, info)),
+                Box::new(self.lower_type_annotation(*input, scope, info)),
+                Box::new(self.lower_type_annotation(*output, scope, info)),
             ),
             ast::TypeAnnotationKind::Tuple(tys) => TypeAnnotationKind::Tuple(
                 tys.into_iter()
-                    .map(|ty| self.lower_type_annotation(ty, info))
+                    .map(|ty| self.lower_type_annotation(ty, scope, info))
                     .collect(),
             ),
         };
@@ -2213,8 +2213,8 @@ impl Compiler<'_> {
             ast::PatternKind::Wildcard => PatternKind::Wildcard,
             ast::PatternKind::Number(number) => PatternKind::Number(number),
             ast::PatternKind::Text(text) => PatternKind::Text(text),
-            ast::PatternKind::Name(name_scope, name) => {
-                match self.peek_in_scope(name_scope, name, pattern.span, info) {
+            ast::PatternKind::Name(name) => {
+                match self.peek_in_scope(scope, name, pattern.span, info) {
                     Some(ScopeValue::Constant(id, Some((ty, variant)))) => {
                         info.declarations
                             .constants
@@ -2244,8 +2244,8 @@ impl Compiler<'_> {
                     .map(|(name, pattern)| (name, self.lower_pattern(pattern, scope, info)))
                     .collect(),
             ),
-            ast::PatternKind::Variant((name_span, name_scope, name), values) => {
-                let first = match self.get_in_scope(name_scope, name, name_span, info) {
+            ast::PatternKind::Variant((name_span, name), values) => {
+                let first = match self.get_in_scope(scope, name, name_span, info) {
                     Some(name) => name,
                     None => {
                         self.add_error(
@@ -2308,7 +2308,7 @@ impl Compiler<'_> {
                         };
 
                         let variant_name = match second.kind {
-                            ast::PatternKind::Name(_, name) => name,
+                            ast::PatternKind::Name(name) => name,
                             _ => {
                                 self.add_error(
                                     "invalid pattern",
@@ -2373,7 +2373,7 @@ impl Compiler<'_> {
             }
             ast::PatternKind::Annotate(inner_pattern, ty) => PatternKind::Annotate(
                 Box::new(self.lower_pattern(*inner_pattern, scope, info)),
-                self.lower_type_annotation(ty, info),
+                self.lower_type_annotation(ty, scope, info),
             ),
             ast::PatternKind::Or(lhs, rhs) => PatternKind::Or(
                 Box::new(self.lower_pattern(*lhs, scope, info)),
@@ -2381,7 +2381,7 @@ impl Compiler<'_> {
             ),
             ast::PatternKind::Where(pattern, condition) => PatternKind::Where(
                 Box::new(self.lower_pattern(*pattern, scope, info)),
-                Box::new(self.lower_expr(*condition, info)),
+                Box::new(self.lower_expr(*condition, scope, info)),
             ),
             ast::PatternKind::Tuple(patterns) => PatternKind::Tuple(
                 patterns
@@ -2562,7 +2562,7 @@ impl Compiler<'_> {
                 let parameters = bound
                     .parameters
                     .into_iter()
-                    .map(|ty| self.lower_type_annotation(ty, info))
+                    .map(|ty| self.lower_type_annotation(ty, scope, info))
                     .collect();
 
                 Some(Bound {

@@ -24,7 +24,7 @@ impl BuiltinSyntaxVisitor for FormatSyntax {
         vec![
             Expression {
                 span: Span::builtin(),
-                kind: ExpressionKind::Name(None, InternedString::new(self.name())),
+                kind: ExpressionKind::Name(InternedString::new(self.name())),
             },
             Expression {
                 span: Span::builtin(),
@@ -107,10 +107,9 @@ impl BuiltinSyntaxVisitor for FormatSyntax {
                                         kind: ExpressionKind::List(vec![
                                             Expression {
                                                 span,
-                                                kind: ExpressionKind::Name(
-                                                    expander.file_scope,
-                                                    InternedString::new("list"),
-                                                ),
+                                                kind: ExpressionKind::Name(InternedString::new(
+                                                    "list",
+                                                )),
                                             },
                                             Expression {
                                                 span,
@@ -123,7 +122,6 @@ impl BuiltinSyntaxVisitor for FormatSyntax {
                                                                 Expression {
                                                                     span: input.span,
                                                                     kind: ExpressionKind::Name(
-                                                                        expander.file_scope,
                                                                         InternedString::new("Show"),
                                                                     ),
                                                                 },
@@ -140,17 +138,15 @@ impl BuiltinSyntaxVisitor for FormatSyntax {
                                         kind: ExpressionKind::List(vec![
                                             Expression {
                                                 span,
-                                                kind: ExpressionKind::Name(
-                                                    expander.file_scope,
-                                                    InternedString::new("List"),
-                                                ),
+                                                kind: ExpressionKind::Name(InternedString::new(
+                                                    "List",
+                                                )),
                                             },
                                             Expression {
                                                 span,
-                                                kind: ExpressionKind::Name(
-                                                    expander.file_scope,
-                                                    InternedString::new("Text"),
-                                                ),
+                                                kind: ExpressionKind::Name(InternedString::new(
+                                                    "Text",
+                                                )),
                                             },
                                         ]),
                                     }),
@@ -161,7 +157,7 @@ impl BuiltinSyntaxVisitor for FormatSyntax {
                 }),
                 Box::new(Expression {
                     span,
-                    kind: ExpressionKind::Name(expander.file_scope, InternedString::new("Text")),
+                    kind: ExpressionKind::Name(InternedString::new("Text")),
                 }),
             ),
         }

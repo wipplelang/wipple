@@ -24,7 +24,7 @@ impl BuiltinSyntaxVisitor for UseSyntax {
         vec![
             Expression {
                 span: Span::builtin(),
-                kind: ExpressionKind::Name(None, InternedString::new(self.name())),
+                kind: ExpressionKind::Name(InternedString::new(self.name())),
             },
             Expression {
                 span: Span::builtin(),
@@ -104,16 +104,16 @@ impl UseSyntax {
                     };
 
                     if lhs.len() == 1 {
-                        if let ExpressionKind::Block(_, statements) = &lhs.first().unwrap().kind {
+                        if let ExpressionKind::Block(statements) = &lhs.first().unwrap().kind {
                             for statement in statements.clone() {
                                 match statement.expr.kind {
-                                    ExpressionKind::Name(_, name) => {
+                                    ExpressionKind::Name(name) => {
                                         insert_import(name, statement.expr.span)
                                     }
                                     ExpressionKind::List(exprs) => {
                                         for expr in exprs {
                                             match expr.kind {
-                                                ExpressionKind::Name(_, name) => {
+                                                ExpressionKind::Name(name) => {
                                                     insert_import(name, expr.span)
                                                 }
                                                 ExpressionKind::Error(_) => {}

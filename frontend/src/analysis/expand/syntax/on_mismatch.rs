@@ -24,7 +24,7 @@ impl BuiltinSyntaxVisitor for OnMismatchSyntax {
         vec![
             Expression {
                 span: Span::builtin(),
-                kind: ExpressionKind::Name(None, InternedString::new(self.name())),
+                kind: ExpressionKind::Name(InternedString::new(self.name())),
             },
             Expression {
                 span: Span::builtin(),
@@ -69,7 +69,7 @@ impl BuiltinSyntaxVisitor for OnMismatchSyntax {
         };
 
         let parameter = match parameter.kind {
-            ExpressionKind::Name(_, name) => TypeParameter {
+            ExpressionKind::Name(name) => TypeParameter {
                 span: parameter.span,
                 name,
             },

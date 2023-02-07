@@ -25,7 +25,7 @@ impl BuiltinSyntaxVisitor for OperatorSyntax {
         vec![
             Expression {
                 span: Span::builtin(),
-                kind: ExpressionKind::Name(None, InternedString::new(self.name())),
+                kind: ExpressionKind::Name(InternedString::new(self.name())),
             },
             Expression {
                 span: Span::builtin(),
@@ -65,8 +65,8 @@ impl BuiltinSyntaxVisitor for OperatorSyntax {
         };
 
         let precedence_name = match precedence.kind {
-            // TODO: Use scope to resolve precedence name
-            ExpressionKind::Name(_scope, name) => name,
+            // TODO: Resolve precedence name in scope
+            ExpressionKind::Name(name) => name,
             _ => {
                 expander.compiler.add_error(
                     "`operator` expects a name of a precedence",
