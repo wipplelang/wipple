@@ -648,9 +648,21 @@ impl<'a, 'l> Expander<'a, 'l> {
                     Box::new(self.expand_expr(*lhs, inherited_scope).await),
                     Box::new(self.expand_expr(*rhs, inherited_scope).await),
                 ),
-                ExpressionKind::Where(lhs, rhs) => ExpressionKind::Where(
-                    Box::new(self.expand_expr(*lhs, inherited_scope).await),
-                    Box::new(self.expand_expr(*rhs, inherited_scope).await),
+                ExpressionKind::Where((lhs_tys, rhs_tys), (lhs, rhs)) => ExpressionKind::Where(
+                    (
+                        stream::iter(lhs_tys)
+                            .then(|expr| self.expand_expr(expr, inherited_scope))
+                            .collect()
+                            .await,
+                        stream::iter(rhs_tys)
+                            .then(|expr| self.expand_expr(expr, inherited_scope))
+                            .collect()
+                            .await,
+                    ),
+                    (
+                        Box::new(self.expand_expr(*lhs, inherited_scope).await),
+                        Box::new(self.expand_expr(*rhs, inherited_scope).await),
+                    ),
                 ),
                 ExpressionKind::Instance(expr) => ExpressionKind::Instance(Box::new(
                     self.expand_expr(*expr, inherited_scope).await,

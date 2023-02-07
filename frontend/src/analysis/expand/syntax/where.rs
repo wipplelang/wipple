@@ -55,9 +55,19 @@ impl BuiltinSyntaxVisitor for WhereSyntax {
         let lhs = vars.remove(&InternedString::new("lhs")).unwrap();
         let rhs = vars.remove(&InternedString::new("rhs")).unwrap();
 
+        let lhs_tys = match &lhs.kind {
+            ExpressionKind::List(exprs) => exprs.clone(),
+            _ => unreachable!(),
+        };
+
+        let rhs_tys = match &rhs.kind {
+            ExpressionKind::List(exprs) => exprs.clone(),
+            _ => unreachable!(),
+        };
+
         Expression {
             span,
-            kind: ExpressionKind::Where(Box::new(lhs), Box::new(rhs)),
+            kind: ExpressionKind::Where((lhs_tys, rhs_tys), (Box::new(lhs), Box::new(rhs))),
         }
     }
 }

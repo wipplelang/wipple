@@ -83,7 +83,13 @@ pub enum ExpressionKind {
     Type(Option<Box<Expression>>),
     Trait(Option<Box<Expression>>),
     TypeFunction(Box<Expression>, Box<Expression>),
-    Where(Box<Expression>, Box<Expression>),
+    Where(
+        // HACK: 'where' must be parsed differently depending on whether it's
+        // used in type position or value position, so we just store both
+        // possibilities
+        (Vec<Expression>, Vec<Expression>), // type position
+        (Box<Expression>, Box<Expression>), // value position
+    ),
     Instance(Box<Expression>),
     Use(Box<Expression>),
     When(Box<Expression>, Box<Expression>),
@@ -394,7 +400,6 @@ impl Expression {
             }
             ExpressionKind::Assign(lhs, rhs)
             | ExpressionKind::Annotate(lhs, rhs)
-            | ExpressionKind::Where(lhs, rhs)
             | ExpressionKind::Or(lhs, rhs) => {
                 lhs.traverse_mut_with_inner(context.clone(), f);
                 rhs.traverse_mut_with_inner(context, f);
@@ -420,6 +425,18 @@ impl Expression {
             ExpressionKind::When(input, arms) => {
                 input.traverse_mut_with_inner(context.clone(), f);
                 arms.traverse_mut_with_inner(context, f);
+            }
+            ExpressionKind::Where((lhs_tys, rhs_tys), (lhs, rhs)) => {
+                for expr in lhs_tys {
+                    expr.traverse_mut_with_inner(context.clone(), f);
+                }
+
+                for expr in rhs_tys {
+                    expr.traverse_mut_with_inner(context.clone(), f);
+                }
+
+                lhs.traverse_mut_with_inner(context.clone(), f);
+                rhs.traverse_mut_with_inner(context, f);
             }
             ExpressionKind::Instance(expr)
             | ExpressionKind::Use(expr)

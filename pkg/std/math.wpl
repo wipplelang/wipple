@@ -26,7 +26,7 @@ Subtract : Left Right Difference => trait (Left -> Right -> Difference)
 
 [operator Addition-Precedence]
 - : syntax {
-	'a + 'b -> Subtract 'a 'b
+	'a - 'b -> Subtract 'a 'b
 }
 
 instance (Subtract Number Number Number) : a -> b -> external "runtime" "subtract-number" a b

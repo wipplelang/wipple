@@ -895,7 +895,7 @@ impl Compiler<'_> {
                         Box::new(self.build_pattern(*lhs, file_scope)),
                         Box::new(self.build_pattern(*rhs, file_scope)),
                     ),
-                    expand::ExpressionKind::Where(pattern, condition) => PatternKind::Where(
+                    expand::ExpressionKind::Where(_, (pattern, condition)) => PatternKind::Where(
                         Box::new(self.build_pattern(*pattern, file_scope)),
                         Box::new(self.build_expression(*condition, file_scope)),
                     ),
@@ -1042,84 +1042,49 @@ impl Compiler<'_> {
                 Vec::new(),
             )),
             expand::ExpressionKind::List(tys) => Some((build_parameter_list!(tys)?, Vec::new())),
-            expand::ExpressionKind::Where(lhs, bounds) => {
-                let tys = match lhs.kind {
-                    expand::ExpressionKind::Error(_) => return None,
-                    expand::ExpressionKind::Name(name) => vec![TypeParameter {
-                        span: lhs.span,
-                        name,
-                    }],
-                    expand::ExpressionKind::List(tys) => build_parameter_list!(tys)?,
-                    _ => {
-                        self.add_error(
-                            "expected type parameters on left-hand side of `where` clause",
-                            vec![Note::primary(
-                                lhs.span,
-                                "try providing a list of names here",
-                            )],
-                        );
+            expand::ExpressionKind::Where((tys, bounds), _) => {
+                let tys = build_parameter_list!(tys)?;
 
-                        return None;
-                    }
-                };
-
-                let bounds_span = bounds.span;
+                let bounds_span = bounds
+                    .first()
+                    .unwrap()
+                    .span
+                    .with_end(bounds.last().unwrap().span.end);
 
                 let bounds = (|| {
-                    match bounds.kind {
-                        expand::ExpressionKind::List(bounds) => {
-                            if bounds
-                                .iter()
-                                .any(|bound| matches!(bound.kind, expand::ExpressionKind::List(_)))
-                            {
-                                // The bounds clause matches the pattern `(T A) (T B) ...`
-                                bounds
-                                    .into_iter()
-                                    .map(|bound| match bound.kind {
-                                        expand::ExpressionKind::Name(trait_name) => Some(Bound {
-                                            span: bound.span,
-                                            trait_span: bound.span,
-                                            trait_name,
-                                            parameters: Vec::new(),
-                                        }),
-                                        expand::ExpressionKind::List(list) => build_bound!(bound.span, list),
-                                        _ => {
-                                            self.add_error(
-                                                "expected bound", vec![Note::primary(
-                                                    bounds_span,
-                                                    "`where` bound must be in the format `(T A B ...)`",
-                                                )],
-                                            );
+                    if bounds
+                        .iter()
+                        .any(|bound| matches!(bound.kind, expand::ExpressionKind::List(_)))
+                    {
+                        // The bounds clause matches the pattern `(T A) (T B) ...`
+                        bounds
+                            .into_iter()
+                            .map(|bound| match bound.kind {
+                                expand::ExpressionKind::Name(trait_name) => Some(Bound {
+                                    span: bound.span,
+                                    trait_span: bound.span,
+                                    trait_name,
+                                    parameters: Vec::new(),
+                                }),
+                                expand::ExpressionKind::List(list) => {
+                                    build_bound!(bound.span, list)
+                                }
+                                _ => {
+                                    self.add_error(
+                                        "expected bound",
+                                        vec![Note::primary(
+                                            bounds_span,
+                                            "`where` bound must be in the format `(T A B ...)`",
+                                        )],
+                                    );
 
-                                            None
-                                        }
-                                    })
-                                    .collect::<Option<_>>()
-                            } else {
-                                // The bounds clause matches the pattern `T A B ...`
-                                Some(vec![build_bound!(bounds_span, bounds)?])
-                            }
-                        }
-                        expand::ExpressionKind::Name(trait_name) => {
-                            // The bounds clause matches the pattern `T`
-                            Some(vec![Bound {
-                                span: bounds_span,
-                                trait_span: bounds_span,
-                                trait_name,
-                                parameters: Vec::new(),
-                            }])
-                        }
-                        _ => {
-                            self.add_error(
-                                "expected bounds",
-                                vec![Note::primary(
-                                    bounds_span,
-                                    "`where` bounds must be in the format `(T A) (T B) ...`",
-                                )],
-                            );
-
-                            None
-                        }
+                                    None
+                                }
+                            })
+                            .collect::<Option<_>>()
+                    } else {
+                        // The bounds clause matches the pattern `T A B ...`
+                        Some(vec![build_bound!(bounds_span, bounds)?])
                     }
                 })()?;
 
