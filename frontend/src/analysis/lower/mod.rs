@@ -1066,6 +1066,7 @@ impl Compiler<'_> {
         statements: Vec<ast::Statement>,
         info: &mut Info,
     ) -> Vec<Expression> {
+        let scope = self.child_scope(self.new_scope_id_in(info.file), scope, None, info);
         self.lower_statements(statements, scope, info)
     }
 
@@ -1095,6 +1096,9 @@ impl Compiler<'_> {
 
             let scope_value = match decl.kind {
                 StatementDeclarationKind::Type(id, ty) => {
+                    let scope =
+                        self.child_scope(self.new_scope_id_in(info.file), scope, None, info);
+
                     let (parameters, _) = self.with_parameters(
                         scope,
                         ty.parameters.map(|params| (params, Vec::new())),
@@ -1262,6 +1266,9 @@ impl Compiler<'_> {
                     Some(ScopeValue::Type(id))
                 }
                 StatementDeclarationKind::Trait(id, declaration) => {
+                    let scope =
+                        self.child_scope(self.new_scope_id_in(info.file), scope, None, info);
+
                     let (parameters, _) = self.with_parameters(
                         scope,
                         declaration.parameters.map(|params| (params, Vec::new())),
@@ -1281,6 +1288,9 @@ impl Compiler<'_> {
                     Some(ScopeValue::Trait(id))
                 }
                 StatementDeclarationKind::Constant(id, declaration) => {
+                    let scope =
+                        self.child_scope(self.new_scope_id_in(info.file), scope, None, info);
+
                     let (parameters, bounds) =
                         self.with_parameters(scope, declaration.parameters, info);
 
@@ -1302,6 +1312,9 @@ impl Compiler<'_> {
                     Some(ScopeValue::Constant(id, None))
                 }
                 StatementDeclarationKind::Instance(id, instance) => {
+                    let scope =
+                        self.child_scope(self.new_scope_id_in(info.file), scope, None, info);
+
                     let (params, bounds) = self.with_parameters(scope, instance.parameters, info);
 
                     let tr = match self.get_in_scope(
@@ -1524,6 +1537,8 @@ impl Compiler<'_> {
                                     .unwrap()
                                     .uses
                                     .insert(pattern.span);
+
+                                let scope = self.child_scope(self.new_scope_id_in(info.file), scope, None, info);
 
                                 for (_, id) in associated_parameters {
                                     let parameter =
@@ -2059,6 +2074,8 @@ impl Compiler<'_> {
                 _ => function_call!(self.lower_expr(*function, scope, info), inputs).kind,
             },
             ast::ExpressionKind::Function(input, body) => {
+                let scope = self.child_scope(self.new_scope_id_in(info.file), scope, None, info);
+
                 let pattern = self.lower_pattern(input, scope, info);
                 let body = self.lower_expr(*body, scope, info);
 
