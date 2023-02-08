@@ -41,25 +41,29 @@ pub trait Syntax<'a> {
     fn rules() -> SyntaxRules<'a, Self>;
 }
 
-pub struct SyntaxRule<'a, Context, Body>(
-    Box<dyn Fn(Context, Vec<parse::Expr>) -> Option<BoxFuture<'a, Body>> + 'a>,
+pub struct SyntaxRule<'a, S: Syntax<'a> + ?Sized>(
+    Box<dyn Fn(S::Context, Vec<parse::Expr>) -> Option<BoxFuture<'a, S::Body>> + 'a>,
 );
 
-impl<'a, Context, Body> SyntaxRule<'a, Context, Body> {
-    fn new<Fut: Future<Output = Body> + Send + 'a>(
-        rule: impl Fn(Context, Vec<parse::Expr>) -> Option<Fut> + 'a,
+impl<'a, S: Syntax<'a> + ?Sized> SyntaxRule<'a, S> {
+    fn new<Fut: Future<Output = S::Body> + Send + 'a>(
+        rule: impl Fn(S::Context, Vec<parse::Expr>) -> Option<Fut> + 'a,
     ) -> Self {
         SyntaxRule(Box::new(move |context, expr| {
             Some(Box::pin(rule(context, expr)?))
         }))
     }
 
-    fn apply(&self, context: Context, exprs: Vec<parse::Expr>) -> Option<BoxFuture<'a, Body>> {
+    fn apply(
+        &self,
+        context: S::Context,
+        exprs: Vec<parse::Expr>,
+    ) -> Option<BoxFuture<'a, S::Body>> {
         (self.0)(context, exprs)
     }
 }
 
-pub struct SyntaxRules<'a, S: Syntax<'a> + ?Sized>(Vec<SyntaxRule<'a, S::Context, S::Body>>);
+pub struct SyntaxRules<'a, S: Syntax<'a> + ?Sized>(Vec<SyntaxRule<'a, S>>);
 
 impl<'a, S: Syntax<'a> + ?Sized> Default for SyntaxRules<'a, S> {
     fn default() -> Self {
@@ -72,7 +76,7 @@ impl<'a, S: Syntax<'a> + ?Sized> SyntaxRules<'a, S> {
         Default::default()
     }
 
-    fn with(mut self, rule: SyntaxRule<'a, S::Context, S::Body>) -> Self {
+    fn with(mut self, rule: SyntaxRule<'a, S>) -> Self {
         self.0.push(rule);
         self
     }
@@ -83,7 +87,7 @@ impl<'a, S: Syntax<'a> + ?Sized> SyntaxRules<'a, S> {
         S::Body: From<S2::Body>,
     {
         self.0.extend(rules.0.into_iter().map(|rule| {
-            SyntaxRule::<S::Context, S::Body>::new(move |context, expr| {
+            SyntaxRule::<S>::new(move |context, expr| {
                 let context = context.try_into().ok()?;
                 let fut = rule.apply(context, expr)?;
                 Some(Box::pin(async { fut.await.into() }))
