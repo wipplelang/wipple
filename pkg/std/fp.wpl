@@ -8,14 +8,14 @@ it : x -> x
 just :: A => A -> _ -> A
 just : x -> _ -> x
 
-[operator Dot-Precedence]
+[operator Composition-Precedence]
 . : syntax {
 	'x . 'f -> 'f 'x
 }
 
 Map : A B Input Output => trait ((A -> B) -> Input -> Output)
 
-[operator Dot-Precedence]
+[operator Composition-Precedence]
 | : syntax {
 	'x | 'f -> Map 'f 'x
 }

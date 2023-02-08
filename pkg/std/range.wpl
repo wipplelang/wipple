@@ -37,7 +37,7 @@ Range : N => type {
 -- 	}
 -- }
 
-[operator Dot-Precedence]
+[operator Composition-Precedence]
 to : syntax {
 	'min to 'max -> Range {
 		min : 'min

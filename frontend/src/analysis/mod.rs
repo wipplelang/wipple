@@ -1,6 +1,7 @@
 #![allow(clippy::too_many_arguments, clippy::type_complexity)]
 
 pub mod ast;
+pub mod ast_v2;
 pub mod expand;
 pub mod lint;
 pub mod lower;
