@@ -44,7 +44,7 @@ async fn main() -> anyhow::Result<()> {
         )),
     );
 
-    let compiler = wipple_frontend::Compiler::new(&loader);
+    let compiler = wipple_frontend::Compiler::new(loader);
 
     #[cfg(debug_assertions)]
     let compiler = compiler.set_backtrace_enabled(args.trace);
@@ -66,8 +66,7 @@ async fn main() -> anyhow::Result<()> {
         let test_case = serde_yaml::from_reader(file)?;
         let result = run(
             &test_case,
-            &loader,
-            &compiler,
+            compiler.clone(),
             args.optimize,
             #[cfg(debug_assertions)]
             args.trace,
@@ -233,17 +232,17 @@ impl TestResult {
     }
 }
 
-async fn run<'l>(
+async fn run(
     test_case: &TestCase,
-    loader: &'l loader::Loader,
-    compiler: &wipple_frontend::Compiler<'l>,
+    compiler: wipple_frontend::Compiler,
     optimize: bool,
     #[cfg(debug_assertions)] trace_diagnostics: bool,
 ) -> anyhow::Result<TestResult> {
     let test_path = wipple_frontend::helpers::InternedString::new("test");
 
-    loader
-        .virtual_paths
+    compiler
+        .loader
+        .virtual_paths()
         .lock()
         .insert(test_path, Arc::from(test_case.code.as_str()));
 

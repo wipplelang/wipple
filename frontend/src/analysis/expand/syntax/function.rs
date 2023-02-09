@@ -50,7 +50,7 @@ impl BuiltinSyntaxVisitor for FunctionSyntax {
         mut vars: HashMap<InternedString, Expression>,
         _context: Option<Context<'_>>,
         _scope: ScopeId,
-        _expander: &Expander<'_, '_>,
+        _expander: &Expander,
     ) -> Expression {
         let lhs = vars.remove(&InternedString::new("lhs")).unwrap();
         let rhs = vars.remove(&InternedString::new("rhs")).unwrap();

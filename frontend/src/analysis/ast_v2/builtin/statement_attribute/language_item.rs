@@ -3,17 +3,20 @@ use crate::analysis::ast_v2::builtin::{
     syntax::{Syntax, SyntaxRule, SyntaxRules},
 };
 
-#[derive(Debug, Clone)]
-pub struct KeywordStatementAttribute;
+#[derive(Debug, Clone, Copy, strum::EnumString)]
+#[strum(serialize_all = "kebab-case")]
+pub enum LanguageItemStatementAttribute {
+    Boolean,
+}
 
-pub struct KeywordStatementAttributeSyntax;
+pub struct LanguageItemStatementAttributeSyntax;
 
-impl Syntax for KeywordStatementAttributeSyntax {
+impl Syntax for LanguageItemStatementAttributeSyntax {
     type Context = StatementAttributeSyntaxContext;
 
     fn rules() -> SyntaxRules<Self> {
         SyntaxRules::new().with(SyntaxRule::<Self>::function(
-            "keyword",
+            "language",
             |context, exprs| async move {
                 todo!();
             },

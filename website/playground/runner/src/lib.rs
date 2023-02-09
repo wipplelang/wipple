@@ -11,6 +11,7 @@ use std::{
 use wasm_bindgen::{prelude::*, JsCast};
 use wasm_bindgen_futures::JsFuture;
 use wipple_default_loader as loader;
+use wipple_frontend::Loader;
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -150,8 +151,8 @@ lazy_static! {
     };
 
     #[allow(clippy::let_and_return)]
-    static ref COMPILER: wipple_frontend::Compiler<'static> = {
-        let compiler = wipple_frontend::Compiler::new(&*LOADER);
+    static ref COMPILER: wipple_frontend::Compiler = {
+        let compiler = wipple_frontend::Compiler::new(LOADER.clone());
 
         #[cfg(debug_assertions)]
         let compiler = compiler.set_backtrace_enabled(false);
@@ -186,7 +187,7 @@ pub async fn analyze(id: String, code: String, lint: bool) -> JsValue {
     console_error_panic_hook::set_once();
 
     LOADER
-        .virtual_paths
+        .virtual_paths()
         .lock()
         .insert(*PLAYGROUND_PATH, Arc::from(code));
 

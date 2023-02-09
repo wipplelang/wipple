@@ -106,10 +106,10 @@ pub enum PatternKind {
     Where(Box<Pattern>, Box<Expression>),
 }
 
-impl Compiler<'_> {
+impl Compiler {
     pub(super) fn convert_to_ssa(&self, program: &analysis::Program) -> Program {
         let mut converter = Converter {
-            compiler: self,
+            compiler: self.clone(),
             program,
             structures: Default::default(),
             structure_ids: Default::default(),
@@ -155,8 +155,8 @@ impl Type {
     }
 }
 
-struct Converter<'a, 'l> {
-    compiler: &'a Compiler<'l>,
+struct Converter<'a> {
+    compiler: Compiler,
     program: &'a analysis::Program,
     structures: BTreeMap<StructureId, Vec<Type>>,
     structure_ids: BTreeMap<TypeId, StructureId>,
@@ -164,7 +164,7 @@ struct Converter<'a, 'l> {
     enumeration_ids: BTreeMap<TypeId, EnumerationId>,
 }
 
-impl Converter<'_, '_> {
+impl Converter<'_> {
     fn convert_expr(&mut self, expr: &analysis::Expression, tail: bool) -> Expression {
         Expression {
             span: Some(expr.span),

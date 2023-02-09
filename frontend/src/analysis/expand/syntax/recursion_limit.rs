@@ -39,7 +39,7 @@ impl BuiltinSyntaxVisitor for RecursionLimitSyntax {
         mut vars: HashMap<InternedString, Expression>,
         context: Option<Context<'_>>,
         _scope: ScopeId,
-        expander: &Expander<'_, '_>,
+        expander: &Expander,
     ) -> Expression {
         let file_attributes = match context {
             Some(Context::FileAttributes(attributes)) => attributes,
@@ -54,7 +54,7 @@ impl BuiltinSyntaxVisitor for RecursionLimitSyntax {
 
                 return Expression {
                     span,
-                    kind: ExpressionKind::error(expander.compiler),
+                    kind: ExpressionKind::error(&expander.compiler),
                 };
             }
         };
@@ -79,7 +79,7 @@ impl BuiltinSyntaxVisitor for RecursionLimitSyntax {
             None => {
                 return Expression {
                     span,
-                    kind: ExpressionKind::error(expander.compiler),
+                    kind: ExpressionKind::error(&expander.compiler),
                 }
             }
         };

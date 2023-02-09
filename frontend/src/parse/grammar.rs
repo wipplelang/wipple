@@ -38,6 +38,15 @@ pub enum ExprKind {
     Block(Vec<Statement>),
 }
 
+impl Expr {
+    pub fn list(span: Span, exprs: Vec<Expr>) -> Self {
+        Expr {
+            span,
+            kind: ExprKind::List(vec![exprs.into()]),
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Statement {
     pub leading_lines: u32,
@@ -45,11 +54,20 @@ pub struct Statement {
     pub lines: Vec<ListLine>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct ListLine {
     pub attributes: Vec<Attribute>,
     pub exprs: Vec<Expr>,
     pub comment: Option<InternedString>,
+}
+
+impl From<Vec<Expr>> for ListLine {
+    fn from(exprs: Vec<Expr>) -> Self {
+        ListLine {
+            exprs,
+            ..Default::default()
+        }
+    }
 }
 
 impl Expr {
@@ -58,8 +76,8 @@ impl Expr {
     }
 }
 
-pub(crate) struct Parser<'a, 'src> {
-    pub compiler: &'a Compiler<'a>,
+pub(crate) struct Parser<'src> {
+    pub compiler: Compiler,
     pub lexer: Peekable<SpannedIter<'src, Token<'src>>>,
     pub len: usize,
     pub offset: usize,
@@ -73,7 +91,7 @@ pub enum ParseError {
     EndOfFile,
 }
 
-impl<'a, 'src> Parser<'a, 'src> {
+impl<'src> Parser<'src> {
     pub fn parse_file(&mut self) -> (Vec<Attribute>, Vec<Statement>) {
         while let (_, Some(Token::Comment(_) | Token::LineBreak)) = self.peek() {
             self.consume();

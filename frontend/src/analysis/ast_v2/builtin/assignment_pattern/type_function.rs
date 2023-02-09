@@ -1,17 +1,32 @@
-use crate::analysis::ast_v2::builtin::{Syntax, SyntaxRules};
-
-pub struct TypeFunctionAssignmentPatternSyntax;
+use crate::{
+    analysis::ast_v2::builtin::{
+        assignment_pattern::AssignmentPatternSyntaxContext,
+        syntax::{OperatorAssociativity, Syntax, SyntaxRule, SyntaxRules},
+    },
+    parse,
+};
 
 #[derive(Debug, Clone)]
 pub struct TypeFunctionAssignmentPattern {
     // TODO
 }
 
-impl<'a> Syntax<'a> for TypeFunctionAssignmentPatternSyntax {
-    type Context = ();
-    type Body = TypeFunctionAssignmentPattern;
+pub struct TypeFunctionAssignmentPatternSyntax;
 
-    fn rules() -> SyntaxRules<'a, Self> {
-        todo!()
+impl Syntax for TypeFunctionAssignmentPatternSyntax {
+    type Context = AssignmentPatternSyntaxContext;
+
+    fn rules() -> SyntaxRules<Self> {
+        SyntaxRules::new().with(SyntaxRule::<Self>::operator(
+            "=>",
+            OperatorAssociativity::None,
+            |context, (lhs_span, lhs), (rhs_span, rhs)| async move {
+                // TODO: Parse lhs
+
+                let rhs = parse::Expr::list(rhs_span, rhs);
+
+                todo!()
+            },
+        ))
     }
 }

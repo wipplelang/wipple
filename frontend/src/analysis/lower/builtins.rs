@@ -1,6 +1,6 @@
 use super::*;
 
-impl Compiler<'_> {
+impl Compiler {
     pub(super) fn load_builtins(&self, scope: &Scope, info: &mut Info) {
         let mut scope_values = scope.values.lock();
 

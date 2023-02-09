@@ -56,7 +56,7 @@ impl BuiltinSyntaxVisitor for AssignSyntax {
         mut vars: HashMap<InternedString, Expression>,
         context: Option<Context<'_>>,
         scope: ScopeId,
-        expander: &Expander<'_, '_>,
+        expander: &Expander,
     ) -> Expression {
         let statement_attributes = match context {
             Some(Context::Statement(attributes)) => attributes,
@@ -68,7 +68,7 @@ impl BuiltinSyntaxVisitor for AssignSyntax {
 
                 return Expression {
                     span,
-                    kind: ExpressionKind::error(expander.compiler),
+                    kind: ExpressionKind::error(&expander.compiler),
                 };
             }
         };
@@ -207,7 +207,7 @@ impl BuiltinSyntaxVisitor for AssignSyntax {
 
                         return Expression {
                             span,
-                            kind: ExpressionKind::error(expander.compiler),
+                            kind: ExpressionKind::error(&expander.compiler),
                         };
                     }
                 }

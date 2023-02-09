@@ -190,7 +190,7 @@ pub struct Bound {
     pub parameters: Vec<TypeAnnotation>,
 }
 
-impl Compiler<'_> {
+impl Compiler {
     pub(crate) fn build_ast(&self, file: expand::File) -> File {
         File {
             path: file.span.path,

@@ -46,7 +46,7 @@ impl BuiltinSyntaxVisitor for ExternalSyntax {
         mut vars: HashMap<InternedString, Expression>,
         _context: Option<Context<'_>>,
         _scope: ScopeId,
-        _expander: &Expander<'_, '_>,
+        _expander: &Expander,
     ) -> Expression {
         let namespace = vars.remove(&InternedString::new("namespace")).unwrap();
         let identifier = vars.remove(&InternedString::new("identifier")).unwrap();

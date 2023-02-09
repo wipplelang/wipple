@@ -43,7 +43,7 @@ impl BuiltinSyntaxVisitor for OnUnimplementedSyntax {
         mut vars: HashMap<InternedString, Expression>,
         context: Option<Context<'_>>,
         _scope: ScopeId,
-        expander: &Expander<'_, '_>,
+        expander: &Expander,
     ) -> Expression {
         let message = vars.remove(&InternedString::new("message")).unwrap();
         let expr = vars.remove(&InternedString::new("expr")).unwrap();

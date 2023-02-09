@@ -9,7 +9,7 @@ use std::{
     sync::Arc,
 };
 use wipple_default_loader as loader;
-use wipple_frontend::Compiler;
+use wipple_frontend::{Compiler, Loader};
 
 #[derive(Parser)]
 #[clap(
@@ -443,13 +443,13 @@ async fn build_with_passes<P>(
         let mut stdin = String::new();
         io::stdin().read_to_string(&mut stdin).unwrap();
 
-        loader.virtual_paths.lock().insert(
+        loader.virtual_paths().lock().insert(
             wipple_frontend::helpers::InternedString::new("stdin"),
             Arc::from(stdin),
         );
     }
 
-    let compiler = Compiler::new(&loader);
+    let compiler = Compiler::new(loader);
 
     #[cfg(debug_assertions)]
     let compiler = compiler.set_backtrace_enabled(options.trace);

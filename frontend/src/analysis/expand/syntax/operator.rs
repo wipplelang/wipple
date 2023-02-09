@@ -44,7 +44,7 @@ impl BuiltinSyntaxVisitor for OperatorSyntax {
         mut vars: HashMap<InternedString, Expression>,
         context: Option<Context<'_>>,
         _scope: ScopeId,
-        expander: &Expander<'_, '_>,
+        expander: &Expander,
     ) -> Expression {
         let precedence = vars.remove(&InternedString::new("precedence")).unwrap();
         let expr = vars.remove(&InternedString::new("expr")).unwrap();

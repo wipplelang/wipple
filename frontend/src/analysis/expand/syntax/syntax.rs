@@ -41,7 +41,7 @@ impl BuiltinSyntaxVisitor for SyntaxSyntax {
         _vars: HashMap<InternedString, Expression>,
         _context: Option<Context<'_>>,
         _scope: ScopeId,
-        expander: &Expander<'_, '_>,
+        expander: &Expander,
     ) -> Expression {
         // Syntax definitions are handled by the assignment operator
 
@@ -55,7 +55,7 @@ impl BuiltinSyntaxVisitor for SyntaxSyntax {
 
         Expression {
             span,
-            kind: ExpressionKind::error(expander.compiler),
+            kind: ExpressionKind::error(&expander.compiler),
         }
     }
 }
@@ -66,7 +66,7 @@ impl SyntaxSyntax {
         mut exprs: Vec<Expression>,
         operator_pattern: Option<(TemplateId, ScopeId)>,
         scope: ScopeId,
-        expander: &Expander<'_, '_>,
+        expander: &Expander,
     ) -> Option<SyntaxDefinition> {
         if exprs.len() != 1 {
             expander.report_syntax_error(span, None);

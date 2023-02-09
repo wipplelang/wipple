@@ -193,17 +193,17 @@ pub struct Bound {
     pub parameters: Vec<Expression>,
 }
 
-impl<'l> Compiler<'l> {
+impl Compiler {
     pub(crate) async fn expand(
         &self,
         file: parse::File,
-        load: impl for<'a> Fn(&'a Compiler<'l>, Span, FilePath) -> BoxFuture<'a, Option<Arc<File>>>
+        load: impl Fn(Compiler, Span, FilePath) -> BoxFuture<'static, Option<Arc<File>>>
             + 'static
             + Send
             + Sync,
     ) -> File {
         let mut expander = Expander {
-            compiler: self,
+            compiler: self.clone(),
             file: file.span.path,
             dependencies: Default::default(),
             attributes: Default::default(),
@@ -241,7 +241,9 @@ impl<'l> Compiler<'l> {
         if !file_attributes.no_std {
             let std_path = expander.compiler.loader.std_path();
             if let Some(std_path) = std_path {
-                if let Some(file) = (expander.load)(expander.compiler, file.span, std_path).await {
+                if let Some(file) =
+                    (expander.load)(expander.compiler.clone(), file.span, std_path).await
+                {
                     expander.add_dependency(file);
                 }
             } else {
@@ -319,16 +321,16 @@ impl<'l> Compiler<'l> {
     }
 }
 
-pub(crate) struct Expander<'a, 'l> {
+pub(crate) struct Expander {
     file: FilePath,
-    compiler: &'a Compiler<'l>,
+    compiler: Compiler,
     dependencies: Shared<HashMap<FilePath, (Arc<File>, Option<HashMap<InternedString, Span>>)>>,
     attributes: Shared<FileAttributes>,
     declarations: Shared<Declarations>,
     scopes: Shared<BTreeMap<ScopeId, Scope>>,
     file_scope: Option<ScopeId>,
     load: Arc<
-        dyn Fn(&'a Compiler<'l>, Span, FilePath) -> BoxFuture<'a, Option<Arc<File>>> + Send + Sync,
+        dyn Fn(Compiler, Span, FilePath) -> BoxFuture<'static, Option<Arc<File>>> + Send + Sync,
     >,
     expanded: Shared<HashSet<Span>>,
 }
@@ -361,7 +363,7 @@ pub enum Syntax {
     Builtin(BuiltinSyntax),
 }
 
-impl<'a, 'l> Expander<'a, 'l> {
+impl Expander {
     pub(crate) fn child_scope(&self, span: Span, parent: ScopeId) -> ScopeId {
         let mut scope = self.create_scope(span);
         scope.parent = Some(parent);
@@ -406,7 +408,7 @@ impl<'a, 'l> Expander<'a, 'l> {
     }
 }
 
-impl<'a, 'l> Expander<'a, 'l> {
+impl Expander {
     pub(crate) fn add_dependency(&self, file: Arc<File>) {
         self.declarations.lock().merge(file.declarations.clone());
 
@@ -452,7 +454,7 @@ enum Context<'a> {
     Statement(&'a StatementAttributes),
 }
 
-impl<'a, 'l> Expander<'a, 'l> {
+impl Expander {
     async fn expand_file_attributes(
         &self,
         attributes: impl IntoIterator<Item = Attribute>,
@@ -588,7 +590,7 @@ impl<'a, 'l> Expander<'a, 'l> {
                         )],
                     );
 
-                    ExpressionKind::error(self.compiler)
+                    ExpressionKind::error(&self.compiler)
                 }
                 ExpressionKind::List(exprs) => {
                     self.expand_list(expr.span, exprs, None, inherited_scope)
@@ -805,7 +807,7 @@ impl<'a, 'l> Expander<'a, 'l> {
 
                 Expression {
                     span,
-                    kind: ExpressionKind::error(self.compiler),
+                    kind: ExpressionKind::error(&self.compiler),
                 }
             }
             Syntax::Builtin(syntax) => {
@@ -822,7 +824,7 @@ impl<'a, 'l> Expander<'a, 'l> {
 
                         return Expression {
                             span,
-                            kind: ExpressionKind::error(self.compiler),
+                            kind: ExpressionKind::error(&self.compiler),
                         };
                     }
                 };

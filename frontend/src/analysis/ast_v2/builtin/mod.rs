@@ -1,5 +1,7 @@
 #[macro_use]
 mod macros;
+mod attributes;
+mod syntax;
 
 mod assignment_pattern;
 mod assignment_value;
@@ -10,90 +12,146 @@ mod statement;
 mod statement_attribute;
 mod r#type;
 
-use assignment_pattern::*;
-// use assignment_value::*;
-// use expression::*;
-// use file_attribute::*;
-// use pattern::*;
-// use r#type::*;
-// use statement::*;
-// use statement_attribute::*;
+pub use attributes::*;
 
-use crate::parse;
-use futures::{future::BoxFuture, Future};
+pub use assignment_pattern::*;
+pub use assignment_value::*;
+pub use expression::*;
+pub use file_attribute::*;
+pub use pattern::*;
+pub use r#type::*;
+pub use statement::*;
+pub use statement_attribute::*;
 
-syntax_context_group! {
-    pub enum SyntaxContext {
-        AssignmentPattern,
+use crate::{
+    analysis::ast_v2::{
+        builtin::{
+            statement::{StatementSyntax, StatementSyntaxContext},
+            statement_attribute::{StatementAttributeSyntax, StatementAttributeSyntaxContext},
+            syntax::FileBodySyntaxContext,
+        },
+        AstBuilder,
+    },
+    diagnostics::Note,
+    helpers::Shared,
+    parse,
+};
+use futures::{stream, StreamExt};
+use syntax::{Syntax, SyntaxContext, SyntaxError};
+
+pub struct StatementWithAttributes<S> {
+    pub attributes: Vec<()>, // TODO
+    pub statement: S,
+}
+
+impl AstBuilder {
+    pub async fn build_file(
+        &self,
+        statements: impl IntoIterator<Item = parse::Statement> + Send,
+    ) -> Result<Vec<StatementWithAttributes<Statement>>, SyntaxError> {
+        stream::iter(statements)
+            .then(|statement| {
+                self.build_statement::<StatementSyntax>(
+                    StatementSyntaxContext::new(self.clone()),
+                    statement,
+                )
+            })
+            .collect::<Vec<_>>()
+            .await
+            .into_iter()
+            .flatten()
+            .collect()
     }
-}
 
-root_syntax_group! {
-    pub enum AnySyntax<SyntaxContext> {
-        AssignmentPattern,
-    }
-}
+    async fn build_statement<S: Syntax>(
+        &self,
+        context: S::Context,
+        statement: parse::Statement,
+    ) -> Option<Result<StatementWithAttributes<<S::Context as SyntaxContext>::Body>, SyntaxError>>
+    where
+        S::Context: FileBodySyntaxContext,
+    {
+        let attributes = Shared::new(Vec::new()); // TODO
 
-pub trait Syntax<'a> {
-    type Context;
-    type Body;
+        let (attribute_exprs, exprs): (Vec<_>, Vec<_>) = statement
+            .lines
+            .into_iter()
+            .map(|line| (line.attributes, line.exprs))
+            .unzip();
 
-    fn rules() -> SyntaxRules<'a, Self>;
-}
+        let attribute_exprs = attribute_exprs.into_iter().flatten().collect::<Vec<_>>();
+        let attributes_span = attribute_exprs.first().map(|attribute| {
+            parse::Span::join(attribute.span, attribute_exprs.last().unwrap().span)
+        });
 
-pub struct SyntaxRule<'a, S: Syntax<'a> + ?Sized>(
-    Box<dyn Fn(S::Context, Vec<parse::Expr>) -> Option<BoxFuture<'a, S::Body>> + 'a>,
-);
+        for attribute in attribute_exprs {
+            let context = StatementAttributeSyntaxContext::new(self.clone())
+                .with_statement_attributes(attributes.clone());
 
-impl<'a, S: Syntax<'a> + ?Sized> SyntaxRule<'a, S> {
-    fn new<Fut: Future<Output = S::Body> + Send + 'a>(
-        rule: impl Fn(S::Context, Vec<parse::Expr>) -> Option<Fut> + 'a,
-    ) -> Self {
-        SyntaxRule(Box::new(move |context, expr| {
-            Some(Box::pin(rule(context, expr)?))
+            // The result of a statement attribute doesn't affect whether the
+            // statement's expression can be parsed
+            let _ = self
+                .build_list::<StatementAttributeSyntax>(
+                    context.clone(),
+                    attribute.span,
+                    &attribute.exprs,
+                )
+                .await
+                .unwrap_or_else(|| {
+                    context.build_terminal(parse::Expr::list(attribute.span, attribute.exprs))
+                });
+        }
+
+        let exprs = exprs.into_iter().flatten().collect::<Vec<_>>();
+
+        if exprs.is_empty() {
+            if let Some(span) = attributes_span {
+                self.compiler.add_error(
+                    "cannot use attributes on an empty statement",
+                    vec![Note::primary(span, "expected an expression after these")],
+                );
+            }
+
+            return None;
+        }
+
+        let span = parse::Span::join(exprs.first().unwrap().span, exprs.last().unwrap().span);
+
+        let context = context.with_statement_attributes(attributes.clone());
+
+        let statement = match self
+            .build_list::<S>(context.clone(), span, &exprs)
+            .await
+            .unwrap_or_else(|| context.build_terminal(parse::Expr::list(span, exprs)))
+        {
+            Ok(statement) => statement,
+            Err(error) => return Some(Err(error)),
+        };
+
+        Some(Ok(StatementWithAttributes {
+            attributes: attributes.into_unique(),
+            statement,
         }))
     }
 
-    fn apply(
+    async fn build_expr<S: Syntax>(
         &self,
         context: S::Context,
-        exprs: Vec<parse::Expr>,
-    ) -> Option<BoxFuture<'a, S::Body>> {
-        (self.0)(context, exprs)
-    }
-}
+        expr: parse::Expr,
+    ) -> Result<<S::Context as SyntaxContext>::Body, SyntaxError> {
+        match expr.kind {
+            parse::ExprKind::Block(statements) => context.build_block(expr.span, statements).await,
+            parse::ExprKind::List(lines) => {
+                let exprs = lines
+                    .into_iter()
+                    .flat_map(|line| line.exprs)
+                    .collect::<Vec<_>>();
 
-pub struct SyntaxRules<'a, S: Syntax<'a> + ?Sized>(Vec<SyntaxRule<'a, S>>);
-
-impl<'a, S: Syntax<'a> + ?Sized> Default for SyntaxRules<'a, S> {
-    fn default() -> Self {
-        SyntaxRules(Vec::new())
-    }
-}
-
-impl<'a, S: Syntax<'a> + ?Sized> SyntaxRules<'a, S> {
-    fn new() -> Self {
-        Default::default()
-    }
-
-    fn with(mut self, rule: SyntaxRule<'a, S>) -> Self {
-        self.0.push(rule);
-        self
-    }
-
-    fn combine<S2: Syntax<'a> + ?Sized + 'static>(mut self, rules: SyntaxRules<'a, S2>) -> Self
-    where
-        S2::Context: TryFrom<S::Context>,
-        S::Body: From<S2::Body>,
-    {
-        self.0.extend(rules.0.into_iter().map(|rule| {
-            SyntaxRule::<S>::new(move |context, expr| {
-                let context = context.try_into().ok()?;
-                let fut = rule.apply(context, expr)?;
-                Some(Box::pin(async { fut.await.into() }))
-            })
-        }));
-
-        self
+                self.build_list::<S>(context.clone(), expr.span, &exprs)
+                    .await
+                    .unwrap_or_else(|| context.build_terminal(parse::Expr::list(expr.span, exprs)))
+            }
+            _ => context.build_terminal(expr),
+        }
     }
 }

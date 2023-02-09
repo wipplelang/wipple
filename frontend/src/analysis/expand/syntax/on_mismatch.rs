@@ -47,7 +47,7 @@ impl BuiltinSyntaxVisitor for OnMismatchSyntax {
         mut vars: HashMap<InternedString, Expression>,
         context: Option<Context<'_>>,
         _scope: ScopeId,
-        expander: &Expander<'_, '_>,
+        expander: &Expander,
     ) -> Expression {
         let parameter = vars.remove(&InternedString::new("parameter")).unwrap();
         let message = vars.remove(&InternedString::new("message")).unwrap();

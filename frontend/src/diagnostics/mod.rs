@@ -76,7 +76,7 @@ impl From<NoteLevel> for codespan_reporting::diagnostic::LabelStyle {
 }
 
 #[allow(unused)]
-impl Compiler<'_> {
+impl Compiler {
     pub(crate) fn diagnostic(
         &self,
         level: DiagnosticLevel,

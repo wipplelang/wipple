@@ -43,7 +43,7 @@ impl BuiltinSyntaxVisitor for FormatSyntax {
         mut vars: HashMap<InternedString, Expression>,
         _context: Option<Context<'_>>,
         _scope: ScopeId,
-        expander: &Expander<'_, '_>,
+        expander: &Expander,
     ) -> Expression {
         let format_text = vars.remove(&InternedString::new("text")).unwrap();
 
@@ -79,7 +79,7 @@ impl BuiltinSyntaxVisitor for FormatSyntax {
 
             return Expression {
                 span,
-                kind: ExpressionKind::error(expander.compiler),
+                kind: ExpressionKind::error(&expander.compiler),
             };
         };
 

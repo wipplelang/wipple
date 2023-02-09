@@ -333,7 +333,7 @@ impl Expression {
                             )],
                         );
 
-                        expr.kind = ExpressionKind::error(expander.compiler);
+                        expr.kind = ExpressionKind::error(&expander.compiler);
 
                         return;
                     }
@@ -345,7 +345,7 @@ impl Expression {
                     vec![Note::primary(expr.span, "try removing this")],
                 );
 
-                expr.kind = ExpressionKind::error(expander.compiler);
+                expr.kind = ExpressionKind::error(&expander.compiler);
             }
             _ => {}
         })
@@ -474,7 +474,7 @@ where
         vars: HashMap<InternedString, Expression>,
         context: Option<Context<'_>>,
         scope: ScopeId,
-        expander: &Expander<'_, '_>,
+        expander: &Expander,
     ) -> Expression;
 }
 

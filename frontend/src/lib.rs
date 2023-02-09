@@ -29,6 +29,8 @@ pub trait Loader: Debug + Send + Sync + 'static {
 
     async fn load(&self, path: FilePath) -> anyhow::Result<Arc<str>>;
 
+    fn virtual_paths(&self) -> Shared<HashMap<InternedString, Arc<str>>>;
+
     fn cache(&self) -> Shared<HashMap<FilePath, Arc<analysis::expand::File>>>;
 
     fn source_map(&self) -> Shared<SourceMap>;
@@ -69,8 +71,8 @@ impl<'a> arbitrary::Arbitrary<'a> for FilePath {
 }
 
 #[derive(Debug, Clone)]
-pub struct Compiler<'l> {
-    loader: &'l dyn Loader,
+pub struct Compiler {
+    pub loader: Arc<dyn Loader>,
     diagnostics: Diagnostics,
     file_ids: FileIds,
     ids: Ids,
@@ -157,7 +159,7 @@ macro_rules! file_ids {
             }
 
             #[allow(unused)]
-            impl Compiler<'_> {
+            impl Compiler {
                 $(
                     fn [<new_ $id _id>](&self) -> [<$id:camel Id>] {
                         self.file_ids.[<new_ $id _id>]()
@@ -218,7 +220,7 @@ macro_rules! ids {
                 )*
             }
 
-            impl Compiler<'_> {
+            impl Compiler {
                 $(
                     fn [<new_ $id _id>](&self) -> [<$id:camel Id>] {
                         self.ids.[<new_ $id _id>]()
@@ -270,10 +272,10 @@ macro_rules! indexes {
 
 indexes!(field, variant);
 
-impl<'l> Compiler<'l> {
-    pub fn new(loader: &'l impl Loader) -> Self {
+impl Compiler {
+    pub fn new(loader: impl Loader) -> Self {
         Compiler {
-            loader,
+            loader: Arc::new(loader),
             diagnostics: Default::default(),
             file_ids: Default::default(),
             ids: Default::default(),
@@ -292,7 +294,7 @@ impl<'l> Compiler<'l> {
     pub const DEFAULT_RECURSION_LIMIT: usize = 64;
 }
 
-impl<'l> Compiler<'l> {
+impl Compiler {
     pub fn has_errors(&self) -> bool {
         self.diagnostics.contains_errors()
     }
@@ -311,7 +313,7 @@ pub trait Optimize {
     fn optimize(self, options: Self::Options, compiler: &Compiler) -> Self;
 }
 
-impl Compiler<'_> {
+impl Compiler {
     pub fn optimize_with<T: Optimize>(&self, x: T, options: T::Options) -> T {
         x.optimize(options, self)
     }

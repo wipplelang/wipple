@@ -38,7 +38,7 @@ impl BuiltinSyntaxVisitor for EndSyntax {
         mut vars: HashMap<InternedString, Expression>,
         _context: Option<Context<'_>>,
         _scope: ScopeId,
-        _expander: &Expander<'_, '_>,
+        _expander: &Expander,
     ) -> Expression {
         let expr = vars.remove(&InternedString::new("expr")).unwrap();
 

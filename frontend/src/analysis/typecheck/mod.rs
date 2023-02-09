@@ -383,14 +383,14 @@ impl Error {
     }
 }
 
-impl Compiler<'_> {
+impl Compiler {
     pub(crate) fn typecheck_with_progress(
         &self,
         entrypoint: lower::File,
         complete: bool,
         mut progress: impl FnMut(Progress),
     ) -> Program {
-        let mut typechecker = Typechecker::new(self, entrypoint);
+        let mut typechecker = Typechecker::new(self.clone(), entrypoint);
 
         progress(Progress::CollectingTypes);
         typechecker.collect_types();
@@ -402,8 +402,8 @@ impl Compiler<'_> {
 }
 
 #[derive(Debug, Clone)]
-struct Typechecker<'a, 'l> {
-    compiler: &'a Compiler<'l>,
+struct Typechecker {
+    compiler: Compiler,
     entrypoint: lower::File,
     ctx: engine::Context,
     declarations: RefCell<DeclarationsInner>,
@@ -427,7 +427,7 @@ struct QueuedItem {
     info: MonomorphizeInfo,
 }
 
-impl<'a, 'l> Typechecker<'a, 'l> {
+impl Typechecker {
     fn error(&self, error: engine::TypeError, span: Span) -> Error {
         Error {
             error,
@@ -438,8 +438,8 @@ impl<'a, 'l> Typechecker<'a, 'l> {
     }
 }
 
-impl<'a, 'l> Typechecker<'a, 'l> {
-    pub fn new(compiler: &'a Compiler<'l>, entrypoint: lower::File) -> Self {
+impl Typechecker {
+    pub fn new(compiler: Compiler, entrypoint: lower::File) -> Self {
         Typechecker {
             compiler,
             entrypoint,
@@ -563,7 +563,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
     }
 }
 
-impl<'a, 'l> Typechecker<'a, 'l> {
+impl Typechecker {
     pub fn collect_types(&mut self) {
         let entrypoint = mem::take(&mut self.entrypoint.block);
         let exported = mem::take(&mut self.entrypoint.exported);
@@ -678,7 +678,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                     let expr = Expression {
                         span: expr.span,
                         ty: engine::Type::Error,
-                        kind: ExpressionKind::error(self.compiler),
+                        kind: ExpressionKind::error(&self.compiler),
                     };
 
                     self.declarations
@@ -978,7 +978,7 @@ struct ConvertInfo {
     variables: BTreeMap<VariableId, engine::UnresolvedType>,
 }
 
-impl<'a, 'l> Typechecker<'a, 'l> {
+impl Typechecker {
     fn convert_expr(
         &mut self,
         expr: lower::Expression,
@@ -1268,7 +1268,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                         return UnresolvedExpression {
                             span: expr.span,
                             ty: engine::UnresolvedType::Error,
-                            kind: UnresolvedExpressionKind::error(self.compiler),
+                            kind: UnresolvedExpressionKind::error(&self.compiler),
                         }
                     }
                 };
@@ -1293,7 +1293,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                         return UnresolvedExpression {
                             span: expr.span,
                             ty: engine::UnresolvedType::Error,
-                            kind: UnresolvedExpressionKind::error(self.compiler),
+                            kind: UnresolvedExpressionKind::error(&self.compiler),
                         };
                     }
                 };
@@ -1409,7 +1409,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                         return UnresolvedExpression {
                             span: expr.span,
                             ty: engine::UnresolvedType::Error,
-                            kind: UnresolvedExpressionKind::error(self.compiler),
+                            kind: UnresolvedExpressionKind::error(&self.compiler),
                         };
                     }
                 };
@@ -1433,7 +1433,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                         return UnresolvedExpression {
                             span: expr.span,
                             ty: engine::UnresolvedType::Error,
-                            kind: UnresolvedExpressionKind::error(self.compiler),
+                            kind: UnresolvedExpressionKind::error(&self.compiler),
                         };
                     }
                 };
@@ -1578,7 +1578,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                         )
                     }) {
                         Some((params, variants_tys)) => (params, variants_tys),
-                        None => return UnresolvedPatternKind::error(self.compiler),
+                        None => return UnresolvedPatternKind::error(&self.compiler),
                     };
 
                     let variants_tys = match variants_tys {
@@ -1598,7 +1598,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                                 },
                             );
 
-                            return UnresolvedPatternKind::error(self.compiler);
+                            return UnresolvedPatternKind::error(&self.compiler);
                         }
                     };
 
@@ -1712,7 +1712,7 @@ struct MonomorphizeInfo {
     recursion_count: usize,
 }
 
-impl<'a, 'l> Typechecker<'a, 'l> {
+impl Typechecker {
     fn monomorphize_expr(
         &mut self,
         mut expr: UnresolvedExpression,
@@ -1901,7 +1901,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                             Ok(instance) => instance,
                             Err(error) => {
                                 self.add_error(error);
-                                return MonomorphizedExpressionKind::error(self.compiler);
+                                return MonomorphizedExpressionKind::error(&self.compiler);
                             }
                         };
 
@@ -1913,7 +1913,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                             expr.ty.clone(),
                             info.clone(),
                         ),
-                        None => return MonomorphizedExpressionKind::error(self.compiler),
+                        None => return MonomorphizedExpressionKind::error(&self.compiler),
                     };
 
                     MonomorphizedExpressionKind::Constant(monomorphized_id)
@@ -2035,7 +2035,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                             vec![Note::primary(pattern.span, "value is not a structure")],
                         );
 
-                        return MonomorphizedPatternKind::error(self.compiler);
+                        return MonomorphizedPatternKind::error(&self.compiler);
                     }
                 };
 
@@ -2060,7 +2060,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                                     vec![Note::primary(pattern.span, "value is not a structure")],
                                 );
 
-                                return MonomorphizedPatternKind::error(self.compiler);
+                                return MonomorphizedPatternKind::error(&self.compiler);
                             }
                         }
                     }
@@ -2149,7 +2149,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                             vec![Note::primary(pattern.span, "value is not an enumeration")],
                         );
 
-                        return MonomorphizedPatternKind::error(self.compiler);
+                        return MonomorphizedPatternKind::error(&self.compiler);
                     }
                 };
 
@@ -2199,7 +2199,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                                     )],
                                 );
 
-                                return MonomorphizedPatternKind::error(self.compiler);
+                                return MonomorphizedPatternKind::error(&self.compiler);
                             }
                         }
                     }
@@ -2280,7 +2280,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
 
                         match match_set {
                             MatchSet::Tuple(sets) => sets,
-                            _ => return MonomorphizedPatternKind::error(self.compiler),
+                            _ => return MonomorphizedPatternKind::error(&self.compiler),
                         }
                     }
                 };
@@ -2652,7 +2652,7 @@ impl MatchSet {
     }
 }
 
-impl<'a, 'l> Typechecker<'a, 'l> {
+impl Typechecker {
     fn assert_matched(
         &mut self,
         match_set: &MatchSet,
@@ -2910,7 +2910,7 @@ impl MatchSet {
     }
 }
 
-impl<'a, 'l> Typechecker<'a, 'l> {
+impl Typechecker {
     fn format_unmatched_pattern(&self, pattern: &UnmatchedPattern, parenthesize: bool) -> String {
         match &pattern.kind {
             UnmatchedPatternKind::Wildcard => String::from("_"),
@@ -3008,7 +3008,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
     }
 }
 
-impl<'a, 'l> Typechecker<'a, 'l> {
+impl Typechecker {
     fn finalize_expr(&mut self, expr: MonomorphizedExpression) -> Expression {
         let ty = match expr.ty.finalize(&self.ctx) {
             Ok(ty) => ty,
@@ -3029,7 +3029,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                     Some(Ok(number)) => number,
                     Some(Err(error)) => {
                         self.add_error(self.error(error, expr.span));
-                        ExpressionKind::error(self.compiler)
+                        ExpressionKind::error(&self.compiler)
                     }
                     None => {
                         self.add_error(self.error(
@@ -3040,7 +3040,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                             expr.span,
                         ));
 
-                        ExpressionKind::error(self.compiler)
+                        ExpressionKind::error(&self.compiler)
                     }
                 }
             }
@@ -3061,7 +3061,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
             MonomorphizedExpressionKind::Function(pattern, body, captures) => {
                 let input_ty = match &ty {
                     engine::Type::Function(input, _) => input.clone(),
-                    _ => return ExpressionKind::error(self.compiler),
+                    _ => return ExpressionKind::error(&self.compiler),
                 };
 
                 ExpressionKind::Function(
@@ -3152,7 +3152,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                         Some(Ok(number)) => number,
                         Some(Err(error)) => {
                             self.add_error(self.error(error, pattern.span));
-                            PatternKind::error(self.compiler)
+                            PatternKind::error(&self.compiler)
                         }
                         None => {
                             self.add_error(self.error(
@@ -3163,7 +3163,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                                 pattern.span,
                             ));
 
-                            PatternKind::error(self.compiler)
+                            PatternKind::error(&self.compiler)
                         }
                     }
                 }
@@ -3177,7 +3177,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                         engine::Type::Named(_, _, engine::TypeStructure::Structure(fields)) => {
                             fields
                         }
-                        _ => return PatternKind::error(self.compiler),
+                        _ => return PatternKind::error(&self.compiler),
                     };
 
                     PatternKind::Destructure(
@@ -3193,7 +3193,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                         engine::Type::Named(_, _, engine::TypeStructure::Enumeration(variants)) => {
                             &variants[index.into_inner()]
                         }
-                        _ => return PatternKind::error(self.compiler),
+                        _ => return PatternKind::error(&self.compiler),
                     };
 
                     PatternKind::Variant(
@@ -3216,7 +3216,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                 MonomorphizedPatternKind::Tuple(patterns) => {
                     let input_tys = match input_ty {
                         engine::Type::Tuple(tys) => tys,
-                        _ => return PatternKind::error(self.compiler),
+                        _ => return PatternKind::error(&self.compiler),
                     };
 
                     PatternKind::Tuple(
@@ -3232,7 +3232,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
     }
 }
 
-impl<'a, 'l> Typechecker<'a, 'l> {
+impl Typechecker {
     fn with_type_decl<T>(&mut self, id: TypeId, f: impl FnOnce(&TypeDecl) -> T) -> Option<T> {
         if let Some(decl) = self.declarations.borrow().types.get(&id) {
             return Some(f(decl));
@@ -3414,7 +3414,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                     true,
                     decl.value
                         .value
-                        .unwrap_or_else(|| lower::Expression::error(self.compiler, decl.span)),
+                        .unwrap_or_else(|| lower::Expression::error(&self.compiler, decl.span)),
                 ),
             );
         }
@@ -3671,7 +3671,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
     }
 }
 
-impl<'a, 'l> Typechecker<'a, 'l> {
+impl Typechecker {
     fn unify(
         &mut self,
         span: Span,
@@ -4144,7 +4144,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
     }
 }
 
-impl<'a, 'l> Typechecker<'a, 'l> {
+impl Typechecker {
     fn format_type(
         &mut self,
         ty: impl Into<format::FormattableType>,
@@ -4238,39 +4238,43 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                     _ => None,
                 };
 
+                let message = format!(
+                    "expected {}, but found {}",
+                    self.format_type(expected.clone(), format),
+                    self.format_type(actual, format)
+                );
+
                 self.compiler.error_with(
                     "mismatched types",
-                    std::iter::once(Note::primary(
-                        error.span,
-                        format!(
-                            "expected {}, but found {}",
-                            self.format_type(expected.clone(), format),
-                            self.format_type(actual, format)
-                        ),
-                    ))
-                    .chain(actual_ty.and_then(|(actual_ty, mut actual_params)| {
-                        actual_ty
-                            .attributes
-                            .on_mismatch
-                            .iter()
-                            .find_map(|(param, message)| {
-                                param
-                                    .as_ref()
-                                    .map_or(true, |param| {
-                                        let param = actual_ty
-                                            .params
-                                            .iter()
-                                            .position(|(_, p)| p == param)
-                                            .expect("type parameter associated with wrong type");
+                    std::iter::once(Note::primary(error.span, message))
+                        .chain(actual_ty.and_then(|(actual_ty, mut actual_params)| {
+                            actual_ty
+                                .attributes
+                                .on_mismatch
+                                .iter()
+                                .find_map(|(param, message)| {
+                                    param
+                                        .as_ref()
+                                        .map_or(true, |param| {
+                                            let param = actual_ty
+                                                .params
+                                                .iter()
+                                                .position(|(_, p)| p == param)
+                                                .expect(
+                                                    "type parameter associated with wrong type",
+                                                );
 
-                                        let inner_ty = actual_params[param].clone();
+                                            let inner_ty = actual_params[param].clone();
 
-                                        self.ctx.clone().unify(inner_ty, expected.clone()).is_ok()
-                                    })
-                                    .then(|| Note::secondary(error.span, message))
-                            })
-                    }))
-                    .collect(),
+                                            self.ctx
+                                                .clone()
+                                                .unify(inner_ty, expected.clone())
+                                                .is_ok()
+                                        })
+                                        .then(|| Note::secondary(error.span, message))
+                                })
+                        }))
+                        .collect(),
                     error.trace,
                 )
             }
@@ -4284,30 +4288,30 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                     .attributes
                     .clone();
 
+                let message = format!(
+                    "could not find instance {}",
+                    self.format_type(format::FormattableType::r#trait(id, params), format)
+                );
+
                 self.compiler.error_with(
                     "missing instance",
-                    std::iter::once(Note::primary(
-                        error.span,
-                        format!(
-                            "could not find instance {}",
-                            self.format_type(format::FormattableType::r#trait(id, params), format)
-                        ),
-                    ))
-                    .chain(
-                        bound_span.map(|span| Note::secondary(span, "required by this bound here")),
-                    )
-                    .chain(error_candidates.into_iter().map(|span| {
-                        Note::secondary(
-                            span,
-                            "this instance could apply, but its bounds weren't satisfied",
+                    std::iter::once(Note::primary(error.span, message))
+                        .chain(
+                            bound_span
+                                .map(|span| Note::secondary(span, "required by this bound here")),
                         )
-                    }))
-                    .chain(
-                        trait_attributes
-                            .on_unimplemented
-                            .map(|message| Note::secondary(error.span, message)),
-                    )
-                    .collect(),
+                        .chain(error_candidates.into_iter().map(|span| {
+                            Note::secondary(
+                                span,
+                                "this instance could apply, but its bounds weren't satisfied",
+                            )
+                        }))
+                        .chain(
+                            trait_attributes
+                                .on_unimplemented
+                                .map(|message| Note::secondary(error.span, message)),
+                        )
+                        .collect(),
                     error.trace,
                 )
             }
@@ -4328,32 +4332,36 @@ impl<'a, 'l> Typechecker<'a, 'l> {
             engine::TypeError::UnresolvedType(mut ty) => {
                 ty.apply(&self.ctx);
 
+                let note = (!matches!(ty, engine::UnresolvedType::Variable(_))).then(|| {
+                    Note::primary(
+                        error.span,
+                        format!("this has type {}", self.format_type(ty, format)),
+                    )
+                });
+
                 self.compiler.error_with(
                     "could not determine the type of this expression",
                     std::iter::once(Note::primary(
                         error.span,
                         "try annotating the type with `::`",
                     ))
-                    .chain(
-                        (!matches!(ty, engine::UnresolvedType::Variable(_))).then(|| {
-                            Note::primary(
-                                error.span,
-                                format!("this has type {}", self.format_type(ty, format)),
-                            )
-                        }),
-                    )
+                    .chain(note)
                     .collect(),
                     error.trace,
                 )
             }
-            engine::TypeError::InvalidNumericLiteral(ty) => self.compiler.error_with(
-                format!(
+            engine::TypeError::InvalidNumericLiteral(ty) => {
+                let message = format!(
                     "number does not fit into a {}",
                     self.format_type(ty, format)
-                ),
-                vec![Note::primary(error.span, "invalid numeric literal")],
-                error.trace,
-            ),
+                );
+
+                self.compiler.error_with(
+                    message,
+                    vec![Note::primary(error.span, "invalid numeric literal")],
+                    error.trace,
+                )
+            }
         };
 
         diagnostic.notes.append(&mut error.notes);

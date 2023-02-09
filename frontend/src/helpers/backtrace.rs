@@ -11,7 +11,7 @@ pub struct Backtrace {
     trace: Option<Shared<backtrace::Backtrace>>,
 }
 
-impl Compiler<'_> {
+impl Compiler {
     pub(crate) fn backtrace(&self) -> Backtrace {
         Backtrace {
             #[cfg(debug_assertions)]

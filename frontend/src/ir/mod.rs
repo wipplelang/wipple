@@ -95,7 +95,7 @@ pub enum Expression {
 #[derive(Debug, Clone)]
 pub struct CaptureList(pub BTreeMap<usize, usize>);
 
-impl Compiler<'_> {
+impl Compiler {
     pub fn ir_from(&self, program: &typecheck::Program) -> Program {
         assert!(
             !self.has_errors(),

@@ -99,7 +99,7 @@ impl ExpandOperatorsResult {
     }
 }
 
-impl<'a, 'l> Expander<'a, 'l> {
+impl Expander {
     pub(super) fn expand_operators(
         &self,
         list_span: Span,
@@ -130,7 +130,7 @@ impl<'a, 'l> Expander<'a, 'l> {
                                 )],
                             );
 
-                            return ExpandOperatorsResult::error(self.compiler);
+                            return ExpandOperatorsResult::error(&self.compiler);
                         }
                         None => {}
                     }
@@ -227,7 +227,7 @@ impl<'a, 'l> Expander<'a, 'l> {
                                         ],
                                     );
 
-                                    return ExpandOperatorsResult::error(self.compiler);
+                                    return ExpandOperatorsResult::error(&self.compiler);
                                 }
                             }
                         },
@@ -294,7 +294,7 @@ impl<'a, 'l> Expander<'a, 'l> {
 
                                 return Expression {
                                     span: list_span,
-                                    kind: ExpressionKind::error(self.compiler),
+                                    kind: ExpressionKind::error(&self.compiler),
                                 };
                             }
 
@@ -325,7 +325,7 @@ impl<'a, 'l> Expander<'a, 'l> {
                             )],
                         );
 
-                        return ExpandOperatorsResult::error(self.compiler);
+                        return ExpandOperatorsResult::error(&self.compiler);
                     } else if lhs.is_empty() {
                         self.compiler.add_error(
                             "expected values on left side of operator",
@@ -335,7 +335,7 @@ impl<'a, 'l> Expander<'a, 'l> {
                             )],
                         );
 
-                        return ExpandOperatorsResult::error(self.compiler);
+                        return ExpandOperatorsResult::error(&self.compiler);
                     }
 
                     macro_rules! expand_list {

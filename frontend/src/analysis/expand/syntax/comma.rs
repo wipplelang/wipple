@@ -46,7 +46,7 @@ impl BuiltinSyntaxVisitor for CommaSyntax {
         mut vars: HashMap<InternedString, Expression>,
         _context: Option<Context<'_>>,
         _scope: ScopeId,
-        _expander: &Expander<'_, '_>,
+        _expander: &Expander,
     ) -> Expression {
         let exprs = match vars.remove(&InternedString::new("exprs")).unwrap().kind {
             ExpressionKind::List(exprs) => exprs,

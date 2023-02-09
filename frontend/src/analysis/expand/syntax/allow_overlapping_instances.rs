@@ -39,7 +39,7 @@ impl BuiltinSyntaxVisitor for AllowOverlappingInstancesSyntax {
         mut vars: HashMap<InternedString, Expression>,
         context: Option<Context<'_>>,
         _scope: ScopeId,
-        expander: &Expander<'_, '_>,
+        expander: &Expander,
     ) -> Expression {
         let expr = vars.remove(&InternedString::new("expr")).unwrap();
 

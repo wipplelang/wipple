@@ -1,62 +1,31 @@
 #[macro_export]
-macro_rules! root_syntax_group {
-    ($vis:vis enum $name:ident<$context:ty> { $($kind:ident),* $(,)? }) => {
-        paste::paste! {
-            $vis struct [<$name Syntax>];
-
-            $vis enum $name {
-                $($kind([<$kind>]),)*
-            }
-
-            $(
-                impl From<$kind> for $name {
-                    fn from(value: $kind) -> Self {
-                        $name::$kind(value)
-                    }
-                }
-            )*
-
-            impl<'a> $crate::analysis::ast_v2::builtin::Syntax<'a> for [<$name Syntax>] {
-                type Context = $context<'a>;
-                type Body = $name;
-
-                fn rules() -> $crate::analysis::ast_v2::builtin::SyntaxRules<'a, Self> {
-                    $crate::analysis::ast_v2::builtin::SyntaxRules::new()
-                    $(
-                        .combine([<$kind Syntax>]::rules())
-                    )*
-                }
-            }
-        }
-    };
-}
-
-#[macro_export]
 macro_rules! syntax_group {
-    ($vis:vis enum $name:ident<$context:ty> { $($kind:ident),* $(,)? }) => {
+    ($(#[$attr:meta])* $vis:vis type $name:ident<$context:ty> {
+        non_terminal: {
+            $($wrapping_kind:ident),* $(,)?
+        },
+        terminal: {
+            $($terminal_kind:ident),* $(,)?
+        },
+    }) => {
         paste::paste! {
-            $vis struct [<$name Syntax>];
-
-            $vis enum $name {
-                $($kind([<$kind $name>]),)*
+            group! {
+                $(#[$attr])*
+                $vis enum $name {
+                    $($wrapping_kind([<$wrapping_kind $name>]),)*
+                    $($terminal_kind([<$terminal_kind $name>]),)*
+                }
             }
 
-            $(
-                impl From<[<$kind $name>]> for $name {
-                    fn from(value: [<$kind $name>]) -> Self {
-                        $name::$kind(value)
-                    }
-                }
-            )*
+            $vis struct [<$name Syntax>];
 
-            impl<'a> $crate::analysis::ast_v2::builtin::Syntax<'a> for [<$name Syntax>] {
-                type Context = $context<'a>;
-                type Body = $name;
+            impl $crate::analysis::ast_v2::builtin::syntax::Syntax for [<$name Syntax>] {
+                type Context = $context;
 
-                fn rules() -> $crate::analysis::ast_v2::builtin::SyntaxRules<'a, Self> {
-                    $crate::analysis::ast_v2::builtin::SyntaxRules::new()
+                fn rules() -> $crate::analysis::ast_v2::builtin::syntax::SyntaxRules<Self> {
+                    $crate::analysis::ast_v2::builtin::syntax::SyntaxRules::new()
                     $(
-                        .combine([<$kind $name Syntax>]::rules())
+                        .combine([<$wrapping_kind $name Syntax>]::rules())
                     )*
                 }
             }
@@ -65,26 +34,19 @@ macro_rules! syntax_group {
 }
 
 #[macro_export]
-macro_rules! syntax_context_group {
-    ($vis:vis enum $name:ident { $($kind:ident),* $(,)? }) => {
-        paste::paste! {
-            $vis enum $name<'a> {
-                $($kind(<[<$kind Syntax>] as $crate::analysis::ast_v2::builtin::Syntax<'a>>::Context),)*
-            }
-
-            $(
-                impl<'a> TryFrom<$name<'a>> for <[<$kind Syntax>] as $crate::analysis::ast_v2::builtin::Syntax<'a>>::Context {
-                    type Error = ();
-
-                    fn try_from(value: $name<'a>) -> Result<Self, Self::Error> {
-                        #[allow(unreachable_patterns)]
-                        match value {
-                            $name::$kind(value) => Ok(value),
-                            _ => Err(()),
-                        }
-                    }
-                }
-            )*
+macro_rules! group {
+    ($(#[$attr:meta])* $vis:vis enum $name:ident { $($kind:ident($data:ty)),* $(,)? }) => {
+        $(#[$attr])*
+        $vis enum $name {
+            $($kind($data),)*
         }
+
+        $(
+            impl From<$data> for $name {
+                fn from(value: $data) -> Self {
+                    $name::$kind(value)
+                }
+            }
+        )*
     };
 }

@@ -39,7 +39,7 @@ impl BuiltinSyntaxVisitor for TypeSyntax {
         mut vars: HashMap<InternedString, Expression>,
         _context: Option<Context<'_>>,
         _scope: ScopeId,
-        expander: &Expander<'_, '_>,
+        expander: &Expander,
     ) -> Expression {
         let mut exprs = match vars.remove(&InternedString::new("exprs")).unwrap().kind {
             ExpressionKind::List(exprs) => exprs,

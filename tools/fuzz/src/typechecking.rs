@@ -10,7 +10,7 @@ pub(super) async fn fuzz(file: analysis::lower::File, args: super::Args) -> Fina
         .lock()
         .insert(file.span.path, Arc::from(""));
 
-    let compiler = Compiler::new(&loader);
+    let compiler = Compiler::new(loader);
     #[cfg(debug_assertions)]
     let compiler = compiler.set_backtrace_enabled(true);
 

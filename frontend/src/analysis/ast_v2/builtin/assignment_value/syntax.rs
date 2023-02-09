@@ -1,19 +1,19 @@
 use crate::analysis::ast_v2::builtin::{
-    statement_attribute::StatementAttributeSyntaxContext,
+    assignment_value::AssignmentValueSyntaxContext,
     syntax::{Syntax, SyntaxRule, SyntaxRules},
 };
 
 #[derive(Debug, Clone)]
-pub struct KeywordStatementAttribute;
+pub struct SyntaxAssignmentValue;
 
-pub struct KeywordStatementAttributeSyntax;
+pub struct SyntaxAssignmentValueSyntax;
 
-impl Syntax for KeywordStatementAttributeSyntax {
-    type Context = StatementAttributeSyntaxContext;
+impl Syntax for SyntaxAssignmentValueSyntax {
+    type Context = AssignmentValueSyntaxContext;
 
     fn rules() -> SyntaxRules<Self> {
         SyntaxRules::new().with(SyntaxRule::<Self>::function(
-            "keyword",
+            "syntax",
             |context, exprs| async move {
                 todo!();
             },

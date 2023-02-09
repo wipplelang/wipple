@@ -39,7 +39,7 @@ impl BuiltinSyntaxVisitor for UseSyntax {
         mut vars: HashMap<InternedString, Expression>,
         context: Option<Context<'_>>,
         _scope: ScopeId,
-        expander: &Expander<'_, '_>,
+        expander: &Expander,
     ) -> Expression {
         let expr = vars.remove(&InternedString::new("expr")).unwrap();
 
@@ -67,13 +67,13 @@ impl UseSyntax {
         lhs: Option<&[Expression]>,
         span: Span,
         exprs: Vec<Expression>,
-        expander: &Expander<'_, '_>,
+        expander: &Expander,
     ) -> Result<(), ()> {
         if exprs.len() == 1 {
             if let ExpressionKind::Text(path) = exprs.first().unwrap().kind {
                 let mut resolved_path = None;
                 if let Some(file) =
-                    (expander.load)(expander.compiler, span, FilePath::Path(path)).await
+                    (expander.load)(expander.compiler.clone(), span, FilePath::Path(path)).await
                 {
                     resolved_path = Some(file.span.path);
                     expander.add_dependency(file);

@@ -639,7 +639,7 @@ pub enum RuntimeFunction {
     ListRemove,
 }
 
-impl Compiler<'_> {
+impl Compiler {
     pub(crate) fn lower(
         &self,
         file: ast::File,
@@ -971,7 +971,7 @@ enum QueuedStatement {
     Expression(ast::ExpressionKind),
 }
 
-impl Compiler<'_> {
+impl Compiler {
     fn lower_block(
         &self,
         span: Span,

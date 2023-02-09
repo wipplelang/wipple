@@ -15,7 +15,7 @@ pub const STD_URL: &str = "https://pkg.wipple.gramer.dev/std/std.wpl";
 
 #[derive(Debug, Clone)]
 pub struct Loader {
-    pub virtual_paths: Shared<HashMap<InternedString, Arc<str>>>,
+    virtual_paths: Shared<HashMap<InternedString, Arc<str>>>,
     fetcher: Shared<Fetcher>,
     base: Option<FilePath>,
     std_path: Option<FilePath>,
@@ -238,6 +238,10 @@ impl wipple_frontend::Loader for Loader {
         };
 
         Ok(code)
+    }
+
+    fn virtual_paths(&self) -> Shared<HashMap<InternedString, Arc<str>>> {
+        self.virtual_paths.clone()
     }
 
     fn cache(&self) -> Shared<HashMap<FilePath, Arc<analysis::expand::File>>> {

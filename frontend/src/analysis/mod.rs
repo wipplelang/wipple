@@ -65,7 +65,7 @@ pub enum Progress {
     Typechecking(typecheck::Progress),
 }
 
-impl Compiler<'_> {
+impl Compiler {
     pub async fn analyze_with(
         &self,
         entrypoint: FilePath,
@@ -87,7 +87,7 @@ impl Compiler<'_> {
     ) -> indexmap::IndexMap<FilePath, Arc<expand::File>> {
         #[async_recursion]
         async fn load(
-            compiler: &Compiler,
+            compiler: Compiler,
             path: FilePath,
             source_path: Option<FilePath>,
             source_span: Option<Span>,
@@ -235,7 +235,7 @@ impl Compiler<'_> {
         let files = Shared::default();
 
         load(
-            self,
+            self.clone(),
             entrypoint,
             None,
             None,

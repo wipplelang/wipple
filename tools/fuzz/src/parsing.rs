@@ -13,7 +13,7 @@ pub(super) fn fuzz(source: String, args: super::Args) -> FinalizedDiagnostics {
     let path = FilePath::arbitrary(&mut Unstructured::new(&[])).unwrap();
 
     let loader = Loader::new(None, None);
-    loader.virtual_paths.lock().insert(
+    loader.virtual_paths().lock().insert(
         InternedString::new(path.as_str()),
         Arc::from(source.as_str()),
     );
@@ -23,7 +23,7 @@ pub(super) fn fuzz(source: String, args: super::Args) -> FinalizedDiagnostics {
         .lock()
         .insert(path, Arc::from(source.as_str()));
 
-    let compiler = Compiler::new(&loader);
+    let compiler = Compiler::new(loader);
     #[cfg(debug_assertions)]
     let compiler = compiler.set_backtrace_enabled(true);
 

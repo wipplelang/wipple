@@ -15,7 +15,7 @@ pub(super) async fn fuzz(file: analysis::expand::File, args: super::Args) -> Fin
 
     let loader = Loader::new(None, None);
     loader
-        .virtual_paths
+        .virtual_paths()
         .lock()
         .insert(InternedString::new(file.span.path.as_str()), Arc::from(""));
 
@@ -24,7 +24,7 @@ pub(super) async fn fuzz(file: analysis::expand::File, args: super::Args) -> Fin
         .lock()
         .insert(file.span.path, Arc::from(""));
 
-    let compiler = Compiler::new(&loader);
+    let compiler = Compiler::new(loader);
     #[cfg(debug_assertions)]
     let compiler = compiler.set_backtrace_enabled(true);
 

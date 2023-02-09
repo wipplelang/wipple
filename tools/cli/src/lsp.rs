@@ -1,4 +1,3 @@
-use ouroboros::self_referencing;
 use parking_lot::{MappedRwLockReadGuard, RwLock, RwLockReadGuard};
 use std::{collections::HashMap, sync::Arc};
 use tower_lsp::{jsonrpc, lsp_types::*, Client, LanguageServer, LspService, Server};
@@ -37,25 +36,18 @@ pub async fn run() {
         }),
     );
 
-    let (service, socket) = LspService::new(|client| {
-        Backend::new(
-            client,
-            loader,
-            |loader| Compiler::new(loader),
-            Default::default(),
-        )
+    let (service, socket) = LspService::new(|client| Backend {
+        client,
+        compiler: Compiler::new(loader),
+        documents: Default::default(),
     });
 
     Server::new(stdin, stdout, socket).serve(service).await;
 }
 
-#[self_referencing]
 struct Backend {
     client: Client,
-    loader: Loader,
-    #[borrows(loader)]
-    #[covariant]
-    compiler: Compiler<'this>,
+    compiler: Compiler,
     documents: Arc<RwLock<HashMap<FilePath, Document>>>,
 }
 
@@ -145,7 +137,7 @@ impl LanguageServer for Backend {
     }
 
     async fn initialized(&self, _: InitializedParams) {
-        self.borrow_client()
+        self.client
             .log_message(MessageType::INFO, "Wipple language server initialized")
             .await;
     }
@@ -166,7 +158,7 @@ impl LanguageServer for Backend {
 
     async fn did_close(&self, params: DidCloseTextDocumentParams) {
         let path = self.file_path_from(&params.text_document.uri);
-        self.borrow_documents().write().remove(&path);
+        self.documents.write().remove(&path);
     }
 
     async fn semantic_tokens_full(
@@ -665,7 +657,7 @@ impl Backend {
     }
 
     fn document_from(&self, uri: &Url) -> jsonrpc::Result<MappedRwLockReadGuard<Document>> {
-        RwLockReadGuard::try_map(self.borrow_documents().read(), |documents| {
+        RwLockReadGuard::try_map(self.documents.read(), |documents| {
             documents.get(&self.file_path_from(uri))
         })
         .map_err(|_| jsonrpc::Error::internal_error())
@@ -685,7 +677,7 @@ impl Backend {
         self.update_diagnostics(text_document.uri, &document, diagnostics)
             .await;
 
-        self.borrow_documents().write().insert(path, document);
+        self.documents.write().insert(path, document);
     }
 
     async fn analyze(
@@ -694,14 +686,12 @@ impl Backend {
     ) -> (Program, Vec<wipple_frontend::diagnostics::Diagnostic>) {
         let path = self.file_path_from(&document.uri);
 
-        self.borrow_loader().virtual_paths.lock().insert(
+        self.compiler.loader.virtual_paths().lock().insert(
             self.raw_file_path_from(&document.uri),
             Arc::from(document.text.as_str()),
         );
 
-        let compiler = self.borrow_compiler();
-
-        let (program, diagnostics) = compiler.analyze_with(path, &Default::default()).await;
+        let (program, diagnostics) = self.compiler.analyze_with(path, &Default::default()).await;
 
         (program, diagnostics.diagnostics)
     }
@@ -769,7 +759,7 @@ impl Backend {
             result
         };
 
-        self.borrow_client()
+        self.client
             .publish_diagnostics(uri, diagnostics, None)
             .await;
     }

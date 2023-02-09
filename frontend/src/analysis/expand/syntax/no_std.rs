@@ -33,7 +33,7 @@ impl BuiltinSyntaxVisitor for NoStdSyntax {
         _vars: HashMap<InternedString, Expression>,
         context: Option<Context<'_>>,
         _scope: ScopeId,
-        expander: &Expander<'_, '_>,
+        expander: &Expander,
     ) -> Expression {
         let file_attributes = match context {
             Some(Context::FileAttributes(attributes)) => attributes,
@@ -48,7 +48,7 @@ impl BuiltinSyntaxVisitor for NoStdSyntax {
 
                 return Expression {
                     span,
-                    kind: ExpressionKind::error(expander.compiler),
+                    kind: ExpressionKind::error(&expander.compiler),
                 };
             }
         };

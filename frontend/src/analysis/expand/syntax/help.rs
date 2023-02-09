@@ -43,7 +43,7 @@ impl BuiltinSyntaxVisitor for HelpSyntax {
         mut vars: HashMap<InternedString, Expression>,
         context: Option<Context<'_>>,
         _scope: ScopeId,
-        expander: &Expander<'_, '_>,
+        expander: &Expander,
     ) -> Expression {
         let help = vars.remove(&InternedString::new("help")).unwrap();
         let expr = vars.remove(&InternedString::new("expr")).unwrap();
