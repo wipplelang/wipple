@@ -45,6 +45,16 @@ impl Expr {
             kind: ExprKind::List(vec![exprs.into()]),
         }
     }
+
+    pub fn try_into_list_exprs(self) -> Result<(Span, Vec<Expr>), Self> {
+        match self.kind {
+            ExprKind::List(lines) => Ok((
+                self.span,
+                lines.into_iter().flat_map(|line| line.exprs).collect(),
+            )),
+            _ => Err(self),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -52,6 +62,21 @@ pub struct Statement {
     pub leading_lines: u32,
     pub indent: u32,
     pub lines: Vec<ListLine>,
+}
+
+impl Statement {
+    pub fn into_list_exprs(self) -> (Vec<Attribute>, Vec<Expr>) {
+        let (attributes, exprs): (Vec<_>, Vec<_>) = self
+            .lines
+            .into_iter()
+            .map(|line| (line.attributes, line.exprs))
+            .unzip();
+
+        let attributes = attributes.into_iter().flatten().collect();
+        let exprs = exprs.into_iter().flatten().collect();
+
+        (attributes, exprs)
+    }
 }
 
 #[derive(Debug, Clone, Default)]
