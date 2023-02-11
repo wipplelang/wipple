@@ -1,5 +1,5 @@
 use crate::{
-    analysis::ast_v2::AstBuilder,
+    analysis::ast_v2::{AstBuilder, StatementAttributes},
     diagnostics::Note,
     helpers::{Backtrace, Shared},
     parse,
@@ -44,7 +44,7 @@ pub(in crate::analysis::ast_v2) trait SyntaxContext:
 pub(in crate::analysis::ast_v2) trait FileBodySyntaxContext:
     SyntaxContext
 {
-    fn with_statement_attributes(self, attributes: Shared<Vec<()> /* TODO */>) -> Self;
+    fn with_statement_attributes(self, attributes: Shared<StatementAttributes>) -> Self;
 }
 
 #[derive(Debug, Clone)]
@@ -525,7 +525,7 @@ impl SyntaxContext for ErrorSyntaxContext {
 }
 
 impl FileBodySyntaxContext for ErrorSyntaxContext {
-    fn with_statement_attributes(self, _attributes: Shared<Vec<()> /* TODO */>) -> Self {
+    fn with_statement_attributes(self, _attributes: Shared<StatementAttributes>) -> Self {
         self
     }
 }

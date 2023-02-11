@@ -7,7 +7,7 @@ use field::*;
 use crate::{
     analysis::ast_v2::{
         syntax::{ErrorSyntax, FileBodySyntaxContext, Syntax, SyntaxContext, SyntaxError},
-        AstBuilder, Type, TypeSyntax, TypeSyntaxContext,
+        AstBuilder, StatementAttributes, Type, TypeSyntax, TypeSyntaxContext,
     },
     diagnostics::Note,
     helpers::{InternedString, Shared},
@@ -38,7 +38,7 @@ pub struct VariantTypeMember {
 #[derive(Clone)]
 pub struct TypeMemberSyntaxContext {
     pub(super) ast_builder: AstBuilder,
-    statement_attributes: Option<Shared<Vec<()> /* TODO */>>,
+    statement_attributes: Option<Shared<StatementAttributes>>,
 }
 
 #[async_trait]
@@ -136,7 +136,7 @@ impl SyntaxContext for TypeMemberSyntaxContext {
 }
 
 impl FileBodySyntaxContext for TypeMemberSyntaxContext {
-    fn with_statement_attributes(mut self, attributes: Shared<Vec<()> /* TODO */>) -> Self {
+    fn with_statement_attributes(mut self, attributes: Shared<StatementAttributes>) -> Self {
         self.statement_attributes = Some(attributes);
         self
     }

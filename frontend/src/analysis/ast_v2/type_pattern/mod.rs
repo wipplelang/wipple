@@ -7,7 +7,7 @@ use r#where::*;
 use crate::{
     analysis::ast_v2::{
         syntax::{ErrorSyntax, FileBodySyntaxContext, Syntax, SyntaxContext, SyntaxError},
-        AstBuilder,
+        AstBuilder, StatementAttributes,
     },
     diagnostics::Note,
     helpers::{InternedString, Shared},
@@ -44,7 +44,7 @@ pub struct ListTypePattern {
 #[derive(Clone)]
 pub struct TypePatternSyntaxContext {
     pub(super) ast_builder: AstBuilder,
-    statement_attributes: Option<Shared<Vec<()> /* TODO */>>,
+    statement_attributes: Option<Shared<StatementAttributes>>,
 }
 
 #[async_trait]
@@ -110,7 +110,7 @@ impl SyntaxContext for TypePatternSyntaxContext {
 }
 
 impl FileBodySyntaxContext for TypePatternSyntaxContext {
-    fn with_statement_attributes(mut self, attributes: Shared<Vec<()> /* TODO */>) -> Self {
+    fn with_statement_attributes(mut self, attributes: Shared<StatementAttributes>) -> Self {
         self.statement_attributes = Some(attributes);
         self
     }

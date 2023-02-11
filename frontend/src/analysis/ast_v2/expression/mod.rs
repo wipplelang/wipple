@@ -25,7 +25,7 @@ use when::*;
 use crate::{
     analysis::ast_v2::{
         syntax::{FileBodySyntaxContext, Syntax, SyntaxContext, SyntaxError},
-        AstBuilder, Statement, StatementSyntax,
+        AstBuilder, Statement, StatementAttributes, StatementSyntax,
     },
     diagnostics::Note,
     helpers::{InternedString, Shared},
@@ -89,7 +89,7 @@ pub struct BlockExpression {
 #[derive(Clone)]
 pub struct ExpressionSyntaxContext {
     pub(super) ast_builder: AstBuilder,
-    statement_attributes: Option<Shared<Vec<()> /* TODO */>>,
+    statement_attributes: Option<Shared<StatementAttributes>>,
 }
 
 #[async_trait]
@@ -164,7 +164,7 @@ impl SyntaxContext for ExpressionSyntaxContext {
 }
 
 impl FileBodySyntaxContext for ExpressionSyntaxContext {
-    fn with_statement_attributes(mut self, attributes: Shared<Vec<()> /* TODO */>) -> Self {
+    fn with_statement_attributes(mut self, attributes: Shared<StatementAttributes>) -> Self {
         self.statement_attributes = Some(attributes);
         self
     }

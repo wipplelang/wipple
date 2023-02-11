@@ -13,7 +13,7 @@ use type_function::*;
 use crate::{
     analysis::ast_v2::{
         syntax::{FileBodySyntaxContext, Syntax, SyntaxContext, SyntaxError},
-        AstBuilder, Destructuring, DestructuringSyntax, PatternSyntaxContext,
+        AstBuilder, Destructuring, DestructuringSyntax, PatternSyntaxContext, StatementAttributes,
     },
     diagnostics::Note,
     helpers::Shared,
@@ -44,7 +44,7 @@ pub struct DestructureAssignmentPattern {
 #[derive(Clone)]
 pub struct AssignmentPatternSyntaxContext {
     pub(super) ast_builder: AstBuilder,
-    statement_attributes: Option<Shared<Vec<()> /* TODO */>>,
+    statement_attributes: Option<Shared<StatementAttributes>>,
 }
 
 #[async_trait]
@@ -86,7 +86,7 @@ impl SyntaxContext for AssignmentPatternSyntaxContext {
 }
 
 impl FileBodySyntaxContext for AssignmentPatternSyntaxContext {
-    fn with_statement_attributes(mut self, attributes: Shared<Vec<()> /* TODO */>) -> Self {
+    fn with_statement_attributes(mut self, attributes: Shared<StatementAttributes>) -> Self {
         self.statement_attributes = Some(attributes);
         self
     }
