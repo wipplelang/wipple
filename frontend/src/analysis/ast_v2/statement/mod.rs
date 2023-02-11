@@ -8,13 +8,13 @@ mod r#use;
 // pub use assign::AssignStatement;
 pub use expression::ExpressionStatement;
 // pub use instance::InstanceStatement;
-// pub use r#use::UseStatement;
+pub use r#use::UseStatement;
 
 use expression::*;
 // use annotate::*;
 // use assign::*;
 // use instance::*;
-// use r#use::*;
+use r#use::*;
 
 use crate::{
     analysis::ast_v2::{
@@ -34,7 +34,7 @@ syntax_group! {
             // Annotate,
             // Assign,
             // Instance,
-            // Use,
+            Use,
             Expression,
         },
         terminal: {},

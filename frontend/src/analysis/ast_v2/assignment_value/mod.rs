@@ -31,9 +31,9 @@ syntax_group! {
     #[derive(Debug, Clone)]
     pub type AssignmentValue<AssignmentValueSyntaxContext> {
         non_terminal: {
-            Syntax,
             Trait,
             Type,
+            Syntax,
             TypeFunction,
             Expression,
         },

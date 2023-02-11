@@ -224,3 +224,9 @@ impl AstBuilder {
         Some(result)
     }
 }
+
+impl AstBuilder {
+    fn add_dependency(&self, file: Arc<File>) {
+        todo!()
+    }
+}
