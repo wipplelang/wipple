@@ -15,10 +15,12 @@ use crate::{
         syntax::{FileBodySyntaxContext, Syntax, SyntaxContext, SyntaxError},
         AstBuilder, Destructuring, DestructuringSyntax,
     },
+    diagnostics::Note,
     helpers::{InternedString, Shared},
     parse::{self, Span},
 };
 use async_trait::async_trait;
+use futures::{stream, StreamExt};
 
 syntax_group! {
     #[derive(Debug, Clone)]
@@ -29,17 +31,45 @@ syntax_group! {
             Where,
         },
         terminal: {
+            Name,
             Text,
+            Number,
+            Unit,
+            Variant,
             Destructure,
-            // TODO
         },
     }
 }
 
 #[derive(Debug, Clone)]
+pub struct NamePattern {
+    pub span: Span,
+    pub name: InternedString,
+}
+
+#[derive(Debug, Clone)]
 pub struct TextPattern {
     pub span: Span,
-    pub value: InternedString,
+    pub text: InternedString,
+}
+
+#[derive(Debug, Clone)]
+pub struct NumberPattern {
+    pub span: Span,
+    pub number: InternedString,
+}
+
+#[derive(Debug, Clone)]
+pub struct UnitPattern {
+    pub span: Span,
+}
+
+#[derive(Debug, Clone)]
+pub struct VariantPattern {
+    pub span: Span,
+    pub name_span: Span,
+    pub name: InternedString,
+    pub values: Vec<Result<Pattern, SyntaxError>>,
 }
 
 #[derive(Debug, Clone)]
@@ -84,7 +114,68 @@ impl SyntaxContext for PatternSyntaxContext {
     }
 
     async fn build_terminal(self, expr: parse::Expr) -> Result<Self::Body, SyntaxError> {
-        todo!()
+        match expr.kind {
+            parse::ExprKind::Name(name) => Ok(NamePattern {
+                span: expr.span,
+                name,
+            }
+            .into()),
+            parse::ExprKind::Text(text) => Ok(TextPattern {
+                span: expr.span,
+                text,
+            }
+            .into()),
+            parse::ExprKind::Number(number) => Ok(NumberPattern {
+                span: expr.span,
+                number,
+            }
+            .into()),
+            parse::ExprKind::List(_) => {
+                let (span, exprs) = expr.try_into_list_exprs().unwrap();
+                let mut exprs = exprs.into_iter();
+
+                let name_expr = match exprs.next() {
+                    Some(expr) => expr,
+                    None => return Ok(UnitPattern { span }.into()),
+                };
+
+                let name = match name_expr.kind {
+                    parse::ExprKind::Name(name) => name,
+                    _ => {
+                        self.ast_builder.compiler.add_error(
+                            "syntax error",
+                            vec![Note::primary(name_expr.span, "expected name")],
+                        );
+
+                        return Err(self.ast_builder.syntax_error(span));
+                    }
+                };
+
+                let values = stream::iter(exprs)
+                    .then(|expr| {
+                        self.ast_builder
+                            .build_expr::<PatternSyntax>(self.clone(), expr)
+                    })
+                    .collect::<Vec<_>>()
+                    .await;
+
+                Ok(VariantPattern {
+                    span,
+                    name_span: name_expr.span,
+                    name,
+                    values,
+                }
+                .into())
+            }
+            _ => {
+                self.ast_builder.compiler.add_error(
+                    "syntax error",
+                    vec![Note::primary(expr.span, "expected expression")],
+                );
+
+                Err(self.ast_builder.syntax_error(expr.span))
+            }
+        }
     }
 }
 

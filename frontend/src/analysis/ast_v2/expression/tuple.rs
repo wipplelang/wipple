@@ -11,7 +11,7 @@ use futures::{stream, StreamExt};
 #[derive(Debug, Clone)]
 pub struct TupleExpression {
     pub comma_span: Span,
-    pub tys: Vec<Result<Expression, SyntaxError>>,
+    pub exprs: Vec<Result<Expression, SyntaxError>>,
 }
 
 pub struct TupleExpressionSyntax;
@@ -28,7 +28,7 @@ impl Syntax for TupleExpressionSyntax {
                 // future, handle variadic operators specially.
                 assert!(unused_exprs.is_empty());
 
-                let tys = stream::iter(exprs)
+                let exprs = stream::iter(exprs)
                     .then(|expr| {
                         context
                             .ast_builder
@@ -39,7 +39,7 @@ impl Syntax for TupleExpressionSyntax {
 
                 Ok(TupleExpression {
                     comma_span: operator_span,
-                    tys,
+                    exprs,
                 }
                 .into())
             },

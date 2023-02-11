@@ -1,10 +1,14 @@
 use crate::{
     analysis::ast_v2::{
-        syntax::{OperatorAssociativity, Syntax, SyntaxError, SyntaxRule, SyntaxRules},
-        Type, TypeMemberSyntaxContext,
+        syntax::{
+            FileBodySyntaxContext, OperatorAssociativity, Syntax, SyntaxContext, SyntaxError,
+            SyntaxRule, SyntaxRules,
+        },
+        Type, TypeMemberSyntaxContext, TypeSyntax, TypeSyntaxContext,
     },
+    diagnostics::Note,
     helpers::InternedString,
-    parse::Span,
+    parse::{self, Span},
 };
 
 #[derive(Debug, Clone)]
@@ -25,7 +29,47 @@ impl Syntax for FieldTypeMemberSyntax {
             "::",
             OperatorAssociativity::Left,
             |context, (lhs_span, mut lhs_exprs), operator_span, (rhs_span, rhs_exprs)| async move {
-                todo!()
+                if lhs_exprs.len() != 1 {
+                    context.ast_builder.compiler.add_error(
+                        "syntax error",
+                        vec![Note::primary(lhs_span, "expected name")],
+                    );
+
+                    return Err(context.ast_builder.syntax_error(operator_span));
+                }
+
+                let lhs = lhs_exprs.pop().unwrap();
+                let name = match lhs.kind {
+                    parse::ExprKind::Name(name) => name,
+                    _ => {
+                        context.ast_builder.compiler.add_error(
+                            "syntax error",
+                            vec![Note::primary(lhs_span, "expected name")],
+                        );
+
+                        return Err(context.ast_builder.syntax_error(operator_span));
+                    }
+                };
+
+                let rhs = parse::Expr::list(rhs_span, rhs_exprs);
+                let ty = context
+                    .ast_builder
+                    .build_expr::<TypeSyntax>(
+                        TypeSyntaxContext::new(context.ast_builder.clone())
+                            .with_statement_attributes(
+                                context.statement_attributes.as_ref().unwrap().clone(),
+                            ),
+                        rhs,
+                    )
+                    .await;
+
+                Ok(FieldTypeMember {
+                    colon_span: operator_span,
+                    name_span: lhs.span,
+                    name,
+                    ty,
+                }
+                .into())
             },
         ))
     }

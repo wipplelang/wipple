@@ -9,10 +9,12 @@ use crate::{
         syntax::{ErrorSyntax, FileBodySyntaxContext, Syntax, SyntaxContext, SyntaxError},
         AstBuilder,
     },
+    diagnostics::Note,
     helpers::{InternedString, Shared},
     parse::{self, Span},
 };
 use async_trait::async_trait;
+use futures::{stream, StreamExt};
 
 syntax_group! {
     #[derive(Debug, Clone)]
@@ -36,7 +38,7 @@ pub struct NameTypePattern {
 #[derive(Debug, Clone)]
 pub struct ListTypePattern {
     pub span: Span,
-    pub patterns: Vec<TypePattern>,
+    pub patterns: Vec<Result<TypePattern, SyntaxError>>,
 }
 
 #[derive(Clone)]
@@ -60,18 +62,50 @@ impl SyntaxContext for TypePatternSyntaxContext {
     async fn build_block(
         self,
         span: parse::Span,
-        statements: impl Iterator<
+        _statements: impl Iterator<
                 Item = Result<
                     <<Self::Statement as Syntax>::Context as SyntaxContext>::Body,
                     SyntaxError,
                 >,
             > + Send,
     ) -> Result<Self::Body, SyntaxError> {
-        todo!()
+        self.ast_builder.compiler.add_error(
+            "syntax error",
+            vec![Note::primary(span, "expected type parameter")],
+        );
+
+        Err(self.ast_builder.syntax_error(span))
     }
 
     async fn build_terminal(self, expr: parse::Expr) -> Result<Self::Body, SyntaxError> {
-        todo!()
+        match expr.try_into_list_exprs() {
+            Ok((span, exprs)) => {
+                let patterns = stream::iter(exprs)
+                    .then(|expr| {
+                        self.ast_builder
+                            .build_expr::<TypePatternSyntax>(self.clone(), expr)
+                    })
+                    .collect::<Vec<_>>()
+                    .await;
+
+                Ok(ListTypePattern { span, patterns }.into())
+            }
+            Err(expr) => match expr.kind {
+                parse::ExprKind::Name(name) => Ok(NameTypePattern {
+                    span: expr.span,
+                    name,
+                }
+                .into()),
+                _ => {
+                    self.ast_builder.compiler.add_error(
+                        "syntax error",
+                        vec![Note::primary(expr.span, "expected type parameter")],
+                    );
+
+                    Err(self.ast_builder.syntax_error(expr.span))
+                }
+            },
+        }
     }
 }
 

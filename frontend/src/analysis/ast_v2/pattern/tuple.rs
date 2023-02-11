@@ -1,11 +1,17 @@
-use crate::analysis::ast_v2::{
-    pattern::PatternSyntaxContext,
-    syntax::{OperatorAssociativity, Syntax, SyntaxRule, SyntaxRules},
+use crate::{
+    analysis::ast_v2::{
+        pattern::{Pattern, PatternSyntaxContext},
+        syntax::{OperatorAssociativity, Syntax, SyntaxError, SyntaxRule, SyntaxRules},
+        PatternSyntax,
+    },
+    parse::Span,
 };
+use futures::{stream, StreamExt};
 
 #[derive(Debug, Clone)]
 pub struct TuplePattern {
-    // TODO
+    pub comma_span: Span,
+    pub patterns: Vec<Result<Pattern, SyntaxError>>,
 }
 
 pub struct TuplePatternSyntax;
@@ -17,12 +23,25 @@ impl Syntax for TuplePatternSyntax {
         SyntaxRules::new().with(SyntaxRule::<Self>::operator(
             ",",
             OperatorAssociativity::Variadic,
-            |context, (span, exprs), operator_span, (_unused_span, unused_exprs)| async move {
+            |context, (_span, exprs), operator_span, (_unused_span, unused_exprs)| async move {
                 // HACK: All of the expressions are contained in `lhs`. In the
                 // future, handle variadic operators specially.
                 assert!(unused_exprs.is_empty());
 
-                todo!()
+                let patterns = stream::iter(exprs)
+                    .then(|expr| {
+                        context
+                            .ast_builder
+                            .build_expr::<PatternSyntax>(context.clone(), expr)
+                    })
+                    .collect()
+                    .await;
+
+                Ok(TuplePattern {
+                    comma_span: operator_span,
+                    patterns,
+                }
+                .into())
             },
         ))
     }

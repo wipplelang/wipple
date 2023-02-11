@@ -122,25 +122,8 @@ impl SyntaxContext for ExpressionSyntaxContext {
     }
 
     async fn build_terminal(self, expr: parse::Expr) -> Result<Self::Body, SyntaxError> {
-        match expr.kind {
-            parse::ExprKind::Name(name) => Ok(NameExpression {
-                span: expr.span,
-                name,
-            }
-            .into()),
-            parse::ExprKind::Text(text) => Ok(TextExpression {
-                span: expr.span,
-                text,
-            }
-            .into()),
-            parse::ExprKind::Number(number) => Ok(NumberExpression {
-                span: expr.span,
-                number,
-            }
-            .into()),
-            parse::ExprKind::List(_) => {
-                let (span, exprs) = expr.try_into_list_exprs().unwrap();
-
+        match expr.try_into_list_exprs() {
+            Ok((span, exprs)) => {
                 let exprs = stream::iter(exprs)
                     .then(|expr| {
                         self.ast_builder
@@ -151,14 +134,31 @@ impl SyntaxContext for ExpressionSyntaxContext {
 
                 Ok(ListExpression { span, exprs }.into())
             }
-            _ => {
-                self.ast_builder.compiler.add_error(
-                    "syntax error",
-                    vec![Note::primary(expr.span, "expected expression")],
-                );
+            Err(expr) => match expr.kind {
+                parse::ExprKind::Name(name) => Ok(NameExpression {
+                    span: expr.span,
+                    name,
+                }
+                .into()),
+                parse::ExprKind::Text(text) => Ok(TextExpression {
+                    span: expr.span,
+                    text,
+                }
+                .into()),
+                parse::ExprKind::Number(number) => Ok(NumberExpression {
+                    span: expr.span,
+                    number,
+                }
+                .into()),
+                _ => {
+                    self.ast_builder.compiler.add_error(
+                        "syntax error",
+                        vec![Note::primary(expr.span, "expected expression")],
+                    );
 
-                Err(self.ast_builder.syntax_error(expr.span))
-            }
+                    Err(self.ast_builder.syntax_error(expr.span))
+                }
+            },
         }
     }
 }
