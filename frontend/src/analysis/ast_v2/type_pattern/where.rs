@@ -41,13 +41,7 @@ impl Syntax for WhereTypePatternSyntax {
 
                 let pattern = context
                     .ast_builder
-                    .build_expr::<TypePatternSyntax>(
-                        TypePatternSyntaxContext::new(context.ast_builder.clone())
-                            .with_statement_attributes(
-                                context.statement_attributes.as_ref().unwrap().clone(),
-                            ),
-                        lhs,
-                    )
+                    .build_expr::<TypePatternSyntax>(context.clone(), lhs)
                     .await;
 
                 let bounds = stream::iter(rhs_exprs)
@@ -85,16 +79,19 @@ impl Syntax for WhereTypePatternSyntax {
                                     }
                                 };
 
-                                let context = TypeSyntaxContext::new(context.ast_builder.clone())
-                                    .with_statement_attributes(
-                                        context.statement_attributes.as_ref().unwrap().clone(),
-                                    );
-
                                 let parameters = stream::iter(exprs)
                                     .then(|expr| {
-                                        context
-                                            .ast_builder
-                                            .build_expr::<TypeSyntax>(context.clone(), expr)
+                                        context.ast_builder.build_expr::<TypeSyntax>(
+                                            TypeSyntaxContext::new(context.ast_builder.clone())
+                                                .with_statement_attributes(
+                                                    context
+                                                        .statement_attributes
+                                                        .as_ref()
+                                                        .unwrap()
+                                                        .clone(),
+                                                ),
+                                            expr,
+                                        )
                                     })
                                     .collect()
                                     .await;

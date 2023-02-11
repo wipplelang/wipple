@@ -45,13 +45,7 @@ impl Syntax for TypeFunctionAssignmentPatternSyntax {
 
                 let assignment_pattern = context
                     .ast_builder
-                    .build_expr::<AssignmentPatternSyntax>(
-                        AssignmentPatternSyntaxContext::new(context.ast_builder.clone())
-                            .with_statement_attributes(
-                                context.statement_attributes.as_ref().unwrap().clone(),
-                            ),
-                        rhs,
-                    )
+                    .build_expr::<AssignmentPatternSyntax>(context.clone(), rhs)
                     .await;
 
                 Ok(TypeFunctionAssignmentPattern {

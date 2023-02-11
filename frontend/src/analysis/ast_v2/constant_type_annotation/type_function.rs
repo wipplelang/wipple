@@ -45,13 +45,7 @@ impl Syntax for TypeFunctionConstantTypeAnnotationSyntax {
 
                 let annotation = context
                     .ast_builder
-                    .build_expr::<ConstantTypeAnnotationSyntax>(
-                        ConstantTypeAnnotationSyntaxContext::new(context.ast_builder.clone())
-                            .with_statement_attributes(
-                                context.statement_attributes.as_ref().unwrap().clone(),
-                            ),
-                        rhs,
-                    )
+                    .build_expr::<ConstantTypeAnnotationSyntax>(context.clone(), rhs)
                     .await;
 
                 Ok(TypeFunctionConstantTypeAnnotation {

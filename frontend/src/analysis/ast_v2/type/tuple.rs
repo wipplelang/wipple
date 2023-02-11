@@ -1,15 +1,17 @@
 use crate::{
     analysis::ast_v2::{
         r#type::{Type, TypeSyntaxContext},
-        syntax::{OperatorAssociativity, Syntax, SyntaxRule, SyntaxRules},
+        syntax::{OperatorAssociativity, Syntax, SyntaxError, SyntaxRule, SyntaxRules},
+        TypeSyntax,
     },
     parse::Span,
 };
+use futures::{stream, StreamExt};
 
 #[derive(Debug, Clone)]
 pub struct TupleType {
-    pub span: Span,
-    pub tys: Vec<Type>,
+    pub comma_span: Span,
+    pub tys: Vec<Result<Type, SyntaxError>>,
 }
 
 pub struct TupleTypeSyntax;
@@ -21,21 +23,25 @@ impl Syntax for TupleTypeSyntax {
         SyntaxRules::new().with(SyntaxRule::<Self>::operator(
             ",",
             OperatorAssociativity::Variadic,
-            |context, (span, exprs), operator_span, (_unused_span, unused_exprs)| async move {
+            |context, (_span, exprs), operator_span, (_unused_span, unused_exprs)| async move {
                 // HACK: All of the expressions are contained in `lhs`. In the
                 // future, handle variadic operators specially.
                 assert!(unused_exprs.is_empty());
 
-                // let tys = stream::iter(exprs)
-                //     .then(|expr| {
-                //         context
-                //             .builder
-                //             .apply_syntax::<TypeSyntax>(context, expr.spa)
-                //     })
-                //     .collect::<Result<Vec<_>>>()
-                //     .await;
+                let tys = stream::iter(exprs)
+                    .then(|expr| {
+                        context
+                            .ast_builder
+                            .build_expr::<TypeSyntax>(context.clone(), expr)
+                    })
+                    .collect()
+                    .await;
 
-                todo!()
+                Ok(TupleType {
+                    comma_span: operator_span,
+                    tys,
+                }
+                .into())
             },
         ))
     }

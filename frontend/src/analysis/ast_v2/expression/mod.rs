@@ -5,18 +5,18 @@ mod function;
 mod tuple;
 mod when;
 
-// pub use end::EndExpression;
-// pub use external::ExternalExpression;
-// pub use format::FormatExpression;
+pub use end::EndExpression;
+pub use external::ExternalExpression;
+pub use format::FormatExpression;
 // pub use function::FunctionExpression;
-// pub use tuple::TupleExpression;
+pub use tuple::TupleExpression;
 // pub use when::WhenExpression;
 
-// use end::*;
-// use external::*;
-// use format::*;
+use end::*;
+use external::*;
+use format::*;
 // use function::*;
-// use tuple::*;
+use tuple::*;
 // use when::*;
 
 use crate::{
@@ -34,11 +34,11 @@ syntax_group! {
     #[derive(Debug, Clone)]
     pub type Expression<ExpressionSyntaxContext> {
         non_terminal: {
-            // End,
-            // External,
-            // Format,
+            End,
+            External,
+            Format,
             // Function,
-            // Tuple,
+            Tuple,
             // When,
         },
         terminal: {
@@ -138,13 +138,8 @@ impl SyntaxContext for ExpressionSyntaxContext {
 
                 let exprs = stream::iter(exprs)
                     .then(|expr| {
-                        self.ast_builder.build_expr::<ExpressionSyntax>(
-                            ExpressionSyntaxContext::new(self.ast_builder.clone())
-                                .with_statement_attributes(
-                                    self.statement_attributes.as_ref().unwrap().clone(),
-                                ),
-                            expr,
-                        )
+                        self.ast_builder
+                            .build_expr::<ExpressionSyntax>(self.clone(), expr)
                     })
                     .collect::<Vec<_>>()
                     .await;
