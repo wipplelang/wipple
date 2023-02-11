@@ -12,6 +12,7 @@ use crate::{
         syntax::{ErrorSyntax, Syntax, SyntaxContext, SyntaxError},
         AstBuilder,
     },
+    diagnostics::Note,
     parse,
 };
 use async_trait::async_trait;
@@ -34,7 +35,7 @@ pub struct FileAttributeSyntaxContext {
 
 #[async_trait]
 impl SyntaxContext for FileAttributeSyntaxContext {
-    type Body = ();
+    type Body = FileAttribute;
     type Statement = ErrorSyntax;
 
     fn new(ast_builder: AstBuilder) -> Self {
@@ -44,17 +45,27 @@ impl SyntaxContext for FileAttributeSyntaxContext {
     async fn build_block(
         self,
         span: parse::Span,
-        statements: impl Iterator<
+        _statements: impl Iterator<
                 Item = Result<
                     <<Self::Statement as Syntax>::Context as SyntaxContext>::Body,
                     SyntaxError,
                 >,
             > + Send,
     ) -> Result<Self::Body, SyntaxError> {
-        todo!()
+        self.ast_builder.compiler.add_error(
+            "syntax error",
+            vec![Note::primary(span, "expected attribute")],
+        );
+
+        Err(self.ast_builder.syntax_error(span))
     }
 
     async fn build_terminal(self, expr: parse::Expr) -> Result<Self::Body, SyntaxError> {
-        todo!()
+        self.ast_builder.compiler.add_error(
+            "syntax error",
+            vec![Note::primary(expr.span, "expected attribute")],
+        );
+
+        Err(self.ast_builder.syntax_error(expr.span))
     }
 }

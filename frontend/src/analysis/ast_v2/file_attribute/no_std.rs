@@ -1,10 +1,16 @@
-use crate::analysis::ast_v2::{
-    file_attribute::FileAttributeSyntaxContext,
-    syntax::{Syntax, SyntaxRule, SyntaxRules},
+use crate::{
+    analysis::ast_v2::{
+        file_attribute::FileAttributeSyntaxContext,
+        syntax::{Syntax, SyntaxRule, SyntaxRules},
+    },
+    diagnostics::Note,
+    parse::Span,
 };
 
 #[derive(Debug, Clone)]
-pub struct NoStdFileAttribute;
+pub struct NoStdFileAttribute {
+    pub span: Span,
+}
 
 pub struct NoStdFileAttributeSyntax;
 
@@ -15,7 +21,18 @@ impl Syntax for NoStdFileAttributeSyntax {
         SyntaxRules::new().with(SyntaxRule::<Self>::function(
             "no-std",
             |context, span, exprs| async move {
-                todo!();
+                if !exprs.is_empty() {
+                    context.ast_builder.compiler.add_error(
+                        "syntax error",
+                        vec![Note::primary(span, "`no-std` does not accept parameters")],
+                    );
+                }
+
+                let attribute = NoStdFileAttribute { span };
+
+                context.ast_builder.attributes.lock().no_std = Some(attribute.clone());
+
+                Ok(attribute.into())
             },
         ))
     }
