@@ -414,8 +414,8 @@ impl AstBuilder {
         let occurrences = Vec::from(occurrences);
 
         let index = match associativity {
-            OperatorAssociativity::Left => occurrences.first()?,
-            OperatorAssociativity::Right => occurrences.last()?,
+            OperatorAssociativity::Left => occurrences.last()?,
+            OperatorAssociativity::Right => occurrences.first()?,
             OperatorAssociativity::Variadic => unreachable!("handled above"),
             OperatorAssociativity::None => {
                 if occurrences.len() <= 1 {

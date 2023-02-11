@@ -1,3 +1,4 @@
+mod annotate;
 mod end;
 mod external;
 mod format;
@@ -5,25 +6,28 @@ mod function;
 mod tuple;
 mod when;
 
+pub use annotate::AnnotateExpression;
 pub use end::EndExpression;
 pub use external::ExternalExpression;
 pub use format::FormatExpression;
-// pub use function::FunctionExpression;
+pub use function::FunctionExpression;
 pub use tuple::TupleExpression;
-// pub use when::WhenExpression;
+pub use when::WhenExpression;
 
+use annotate::*;
 use end::*;
 use external::*;
 use format::*;
-// use function::*;
+use function::*;
 use tuple::*;
-// use when::*;
+use when::*;
 
 use crate::{
     analysis::ast_v2::{
         syntax::{FileBodySyntaxContext, Syntax, SyntaxContext, SyntaxError},
         AstBuilder, Statement, StatementSyntax,
     },
+    diagnostics::Note,
     helpers::{InternedString, Shared},
     parse::{self, Span},
 };
@@ -34,12 +38,13 @@ syntax_group! {
     #[derive(Debug, Clone)]
     pub type Expression<ExpressionSyntaxContext> {
         non_terminal: {
+            Function,
+            Tuple,
+            Annotate,
             End,
             External,
             Format,
-            // Function,
-            Tuple,
-            // When,
+            When,
         },
         terminal: {
             Name,
@@ -146,8 +151,14 @@ impl SyntaxContext for ExpressionSyntaxContext {
 
                 Ok(ListExpression { span, exprs }.into())
             }
-            parse::ExprKind::Block(_) => unreachable!("handled by `build_block`"),
-            _ => todo!(),
+            _ => {
+                self.ast_builder.compiler.add_error(
+                    "syntax error",
+                    vec![Note::primary(expr.span, "expected expression")],
+                );
+
+                Err(self.ast_builder.syntax_error(expr.span))
+            }
         }
     }
 }

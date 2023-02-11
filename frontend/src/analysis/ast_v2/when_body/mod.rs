@@ -1,66 +1,43 @@
-mod annotate;
-mod tuple;
-mod r#where;
-
-pub use annotate::AnnotatePattern;
-pub use r#where::WherePattern;
-pub use tuple::TuplePattern;
-
-use annotate::*;
-use r#where::*;
-use tuple::*;
-
 use crate::{
     analysis::ast_v2::{
         syntax::{FileBodySyntaxContext, Syntax, SyntaxContext, SyntaxError},
-        AstBuilder, Destructuring, DestructuringSyntax,
+        AstBuilder, WhenArm, WhenArmSyntax,
     },
-    helpers::{InternedString, Shared},
+    diagnostics::Note,
+    helpers::Shared,
     parse::{self, Span},
 };
 use async_trait::async_trait;
 
 syntax_group! {
     #[derive(Debug, Clone)]
-    pub type Pattern<PatternSyntaxContext> {
-        non_terminal: {
-            Tuple,
-            Annotate,
-            Where,
-        },
+    pub type WhenBody<WhenBodySyntaxContext> {
+        non_terminal: {},
         terminal: {
-            Text,
-            Destructure,
-            // TODO
+            Block,
         },
     }
 }
 
 #[derive(Debug, Clone)]
-pub struct TextPattern {
+pub struct BlockWhenBody {
     pub span: Span,
-    pub value: InternedString,
-}
-
-#[derive(Debug, Clone)]
-pub struct DestructurePattern {
-    pub span: Span,
-    pub destructurings: Vec<Result<Destructuring, SyntaxError>>,
+    pub arms: Vec<Result<WhenArm, SyntaxError>>,
 }
 
 #[derive(Clone)]
-pub struct PatternSyntaxContext {
+pub struct WhenBodySyntaxContext {
     pub(super) ast_builder: AstBuilder,
     statement_attributes: Option<Shared<Vec<()> /* TODO */>>,
 }
 
 #[async_trait]
-impl SyntaxContext for PatternSyntaxContext {
-    type Body = Pattern;
-    type Statement = DestructuringSyntax;
+impl SyntaxContext for WhenBodySyntaxContext {
+    type Body = WhenBody;
+    type Statement = WhenArmSyntax;
 
     fn new(ast_builder: AstBuilder) -> Self {
-        PatternSyntaxContext {
+        WhenBodySyntaxContext {
             ast_builder,
             statement_attributes: None,
         }
@@ -76,19 +53,24 @@ impl SyntaxContext for PatternSyntaxContext {
                 >,
             > + Send,
     ) -> Result<Self::Body, SyntaxError> {
-        Ok(DestructurePattern {
+        Ok(BlockWhenBody {
             span,
-            destructurings: statements.collect(),
+            arms: statements.collect(),
         }
         .into())
     }
 
     async fn build_terminal(self, expr: parse::Expr) -> Result<Self::Body, SyntaxError> {
-        todo!()
+        self.ast_builder.compiler.add_error(
+            "syntax error",
+            vec![Note::primary(expr.span, "expected a block")],
+        );
+
+        Err(self.ast_builder.syntax_error(expr.span))
     }
 }
 
-impl FileBodySyntaxContext for PatternSyntaxContext {
+impl FileBodySyntaxContext for WhenBodySyntaxContext {
     fn with_statement_attributes(mut self, attributes: Shared<Vec<()> /* TODO */>) -> Self {
         self.statement_attributes = Some(attributes);
         self

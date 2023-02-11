@@ -13,8 +13,11 @@ mod pattern;
 mod statement;
 mod statement_attribute;
 mod r#type;
+mod type_body;
 mod type_member;
 mod type_pattern;
+mod when_arm;
+mod when_body;
 
 pub use attributes::*;
 
@@ -28,8 +31,11 @@ pub use pattern::*;
 pub use r#type::*;
 pub use statement::*;
 pub use statement_attribute::*;
+pub use type_body::*;
 pub use type_member::*;
 pub use type_pattern::*;
+pub use when_arm::*;
+pub use when_body::*;
 
 use crate::{
     diagnostics::Note,
@@ -113,9 +119,19 @@ impl AstBuilder {
     {
         match expr.kind {
             parse::ExprKind::Block(statements) => {
-                let statements = self
-                    .build_statements::<<S::Context as SyntaxContext>::Statement>(statements)
-                    .await;
+                let statements = stream::iter(statements)
+                    .then(|statement| {
+                        self.build_statement::<<S::Context as SyntaxContext>::Statement>(
+                            <<S::Context as SyntaxContext>::Statement as Syntax>::Context::new(
+                                self.clone(),
+                            ),
+                            statement,
+                        )
+                    })
+                    .collect::<Vec<_>>()
+                    .await
+                    .into_iter()
+                    .flatten();
 
                 context.build_block(expr.span, statements).await
             }
@@ -139,24 +155,6 @@ impl AstBuilder {
             }
             _ => context.build_terminal(expr).await,
         }
-    }
-
-    async fn build_statements<S: Syntax>(
-        &self,
-        statements: impl IntoIterator<Item = parse::Statement>,
-    ) -> impl Iterator<Item = Result<<S::Context as SyntaxContext>::Body, SyntaxError>>
-    where
-        S::Context: FileBodySyntaxContext,
-    {
-        stream::iter(statements)
-            .then(|statement| {
-                let context = <S as Syntax>::Context::new(self.clone());
-                self.build_statement::<S>(context, statement)
-            })
-            .collect::<Vec<_>>()
-            .await
-            .into_iter()
-            .flatten()
     }
 
     async fn build_statement<S: Syntax>(

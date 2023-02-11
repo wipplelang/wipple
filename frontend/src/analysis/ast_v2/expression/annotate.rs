@@ -4,22 +4,22 @@ use crate::{
             FileBodySyntaxContext, OperatorAssociativity, Syntax, SyntaxContext, SyntaxError,
             SyntaxRule, SyntaxRules,
         },
-        Pattern, PatternSyntax, PatternSyntaxContext, Type, TypeSyntax, TypeSyntaxContext,
+        Expression, ExpressionSyntax, ExpressionSyntaxContext, Type, TypeSyntax, TypeSyntaxContext,
     },
     parse::{self, Span},
 };
 
 #[derive(Debug, Clone)]
-pub struct AnnotatePattern {
+pub struct AnnotateExpression {
     pub colon_span: Span,
-    pub pattern: Result<Box<Pattern>, SyntaxError>,
+    pub expr: Result<Box<Expression>, SyntaxError>,
     pub ty: Result<Type, SyntaxError>,
 }
 
-pub struct AnnotatePatternSyntax;
+pub struct AnnotateExpressionSyntax;
 
-impl Syntax for AnnotatePatternSyntax {
-    type Context = PatternSyntaxContext;
+impl Syntax for AnnotateExpressionSyntax {
+    type Context = ExpressionSyntaxContext;
 
     fn rules() -> SyntaxRules<Self> {
         SyntaxRules::new().with(SyntaxRule::<Self>::operator(
@@ -27,9 +27,9 @@ impl Syntax for AnnotatePatternSyntax {
             OperatorAssociativity::Left,
             |context, (lhs_span, lhs_exprs), operator_span, (rhs_span, rhs_exprs)| async move {
                 let lhs = parse::Expr::list(lhs_span, lhs_exprs);
-                let pattern = context
+                let expr = context
                     .ast_builder
-                    .build_expr::<PatternSyntax>(context.clone(), lhs)
+                    .build_expr::<ExpressionSyntax>(context.clone(), lhs)
                     .await;
 
                 let rhs = parse::Expr::list(rhs_span, rhs_exprs);
@@ -44,9 +44,9 @@ impl Syntax for AnnotatePatternSyntax {
                     )
                     .await;
 
-                Ok(AnnotatePattern {
+                Ok(AnnotateExpression {
                     colon_span: operator_span,
-                    pattern: pattern.map(Box::new),
+                    expr: expr.map(Box::new),
                     ty,
                 }
                 .into())

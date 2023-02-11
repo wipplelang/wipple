@@ -1,16 +1,17 @@
 use crate::{
     analysis::ast_v2::{
         assignment_value::AssignmentValueSyntaxContext,
-        syntax::{Syntax, SyntaxError, SyntaxRule, SyntaxRules},
-        TypeMember, TypeMemberSyntax,
+        syntax::{
+            FileBodySyntaxContext, Syntax, SyntaxContext, SyntaxError, SyntaxRule, SyntaxRules,
+        },
+        TypeBody, TypeBodySyntax, TypeBodySyntaxContext,
     },
     diagnostics::Note,
-    parse,
 };
 
 #[derive(Debug, Clone)]
 pub struct TypeAssignmentValue {
-    pub members: Option<Vec<Result<TypeMember, SyntaxError>>>,
+    pub body: Option<Result<TypeBody, SyntaxError>>,
 }
 
 pub struct TypeAssignmentValueSyntax;
@@ -23,32 +24,20 @@ impl Syntax for TypeAssignmentValueSyntax {
             "type",
             |context, span, mut exprs| async move {
                 match exprs.len() {
-                    0 => Ok(TypeAssignmentValue { members: None }.into()),
+                    0 => Ok(TypeAssignmentValue { body: None }.into()),
                     1 => {
-                        let expr = exprs.pop().unwrap();
-
-                        let statements = match expr.kind {
-                            parse::ExprKind::Block(statements) => statements,
-                            _ => {
-                                context.ast_builder.compiler.add_error(
-                                    "syntax error",
-                                    vec![Note::primary(span, "expected a block")],
-                                );
-
-                                return Err(context.ast_builder.syntax_error(span));
-                            }
-                        };
-
-                        let members = context
+                        let body = context
                             .ast_builder
-                            .build_statements::<TypeMemberSyntax>(statements)
-                            .await
-                            .collect();
+                            .build_expr::<TypeBodySyntax>(
+                                TypeBodySyntaxContext::new(context.ast_builder.clone())
+                                    .with_statement_attributes(
+                                        context.statement_attributes.as_ref().unwrap().clone(),
+                                    ),
+                                exprs.pop().unwrap(),
+                            )
+                            .await;
 
-                        Ok(TypeAssignmentValue {
-                            members: Some(members),
-                        }
-                        .into())
+                        Ok(TypeAssignmentValue { body: Some(body) }.into())
                     }
                     _ => {
                         context.ast_builder.compiler.add_error(
