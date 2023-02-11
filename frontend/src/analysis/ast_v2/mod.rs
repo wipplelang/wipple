@@ -165,7 +165,7 @@ impl AstBuilder {
     where
         S::Context: FileBodySyntaxContext,
     {
-        let attributes = Shared::new(Vec::new()); // TODO
+        let attributes = Shared::new(StatementAttributes::default());
 
         let (attribute_exprs, exprs): (Vec<_>, Vec<_>) = statement
             .lines
