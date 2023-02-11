@@ -9,7 +9,8 @@ use crate::{
 
 #[derive(Debug, Clone)]
 pub struct RecursionLimitFileAttribute {
-    pub span: Span,
+    pub recursion_limit_span: Span,
+    pub limit_span: Span,
     pub limit: usize,
 }
 
@@ -54,7 +55,11 @@ impl Syntax for RecursionLimitFileAttributeSyntax {
                     }
                 };
 
-                let attribute = RecursionLimitFileAttribute { span, limit };
+                let attribute = RecursionLimitFileAttribute {
+                    recursion_limit_span: span,
+                    limit_span: expr.span,
+                    limit,
+                };
 
                 context.ast_builder.attributes.lock().recursion_limit = Some(attribute.clone());
 

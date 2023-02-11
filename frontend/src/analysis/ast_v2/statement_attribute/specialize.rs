@@ -1,10 +1,16 @@
-use crate::analysis::ast_v2::{
-    statement_attribute::StatementAttributeSyntaxContext,
-    syntax::{Syntax, SyntaxRule, SyntaxRules},
+use crate::{
+    analysis::ast_v2::{
+        statement_attribute::StatementAttributeSyntaxContext,
+        syntax::{Syntax, SyntaxRule, SyntaxRules},
+    },
+    diagnostics::Note,
+    parse::Span,
 };
 
 #[derive(Debug, Clone)]
-pub struct SpecializeStatementAttribute;
+pub struct SpecializeStatementAttribute {
+    pub span: Span,
+}
 
 pub struct SpecializeStatementAttributeSyntax;
 
@@ -15,7 +21,21 @@ impl Syntax for SpecializeStatementAttributeSyntax {
         SyntaxRules::new().with(SyntaxRule::<Self>::function(
             "specialize",
             |context, span, exprs| async move {
-                todo!();
+                if !exprs.is_empty() {
+                    context.ast_builder.compiler.add_error(
+                        "syntax error",
+                        vec![Note::primary(
+                            span,
+                            "`specialize` does not accept parameters",
+                        )],
+                    );
+                }
+
+                let attribute = SpecializeStatementAttribute { span };
+
+                context.statement_attributes.unwrap().lock().specialize = Some(attribute.clone());
+
+                Ok(attribute.into())
             },
         ))
     }

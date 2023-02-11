@@ -39,15 +39,12 @@ pub use when_body::*;
 
 use crate::{
     diagnostics::Note,
-    helpers::{InternedString, Shared},
+    helpers::Shared,
     parse::{self, Span},
     Compiler, FilePath, TemplateId,
 };
 use futures::{future::BoxFuture, stream, StreamExt};
-use std::{
-    collections::{BTreeMap, HashMap},
-    sync::Arc,
-};
+use std::{collections::BTreeMap, sync::Arc};
 use syntax::{FileBodySyntaxContext, Syntax, SyntaxContext, SyntaxError};
 
 #[derive(Debug, Clone)]
@@ -99,7 +96,7 @@ impl Compiler {
 struct AstBuilder {
     file: FilePath,
     compiler: Compiler,
-    dependencies: Shared<HashMap<FilePath, (Arc<File>, Option<HashMap<InternedString, Span>>)>>,
+    dependencies: Shared<Vec<Arc<File>>>,
     attributes: Shared<FileAttributes>,
     load: Arc<
         dyn Fn(Compiler, Span, FilePath) -> BoxFuture<'static, Option<Arc<File>>> + Send + Sync,
@@ -227,6 +224,6 @@ impl AstBuilder {
 
 impl AstBuilder {
     fn add_dependency(&self, file: Arc<File>) {
-        todo!()
+        self.dependencies.lock().push(file);
     }
 }
