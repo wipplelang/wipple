@@ -1,9 +1,9 @@
-mod text;
+mod annotate;
 mod tuple;
 mod r#where;
 
+pub use annotate::AnnotatePattern;
 pub use r#where::WherePattern;
-pub use text::TextPattern;
 pub use tuple::TuplePattern;
 
 use r#where::*;
@@ -12,10 +12,10 @@ use tuple::*;
 use crate::{
     analysis::ast_v2::{
         syntax::{FileBodySyntaxContext, Syntax, SyntaxContext, SyntaxError},
-        AstBuilder,
+        AstBuilder, Destructuring, DestructuringSyntax,
     },
-    helpers::Shared,
-    parse,
+    helpers::{InternedString, Shared},
+    parse::{self, Span},
 };
 use async_trait::async_trait;
 
@@ -28,9 +28,22 @@ syntax_group! {
         },
         terminal: {
             Text,
+            Destructure,
             // TODO
         },
     }
+}
+
+#[derive(Debug, Clone)]
+pub struct TextPattern {
+    pub span: Span,
+    pub value: InternedString,
+}
+
+#[derive(Debug, Clone)]
+pub struct DestructurePattern {
+    pub span: Span,
+    pub destructurings: Vec<Result<Destructuring, SyntaxError>>,
 }
 
 #[derive(Clone)]
@@ -42,7 +55,7 @@ pub struct PatternSyntaxContext {
 #[async_trait]
 impl SyntaxContext for PatternSyntaxContext {
     type Body = Pattern;
-    type Statement = PatternSyntax;
+    type Statement = DestructuringSyntax;
 
     fn new(ast_builder: AstBuilder) -> Self {
         PatternSyntaxContext {
@@ -54,13 +67,21 @@ impl SyntaxContext for PatternSyntaxContext {
     async fn build_block(
         self,
         span: parse::Span,
-        statements: impl Iterator<Item = <<Self::Statement as Syntax>::Context as SyntaxContext>::Body>
-            + Send,
+        statements: impl Iterator<
+                Item = Result<
+                    <<Self::Statement as Syntax>::Context as SyntaxContext>::Body,
+                    SyntaxError,
+                >,
+            > + Send,
     ) -> Result<Self::Body, SyntaxError> {
-        todo!()
+        Ok(DestructurePattern {
+            span,
+            destructurings: statements.collect(),
+        }
+        .into())
     }
 
-    fn build_terminal(self, expr: parse::Expr) -> Result<Self::Body, SyntaxError> {
+    async fn build_terminal(self, expr: parse::Expr) -> Result<Self::Body, SyntaxError> {
         todo!()
     }
 }

@@ -29,12 +29,16 @@ pub(in crate::analysis::ast_v2) trait SyntaxContext:
     async fn build_block(
         self,
         span: parse::Span,
-        statements: impl Iterator<Item = <<Self::Statement as Syntax>::Context as SyntaxContext>::Body>
-            + Send,
+        statements: impl Iterator<
+                Item = Result<
+                    <<Self::Statement as Syntax>::Context as SyntaxContext>::Body,
+                    SyntaxError,
+                >,
+            > + Send,
     ) -> Result<Self::Body, SyntaxError>;
 
     /// Build an expression that contains no syntaxes or operators.
-    fn build_terminal(self, expr: parse::Expr) -> Result<Self::Body, SyntaxError>;
+    async fn build_terminal(self, expr: parse::Expr) -> Result<Self::Body, SyntaxError>;
 }
 
 pub(in crate::analysis::ast_v2) trait FileBodySyntaxContext:
@@ -78,13 +82,17 @@ impl SyntaxContext for std::convert::Infallible {
     async fn build_block(
         self,
         _span: parse::Span,
-        _statements: impl Iterator<Item = <<Self::Statement as Syntax>::Context as SyntaxContext>::Body>
-            + Send,
+        _statements: impl Iterator<
+                Item = Result<
+                    <<Self::Statement as Syntax>::Context as SyntaxContext>::Body,
+                    SyntaxError,
+                >,
+            > + Send,
     ) -> Result<Self::Body, SyntaxError> {
         unreachable!()
     }
 
-    fn build_terminal(self, _expr: parse::Expr) -> Result<Self::Body, SyntaxError> {
+    async fn build_terminal(self, _expr: parse::Expr) -> Result<Self::Body, SyntaxError> {
         unreachable!()
     }
 }
@@ -501,13 +509,17 @@ impl SyntaxContext for ErrorSyntaxContext {
     async fn build_block(
         self,
         span: parse::Span,
-        _statements: impl Iterator<Item = <<Self::Statement as Syntax>::Context as SyntaxContext>::Body>
-            + Send,
+        _statements: impl Iterator<
+                Item = Result<
+                    <<Self::Statement as Syntax>::Context as SyntaxContext>::Body,
+                    SyntaxError,
+                >,
+            > + Send,
     ) -> Result<Self::Body, SyntaxError> {
         Err(self.ast_builder.syntax_error(span))
     }
 
-    fn build_terminal(self, expr: parse::Expr) -> Result<Self::Body, SyntaxError> {
+    async fn build_terminal(self, expr: parse::Expr) -> Result<Self::Body, SyntaxError> {
         Err(self.ast_builder.syntax_error(expr.span))
     }
 }

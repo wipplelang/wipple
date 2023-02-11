@@ -5,6 +5,7 @@ mod syntax;
 
 mod assignment_pattern;
 mod assignment_value;
+mod constant_type_annotation;
 mod destructuring;
 mod expression;
 mod file_attribute;
@@ -12,12 +13,14 @@ mod pattern;
 mod statement;
 mod statement_attribute;
 mod r#type;
+mod type_member;
 mod type_pattern;
 
 pub use attributes::*;
 
 pub use assignment_pattern::*;
 pub use assignment_value::*;
+pub use constant_type_annotation::*;
 pub use destructuring::*;
 pub use expression::*;
 pub use file_attribute::*;
@@ -25,13 +28,14 @@ pub use pattern::*;
 pub use r#type::*;
 pub use statement::*;
 pub use statement_attribute::*;
+pub use type_member::*;
 pub use type_pattern::*;
 
 use crate::{
     diagnostics::Note,
     helpers::{InternedString, Shared},
     parse::{self, Span},
-    Compiler, FilePath, ScopeId, TemplateId,
+    Compiler, FilePath, TemplateId,
 };
 use futures::{future::BoxFuture, stream, StreamExt};
 use std::{
@@ -45,9 +49,7 @@ pub struct File {
     pub span: Span,
     pub attributes: FileAttributes,
     pub syntax_declarations: BTreeMap<TemplateId, SyntaxAssignmentValue>,
-    pub root_scope: ScopeId,
-    pub scopes: BTreeMap<ScopeId, (Option<Span>, Option<ScopeId>)>,
-    pub statements: Vec<Statement>,
+    pub statements: Vec<Result<Statement, SyntaxError>>,
 }
 
 impl Compiler {
@@ -64,11 +66,8 @@ impl Compiler {
             compiler: self.clone(),
             dependencies: Default::default(),
             attributes: Default::default(),
-            scopes: Default::default(),
             load: Arc::new(load),
         };
-
-        let root_scope = self.new_scope_id_in(builder.file);
 
         let statements = stream::iter(file.statements)
             .then(|statement| {
@@ -79,31 +78,15 @@ impl Compiler {
             .await
             .into_iter()
             .flatten()
-            .filter_map(Result::ok)
             .collect();
 
         File {
             span: file.span,
             attributes: builder.attributes.into_unique(),
             syntax_declarations: BTreeMap::new(),
-            root_scope,
-            scopes: builder
-                .scopes
-                .into_unique()
-                .into_iter()
-                .map(|(id, scope)| (id, (scope.span, scope.parent)))
-                .collect(),
             statements,
         }
     }
-}
-
-#[derive(Debug, Clone)]
-struct Scope {
-    id: ScopeId,
-    span: Option<Span>,
-    parent: Option<ScopeId>,
-    syntaxes: HashMap<InternedString, SyntaxAssignmentValue>,
 }
 
 #[derive(Clone)]
@@ -112,13 +95,70 @@ struct AstBuilder {
     compiler: Compiler,
     dependencies: Shared<HashMap<FilePath, (Arc<File>, Option<HashMap<InternedString, Span>>)>>,
     attributes: Shared<FileAttributes>,
-    scopes: Shared<BTreeMap<ScopeId, Scope>>,
     load: Arc<
         dyn Fn(Compiler, Span, FilePath) -> BoxFuture<'static, Option<Arc<File>>> + Send + Sync,
     >,
 }
 
 impl AstBuilder {
+    async fn build_expr<S: Syntax>(
+        &self,
+        context: S::Context,
+        expr: parse::Expr,
+    ) -> Result<<S::Context as SyntaxContext>::Body, SyntaxError>
+    where
+        S::Context: FileBodySyntaxContext,
+        <<<S as Syntax>::Context as SyntaxContext>::Statement as Syntax>::Context:
+            FileBodySyntaxContext,
+    {
+        match expr.kind {
+            parse::ExprKind::Block(statements) => {
+                let statements = self
+                    .build_statements::<<S::Context as SyntaxContext>::Statement>(statements)
+                    .await;
+
+                context.build_block(expr.span, statements).await
+            }
+            parse::ExprKind::List(lines) => {
+                let exprs = lines
+                    .into_iter()
+                    .flat_map(|line| line.exprs)
+                    .collect::<Vec<_>>();
+
+                match self
+                    .build_list::<S>(context.clone(), expr.span, &exprs)
+                    .await
+                {
+                    Some(result) => result,
+                    None => {
+                        context
+                            .build_terminal(parse::Expr::list(expr.span, exprs))
+                            .await
+                    }
+                }
+            }
+            _ => context.build_terminal(expr).await,
+        }
+    }
+
+    async fn build_statements<S: Syntax>(
+        &self,
+        statements: impl IntoIterator<Item = parse::Statement>,
+    ) -> impl Iterator<Item = Result<<S::Context as SyntaxContext>::Body, SyntaxError>>
+    where
+        S::Context: FileBodySyntaxContext,
+    {
+        stream::iter(statements)
+            .then(|statement| {
+                let context = <S as Syntax>::Context::new(self.clone());
+                self.build_statement::<S>(context, statement)
+            })
+            .collect::<Vec<_>>()
+            .await
+            .into_iter()
+            .flatten()
+    }
+
     async fn build_statement<S: Syntax>(
         &self,
         context: S::Context,
@@ -144,18 +184,21 @@ impl AstBuilder {
             let context = StatementAttributeSyntaxContext::new(self.clone())
                 .with_statement_attributes(attributes.clone());
 
-            // The result of a statement attribute doesn't affect whether the
-            // statement's expression can be parsed
-            let _ = self
+            if self
                 .build_list::<StatementAttributeSyntax>(
                     context.clone(),
                     attribute.span,
                     &attribute.exprs,
                 )
                 .await
-                .unwrap_or_else(|| {
-                    context.build_terminal(parse::Expr::list(attribute.span, attribute.exprs))
-                });
+                .is_none()
+            {
+                // The result of a statement attribute doesn't affect whether the
+                // statement's expression can be parsed
+                let _ = context
+                    .build_terminal(parse::Expr::list(attribute.span, attribute.exprs))
+                    .await;
+            }
         }
 
         let exprs = exprs.into_iter().flatten().collect::<Vec<_>>();
@@ -175,52 +218,11 @@ impl AstBuilder {
 
         let context = context.with_statement_attributes(attributes.clone());
 
-        Some(
-            self.build_list::<S>(context.clone(), span, &exprs)
-                .await
-                .unwrap_or_else(|| context.build_terminal(parse::Expr::list(span, exprs))),
-        )
-    }
+        let result = match self.build_list::<S>(context.clone(), span, &exprs).await {
+            Some(result) => result,
+            None => context.build_terminal(parse::Expr::list(span, exprs)).await,
+        };
 
-    async fn build_expr<S: Syntax>(
-        &self,
-        context: S::Context,
-        expr: parse::Expr,
-    ) -> Result<<S::Context as SyntaxContext>::Body, SyntaxError>
-    where
-        S::Context: FileBodySyntaxContext,
-        <<<S as Syntax>::Context as SyntaxContext>::Statement as Syntax>::Context:
-            FileBodySyntaxContext,
-    {
-        match expr.kind {
-            parse::ExprKind::Block(statements) => {
-                let statements = stream::iter(statements)
-                    .then(|statement| {
-                        let context = <<<S as Syntax>::Context as SyntaxContext>::Statement as Syntax>::Context::new(self.clone());
-                        self.build_statement::<<S::Context as SyntaxContext>::Statement>(
-                            context, statement,
-                        )
-                    })
-                    .collect::<Vec<_>>()
-                    .await
-                    .into_iter()
-                    .flatten()
-                    .filter_map(Result::ok)
-                    .collect::<Vec<_>>();
-
-                context.build_block(expr.span, statements.into_iter()).await
-            }
-            parse::ExprKind::List(lines) => {
-                let exprs = lines
-                    .into_iter()
-                    .flat_map(|line| line.exprs)
-                    .collect::<Vec<_>>();
-
-                self.build_list::<S>(context.clone(), expr.span, &exprs)
-                    .await
-                    .unwrap_or_else(|| context.build_terminal(parse::Expr::list(expr.span, exprs)))
-            }
-            _ => context.build_terminal(expr),
-        }
+        Some(result)
     }
 }

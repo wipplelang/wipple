@@ -1,8 +1,8 @@
 mod assign;
 
-// pub use assign::AssignDestructuringSyntax;
+pub use assign::AssignDestructuringSyntax;
 
-// use assign::*;
+use assign::*;
 
 use crate::{
     analysis::ast_v2::{
@@ -19,7 +19,7 @@ syntax_group! {
     #[derive(Debug, Clone)]
     pub type Destructuring<DestructuringSyntaxContext> {
         non_terminal: {
-            // Assign,
+            Assign,
         },
         terminal: {
             Name,
@@ -61,8 +61,12 @@ impl SyntaxContext for DestructuringSyntaxContext {
     async fn build_block(
         self,
         span: parse::Span,
-        _statements: impl Iterator<Item = <<Self::Statement as Syntax>::Context as SyntaxContext>::Body>
-            + Send,
+        _statements: impl Iterator<
+                Item = Result<
+                    <<Self::Statement as Syntax>::Context as SyntaxContext>::Body,
+                    SyntaxError,
+                >,
+            > + Send,
     ) -> Result<Self::Body, SyntaxError> {
         self.ast_builder.compiler.add_error(
             "syntax error",
@@ -75,7 +79,7 @@ impl SyntaxContext for DestructuringSyntaxContext {
         Err(self.ast_builder.syntax_error(span))
     }
 
-    fn build_terminal(self, expr: parse::Expr) -> Result<Self::Body, SyntaxError> {
+    async fn build_terminal(self, expr: parse::Expr) -> Result<Self::Body, SyntaxError> {
         match expr.try_into_list_exprs() {
             Ok((span, exprs)) => {
                 let names = exprs

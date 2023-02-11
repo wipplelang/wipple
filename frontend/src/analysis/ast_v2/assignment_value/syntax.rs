@@ -1,6 +1,9 @@
-use crate::analysis::ast_v2::{
-    assignment_value::AssignmentValueSyntaxContext,
-    syntax::{Syntax, SyntaxRule, SyntaxRules},
+use crate::{
+    analysis::ast_v2::{
+        assignment_value::AssignmentValueSyntaxContext,
+        syntax::{Syntax, SyntaxRule, SyntaxRules},
+    },
+    diagnostics::Note,
 };
 
 #[derive(Debug, Clone)]
@@ -14,8 +17,16 @@ impl Syntax for SyntaxAssignmentValueSyntax {
     fn rules() -> SyntaxRules<Self> {
         SyntaxRules::new().with(SyntaxRule::<Self>::function(
             "syntax",
-            |context, span, exprs| async move {
-                todo!();
+            |context, span, _exprs| async move {
+                context.ast_builder.compiler.add_error(
+                    "syntax error",
+                    vec![Note::primary(
+                        span,
+                        "`syntax` definitions are not yet supported",
+                    )],
+                );
+
+                Err(context.ast_builder.syntax_error(span))
             },
         ))
     }

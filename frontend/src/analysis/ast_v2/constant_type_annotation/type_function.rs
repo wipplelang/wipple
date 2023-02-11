@@ -1,27 +1,27 @@
 use crate::{
     analysis::ast_v2::{
-        assignment_pattern::AssignmentPatternSyntaxContext,
+        constant_type_annotation::ConstantTypeAnnotationSyntaxContext,
         syntax::{
             FileBodySyntaxContext, OperatorAssociativity, Syntax, SyntaxContext, SyntaxError,
             SyntaxRule, SyntaxRules,
         },
-        AssignmentPattern, AssignmentPatternSyntax, TypePattern, TypePatternSyntax,
+        ConstantTypeAnnotation, ConstantTypeAnnotationSyntax, TypePattern, TypePatternSyntax,
         TypePatternSyntaxContext,
     },
     parse::{self, Span},
 };
 
 #[derive(Debug, Clone)]
-pub struct TypeFunctionAssignmentPattern {
+pub struct TypeFunctionConstantTypeAnnotation {
     pub arrow_span: Span,
-    pub type_pattern: Result<TypePattern, SyntaxError>,
-    pub assignment_pattern: Result<Box<AssignmentPattern>, SyntaxError>,
+    pub pattern: Result<TypePattern, SyntaxError>,
+    pub annotation: Result<Box<ConstantTypeAnnotation>, SyntaxError>,
 }
 
-pub struct TypeFunctionAssignmentPatternSyntax;
+pub struct TypeFunctionConstantTypeAnnotationSyntax;
 
-impl Syntax for TypeFunctionAssignmentPatternSyntax {
-    type Context = AssignmentPatternSyntaxContext;
+impl Syntax for TypeFunctionConstantTypeAnnotationSyntax {
+    type Context = ConstantTypeAnnotationSyntaxContext;
 
     fn rules() -> SyntaxRules<Self> {
         SyntaxRules::new().with(SyntaxRule::<Self>::operator(
@@ -30,7 +30,7 @@ impl Syntax for TypeFunctionAssignmentPatternSyntax {
             |context, (lhs_span, lhs), operator_span, (rhs_span, rhs)| async move {
                 let lhs = parse::Expr::list(lhs_span, lhs);
 
-                let type_pattern = context
+                let pattern = context
                     .ast_builder
                     .build_expr::<TypePatternSyntax>(
                         TypePatternSyntaxContext::new(context.ast_builder.clone())
@@ -43,10 +43,10 @@ impl Syntax for TypeFunctionAssignmentPatternSyntax {
 
                 let rhs = parse::Expr::list(rhs_span, rhs);
 
-                let assignment_pattern = context
+                let annotation = context
                     .ast_builder
-                    .build_expr::<AssignmentPatternSyntax>(
-                        AssignmentPatternSyntaxContext::new(context.ast_builder.clone())
+                    .build_expr::<ConstantTypeAnnotationSyntax>(
+                        ConstantTypeAnnotationSyntaxContext::new(context.ast_builder.clone())
                             .with_statement_attributes(
                                 context.statement_attributes.as_ref().unwrap().clone(),
                             ),
@@ -54,10 +54,10 @@ impl Syntax for TypeFunctionAssignmentPatternSyntax {
                     )
                     .await;
 
-                Ok(TypeFunctionAssignmentPattern {
+                Ok(TypeFunctionConstantTypeAnnotation {
                     arrow_span: operator_span,
-                    type_pattern,
-                    assignment_pattern: assignment_pattern.map(Box::new),
+                    pattern,
+                    annotation: annotation.map(Box::new),
                 }
                 .into())
             },

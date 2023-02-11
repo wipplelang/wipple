@@ -1,10 +1,18 @@
-use crate::analysis::ast_v2::{
-    assignment_value::AssignmentValueSyntaxContext,
-    syntax::{Syntax, SyntaxRule, SyntaxRules},
+use crate::{
+    analysis::ast_v2::{
+        assignment_value::AssignmentValueSyntaxContext,
+        syntax::{
+            FileBodySyntaxContext, Syntax, SyntaxContext, SyntaxError, SyntaxRule, SyntaxRules,
+        },
+        Type, TypeSyntax, TypeSyntaxContext,
+    },
+    diagnostics::Note,
 };
 
 #[derive(Debug, Clone)]
-pub struct TraitAssignmentValue;
+pub struct TraitAssignmentValue {
+    pub ty: Option<Result<Type, SyntaxError>>,
+}
 
 pub struct TraitAssignmentValueSyntax;
 
@@ -14,8 +22,32 @@ impl Syntax for TraitAssignmentValueSyntax {
     fn rules() -> SyntaxRules<Self> {
         SyntaxRules::new().with(SyntaxRule::<Self>::function(
             "trait",
-            |context, span, exprs| async move {
-                todo!();
+            |context, span, mut exprs| async move {
+                match exprs.len() {
+                    0 => Ok(TraitAssignmentValue { ty: None }.into()),
+                    1 => {
+                        let ty = context
+                            .ast_builder
+                            .build_expr::<TypeSyntax>(
+                                TypeSyntaxContext::new(context.ast_builder.clone())
+                                    .with_statement_attributes(
+                                        context.statement_attributes.as_ref().unwrap().clone(),
+                                    ),
+                                exprs.pop().unwrap(),
+                            )
+                            .await;
+
+                        Ok(TraitAssignmentValue { ty: Some(ty) }.into())
+                    }
+                    _ => {
+                        context.ast_builder.compiler.add_error(
+                            "syntax error",
+                            vec![Note::primary(span, "`trait` accepts 1 input")],
+                        );
+
+                        Err(context.ast_builder.syntax_error(span))
+                    }
+                }
             },
         ))
     }

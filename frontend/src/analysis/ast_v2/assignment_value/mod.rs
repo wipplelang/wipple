@@ -19,8 +19,9 @@ use type_function::*;
 use crate::{
     analysis::ast_v2::{
         syntax::{FileBodySyntaxContext, Syntax, SyntaxContext, SyntaxError},
-        AstBuilder, StatementSyntax,
+        AstBuilder, ExpressionSyntaxContext, StatementSyntax,
     },
+    diagnostics::Note,
     helpers::Shared,
     parse,
 };
@@ -61,14 +62,29 @@ impl SyntaxContext for AssignmentValueSyntaxContext {
     async fn build_block(
         self,
         span: parse::Span,
-        statements: impl Iterator<Item = <<Self::Statement as Syntax>::Context as SyntaxContext>::Body>
-            + Send,
+        statements: impl Iterator<
+                Item = Result<
+                    <<Self::Statement as Syntax>::Context as SyntaxContext>::Body,
+                    SyntaxError,
+                >,
+            > + Send,
     ) -> Result<Self::Body, SyntaxError> {
-        todo!()
+        let context = ExpressionSyntaxContext::new(self.ast_builder)
+            .with_statement_attributes(self.statement_attributes.unwrap());
+
+        context.build_block(span, statements).await.map(From::from)
     }
 
-    fn build_terminal(self, expr: parse::Expr) -> Result<Self::Body, SyntaxError> {
-        todo!()
+    async fn build_terminal(self, expr: parse::Expr) -> Result<Self::Body, SyntaxError> {
+        self.ast_builder.compiler.add_error(
+            "syntax error",
+            vec![Note::primary(
+                expr.span,
+                "expected value on right-hand side of assignment",
+            )],
+        );
+
+        Err(self.ast_builder.syntax_error(expr.span))
     }
 }
 impl FileBodySyntaxContext for AssignmentValueSyntaxContext {

@@ -60,13 +60,17 @@ impl SyntaxContext for TypePatternSyntaxContext {
     async fn build_block(
         self,
         span: parse::Span,
-        statements: impl Iterator<Item = <<Self::Statement as Syntax>::Context as SyntaxContext>::Body>
-            + Send,
+        statements: impl Iterator<
+                Item = Result<
+                    <<Self::Statement as Syntax>::Context as SyntaxContext>::Body,
+                    SyntaxError,
+                >,
+            > + Send,
     ) -> Result<Self::Body, SyntaxError> {
         todo!()
     }
 
-    fn build_terminal(self, expr: parse::Expr) -> Result<Self::Body, SyntaxError> {
+    async fn build_terminal(self, expr: parse::Expr) -> Result<Self::Body, SyntaxError> {
         todo!()
     }
 }
