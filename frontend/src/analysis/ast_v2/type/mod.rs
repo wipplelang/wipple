@@ -27,10 +27,16 @@ syntax_group! {
             Tuple,
         },
         terminal: {
+            Placeholder,
             Unit,
             Named,
         },
     }
+}
+
+#[derive(Debug, Clone)]
+pub struct PlaceholderType {
+    pub span: Span,
 }
 
 #[derive(Debug, Clone)]

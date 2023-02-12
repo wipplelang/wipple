@@ -1,0 +1,64 @@
+use crate::{
+    analysis::ast_v2::{
+        syntax::{
+            FileBodySyntaxContext, OperatorAssociativity, Syntax, SyntaxContext, SyntaxError,
+            SyntaxRule, SyntaxRules,
+        },
+        AssignmentPattern, AssignmentPatternSyntax, AssignmentPatternSyntaxContext,
+        AssignmentValue, AssignmentValueSyntax, AssignmentValueSyntaxContext,
+        StatementSyntaxContext,
+    },
+    parse::{self, Span},
+};
+
+#[derive(Debug, Clone)]
+pub struct AssignStatement {
+    pub colon_span: Span,
+    pub pattern: Result<AssignmentPattern, SyntaxError>,
+    pub value: Result<AssignmentValue, SyntaxError>,
+}
+
+pub struct AssignStatementSyntax;
+
+impl Syntax for AssignStatementSyntax {
+    type Context = StatementSyntaxContext;
+
+    fn rules() -> SyntaxRules<Self> {
+        SyntaxRules::new().with(SyntaxRule::<Self>::operator(
+            ":",
+            OperatorAssociativity::None,
+            |context, (lhs_span, lhs_exprs), operator_span, (rhs_span, rhs_exprs)| async move {
+                let lhs = parse::Expr::list(lhs_span, lhs_exprs);
+                let pattern = context
+                    .ast_builder
+                    .build_expr::<AssignmentPatternSyntax>(
+                        AssignmentPatternSyntaxContext::new(context.ast_builder.clone())
+                            .with_statement_attributes(
+                                context.statement_attributes.as_ref().unwrap().clone(),
+                            ),
+                        lhs,
+                    )
+                    .await;
+
+                let rhs = parse::Expr::list(rhs_span, rhs_exprs);
+                let value = context
+                    .ast_builder
+                    .build_expr::<AssignmentValueSyntax>(
+                        AssignmentValueSyntaxContext::new(context.ast_builder.clone())
+                            .with_statement_attributes(
+                                context.statement_attributes.as_ref().unwrap().clone(),
+                            ),
+                        rhs,
+                    )
+                    .await;
+
+                Ok(AssignStatement {
+                    colon_span: operator_span,
+                    pattern,
+                    value,
+                }
+                .into())
+            },
+        ))
+    }
+}

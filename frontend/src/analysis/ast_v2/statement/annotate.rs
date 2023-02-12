@@ -1,0 +1,83 @@
+use crate::{
+    analysis::ast_v2::{
+        syntax::{
+            FileBodySyntaxContext, OperatorAssociativity, Syntax, SyntaxContext, SyntaxError,
+            SyntaxRule, SyntaxRules,
+        },
+        ConstantTypeAnnotation, ConstantTypeAnnotationSyntax, ConstantTypeAnnotationSyntaxContext,
+        StatementSyntaxContext,
+    },
+    diagnostics::Note,
+    helpers::InternedString,
+    parse::{self, Span},
+};
+
+#[derive(Debug, Clone)]
+pub struct AnnotateStatement {
+    pub colon_span: Span,
+    pub name: Result<(Span, InternedString), SyntaxError>,
+    pub annotation: Result<ConstantTypeAnnotation, SyntaxError>,
+    pub specialize: bool,
+}
+
+pub struct AnnotateStatementSyntax;
+
+impl Syntax for AnnotateStatementSyntax {
+    type Context = StatementSyntaxContext;
+
+    fn rules() -> SyntaxRules<Self> {
+        SyntaxRules::new().with(SyntaxRule::<Self>::operator(
+            "::",
+            OperatorAssociativity::None,
+            |context, (lhs_span, mut lhs_exprs), operator_span, (rhs_span, rhs_exprs)| async move {
+                let name = if lhs_exprs.len() == 1 {
+                    let lhs = lhs_exprs.pop().unwrap();
+                    match lhs.kind {
+                        parse::ExprKind::Name(name) => Ok((lhs.span, name)),
+                        _ => {
+                            context.ast_builder.compiler.add_error(
+                                "syntax error",
+                                vec![
+                                    Note::primary(lhs.span, "expected a name in constant declaration"),
+                                    Note::secondary(lhs.span, "if you intended to annotate the type of an expression, try wrapping this in parentheses"),
+                                ],
+                            );
+
+                            Err(context.ast_builder.syntax_error(lhs.span))
+                        }
+                    }
+                } else {
+                    context.ast_builder.compiler.add_error(
+                        "syntax error",
+                        vec![
+                            Note::primary(lhs_span, "expected a name in constant declaration"),
+                            Note::secondary(lhs_span, "if you intended to annotate the type of an expression, try wrapping this in parentheses"),
+                        ],
+                    );
+
+                    Err(context.ast_builder.syntax_error(lhs_span))
+                };
+
+                let rhs = parse::Expr::list(rhs_span, rhs_exprs);
+                let ty = context
+                    .ast_builder
+                    .build_expr::<ConstantTypeAnnotationSyntax>(
+                        ConstantTypeAnnotationSyntaxContext::new(context.ast_builder.clone())
+                            .with_statement_attributes(
+                                context.statement_attributes.as_ref().unwrap().clone(),
+                            ),
+                        rhs,
+                    )
+                    .await;
+
+                Ok(AnnotateStatement {
+                    colon_span: operator_span,
+                    name,
+                    annotation: ty,
+                    specialize: context.statement_attributes.unwrap().lock().specialize.is_some(),
+                }
+                .into())
+            },
+        ))
+    }
+}

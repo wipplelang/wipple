@@ -242,7 +242,7 @@ impl AstBuilder {
             match rule.kind {
                 SyntaxRuleKind::Function(apply) => {
                     if let Some(fut) =
-                        self.apply_function_syntax::<S>(rule.name, apply, context, span, exprs)
+                        self.apply_function_syntax::<S>(rule.name, apply, context, exprs)
                     {
                         if let Some(result) = fut.await {
                             return Some(result);
@@ -282,10 +282,24 @@ impl AstBuilder {
             + Sync
             + 'static,
         context: S::Context,
-        span: parse::Span,
         exprs: &[parse::Expr],
     ) -> Option<BoxFuture<Option<Result<<S::Context as SyntaxContext>::Body, SyntaxError>>>> {
-        todo!()
+        let mut exprs = exprs.iter();
+
+        let first = exprs.next()?;
+
+        if let parse::ExprKind::Name(first_name) = &first.kind {
+            if first_name.as_str() == name {
+                let span = first.span;
+                let exprs = exprs.cloned().collect();
+
+                return Some(Box::pin(
+                    async move { Some(apply(context, span, exprs)?.await) },
+                ));
+            }
+        }
+
+        None
     }
 
     fn apply_operator_syntax<S: Syntax + ?Sized>(

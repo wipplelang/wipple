@@ -640,11 +640,7 @@ pub enum RuntimeFunction {
 }
 
 impl Compiler {
-    pub(crate) fn lower(
-        &self,
-        file: ast::File,
-        dependencies: Vec<(Arc<File>, Option<HashMap<InternedString, Span>>)>,
-    ) -> File {
+    pub(crate) fn lower(&self, file: ast::File, dependencies: Vec<Arc<File>>) -> File {
         let mut info = Info {
             file: file.path,
             declarations: Default::default(),
@@ -660,7 +656,7 @@ impl Compiler {
 
         info.declarations.syntaxes = file.syntax_declarations;
 
-        for (dependency, imports) in dependencies {
+        for dependency in dependencies {
             macro_rules! merge_dependency {
                 ($($kind:ident$(($transform:expr))?),* $(,)?) => {
                     $(
@@ -696,20 +692,7 @@ impl Compiler {
                 }
             }
 
-            if let Some(imports) = imports {
-                for (name, span) in imports {
-                    if let Some(value) = dependency.exported.get(&name) {
-                        scope.insert(name, value.clone());
-                    } else {
-                        self.add_error(
-                            format!("file does not export a value named '{}'", name),
-                            vec![Note::primary(span, "no such export")],
-                        );
-                    }
-                }
-            } else {
-                scope.extend(dependency.exported.clone());
-            }
+            scope.extend(dependency.exported.clone());
         }
 
         let block = self.lower_statements(file.statements, &scope, &mut info);

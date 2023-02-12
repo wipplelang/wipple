@@ -13,11 +13,11 @@ use type_function::*;
 use crate::{
     analysis::ast_v2::{
         syntax::{FileBodySyntaxContext, Syntax, SyntaxContext, SyntaxError},
-        AstBuilder, Destructuring, DestructuringSyntax, PatternSyntaxContext, StatementAttributes,
+        AstBuilder, DestructuringSyntax, PatternSyntaxContext, StatementAttributes,
     },
     diagnostics::Note,
     helpers::Shared,
-    parse::{self, Span},
+    parse,
 };
 use async_trait::async_trait;
 
@@ -29,16 +29,8 @@ syntax_group! {
             TypeFunction,
             Pattern,
         },
-        terminal: {
-            Destructure,
-        },
+        terminal: {},
     }
-}
-
-#[derive(Debug, Clone)]
-pub struct DestructureAssignmentPattern {
-    pub span: Span,
-    pub destructurings: Vec<Destructuring>,
 }
 
 #[derive(Clone)]

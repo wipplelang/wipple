@@ -31,7 +31,7 @@ pub trait Loader: Debug + Send + Sync + 'static {
 
     fn virtual_paths(&self) -> Shared<HashMap<InternedString, Arc<str>>>;
 
-    fn cache(&self) -> Shared<HashMap<FilePath, Arc<analysis::expand::File>>>;
+    fn cache(&self) -> Shared<HashMap<FilePath, Arc<analysis::ast_v2::File>>>;
 
     fn source_map(&self) -> Shared<SourceMap>;
 }

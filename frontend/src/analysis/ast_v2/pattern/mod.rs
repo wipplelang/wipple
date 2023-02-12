@@ -1,12 +1,15 @@
 mod annotate;
+mod or;
 mod tuple;
 mod r#where;
 
 pub use annotate::AnnotatePattern;
+pub use or::OrPattern;
 pub use r#where::WherePattern;
 pub use tuple::TuplePattern;
 
 use annotate::*;
+use or::*;
 use r#where::*;
 use tuple::*;
 
@@ -29,6 +32,7 @@ syntax_group! {
             Tuple,
             Annotate,
             Where,
+            Or,
         },
         terminal: {
             Name,

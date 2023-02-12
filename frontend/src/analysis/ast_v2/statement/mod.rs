@@ -4,16 +4,16 @@ mod expression;
 mod instance;
 mod r#use;
 
-// pub use annotate::AnnotateStatement;
-// pub use assign::AssignStatement;
+pub use annotate::AnnotateStatement;
+pub use assign::AssignStatement;
 pub use expression::ExpressionStatement;
-// pub use instance::InstanceStatement;
+pub use instance::InstanceStatement;
 pub use r#use::UseStatement;
 
+use annotate::*;
+use assign::*;
 use expression::*;
-// use annotate::*;
-// use assign::*;
-// use instance::*;
+use instance::*;
 use r#use::*;
 
 use crate::{
@@ -31,9 +31,9 @@ syntax_group! {
     #[derive(Debug, Clone)]
     pub type Statement<StatementSyntaxContext> {
         non_terminal: {
-            // Annotate,
-            // Assign,
-            // Instance,
+            Annotate,
+            Assign,
+            Instance,
             Use,
             Expression,
         },

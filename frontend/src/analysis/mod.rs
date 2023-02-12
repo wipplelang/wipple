@@ -5,6 +5,7 @@ pub mod ast_v2;
 pub mod expand;
 pub mod lint;
 pub mod lower;
+pub mod lower_v2;
 pub mod optimize;
 pub mod typecheck;
 
@@ -84,7 +85,7 @@ impl Compiler {
         &self,
         entrypoint: FilePath,
         options: &Options,
-    ) -> indexmap::IndexMap<FilePath, Arc<expand::File>> {
+    ) -> indexmap::IndexMap<FilePath, Arc<ast_v2::File>> {
         #[async_recursion]
         async fn load(
             compiler: Compiler,
@@ -93,10 +94,10 @@ impl Compiler {
             source_span: Option<Span>,
             entrypoint: FilePath,
             count: Arc<AtomicUsize>,
-            files: Shared<indexmap::IndexMap<FilePath, Arc<expand::File>>>,
+            files: Shared<indexmap::IndexMap<FilePath, Arc<ast_v2::File>>>,
             stack: Shared<Vec<FilePath>>,
             options: &Options,
-        ) -> Option<Arc<expand::File>> {
+        ) -> Option<Arc<ast_v2::File>> {
             macro_rules! try_load {
                 ($expr:expr) => {
                     match $expr {
@@ -120,10 +121,10 @@ impl Compiler {
 
             if let Some(cached) = compiler.loader.cache().lock().get(&resolved_path) {
                 fn insert(
-                    file: Arc<expand::File>,
-                    files: &mut indexmap::IndexMap<FilePath, Arc<expand::File>>,
+                    file: Arc<ast_v2::File>,
+                    files: &mut indexmap::IndexMap<FilePath, Arc<ast_v2::File>>,
                 ) {
-                    for (dependency, _) in &file.dependencies {
+                    for dependency in &file.dependencies {
                         insert(dependency.clone(), files);
                     }
 
@@ -182,7 +183,7 @@ impl Compiler {
             stack.lock().push(resolved_path);
 
             let file = compiler
-                .expand(file, {
+                .build_ast_v2(file, {
                     let count = count.clone();
                     let files = files.clone();
                     let stack = stack.clone();
@@ -252,12 +253,12 @@ impl Compiler {
 
     pub fn lower_with(
         &self,
-        files: indexmap::IndexMap<FilePath, Arc<expand::File>>,
+        files: indexmap::IndexMap<FilePath, Arc<ast_v2::File>>,
         _options: &Options,
     ) -> (lower::File, bool) {
         assert!(!files.is_empty(), "expected at least one file");
 
-        fn lower(compiler: &Compiler, file: Arc<expand::File>) -> Arc<lower::File> {
+        fn lower(compiler: &Compiler, file: Arc<ast_v2::File>) -> Arc<lower::File> {
             let path = file.span.path;
 
             if let Some(file) = compiler.cache.lock().get(&path) {
@@ -268,12 +269,10 @@ impl Compiler {
                 .dependencies
                 .clone()
                 .into_iter()
-                .map(|(file, imports)| (lower(compiler, file), imports))
+                .map(|file| lower(compiler, file))
                 .collect::<Vec<_>>();
 
-            let file = compiler.build_ast((*file).clone());
-
-            let file = Arc::new(compiler.lower(file, dependencies));
+            let file = Arc::new(compiler.lower(todo!(), dependencies));
 
             // Only cache files already cached by loader
             if compiler.loader.cache().lock().contains_key(&path) {

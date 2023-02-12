@@ -20,6 +20,7 @@ mod when_arm;
 mod when_body;
 
 pub use attributes::*;
+pub use syntax::SyntaxError;
 
 pub use assignment_pattern::*;
 pub use assignment_value::*;
@@ -45,11 +46,12 @@ use crate::{
 };
 use futures::{future::BoxFuture, stream, StreamExt};
 use std::{collections::BTreeMap, sync::Arc};
-use syntax::{FileBodySyntaxContext, Syntax, SyntaxContext, SyntaxError};
+use syntax::{FileBodySyntaxContext, Syntax, SyntaxContext};
 
 #[derive(Debug, Clone)]
 pub struct File {
     pub span: Span,
+    pub dependencies: Vec<Arc<File>>,
     pub attributes: FileAttributes,
     pub syntax_declarations: BTreeMap<TemplateId, SyntaxAssignmentValue>,
     pub statements: Vec<Result<Statement, SyntaxError>>,
@@ -64,7 +66,7 @@ impl Compiler {
             + Send
             + Sync,
     ) -> File {
-        let builder = AstBuilder {
+        let ast_builder = AstBuilder {
             file: file.span.path,
             compiler: self.clone(),
             dependencies: Default::default(),
@@ -74,8 +76,8 @@ impl Compiler {
 
         let statements = stream::iter(file.statements)
             .then(|statement| {
-                let context = StatementSyntaxContext::new(builder.clone());
-                builder.build_statement::<StatementSyntax>(context, statement)
+                let context = StatementSyntaxContext::new(ast_builder.clone());
+                ast_builder.build_statement::<StatementSyntax>(context, statement)
             })
             .collect::<Vec<_>>()
             .await
@@ -85,8 +87,9 @@ impl Compiler {
 
         File {
             span: file.span,
-            attributes: builder.attributes.into_unique(),
-            syntax_declarations: BTreeMap::new(),
+            dependencies: ast_builder.dependencies.into_unique(),
+            attributes: ast_builder.attributes.into_unique(),
+            syntax_declarations: BTreeMap::new(), // TODO
             statements,
         }
     }
