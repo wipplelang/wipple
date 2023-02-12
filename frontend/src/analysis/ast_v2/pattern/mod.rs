@@ -42,6 +42,7 @@ syntax_group! {
             Unit,
             Variant,
             Destructure,
+            Wildcard,
         },
     }
 }
@@ -81,6 +82,11 @@ pub struct VariantPattern {
 pub struct DestructurePattern {
     pub span: Span,
     pub destructurings: Vec<Result<Destructuring, SyntaxError>>,
+}
+
+#[derive(Debug, Clone)]
+pub struct WildcardPattern {
+    pub span: Span,
 }
 
 #[derive(Clone)]
@@ -177,6 +183,7 @@ impl SyntaxContext for PatternSyntaxContext {
                 }
                 .into())
             }
+            parse::ExprKind::Underscore => Ok(WildcardPattern { span: expr.span }.into()),
             _ => {
                 self.ast_builder.compiler.add_error(
                     "syntax error",

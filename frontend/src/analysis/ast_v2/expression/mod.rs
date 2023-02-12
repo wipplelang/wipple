@@ -48,13 +48,19 @@ syntax_group! {
             When,
         },
         terminal: {
+            Unit,
             Name,
             Text,
             Number,
-            List,
+            Call,
             Block,
         },
     }
+}
+
+#[derive(Debug, Clone)]
+pub struct UnitExpression {
+    pub span: Span,
 }
 
 #[derive(Debug, Clone)]
@@ -77,9 +83,10 @@ pub struct NumberExpression {
 }
 
 #[derive(Debug, Clone)]
-pub struct ListExpression {
+pub struct CallExpression {
     pub span: Span,
-    pub exprs: Vec<Result<Expression, SyntaxError>>,
+    pub function: Result<Box<Expression>, SyntaxError>,
+    pub inputs: Vec<Result<Expression, SyntaxError>>,
 }
 
 #[derive(Debug, Clone)]
@@ -135,7 +142,18 @@ impl SyntaxContext for ExpressionSyntaxContext {
     ) -> Result<Self::Body, SyntaxError> {
         match expr.try_into_list_exprs() {
             Ok((span, exprs)) => {
-                let exprs = stream::iter(exprs)
+                let mut exprs = exprs.into_iter();
+
+                let function = match exprs.next() {
+                    Some(expr) => {
+                        self.ast_builder
+                            .build_expr::<ExpressionSyntax>(self.clone(), expr, scope)
+                            .await
+                    }
+                    None => return Ok(UnitExpression { span }.into()),
+                };
+
+                let inputs = stream::iter(exprs)
                     .then(|expr| {
                         self.ast_builder
                             .build_expr::<ExpressionSyntax>(self.clone(), expr, scope)
@@ -143,7 +161,12 @@ impl SyntaxContext for ExpressionSyntaxContext {
                     .collect::<Vec<_>>()
                     .await;
 
-                Ok(ListExpression { span, exprs }.into())
+                Ok(CallExpression {
+                    span,
+                    function: function.map(Box::new),
+                    inputs,
+                }
+                .into())
             }
             Err(expr) => match expr.kind {
                 parse::ExprKind::Name(name) => Ok(NameExpression {

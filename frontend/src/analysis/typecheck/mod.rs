@@ -972,7 +972,7 @@ impl Typechecker {
                                 id,
                                 params
                                     .into_iter()
-                                    .map(|param| engine::UnresolvedType::Parameter(param))
+                                    .map(engine::UnresolvedType::Parameter)
                                     .collect(),
                                 engine::TypeStructure::Marker,
                             )
@@ -1275,7 +1275,7 @@ impl Typechecker {
                     id,
                     params
                         .into_iter()
-                        .map(|param| engine::UnresolvedType::Parameter(param))
+                        .map(engine::UnresolvedType::Parameter)
                         .collect(),
                     engine::TypeStructure::Structure(structure_field_tys.clone()),
                 );
@@ -1415,7 +1415,7 @@ impl Typechecker {
                     id,
                     params
                         .into_iter()
-                        .map(|param| engine::UnresolvedType::Parameter(param))
+                        .map(engine::UnresolvedType::Parameter)
                         .collect(),
                     engine::TypeStructure::Enumeration(variants_tys.clone()),
                 );
@@ -3316,7 +3316,7 @@ impl Typechecker {
             .clone()
             .into_iter()
             .map(|bound| Bound {
-                span: bound.span,
+                span: bound.tr_span,
                 trait_id: bound.tr,
                 params: bound
                     .parameters
@@ -3434,7 +3434,7 @@ impl Typechecker {
             .clone()
             .into_iter()
             .map(|bound| Bound {
-                span: bound.span,
+                span: bound.tr_span,
                 trait_id: bound.tr,
                 params: bound
                     .parameters
