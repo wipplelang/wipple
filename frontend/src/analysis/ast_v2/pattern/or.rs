@@ -22,17 +22,17 @@ impl Syntax for OrPatternSyntax {
         SyntaxRules::new().with(SyntaxRule::<Self>::operator(
             "or",
             OperatorAssociativity::Left,
-            |context, (lhs_span, lhs_exprs), operator_span, (rhs_span, rhs_exprs)| async move {
+            |context, (lhs_span, lhs_exprs), operator_span, (rhs_span, rhs_exprs), scope| async move {
                 let lhs = parse::Expr::list(lhs_span, lhs_exprs);
                 let left = context
                     .ast_builder
-                    .build_expr::<PatternSyntax>(context.clone(), lhs)
+                    .build_expr::<PatternSyntax>(context.clone(), lhs, scope)
                     .await;
 
                 let rhs = parse::Expr::list(rhs_span, rhs_exprs);
                 let right = context
                     .ast_builder
-                    .build_expr::<PatternSyntax>(context.clone(), rhs)
+                    .build_expr::<PatternSyntax>(context.clone(), rhs, scope)
                     .await;
 
                 Ok(OrPattern {

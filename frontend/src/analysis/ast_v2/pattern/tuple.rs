@@ -23,7 +23,7 @@ impl Syntax for TuplePatternSyntax {
         SyntaxRules::new().with(SyntaxRule::<Self>::operator(
             ",",
             OperatorAssociativity::Variadic,
-            |context, (_span, exprs), operator_span, (_unused_span, unused_exprs)| async move {
+            |context, (_span, exprs), operator_span, (_unused_span, unused_exprs), scope| async move {
                 // HACK: All of the expressions are contained in `lhs`. In the
                 // future, handle variadic operators specially.
                 assert!(unused_exprs.is_empty());
@@ -32,7 +32,7 @@ impl Syntax for TuplePatternSyntax {
                     .then(|expr| {
                         context
                             .ast_builder
-                            .build_expr::<PatternSyntax>(context.clone(), expr)
+                            .build_expr::<PatternSyntax>(context.clone(), expr, scope)
                     })
                     .collect()
                     .await;

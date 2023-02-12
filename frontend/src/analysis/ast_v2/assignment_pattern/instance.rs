@@ -27,7 +27,7 @@ impl Syntax for InstanceAssignmentPatternSyntax {
     fn rules() -> SyntaxRules<Self> {
         SyntaxRules::new().with(SyntaxRule::<Self>::function(
             "instance",
-            |context, span, mut exprs| async move {
+            |context, span, mut exprs, scope| async move {
                 if exprs.len() != 1 {
                     context.ast_builder.compiler.add_error(
                         "syntax error",
@@ -73,9 +73,11 @@ impl Syntax for InstanceAssignmentPatternSyntax {
 
                         let params = stream::iter(exprs)
                             .then(|expr| {
-                                context
-                                    .ast_builder
-                                    .build_expr::<TypeSyntax>(context.clone(), expr)
+                                context.ast_builder.build_expr::<TypeSyntax>(
+                                    context.clone(),
+                                    expr,
+                                    scope,
+                                )
                             })
                             .collect()
                             .await;

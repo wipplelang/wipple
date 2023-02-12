@@ -2,7 +2,7 @@ use crate::{
     analysis::ast_v2::{AstBuilder, StatementAttributes},
     diagnostics::Note,
     helpers::{Backtrace, Shared},
-    parse,
+    parse, ScopeId,
 };
 use async_trait::async_trait;
 use futures::{future::BoxFuture, Future};
@@ -35,10 +35,15 @@ pub(in crate::analysis::ast_v2) trait SyntaxContext:
                     SyntaxError,
                 >,
             > + Send,
+        scope: ScopeId,
     ) -> Result<Self::Body, SyntaxError>;
 
     /// Build an expression that contains no syntaxes or operators.
-    async fn build_terminal(self, expr: parse::Expr) -> Result<Self::Body, SyntaxError>;
+    async fn build_terminal(
+        self,
+        expr: parse::Expr,
+        scope: ScopeId,
+    ) -> Result<Self::Body, SyntaxError>;
 }
 
 pub(in crate::analysis::ast_v2) trait FileBodySyntaxContext:
@@ -88,11 +93,16 @@ impl SyntaxContext for std::convert::Infallible {
                     SyntaxError,
                 >,
             > + Send,
+        _scope: ScopeId,
     ) -> Result<Self::Body, SyntaxError> {
         unreachable!()
     }
 
-    async fn build_terminal(self, _expr: parse::Expr) -> Result<Self::Body, SyntaxError> {
+    async fn build_terminal(
+        self,
+        _expr: parse::Expr,
+        _scope: ScopeId,
+    ) -> Result<Self::Body, SyntaxError> {
         unreachable!()
     }
 }
@@ -109,6 +119,7 @@ pub(in crate::analysis::ast_v2) enum SyntaxRuleKind<S: Syntax + ?Sized> {
                     S::Context,
                     parse::Span,
                     Vec<parse::Expr>,
+                    ScopeId,
                 ) -> Option<
                     BoxFuture<'static, Result<<S::Context as SyntaxContext>::Body, SyntaxError>>,
                 > + Send
@@ -123,6 +134,7 @@ pub(in crate::analysis::ast_v2) enum SyntaxRuleKind<S: Syntax + ?Sized> {
                     (parse::Span, Vec<parse::Expr>),
                     parse::Span,
                     (parse::Span, Vec<parse::Expr>),
+                    ScopeId,
                 ) -> Option<
                     BoxFuture<'static, Result<<S::Context as SyntaxContext>::Body, SyntaxError>>,
                 > + Send
@@ -136,12 +148,12 @@ impl<S: Syntax + ?Sized> SyntaxRule<S> {
         Fut: Future<Output = Result<<S::Context as SyntaxContext>::Body, SyntaxError>> + Send + 'static,
     >(
         name: &'static str,
-        rule: impl Fn(S::Context, parse::Span, Vec<parse::Expr>) -> Fut + Send + Sync + 'static,
+        rule: impl Fn(S::Context, parse::Span, Vec<parse::Expr>, ScopeId) -> Fut + Send + Sync + 'static,
     ) -> Self {
         SyntaxRule {
             name,
-            kind: SyntaxRuleKind::Function(Box::new(move |context, span, expr| {
-                Some(Box::pin(rule(context, span, expr)))
+            kind: SyntaxRuleKind::Function(Box::new(move |context, span, expr, scope| {
+                Some(Box::pin(rule(context, span, expr, scope)))
             })),
         }
     }
@@ -156,6 +168,7 @@ impl<S: Syntax + ?Sized> SyntaxRule<S> {
                 (parse::Span, Vec<parse::Expr>),
                 parse::Span,
                 (parse::Span, Vec<parse::Expr>),
+                ScopeId,
             ) -> Fut
             + Send
             + Sync
@@ -165,8 +178,8 @@ impl<S: Syntax + ?Sized> SyntaxRule<S> {
             name,
             kind: SyntaxRuleKind::Operator(
                 associativity,
-                Box::new(move |context, lhs, span, rhs| {
-                    Some(Box::pin(rule(context, lhs, span, rhs)))
+                Box::new(move |context, lhs, span, rhs, scope| {
+                    Some(Box::pin(rule(context, lhs, span, rhs, scope)))
                 }),
             ),
         }
@@ -200,17 +213,17 @@ impl<S: Syntax + ?Sized> SyntaxRules<S> {
             name: rule.name,
             kind: match rule.kind {
                 SyntaxRuleKind::Function(apply) => {
-                    SyntaxRuleKind::<S>::Function(Box::new(move |context, span, expr| {
+                    SyntaxRuleKind::<S>::Function(Box::new(move |context, span, expr, scope| {
                         let context = context.try_into().ok()?;
-                        let fut = apply(context, span, expr)?;
+                        let fut = apply(context, span, expr, scope)?;
                         Some(Box::pin(async { fut.await.map(From::from) }))
                     }))
                 }
                 SyntaxRuleKind::Operator(associativity, apply) => SyntaxRuleKind::<S>::Operator(
                     associativity,
-                    Box::new(move |context, lhs, span, rhs| {
+                    Box::new(move |context, lhs, span, rhs, scope| {
                         let context = context.try_into().ok()?;
-                        let fut = apply(context, lhs, span, rhs)?;
+                        let fut = apply(context, lhs, span, rhs, scope)?;
                         Some(Box::pin(async { fut.await.map(From::from) }))
                     }),
                 ),
@@ -235,6 +248,7 @@ impl AstBuilder {
         context: S::Context,
         span: parse::Span,
         exprs: &[parse::Expr],
+        scope: ScopeId,
     ) -> Option<Result<<S::Context as SyntaxContext>::Body, SyntaxError>> {
         for rule in S::rules().0 {
             let context = context.clone();
@@ -242,7 +256,7 @@ impl AstBuilder {
             match rule.kind {
                 SyntaxRuleKind::Function(apply) => {
                     if let Some(fut) =
-                        self.apply_function_syntax::<S>(rule.name, apply, context, exprs)
+                        self.apply_function_syntax::<S>(rule.name, apply, context, exprs, scope)
                     {
                         if let Some(result) = fut.await {
                             return Some(result);
@@ -257,6 +271,7 @@ impl AstBuilder {
                         context,
                         span,
                         exprs,
+                        scope,
                     ) {
                         if let Some(result) = fut.await {
                             return Some(result);
@@ -276,6 +291,7 @@ impl AstBuilder {
                 S::Context,
                 parse::Span,
                 Vec<parse::Expr>,
+                ScopeId,
             ) -> Option<
                 BoxFuture<'static, Result<<S::Context as SyntaxContext>::Body, SyntaxError>>,
             > + Send
@@ -283,6 +299,7 @@ impl AstBuilder {
             + 'static,
         context: S::Context,
         exprs: &[parse::Expr],
+        scope: ScopeId,
     ) -> Option<BoxFuture<Option<Result<<S::Context as SyntaxContext>::Body, SyntaxError>>>> {
         let mut exprs = exprs.iter();
 
@@ -293,9 +310,9 @@ impl AstBuilder {
                 let span = first.span;
                 let exprs = exprs.cloned().collect();
 
-                return Some(Box::pin(
-                    async move { Some(apply(context, span, exprs)?.await) },
-                ));
+                return Some(Box::pin(async move {
+                    Some(apply(context, span, exprs, scope)?.await)
+                }));
             }
         }
 
@@ -311,6 +328,7 @@ impl AstBuilder {
                 (parse::Span, Vec<parse::Expr>),
                 parse::Span,
                 (parse::Span, Vec<parse::Expr>),
+                ScopeId,
             ) -> Option<
                 BoxFuture<'static, Result<<S::Context as SyntaxContext>::Body, SyntaxError>>,
             > + Send
@@ -319,6 +337,7 @@ impl AstBuilder {
         context: S::Context,
         span: parse::Span,
         exprs: &[parse::Expr],
+        scope: ScopeId,
     ) -> Option<BoxFuture<Option<Result<<S::Context as SyntaxContext>::Body, SyntaxError>>>> {
         if exprs.is_empty() {
             return None;
@@ -419,6 +438,7 @@ impl AstBuilder {
                         (span, exprs),
                         operator_span,
                         (parse::Span::builtin(), Vec::new()),
+                        scope,
                     )?
                     .await,
                 )
@@ -491,7 +511,16 @@ impl AstBuilder {
         let rhs_span = parse::Span::join(rhs.first().unwrap().span, rhs.last().unwrap().span);
 
         Some(Box::pin(async move {
-            Some(apply(context, (lhs_span, lhs), operator_span, (rhs_span, rhs))?.await)
+            Some(
+                apply(
+                    context,
+                    (lhs_span, lhs),
+                    operator_span,
+                    (rhs_span, rhs),
+                    scope,
+                )?
+                .await,
+            )
         }))
     }
 }
@@ -529,11 +558,16 @@ impl SyntaxContext for ErrorSyntaxContext {
                     SyntaxError,
                 >,
             > + Send,
+        _scope: ScopeId,
     ) -> Result<Self::Body, SyntaxError> {
         Err(self.ast_builder.syntax_error(span))
     }
 
-    async fn build_terminal(self, expr: parse::Expr) -> Result<Self::Body, SyntaxError> {
+    async fn build_terminal(
+        self,
+        expr: parse::Expr,
+        _scope: ScopeId,
+    ) -> Result<Self::Body, SyntaxError> {
         Err(self.ast_builder.syntax_error(expr.span))
     }
 }

@@ -24,7 +24,7 @@ impl Syntax for OnMismatchStatementAttributeSyntax {
     fn rules() -> SyntaxRules<Self> {
         SyntaxRules::new().with(SyntaxRule::<Self>::function(
             "on-mismatch",
-            |context, span, mut exprs| async move {
+            |context, span, mut exprs, _scope| async move {
                 let attribute = match exprs.len() {
                     1 => {
                         let expr = exprs.pop().unwrap();

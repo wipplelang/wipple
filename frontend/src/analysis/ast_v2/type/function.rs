@@ -23,17 +23,17 @@ impl Syntax for FunctionTypeSyntax {
         SyntaxRules::new().with(SyntaxRule::<Self>::operator(
             "->",
             OperatorAssociativity::Right,
-            |context, (lhs_span, lhs_exprs), operator_span, (rhs_span, rhs_exprs)| async move {
+            |context, (lhs_span, lhs_exprs), operator_span, (rhs_span, rhs_exprs), scope| async move {
                 let lhs = parse::Expr::list(lhs_span, lhs_exprs);
                 let input = context
                     .ast_builder
-                    .build_expr::<TypeSyntax>(context.clone(), lhs)
+                    .build_expr::<TypeSyntax>(context.clone(), lhs, scope)
                     .await;
 
                 let rhs = parse::Expr::list(rhs_span, rhs_exprs);
                 let output = context
                     .ast_builder
-                    .build_expr::<TypeSyntax>(context.clone(), rhs)
+                    .build_expr::<TypeSyntax>(context.clone(), rhs, scope)
                     .await;
 
                 Ok(FunctionType {

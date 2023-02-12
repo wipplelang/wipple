@@ -23,7 +23,7 @@ impl Syntax for OnUnimplementedStatementAttributeSyntax {
     fn rules() -> SyntaxRules<Self> {
         SyntaxRules::new().with(SyntaxRule::<Self>::function(
             "on-unimplemented",
-            |context, span, mut exprs| async move {
+            |context, span, mut exprs, _scope| async move {
                 if exprs.len() != 1 {
                     context.ast_builder.compiler.add_error(
                         "syntax error",

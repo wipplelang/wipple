@@ -21,6 +21,7 @@ use crate::{
     diagnostics::Note,
     helpers::{InternedString, Shared},
     parse::{self, Span},
+    ScopeId,
 };
 use async_trait::async_trait;
 use futures::{stream, StreamExt};
@@ -109,6 +110,7 @@ impl SyntaxContext for PatternSyntaxContext {
                     SyntaxError,
                 >,
             > + Send,
+        _scope: ScopeId,
     ) -> Result<Self::Body, SyntaxError> {
         Ok(DestructurePattern {
             span,
@@ -117,7 +119,11 @@ impl SyntaxContext for PatternSyntaxContext {
         .into())
     }
 
-    async fn build_terminal(self, expr: parse::Expr) -> Result<Self::Body, SyntaxError> {
+    async fn build_terminal(
+        self,
+        expr: parse::Expr,
+        scope: ScopeId,
+    ) -> Result<Self::Body, SyntaxError> {
         match expr.kind {
             parse::ExprKind::Name(name) => Ok(NamePattern {
                 span: expr.span,
@@ -158,7 +164,7 @@ impl SyntaxContext for PatternSyntaxContext {
                 let values = stream::iter(exprs)
                     .then(|expr| {
                         self.ast_builder
-                            .build_expr::<PatternSyntax>(self.clone(), expr)
+                            .build_expr::<PatternSyntax>(self.clone(), expr, scope)
                     })
                     .collect::<Vec<_>>()
                     .await;

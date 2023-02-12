@@ -12,6 +12,7 @@ use crate::{
     diagnostics::Note,
     helpers::{InternedString, Shared},
     parse::{self, Span},
+    ScopeId,
 };
 use async_trait::async_trait;
 
@@ -67,6 +68,7 @@ impl SyntaxContext for DestructuringSyntaxContext {
                     SyntaxError,
                 >,
             > + Send,
+        _scope: ScopeId,
     ) -> Result<Self::Body, SyntaxError> {
         self.ast_builder.compiler.add_error(
             "syntax error",
@@ -79,7 +81,11 @@ impl SyntaxContext for DestructuringSyntaxContext {
         Err(self.ast_builder.syntax_error(span))
     }
 
-    async fn build_terminal(self, expr: parse::Expr) -> Result<Self::Body, SyntaxError> {
+    async fn build_terminal(
+        self,
+        expr: parse::Expr,
+        _scope: ScopeId,
+    ) -> Result<Self::Body, SyntaxError> {
         match expr.try_into_list_exprs() {
             Ok((span, exprs)) => {
                 let names = exprs

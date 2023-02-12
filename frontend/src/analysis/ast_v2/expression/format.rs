@@ -23,7 +23,7 @@ impl Syntax for FormatExpressionSyntax {
     fn rules() -> SyntaxRules<Self> {
         SyntaxRules::new().with(SyntaxRule::<Self>::function(
             "format",
-            |context, span, exprs| async move {
+            |context, span, exprs, scope| async move {
                 if exprs.is_empty() {
                     context.ast_builder.compiler.add_error(
                         "syntax error",
@@ -59,6 +59,7 @@ impl Syntax for FormatExpressionSyntax {
                         context.ast_builder.build_expr::<ExpressionSyntax>(
                             context.clone(),
                             expr,
+                            scope,
                         )
                     })
                     .collect::<Vec<_>>()

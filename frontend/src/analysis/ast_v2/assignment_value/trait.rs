@@ -22,7 +22,7 @@ impl Syntax for TraitAssignmentValueSyntax {
     fn rules() -> SyntaxRules<Self> {
         SyntaxRules::new().with(SyntaxRule::<Self>::function(
             "trait",
-            |context, span, mut exprs| async move {
+            |context, span, mut exprs, scope| async move {
                 match exprs.len() {
                     0 => Ok(TraitAssignmentValue { ty: None }.into()),
                     1 => {
@@ -34,6 +34,7 @@ impl Syntax for TraitAssignmentValueSyntax {
                                         context.statement_attributes.as_ref().unwrap().clone(),
                                     ),
                                 exprs.pop().unwrap(),
+                                scope,
                             )
                             .await;
 

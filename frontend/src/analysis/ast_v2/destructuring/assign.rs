@@ -29,7 +29,7 @@ impl Syntax for AssignDestructuringSyntax {
         SyntaxRules::new().with(SyntaxRule::<Self>::operator(
             ":",
             OperatorAssociativity::None,
-            |context, (lhs_span, mut lhs_exprs), operator_span, (rhs_span, rhs_exprs)| async move {
+            |context, (lhs_span, mut lhs_exprs), operator_span, (rhs_span, rhs_exprs), scope| async move {
                 if lhs_exprs.len() != 1 {
                     context.ast_builder.compiler.add_error(
                         "syntax error",
@@ -69,6 +69,7 @@ impl Syntax for AssignDestructuringSyntax {
                                 context.statement_attributes.as_ref().unwrap().clone(),
                             ),
                         rhs,
+                        scope,
                     )
                     .await;
 

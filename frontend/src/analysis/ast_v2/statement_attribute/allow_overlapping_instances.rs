@@ -20,7 +20,7 @@ impl Syntax for AllowOverlappingInstancesStatementAttributeSyntax {
     fn rules() -> SyntaxRules<Self> {
         SyntaxRules::new().with(SyntaxRule::<Self>::function(
             "allow-overlapping-instances",
-            |context, span, exprs| async move {
+            |context, span, exprs, _scope| async move {
                 if !exprs.is_empty() {
                     context.ast_builder.compiler.add_error(
                         "syntax error",

@@ -30,6 +30,7 @@ use crate::{
     diagnostics::Note,
     helpers::{InternedString, Shared},
     parse::{self, Span},
+    ScopeId,
 };
 use async_trait::async_trait;
 use futures::{stream, StreamExt};
@@ -60,6 +61,7 @@ syntax_group! {
 pub struct NameExpression {
     pub span: Span,
     pub name: InternedString,
+    pub scope: ScopeId,
 }
 
 #[derive(Debug, Clone)]
@@ -84,6 +86,7 @@ pub struct ListExpression {
 pub struct BlockExpression {
     pub span: Span,
     pub statements: Vec<Result<Statement, SyntaxError>>,
+    pub scope: ScopeId,
 }
 
 #[derive(Clone)]
@@ -113,21 +116,27 @@ impl SyntaxContext for ExpressionSyntaxContext {
                     SyntaxError,
                 >,
             > + Send,
+        scope: ScopeId,
     ) -> Result<Self::Body, SyntaxError> {
         Ok(BlockExpression {
             span,
             statements: statements.collect(),
+            scope,
         }
         .into())
     }
 
-    async fn build_terminal(self, expr: parse::Expr) -> Result<Self::Body, SyntaxError> {
+    async fn build_terminal(
+        self,
+        expr: parse::Expr,
+        scope: ScopeId,
+    ) -> Result<Self::Body, SyntaxError> {
         match expr.try_into_list_exprs() {
             Ok((span, exprs)) => {
                 let exprs = stream::iter(exprs)
                     .then(|expr| {
                         self.ast_builder
-                            .build_expr::<ExpressionSyntax>(self.clone(), expr)
+                            .build_expr::<ExpressionSyntax>(self.clone(), expr, scope)
                     })
                     .collect::<Vec<_>>()
                     .await;
@@ -138,6 +147,7 @@ impl SyntaxContext for ExpressionSyntaxContext {
                 parse::ExprKind::Name(name) => Ok(NameExpression {
                     span: expr.span,
                     name,
+                    scope,
                 }
                 .into()),
                 parse::ExprKind::Text(text) => Ok(TextExpression {

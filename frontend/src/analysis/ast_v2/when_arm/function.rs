@@ -27,7 +27,9 @@ impl Syntax for FunctionWhenArmSyntax {
         SyntaxRules::new().with(SyntaxRule::<Self>::operator(
             "->",
             OperatorAssociativity::Right,
-            |context, (lhs_span, lhs), operator_span, (rhs_span, rhs)| async move {
+            |context, (lhs_span, lhs), operator_span, (rhs_span, rhs), scope| async move {
+                let scope = context.ast_builder.child_scope(scope);
+
                 let lhs = parse::Expr::list(lhs_span, lhs);
                 let pattern = context
                     .ast_builder
@@ -37,6 +39,7 @@ impl Syntax for FunctionWhenArmSyntax {
                                 context.statement_attributes.as_ref().unwrap().clone(),
                             ),
                         lhs,
+                        scope,
                     )
                     .await;
 
@@ -49,6 +52,7 @@ impl Syntax for FunctionWhenArmSyntax {
                                 context.statement_attributes.as_ref().unwrap().clone(),
                             ),
                         rhs,
+                        scope,
                     )
                     .await;
 

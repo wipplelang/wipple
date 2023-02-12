@@ -23,7 +23,7 @@ use crate::{
     },
     diagnostics::Note,
     helpers::Shared,
-    parse,
+    parse, ScopeId,
 };
 use async_trait::async_trait;
 
@@ -68,14 +68,22 @@ impl SyntaxContext for StatementSyntaxContext {
                     SyntaxError,
                 >,
             > + Send,
+        scope: ScopeId,
     ) -> Result<Self::Body, SyntaxError> {
         let context = ExpressionSyntaxContext::new(self.ast_builder)
             .with_statement_attributes(self.statement_attributes.unwrap());
 
-        context.build_block(span, statements).await.map(From::from)
+        context
+            .build_block(span, statements, scope)
+            .await
+            .map(From::from)
     }
 
-    async fn build_terminal(self, expr: parse::Expr) -> Result<Self::Body, SyntaxError> {
+    async fn build_terminal(
+        self,
+        expr: parse::Expr,
+        _scope: ScopeId,
+    ) -> Result<Self::Body, SyntaxError> {
         self.ast_builder.compiler.add_error(
             "syntax error",
             vec![Note::primary(expr.span, "invalid statement")],

@@ -26,11 +26,11 @@ impl Syntax for WherePatternSyntax {
         SyntaxRules::new().with(SyntaxRule::<Self>::operator(
             "where",
             OperatorAssociativity::None,
-            |context, (lhs_span, lhs_exprs), operator_span, (rhs_span, rhs_exprs)| async move {
+            |context, (lhs_span, lhs_exprs), operator_span, (rhs_span, rhs_exprs), scope| async move {
                 let lhs = parse::Expr::list(lhs_span, lhs_exprs);
                 let pattern = context
                     .ast_builder
-                    .build_expr::<PatternSyntax>(context.clone(), lhs)
+                    .build_expr::<PatternSyntax>(context.clone(), lhs,scope)
                     .await;
 
                 let rhs = parse::Expr::list(rhs_span, rhs_exprs);
@@ -42,6 +42,7 @@ impl Syntax for WherePatternSyntax {
                                 context.statement_attributes.as_ref().unwrap().clone(),
                             ),
                         rhs,
+                        scope,
                     )
                     .await;
 

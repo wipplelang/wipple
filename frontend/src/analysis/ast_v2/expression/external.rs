@@ -24,7 +24,7 @@ impl Syntax for ExternalExpressionSyntax {
     fn rules() -> SyntaxRules<Self> {
         SyntaxRules::new().with(SyntaxRule::<Self>::function(
             "external",
-            |context, span, exprs| async move {
+            |context, span, exprs, scope| async move {
                 if exprs.len() < 2 {
                     context.ast_builder.compiler.add_error(
                         "syntax error",
@@ -64,9 +64,11 @@ impl Syntax for ExternalExpressionSyntax {
 
                 let inputs = stream::iter(exprs)
                     .then(|expr| {
-                        context
-                            .ast_builder
-                            .build_expr::<ExpressionSyntax>(context.clone(), expr)
+                        context.ast_builder.build_expr::<ExpressionSyntax>(
+                            context.clone(),
+                            expr,
+                            scope,
+                        )
                     })
                     .collect()
                     .await;

@@ -27,7 +27,7 @@ impl Syntax for AssignStatementSyntax {
         SyntaxRules::new().with(SyntaxRule::<Self>::operator(
             ":",
             OperatorAssociativity::None,
-            |context, (lhs_span, lhs_exprs), operator_span, (rhs_span, rhs_exprs)| async move {
+            |context, (lhs_span, lhs_exprs), operator_span, (rhs_span, rhs_exprs), scope| async move {
                 let lhs = parse::Expr::list(lhs_span, lhs_exprs);
                 let pattern = context
                     .ast_builder
@@ -37,6 +37,7 @@ impl Syntax for AssignStatementSyntax {
                                 context.statement_attributes.as_ref().unwrap().clone(),
                             ),
                         lhs,
+                        scope,
                     )
                     .await;
 
@@ -49,6 +50,7 @@ impl Syntax for AssignStatementSyntax {
                                 context.statement_attributes.as_ref().unwrap().clone(),
                             ),
                         rhs,
+                        scope,
                     )
                     .await;
 

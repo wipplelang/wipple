@@ -17,7 +17,7 @@ impl Syntax for SyntaxAssignmentValueSyntax {
     fn rules() -> SyntaxRules<Self> {
         SyntaxRules::new().with(SyntaxRule::<Self>::function(
             "syntax",
-            |context, span, _exprs| async move {
+            |context, span, _exprs, _scope| async move {
                 context.ast_builder.compiler.add_error(
                     "syntax error",
                     vec![Note::primary(

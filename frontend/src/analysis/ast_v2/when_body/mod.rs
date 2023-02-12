@@ -6,6 +6,7 @@ use crate::{
     diagnostics::Note,
     helpers::Shared,
     parse::{self, Span},
+    ScopeId,
 };
 use async_trait::async_trait;
 
@@ -52,6 +53,7 @@ impl SyntaxContext for WhenBodySyntaxContext {
                     SyntaxError,
                 >,
             > + Send,
+        _scope: ScopeId,
     ) -> Result<Self::Body, SyntaxError> {
         Ok(BlockWhenBody {
             span,
@@ -60,7 +62,11 @@ impl SyntaxContext for WhenBodySyntaxContext {
         .into())
     }
 
-    async fn build_terminal(self, expr: parse::Expr) -> Result<Self::Body, SyntaxError> {
+    async fn build_terminal(
+        self,
+        expr: parse::Expr,
+        _scope: ScopeId,
+    ) -> Result<Self::Body, SyntaxError> {
         self.ast_builder.compiler.add_error(
             "syntax error",
             vec![Note::primary(expr.span, "expected a block")],

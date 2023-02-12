@@ -22,7 +22,7 @@ impl Syntax for TypeAssignmentValueSyntax {
     fn rules() -> SyntaxRules<Self> {
         SyntaxRules::new().with(SyntaxRule::<Self>::function(
             "type",
-            |context, span, mut exprs| async move {
+            |context, span, mut exprs, scope| async move {
                 match exprs.len() {
                     0 => Ok(TypeAssignmentValue { body: None }.into()),
                     1 => {
@@ -34,6 +34,7 @@ impl Syntax for TypeAssignmentValueSyntax {
                                         context.statement_attributes.as_ref().unwrap().clone(),
                                     ),
                                 exprs.pop().unwrap(),
+                                scope,
                             )
                             .await;
 

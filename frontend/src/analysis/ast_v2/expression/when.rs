@@ -23,7 +23,7 @@ impl Syntax for WhenExpressionSyntax {
     fn rules() -> SyntaxRules<Self> {
         SyntaxRules::new().with(SyntaxRule::<Self>::function(
             "end",
-            |context, span, exprs| async move {
+            |context, span, exprs, scope| async move {
                 if exprs.len() != 2 {
                     context.ast_builder.compiler.add_error(
                         "syntax error",
@@ -37,7 +37,7 @@ impl Syntax for WhenExpressionSyntax {
 
                 let input = context
                     .ast_builder
-                    .build_expr::<ExpressionSyntax>(context.clone(), exprs.next().unwrap())
+                    .build_expr::<ExpressionSyntax>(context.clone(), exprs.next().unwrap(), scope)
                     .await;
 
                 let body = context
@@ -48,6 +48,7 @@ impl Syntax for WhenExpressionSyntax {
                                 context.statement_attributes.as_ref().unwrap().clone(),
                             ),
                         exprs.next().unwrap(),
+                        scope,
                     )
                     .await;
 

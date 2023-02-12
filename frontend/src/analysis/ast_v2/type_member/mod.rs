@@ -12,6 +12,7 @@ use crate::{
     diagnostics::Note,
     helpers::{InternedString, Shared},
     parse::{self, Span},
+    ScopeId,
 };
 use async_trait::async_trait;
 use futures::{stream, StreamExt};
@@ -62,6 +63,7 @@ impl SyntaxContext for TypeMemberSyntaxContext {
                     SyntaxError,
                 >,
             > + Send,
+        _scope: ScopeId,
     ) -> Result<Self::Body, SyntaxError> {
         self.ast_builder.compiler.add_error(
             "syntax error",
@@ -71,7 +73,11 @@ impl SyntaxContext for TypeMemberSyntaxContext {
         Err(self.ast_builder.syntax_error(span))
     }
 
-    async fn build_terminal(self, expr: parse::Expr) -> Result<Self::Body, SyntaxError> {
+    async fn build_terminal(
+        self,
+        expr: parse::Expr,
+        scope: ScopeId,
+    ) -> Result<Self::Body, SyntaxError> {
         match expr.try_into_list_exprs() {
             Ok((span, list)) => {
                 let mut list = list.into_iter();
@@ -108,6 +114,7 @@ impl SyntaxContext for TypeMemberSyntaxContext {
                                     self.statement_attributes.as_ref().unwrap().clone(),
                                 ),
                             expr,
+                            scope,
                         )
                     })
                     .collect()

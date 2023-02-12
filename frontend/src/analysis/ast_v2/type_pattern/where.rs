@@ -36,12 +36,12 @@ impl Syntax for WhereTypePatternSyntax {
         SyntaxRules::new().with(SyntaxRule::<Self>::operator(
             "where",
             OperatorAssociativity::None,
-            |context, (lhs_span, lhs_exprs), operator_span, (rhs_span, rhs_exprs)| async move {
+            |context, (lhs_span, lhs_exprs), operator_span, (rhs_span, rhs_exprs), scope| async move {
                 let lhs = parse::Expr::list(lhs_span, lhs_exprs);
 
                 let pattern = context
                     .ast_builder
-                    .build_expr::<TypePatternSyntax>(context.clone(), lhs)
+                    .build_expr::<TypePatternSyntax>(context.clone(), lhs, scope)
                     .await;
 
                 let bounds = stream::iter(rhs_exprs)
@@ -91,6 +91,7 @@ impl Syntax for WhereTypePatternSyntax {
                                                         .clone(),
                                                 ),
                                             expr,
+                                            scope,
                                         )
                                     })
                                     .collect()

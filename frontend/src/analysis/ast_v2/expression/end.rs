@@ -19,7 +19,7 @@ impl Syntax for EndExpressionSyntax {
     fn rules() -> SyntaxRules<Self> {
         SyntaxRules::new().with(SyntaxRule::<Self>::function(
             "end",
-            |context, span, mut exprs| async move {
+            |context, span, mut exprs, scope| async move {
                 if exprs.len() != 1 {
                     context.ast_builder.compiler.add_error(
                         "syntax error",
@@ -31,7 +31,7 @@ impl Syntax for EndExpressionSyntax {
 
                 let value = context
                     .ast_builder
-                    .build_expr::<ExpressionSyntax>(context.clone(), exprs.pop().unwrap())
+                    .build_expr::<ExpressionSyntax>(context.clone(), exprs.pop().unwrap(), scope)
                     .await;
 
                 Ok(EndExpression {

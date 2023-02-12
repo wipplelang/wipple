@@ -11,7 +11,7 @@ use crate::{
     },
     diagnostics::Note,
     helpers::Shared,
-    parse,
+    parse, ScopeId,
 };
 use async_trait::async_trait;
 
@@ -52,6 +52,7 @@ impl SyntaxContext for WhenArmSyntaxContext {
                     SyntaxError,
                 >,
             > + Send,
+        _scope: ScopeId,
     ) -> Result<Self::Body, SyntaxError> {
         self.ast_builder.compiler.add_error(
             "syntax error",
@@ -61,7 +62,11 @@ impl SyntaxContext for WhenArmSyntaxContext {
         Err(self.ast_builder.syntax_error(span))
     }
 
-    async fn build_terminal(self, expr: parse::Expr) -> Result<Self::Body, SyntaxError> {
+    async fn build_terminal(
+        self,
+        expr: parse::Expr,
+        _scope: ScopeId,
+    ) -> Result<Self::Body, SyntaxError> {
         self.ast_builder.compiler.add_error(
             "syntax error",
             vec![Note::primary(expr.span, "expected a function")],

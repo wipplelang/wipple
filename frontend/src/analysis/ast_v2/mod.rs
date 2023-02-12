@@ -42,7 +42,7 @@ use crate::{
     diagnostics::Note,
     helpers::Shared,
     parse::{self, Span},
-    Compiler, FilePath, TemplateId,
+    Compiler, FilePath, ScopeId, TemplateId,
 };
 use futures::{future::BoxFuture, stream, StreamExt};
 use std::{collections::BTreeMap, sync::Arc};
@@ -74,10 +74,12 @@ impl Compiler {
             load: Arc::new(load),
         };
 
+        let scope = self.new_scope_id_in(ast_builder.file);
+
         let statements = stream::iter(file.statements)
             .then(|statement| {
                 let context = StatementSyntaxContext::new(ast_builder.clone());
-                ast_builder.build_statement::<StatementSyntax>(context, statement)
+                ast_builder.build_statement::<StatementSyntax>(context, statement, scope)
             })
             .collect::<Vec<_>>()
             .await
@@ -107,10 +109,24 @@ struct AstBuilder {
 }
 
 impl AstBuilder {
+    fn root_scope(&self) -> ScopeId {
+        self.compiler.new_scope_id_in(self.file)
+    }
+
+    /// Currently this just generates a new ID -- it's up to the lowerer to
+    /// actually use lexical scoping rules to link the ID returned by this
+    /// function with its parent. But requiring the parent to be provided now
+    /// will be useful if we decide to do some kind of linking here in the
+    /// future.
+    fn child_scope(&self, _parent: ScopeId) -> ScopeId {
+        self.compiler.new_scope_id_in(self.file)
+    }
+
     async fn build_expr<S: Syntax>(
         &self,
         context: S::Context,
         expr: parse::Expr,
+        scope: ScopeId,
     ) -> Result<<S::Context as SyntaxContext>::Body, SyntaxError>
     where
         S::Context: FileBodySyntaxContext,
@@ -119,6 +135,8 @@ impl AstBuilder {
     {
         match expr.kind {
             parse::ExprKind::Block(statements) => {
+                let scope = self.compiler.new_scope_id_in(self.file);
+
                 let statements = stream::iter(statements)
                     .then(|statement| {
                         self.build_statement::<<S::Context as SyntaxContext>::Statement>(
@@ -126,6 +144,7 @@ impl AstBuilder {
                                 self.clone(),
                             ),
                             statement,
+                            scope,
                         )
                     })
                     .collect::<Vec<_>>()
@@ -133,7 +152,7 @@ impl AstBuilder {
                     .into_iter()
                     .flatten();
 
-                context.build_block(expr.span, statements).await
+                context.build_block(expr.span, statements, scope).await
             }
             parse::ExprKind::List(lines) => {
                 let exprs = lines
@@ -142,18 +161,18 @@ impl AstBuilder {
                     .collect::<Vec<_>>();
 
                 match self
-                    .build_list::<S>(context.clone(), expr.span, &exprs)
+                    .build_list::<S>(context.clone(), expr.span, &exprs, scope)
                     .await
                 {
                     Some(result) => result,
                     None => {
                         context
-                            .build_terminal(parse::Expr::list(expr.span, exprs))
+                            .build_terminal(parse::Expr::list(expr.span, exprs), scope)
                             .await
                     }
                 }
             }
-            _ => context.build_terminal(expr).await,
+            _ => context.build_terminal(expr, scope).await,
         }
     }
 
@@ -161,6 +180,7 @@ impl AstBuilder {
         &self,
         context: S::Context,
         statement: parse::Statement,
+        scope: ScopeId,
     ) -> Option<Result<<S::Context as SyntaxContext>::Body, SyntaxError>>
     where
         S::Context: FileBodySyntaxContext,
@@ -187,6 +207,7 @@ impl AstBuilder {
                     context.clone(),
                     attribute.span,
                     &attribute.exprs,
+                    scope,
                 )
                 .await
                 .is_none()
@@ -194,7 +215,7 @@ impl AstBuilder {
                 // The result of a statement attribute doesn't affect whether the
                 // statement's expression can be parsed
                 let _ = context
-                    .build_terminal(parse::Expr::list(attribute.span, attribute.exprs))
+                    .build_terminal(parse::Expr::list(attribute.span, attribute.exprs), scope)
                     .await;
             }
         }
@@ -216,9 +237,16 @@ impl AstBuilder {
 
         let context = context.with_statement_attributes(attributes.clone());
 
-        let result = match self.build_list::<S>(context.clone(), span, &exprs).await {
+        let result = match self
+            .build_list::<S>(context.clone(), span, &exprs, scope)
+            .await
+        {
             Some(result) => result,
-            None => context.build_terminal(parse::Expr::list(span, exprs)).await,
+            None => {
+                context
+                    .build_terminal(parse::Expr::list(span, exprs), scope)
+                    .await
+            }
         };
 
         Some(result)
