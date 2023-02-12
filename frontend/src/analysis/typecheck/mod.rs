@@ -9,10 +9,10 @@ pub mod format;
 pub mod traverse;
 
 pub use engine::{BottomTypeReason, BuiltinType, GenericSubstitutions, Type, TypeStructure};
-pub use lower_v2::{RuntimeFunction, TypeAnnotation, TypeAnnotationKind};
+pub use lower::{RuntimeFunction, TypeAnnotation, TypeAnnotationKind};
 
 use crate::{
-    analysis::lower_v2,
+    analysis::lower,
     diagnostics::Note,
     helpers::{Backtrace, InternedString},
     parse::Span,
@@ -38,7 +38,7 @@ pub struct Program {
     pub items: BTreeMap<ItemId, (Option<ConstantId>, Expression)>,
     pub entrypoint: Option<ItemId>,
     pub declarations: Declarations,
-    pub exported: HashMap<InternedString, lower_v2::AnyDeclaration>,
+    pub exported: HashMap<InternedString, lower::AnyDeclaration>,
 }
 
 macro_rules! declarations {
@@ -84,7 +84,7 @@ pub struct TypeDecl {
     pub span: Span,
     pub params: Vec<TypeParameterId>,
     pub kind: TypeDeclKind,
-    pub attributes: lower_v2::TypeAttributes,
+    pub attributes: lower::TypeAttributes,
     pub uses: HashSet<Span>,
 }
 
@@ -108,7 +108,7 @@ pub struct TraitDecl {
     pub params: Vec<TypeParameterId>,
     pub ty_annotation: Option<TypeAnnotation>,
     pub ty: Option<engine::Type>,
-    pub attributes: lower_v2::TraitAttributes,
+    pub attributes: lower::TraitAttributes,
     pub uses: HashSet<Span>,
 }
 
@@ -122,7 +122,7 @@ pub struct ConstantDecl {
     pub ty_annotation: TypeAnnotation,
     pub ty: engine::Type,
     pub specializations: Vec<ConstantId>,
-    pub attributes: lower_v2::ConstantAttributes,
+    pub attributes: lower::ConstantAttributes,
     pub body: Option<Expression>,
     pub uses: HashSet<Span>,
 }
@@ -135,7 +135,7 @@ pub struct InstanceDecl {
     pub bound_annotations: Vec<(TraitId, Vec<TypeAnnotation>)>,
     pub trait_id: TraitId,
     pub trait_params: Vec<engine::Type>,
-    pub trait_param_annotations: Vec<lower_v2::TypeAnnotation>,
+    pub trait_param_annotations: Vec<lower::TypeAnnotation>,
     pub body: Option<Expression>,
     pub item: ItemId,
 }
@@ -158,7 +158,7 @@ pub struct OperatorDecl {
 // pub struct TemplateDecl {
 //     pub name: InternedString,
 //     pub span: Span,
-//     pub attributes: lower_v2::SyntaxDeclarationAttributes,
+//     pub attributes: lower::SyntaxDeclarationAttributes,
 //     pub uses: HashSet<Span>,
 // }
 
@@ -166,7 +166,7 @@ pub struct OperatorDecl {
 pub struct BuiltinTypeDecl {
     pub name: InternedString,
     pub span: Span,
-    pub attributes: lower_v2::DeclarationAttributes,
+    pub attributes: lower::DeclarationAttributes,
     pub uses: HashSet<Span>,
 }
 
@@ -204,7 +204,7 @@ macro_rules! expr {
                 Block(Vec<[<$prefix Expression>]>, bool),
                 End(Box<[<$prefix Expression>]>),
                 Call(Box<[<$prefix Expression>]>, Box<[<$prefix Expression>]>),
-                Function([<$prefix Pattern>], Box<[<$prefix Expression>]>, lower_v2::CaptureList),
+                Function([<$prefix Pattern>], Box<[<$prefix Expression>]>, lower::CaptureList),
                 When(Box<[<$prefix Expression>]>, Vec<[<$prefix Arm>]>),
                 External(InternedString, InternedString, Vec<[<$prefix Expression>]>),
                 Runtime(RuntimeFunction, Vec<[<$prefix Expression>]>),
@@ -365,7 +365,7 @@ impl Error {
 impl Compiler {
     pub(crate) fn typecheck_with_progress(
         &self,
-        entrypoint: lower_v2::File,
+        entrypoint: lower::File,
         complete: bool,
         mut progress: impl FnMut(Progress),
     ) -> Program {
@@ -383,13 +383,13 @@ impl Compiler {
 #[derive(Debug, Clone)]
 struct Typechecker {
     compiler: Compiler,
-    entrypoint: lower_v2::File,
+    entrypoint: lower::File,
     ctx: engine::Context,
     declarations: RefCell<DeclarationsInner>,
-    exported: Option<HashMap<InternedString, lower_v2::AnyDeclaration>>,
+    exported: Option<HashMap<InternedString, lower::AnyDeclaration>>,
     block_end: Option<Option<(Span, engine::UnresolvedType)>>,
     instances: im::HashMap<TraitId, Vec<ConstantId>>,
-    generic_constants: im::HashMap<ConstantId, (bool, lower_v2::Expression)>,
+    generic_constants: im::HashMap<ConstantId, (bool, lower::Expression)>,
     specialized_constants: im::HashMap<ConstantId, ConstantId>,
     item_queue: im::Vector<QueuedItem>,
     items: im::HashMap<ItemId, (Option<ConstantId>, Expression)>,
@@ -417,7 +417,7 @@ impl Typechecker {
 }
 
 impl Typechecker {
-    pub fn new(compiler: Compiler, entrypoint: lower_v2::File) -> Self {
+    pub fn new(compiler: Compiler, entrypoint: lower::File) -> Self {
         Typechecker {
             compiler,
             entrypoint,
@@ -549,9 +549,9 @@ impl Typechecker {
         };
 
         let expr = self.convert_expr(
-            lower_v2::Expression {
+            lower::Expression {
                 span: self.entrypoint.span,
-                kind: lower_v2::ExpressionKind::Block(entrypoint, true),
+                kind: lower::ExpressionKind::Block(entrypoint, true),
             },
             &mut info,
         );
@@ -622,7 +622,7 @@ impl Typechecker {
         &mut self,
         id: ConstantId,
         instance: bool,
-        expr: lower_v2::Expression,
+        expr: lower::Expression,
     ) {
         let (tr, generic_ty, bounds) = if instance {
             let (tr, trait_params, span, bounds) = self
@@ -954,16 +954,16 @@ struct ConvertInfo {
 impl Typechecker {
     fn convert_expr(
         &mut self,
-        expr: lower_v2::Expression,
+        expr: lower::Expression,
         info: &mut ConvertInfo,
     ) -> UnresolvedExpression {
         match expr.kind {
-            lower_v2::ExpressionKind::Error(trace) => UnresolvedExpression {
+            lower::ExpressionKind::Error(trace) => UnresolvedExpression {
                 span: expr.span,
                 ty: engine::UnresolvedType::Error,
                 kind: UnresolvedExpressionKind::Error(trace),
             },
-            lower_v2::ExpressionKind::Marker(id) => {
+            lower::ExpressionKind::Marker(id) => {
                 let mut ty = {
                     self.with_type_decl(id, |ty| ty.params.clone()).map_or(
                         engine::UnresolvedType::Error,
@@ -988,7 +988,7 @@ impl Typechecker {
                     kind: UnresolvedExpressionKind::Marker,
                 }
             }
-            lower_v2::ExpressionKind::Constant(id) => {
+            lower::ExpressionKind::Constant(id) => {
                 let mut ty = self
                     .with_constant_decl(id, |constant| {
                         engine::UnresolvedType::from(constant.ty.clone())
@@ -1003,7 +1003,7 @@ impl Typechecker {
                     kind: UnresolvedExpressionKind::Constant(id),
                 }
             }
-            lower_v2::ExpressionKind::Trait(id) => {
+            lower::ExpressionKind::Trait(id) => {
                 let mut ty = if let Some((span, false)) =
                     self.with_trait_decl(id, |decl| (decl.span, decl.ty.is_some()))
                 {
@@ -1031,7 +1031,7 @@ impl Typechecker {
                     kind: UnresolvedExpressionKind::Trait(id),
                 }
             }
-            lower_v2::ExpressionKind::Variable(var) => {
+            lower::ExpressionKind::Variable(var) => {
                 let ty =
                     info.variables.get(&var).cloned().unwrap_or_else(|| {
                         engine::UnresolvedType::Variable(self.ctx.new_variable())
@@ -1043,17 +1043,17 @@ impl Typechecker {
                     kind: UnresolvedExpressionKind::Variable(var),
                 }
             }
-            lower_v2::ExpressionKind::Text(text) => UnresolvedExpression {
+            lower::ExpressionKind::Text(text) => UnresolvedExpression {
                 span: expr.span,
                 ty: engine::UnresolvedType::Builtin(engine::BuiltinType::Text),
                 kind: UnresolvedExpressionKind::Text(text),
             },
-            lower_v2::ExpressionKind::Number(number) => UnresolvedExpression {
+            lower::ExpressionKind::Number(number) => UnresolvedExpression {
                 span: expr.span,
                 ty: engine::UnresolvedType::NumericVariable(self.ctx.new_variable()),
                 kind: UnresolvedExpressionKind::Number(number),
             },
-            lower_v2::ExpressionKind::Block(statements, top_level) => {
+            lower::ExpressionKind::Block(statements, top_level) => {
                 let prev_block_end = mem::replace(&mut self.block_end, Some(None));
 
                 let statements = statements
@@ -1082,7 +1082,7 @@ impl Typechecker {
                     kind: UnresolvedExpressionKind::Block(statements, top_level),
                 }
             }
-            lower_v2::ExpressionKind::End(value) => {
+            lower::ExpressionKind::End(value) => {
                 let value = self.convert_expr(*value, info);
 
                 match self.block_end {
@@ -1108,7 +1108,7 @@ impl Typechecker {
                     kind: UnresolvedExpressionKind::End(Box::new(value)),
                 }
             }
-            lower_v2::ExpressionKind::Call(function, input) => {
+            lower::ExpressionKind::Call(function, input) => {
                 let function = self.convert_expr(*function, info);
                 let input = self.convert_expr(*input, info);
 
@@ -1136,7 +1136,7 @@ impl Typechecker {
                     kind: UnresolvedExpressionKind::Call(Box::new(function), Box::new(input)),
                 }
             }
-            lower_v2::ExpressionKind::Function(pattern, body, captures) => {
+            lower::ExpressionKind::Function(pattern, body, captures) => {
                 let input_ty = engine::UnresolvedType::Variable(self.ctx.new_variable());
                 let pattern = self.convert_pattern(pattern, input_ty.clone(), None, info);
 
@@ -1153,7 +1153,7 @@ impl Typechecker {
                     kind: UnresolvedExpressionKind::Function(pattern, Box::new(body), captures),
                 }
             }
-            lower_v2::ExpressionKind::When(input, arms) => {
+            lower::ExpressionKind::When(input, arms) => {
                 let input = self.convert_expr(*input, info);
 
                 let arms = arms
@@ -1183,7 +1183,7 @@ impl Typechecker {
                     kind: UnresolvedExpressionKind::When(Box::new(input), arms),
                 }
             }
-            lower_v2::ExpressionKind::External(lib, identifier, inputs) => {
+            lower::ExpressionKind::External(lib, identifier, inputs) => {
                 let inputs = inputs
                     .into_iter()
                     .map(|expr| self.convert_expr(expr, info))
@@ -1195,7 +1195,7 @@ impl Typechecker {
                     kind: UnresolvedExpressionKind::External(lib, identifier, inputs),
                 }
             }
-            lower_v2::ExpressionKind::Runtime(func, inputs) => {
+            lower::ExpressionKind::Runtime(func, inputs) => {
                 let inputs = inputs
                     .into_iter()
                     .map(|expr| self.convert_expr(expr, info))
@@ -1207,7 +1207,7 @@ impl Typechecker {
                     kind: UnresolvedExpressionKind::Runtime(func, inputs),
                 }
             }
-            lower_v2::ExpressionKind::Annotate(value, ty) => {
+            lower::ExpressionKind::Annotate(value, ty) => {
                 let ty = self.convert_type_annotation(ty);
                 let value = self.convert_expr(*value, info);
 
@@ -1221,7 +1221,7 @@ impl Typechecker {
                     kind: value.kind,
                 }
             }
-            lower_v2::ExpressionKind::Initialize(pattern, value) => {
+            lower::ExpressionKind::Initialize(pattern, value) => {
                 let value = self.convert_expr(*value, info);
                 let pattern =
                     self.convert_pattern(pattern, value.ty.clone(), Some(value.span), info);
@@ -1232,7 +1232,7 @@ impl Typechecker {
                     kind: UnresolvedExpressionKind::Initialize(pattern, Box::new(value)),
                 }
             }
-            lower_v2::ExpressionKind::Instantiate(id, fields) => {
+            lower::ExpressionKind::Instantiate(id, fields) => {
                 let (kind, params) = match self
                     .with_type_decl(id, |decl| (decl.kind.clone(), decl.params.clone()))
                 {
@@ -1373,7 +1373,7 @@ impl Typechecker {
                     kind: UnresolvedExpressionKind::Structure(fields),
                 }
             }
-            lower_v2::ExpressionKind::Variant(id, index, values) => {
+            lower::ExpressionKind::Variant(id, index, values) => {
                 let (kind, params) = match self
                     .with_type_decl(id, |decl| (decl.kind.clone(), decl.params.clone()))
                 {
@@ -1452,7 +1452,7 @@ impl Typechecker {
                     kind: UnresolvedExpressionKind::Variant(index, values),
                 }
             }
-            lower_v2::ExpressionKind::Tuple(exprs) => {
+            lower::ExpressionKind::Tuple(exprs) => {
                 let exprs = exprs
                     .into_iter()
                     .map(|expr| self.convert_expr(expr, info))
@@ -1473,7 +1473,7 @@ impl Typechecker {
 
     fn convert_arm(
         &mut self,
-        arm: lower_v2::Arm,
+        arm: lower::Arm,
         input_ty: engine::UnresolvedType,
         input_span: Span,
         info: &mut ConvertInfo,
@@ -1487,7 +1487,7 @@ impl Typechecker {
 
     fn convert_pattern(
         &mut self,
-        pattern: lower_v2::Pattern,
+        pattern: lower::Pattern,
         ty: engine::UnresolvedType,
         input_span: Option<Span>,
         info: &mut ConvertInfo,
@@ -1495,9 +1495,9 @@ impl Typechecker {
         UnresolvedPattern {
             span: pattern.span,
             kind: (|| match pattern.kind {
-                lower_v2::PatternKind::Error(trace) => UnresolvedPatternKind::Error(trace),
-                lower_v2::PatternKind::Wildcard => UnresolvedPatternKind::Wildcard,
-                lower_v2::PatternKind::Number(number) => {
+                lower::PatternKind::Error(trace) => UnresolvedPatternKind::Error(trace),
+                lower::PatternKind::Wildcard => UnresolvedPatternKind::Wildcard,
+                lower::PatternKind::Number(number) => {
                     let numeric_ty =
                         engine::UnresolvedType::NumericVariable(self.ctx.new_variable());
 
@@ -1507,7 +1507,7 @@ impl Typechecker {
 
                     UnresolvedPatternKind::Number(number)
                 }
-                lower_v2::PatternKind::Text(text) => {
+                lower::PatternKind::Text(text) => {
                     if let Err(error) = self.unify(
                         pattern.span,
                         ty,
@@ -1518,11 +1518,11 @@ impl Typechecker {
 
                     UnresolvedPatternKind::Text(text)
                 }
-                lower_v2::PatternKind::Variable(var) => {
+                lower::PatternKind::Variable(var) => {
                     info.variables.insert(var, ty);
                     UnresolvedPatternKind::Variable(var)
                 }
-                lower_v2::PatternKind::Destructure(fields) => UnresolvedPatternKind::Destructure(
+                lower::PatternKind::Destructure(fields) => UnresolvedPatternKind::Destructure(
                     ty,
                     fields
                         .into_iter()
@@ -1538,7 +1538,7 @@ impl Typechecker {
                         })
                         .collect(),
                 ),
-                lower_v2::PatternKind::Variant(id, variant, values) => {
+                lower::PatternKind::Variant(id, variant, values) => {
                     let (params, variants_tys) = match self.with_type_decl(id, |decl| {
                         (
                             decl.params.clone(),
@@ -1629,7 +1629,7 @@ impl Typechecker {
                             .collect(),
                     )
                 }
-                lower_v2::PatternKind::Annotate(inner, target_ty) => {
+                lower::PatternKind::Annotate(inner, target_ty) => {
                     let target_ty = self.convert_type_annotation(target_ty);
 
                     if let Err(error) = self.unify(pattern.span, ty, target_ty.clone()) {
@@ -1639,15 +1639,15 @@ impl Typechecker {
                     self.convert_pattern(*inner, target_ty, input_span, info)
                         .kind
                 }
-                lower_v2::PatternKind::Or(lhs, rhs) => UnresolvedPatternKind::Or(
+                lower::PatternKind::Or(lhs, rhs) => UnresolvedPatternKind::Or(
                     Box::new(self.convert_pattern(*lhs, ty.clone(), input_span, info)),
                     Box::new(self.convert_pattern(*rhs, ty, input_span, info)),
                 ),
-                lower_v2::PatternKind::Where(pattern, condition) => UnresolvedPatternKind::Where(
+                lower::PatternKind::Where(pattern, condition) => UnresolvedPatternKind::Where(
                     Box::new(self.convert_pattern(*pattern, ty, input_span, info)),
                     Box::new(self.convert_expr(*condition, info)),
                 ),
-                lower_v2::PatternKind::Tuple(patterns) => {
+                lower::PatternKind::Tuple(patterns) => {
                     let tuple_tys = patterns
                         .iter()
                         .map(|_| engine::UnresolvedType::Variable(self.ctx.new_variable()))
@@ -3220,8 +3220,8 @@ impl Typechecker {
             span: decl.span,
             params: decl.value.parameters,
             kind: match decl.value.kind {
-                lower_v2::TypeDeclarationKind::Marker => TypeDeclKind::Marker,
-                lower_v2::TypeDeclarationKind::Structure(fields, field_names) => {
+                lower::TypeDeclarationKind::Marker => TypeDeclKind::Marker,
+                lower::TypeDeclarationKind::Structure(fields, field_names) => {
                     TypeDeclKind::Structure {
                         fields: fields
                             .into_iter()
@@ -3235,7 +3235,7 @@ impl Typechecker {
                         field_names,
                     }
                 }
-                lower_v2::TypeDeclarationKind::Enumeration(variants, variant_names) => {
+                lower::TypeDeclarationKind::Enumeration(variants, variant_names) => {
                     TypeDeclKind::Enumeration {
                         variants: variants
                             .into_iter()
@@ -3387,9 +3387,9 @@ impl Typechecker {
                 id,
                 (
                     true,
-                    decl.value.value.unwrap_or_else(|| lower_v2::Expression {
+                    decl.value.value.unwrap_or_else(|| lower::Expression {
                         span: decl.span,
-                        kind: lower_v2::ExpressionKind::error(&self.compiler),
+                        kind: lower::ExpressionKind::error(&self.compiler),
                     }),
                 ),
             );
@@ -3821,8 +3821,8 @@ impl Typechecker {
                 };
 
                 let structure = match &ty.value.kind {
-                    lower_v2::TypeDeclarationKind::Marker => engine::TypeStructure::Marker,
-                    lower_v2::TypeDeclarationKind::Structure(fields, _) => {
+                    lower::TypeDeclarationKind::Marker => engine::TypeStructure::Marker,
+                    lower::TypeDeclarationKind::Structure(fields, _) => {
                         engine::TypeStructure::Structure(
                             fields
                                 .iter()
@@ -3830,7 +3830,7 @@ impl Typechecker {
                                 .collect(),
                         )
                     }
-                    lower_v2::TypeDeclarationKind::Enumeration(variants, _) => {
+                    lower::TypeDeclarationKind::Enumeration(variants, _) => {
                         engine::TypeStructure::Enumeration(
                             variants
                                 .iter()
@@ -3861,7 +3861,7 @@ impl Typechecker {
                     .clone();
 
                 match builtin_ty.value.kind {
-                    lower_v2::BuiltinTypeDeclarationKind::Number => {
+                    lower::BuiltinTypeDeclarationKind::Number => {
                         if !parameters.is_empty() {
                             self.compiler.add_error(
                                 "`Number` does not accept parameters",
@@ -3874,7 +3874,7 @@ impl Typechecker {
 
                         engine::UnresolvedType::Builtin(engine::BuiltinType::Number)
                     }
-                    lower_v2::BuiltinTypeDeclarationKind::Integer => {
+                    lower::BuiltinTypeDeclarationKind::Integer => {
                         if !parameters.is_empty() {
                             self.compiler.add_error(
                                 "`Integer` does not accept parameters",
@@ -3887,7 +3887,7 @@ impl Typechecker {
 
                         engine::UnresolvedType::Builtin(engine::BuiltinType::Integer)
                     }
-                    lower_v2::BuiltinTypeDeclarationKind::Natural => {
+                    lower::BuiltinTypeDeclarationKind::Natural => {
                         if !parameters.is_empty() {
                             self.compiler.add_error(
                                 "`Natural` does not accept parameters",
@@ -3900,7 +3900,7 @@ impl Typechecker {
 
                         engine::UnresolvedType::Builtin(engine::BuiltinType::Natural)
                     }
-                    lower_v2::BuiltinTypeDeclarationKind::Byte => {
+                    lower::BuiltinTypeDeclarationKind::Byte => {
                         if !parameters.is_empty() {
                             self.compiler.add_error(
                                 "`Byte` does not accept parameters",
@@ -3913,7 +3913,7 @@ impl Typechecker {
 
                         engine::UnresolvedType::Builtin(engine::BuiltinType::Byte)
                     }
-                    lower_v2::BuiltinTypeDeclarationKind::Signed => {
+                    lower::BuiltinTypeDeclarationKind::Signed => {
                         if !parameters.is_empty() {
                             self.compiler.add_error(
                                 "`Signed` does not accept parameters",
@@ -3926,7 +3926,7 @@ impl Typechecker {
 
                         engine::UnresolvedType::Builtin(engine::BuiltinType::Signed)
                     }
-                    lower_v2::BuiltinTypeDeclarationKind::Unsigned => {
+                    lower::BuiltinTypeDeclarationKind::Unsigned => {
                         if !parameters.is_empty() {
                             self.compiler.add_error(
                                 "`Unsigned` does not accept parameters",
@@ -3939,7 +3939,7 @@ impl Typechecker {
 
                         engine::UnresolvedType::Builtin(engine::BuiltinType::Unsigned)
                     }
-                    lower_v2::BuiltinTypeDeclarationKind::Float => {
+                    lower::BuiltinTypeDeclarationKind::Float => {
                         if !parameters.is_empty() {
                             self.compiler.add_error(
                                 "`Float` does not accept parameters",
@@ -3952,7 +3952,7 @@ impl Typechecker {
 
                         engine::UnresolvedType::Builtin(engine::BuiltinType::Float)
                     }
-                    lower_v2::BuiltinTypeDeclarationKind::Double => {
+                    lower::BuiltinTypeDeclarationKind::Double => {
                         if !parameters.is_empty() {
                             self.compiler.add_error(
                                 "`Double` does not accept parameters",
@@ -3965,7 +3965,7 @@ impl Typechecker {
 
                         engine::UnresolvedType::Builtin(engine::BuiltinType::Double)
                     }
-                    lower_v2::BuiltinTypeDeclarationKind::Text => {
+                    lower::BuiltinTypeDeclarationKind::Text => {
                         if !parameters.is_empty() {
                             self.compiler.add_error(
                                 "`Text` does not accept parameters",
@@ -3978,7 +3978,7 @@ impl Typechecker {
 
                         engine::UnresolvedType::Builtin(engine::BuiltinType::Text)
                     }
-                    lower_v2::BuiltinTypeDeclarationKind::List => {
+                    lower::BuiltinTypeDeclarationKind::List => {
                         if parameters.is_empty() {
                             self.compiler.add_error(
                                 "`List` accepts 1 parameter, but none were provided",
@@ -4014,7 +4014,7 @@ impl Typechecker {
                             )))
                         }
                     }
-                    lower_v2::BuiltinTypeDeclarationKind::Mutable => {
+                    lower::BuiltinTypeDeclarationKind::Mutable => {
                         if parameters.is_empty() {
                             self.compiler.add_error(
                                 "`Mutable` accepts 1 parameter, but none were provided",

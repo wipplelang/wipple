@@ -20,7 +20,7 @@ pub struct Loader {
     base: Option<FilePath>,
     std_path: Option<FilePath>,
     source_map: Shared<SourceMap>,
-    cache: Shared<HashMap<FilePath, Arc<analysis::ast_v2::File>>>,
+    cache: Shared<HashMap<FilePath, Arc<analysis::ast::File>>>,
 }
 
 #[derive(Default)]
@@ -244,7 +244,7 @@ impl wipple_frontend::Loader for Loader {
         self.virtual_paths.clone()
     }
 
-    fn cache(&self) -> Shared<HashMap<FilePath, Arc<analysis::ast_v2::File>>> {
+    fn cache(&self) -> Shared<HashMap<FilePath, Arc<analysis::ast::File>>> {
         self.cache.clone()
     }
 

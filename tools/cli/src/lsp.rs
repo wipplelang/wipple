@@ -4,7 +4,7 @@ use tower_lsp::{jsonrpc, lsp_types::*, Client, LanguageServer, LspService, Serve
 use wipple_default_loader::Loader;
 use wipple_frontend::{
     analysis::{
-        lower::{ScopeValue, ScopeValues},
+        lower::AnyDeclaration,
         typecheck::{
             format::{format_type, Format, TypeFunctionFormat},
             TraitDecl, Type, TypeDecl, TypeDeclKind,
@@ -526,7 +526,7 @@ impl LanguageServer for Backend {
 
         let mut items = Vec::new();
 
-        let mut add = |scope: &ScopeValues| {
+        let mut add = |scope: &HashMap<InternedString, AnyDeclaration>| {
             for (name, value) in scope {
                 let kind;
                 let mut help = Vec::new();
@@ -534,7 +534,7 @@ impl LanguageServer for Backend {
                 let mut format = Format::default();
 
                 match value {
-                    ScopeValue::Type(id) => {
+                    AnyDeclaration::Type(id) => {
                         kind = Some(
                             match document.program.declarations.types.get(id).unwrap().kind {
                                 TypeDeclKind::Marker | TypeDeclKind::Structure { .. } => {
@@ -555,7 +555,7 @@ impl LanguageServer for Backend {
                             .help
                             .clone();
                     }
-                    ScopeValue::BuiltinType(id) => {
+                    AnyDeclaration::BuiltinType(id) => {
                         kind = Some(CompletionItemKind::STRUCT);
 
                         help = document
@@ -568,7 +568,7 @@ impl LanguageServer for Backend {
                             .help
                             .clone();
                     }
-                    ScopeValue::Trait(id) => {
+                    AnyDeclaration::Trait(id) => {
                         kind = Some(CompletionItemKind::INTERFACE);
 
                         help = document
@@ -582,10 +582,10 @@ impl LanguageServer for Backend {
                             .help
                             .clone();
                     }
-                    ScopeValue::TypeParameter(_) => {
+                    AnyDeclaration::TypeParameter(_) => {
                         kind = Some(CompletionItemKind::TYPE_PARAMETER);
                     }
-                    ScopeValue::Constant(id, _) => {
+                    AnyDeclaration::Constant(id, _) => {
                         kind = Some(CompletionItemKind::CONSTANT);
 
                         let decl = document.program.declarations.constants.get(id).unwrap();
@@ -596,7 +596,7 @@ impl LanguageServer for Backend {
 
                         format.type_function = TypeFunctionFormat::Arrow;
                     }
-                    ScopeValue::Variable(id) => {
+                    AnyDeclaration::Variable(id) => {
                         kind = Some(CompletionItemKind::VARIABLE);
 
                         ty = document

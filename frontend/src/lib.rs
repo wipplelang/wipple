@@ -31,7 +31,7 @@ pub trait Loader: Debug + Send + Sync + 'static {
 
     fn virtual_paths(&self) -> Shared<HashMap<InternedString, Arc<str>>>;
 
-    fn cache(&self) -> Shared<HashMap<FilePath, Arc<analysis::ast_v2::File>>>;
+    fn cache(&self) -> Shared<HashMap<FilePath, Arc<analysis::ast::File>>>;
 
     fn source_map(&self) -> Shared<SourceMap>;
 }
@@ -76,7 +76,7 @@ pub struct Compiler {
     diagnostics: Diagnostics,
     file_ids: FileIds,
     ids: Ids,
-    pub(crate) cache: Shared<indexmap::IndexMap<FilePath, Arc<analysis::lower_v2::File>>>,
+    pub(crate) cache: Shared<indexmap::IndexMap<FilePath, Arc<analysis::lower::File>>>,
     #[cfg(debug_assertions)]
     pub(crate) backtrace_enabled: bool,
 }
