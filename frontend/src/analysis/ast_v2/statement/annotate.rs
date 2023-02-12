@@ -5,7 +5,7 @@ use crate::{
             SyntaxRule, SyntaxRules,
         },
         ConstantTypeAnnotation, ConstantTypeAnnotationSyntax, ConstantTypeAnnotationSyntaxContext,
-        StatementSyntaxContext,
+        StatementAttributes, StatementSyntaxContext,
     },
     diagnostics::Note,
     helpers::InternedString,
@@ -17,7 +17,7 @@ pub struct AnnotateStatement {
     pub colon_span: Span,
     pub name: Result<(Span, InternedString), SyntaxError>,
     pub annotation: Result<ConstantTypeAnnotation, SyntaxError>,
-    pub specialize: bool,
+    pub attributes: StatementAttributes,
 }
 
 pub struct AnnotateStatementSyntax;
@@ -75,7 +75,7 @@ impl Syntax for AnnotateStatementSyntax {
                     colon_span: operator_span,
                     name,
                     annotation: ty,
-                    specialize: context.statement_attributes.unwrap().lock().specialize.is_some(),
+                    attributes: context.statement_attributes.unwrap().lock().clone(),
                 }
                 .into())
             },

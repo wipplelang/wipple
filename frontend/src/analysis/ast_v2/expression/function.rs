@@ -8,6 +8,7 @@ use crate::{
         Expression, ExpressionSyntax, Pattern, PatternSyntax, PatternSyntaxContext,
     },
     parse::{self, Span},
+    ScopeId,
 };
 
 #[derive(Debug, Clone)]
@@ -15,6 +16,7 @@ pub struct FunctionExpression {
     pub arrow_span: Span,
     pub pattern: Result<Pattern, SyntaxError>,
     pub body: Result<Box<Expression>, SyntaxError>,
+    pub scope: ScopeId,
 }
 
 pub struct FunctionExpressionSyntax;
@@ -52,6 +54,7 @@ impl Syntax for FunctionExpressionSyntax {
                     arrow_span: operator_span,
                     pattern,
                     body: body.map(Box::new),
+                    scope,
                 }
                 .into())
             },

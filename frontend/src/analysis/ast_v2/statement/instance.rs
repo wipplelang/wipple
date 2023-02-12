@@ -4,7 +4,7 @@ use crate::{
         syntax::{
             FileBodySyntaxContext, Syntax, SyntaxContext, SyntaxError, SyntaxRule, SyntaxRules,
         },
-        Type, TypeSyntax, TypeSyntaxContext,
+        StatementAttributes, Type, TypeSyntax, TypeSyntaxContext,
     },
     diagnostics::Note,
     helpers::InternedString,
@@ -14,9 +14,11 @@ use futures::{stream, StreamExt};
 
 #[derive(Debug, Clone)]
 pub struct InstanceStatement {
+    pub instance_span: Span,
     pub trait_span: Span,
     pub trait_name: InternedString,
     pub trait_parameters: Vec<Result<Type, SyntaxError>>,
+    pub attributes: StatementAttributes,
 }
 
 pub struct InstanceStatementSyntax;
@@ -69,7 +71,9 @@ impl Syntax for InstanceStatementSyntax {
                         };
 
                         let context = TypeSyntaxContext::new(context.ast_builder)
-                            .with_statement_attributes(context.statement_attributes.unwrap());
+                            .with_statement_attributes(
+                                context.statement_attributes.as_ref().unwrap().clone(),
+                            );
 
                         let params = stream::iter(exprs)
                             .then(|expr| {
@@ -98,9 +102,11 @@ impl Syntax for InstanceStatementSyntax {
                 };
 
                 Ok(InstanceStatement {
+                    instance_span: span,
                     trait_span,
                     trait_name,
                     trait_parameters,
+                    attributes: context.statement_attributes.unwrap().lock().clone(),
                 }
                 .into())
             },

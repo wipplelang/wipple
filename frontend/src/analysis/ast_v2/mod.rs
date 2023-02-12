@@ -55,6 +55,7 @@ pub struct File {
     pub attributes: FileAttributes,
     pub syntax_declarations: BTreeMap<TemplateId, SyntaxAssignmentValue>,
     pub statements: Vec<Result<Statement, SyntaxError>>,
+    pub root_scope: ScopeId,
 }
 
 impl Compiler {
@@ -93,6 +94,7 @@ impl Compiler {
             attributes: ast_builder.attributes.into_unique(),
             syntax_declarations: BTreeMap::new(), // TODO
             statements,
+            root_scope: scope,
         }
     }
 }

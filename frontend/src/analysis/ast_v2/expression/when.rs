@@ -7,10 +7,12 @@ use crate::{
         WhenBodySyntaxContext,
     },
     diagnostics::Note,
+    parse::Span,
 };
 
 #[derive(Debug, Clone)]
 pub struct WhenExpression {
+    pub when_span: Span,
     pub input: Result<Box<Expression>, SyntaxError>,
     pub body: Result<WhenBody, SyntaxError>,
 }
@@ -53,6 +55,7 @@ impl Syntax for WhenExpressionSyntax {
                     .await;
 
                 Ok(WhenExpression {
+                    when_span: span,
                     input: input.map(Box::new),
                     body,
                 }

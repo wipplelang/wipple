@@ -5,12 +5,13 @@ use crate::{
     },
     diagnostics::Note,
     helpers::InternedString,
-    parse,
+    parse::{self, Span},
 };
 use futures::{stream, StreamExt};
 
 #[derive(Debug, Clone)]
 pub struct FormatExpression {
+    pub format_span: Span,
     pub segments: Vec<(InternedString, Result<Expression, SyntaxError>)>,
     pub trailing_segment: Option<InternedString>,
 }
@@ -87,6 +88,7 @@ impl Syntax for FormatExpressionSyntax {
                 let segments = segments.into_iter().zip(inputs).collect();
 
                 Ok(FormatExpression {
+                    format_span: span,
                     segments,
                     trailing_segment
                 }

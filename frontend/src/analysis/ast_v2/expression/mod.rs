@@ -118,6 +118,8 @@ impl SyntaxContext for ExpressionSyntaxContext {
             > + Send,
         scope: ScopeId,
     ) -> Result<Self::Body, SyntaxError> {
+        let scope = self.ast_builder.child_scope(scope);
+
         Ok(BlockExpression {
             span,
             statements: statements.collect(),

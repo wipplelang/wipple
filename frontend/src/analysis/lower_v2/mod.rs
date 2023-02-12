@@ -19,9 +19,10 @@ use std::{
 pub struct File<Decls = Declarations> {
     pub span: Span,
     pub declarations: Decls,
-    pub language_items: LanguageItems,
-    pub specializations: BTreeMap<ConstantId, ConstantId>,
+    pub info: FileInfo,
+    pub specializations: BTreeMap<ConstantId, Vec<ConstantId>>,
     pub statements: Vec<Expression>,
+    pub exported: HashMap<InternedString, AnyDeclaration>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -286,8 +287,34 @@ pub struct InstanceDeclaration {
 pub struct VariableDeclaration;
 
 #[derive(Debug, Clone, Default)]
+struct FileInfo {
+    recursion_limit: Option<usize>,
+    language_items: LanguageItems,
+}
+
+impl FileInfo {
+    fn merge(&mut self, other: FileInfo) {
+        self.recursion_limit = match (self.recursion_limit, other.recursion_limit) {
+            (None, None) => None,
+            (None, Some(limit)) | (Some(limit), None) => Some(limit),
+            (Some(limit), Some(other)) => Some(limit.max(other)),
+        };
+
+        self.language_items.merge(other.language_items);
+    }
+}
+
+#[derive(Debug, Clone, Default)]
 pub struct LanguageItems {
     pub boolean: Option<TypeId>,
+}
+
+impl LanguageItems {
+    fn merge(&mut self, other: LanguageItems) {
+        if let Some(boolean) = other.boolean {
+            self.boolean.get_or_insert(boolean);
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -488,32 +515,8 @@ pub enum RuntimeFunction {
     ListRemove,
 }
 
-impl Compiler {
-    pub(crate) fn lower_v2(&self, file: &ast_v2::File, dependencies: Vec<Arc<File>>) -> File {
-        todo!()
-    }
-}
-
-#[derive(Debug)]
-struct Lowerer {
-    compiler: Compiler,
-    file: FilePath,
-    declarations: UnresolvedDeclarations,
-    language_items: LanguageItems,
-    specializations: BTreeMap<ConstantId, ConstantId>,
-    scopes: BTreeMap<ScopeId, Scope>,
-}
-
-#[derive(Debug, Clone, Default)]
-struct Scope {
-    parent: Option<ScopeId>,
-    values: HashMap<InternedString, ScopeValue>,
-    declared_variables: BTreeSet<VariableId>,
-    used_variables: Shared<CaptureList>,
-}
-
 #[derive(Debug, Clone, Copy)]
-enum ScopeValue {
+pub enum AnyDeclaration {
     Type(TypeId),
     BuiltinType(BuiltinTypeId),
     Trait(TraitId),
@@ -522,12 +525,179 @@ enum ScopeValue {
     Variable(VariableId),
 }
 
+impl Compiler {
+    pub(crate) fn lower_v2(&self, file: &ast_v2::File, dependencies: Vec<Arc<File>>) -> File {
+        let mut lowerer = Lowerer {
+            compiler: self.clone(),
+            file: file.span.path,
+            file_info: Default::default(),
+            declarations: Default::default(),
+            specializations: Default::default(),
+            scopes: Default::default(),
+        };
+
+        let scope = lowerer.root_scope(file.root_scope);
+
+        for dependency in dependencies {
+            macro_rules! merge_dependency {
+                ($($kind:ident$(($transform:expr))?),* $(,)?) => {
+                    $(
+                        for (id, mut decl) in dependency.declarations.$kind.clone() {
+                            let mut uses = HashSet::new();
+                            let merged_decl = lowerer.declarations.$kind.entry(id).or_insert_with(|| {
+                                uses = mem::take(&mut decl.uses);
+                                $($transform)?(decl)
+                            });
+
+                            merged_decl.uses.extend(uses);
+                        }
+                    )*
+                };
+            }
+
+            merge_dependency!(
+                // syntaxes,
+                types(Declaration::make_unresolved),
+                type_parameters,
+                traits(Declaration::make_unresolved),
+                builtin_types,
+                constants(Declaration::make_unresolved),
+                instances(Declaration::make_unresolved),
+                variables,
+            );
+
+            lowerer.file_info.merge(dependency.info.clone());
+
+            for (&id, specializations) in &dependency.specializations {
+                for &specialization in specializations {
+                    lowerer.specializations.insert(specialization, id);
+                }
+            }
+
+            lowerer.extend(dependency.exported.clone(), scope);
+        }
+
+        let statements = lowerer.lower_statements(&file.statements, scope);
+
+        for constant in lowerer.declarations.constants.values() {
+            constant
+                .value
+                .as_ref()
+                .unwrap()
+                .value
+                .lock()
+                .get_or_insert_with(|| {
+                    self.add_error(
+                        "uninitialized constant",
+                        vec![Note::primary(
+                            constant.span,
+                            format!(
+                                "`{}` is never initialized with a value",
+                                constant.name.unwrap()
+                            ),
+                        )],
+                    );
+
+                    Expression {
+                        span: constant.span,
+                        kind: ExpressionKind::error(self),
+                    }
+                });
+        }
+
+        for instance in lowerer.declarations.instances.values_mut() {
+            let tr = instance.value.as_ref().unwrap().tr;
+            let tr_decl = lowerer.declarations.traits.get(&tr).unwrap();
+
+            if tr_decl
+                .value
+                .as_ref()
+                .unwrap()
+                .attributes
+                .allow_overlapping_instances
+                && instance.span.path != tr_decl.span.path
+            {
+                self.add_error(
+                    "instance of trait that allows overlapping instances must occur in the same file as the trait",
+                    vec![Note::primary(instance.span, "instance disallowed here")],
+                );
+            }
+
+            let trait_has_value = tr_decl.value.as_ref().unwrap().ty.is_some();
+            let instance_has_value = instance.value.as_ref().unwrap().value.is_some();
+
+            match (trait_has_value, instance_has_value) {
+                (true, false) => {
+                    self.add_error(
+                        "expected instance to have value",
+                        vec![Note::primary(
+                            instance.span,
+                            "try adding `:` after the instance declaration to give it a value",
+                        )],
+                    );
+
+                    instance.value.as_mut().unwrap().value = Some(Expression {
+                        span: instance.span,
+                        kind: ExpressionKind::error(self),
+                    });
+                }
+                (false, true) => {
+                    self.add_error(
+                        "instance has value, but the trait doesn't store a value",
+                        vec![Note::primary(
+                            instance.span,
+                            "try removing this instance's value",
+                        )],
+                    );
+                }
+                _ => {}
+            }
+        }
+
+        let exported = lowerer.export(scope);
+
+        let mut specializations = BTreeMap::<ConstantId, Vec<ConstantId>>::new();
+        for (constant, specialized_constant) in lowerer.specializations {
+            specializations
+                .entry(specialized_constant)
+                .or_default()
+                .push(constant);
+        }
+
+        File {
+            span: file.span,
+            declarations: lowerer.declarations.resolve(),
+            info: lowerer.file_info,
+            specializations,
+            statements,
+            exported,
+        }
+    }
+}
+
+#[derive(Debug)]
+struct Lowerer {
+    compiler: Compiler,
+    file: FilePath,
+    declarations: UnresolvedDeclarations,
+    file_info: FileInfo,
+    specializations: BTreeMap<ConstantId, ConstantId>,
+    scopes: BTreeMap<ScopeId, Scope>,
+}
+
+#[derive(Debug, Clone, Default)]
+struct Scope {
+    parent: Option<ScopeId>,
+    values: HashMap<InternedString, AnyDeclaration>,
+    declared_variables: BTreeSet<VariableId>,
+    used_variables: Shared<CaptureList>,
+}
+
 impl Lowerer {
     fn root_scope(&mut self, id: ScopeId) -> ScopeId {
         let mut scope = Scope::default();
         self.load_builtins(&mut scope);
 
-        let id = self.compiler.new_scope_id_in(self.file);
         self.scopes.insert(id, scope);
 
         id
@@ -544,10 +714,10 @@ impl Lowerer {
         id
     }
 
-    fn insert(&mut self, name: InternedString, value: ScopeValue, scope: ScopeId) {
+    fn insert(&mut self, name: InternedString, value: AnyDeclaration, scope: ScopeId) {
         let scope = self.scopes.get_mut(&scope).unwrap();
 
-        if let ScopeValue::Variable(var) = value {
+        if let AnyDeclaration::Variable(var) = value {
             scope.declared_variables.insert(var);
         }
 
@@ -556,7 +726,7 @@ impl Lowerer {
 
     fn extend(
         &mut self,
-        values: impl IntoIterator<Item = (InternedString, ScopeValue)>,
+        values: impl IntoIterator<Item = (InternedString, AnyDeclaration)>,
         scope: ScopeId,
     ) {
         for (name, value) in values {
@@ -564,11 +734,11 @@ impl Lowerer {
         }
     }
 
-    fn get(&mut self, name: InternedString, span: Span, scope: ScopeId) -> Option<ScopeValue> {
+    fn get(&mut self, name: InternedString, span: Span, scope: ScopeId) -> Option<AnyDeclaration> {
         self.get_inner(name, Some(span), scope)
     }
 
-    fn peek(&mut self, name: InternedString, scope: ScopeId) -> Option<ScopeValue> {
+    fn peek(&mut self, name: InternedString, scope: ScopeId) -> Option<AnyDeclaration> {
         self.get_inner(name, None, scope)
     }
 
@@ -577,7 +747,7 @@ impl Lowerer {
         name: InternedString,
         use_span: Option<Span>,
         scope_id: ScopeId,
-    ) -> Option<ScopeValue> {
+    ) -> Option<AnyDeclaration> {
         let mut parent = Some(scope_id);
         let mut result = None;
         let mut used_variables = Vec::new();
@@ -598,7 +768,7 @@ impl Lowerer {
         }
 
         if let Some(span) = use_span {
-            if let Some(ScopeValue::Variable(id)) = result {
+            if let Some(AnyDeclaration::Variable(id)) = result {
                 for u in used_variables {
                     u.lock().push((id, span));
                 }
@@ -629,6 +799,10 @@ impl Lowerer {
 
         used_variables
     }
+
+    fn export(&mut self, scope: ScopeId) -> HashMap<InternedString, AnyDeclaration> {
+        mem::take(&mut self.scopes.get_mut(&scope).unwrap().values)
+    }
 }
 
 #[derive(Debug)]
@@ -642,24 +816,28 @@ struct StatementDeclaration<'a> {
 enum StatementDeclarationKind<'a> {
     Type(
         TypeId,
-        Option<(ScopeId, &'a ast_v2::TypePattern)>,
+        Option<(ScopeId, (Vec<TypeParameterId>, Vec<Bound>))>,
         &'a ast_v2::TypeAssignmentValue,
     ),
     Trait(
         TraitId,
-        Option<(ScopeId, &'a ast_v2::TypePattern)>,
+        Option<(ScopeId, (Vec<TypeParameterId>, Vec<Bound>))>,
         &'a ast_v2::TraitAssignmentValue,
     ),
     Constant(
         ConstantId,
-        Option<(ScopeId, &'a ast_v2::TypePattern)>,
+        Option<(ScopeId, (Vec<TypeParameterId>, Vec<Bound>))>,
         &'a ast_v2::Type,
     ),
     Instance(
         ConstantId,
-        Option<(ScopeId, &'a ast_v2::TypePattern)>,
-        &'a ast_v2::InstanceStatement,
-        Option<&'a Result<ast_v2::Expression, ast_v2::SyntaxError>>,
+        Option<(ScopeId, (Vec<TypeParameterId>, Vec<Bound>))>,
+        (
+            Span,
+            InternedString,
+            &'a Vec<Result<ast_v2::Type, ast_v2::SyntaxError>>,
+        ),
+        Option<&'a ast_v2::Expression>,
     ),
     Use(Span, InternedString),
     Queued(QueuedStatement<'a>),
@@ -674,19 +852,20 @@ enum QueuedStatement<'a> {
 impl Lowerer {
     fn lower_statements(
         &mut self,
-        statements: &[ast_v2::Statement],
+        statements: &[Result<ast_v2::Statement, ast_v2::SyntaxError>],
         scope: ScopeId,
     ) -> Vec<Expression> {
         let declarations = statements
             .iter()
+            .filter_map(|statement| statement.as_ref().ok())
             .map(|statement| self.lower_statement(statement, scope))
             .collect::<Vec<_>>();
 
         let mut queue = Vec::new();
         let mut current_constant = None;
 
-        for mut decl in declarations {
-            let mut decl = match decl {
+        for decl in declarations {
+            let decl = match decl {
                 Some(decl) => decl,
                 None => continue,
             };
@@ -697,12 +876,8 @@ impl Lowerer {
 
             let scope_value = match decl.kind {
                 StatementDeclarationKind::Type(id, ty_pattern, value) => {
-                    let (scope, (parameters, bounds)) = ty_pattern
-                        .as_ref()
-                        .map(|(scope, ty_pattern)| {
-                            (*scope, self.lower_type_pattern(ty_pattern, *scope))
-                        })
-                        .unwrap_or_else(|| (scope, Default::default()));
+                    let (scope, (parameters, bounds)) =
+                        ty_pattern.unwrap_or_else(|| (scope, Default::default()));
 
                     if let Some(bound) = bounds.first() {
                         self.compiler.add_error(
@@ -829,15 +1004,11 @@ impl Lowerer {
                         attributes,
                     });
 
-                    Some(ScopeValue::Type(id))
+                    Some(AnyDeclaration::Type(id))
                 }
                 StatementDeclarationKind::Trait(id, ty_pattern, value) => {
-                    let (scope, (parameters, bounds)) = ty_pattern
-                        .as_ref()
-                        .map(|(scope, ty_pattern)| {
-                            (*scope, self.lower_type_pattern(ty_pattern, *scope))
-                        })
-                        .unwrap_or_else(|| (scope, Default::default()));
+                    let (scope, (parameters, bounds)) =
+                        ty_pattern.unwrap_or_else(|| (scope, Default::default()));
 
                     if let Some(bound) = bounds.first() {
                         self.compiler.add_error(
@@ -862,15 +1033,11 @@ impl Lowerer {
                         attributes,
                     });
 
-                    Some(ScopeValue::Trait(id))
+                    Some(AnyDeclaration::Trait(id))
                 }
                 StatementDeclarationKind::Constant(id, ty_pattern, ty) => {
-                    let (scope, (parameters, bounds)) = ty_pattern
-                        .as_ref()
-                        .map(|(scope, ty_pattern)| {
-                            (*scope, self.lower_type_pattern(ty_pattern, *scope))
-                        })
-                        .unwrap_or_else(|| (scope, Default::default()));
+                    let (scope, (parameters, bounds)) =
+                        ty_pattern.unwrap_or_else(|| (scope, Default::default()));
 
                     let ty = self.lower_type(ty, scope);
 
@@ -887,31 +1054,32 @@ impl Lowerer {
 
                     current_constant = Some((id, scope));
 
-                    Some(ScopeValue::Constant(id, None))
+                    Some(AnyDeclaration::Constant(id, None))
                 }
-                StatementDeclarationKind::Instance(id, ty_pattern, statement, value) => {
-                    let (scope, (parameters, bounds)) = ty_pattern
-                        .as_ref()
-                        .map(|(scope, ty_pattern)| {
-                            (*scope, self.lower_type_pattern(ty_pattern, *scope))
-                        })
-                        .unwrap_or_else(|| (scope, Default::default()));
+                StatementDeclarationKind::Instance(
+                    id,
+                    ty_pattern,
+                    (trait_span, trait_name, trait_params),
+                    value,
+                ) => {
+                    let (scope, (parameters, bounds)) =
+                        ty_pattern.unwrap_or_else(|| (scope, Default::default()));
 
-                    let tr = match self.get(statement.trait_name, statement.trait_span, scope) {
-                        Some(ScopeValue::Trait(tr)) => {
+                    let tr = match self.get(trait_name, trait_span, scope) {
+                        Some(AnyDeclaration::Trait(tr)) => {
                             self.declarations
                                 .traits
                                 .get_mut(&tr)
                                 .unwrap()
                                 .uses
-                                .insert(statement.trait_span);
+                                .insert(trait_span);
 
                             tr
                         }
                         Some(_) => {
                             self.compiler.add_error(
-                                format!("`{}` is not a trait", statement.trait_name),
-                                vec![Note::primary(statement.trait_span, "expected a trait here")],
+                                format!("`{}` is not a trait", trait_name),
+                                vec![Note::primary(trait_span, "expected a trait here")],
                             );
 
                             self.declarations.instances.remove(&id);
@@ -919,11 +1087,8 @@ impl Lowerer {
                         }
                         None => {
                             self.compiler.add_error(
-                                format!("cannot find `{}`", statement.trait_name),
-                                vec![Note::primary(
-                                    statement.trait_span,
-                                    "this name is not defined",
-                                )],
+                                format!("cannot find `{}`", trait_name),
+                                vec![Note::primary(trait_span, "this name is not defined")],
                             );
 
                             self.declarations.instances.remove(&id);
@@ -931,8 +1096,7 @@ impl Lowerer {
                         }
                     };
 
-                    let trait_params = statement
-                        .trait_parameters
+                    let trait_params = trait_params
                         .iter()
                         .map(|ty| match ty {
                             Ok(ty) => self.lower_type(ty, scope),
@@ -943,29 +1107,23 @@ impl Lowerer {
                         })
                         .collect::<Vec<_>>();
 
-                    let value = value.map(|value| match value {
-                        Ok(value) => self.lower_expr(value, scope),
-                        Err(error) => Expression {
-                            span: error.span,
-                            kind: ExpressionKind::error(&self.compiler),
-                        },
-                    });
+                    let value = value.map(|value| self.lower_expr(value, scope));
 
                     self.declarations.instances.get_mut(&id).unwrap().value =
                         Some(InstanceDeclaration {
                             parameters,
                             bounds,
-                            tr_span: statement.trait_span,
+                            tr_span: trait_span,
                             tr,
                             tr_parameters: trait_params,
                             value,
                         });
 
-                    Some(ScopeValue::Constant(id, None))
+                    Some(AnyDeclaration::Constant(id, None))
                 }
                 StatementDeclarationKind::Use(span, name) => {
                     let ty = match self.get(name, span, scope) {
-                        Some(ScopeValue::Type(ty)) => {
+                        Some(AnyDeclaration::Type(ty)) => {
                             self.declarations
                                 .types
                                 .get_mut(&ty)
@@ -1024,7 +1182,7 @@ impl Lowerer {
 
                         self.insert(
                             name,
-                            ScopeValue::Constant(variant, Some((ty, index))),
+                            AnyDeclaration::Constant(variant, Some((ty, index))),
                             scope,
                         );
                     }
@@ -1042,7 +1200,7 @@ impl Lowerer {
                     match &language_item.language_item_kind {
                         ast_v2::LanguageItemStatementAttributeKind::Boolean => {
                             let ty = match scope_value {
-                                Some(ScopeValue::Type(id)) => id,
+                                Some(AnyDeclaration::Type(id)) => id,
                                 _ => {
                                     self.compiler.add_error(
                                         "`boolean` language item expects a type",
@@ -1056,7 +1214,7 @@ impl Lowerer {
                                 }
                             };
 
-                            if self.language_items.boolean.is_some() {
+                            if self.file_info.language_items.boolean.is_some() {
                                 self.compiler.add_error(
                                     "`language` item may only be defined once",
                                     vec![Note::primary(
@@ -1068,7 +1226,7 @@ impl Lowerer {
                                 break 'language_items;
                             }
 
-                            self.language_items.boolean = Some(ty);
+                            self.file_info.language_items.boolean = Some(ty);
                         }
                     }
                 }
@@ -1109,7 +1267,7 @@ impl Lowerer {
                                 let associated_parameters = value.parameters.clone();
                                 let associated_constant = value.value.clone();
 
-                                if let Some(ScopeValue::Constant(id, _)) =
+                                if let Some(AnyDeclaration::Constant(id, _)) =
                                     self.peek(decl.name.unwrap(), scope)
                                 {
                                     if id == prev_constant_id
@@ -1149,7 +1307,7 @@ impl Lowerer {
 
                                     self.insert(
                                         parameter.name.unwrap(),
-                                        ScopeValue::TypeParameter(id),
+                                        AnyDeclaration::TypeParameter(id),
                                         prev_constant_scope,
                                     );
                                 }
@@ -1204,7 +1362,236 @@ impl Lowerer {
         statement: &'a ast_v2::Statement,
         scope: ScopeId,
     ) -> Option<StatementDeclaration<'a>> {
-        todo!()
+        match statement {
+            ast_v2::Statement::Annotate(_) => todo!(),
+            ast_v2::Statement::Assign(statement) => match statement.value.as_ref().ok()? {
+                ast_v2::AssignmentValue::Trait(value) => {
+                    let (span, name) =
+                        self.get_name_from_assignment(statement.pattern.as_ref().ok()?)?;
+
+                    let id = self.compiler.new_trait_id_in(self.file);
+                    self.insert(name, AnyDeclaration::Trait(id), scope);
+
+                    self.declarations
+                        .traits
+                        .insert(id, Declaration::unresolved(Some(name), span));
+
+                    Some(StatementDeclaration {
+                        span: statement.colon_span,
+                        kind: StatementDeclarationKind::Trait(id, None, value),
+                        attributes: &statement.attributes,
+                    })
+                }
+                ast_v2::AssignmentValue::Type(value) => {
+                    let (span, name) =
+                        self.get_name_from_assignment(statement.pattern.as_ref().ok()?)?;
+
+                    let id = self.compiler.new_type_id_in(self.file);
+                    self.insert(name, AnyDeclaration::Type(id), scope);
+
+                    self.declarations
+                        .types
+                        .insert(id, Declaration::unresolved(Some(name), span));
+
+                    Some(StatementDeclaration {
+                        span: statement.colon_span,
+                        kind: StatementDeclarationKind::Type(id, None, value),
+                        attributes: &statement.attributes,
+                    })
+                }
+                ast_v2::AssignmentValue::Syntax(_) => None,
+                ast_v2::AssignmentValue::TypeFunction(value) => {
+                    let scope = self.child_scope(value.scope, scope);
+
+                    let (parameters, bounds) =
+                        self.lower_type_pattern(value.pattern.as_ref().ok()?, scope);
+
+                    match value.value.as_deref().ok()? {
+                        ast_v2::AssignmentValue::Trait(value) => {
+                            let (span, name) =
+                                self.get_name_from_assignment(statement.pattern.as_ref().ok()?)?;
+
+                            let id = self.compiler.new_trait_id_in(self.file);
+                            self.insert(name, AnyDeclaration::Trait(id), scope);
+
+                            self.declarations
+                                .traits
+                                .insert(id, Declaration::unresolved(Some(name), span));
+
+                            Some(StatementDeclaration {
+                                span: statement.colon_span,
+                                kind: StatementDeclarationKind::Trait(
+                                    id,
+                                    Some((scope, (parameters, bounds))),
+                                    value,
+                                ),
+                                attributes: &statement.attributes,
+                            })
+                        }
+                        ast_v2::AssignmentValue::Type(value) => {
+                            let (span, name) =
+                                self.get_name_from_assignment(statement.pattern.as_ref().ok()?)?;
+
+                            let id = self.compiler.new_type_id_in(self.file);
+                            self.insert(name, AnyDeclaration::Type(id), scope);
+
+                            self.declarations
+                                .types
+                                .insert(id, Declaration::unresolved(Some(name), span));
+
+                            Some(StatementDeclaration {
+                                span: statement.colon_span,
+                                kind: StatementDeclarationKind::Type(
+                                    id,
+                                    Some((scope, (parameters, bounds))),
+                                    value,
+                                ),
+                                attributes: &statement.attributes,
+                            })
+                        }
+                        _ => {
+                            self.compiler.add_error(
+                                "syntax error",
+                                vec![Note::primary(
+                                    statement.colon_span,
+                                    "expected a `type` or `trait` definition after this",
+                                )],
+                            );
+
+                            None
+                        }
+                    }
+                }
+                ast_v2::AssignmentValue::Expression(value) => {
+                    match statement.pattern.as_ref().ok()? {
+                        ast_v2::AssignmentPattern::Pattern(pattern) => Some(StatementDeclaration {
+                            span: statement.colon_span,
+                            kind: StatementDeclarationKind::Queued(QueuedStatement::Assign(
+                                pattern,
+                                &value.expr,
+                            )),
+                            attributes: &statement.attributes,
+                        }),
+                        ast_v2::AssignmentPattern::Instance(pattern) => {
+                            let id = self.compiler.new_constant_id_in(self.file);
+
+                            self.declarations
+                                .instances
+                                .insert(id, Declaration::unresolved(None, pattern.instance_span));
+
+                            Some(StatementDeclaration {
+                                span: statement.colon_span,
+                                kind: StatementDeclarationKind::Instance(
+                                    id,
+                                    None,
+                                    (
+                                        pattern.trait_span,
+                                        pattern.trait_name,
+                                        &pattern.trait_parameters,
+                                    ),
+                                    Some(&value.expr),
+                                ),
+                                attributes: &statement.attributes,
+                            })
+                        }
+                        ast_v2::AssignmentPattern::TypeFunction(pattern) => {
+                            let scope = self.child_scope(pattern.scope, scope);
+
+                            let (parameters, bounds) =
+                                self.lower_type_pattern(pattern.type_pattern.as_ref().ok()?, scope);
+
+                            match pattern.assignment_pattern.as_deref().ok()? {
+                                ast_v2::AssignmentPattern::Instance(pattern) => {
+                                    let id = self.compiler.new_constant_id_in(self.file);
+
+                                    self.declarations.instances.insert(
+                                        id,
+                                        Declaration::unresolved(None, pattern.instance_span),
+                                    );
+
+                                    Some(StatementDeclaration {
+                                        span: statement.colon_span,
+                                        kind: StatementDeclarationKind::Instance(
+                                            id,
+                                            Some((scope, (parameters, bounds))),
+                                            (
+                                                pattern.trait_span,
+                                                pattern.trait_name,
+                                                &pattern.trait_parameters,
+                                            ),
+                                            Some(&value.expr),
+                                        ),
+                                        attributes: &statement.attributes,
+                                    })
+                                }
+                                _ => {
+                                    self.compiler.add_error(
+                                        "syntax error",
+                                        vec![Note::primary(
+                                            statement.colon_span,
+                                            "expected an `instance` definition after this",
+                                        )],
+                                    );
+
+                                    None
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            ast_v2::Statement::Instance(statement) => {
+                let id = self.compiler.new_constant_id_in(self.file);
+
+                self.declarations
+                    .instances
+                    .insert(id, Declaration::unresolved(None, statement.instance_span));
+
+                Some(StatementDeclaration {
+                    span: statement.instance_span,
+                    kind: StatementDeclarationKind::Instance(
+                        id,
+                        None,
+                        (
+                            statement.trait_span,
+                            statement.trait_name,
+                            &statement.trait_parameters,
+                        ),
+                        None,
+                    ),
+                    attributes: &statement.attributes,
+                })
+            }
+            ast_v2::Statement::Use(statement) => match statement.kind.as_ref().ok()? {
+                ast_v2::UseStatementKind::File(_, _, _) => None,
+                ast_v2::UseStatementKind::Name(name_span, name) => Some(StatementDeclaration {
+                    span: statement.use_span,
+                    kind: StatementDeclarationKind::Use(*name_span, *name),
+                    attributes: &statement.attributes,
+                }),
+            },
+            ast_v2::Statement::Expression(statement) => Some(StatementDeclaration {
+                // TODO: Have a `span()` function implemented by all AST nodes instead of this
+                span: match &statement.expression {
+                    ast_v2::Expression::Function(expr) => expr.arrow_span,
+                    ast_v2::Expression::Tuple(expr) => expr.comma_span,
+                    ast_v2::Expression::Annotate(expr) => expr.colon_span,
+                    ast_v2::Expression::End(expr) => expr.end_span,
+                    ast_v2::Expression::External(expr) => expr.external_span,
+                    ast_v2::Expression::Format(expr) => expr.format_span,
+                    ast_v2::Expression::When(expr) => expr.when_span,
+                    ast_v2::Expression::Name(expr) => expr.span,
+                    ast_v2::Expression::Text(expr) => expr.span,
+                    ast_v2::Expression::Number(expr) => expr.span,
+                    ast_v2::Expression::List(expr) => expr.span,
+                    ast_v2::Expression::Block(expr) => expr.span,
+                },
+                kind: StatementDeclarationKind::Queued(QueuedStatement::Expression(
+                    &statement.expression,
+                )),
+                attributes: &statement.attributes,
+            }),
+        }
     }
 
     fn lower_expr(&mut self, expr: &ast_v2::Expression, scope: ScopeId) -> Expression {
@@ -1249,6 +1636,36 @@ impl Lowerer {
         scope: ScopeId,
     ) -> ConstantAttributes {
         todo!()
+    }
+
+    fn get_name_from_assignment(
+        &mut self,
+        pattern: &ast_v2::AssignmentPattern,
+    ) -> Option<(Span, InternedString)> {
+        // TODO: Have a `span()` function implemented by all AST nodes instead of this
+        let span = match pattern {
+            ast_v2::AssignmentPattern::Pattern(pattern) => match pattern {
+                ast_v2::Pattern::Name(pattern) => return Some((pattern.span, pattern.name)),
+                ast_v2::Pattern::Tuple(pattern) => pattern.comma_span,
+                ast_v2::Pattern::Annotate(pattern) => pattern.colon_span,
+                ast_v2::Pattern::Where(pattern) => pattern.where_span,
+                ast_v2::Pattern::Or(pattern) => pattern.or_span,
+                ast_v2::Pattern::Text(pattern) => pattern.span,
+                ast_v2::Pattern::Number(pattern) => pattern.span,
+                ast_v2::Pattern::Unit(pattern) => pattern.span,
+                ast_v2::Pattern::Variant(pattern) => pattern.span,
+                ast_v2::Pattern::Destructure(pattern) => pattern.span,
+            },
+            ast_v2::AssignmentPattern::Instance(pattern) => pattern.instance_span,
+            ast_v2::AssignmentPattern::TypeFunction(pattern) => pattern.arrow_span,
+        };
+
+        self.compiler.add_error(
+            "syntax error",
+            vec![Note::primary(span, "expected a name here")],
+        );
+
+        None
     }
 
     fn generate_variant_constructor(

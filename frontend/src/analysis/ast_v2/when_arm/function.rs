@@ -9,6 +9,7 @@ use crate::{
         PatternSyntaxContext,
     },
     parse::{self, Span},
+    ScopeId,
 };
 
 #[derive(Debug, Clone)]
@@ -16,6 +17,7 @@ pub struct FunctionWhenArm {
     pub arrow_span: Span,
     pub pattern: Result<Pattern, SyntaxError>,
     pub body: Result<Expression, SyntaxError>,
+    pub scope: ScopeId,
 }
 
 pub struct FunctionWhenArmSyntax;
@@ -60,6 +62,7 @@ impl Syntax for FunctionWhenArmSyntax {
                     arrow_span: operator_span,
                     pattern,
                     body,
+                    scope,
                 }
                 .into())
             },

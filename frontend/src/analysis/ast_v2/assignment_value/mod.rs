@@ -1,16 +1,13 @@
-mod expression;
 mod syntax;
 mod r#trait;
 mod r#type;
 mod type_function;
 
-pub use expression::ExpressionAssignmentValue;
 pub use r#trait::TraitAssignmentValue;
 pub use r#type::TypeAssignmentValue;
 pub use syntax::SyntaxAssignmentValue;
 pub use type_function::TypeFunctionAssignmentValue;
 
-use expression::*;
 use r#trait::*;
 use r#type::*;
 use syntax::*;
@@ -19,9 +16,8 @@ use type_function::*;
 use crate::{
     analysis::ast_v2::{
         syntax::{FileBodySyntaxContext, Syntax, SyntaxContext, SyntaxError},
-        AstBuilder, ExpressionSyntaxContext, StatementAttributes, StatementSyntax,
+        AstBuilder, Expression, ExpressionSyntaxContext, StatementAttributes, StatementSyntax,
     },
-    diagnostics::Note,
     helpers::Shared,
     parse, ScopeId,
 };
@@ -35,10 +31,16 @@ syntax_group! {
             Type,
             Syntax,
             TypeFunction,
+        },
+        terminal: {
             Expression,
         },
-        terminal: {},
     }
+}
+
+#[derive(Debug, Clone)]
+pub struct ExpressionAssignmentValue {
+    pub expr: Expression,
 }
 
 #[derive(Clone)]
@@ -76,23 +78,21 @@ impl SyntaxContext for AssignmentValueSyntaxContext {
         context
             .build_block(span, statements, scope)
             .await
-            .map(From::from)
+            .map(|expr| ExpressionAssignmentValue { expr }.into())
     }
 
     async fn build_terminal(
         self,
         expr: parse::Expr,
-        _scope: ScopeId,
+        scope: ScopeId,
     ) -> Result<Self::Body, SyntaxError> {
-        self.ast_builder.compiler.add_error(
-            "syntax error",
-            vec![Note::primary(
-                expr.span,
-                "expected value on right-hand side of assignment",
-            )],
-        );
+        let context = ExpressionSyntaxContext::new(self.ast_builder)
+            .with_statement_attributes(self.statement_attributes.unwrap());
 
-        Err(self.ast_builder.syntax_error(expr.span))
+        context
+            .build_terminal(expr, scope)
+            .await
+            .map(|expr| ExpressionAssignmentValue { expr }.into())
     }
 }
 impl FileBodySyntaxContext for AssignmentValueSyntaxContext {

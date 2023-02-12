@@ -5,7 +5,7 @@ use crate::{
             SyntaxRule, SyntaxRules,
         },
         AssignmentPattern, AssignmentPatternSyntax, AssignmentPatternSyntaxContext,
-        AssignmentValue, AssignmentValueSyntax, AssignmentValueSyntaxContext,
+        AssignmentValue, AssignmentValueSyntax, AssignmentValueSyntaxContext, StatementAttributes,
         StatementSyntaxContext,
     },
     parse::{self, Span},
@@ -16,6 +16,7 @@ pub struct AssignStatement {
     pub colon_span: Span,
     pub pattern: Result<AssignmentPattern, SyntaxError>,
     pub value: Result<AssignmentValue, SyntaxError>,
+    pub attributes: StatementAttributes,
 }
 
 pub struct AssignStatementSyntax;
@@ -58,6 +59,7 @@ impl Syntax for AssignStatementSyntax {
                     colon_span: operator_span,
                     pattern,
                     value,
+                    attributes: context.statement_attributes.unwrap().lock().clone(),
                 }
                 .into())
             },

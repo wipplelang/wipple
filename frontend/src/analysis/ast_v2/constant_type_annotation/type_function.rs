@@ -9,6 +9,7 @@ use crate::{
         TypePatternSyntaxContext,
     },
     parse::{self, Span},
+    ScopeId,
 };
 
 #[derive(Debug, Clone)]
@@ -16,6 +17,7 @@ pub struct TypeFunctionConstantTypeAnnotation {
     pub arrow_span: Span,
     pub pattern: Result<TypePattern, SyntaxError>,
     pub annotation: Result<Box<ConstantTypeAnnotation>, SyntaxError>,
+    pub scope: ScopeId,
 }
 
 pub struct TypeFunctionConstantTypeAnnotationSyntax;
@@ -55,6 +57,7 @@ impl Syntax for TypeFunctionConstantTypeAnnotationSyntax {
                     arrow_span: operator_span,
                     pattern,
                     annotation: annotation.map(Box::new),
+                    scope,
                 }
                 .into())
             },

@@ -14,6 +14,7 @@ use futures::{stream, StreamExt};
 
 #[derive(Debug, Clone)]
 pub struct InstanceAssignmentPattern {
+    pub instance_span: Span,
     pub trait_span: Span,
     pub trait_name: InternedString,
     pub trait_parameters: Vec<Result<Type, SyntaxError>>,
@@ -98,6 +99,7 @@ impl Syntax for InstanceAssignmentPatternSyntax {
                 };
 
                 Ok(InstanceAssignmentPattern {
+                    instance_span: span,
                     trait_span,
                     trait_name,
                     trait_parameters,

@@ -1,33 +1,30 @@
 mod annotate;
 mod assign;
-mod expression;
 mod instance;
 mod r#use;
 
 pub use annotate::AnnotateStatement;
 pub use assign::AssignStatement;
-pub use expression::ExpressionStatement;
 pub use instance::InstanceStatement;
-pub use r#use::UseStatement;
+pub use r#use::{UseStatement, UseStatementKind};
 
 use annotate::*;
 use assign::*;
-use expression::*;
 use instance::*;
 use r#use::*;
 
 use crate::{
     analysis::ast_v2::{
         syntax::{FileBodySyntaxContext, Syntax, SyntaxContext, SyntaxError},
-        AstBuilder, ExpressionSyntaxContext, StatementAttributes,
+        AstBuilder, Expression, ExpressionSyntaxContext, StatementAttributes,
     },
-    diagnostics::Note,
     helpers::Shared,
     parse, ScopeId,
 };
 use async_trait::async_trait;
 
 syntax_group! {
+    #[allow(clippy::large_enum_variant)]
     #[derive(Debug, Clone)]
     pub type Statement<StatementSyntaxContext> {
         non_terminal: {
@@ -35,10 +32,17 @@ syntax_group! {
             Assign,
             Instance,
             Use,
+        },
+        terminal: {
             Expression,
         },
-        terminal: {},
     }
+}
+
+#[derive(Debug, Clone)]
+pub struct ExpressionStatement {
+    pub expression: Expression,
+    pub attributes: StatementAttributes,
 }
 
 #[derive(Clone)]
@@ -71,25 +75,35 @@ impl SyntaxContext for StatementSyntaxContext {
         scope: ScopeId,
     ) -> Result<Self::Body, SyntaxError> {
         let context = ExpressionSyntaxContext::new(self.ast_builder)
-            .with_statement_attributes(self.statement_attributes.unwrap());
+            .with_statement_attributes(self.statement_attributes.as_ref().unwrap().clone());
 
         context
             .build_block(span, statements, scope)
             .await
-            .map(From::from)
+            .map(|expr| {
+                ExpressionStatement {
+                    expression: expr,
+                    attributes: self.statement_attributes.unwrap().lock().clone(),
+                }
+                .into()
+            })
     }
 
     async fn build_terminal(
         self,
         expr: parse::Expr,
-        _scope: ScopeId,
+        scope: ScopeId,
     ) -> Result<Self::Body, SyntaxError> {
-        self.ast_builder.compiler.add_error(
-            "syntax error",
-            vec![Note::primary(expr.span, "invalid statement")],
-        );
+        let context = ExpressionSyntaxContext::new(self.ast_builder)
+            .with_statement_attributes(self.statement_attributes.as_ref().unwrap().clone());
 
-        Err(self.ast_builder.syntax_error(expr.span))
+        context.build_terminal(expr, scope).await.map(|expr| {
+            ExpressionStatement {
+                expression: expr,
+                attributes: self.statement_attributes.unwrap().lock().clone(),
+            }
+            .into()
+        })
     }
 }
 

@@ -5,12 +5,13 @@ use crate::{
     },
     diagnostics::Note,
     helpers::InternedString,
-    parse,
+    parse::{self, Span},
 };
 use futures::{stream, StreamExt};
 
 #[derive(Debug, Clone)]
 pub struct ExternalExpression {
+    pub external_span: Span,
     pub namespace: InternedString,
     pub identifier: InternedString,
     pub inputs: Vec<Result<Expression, SyntaxError>>,
@@ -74,6 +75,7 @@ impl Syntax for ExternalExpressionSyntax {
                     .await;
 
                 Ok(ExternalExpression {
+                    external_span: span,
                     namespace,
                     identifier,
                     inputs,

@@ -4,10 +4,12 @@ use crate::{
         Expression, ExpressionSyntax, ExpressionSyntaxContext,
     },
     diagnostics::Note,
+    parse::Span,
 };
 
 #[derive(Debug, Clone)]
 pub struct EndExpression {
+    pub end_span: Span,
     pub value: Result<Box<Expression>, SyntaxError>,
 }
 
@@ -35,6 +37,7 @@ impl Syntax for EndExpressionSyntax {
                     .await;
 
                 Ok(EndExpression {
+                    end_span: span,
                     value: value.map(Box::new),
                 }
                 .into())

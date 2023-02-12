@@ -1,7 +1,7 @@
 use crate::{
     analysis::ast_v2::{
         syntax::{Syntax, SyntaxError, SyntaxRule, SyntaxRules},
-        StatementSyntaxContext,
+        StatementAttributes, StatementSyntaxContext,
     },
     diagnostics::Note,
     helpers::InternedString,
@@ -13,6 +13,7 @@ use crate::{
 pub struct UseStatement {
     pub use_span: Span,
     pub kind: Result<UseStatementKind, SyntaxError>,
+    pub attributes: StatementAttributes,
 }
 
 #[derive(Debug, Clone)]
@@ -70,6 +71,7 @@ impl Syntax for UseStatementSyntax {
                 Ok(UseStatement {
                     use_span: span,
                     kind,
+                    attributes: context.statement_attributes.unwrap().lock().clone(),
                 }
                 .into())
             },

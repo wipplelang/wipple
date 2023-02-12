@@ -9,6 +9,7 @@ use crate::{
         TypePatternSyntaxContext,
     },
     parse::{self, Span},
+    ScopeId,
 };
 
 #[derive(Debug, Clone)]
@@ -16,6 +17,7 @@ pub struct TypeFunctionAssignmentValue {
     pub arrow_span: Span,
     pub pattern: Result<TypePattern, SyntaxError>,
     pub value: Result<Box<AssignmentValue>, SyntaxError>,
+    pub scope: ScopeId,
 }
 
 pub struct TypeFunctionAssignmentValueSyntax;
@@ -55,6 +57,7 @@ impl Syntax for TypeFunctionAssignmentValueSyntax {
                     arrow_span: operator_span,
                     pattern,
                     value: value.map(Box::new),
+                    scope,
                 }
                 .into())
             },
