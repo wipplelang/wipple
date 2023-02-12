@@ -9,10 +9,10 @@ pub mod format;
 pub mod traverse;
 
 pub use engine::{BottomTypeReason, BuiltinType, GenericSubstitutions, Type, TypeStructure};
-pub use lower::{RuntimeFunction, TypeAnnotation, TypeAnnotationKind};
+pub use lower_v2::{RuntimeFunction, TypeAnnotation, TypeAnnotationKind};
 
 use crate::{
-    analysis::lower,
+    analysis::lower_v2,
     diagnostics::Note,
     helpers::{Backtrace, InternedString},
     parse::Span,
@@ -34,26 +34,23 @@ pub enum Progress {
 }
 
 #[derive(Debug, Clone, Default)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct Program {
     pub items: BTreeMap<ItemId, (Option<ConstantId>, Expression)>,
     pub entrypoint: Option<ItemId>,
     pub declarations: Declarations,
-    pub exported: lower::ScopeValues,
-    pub scopes: Vec<(Span, lower::ScopeValues)>,
+    pub exported: HashMap<InternedString, lower_v2::AnyDeclaration>,
 }
 
 macro_rules! declarations {
     ($name:ident<$($container:ident)::+>) => {
         #[derive(Debug, Clone, Default)]
-        #[cfg_attr(feature = "serde", derive(serde::Serialize))]
         pub struct $name {
             pub types: $($container)::+<TypeId, TypeDecl>,
             pub traits: $($container)::+<TraitId, TraitDecl>,
             pub constants: $($container)::+<ConstantId, ConstantDecl>,
             pub instances: $($container)::+<TraitId, BTreeMap<ConstantId, InstanceDecl>>,
             pub operators: $($container)::+<TemplateId, OperatorDecl>,
-            pub templates: $($container)::+<TemplateId, TemplateDecl>,
+            // pub templates: $($container)::+<TemplateId, TemplateDecl>,
             pub builtin_types: $($container)::+<BuiltinTypeId, BuiltinTypeDecl>,
             pub type_parameters: $($container)::+<TypeParameterId, TypeParameterDecl>,
             /// NOTE: Not all variables will be listed here, only ones that passed typechecking
@@ -73,7 +70,7 @@ impl From<DeclarationsInner> for Declarations {
             constants: decls.constants.into_iter().collect(),
             instances: decls.instances.into_iter().collect(),
             operators: decls.operators.into_iter().collect(),
-            templates: decls.templates.into_iter().collect(),
+            // templates: decls.templates.into_iter().collect(),
             builtin_types: decls.builtin_types.into_iter().collect(),
             type_parameters: decls.type_parameters.into_iter().collect(),
             variables: decls.variables.into_iter().collect(),
@@ -82,18 +79,16 @@ impl From<DeclarationsInner> for Declarations {
 }
 
 #[derive(Debug, Clone)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct TypeDecl {
     pub name: InternedString,
     pub span: Span,
-    pub params: Vec<(Span, TypeParameterId)>,
+    pub params: Vec<TypeParameterId>,
     pub kind: TypeDeclKind,
-    pub attributes: lower::TypeAttributes,
+    pub attributes: lower_v2::TypeAttributes,
     pub uses: HashSet<Span>,
 }
 
 #[derive(Debug, Clone)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub enum TypeDeclKind {
     Marker,
     Structure {
@@ -107,49 +102,45 @@ pub enum TypeDeclKind {
 }
 
 #[derive(Debug, Clone)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct TraitDecl {
     pub name: InternedString,
     pub span: Span,
-    pub params: Vec<(Span, TypeParameterId)>,
+    pub params: Vec<TypeParameterId>,
     pub ty_annotation: Option<TypeAnnotation>,
     pub ty: Option<engine::Type>,
-    pub attributes: lower::TraitAttributes,
+    pub attributes: lower_v2::TraitAttributes,
     pub uses: HashSet<Span>,
 }
 
 #[derive(Debug, Clone)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct ConstantDecl {
     pub name: InternedString,
     pub span: Span,
-    pub params: Vec<(Span, TypeParameterId)>,
+    pub params: Vec<TypeParameterId>,
     pub bounds: Vec<Bound>,
     pub bound_annotations: Vec<(TraitId, Vec<TypeAnnotation>)>,
     pub ty_annotation: TypeAnnotation,
     pub ty: engine::Type,
     pub specializations: Vec<ConstantId>,
-    pub attributes: lower::ConstantAttributes,
+    pub attributes: lower_v2::ConstantAttributes,
     pub body: Option<Expression>,
     pub uses: HashSet<Span>,
 }
 
 #[derive(Debug, Clone)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct InstanceDecl {
     pub span: Span,
-    pub params: Vec<(Span, TypeParameterId)>,
+    pub params: Vec<TypeParameterId>,
     pub bounds: Vec<Bound>,
     pub bound_annotations: Vec<(TraitId, Vec<TypeAnnotation>)>,
     pub trait_id: TraitId,
     pub trait_params: Vec<engine::Type>,
-    pub trait_param_annotations: Vec<lower::TypeAnnotation>,
+    pub trait_param_annotations: Vec<lower_v2::TypeAnnotation>,
     pub body: Option<Expression>,
     pub item: ItemId,
 }
 
 #[derive(Debug, Clone)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct Bound {
     pub span: Span,
     pub trait_id: TraitId,
@@ -157,33 +148,29 @@ pub struct Bound {
 }
 
 #[derive(Debug, Clone)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct OperatorDecl {
     pub name: InternedString,
     pub span: Span,
     pub uses: HashSet<Span>,
 }
 
-#[derive(Debug, Clone)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize))]
-pub struct TemplateDecl {
-    pub name: InternedString,
-    pub span: Span,
-    pub attributes: lower::SyntaxDeclarationAttributes,
-    pub uses: HashSet<Span>,
-}
+// #[derive(Debug, Clone)]
+// pub struct TemplateDecl {
+//     pub name: InternedString,
+//     pub span: Span,
+//     pub attributes: lower_v2::SyntaxDeclarationAttributes,
+//     pub uses: HashSet<Span>,
+// }
 
 #[derive(Debug, Clone)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct BuiltinTypeDecl {
     pub name: InternedString,
     pub span: Span,
-    pub attributes: lower::DeclarationAttributes,
+    pub attributes: lower_v2::DeclarationAttributes,
     pub uses: HashSet<Span>,
 }
 
 #[derive(Debug, Clone)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct TypeParameterDecl {
     pub name: Option<InternedString>,
     pub span: Span,
@@ -191,7 +178,6 @@ pub struct TypeParameterDecl {
 }
 
 #[derive(Debug, Clone)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct VariableDecl {
     pub name: Option<InternedString>,
     pub span: Span,
@@ -203,7 +189,6 @@ macro_rules! expr {
     ($vis:vis, $prefix:literal, $type:ty, { $($kinds:tt)* }) => {
         paste::paste! {
             #[derive(Debug, Clone)]
-            #[cfg_attr(feature = "serde", derive(serde::Serialize))]
             $vis struct [<$prefix Expression>] {
                 $vis span: Span,
                 $vis ty: $type,
@@ -211,8 +196,6 @@ macro_rules! expr {
             }
 
             #[derive(Debug, Clone)]
-            #[cfg_attr(feature = "serde", derive(serde::Serialize))]
-            #[cfg_attr(feature = "serde", serde(tag = "type", content = "value"))]
             $vis enum [<$prefix ExpressionKind>] {
                 Error(Backtrace),
                 Marker,
@@ -221,7 +204,7 @@ macro_rules! expr {
                 Block(Vec<[<$prefix Expression>]>, bool),
                 End(Box<[<$prefix Expression>]>),
                 Call(Box<[<$prefix Expression>]>, Box<[<$prefix Expression>]>),
-                Function([<$prefix Pattern>], Box<[<$prefix Expression>]>, lower::CaptureList),
+                Function([<$prefix Pattern>], Box<[<$prefix Expression>]>, lower_v2::CaptureList),
                 When(Box<[<$prefix Expression>]>, Vec<[<$prefix Arm>]>),
                 External(InternedString, InternedString, Vec<[<$prefix Expression>]>),
                 Runtime(RuntimeFunction, Vec<[<$prefix Expression>]>),
@@ -233,7 +216,6 @@ macro_rules! expr {
             }
 
             #[derive(Debug, Clone)]
-            #[cfg_attr(feature = "serde", derive(serde::Serialize))]
             $vis struct [<$prefix Arm>] {
                 $vis span: Span,
                 $vis pattern: [<$prefix Pattern>],
@@ -254,15 +236,12 @@ macro_rules! pattern {
     ($vis:vis, $prefix:literal, { $($kinds:tt)* }) => {
         paste::paste! {
             #[derive(Debug, Clone)]
-            #[cfg_attr(feature = "serde", derive(serde::Serialize))]
             $vis struct [<$prefix Pattern>] {
                 $vis span: Span,
                 $vis kind: [<$prefix PatternKind>],
             }
 
             #[derive(Debug, Clone)]
-            #[cfg_attr(feature = "serde", derive(serde::Serialize))]
-            #[cfg_attr(feature = "serde", serde(tag = "type", content = "value"))]
             $vis enum [<$prefix PatternKind>] {
                 Error(Backtrace),
                 Wildcard,
@@ -386,7 +365,7 @@ impl Error {
 impl Compiler {
     pub(crate) fn typecheck_with_progress(
         &self,
-        entrypoint: lower::File,
+        entrypoint: lower_v2::File,
         complete: bool,
         mut progress: impl FnMut(Progress),
     ) -> Program {
@@ -404,14 +383,13 @@ impl Compiler {
 #[derive(Debug, Clone)]
 struct Typechecker {
     compiler: Compiler,
-    entrypoint: lower::File,
+    entrypoint: lower_v2::File,
     ctx: engine::Context,
     declarations: RefCell<DeclarationsInner>,
-    exported: Option<lower::ScopeValues>,
-    scopes: RefCell<Vec<(Span, lower::ScopeValues)>>,
+    exported: Option<HashMap<InternedString, lower_v2::AnyDeclaration>>,
     block_end: Option<Option<(Span, engine::UnresolvedType)>>,
     instances: im::HashMap<TraitId, Vec<ConstantId>>,
-    generic_constants: im::HashMap<ConstantId, (bool, lower::Expression)>,
+    generic_constants: im::HashMap<ConstantId, (bool, lower_v2::Expression)>,
     specialized_constants: im::HashMap<ConstantId, ConstantId>,
     item_queue: im::Vector<QueuedItem>,
     items: im::HashMap<ItemId, (Option<ConstantId>, Expression)>,
@@ -439,14 +417,13 @@ impl Typechecker {
 }
 
 impl Typechecker {
-    pub fn new(compiler: Compiler, entrypoint: lower::File) -> Self {
+    pub fn new(compiler: Compiler, entrypoint: lower_v2::File) -> Self {
         Typechecker {
             compiler,
             entrypoint,
             ctx: Default::default(),
             declarations: Default::default(),
             exported: None,
-            scopes: Default::default(),
             block_end: None,
             instances: Default::default(),
             generic_constants: Default::default(),
@@ -558,27 +535,23 @@ impl Typechecker {
             entrypoint: entrypoint_item,
             exported: self.exported.unwrap_or_default(),
             declarations: self.declarations.into_inner().into(),
-            scopes: self.scopes.into_inner(),
         }
     }
 }
 
 impl Typechecker {
     pub fn collect_types(&mut self) {
-        let entrypoint = mem::take(&mut self.entrypoint.block);
+        let entrypoint = mem::take(&mut self.entrypoint.statements);
         let exported = mem::take(&mut self.entrypoint.exported);
-        self.scopes
-            .borrow_mut()
-            .extend(mem::take(&mut self.entrypoint.scopes));
 
         let mut info = ConvertInfo {
             variables: Default::default(),
         };
 
         let expr = self.convert_expr(
-            lower::Expression {
+            lower_v2::Expression {
                 span: self.entrypoint.span,
-                kind: lower::ExpressionKind::Block(entrypoint, true),
+                kind: lower_v2::ExpressionKind::Block(entrypoint, true),
             },
             &mut info,
         );
@@ -638,7 +611,7 @@ impl Typechecker {
         check!(
             type,
             trait,
-            syntax as syntaxes,
+            // syntax as syntaxes,
             builtin_type,
             type_parameter,
             // variables are handled inside `finalize_pattern`
@@ -649,7 +622,7 @@ impl Typechecker {
         &mut self,
         id: ConstantId,
         instance: bool,
-        expr: lower::Expression,
+        expr: lower_v2::Expression,
     ) {
         let (tr, generic_ty, bounds) = if instance {
             let (tr, trait_params, span, bounds) = self
@@ -981,16 +954,16 @@ struct ConvertInfo {
 impl Typechecker {
     fn convert_expr(
         &mut self,
-        expr: lower::Expression,
+        expr: lower_v2::Expression,
         info: &mut ConvertInfo,
     ) -> UnresolvedExpression {
         match expr.kind {
-            lower::ExpressionKind::Error(trace) => UnresolvedExpression {
+            lower_v2::ExpressionKind::Error(trace) => UnresolvedExpression {
                 span: expr.span,
                 ty: engine::UnresolvedType::Error,
                 kind: UnresolvedExpressionKind::Error(trace),
             },
-            lower::ExpressionKind::Marker(id) => {
+            lower_v2::ExpressionKind::Marker(id) => {
                 let mut ty = {
                     self.with_type_decl(id, |ty| ty.params.clone()).map_or(
                         engine::UnresolvedType::Error,
@@ -999,7 +972,7 @@ impl Typechecker {
                                 id,
                                 params
                                     .into_iter()
-                                    .map(|(_, param)| engine::UnresolvedType::Parameter(param))
+                                    .map(|param| engine::UnresolvedType::Parameter(param))
                                     .collect(),
                                 engine::TypeStructure::Marker,
                             )
@@ -1015,7 +988,7 @@ impl Typechecker {
                     kind: UnresolvedExpressionKind::Marker,
                 }
             }
-            lower::ExpressionKind::Constant(id) => {
+            lower_v2::ExpressionKind::Constant(id) => {
                 let mut ty = self
                     .with_constant_decl(id, |constant| {
                         engine::UnresolvedType::from(constant.ty.clone())
@@ -1030,7 +1003,7 @@ impl Typechecker {
                     kind: UnresolvedExpressionKind::Constant(id),
                 }
             }
-            lower::ExpressionKind::Trait(id) => {
+            lower_v2::ExpressionKind::Trait(id) => {
                 let mut ty = if let Some((span, false)) =
                     self.with_trait_decl(id, |decl| (decl.span, decl.ty.is_some()))
                 {
@@ -1058,7 +1031,7 @@ impl Typechecker {
                     kind: UnresolvedExpressionKind::Trait(id),
                 }
             }
-            lower::ExpressionKind::Variable(var) => {
+            lower_v2::ExpressionKind::Variable(var) => {
                 let ty =
                     info.variables.get(&var).cloned().unwrap_or_else(|| {
                         engine::UnresolvedType::Variable(self.ctx.new_variable())
@@ -1070,17 +1043,17 @@ impl Typechecker {
                     kind: UnresolvedExpressionKind::Variable(var),
                 }
             }
-            lower::ExpressionKind::Text(text) => UnresolvedExpression {
+            lower_v2::ExpressionKind::Text(text) => UnresolvedExpression {
                 span: expr.span,
                 ty: engine::UnresolvedType::Builtin(engine::BuiltinType::Text),
                 kind: UnresolvedExpressionKind::Text(text),
             },
-            lower::ExpressionKind::Number(number) => UnresolvedExpression {
+            lower_v2::ExpressionKind::Number(number) => UnresolvedExpression {
                 span: expr.span,
                 ty: engine::UnresolvedType::NumericVariable(self.ctx.new_variable()),
                 kind: UnresolvedExpressionKind::Number(number),
             },
-            lower::ExpressionKind::Block(statements, top_level) => {
+            lower_v2::ExpressionKind::Block(statements, top_level) => {
                 let prev_block_end = mem::replace(&mut self.block_end, Some(None));
 
                 let statements = statements
@@ -1109,7 +1082,7 @@ impl Typechecker {
                     kind: UnresolvedExpressionKind::Block(statements, top_level),
                 }
             }
-            lower::ExpressionKind::End(value) => {
+            lower_v2::ExpressionKind::End(value) => {
                 let value = self.convert_expr(*value, info);
 
                 match self.block_end {
@@ -1135,7 +1108,7 @@ impl Typechecker {
                     kind: UnresolvedExpressionKind::End(Box::new(value)),
                 }
             }
-            lower::ExpressionKind::Call(function, input) => {
+            lower_v2::ExpressionKind::Call(function, input) => {
                 let function = self.convert_expr(*function, info);
                 let input = self.convert_expr(*input, info);
 
@@ -1163,7 +1136,7 @@ impl Typechecker {
                     kind: UnresolvedExpressionKind::Call(Box::new(function), Box::new(input)),
                 }
             }
-            lower::ExpressionKind::Function(pattern, body, captures) => {
+            lower_v2::ExpressionKind::Function(pattern, body, captures) => {
                 let input_ty = engine::UnresolvedType::Variable(self.ctx.new_variable());
                 let pattern = self.convert_pattern(pattern, input_ty.clone(), None, info);
 
@@ -1180,7 +1153,7 @@ impl Typechecker {
                     kind: UnresolvedExpressionKind::Function(pattern, Box::new(body), captures),
                 }
             }
-            lower::ExpressionKind::When(input, arms) => {
+            lower_v2::ExpressionKind::When(input, arms) => {
                 let input = self.convert_expr(*input, info);
 
                 let arms = arms
@@ -1210,7 +1183,7 @@ impl Typechecker {
                     kind: UnresolvedExpressionKind::When(Box::new(input), arms),
                 }
             }
-            lower::ExpressionKind::External(lib, identifier, inputs) => {
+            lower_v2::ExpressionKind::External(lib, identifier, inputs) => {
                 let inputs = inputs
                     .into_iter()
                     .map(|expr| self.convert_expr(expr, info))
@@ -1222,7 +1195,7 @@ impl Typechecker {
                     kind: UnresolvedExpressionKind::External(lib, identifier, inputs),
                 }
             }
-            lower::ExpressionKind::Runtime(func, inputs) => {
+            lower_v2::ExpressionKind::Runtime(func, inputs) => {
                 let inputs = inputs
                     .into_iter()
                     .map(|expr| self.convert_expr(expr, info))
@@ -1234,7 +1207,7 @@ impl Typechecker {
                     kind: UnresolvedExpressionKind::Runtime(func, inputs),
                 }
             }
-            lower::ExpressionKind::Annotate(value, ty) => {
+            lower_v2::ExpressionKind::Annotate(value, ty) => {
                 let ty = self.convert_type_annotation(ty);
                 let value = self.convert_expr(*value, info);
 
@@ -1248,7 +1221,7 @@ impl Typechecker {
                     kind: value.kind,
                 }
             }
-            lower::ExpressionKind::Initialize(pattern, value) => {
+            lower_v2::ExpressionKind::Initialize(pattern, value) => {
                 let value = self.convert_expr(*value, info);
                 let pattern =
                     self.convert_pattern(pattern, value.ty.clone(), Some(value.span), info);
@@ -1259,7 +1232,7 @@ impl Typechecker {
                     kind: UnresolvedExpressionKind::Initialize(pattern, Box::new(value)),
                 }
             }
-            lower::ExpressionKind::Instantiate(id, fields) => {
+            lower_v2::ExpressionKind::Instantiate(id, fields) => {
                 let (kind, params) = match self
                     .with_type_decl(id, |decl| (decl.kind.clone(), decl.params.clone()))
                 {
@@ -1302,7 +1275,7 @@ impl Typechecker {
                     id,
                     params
                         .into_iter()
-                        .map(|(_, param)| engine::UnresolvedType::Parameter(param))
+                        .map(|param| engine::UnresolvedType::Parameter(param))
                         .collect(),
                     engine::TypeStructure::Structure(structure_field_tys.clone()),
                 );
@@ -1323,7 +1296,7 @@ impl Typechecker {
                 let mut unpopulated_fields = vec![None; fields_by_index.len()];
                 let mut extra_fields = Vec::new();
 
-                for (name, expr) in fields {
+                for ((_, name), expr) in fields {
                     let (index, ty) = match structure_field_names.get(&name) {
                         Some(index) if index.into_inner() < fields_by_index.len() => {
                             (*index, structure_field_tys[index.into_inner()].clone())
@@ -1400,7 +1373,7 @@ impl Typechecker {
                     kind: UnresolvedExpressionKind::Structure(fields),
                 }
             }
-            lower::ExpressionKind::Variant(id, index, values) => {
+            lower_v2::ExpressionKind::Variant(id, index, values) => {
                 let (kind, params) = match self
                     .with_type_decl(id, |decl| (decl.kind.clone(), decl.params.clone()))
                 {
@@ -1442,7 +1415,7 @@ impl Typechecker {
                     id,
                     params
                         .into_iter()
-                        .map(|(_, param)| engine::UnresolvedType::Parameter(param))
+                        .map(|param| engine::UnresolvedType::Parameter(param))
                         .collect(),
                     engine::TypeStructure::Enumeration(variants_tys.clone()),
                 );
@@ -1479,7 +1452,7 @@ impl Typechecker {
                     kind: UnresolvedExpressionKind::Variant(index, values),
                 }
             }
-            lower::ExpressionKind::Tuple(exprs) => {
+            lower_v2::ExpressionKind::Tuple(exprs) => {
                 let exprs = exprs
                     .into_iter()
                     .map(|expr| self.convert_expr(expr, info))
@@ -1500,7 +1473,7 @@ impl Typechecker {
 
     fn convert_arm(
         &mut self,
-        arm: lower::Arm,
+        arm: lower_v2::Arm,
         input_ty: engine::UnresolvedType,
         input_span: Span,
         info: &mut ConvertInfo,
@@ -1514,7 +1487,7 @@ impl Typechecker {
 
     fn convert_pattern(
         &mut self,
-        pattern: lower::Pattern,
+        pattern: lower_v2::Pattern,
         ty: engine::UnresolvedType,
         input_span: Option<Span>,
         info: &mut ConvertInfo,
@@ -1522,9 +1495,9 @@ impl Typechecker {
         UnresolvedPattern {
             span: pattern.span,
             kind: (|| match pattern.kind {
-                lower::PatternKind::Error(trace) => UnresolvedPatternKind::Error(trace),
-                lower::PatternKind::Wildcard => UnresolvedPatternKind::Wildcard,
-                lower::PatternKind::Number(number) => {
+                lower_v2::PatternKind::Error(trace) => UnresolvedPatternKind::Error(trace),
+                lower_v2::PatternKind::Wildcard => UnresolvedPatternKind::Wildcard,
+                lower_v2::PatternKind::Number(number) => {
                     let numeric_ty =
                         engine::UnresolvedType::NumericVariable(self.ctx.new_variable());
 
@@ -1534,7 +1507,7 @@ impl Typechecker {
 
                     UnresolvedPatternKind::Number(number)
                 }
-                lower::PatternKind::Text(text) => {
+                lower_v2::PatternKind::Text(text) => {
                     if let Err(error) = self.unify(
                         pattern.span,
                         ty,
@@ -1545,11 +1518,11 @@ impl Typechecker {
 
                     UnresolvedPatternKind::Text(text)
                 }
-                lower::PatternKind::Variable(var) => {
+                lower_v2::PatternKind::Variable(var) => {
                     info.variables.insert(var, ty);
                     UnresolvedPatternKind::Variable(var)
                 }
-                lower::PatternKind::Destructure(fields) => UnresolvedPatternKind::Destructure(
+                lower_v2::PatternKind::Destructure(fields) => UnresolvedPatternKind::Destructure(
                     ty,
                     fields
                         .into_iter()
@@ -1565,7 +1538,7 @@ impl Typechecker {
                         })
                         .collect(),
                 ),
-                lower::PatternKind::Variant(id, variant, values) => {
+                lower_v2::PatternKind::Variant(id, variant, values) => {
                     let (params, variants_tys) = match self.with_type_decl(id, |decl| {
                         (
                             decl.params.clone(),
@@ -1614,7 +1587,7 @@ impl Typechecker {
                         id,
                         params
                             .into_iter()
-                            .map(|(_, param)| {
+                            .map(|param| {
                                 let mut ty = engine::UnresolvedType::Parameter(param);
                                 self.add_substitutions(&mut ty, &mut substitutions);
                                 ty
@@ -1656,7 +1629,7 @@ impl Typechecker {
                             .collect(),
                     )
                 }
-                lower::PatternKind::Annotate(inner, target_ty) => {
+                lower_v2::PatternKind::Annotate(inner, target_ty) => {
                     let target_ty = self.convert_type_annotation(target_ty);
 
                     if let Err(error) = self.unify(pattern.span, ty, target_ty.clone()) {
@@ -1666,15 +1639,15 @@ impl Typechecker {
                     self.convert_pattern(*inner, target_ty, input_span, info)
                         .kind
                 }
-                lower::PatternKind::Or(lhs, rhs) => UnresolvedPatternKind::Or(
+                lower_v2::PatternKind::Or(lhs, rhs) => UnresolvedPatternKind::Or(
                     Box::new(self.convert_pattern(*lhs, ty.clone(), input_span, info)),
                     Box::new(self.convert_pattern(*rhs, ty, input_span, info)),
                 ),
-                lower::PatternKind::Where(pattern, condition) => UnresolvedPatternKind::Where(
+                lower_v2::PatternKind::Where(pattern, condition) => UnresolvedPatternKind::Where(
                     Box::new(self.convert_pattern(*pattern, ty, input_span, info)),
                     Box::new(self.convert_expr(*condition, info)),
                 ),
-                lower::PatternKind::Tuple(patterns) => {
+                lower_v2::PatternKind::Tuple(patterns) => {
                     let tuple_tys = patterns
                         .iter()
                         .map(|_| engine::UnresolvedType::Variable(self.ctx.new_variable()))
@@ -2042,7 +2015,7 @@ impl Typechecker {
                 let substitutions = structure
                     .params
                     .iter()
-                    .map(|(_, param)| *param)
+                    .copied()
                     .zip(params)
                     .collect::<BTreeMap<_, _>>();
 
@@ -2156,7 +2129,7 @@ impl Typechecker {
                 let substitutions = enumeration
                     .params
                     .iter()
-                    .map(|(_, param)| *param)
+                    .copied()
                     .zip(params.iter().cloned())
                     .collect::<BTreeMap<_, _>>();
 
@@ -2172,7 +2145,7 @@ impl Typechecker {
                         enumeration
                             .params
                             .iter()
-                            .map(|(_, param)| substitutions.get(param).unwrap().clone())
+                            .map(|param| substitutions.get(param).unwrap().clone())
                             .collect(),
                         // HACK: Optimization because unification doesn't take structure into
                         // account -- the structure can be applied during finalization
@@ -2230,7 +2203,7 @@ impl Typechecker {
                 let condition_span = condition.span;
                 let condition = self.monomorphize_expr(*condition, info);
 
-                if let Some(boolean_ty) = self.entrypoint.global_attributes.language_items.boolean {
+                if let Some(boolean_ty) = self.entrypoint.info.language_items.boolean {
                     if let Err(error) = self.unify(
                         condition.span,
                         condition.ty.clone(),
@@ -2360,7 +2333,7 @@ impl Typechecker {
     ) -> Result<Option<ConstantId>, Error> {
         let recursion_limit = self
             .entrypoint
-            .global_attributes
+            .info
             .recursion_limit
             .unwrap_or(Compiler::DEFAULT_RECURSION_LIMIT);
 
@@ -2603,7 +2576,7 @@ impl Typechecker {
 
         tr_params
             .into_iter()
-            .map(|(_, param)| {
+            .map(|param| {
                 params
                     .get(&param)
                     .cloned()
@@ -3245,22 +3218,24 @@ impl Typechecker {
                 .name
                 .unwrap_or_else(|| InternedString::new("<unknown>")),
             span: decl.span,
-            params: decl.value.params,
+            params: decl.value.parameters,
             kind: match decl.value.kind {
-                lower::TypeKind::Marker => TypeDeclKind::Marker,
-                lower::TypeKind::Structure(fields, field_names) => TypeDeclKind::Structure {
-                    fields: fields
-                        .into_iter()
-                        .map(|field| {
-                            (
-                                field.ty.clone(),
-                                self.convert_finalized_type_annotation(field.ty),
-                            )
-                        })
-                        .collect(),
-                    field_names,
-                },
-                lower::TypeKind::Enumeration(variants, variant_names) => {
+                lower_v2::TypeDeclarationKind::Marker => TypeDeclKind::Marker,
+                lower_v2::TypeDeclarationKind::Structure(fields, field_names) => {
+                    TypeDeclKind::Structure {
+                        fields: fields
+                            .into_iter()
+                            .map(|field| {
+                                (
+                                    field.ty.clone(),
+                                    self.convert_finalized_type_annotation(field.ty),
+                                )
+                            })
+                            .collect(),
+                        field_names,
+                    }
+                }
+                lower_v2::TypeDeclarationKind::Enumeration(variants, variant_names) => {
                     TypeDeclKind::Enumeration {
                         variants: variants
                             .into_iter()
@@ -3412,22 +3387,23 @@ impl Typechecker {
                 id,
                 (
                     true,
-                    decl.value
-                        .value
-                        .unwrap_or_else(|| lower::Expression::error(&self.compiler, decl.span)),
+                    decl.value.value.unwrap_or_else(|| lower_v2::Expression {
+                        span: decl.span,
+                        kind: lower_v2::ExpressionKind::error(&self.compiler),
+                    }),
                 ),
             );
         }
 
         let mut params = decl
             .value
-            .trait_params
+            .tr_parameters
             .clone()
             .into_iter()
             .map(|ty| self.convert_generic_type_annotation(ty))
             .collect::<Vec<_>>();
 
-        for (_, param) in tr.params.iter().skip(params.len()) {
+        for param in tr.params.iter().skip(params.len()) {
             let name = match self.with_type_parameter_decl(*param, |decl| decl.name) {
                 Some(name) => name,
                 None => {
@@ -3534,7 +3510,7 @@ impl Typechecker {
 
         let decl = InstanceDecl {
             span: decl.span,
-            params: decl.value.params,
+            params: decl.value.parameters,
             bounds,
             bound_annotations: decl
                 .value
@@ -3544,7 +3520,7 @@ impl Typechecker {
                 .collect(),
             trait_id,
             trait_params: params,
-            trait_param_annotations: decl.value.trait_params,
+            trait_param_annotations: decl.value.tr_parameters,
             body: None,
             item,
         };
@@ -3559,31 +3535,31 @@ impl Typechecker {
             .or_insert(decl)))
     }
 
-    fn with_syntax_decl<T>(
-        &mut self,
-        id: TemplateId,
-        f: impl FnOnce(&TemplateDecl) -> T,
-    ) -> Option<T> {
-        if let Some(decl) = self.declarations.borrow().templates.get(&id) {
-            return Some(f(decl));
-        }
+    // fn with_syntax_decl<T>(
+    //     &mut self,
+    //     id: TemplateId,
+    //     f: impl FnOnce(&TemplateDecl) -> T,
+    // ) -> Option<T> {
+    //     if let Some(decl) = self.declarations.borrow().templates.get(&id) {
+    //         return Some(f(decl));
+    //     }
 
-        let decl = self.entrypoint.declarations.syntaxes.get(&id)?.clone();
+    //     let decl = self.entrypoint.declarations.syntaxes.get(&id)?.clone();
 
-        let decl = TemplateDecl {
-            name: decl.name,
-            span: decl.span,
-            attributes: decl.attributes,
-            uses: decl.uses,
-        };
+    //     let decl = TemplateDecl {
+    //         name: decl.name,
+    //         span: decl.span,
+    //         attributes: decl.attributes,
+    //         uses: decl.uses,
+    //     };
 
-        Some(f(self
-            .declarations
-            .borrow_mut()
-            .templates
-            .entry(id)
-            .or_insert(decl)))
-    }
+    //     Some(f(self
+    //         .declarations
+    //         .borrow_mut()
+    //         .templates
+    //         .entry(id)
+    //         .or_insert(decl)))
+    // }
 
     fn with_builtin_type_decl<T>(
         &mut self,
@@ -3771,7 +3747,7 @@ impl Typechecker {
         stack: &mut Vec<TypeId>,
     ) -> engine::UnresolvedType {
         match annotation.kind {
-            TypeAnnotationKind::Error => engine::UnresolvedType::Error,
+            TypeAnnotationKind::Error(_) => engine::UnresolvedType::Error,
             TypeAnnotationKind::Placeholder => {
                 if let Some(ty) = convert_placeholder(self, annotation.span) {
                     ty
@@ -3797,7 +3773,7 @@ impl Typechecker {
 
                 let ty = self.entrypoint.declarations.types.get(&id).unwrap().clone();
 
-                for (_, param) in ty.value.params.iter().skip(params.len()) {
+                for param in ty.value.parameters.iter().skip(params.len()) {
                     let name = match self.with_type_parameter_decl(*param, |decl| decl.name) {
                         Some(name) => name,
                         None => {
@@ -3832,9 +3808,9 @@ impl Typechecker {
 
                 let substitutions = ty
                     .value
-                    .params
+                    .parameters
                     .iter()
-                    .map(|(_, param)| *param)
+                    .copied()
                     .zip(params.iter().cloned())
                     .collect::<GenericSubstitutions>();
 
@@ -3845,14 +3821,16 @@ impl Typechecker {
                 };
 
                 let structure = match &ty.value.kind {
-                    lower::TypeKind::Marker => engine::TypeStructure::Marker,
-                    lower::TypeKind::Structure(fields, _) => engine::TypeStructure::Structure(
-                        fields
-                            .iter()
-                            .map(|field| convert_and_instantiate(field.ty.clone()))
-                            .collect(),
-                    ),
-                    lower::TypeKind::Enumeration(variants, _) => {
+                    lower_v2::TypeDeclarationKind::Marker => engine::TypeStructure::Marker,
+                    lower_v2::TypeDeclarationKind::Structure(fields, _) => {
+                        engine::TypeStructure::Structure(
+                            fields
+                                .iter()
+                                .map(|field| convert_and_instantiate(field.ty.clone()))
+                                .collect(),
+                        )
+                    }
+                    lower_v2::TypeDeclarationKind::Enumeration(variants, _) => {
                         engine::TypeStructure::Enumeration(
                             variants
                                 .iter()
@@ -3883,7 +3861,7 @@ impl Typechecker {
                     .clone();
 
                 match builtin_ty.value.kind {
-                    lower::BuiltinTypeKind::Number => {
+                    lower_v2::BuiltinTypeDeclarationKind::Number => {
                         if !parameters.is_empty() {
                             self.compiler.add_error(
                                 "`Number` does not accept parameters",
@@ -3896,7 +3874,7 @@ impl Typechecker {
 
                         engine::UnresolvedType::Builtin(engine::BuiltinType::Number)
                     }
-                    lower::BuiltinTypeKind::Integer => {
+                    lower_v2::BuiltinTypeDeclarationKind::Integer => {
                         if !parameters.is_empty() {
                             self.compiler.add_error(
                                 "`Integer` does not accept parameters",
@@ -3909,7 +3887,7 @@ impl Typechecker {
 
                         engine::UnresolvedType::Builtin(engine::BuiltinType::Integer)
                     }
-                    lower::BuiltinTypeKind::Natural => {
+                    lower_v2::BuiltinTypeDeclarationKind::Natural => {
                         if !parameters.is_empty() {
                             self.compiler.add_error(
                                 "`Natural` does not accept parameters",
@@ -3922,7 +3900,7 @@ impl Typechecker {
 
                         engine::UnresolvedType::Builtin(engine::BuiltinType::Natural)
                     }
-                    lower::BuiltinTypeKind::Byte => {
+                    lower_v2::BuiltinTypeDeclarationKind::Byte => {
                         if !parameters.is_empty() {
                             self.compiler.add_error(
                                 "`Byte` does not accept parameters",
@@ -3935,7 +3913,7 @@ impl Typechecker {
 
                         engine::UnresolvedType::Builtin(engine::BuiltinType::Byte)
                     }
-                    lower::BuiltinTypeKind::Signed => {
+                    lower_v2::BuiltinTypeDeclarationKind::Signed => {
                         if !parameters.is_empty() {
                             self.compiler.add_error(
                                 "`Signed` does not accept parameters",
@@ -3948,7 +3926,7 @@ impl Typechecker {
 
                         engine::UnresolvedType::Builtin(engine::BuiltinType::Signed)
                     }
-                    lower::BuiltinTypeKind::Unsigned => {
+                    lower_v2::BuiltinTypeDeclarationKind::Unsigned => {
                         if !parameters.is_empty() {
                             self.compiler.add_error(
                                 "`Unsigned` does not accept parameters",
@@ -3961,7 +3939,7 @@ impl Typechecker {
 
                         engine::UnresolvedType::Builtin(engine::BuiltinType::Unsigned)
                     }
-                    lower::BuiltinTypeKind::Float => {
+                    lower_v2::BuiltinTypeDeclarationKind::Float => {
                         if !parameters.is_empty() {
                             self.compiler.add_error(
                                 "`Float` does not accept parameters",
@@ -3974,7 +3952,7 @@ impl Typechecker {
 
                         engine::UnresolvedType::Builtin(engine::BuiltinType::Float)
                     }
-                    lower::BuiltinTypeKind::Double => {
+                    lower_v2::BuiltinTypeDeclarationKind::Double => {
                         if !parameters.is_empty() {
                             self.compiler.add_error(
                                 "`Double` does not accept parameters",
@@ -3987,7 +3965,7 @@ impl Typechecker {
 
                         engine::UnresolvedType::Builtin(engine::BuiltinType::Double)
                     }
-                    lower::BuiltinTypeKind::Text => {
+                    lower_v2::BuiltinTypeDeclarationKind::Text => {
                         if !parameters.is_empty() {
                             self.compiler.add_error(
                                 "`Text` does not accept parameters",
@@ -4000,20 +3978,7 @@ impl Typechecker {
 
                         engine::UnresolvedType::Builtin(engine::BuiltinType::Text)
                     }
-                    lower::BuiltinTypeKind::Boolean => {
-                        if !parameters.is_empty() {
-                            self.compiler.add_error(
-                                "`Boolean` does not accept parameters",
-                                vec![Note::primary(
-                                    annotation.span,
-                                    "try removing these parameters",
-                                )],
-                            );
-                        }
-
-                        engine::UnresolvedType::Builtin(engine::BuiltinType::Number)
-                    }
-                    lower::BuiltinTypeKind::List => {
+                    lower_v2::BuiltinTypeDeclarationKind::List => {
                         if parameters.is_empty() {
                             self.compiler.add_error(
                                 "`List` accepts 1 parameter, but none were provided",
@@ -4049,7 +4014,7 @@ impl Typechecker {
                             )))
                         }
                     }
-                    lower::BuiltinTypeKind::Mutable => {
+                    lower_v2::BuiltinTypeDeclarationKind::Mutable => {
                         if parameters.is_empty() {
                             self.compiler.add_error(
                                 "`Mutable` accepts 1 parameter, but none were provided",
@@ -4133,7 +4098,6 @@ impl Typechecker {
 
         let substitutions = trait_params
             .into_iter()
-            .map(|(_, param)| param)
             .zip(params)
             .collect::<GenericSubstitutions>();
 
@@ -4259,7 +4223,7 @@ impl Typechecker {
                                             let param = actual_ty
                                                 .params
                                                 .iter()
-                                                .position(|(_, p)| p == param)
+                                                .position(|p| p == param)
                                                 .expect(
                                                     "type parameter associated with wrong type",
                                                 );

@@ -8,9 +8,8 @@ use crate::{
     BuiltinTypeId, Compiler, ConstantId, FieldIndex, FilePath, ScopeId, TraitId, TypeId,
     TypeParameterId, VariableId, VariantIndex,
 };
-use im::HashMap;
 use std::{
-    collections::{BTreeMap, BTreeSet, HashSet},
+    collections::{BTreeMap, BTreeSet, HashMap, HashSet},
     mem,
     sync::Arc,
 };
@@ -210,7 +209,13 @@ pub struct TraitAttributes {
 }
 
 #[derive(Debug, Clone)]
-pub enum BuiltinTypeDeclaration {
+pub struct BuiltinTypeDeclaration {
+    pub kind: BuiltinTypeDeclarationKind,
+    pub attributes: DeclarationAttributes,
+}
+
+#[derive(Debug, Clone)]
+pub enum BuiltinTypeDeclarationKind {
     Number,
     Integer,
     Natural,
@@ -288,8 +293,8 @@ pub struct VariableDeclaration;
 
 #[derive(Debug, Clone, Default)]
 pub struct FileInfo {
-    recursion_limit: Option<usize>,
-    language_items: LanguageItems,
+    pub recursion_limit: Option<usize>,
+    pub language_items: LanguageItems,
 }
 
 impl FileInfo {
@@ -326,13 +331,13 @@ pub struct Expression {
 #[derive(Debug, Clone)]
 pub enum ExpressionKind {
     Error(Backtrace),
-    Marker,
+    Marker(TypeId),
     Constant(ConstantId),
     Trait(TraitId),
     Variable(VariableId),
     Text(InternedString),
     Number(InternedString),
-    Block(Vec<Expression>),
+    Block(Vec<Expression>, bool),
     End(Box<Expression>),
     Call(Box<Expression>, Box<Expression>),
     Function(Pattern, Box<Expression>, CaptureList),
@@ -347,7 +352,7 @@ pub enum ExpressionKind {
 }
 
 impl ExpressionKind {
-    fn error(compiler: &Compiler) -> Self {
+    pub(crate) fn error(compiler: &Compiler) -> Self {
         ExpressionKind::Error(compiler.backtrace())
     }
 }
@@ -381,7 +386,7 @@ pub enum PatternKind {
 }
 
 impl PatternKind {
-    fn error(compiler: &Compiler) -> Self {
+    pub(crate) fn error(compiler: &Compiler) -> Self {
         PatternKind::Error(compiler.backtrace())
     }
 }
@@ -404,7 +409,7 @@ pub enum TypeAnnotationKind {
 }
 
 impl TypeAnnotationKind {
-    fn error(compiler: &Compiler) -> Self {
+    pub(crate) fn error(compiler: &Compiler) -> Self {
         TypeAnnotationKind::Error(compiler.backtrace())
     }
 }

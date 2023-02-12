@@ -482,7 +482,7 @@ impl Pattern {
 impl TypeAnnotation {
     fn display_with(&self, f: &mut impl fmt::Write, file: &Program) -> fmt::Result {
         match &self.kind {
-            TypeAnnotationKind::Error => write!(f, "<error>")?,
+            TypeAnnotationKind::Error(_) => write!(f, "<error>")?,
             TypeAnnotationKind::Placeholder => write!(f, "_")?,
             TypeAnnotationKind::Named(id, params) => {
                 let name = match file.declarations.types.get(id) {

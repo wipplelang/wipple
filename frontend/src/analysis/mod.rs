@@ -255,10 +255,10 @@ impl Compiler {
         &self,
         files: indexmap::IndexMap<FilePath, Arc<ast_v2::File>>,
         _options: &Options,
-    ) -> (lower::File, bool) {
+    ) -> (lower_v2::File, bool) {
         assert!(!files.is_empty(), "expected at least one file");
 
-        fn lower(compiler: &Compiler, file: Arc<ast_v2::File>) -> Arc<lower::File> {
+        fn lower(compiler: &Compiler, file: Arc<ast_v2::File>) -> Arc<lower_v2::File> {
             let path = file.span.path;
 
             if let Some(file) = compiler.cache.lock().get(&path) {
@@ -272,7 +272,7 @@ impl Compiler {
                 .map(|file| lower(compiler, file))
                 .collect::<Vec<_>>();
 
-            let file = Arc::new(compiler.lower(todo!(), dependencies));
+            let file = Arc::new(compiler.lower_v2(&file, dependencies));
 
             // Only cache files already cached by loader
             if compiler.loader.cache().lock().contains_key(&path) {
@@ -295,7 +295,7 @@ impl Compiler {
 
     pub fn typecheck_with(
         &self,
-        entrypoint: lower::File,
+        entrypoint: lower_v2::File,
         lowering_is_complete: bool,
         options: &Options,
     ) -> Program {

@@ -76,7 +76,7 @@ pub struct Compiler {
     diagnostics: Diagnostics,
     file_ids: FileIds,
     ids: Ids,
-    pub(crate) cache: Shared<indexmap::IndexMap<FilePath, Arc<analysis::lower::File>>>,
+    pub(crate) cache: Shared<indexmap::IndexMap<FilePath, Arc<analysis::lower_v2::File>>>,
     #[cfg(debug_assertions)]
     pub(crate) backtrace_enabled: bool,
 }
