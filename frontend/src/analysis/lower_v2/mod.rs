@@ -287,7 +287,7 @@ pub struct InstanceDeclaration {
 pub struct VariableDeclaration;
 
 #[derive(Debug, Clone, Default)]
-struct FileInfo {
+pub struct FileInfo {
     recursion_limit: Option<usize>,
     language_items: LanguageItems,
 }
