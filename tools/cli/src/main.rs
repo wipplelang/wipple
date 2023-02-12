@@ -40,12 +40,6 @@ enum Args {
         #[clap(long)]
         clear: bool,
     },
-    Analyze {
-        path: String,
-
-        #[clap(flatten)]
-        options: BuildOptions,
-    },
     Lsp,
 }
 
@@ -219,35 +213,6 @@ async fn run() -> anyhow::Result<()> {
 
                     output.write_all(ir.to_string().as_bytes())?;
                 }
-            }
-        }
-        Args::Analyze { path, options } => {
-            let progress_bar = options.progress.then(progress_bar);
-
-            let (program, diagnostics) = analyze(&path, &options, progress_bar.clone()).await;
-
-            if let Some(progress_bar) = progress_bar.as_ref() {
-                progress_bar.finish_and_clear();
-            }
-
-            #[allow(dead_code)]
-            #[derive(Debug, serde::Serialize)]
-            struct Analysis {
-                program: wipple_frontend::analysis::Program,
-                diagnostics: Vec<wipple_frontend::diagnostics::Diagnostic>,
-            }
-
-            let error = diagnostics.contains_errors();
-
-            let output = Analysis {
-                program,
-                diagnostics: diagnostics.diagnostics,
-            };
-
-            serde_json::to_writer_pretty(io::stdout(), &output)?;
-
-            if error {
-                return Err(anyhow::Error::msg(""));
             }
         }
         Args::Cache { clear } => {

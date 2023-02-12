@@ -1,38 +1,37 @@
 use crate::{
     analysis::ast_v2::{
-        constant_type_annotation::ConstantTypeAnnotationSyntaxContext,
+        statement::StatementSyntaxContext,
         syntax::{
             FileBodySyntaxContext, OperatorAssociativity, Syntax, SyntaxContext, SyntaxError,
             SyntaxRule, SyntaxRules,
         },
-        ConstantTypeAnnotation, ConstantTypeAnnotationSyntax, TypePattern, TypePatternSyntax,
-        TypePatternSyntaxContext,
+        Statement, StatementSyntax, TypePattern, TypePatternSyntax, TypePatternSyntaxContext,
     },
     parse::{self, Span},
     ScopeId,
 };
 
 #[derive(Debug, Clone)]
-pub struct TypeFunctionConstantTypeAnnotation {
+pub struct TypeFunctionStatement {
     pub arrow_span: Span,
     pub pattern: Result<TypePattern, SyntaxError>,
-    pub annotation: Result<Box<ConstantTypeAnnotation>, SyntaxError>,
+    pub value: Result<Box<Statement>, SyntaxError>,
     pub scope: ScopeId,
 }
 
-pub struct TypeFunctionConstantTypeAnnotationSyntax;
+pub struct TypeFunctionStatementSyntax;
 
-impl Syntax for TypeFunctionConstantTypeAnnotationSyntax {
-    type Context = ConstantTypeAnnotationSyntaxContext;
+impl Syntax for TypeFunctionStatementSyntax {
+    type Context = StatementSyntaxContext;
 
     fn rules() -> SyntaxRules<Self> {
         SyntaxRules::new().with(SyntaxRule::<Self>::operator(
             "=>",
             OperatorAssociativity::None,
-            |context, (lhs_span, lhs), operator_span, (rhs_span, rhs), scope| async move {
+            |context, (lhs_span, lhs_exprs), operator_span, (rhs_span, rhs_exprs), scope| async move {
                 let scope = context.ast_builder.child_scope(scope);
 
-                let lhs = parse::Expr::list_or_expr(lhs_span, lhs);
+                let lhs = parse::Expr::list_or_expr(lhs_span, lhs_exprs);
 
                 let pattern = context
                     .ast_builder
@@ -42,21 +41,21 @@ impl Syntax for TypeFunctionConstantTypeAnnotationSyntax {
                                 context.statement_attributes.as_ref().unwrap().clone(),
                             ),
                         lhs,
-                        scope,
+                        scope
                     )
                     .await;
 
-                let rhs = parse::Expr::list_or_expr(rhs_span, rhs);
+                let rhs = parse::Expr::list_or_expr(rhs_span, rhs_exprs);
 
-                let annotation = context
+                let value = context
                     .ast_builder
-                    .build_expr::<ConstantTypeAnnotationSyntax>(context.clone(), rhs, scope)
+                    .build_expr::<StatementSyntax>(context.clone(), rhs, scope)
                     .await;
 
-                Ok(TypeFunctionConstantTypeAnnotation {
+                Ok(TypeFunctionStatement {
                     arrow_span: operator_span,
                     pattern,
-                    annotation: annotation.map(Box::new),
+                    value: value.map(Box::new),
                     scope,
                 }
                 .into())

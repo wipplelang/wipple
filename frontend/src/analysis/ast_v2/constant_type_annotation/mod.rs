@@ -9,10 +9,9 @@ use type_function::*;
 
 use crate::{
     analysis::ast_v2::{
-        syntax::{FileBodySyntaxContext, Syntax, SyntaxContext, SyntaxError},
-        AstBuilder, StatementAttributes, StatementSyntax,
+        syntax::{ErrorSyntax, FileBodySyntaxContext, Syntax, SyntaxContext, SyntaxError},
+        AstBuilder, StatementAttributes, TypeSyntaxContext,
     },
-    diagnostics::Note,
     helpers::Shared,
     parse, ScopeId,
 };
@@ -22,8 +21,8 @@ syntax_group! {
     #[derive(Debug, Clone)]
     pub type ConstantTypeAnnotation<ConstantTypeAnnotationSyntaxContext> {
         non_terminal: {
-            Type,
             TypeFunction,
+            Type,
         },
         terminal: {},
     }
@@ -38,7 +37,7 @@ pub struct ConstantTypeAnnotationSyntaxContext {
 #[async_trait]
 impl SyntaxContext for ConstantTypeAnnotationSyntaxContext {
     type Body = ConstantTypeAnnotation;
-    type Statement = StatementSyntax;
+    type Statement = ErrorSyntax;
 
     fn new(ast_builder: AstBuilder) -> Self {
         ConstantTypeAnnotationSyntaxContext {
@@ -50,36 +49,35 @@ impl SyntaxContext for ConstantTypeAnnotationSyntaxContext {
     async fn build_block(
         self,
         span: parse::Span,
-        _statements: impl Iterator<
+        statements: impl Iterator<
                 Item = Result<
                     <<Self::Statement as Syntax>::Context as SyntaxContext>::Body,
                     SyntaxError,
                 >,
             > + Send,
-        _scope: ScopeId,
+        scope: ScopeId,
     ) -> Result<Self::Body, SyntaxError> {
-        self.ast_builder.compiler.add_error(
-            "syntax error",
-            vec![Note::primary(
-                span,
-                "block is not valid inside type annotation",
-            )],
-        );
+        let context = TypeSyntaxContext::new(self.ast_builder)
+            .with_statement_attributes(self.statement_attributes.unwrap());
 
-        Err(self.ast_builder.syntax_error(span))
+        context
+            .build_block(span, statements, scope)
+            .await
+            .map(|ty| TypeConstantTypeAnnotation { ty }.into())
     }
 
     async fn build_terminal(
         self,
         expr: parse::Expr,
-        _scope: ScopeId,
+        scope: ScopeId,
     ) -> Result<Self::Body, SyntaxError> {
-        self.ast_builder.compiler.add_error(
-            "syntax error",
-            vec![Note::primary(expr.span, "expected type in type annotation")],
-        );
+        let context = TypeSyntaxContext::new(self.ast_builder)
+            .with_statement_attributes(self.statement_attributes.unwrap());
 
-        Err(self.ast_builder.syntax_error(expr.span))
+        context
+            .build_terminal(expr, scope)
+            .await
+            .map(|ty| TypeConstantTypeAnnotation { ty }.into())
     }
 }
 impl FileBodySyntaxContext for ConstantTypeAnnotationSyntaxContext {

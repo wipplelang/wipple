@@ -39,10 +39,14 @@ pub enum ExprKind {
 }
 
 impl Expr {
-    pub fn list(span: Span, exprs: Vec<Expr>) -> Self {
-        Expr {
-            span,
-            kind: ExprKind::List(vec![exprs.into()]),
+    pub fn list_or_expr(span: Span, mut exprs: Vec<Expr>) -> Self {
+        if exprs.len() == 1 {
+            exprs.pop().unwrap()
+        } else {
+            Expr {
+                span,
+                kind: ExprKind::List(vec![exprs.into()]),
+            }
         }
     }
 

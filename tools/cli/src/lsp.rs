@@ -7,7 +7,7 @@ use wipple_frontend::{
         lower::{ScopeValue, ScopeValues},
         typecheck::{
             format::{format_type, Format, TypeFunctionFormat},
-            TemplateDecl, TraitDecl, Type, TypeDecl, TypeDeclKind,
+            TraitDecl, Type, TypeDecl, TypeDeclKind,
         },
         Expression, ExpressionKind, Program,
     },
@@ -194,17 +194,17 @@ impl LanguageServer for Backend {
         insert_semantic_tokens!(traits, |_| SemanticTokenType::INTERFACE);
         insert_semantic_tokens!(constants, |_| SemanticTokenType::VARIABLE);
         insert_semantic_tokens!(operators, |_| SemanticTokenType::OPERATOR);
-        insert_semantic_tokens!(
-            templates,
-            |id, _| !document.program.declarations.operators.contains_key(id),
-            |decl: &TemplateDecl| {
-                if decl.attributes.keyword {
-                    SemanticTokenType::KEYWORD
-                } else {
-                    SemanticTokenType::MACRO
-                }
-            }
-        );
+        // insert_semantic_tokens!(
+        //     templates,
+        //     |id, _| !document.program.declarations.operators.contains_key(id),
+        //     |decl: &TemplateDecl| {
+        //         if decl.attributes.keyword {
+        //             SemanticTokenType::KEYWORD
+        //         } else {
+        //             SemanticTokenType::MACRO
+        //         }
+        //     }
+        // );
         insert_semantic_tokens!(builtin_types, |_| SemanticTokenType::TYPE);
         insert_semantic_tokens!(type_parameters, |_| SemanticTokenType::TYPE_PARAMETER);
         insert_semantic_tokens!(variables, |_| SemanticTokenType::VARIABLE);
@@ -629,15 +629,15 @@ impl LanguageServer for Backend {
             }
         };
 
-        for (span, scope) in &document.program.scopes {
-            if !within_cursor(*span) {
-                continue;
-            }
+        // for (span, scope) in &document.program.scopes {
+        //     if !within_cursor(*span) {
+        //         continue;
+        //     }
 
-            add(scope);
-        }
+        //     add(scope);
+        // }
 
-        add(&document.program.exported);
+        // add(&document.program.exported);
 
         Ok(Some(CompletionResponse::Array(items)))
     }

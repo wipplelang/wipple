@@ -32,7 +32,7 @@ impl Syntax for TypeFunctionAssignmentValueSyntax {
             |context, (lhs_span, lhs_exprs), operator_span, (rhs_span, rhs_exprs), scope| async move {
                 let scope = context.ast_builder.child_scope(scope);
 
-                let lhs = parse::Expr::list(lhs_span, lhs_exprs);
+                let lhs = parse::Expr::list_or_expr(lhs_span, lhs_exprs);
 
                 let pattern = context
                     .ast_builder
@@ -46,7 +46,7 @@ impl Syntax for TypeFunctionAssignmentValueSyntax {
                     )
                     .await;
 
-                let rhs = parse::Expr::list(rhs_span, rhs_exprs);
+                let rhs = parse::Expr::list_or_expr(rhs_span, rhs_exprs);
 
                 let value = context
                     .ast_builder

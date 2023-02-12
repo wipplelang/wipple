@@ -340,46 +340,13 @@ impl Expander {
 
                     macro_rules! expand_list {
                         ($exprs:ident) => {
-                            (|| {
-                                // Prevent flattening of a single parenthesized expression that
-                                // doesn't contain any operators
-                                if $exprs.len() == 1 {
-                                    let expr = $exprs.first().unwrap();
-
-                                    if let ExpressionKind::List(exprs) = &expr.kind {
-                                        let exprs = exprs.into_iter().enumerate();
-
-                                        if exprs.clone().next().is_none() {
-                                            return Expression {
-                                                span: expr.span,
-                                                kind: ExpressionKind::List(Vec::new()),
-                                            };
-                                        }
-
-                                        if self
-                                            .operators_in_list(exprs.clone(), inherited_scope)
-                                            .is_empty()
-                                        {
-                                            let expr = $exprs.pop().unwrap();
-
-                                            return Expression {
-                                                span: expr.span,
-                                                kind: ExpressionKind::List(vec![expr]),
-                                            };
-                                        }
-                                    }
-                                }
-
-                                let span = Span::join(
+                            Expression {
+                                span: Span::join(
                                     $exprs.first().unwrap().span,
                                     $exprs.last().unwrap().span,
-                                );
-
-                                Expression {
-                                    span,
-                                    kind: ExpressionKind::List($exprs),
-                                }
-                            })()
+                                ),
+                                kind: ExpressionKind::List($exprs),
+                            }
                         };
                     }
 

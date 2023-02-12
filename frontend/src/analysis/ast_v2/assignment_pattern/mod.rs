@@ -15,7 +15,6 @@ use crate::{
         syntax::{FileBodySyntaxContext, Syntax, SyntaxContext, SyntaxError},
         AstBuilder, DestructuringSyntax, PatternSyntaxContext, StatementAttributes,
     },
-    diagnostics::Note,
     helpers::Shared,
     parse, ScopeId,
 };
@@ -68,20 +67,21 @@ impl SyntaxContext for AssignmentPatternSyntaxContext {
         context
             .build_block(span, statements, scope)
             .await
-            .map(From::from)
+            .map(|pattern| PatternAssignmentPattern { pattern }.into())
     }
 
     async fn build_terminal(
         self,
         expr: parse::Expr,
-        _scope: ScopeId,
+        scope: ScopeId,
     ) -> Result<Self::Body, SyntaxError> {
-        self.ast_builder.compiler.add_error(
-            "syntax error",
-            vec![Note::primary(expr.span, "invalid pattern")],
-        );
+        let context = PatternSyntaxContext::new(self.ast_builder)
+            .with_statement_attributes(self.statement_attributes.unwrap());
 
-        Err(self.ast_builder.syntax_error(expr.span))
+        context
+            .build_terminal(expr, scope)
+            .await
+            .map(|pattern| PatternAssignmentPattern { pattern }.into())
     }
 }
 

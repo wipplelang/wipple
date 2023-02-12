@@ -281,29 +281,29 @@ fn get_syntax_highlighting(
     insert_semantic_tokens!(types, |_, _| "type");
     insert_semantic_tokens!(traits, |_, _| "trait");
     insert_semantic_tokens!(constants, |_, _| "variable");
-    insert_semantic_tokens!(operators, |id, _| {
-        if program
-            .declarations
-            .templates
-            .get(id)
-            .map_or(false, |decl| decl.attributes.keyword)
-        {
-            "keyword"
-        } else {
-            "operator"
-        }
-    });
-    insert_semantic_tokens!(
-        templates,
-        |id, _| !program.declarations.operators.contains_key(id),
-        |_, decl: &wipple_frontend::analysis::typecheck::TemplateDecl| {
-            if decl.attributes.keyword {
-                "keyword"
-            } else {
-                "template"
-            }
-        }
-    );
+    // insert_semantic_tokens!(operators, |id, _| {
+    //     if program
+    //         .declarations
+    //         .templates
+    //         .get(id)
+    //         .map_or(false, |decl| decl.attributes.keyword)
+    //     {
+    //         "keyword"
+    //     } else {
+    //         "operator"
+    //     }
+    // });
+    // insert_semantic_tokens!(
+    //     templates,
+    //     |id, _| !program.declarations.operators.contains_key(id),
+    //     |_, decl: &wipple_frontend::analysis::typecheck::TemplateDecl| {
+    //         if decl.attributes.keyword {
+    //             "keyword"
+    //         } else {
+    //             "template"
+    //         }
+    //     }
+    // );
     insert_semantic_tokens!(builtin_types, |_, _| "type");
     insert_semantic_tokens!(type_parameters, |_, _| "type");
     insert_semantic_tokens!(variables, |_, _| "variable");

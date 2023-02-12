@@ -1,10 +1,20 @@
 use crate::analysis::ast_v2::{
     constant_type_annotation::ConstantTypeAnnotationSyntaxContext,
     r#type::{Type, TypeSyntax, TypeSyntaxContext},
-    syntax::{Syntax, SyntaxContext, SyntaxRules},
+    syntax::{Syntax, SyntaxContext, SyntaxRules, FileBodySyntaxContext},
+    ConstantTypeAnnotation,
 };
 
-pub type TypeConstantTypeAnnotation = Type;
+#[derive(Debug, Clone)]
+pub struct TypeConstantTypeAnnotation {
+    pub ty: Type,
+}
+
+impl From<Type> for ConstantTypeAnnotation {
+    fn from(ty: Type) -> Self {
+        TypeConstantTypeAnnotation { ty }.into()
+    }
+}
 
 pub struct TypeConstantTypeAnnotationSyntax;
 
@@ -19,5 +29,6 @@ impl Syntax for TypeConstantTypeAnnotationSyntax {
 impl From<ConstantTypeAnnotationSyntaxContext> for TypeSyntaxContext {
     fn from(context: ConstantTypeAnnotationSyntaxContext) -> Self {
         TypeSyntaxContext::new(context.ast_builder)
+            .with_statement_attributes(context.statement_attributes.unwrap().clone())
     }
 }

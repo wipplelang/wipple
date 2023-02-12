@@ -51,7 +51,7 @@ impl Syntax for FieldTypeMemberSyntax {
                     }
                 };
 
-                let rhs = parse::Expr::list(rhs_span, rhs_exprs);
+                let rhs = parse::Expr::list_or_expr(rhs_span, rhs_exprs);
                 let ty = context
                     .ast_builder
                     .build_expr::<TypeSyntax>(

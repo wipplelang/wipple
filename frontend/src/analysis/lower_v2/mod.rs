@@ -1560,7 +1560,7 @@ impl Lowerer {
                         ast_v2::AssignmentPattern::Pattern(pattern) => Some(StatementDeclaration {
                             span: statement.colon_span,
                             kind: StatementDeclarationKind::Queued(QueuedStatement::Assign(
-                                pattern,
+                                &pattern.pattern,
                                 &value.expr,
                             )),
                             attributes: &statement.attributes,
@@ -1656,6 +1656,48 @@ impl Lowerer {
                     ),
                     attributes: &statement.attributes,
                 })
+            }
+            ast_v2::Statement::TypeFunction(statement) => {
+                let child_scope = self.child_scope(statement.scope, scope);
+
+                let (parameters, bounds) =
+                    self.lower_type_pattern(statement.pattern.as_ref().ok()?, child_scope);
+
+                match statement.value.as_deref().ok()? {
+                    ast_v2::Statement::Instance(statement) => {
+                        let id = self.compiler.new_constant_id_in(self.file);
+
+                        self.declarations
+                            .instances
+                            .insert(id, Declaration::unresolved(None, statement.instance_span));
+
+                        Some(StatementDeclaration {
+                            span: statement.instance_span,
+                            kind: StatementDeclarationKind::Instance(
+                                id,
+                                Some((child_scope, (parameters, bounds))),
+                                (
+                                    statement.trait_span,
+                                    statement.trait_name,
+                                    &statement.trait_parameters,
+                                ),
+                                None,
+                            ),
+                            attributes: &statement.attributes,
+                        })
+                    }
+                    _ => {
+                        self.compiler.add_error(
+                            "syntax error",
+                            vec![Note::primary(
+                                statement.arrow_span,
+                                "expected an `instance` declaration after this",
+                            )],
+                        );
+
+                        None
+                    }
+                }
             }
             ast_v2::Statement::Use(statement) => match statement.kind.as_ref().ok()? {
                 ast_v2::UseStatementKind::File(_, _, _) => None,
@@ -1892,7 +1934,7 @@ impl Lowerer {
                                                 .iter()
                                                 .filter_map(|s| Some(match s.as_ref().ok()? {
                                                     ast_v2::Statement::Assign(statement) => match statement.pattern.as_ref().ok()? {
-                                                        ast_v2::AssignmentPattern::Pattern(ast_v2::Pattern::Name(name)) => {
+                                                        ast_v2::AssignmentPattern::Pattern(ast_v2::PatternAssignmentPattern { pattern: ast_v2::Pattern::Name(name) }) => {
                                                             let value = match statement.value.as_ref().ok()? {
                                                                 ast_v2::AssignmentValue::Expression(value) => &value.expr,
                                                                 _ => {
@@ -2765,8 +2807,83 @@ impl Lowerer {
         type_pattern: &ast_v2::TypePattern,
         scope: ScopeId,
     ) -> (Vec<TypeParameterId>, Vec<Bound>) {
+        macro_rules! generate_type_parameters {
+            ($params:expr) => {
+                $params
+                    .into_iter()
+                    .map(|(span, name)| {
+                        let id = self.compiler.new_type_parameter_id_in(self.file);
+
+                        self.declarations.type_parameters.insert(
+                            id,
+                            Declaration::resolved(Some(name), span, TypeParameterDeclaration),
+                        );
+
+                        self.insert(name, AnyDeclaration::TypeParameter(id), scope);
+
+                        id
+                    })
+                    .collect()
+            };
+        }
+
         match type_pattern {
             ast_v2::TypePattern::Where(type_pattern) => {
+                let params = match &type_pattern.pattern {
+                    Ok(lhs) => {
+                        let params = match lhs.as_ref() {
+                            ast_v2::TypePattern::Name(pattern) => {
+                                vec![(pattern.span, pattern.name)]
+                            }
+                            ast_v2::TypePattern::List(pattern) => pattern
+                                .patterns
+                                .iter()
+                                .filter_map(|pattern| match pattern {
+                                    Ok(pattern) => match pattern {
+                                        ast_v2::TypePattern::Name(pattern) => {
+                                            Some((pattern.span, pattern.name))
+                                        }
+                                        ast_v2::TypePattern::List(pattern) => {
+                                            self.compiler.add_error(
+                                                "higher-kinded types are not yet supported",
+                                                vec![Note::primary(
+                                                    pattern.span,
+                                                    "try removing this",
+                                                )],
+                                            );
+
+                                            None
+                                        }
+                                        ast_v2::TypePattern::Where(pattern) => {
+                                            self.compiler.add_error(
+                                                "syntax error",
+                                                vec![Note::primary(
+                                                    pattern.where_span,
+                                                    "`where` clause is not allowed here",
+                                                )],
+                                            );
+
+                                            None
+                                        }
+                                    },
+                                    Err(_) => None,
+                                })
+                                .collect(),
+                            ast_v2::TypePattern::Where(lhs) => {
+                                self.compiler.add_error(
+                                    "type function may not have multiple `where` clauses",
+                                    vec![Note::primary(lhs.where_span, "try removing this")],
+                                );
+
+                                Vec::new()
+                            }
+                        };
+
+                        generate_type_parameters!(params)
+                    }
+                    Err(_) => Vec::new(),
+                };
+
                 let bounds = type_pattern
                     .bounds
                     .iter()
@@ -2829,26 +2946,49 @@ impl Lowerer {
                     })
                     .collect();
 
-                let params = match &type_pattern.pattern {
-                    Ok(lhs) => match lhs.as_ref() {
-                        ast_v2::TypePattern::Name(_) => todo!(),
-                        ast_v2::TypePattern::List(_) => todo!(),
-                        ast_v2::TypePattern::Where(lhs) => {
-                            self.compiler.add_error(
-                                "type function may not have multiple `where` clauses",
-                                vec![Note::primary(lhs.where_span, "try removing this")],
-                            );
-
-                            Default::default()
-                        }
-                    },
-                    Err(_) => todo!(),
-                };
-
                 (params, bounds)
             }
-            ast_v2::TypePattern::Name(_) => todo!(),
-            ast_v2::TypePattern::List(_) => todo!(),
+            ast_v2::TypePattern::Name(pattern) => {
+                let params = generate_type_parameters!(vec![(pattern.span, pattern.name)]);
+                (params, Vec::new())
+            }
+            ast_v2::TypePattern::List(pattern) => {
+                let params = pattern
+                    .patterns
+                    .iter()
+                    .filter_map(|pattern| match pattern {
+                        Ok(pattern) => match pattern {
+                            ast_v2::TypePattern::Name(pattern) => {
+                                Some((pattern.span, pattern.name))
+                            }
+                            ast_v2::TypePattern::List(pattern) => {
+                                self.compiler.add_error(
+                                    "higher-kinded types are not yet supported",
+                                    vec![Note::primary(pattern.span, "try removing this")],
+                                );
+
+                                None
+                            }
+                            ast_v2::TypePattern::Where(pattern) => {
+                                self.compiler.add_error(
+                                    "syntax error",
+                                    vec![Note::primary(
+                                        pattern.where_span,
+                                        "`where` clause is not allowed here",
+                                    )],
+                                );
+
+                                None
+                            }
+                        },
+                        Err(_) => None,
+                    })
+                    .collect::<Vec<_>>();
+
+                let params = generate_type_parameters!(params);
+
+                (params, Vec::new())
+            }
         }
     }
 
@@ -2949,7 +3089,7 @@ impl Lowerer {
     ) -> Option<(Span, InternedString)> {
         // TODO: Have a `span()` function implemented by all AST nodes instead of this
         let span = match pattern {
-            ast_v2::AssignmentPattern::Pattern(pattern) => match pattern {
+            ast_v2::AssignmentPattern::Pattern(pattern) => match &pattern.pattern {
                 ast_v2::Pattern::Name(pattern) => return Some((pattern.span, pattern.name)),
                 ast_v2::Pattern::Tuple(pattern) => pattern.comma_span,
                 ast_v2::Pattern::Annotate(pattern) => pattern.colon_span,

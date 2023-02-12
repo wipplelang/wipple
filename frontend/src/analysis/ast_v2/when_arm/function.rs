@@ -32,7 +32,7 @@ impl Syntax for FunctionWhenArmSyntax {
             |context, (lhs_span, lhs), operator_span, (rhs_span, rhs), scope| async move {
                 let scope = context.ast_builder.child_scope(scope);
 
-                let lhs = parse::Expr::list(lhs_span, lhs);
+                let lhs = parse::Expr::list_or_expr(lhs_span, lhs);
                 let pattern = context
                     .ast_builder
                     .build_expr::<PatternSyntax>(
@@ -45,7 +45,7 @@ impl Syntax for FunctionWhenArmSyntax {
                     )
                     .await;
 
-                let rhs = parse::Expr::list(rhs_span, rhs);
+                let rhs = parse::Expr::list_or_expr(rhs_span, rhs);
                 let body = context
                     .ast_builder
                     .build_expr::<ExpressionSyntax>(

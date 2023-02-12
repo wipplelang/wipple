@@ -1,13 +1,16 @@
+mod expression;
 mod syntax;
 mod r#trait;
 mod r#type;
 mod type_function;
 
+pub use expression::ExpressionAssignmentValue;
 pub use r#trait::TraitAssignmentValue;
 pub use r#type::TypeAssignmentValue;
 pub use syntax::SyntaxAssignmentValue;
 pub use type_function::TypeFunctionAssignmentValue;
 
+use expression::*;
 use r#trait::*;
 use r#type::*;
 use syntax::*;
@@ -16,7 +19,7 @@ use type_function::*;
 use crate::{
     analysis::ast_v2::{
         syntax::{FileBodySyntaxContext, Syntax, SyntaxContext, SyntaxError},
-        AstBuilder, Expression, ExpressionSyntaxContext, StatementAttributes, StatementSyntax,
+        AstBuilder, ExpressionSyntaxContext, StatementAttributes, StatementSyntax,
     },
     helpers::Shared,
     parse, ScopeId,
@@ -31,16 +34,10 @@ syntax_group! {
             Type,
             Syntax,
             TypeFunction,
-        },
-        terminal: {
             Expression,
         },
+        terminal: {},
     }
-}
-
-#[derive(Debug, Clone)]
-pub struct ExpressionAssignmentValue {
-    pub expr: Expression,
 }
 
 #[derive(Clone)]
@@ -78,7 +75,7 @@ impl SyntaxContext for AssignmentValueSyntaxContext {
         context
             .build_block(span, statements, scope)
             .await
-            .map(|expr| ExpressionAssignmentValue { expr }.into())
+            .map(|expression| ExpressionAssignmentValue { expression }.into())
     }
 
     async fn build_terminal(
@@ -92,7 +89,7 @@ impl SyntaxContext for AssignmentValueSyntaxContext {
         context
             .build_terminal(expr, scope)
             .await
-            .map(|expr| ExpressionAssignmentValue { expr }.into())
+            .map(|expression| ExpressionAssignmentValue { expression }.into())
     }
 }
 impl FileBodySyntaxContext for AssignmentValueSyntaxContext {

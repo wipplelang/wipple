@@ -1,17 +1,20 @@
 mod annotate;
 mod assign;
 mod instance;
+mod type_function;
 mod r#use;
 
 pub use annotate::AnnotateStatement;
 pub use assign::AssignStatement;
 pub use instance::InstanceStatement;
 pub use r#use::{UseStatement, UseStatementKind};
+pub use type_function::TypeFunctionStatement;
 
 use annotate::*;
 use assign::*;
 use instance::*;
 use r#use::*;
+use type_function::*;
 
 use crate::{
     analysis::ast_v2::{
@@ -30,6 +33,7 @@ syntax_group! {
         non_terminal: {
             Annotate,
             Assign,
+            TypeFunction,
             Instance,
             Use,
         },

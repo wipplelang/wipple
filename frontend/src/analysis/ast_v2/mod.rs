@@ -169,9 +169,18 @@ impl AstBuilder {
                     Some(result) => result,
                     None => {
                         context
-                            .build_terminal(parse::Expr::list(expr.span, exprs), scope)
+                            .build_terminal(parse::Expr::list_or_expr(expr.span, exprs), scope)
                             .await
                     }
+                }
+            }
+            parse::ExprKind::Name(_) => {
+                match self
+                    .build_list::<S>(context.clone(), expr.span, &[expr.clone()], scope)
+                    .await
+                {
+                    Some(result) => result,
+                    None => context.build_terminal(expr, scope).await,
                 }
             }
             _ => context.build_terminal(expr, scope).await,
@@ -217,7 +226,10 @@ impl AstBuilder {
                 // The result of a statement attribute doesn't affect whether the
                 // statement's expression can be parsed
                 let _ = context
-                    .build_terminal(parse::Expr::list(attribute.span, attribute.exprs), scope)
+                    .build_terminal(
+                        parse::Expr::list_or_expr(attribute.span, attribute.exprs),
+                        scope,
+                    )
                     .await;
             }
         }
@@ -246,7 +258,7 @@ impl AstBuilder {
             Some(result) => result,
             None => {
                 context
-                    .build_terminal(parse::Expr::list(span, exprs), scope)
+                    .build_terminal(parse::Expr::list_or_expr(span, exprs), scope)
                     .await
             }
         };

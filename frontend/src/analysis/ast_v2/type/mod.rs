@@ -137,6 +137,7 @@ impl SyntaxContext for TypeSyntaxContext {
                     parameters: Vec::new(),
                 }
                 .into()),
+                parse::ExprKind::Underscore => Ok(PlaceholderType { span: expr.span }.into()),
                 _ => {
                     self.ast_builder.compiler.add_error(
                         "syntax error",

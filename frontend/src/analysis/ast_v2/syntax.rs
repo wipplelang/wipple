@@ -412,7 +412,7 @@ impl AstBuilder {
                         grouped_exprs.last().unwrap().span,
                     );
 
-                    Ok(parse::Expr::list(
+                    Ok(parse::Expr::list_or_expr(
                         span,
                         grouped_exprs.into_iter().cloned().collect(),
                     ))
