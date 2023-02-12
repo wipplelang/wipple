@@ -29,6 +29,6 @@ impl Syntax for ExpressionAssignmentValueSyntax {
 impl From<AssignmentValueSyntaxContext> for ExpressionSyntaxContext {
     fn from(context: AssignmentValueSyntaxContext) -> Self {
         ExpressionSyntaxContext::new(context.ast_builder)
-            .with_statement_attributes(context.statement_attributes.unwrap().clone())
+            .with_statement_attributes(context.statement_attributes.unwrap())
     }
 }

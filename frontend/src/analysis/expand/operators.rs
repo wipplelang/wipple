@@ -312,7 +312,7 @@ impl Expander {
 
                     ExpandOperatorsResult::Syntax(max_span, max_name, max_operator.syntax, exprs)
                 } else {
-                    let mut rhs = exprs.split_off(max_index + 1);
+                    let rhs = exprs.split_off(max_index + 1);
                     let mut lhs = exprs;
                     lhs.pop().unwrap();
 

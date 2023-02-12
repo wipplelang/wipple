@@ -1452,7 +1452,7 @@ impl Lowerer {
                     kind: StatementDeclarationKind::Constant(
                         id,
                         (child_scope, (parameters, bounds)),
-                        ty,
+                        &ty.ty,
                     ),
                     attributes: &statement.attributes,
                 })
@@ -1561,7 +1561,7 @@ impl Lowerer {
                             span: statement.colon_span,
                             kind: StatementDeclarationKind::Queued(QueuedStatement::Assign(
                                 &pattern.pattern,
-                                &value.expr,
+                                &value.expression,
                             )),
                             attributes: &statement.attributes,
                         }),
@@ -1582,7 +1582,7 @@ impl Lowerer {
                                         pattern.trait_name,
                                         &pattern.trait_parameters,
                                     ),
-                                    Some(&value.expr),
+                                    Some(&value.expression),
                                 ),
                                 attributes: &statement.attributes,
                             })
@@ -1614,7 +1614,7 @@ impl Lowerer {
                                                 pattern.trait_name,
                                                 &pattern.trait_parameters,
                                             ),
-                                            Some(&value.expr),
+                                            Some(&value.expression),
                                         ),
                                         attributes: &statement.attributes,
                                     })
@@ -1936,7 +1936,7 @@ impl Lowerer {
                                                     ast_v2::Statement::Assign(statement) => match statement.pattern.as_ref().ok()? {
                                                         ast_v2::AssignmentPattern::Pattern(ast_v2::PatternAssignmentPattern { pattern: ast_v2::Pattern::Name(name) }) => {
                                                             let value = match statement.value.as_ref().ok()? {
-                                                                ast_v2::AssignmentValue::Expression(value) => &value.expr,
+                                                                ast_v2::AssignmentValue::Expression(value) => &value.expression,
                                                                 _ => {
                                                                     self.compiler.add_error(
                                                                         "syntax error",

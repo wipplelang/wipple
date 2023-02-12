@@ -1,7 +1,7 @@
 use crate::analysis::ast_v2::{
     constant_type_annotation::ConstantTypeAnnotationSyntaxContext,
     r#type::{Type, TypeSyntax, TypeSyntaxContext},
-    syntax::{Syntax, SyntaxContext, SyntaxRules, FileBodySyntaxContext},
+    syntax::{FileBodySyntaxContext, Syntax, SyntaxContext, SyntaxRules},
     ConstantTypeAnnotation,
 };
 
@@ -29,6 +29,6 @@ impl Syntax for TypeConstantTypeAnnotationSyntax {
 impl From<ConstantTypeAnnotationSyntaxContext> for TypeSyntaxContext {
     fn from(context: ConstantTypeAnnotationSyntaxContext) -> Self {
         TypeSyntaxContext::new(context.ast_builder)
-            .with_statement_attributes(context.statement_attributes.unwrap().clone())
+            .with_statement_attributes(context.statement_attributes.unwrap())
     }
 }

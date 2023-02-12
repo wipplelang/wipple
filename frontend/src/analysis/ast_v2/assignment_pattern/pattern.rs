@@ -29,6 +29,6 @@ impl Syntax for PatternAssignmentPatternSyntax {
 impl From<AssignmentPatternSyntaxContext> for PatternSyntaxContext {
     fn from(context: AssignmentPatternSyntaxContext) -> Self {
         PatternSyntaxContext::new(context.ast_builder)
-            .with_statement_attributes(context.statement_attributes.unwrap().clone())
+            .with_statement_attributes(context.statement_attributes.unwrap())
     }
 }
