@@ -39,7 +39,7 @@ impl Syntax for AnnotateStatementSyntax {
                                 "syntax error",
                                 vec![
                                     Note::primary(lhs.span, "expected a name in constant declaration"),
-                                    Note::secondary(lhs.span, "if you intended to annotate the type of an expression, try wrapping this in parentheses"),
+                                    Note::secondary(lhs.span, "to annotate the type of an expression, wrap this in parentheses"),
                                 ],
                             );
 
@@ -51,7 +51,7 @@ impl Syntax for AnnotateStatementSyntax {
                         "syntax error",
                         vec![
                             Note::primary(lhs_span, "expected a name in constant declaration"),
-                            Note::secondary(lhs_span, "if you intended to annotate the type of an expression, try wrapping this in parentheses"),
+                            Note::secondary(lhs_span, "to annotate the type of an expression, wrap this in parentheses"),
                         ],
                     );
 

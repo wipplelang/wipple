@@ -32,6 +32,7 @@ syntax_group! {
 #[derive(Debug, Clone)]
 pub struct VariantTypeMember {
     pub span: Span,
+    pub name_span: Span,
     pub name: InternedString,
     pub tys: Vec<Result<Type, SyntaxError>>,
 }
@@ -82,7 +83,7 @@ impl SyntaxContext for TypeMemberSyntaxContext {
             Ok((span, list)) => {
                 let mut list = list.into_iter();
 
-                let name = match list.next() {
+                let name_expr = match list.next() {
                     Some(expr) => expr,
                     None => {
                         self.ast_builder.compiler.add_error(
@@ -94,12 +95,12 @@ impl SyntaxContext for TypeMemberSyntaxContext {
                     }
                 };
 
-                let name = match name.kind {
+                let name = match name_expr.kind {
                     parse::ExprKind::Name(name) => name,
                     _ => {
                         self.ast_builder.compiler.add_error(
                             "syntax error",
-                            vec![Note::primary(name.span, "expected variant")],
+                            vec![Note::primary(name_expr.span, "expected variant")],
                         );
 
                         return Err(self.ast_builder.syntax_error(span));
@@ -120,11 +121,18 @@ impl SyntaxContext for TypeMemberSyntaxContext {
                     .collect()
                     .await;
 
-                Ok(VariantTypeMember { span, name, tys }.into())
+                Ok(VariantTypeMember {
+                    span,
+                    name_span: name_expr.span,
+                    name,
+                    tys,
+                }
+                .into())
             }
             Err(expr) => match expr.kind {
                 parse::ExprKind::Name(name) => Ok(VariantTypeMember {
                     span: expr.span,
+                    name_span: expr.span,
                     name,
                     tys: Vec::new(),
                 }

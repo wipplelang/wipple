@@ -23,7 +23,7 @@ syntax_group! {
 #[derive(Debug, Clone)]
 pub struct BlockTypeBody {
     pub span: Span,
-    pub arms: Vec<Result<TypeMember, SyntaxError>>,
+    pub members: Vec<Result<TypeMember, SyntaxError>>,
 }
 
 #[derive(Clone)]
@@ -57,7 +57,7 @@ impl SyntaxContext for TypeBodySyntaxContext {
     ) -> Result<Self::Body, SyntaxError> {
         Ok(BlockTypeBody {
             span,
-            arms: statements.collect(),
+            members: statements.collect(),
         }
         .into())
     }
