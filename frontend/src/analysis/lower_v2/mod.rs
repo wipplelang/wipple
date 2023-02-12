@@ -11,6 +11,7 @@ use crate::{
 use im::HashMap;
 use std::{
     collections::{BTreeMap, BTreeSet, HashSet},
+    mem,
     sync::Arc,
 };
 
@@ -196,6 +197,7 @@ pub struct TypeParameterDeclaration;
 pub struct TraitDeclaration {
     pub parameters: Vec<TypeParameterId>,
     pub ty: Option<TypeAnnotation>,
+    pub attributes: TraitAttributes,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -277,15 +279,15 @@ pub struct InstanceDeclaration {
     pub tr_span: Span,
     pub tr: TraitId,
     pub tr_parameters: Vec<TypeAnnotation>,
-    pub value: Expression,
+    pub value: Option<Expression>,
 }
 
 #[derive(Debug, Clone)]
 pub struct VariableDeclaration;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct LanguageItems {
-    // TODO
+    pub boolean: Option<TypeId>,
 }
 
 #[derive(Debug, Clone)]
@@ -521,7 +523,7 @@ enum ScopeValue {
 }
 
 impl Lowerer {
-    fn root_scope(&mut self) -> ScopeId {
+    fn root_scope(&mut self, id: ScopeId) -> ScopeId {
         let mut scope = Scope::default();
         self.load_builtins(&mut scope);
 
@@ -531,13 +533,12 @@ impl Lowerer {
         id
     }
 
-    fn child_scope(&mut self, parent: ScopeId) -> ScopeId {
+    fn child_scope(&mut self, id: ScopeId, parent: ScopeId) -> ScopeId {
         let scope = Scope {
             parent: Some(parent),
             ..Default::default()
         };
 
-        let id = self.compiler.new_scope_id_in(self.file);
         self.scopes.insert(id, scope);
 
         id
@@ -631,38 +632,43 @@ impl Lowerer {
 }
 
 #[derive(Debug)]
-struct StatementDeclaration {
+struct StatementDeclaration<'a> {
     span: Span,
-    kind: StatementDeclarationKind,
-    attributes: ast_v2::StatementAttributes,
+    kind: StatementDeclarationKind<'a>,
+    attributes: &'a ast_v2::StatementAttributes,
 }
 
 #[derive(Debug)]
-enum StatementDeclarationKind {
+enum StatementDeclarationKind<'a> {
     Type(
         TypeId,
-        Option<ast_v2::TypePattern>,
-        ast_v2::TypeAssignmentValue,
+        Option<(ScopeId, &'a ast_v2::TypePattern)>,
+        &'a ast_v2::TypeAssignmentValue,
     ),
     Trait(
         TraitId,
-        Option<ast_v2::TypePattern>,
-        ast_v2::TraitAssignmentValue,
+        Option<(ScopeId, &'a ast_v2::TypePattern)>,
+        &'a ast_v2::TraitAssignmentValue,
     ),
-    Constant(ConstantId, Option<ast_v2::TypePattern>, ast_v2::Type),
+    Constant(
+        ConstantId,
+        Option<(ScopeId, &'a ast_v2::TypePattern)>,
+        &'a ast_v2::Type,
+    ),
     Instance(
         ConstantId,
-        Option<ast_v2::TypePattern>,
-        ast_v2::InstanceStatement,
+        Option<(ScopeId, &'a ast_v2::TypePattern)>,
+        &'a ast_v2::InstanceStatement,
+        Option<&'a Result<ast_v2::Expression, ast_v2::SyntaxError>>,
     ),
     Use(Span, InternedString),
-    Queued(QueuedStatement),
+    Queued(QueuedStatement<'a>),
 }
 
 #[derive(Debug)]
-enum QueuedStatement {
-    Assign(ast_v2::Pattern, ast_v2::Expression),
-    Expression(ast_v2::Expression),
+enum QueuedStatement<'a> {
+    Assign(&'a ast_v2::Pattern, &'a ast_v2::Expression),
+    Expression(&'a ast_v2::Expression),
 }
 
 impl Lowerer {
@@ -689,12 +695,14 @@ impl Lowerer {
                 current_constant = None;
             }
 
-            let scope_value = match &decl.kind {
-                StatementDeclarationKind::Type(id, ty_pattern, ty) => {
-                    let (parameters, bounds) = ty_pattern
+            let scope_value = match decl.kind {
+                StatementDeclarationKind::Type(id, ty_pattern, value) => {
+                    let (scope, (parameters, bounds)) = ty_pattern
                         .as_ref()
-                        .map(|ty_pattern| self.lower_type_pattern(ty_pattern, scope))
-                        .unwrap_or_default();
+                        .map(|(scope, ty_pattern)| {
+                            (*scope, self.lower_type_pattern(ty_pattern, *scope))
+                        })
+                        .unwrap_or_else(|| (scope, Default::default()));
 
                     if let Some(bound) = bounds.first() {
                         self.compiler.add_error(
@@ -703,7 +711,7 @@ impl Lowerer {
                         );
                     }
 
-                    let kind = match &ty.body {
+                    let kind = match &value.body {
                         Some(ty) => {
                             let ast_v2::TypeBody::Block(ty) = match ty {
                                 Ok(ty) => ty,
@@ -750,7 +758,7 @@ impl Lowerer {
                                             .collect::<Vec<_>>();
 
                                         let constructor = self.generate_variant_constructor(
-                                            *id,
+                                            id,
                                             variant.name,
                                             variant.span,
                                             index,
@@ -813,30 +821,397 @@ impl Lowerer {
                         None => TypeDeclarationKind::Marker,
                     };
 
-                    self.declarations.types.get_mut(id).unwrap().value = Some(TypeDeclaration {
+                    let attributes = self.lower_type_attributes(decl.attributes, scope);
+
+                    self.declarations.types.get_mut(&id).unwrap().value = Some(TypeDeclaration {
                         parameters,
                         kind,
-                        attributes: self.lower_type_attributes(&mut decl.attributes, scope),
+                        attributes,
                     });
 
-                    ScopeValue::Type(*id)
+                    Some(ScopeValue::Type(id))
                 }
-                StatementDeclarationKind::Trait(_, _, _) => todo!(),
-                StatementDeclarationKind::Constant(_, _, _) => todo!(),
-                StatementDeclarationKind::Instance(_, _, _) => todo!(),
-                StatementDeclarationKind::Use(_, _) => todo!(),
-                StatementDeclarationKind::Queued(_) => todo!(),
+                StatementDeclarationKind::Trait(id, ty_pattern, value) => {
+                    let (scope, (parameters, bounds)) = ty_pattern
+                        .as_ref()
+                        .map(|(scope, ty_pattern)| {
+                            (*scope, self.lower_type_pattern(ty_pattern, *scope))
+                        })
+                        .unwrap_or_else(|| (scope, Default::default()));
+
+                    if let Some(bound) = bounds.first() {
+                        self.compiler.add_error(
+                            "`trait` declarations may not have bounds",
+                            vec![Note::primary(bound.span, "try removing this")],
+                        );
+                    }
+
+                    let ty = value.ty.as_ref().map(|ty| match ty {
+                        Ok(ty) => self.lower_type(ty, scope),
+                        Err(error) => TypeAnnotation {
+                            span: error.span,
+                            kind: TypeAnnotationKind::error(&self.compiler),
+                        },
+                    });
+
+                    let attributes = self.lower_trait_attributes(decl.attributes, scope);
+
+                    self.declarations.traits.get_mut(&id).unwrap().value = Some(TraitDeclaration {
+                        parameters,
+                        ty,
+                        attributes,
+                    });
+
+                    Some(ScopeValue::Trait(id))
+                }
+                StatementDeclarationKind::Constant(id, ty_pattern, ty) => {
+                    let (scope, (parameters, bounds)) = ty_pattern
+                        .as_ref()
+                        .map(|(scope, ty_pattern)| {
+                            (*scope, self.lower_type_pattern(ty_pattern, *scope))
+                        })
+                        .unwrap_or_else(|| (scope, Default::default()));
+
+                    let ty = self.lower_type(ty, scope);
+
+                    let attributes = self.lower_constant_attributes(decl.attributes, scope);
+
+                    self.declarations.constants.get_mut(&id).unwrap().value =
+                        Some(UnresolvedConstantDeclaration {
+                            parameters,
+                            bounds,
+                            ty,
+                            value: Default::default(),
+                            attributes,
+                        });
+
+                    current_constant = Some((id, scope));
+
+                    Some(ScopeValue::Constant(id, None))
+                }
+                StatementDeclarationKind::Instance(id, ty_pattern, statement, value) => {
+                    let (scope, (parameters, bounds)) = ty_pattern
+                        .as_ref()
+                        .map(|(scope, ty_pattern)| {
+                            (*scope, self.lower_type_pattern(ty_pattern, *scope))
+                        })
+                        .unwrap_or_else(|| (scope, Default::default()));
+
+                    let tr = match self.get(statement.trait_name, statement.trait_span, scope) {
+                        Some(ScopeValue::Trait(tr)) => {
+                            self.declarations
+                                .traits
+                                .get_mut(&tr)
+                                .unwrap()
+                                .uses
+                                .insert(statement.trait_span);
+
+                            tr
+                        }
+                        Some(_) => {
+                            self.compiler.add_error(
+                                format!("`{}` is not a trait", statement.trait_name),
+                                vec![Note::primary(statement.trait_span, "expected a trait here")],
+                            );
+
+                            self.declarations.instances.remove(&id);
+                            continue;
+                        }
+                        None => {
+                            self.compiler.add_error(
+                                format!("cannot find `{}`", statement.trait_name),
+                                vec![Note::primary(
+                                    statement.trait_span,
+                                    "this name is not defined",
+                                )],
+                            );
+
+                            self.declarations.instances.remove(&id);
+                            continue;
+                        }
+                    };
+
+                    let trait_params = statement
+                        .trait_parameters
+                        .iter()
+                        .map(|ty| match ty {
+                            Ok(ty) => self.lower_type(ty, scope),
+                            Err(error) => TypeAnnotation {
+                                span: error.span,
+                                kind: TypeAnnotationKind::error(&self.compiler),
+                            },
+                        })
+                        .collect::<Vec<_>>();
+
+                    let value = value.map(|value| match value {
+                        Ok(value) => self.lower_expr(value, scope),
+                        Err(error) => Expression {
+                            span: error.span,
+                            kind: ExpressionKind::error(&self.compiler),
+                        },
+                    });
+
+                    self.declarations.instances.get_mut(&id).unwrap().value =
+                        Some(InstanceDeclaration {
+                            parameters,
+                            bounds,
+                            tr_span: statement.trait_span,
+                            tr,
+                            tr_parameters: trait_params,
+                            value,
+                        });
+
+                    Some(ScopeValue::Constant(id, None))
+                }
+                StatementDeclarationKind::Use(span, name) => {
+                    let ty = match self.get(name, span, scope) {
+                        Some(ScopeValue::Type(ty)) => {
+                            self.declarations
+                                .types
+                                .get_mut(&ty)
+                                .unwrap()
+                                .uses
+                                .insert(span);
+
+                            ty
+                        }
+                        Some(_) => {
+                            self.compiler.add_error(
+                                format!("`{name}` is not a type"),
+                                vec![Note::primary(span, "expected a type here")],
+                            );
+
+                            continue;
+                        }
+                        None => {
+                            self.compiler.add_error(
+                                format!("cannot find `{name}`"),
+                                vec![Note::primary(span, "this name is not defined")],
+                            );
+
+                            continue;
+                        }
+                    };
+
+                    let (constructors, names) = match &self
+                        .declarations
+                        .types
+                        .get(&ty)
+                        .unwrap()
+                        .value
+                        .as_ref()
+                        .unwrap()
+                        .kind
+                    {
+                        TypeDeclarationKind::Enumeration(constructors, names) => {
+                            (constructors.clone(), names.clone())
+                        }
+                        _ => {
+                            self.compiler.add_error(
+                                "only enumerations may be `use`d",
+                                vec![Note::primary(
+                                    span,
+                                    format!("`{name}` is not an enumeration"),
+                                )],
+                            );
+
+                            continue;
+                        }
+                    };
+
+                    for (name, index) in names {
+                        let variant = constructors[index.into_inner()].constructor;
+
+                        self.insert(
+                            name,
+                            ScopeValue::Constant(variant, Some((ty, index))),
+                            scope,
+                        );
+                    }
+
+                    None
+                }
+                StatementDeclarationKind::Queued(statement) => {
+                    queue.push((decl.span, statement, mem::take(&mut current_constant)));
+                    None
+                }
             };
+
+            'language_items: {
+                if let Some(language_item) = &decl.attributes.language_item {
+                    match &language_item.language_item_kind {
+                        ast_v2::LanguageItemStatementAttributeKind::Boolean => {
+                            let ty = match scope_value {
+                                Some(ScopeValue::Type(id)) => id,
+                                _ => {
+                                    self.compiler.add_error(
+                                        "`boolean` language item expects a type",
+                                        vec![Note::primary(
+                                            decl.span,
+                                            "expected type declaration here",
+                                        )],
+                                    );
+
+                                    break 'language_items;
+                                }
+                            };
+
+                            if self.language_items.boolean.is_some() {
+                                self.compiler.add_error(
+                                    "`language` item may only be defined once",
+                                    vec![Note::primary(
+                                        decl.span,
+                                        "`language` item already defined elsewhere",
+                                    )],
+                                );
+
+                                break 'language_items;
+                            }
+
+                            self.language_items.boolean = Some(ty);
+                        }
+                    }
+                }
+            }
         }
 
+        queue
+            .into_iter()
+            .filter_map(|(span, statement, prev_constant)| match statement {
+                QueuedStatement::Assign(pattern, expr) => {
+                    macro_rules! assign_pattern {
+                        () => {{
+                            let pattern = self.lower_pattern(pattern, scope);
+                            let value = self.lower_expr(expr, scope);
+
+                            Some(Expression {
+                                span,
+                                kind: ExpressionKind::Initialize(pattern, Box::new(value)),
+                            })
+                        }};
+                    }
+
+                    match &pattern {
+                        ast_v2::Pattern::Name(pattern) => {
+                            if let Some((prev_constant_id, prev_constant_scope)) = prev_constant {
+                                let decl = self
+                                    .declarations
+                                    .constants
+                                    .get(&prev_constant_id)
+                                    .unwrap()
+                                    .clone();
+
+                                if pattern.name != decl.name.unwrap() {
+                                    return assign_pattern!();
+                                }
+
+                                let value = decl.value.as_ref().unwrap();
+                                let associated_parameters = value.parameters.clone();
+                                let associated_constant = value.value.clone();
+
+                                if let Some(ScopeValue::Constant(id, _)) =
+                                    self.peek(decl.name.unwrap(), scope)
+                                {
+                                    if id == prev_constant_id
+                                        && associated_constant.lock().is_some()
+                                    {
+                                        self.compiler.add_error(
+                                            format!(
+                                                "constant `{}` already exists in this file",
+                                                pattern.name
+                                            ),
+                                            vec![
+                                                Note::primary(
+                                                    pattern.span,
+                                                    "try giving this constant a unique name",
+                                                ),
+                                                Note::secondary(
+                                                    decl.span,
+                                                    "other constant declared here",
+                                                ),
+                                            ],
+                                        );
+
+                                        return assign_pattern!();
+                                    }
+                                }
+
+                                self.declarations
+                                    .constants
+                                    .get_mut(&prev_constant_id)
+                                    .unwrap()
+                                    .uses
+                                    .insert(pattern.span);
+
+                                for id in associated_parameters {
+                                    let parameter =
+                                        self.declarations.type_parameters.get(&id).unwrap();
+
+                                    self.insert(
+                                        parameter.name.unwrap(),
+                                        ScopeValue::TypeParameter(id),
+                                        prev_constant_scope,
+                                    );
+                                }
+
+                                let value = self.lower_expr(expr, prev_constant_scope);
+
+                                let used_variables = self.used_variables(prev_constant_scope);
+                                if !used_variables.is_empty() {
+                                    self.compiler.add_error(
+                                        "constant cannot capture outside variables",
+                                        used_variables
+                                            .into_iter()
+                                            .map(|(_, span)| {
+                                                Note::primary(span, "captured variable")
+                                            })
+                                            .collect(),
+                                    );
+                                }
+
+                                *associated_constant.lock() = Some(value);
+                                None
+                            } else {
+                                assign_pattern!()
+                            }
+                        }
+                        _ => assign_pattern!(),
+                    }
+                }
+                QueuedStatement::Expression(expr) => {
+                    if let Some((prev_constant, _)) = prev_constant {
+                        let span = self
+                            .declarations
+                            .constants
+                            .get(&prev_constant)
+                            .unwrap()
+                            .span;
+
+                        self.compiler.add_error(
+                            "constant must be initialized immediately following its type annotation",
+                            vec![Note::primary(span, "try initializing the constant below this")],
+                        );
+                    }
+
+                    Some(self.lower_expr(expr, scope))
+                },
+            })
+            .collect()
+    }
+
+    fn lower_statement<'a>(
+        &mut self,
+        statement: &'a ast_v2::Statement,
+        scope: ScopeId,
+    ) -> Option<StatementDeclaration<'a>> {
         todo!()
     }
 
-    fn lower_statement(
-        &mut self,
-        statement: &ast_v2::Statement,
-        scope: ScopeId,
-    ) -> Option<StatementDeclaration> {
+    fn lower_expr(&mut self, expr: &ast_v2::Expression, scope: ScopeId) -> Expression {
+        todo!()
+    }
+
+    fn lower_pattern(&mut self, pattern: &ast_v2::Pattern, scope: ScopeId) -> Pattern {
         todo!()
     }
 
@@ -857,6 +1232,22 @@ impl Lowerer {
         attributes: &ast_v2::StatementAttributes,
         scope: ScopeId,
     ) -> TypeAttributes {
+        todo!()
+    }
+
+    fn lower_trait_attributes(
+        &mut self,
+        attributes: &ast_v2::StatementAttributes,
+        scope: ScopeId,
+    ) -> TraitAttributes {
+        todo!()
+    }
+
+    fn lower_constant_attributes(
+        &mut self,
+        attributes: &ast_v2::StatementAttributes,
+        scope: ScopeId,
+    ) -> ConstantAttributes {
         todo!()
     }
 

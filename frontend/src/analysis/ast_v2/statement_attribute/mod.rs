@@ -10,7 +10,7 @@ mod specialize;
 pub use allow_overlapping_instances::AllowOverlappingInstancesStatementAttribute;
 pub use help::HelpStatementAttribute;
 pub use keyword::KeywordStatementAttribute;
-pub use language_item::LanguageItemStatementAttribute;
+pub use language_item::{LanguageItemStatementAttribute, LanguageItemStatementAttributeKind};
 pub use on_mismatch::OnMismatchStatementAttribute;
 pub use on_unimplemented::OnUnimplementedStatementAttribute;
 pub use operator_precedence::OperatorPrecedenceStatementAttribute;
