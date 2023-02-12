@@ -74,7 +74,7 @@ impl Compiler {
             load: Arc::new(load),
         };
 
-        let scope = self.new_scope_id_in(ast_builder.file);
+        let scope = ast_builder.root_scope();
 
         let statements = stream::iter(file.statements)
             .then(|statement| {
