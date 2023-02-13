@@ -1,13 +1,18 @@
 use crate::{
     analysis::ast::{
         assignment_value::AssignmentValueSyntaxContext,
-        syntax::{Syntax, SyntaxRule, SyntaxRules},
+        syntax::{FileBodySyntaxContext, Syntax, SyntaxContext, SyntaxRule, SyntaxRules},
+        SyntaxBody, SyntaxBodySyntax, SyntaxBodySyntaxContext, SyntaxError,
     },
     diagnostics::Note,
+    parse::Span,
 };
 
 #[derive(Debug, Clone)]
-pub struct SyntaxAssignmentValue;
+pub struct SyntaxAssignmentValue {
+    pub syntax_span: Span,
+    pub body: Result<SyntaxBody, SyntaxError>,
+}
 
 pub struct SyntaxAssignmentValueSyntax;
 
@@ -17,16 +22,40 @@ impl Syntax for SyntaxAssignmentValueSyntax {
     fn rules() -> SyntaxRules<Self> {
         SyntaxRules::new().with(SyntaxRule::<Self>::function(
             "syntax",
-            |context, span, _exprs, _scope| async move {
-                context.ast_builder.compiler.add_error(
-                    "syntax error",
-                    vec![Note::primary(
-                        span,
-                        "`syntax` definitions are not yet supported",
-                    )],
-                );
+            |context, span, mut exprs, scope| async move {
+                if exprs.len() != 1 {
+                    context.ast_builder.compiler.add_error(
+                        "syntax error",
+                        vec![Note::primary(span, "`syntax` accepts 1 input")],
+                    );
 
-                Err(context.ast_builder.syntax_error(span))
+                    return Err(context.ast_builder.syntax_error(span));
+                }
+
+                let body = context
+                    .ast_builder
+                    .build_expr::<SyntaxBodySyntax>(
+                        SyntaxBodySyntaxContext::new(context.ast_builder.clone())
+                            .with_statement_attributes(
+                                context.statement_attributes.as_ref().unwrap().clone(),
+                            ),
+                        exprs.pop().unwrap(),
+                        scope,
+                    )
+                    .await;
+
+                let value = SyntaxAssignmentValue {
+                    syntax_span: span,
+                    body,
+                };
+
+                if let Some((name, span)) = context.assigned_name {
+                    context
+                        .ast_builder
+                        .add_syntax(name, span, value.clone(), scope);
+                }
+
+                Ok(value.into())
             },
         ))
     }

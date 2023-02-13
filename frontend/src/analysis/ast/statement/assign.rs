@@ -5,8 +5,8 @@ use crate::{
             SyntaxRule, SyntaxRules,
         },
         AssignmentPattern, AssignmentPatternSyntax, AssignmentPatternSyntaxContext,
-        AssignmentValue, AssignmentValueSyntax, AssignmentValueSyntaxContext, StatementAttributes,
-        StatementSyntaxContext,
+        AssignmentValue, AssignmentValueSyntax, AssignmentValueSyntaxContext, Pattern,
+        StatementAttributes, StatementSyntaxContext,
     },
     parse::{self, Span},
 };
@@ -42,14 +42,20 @@ impl Syntax for AssignStatementSyntax {
                     )
                     .await;
 
+                let mut value_context = AssignmentValueSyntaxContext::new(context.ast_builder.clone())
+                    .with_statement_attributes(context.statement_attributes.as_ref().unwrap().clone());
+
+                if let Ok(AssignmentPattern::Pattern(pattern)) = &pattern {
+                    if let Pattern::Name(pattern) = &pattern.pattern {
+                        value_context = value_context.with_assigned_name(pattern.name, pattern.span);
+                    }
+                }
+
                 let rhs = parse::Expr::list_or_expr(rhs_span, rhs_exprs);
                 let value = context
                     .ast_builder
                     .build_expr::<AssignmentValueSyntax>(
-                        AssignmentValueSyntaxContext::new(context.ast_builder.clone())
-                            .with_statement_attributes(
-                                context.statement_attributes.as_ref().unwrap().clone(),
-                            ),
+                        value_context,
                         rhs,
                         scope,
                     )

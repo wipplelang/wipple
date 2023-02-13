@@ -183,7 +183,7 @@ file_ids!(
     constant,
     item,
     scope,
-    template, // TODO: Rename to `syntax`
+    syntax,
     r#trait,
     r#type,
     type_parameter,

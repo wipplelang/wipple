@@ -12,6 +12,8 @@ mod file_attribute;
 mod pattern;
 mod statement;
 mod statement_attribute;
+mod syntax_body;
+mod syntax_rule;
 mod r#type;
 mod type_body;
 mod type_member;
@@ -32,6 +34,8 @@ pub use pattern::*;
 pub use r#type::*;
 pub use statement::*;
 pub use statement_attribute::*;
+pub use syntax_body::*;
+pub use syntax_rule::*;
 pub use type_body::*;
 pub use type_member::*;
 pub use type_pattern::*;
@@ -40,12 +44,15 @@ pub use when_body::*;
 
 use crate::{
     diagnostics::Note,
-    helpers::Shared,
+    helpers::{InternedString, Shared},
     parse::{self, Span},
-    Compiler, FilePath, ScopeId, TemplateId,
+    Compiler, FilePath, ScopeId, SyntaxId,
 };
 use futures::{future::BoxFuture, stream, StreamExt};
-use std::{collections::BTreeMap, sync::Arc};
+use std::{
+    collections::{BTreeMap, HashMap},
+    sync::Arc,
+};
 use syntax::{FileBodySyntaxContext, Syntax, SyntaxContext};
 
 #[derive(Debug, Clone)]
@@ -53,7 +60,7 @@ pub struct File {
     pub span: Span,
     pub dependencies: Vec<Arc<File>>,
     pub attributes: FileAttributes,
-    pub syntax_declarations: BTreeMap<TemplateId, SyntaxAssignmentValue>,
+    pub syntax_declarations: BTreeMap<SyntaxId, SyntaxAssignmentValue>,
     pub statements: Vec<Result<Statement, SyntaxError>>,
     pub root_scope: ScopeId,
 }
@@ -72,6 +79,7 @@ impl Compiler {
             compiler: self.clone(),
             dependencies: Default::default(),
             attributes: Default::default(),
+            scopes: Default::default(),
             load: Arc::new(load),
         };
 
@@ -105,25 +113,77 @@ struct AstBuilder {
     compiler: Compiler,
     dependencies: Shared<Vec<Arc<File>>>,
     attributes: Shared<FileAttributes>,
+    scopes: Shared<HashMap<ScopeId, Scope>>,
     load: Arc<
         dyn Fn(Compiler, Span, FilePath) -> BoxFuture<'static, Option<Arc<File>>> + Send + Sync,
     >,
 }
 
+#[derive(Debug, Clone, Default)]
+struct Scope {
+    parent: Option<ScopeId>,
+    syntaxes: HashMap<InternedString, (Span, SyntaxAssignmentValue)>,
+}
+
 impl AstBuilder {
     fn root_scope(&self) -> ScopeId {
-        self.compiler.new_scope_id_in(self.file)
+        let id = self.compiler.new_scope_id_in(self.file);
+        self.scopes.lock().insert(id, Scope::default());
+        id
     }
 
-    /// Currently this just generates a new ID -- it's up to the lowerer to
-    /// actually use lexical scoping rules to link the ID returned by this
-    /// function with its parent. But requiring the parent to be provided now
-    /// will be useful if we decide to do some kind of linking here in the
-    /// future.
-    fn child_scope(&self, _parent: ScopeId) -> ScopeId {
-        self.compiler.new_scope_id_in(self.file)
+    fn child_scope(&self, parent: ScopeId) -> ScopeId {
+        let id = self.compiler.new_scope_id_in(self.file);
+
+        self.scopes.lock().insert(
+            id,
+            Scope {
+                parent: Some(parent),
+                ..Default::default()
+            },
+        );
+
+        id
     }
 
+    fn add_syntax(
+        &self,
+        name: InternedString,
+        span: Span,
+        syntax: SyntaxAssignmentValue,
+        scope: ScopeId,
+    ) {
+        self.scopes
+            .lock()
+            .get_mut(&scope)
+            .unwrap()
+            .syntaxes
+            .insert(name, (span, syntax));
+    }
+
+    fn try_get_syntax(
+        &self,
+        name: InternedString,
+        scope: ScopeId,
+    ) -> Option<(Span, SyntaxAssignmentValue)> {
+        let scopes = self.scopes.lock();
+
+        let mut parent = Some(scope);
+        while let Some(scope) = parent {
+            let scope = scopes.get(&scope).unwrap();
+
+            if let Some(syntax) = scope.syntaxes.get(&name) {
+                return Some(syntax.clone());
+            }
+
+            parent = scope.parent;
+        }
+
+        None
+    }
+}
+
+impl AstBuilder {
     async fn build_expr<S: Syntax>(
         &self,
         context: S::Context,

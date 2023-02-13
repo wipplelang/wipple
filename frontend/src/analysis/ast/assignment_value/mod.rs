@@ -21,8 +21,9 @@ use crate::{
         syntax::{FileBodySyntaxContext, Syntax, SyntaxContext, SyntaxError},
         AstBuilder, ExpressionSyntaxContext, StatementAttributes, StatementSyntax,
     },
-    helpers::Shared,
-    parse, ScopeId,
+    helpers::{InternedString, Shared},
+    parse::{self, Span},
+    ScopeId,
 };
 use async_trait::async_trait;
 
@@ -44,6 +45,14 @@ syntax_group! {
 pub struct AssignmentValueSyntaxContext {
     pub(super) ast_builder: AstBuilder,
     statement_attributes: Option<Shared<StatementAttributes>>,
+    assigned_name: Option<(InternedString, Span)>,
+}
+
+impl AssignmentValueSyntaxContext {
+    pub(super) fn with_assigned_name(mut self, name: InternedString, span: Span) -> Self {
+        self.assigned_name = Some((name, span));
+        self
+    }
 }
 
 #[async_trait]
@@ -55,6 +64,7 @@ impl SyntaxContext for AssignmentValueSyntaxContext {
         AssignmentValueSyntaxContext {
             ast_builder,
             statement_attributes: None,
+            assigned_name: None,
         }
     }
 

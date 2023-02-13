@@ -193,7 +193,7 @@ impl LanguageServer for Backend {
         insert_semantic_tokens!(types, |_| SemanticTokenType::TYPE);
         insert_semantic_tokens!(traits, |_| SemanticTokenType::INTERFACE);
         insert_semantic_tokens!(constants, |_| SemanticTokenType::VARIABLE);
-        insert_semantic_tokens!(operators, |_| SemanticTokenType::OPERATOR);
+        // insert_semantic_tokens!(operators, |_| SemanticTokenType::OPERATOR);
         // insert_semantic_tokens!(
         //     templates,
         //     |id, _| !document.program.declarations.operators.contains_key(id),

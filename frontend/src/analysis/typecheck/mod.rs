@@ -16,8 +16,8 @@ use crate::{
     diagnostics::Note,
     helpers::{Backtrace, InternedString},
     parse::Span,
-    BuiltinTypeId, Compiler, ConstantId, FieldIndex, ItemId, TemplateId, TraitId, TypeId,
-    TypeParameterId, VariableId, VariantIndex,
+    BuiltinTypeId, Compiler, ConstantId, FieldIndex, ItemId, TraitId, TypeId, TypeParameterId,
+    VariableId, VariantIndex,
 };
 use itertools::Itertools;
 use std::{
@@ -49,8 +49,6 @@ macro_rules! declarations {
             pub traits: $($container)::+<TraitId, TraitDecl>,
             pub constants: $($container)::+<ConstantId, ConstantDecl>,
             pub instances: $($container)::+<TraitId, BTreeMap<ConstantId, InstanceDecl>>,
-            pub operators: $($container)::+<TemplateId, OperatorDecl>,
-            // pub templates: $($container)::+<TemplateId, TemplateDecl>,
             pub builtin_types: $($container)::+<BuiltinTypeId, BuiltinTypeDecl>,
             pub type_parameters: $($container)::+<TypeParameterId, TypeParameterDecl>,
             /// NOTE: Not all variables will be listed here, only ones that passed typechecking
@@ -69,8 +67,6 @@ impl From<DeclarationsInner> for Declarations {
             traits: decls.traits.into_iter().collect(),
             constants: decls.constants.into_iter().collect(),
             instances: decls.instances.into_iter().collect(),
-            operators: decls.operators.into_iter().collect(),
-            // templates: decls.templates.into_iter().collect(),
             builtin_types: decls.builtin_types.into_iter().collect(),
             type_parameters: decls.type_parameters.into_iter().collect(),
             variables: decls.variables.into_iter().collect(),
@@ -146,21 +142,6 @@ pub struct Bound {
     pub trait_id: TraitId,
     pub params: Vec<engine::UnresolvedType>,
 }
-
-#[derive(Debug, Clone)]
-pub struct OperatorDecl {
-    pub name: InternedString,
-    pub span: Span,
-    pub uses: HashSet<Span>,
-}
-
-// #[derive(Debug, Clone)]
-// pub struct TemplateDecl {
-//     pub name: InternedString,
-//     pub span: Span,
-//     pub attributes: lower::SyntaxDeclarationAttributes,
-//     pub uses: HashSet<Span>,
-// }
 
 #[derive(Debug, Clone)]
 pub struct BuiltinTypeDecl {
@@ -3534,32 +3515,6 @@ impl Typechecker {
             .entry(id)
             .or_insert(decl)))
     }
-
-    // fn with_syntax_decl<T>(
-    //     &mut self,
-    //     id: TemplateId,
-    //     f: impl FnOnce(&TemplateDecl) -> T,
-    // ) -> Option<T> {
-    //     if let Some(decl) = self.declarations.borrow().templates.get(&id) {
-    //         return Some(f(decl));
-    //     }
-
-    //     let decl = self.entrypoint.declarations.syntaxes.get(&id)?.clone();
-
-    //     let decl = TemplateDecl {
-    //         name: decl.name,
-    //         span: decl.span,
-    //         attributes: decl.attributes,
-    //         uses: decl.uses,
-    //     };
-
-    //     Some(f(self
-    //         .declarations
-    //         .borrow_mut()
-    //         .templates
-    //         .entry(id)
-    //         .or_insert(decl)))
-    // }
 
     fn with_builtin_type_decl<T>(
         &mut self,
