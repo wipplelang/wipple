@@ -76,15 +76,14 @@ impl Fetcher {
                             .await
                             .map_err(|e| {
                                 anyhow::Error::msg(format!(
-                                    "failed to create cache directory: {}",
-                                    e
+                                    "failed to create cache directory: {e}"
                                 ))
                             })?;
 
                         tokio::fs::write(cache_path, file.clone())
                             .await
                             .map_err(|e| {
-                                anyhow::Error::msg(format!("failed to cache {}: {}", url, e))
+                                anyhow::Error::msg(format!("failed to cache {url}: {e}"))
                             })?;
                     }
 

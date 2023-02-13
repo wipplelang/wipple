@@ -71,9 +71,9 @@ impl<'src> fmt::Display for Token<'src> {
             Token::Indent(_) => write!(f, "indent"),
             Token::Space => unreachable!(),
             Token::Comment(_) => write!(f, "comment"),
-            Token::Text(text) => write!(f, "`\"{}\"`", text),
-            Token::Number(number) => write!(f, "`{}`", number),
-            Token::Name(name) => write!(f, "`{}`", name),
+            Token::Text(text) => write!(f, "`\"{text}\"`"),
+            Token::Number(number) => write!(f, "`{number}`"),
+            Token::Name(name) => write!(f, "`{name}`"),
             Token::Error => write!(f, "invalid token"),
         }
     }

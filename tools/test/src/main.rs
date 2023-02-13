@@ -129,8 +129,8 @@ async fn main() -> anyhow::Result<()> {
     eprintln!(
         "\n{} tests, {}, {}",
         pass_count + fail_count,
-        format!("{} passed", pass_count).green(),
-        format!("{} failed", fail_count).red(),
+        format!("{pass_count} passed").green(),
+        format!("{fail_count} failed").red(),
     );
 
     if args.junit {
@@ -267,11 +267,11 @@ async fn run(
 
             let mut interpreter =
                 wipple_interpreter_backend::Interpreter::handling_output(|text| {
-                    write!(buf.borrow_mut(), "{}", text).unwrap()
+                    write!(buf.borrow_mut(), "{text}").unwrap()
                 });
 
             if let Err(error) = interpreter.run(&ir) {
-                write!(buf.borrow_mut(), "fatal error: {}", error)?;
+                write!(buf.borrow_mut(), "fatal error: {error}")?;
             }
         }
 

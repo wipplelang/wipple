@@ -306,7 +306,7 @@ fn format_type_with(
                 if is_top_level || is_empty {
                     ty
                 } else {
-                    format!("({})", ty)
+                    format!("({ty})")
                 }
             }
             FormattableTypeKind::Trait(tr, params) => {
@@ -315,7 +315,7 @@ fn format_type_with(
         };
 
         if surround_in_backticks {
-            format!("`{}`", formatted)
+            format!("`{formatted}`")
         } else {
             formatted
         }
@@ -358,7 +358,7 @@ fn format_type_with(
     };
 
     let formatted = if format.surround_in_backticks {
-        format!("`{}`", formatted)
+        format!("`{formatted}`")
     } else {
         formatted
     };
@@ -371,7 +371,7 @@ fn format_type_with(
             _ => {
                 let mut vars = ty_param_names
                     .into_iter()
-                    .map(|param| format!("`{}`", param))
+                    .map(|param| format!("`{param}`"))
                     .collect::<Vec<_>>();
 
                 let last = vars.pop().unwrap();
@@ -392,7 +392,7 @@ fn format_type_with(
             _ => {
                 let mut vars = ty_var_names
                     .into_iter()
-                    .map(|(_, s)| format!("`{}`", s))
+                    .map(|(_, s)| format!("`{s}`"))
                     .collect::<Vec<_>>();
 
                 let last = vars.pop().unwrap();
@@ -432,7 +432,7 @@ fn collect_vars(ty: &UnresolvedType, vars: &mut BTreeMap<TypeVariable, String>) 
             ('a'..='z')
                 .nth(index)
                 .map(|c| c.to_string())
-                .unwrap_or_else(|| format!("{{{}}}", index))
+                .unwrap_or_else(|| format!("{{{index}}}"))
         });
     }
 }

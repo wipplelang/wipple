@@ -423,7 +423,7 @@ impl IrGen {
                 let id = *self
                     .items
                     .get(&id)
-                    .unwrap_or_else(|| panic!("cannot find {:?}", id));
+                    .unwrap_or_else(|| panic!("cannot find {id:?}"));
 
                 self.statements_for(label, *pos)
                     .push(Statement::Expression(expr.ty, Expression::Constant(id)));

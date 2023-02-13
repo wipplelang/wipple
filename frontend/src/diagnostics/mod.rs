@@ -289,7 +289,7 @@ impl FinalizedDiagnostics {
                         #[cfg(debug_assertions)]
                         if include_trace {
                             if let Some(trace) = diagnostic.trace.into_inner() {
-                                return diagnostic.message + &format!("\n{:?}", trace);
+                                return diagnostic.message + &format!("\n{trace:?}");
                             }
                         }
 

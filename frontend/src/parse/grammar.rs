@@ -135,7 +135,7 @@ impl<'src> Parser<'src> {
                 "syntax error",
                 vec![Note::primary(
                     span,
-                    format!("expected end of file, found {}", token),
+                    format!("expected end of file, found {token}"),
                 )],
             );
         }
@@ -233,7 +233,7 @@ impl<'src> Parser<'src> {
                         "syntax error",
                         vec![Note::primary(
                             self.eof_span(),
-                            format!("expected {}, found end of file", end_token),
+                            format!("expected {end_token}, found end of file"),
                         )],
                     );
                 }
@@ -378,7 +378,7 @@ impl<'src> Parser<'src> {
                             "syntax error",
                             vec![Note::primary(
                                 Span::new(self.file, range).offset(span.start),
-                                format!("invalid character sequence in string literal ({:?})", e),
+                                format!("invalid character sequence in string literal ({e:?})"),
                             )],
                         );
                     }
@@ -493,7 +493,7 @@ impl<'src> Parser<'src> {
                 "syntax error",
                 vec![Note::primary(
                     self.eof_span(),
-                    format!("expected {}, found end of file", end_token),
+                    format!("expected {end_token}, found end of file"),
                 )],
             );
         }

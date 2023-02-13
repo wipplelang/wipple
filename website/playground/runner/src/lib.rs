@@ -115,7 +115,7 @@ lazy_static! {
                                 });
 
                             match error {
-                                Some(error) => format!("{}: {}", msg, error),
+                                Some(error) => format!("{msg}: {error}"),
                                 None => msg.to_string(),
                             }
                         };
@@ -362,7 +362,7 @@ pub fn run(id: String) -> Option<String> {
             let result = {
                 let mut interpreter =
                     wipple_interpreter_backend::Interpreter::handling_output(|text| {
-                        write!(output, "{}", text).unwrap();
+                        write!(output, "{text}").unwrap();
                     });
 
                 interpreter.run(&program)

@@ -151,11 +151,11 @@ async fn run() -> anyhow::Result<()> {
 
             let mut interpreter =
                 wipple_interpreter_backend::Interpreter::handling_output(|text| {
-                    print!("{}", text);
+                    print!("{text}");
                 });
 
             if let Err(error) = interpreter.run(&ir) {
-                eprintln!("fatal error: {}", error);
+                eprintln!("fatal error: {error}");
             }
         }
         Args::Compile {
@@ -340,7 +340,7 @@ async fn build_with_passes<P>(
             if let Some(progress_bar) = progress_bar.as_ref() {
                 match progress {
                     analysis::Progress::Resolving { path, count } => {
-                        progress_bar.set_message(format!("({count} files) Resolving {}", path))
+                        progress_bar.set_message(format!("({count} files) Resolving {path}"))
                     }
                     analysis::Progress::Lowering {
                         path,

@@ -504,7 +504,7 @@ impl LanguageServer for Backend {
         let position = offset_lookup.get(position.line as usize, position.character as usize);
         let cursor_span = Span::new(document.path, position..position);
 
-        let within_cursor = |span: Span| cursor_span.is_subspan_of(span);
+        let _within_cursor = |span: Span| cursor_span.is_subspan_of(span);
 
         let format_type = |ty: Type, format: Format| {
             macro_rules! getter {
@@ -526,7 +526,7 @@ impl LanguageServer for Backend {
 
         let mut items = Vec::new();
 
-        let mut add = |scope: &HashMap<InternedString, AnyDeclaration>| {
+        let _add = |scope: &HashMap<InternedString, AnyDeclaration>| {
             for (name, value) in scope {
                 let kind;
                 let mut help = Vec::new();

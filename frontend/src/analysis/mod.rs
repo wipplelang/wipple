@@ -159,7 +159,7 @@ impl Compiler {
                         "import cycle detected",
                         vec![Note::primary(
                             source_span.unwrap(),
-                            format!("this imports {}", stack),
+                            format!("this imports {stack}"),
                         )],
                     );
 

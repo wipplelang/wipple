@@ -313,7 +313,7 @@ impl Converter<'_> {
             span: Some(pattern.span),
             kind: match &pattern.kind {
                 analysis::PatternKind::Error(trace) => {
-                    panic!("found error pattern in program: {:?}", trace);
+                    panic!("found error pattern in program: {trace:?}");
                 }
                 analysis::PatternKind::Wildcard => PatternKind::Wildcard,
                 analysis::PatternKind::Variable(var) => PatternKind::Variable(*var),

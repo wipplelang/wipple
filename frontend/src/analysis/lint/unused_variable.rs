@@ -9,7 +9,7 @@ impl Compiler {
                         "unused variable",
                         vec![Note::primary(
                             variable.span,
-                            format!("`{}` is never used", name),
+                            format!("`{name}` is never used"),
                         )],
                     );
                 }

@@ -1328,7 +1328,7 @@ impl Typechecker {
                                 "try removing {}",
                                 extra_fields
                                     .into_iter()
-                                    .map(|field| format!("`{}`", field))
+                                    .map(|field| format!("`{field}`"))
                                     .collect::<Vec<_>>()
                                     .join(", ")
                             ),
@@ -1359,7 +1359,7 @@ impl Typechecker {
                                 "try adding {}",
                                 missing_fields
                                     .into_iter()
-                                    .map(|field| format!("`{}`", field))
+                                    .map(|field| format!("`{field}`"))
                                     .collect::<Vec<_>>()
                                     .join(", ")
                             ),
@@ -2046,7 +2046,7 @@ impl Typechecker {
                             Some(index) => *index,
                             None => {
                                 self.compiler.add_error(
-                                    format!("value has no member named '{}'", name),
+                                    format!("value has no member named '{name}'"),
                                     vec![Note::primary(pattern.span, "no such member")],
                                 );
 
@@ -2922,7 +2922,7 @@ impl Typechecker {
                         self.format_unmatched_pattern(pattern, false)
                     )
                 } else {
-                    format!("{{ {} }}", field_name)
+                    format!("{{ {field_name} }}")
                 }
             }
             UnmatchedPatternKind::Variant(index, patterns) => {
@@ -2959,7 +2959,7 @@ impl Typechecker {
                 };
 
                 if parenthesize {
-                    format!("({})", formatted)
+                    format!("({formatted})")
                 } else {
                     formatted
                 }
@@ -2972,7 +2972,7 @@ impl Typechecker {
                     .join(" , ");
 
                 if parenthesize {
-                    format!("({})", formatted)
+                    format!("({formatted})")
                 } else {
                     formatted
                 }
