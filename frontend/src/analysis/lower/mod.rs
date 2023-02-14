@@ -357,6 +357,74 @@ impl ExpressionKind {
     }
 }
 
+impl Expression {
+    fn traverse_mut(&mut self, mut f: impl FnMut(&mut Self)) {
+        self.traverse_mut_inner(&mut f);
+    }
+
+    fn traverse_mut_inner(&mut self, f: &mut impl FnMut(&mut Self)) {
+        f(self);
+
+        match &mut self.kind {
+            ExpressionKind::Error(_)
+            | ExpressionKind::Marker(_)
+            | ExpressionKind::Constant(_)
+            | ExpressionKind::Trait(_)
+            | ExpressionKind::Variable(_)
+            | ExpressionKind::Text(_)
+            | ExpressionKind::Number(_) => {}
+            ExpressionKind::Block(statements, _) => {
+                for statement in statements {
+                    statement.traverse_mut_inner(f);
+                }
+            }
+            ExpressionKind::End(expr) => {
+                expr.traverse_mut_inner(f);
+            }
+            ExpressionKind::Call(func, input) => {
+                func.traverse_mut_inner(f);
+                input.traverse_mut_inner(f);
+            }
+            ExpressionKind::Function(_, body, _) => {
+                body.traverse_mut_inner(f);
+            }
+            ExpressionKind::When(input, arms) => {
+                input.traverse_mut_inner(f);
+
+                for arm in arms {
+                    arm.body.traverse_mut_inner(f);
+                }
+            }
+            ExpressionKind::External(_, _, exprs) | ExpressionKind::Runtime(_, exprs) => {
+                for expr in exprs {
+                    expr.traverse_mut_inner(f);
+                }
+            }
+            ExpressionKind::Annotate(expr, _) => {
+                expr.traverse_mut_inner(f);
+            }
+            ExpressionKind::Initialize(_, expr) => {
+                expr.traverse_mut_inner(f);
+            }
+            ExpressionKind::Instantiate(_, fields) => {
+                for (_, expr) in fields {
+                    expr.traverse_mut_inner(f);
+                }
+            }
+            ExpressionKind::Variant(_, _, exprs) => {
+                for expr in exprs {
+                    expr.traverse_mut_inner(f);
+                }
+            }
+            ExpressionKind::Tuple(exprs) => {
+                for expr in exprs {
+                    expr.traverse_mut_inner(f);
+                }
+            }
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Arm {
     pub span: Span,
@@ -692,6 +760,7 @@ struct Lowerer {
 #[derive(Debug, Clone, Default)]
 struct Scope {
     parent: Option<ScopeId>,
+    children: Vec<ScopeId>,
     values: HashMap<InternedString, AnyDeclaration>,
     declared_variables: BTreeSet<VariableId>,
     used_variables: Shared<CaptureList>,
@@ -714,6 +783,7 @@ impl Lowerer {
         };
 
         self.scopes.insert(id, scope);
+        self.scopes.get_mut(&parent).unwrap().children.push(id);
 
         id
     }
@@ -782,26 +852,14 @@ impl Lowerer {
         result
     }
 
-    fn used_variables(&mut self, scope_id: ScopeId) -> CaptureList {
-        let mut parent = Some(scope_id);
-        let mut used_variables = CaptureList::new();
+    fn declares_in(&mut self, var: VariableId, scope_id: ScopeId) -> bool {
+        let scope = self.scopes.get(&scope_id).unwrap().clone();
 
-        while let Some(scope_id) = parent {
-            let scope = self.scopes.get(&scope_id).unwrap();
-
-            used_variables.extend(
-                scope
-                    .used_variables
-                    .lock()
-                    .iter()
-                    .filter(|(var, _)| !scope.declared_variables.contains(var))
-                    .copied(),
-            );
-
-            parent = scope.parent;
-        }
-
-        used_variables
+        scope.declared_variables.contains(&var)
+            || scope
+                .children
+                .iter()
+                .any(|&child| self.declares_in(var, child))
     }
 
     fn export(&mut self, scope: ScopeId) -> HashMap<InternedString, AnyDeclaration> {
@@ -1314,9 +1372,11 @@ impl Lowerer {
                                     );
                                 }
 
-                                let value = self.lower_expr(expr, prev_constant_scope);
+                                let mut value = self.lower_expr(expr, prev_constant_scope);
 
-                                let used_variables = self.used_variables(prev_constant_scope);
+                                let used_variables =
+                                    self.generate_capture_list(&mut value, prev_constant_scope);
+
                                 if !used_variables.is_empty() {
                                     self.compiler.add_error(
                                         "constant cannot capture outside variables",
@@ -1771,23 +1831,25 @@ impl Lowerer {
                 span: expr.span,
                 kind: ExpressionKind::Number(expr.number),
             },
-            ast::Expression::Name(expr) => match self.resolve_value(expr.span, expr.name, scope) {
-                Some(value) => Expression {
-                    span: expr.span,
-                    kind: value,
-                },
-                None => {
-                    self.compiler.add_error(
-                        format!("cannot find `{}`", expr.name),
-                        vec![Note::primary(expr.span, "this name is not defined")],
-                    );
-
-                    Expression {
+            ast::Expression::Name(expr) => {
+                match self.resolve_value(expr.span, expr.name, expr.scope) {
+                    Some(value) => Expression {
                         span: expr.span,
-                        kind: ExpressionKind::error(&self.compiler),
+                        kind: value,
+                    },
+                    None => {
+                        self.compiler.add_error(
+                            format!("cannot find `{}`", expr.name),
+                            vec![Note::primary(expr.span, "this name is not defined")],
+                        );
+
+                        Expression {
+                            span: expr.span,
+                            kind: ExpressionKind::error(&self.compiler),
+                        }
                     }
                 }
-            },
+            }
             ast::Expression::Block(expr) => {
                 let scope = self.child_scope(expr.scope, scope);
                 let statements = self.lower_statements(&expr.statements, scope);
@@ -2149,7 +2211,7 @@ impl Lowerer {
                     },
                 };
 
-                let body = match &expr.body {
+                let mut body = match &expr.body {
                     Ok(expr) => self.lower_expr(expr, scope),
                     Err(error) => Expression {
                         span: error.span,
@@ -2157,7 +2219,7 @@ impl Lowerer {
                     },
                 };
 
-                let captures = self.used_variables(scope);
+                let captures = self.generate_capture_list(&mut body, scope);
 
                 Expression {
                     span: expr.arrow_span,
@@ -3317,5 +3379,18 @@ impl Lowerer {
         );
 
         constructor_id
+    }
+
+    fn generate_capture_list(&mut self, expr: &mut Expression, scope: ScopeId) -> CaptureList {
+        let mut captures = CaptureList::new();
+        expr.traverse_mut(|expr| {
+            if let ExpressionKind::Variable(var) = expr.kind {
+                if self.declares_in(var, scope) {
+                    captures.push((var, expr.span));
+                }
+            }
+        });
+
+        captures
     }
 }

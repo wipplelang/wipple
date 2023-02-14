@@ -84,7 +84,7 @@ impl SyntaxContext for DestructuringSyntaxContext {
     async fn build_terminal(
         self,
         expr: parse::Expr,
-        scope: ScopeId,
+        _scope: ScopeId,
     ) -> Result<Self::Body, SyntaxError> {
         match expr.try_into_list_exprs() {
             Ok((span, exprs)) => {
