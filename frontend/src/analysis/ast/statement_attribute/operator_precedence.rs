@@ -17,8 +17,8 @@ pub struct OperatorPrecedenceStatementAttribute {
 // TODO: User-defined precedences
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, strum::EnumString)]
 pub enum OperatorPrecedenceStatementAttributeKind {
-    #[strum(serialize = "Cast-Precedence")]
-    Cast,
+    #[strum(serialize = "Casting-Precedence")]
+    Casting,
     #[strum(serialize = "Exponentiation-Precedence")]
     Exponentiation,
     #[strum(serialize = "Multiplication-Precedence")]
@@ -34,7 +34,33 @@ pub enum OperatorPrecedenceStatementAttributeKind {
     #[strum(serialize = "Accessor-Precedence")]
     Accessor,
     #[strum(serialize = "Composition-Precedence")]
-    Dot,
+    Composition,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum OperatorAssociativity {
+    Left,
+    Right,
+    None,
+}
+
+impl OperatorPrecedenceStatementAttributeKind {
+    pub fn associativity(&self) -> OperatorAssociativity {
+        use OperatorAssociativity::*;
+        use OperatorPrecedenceStatementAttributeKind::*;
+
+        match self {
+            Casting => Left,
+            Exponentiation => Right,
+            Multiplication => Left,
+            Addition => Left,
+            Comparison => Left,
+            Conjunction => Left,
+            Disjunction => Left,
+            Accessor => Right,
+            Composition => Left,
+        }
+    }
 }
 
 pub struct OperatorPrecedenceStatementAttributeSyntax;
@@ -55,7 +81,8 @@ impl Syntax for OperatorPrecedenceStatementAttributeSyntax {
 
                 let expr = exprs.pop().unwrap();
                 let precedence = match expr.kind {
-                    parse::ExprKind::Name(name) => {
+                    // TODO: User-defined precedences (make sure to use the name scope)
+                    parse::ExprKind::Name(name, _) => {
                         match name.parse::<OperatorPrecedenceStatementAttributeKind>() {
                             Ok(precedence) => precedence,
                             Err(_) => {

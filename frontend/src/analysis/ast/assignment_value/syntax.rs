@@ -2,7 +2,8 @@ use crate::{
     analysis::ast::{
         assignment_value::AssignmentValueSyntaxContext,
         syntax::{FileBodySyntaxContext, Syntax, SyntaxContext, SyntaxRule, SyntaxRules},
-        SyntaxBody, SyntaxBodySyntax, SyntaxBodySyntaxContext, SyntaxError,
+        KeywordStatementAttribute, OperatorPrecedenceStatementAttribute, SyntaxBody,
+        SyntaxBodySyntax, SyntaxBodySyntaxContext, SyntaxError,
     },
     diagnostics::Note,
     parse::Span,
@@ -12,6 +13,8 @@ use crate::{
 pub struct SyntaxAssignmentValue {
     pub syntax_span: Span,
     pub body: Result<SyntaxBody, SyntaxError>,
+    pub operator_precedence: Option<OperatorPrecedenceStatementAttribute>,
+    pub keyword: Option<KeywordStatementAttribute>,
 }
 
 pub struct SyntaxAssignmentValueSyntax;
@@ -44,9 +47,13 @@ impl Syntax for SyntaxAssignmentValueSyntax {
                     )
                     .await;
 
+                let statement_attributes = context.statement_attributes.as_ref().unwrap().lock();
+
                 let value = SyntaxAssignmentValue {
                     syntax_span: span,
                     body,
+                    operator_precedence: statement_attributes.operator_precedence.clone(),
+                    keyword: statement_attributes.keyword.clone(),
                 };
 
                 if let Some((name, span)) = context.assigned_name {

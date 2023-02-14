@@ -96,7 +96,7 @@ impl SyntaxContext for TypeMemberSyntaxContext {
                 };
 
                 let name = match name_expr.kind {
-                    parse::ExprKind::Name(name) => name,
+                    parse::ExprKind::Name(name, _) => name,
                     _ => {
                         self.ast_builder.compiler.add_error(
                             "syntax error",
@@ -130,7 +130,7 @@ impl SyntaxContext for TypeMemberSyntaxContext {
                 .into())
             }
             Err(expr) => match expr.kind {
-                parse::ExprKind::Name(name) => Ok(VariantTypeMember {
+                parse::ExprKind::Name(name, _) => Ok(VariantTypeMember {
                     span: expr.span,
                     name_span: expr.span,
                     name,

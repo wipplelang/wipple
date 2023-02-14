@@ -131,7 +131,7 @@ impl SyntaxContext for PatternSyntaxContext {
         scope: ScopeId,
     ) -> Result<Self::Body, SyntaxError> {
         match expr.kind {
-            parse::ExprKind::Name(name) => Ok(NamePattern {
+            parse::ExprKind::Name(name, _) => Ok(NamePattern {
                 span: expr.span,
                 name,
             }
@@ -156,7 +156,7 @@ impl SyntaxContext for PatternSyntaxContext {
                 };
 
                 let name = match name_expr.kind {
-                    parse::ExprKind::Name(name) => name,
+                    parse::ExprKind::Name(name, _) => name,
                     _ => {
                         self.ast_builder.compiler.add_error(
                             "syntax error",

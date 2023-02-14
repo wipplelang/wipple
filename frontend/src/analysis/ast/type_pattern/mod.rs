@@ -97,7 +97,7 @@ impl SyntaxContext for TypePatternSyntaxContext {
                 Ok(ListTypePattern { span, patterns }.into())
             }
             Err(expr) => match expr.kind {
-                parse::ExprKind::Name(name) => Ok(NameTypePattern {
+                parse::ExprKind::Name(name, _) => Ok(NameTypePattern {
                     span: expr.span,
                     name,
                 }

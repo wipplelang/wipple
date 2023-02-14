@@ -50,6 +50,7 @@ pub struct NamedType {
     pub span: Span,
     pub name_span: Span,
     pub name: InternedString,
+    pub name_scope: ScopeId,
     pub parameters: Vec<Result<Type, SyntaxError>>,
 }
 
@@ -98,9 +99,11 @@ impl SyntaxContext for TypeSyntaxContext {
             Ok((span, exprs)) => {
                 let mut exprs = exprs.into_iter();
 
-                let (name_span, name) = match exprs.next() {
+                let (name_span, name, name_scope) = match exprs.next() {
                     Some(expr) => match expr.kind {
-                        parse::ExprKind::Name(name) => (expr.span, name),
+                        parse::ExprKind::Name(name, name_scope) => {
+                            (expr.span, name, name_scope.unwrap_or(scope))
+                        }
                         _ => {
                             self.ast_builder.compiler.add_error(
                                 "syntax error",
@@ -124,16 +127,18 @@ impl SyntaxContext for TypeSyntaxContext {
                 Ok(NamedType {
                     name_span,
                     name,
+                    name_scope,
                     span,
                     parameters,
                 }
                 .into())
             }
             Err(expr) => match expr.kind {
-                parse::ExprKind::Name(name) => Ok(NamedType {
+                parse::ExprKind::Name(name, name_scope) => Ok(NamedType {
                     span: expr.span,
                     name_span: expr.span,
                     name,
+                    name_scope: name_scope.unwrap_or(scope),
                     parameters: Vec::new(),
                 }
                 .into()),

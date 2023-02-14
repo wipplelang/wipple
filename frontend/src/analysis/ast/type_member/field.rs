@@ -40,7 +40,7 @@ impl Syntax for FieldTypeMemberSyntax {
 
                 let lhs = lhs_exprs.pop().unwrap();
                 let name = match lhs.kind {
-                    parse::ExprKind::Name(name) => name,
+                    parse::ExprKind::Name(name, _) => name,
                     _ => {
                         context.ast_builder.compiler.add_error(
                             "syntax error",

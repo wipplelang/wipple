@@ -1,19 +1,20 @@
 use crate::{
     analysis::ast::{
-        syntax::{OperatorAssociativity, Syntax, SyntaxError, SyntaxRule, SyntaxRules},
+        syntax::{
+            FileBodySyntaxContext, OperatorAssociativity, Syntax, SyntaxContext, SyntaxError,
+            SyntaxRule, SyntaxRules,
+        },
         syntax_rule::SyntaxRuleSyntaxContext,
-        Expression, Pattern,
+        SyntaxPattern, SyntaxPatternSyntax, SyntaxPatternSyntaxContext,
     },
-    parse::Span,
-    ScopeId,
+    parse::{self, Span},
 };
 
 #[derive(Debug, Clone)]
 pub struct FunctionSyntaxRule {
     pub arrow_span: Span,
-    pub pattern: Result<Pattern, SyntaxError>,
-    pub body: Result<Expression, SyntaxError>,
-    pub scope: ScopeId,
+    pub pattern: Result<Box<SyntaxPattern>, SyntaxError>,
+    pub body: Result<Box<SyntaxPattern>, SyntaxError>,
 }
 
 pub struct FunctionSyntaxRuleSyntax;
@@ -25,10 +26,39 @@ impl Syntax for FunctionSyntaxRuleSyntax {
         SyntaxRules::new().with(SyntaxRule::<Self>::operator(
             "->",
             OperatorAssociativity::Right,
-            |context, (lhs_span, lhs), operator_span, (rhs_span, rhs), scope| async move {
-                let scope = context.ast_builder.child_scope(scope);
+            |context, (lhs_span, lhs_exprs), operator_span, (rhs_span, rhs_exprs), scope| async move {
+                let lhs = parse::Expr::list_or_expr(lhs_span, lhs_exprs);
+                let input = context
+                    .ast_builder
+                    .build_expr::<SyntaxPatternSyntax>(
+                        SyntaxPatternSyntaxContext::new(context.ast_builder.clone())
+                            .with_statement_attributes(
+                                context.statement_attributes.as_ref().unwrap().clone(),
+                            ),
+                        lhs,
+                        scope
+                    )
+                    .await;
 
-                todo!()
+                let rhs = parse::Expr::list_or_expr(rhs_span, rhs_exprs);
+                let output = context
+                    .ast_builder
+                    .build_expr::<SyntaxPatternSyntax>(
+                        SyntaxPatternSyntaxContext::new(context.ast_builder.clone())
+                            .with_statement_attributes(
+                                context.statement_attributes.as_ref().unwrap().clone(),
+                            ),
+                        rhs,
+                        scope
+                    )
+                    .await;
+
+                Ok(FunctionSyntaxRule {
+                    arrow_span: operator_span,
+                    pattern: input.map(Box::new),
+                    body: output.map(Box::new),
+                }
+                .into())
             },
         ))
     }

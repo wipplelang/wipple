@@ -9,6 +9,7 @@ use crate::{
     diagnostics::Note,
     helpers::InternedString,
     parse::{self, Span},
+    ScopeId,
 };
 use futures::{stream, StreamExt};
 
@@ -17,6 +18,7 @@ pub struct InstanceAssignmentPattern {
     pub instance_span: Span,
     pub trait_span: Span,
     pub trait_name: InternedString,
+    pub trait_scope: ScopeId,
     pub trait_parameters: Vec<Result<Type, SyntaxError>>,
 }
 
@@ -41,7 +43,8 @@ impl Syntax for InstanceAssignmentPatternSyntax {
                 let input = exprs.pop().unwrap();
                 let trait_span = input.span;
 
-                let (trait_name, trait_parameters) = match input.try_into_list_exprs() {
+                let (trait_name, trait_scope, trait_parameters) = match input.try_into_list_exprs()
+                {
                     Ok((span, exprs)) => {
                         let mut exprs = exprs.into_iter();
 
@@ -57,8 +60,10 @@ impl Syntax for InstanceAssignmentPatternSyntax {
                             }
                         };
 
-                        let trait_name = match trait_name.kind {
-                            parse::ExprKind::Name(name) => name,
+                        let (trait_name, trait_scope) = match trait_name.kind {
+                            parse::ExprKind::Name(name, name_scope) => {
+                                (name, name_scope.unwrap_or(scope))
+                            }
                             _ => {
                                 context.ast_builder.compiler.add_error(
                                     "syntax error",
@@ -83,10 +88,12 @@ impl Syntax for InstanceAssignmentPatternSyntax {
                             .collect()
                             .await;
 
-                        (trait_name, params)
+                        (trait_name, trait_scope, params)
                     }
                     Err(expr) => match expr.kind {
-                        parse::ExprKind::Name(name) => (name, Vec::new()),
+                        parse::ExprKind::Name(name, name_scope) => {
+                            (name, name_scope.unwrap_or(scope), Vec::new())
+                        }
                         _ => {
                             context.ast_builder.compiler.add_error(
                                 "syntax error",
@@ -102,6 +109,7 @@ impl Syntax for InstanceAssignmentPatternSyntax {
                     instance_span: span,
                     trait_span,
                     trait_name,
+                    trait_scope,
                     trait_parameters,
                 }
                 .into())

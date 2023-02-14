@@ -10,6 +10,7 @@ use crate::{
     diagnostics::Note,
     helpers::InternedString,
     parse::{self, Span},
+    ScopeId,
 };
 use futures::{stream, StreamExt};
 
@@ -24,6 +25,7 @@ pub struct WhereTypePattern {
 pub struct WhereTypePatternBound {
     pub trait_span: Span,
     pub trait_name: InternedString,
+    pub trait_scope: ScopeId,
     pub parameters: Vec<Result<Type, SyntaxError>>,
 }
 
@@ -64,8 +66,8 @@ impl Syntax for WhereTypePatternSyntax {
 
                                 let trait_span = trait_name.span;
 
-                                let trait_name = match trait_name.kind {
-                                    parse::ExprKind::Name(name) => name,
+                                let (trait_name, trait_scope) = match trait_name.kind {
+                                    parse::ExprKind::Name(name, name_scope) => (name, name_scope.unwrap_or(scope)),
                                     _ => {
                                         context.ast_builder.compiler.add_error(
                                             "syntax error",
@@ -100,12 +102,13 @@ impl Syntax for WhereTypePatternSyntax {
                                 Ok(WhereTypePatternBound {
                                     trait_span,
                                     trait_name,
+                                    trait_scope,
                                     parameters,
                                 })
                             }
                             Err(expr) => {
-                                let name = match expr.kind {
-                                    parse::ExprKind::Name(name) => name,
+                                let (trait_name, trait_scope) = match expr.kind {
+                                    parse::ExprKind::Name(name, name_scope) => (name, name_scope.unwrap_or(scope)),
                                     _ => {
                                         context.ast_builder.compiler.add_error(
                                             "syntax error",
@@ -118,7 +121,8 @@ impl Syntax for WhereTypePatternSyntax {
 
                                 Ok(WhereTypePatternBound {
                                     trait_span: expr.span,
-                                    trait_name: name,
+                                    trait_name,
+                                    trait_scope,
                                     parameters: Vec::new(),
                                 })
                             }

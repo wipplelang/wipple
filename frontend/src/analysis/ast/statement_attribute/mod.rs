@@ -13,7 +13,10 @@ pub use keyword::KeywordStatementAttribute;
 pub use language_item::{LanguageItemStatementAttribute, LanguageItemStatementAttributeKind};
 pub use on_mismatch::OnMismatchStatementAttribute;
 pub use on_unimplemented::OnUnimplementedStatementAttribute;
-pub use operator_precedence::OperatorPrecedenceStatementAttribute;
+pub use operator_precedence::{
+    OperatorAssociativity, OperatorPrecedenceStatementAttribute,
+    OperatorPrecedenceStatementAttributeKind,
+};
 pub use specialize::SpecializeStatementAttribute;
 
 use allow_overlapping_instances::*;

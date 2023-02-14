@@ -1,7 +1,7 @@
 use crate::{
     diagnostics::*,
     parse::{Span, Token},
-    Compiler, FilePath, InternedString,
+    Compiler, FilePath, InternedString, ScopeId,
 };
 use lazy_static::lazy_static;
 use logos::SpannedIter;
@@ -31,11 +31,19 @@ pub struct Expr {
 #[derive(Debug, Clone)]
 pub enum ExprKind {
     Underscore,
-    Name(InternedString),
+    /// The scope isn't used anywhere in the parser, but the expander uses it to
+    /// ensure syntax hygiene.
+    Name(InternedString, Option<ScopeId>),
+    QuoteName(InternedString),
+    RepeatName(InternedString),
     Text(InternedString),
     Number(InternedString),
     List(Vec<ListLine>),
+    // QuoteList(..),
+    RepeatList(Vec<ListLine>),
     Block(Vec<Statement>),
+    // QuoteBlock(..),
+    // RepeatBlock(..),
 }
 
 impl Expr {
@@ -53,6 +61,16 @@ impl Expr {
     pub fn try_into_list_exprs(self) -> Result<(Span, Vec<Expr>), Self> {
         match self.kind {
             ExprKind::List(lines) => Ok((
+                self.span,
+                lines.into_iter().flat_map(|line| line.exprs).collect(),
+            )),
+            _ => Err(self),
+        }
+    }
+
+    pub fn try_into_list_repetition_exprs(self) -> Result<(Span, Vec<Expr>), Self> {
+        match self.kind {
+            ExprKind::RepeatList(lines) => Ok((
                 self.span,
                 lines.into_iter().flat_map(|line| line.exprs).collect(),
             )),
@@ -324,9 +342,12 @@ impl<'src> Parser<'src> {
         parse_each!(
             try_parse_underscore,
             try_parse_name,
+            try_parse_quote_name,
+            try_parse_repeat_name,
             try_parse_text,
             try_parse_number,
             try_parse_list,
+            try_parse_repeat_list,
             try_parse_block,
         )
     }
@@ -352,7 +373,44 @@ impl<'src> Parser<'src> {
             Some(Token::Name(name)) => {
                 self.consume();
 
-                Ok(Expr::new(span, ExprKind::Name(InternedString::new(name))))
+                Ok(Expr::new(
+                    span,
+                    ExprKind::Name(InternedString::new(name), None),
+                ))
+            }
+            Some(_) => Err(ParseError::WrongTokenType),
+            None => Err(ParseError::EndOfFile),
+        }
+    }
+
+    pub fn try_parse_quote_name(&mut self) -> Result<Expr, ParseError> {
+        let (span, token) = self.peek();
+
+        match token {
+            Some(Token::QuoteName(name)) => {
+                self.consume();
+
+                Ok(Expr::new(
+                    span,
+                    ExprKind::QuoteName(InternedString::new(name)),
+                ))
+            }
+            Some(_) => Err(ParseError::WrongTokenType),
+            None => Err(ParseError::EndOfFile),
+        }
+    }
+
+    pub fn try_parse_repeat_name(&mut self) -> Result<Expr, ParseError> {
+        let (span, token) = self.peek();
+
+        match token {
+            Some(Token::RepeatName(name)) => {
+                self.consume();
+
+                Ok(Expr::new(
+                    span,
+                    ExprKind::RepeatName(InternedString::new(name)),
+                ))
             }
             Some(_) => Err(ParseError::WrongTokenType),
             None => Err(ParseError::EndOfFile),
@@ -424,6 +482,25 @@ impl<'src> Parser<'src> {
                 Ok(Expr::new(
                     span.with_end(end_span.end),
                     ExprKind::List(lines),
+                ))
+            }
+            Some(_) => Err(ParseError::WrongTokenType),
+            None => Err(ParseError::EndOfFile),
+        }
+    }
+
+    pub fn try_parse_repeat_list(&mut self) -> Result<Expr, ParseError> {
+        let (span, token) = self.peek();
+
+        match token {
+            Some(Token::QuoteLeftParenthesis) => {
+                self.consume();
+
+                let (lines, end_span) = self.parse_list_contents(Token::RightParenthesis);
+
+                Ok(Expr::new(
+                    span.with_end(end_span.end),
+                    ExprKind::RepeatList(lines),
                 ))
             }
             Some(_) => Err(ParseError::WrongTokenType),

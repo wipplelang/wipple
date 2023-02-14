@@ -13,6 +13,7 @@ mod pattern;
 mod statement;
 mod statement_attribute;
 mod syntax_body;
+mod syntax_pattern;
 mod syntax_rule;
 mod r#type;
 mod type_body;
@@ -35,6 +36,7 @@ pub use r#type::*;
 pub use statement::*;
 pub use statement_attribute::*;
 pub use syntax_body::*;
+pub use syntax_pattern::*;
 pub use syntax_rule::*;
 pub use type_body::*;
 pub use type_member::*;
@@ -234,7 +236,7 @@ impl AstBuilder {
                     }
                 }
             }
-            parse::ExprKind::Name(_) => {
+            parse::ExprKind::Name(_, _) => {
                 match self
                     .build_list::<S>(context.clone(), expr.span, &[expr.clone()], scope)
                     .await

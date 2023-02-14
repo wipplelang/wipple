@@ -52,7 +52,7 @@ impl Syntax for OnMismatchStatementAttributeSyntax {
 
                         let type_parameter_expr = exprs.next().unwrap();
                         let type_parameter = match type_parameter_expr.kind {
-                            parse::ExprKind::Name(name) => name,
+                            parse::ExprKind::Name(name, _) => name,
                             _ => {
                                 context.ast_builder.compiler.add_error(
                                     "syntax error",

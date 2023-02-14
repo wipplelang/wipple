@@ -33,7 +33,7 @@ impl Syntax for AnnotateStatementSyntax {
                 let name = if lhs_exprs.len() == 1 {
                     let lhs = lhs_exprs.pop().unwrap();
                     match lhs.kind {
-                        parse::ExprKind::Name(name) => Ok((lhs.span, name)),
+                        parse::ExprKind::Name(name, _) => Ok((lhs.span, name)),
                         _ => {
                             context.ast_builder.compiler.add_error(
                                 "syntax error",

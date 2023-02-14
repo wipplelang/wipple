@@ -303,7 +303,7 @@ impl AstBuilder {
 
         let first = exprs.next()?;
 
-        if let parse::ExprKind::Name(first_name) = &first.kind {
+        if let parse::ExprKind::Name(first_name, _) = &first.kind {
             if first_name.as_str() == name {
                 let span = first.span;
                 let exprs = exprs.cloned().collect();
@@ -344,7 +344,7 @@ impl AstBuilder {
         let mut occurrences = VecDeque::new();
 
         for (index, expr) in exprs.iter().enumerate() {
-            if let parse::ExprKind::Name(expr_name) = expr.kind {
+            if let parse::ExprKind::Name(expr_name, _) = expr.kind {
                 if expr_name.as_str() == name {
                     occurrences.push_back(index);
                 }

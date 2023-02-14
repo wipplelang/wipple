@@ -6,7 +6,7 @@ use crate::{
     diagnostics::Note,
     helpers::InternedString,
     parse::{self, Span},
-    FilePath,
+    FilePath, ScopeId,
 };
 
 #[derive(Debug, Clone)]
@@ -19,7 +19,7 @@ pub struct UseStatement {
 #[derive(Debug, Clone)]
 pub enum UseStatementKind {
     File(Span, InternedString, Option<FilePath>),
-    Name(Span, InternedString),
+    Name(Span, InternedString, ScopeId),
 }
 
 pub struct UseStatementSyntax;
@@ -30,7 +30,7 @@ impl Syntax for UseStatementSyntax {
     fn rules() -> SyntaxRules<Self> {
         SyntaxRules::new().with(SyntaxRule::<Self>::function(
             "use",
-            |context, span, mut exprs, _scope| async move {
+            |context, span, mut exprs, scope| async move {
                 if exprs.len() != 1 {
                     context.ast_builder.compiler.add_error(
                         "syntax error",
@@ -42,7 +42,11 @@ impl Syntax for UseStatementSyntax {
 
                 let input = exprs.pop().unwrap();
                 let kind = match input.kind {
-                    parse::ExprKind::Name(name) => Ok(UseStatementKind::Name(input.span, name)),
+                    parse::ExprKind::Name(name, name_scope) => Ok(UseStatementKind::Name(
+                        input.span,
+                        name,
+                        name_scope.unwrap_or(scope),
+                    )),
                     parse::ExprKind::Text(text) => {
                         let mut resolved_path = None;
                         if let Some(file) = (context.ast_builder.load)(

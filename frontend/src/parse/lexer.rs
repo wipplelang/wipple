@@ -3,12 +3,6 @@ use std::fmt;
 
 #[derive(Logos, Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Token<'src> {
-    #[token("(")]
-    LeftParenthesis,
-
-    #[token(")")]
-    RightParenthesis,
-
     #[token("[[")]
     LeftFileBracket,
 
@@ -21,8 +15,26 @@ pub enum Token<'src> {
     #[token("]")]
     RightAttrBracket,
 
+    #[token("(")]
+    LeftParenthesis,
+
+    #[token("'(")]
+    QuoteLeftParenthesis,
+
+    #[token("...(")]
+    RepeatLeftParenthesis,
+
+    #[token(")")]
+    RightParenthesis,
+
     #[token("{")]
     LeftBrace,
+
+    #[token("'{")]
+    QuoteLeftBrace,
+
+    #[token("...{")]
+    RepeatLeftBrace,
 
     #[token("}")]
     RightBrace,
@@ -45,6 +57,12 @@ pub enum Token<'src> {
     #[regex(r#"[^\n\t \(\)\[\]\{\}"]+"#, |lex| lex.slice())]
     Name(&'src str),
 
+    #[token(r#"'[^\n\t \(\)\[\]\{\}"]+"#, |lex| &lex.slice()[1..],)]
+    QuoteName(&'src str),
+
+    #[token(r#"\.\.\.[^\n\t \(\)\[\]\{\}"]+"#, |lex| &lex.slice()[3..],)]
+    RepeatName(&'src str),
+
     #[regex(r#""[^"\\]*(?s:\\.[^"\\]*)*""#, |lex| &lex.slice()[1..(lex.slice().len() - 1)])]
     Text(&'src str),
 
@@ -58,22 +76,28 @@ pub enum Token<'src> {
 impl<'src> fmt::Display for Token<'src> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Token::LeftParenthesis => write!(f, "`(`"),
-            Token::RightParenthesis => write!(f, "`)`"),
             Token::LeftFileBracket => write!(f, "`[[`"),
             Token::RightFileBracket => write!(f, "`]]`"),
             Token::LeftAttrBracket => write!(f, "`[`"),
             Token::RightAttrBracket => write!(f, "`]`"),
+            Token::LeftParenthesis => write!(f, "`(`"),
+            Token::QuoteLeftParenthesis => write!(f, "`'(`"),
+            Token::RepeatLeftParenthesis => write!(f, "`...(`"),
+            Token::RightParenthesis => write!(f, "`)`"),
             Token::LeftBrace => write!(f, "`{{`"),
+            Token::QuoteLeftBrace => write!(f, "`'{{`"),
+            Token::RepeatLeftBrace => write!(f, "`...{{`"),
             Token::RightBrace => write!(f, "`}}`"),
             Token::Underscore => write!(f, "`_`"),
             Token::LineBreak => write!(f, "line break"),
             Token::Indent(_) => write!(f, "indent"),
             Token::Space => unreachable!(),
             Token::Comment(_) => write!(f, "comment"),
+            Token::Name(name) => write!(f, "`{name}`"),
+            Token::QuoteName(name) => write!(f, "`'{name}`"),
+            Token::RepeatName(name) => write!(f, "`...{name}`"),
             Token::Text(text) => write!(f, "`\"{text}\"`"),
             Token::Number(number) => write!(f, "`{number}`"),
-            Token::Name(name) => write!(f, "`{name}`"),
             Token::Error => write!(f, "invalid token"),
         }
     }

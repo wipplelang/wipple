@@ -839,11 +839,12 @@ enum StatementDeclarationKind<'a> {
         (
             Span,
             InternedString,
+            ScopeId,
             &'a Vec<Result<ast::Type, ast::SyntaxError>>,
         ),
         Option<&'a ast::Expression>,
     ),
-    Use(Span, InternedString),
+    Use(Span, InternedString, ScopeId),
     Queued(QueuedStatement<'a>),
 }
 
@@ -1060,13 +1061,13 @@ impl Lowerer {
                 StatementDeclarationKind::Instance(
                     id,
                     ty_pattern,
-                    (trait_span, trait_name, trait_params),
+                    (trait_span, trait_name, trait_scope, trait_params),
                     value,
                 ) => {
                     let (scope, (parameters, bounds)) =
                         ty_pattern.unwrap_or_else(|| (scope, Default::default()));
 
-                    let tr = match self.get(trait_name, trait_span, scope) {
+                    let tr = match self.get(trait_name, trait_span, trait_scope) {
                         Some(AnyDeclaration::Trait(tr)) => {
                             self.declarations
                                 .traits
@@ -1122,8 +1123,8 @@ impl Lowerer {
 
                     Some(AnyDeclaration::Constant(id, None))
                 }
-                StatementDeclarationKind::Use(span, name) => {
-                    let ty = match self.get(name, span, scope) {
+                StatementDeclarationKind::Use(span, name, name_scope) => {
+                    let ty = match self.get(name, span, name_scope) {
                         Some(AnyDeclaration::Type(ty)) => {
                             self.declarations
                                 .types
@@ -1493,68 +1494,71 @@ impl Lowerer {
                     })
                 }
                 ast::AssignmentValue::Syntax(_) => None,
-                ast::AssignmentValue::TypeFunction(value) => {
-                    let child_scope = self.child_scope(value.scope, scope);
+                ast::AssignmentValue::TypeFunction(value) => match value.value.as_deref().ok()? {
+                    ast::AssignmentValue::Trait(trait_value) => {
+                        let (span, name) =
+                            self.get_name_from_assignment(statement.pattern.as_ref().ok()?)?;
 
-                    let (parameters, bounds) =
-                        self.lower_type_pattern(value.pattern.as_ref().ok()?, child_scope);
+                        let child_scope = self.child_scope(value.scope, scope);
 
-                    match value.value.as_deref().ok()? {
-                        ast::AssignmentValue::Trait(value) => {
-                            let (span, name) =
-                                self.get_name_from_assignment(statement.pattern.as_ref().ok()?)?;
+                        let (parameters, bounds) =
+                            self.lower_type_pattern(value.pattern.as_ref().ok()?, child_scope);
 
-                            let id = self.compiler.new_trait_id_in(self.file);
-                            self.insert(name, AnyDeclaration::Trait(id), scope);
+                        let id = self.compiler.new_trait_id_in(self.file);
+                        self.insert(name, AnyDeclaration::Trait(id), scope);
 
-                            self.declarations
-                                .traits
-                                .insert(id, Declaration::unresolved(Some(name), span));
+                        self.declarations
+                            .traits
+                            .insert(id, Declaration::unresolved(Some(name), span));
 
-                            Some(StatementDeclaration {
-                                span: statement.colon_span,
-                                kind: StatementDeclarationKind::Trait(
-                                    id,
-                                    Some((child_scope, (parameters, bounds))),
-                                    value,
-                                ),
-                                attributes: &statement.attributes,
-                            })
-                        }
-                        ast::AssignmentValue::Type(value) => {
-                            let (span, name) =
-                                self.get_name_from_assignment(statement.pattern.as_ref().ok()?)?;
-
-                            let id = self.compiler.new_type_id_in(self.file);
-                            self.insert(name, AnyDeclaration::Type(id), scope);
-
-                            self.declarations
-                                .types
-                                .insert(id, Declaration::unresolved(Some(name), span));
-
-                            Some(StatementDeclaration {
-                                span: statement.colon_span,
-                                kind: StatementDeclarationKind::Type(
-                                    id,
-                                    Some((child_scope, (parameters, bounds))),
-                                    value,
-                                ),
-                                attributes: &statement.attributes,
-                            })
-                        }
-                        _ => {
-                            self.compiler.add_error(
-                                "syntax error",
-                                vec![Note::primary(
-                                    statement.colon_span,
-                                    "expected a `type` or `trait` definition after this",
-                                )],
-                            );
-
-                            None
-                        }
+                        Some(StatementDeclaration {
+                            span: statement.colon_span,
+                            kind: StatementDeclarationKind::Trait(
+                                id,
+                                Some((child_scope, (parameters, bounds))),
+                                trait_value,
+                            ),
+                            attributes: &statement.attributes,
+                        })
                     }
-                }
+                    ast::AssignmentValue::Type(ty_value) => {
+                        let (span, name) =
+                            self.get_name_from_assignment(statement.pattern.as_ref().ok()?)?;
+
+                        let child_scope = self.child_scope(value.scope, scope);
+
+                        let (parameters, bounds) =
+                            self.lower_type_pattern(value.pattern.as_ref().ok()?, child_scope);
+
+                        let id = self.compiler.new_type_id_in(self.file);
+                        self.insert(name, AnyDeclaration::Type(id), scope);
+
+                        self.declarations
+                            .types
+                            .insert(id, Declaration::unresolved(Some(name), span));
+
+                        Some(StatementDeclaration {
+                            span: statement.colon_span,
+                            kind: StatementDeclarationKind::Type(
+                                id,
+                                Some((child_scope, (parameters, bounds))),
+                                ty_value,
+                            ),
+                            attributes: &statement.attributes,
+                        })
+                    }
+                    _ => {
+                        self.compiler.add_error(
+                            "syntax error",
+                            vec![Note::primary(
+                                statement.colon_span,
+                                "expected a `type` or `trait` definition after this",
+                            )],
+                        );
+
+                        None
+                    }
+                },
                 ast::AssignmentValue::Expression(value) => {
                     match statement.pattern.as_ref().ok()? {
                         ast::AssignmentPattern::Pattern(pattern) => Some(StatementDeclaration {
@@ -1580,6 +1584,7 @@ impl Lowerer {
                                     (
                                         pattern.trait_span,
                                         pattern.trait_name,
+                                        pattern.trait_scope,
                                         &pattern.trait_parameters,
                                     ),
                                     Some(&value.expression),
@@ -1612,6 +1617,7 @@ impl Lowerer {
                                             (
                                                 pattern.trait_span,
                                                 pattern.trait_name,
+                                                pattern.trait_scope,
                                                 &pattern.trait_parameters,
                                             ),
                                             Some(&value.expression),
@@ -1650,6 +1656,7 @@ impl Lowerer {
                         (
                             statement.trait_span,
                             statement.trait_name,
+                            statement.trait_scope,
                             &statement.trait_parameters,
                         ),
                         None,
@@ -1679,6 +1686,7 @@ impl Lowerer {
                                 (
                                     statement.trait_span,
                                     statement.trait_name,
+                                    statement.trait_scope,
                                     &statement.trait_parameters,
                                 ),
                                 None,
@@ -1701,11 +1709,13 @@ impl Lowerer {
             }
             ast::Statement::Use(statement) => match statement.kind.as_ref().ok()? {
                 ast::UseStatementKind::File(_, _, _) => None,
-                ast::UseStatementKind::Name(name_span, name) => Some(StatementDeclaration {
-                    span: statement.use_span,
-                    kind: StatementDeclarationKind::Use(*name_span, *name),
-                    attributes: &statement.attributes,
-                }),
+                ast::UseStatementKind::Name(name_span, name, name_scope) => {
+                    Some(StatementDeclaration {
+                        span: statement.use_span,
+                        kind: StatementDeclarationKind::Use(*name_span, *name, *name_scope),
+                        attributes: &statement.attributes,
+                    })
+                }
             },
             ast::Statement::Expression(statement) => Some(StatementDeclaration {
                 // TODO: Have a `span()` function implemented by all AST nodes instead of this
@@ -1861,7 +1871,7 @@ impl Lowerer {
                             }
                         };
 
-                        match self.get(ty_name.name, function_span, scope) {
+                        match self.get(ty_name.name, function_span, ty_name.scope) {
                             Some(AnyDeclaration::Type(id)) => {
                                 self.declarations
                                     .types
