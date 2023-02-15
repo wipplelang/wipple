@@ -1,13 +1,22 @@
-use crate::analysis::ast::{
-    constant_type_annotation::ConstantTypeAnnotationSyntaxContext,
-    r#type::{Type, TypeSyntax, TypeSyntaxContext},
-    syntax::{Syntax, SyntaxContext, SyntaxRules},
-    ConstantTypeAnnotation,
+use crate::{
+    analysis::ast::{
+        constant_type_annotation::ConstantTypeAnnotationSyntaxContext,
+        r#type::{Type, TypeSyntax, TypeSyntaxContext},
+        syntax::{Syntax, SyntaxContext, SyntaxRules},
+        ConstantTypeAnnotation,
+    },
+    parse::Span,
 };
 
 #[derive(Debug, Clone)]
 pub struct TypeConstantTypeAnnotation {
     pub ty: Type,
+}
+
+impl TypeConstantTypeAnnotation {
+    pub fn span(&self) -> Span {
+        self.ty.span()
+    }
 }
 
 impl From<Type> for ConstantTypeAnnotation {

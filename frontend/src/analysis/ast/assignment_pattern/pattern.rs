@@ -1,13 +1,22 @@
-use crate::analysis::ast::{
-    assignment_pattern::AssignmentPatternSyntaxContext,
-    pattern::{Pattern, PatternSyntax, PatternSyntaxContext},
-    syntax::{Syntax, SyntaxContext, SyntaxRules},
-    AssignmentPattern,
+use crate::{
+    analysis::ast::{
+        assignment_pattern::AssignmentPatternSyntaxContext,
+        pattern::{Pattern, PatternSyntax, PatternSyntaxContext},
+        syntax::{Syntax, SyntaxContext, SyntaxRules},
+        AssignmentPattern,
+    },
+    parse::Span,
 };
 
 #[derive(Debug, Clone)]
 pub struct PatternAssignmentPattern {
     pub pattern: Pattern,
+}
+
+impl PatternAssignmentPattern {
+    pub fn span(&self) -> Span {
+        self.pattern.span()
+    }
 }
 
 impl From<Pattern> for AssignmentPattern {

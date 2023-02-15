@@ -1,13 +1,22 @@
-use crate::analysis::ast::{
-    assignment_value::AssignmentValueSyntaxContext,
-    expression::{Expression, ExpressionSyntax, ExpressionSyntaxContext},
-    syntax::{Syntax, SyntaxContext, SyntaxRules},
-    AssignmentValue,
+use crate::{
+    analysis::ast::{
+        assignment_value::AssignmentValueSyntaxContext,
+        expression::{Expression, ExpressionSyntax, ExpressionSyntaxContext},
+        syntax::{Syntax, SyntaxContext, SyntaxRules},
+        AssignmentValue,
+    },
+    parse::Span,
 };
 
 #[derive(Debug, Clone)]
 pub struct ExpressionAssignmentValue {
     pub expression: Expression,
+}
+
+impl ExpressionAssignmentValue {
+    pub fn span(&self) -> Span {
+        self.expression.span()
+    }
 }
 
 impl From<Expression> for AssignmentValue {

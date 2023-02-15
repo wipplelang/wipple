@@ -13,6 +13,17 @@ pub struct EndExpression {
     pub value: Result<Box<Expression>, SyntaxError>,
 }
 
+impl EndExpression {
+    pub fn span(&self) -> Span {
+        let value_span = match self.value {
+            Ok(value) => value.span(),
+            Err(error) => error.span,
+        };
+
+        Span::join(self.end_span, value_span)
+    }
+}
+
 pub struct EndExpressionSyntax;
 
 impl Syntax for EndExpressionSyntax {

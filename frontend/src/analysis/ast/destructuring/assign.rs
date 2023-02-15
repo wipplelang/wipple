@@ -19,6 +19,17 @@ pub struct AssignDestructuring {
     pub pattern: Result<Pattern, SyntaxError>,
 }
 
+impl AssignDestructuring {
+    pub fn span(&self) -> Span {
+        let pattern_span = match self.pattern {
+            Ok(pattern) => pattern.span(),
+            Err(error) => error.span,
+        };
+
+        Span::join(self.name_span, pattern_span)
+    }
+}
+
 pub struct AssignDestructuringSyntax;
 
 impl Syntax for AssignDestructuringSyntax {

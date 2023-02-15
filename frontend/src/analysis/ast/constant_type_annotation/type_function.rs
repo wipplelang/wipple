@@ -19,6 +19,22 @@ pub struct TypeFunctionConstantTypeAnnotation {
     pub scope: ScopeId,
 }
 
+impl TypeFunctionConstantTypeAnnotation {
+    pub fn span(&self) -> Span {
+        let pattern_span = match self.pattern {
+            Ok(pattern) => pattern.span(),
+            Err(error) => error.span,
+        };
+
+        let annotation_span = match self.annotation {
+            Ok(annotation) => annotation.span(),
+            Err(error) => error.span,
+        };
+
+        Span::join(pattern_span, annotation_span)
+    }
+}
+
 pub struct TypeFunctionConstantTypeAnnotationSyntax;
 
 impl Syntax for TypeFunctionConstantTypeAnnotationSyntax {

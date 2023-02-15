@@ -15,6 +15,22 @@ pub struct AnnotateExpression {
     pub ty: Result<Type, SyntaxError>,
 }
 
+impl AnnotateExpression {
+    pub fn span(&self) -> Span {
+        let expr_span = match self.expr {
+            Ok(expr) => expr.span(),
+            Err(error) => error.span,
+        };
+
+        let ty_span = match self.ty {
+            Ok(ty) => ty.span(),
+            Err(error) => error.span,
+        };
+
+        Span::join(expr_span, ty_span)
+    }
+}
+
 pub struct AnnotateExpressionSyntax;
 
 impl Syntax for AnnotateExpressionSyntax {

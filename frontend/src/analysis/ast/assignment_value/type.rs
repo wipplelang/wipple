@@ -5,11 +5,29 @@ use crate::{
         TypeBody, TypeBodySyntax, TypeBodySyntaxContext,
     },
     diagnostics::Note,
+    parse::Span,
 };
 
 #[derive(Debug, Clone)]
 pub struct TypeAssignmentValue {
+    pub type_span: Span,
     pub body: Option<Result<TypeBody, SyntaxError>>,
+}
+
+impl TypeAssignmentValue {
+    pub fn span(&self) -> Span {
+        match self.body {
+            Some(body) => {
+                let body_span = match body {
+                    Ok(body) => body.span(),
+                    Err(error) => error.span,
+                };
+
+                Span::join(self.type_span, body_span)
+            }
+            None => self.type_span,
+        }
+    }
 }
 
 pub struct TypeAssignmentValueSyntax;
@@ -22,7 +40,11 @@ impl Syntax for TypeAssignmentValueSyntax {
             "type",
             |context, span, mut exprs, scope| async move {
                 match exprs.len() {
-                    0 => Ok(TypeAssignmentValue { body: None }.into()),
+                    0 => Ok(TypeAssignmentValue {
+                        type_span: span,
+                        body: None,
+                    }
+                    .into()),
                     1 => {
                         let body = context
                             .ast_builder
@@ -36,7 +58,11 @@ impl Syntax for TypeAssignmentValueSyntax {
                             )
                             .await;
 
-                        Ok(TypeAssignmentValue { body: Some(body) }.into())
+                        Ok(TypeAssignmentValue {
+                            type_span: span,
+                            body: Some(body),
+                        }
+                        .into())
                     }
                     _ => {
                         context.ast_builder.compiler.add_error(

@@ -19,6 +19,22 @@ pub struct TypeFunctionAssignmentPattern {
     pub scope: ScopeId,
 }
 
+impl TypeFunctionAssignmentPattern {
+    pub fn span(&self) -> Span {
+        let type_pattern_span = match self.type_pattern {
+            Ok(type_pattern) => type_pattern.span(),
+            Err(error) => error.span,
+        };
+
+        let assignment_pattern_span = match self.assignment_pattern {
+            Ok(assignment_pattern) => assignment_pattern.span(),
+            Err(error) => error.span,
+        };
+
+        Span::join(type_pattern_span, assignment_pattern_span)
+    }
+}
+
 pub struct TypeFunctionAssignmentPatternSyntax;
 
 impl Syntax for TypeFunctionAssignmentPatternSyntax {

@@ -5,11 +5,29 @@ use crate::{
         Type, TypeSyntax, TypeSyntaxContext,
     },
     diagnostics::Note,
+    parse::Span,
 };
 
 #[derive(Debug, Clone)]
 pub struct TraitAssignmentValue {
+    pub trait_span: Span,
     pub ty: Option<Result<Type, SyntaxError>>,
+}
+
+impl TraitAssignmentValue {
+    pub fn span(&self) -> Span {
+        match self.ty {
+            Some(ty) => {
+                let ty_span = match ty {
+                    Ok(ty) => ty.span(),
+                    Err(error) => error.span,
+                };
+
+                Span::join(self.trait_span, ty_span)
+            }
+            None => self.trait_span,
+        }
+    }
 }
 
 pub struct TraitAssignmentValueSyntax;
@@ -22,7 +40,11 @@ impl Syntax for TraitAssignmentValueSyntax {
             "trait",
             |context, span, mut exprs, scope| async move {
                 match exprs.len() {
-                    0 => Ok(TraitAssignmentValue { ty: None }.into()),
+                    0 => Ok(TraitAssignmentValue {
+                        trait_span: span,
+                        ty: None,
+                    }
+                    .into()),
                     1 => {
                         let ty = context
                             .ast_builder
@@ -36,7 +58,11 @@ impl Syntax for TraitAssignmentValueSyntax {
                             )
                             .await;
 
-                        Ok(TraitAssignmentValue { ty: Some(ty) }.into())
+                        Ok(TraitAssignmentValue {
+                            trait_span: span,
+                            ty: Some(ty),
+                        }
+                        .into())
                     }
                     _ => {
                         context.ast_builder.compiler.add_error(

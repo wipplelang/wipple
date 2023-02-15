@@ -17,6 +17,17 @@ pub struct SyntaxAssignmentValue {
     pub keyword: Option<KeywordStatementAttribute>,
 }
 
+impl SyntaxAssignmentValue {
+    pub fn span(&self) -> Span {
+        let body_span = match self.body {
+            Ok(body) => body.span(),
+            Err(error) => error.span,
+        };
+
+        Span::join(self.syntax_span, body_span)
+    }
+}
+
 pub struct SyntaxAssignmentValueSyntax;
 
 impl Syntax for SyntaxAssignmentValueSyntax {

@@ -41,6 +41,16 @@ macro_rules! group {
             $($kind($data),)*
         }
 
+        impl $name {
+            pub fn span(&self) -> $crate::parse::Span {
+                match self {
+                    $(
+                        $name::$kind(value) => value.span(),
+                    )*
+                }
+            }
+        }
+
         $(
             impl From<$data> for $name {
                 fn from(value: $data) -> Self {
