@@ -496,6 +496,7 @@ impl TypeAnnotationKind {
 
 #[derive(Debug, Clone)]
 pub struct Bound {
+    pub span: Span,
     pub tr_span: Span,
     pub tr: TraitId,
     pub parameters: Vec<TypeAnnotation>,
@@ -968,7 +969,7 @@ impl Lowerer {
                     if let Some(bound) = bounds.first() {
                         self.compiler.add_error(
                             "`type` declarations may not have bounds",
-                            vec![Note::primary(bound.tr_span, "try removing this")],
+                            vec![Note::primary(bound.span, "try removing this")],
                         );
                     }
 
@@ -1099,7 +1100,7 @@ impl Lowerer {
                     if let Some(bound) = bounds.first() {
                         self.compiler.add_error(
                             "`trait` declarations may not have bounds",
-                            vec![Note::primary(bound.tr_span, "try removing this")],
+                            vec![Note::primary(bound.span, "try removing this")],
                         );
                     }
 
@@ -1497,18 +1498,17 @@ impl Lowerer {
                                 .map(|annotation| self.lower_type_pattern(annotation, scope))
                                 .unwrap_or_default();
 
-                            let ty =
-                                match annotation.annotation.as_deref().ok()? {
-                                    ast::ConstantTypeAnnotation::Type(annotation) => annotation,
-                                    ast::ConstantTypeAnnotation::TypeFunction(annotation) => {
-                                        self.compiler.add_error(
-                                    "type annotation may not contain multiple type functions",
-                                    vec![Note::primary(annotation.arrow_span, "try removing this")],
-                                );
+                            let ty = match annotation.annotation.as_deref().ok()? {
+                                ast::ConstantTypeAnnotation::Type(annotation) => annotation,
+                                ast::ConstantTypeAnnotation::TypeFunction(annotation) => {
+                                    self.compiler.add_error(
+                                        "type annotation may not contain multiple type functions",
+                                        vec![Note::primary(annotation.span(), "try removing this")],
+                                    );
 
-                                        return None;
-                                    }
-                                };
+                                    return None;
+                                }
+                            };
 
                             (scope, (params, bounds), ty)
                         }
@@ -1562,7 +1562,7 @@ impl Lowerer {
                     .insert(id, Declaration::unresolved(Some(name), span));
 
                 Some(StatementDeclaration {
-                    span: statement.colon_span,
+                    span: statement.span(),
                     kind: StatementDeclarationKind::Constant(
                         id,
                         (child_scope, (parameters, bounds)),
@@ -1587,7 +1587,7 @@ impl Lowerer {
                             .insert(id, Declaration::unresolved(Some(name), span));
 
                         Some(StatementDeclaration {
-                            span: statement.colon_span,
+                            span: statement.span(),
                             kind: StatementDeclarationKind::Trait(id, None, value),
                             attributes: &statement.attributes,
                         })
@@ -1604,7 +1604,7 @@ impl Lowerer {
                             .insert(id, Declaration::unresolved(Some(name), span));
 
                         Some(StatementDeclaration {
-                            span: statement.colon_span,
+                            span: statement.span(),
                             kind: StatementDeclarationKind::Type(id, None, value),
                             attributes: &statement.attributes,
                         })
@@ -1629,7 +1629,7 @@ impl Lowerer {
                                     .insert(id, Declaration::unresolved(Some(name), span));
 
                                 Some(StatementDeclaration {
-                                    span: statement.colon_span,
+                                    span: statement.span(),
                                     kind: StatementDeclarationKind::Trait(
                                         id,
                                         Some((child_scope, (parameters, bounds))),
@@ -1655,7 +1655,7 @@ impl Lowerer {
                                     .insert(id, Declaration::unresolved(Some(name), span));
 
                                 Some(StatementDeclaration {
-                                    span: statement.colon_span,
+                                    span: statement.span(),
                                     kind: StatementDeclarationKind::Type(
                                         id,
                                         Some((child_scope, (parameters, bounds))),
@@ -1665,11 +1665,16 @@ impl Lowerer {
                                 })
                             }
                             _ => {
+                                let value_span = match &statement.value {
+                                    Ok(value) => value.span(),
+                                    Err(error) => error.span,
+                                };
+
                                 self.compiler.add_error(
                                     "syntax error",
                                     vec![Note::primary(
-                                        statement.colon_span,
-                                        "expected a `type` or `trait` definition after this",
+                                        value_span,
+                                        "expected a `type` or `trait` definition",
                                     )],
                                 );
 
@@ -1681,7 +1686,7 @@ impl Lowerer {
                         match statement.pattern.as_ref().ok()? {
                             ast::AssignmentPattern::Pattern(pattern) => {
                                 Some(StatementDeclaration {
-                                    span: statement.colon_span,
+                                    span: statement.span(),
                                     kind: StatementDeclarationKind::Queued(
                                         QueuedStatement::Assign(
                                             &pattern.pattern,
@@ -1694,13 +1699,12 @@ impl Lowerer {
                             ast::AssignmentPattern::Instance(pattern) => {
                                 let id = self.compiler.new_constant_id_in(self.file);
 
-                                self.declarations.instances.insert(
-                                    id,
-                                    Declaration::unresolved(None, pattern.instance_span),
-                                );
+                                self.declarations
+                                    .instances
+                                    .insert(id, Declaration::unresolved(None, pattern.span()));
 
                                 Some(StatementDeclaration {
-                                    span: statement.colon_span,
+                                    span: statement.span(),
                                     kind: StatementDeclarationKind::Instance(
                                         id,
                                         None,
@@ -1727,11 +1731,11 @@ impl Lowerer {
 
                                         self.declarations.instances.insert(
                                             id,
-                                            Declaration::unresolved(None, pattern.instance_span),
+                                            Declaration::unresolved(None, pattern.span()),
                                         );
 
                                         Some(StatementDeclaration {
-                                            span: statement.colon_span,
+                                            span: statement.span(),
                                             kind: StatementDeclarationKind::Instance(
                                                 id,
                                                 Some((assign_scope, (parameters, bounds))),
@@ -1746,12 +1750,12 @@ impl Lowerer {
                                             attributes: &statement.attributes,
                                         })
                                     }
-                                    _ => {
+                                    pattern => {
                                         self.compiler.add_error(
                                             "syntax error",
                                             vec![Note::primary(
-                                                statement.colon_span,
-                                                "expected an `instance` definition after this",
+                                                pattern.span(),
+                                                "expected an `instance` definition",
                                             )],
                                         );
 
@@ -1768,10 +1772,10 @@ impl Lowerer {
 
                 self.declarations
                     .instances
-                    .insert(id, Declaration::unresolved(None, statement.instance_span));
+                    .insert(id, Declaration::unresolved(None, statement.span()));
 
                 Some(StatementDeclaration {
-                    span: statement.instance_span,
+                    span: statement.span(),
                     kind: StatementDeclarationKind::Instance(
                         id,
                         None,
@@ -1798,10 +1802,10 @@ impl Lowerer {
 
                         self.declarations
                             .instances
-                            .insert(id, Declaration::unresolved(None, statement.instance_span));
+                            .insert(id, Declaration::unresolved(None, statement.span()));
 
                         Some(StatementDeclaration {
-                            span: statement.instance_span,
+                            span: statement.span(),
                             kind: StatementDeclarationKind::Instance(
                                 id,
                                 Some((child_scope, (parameters, bounds))),
@@ -1816,12 +1820,12 @@ impl Lowerer {
                             attributes: &statement.attributes,
                         })
                     }
-                    _ => {
+                    statement => {
                         self.compiler.add_error(
                             "syntax error",
                             vec![Note::primary(
-                                statement.arrow_span,
-                                "expected an `instance` declaration after this",
+                                statement.span(),
+                                "expected an `instance` declaration",
                             )],
                         );
 
@@ -1833,29 +1837,14 @@ impl Lowerer {
                 ast::UseStatementKind::File(_, _, _) => None,
                 ast::UseStatementKind::Name(name_span, name, name_scope) => {
                     Some(StatementDeclaration {
-                        span: statement.use_span,
+                        span: statement.span(),
                         kind: StatementDeclarationKind::Use(*name_span, *name, *name_scope),
                         attributes: &statement.attributes,
                     })
                 }
             },
             ast::Statement::Expression(statement) => Some(StatementDeclaration {
-                // TODO: Have a `span()` function implemented by all AST nodes instead of this
-                span: match &statement.expression {
-                    ast::Expression::Function(expr) => expr.arrow_span,
-                    ast::Expression::Tuple(expr) => expr.comma_span,
-                    ast::Expression::Annotate(expr) => expr.colon_span,
-                    ast::Expression::End(expr) => expr.end_span,
-                    ast::Expression::External(expr) => expr.external_span,
-                    ast::Expression::Format(expr) => expr.format_span,
-                    ast::Expression::When(expr) => expr.when_span,
-                    ast::Expression::Unit(expr) => expr.span,
-                    ast::Expression::Name(expr) => expr.span,
-                    ast::Expression::Text(expr) => expr.span,
-                    ast::Expression::Number(expr) => expr.span,
-                    ast::Expression::Call(expr) => expr.span,
-                    ast::Expression::Block(expr) => expr.span,
-                },
+                span: statement.span(),
                 kind: StatementDeclarationKind::Queued(QueuedStatement::Expression(
                     &statement.expression,
                 )),
@@ -1933,7 +1922,7 @@ impl Lowerer {
                 };
 
                 Expression {
-                    span: expr.end_span,
+                    span: expr.span(),
                     kind: ExpressionKind::End(Box::new(self.lower_expr(value, scope))),
                 }
             }
@@ -1948,23 +1937,6 @@ impl Lowerer {
                     }
                 };
 
-                // TODO: Have a `span()` function implemented by all AST nodes instead of this
-                let function_span = match function {
-                    ast::Expression::Function(expr) => expr.arrow_span,
-                    ast::Expression::Tuple(expr) => expr.comma_span,
-                    ast::Expression::Annotate(expr) => expr.colon_span,
-                    ast::Expression::End(expr) => expr.end_span,
-                    ast::Expression::External(expr) => expr.external_span,
-                    ast::Expression::Format(expr) => expr.format_span,
-                    ast::Expression::When(expr) => expr.when_span,
-                    ast::Expression::Unit(expr) => expr.span,
-                    ast::Expression::Name(expr) => expr.span,
-                    ast::Expression::Text(expr) => expr.span,
-                    ast::Expression::Number(expr) => expr.span,
-                    ast::Expression::Call(expr) => expr.span,
-                    ast::Expression::Block(expr) => expr.span,
-                };
-
                 match function {
                     ast::Expression::Name(ty_name) => {
                         let input = match expr.inputs.first() {
@@ -1973,7 +1945,7 @@ impl Lowerer {
                                 self.compiler.add_error(
                                     "function received no input",
                                     vec![Note::primary(
-                                        function_span,
+                                        function.span(),
                                         "try providing an input to this function",
                                     )],
                                 );
@@ -1995,14 +1967,14 @@ impl Lowerer {
                             }
                         };
 
-                        match self.get(ty_name.name, function_span, ty_name.scope) {
+                        match self.get(ty_name.name, function.span(), ty_name.scope) {
                             Some(AnyDeclaration::Type(id)) => {
                                 self.declarations
                                     .types
                                     .get_mut(&id)
                                     .unwrap()
                                     .uses
-                                    .insert(function_span);
+                                    .insert(function.span());
 
                                 match input {
                                     ast::Expression::Block(block) => {
@@ -2070,12 +2042,12 @@ impl Lowerer {
                                                         ast::AssignmentPattern::Pattern(ast::PatternAssignmentPattern { pattern: ast::Pattern::Name(name) }) => {
                                                             let value = match statement.value.as_ref().ok()? {
                                                                 ast::AssignmentValue::Expression(value) => &value.expression,
-                                                                _ => {
+                                                                value => {
                                                                     self.compiler.add_error(
                                                                         "syntax error",
                                                                         vec![Note::primary(
-                                                                            statement.colon_span,
-                                                                            "expected expression after this",
+                                                                            value.span(),
+                                                                            "expected expression",
                                                                         )]
                                                                     );
 
@@ -2085,10 +2057,10 @@ impl Lowerer {
 
                                                             ((name.span, name.name), value.clone())
                                                         }
-                                                        _ => {
+                                                        pattern => {
                                                             self.compiler.add_error(
                                                                 "structure instantiation may not contain complex patterns", vec![Note::primary(
-                                                                    statement.colon_span,
+                                                                    pattern.span(),
                                                                     "try splitting this pattern into multiple names",
                                                                 )]
                                                             );
@@ -2131,7 +2103,7 @@ impl Lowerer {
                                             self.compiler.add_error(
                                                 "only structures may be instantiated like this",
                                                 vec![Note::primary(
-                                                    function_span,
+                                                    function.span(),
                                                     "not a structure",
                                                 )],
                                             );
@@ -2163,7 +2135,7 @@ impl Lowerer {
                                                 self.compiler.add_error(
                                                     "only enumerations may be instantiated like this",
                                                     vec![Note::primary(
-                                                        function_span,
+                                                        function.span(),
                                                         "not an enumeration",
                                                     )],
                                                 );
@@ -2218,12 +2190,12 @@ impl Lowerer {
                                     .get_mut(&id)
                                     .unwrap()
                                     .uses
-                                    .insert(function_span);
+                                    .insert(function.span());
 
                                 self.compiler.add_error(
                                     "cannot instantiate type parameter",
                                     vec![Note::primary(
-                                        function_span,
+                                        function.span(),
                                         "the actual type this represents is not known here",
                                     )],
                                 );
@@ -2239,12 +2211,12 @@ impl Lowerer {
                                     .get_mut(&id)
                                     .unwrap()
                                     .uses
-                                    .insert(function_span);
+                                    .insert(function.span());
 
                                 self.compiler.add_error(
                                     "cannot instantiate built-in type",
                                     vec![Note::primary(
-                                        function_span,
+                                        function.span(),
                                         "try using a literal or built-in function instead",
                                     )],
                                 );
@@ -2284,7 +2256,7 @@ impl Lowerer {
                 let captures = self.generate_capture_list(&mut body, scope);
 
                 Expression {
-                    span: expr.arrow_span,
+                    span: expr.span(),
                     kind: ExpressionKind::Function(pattern, Box::new(body), captures),
                 }
             }
@@ -2308,7 +2280,7 @@ impl Lowerer {
                 };
 
                 Expression {
-                    span: expr.when_span,
+                    span: expr.span(),
                     kind: ExpressionKind::When(
                         Box::new(input),
                         body.arms
@@ -2335,7 +2307,7 @@ impl Lowerer {
                                 };
 
                                 Some(Arm {
-                                    span: arm.arrow_span,
+                                    span: arm.span(),
                                     pattern,
                                     body,
                                 })
@@ -2364,25 +2336,25 @@ impl Lowerer {
                             self.compiler.add_error(
                                 "unknown runtime function",
                                 vec![Note::primary(
-                                    expr.external_span,
+                                    expr.span(),
                                     "check the Wipple source code for the latest list of runtime functions"
                                 )],
                             );
 
                             return Expression {
-                                span: expr.external_span,
+                                span: expr.span(),
                                 kind: ExpressionKind::error(&self.compiler),
                             };
                         }
                     };
 
                     Expression {
-                        span: expr.external_span,
+                        span: expr.span(),
                         kind: ExpressionKind::Runtime(func, inputs),
                     }
                 } else {
                     Expression {
-                        span: expr.external_span,
+                        span: expr.span(),
                         kind: ExpressionKind::External(expr.namespace, expr.identifier, inputs),
                     }
                 }
@@ -2405,12 +2377,12 @@ impl Lowerer {
                 };
 
                 Expression {
-                    span: expr.colon_span,
+                    span: expr.span(),
                     kind: ExpressionKind::Annotate(Box::new(value), ty),
                 }
             }
             ast::Expression::Tuple(expr) => Expression {
-                span: expr.comma_span,
+                span: expr.span(),
                 kind: ExpressionKind::Tuple(
                     expr.exprs
                         .iter()
@@ -2425,7 +2397,7 @@ impl Lowerer {
                 ),
             },
             ast::Expression::Format(expr) => Expression {
-                span: expr.format_span,
+                span: expr.span(),
                 kind: ExpressionKind::Format(
                     expr.segments
                         .iter()
@@ -2446,7 +2418,7 @@ impl Lowerer {
                 ),
             },
             ast::Expression::Unit(expr) => Expression {
-                span: expr.span,
+                span: expr.span(),
                 kind: ExpressionKind::Tuple(Vec::new()),
             },
         }
@@ -2633,27 +2605,13 @@ impl Lowerer {
                             }
                         };
 
-                        let second_span = match second {
-                            ast::Pattern::Tuple(pattern) => pattern.comma_span,
-                            ast::Pattern::Annotate(pattern) => pattern.colon_span,
-                            ast::Pattern::Where(pattern) => pattern.where_span,
-                            ast::Pattern::Or(pattern) => pattern.or_span,
-                            ast::Pattern::Name(pattern) => pattern.span,
-                            ast::Pattern::Text(pattern) => pattern.span,
-                            ast::Pattern::Number(pattern) => pattern.span,
-                            ast::Pattern::Unit(pattern) => pattern.span,
-                            ast::Pattern::Variant(pattern) => pattern.span,
-                            ast::Pattern::Destructure(pattern) => pattern.span,
-                            ast::Pattern::Wildcard(pattern) => pattern.span,
-                        };
-
                         let variant_name = match second {
                             ast::Pattern::Name(pattern) => pattern.name,
                             _ => {
                                 self.compiler.add_error(
                                     "invalid pattern",
                                     vec![Note::primary(
-                                        second_span,
+                                        second.span(),
                                         "expected a variant name here",
                                     )],
                                 );
@@ -2673,7 +2631,7 @@ impl Lowerer {
                                         "enumeration `{}` does not declare a variant named `{}`",
                                         pattern.name, variant_name
                                     ),
-                                    vec![Note::primary(second_span, "no such variant")],
+                                    vec![Note::primary(second.span(), "no such variant")],
                                 );
 
                                 return Pattern {
@@ -2759,7 +2717,7 @@ impl Lowerer {
                 };
 
                 Pattern {
-                    span: pattern.colon_span,
+                    span: pattern.span(),
                     kind: PatternKind::Annotate(Box::new(inner_pattern), ty),
                 }
             }
@@ -2781,7 +2739,7 @@ impl Lowerer {
                 };
 
                 Pattern {
-                    span: pattern.or_span,
+                    span: pattern.span(),
                     kind: PatternKind::Or(Box::new(lhs), Box::new(rhs)),
                 }
             }
@@ -2803,12 +2761,12 @@ impl Lowerer {
                 };
 
                 Pattern {
-                    span: pattern.where_span,
+                    span: pattern.span(),
                     kind: PatternKind::Where(Box::new(inner_pattern), Box::new(condition)),
                 }
             }
             ast::Pattern::Tuple(pattern) => Pattern {
-                span: pattern.comma_span,
+                span: pattern.span(),
                 kind: PatternKind::Tuple(
                     pattern
                         .patterns
@@ -2824,7 +2782,7 @@ impl Lowerer {
                 ),
             },
             ast::Pattern::Unit(pattern) => Pattern {
-                span: pattern.span,
+                span: pattern.span(),
                 kind: PatternKind::Tuple(Vec::new()),
             },
         }
@@ -2850,12 +2808,12 @@ impl Lowerer {
                 };
 
                 TypeAnnotation {
-                    span: ty.arrow_span,
+                    span: ty.span(),
                     kind: TypeAnnotationKind::Function(Box::new(input), Box::new(output)),
                 }
             }
             ast::Type::Tuple(ty) => TypeAnnotation {
-                span: ty.comma_span,
+                span: ty.span(),
                 kind: TypeAnnotationKind::Tuple(
                     ty.tys
                         .iter()
@@ -2870,11 +2828,11 @@ impl Lowerer {
                 ),
             },
             ast::Type::Placeholder(ty) => TypeAnnotation {
-                span: ty.span,
+                span: ty.span(),
                 kind: TypeAnnotationKind::Placeholder,
             },
             ast::Type::Unit(ty) => TypeAnnotation {
-                span: ty.span,
+                span: ty.span(),
                 kind: TypeAnnotationKind::Tuple(Vec::new()),
             },
             ast::Type::Named(ty) => {
@@ -3013,7 +2971,7 @@ impl Lowerer {
                                             self.compiler.add_error(
                                                 "syntax error",
                                                 vec![Note::primary(
-                                                    pattern.where_span,
+                                                    pattern.span(),
                                                     "`where` clause is not allowed here",
                                                 )],
                                             );
@@ -3027,7 +2985,7 @@ impl Lowerer {
                             ast::TypePattern::Where(lhs) => {
                                 self.compiler.add_error(
                                     "type function may not have multiple `where` clauses",
-                                    vec![Note::primary(lhs.where_span, "try removing this")],
+                                    vec![Note::primary(lhs.span(), "try removing this")],
                                 );
 
                                 Vec::new()
@@ -3092,6 +3050,7 @@ impl Lowerer {
                                 .collect();
 
                             Some(Bound {
+                                span: bound.span,
                                 tr_span: bound.trait_span,
                                 tr,
                                 parameters,
@@ -3240,28 +3199,15 @@ impl Lowerer {
         &mut self,
         pattern: &ast::AssignmentPattern,
     ) -> Option<(Span, InternedString)> {
-        // TODO: Have a `span()` function implemented by all AST nodes instead of this
-        let span = match pattern {
-            ast::AssignmentPattern::Pattern(pattern) => match &pattern.pattern {
-                ast::Pattern::Name(pattern) => return Some((pattern.span, pattern.name)),
-                ast::Pattern::Tuple(pattern) => pattern.comma_span,
-                ast::Pattern::Annotate(pattern) => pattern.colon_span,
-                ast::Pattern::Where(pattern) => pattern.where_span,
-                ast::Pattern::Or(pattern) => pattern.or_span,
-                ast::Pattern::Text(pattern) => pattern.span,
-                ast::Pattern::Number(pattern) => pattern.span,
-                ast::Pattern::Unit(pattern) => pattern.span,
-                ast::Pattern::Variant(pattern) => pattern.span,
-                ast::Pattern::Destructure(pattern) => pattern.span,
-                ast::Pattern::Wildcard(pattern) => pattern.span,
-            },
-            ast::AssignmentPattern::Instance(pattern) => pattern.instance_span,
-            ast::AssignmentPattern::TypeFunction(pattern) => pattern.arrow_span,
-        };
+        if let ast::AssignmentPattern::Pattern(pattern) = pattern {
+            if let ast::Pattern::Name(pattern) = &pattern.pattern {
+                return Some((pattern.span, pattern.name));
+            }
+        }
 
         self.compiler.add_error(
             "syntax error",
-            vec![Note::primary(span, "expected a name here")],
+            vec![Note::primary(pattern.span(), "expected a name here")],
         );
 
         None
