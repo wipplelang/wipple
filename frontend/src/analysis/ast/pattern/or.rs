@@ -13,6 +13,22 @@ pub struct OrPattern {
     pub right: Result<Box<Pattern>, SyntaxError>,
 }
 
+impl OrPattern {
+    pub fn span(&self) -> Span {
+        let left_span = match self.left {
+            Ok(pattern) => pattern.span(),
+            Err(error) => error.span,
+        };
+
+        let right_span = match self.right {
+            Ok(pattern) => pattern.span(),
+            Err(error) => error.span,
+        };
+
+        Span::join(left_span, right_span)
+    }
+}
+
 pub struct OrPatternSyntax;
 
 impl Syntax for OrPatternSyntax {

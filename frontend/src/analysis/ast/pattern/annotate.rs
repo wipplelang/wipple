@@ -15,6 +15,22 @@ pub struct AnnotatePattern {
     pub ty: Result<Type, SyntaxError>,
 }
 
+impl AnnotatePattern {
+    pub fn span(&self) -> Span {
+        let pattern_span = match self.pattern {
+            Ok(pattern) => pattern.span(),
+            Err(error) => error.span,
+        };
+
+        let ty_span = match self.ty {
+            Ok(ty) => ty.span(),
+            Err(error) => error.span,
+        };
+
+        Span::join(pattern_span, ty_span)
+    }
+}
+
 pub struct AnnotatePatternSyntax;
 
 impl Syntax for AnnotatePatternSyntax {

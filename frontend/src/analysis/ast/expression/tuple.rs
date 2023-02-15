@@ -29,6 +29,7 @@ impl TupleExpression {
         Span::join(first_expr_span, last_expr_span)
     }
 }
+
 pub struct TupleExpressionSyntax;
 
 impl Syntax for TupleExpressionSyntax {

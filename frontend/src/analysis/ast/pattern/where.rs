@@ -16,6 +16,22 @@ pub struct WherePattern {
     pub condition: Result<Box<Expression>, SyntaxError>,
 }
 
+impl WherePattern {
+    pub fn span(&self) -> Span {
+        let pattern_span = match self.pattern {
+            Ok(pattern) => pattern.span(),
+            Err(error) => error.span,
+        };
+
+        let condition_span = match self.condition {
+            Ok(expr) => expr.span(),
+            Err(error) => error.span,
+        };
+
+        Span::join(pattern_span, condition_span)
+    }
+}
+
 pub struct WherePatternSyntax;
 
 impl Syntax for WherePatternSyntax {

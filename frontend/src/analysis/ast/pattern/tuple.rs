@@ -14,6 +14,22 @@ pub struct TuplePattern {
     pub patterns: Vec<Result<Pattern, SyntaxError>>,
 }
 
+impl TuplePattern {
+    pub fn span(&self) -> Span {
+        let first_pattern_span = match self.patterns.first().unwrap() {
+            Ok(pattern) => pattern.span(),
+            Err(error) => error.span,
+        };
+
+        let last_pattern_span = match self.patterns.last().unwrap() {
+            Ok(pattern) => pattern.span(),
+            Err(error) => error.span,
+        };
+
+        Span::join(first_pattern_span, last_pattern_span)
+    }
+}
+
 pub struct TuplePatternSyntax;
 
 impl Syntax for TuplePatternSyntax {
