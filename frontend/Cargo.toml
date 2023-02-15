@@ -3,18 +3,12 @@ name = "wipple-frontend"
 version = "0.0.0"
 edition = "2021"
 
-[features]
-default = []
-serde = ["dep:serde", "lasso/serialize", "backtrace/serialize-serde", "im/serde"]
-
 [dependencies]
 anyhow = "1"
-arbitrary = { version = "1", features = ["derive"], optional = true }
 async-recursion = "1"
 async-trait = "0.1"
 backtrace = "0.3"
 codespan-reporting = "0.11"
-clap = { version = "3", features = ["derive"], optional = true }
 enum_dispatch = "0.3"
 futures = "0.3"
 im = "15"
@@ -31,5 +25,4 @@ regex = "1"
 replace_with = "0.1"
 rust_decimal = "1"
 rustc_lexer = "0.1"
-serde = { version = "1", features = ["derive", "rc"], optional = true }
 strum = { version = "0.24", features = ["derive"] }

@@ -37,8 +37,6 @@ pub trait Loader: Debug + Send + Sync + 'static {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize))]
-#[cfg_attr(feature = "serde", serde(tag = "type", content = "value"))]
 pub enum FilePath {
     Path(InternedString),
     Url(InternedString),
@@ -63,13 +61,6 @@ impl fmt::Display for FilePath {
     }
 }
 
-#[cfg(feature = "arbitrary")]
-impl<'a> arbitrary::Arbitrary<'a> for FilePath {
-    fn arbitrary(_: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
-        Ok(FilePath::Virtual(InternedString::new("fuzz")))
-    }
-}
-
 #[derive(Debug, Clone)]
 pub struct Compiler {
     pub loader: Arc<dyn Loader>,
@@ -80,9 +71,6 @@ pub struct Compiler {
     #[cfg(debug_assertions)]
     pub(crate) backtrace_enabled: bool,
 }
-
-#[cfg(feature = "arbitrary")]
-pub(crate) const ARBITRARY_MAX_ID_COUNTER: usize = 4;
 
 macro_rules! file_ids {
     ($($(#[$meta:meta])* $id:ident),* $(,)?) => {
@@ -95,19 +83,8 @@ macro_rules! file_ids {
             $(
                 $(#[$meta])*
                 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-                #[cfg_attr(feature = "serde", derive(serde::Serialize), serde(transparent))]
-                #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
                 pub struct [<$id:camel Id>] {
-                    #[cfg_attr(feature = "arbitrary", arbitrary(default))]
-                    #[cfg_attr(feature = "serde", serde(skip))]
                     pub file: Option<FilePath>,
-
-                    #[cfg_attr(
-                        feature = "arbitrary",
-                        arbitrary(with = |u: &mut arbitrary::Unstructured| {
-                            u.choose_index(ARBITRARY_MAX_ID_COUNTER)
-                        })
-                    )]
                     pub counter: usize,
                 }
             )*
@@ -130,30 +107,6 @@ macro_rules! file_ids {
                         *storage += 1;
 
                         [<$id:camel Id>] { file, counter }
-                    }
-
-                    #[cfg(feature = "arbitrary")]
-                    fn [<list_arbitrary_ $id _ids>]() -> impl Iterator<Item = [<$id:camel Id>]> {
-                        (0..ARBITRARY_MAX_ID_COUNTER).map(|id| [<$id:camel Id>] {
-                            file: None,
-                            counter: id,
-                        })
-                    }
-
-                    #[cfg(feature = "arbitrary")]
-                    fn [<split_arbitrary_ $id _ids>]() -> (impl Iterator<Item = [<$id:camel Id>]>, impl Iterator<Item = [<$id:camel Id>]>) {
-                        const SPLIT: usize = ARBITRARY_MAX_ID_COUNTER / 2;
-
-                        (
-                            (0..SPLIT).map(|id| [<$id:camel Id>] {
-                                file: None,
-                                counter: id,
-                            }),
-                            (SPLIT..ARBITRARY_MAX_ID_COUNTER).map(|id| [<$id:camel Id>] {
-                                file: None,
-                                counter: id,
-                            }),
-                        )
                     }
                 )*
             }
@@ -194,7 +147,6 @@ macro_rules! ids {
     ($($(#[$meta:meta])* $id:ident),* $(,)?) => {
         paste::paste! {
             #[derive(Debug, Clone, Default)]
-            #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
             struct Ids {
                 $([<next_ $id _id>]: Arc<AtomicUsize>,)*
             }
@@ -202,8 +154,6 @@ macro_rules! ids {
             $(
                 $(#[$meta])*
                 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-                #[cfg_attr(feature = "serde", derive(serde::Serialize), serde(transparent))]
-                #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
                 pub struct [<$id:camel Id>] {
                     pub counter: usize,
                 }
@@ -239,17 +189,7 @@ macro_rules! indexes {
             $(
                 $(#[$meta])*
                 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-                #[cfg_attr(feature = "serde", derive(serde::Serialize), serde(transparent))]
-                #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
-                pub struct [<$id:camel Index>](
-                    #[cfg_attr(
-                        feature = "arbitrary",
-                        arbitrary(with = |u: &mut arbitrary::Unstructured| {
-                            u.choose_index(ARBITRARY_MAX_ID_COUNTER)
-                        })
-                    )]
-                    usize
-                );
+                pub struct [<$id:camel Index>](usize);
 
                 impl [<$id:camel Index>] {
                     pub fn new(n: usize) -> Self {
@@ -258,11 +198,6 @@ macro_rules! indexes {
 
                     pub fn into_inner(self) -> usize {
                         self.0
-                    }
-
-                    #[cfg(feature = "arbitrary")]
-                    fn [<list_arbitrary>]() -> impl Iterator<Item = [<$id:camel Index>]> {
-                        (0..ARBITRARY_MAX_ID_COUNTER).map([<$id:camel Index>]::new)
                     }
                 }
             )*

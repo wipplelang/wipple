@@ -29,13 +29,3 @@ impl<T: ?Sized> Clone for Shared<T> {
         Shared(self.0.clone())
     }
 }
-
-#[cfg(feature = "arbitrary")]
-impl<'a, T> arbitrary::Arbitrary<'a> for Shared<T>
-where
-    T: arbitrary::Arbitrary<'a>,
-{
-    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
-        Ok(Self::new(u.arbitrary()?))
-    }
-}

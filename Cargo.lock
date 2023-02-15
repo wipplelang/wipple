@@ -56,15 +56,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bb07d2053ccdbe10e2af2995a2f116c1330396493dc1269f6a91d0ae82e19704"
 
 [[package]]
-name = "arbitrary"
-version = "1.2.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b0224938f92e7aef515fac2ff2d18bd1115c1394ddf4a092e0c87e8be9499ee5"
-dependencies = [
- "derive_arbitrary",
-]
-
-[[package]]
 name = "arrayvec"
 version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -140,7 +131,6 @@ dependencies = [
  "miniz_oxide",
  "object",
  "rustc-demangle",
- "serde",
 ]
 
 [[package]]
@@ -341,17 +331,6 @@ name = "derive-getters"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0c5905670fd9c320154f3a4a01c9e609733cd7b753f3c58777ab7d5ce26686b3"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
-]
-
-[[package]]
-name = "derive_arbitrary"
-version = "1.2.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cf460bbff5f571bfc762da5102729f59f338be7db17a21fade44c5c4f5005350"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -621,7 +600,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ab5ef0d4909ef3724cc8cce6ccc8572c5c817592e9285f5464f8e86f8bd3726e"
 dependencies = [
  "ahash",
- "serde",
 ]
 
 [[package]]
@@ -736,7 +714,6 @@ dependencies = [
  "bitmaps",
  "rand_core",
  "rand_xoshiro",
- "serde",
  "sized-chunks",
  "typenum",
  "version_check",
@@ -815,7 +792,6 @@ checksum = "aeb7b21a526375c5ca55f1a6dfd4e1fad9fa4edd750f530252a718a44b2608f0"
 dependencies = [
  "dashmap 4.0.2",
  "hashbrown 0.11.2",
- "serde",
 ]
 
 [[package]]
@@ -2218,11 +2194,9 @@ name = "wipple-frontend"
 version = "0.0.0"
 dependencies = [
  "anyhow",
- "arbitrary",
  "async-recursion",
  "async-trait",
  "backtrace",
- "clap",
  "codespan-reporting",
  "enum_dispatch",
  "futures",
@@ -2240,7 +2214,6 @@ dependencies = [
  "replace_with",
  "rust_decimal",
  "rustc_lexer",
- "serde",
  "strum",
 ]
 

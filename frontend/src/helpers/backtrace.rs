@@ -4,10 +4,8 @@ use crate::Compiler;
 use crate::helpers::Shared;
 
 #[derive(Clone)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct Backtrace {
     #[cfg(debug_assertions)]
-    #[cfg_attr(feature = "serde", serde(skip))]
     trace: Option<Shared<backtrace::Backtrace>>,
 }
 
@@ -73,12 +71,3 @@ impl PartialEq for Backtrace {
 }
 
 impl Eq for Backtrace {}
-
-#[cfg(feature = "arbitrary")]
-impl<'a> arbitrary::Arbitrary<'a> for Backtrace {
-    fn arbitrary(_: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
-        // Prevent fuzzing from generating error expressions without
-        // accompanying diagnostics
-        Err(arbitrary::Error::IncorrectFormat)
-    }
-}

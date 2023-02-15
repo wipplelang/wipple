@@ -11,7 +11,6 @@ use std::{
 };
 
 #[derive(Debug, Clone)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct Diagnostic {
     pub level: DiagnosticLevel,
     pub message: String,
@@ -36,7 +35,6 @@ impl std::hash::Hash for Diagnostic {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub enum DiagnosticLevel {
     Warning,
     Error,
@@ -52,7 +50,6 @@ impl From<DiagnosticLevel> for codespan_reporting::diagnostic::Severity {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct Note {
     pub level: NoteLevel,
     pub span: Span,
@@ -60,7 +57,6 @@ pub struct Note {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub enum NoteLevel {
     Primary,
     Secondary,
@@ -233,11 +229,6 @@ impl FinalizedDiagnostics {
 
     pub fn highest_level(&self) -> Option<DiagnosticLevel> {
         self.diagnostics.iter().map(|d| d.level).max()
-    }
-
-    #[cfg(feature = "serde_json")]
-    pub fn to_json(self, w: impl std::io::Write) -> serde_json::Result<()> {
-        serde_json::to_writer(w, &self.diagnostics)
     }
 
     pub fn into_console_friendly(
