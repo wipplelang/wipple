@@ -24,6 +24,10 @@ pub(in crate::analysis::ast) trait SyntaxContext: Clone + Send {
 
     fn new(ast_builder: AstBuilder) -> Self;
 
+    fn block_scope(&self, scope: ScopeId) -> ScopeId {
+        scope
+    }
+
     async fn build_block(
         self,
         span: parse::Span,

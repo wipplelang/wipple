@@ -54,14 +54,14 @@ pub enum Token<'src> {
     #[regex(r#"--.*"#, |lex| &lex.slice()[2..], priority = 2)]
     Comment(&'src str),
 
-    #[regex(r#"[^\n\t \(\)\[\]\{\}"]+"#, |lex| lex.slice())]
-    Name(&'src str),
-
-    #[token(r#"'[^\n\t \(\)\[\]\{\}"]+"#, |lex| &lex.slice()[1..],)]
+    #[regex(r#"'[^\n\t \(\)\[\]\{\}"]+"#, |lex| &lex.slice()[1..])]
     QuoteName(&'src str),
 
-    #[token(r#"\.\.\.[^\n\t \(\)\[\]\{\}"]+"#, |lex| &lex.slice()[3..],)]
+    #[regex(r#"\.\.\.[^\n\t \(\)\[\]\{\}"]+"#, |lex| &lex.slice()[3..])]
     RepeatName(&'src str),
+
+    #[regex(r#"[^\n\t \(\)\[\]\{\}"]+"#, |lex| lex.slice())]
+    Name(&'src str),
 
     #[regex(r#""[^"\\]*(?s:\\.[^"\\]*)*""#, |lex| &lex.slice()[1..(lex.slice().len() - 1)])]
     Text(&'src str),
@@ -93,9 +93,9 @@ impl<'src> fmt::Display for Token<'src> {
             Token::Indent(_) => write!(f, "indent"),
             Token::Space => unreachable!(),
             Token::Comment(_) => write!(f, "comment"),
-            Token::Name(name) => write!(f, "`{name}`"),
             Token::QuoteName(name) => write!(f, "`'{name}`"),
             Token::RepeatName(name) => write!(f, "`...{name}`"),
+            Token::Name(name) => write!(f, "`{name}`"),
             Token::Text(text) => write!(f, "`\"{text}\"`"),
             Token::Number(number) => write!(f, "`{number}`"),
             Token::Error => write!(f, "invalid token"),

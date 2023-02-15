@@ -1,7 +1,7 @@
 use crate::{
     analysis::ast::{
-        syntax::{FileBodySyntaxContext, Syntax, SyntaxContext, SyntaxError},
-        AstBuilder, StatementAttributes, StatementSyntax,
+        syntax::{ErrorSyntax, FileBodySyntaxContext, Syntax, SyntaxContext, SyntaxError},
+        AstBuilder, StatementAttributes,
     },
     diagnostics::Note,
     helpers::{InternedString, Shared},
@@ -92,7 +92,7 @@ pub struct SyntaxPatternSyntaxContext {
 #[async_trait]
 impl SyntaxContext for SyntaxPatternSyntaxContext {
     type Body = SyntaxPattern;
-    type Statement = StatementSyntax;
+    type Statement = ErrorSyntax;
 
     fn new(ast_builder: AstBuilder) -> Self {
         SyntaxPatternSyntaxContext {

@@ -199,7 +199,7 @@ impl AstBuilder {
     {
         match expr.kind {
             parse::ExprKind::Block(statements) => {
-                let scope = self.compiler.new_scope_id_in(self.file);
+                let scope = context.block_scope(scope);
 
                 let statements = stream::iter(statements)
                     .then(|statement| {

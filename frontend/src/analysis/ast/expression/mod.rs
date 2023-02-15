@@ -117,6 +117,10 @@ impl SyntaxContext for ExpressionSyntaxContext {
         }
     }
 
+    fn block_scope(&self, scope: ScopeId) -> ScopeId {
+        self.ast_builder.child_scope(scope)
+    }
+
     async fn build_block(
         self,
         span: parse::Span,
@@ -216,7 +220,7 @@ impl ExpressionSyntaxContext {
                                     .expand_syntax(
                                         expr.span,
                                         (syntax_span, syntax),
-                                        Vec::new(),
+                                        vec![expr],
                                         scope,
                                     )
                                     .await;
@@ -240,7 +244,12 @@ impl ExpressionSyntaxContext {
                             .try_get_syntax(name, name_scope.unwrap_or(scope))
                         {
                             return self
-                                .expand_syntax(first.span, (syntax_span, syntax), Vec::new(), scope)
+                                .expand_syntax(
+                                    first.span,
+                                    (syntax_span, syntax),
+                                    std::iter::once(first).chain(exprs).collect(),
+                                    scope,
+                                )
                                 .await;
                         }
                     }
@@ -320,7 +329,7 @@ impl ExpressionSyntaxContext {
 
                     let rhs = exprs.split_off(max_index + 1);
                     let mut lhs = exprs;
-                    lhs.pop().unwrap();
+                    let operator = lhs.pop().unwrap();
 
                     if rhs.is_empty() {
                         self.ast_builder.compiler.add_error(
@@ -353,7 +362,7 @@ impl ExpressionSyntaxContext {
 
                         let span = Span::join(lhs_span, rhs_span);
 
-                        self.expand_syntax(span, max_syntax, vec![lhs, rhs], scope)
+                        self.expand_syntax(span, max_syntax, vec![lhs, operator, rhs], scope)
                             .await
                     }
                 }

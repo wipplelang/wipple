@@ -12,6 +12,7 @@ use crate::{
         syntax::{ErrorSyntax, FileBodySyntaxContext, Syntax, SyntaxContext, SyntaxError},
         AstBuilder, StatementAttributes, TypeSyntaxContext,
     },
+    diagnostics::Note,
     helpers::Shared,
     parse, ScopeId,
 };
@@ -49,21 +50,19 @@ impl SyntaxContext for ConstantTypeAnnotationSyntaxContext {
     async fn build_block(
         self,
         span: parse::Span,
-        statements: impl Iterator<
+        _statements: impl Iterator<
                 Item = Result<
                     <<Self::Statement as Syntax>::Context as SyntaxContext>::Body,
                     SyntaxError,
                 >,
             > + Send,
-        scope: ScopeId,
+        _scope: ScopeId,
     ) -> Result<Self::Body, SyntaxError> {
-        let context = TypeSyntaxContext::new(self.ast_builder)
-            .with_statement_attributes(self.statement_attributes.unwrap());
+        self.ast_builder
+            .compiler
+            .add_error("syntax error", vec![Note::primary(span, "expected a type")]);
 
-        context
-            .build_block(span, statements, scope)
-            .await
-            .map(|ty| TypeConstantTypeAnnotation { ty }.into())
+        Err(self.ast_builder.syntax_error(span))
     }
 
     async fn build_terminal(

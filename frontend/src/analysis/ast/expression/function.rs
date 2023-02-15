@@ -27,7 +27,7 @@ impl Syntax for FunctionExpressionSyntax {
     fn rules() -> SyntaxRules<Self> {
         SyntaxRules::new().with(SyntaxRule::<Self>::operator(
             "->",
-            OperatorAssociativity::None,
+            OperatorAssociativity::Right,
             |context, (lhs_span, lhs), operator_span, (rhs_span, rhs), scope| async move {
                 let scope = context.ast_builder.child_scope(scope);
 

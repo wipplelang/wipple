@@ -22,6 +22,7 @@ pub struct File<Decls = Declarations> {
     pub specializations: BTreeMap<ConstantId, Vec<ConstantId>>,
     pub statements: Vec<Expression>,
     pub exported: HashMap<InternedString, AnyDeclaration>,
+    scopes: BTreeMap<ScopeId, Scope>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -646,6 +647,8 @@ impl Compiler {
                 }
             }
 
+            lowerer.scopes.extend(dependency.scopes.clone());
+
             lowerer.extend(dependency.exported.clone(), scope);
         }
 
@@ -743,6 +746,7 @@ impl Compiler {
             specializations,
             statements,
             exported,
+            scopes: lowerer.scopes,
         }
     }
 }
@@ -863,7 +867,7 @@ impl Lowerer {
     }
 
     fn export(&mut self, scope: ScopeId) -> HashMap<InternedString, AnyDeclaration> {
-        mem::take(&mut self.scopes.get_mut(&scope).unwrap().values)
+        self.scopes.get_mut(&scope).unwrap().values.clone()
     }
 }
 

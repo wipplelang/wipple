@@ -68,6 +68,10 @@ impl SyntaxContext for AssignmentValueSyntaxContext {
         }
     }
 
+    fn block_scope(&self, scope: ScopeId) -> ScopeId {
+        self.ast_builder.child_scope(scope)
+    }
+
     async fn build_block(
         self,
         span: parse::Span,

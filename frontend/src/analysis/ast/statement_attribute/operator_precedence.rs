@@ -77,6 +77,8 @@ impl Syntax for OperatorPrecedenceStatementAttributeSyntax {
                         "syntax error",
                         vec![Note::primary(span, "`operator` accepts 1 input")],
                     );
+
+                    return Err(context.ast_builder.syntax_error(span));
                 }
 
                 let expr = exprs.pop().unwrap();
