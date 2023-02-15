@@ -448,18 +448,17 @@ impl SyntaxPattern {
                 }
             },
             SyntaxPattern::List(pattern) => {
-                vec![parse::Expr {
-                    span: pattern.span,
-                    kind: parse::ExprKind::List(vec![pattern
+                vec![parse::Expr::list_or_expr(
+                    pattern.span,
+                    pattern
                         .patterns
                         .into_iter()
                         .map(|pattern| Self::expand_inner(ast_builder, pattern?, vars))
                         .collect::<Result<Vec<_>, _>>()?
                         .into_iter()
                         .flatten()
-                        .collect::<Vec<_>>()
-                        .into()]),
-                }]
+                        .collect(),
+                )]
             }
             SyntaxPattern::ListRepetition(pattern) => {
                 let mut used_vars = HashSet::new();
@@ -560,10 +559,16 @@ impl SyntaxPattern {
                             .statements
                             .into_iter()
                             .map(|pattern| {
+                                let statement = Self::expand(ast_builder, pattern?, vars)?;
+
                                 Ok(parse::Statement {
-                                    lines: vec![
-                                        Self::expand_inner(ast_builder, pattern?, vars)?.into()
-                                    ],
+                                    lines: vec![parse::ListLine {
+                                        exprs: match statement.try_into_list_exprs() {
+                                            Ok((_, exprs)) => exprs.collect(),
+                                            Err(statement) => vec![statement],
+                                        },
+                                        ..Default::default()
+                                    }],
                                     ..Default::default()
                                 })
                             })
