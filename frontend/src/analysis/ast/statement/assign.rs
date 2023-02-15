@@ -4,8 +4,8 @@ use crate::{
             OperatorAssociativity, Syntax, SyntaxContext, SyntaxError, SyntaxRule, SyntaxRules,
         },
         AssignmentPattern, AssignmentPatternSyntax, AssignmentPatternSyntaxContext,
-        AssignmentValue, AssignmentValueSyntax, AssignmentValueSyntaxContext, Pattern,
-        StatementAttributes, StatementSyntaxContext,
+        AssignmentValue, AssignmentValueSyntax, AssignmentValueSyntaxContext, NamePattern, Pattern,
+        PatternAssignmentPattern, StatementAttributes, StatementSyntaxContext,
     },
     parse::{self, Span},
     ScopeId,
@@ -33,17 +33,29 @@ impl Syntax for AssignStatementSyntax {
                 let assign_scope = context.ast_builder.child_scope(scope);
 
                 let lhs = parse::Expr::list_or_expr(lhs_span, lhs_exprs);
-                let pattern = context
-                    .ast_builder
-                    .build_expr::<AssignmentPatternSyntax>(
-                        AssignmentPatternSyntaxContext::new(context.ast_builder.clone())
-                            .with_statement_attributes(
-                                context.statement_attributes.as_ref().unwrap().clone(),
-                            ),
-                        lhs,
-                        assign_scope,
-                    )
-                    .await;
+                let pattern = match &lhs.kind {
+                    parse::ExprKind::Name(name, _) => {
+                        Ok(AssignmentPattern::Pattern(PatternAssignmentPattern {
+                            pattern: Pattern::Name(NamePattern {
+                                span: lhs.span,
+                                name: *name
+                            }),
+                        }))
+                    }
+                    _ => {
+                        context
+                            .ast_builder
+                            .build_expr::<AssignmentPatternSyntax>(
+                                AssignmentPatternSyntaxContext::new(context.ast_builder.clone())
+                                    .with_statement_attributes(
+                                        context.statement_attributes.as_ref().unwrap().clone(),
+                                    ),
+                                lhs,
+                                assign_scope,
+                            )
+                            .await
+                    }
+                };
 
                 let mut value_context = AssignmentValueSyntaxContext::new(context.ast_builder.clone())
                     .with_statement_attributes(context.statement_attributes.as_ref().unwrap().clone());
