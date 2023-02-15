@@ -3381,11 +3381,15 @@ impl Lowerer {
         constructor_id
     }
 
-    fn generate_capture_list(&mut self, expr: &mut Expression, scope: ScopeId) -> CaptureList {
+    fn generate_capture_list(
+        &mut self,
+        expr: &mut Expression,
+        child_scope: ScopeId,
+    ) -> CaptureList {
         let mut captures = CaptureList::new();
         expr.traverse_mut(|expr| {
             if let ExpressionKind::Variable(var) = expr.kind {
-                if self.declares_in(var, scope) {
+                if !self.declares_in(var, child_scope) {
                     captures.push((var, expr.span));
                 }
             }

@@ -80,9 +80,7 @@ impl SyntaxContext for TypeMemberSyntaxContext {
         scope: ScopeId,
     ) -> Result<Self::Body, SyntaxError> {
         match expr.try_into_list_exprs() {
-            Ok((span, list)) => {
-                let mut list = list.into_iter();
-
+            Ok((span, mut list)) => {
                 let name_expr = match list.next() {
                     Some(expr) => expr,
                     None => {

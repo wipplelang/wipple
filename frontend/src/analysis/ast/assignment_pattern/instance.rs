@@ -45,9 +45,7 @@ impl Syntax for InstanceAssignmentPatternSyntax {
 
                 let (trait_name, trait_scope, trait_parameters) = match input.try_into_list_exprs()
                 {
-                    Ok((span, exprs)) => {
-                        let mut exprs = exprs.into_iter();
-
+                    Ok((span, mut exprs)) => {
                         let trait_name = match exprs.next() {
                             Some(expr) => expr,
                             None => {

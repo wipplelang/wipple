@@ -96,9 +96,7 @@ impl SyntaxContext for TypeSyntaxContext {
         scope: ScopeId,
     ) -> Result<Self::Body, SyntaxError> {
         match expr.try_into_list_exprs() {
-            Ok((span, exprs)) => {
-                let mut exprs = exprs.into_iter();
-
+            Ok((span, mut exprs)) => {
                 let (name_span, name, name_scope) = match exprs.next() {
                     Some(expr) => match expr.kind {
                         parse::ExprKind::Name(name, name_scope) => {

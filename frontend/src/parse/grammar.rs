@@ -58,22 +58,38 @@ impl Expr {
         }
     }
 
-    pub fn try_into_list_exprs(self) -> Result<(Span, Vec<Expr>), Self> {
-        match self.kind {
-            ExprKind::List(lines) => Ok((
-                self.span,
-                lines.into_iter().flat_map(|line| line.exprs).collect(),
-            )),
+    pub fn try_as_list_exprs(&self) -> Result<(Span, impl Iterator<Item = &Expr>), &Self> {
+        match &self.kind {
+            ExprKind::List(lines) => Ok((self.span, lines.iter().flat_map(|line| &line.exprs))),
             _ => Err(self),
         }
     }
 
-    pub fn try_into_list_repetition_exprs(self) -> Result<(Span, Vec<Expr>), Self> {
+    pub fn try_as_list_repetition_exprs(
+        &self,
+    ) -> Result<(Span, impl Iterator<Item = &Expr>), &Self> {
+        match &self.kind {
+            ExprKind::RepeatList(lines) => {
+                Ok((self.span, lines.iter().flat_map(|line| &line.exprs)))
+            }
+            _ => Err(self),
+        }
+    }
+
+    pub fn try_into_list_exprs(self) -> Result<(Span, impl Iterator<Item = Expr>), Self> {
         match self.kind {
-            ExprKind::RepeatList(lines) => Ok((
-                self.span,
-                lines.into_iter().flat_map(|line| line.exprs).collect(),
-            )),
+            ExprKind::List(lines) => Ok((self.span, lines.into_iter().flat_map(|line| line.exprs))),
+            _ => Err(self),
+        }
+    }
+
+    pub fn try_into_list_repetition_exprs(
+        self,
+    ) -> Result<(Span, impl Iterator<Item = Expr>), Self> {
+        match self.kind {
+            ExprKind::RepeatList(lines) => {
+                Ok((self.span, lines.into_iter().flat_map(|line| line.exprs)))
+            }
             _ => Err(self),
         }
     }

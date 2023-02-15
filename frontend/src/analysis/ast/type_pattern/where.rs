@@ -49,9 +49,7 @@ impl Syntax for WhereTypePatternSyntax {
                 let bounds = stream::iter(rhs_exprs)
                     .then(|expr| async {
                         match expr.try_into_list_exprs() {
-                            Ok((span, list)) => {
-                                let mut exprs = list.into_iter();
-
+                            Ok((span, mut exprs)) => {
                                 let trait_name = match exprs.next() {
                                     Some(expr) => expr,
                                     None => {

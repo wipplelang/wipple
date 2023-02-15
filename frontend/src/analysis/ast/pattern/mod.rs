@@ -147,8 +147,7 @@ impl SyntaxContext for PatternSyntaxContext {
             }
             .into()),
             parse::ExprKind::List(_) => {
-                let (span, exprs) = expr.try_into_list_exprs().unwrap();
-                let mut exprs = exprs.into_iter();
+                let (span, mut exprs) = expr.try_into_list_exprs().unwrap();
 
                 let name_expr = match exprs.next() {
                     Some(expr) => expr,

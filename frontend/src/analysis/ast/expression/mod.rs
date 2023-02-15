@@ -26,7 +26,8 @@ use crate::{
     analysis::ast::{
         syntax::{FileBodySyntaxContext, Syntax, SyntaxContext, SyntaxError},
         AstBuilder, OperatorAssociativity, OperatorPrecedenceStatementAttributeKind, Statement,
-        StatementAttributes, StatementSyntax, SyntaxAssignmentValue,
+        StatementAttributes, StatementSyntax, SyntaxAssignmentValue, SyntaxBody, SyntaxPattern,
+        SyntaxRule,
     },
     diagnostics::Note,
     helpers::{InternedString, Shared},
@@ -142,48 +143,35 @@ impl SyntaxContext for ExpressionSyntaxContext {
         expr: parse::Expr,
         scope: ScopeId,
     ) -> Result<Self::Body, SyntaxError> {
-        // let syntax_pattern = match expr.try_into_list_exprs() {
-        //     Ok((span, exprs)) => {
-        //         let exprs = stream::iter(exprs)
-        //             .then(|expr| {
-        //                 self.ast_builder
-        //                     .build_expr::<ExpressionSyntax>(self.clone(), expr, scope)
-        //             })
-        //             .collect::<Vec<_>>()
-        //             .await;
+        match expr.try_into_list_exprs() {
+            Ok((span, exprs)) => self.expand_list(span, exprs.collect(), scope).await,
+            Err(expr) => match expr.kind {
+                parse::ExprKind::Name(name, name_scope) => Ok(NameExpression {
+                    span: expr.span,
+                    name,
+                    scope: name_scope.unwrap_or(scope),
+                }
+                .into()),
+                parse::ExprKind::Text(text) => Ok(TextExpression {
+                    span: expr.span,
+                    text,
+                }
+                .into()),
+                parse::ExprKind::Number(number) => Ok(NumberExpression {
+                    span: expr.span,
+                    number,
+                }
+                .into()),
+                _ => {
+                    self.ast_builder.compiler.add_error(
+                        "syntax error",
+                        vec![Note::primary(expr.span, "expected expression")],
+                    );
 
-        //         ListSyntaxPattern { span, exprs }.into()
-        //     }
-        //     Err(expr) => match expr.kind {
-        //         parse::ExprKind::Name(name) => NameExpression {
-        //             span: expr.span,
-        //             name,
-        //             scope,
-        //         }
-        //         .into(),
-        //         parse::ExprKind::Text(text) => TextExpression {
-        //             span: expr.span,
-        //             text,
-        //         }
-        //         .into(),
-        //         parse::ExprKind::Number(number) => NumberExpression {
-        //             span: expr.span,
-        //             number,
-        //         }
-        //         .into(),
-        //         _ => {
-        //             self.ast_builder.compiler.add_error(
-        //                 "syntax error",
-        //                 vec![Note::primary(expr.span, "expected expression")],
-        //             );
-
-        //             return Err(self.ast_builder.syntax_error(expr.span));
-        //         }
-        //     },
-        // };
-
-        // Ok(expr)
-        todo!()
+                    Err(self.ast_builder.syntax_error(expr.span))
+                }
+            },
+        }
     }
 }
 
@@ -224,13 +212,14 @@ impl ExpressionSyntaxContext {
                                 return Err(self.ast_builder.syntax_error(list_span));
                             }
                             None => {
-                                return self.expand_syntax(
-                                    name,
-                                    expr.span,
-                                    (syntax_span, syntax),
-                                    Vec::new(),
-                                    scope,
-                                );
+                                return self
+                                    .expand_syntax(
+                                        expr.span,
+                                        (syntax_span, syntax),
+                                        Vec::new(),
+                                        scope,
+                                    )
+                                    .await;
                             }
                         }
                     }
@@ -250,13 +239,9 @@ impl ExpressionSyntaxContext {
                             .ast_builder
                             .try_get_syntax(name, name_scope.unwrap_or(scope))
                         {
-                            return self.expand_syntax(
-                                name,
-                                first.span,
-                                (syntax_span, syntax),
-                                Vec::new(),
-                                scope,
-                            );
+                            return self
+                                .expand_syntax(first.span, (syntax_span, syntax), Vec::new(), scope)
+                                .await;
                         }
                     }
 
@@ -285,21 +270,14 @@ impl ExpressionSyntaxContext {
                 } else {
                     let operators = VecDeque::from(operators);
 
-                    let (
-                        mut max_index,
-                        mut max_expr,
-                        mut max_name,
-                        mut max_syntax,
-                        mut max_precedence,
-                    ) = operators.front().cloned().unwrap();
+                    let (mut max_index, mut max_expr, mut max_syntax, mut max_precedence) =
+                        operators.front().cloned().unwrap();
 
-                    for (index, expr, name, syntax, precedence) in operators.iter().skip(1).cloned()
-                    {
+                    for (index, expr, syntax, precedence) in operators.iter().skip(1).cloned() {
                         macro_rules! replace {
                             () => {{
                                 max_index = index;
                                 max_expr = expr;
-                                max_name = name;
                                 max_syntax = syntax;
                                 max_precedence = precedence;
                             }};
@@ -375,7 +353,8 @@ impl ExpressionSyntaxContext {
 
                         let span = Span::join(lhs_span, rhs_span);
 
-                        self.expand_syntax(max_name, span, max_syntax, vec![lhs, rhs], scope)
+                        self.expand_syntax(span, max_syntax, vec![lhs, rhs], scope)
+                            .await
                     }
                 }
             }
@@ -389,7 +368,6 @@ impl ExpressionSyntaxContext {
     ) -> Vec<(
         usize,
         parse::Expr,
-        InternedString,
         (Span, SyntaxAssignmentValue),
         OperatorPrecedenceStatementAttributeKind,
     )> {
@@ -404,13 +382,7 @@ impl ExpressionSyntaxContext {
                         if let Some(attribute) = &syntax.operator_precedence {
                             let precedence = attribute.precedence;
 
-                            return Some((
-                                index,
-                                expr.clone(),
-                                name,
-                                (syntax_span, syntax),
-                                precedence,
-                            ));
+                            return Some((index, expr.clone(), (syntax_span, syntax), precedence));
                         }
                     }
                 }
@@ -420,16 +392,47 @@ impl ExpressionSyntaxContext {
             .collect()
     }
 
-    fn expand_syntax(
+    async fn expand_syntax(
         &self,
-        name: InternedString,
         span: Span,
         (syntax_span, syntax): (Span, SyntaxAssignmentValue),
         exprs: Vec<parse::Expr>,
         scope: ScopeId,
     ) -> Result<Expression, SyntaxError> {
-        // let vars = syntax_pattern.match_with(exprs).ok_or_else(|| self.syntax_error(..))?;
+        let SyntaxBody::Block(body) = match syntax.body {
+            Ok(body) => body,
+            Err(_) => todo!(),
+        };
 
-        todo!()
+        for rule in body.rules.into_iter().flatten() {
+            let SyntaxRule::Function(rule) = rule;
+
+            let (pattern, body) = match (rule.pattern, rule.body) {
+                (Ok(pattern), Ok(body)) => (pattern, *body),
+                _ => continue,
+            };
+
+            let vars = match SyntaxPattern::r#match(&self.ast_builder, pattern, &exprs) {
+                Some(vars) => vars,
+                None => continue,
+            };
+
+            let body = SyntaxPattern::expand(&self.ast_builder, body, &vars)?;
+
+            return self
+                .ast_builder
+                .build_expr::<ExpressionSyntax>(self.clone(), body, scope)
+                .await;
+        }
+
+        self.ast_builder.compiler.add_error(
+            "syntax error",
+            vec![
+                Note::primary(span, "this does not match any syntax rules"),
+                Note::secondary(syntax_span, "syntax defined here"),
+            ],
+        );
+
+        Err(self.ast_builder.syntax_error(span))
     }
 }
