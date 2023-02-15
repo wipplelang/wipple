@@ -12,6 +12,12 @@ pub struct AllowOverlappingInstancesStatementAttribute {
     pub span: Span,
 }
 
+impl AllowOverlappingInstancesStatementAttribute {
+    pub fn span(&self) -> Span {
+        self.span
+    }
+}
+
 pub struct AllowOverlappingInstancesStatementAttributeSyntax;
 
 impl Syntax for AllowOverlappingInstancesStatementAttributeSyntax {

@@ -15,6 +15,12 @@ pub struct OnUnimplementedStatementAttribute {
     pub message: InternedString,
 }
 
+impl OnUnimplementedStatementAttribute {
+    pub fn span(&self) -> Span {
+        Span::join(self.on_unimplemented_span, self.message_span)
+    }
+}
+
 pub struct OnUnimplementedStatementAttributeSyntax;
 
 impl Syntax for OnUnimplementedStatementAttributeSyntax {

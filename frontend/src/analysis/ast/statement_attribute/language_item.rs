@@ -14,6 +14,12 @@ pub struct LanguageItemStatementAttribute {
     pub language_item_kind: LanguageItemStatementAttributeKind,
 }
 
+impl LanguageItemStatementAttribute {
+    pub fn span(&self) -> Span {
+        Span::join(self.language_span, self.language_item_span)
+    }
+}
+
 #[derive(Debug, Clone, Copy, strum::EnumString)]
 #[strum(serialize_all = "kebab-case")]
 pub enum LanguageItemStatementAttributeKind {

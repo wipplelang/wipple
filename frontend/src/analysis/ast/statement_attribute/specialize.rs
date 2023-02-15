@@ -12,6 +12,12 @@ pub struct SpecializeStatementAttribute {
     pub span: Span,
 }
 
+impl SpecializeStatementAttribute {
+    pub fn span(&self) -> Span {
+        self.span
+    }
+}
+
 pub struct SpecializeStatementAttributeSyntax;
 
 impl Syntax for SpecializeStatementAttributeSyntax {

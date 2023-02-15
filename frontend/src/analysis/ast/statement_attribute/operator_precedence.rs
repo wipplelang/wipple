@@ -14,6 +14,12 @@ pub struct OperatorPrecedenceStatementAttribute {
     pub precedence: OperatorPrecedenceStatementAttributeKind,
 }
 
+impl OperatorPrecedenceStatementAttribute {
+    pub fn span(&self) -> Span {
+        Span::join(self.operator_span, self.precedence_span)
+    }
+}
+
 // TODO: User-defined precedences
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, strum::EnumString)]
 pub enum OperatorPrecedenceStatementAttributeKind {

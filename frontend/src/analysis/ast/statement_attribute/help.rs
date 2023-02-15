@@ -15,6 +15,12 @@ pub struct HelpStatementAttribute {
     pub help_text: InternedString,
 }
 
+impl HelpStatementAttribute {
+    pub fn span(&self) -> Span {
+        Span::join(self.help_span, self.help_text_span)
+    }
+}
+
 pub struct HelpStatementAttributeSyntax;
 
 impl Syntax for HelpStatementAttributeSyntax {

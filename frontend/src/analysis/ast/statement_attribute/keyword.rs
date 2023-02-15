@@ -12,6 +12,12 @@ pub struct KeywordStatementAttribute {
     pub span: Span,
 }
 
+impl KeywordStatementAttribute {
+    pub fn span(&self) -> Span {
+        self.span
+    }
+}
+
 pub struct KeywordStatementAttributeSyntax;
 
 impl Syntax for KeywordStatementAttributeSyntax {

@@ -16,6 +16,12 @@ pub struct OnMismatchStatementAttribute {
     pub message: InternedString,
 }
 
+impl OnMismatchStatementAttribute {
+    pub fn span(&self) -> Span {
+        Span::join(self.on_mismatch_span, self.message_span)
+    }
+}
+
 pub struct OnMismatchStatementAttributeSyntax;
 
 impl Syntax for OnMismatchStatementAttributeSyntax {
