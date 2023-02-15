@@ -20,7 +20,7 @@ pub struct FieldTypeMember {
 
 impl FieldTypeMember {
     pub fn span(&self) -> Span {
-        let ty_span = match self.ty {
+        let ty_span = match &self.ty {
             Ok(ty) => ty.span(),
             Err(error) => error.span,
         };

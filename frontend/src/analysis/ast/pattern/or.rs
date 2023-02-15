@@ -15,12 +15,12 @@ pub struct OrPattern {
 
 impl OrPattern {
     pub fn span(&self) -> Span {
-        let left_span = match self.left {
+        let left_span = match &self.left {
             Ok(pattern) => pattern.span(),
             Err(error) => error.span,
         };
 
-        let right_span = match self.right {
+        let right_span = match &self.right {
             Ok(pattern) => pattern.span(),
             Err(error) => error.span,
         };

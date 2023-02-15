@@ -17,7 +17,7 @@ pub struct WhenExpression {
 
 impl WhenExpression {
     pub fn span(&self) -> Span {
-        let body_span = match self.body {
+        let body_span = match &self.body {
             Ok(body) => body.span(),
             Err(error) => error.span,
         };

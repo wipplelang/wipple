@@ -21,7 +21,7 @@ pub struct AssignDestructuring {
 
 impl AssignDestructuring {
     pub fn span(&self) -> Span {
-        let pattern_span = match self.pattern {
+        let pattern_span = match &self.pattern {
             Ok(pattern) => pattern.span(),
             Err(error) => error.span,
         };

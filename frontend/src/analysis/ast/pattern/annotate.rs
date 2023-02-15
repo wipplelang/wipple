@@ -17,12 +17,12 @@ pub struct AnnotatePattern {
 
 impl AnnotatePattern {
     pub fn span(&self) -> Span {
-        let pattern_span = match self.pattern {
+        let pattern_span = match &self.pattern {
             Ok(pattern) => pattern.span(),
             Err(error) => error.span,
         };
 
-        let ty_span = match self.ty {
+        let ty_span = match &self.ty {
             Ok(ty) => ty.span(),
             Err(error) => error.span,
         };

@@ -21,12 +21,12 @@ pub struct AnnotateStatement {
 
 impl AnnotateStatement {
     pub fn span(&self) -> Span {
-        let name_span = match self.name {
-            Ok((span, _)) => span,
+        let name_span = match &self.name {
+            Ok((span, _)) => *span,
             Err(error) => error.span,
         };
 
-        let annotation_span = match self.annotation {
+        let annotation_span = match &self.annotation {
             Ok(annotation) => annotation.span(),
             Err(error) => error.span,
         };

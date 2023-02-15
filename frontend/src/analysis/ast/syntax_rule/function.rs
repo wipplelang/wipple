@@ -19,12 +19,12 @@ pub struct FunctionSyntaxRule {
 
 impl FunctionSyntaxRule {
     pub fn span(&self) -> Span {
-        let pattern_span = match self.pattern {
+        let pattern_span = match &self.pattern {
             Ok(pattern) => pattern.first().unwrap().span(),
             Err(error) => error.span,
         };
 
-        let body_span = match self.body {
+        let body_span = match &self.body {
             Ok(body) => body.span(),
             Err(error) => error.span,
         };

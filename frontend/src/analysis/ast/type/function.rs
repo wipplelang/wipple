@@ -16,12 +16,12 @@ pub struct FunctionType {
 
 impl FunctionType {
     pub fn span(&self) -> Span {
-        let input_span = match self.input {
+        let input_span = match &self.input {
             Ok(input) => input.span(),
             Err(error) => error.span,
         };
 
-        let output_span = match self.output {
+        let output_span = match &self.output {
             Ok(output) => output.span(),
             Err(error) => error.span,
         };

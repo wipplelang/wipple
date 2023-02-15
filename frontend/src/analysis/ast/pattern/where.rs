@@ -18,12 +18,12 @@ pub struct WherePattern {
 
 impl WherePattern {
     pub fn span(&self) -> Span {
-        let pattern_span = match self.pattern {
+        let pattern_span = match &self.pattern {
             Ok(pattern) => pattern.span(),
             Err(error) => error.span,
         };
 
-        let condition_span = match self.condition {
+        let condition_span = match &self.condition {
             Ok(expr) => expr.span(),
             Err(error) => error.span,
         };

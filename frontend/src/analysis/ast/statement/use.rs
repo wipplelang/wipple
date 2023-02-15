@@ -24,10 +24,10 @@ pub enum UseStatementKind {
 
 impl UseStatement {
     pub fn span(&self) -> Span {
-        let kind_span = match self.kind {
+        let kind_span = match &self.kind {
             Ok(kind) => match kind {
-                UseStatementKind::File(span, _, _) => span,
-                UseStatementKind::Name(span, _, _) => span,
+                UseStatementKind::File(span, _, _) => *span,
+                UseStatementKind::Name(span, _, _) => *span,
             },
             Err(error) => error.span,
         };

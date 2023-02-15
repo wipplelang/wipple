@@ -15,7 +15,7 @@ pub struct EndExpression {
 
 impl EndExpression {
     pub fn span(&self) -> Span {
-        let value_span = match self.value {
+        let value_span = match &self.value {
             Ok(value) => value.span(),
             Err(error) => error.span,
         };

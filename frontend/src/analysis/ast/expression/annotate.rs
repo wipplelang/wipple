@@ -17,12 +17,12 @@ pub struct AnnotateExpression {
 
 impl AnnotateExpression {
     pub fn span(&self) -> Span {
-        let expr_span = match self.expr {
+        let expr_span = match &self.expr {
             Ok(expr) => expr.span(),
             Err(error) => error.span,
         };
 
-        let ty_span = match self.ty {
+        let ty_span = match &self.ty {
             Ok(ty) => ty.span(),
             Err(error) => error.span,
         };
