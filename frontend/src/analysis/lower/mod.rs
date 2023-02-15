@@ -321,6 +321,10 @@ impl LanguageItems {
         if let Some(boolean) = other.boolean {
             self.boolean.get_or_insert(boolean);
         }
+
+        if let Some(show) = other.show {
+            self.show.get_or_insert(show);
+        }
     }
 }
 
