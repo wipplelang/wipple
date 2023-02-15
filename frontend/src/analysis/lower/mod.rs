@@ -2228,7 +2228,7 @@ impl Lowerer {
                                                         ty_name.name,
                                                         name.name
                                                     ),
-                                                    vec![Note::primary(ty_name.span, "no such variant")],
+                                                    vec![Note::primary(name.span, "no such variant")],
                                                 );
 
                                                 return Expression {
