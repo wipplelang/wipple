@@ -2,10 +2,16 @@
 
 use "fp.wpl"
 use "util.wpl"
+use "logic.wpl"
 
 [help "Implements the `+` operator."]
 Add : Left Right Sum => trait (Left -> Right -> Sum)
-+ : addition operator (a b ~> Add a b)
+
+[operator Addition-Precedence]
++ : syntax {
+	'a + 'b -> Add 'a 'b
+}
+
 instance (Add Number Number Number) : a -> b -> external "runtime" "add-number" a b
 instance (Add Integer Integer Integer) : a -> b -> external "runtime" "add-integer" a b
 instance (Add Natural Natural Natural) : a -> b -> external "runtime" "add-natural" a b
@@ -17,7 +23,12 @@ instance (Add Double Double Double) : a -> b -> external "runtime" "add-double" 
 
 [help "Implements the `-` operator."]
 Subtract : Left Right Difference => trait (Left -> Right -> Difference)
-- : addition operator (a b ~> Subtract a b)
+
+[operator Addition-Precedence]
+- : syntax {
+	'a - 'b -> Subtract 'a 'b
+}
+
 instance (Subtract Number Number Number) : a -> b -> external "runtime" "subtract-number" a b
 instance (Subtract Integer Integer Integer) : a -> b -> external "runtime" "subtract-integer" a b
 instance (Subtract Natural Natural Natural) : a -> b -> external "runtime" "subtract-natural" a b
@@ -29,7 +40,12 @@ instance (Subtract Double Double Double) : a -> b -> external "runtime" "subtrac
 
 [help "Implements the `*` operator."]
 Multiply : Left Right Product => trait (Left -> Right -> Product)
-* : multiplication operator (a b ~> Multiply a b)
+
+[operator Multiplication-Precedence]
+* : syntax {
+	'a * 'b -> Multiply 'a 'b
+}
+
 instance (Multiply Number Number Number) : a -> b -> external "runtime" "multiply-number" a b
 instance (Multiply Integer Integer Integer) : a -> b -> external "runtime" "multiply-integer" a b
 instance (Multiply Natural Natural Natural) : a -> b -> external "runtime" "multiply-natural" a b
@@ -41,7 +57,12 @@ instance (Multiply Double Double Double) : a -> b -> external "runtime" "multipl
 
 [help "Implements the `/` operator."]
 Divide : Left Right Quotient => trait (Left -> Right -> Quotient)
-/ : multiplication operator (a b ~> Divide a b)
+
+[operator Multiplication-Precedence]
+/ : syntax {
+	'a / 'b -> Divide 'a 'b
+}
+
 instance (Divide Number Number Number) : a -> b -> external "runtime" "divide-number" a b
 instance (Divide Integer Integer Integer) : a -> b -> external "runtime" "divide-integer" a b
 instance (Divide Natural Natural Natural) : a -> b -> external "runtime" "divide-natural" a b
@@ -52,8 +73,13 @@ instance (Divide Float Float Float) : a -> b -> external "runtime" "divide-float
 instance (Divide Double Double Double) : a -> b -> external "runtime" "divide-double" a b
 
 [help "Implements the `^` operator."]
-Power : Left Right Power => trait (Left -> Right -> Power)
-^ : power operator (a b ~> Power a b)
+Power : Left Right Power' => trait (Left -> Right -> Power') -- FIXME: Rename to `Power` once type parameters aren't leaked
+
+[operator Exponentiation-Precedence]
+^ : syntax {
+	'a ^ 'b -> Power 'a 'b
+}
+
 instance (Power Number Number Number) : a -> b -> external "runtime" "power-number" a b
 instance (Power Integer Integer Integer) : a -> b -> external "runtime" "power-integer" a b
 instance (Power Natural Natural Natural) : a -> b -> external "runtime" "power-natural" a b

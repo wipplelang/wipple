@@ -46,7 +46,7 @@ each : f -> container -> {
 		when (next ()) {
 			Some x -> {
 				f x
-				(Continue :: Control-Flow ()) -- type annotation is needed because of typechecker bug
+				Continue
 			}
 			None -> Break ()
 		}
@@ -58,10 +58,10 @@ Collect : Element Container => trait (Iterator Element -> Container)
 
 [help "Collect an iterator into a single value, like a `List`."]
 collect :: Input Element Output where (Iterate Input Element) (Collect Element Output) => Input -> Output
-collect : input -> Collect ((Iterate :: _ -> Iterator Element) input) -- FIXME: Remove type annotation once we have functional dependencies
+collect : input -> Collect ((Iterate :: (_ -> Iterator Element)) input) -- FIXME: Remove type annotation once we have functional dependencies
 
 Element => instance (Collect Element (List Element)) : { next } -> {
-	list : mutable (list ())
+	list : mutable (list)
 	loop {
 		when (next ()) {
 			Some x -> {

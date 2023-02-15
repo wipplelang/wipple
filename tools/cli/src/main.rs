@@ -9,7 +9,7 @@ use std::{
     sync::Arc,
 };
 use wipple_default_loader as loader;
-use wipple_frontend::Compiler;
+use wipple_frontend::{Compiler, Loader};
 
 #[derive(Parser)]
 #[clap(
@@ -39,12 +39,6 @@ enum Args {
     Cache {
         #[clap(long)]
         clear: bool,
-    },
-    Analyze {
-        path: String,
-
-        #[clap(flatten)]
-        options: BuildOptions,
     },
     Lsp,
 }
@@ -157,11 +151,11 @@ async fn run() -> anyhow::Result<()> {
 
             let mut interpreter =
                 wipple_interpreter_backend::Interpreter::handling_output(|text| {
-                    print!("{}", text);
+                    print!("{text}");
                 });
 
             if let Err(error) = interpreter.run(&ir) {
-                eprintln!("fatal error: {}", error);
+                eprintln!("fatal error: {error}");
             }
         }
         Args::Compile {
@@ -189,6 +183,7 @@ async fn run() -> anyhow::Result<()> {
                     }
 
                     output.write_all(program.to_string().as_bytes())?;
+                    writeln!(output)?;
                 }
                 CompileFormat::Ir => {
                     let (ir, progress_bar) = {
@@ -218,35 +213,6 @@ async fn run() -> anyhow::Result<()> {
 
                     output.write_all(ir.to_string().as_bytes())?;
                 }
-            }
-        }
-        Args::Analyze { path, options } => {
-            let progress_bar = options.progress.then(progress_bar);
-
-            let (program, diagnostics) = analyze(&path, &options, progress_bar.clone()).await;
-
-            if let Some(progress_bar) = progress_bar.as_ref() {
-                progress_bar.finish_and_clear();
-            }
-
-            #[allow(dead_code)]
-            #[derive(Debug, serde::Serialize)]
-            struct Analysis {
-                program: wipple_frontend::analysis::Program,
-                diagnostics: Vec<wipple_frontend::diagnostics::Diagnostic>,
-            }
-
-            let error = diagnostics.contains_errors();
-
-            let output = Analysis {
-                program,
-                diagnostics: diagnostics.diagnostics,
-            };
-
-            serde_json::to_writer_pretty(io::stdout(), &output)?;
-
-            if error {
-                return Err(anyhow::Error::msg(""));
             }
         }
         Args::Cache { clear } => {
@@ -374,7 +340,7 @@ async fn build_with_passes<P>(
             if let Some(progress_bar) = progress_bar.as_ref() {
                 match progress {
                     analysis::Progress::Resolving { path, count } => {
-                        progress_bar.set_message(format!("({count} files) Resolving {}", path))
+                        progress_bar.set_message(format!("({count} files) Resolving {path}"))
                     }
                     analysis::Progress::Lowering {
                         path,
@@ -442,13 +408,13 @@ async fn build_with_passes<P>(
         let mut stdin = String::new();
         io::stdin().read_to_string(&mut stdin).unwrap();
 
-        loader.virtual_paths.lock().insert(
+        loader.virtual_paths().lock().insert(
             wipple_frontend::helpers::InternedString::new("stdin"),
             Arc::from(stdin),
         );
     }
 
-    let compiler = Compiler::new(&loader);
+    let compiler = Compiler::new(loader);
 
     #[cfg(debug_assertions)]
     let compiler = compiler.set_backtrace_enabled(options.trace);

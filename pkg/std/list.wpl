@@ -4,28 +4,12 @@ use "util.wpl"
 use "fp.wpl"
 use "mutable.wpl"
 
-[help "Implementations for the `list` function."]
-[on-unimplemented "lists may only be created from tuples where every value has the same type"]
-Tuple-To-List : Tuple Element => trait (Tuple -> List Element)
+[help "Create a `List` with the specified elements."]
+list : syntax {
+	list ...x -> (external "runtime" "make-empty-list" :: List _) ...(. append 'x)
+}
 
-tuple-to-list-impl : ty' tuple' ~>
-	(ty' => instance (Tuple-To-List tuple' ty') : tuple -> external "runtime" "make-list" tuple)
-
-tuple-to-list-impl A ()
-tuple-to-list-impl A (A ,)
-tuple-to-list-impl A (A , A)
-tuple-to-list-impl A (A , A , A)
-tuple-to-list-impl A (A , A , A , A)
-tuple-to-list-impl A (A , A , A , A , A)
-tuple-to-list-impl A (A , A , A , A , A , A)
-tuple-to-list-impl A (A , A , A , A , A , A , A)
-tuple-to-list-impl A (A , A , A , A , A , A , A , A)
-tuple-to-list-impl A (A , A , A , A , A , A , A , A , A)
-tuple-to-list-impl A (A , A , A , A , A , A , A , A , A , A)
-
-[help "Create a `List` from a tuple."]
-list :: Tuple Element where (Tuple-To-List Tuple Element) => Tuple -> List Element
-list : Tuple-To-List
+instance (Default (List _)) : list
 
 [help "Retrieve the first item inside a `List`, if it exists."]
 first :: A => List A -> Maybe A

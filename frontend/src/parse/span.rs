@@ -1,22 +1,10 @@
-use crate::{helpers::InternedString, FilePath};
+use crate::FilePath;
 use std::{fmt, ops::Range};
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize))]
-#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub struct Span {
     pub path: FilePath,
-
-    #[cfg_attr(
-        feature = "arbitrary",
-        arbitrary(with = |u: &mut arbitrary::Unstructured| u.int_in_range(0..=100))
-    )]
     pub start: usize,
-
-    #[cfg_attr(
-        feature = "arbitrary",
-        arbitrary(with = |u: &mut arbitrary::Unstructured| u.int_in_range(0..=100))
-    )]
     pub end: usize,
 }
 
@@ -29,8 +17,8 @@ impl Span {
         }
     }
 
-    pub fn builtin(location: impl AsRef<str>) -> Self {
-        Span::new(FilePath::Builtin(InternedString::new(location)), 0..0)
+    pub fn builtin() -> Self {
+        Span::new(FilePath::Builtin, 0..0)
     }
 
     pub fn join(left: Span, right: Span) -> Self {

@@ -83,6 +83,7 @@ pub enum Expression {
     External(InternedString, InternedString, usize),
     Runtime(RuntimeFunction, usize),
     Tuple(usize),
+    Format(Vec<InternedString>, Option<InternedString>),
     Structure(usize),
     Variant(VariantIndex, usize),
     TupleElement(usize),
@@ -95,7 +96,7 @@ pub enum Expression {
 #[derive(Debug, Clone)]
 pub struct CaptureList(pub BTreeMap<usize, usize>);
 
-impl Compiler<'_> {
+impl Compiler {
     pub fn ir_from(&self, program: &typecheck::Program) -> Program {
         assert!(
             !self.has_errors(),
@@ -407,6 +408,20 @@ impl IrGen {
                 self.statements_for(label, *pos)
                     .push(Statement::Expression(expr.ty, Expression::Tuple(count)));
             }
+            ssa::ExpressionKind::Format(segments, trailing_segment) => {
+                let segments = segments
+                    .into_iter()
+                    .map(|(text, expr)| {
+                        self.gen_expr(expr, label, pos);
+                        text
+                    })
+                    .collect();
+
+                self.statements_for(label, *pos).push(Statement::Expression(
+                    expr.ty,
+                    Expression::Format(segments, trailing_segment),
+                ));
+            }
             ssa::ExpressionKind::Variant(discriminant, exprs) => {
                 let count = exprs.len();
 
@@ -423,7 +438,7 @@ impl IrGen {
                 let id = *self
                     .items
                     .get(&id)
-                    .unwrap_or_else(|| panic!("cannot find {:?}", id));
+                    .unwrap_or_else(|| panic!("cannot find {id:?}"));
 
                 self.statements_for(label, *pos)
                     .push(Statement::Expression(expr.ty, Expression::Constant(id)));

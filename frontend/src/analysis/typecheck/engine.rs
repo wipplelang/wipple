@@ -2,8 +2,6 @@ use crate::{parse::Span, TraitId, TypeId, TypeParameterId};
 use std::collections::BTreeMap;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize))]
-#[cfg_attr(feature = "serde", serde(tag = "type", content = "value"))]
 pub enum UnresolvedType {
     Variable(TypeVariable),
     Parameter(TypeParameterId),
@@ -17,8 +15,6 @@ pub enum UnresolvedType {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize))]
-#[cfg_attr(feature = "serde", serde(tag = "type", content = "value"))]
 pub enum Type {
     Parameter(TypeParameterId),
     Named(TypeId, Vec<Type>, TypeStructure<Type>),
@@ -29,8 +25,6 @@ pub enum Type {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize))]
-#[cfg_attr(feature = "serde", serde(tag = "type", content = "value"))]
 pub enum TypeStructure<Ty> {
     Marker,
     Structure(Vec<Ty>),
@@ -90,12 +84,9 @@ impl From<TypeStructure<Type>> for TypeStructure<UnresolvedType> {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct TypeVariable(pub usize);
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize))]
-#[cfg_attr(feature = "serde", serde(tag = "type", content = "value"))]
 pub enum BuiltinType<Ty> {
     Number,
     Integer,
@@ -111,7 +102,6 @@ pub enum BuiltinType<Ty> {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub enum BottomTypeReason {
     Annotated,
     Error,
@@ -262,13 +252,10 @@ impl Context {
                 }
             }
             (UnresolvedType::TerminatingVariable(var), ty) => {
-                match &ty {
-                    UnresolvedType::TerminatingVariable(other) => {
-                        if var == *other {
-                            return Ok(());
-                        }
+                if let UnresolvedType::TerminatingVariable(other) = &ty {
+                    if var == *other {
+                        return Ok(());
                     }
-                    _ => {}
                 }
 
                 if ty.contains(&var) {

@@ -1,6 +1,6 @@
 use crate::{analysis, diagnostics::*, Compiler};
 
-impl Compiler<'_> {
+impl Compiler {
     pub(super) fn useless_bounds_lint(&self, program: &analysis::Program) {
         for constant in program.declarations.constants.values() {
             for bound in &constant.bounds {

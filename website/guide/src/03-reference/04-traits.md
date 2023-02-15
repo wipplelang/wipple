@@ -57,7 +57,7 @@ And you can use generics in `instance` declarations by providing a type function
 
 ```wipple
 -- The "default" value of a list is the empty list
-A => instance (Default (List A)) : list ()
+A => instance (Default (List A)) : (list)
 ```
 
 ## Bounded constants and instances

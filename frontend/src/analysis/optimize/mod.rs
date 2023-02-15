@@ -481,6 +481,9 @@ mod util {
                 ExpressionKind::Tuple(exprs) => {
                     exprs.iter().all(|expr| expr.is_pure(program, stack))
                 }
+                ExpressionKind::Format(segments, _) => segments
+                    .iter()
+                    .all(|(_, expr)| expr.is_pure(program, stack)),
                 ExpressionKind::Runtime(func, inputs) => {
                     func.is_pure() && inputs.iter().all(|expr| expr.is_pure(program, stack))
                 }
@@ -601,7 +604,7 @@ mod util {
                 RuntimeFunction::MakeMutable => false,
                 RuntimeFunction::GetMutable => false,
                 RuntimeFunction::SetMutable => false,
-                RuntimeFunction::MakeList => true,
+                RuntimeFunction::MakeEmptyList => true,
                 RuntimeFunction::ListFirst => true,
                 RuntimeFunction::ListLast => true,
                 RuntimeFunction::ListInitial => true,

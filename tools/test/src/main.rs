@@ -44,7 +44,7 @@ async fn main() -> anyhow::Result<()> {
         )),
     );
 
-    let compiler = wipple_frontend::Compiler::new(&loader);
+    let compiler = wipple_frontend::Compiler::new(loader);
 
     #[cfg(debug_assertions)]
     let compiler = compiler.set_backtrace_enabled(args.trace);
@@ -66,8 +66,7 @@ async fn main() -> anyhow::Result<()> {
         let test_case = serde_yaml::from_reader(file)?;
         let result = run(
             &test_case,
-            &loader,
-            &compiler,
+            compiler.clone(),
             args.optimize,
             #[cfg(debug_assertions)]
             args.trace,
@@ -130,8 +129,8 @@ async fn main() -> anyhow::Result<()> {
     eprintln!(
         "\n{} tests, {}, {}",
         pass_count + fail_count,
-        format!("{} passed", pass_count).green(),
-        format!("{} failed", fail_count).red(),
+        format!("{pass_count} passed").green(),
+        format!("{fail_count} failed").red(),
     );
 
     if args.junit {
@@ -233,17 +232,17 @@ impl TestResult {
     }
 }
 
-async fn run<'l>(
+async fn run(
     test_case: &TestCase,
-    loader: &'l loader::Loader,
-    compiler: &wipple_frontend::Compiler<'l>,
+    compiler: wipple_frontend::Compiler,
     optimize: bool,
     #[cfg(debug_assertions)] trace_diagnostics: bool,
 ) -> anyhow::Result<TestResult> {
     let test_path = wipple_frontend::helpers::InternedString::new("test");
 
-    loader
-        .virtual_paths
+    compiler
+        .loader
+        .virtual_paths()
         .lock()
         .insert(test_path, Arc::from(test_case.code.as_str()));
 
@@ -268,11 +267,11 @@ async fn run<'l>(
 
             let mut interpreter =
                 wipple_interpreter_backend::Interpreter::handling_output(|text| {
-                    write!(buf.borrow_mut(), "{}", text).unwrap()
+                    write!(buf.borrow_mut(), "{text}").unwrap()
                 });
 
             if let Err(error) = interpreter.run(&ir) {
-                write!(buf.borrow_mut(), "fatal error: {}", error)?;
+                write!(buf.borrow_mut(), "fatal error: {error}")?;
             }
         }
 

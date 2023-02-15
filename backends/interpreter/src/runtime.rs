@@ -344,8 +344,9 @@ impl<'a> Interpreter<'a> {
                     Ok(Value::Tuple(Vec::new()))
                 })
             }
-            ir::RuntimeFunction::MakeList => {
-                runtime_fn!((Value::Tuple(tuple)) => Ok(Value::List(tuple.into())))
+            ir::RuntimeFunction::MakeEmptyList => {
+                assert!(inputs.is_empty());
+                Ok(Value::List(Default::default()))
             }
             ir::RuntimeFunction::ListFirst => runtime_fn!((Value::List(list)) => {
                 Ok(match list.front() {

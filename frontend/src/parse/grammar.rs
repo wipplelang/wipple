@@ -1,7 +1,7 @@
 use crate::{
     diagnostics::*,
     parse::{Span, Token},
-    Compiler, FilePath, InternedString,
+    Compiler, FilePath, InternedString, ScopeId,
 };
 use lazy_static::lazy_static;
 use logos::SpannedIter;
@@ -10,11 +10,16 @@ use std::{iter::Peekable, ops::Range};
 
 #[derive(Debug, Clone)]
 pub struct File {
-    pub path: FilePath,
     pub span: Span,
     pub shebang: Option<InternedString>,
-    pub attributes: Vec<Expr>,
+    pub attributes: Vec<Attribute>,
     pub statements: Vec<Statement>,
+}
+
+#[derive(Debug, Clone)]
+pub struct Attribute {
+    pub span: Span,
+    pub exprs: Vec<Expr>,
 }
 
 #[derive(Debug, Clone)]
@@ -26,25 +31,110 @@ pub struct Expr {
 #[derive(Debug, Clone)]
 pub enum ExprKind {
     Underscore,
-    Name(InternedString),
+    /// The scope isn't used anywhere in the parser, but the expander uses it to
+    /// ensure syntax hygiene.
+    Name(InternedString, Option<ScopeId>),
+    QuoteName(InternedString),
+    RepeatName(InternedString),
     Text(InternedString),
     Number(InternedString),
     List(Vec<ListLine>),
+    // QuoteList(..),
+    RepeatList(Vec<ListLine>),
     Block(Vec<Statement>),
+    // QuoteBlock(..),
+    // RepeatBlock(..),
 }
 
-#[derive(Debug, Clone)]
+impl Expr {
+    pub fn list(span: Span, exprs: Vec<Expr>) -> Self {
+        Expr {
+            span,
+            kind: ExprKind::List(vec![exprs.into()]),
+        }
+    }
+
+    pub fn list_or_expr(span: Span, mut exprs: Vec<Expr>) -> Self {
+        if exprs.len() == 1 {
+            exprs.pop().unwrap()
+        } else {
+            Expr::list(span, exprs)
+        }
+    }
+
+    pub fn try_as_list_exprs(&self) -> Result<(Span, impl Iterator<Item = &Expr>), &Self> {
+        match &self.kind {
+            ExprKind::List(lines) => Ok((self.span, lines.iter().flat_map(|line| &line.exprs))),
+            _ => Err(self),
+        }
+    }
+
+    pub fn try_as_list_repetition_exprs(
+        &self,
+    ) -> Result<(Span, impl Iterator<Item = &Expr>), &Self> {
+        match &self.kind {
+            ExprKind::RepeatList(lines) => {
+                Ok((self.span, lines.iter().flat_map(|line| &line.exprs)))
+            }
+            _ => Err(self),
+        }
+    }
+
+    pub fn try_into_list_exprs(self) -> Result<(Span, impl Iterator<Item = Expr>), Self> {
+        match self.kind {
+            ExprKind::List(lines) => Ok((self.span, lines.into_iter().flat_map(|line| line.exprs))),
+            _ => Err(self),
+        }
+    }
+
+    pub fn try_into_list_repetition_exprs(
+        self,
+    ) -> Result<(Span, impl Iterator<Item = Expr>), Self> {
+        match self.kind {
+            ExprKind::RepeatList(lines) => {
+                Ok((self.span, lines.into_iter().flat_map(|line| line.exprs)))
+            }
+            _ => Err(self),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Default)]
 pub struct Statement {
     pub leading_lines: u32,
     pub indent: u32,
     pub lines: Vec<ListLine>,
 }
 
-#[derive(Debug, Clone)]
+impl Statement {
+    pub fn into_list_exprs(self) -> (Vec<Attribute>, Vec<Expr>) {
+        let (attributes, exprs): (Vec<_>, Vec<_>) = self
+            .lines
+            .into_iter()
+            .map(|line| (line.attributes, line.exprs))
+            .unzip();
+
+        let attributes = attributes.into_iter().flatten().collect();
+        let exprs = exprs.into_iter().flatten().collect();
+
+        (attributes, exprs)
+    }
+}
+
+#[derive(Debug, Clone, Default)]
 pub struct ListLine {
-    pub attributes: Vec<Expr>,
+    pub attributes: Vec<Attribute>,
     pub exprs: Vec<Expr>,
     pub comment: Option<InternedString>,
+}
+
+impl From<Vec<Expr>> for ListLine {
+    fn from(exprs: Vec<Expr>) -> Self {
+        ListLine {
+            exprs,
+            ..Default::default()
+        }
+    }
 }
 
 impl Expr {
@@ -53,8 +143,8 @@ impl Expr {
     }
 }
 
-pub(crate) struct Parser<'a, 'src> {
-    pub compiler: &'a Compiler<'a>,
+pub(crate) struct Parser<'src> {
+    pub compiler: Compiler,
     pub lexer: Peekable<SpannedIter<'src, Token<'src>>>,
     pub len: usize,
     pub offset: usize,
@@ -68,8 +158,8 @@ pub enum ParseError {
     EndOfFile,
 }
 
-impl<'a, 'src> Parser<'a, 'src> {
-    pub fn parse_file(&mut self) -> (Vec<Expr>, Vec<Statement>) {
+impl<'src> Parser<'src> {
+    pub fn parse_file(&mut self) -> (Vec<Attribute>, Vec<Statement>) {
         while let (_, Some(Token::Comment(_) | Token::LineBreak)) = self.peek() {
             self.consume();
         }
@@ -83,7 +173,7 @@ impl<'a, 'src> Parser<'a, 'src> {
                 "syntax error",
                 vec![Note::primary(
                     span,
-                    format!("expected end of file, found {}", token),
+                    format!("expected end of file, found {token}"),
                 )],
             );
         }
@@ -91,11 +181,11 @@ impl<'a, 'src> Parser<'a, 'src> {
         (attributes, statements)
     }
 
-    pub fn parse_file_attributes(&mut self) -> Vec<Expr> {
+    pub fn parse_file_attributes(&mut self) -> Vec<Attribute> {
         std::iter::from_fn(|| self.try_parse_file_attribute()).collect()
     }
 
-    pub fn try_parse_file_attribute(&mut self) -> Option<Expr> {
+    pub fn try_parse_file_attribute(&mut self) -> Option<Attribute> {
         let (span, token) = self.peek();
 
         if !matches!(token, Some(Token::LeftFileBracket)) {
@@ -106,10 +196,10 @@ impl<'a, 'src> Parser<'a, 'src> {
 
         let (lines, end_span) = self.parse_list_contents(Token::RightFileBracket);
 
-        Some(Expr::new(
-            span.with_end(end_span.end),
-            ExprKind::List(lines),
-        ))
+        Some(Attribute {
+            span: span.with_end(end_span.end),
+            exprs: lines.into_iter().flat_map(|line| line.exprs).collect(),
+        })
     }
 
     pub fn parse_statements(&mut self, end_token: Option<Token<'src>>) -> (Vec<Statement>, Span) {
@@ -181,7 +271,7 @@ impl<'a, 'src> Parser<'a, 'src> {
                         "syntax error",
                         vec![Note::primary(
                             self.eof_span(),
-                            format!("expected {}, found end of file", end_token),
+                            format!("expected {end_token}, found end of file"),
                         )],
                     );
                 }
@@ -214,7 +304,7 @@ impl<'a, 'src> Parser<'a, 'src> {
         (statements, end_span)
     }
 
-    pub fn try_parse_attribute(&mut self) -> Option<Expr> {
+    pub fn try_parse_attribute(&mut self) -> Option<Attribute> {
         let (span, token) = self.peek();
 
         if !matches!(token, Some(Token::LeftAttrBracket)) {
@@ -225,10 +315,10 @@ impl<'a, 'src> Parser<'a, 'src> {
 
         let (lines, end_span) = self.parse_list_contents(Token::RightAttrBracket);
 
-        Some(Expr::new(
-            span.with_end(end_span.end),
-            ExprKind::List(lines),
-        ))
+        Some(Attribute {
+            span: span.with_end(end_span.end),
+            exprs: lines.into_iter().flat_map(|line| line.exprs).collect(),
+        })
     }
 
     pub fn parse_expr(&mut self) -> Option<Expr> {
@@ -272,9 +362,12 @@ impl<'a, 'src> Parser<'a, 'src> {
         parse_each!(
             try_parse_underscore,
             try_parse_name,
+            try_parse_quote_name,
+            try_parse_repeat_name,
             try_parse_text,
             try_parse_number,
             try_parse_list,
+            try_parse_repeat_list,
             try_parse_block,
         )
     }
@@ -300,7 +393,44 @@ impl<'a, 'src> Parser<'a, 'src> {
             Some(Token::Name(name)) => {
                 self.consume();
 
-                Ok(Expr::new(span, ExprKind::Name(InternedString::new(name))))
+                Ok(Expr::new(
+                    span,
+                    ExprKind::Name(InternedString::new(name), None),
+                ))
+            }
+            Some(_) => Err(ParseError::WrongTokenType),
+            None => Err(ParseError::EndOfFile),
+        }
+    }
+
+    pub fn try_parse_quote_name(&mut self) -> Result<Expr, ParseError> {
+        let (span, token) = self.peek();
+
+        match token {
+            Some(Token::QuoteName(name)) => {
+                self.consume();
+
+                Ok(Expr::new(
+                    span,
+                    ExprKind::QuoteName(InternedString::new(name)),
+                ))
+            }
+            Some(_) => Err(ParseError::WrongTokenType),
+            None => Err(ParseError::EndOfFile),
+        }
+    }
+
+    pub fn try_parse_repeat_name(&mut self) -> Result<Expr, ParseError> {
+        let (span, token) = self.peek();
+
+        match token {
+            Some(Token::RepeatName(name)) => {
+                self.consume();
+
+                Ok(Expr::new(
+                    span,
+                    ExprKind::RepeatName(InternedString::new(name)),
+                ))
             }
             Some(_) => Err(ParseError::WrongTokenType),
             None => Err(ParseError::EndOfFile),
@@ -326,7 +456,7 @@ impl<'a, 'src> Parser<'a, 'src> {
                             "syntax error",
                             vec![Note::primary(
                                 Span::new(self.file, range).offset(span.start),
-                                format!("invalid character sequence in string literal ({:?})", e),
+                                format!("invalid character sequence in string literal ({e:?})"),
                             )],
                         );
                     }
@@ -372,6 +502,25 @@ impl<'a, 'src> Parser<'a, 'src> {
                 Ok(Expr::new(
                     span.with_end(end_span.end),
                     ExprKind::List(lines),
+                ))
+            }
+            Some(_) => Err(ParseError::WrongTokenType),
+            None => Err(ParseError::EndOfFile),
+        }
+    }
+
+    pub fn try_parse_repeat_list(&mut self) -> Result<Expr, ParseError> {
+        let (span, token) = self.peek();
+
+        match token {
+            Some(Token::RepeatLeftParenthesis) => {
+                self.consume();
+
+                let (lines, end_span) = self.parse_list_contents(Token::RightParenthesis);
+
+                Ok(Expr::new(
+                    span.with_end(end_span.end),
+                    ExprKind::RepeatList(lines),
                 ))
             }
             Some(_) => Err(ParseError::WrongTokenType),
@@ -441,7 +590,7 @@ impl<'a, 'src> Parser<'a, 'src> {
                 "syntax error",
                 vec![Note::primary(
                     self.eof_span(),
-                    format!("expected {}, found end of file", end_token),
+                    format!("expected {end_token}, found end of file"),
                 )],
             );
         }

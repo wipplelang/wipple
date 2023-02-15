@@ -1,14 +1,13 @@
-use ouroboros::self_referencing;
 use parking_lot::{MappedRwLockReadGuard, RwLock, RwLockReadGuard};
 use std::{collections::HashMap, sync::Arc};
 use tower_lsp::{jsonrpc, lsp_types::*, Client, LanguageServer, LspService, Server};
 use wipple_default_loader::Loader;
 use wipple_frontend::{
     analysis::{
-        lower::{ScopeValue, ScopeValues},
+        lower::AnyDeclaration,
         typecheck::{
             format::{format_type, Format, TypeFunctionFormat},
-            TemplateDecl, TraitDecl, Type, TypeDecl, TypeDeclKind,
+            TraitDecl, Type, TypeDecl, TypeDeclKind,
         },
         Expression, ExpressionKind, Program,
     },
@@ -37,25 +36,18 @@ pub async fn run() {
         }),
     );
 
-    let (service, socket) = LspService::new(|client| {
-        Backend::new(
-            client,
-            loader,
-            |loader| Compiler::new(loader),
-            Default::default(),
-        )
+    let (service, socket) = LspService::new(|client| Backend {
+        client,
+        compiler: Compiler::new(loader),
+        documents: Default::default(),
     });
 
     Server::new(stdin, stdout, socket).serve(service).await;
 }
 
-#[self_referencing]
 struct Backend {
     client: Client,
-    loader: Loader,
-    #[borrows(loader)]
-    #[covariant]
-    compiler: Compiler<'this>,
+    compiler: Compiler,
     documents: Arc<RwLock<HashMap<FilePath, Document>>>,
 }
 
@@ -145,7 +137,7 @@ impl LanguageServer for Backend {
     }
 
     async fn initialized(&self, _: InitializedParams) {
-        self.borrow_client()
+        self.client
             .log_message(MessageType::INFO, "Wipple language server initialized")
             .await;
     }
@@ -166,7 +158,7 @@ impl LanguageServer for Backend {
 
     async fn did_close(&self, params: DidCloseTextDocumentParams) {
         let path = self.file_path_from(&params.text_document.uri);
-        self.borrow_documents().write().remove(&path);
+        self.documents.write().remove(&path);
     }
 
     async fn semantic_tokens_full(
@@ -201,18 +193,18 @@ impl LanguageServer for Backend {
         insert_semantic_tokens!(types, |_| SemanticTokenType::TYPE);
         insert_semantic_tokens!(traits, |_| SemanticTokenType::INTERFACE);
         insert_semantic_tokens!(constants, |_| SemanticTokenType::VARIABLE);
-        insert_semantic_tokens!(operators, |_| SemanticTokenType::OPERATOR);
-        insert_semantic_tokens!(
-            templates,
-            |id, _| !document.program.declarations.operators.contains_key(id),
-            |decl: &TemplateDecl| {
-                if decl.attributes.keyword {
-                    SemanticTokenType::KEYWORD
-                } else {
-                    SemanticTokenType::MACRO
-                }
-            }
-        );
+        // insert_semantic_tokens!(operators, |_| SemanticTokenType::OPERATOR);
+        // insert_semantic_tokens!(
+        //     templates,
+        //     |id, _| !document.program.declarations.operators.contains_key(id),
+        //     |decl: &TemplateDecl| {
+        //         if decl.attributes.keyword {
+        //             SemanticTokenType::KEYWORD
+        //         } else {
+        //             SemanticTokenType::MACRO
+        //         }
+        //     }
+        // );
         insert_semantic_tokens!(builtin_types, |_| SemanticTokenType::TYPE);
         insert_semantic_tokens!(type_parameters, |_| SemanticTokenType::TYPE_PARAMETER);
         insert_semantic_tokens!(variables, |_| SemanticTokenType::VARIABLE);
@@ -512,7 +504,7 @@ impl LanguageServer for Backend {
         let position = offset_lookup.get(position.line as usize, position.character as usize);
         let cursor_span = Span::new(document.path, position..position);
 
-        let within_cursor = |span: Span| cursor_span.is_subspan_of(span);
+        let _within_cursor = |span: Span| cursor_span.is_subspan_of(span);
 
         let format_type = |ty: Type, format: Format| {
             macro_rules! getter {
@@ -534,59 +526,15 @@ impl LanguageServer for Backend {
 
         let mut items = Vec::new();
 
-        let mut add = |scope: &ScopeValues| {
+        let _add = |scope: &HashMap<InternedString, AnyDeclaration>| {
             for (name, value) in scope {
-                let mut kind = None;
+                let kind;
                 let mut help = Vec::new();
                 let mut ty = None;
                 let mut format = Format::default();
 
                 match value {
-                    ScopeValue::Operator(operator) => {
-                        kind = Some(CompletionItemKind::OPERATOR);
-
-                        help = document
-                            .program
-                            .declarations
-                            .templates
-                            .get(&operator.template)
-                            .unwrap()
-                            .attributes
-                            .help
-                            .clone()
-                            .into_iter()
-                            .collect();
-                    }
-                    ScopeValue::Template(id) => {
-                        if !document.program.declarations.operators.contains_key(id) {
-                            if document
-                                .program
-                                .declarations
-                                .templates
-                                .get(id)
-                                .unwrap()
-                                .attributes
-                                .keyword
-                            {
-                                kind = Some(CompletionItemKind::KEYWORD);
-                            } else {
-                                kind = Some(CompletionItemKind::FUNCTION);
-                            }
-                        }
-
-                        help = document
-                            .program
-                            .declarations
-                            .templates
-                            .get(id)
-                            .unwrap()
-                            .attributes
-                            .help
-                            .clone()
-                            .into_iter()
-                            .collect();
-                    }
-                    ScopeValue::Type(id) => {
+                    AnyDeclaration::Type(id) => {
                         kind = Some(
                             match document.program.declarations.types.get(id).unwrap().kind {
                                 TypeDeclKind::Marker | TypeDeclKind::Structure { .. } => {
@@ -607,7 +555,7 @@ impl LanguageServer for Backend {
                             .help
                             .clone();
                     }
-                    ScopeValue::BuiltinType(id) => {
+                    AnyDeclaration::BuiltinType(id) => {
                         kind = Some(CompletionItemKind::STRUCT);
 
                         help = document
@@ -620,7 +568,7 @@ impl LanguageServer for Backend {
                             .help
                             .clone();
                     }
-                    ScopeValue::Trait(id) => {
+                    AnyDeclaration::Trait(id) => {
                         kind = Some(CompletionItemKind::INTERFACE);
 
                         help = document
@@ -634,10 +582,10 @@ impl LanguageServer for Backend {
                             .help
                             .clone();
                     }
-                    ScopeValue::TypeParameter(_) => {
+                    AnyDeclaration::TypeParameter(_) => {
                         kind = Some(CompletionItemKind::TYPE_PARAMETER);
                     }
-                    ScopeValue::Constant(id, _) => {
+                    AnyDeclaration::Constant(id, _) => {
                         kind = Some(CompletionItemKind::CONSTANT);
 
                         let decl = document.program.declarations.constants.get(id).unwrap();
@@ -648,7 +596,7 @@ impl LanguageServer for Backend {
 
                         format.type_function = TypeFunctionFormat::Arrow;
                     }
-                    ScopeValue::Variable(id) => {
+                    AnyDeclaration::Variable(id) => {
                         kind = Some(CompletionItemKind::VARIABLE);
 
                         ty = document
@@ -681,15 +629,15 @@ impl LanguageServer for Backend {
             }
         };
 
-        for (span, scope) in &document.program.scopes {
-            if !within_cursor(*span) {
-                continue;
-            }
+        // for (span, scope) in &document.program.scopes {
+        //     if !within_cursor(*span) {
+        //         continue;
+        //     }
 
-            add(scope);
-        }
+        //     add(scope);
+        // }
 
-        add(&document.program.exported);
+        // add(&document.program.exported);
 
         Ok(Some(CompletionResponse::Array(items)))
     }
@@ -709,7 +657,7 @@ impl Backend {
     }
 
     fn document_from(&self, uri: &Url) -> jsonrpc::Result<MappedRwLockReadGuard<Document>> {
-        RwLockReadGuard::try_map(self.borrow_documents().read(), |documents| {
+        RwLockReadGuard::try_map(self.documents.read(), |documents| {
             documents.get(&self.file_path_from(uri))
         })
         .map_err(|_| jsonrpc::Error::internal_error())
@@ -729,7 +677,7 @@ impl Backend {
         self.update_diagnostics(text_document.uri, &document, diagnostics)
             .await;
 
-        self.borrow_documents().write().insert(path, document);
+        self.documents.write().insert(path, document);
     }
 
     async fn analyze(
@@ -738,14 +686,12 @@ impl Backend {
     ) -> (Program, Vec<wipple_frontend::diagnostics::Diagnostic>) {
         let path = self.file_path_from(&document.uri);
 
-        self.borrow_loader().virtual_paths.lock().insert(
+        self.compiler.loader.virtual_paths().lock().insert(
             self.raw_file_path_from(&document.uri),
             Arc::from(document.text.as_str()),
         );
 
-        let compiler = self.borrow_compiler();
-
-        let (program, diagnostics) = compiler.analyze_with(path, &Default::default()).await;
+        let (program, diagnostics) = self.compiler.analyze_with(path, &Default::default()).await;
 
         (program, diagnostics.diagnostics)
     }
@@ -813,7 +759,7 @@ impl Backend {
             result
         };
 
-        self.borrow_client()
+        self.client
             .publish_diagnostics(uri, diagnostics, None)
             .await;
     }

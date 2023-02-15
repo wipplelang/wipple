@@ -62,6 +62,7 @@ pub enum ExpressionKind {
     Structure(Vec<Expression>),
     Variant(VariantIndex, Vec<Expression>),
     Tuple(Vec<Expression>),
+    Format(Vec<(InternedString, Expression)>, Option<InternedString>),
     Number(rust_decimal::Decimal),
     Integer(i64),
     Natural(u64),
@@ -106,10 +107,10 @@ pub enum PatternKind {
     Where(Box<Pattern>, Box<Expression>),
 }
 
-impl Compiler<'_> {
+impl Compiler {
     pub(super) fn convert_to_ssa(&self, program: &analysis::Program) -> Program {
         let mut converter = Converter {
-            compiler: self,
+            compiler: self.clone(),
             program,
             structures: Default::default(),
             structure_ids: Default::default(),
@@ -155,8 +156,8 @@ impl Type {
     }
 }
 
-struct Converter<'a, 'l> {
-    compiler: &'a Compiler<'l>,
+struct Converter<'a> {
+    compiler: Compiler,
     program: &'a analysis::Program,
     structures: BTreeMap<StructureId, Vec<Type>>,
     structure_ids: BTreeMap<TypeId, StructureId>,
@@ -164,7 +165,7 @@ struct Converter<'a, 'l> {
     enumeration_ids: BTreeMap<TypeId, EnumerationId>,
 }
 
-impl Converter<'_, '_> {
+impl Converter<'_> {
     fn convert_expr(&mut self, expr: &analysis::Expression, tail: bool) -> Expression {
         Expression {
             span: Some(expr.span),
@@ -242,6 +243,15 @@ impl Converter<'_, '_> {
                         .map(|expr| self.convert_expr(expr, false))
                         .collect(),
                 ),
+                analysis::ExpressionKind::Format(segments, trailing_segment) => {
+                    ExpressionKind::Format(
+                        segments
+                            .iter()
+                            .map(|(text, expr)| (*text, self.convert_expr(expr, false)))
+                            .collect(),
+                        *trailing_segment,
+                    )
+                }
                 analysis::ExpressionKind::Number(number) => ExpressionKind::Number(*number),
                 analysis::ExpressionKind::Integer(integer) => ExpressionKind::Integer(*integer),
                 analysis::ExpressionKind::Natural(natural) => ExpressionKind::Natural(*natural),
@@ -313,7 +323,7 @@ impl Converter<'_, '_> {
             span: Some(pattern.span),
             kind: match &pattern.kind {
                 analysis::PatternKind::Error(trace) => {
-                    panic!("found error pattern in program: {:?}", trace);
+                    panic!("found error pattern in program: {trace:?}");
                 }
                 analysis::PatternKind::Wildcard => PatternKind::Wildcard,
                 analysis::PatternKind::Variable(var) => PatternKind::Variable(*var),

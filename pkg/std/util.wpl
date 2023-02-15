@@ -4,10 +4,13 @@ use "fp.wpl"
 use "logic.wpl"
 
 [help "Retrieve a field from a structure value without introducing a new variable into scope."]
-of : accessor operator (field value ~> {
-	{ field } : value
-	field
-})
+[operator Accessor-Precedence]
+of : syntax {
+	'field of 'value -> {
+		{ field } : value
+		field
+	}
+}
 
 [help "Crash the program with the provided message."]
 crash :: Text -> _
@@ -79,11 +82,21 @@ unwrap :: Container Value
 unwrap : x? -> expect (Unwrap-Message x?) x?
 
 As : Input Output => trait (Input -> Output)
-as : cast operator (x t ~> (As x :: t))
+
+[operator Casting-Precedence]
+as : syntax {
+	'x as 't -> (As 'x :: 't)
+}
+
 A => instance (As A A) : it
 
 As? : Input Output => trait (Input -> Maybe Output)
-as? : cast operator (x t ~> (As? x :: Maybe t))
+
+[operator Casting-Precedence]
+as? : syntax {
+	'x as? 't -> (As? 'x :: Maybe 't)
+}
+
 A => instance (As? A A) : Some
 
 [help "Represents the default or initial value of a type."]

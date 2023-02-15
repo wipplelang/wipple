@@ -11,6 +11,7 @@ use std::{
 use wasm_bindgen::{prelude::*, JsCast};
 use wasm_bindgen_futures::JsFuture;
 use wipple_default_loader as loader;
+use wipple_frontend::Loader;
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -114,7 +115,7 @@ lazy_static! {
                                 });
 
                             match error {
-                                Some(error) => format!("{}: {}", msg, error),
+                                Some(error) => format!("{msg}: {error}"),
                                 None => msg.to_string(),
                             }
                         };
@@ -150,8 +151,8 @@ lazy_static! {
     };
 
     #[allow(clippy::let_and_return)]
-    static ref COMPILER: wipple_frontend::Compiler<'static> = {
-        let compiler = wipple_frontend::Compiler::new(&*LOADER);
+    static ref COMPILER: wipple_frontend::Compiler = {
+        let compiler = wipple_frontend::Compiler::new(LOADER.clone());
 
         #[cfg(debug_assertions)]
         let compiler = compiler.set_backtrace_enabled(false);
@@ -186,7 +187,7 @@ pub async fn analyze(id: String, code: String, lint: bool) -> JsValue {
     console_error_panic_hook::set_once();
 
     LOADER
-        .virtual_paths
+        .virtual_paths()
         .lock()
         .insert(*PLAYGROUND_PATH, Arc::from(code));
 
@@ -280,29 +281,29 @@ fn get_syntax_highlighting(
     insert_semantic_tokens!(types, |_, _| "type");
     insert_semantic_tokens!(traits, |_, _| "trait");
     insert_semantic_tokens!(constants, |_, _| "variable");
-    insert_semantic_tokens!(operators, |id, _| {
-        if program
-            .declarations
-            .templates
-            .get(id)
-            .map_or(false, |decl| decl.attributes.keyword)
-        {
-            "keyword"
-        } else {
-            "operator"
-        }
-    });
-    insert_semantic_tokens!(
-        templates,
-        |id, _| !program.declarations.operators.contains_key(id),
-        |_, decl: &wipple_frontend::analysis::typecheck::TemplateDecl| {
-            if decl.attributes.keyword {
-                "keyword"
-            } else {
-                "template"
-            }
-        }
-    );
+    // insert_semantic_tokens!(operators, |id, _| {
+    //     if program
+    //         .declarations
+    //         .templates
+    //         .get(id)
+    //         .map_or(false, |decl| decl.attributes.keyword)
+    //     {
+    //         "keyword"
+    //     } else {
+    //         "operator"
+    //     }
+    // });
+    // insert_semantic_tokens!(
+    //     templates,
+    //     |id, _| !program.declarations.operators.contains_key(id),
+    //     |_, decl: &wipple_frontend::analysis::typecheck::TemplateDecl| {
+    //         if decl.attributes.keyword {
+    //             "keyword"
+    //         } else {
+    //             "template"
+    //         }
+    //     }
+    // );
     insert_semantic_tokens!(builtin_types, |_, _| "type");
     insert_semantic_tokens!(type_parameters, |_, _| "type");
     insert_semantic_tokens!(variables, |_, _| "variable");
@@ -352,7 +353,7 @@ fn get_syntax_highlighting(
 pub fn run(id: String) -> Option<String> {
     let Analysis { program, success } = &*get_analysis(&id)?;
 
-    let program = success.then(|| COMPILER.ir_from(&program));
+    let program = success.then(|| COMPILER.ir_from(program));
 
     let mut output = Vec::new();
 
@@ -361,7 +362,7 @@ pub fn run(id: String) -> Option<String> {
             let result = {
                 let mut interpreter =
                     wipple_interpreter_backend::Interpreter::handling_output(|text| {
-                        write!(output, "{}", text).unwrap();
+                        write!(output, "{text}").unwrap();
                     });
 
                 interpreter.run(&program)
@@ -429,7 +430,7 @@ pub fn hover(id: String, start: usize, end: usize) -> JsValue {
         expr.traverse(|expr| {
             // Don't show type of entire file
             if let Some(entrypoint) = &analysis.program.entrypoint {
-                if let Some((_, item)) = analysis.program.items.get(&entrypoint) {
+                if let Some((_, item)) = analysis.program.items.get(entrypoint) {
                     if expr.span == item.span {
                         return;
                     }

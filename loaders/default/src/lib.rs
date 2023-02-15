@@ -15,12 +15,12 @@ pub const STD_URL: &str = "https://pkg.wipple.gramer.dev/std/std.wpl";
 
 #[derive(Debug, Clone)]
 pub struct Loader {
-    pub virtual_paths: Shared<HashMap<InternedString, Arc<str>>>,
+    virtual_paths: Shared<HashMap<InternedString, Arc<str>>>,
     fetcher: Shared<Fetcher>,
     base: Option<FilePath>,
     std_path: Option<FilePath>,
     source_map: Shared<SourceMap>,
-    cache: Shared<HashMap<FilePath, Arc<analysis::expand::File>>>,
+    cache: Shared<HashMap<FilePath, Arc<analysis::ast::File>>>,
 }
 
 #[derive(Default)]
@@ -76,15 +76,14 @@ impl Fetcher {
                             .await
                             .map_err(|e| {
                                 anyhow::Error::msg(format!(
-                                    "failed to create cache directory: {}",
-                                    e
+                                    "failed to create cache directory: {e}"
                                 ))
                             })?;
 
                         tokio::fs::write(cache_path, file.clone())
                             .await
                             .map_err(|e| {
-                                anyhow::Error::msg(format!("failed to cache {}: {}", url, e))
+                                anyhow::Error::msg(format!("failed to cache {url}: {e}"))
                             })?;
                     }
 
@@ -240,7 +239,11 @@ impl wipple_frontend::Loader for Loader {
         Ok(code)
     }
 
-    fn cache(&self) -> Shared<HashMap<FilePath, Arc<analysis::expand::File>>> {
+    fn virtual_paths(&self) -> Shared<HashMap<InternedString, Arc<str>>> {
+        self.virtual_paths.clone()
+    }
+
+    fn cache(&self) -> Shared<HashMap<FilePath, Arc<analysis::ast::File>>> {
         self.cache.clone()
     }
 

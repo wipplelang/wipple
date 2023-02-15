@@ -9,6 +9,7 @@ use "util.wpl"
 write-stdout :: Text -> ()
 write-stdout : text -> external "runtime" "write-stdout" text
 
+[language "show"]
 [help "Implement this trait to enable `show`ing values of your type."]
 Show : A => trait (A -> Text)
 

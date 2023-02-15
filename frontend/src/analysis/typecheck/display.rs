@@ -41,7 +41,7 @@ impl fmt::Display for Program {
                 .map(|tr| tr.name.to_string())
                 .unwrap_or_else(|| format!("<unknown trait #{}>", decl.trait_id.counter));
 
-            write!(f, "instance ({}", trait_name)?;
+            write!(f, "instance ({trait_name}")?;
 
             for ty in &decl.trait_param_annotations {
                 write!(f, " ")?;
@@ -89,7 +89,7 @@ impl Expression {
                     }
                 };
 
-                write!(f, "{}", name)?;
+                write!(f, "{name}")?;
             }
             ExpressionKind::Constant(item) | ExpressionKind::ExpandedConstant(item) => {
                 match file.items.get(item) {
@@ -112,7 +112,7 @@ impl Expression {
                                 .map(|tr| tr.name.to_string())
                                 .unwrap_or_else(|| format!("<unknown trait #{}>", tr.counter));
 
-                            write!(f, "{}", name)?;
+                            write!(f, "{name}")?;
                         } else {
                             let name = file
                                 .declarations
@@ -121,7 +121,7 @@ impl Expression {
                                 .map(|constant| constant.name.to_string())
                                 .unwrap_or_else(|| format!("<unknown constant #{}>", id.counter));
 
-                            write!(f, "{}", name)?;
+                            write!(f, "{name}")?;
                         }
                     }
                     _ => {
@@ -138,17 +138,17 @@ impl Expression {
                     .and_then(|var| var.name.as_deref().map(ToString::to_string))
                     .unwrap_or_else(|| format!("<unknown variable #{}>", id.counter));
 
-                write!(f, "{}", name)?;
+                write!(f, "{name}")?;
             }
-            ExpressionKind::Text(value) => write!(f, "{:?}", value)?,
-            ExpressionKind::Number(value) => write!(f, "{}", value)?,
-            ExpressionKind::Integer(value) => write!(f, "{}", value)?,
-            ExpressionKind::Natural(value) => write!(f, "{}", value)?,
-            ExpressionKind::Byte(value) => write!(f, "{}", value)?,
-            ExpressionKind::Signed(value) => write!(f, "{}", value)?,
-            ExpressionKind::Unsigned(value) => write!(f, "{}", value)?,
-            ExpressionKind::Float(value) => write!(f, "{}", value)?,
-            ExpressionKind::Double(value) => write!(f, "{}", value)?,
+            ExpressionKind::Text(value) => write!(f, "{value:?}")?,
+            ExpressionKind::Number(value) => write!(f, "{value}")?,
+            ExpressionKind::Integer(value) => write!(f, "{value}")?,
+            ExpressionKind::Natural(value) => write!(f, "{value}")?,
+            ExpressionKind::Byte(value) => write!(f, "{value}")?,
+            ExpressionKind::Signed(value) => write!(f, "{value}")?,
+            ExpressionKind::Unsigned(value) => write!(f, "{value}")?,
+            ExpressionKind::Float(value) => write!(f, "{value}")?,
+            ExpressionKind::Double(value) => write!(f, "{value}")?,
             ExpressionKind::Block(exprs, _) => {
                 writeln!(f, "{{")?;
                 for expr in exprs {
@@ -199,7 +199,7 @@ impl Expression {
                 write!(f, "{}}})", "\t".repeat(indent))?;
             }
             ExpressionKind::External(namespace, identifier, inputs) => {
-                write!(f, "(external {:?} {:?}", namespace, identifier)?;
+                write!(f, "(external {namespace:?} {identifier:?}")?;
                 for expr in inputs {
                     write!(f, " ")?;
                     expr.display_with(f, file, indent)?;
@@ -245,14 +245,14 @@ impl Expression {
                     }
                 };
 
-                writeln!(f, "({:?} {{", name)?;
+                writeln!(f, "({name:?} {{")?;
                 for (index, value) in fields.iter().enumerate() {
                     let name = field_names
                         .iter()
                         .find_map(|(name, i)| {
                             (*i == FieldIndex::new(index)).then_some(name.to_string())
                         })
-                        .unwrap_or_else(|| format!("<unknown field #{}>", index));
+                        .unwrap_or_else(|| format!("<unknown field #{index}>"));
 
                     write!(f, "{}{} : ", "\t".repeat(indent + 1), name)?;
                     value.display_with(f, file, indent + 1)?;
@@ -292,7 +292,7 @@ impl Expression {
                     .find_map(|(name, i)| (i == index).then_some(name.to_string()))
                     .unwrap_or_else(|| format!("<unknown variant #{}>", index.into_inner()));
 
-                write!(f, "({} {}", ty_name, variant_name)?;
+                write!(f, "({ty_name} {variant_name}")?;
                 for value in values {
                     write!(f, " ")?;
                     value.display_with(f, file, indent)?;
@@ -307,6 +307,17 @@ impl Expression {
                     }
 
                     expr.display_with(f, file, indent)?;
+                }
+                write!(f, ")")?;
+            }
+            ExpressionKind::Format(segments, trailing_segment) => {
+                write!(f, "(format")?;
+                for (text, expr) in segments {
+                    write!(f, " {:?}", text.as_str())?;
+                    expr.display_with(f, file, indent)?;
+                }
+                if let Some(text) = trailing_segment {
+                    write!(f, " {text:?}")?;
                 }
                 write!(f, ")")?;
             }
@@ -342,15 +353,15 @@ impl Pattern {
         match &self.kind {
             PatternKind::Error(_) => write!(f, "<error>")?,
             PatternKind::Wildcard => write!(f, "_")?,
-            PatternKind::Text(value) => write!(f, "{:?}", value)?,
-            PatternKind::Number(value) => write!(f, "{}", value)?,
-            PatternKind::Integer(value) => write!(f, "{}", value)?,
-            PatternKind::Natural(value) => write!(f, "{}", value)?,
-            PatternKind::Byte(value) => write!(f, "{}", value)?,
-            PatternKind::Signed(value) => write!(f, "{}", value)?,
-            PatternKind::Unsigned(value) => write!(f, "{}", value)?,
-            PatternKind::Float(value) => write!(f, "{}", value)?,
-            PatternKind::Double(value) => write!(f, "{}", value)?,
+            PatternKind::Text(value) => write!(f, "{value:?}")?,
+            PatternKind::Number(value) => write!(f, "{value}")?,
+            PatternKind::Integer(value) => write!(f, "{value}")?,
+            PatternKind::Natural(value) => write!(f, "{value}")?,
+            PatternKind::Byte(value) => write!(f, "{value}")?,
+            PatternKind::Signed(value) => write!(f, "{value}")?,
+            PatternKind::Unsigned(value) => write!(f, "{value}")?,
+            PatternKind::Float(value) => write!(f, "{value}")?,
+            PatternKind::Double(value) => write!(f, "{value}")?,
             PatternKind::Variable(id) => {
                 let name = file
                     .declarations
@@ -359,7 +370,7 @@ impl Pattern {
                     .and_then(|decl| decl.name.as_deref().map(ToString::to_string))
                     .unwrap_or_else(|| format!("<unknown variable #{}>", id.counter));
 
-                write!(f, "{}", name)?;
+                write!(f, "{name}")?;
             }
             PatternKind::Destructure(fields) => {
                 let (id, field_tys) = match input_ty {
@@ -433,7 +444,7 @@ impl Pattern {
 
                 let value_tys = &variant_tys[index.into_inner()];
 
-                write!(f, "({} {}", ty_name, variant_name)?;
+                write!(f, "({ty_name} {variant_name}")?;
                 for (pattern, ty) in patterns.iter().zip(value_tys) {
                     write!(f, " ")?;
                     pattern.display_with(f, ty, file, indent)?;
@@ -482,7 +493,7 @@ impl Pattern {
 impl TypeAnnotation {
     fn display_with(&self, f: &mut impl fmt::Write, file: &Program) -> fmt::Result {
         match &self.kind {
-            TypeAnnotationKind::Error => write!(f, "<error>")?,
+            TypeAnnotationKind::Error(_) => write!(f, "<error>")?,
             TypeAnnotationKind::Placeholder => write!(f, "_")?,
             TypeAnnotationKind::Named(id, params) => {
                 let name = match file.declarations.types.get(id) {
@@ -493,7 +504,7 @@ impl TypeAnnotation {
                     }
                 };
 
-                write!(f, "({}", name)?;
+                write!(f, "({name}")?;
                 for ty in params {
                     write!(f, " ")?;
                     ty.display_with(f, file)?;
@@ -508,7 +519,7 @@ impl TypeAnnotation {
                     .and_then(|decl| decl.name.as_deref().map(ToString::to_string))
                     .unwrap_or_else(|| format!("<unknown type parameter #{}>", id.counter));
 
-                write!(f, "{}", name)?;
+                write!(f, "{name}")?;
             }
             TypeAnnotationKind::Builtin(id, params) => {
                 let name = match file.declarations.builtin_types.get(id) {
@@ -519,7 +530,7 @@ impl TypeAnnotation {
                     }
                 };
 
-                write!(f, "({}", name)?;
+                write!(f, "({name}")?;
                 for ty in params {
                     write!(f, " ")?;
                     ty.display_with(f, file)?;

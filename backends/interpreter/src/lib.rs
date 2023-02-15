@@ -275,6 +275,21 @@ impl<'a> Interpreter<'a> {
                             let inputs = stack.popn(*inputs);
                             stack.push(Value::Tuple(inputs));
                         }
+                        ir::Expression::Format(segments, trailing_segment) => {
+                            let inputs = stack.popn(segments.len());
+
+                            let text = segments
+                                .iter()
+                                .zip(inputs)
+                                .map(|(text, expr)| match expr {
+                                    Value::Text(right) => text.to_string() + right.as_ref(),
+                                    _ => unreachable!(),
+                                })
+                                .chain(trailing_segment.map(|text| text.to_string()))
+                                .collect::<String>();
+
+                            stack.push(Value::Text(Rc::from(text)));
+                        }
                         ir::Expression::Structure(inputs) => {
                             let inputs = stack.popn(*inputs);
                             stack.push(Value::Structure(inputs));

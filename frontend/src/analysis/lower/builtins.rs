@@ -1,31 +1,29 @@
 use super::*;
 
-impl Compiler<'_> {
-    pub(super) fn load_builtins(&self, scope: &Scope, info: &mut Info) {
-        let mut scope_values = scope.values.borrow_mut();
-
+impl Lowerer {
+    pub fn load_builtins(&mut self, scope: &mut Scope) {
         macro_rules! add {
             ($kind:ident, $span:expr, $name:expr, $value:expr $(,)?) => {{
                 paste::paste! {
                     let name = InternedString::new($name);
-                    let id = self.[<new_ $kind _id_in>](info.file);
+                    let id = self.compiler.[<new_ $kind _id_in>](self.file);
 
-                    info.declarations.[<$kind s>].insert(
+                    self.declarations.[<$kind s>].insert(
                         id,
                         Declaration::resolved(Some(name), $span, $value),
                     );
 
-                    scope_values.insert(name, ScopeValue::[<$kind:camel>](id));
+                    scope.values.insert(name, AnyDeclaration::[<$kind:camel>](id));
                 }
             }};
         }
 
         add!(
             builtin_type,
-            Span::builtin("`Number` type"),
+            Span::builtin(),
             "Number",
-            BuiltinType {
-                kind: BuiltinTypeKind::Number,
+            BuiltinTypeDeclaration {
+                kind: BuiltinTypeDeclarationKind::Number,
                 attributes: DeclarationAttributes {
                     help: vec![InternedString::new("Represents a decimal number.",)],
                     ..Default::default()
@@ -35,10 +33,10 @@ impl Compiler<'_> {
 
         add!(
             builtin_type,
-            Span::builtin("`Integer` type"),
+            Span::builtin(),
             "Integer",
-            BuiltinType {
-                kind: BuiltinTypeKind::Integer,
+            BuiltinTypeDeclaration {
+                kind: BuiltinTypeDeclarationKind::Integer,
                 attributes: DeclarationAttributes {
                     help: vec![InternedString::new(
                         "Represents a whole number that can be positive or negative.",
@@ -50,10 +48,10 @@ impl Compiler<'_> {
 
         add!(
             builtin_type,
-            Span::builtin("`Natural` type"),
+            Span::builtin(),
             "Natural",
-            BuiltinType {
-                kind: BuiltinTypeKind::Natural,
+            BuiltinTypeDeclaration {
+                kind: BuiltinTypeDeclarationKind::Natural,
                 attributes: DeclarationAttributes {
                     help: vec![InternedString::new(
                         "Represents a whole number that can only be positive.",
@@ -65,10 +63,10 @@ impl Compiler<'_> {
 
         add!(
             builtin_type,
-            Span::builtin("`Byte` type"),
+            Span::builtin(),
             "Byte",
-            BuiltinType {
-                kind: BuiltinTypeKind::Byte,
+            BuiltinTypeDeclaration {
+                kind: BuiltinTypeDeclarationKind::Byte,
                 attributes: DeclarationAttributes {
                     help: vec![InternedString::new(
                         "Represents a byte of data, specifically an 8-bit unsigned integer.",
@@ -80,10 +78,10 @@ impl Compiler<'_> {
 
         add!(
             builtin_type,
-            Span::builtin("`Signed` type"),
+            Span::builtin(),
             "Signed",
-            BuiltinType {
-                kind: BuiltinTypeKind::Signed,
+            BuiltinTypeDeclaration {
+                kind: BuiltinTypeDeclarationKind::Signed,
                 attributes: DeclarationAttributes {
                     help: vec![InternedString::new(
                         "Represents a platform-sized signed integer, equivalent to the `signed int` type in C.",
@@ -95,10 +93,10 @@ impl Compiler<'_> {
 
         add!(
             builtin_type,
-            Span::builtin("`Unsigned` type"),
+            Span::builtin(),
             "Unsigned",
-            BuiltinType {
-                kind: BuiltinTypeKind::Unsigned,
+            BuiltinTypeDeclaration {
+                kind: BuiltinTypeDeclarationKind::Unsigned,
                 attributes: DeclarationAttributes {
                     help: vec![InternedString::new(
                         "Represents a platform-sized unsigned integer, equivalent to the `unsigned int` type in C.",
@@ -110,10 +108,10 @@ impl Compiler<'_> {
 
         add!(
             builtin_type,
-            Span::builtin("`Float` type"),
+            Span::builtin(),
             "Float",
-            BuiltinType {
-                kind: BuiltinTypeKind::Float,
+            BuiltinTypeDeclaration {
+                kind: BuiltinTypeDeclarationKind::Float,
                 attributes: DeclarationAttributes {
                     help: vec![InternedString::new(
                         "Represents a 32-bit floating-point number, equivalent to the `float` type in C.",
@@ -125,10 +123,10 @@ impl Compiler<'_> {
 
         add!(
             builtin_type,
-            Span::builtin("`Double` type"),
+            Span::builtin(),
             "Double",
-            BuiltinType {
-                kind: BuiltinTypeKind::Double,
+            BuiltinTypeDeclaration {
+                kind: BuiltinTypeDeclarationKind::Double,
                 attributes: DeclarationAttributes {
                     help: vec![InternedString::new(
                         "Represents a 64-bit floating-point number, equivalent to the `double` type in C.",
@@ -140,10 +138,10 @@ impl Compiler<'_> {
 
         add!(
             builtin_type,
-            Span::builtin("`Text` type"),
+            Span::builtin(),
             "Text",
-            BuiltinType {
-                kind: BuiltinTypeKind::Text,
+            BuiltinTypeDeclaration {
+                kind: BuiltinTypeDeclarationKind::Text,
                 attributes: DeclarationAttributes {
                     help: vec![InternedString::new(
                         "Represents a collection of characters. In Wipple, text is stored in UTF-8 format.",
@@ -155,13 +153,13 @@ impl Compiler<'_> {
 
         add!(
             builtin_type,
-            Span::builtin("`List` type"),
+            Span::builtin(),
             "List",
-            BuiltinType {
-                kind: BuiltinTypeKind::List,
+            BuiltinTypeDeclaration {
+                kind: BuiltinTypeDeclarationKind::List,
                 attributes: DeclarationAttributes {
                     help: vec![InternedString::new(
-                        "Represents a collection of values. `List` is generic, meaning you can use any value inside a list (as long as all the values have the same type). You can create a list using the list function: `list (1 , 2 , 3)`.",
+                        "Represents a collection of values. `List` is generic, meaning you can use any value inside a list (as long as all the values have the same type). You can create a list using the `list` function: `list 1 2 3`.",
                     )],
                     ..Default::default()
                 }
@@ -170,10 +168,10 @@ impl Compiler<'_> {
 
         add!(
             builtin_type,
-            Span::builtin("`Mutable` type"),
+            Span::builtin(),
             "Mutable",
-            BuiltinType {
-                kind: BuiltinTypeKind::Mutable,
+            BuiltinTypeDeclaration {
+                kind: BuiltinTypeDeclarationKind::Mutable,
                 attributes: DeclarationAttributes {
                     help: vec![InternedString::new(
                         "A container for a value that can change at runtime. Functions that change a `Mutable` value end in `!`. You should generally use functions that return a new value instead of functions that mutate their input, but `Mutable` is useful for improving performance or storing global state.",

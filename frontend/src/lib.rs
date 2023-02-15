@@ -12,7 +12,6 @@ use diagnostics::*;
 use helpers::{InternedString, Shared};
 use parse::Span;
 use std::{
-    borrow::Cow,
     collections::HashMap,
     fmt::{self, Debug},
     hash::Hash,
@@ -30,48 +29,41 @@ pub trait Loader: Debug + Send + Sync + 'static {
 
     async fn load(&self, path: FilePath) -> anyhow::Result<Arc<str>>;
 
-    fn cache(&self) -> Shared<HashMap<FilePath, Arc<analysis::expand::File>>>;
+    fn virtual_paths(&self) -> Shared<HashMap<InternedString, Arc<str>>>;
+
+    fn cache(&self) -> Shared<HashMap<FilePath, Arc<analysis::ast::File>>>;
 
     fn source_map(&self) -> Shared<SourceMap>;
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize))]
-#[cfg_attr(feature = "serde", serde(tag = "type", content = "value"))]
 pub enum FilePath {
     Path(InternedString),
     Url(InternedString),
     Virtual(InternedString),
-    Builtin(InternedString),
+    Builtin,
 }
 
 impl FilePath {
-    pub fn as_str(&self) -> Cow<'static, str> {
+    pub fn as_str(&self) -> &'static str {
         match self {
-            FilePath::Path(path) => Cow::Borrowed(path.as_str()),
-            FilePath::Url(url) => Cow::Borrowed(url.as_str()),
-            FilePath::Virtual(name) => Cow::Borrowed(name.as_str()),
-            FilePath::Builtin(location) => Cow::Owned(format!("builtin ({})", location)),
+            FilePath::Path(path) => path.as_str(),
+            FilePath::Url(url) => url.as_str(),
+            FilePath::Virtual(name) => name.as_str(),
+            FilePath::Builtin => "builtin",
         }
     }
 }
 
 impl fmt::Display for FilePath {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(&self.as_str())
-    }
-}
-
-#[cfg(feature = "arbitrary")]
-impl<'a> arbitrary::Arbitrary<'a> for FilePath {
-    fn arbitrary(_: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
-        Ok(FilePath::Virtual(InternedString::new("fuzz")))
+        f.write_str(self.as_str())
     }
 }
 
 #[derive(Debug, Clone)]
-pub struct Compiler<'l> {
-    loader: &'l dyn Loader,
+pub struct Compiler {
+    pub loader: Arc<dyn Loader>,
     diagnostics: Diagnostics,
     file_ids: FileIds,
     ids: Ids,
@@ -79,9 +71,6 @@ pub struct Compiler<'l> {
     #[cfg(debug_assertions)]
     pub(crate) backtrace_enabled: bool,
 }
-
-#[cfg(feature = "arbitrary")]
-pub(crate) const ARBITRARY_MAX_ID_COUNTER: usize = 4;
 
 macro_rules! file_ids {
     ($($(#[$meta:meta])* $id:ident),* $(,)?) => {
@@ -94,19 +83,8 @@ macro_rules! file_ids {
             $(
                 $(#[$meta])*
                 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-                #[cfg_attr(feature = "serde", derive(serde::Serialize), serde(transparent))]
-                #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
                 pub struct [<$id:camel Id>] {
-                    #[cfg_attr(feature = "arbitrary", arbitrary(default))]
-                    #[cfg_attr(feature = "serde", serde(skip))]
                     pub file: Option<FilePath>,
-
-                    #[cfg_attr(
-                        feature = "arbitrary",
-                        arbitrary(with = |u: &mut arbitrary::Unstructured| {
-                            u.choose_index(ARBITRARY_MAX_ID_COUNTER)
-                        })
-                    )]
                     pub counter: usize,
                 }
             )*
@@ -130,35 +108,11 @@ macro_rules! file_ids {
 
                         [<$id:camel Id>] { file, counter }
                     }
-
-                    #[cfg(feature = "arbitrary")]
-                    fn [<list_arbitrary_ $id _ids>]() -> impl Iterator<Item = [<$id:camel Id>]> {
-                        (0..ARBITRARY_MAX_ID_COUNTER).map(|id| [<$id:camel Id>] {
-                            file: None,
-                            counter: id,
-                        })
-                    }
-
-                    #[cfg(feature = "arbitrary")]
-                    fn [<split_arbitrary_ $id _ids>]() -> (impl Iterator<Item = [<$id:camel Id>]>, impl Iterator<Item = [<$id:camel Id>]>) {
-                        const SPLIT: usize = ARBITRARY_MAX_ID_COUNTER / 2;
-
-                        (
-                            (0..SPLIT).map(|id| [<$id:camel Id>] {
-                                file: None,
-                                counter: id,
-                            }),
-                            (SPLIT..ARBITRARY_MAX_ID_COUNTER).map(|id| [<$id:camel Id>] {
-                                file: None,
-                                counter: id,
-                            }),
-                        )
-                    }
                 )*
             }
 
             #[allow(unused)]
-            impl Compiler<'_> {
+            impl Compiler {
                 $(
                     fn [<new_ $id _id>](&self) -> [<$id:camel Id>] {
                         self.file_ids.[<new_ $id _id>]()
@@ -181,7 +135,8 @@ file_ids!(
     builtin_type,
     constant,
     item,
-    template,
+    scope,
+    syntax,
     r#trait,
     r#type,
     type_parameter,
@@ -192,7 +147,6 @@ macro_rules! ids {
     ($($(#[$meta:meta])* $id:ident),* $(,)?) => {
         paste::paste! {
             #[derive(Debug, Clone, Default)]
-            #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
             struct Ids {
                 $([<next_ $id _id>]: Arc<AtomicUsize>,)*
             }
@@ -200,8 +154,6 @@ macro_rules! ids {
             $(
                 $(#[$meta])*
                 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-                #[cfg_attr(feature = "serde", derive(serde::Serialize), serde(transparent))]
-                #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
                 pub struct [<$id:camel Id>] {
                     pub counter: usize,
                 }
@@ -218,7 +170,7 @@ macro_rules! ids {
                 )*
             }
 
-            impl Compiler<'_> {
+            impl Compiler {
                 $(
                     fn [<new_ $id _id>](&self) -> [<$id:camel Id>] {
                         self.ids.[<new_ $id _id>]()
@@ -237,17 +189,7 @@ macro_rules! indexes {
             $(
                 $(#[$meta])*
                 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-                #[cfg_attr(feature = "serde", derive(serde::Serialize), serde(transparent))]
-                #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
-                pub struct [<$id:camel Index>](
-                    #[cfg_attr(
-                        feature = "arbitrary",
-                        arbitrary(with = |u: &mut arbitrary::Unstructured| {
-                            u.choose_index(ARBITRARY_MAX_ID_COUNTER)
-                        })
-                    )]
-                    usize
-                );
+                pub struct [<$id:camel Index>](usize);
 
                 impl [<$id:camel Index>] {
                     pub fn new(n: usize) -> Self {
@@ -257,11 +199,6 @@ macro_rules! indexes {
                     pub fn into_inner(self) -> usize {
                         self.0
                     }
-
-                    #[cfg(feature = "arbitrary")]
-                    fn [<list_arbitrary>]() -> impl Iterator<Item = [<$id:camel Index>]> {
-                        (0..ARBITRARY_MAX_ID_COUNTER).map([<$id:camel Index>]::new)
-                    }
                 }
             )*
         }
@@ -270,10 +207,10 @@ macro_rules! indexes {
 
 indexes!(field, variant);
 
-impl<'l> Compiler<'l> {
-    pub fn new(loader: &'l impl Loader) -> Self {
+impl Compiler {
+    pub fn new(loader: impl Loader) -> Self {
         Compiler {
-            loader,
+            loader: Arc::new(loader),
             diagnostics: Default::default(),
             file_ids: Default::default(),
             ids: Default::default(),
@@ -292,7 +229,7 @@ impl<'l> Compiler<'l> {
     pub const DEFAULT_RECURSION_LIMIT: usize = 64;
 }
 
-impl<'l> Compiler<'l> {
+impl Compiler {
     pub fn has_errors(&self) -> bool {
         self.diagnostics.contains_errors()
     }
@@ -311,7 +248,7 @@ pub trait Optimize {
     fn optimize(self, options: Self::Options, compiler: &Compiler) -> Self;
 }
 
-impl Compiler<'_> {
+impl Compiler {
     pub fn optimize_with<T: Optimize>(&self, x: T, options: T::Options) -> T {
         x.optimize(options, self)
     }

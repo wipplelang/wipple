@@ -31,7 +31,7 @@ diagnostics: |
     12 │ │     Grade B -> "good job"
     13 │ │     Grade C -> "need to study"
     14 │ │ }
-       │ ╰─^ try adding cases for the `Grade D` and `Grade F` patterns
+       │ ╰─^ try adding cases for the `D` and `F` patterns
 
     error: `when` expression is not exhaustive
        ┌─ test:17:15
@@ -40,4 +40,4 @@ diagnostics: |
        │ ╭───────────────^
     18 │ │     Some x -> x
     19 │ │ }
-       │ ╰─^ try adding a case for the `Maybe None` pattern
+       │ ╰─^ try adding a case for the `None` pattern

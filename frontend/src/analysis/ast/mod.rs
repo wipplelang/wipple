@@ -1,1316 +1,429 @@
-use crate::{
-    analysis::expand::{self, Node, NodeKind},
-    diagnostics::*,
-    helpers::{Backtrace, InternedString},
-    parse::Span,
-    Compiler, FilePath,
-};
+#[macro_use]
+mod macros;
+mod attributes;
+mod syntax;
 
-pub use crate::analysis::expand::{Declarations, FileAttributes, StatementAttributes};
+mod assignment_pattern;
+mod assignment_value;
+mod constant_type_annotation;
+mod destructuring;
+mod expression;
+mod file_attribute;
+mod pattern;
+mod statement;
+mod statement_attribute;
+mod syntax_body;
+mod syntax_pattern;
+mod syntax_rule;
+mod r#type;
+mod type_body;
+mod type_member;
+mod type_pattern;
+mod when_arm;
+mod when_body;
+
+pub use attributes::*;
+pub use syntax::SyntaxError;
+
+pub use assignment_pattern::*;
+pub use assignment_value::*;
+pub use constant_type_annotation::*;
+pub use destructuring::*;
+pub use expression::*;
+pub use file_attribute::*;
+pub use pattern::*;
+pub use r#type::*;
+pub use statement::*;
+pub use statement_attribute::*;
+pub use syntax_body::*;
+pub use syntax_pattern::*;
+pub use syntax_rule::*;
+pub use type_body::*;
+pub use type_member::*;
+pub use type_pattern::*;
+pub use when_arm::*;
+pub use when_body::*;
+
+use crate::{
+    diagnostics::Note,
+    helpers::{InternedString, Shared},
+    parse::{self, Span},
+    Compiler, FilePath, ScopeId, SyntaxId,
+};
+use futures::{future::BoxFuture, stream, StreamExt};
+use std::{
+    collections::{BTreeMap, HashMap},
+    sync::Arc,
+};
+use syntax::{Syntax, SyntaxContext};
 
 #[derive(Debug, Clone)]
 pub struct File {
-    pub path: FilePath,
     pub span: Span,
+    pub dependencies: Vec<Arc<File>>,
     pub attributes: FileAttributes,
-    pub declarations: Declarations<expand::Template>,
-    pub statements: Vec<Statement>,
+    pub syntax_declarations: BTreeMap<SyntaxId, SyntaxAssignmentValue>,
+    pub statements: Vec<Result<Statement, SyntaxError>>,
+    pub exported: HashMap<InternedString, SyntaxId>,
+    pub root_scope: ScopeId,
+    scopes: BTreeMap<ScopeId, Scope>,
 }
 
-#[derive(Debug, Clone)]
-pub struct Statement {
-    pub span: Span,
-    pub attributes: StatementAttributes,
-    pub kind: StatementKind,
-}
-
-#[derive(Debug, Clone)]
-pub enum StatementKind {
-    Empty,
-    Declaration(Declaration),
-    Assign(Pattern, Expression),
-    Use((Span, InternedString)),
-    Expression(ExpressionKind),
-}
-
-#[derive(Debug, Clone)]
-pub enum Declaration {
-    Type((Span, InternedString), TypeDeclaration),
-    Trait((Span, InternedString), TraitDeclaration),
-    Constant((Span, InternedString), ConstantDeclaration),
-    Instance(Instance),
-}
-
-#[derive(Debug, Clone)]
-pub struct Instance {
-    pub parameters: Vec<TypeParameter>,
-    pub bounds: Vec<Bound>,
-    pub trait_span: Span,
-    pub trait_name: InternedString,
-    pub trait_parameters: Vec<TypeAnnotation>,
-    pub value: Option<Expression>,
-}
-
-#[derive(Debug, Clone)]
-pub struct Expression {
-    pub span: Span,
-    pub kind: ExpressionKind,
-}
-
-#[derive(Debug, Clone)]
-pub enum ExpressionKind {
-    Error(Backtrace),
-    Name(InternedString),
-    Number(InternedString),
-    Text(InternedString),
-    Block(Vec<Statement>),
-    End(Box<Expression>),
-    Call(Box<Expression>, Vec<Expression>),
-    Function(Pattern, Box<Expression>),
-    When(Box<Expression>, Vec<Arm>),
-    External(InternedString, InternedString, Vec<Expression>),
-    Annotate(Box<Expression>, TypeAnnotation),
-    Tuple(Vec<Expression>),
-}
-
-impl ExpressionKind {
-    fn error(compiler: &Compiler) -> Self {
-        ExpressionKind::Error(compiler.backtrace())
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct Arm {
-    pub span: Span,
-    pub attributes: StatementAttributes,
-    pub pattern: Pattern,
-    pub body: Expression,
-}
-
-#[derive(Debug, Clone)]
-pub struct TypeAnnotation {
-    pub span: Span,
-    pub kind: TypeAnnotationKind,
-}
-
-#[derive(Debug, Clone)]
-pub enum TypeAnnotationKind {
-    Error,
-    Placeholder,
-    Named(InternedString, Vec<TypeAnnotation>),
-    Function(Box<TypeAnnotation>, Box<TypeAnnotation>),
-    Tuple(Vec<TypeAnnotation>),
-}
-
-#[derive(Debug, Clone)]
-pub struct TypeParameter {
-    pub span: Span,
-    pub name: InternedString,
-}
-
-#[derive(Debug, Clone)]
-pub struct Pattern {
-    pub span: Span,
-    pub kind: PatternKind,
-}
-
-#[derive(Debug, Clone)]
-pub enum PatternKind {
-    Error(Backtrace),
-    Wildcard,
-    Number(InternedString),
-    Text(InternedString),
-    Name(InternedString),
-    Destructure(Vec<(InternedString, Pattern)>),
-    Variant((Span, InternedString), Vec<Pattern>),
-    Annotate(Box<Pattern>, TypeAnnotation),
-    Or(Box<Pattern>, Box<Pattern>),
-    Where(Box<Pattern>, Box<Expression>),
-    Tuple(Vec<Pattern>),
-}
-
-impl PatternKind {
-    fn error(compiler: &Compiler) -> Self {
-        PatternKind::Error(compiler.backtrace())
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct TypeDeclaration {
-    pub parameters: Vec<TypeParameter>,
-    pub kind: TypeKind,
-}
-
-#[derive(Debug, Clone)]
-pub struct TraitDeclaration {
-    pub parameters: Vec<TypeParameter>,
-    pub ty: Option<TypeAnnotation>,
-}
-
-#[derive(Debug, Clone)]
-pub enum TypeKind {
-    Marker,
-    Structure(Vec<DataField>),
-    Enumeration(Vec<DataVariant>),
-}
-
-#[derive(Debug, Clone)]
-pub struct DataField {
-    pub name: InternedString,
-    pub attributes: StatementAttributes,
-    pub ty: TypeAnnotation,
-}
-
-#[derive(Debug, Clone)]
-pub struct DataVariant {
-    pub name: InternedString,
-    pub span: Span,
-    pub attributes: StatementAttributes,
-    pub values: Vec<TypeAnnotation>,
-}
-
-#[derive(Debug, Clone)]
-pub struct ConstantDeclaration {
-    pub name: InternedString,
-    pub parameters: Vec<TypeParameter>,
-    pub bounds: Vec<Bound>,
-    pub ty: TypeAnnotation,
-}
-
-#[derive(Debug, Clone)]
-pub struct Bound {
-    pub span: Span,
-    pub trait_span: Span,
-    pub trait_name: InternedString,
-    pub parameters: Vec<TypeAnnotation>,
-}
-
-impl Compiler<'_> {
-    pub(crate) fn build_ast(&self, file: expand::File) -> File {
-        File {
-            path: file.path,
-            span: file.span,
-            attributes: file.attributes,
-            declarations: file.declarations,
-            statements: file
-                .statements
-                .into_iter()
-                .map(|node| self.build_statement(node))
-                .collect(),
-        }
-    }
-
-    fn build_statement(&self, statement: expand::Statement) -> Statement {
-        Statement {
-            span: statement.node.span,
-            attributes: statement.attributes,
-            kind: if statement.treat_as_expr {
-                StatementKind::Expression(self.build_expression(statement.node).kind)
-            } else {
-                (|| match statement.node.kind {
-                    NodeKind::Assign(pattern, value) => match pattern.kind {
-                        NodeKind::TypeFunction(lhs, rhs) => {
-                            let (params, bounds) = match self.build_type_function(*lhs) {
-                                Some((params, bounds)) => (params, bounds),
-                                None => {
-                                    return StatementKind::Expression(ExpressionKind::error(self))
-                                }
-                            };
-
-                            match rhs.kind {
-                                NodeKind::Instance(trait_name, trait_parameters) => {
-                                    match self.build_instance(
-                                        params,
-                                        bounds,
-                                        *trait_name,
-                                        trait_parameters,
-                                        Some(*value),
-                                    ) {
-                                        Some(instance) => StatementKind::Declaration(
-                                            Declaration::Instance(instance),
-                                        ),
-                                        None => {
-                                            StatementKind::Expression(ExpressionKind::error(self))
-                                        }
-                                    }
-                                }
-                                _ => {
-                                    self.add_error(
-                                        "expected instance here",
-                                        vec![Note::primary(
-                                            rhs.span,
-                                            "try adding `instance` to the left-hand side of `:`",
-                                        )],
-                                    );
-
-                                    StatementKind::Expression(ExpressionKind::error(self))
-                                }
-                            }
-                        }
-                        NodeKind::Instance(trait_name, trait_parameters) => {
-                            match self.build_instance(
-                                Vec::new(),
-                                Vec::new(),
-                                *trait_name,
-                                trait_parameters,
-                                Some(*value),
-                            ) {
-                                Some(instance) => {
-                                    StatementKind::Declaration(Declaration::Instance(instance))
-                                }
-                                None => StatementKind::Expression(ExpressionKind::error(self)),
-                            }
-                        }
-                        _ => {
-                            let pattern = self.build_pattern(*pattern);
-
-                            match value.kind {
-                                NodeKind::Assign(_, _) => {
-                                    self.add_error(
-                                        "expected expression, found assignment",
-                                        vec![Note::primary(
-                                            value.span,
-                                            "try moving this variable assignment onto its own line",
-                                        )],
-                                    );
-
-                                    StatementKind::Expression(ExpressionKind::error(self))
-                                }
-                                NodeKind::Template(_, _) => {
-                                    self.add_error(
-                                        "unexpanded template",
-                                        vec![Note::primary(
-                                            value.span,
-                                            "this template was never expanded",
-                                        )],
-                                    );
-
-                                    StatementKind::Expression(ExpressionKind::error(self))
-                                }
-                                NodeKind::Type(fields) => {
-                                    let name = match pattern.kind {
-                                        PatternKind::Name(name) => name,
-                                        _ => {
-                                            self.add_error(
-                                                "type declaration must be assigned to a name",
-                                                vec![Note::primary(
-                                                    value.span,
-                                                    "try providing a name here",
-                                                )],
-                                            );
-
-                                            return StatementKind::Expression(
-                                                ExpressionKind::error(self),
-                                            );
-                                        }
-                                    };
-
-                                    match self.build_type_declaration(value.span, fields) {
-                                        Some(kind) => {
-                                            StatementKind::Declaration(Declaration::Type(
-                                                (pattern.span, name),
-                                                TypeDeclaration {
-                                                    parameters: Vec::new(),
-                                                    kind,
-                                                },
-                                            ))
-                                        }
-                                        None => {
-                                            StatementKind::Expression(ExpressionKind::error(self))
-                                        }
-                                    }
-                                }
-                                NodeKind::Trait(ty) => {
-                                    let name = match pattern.kind {
-                                        PatternKind::Name(name) => name,
-                                        _ => {
-                                            self.add_error(
-                                                "trait declaration must be assigned to a name",
-                                                vec![Note::primary(
-                                                    value.span,
-                                                    "try providing a name here",
-                                                )],
-                                            );
-
-                                            return StatementKind::Expression(
-                                                ExpressionKind::error(self),
-                                            );
-                                        }
-                                    };
-
-                                    StatementKind::Declaration(Declaration::Trait(
-                                        (pattern.span, name),
-                                        TraitDeclaration {
-                                            parameters: Vec::new(),
-                                            ty: ty.map(|ty| self.build_type_annotation(*ty)),
-                                        },
-                                    ))
-                                }
-                                NodeKind::TypeFunction(parameters, node) => {
-                                    let name = match pattern.kind {
-                                        PatternKind::Name(name) => name,
-                                        _ => {
-                                            self.add_error(
-                                                "type or trait declaration must be assigned to a name", vec![Note::primary(
-                                                    value.span,
-                                                    "try providing a name here",
-                                                )],
-                                            );
-
-                                            return StatementKind::Expression(
-                                                ExpressionKind::error(self),
-                                            );
-                                        }
-                                    };
-
-                                    let (parameters, bounds) =
-                                        match self.build_type_function(*parameters) {
-                                            Some((parameters, bounds)) => (parameters, bounds),
-                                            None => {
-                                                return StatementKind::Expression(
-                                                    ExpressionKind::error(self),
-                                                )
-                                            }
-                                        };
-
-                                    let check_bounds = |kind: &str| {
-                                        if !bounds.is_empty() {
-                                            self.add_error(
-                                                format!("bounds are not allowed on {}", kind),
-                                                vec![Note::primary(
-                                                    bounds
-                                                        .first()
-                                                        .unwrap()
-                                                        .span
-                                                        .with_end(bounds.last().unwrap().span.end),
-                                                    "try moving these to the respective functions instead",
-                                                )],
-                                            );
-                                        }
-                                    };
-
-                                    match node.kind {
-                                        NodeKind::Type(fields) => {
-                                            check_bounds("types");
-
-                                            match self.build_type_declaration(node.span, fields) {
-                                                Some(kind) => {
-                                                    StatementKind::Declaration(Declaration::Type(
-                                                        (pattern.span, name),
-                                                        TypeDeclaration { parameters, kind },
-                                                    ))
-                                                }
-                                                None => StatementKind::Expression(
-                                                    ExpressionKind::error(self),
-                                                ),
-                                            }
-                                        }
-                                        NodeKind::Trait(ty) => {
-                                            check_bounds("traits");
-
-                                            StatementKind::Declaration(Declaration::Trait(
-                                                (pattern.span, name),
-                                                TraitDeclaration {
-                                                    parameters,
-                                                    ty: ty
-                                                        .map(|ty| self.build_type_annotation(*ty)),
-                                                },
-                                            ))
-                                        }
-                                        _ => {
-                                            self.add_error(
-                                                "expected type or trait declaration in type function", vec![Note::primary(
-                                                    node.span,
-                                                    "only types and traits may have type parameters",
-                                                )],
-                                            );
-
-                                            StatementKind::Expression(ExpressionKind::error(self))
-                                        }
-                                    }
-                                }
-                                _ => StatementKind::Assign(pattern, self.build_expression(*value)),
-                            }
-                        }
-                    },
-                    NodeKind::Template(_, _) => {
-                        // Templates are stripped during the expansion phase
-                        StatementKind::Empty
-                    }
-                    NodeKind::Annotate(expr, ty) => {
-                        let (span, name) = match expr.kind {
-                            NodeKind::Name(name) => (expr.span, name),
-                            _ => {
-                                return StatementKind::Expression(
-                                    self.build_expression(Node {
-                                        span: statement.node.span,
-                                        kind: NodeKind::Annotate(expr, ty),
-                                    })
-                                    .kind,
-                                )
-                            }
-                        };
-
-                        let (parameters, bounds, ty) = match ty.kind {
-                            NodeKind::TypeFunction(parameters, ty) => {
-                                let (parameters, bounds) =
-                                    match self.build_type_function(*parameters) {
-                                        Some((parameters, bounds)) => (parameters, bounds),
-                                        None => {
-                                            return StatementKind::Expression(
-                                                ExpressionKind::error(self),
-                                            )
-                                        }
-                                    };
-
-                                (parameters, bounds, self.build_type_annotation(*ty))
-                            }
-                            _ => (Vec::new(), Vec::new(), self.build_type_annotation(*ty)),
-                        };
-
-                        StatementKind::Declaration(Declaration::Constant(
-                            (span, name),
-                            ConstantDeclaration {
-                                name,
-                                parameters,
-                                bounds,
-                                ty,
-                            },
-                        ))
-                    }
-                    NodeKind::UseFile(_) => StatementKind::Empty,
-                    NodeKind::UseExpr(expr) => {
-                        let name = match expr.kind {
-                            NodeKind::Name(name) => name,
-                            _ => {
-                                self.add_error(
-                                    "`use` expects a path to a file or a name of a type",
-                                    vec![Note::primary(expr.span, "expected a path or type here")],
-                                );
-
-                                return StatementKind::Expression(ExpressionKind::error(self));
-                            }
-                        };
-
-                        StatementKind::Use((expr.span, name))
-                    }
-                    NodeKind::TypeFunction(lhs, rhs) => {
-                        let (params, bounds) = match self.build_type_function(*lhs) {
-                            Some((params, bounds)) => (params, bounds),
-                            None => return StatementKind::Expression(ExpressionKind::error(self)),
-                        };
-
-                        match rhs.kind {
-                            NodeKind::Instance(trait_name, trait_parameters) => {
-                                match self.build_instance(
-                                    params,
-                                    bounds,
-                                    *trait_name,
-                                    trait_parameters,
-                                    None,
-                                ) {
-                                    Some(instance) => {
-                                        StatementKind::Declaration(Declaration::Instance(instance))
-                                    }
-                                    None => StatementKind::Expression(ExpressionKind::error(self)),
-                                }
-                            }
-                            _ => {
-                                self.add_error(
-                                    "expected instance here",
-                                    vec![Note::primary(
-                                        rhs.span,
-                                        "try adding `instance` to the left-hand side of `:`",
-                                    )],
-                                );
-
-                                StatementKind::Expression(ExpressionKind::error(self))
-                            }
-                        }
-                    }
-                    NodeKind::Instance(trait_name, trait_parameters) => {
-                        match self.build_instance(
-                            Vec::new(),
-                            Vec::new(),
-                            *trait_name,
-                            trait_parameters,
-                            None,
-                        ) {
-                            Some(instance) => {
-                                StatementKind::Declaration(Declaration::Instance(instance))
-                            }
-                            None => StatementKind::Expression(ExpressionKind::error(self)),
-                        }
-                    }
-                    _ => StatementKind::Expression(self.build_expression(statement.node).kind),
-                })()
-            },
-        }
-    }
-
-    fn build_instance(
+impl Compiler {
+    pub(crate) async fn build_ast(
         &self,
-        parameters: Vec<TypeParameter>,
-        bounds: Vec<Bound>,
-        trait_name: Node,
-        trait_parameters: Vec<Node>,
-        value: Option<Node>,
-    ) -> Option<Instance> {
-        let trait_span = trait_name.span;
-        let trait_name = match trait_name.kind {
-            NodeKind::Error(_) => return None,
-            NodeKind::Name(name) => name,
-            _ => {
-                self.add_error(
-                    "expected trait name",
-                    vec![Note::primary(
-                        trait_name.span,
-                        "`instance` requires the name of a trait",
-                    )],
-                );
-
-                return None;
-            }
+        file: parse::File,
+        load: impl Fn(Compiler, Span, FilePath) -> BoxFuture<'static, Option<Arc<File>>>
+            + 'static
+            + Send
+            + Sync,
+    ) -> File {
+        let mut ast_builder = AstBuilder {
+            file: file.span.path,
+            compiler: self.clone(),
+            dependencies: Default::default(),
+            attributes: Default::default(),
+            syntax_declarations: Default::default(),
+            scopes: Default::default(),
+            load: Arc::new(load),
+            file_scope: None,
         };
 
-        let trait_parameters = trait_parameters
+        let scope = ast_builder.root_scope();
+        ast_builder.file_scope = Some(scope);
+
+        for attribute in file.attributes {
+            let context = FileAttributeSyntaxContext::new(ast_builder.clone());
+
+            if ast_builder
+                .build_list::<FileAttributeSyntax>(
+                    context.clone(),
+                    attribute.span,
+                    attribute.exprs.clone(),
+                    scope,
+                )
+                .await
+                .is_none()
+            {
+                // The result of a file attribute doesn't affect whether the
+                // file can be parsed
+                let _ = context
+                    .build_terminal(
+                        parse::Expr::list_or_expr(attribute.span, attribute.exprs),
+                        scope,
+                    )
+                    .await;
+            }
+        }
+
+        if ast_builder.attributes.lock().no_std.is_none() {
+            let std_path = ast_builder.compiler.loader.std_path();
+            if let Some(std_path) = std_path {
+                if let Some(file) =
+                    (ast_builder.load)(ast_builder.compiler.clone(), file.span, std_path).await
+                {
+                    ast_builder.add_dependency(file);
+                }
+            } else {
+                ast_builder.compiler.add_error(
+                    "standard library is missing, but this file requires it",
+                    vec![Note::primary(
+                        file.span.with_end(file.span.start),
+                        "try adding `[[no-std]]` to this file to prevent automatically loading the standard library",
+                    )],
+                );
+            }
+        }
+
+        let statements = stream::iter(file.statements)
+            .then(|statement| {
+                ast_builder.build_statement::<StatementSyntax>(
+                    StatementSyntaxContext::new(ast_builder.clone()),
+                    statement,
+                    scope,
+                )
+            })
+            .collect::<Vec<_>>()
+            .await
             .into_iter()
-            .map(|node| self.build_type_annotation(node))
+            .flatten()
             .collect();
 
-        let value = value.map(|value| self.build_expression(value));
+        let exported = ast_builder
+            .scopes
+            .lock()
+            .get(&scope)
+            .unwrap()
+            .syntaxes
+            .clone()
+            .into_iter()
+            .filter_map(|(name, id)| Some((name, id?)))
+            .collect();
 
-        Some(Instance {
-            parameters,
-            bounds,
-            trait_span,
-            trait_name,
-            trait_parameters,
-            value,
-        })
-    }
-
-    fn build_expression(&self, node: Node) -> Expression {
-        Expression {
-            span: node.span,
-            kind: (|| match node.kind {
-                NodeKind::Error(trace) => ExpressionKind::Error(trace),
-                NodeKind::Empty => ExpressionKind::Tuple(Vec::new()),
-                NodeKind::Name(name) => ExpressionKind::Name(name),
-                NodeKind::Text(text) => ExpressionKind::Text(text),
-                NodeKind::Number(number) => ExpressionKind::Number(number),
-                NodeKind::List(exprs) => {
-                    let mut exprs = exprs.into_iter();
-                    match exprs.next() {
-                        Some(func) => ExpressionKind::Call(
-                            Box::new(self.build_expression(func)),
-                            exprs.map(|expr| self.build_expression(expr)).collect(),
-                        ),
-                        None => ExpressionKind::Tuple(Vec::new()),
-                    }
-                }
-                NodeKind::Block(statements) => ExpressionKind::Block(
-                    statements
-                        .into_iter()
-                        .map(|node| self.build_statement(node))
-                        .collect(),
-                ),
-                NodeKind::Function(input, body) => ExpressionKind::Function(
-                    self.build_pattern(*input),
-                    Box::new(self.build_expression(*body)),
-                ),
-                NodeKind::External(lib, identifier, inputs) => {
-                    let lib = match lib.kind {
-                        NodeKind::Error(trace) => return ExpressionKind::Error(trace),
-                        NodeKind::Text(text) => text,
-                        _ => {
-                            self.add_error(
-                                "expected text here",
-                                vec![Note::primary(lib.span, "`external` requires an ABI")],
-                            );
-
-                            return ExpressionKind::error(self);
-                        }
-                    };
-
-                    let identifier = match identifier.kind {
-                        NodeKind::Error(trace) => return ExpressionKind::Error(trace),
-                        NodeKind::Text(text) => text,
-                        _ => {
-                            self.add_error(
-                                "expected text here",
-                                vec![Note::primary(
-                                    identifier.span,
-                                    "`external` requires an identifier",
-                                )],
-                            );
-
-                            return ExpressionKind::error(self);
-                        }
-                    };
-
-                    ExpressionKind::External(
-                        lib,
-                        identifier,
-                        inputs
-                            .into_iter()
-                            .map(|node| self.build_expression(node))
-                            .collect(),
-                    )
-                }
-                NodeKind::Annotate(value, ty) => ExpressionKind::Annotate(
-                    Box::new(self.build_expression(*value)),
-                    self.build_type_annotation(*ty),
-                ),
-                NodeKind::When(input, block) => {
-                    let input = self.build_expression(*input);
-
-                    let arms = block
-                        .into_iter()
-                        .filter_map(|statement| {
-                            let expr = self.build_expression(statement.node);
-
-                            match expr.kind {
-                                ExpressionKind::Function(pattern, body) => Some(Arm {
-                                    span: expr.span,
-                                    attributes: statement.attributes,
-                                    pattern,
-                                    body: *body,
-                                }),
-                                _ => {
-                                    self.add_error(
-                                        "expected function",
-                                        vec![Note::primary(expr.span, "this is not a function")],
-                                    );
-
-                                    None
-                                }
-                            }
-                        })
-                        .collect();
-
-                    ExpressionKind::When(Box::new(input), arms)
-                }
-                NodeKind::Or(lhs, rhs) => {
-                    // Use the `Or` trait defined in the prelude
-
-                    let rhs = self.build_expression(*rhs);
-
-                    ExpressionKind::Call(
-                        Box::new(Expression {
-                            span: Span::builtin("`Or` trait"),
-                            kind: ExpressionKind::Name(InternedString::new("Or")),
-                        }),
-                        vec![
-                            self.build_expression(*lhs),
-                            Expression {
-                                span: rhs.span,
-                                kind: ExpressionKind::Function(
-                                    Pattern {
-                                        span: rhs.span,
-                                        kind: PatternKind::Tuple(Vec::new()),
-                                    },
-                                    Box::new(rhs),
-                                ),
-                            },
-                        ],
-                    )
-                }
-                NodeKind::Tuple(nodes) => ExpressionKind::Tuple(
-                    nodes
-                        .into_iter()
-                        .map(|node| self.build_expression(node))
-                        .collect(),
-                ),
-                NodeKind::End(value) => {
-                    ExpressionKind::End(Box::new(self.build_expression(*value)))
-                }
-                _ => {
-                    self.add_error(
-                        "expected expression",
-                        vec![Note::primary(node.span, "this is not an expression")],
-                    );
-
-                    ExpressionKind::error(self)
-                }
-            })(),
+        File {
+            span: file.span,
+            dependencies: ast_builder.dependencies.into_unique(),
+            attributes: ast_builder.attributes.into_unique(),
+            syntax_declarations: ast_builder.syntax_declarations.into_unique(),
+            statements,
+            scopes: ast_builder.scopes.into_unique(),
+            exported,
+            root_scope: scope,
         }
     }
+}
 
-    fn build_pattern(&self, node: Node) -> Pattern {
-        Pattern {
-            span: node.span,
-            kind: (|| {
-                match node.kind {
-                    NodeKind::Error(trace) => PatternKind::Error(trace),
-                    NodeKind::Underscore => PatternKind::Wildcard,
-                    NodeKind::Name(name) => PatternKind::Name(name),
-                    NodeKind::Block(statements) => {
-                        PatternKind::Destructure(
-                            statements
-                                .into_iter()
-                                .filter_map(
-                                    |statement| -> Option<
-                                        Box<dyn Iterator<Item = (InternedString, Pattern)>>,
-                                    > {
-                                        if statement.attributes != StatementAttributes::default() {
-                                            self.add_error(
-                                                "attributes are not supported inside patterns", vec![Note::primary(
-                                                    statement.node.span,
-                                                    "try removing this",
-                                                )],
-                                            );
-                                        }
+#[derive(Clone)]
+struct AstBuilder {
+    file: FilePath,
+    compiler: Compiler,
+    dependencies: Shared<Vec<Arc<File>>>,
+    attributes: Shared<FileAttributes>,
+    syntax_declarations: Shared<BTreeMap<SyntaxId, SyntaxAssignmentValue>>,
+    scopes: Shared<BTreeMap<ScopeId, Scope>>,
+    file_scope: Option<ScopeId>,
+    load: Arc<
+        dyn Fn(Compiler, Span, FilePath) -> BoxFuture<'static, Option<Arc<File>>> + Send + Sync,
+    >,
+}
 
-                                        match statement.node.kind {
-                                            NodeKind::Error(_) => None,
-                                            NodeKind::List(nodes) => Some(Box::new(
-                                                nodes.into_iter().filter_map(|node| {
-                                                    let (name, pattern) = match node.kind {
-                                                        NodeKind::Error(_) => return None,
-                                                        NodeKind::Name(name) => (
-                                                            name,
-                                                            Pattern {
-                                                                span: node.span,
-                                                                kind: PatternKind::Name(name),
-                                                            },
-                                                        ),
-                                                        _ => {
-                                                            self.add_error(
-                                                                "invalid pattern in destructuring pattern", vec![Note::primary(
-                                                                    node.span,
-                                                                    "expected name here",
-                                                                )],
-                                                            );
+#[derive(Debug, Clone, Default)]
+struct Scope {
+    parent: Option<ScopeId>,
+    syntaxes: HashMap<InternedString, Option<SyntaxId>>,
+}
 
-                                                            return None;
-                                                        }
-                                                    };
-
-                                                    Some((name, pattern))
-                                                }),
-                                            )),
-                                            NodeKind::Name(name) => {
-                                                Some(Box::new(std::iter::once((
-                                                    name,
-                                                    Pattern {
-                                                        span: statement.node.span,
-                                                        kind: PatternKind::Name(name),
-                                                    },
-                                                ))))
-                                            }
-                                            NodeKind::Assign(left, right) => {
-                                                let name = match left.kind {
-                                                    NodeKind::Name(name) => name,
-                                                    _ => {
-                                                        self.add_error(
-                                                            "invalid pattern in destructuring pattern", vec![Note::primary(
-                                                                left.span,
-                                                                "expected name here",
-                                                            )],
-                                                        );
-
-                                                        return None;
-                                                    }
-                                                };
-
-                                                let pattern = self.build_pattern(*right);
-
-                                                Some(Box::new(std::iter::once((name, pattern))))
-                                            }
-                                            _ => {
-                                                self.add_error(
-                                                    "invalid pattern in destructuring pattern", vec![Note::primary(
-                                                        node.span,
-                                                        "try removing this",
-                                                    )],
-                                                );
-
-                                                None
-                                            }
-                                        }
-                                    },
-                                )
-                                .flatten()
-                                .collect(),
-                        )
-                    }
-                    NodeKind::List(nodes) => {
-                        let mut nodes = nodes.into_iter();
-
-                        let name = match nodes.next() {
-                            Some(node) => node,
-                            None => {
-                                self.add_error(
-                                    "expected variant name", vec![Note::primary(
-                                        node.span,
-                                        "only variants may be used in this kind of pattern",
-                                    )],
-                                );
-
-                                return PatternKind::error(self);
-                            },
-                        };
-
-                        let name_span = name.span;
-
-                        let name = match name.kind {
-                            NodeKind::Name(name) => name,
-                            _ => {
-                                self.add_error(
-                                    "expected variant name", vec![Note::primary(
-                                        node.span,
-                                        "only variants may be used in this kind of pattern",
-                                    )],
-                                );
-
-                                return PatternKind::error(self);
-                            }
-                        };
-
-                        let rest = nodes.map(|node| self.build_pattern(node)).collect();
-
-                        PatternKind::Variant((name_span, name), rest)
-                    }
-                    NodeKind::Empty => PatternKind::Tuple(Vec::new()),
-                    NodeKind::Number(number) => PatternKind::Number(number),
-                    NodeKind::Text(text) => PatternKind::Text(text),
-                    NodeKind::Annotate(node, ty) => {
-                        let inner = self.build_pattern(*node);
-                        let ty = self.build_type_annotation(*ty);
-
-                        PatternKind::Annotate(Box::new(inner), ty)
-                    }
-                    NodeKind::Or(lhs, rhs) => PatternKind::Or(
-                        Box::new(self.build_pattern(*lhs)),
-                        Box::new(self.build_pattern(*rhs)),
-                    ),
-                    NodeKind::Where(pattern, condition) => PatternKind::Where(
-                        Box::new(self.build_pattern(*pattern)),
-                        Box::new(self.build_expression(*condition)),
-                    ),
-                    NodeKind::Tuple(nodes) => PatternKind::Tuple(
-                        nodes
-                            .into_iter()
-                            .map(|node| self.build_pattern(node))
-                            .collect(),
-                    ),
-                    _ => {
-                        self.add_error(
-                            "expected pattern",
-                            vec![Note::primary(
-                                node.span,
-                                "values may not appear on the left-hand side of a variable assignment",
-                            )],
-                        );
-
-                        PatternKind::error(self)
-                    }
-                }
-            })(),
-        }
+impl AstBuilder {
+    fn root_scope(&self) -> ScopeId {
+        let id = self.compiler.new_scope_id_in(self.file);
+        self.scopes.lock().insert(id, Scope::default());
+        id
     }
 
-    fn build_type_annotation(&self, node: Node) -> TypeAnnotation {
-        TypeAnnotation {
-            span: node.span,
-            kind: (|| match node.kind {
-                NodeKind::Empty => TypeAnnotationKind::Tuple(Vec::new()),
-                NodeKind::Underscore => TypeAnnotationKind::Placeholder,
-                NodeKind::Name(name) => TypeAnnotationKind::Named(name, Vec::new()),
-                NodeKind::Function(input, output) => TypeAnnotationKind::Function(
-                    Box::new(self.build_type_annotation(*input)),
-                    Box::new(self.build_type_annotation(*output)),
-                ),
-                NodeKind::List(nodes) => {
-                    let mut nodes = nodes.into_iter();
+    fn child_scope(&self, parent: ScopeId) -> ScopeId {
+        let id = self.compiler.new_scope_id_in(self.file);
 
-                    let ty = match nodes.next() {
-                        Some(ty) => ty,
-                        None => return TypeAnnotationKind::Tuple(Vec::new()),
-                    };
+        self.scopes.lock().insert(
+            id,
+            Scope {
+                parent: Some(parent),
+                ..Default::default()
+            },
+        );
 
-                    let name = match ty.kind {
-                        NodeKind::Name(name) => name,
-                        _ => {
-                            self.add_error(
-                                "expected type",
-                                vec![Note::primary(ty.span, "this is not a type")],
-                            );
-
-                            return TypeAnnotationKind::Error;
-                        }
-                    };
-
-                    TypeAnnotationKind::Named(
-                        name,
-                        nodes.map(|node| self.build_type_annotation(node)).collect(),
-                    )
-                }
-                NodeKind::Tuple(nodes) => TypeAnnotationKind::Tuple(
-                    nodes
-                        .into_iter()
-                        .map(|node| self.build_type_annotation(node))
-                        .collect(),
-                ),
-                _ => {
-                    self.add_error(
-                        "expected type",
-                        vec![Note::primary(node.span, "this is not a type")],
-                    );
-
-                    TypeAnnotationKind::Error
-                }
-            })(),
-        }
+        id
     }
 
-    fn build_type_function(&self, lhs: Node) -> Option<(Vec<TypeParameter>, Vec<Bound>)> {
-        macro_rules! build_parameter_list {
-            ($tys:expr) => {
-                $tys.into_iter()
-                    .map(|node| match node.kind {
-                        NodeKind::Error(_) => None,
-                        NodeKind::Name(name) => Some(TypeParameter {
-                            span: node.span,
-                            name,
-                        }),
-                        _ => {
-                            self.add_error(
-                                "expected type parameter",
-                                vec![Note::primary(node.span, "try removing this")],
-                            );
+    fn add_syntax(&self, name: InternedString, syntax: SyntaxAssignmentValue, scope: ScopeId) {
+        let id = self.compiler.new_syntax_id_in(self.file);
 
-                            None
-                        }
-                    })
-                    .collect::<Option<Vec<_>>>()
-            };
-        }
+        self.syntax_declarations.lock().insert(id, syntax);
 
-        macro_rules! build_bound {
-            ($span:expr, $list:expr) => {
-                (|| {
-                    let mut list = $list.into_iter();
-
-                    let trait_name = list.next().unwrap();
-                    let trait_span = trait_name.span;
-                    let trait_name = match trait_name.kind {
-                        NodeKind::Error(_) => return None,
-                        NodeKind::Name(name) => name,
-                        _ => {
-                            self.add_error(
-                                "expected trait name in `where` clause",
-                                vec![Note::primary(trait_name.span, "try adding a name here")],
-                            );
-
-                            return None;
-                        }
-                    };
-
-                    let parameters = list.map(|node| self.build_type_annotation(node)).collect();
-
-                    Some(Bound {
-                        span: $span,
-                        trait_span,
-                        trait_name,
-                        parameters,
-                    })
-                })()
-            };
-        }
-
-        match lhs.kind {
-            NodeKind::Error(_) => None,
-            NodeKind::Name(name) => Some((
-                vec![TypeParameter {
-                    span: lhs.span,
-                    name,
-                }],
-                Vec::new(),
-            )),
-            NodeKind::List(tys) => Some((build_parameter_list!(tys)?, Vec::new())),
-            NodeKind::Where(lhs, bounds) => {
-                let tys = match lhs.kind {
-                    NodeKind::Error(_) => return None,
-                    NodeKind::Name(name) => vec![TypeParameter {
-                        span: lhs.span,
-                        name,
-                    }],
-                    NodeKind::List(tys) => build_parameter_list!(tys)?,
-                    _ => {
-                        self.add_error(
-                            "expected type parameters on left-hand side of `where` clause",
-                            vec![Note::primary(
-                                lhs.span,
-                                "try providing a list of names here",
-                            )],
-                        );
-
-                        return None;
-                    }
-                };
-
-                let bounds_span = bounds.span;
-
-                let bounds = (|| {
-                    match bounds.kind {
-                        NodeKind::List(bounds) => {
-                            if bounds
-                                .iter()
-                                .any(|bound| matches!(bound.kind, NodeKind::List(_)))
-                            {
-                                // The bounds clause matches the pattern `(T A) (T B) ...`
-                                bounds
-                                    .into_iter()
-                                    .map(|bound| match bound.kind {
-                                        NodeKind::Name(trait_name) => Some(Bound {
-                                            span: bound.span,
-                                            trait_span: bound.span,
-                                            trait_name,
-                                            parameters: Vec::new(),
-                                        }),
-                                        NodeKind::List(list) => build_bound!(bound.span, list),
-                                        _ => {
-                                            self.add_error(
-                                                "expected bound", vec![Note::primary(
-                                                    bounds_span,
-                                                    "`where` bound must be in the format `(T A B ...)`",
-                                                )],
-                                            );
-
-                                            None
-                                        }
-                                    })
-                                    .collect::<Option<_>>()
-                            } else {
-                                // The bounds clause matches the pattern `T A B ...`
-                                Some(vec![build_bound!(bounds_span, bounds)?])
-                            }
-                        }
-                        NodeKind::Name(trait_name) => {
-                            // The bounds clause matches the pattern `T`
-                            Some(vec![Bound {
-                                span: bounds_span,
-                                trait_span: bounds_span,
-                                trait_name,
-                                parameters: Vec::new(),
-                            }])
-                        }
-                        _ => {
-                            self.add_error(
-                                "expected bounds",
-                                vec![Note::primary(
-                                    bounds_span,
-                                    "`where` bounds must be in the format `(T A) (T B) ...`",
-                                )],
-                            );
-
-                            None
-                        }
-                    }
-                })()?;
-
-                Some((tys, bounds))
-            }
-            _ => {
-                self.add_error(
-                    "expected type parameters",
-                    vec![Note::primary(
-                        lhs.span,
-                        "try providing a list of names and optionally a `where` clause",
-                    )],
-                );
-
-                None
-            }
-        }
+        self.scopes
+            .lock()
+            .get_mut(&scope)
+            .unwrap()
+            .syntaxes
+            .insert(name, Some(id));
     }
 
-    fn build_type_declaration(
+    fn add_barrier(&self, name: InternedString, scope: ScopeId) {
+        self.scopes
+            .lock()
+            .get_mut(&scope)
+            .unwrap()
+            .syntaxes
+            .insert(name, None);
+    }
+
+    fn try_get_syntax(
         &self,
-        span: Span,
-        fields: Option<Vec<expand::Statement>>,
-    ) -> Option<TypeKind> {
-        let fields = match fields {
-            Some(fields) => fields,
-            None => return Some(TypeKind::Marker),
-        };
+        name: InternedString,
+        scope: ScopeId,
+    ) -> Option<SyntaxAssignmentValue> {
+        let scopes = self.scopes.lock();
 
-        if fields.is_empty() {
-            self.add_error(
-                "type must not be empty",
-                vec![Note::primary(
-                    span,
-                    "try adding some fields or variants here",
-                )],
-            );
+        let mut parent = Some(scope);
+        while let Some(scope) = parent {
+            let scope = scopes.get(&scope).unwrap();
+
+            if let Some(syntax) = scope.syntaxes.get(&name) {
+                return Some(
+                    self.syntax_declarations
+                        .lock()
+                        .get(syntax.as_ref()?)
+                        .unwrap()
+                        .clone(),
+                );
+            }
+
+            parent = scope.parent;
+        }
+
+        None
+    }
+}
+
+impl AstBuilder {
+    async fn build_expr<S: Syntax>(
+        &self,
+        context: S::Context,
+        expr: parse::Expr,
+        scope: ScopeId,
+    ) -> Result<<S::Context as SyntaxContext>::Body, SyntaxError> {
+        match expr.kind {
+            parse::ExprKind::Block(statements) => {
+                let scope = context.block_scope(scope);
+
+                let statements = stream::iter(statements)
+                    .then(|statement| {
+                        self.build_statement::<<S::Context as SyntaxContext>::Statement>(
+                            <<S::Context as SyntaxContext>::Statement as Syntax>::Context::new(
+                                self.clone(),
+                            ),
+                            statement,
+                            scope,
+                        )
+                    })
+                    .collect::<Vec<_>>()
+                    .await
+                    .into_iter()
+                    .flatten();
+
+                context.build_block(expr.span, statements, scope).await
+            }
+            parse::ExprKind::List(lines) => {
+                let exprs = lines
+                    .into_iter()
+                    .flat_map(|line| line.exprs)
+                    .collect::<Vec<_>>();
+
+                match self
+                    .build_list::<S>(context.clone(), expr.span, exprs.clone(), scope)
+                    .await
+                {
+                    Some(result) => result,
+                    None => {
+                        let expr = if <S::Context as SyntaxContext>::PREFERS_LISTS {
+                            parse::Expr::list(expr.span, exprs)
+                        } else {
+                            parse::Expr::list_or_expr(expr.span, exprs)
+                        };
+
+                        context.build_terminal(expr, scope).await
+                    }
+                }
+            }
+            parse::ExprKind::Name(_, _) => {
+                match self
+                    .build_list::<S>(context.clone(), expr.span, vec![expr.clone()], scope)
+                    .await
+                {
+                    Some(result) => result,
+                    None => context.build_terminal(expr, scope).await,
+                }
+            }
+            _ => context.build_terminal(expr, scope).await,
+        }
+    }
+
+    async fn build_statement<S: Syntax>(
+        &self,
+        context: S::Context,
+        statement: parse::Statement,
+        scope: ScopeId,
+    ) -> Option<Result<<S::Context as SyntaxContext>::Body, SyntaxError>> {
+        let attributes = Shared::new(StatementAttributes::default());
+
+        let (attribute_exprs, exprs): (Vec<_>, Vec<_>) = statement
+            .lines
+            .into_iter()
+            .map(|line| (line.attributes, line.exprs))
+            .unzip();
+
+        let attribute_exprs = attribute_exprs.into_iter().flatten().collect::<Vec<_>>();
+        let attributes_span = attribute_exprs.first().map(|attribute| {
+            parse::Span::join(attribute.span, attribute_exprs.last().unwrap().span)
+        });
+
+        for attribute in attribute_exprs {
+            let context = StatementAttributeSyntaxContext::new(self.clone())
+                .with_statement_attributes(attributes.clone());
+
+            if self
+                .build_list::<StatementAttributeSyntax>(
+                    context.clone(),
+                    attribute.span,
+                    attribute.exprs.clone(),
+                    scope,
+                )
+                .await
+                .is_none()
+            {
+                // The result of a statement attribute doesn't affect whether the
+                // statement's expression can be parsed
+                let _ = context
+                    .build_terminal(
+                        parse::Expr::list_or_expr(attribute.span, attribute.exprs),
+                        scope,
+                    )
+                    .await;
+            }
+        }
+
+        let exprs = exprs.into_iter().flatten().collect::<Vec<_>>();
+
+        if exprs.is_empty() {
+            if let Some(span) = attributes_span {
+                self.compiler.add_error(
+                    "cannot use attributes on an empty statement",
+                    vec![Note::primary(span, "expected an expression after these")],
+                );
+            }
 
             return None;
         }
 
-        struct Field {
-            span: Span,
-            attributes: StatementAttributes,
-            name: InternedString,
-            kind: FieldKind,
-        }
+        let span = parse::Span::join(exprs.first().unwrap().span, exprs.last().unwrap().span);
 
-        enum FieldKind {
-            Field(TypeAnnotation),
-            Variant(Vec<TypeAnnotation>),
-        }
+        let context = context.with_statement_attributes(attributes.clone());
 
-        let mut fields = match fields
-            .into_iter()
-            .map(|field| {
-                let span = field.node.span;
-
-                match field.node.kind {
-                    NodeKind::Error(_) => None,
-                    NodeKind::Name(name) => Some(Field {
-                        span,
-                        attributes: field.attributes,
-                        name,
-                        kind: FieldKind::Variant(Vec::new()),
-                    }),
-                    NodeKind::List(nodes) => {
-                        let mut nodes = nodes.into_iter();
-
-                        let name = nodes.next().unwrap();
-                        let name_span = name.span;
-                        let name = match name.kind {
-                            NodeKind::Name(name) => name,
-                            _ => {
-                                self.add_error(
-                                    "expected a name here",
-                                    vec![Note::primary(
-                                        name.span,
-                                        "variants must be in the form `Name Type ...`",
-                                    )],
-                                );
-
-                                return None;
-                            }
-                        };
-
-                        let tys = nodes
-                            .map(|node| self.build_type_annotation(node))
-                            .collect::<Vec<_>>();
-
-                        Some(Field {
-                            span: name_span,
-                            attributes: field.attributes,
-                            name,
-                            kind: FieldKind::Variant(tys),
-                        })
-                    }
-                    NodeKind::Annotate(name, ty) => {
-                        let name = match name.kind {
-                            NodeKind::Name(name) => name,
-                            _ => {
-                                self.add_error(
-                                    "expected a name here",
-                                    vec![Note::primary(
-                                        name.span,
-                                        "fields must be in the form `name :: Type`",
-                                    )],
-                                );
-
-                                return None;
-                            }
-                        };
-
-                        let ty = self.build_type_annotation(*ty);
-
-                        Some(Field {
-                            span,
-                            attributes: field.attributes,
-                            name,
-                            kind: FieldKind::Field(ty),
-                        })
-                    }
-                    _ => {
-                        self.add_error(
-                            "expected a field or variant declaration",
-                            vec![Note::primary(
-                                span,
-                                "fields must be in the form `name :: Type`",
-                            )],
-                        );
-
-                        None
-                    }
-                }
-            })
-            .collect::<Option<Vec<_>>>()
+        let result = match self
+            .build_list::<S>(context.clone(), span, exprs.clone(), scope)
+            .await
         {
-            Some(fields) if !fields.is_empty() => fields.into_iter(),
-            _ => return None,
-        };
-
-        let first = fields.next().unwrap();
-
-        let mut kind = match first.kind {
-            FieldKind::Field(ty) => TypeKind::Structure(vec![DataField {
-                name: first.name,
-                attributes: first.attributes,
-                ty,
-            }]),
-            FieldKind::Variant(values) => TypeKind::Enumeration(vec![DataVariant {
-                name: first.name,
-                span: first.span,
-                attributes: first.attributes,
-                values,
-            }]),
-        };
-
-        for field in fields {
-            match field.kind {
-                FieldKind::Field(ty) => {
-                    let fields = match &mut kind {
-                        TypeKind::Structure(fields) => fields,
-                        TypeKind::Enumeration(_) => {
-                            self.add_error(
-                                "expected field, found variant",
-                                vec![Note::primary(field.span, "expected a field here")],
-                            );
-
-                            continue;
-                        }
-                        _ => unreachable!(),
-                    };
-
-                    fields.push(DataField {
-                        name: field.name,
-                        attributes: field.attributes,
-                        ty,
-                    });
-                }
-                FieldKind::Variant(values) => {
-                    let variants = match &mut kind {
-                        TypeKind::Structure(_) => {
-                            self.add_error(
-                                "expected variant, found field",
-                                vec![Note::primary(field.span, "expected a variant here")],
-                            );
-
-                            continue;
-                        }
-                        TypeKind::Enumeration(variants) => variants,
-                        _ => unreachable!(),
-                    };
-
-                    variants.push(DataVariant {
-                        name: field.name,
-                        span: field.span,
-                        attributes: field.attributes,
-                        values,
-                    });
-                }
+            Some(result) => result,
+            None => {
+                context
+                    .build_terminal(parse::Expr::list_or_expr(span, exprs), scope)
+                    .await
             }
-        }
+        };
 
-        Some(kind)
+        Some(result)
+    }
+}
+
+impl AstBuilder {
+    fn add_dependency(&self, file: Arc<File>) {
+        self.syntax_declarations
+            .lock()
+            .extend(file.syntax_declarations.clone());
+
+        self.scopes.lock().extend(file.scopes.clone());
+
+        self.scopes
+            .lock()
+            .get_mut(self.file_scope.as_ref().unwrap())
+            .unwrap()
+            .syntaxes
+            .extend(
+                file.exported
+                    .clone()
+                    .into_iter()
+                    .map(|(name, id)| (name, Some(id))),
+            );
+
+        self.dependencies.lock().push(file);
     }
 }

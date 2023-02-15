@@ -9,7 +9,7 @@ pub use span::*;
 
 use crate::{helpers::InternedString, Compiler, FilePath};
 
-impl Compiler<'_> {
+impl Compiler {
     pub fn parse(&self, file: FilePath, code: &str) -> File {
         let code = code.replace("\r\n", "\n");
 
@@ -19,7 +19,7 @@ impl Compiler<'_> {
         };
 
         let mut parser = Parser {
-            compiler: self,
+            compiler: self.clone(),
             lexer: Lexer::new(code).spanned().peekable(),
             len: code.len(),
             offset: shebang.map(|s| "#!".len() + s.len()).unwrap_or(0),
@@ -29,7 +29,6 @@ impl Compiler<'_> {
         let (attributes, statements) = parser.parse_file();
 
         File {
-            path: file,
             span: parser.file_span(),
             shebang: shebang.map(InternedString::new),
             attributes,

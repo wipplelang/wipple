@@ -17,31 +17,31 @@ diagnostics: |
       ┌─ test:5:1
       │
     4 │ instance (T X) : ()
-      │ ------------------- this instance could apply to the same type(s)
+      │ -------------- this instance could apply to the same type(s)
     5 │ instance (T X) : ()
-      │ ^^^^^^^^^^^^^^^^^^^ try making this instance more specific
+      │ ^^^^^^^^^^^^^^ try making this instance more specific
 
     error: this instance collides with 2 other instances
       ┌─ test:7:1
       │
     4 │ instance (T X) : ()
-      │ ------------------- this instance could apply to the same type(s)
+      │ -------------- this instance could apply to the same type(s)
     5 │ instance (T X) : ()
-      │ ------------------- this instance could apply to the same type(s)
+      │ -------------- this instance could apply to the same type(s)
     6 │
     7 │ instance (T _) : ()
-      │ ^^^^^^^^^^^^^^^^^^^ try making this instance more specific
+      │ ^^^^^^^^^^^^^^ try making this instance more specific
 
     error: this instance collides with 3 other instances
-       ┌─ test:10:1
+       ┌─ test:10:18
        │
      4 │ instance (T X) : ()
-       │ ------------------- this instance could apply to the same type(s)
+       │ -------------- this instance could apply to the same type(s)
      5 │ instance (T X) : ()
-       │ ------------------- this instance could apply to the same type(s)
+       │ -------------- this instance could apply to the same type(s)
      6 │
      7 │ instance (T _) : ()
-       │ ------------------- this instance could apply to the same type(s)
+       │ -------------- this instance could apply to the same type(s)
        ·
     10 │ A where (U A) => instance (T A) : ()
-       │ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this instance may have different bounds than the others, but one type could satisfy the bounds on more than one of these instances simultaneously
+       │                  ^^^^^^^^^^^^^^ this instance may have different bounds than the others, but one type could satisfy the bounds on more than one of these instances simultaneously

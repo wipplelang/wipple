@@ -12,12 +12,12 @@ pub use engine::{BottomTypeReason, BuiltinType, GenericSubstitutions, Type, Type
 pub use lower::{RuntimeFunction, TypeAnnotation, TypeAnnotationKind};
 
 use crate::{
-    analysis::{expand, lower},
+    analysis::lower,
     diagnostics::Note,
     helpers::{Backtrace, InternedString},
     parse::Span,
-    BuiltinTypeId, Compiler, ConstantId, FieldIndex, ItemId, TemplateId, TraitId, TypeId,
-    TypeParameterId, VariableId, VariantIndex,
+    BuiltinTypeId, Compiler, ConstantId, FieldIndex, ItemId, TraitId, TypeId, TypeParameterId,
+    VariableId, VariantIndex,
 };
 use itertools::Itertools;
 use std::{
@@ -34,26 +34,21 @@ pub enum Progress {
 }
 
 #[derive(Debug, Clone, Default)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct Program {
     pub items: BTreeMap<ItemId, (Option<ConstantId>, Expression)>,
     pub entrypoint: Option<ItemId>,
     pub declarations: Declarations,
-    pub exported: lower::ScopeValues,
-    pub scopes: Vec<(Span, lower::ScopeValues)>,
+    pub exported: HashMap<InternedString, lower::AnyDeclaration>,
 }
 
 macro_rules! declarations {
     ($name:ident<$($container:ident)::+>) => {
         #[derive(Debug, Clone, Default)]
-        #[cfg_attr(feature = "serde", derive(serde::Serialize))]
         pub struct $name {
             pub types: $($container)::+<TypeId, TypeDecl>,
             pub traits: $($container)::+<TraitId, TraitDecl>,
             pub constants: $($container)::+<ConstantId, ConstantDecl>,
             pub instances: $($container)::+<TraitId, BTreeMap<ConstantId, InstanceDecl>>,
-            pub operators: $($container)::+<TemplateId, OperatorDecl>,
-            pub templates: $($container)::+<TemplateId, TemplateDecl>,
             pub builtin_types: $($container)::+<BuiltinTypeId, BuiltinTypeDecl>,
             pub type_parameters: $($container)::+<TypeParameterId, TypeParameterDecl>,
             /// NOTE: Not all variables will be listed here, only ones that passed typechecking
@@ -72,8 +67,6 @@ impl From<DeclarationsInner> for Declarations {
             traits: decls.traits.into_iter().collect(),
             constants: decls.constants.into_iter().collect(),
             instances: decls.instances.into_iter().collect(),
-            operators: decls.operators.into_iter().collect(),
-            templates: decls.templates.into_iter().collect(),
             builtin_types: decls.builtin_types.into_iter().collect(),
             type_parameters: decls.type_parameters.into_iter().collect(),
             variables: decls.variables.into_iter().collect(),
@@ -82,18 +75,16 @@ impl From<DeclarationsInner> for Declarations {
 }
 
 #[derive(Debug, Clone)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct TypeDecl {
     pub name: InternedString,
     pub span: Span,
-    pub params: Vec<(Span, TypeParameterId)>,
+    pub params: Vec<TypeParameterId>,
     pub kind: TypeDeclKind,
     pub attributes: lower::TypeAttributes,
     pub uses: HashSet<Span>,
 }
 
 #[derive(Debug, Clone)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub enum TypeDeclKind {
     Marker,
     Structure {
@@ -107,11 +98,10 @@ pub enum TypeDeclKind {
 }
 
 #[derive(Debug, Clone)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct TraitDecl {
     pub name: InternedString,
     pub span: Span,
-    pub params: Vec<(Span, TypeParameterId)>,
+    pub params: Vec<TypeParameterId>,
     pub ty_annotation: Option<TypeAnnotation>,
     pub ty: Option<engine::Type>,
     pub attributes: lower::TraitAttributes,
@@ -119,11 +109,10 @@ pub struct TraitDecl {
 }
 
 #[derive(Debug, Clone)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct ConstantDecl {
     pub name: InternedString,
     pub span: Span,
-    pub params: Vec<(Span, TypeParameterId)>,
+    pub params: Vec<TypeParameterId>,
     pub bounds: Vec<Bound>,
     pub bound_annotations: Vec<(TraitId, Vec<TypeAnnotation>)>,
     pub ty_annotation: TypeAnnotation,
@@ -135,10 +124,9 @@ pub struct ConstantDecl {
 }
 
 #[derive(Debug, Clone)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct InstanceDecl {
     pub span: Span,
-    pub params: Vec<(Span, TypeParameterId)>,
+    pub params: Vec<TypeParameterId>,
     pub bounds: Vec<Bound>,
     pub bound_annotations: Vec<(TraitId, Vec<TypeAnnotation>)>,
     pub trait_id: TraitId,
@@ -149,7 +137,6 @@ pub struct InstanceDecl {
 }
 
 #[derive(Debug, Clone)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct Bound {
     pub span: Span,
     pub trait_id: TraitId,
@@ -157,24 +144,6 @@ pub struct Bound {
 }
 
 #[derive(Debug, Clone)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize))]
-pub struct OperatorDecl {
-    pub name: InternedString,
-    pub span: Span,
-    pub uses: HashSet<Span>,
-}
-
-#[derive(Debug, Clone)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize))]
-pub struct TemplateDecl {
-    pub name: InternedString,
-    pub span: Span,
-    pub attributes: expand::TemplateAttributes,
-    pub uses: HashSet<Span>,
-}
-
-#[derive(Debug, Clone)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct BuiltinTypeDecl {
     pub name: InternedString,
     pub span: Span,
@@ -183,7 +152,6 @@ pub struct BuiltinTypeDecl {
 }
 
 #[derive(Debug, Clone)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct TypeParameterDecl {
     pub name: Option<InternedString>,
     pub span: Span,
@@ -191,7 +159,6 @@ pub struct TypeParameterDecl {
 }
 
 #[derive(Debug, Clone)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct VariableDecl {
     pub name: Option<InternedString>,
     pub span: Span,
@@ -203,7 +170,6 @@ macro_rules! expr {
     ($vis:vis, $prefix:literal, $type:ty, { $($kinds:tt)* }) => {
         paste::paste! {
             #[derive(Debug, Clone)]
-            #[cfg_attr(feature = "serde", derive(serde::Serialize))]
             $vis struct [<$prefix Expression>] {
                 $vis span: Span,
                 $vis ty: $type,
@@ -211,8 +177,6 @@ macro_rules! expr {
             }
 
             #[derive(Debug, Clone)]
-            #[cfg_attr(feature = "serde", derive(serde::Serialize))]
-            #[cfg_attr(feature = "serde", serde(tag = "type", content = "value"))]
             $vis enum [<$prefix ExpressionKind>] {
                 Error(Backtrace),
                 Marker,
@@ -229,11 +193,11 @@ macro_rules! expr {
                 Structure(Vec<[<$prefix Expression>]>),
                 Variant(VariantIndex, Vec<[<$prefix Expression>]>),
                 Tuple(Vec<[<$prefix Expression>]>),
+                Format(Vec<(InternedString, [<$prefix Expression>])>, Option<InternedString>),
                 $($kinds)*
             }
 
             #[derive(Debug, Clone)]
-            #[cfg_attr(feature = "serde", derive(serde::Serialize))]
             $vis struct [<$prefix Arm>] {
                 $vis span: Span,
                 $vis pattern: [<$prefix Pattern>],
@@ -254,15 +218,12 @@ macro_rules! pattern {
     ($vis:vis, $prefix:literal, { $($kinds:tt)* }) => {
         paste::paste! {
             #[derive(Debug, Clone)]
-            #[cfg_attr(feature = "serde", derive(serde::Serialize))]
             $vis struct [<$prefix Pattern>] {
                 $vis span: Span,
                 $vis kind: [<$prefix PatternKind>],
             }
 
             #[derive(Debug, Clone)]
-            #[cfg_attr(feature = "serde", derive(serde::Serialize))]
-            #[cfg_attr(feature = "serde", serde(tag = "type", content = "value"))]
             $vis enum [<$prefix PatternKind>] {
                 Error(Backtrace),
                 Wildcard,
@@ -312,9 +273,9 @@ impl Expression {
     pub fn contains_error(&self) -> bool {
         let mut contains_error = false;
         self.traverse(|expr| {
-            contains_error &= matches!(expr.kind, ExpressionKind::Error(_));
+            contains_error |= matches!(expr.kind, ExpressionKind::Error(_));
 
-            contains_error &= match &expr.kind {
+            contains_error |= match &expr.kind {
                 ExpressionKind::Error(_) => true,
                 ExpressionKind::Function(pattern, _, _)
                 | ExpressionKind::Initialize(pattern, _) => pattern.contains_error(),
@@ -361,7 +322,7 @@ impl Pattern {
     pub fn contains_error(&self) -> bool {
         let mut contains_error = false;
         self.traverse(|pattern| {
-            contains_error &= matches!(pattern.kind, PatternKind::Error(_));
+            contains_error |= matches!(pattern.kind, PatternKind::Error(_));
         });
 
         contains_error
@@ -383,14 +344,14 @@ impl Error {
     }
 }
 
-impl Compiler<'_> {
+impl Compiler {
     pub(crate) fn typecheck_with_progress(
         &self,
         entrypoint: lower::File,
         complete: bool,
         mut progress: impl FnMut(Progress),
     ) -> Program {
-        let mut typechecker = Typechecker::new(self, entrypoint);
+        let mut typechecker = Typechecker::new(self.clone(), entrypoint);
 
         progress(Progress::CollectingTypes);
         typechecker.collect_types();
@@ -402,13 +363,12 @@ impl Compiler<'_> {
 }
 
 #[derive(Debug, Clone)]
-struct Typechecker<'a, 'l> {
-    compiler: &'a Compiler<'l>,
+struct Typechecker {
+    compiler: Compiler,
     entrypoint: lower::File,
     ctx: engine::Context,
     declarations: RefCell<DeclarationsInner>,
-    exported: Option<lower::ScopeValues>,
-    scopes: RefCell<Vec<(Span, lower::ScopeValues)>>,
+    exported: Option<HashMap<InternedString, lower::AnyDeclaration>>,
     block_end: Option<Option<(Span, engine::UnresolvedType)>>,
     instances: im::HashMap<TraitId, Vec<ConstantId>>,
     generic_constants: im::HashMap<ConstantId, (bool, lower::Expression)>,
@@ -427,7 +387,7 @@ struct QueuedItem {
     info: MonomorphizeInfo,
 }
 
-impl<'a, 'l> Typechecker<'a, 'l> {
+impl Typechecker {
     fn error(&self, error: engine::TypeError, span: Span) -> Error {
         Error {
             error,
@@ -438,15 +398,14 @@ impl<'a, 'l> Typechecker<'a, 'l> {
     }
 }
 
-impl<'a, 'l> Typechecker<'a, 'l> {
-    pub fn new(compiler: &'a Compiler<'l>, entrypoint: lower::File) -> Self {
+impl Typechecker {
+    pub fn new(compiler: Compiler, entrypoint: lower::File) -> Self {
         Typechecker {
             compiler,
             entrypoint,
             ctx: Default::default(),
             declarations: Default::default(),
             exported: None,
-            scopes: Default::default(),
             block_end: None,
             instances: Default::default(),
             generic_constants: Default::default(),
@@ -558,18 +517,14 @@ impl<'a, 'l> Typechecker<'a, 'l> {
             entrypoint: entrypoint_item,
             exported: self.exported.unwrap_or_default(),
             declarations: self.declarations.into_inner().into(),
-            scopes: self.scopes.into_inner(),
         }
     }
 }
 
-impl<'a, 'l> Typechecker<'a, 'l> {
+impl Typechecker {
     pub fn collect_types(&mut self) {
-        let entrypoint = mem::take(&mut self.entrypoint.block);
+        let entrypoint = mem::take(&mut self.entrypoint.statements);
         let exported = mem::take(&mut self.entrypoint.exported);
-        self.scopes
-            .borrow_mut()
-            .extend(mem::take(&mut self.entrypoint.scopes));
 
         let mut info = ConvertInfo {
             variables: Default::default(),
@@ -620,21 +575,25 @@ impl<'a, 'l> Typechecker<'a, 'l> {
         macro_rules! check {
             ($kind:ident) => {
                 paste::paste! {
-                    for id in declaration!([<$kind s>]) {
+                    check!($kind as [<$kind s>]);
+                }
+            };
+            ($kind:ident as $plural:ident) => {
+                paste::paste! {
+                    for id in declaration!($plural) {
                         self.[<with_ $kind _decl>](id, |_| {});
                     }
                 }
             };
-            ($($kind:ident),* $(,)?) => {
-                $(check!($kind);)*
+            ($($kind:ident$(as $plural:ident)?),* $(,)?) => {
+                $(check!($kind$(as $plural)?);)*
             }
         }
 
         check!(
             type,
             trait,
-            operator,
-            template,
+            // syntax as syntaxes,
             builtin_type,
             type_parameter,
             // variables are handled inside `finalize_pattern`
@@ -662,7 +621,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
             let ty = match self
                 .substitute_trait_params(
                     tr,
-                    trait_params.clone().into_iter().map(From::from).collect(),
+                    trait_params.into_iter().map(From::from).collect(),
                     span,
                 )
                 .finalize(&self.ctx)
@@ -674,7 +633,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                     let expr = Expression {
                         span: expr.span,
                         ty: engine::Type::Error,
-                        kind: ExpressionKind::error(self.compiler),
+                        kind: ExpressionKind::error(&self.compiler),
                     };
 
                     self.declarations
@@ -706,7 +665,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
         }
 
         let expr = self.convert_expr(expr, &mut ConvertInfo::default());
-        if let Err(error) = self.ctx.unify_generic(expr.ty.clone(), generic_ty.clone()) {
+        if let Err(error) = self.ctx.unify_generic(expr.ty.clone(), generic_ty) {
             self.add_error(self.error(error, expr.span));
         }
 
@@ -974,7 +933,7 @@ struct ConvertInfo {
     variables: BTreeMap<VariableId, engine::UnresolvedType>,
 }
 
-impl<'a, 'l> Typechecker<'a, 'l> {
+impl Typechecker {
     fn convert_expr(
         &mut self,
         expr: lower::Expression,
@@ -995,7 +954,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                                 id,
                                 params
                                     .into_iter()
-                                    .map(|(_, param)| engine::UnresolvedType::Parameter(param))
+                                    .map(engine::UnresolvedType::Parameter)
                                     .collect(),
                                 engine::TypeStructure::Marker,
                             )
@@ -1027,7 +986,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                 }
             }
             lower::ExpressionKind::Trait(id) => {
-                let mut ty = if let Some((span, false)) =
+                let ty = if let Some((span, false)) =
                     self.with_trait_decl(id, |decl| (decl.span, decl.ty.is_some()))
                 {
                     self.compiler.add_error(
@@ -1045,8 +1004,6 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                 } else {
                     engine::UnresolvedType::Variable(self.ctx.new_variable())
                 };
-
-                self.instantiate_generics(&mut ty);
 
                 UnresolvedExpression {
                     span: expr.span,
@@ -1264,7 +1221,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                         return UnresolvedExpression {
                             span: expr.span,
                             ty: engine::UnresolvedType::Error,
-                            kind: UnresolvedExpressionKind::error(self.compiler),
+                            kind: UnresolvedExpressionKind::error(&self.compiler),
                         }
                     }
                 };
@@ -1289,7 +1246,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                         return UnresolvedExpression {
                             span: expr.span,
                             ty: engine::UnresolvedType::Error,
-                            kind: UnresolvedExpressionKind::error(self.compiler),
+                            kind: UnresolvedExpressionKind::error(&self.compiler),
                         };
                     }
                 };
@@ -1298,7 +1255,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                     id,
                     params
                         .into_iter()
-                        .map(|(_, param)| engine::UnresolvedType::Parameter(param))
+                        .map(engine::UnresolvedType::Parameter)
                         .collect(),
                     engine::TypeStructure::Structure(structure_field_tys.clone()),
                 );
@@ -1319,7 +1276,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                 let mut unpopulated_fields = vec![None; fields_by_index.len()];
                 let mut extra_fields = Vec::new();
 
-                for (name, expr) in fields {
+                for ((_, name), expr) in fields {
                     let (index, ty) = match structure_field_names.get(&name) {
                         Some(index) if index.into_inner() < fields_by_index.len() => {
                             (*index, structure_field_tys[index.into_inner()].clone())
@@ -1351,7 +1308,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                                 "try removing {}",
                                 extra_fields
                                     .into_iter()
-                                    .map(|field| format!("`{}`", field))
+                                    .map(|field| format!("`{field}`"))
                                     .collect::<Vec<_>>()
                                     .join(", ")
                             ),
@@ -1382,7 +1339,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                                 "try adding {}",
                                 missing_fields
                                     .into_iter()
-                                    .map(|field| format!("`{}`", field))
+                                    .map(|field| format!("`{field}`"))
                                     .collect::<Vec<_>>()
                                     .join(", ")
                             ),
@@ -1405,7 +1362,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                         return UnresolvedExpression {
                             span: expr.span,
                             ty: engine::UnresolvedType::Error,
-                            kind: UnresolvedExpressionKind::error(self.compiler),
+                            kind: UnresolvedExpressionKind::error(&self.compiler),
                         };
                     }
                 };
@@ -1429,7 +1386,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                         return UnresolvedExpression {
                             span: expr.span,
                             ty: engine::UnresolvedType::Error,
-                            kind: UnresolvedExpressionKind::error(self.compiler),
+                            kind: UnresolvedExpressionKind::error(&self.compiler),
                         };
                     }
                 };
@@ -1438,7 +1395,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                     id,
                     params
                         .into_iter()
-                        .map(|(_, param)| engine::UnresolvedType::Parameter(param))
+                        .map(engine::UnresolvedType::Parameter)
                         .collect(),
                     engine::TypeStructure::Enumeration(variants_tys.clone()),
                 );
@@ -1489,6 +1446,61 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                     span: expr.span,
                     ty,
                     kind: UnresolvedExpressionKind::Tuple(exprs),
+                }
+            }
+            lower::ExpressionKind::Format(segments, trailing_segment) => {
+                let show_trait = match self.entrypoint.info.language_items.show {
+                    Some(show_trait) => show_trait,
+                    None => {
+                        self.compiler.add_error(
+                            "cannot find `show` language item",
+                            vec![Note::primary(
+                                expr.span,
+                                "using `format` requires the `show` language item",
+                            )],
+                        );
+
+                        return UnresolvedExpression {
+                            span: expr.span,
+                            ty: engine::UnresolvedType::Error,
+                            kind: UnresolvedExpressionKind::error(&self.compiler),
+                        };
+                    }
+                };
+
+                self.with_trait_decl(show_trait, |_| {});
+
+                let segments = segments
+                    .into_iter()
+                    .map(|(text, expr)| {
+                        let expr = self.convert_expr(expr, info);
+
+                        let ty = engine::UnresolvedType::Variable(self.ctx.new_variable());
+
+                        let expr = UnresolvedExpression {
+                            span: expr.span,
+                            ty: ty.clone(),
+                            kind: UnresolvedExpressionKind::Call(
+                                Box::new(UnresolvedExpression {
+                                    span: expr.span,
+                                    ty: engine::UnresolvedType::Function(
+                                        Box::new(expr.ty.clone()),
+                                        Box::new(ty),
+                                    ),
+                                    kind: UnresolvedExpressionKind::Trait(show_trait),
+                                }),
+                                Box::new(expr),
+                            ),
+                        };
+
+                        (text, expr)
+                    })
+                    .collect::<Vec<_>>();
+
+                UnresolvedExpression {
+                    span: expr.span,
+                    ty: engine::UnresolvedType::Builtin(engine::BuiltinType::Text),
+                    kind: UnresolvedExpressionKind::Format(segments, trailing_segment),
                 }
             }
         }
@@ -1574,7 +1586,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                         )
                     }) {
                         Some((params, variants_tys)) => (params, variants_tys),
-                        None => return UnresolvedPatternKind::error(self.compiler),
+                        None => return UnresolvedPatternKind::error(&self.compiler),
                     };
 
                     let variants_tys = match variants_tys {
@@ -1594,7 +1606,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                                 },
                             );
 
-                            return UnresolvedPatternKind::error(self.compiler);
+                            return UnresolvedPatternKind::error(&self.compiler);
                         }
                     };
 
@@ -1610,7 +1622,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                         id,
                         params
                             .into_iter()
-                            .map(|(_, param)| {
+                            .map(|param| {
                                 let mut ty = engine::UnresolvedType::Parameter(param);
                                 self.add_substitutions(&mut ty, &mut substitutions);
                                 ty
@@ -1708,7 +1720,7 @@ struct MonomorphizeInfo {
     recursion_count: usize,
 }
 
-impl<'a, 'l> Typechecker<'a, 'l> {
+impl Typechecker {
     fn monomorphize_expr(
         &mut self,
         mut expr: UnresolvedExpression,
@@ -1747,6 +1759,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                         .collect::<Vec<_>>();
 
                     // Non-terminator statements by default have a type of `()`
+                    #[allow(clippy::bool_to_int_with_if)] // more clear this way
                     for statement in
                         statements
                             .iter_mut()
@@ -1896,7 +1909,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                             Ok(instance) => instance,
                             Err(error) => {
                                 self.add_error(error);
-                                return MonomorphizedExpressionKind::error(self.compiler);
+                                return MonomorphizedExpressionKind::error(&self.compiler);
                             }
                         };
 
@@ -1908,7 +1921,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                             expr.ty.clone(),
                             info.clone(),
                         ),
-                        None => return MonomorphizedExpressionKind::error(self.compiler),
+                        None => return MonomorphizedExpressionKind::error(&self.compiler),
                     };
 
                     MonomorphizedExpressionKind::Constant(monomorphized_id)
@@ -1919,6 +1932,15 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                         .map(|expr| self.monomorphize_expr(expr, info))
                         .collect(),
                 ),
+                UnresolvedExpressionKind::Format(segments, trailing_segment) => {
+                    MonomorphizedExpressionKind::Format(
+                        segments
+                            .into_iter()
+                            .map(|(text, expr)| (text, self.monomorphize_expr(expr, info)))
+                            .collect(),
+                        trailing_segment,
+                    )
+                }
             })(),
         }
     }
@@ -2030,14 +2052,14 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                             vec![Note::primary(pattern.span, "value is not a structure")],
                         );
 
-                        return MonomorphizedPatternKind::error(self.compiler);
+                        return MonomorphizedPatternKind::error(&self.compiler);
                     }
                 };
 
                 let substitutions = structure
                     .params
                     .iter()
-                    .map(|(_, param)| *param)
+                    .copied()
                     .zip(params)
                     .collect::<BTreeMap<_, _>>();
 
@@ -2055,7 +2077,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                                     vec![Note::primary(pattern.span, "value is not a structure")],
                                 );
 
-                                return MonomorphizedPatternKind::error(self.compiler);
+                                return MonomorphizedPatternKind::error(&self.compiler);
                             }
                         }
                     }
@@ -2068,7 +2090,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                             Some(index) => *index,
                             None => {
                                 self.compiler.add_error(
-                                    format!("value has no member named '{}'", name),
+                                    format!("value has no member named '{name}'"),
                                     vec![Note::primary(pattern.span, "no such member")],
                                 );
 
@@ -2144,14 +2166,14 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                             vec![Note::primary(pattern.span, "value is not an enumeration")],
                         );
 
-                        return MonomorphizedPatternKind::error(self.compiler);
+                        return MonomorphizedPatternKind::error(&self.compiler);
                     }
                 };
 
                 let substitutions = enumeration
                     .params
                     .iter()
-                    .map(|(_, param)| *param)
+                    .copied()
                     .zip(params.iter().cloned())
                     .collect::<BTreeMap<_, _>>();
 
@@ -2167,7 +2189,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                         enumeration
                             .params
                             .iter()
-                            .map(|(_, param)| substitutions.get(param).unwrap().clone())
+                            .map(|param| substitutions.get(param).unwrap().clone())
                             .collect(),
                         // HACK: Optimization because unification doesn't take structure into
                         // account -- the structure can be applied during finalization
@@ -2194,7 +2216,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                                     )],
                                 );
 
-                                return MonomorphizedPatternKind::error(self.compiler);
+                                return MonomorphizedPatternKind::error(&self.compiler);
                             }
                         }
                     }
@@ -2225,7 +2247,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                 let condition_span = condition.span;
                 let condition = self.monomorphize_expr(*condition, info);
 
-                if let Some(boolean_ty) = self.entrypoint.global_attributes.language_items.boolean {
+                if let Some(boolean_ty) = self.entrypoint.info.language_items.boolean {
                     if let Err(error) = self.unify(
                         condition.span,
                         condition.ty.clone(),
@@ -2275,7 +2297,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
 
                         match match_set {
                             MatchSet::Tuple(sets) => sets,
-                            _ => return MonomorphizedPatternKind::error(self.compiler),
+                            _ => return MonomorphizedPatternKind::error(&self.compiler),
                         }
                     }
                 };
@@ -2355,7 +2377,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
     ) -> Result<Option<ConstantId>, Error> {
         let recursion_limit = self
             .entrypoint
-            .global_attributes
+            .info
             .recursion_limit
             .unwrap_or(Compiler::DEFAULT_RECURSION_LIMIT);
 
@@ -2598,7 +2620,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
 
         tr_params
             .into_iter()
-            .map(|(_, param)| {
+            .map(|param| {
                 params
                     .get(&param)
                     .cloned()
@@ -2647,7 +2669,7 @@ impl MatchSet {
     }
 }
 
-impl<'a, 'l> Typechecker<'a, 'l> {
+impl Typechecker {
     fn assert_matched(
         &mut self,
         match_set: &MatchSet,
@@ -2905,7 +2927,7 @@ impl MatchSet {
     }
 }
 
-impl<'a, 'l> Typechecker<'a, 'l> {
+impl Typechecker {
     fn format_unmatched_pattern(&self, pattern: &UnmatchedPattern, parenthesize: bool) -> String {
         match &pattern.kind {
             UnmatchedPatternKind::Wildcard => String::from("_"),
@@ -2944,7 +2966,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                         self.format_unmatched_pattern(pattern, false)
                     )
                 } else {
-                    format!("{{ {} }}", field_name)
+                    format!("{{ {field_name} }}")
                 }
             }
             UnmatchedPatternKind::Variant(index, patterns) => {
@@ -2966,11 +2988,10 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                     .unwrap_or("<unknown>");
 
                 let formatted = if patterns.is_empty() {
-                    format!("{} {}", ty.name, variant_name)
+                    variant_name.to_string()
                 } else {
                     format!(
-                        "{} {} {}",
-                        ty.name,
+                        "{} {}",
                         variant_name,
                         patterns
                             .iter()
@@ -2981,7 +3002,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                 };
 
                 if parenthesize {
-                    format!("({})", formatted)
+                    format!("({formatted})")
                 } else {
                     formatted
                 }
@@ -2994,7 +3015,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                     .join(" , ");
 
                 if parenthesize {
-                    format!("({})", formatted)
+                    format!("({formatted})")
                 } else {
                     formatted
                 }
@@ -3003,7 +3024,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
     }
 }
 
-impl<'a, 'l> Typechecker<'a, 'l> {
+impl Typechecker {
     fn finalize_expr(&mut self, expr: MonomorphizedExpression) -> Expression {
         let ty = match expr.ty.finalize(&self.ctx) {
             Ok(ty) => ty,
@@ -3024,7 +3045,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                     Some(Ok(number)) => number,
                     Some(Err(error)) => {
                         self.add_error(self.error(error, expr.span));
-                        ExpressionKind::error(self.compiler)
+                        ExpressionKind::error(&self.compiler)
                     }
                     None => {
                         self.add_error(self.error(
@@ -3035,7 +3056,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                             expr.span,
                         ));
 
-                        ExpressionKind::error(self.compiler)
+                        ExpressionKind::error(&self.compiler)
                     }
                 }
             }
@@ -3056,7 +3077,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
             MonomorphizedExpressionKind::Function(pattern, body, captures) => {
                 let input_ty = match &ty {
                     engine::Type::Function(input, _) => input.clone(),
-                    _ => return ExpressionKind::error(self.compiler),
+                    _ => return ExpressionKind::error(&self.compiler),
                 };
 
                 ExpressionKind::Function(
@@ -3123,6 +3144,15 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                     .map(|expr| self.finalize_expr(expr))
                     .collect(),
             ),
+            MonomorphizedExpressionKind::Format(segments, trailing_segment) => {
+                ExpressionKind::Format(
+                    segments
+                        .into_iter()
+                        .map(|(text, expr)| (text, self.finalize_expr(expr)))
+                        .collect(),
+                    trailing_segment,
+                )
+            }
         })();
 
         Expression {
@@ -3147,7 +3177,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                         Some(Ok(number)) => number,
                         Some(Err(error)) => {
                             self.add_error(self.error(error, pattern.span));
-                            PatternKind::error(self.compiler)
+                            PatternKind::error(&self.compiler)
                         }
                         None => {
                             self.add_error(self.error(
@@ -3158,7 +3188,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                                 pattern.span,
                             ));
 
-                            PatternKind::error(self.compiler)
+                            PatternKind::error(&self.compiler)
                         }
                     }
                 }
@@ -3172,7 +3202,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                         engine::Type::Named(_, _, engine::TypeStructure::Structure(fields)) => {
                             fields
                         }
-                        _ => return PatternKind::error(self.compiler),
+                        _ => return PatternKind::error(&self.compiler),
                     };
 
                     PatternKind::Destructure(
@@ -3188,7 +3218,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                         engine::Type::Named(_, _, engine::TypeStructure::Enumeration(variants)) => {
                             &variants[index.into_inner()]
                         }
-                        _ => return PatternKind::error(self.compiler),
+                        _ => return PatternKind::error(&self.compiler),
                     };
 
                     PatternKind::Variant(
@@ -3211,7 +3241,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                 MonomorphizedPatternKind::Tuple(patterns) => {
                     let input_tys = match input_ty {
                         engine::Type::Tuple(tys) => tys,
-                        _ => return PatternKind::error(self.compiler),
+                        _ => return PatternKind::error(&self.compiler),
                     };
 
                     PatternKind::Tuple(
@@ -3227,7 +3257,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
     }
 }
 
-impl<'a, 'l> Typechecker<'a, 'l> {
+impl Typechecker {
     fn with_type_decl<T>(&mut self, id: TypeId, f: impl FnOnce(&TypeDecl) -> T) -> Option<T> {
         if let Some(decl) = self.declarations.borrow().types.get(&id) {
             return Some(f(decl));
@@ -3240,22 +3270,24 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                 .name
                 .unwrap_or_else(|| InternedString::new("<unknown>")),
             span: decl.span,
-            params: decl.value.params,
+            params: decl.value.parameters,
             kind: match decl.value.kind {
-                lower::TypeKind::Marker => TypeDeclKind::Marker,
-                lower::TypeKind::Structure(fields, field_names) => TypeDeclKind::Structure {
-                    fields: fields
-                        .into_iter()
-                        .map(|field| {
-                            (
-                                field.ty.clone(),
-                                self.convert_finalized_type_annotation(field.ty),
-                            )
-                        })
-                        .collect(),
-                    field_names,
-                },
-                lower::TypeKind::Enumeration(variants, variant_names) => {
+                lower::TypeDeclarationKind::Marker => TypeDeclKind::Marker,
+                lower::TypeDeclarationKind::Structure(fields, field_names) => {
+                    TypeDeclKind::Structure {
+                        fields: fields
+                            .into_iter()
+                            .map(|field| {
+                                (
+                                    field.ty.clone(),
+                                    self.convert_finalized_type_annotation(field.ty),
+                                )
+                            })
+                            .collect(),
+                        field_names,
+                    }
+                }
+                lower::TypeDeclarationKind::Enumeration(variants, variant_names) => {
                     TypeDeclKind::Enumeration {
                         variants: variants
                             .into_iter()
@@ -3407,22 +3439,23 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                 id,
                 (
                     true,
-                    decl.value
-                        .value
-                        .unwrap_or_else(|| lower::Expression::error(self.compiler, decl.span)),
+                    decl.value.value.unwrap_or_else(|| lower::Expression {
+                        span: decl.span,
+                        kind: lower::ExpressionKind::error(&self.compiler),
+                    }),
                 ),
             );
         }
 
         let mut params = decl
             .value
-            .trait_params
+            .tr_parameters
             .clone()
             .into_iter()
             .map(|ty| self.convert_generic_type_annotation(ty))
             .collect::<Vec<_>>();
 
-        for (_, param) in tr.params.iter().skip(params.len()) {
+        for param in tr.params.iter().skip(params.len()) {
             let name = match self.with_type_parameter_decl(*param, |decl| decl.name) {
                 Some(name) => name,
                 None => {
@@ -3529,7 +3562,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
 
         let decl = InstanceDecl {
             span: decl.span,
-            params: decl.value.params,
+            params: decl.value.parameters,
             bounds,
             bound_annotations: decl
                 .value
@@ -3539,7 +3572,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                 .collect(),
             trait_id,
             trait_params: params,
-            trait_param_annotations: decl.value.trait_params,
+            trait_param_annotations: decl.value.tr_parameters,
             body: None,
             item,
         };
@@ -3550,64 +3583,6 @@ impl<'a, 'l> Typechecker<'a, 'l> {
             .instances
             .entry(trait_id)
             .or_default()
-            .entry(id)
-            .or_insert(decl)))
-    }
-
-    fn with_operator_decl<T>(
-        &mut self,
-        id: TemplateId,
-        f: impl FnOnce(&OperatorDecl) -> T,
-    ) -> Option<T> {
-        if let Some(decl) = self.declarations.borrow().operators.get(&id) {
-            return Some(f(decl));
-        }
-
-        let operator = *self.entrypoint.declarations.operators.get(&id)?;
-
-        let decl = self
-            .entrypoint
-            .declarations
-            .templates
-            .get(&operator.template)?
-            .clone();
-
-        let decl = OperatorDecl {
-            name: decl.name,
-            span: decl.span,
-            uses: decl.uses,
-        };
-
-        Some(f(self
-            .declarations
-            .borrow_mut()
-            .operators
-            .entry(id)
-            .or_insert(decl)))
-    }
-
-    fn with_template_decl<T>(
-        &mut self,
-        id: TemplateId,
-        f: impl FnOnce(&TemplateDecl) -> T,
-    ) -> Option<T> {
-        if let Some(decl) = self.declarations.borrow().templates.get(&id) {
-            return Some(f(decl));
-        }
-
-        let decl = self.entrypoint.declarations.templates.get(&id)?.clone();
-
-        let decl = TemplateDecl {
-            name: decl.name,
-            span: decl.span,
-            attributes: decl.attributes,
-            uses: decl.uses,
-        };
-
-        Some(f(self
-            .declarations
-            .borrow_mut()
-            .templates
             .entry(id)
             .or_insert(decl)))
     }
@@ -3698,7 +3673,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
     }
 }
 
-impl<'a, 'l> Typechecker<'a, 'l> {
+impl Typechecker {
     fn unify(
         &mut self,
         span: Span,
@@ -3798,7 +3773,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
         stack: &mut Vec<TypeId>,
     ) -> engine::UnresolvedType {
         match annotation.kind {
-            TypeAnnotationKind::Error => engine::UnresolvedType::Error,
+            TypeAnnotationKind::Error(_) => engine::UnresolvedType::Error,
             TypeAnnotationKind::Placeholder => {
                 if let Some(ty) = convert_placeholder(self, annotation.span) {
                     ty
@@ -3824,7 +3799,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
 
                 let ty = self.entrypoint.declarations.types.get(&id).unwrap().clone();
 
-                for (_, param) in ty.value.params.iter().skip(params.len()) {
+                for param in ty.value.parameters.iter().skip(params.len()) {
                     let name = match self.with_type_parameter_decl(*param, |decl| decl.name) {
                         Some(name) => name,
                         None => {
@@ -3859,9 +3834,9 @@ impl<'a, 'l> Typechecker<'a, 'l> {
 
                 let substitutions = ty
                     .value
-                    .params
+                    .parameters
                     .iter()
-                    .map(|(_, param)| *param)
+                    .copied()
                     .zip(params.iter().cloned())
                     .collect::<GenericSubstitutions>();
 
@@ -3872,14 +3847,16 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                 };
 
                 let structure = match &ty.value.kind {
-                    lower::TypeKind::Marker => engine::TypeStructure::Marker,
-                    lower::TypeKind::Structure(fields, _) => engine::TypeStructure::Structure(
-                        fields
-                            .iter()
-                            .map(|field| convert_and_instantiate(field.ty.clone()))
-                            .collect(),
-                    ),
-                    lower::TypeKind::Enumeration(variants, _) => {
+                    lower::TypeDeclarationKind::Marker => engine::TypeStructure::Marker,
+                    lower::TypeDeclarationKind::Structure(fields, _) => {
+                        engine::TypeStructure::Structure(
+                            fields
+                                .iter()
+                                .map(|field| convert_and_instantiate(field.ty.clone()))
+                                .collect(),
+                        )
+                    }
+                    lower::TypeDeclarationKind::Enumeration(variants, _) => {
                         engine::TypeStructure::Enumeration(
                             variants
                                 .iter()
@@ -3910,7 +3887,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                     .clone();
 
                 match builtin_ty.value.kind {
-                    lower::BuiltinTypeKind::Number => {
+                    lower::BuiltinTypeDeclarationKind::Number => {
                         if !parameters.is_empty() {
                             self.compiler.add_error(
                                 "`Number` does not accept parameters",
@@ -3923,7 +3900,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
 
                         engine::UnresolvedType::Builtin(engine::BuiltinType::Number)
                     }
-                    lower::BuiltinTypeKind::Integer => {
+                    lower::BuiltinTypeDeclarationKind::Integer => {
                         if !parameters.is_empty() {
                             self.compiler.add_error(
                                 "`Integer` does not accept parameters",
@@ -3936,7 +3913,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
 
                         engine::UnresolvedType::Builtin(engine::BuiltinType::Integer)
                     }
-                    lower::BuiltinTypeKind::Natural => {
+                    lower::BuiltinTypeDeclarationKind::Natural => {
                         if !parameters.is_empty() {
                             self.compiler.add_error(
                                 "`Natural` does not accept parameters",
@@ -3949,7 +3926,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
 
                         engine::UnresolvedType::Builtin(engine::BuiltinType::Natural)
                     }
-                    lower::BuiltinTypeKind::Byte => {
+                    lower::BuiltinTypeDeclarationKind::Byte => {
                         if !parameters.is_empty() {
                             self.compiler.add_error(
                                 "`Byte` does not accept parameters",
@@ -3962,7 +3939,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
 
                         engine::UnresolvedType::Builtin(engine::BuiltinType::Byte)
                     }
-                    lower::BuiltinTypeKind::Signed => {
+                    lower::BuiltinTypeDeclarationKind::Signed => {
                         if !parameters.is_empty() {
                             self.compiler.add_error(
                                 "`Signed` does not accept parameters",
@@ -3975,7 +3952,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
 
                         engine::UnresolvedType::Builtin(engine::BuiltinType::Signed)
                     }
-                    lower::BuiltinTypeKind::Unsigned => {
+                    lower::BuiltinTypeDeclarationKind::Unsigned => {
                         if !parameters.is_empty() {
                             self.compiler.add_error(
                                 "`Unsigned` does not accept parameters",
@@ -3988,7 +3965,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
 
                         engine::UnresolvedType::Builtin(engine::BuiltinType::Unsigned)
                     }
-                    lower::BuiltinTypeKind::Float => {
+                    lower::BuiltinTypeDeclarationKind::Float => {
                         if !parameters.is_empty() {
                             self.compiler.add_error(
                                 "`Float` does not accept parameters",
@@ -4001,7 +3978,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
 
                         engine::UnresolvedType::Builtin(engine::BuiltinType::Float)
                     }
-                    lower::BuiltinTypeKind::Double => {
+                    lower::BuiltinTypeDeclarationKind::Double => {
                         if !parameters.is_empty() {
                             self.compiler.add_error(
                                 "`Double` does not accept parameters",
@@ -4014,7 +3991,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
 
                         engine::UnresolvedType::Builtin(engine::BuiltinType::Double)
                     }
-                    lower::BuiltinTypeKind::Text => {
+                    lower::BuiltinTypeDeclarationKind::Text => {
                         if !parameters.is_empty() {
                             self.compiler.add_error(
                                 "`Text` does not accept parameters",
@@ -4027,20 +4004,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
 
                         engine::UnresolvedType::Builtin(engine::BuiltinType::Text)
                     }
-                    lower::BuiltinTypeKind::Boolean => {
-                        if !parameters.is_empty() {
-                            self.compiler.add_error(
-                                "`Boolean` does not accept parameters",
-                                vec![Note::primary(
-                                    annotation.span,
-                                    "try removing these parameters",
-                                )],
-                            );
-                        }
-
-                        engine::UnresolvedType::Builtin(engine::BuiltinType::Number)
-                    }
-                    lower::BuiltinTypeKind::List => {
+                    lower::BuiltinTypeDeclarationKind::List => {
                         if parameters.is_empty() {
                             self.compiler.add_error(
                                 "`List` accepts 1 parameter, but none were provided",
@@ -4076,7 +4040,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                             )))
                         }
                     }
-                    lower::BuiltinTypeKind::Mutable => {
+                    lower::BuiltinTypeDeclarationKind::Mutable => {
                         if parameters.is_empty() {
                             self.compiler.add_error(
                                 "`Mutable` accepts 1 parameter, but none were provided",
@@ -4160,7 +4124,6 @@ impl<'a, 'l> Typechecker<'a, 'l> {
 
         let substitutions = trait_params
             .into_iter()
-            .map(|(_, param)| param)
             .zip(params)
             .collect::<GenericSubstitutions>();
 
@@ -4171,7 +4134,7 @@ impl<'a, 'l> Typechecker<'a, 'l> {
     }
 }
 
-impl<'a, 'l> Typechecker<'a, 'l> {
+impl Typechecker {
     fn format_type(
         &mut self,
         ty: impl Into<format::FormattableType>,
@@ -4265,39 +4228,43 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                     _ => None,
                 };
 
+                let message = format!(
+                    "expected {}, but found {}",
+                    self.format_type(expected.clone(), format),
+                    self.format_type(actual, format)
+                );
+
                 self.compiler.error_with(
                     "mismatched types",
-                    std::iter::once(Note::primary(
-                        error.span,
-                        format!(
-                            "expected {}, but found {}",
-                            self.format_type(expected.clone(), format),
-                            self.format_type(actual, format)
-                        ),
-                    ))
-                    .chain(actual_ty.and_then(|(actual_ty, mut actual_params)| {
-                        actual_ty
-                            .attributes
-                            .on_mismatch
-                            .iter()
-                            .find_map(|(param, message)| {
-                                param
-                                    .as_ref()
-                                    .map_or(true, |param| {
-                                        let param = actual_ty
-                                            .params
-                                            .iter()
-                                            .position(|(_, p)| p == param)
-                                            .expect("type parameter associated with wrong type");
+                    std::iter::once(Note::primary(error.span, message))
+                        .chain(actual_ty.and_then(|(actual_ty, mut actual_params)| {
+                            actual_ty
+                                .attributes
+                                .on_mismatch
+                                .iter()
+                                .find_map(|(param, message)| {
+                                    param
+                                        .as_ref()
+                                        .map_or(true, |param| {
+                                            let param = actual_ty
+                                                .params
+                                                .iter()
+                                                .position(|p| p == param)
+                                                .expect(
+                                                    "type parameter associated with wrong type",
+                                                );
 
-                                        let inner_ty = actual_params[param].clone();
+                                            let inner_ty = actual_params[param].clone();
 
-                                        self.ctx.clone().unify(inner_ty, expected.clone()).is_ok()
-                                    })
-                                    .then(|| Note::secondary(error.span, message))
-                            })
-                    }))
-                    .collect(),
+                                            self.ctx
+                                                .clone()
+                                                .unify(inner_ty, expected.clone())
+                                                .is_ok()
+                                        })
+                                        .then(|| Note::secondary(error.span, message))
+                                })
+                        }))
+                        .collect(),
                     error.trace,
                 )
             }
@@ -4311,30 +4278,30 @@ impl<'a, 'l> Typechecker<'a, 'l> {
                     .attributes
                     .clone();
 
+                let message = format!(
+                    "could not find instance {}",
+                    self.format_type(format::FormattableType::r#trait(id, params), format)
+                );
+
                 self.compiler.error_with(
                     "missing instance",
-                    std::iter::once(Note::primary(
-                        error.span,
-                        format!(
-                            "could not find instance {}",
-                            self.format_type(format::FormattableType::r#trait(id, params), format)
-                        ),
-                    ))
-                    .chain(
-                        bound_span.map(|span| Note::secondary(span, "required by this bound here")),
-                    )
-                    .chain(error_candidates.into_iter().map(|span| {
-                        Note::secondary(
-                            span,
-                            "this instance could apply, but its bounds weren't satisfied",
+                    std::iter::once(Note::primary(error.span, message))
+                        .chain(
+                            bound_span
+                                .map(|span| Note::secondary(span, "required by this bound here")),
                         )
-                    }))
-                    .chain(
-                        trait_attributes
-                            .on_unimplemented
-                            .map(|message| Note::secondary(error.span, message)),
-                    )
-                    .collect(),
+                        .chain(error_candidates.into_iter().map(|span| {
+                            Note::secondary(
+                                span,
+                                "this instance could apply, but its bounds weren't satisfied",
+                            )
+                        }))
+                        .chain(
+                            trait_attributes
+                                .on_unimplemented
+                                .map(|message| Note::secondary(error.span, message)),
+                        )
+                        .collect(),
                     error.trace,
                 )
             }
@@ -4355,32 +4322,36 @@ impl<'a, 'l> Typechecker<'a, 'l> {
             engine::TypeError::UnresolvedType(mut ty) => {
                 ty.apply(&self.ctx);
 
+                let note = (!matches!(ty, engine::UnresolvedType::Variable(_))).then(|| {
+                    Note::primary(
+                        error.span,
+                        format!("this has type {}", self.format_type(ty, format)),
+                    )
+                });
+
                 self.compiler.error_with(
                     "could not determine the type of this expression",
                     std::iter::once(Note::primary(
                         error.span,
                         "try annotating the type with `::`",
                     ))
-                    .chain(
-                        (!matches!(ty, engine::UnresolvedType::Variable(_))).then(|| {
-                            Note::primary(
-                                error.span,
-                                format!("this has type {}", self.format_type(ty, format)),
-                            )
-                        }),
-                    )
+                    .chain(note)
                     .collect(),
                     error.trace,
                 )
             }
-            engine::TypeError::InvalidNumericLiteral(ty) => self.compiler.error_with(
-                format!(
+            engine::TypeError::InvalidNumericLiteral(ty) => {
+                let message = format!(
                     "number does not fit into a {}",
                     self.format_type(ty, format)
-                ),
-                vec![Note::primary(error.span, "invalid numeric literal")],
-                error.trace,
-            ),
+                );
+
+                self.compiler.error_with(
+                    message,
+                    vec![Note::primary(error.span, "invalid numeric literal")],
+                    error.trace,
+                )
+            }
         };
 
         diagnostic.notes.append(&mut error.notes);

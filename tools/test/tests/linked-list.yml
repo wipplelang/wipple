@@ -14,7 +14,7 @@ code: |
 
     list : Cons 1 (Cons 2 (Cons 3 Nil))
 
-    sum : reduce (Add :: Number -> _) 0 list
+    sum : reduce (Add :: (Number -> _)) 0 list
     show sum
 
 output: |

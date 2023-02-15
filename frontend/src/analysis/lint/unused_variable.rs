@@ -1,6 +1,6 @@
 use crate::{analysis, diagnostics::*, Compiler};
 
-impl Compiler<'_> {
+impl Compiler {
     pub(super) fn unused_variable_lint(&self, program: &analysis::Program) {
         for variable in program.declarations.variables.values() {
             if let Some(name) = variable.name {
@@ -9,7 +9,7 @@ impl Compiler<'_> {
                         "unused variable",
                         vec![Note::primary(
                             variable.span,
-                            format!("`{}` is never used", name),
+                            format!("`{name}` is never used"),
                         )],
                     );
                 }
