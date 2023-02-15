@@ -37,6 +37,12 @@ pub struct VariantTypeMember {
     pub tys: Vec<Result<Type, SyntaxError>>,
 }
 
+impl VariantTypeMember {
+    pub fn span(&self) -> Span {
+        self.span
+    }
+}
+
 #[derive(Clone)]
 pub struct TypeMemberSyntaxContext {
     pub(super) ast_builder: AstBuilder,

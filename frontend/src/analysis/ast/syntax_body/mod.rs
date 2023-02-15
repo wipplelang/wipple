@@ -26,6 +26,12 @@ pub struct BlockSyntaxBody {
     pub rules: Vec<Result<SyntaxRule, SyntaxError>>,
 }
 
+impl BlockSyntaxBody {
+    pub fn span(&self) -> Span {
+        self.span
+    }
+}
+
 #[derive(Clone)]
 pub struct SyntaxBodySyntaxContext {
     pub(super) ast_builder: AstBuilder,

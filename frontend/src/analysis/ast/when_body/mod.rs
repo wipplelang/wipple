@@ -26,6 +26,12 @@ pub struct BlockWhenBody {
     pub arms: Vec<Result<WhenArm, SyntaxError>>,
 }
 
+impl BlockWhenBody {
+    pub fn span(&self) -> Span {
+        self.span
+    }
+}
+
 #[derive(Clone)]
 pub struct WhenBodySyntaxContext {
     pub(super) ast_builder: AstBuilder,

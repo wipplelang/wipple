@@ -20,12 +20,35 @@ pub struct WhereTypePattern {
     pub bounds: Vec<Result<WhereTypePatternBound, SyntaxError>>,
 }
 
+impl WhereTypePattern {
+    pub fn span(&self) -> Span {
+        let pattern_span = match self.pattern {
+            Ok(pattern) => pattern.span(),
+            Err(error) => error.span,
+        };
+
+        let last_bound_span = match self.bounds.last().unwrap() {
+            Ok(bound) => bound.span(),
+            Err(error) => error.span,
+        };
+
+        Span::join(pattern_span, last_bound_span)
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct WhereTypePatternBound {
+    pub span: Span,
     pub trait_span: Span,
     pub trait_name: InternedString,
     pub trait_scope: ScopeId,
     pub parameters: Vec<Result<Type, SyntaxError>>,
+}
+
+impl WhereTypePatternBound {
+    pub fn span(&self) -> Span {
+        self.span
+    }
 }
 
 pub struct WhereTypePatternSyntax;
@@ -97,6 +120,7 @@ impl Syntax for WhereTypePatternSyntax {
                                     .await;
 
                                 Ok(WhereTypePatternBound {
+                                    span,
                                     trait_span,
                                     trait_name,
                                     trait_scope,
@@ -117,6 +141,7 @@ impl Syntax for WhereTypePatternSyntax {
                                 };
 
                                 Ok(WhereTypePatternBound {
+                                    span: expr.span,
                                     trait_span: expr.span,
                                     trait_name,
                                     trait_scope,

@@ -66,11 +66,23 @@ pub struct UnitExpression {
     pub span: Span,
 }
 
+impl UnitExpression {
+    pub fn span(&self) -> Span {
+        self.span
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct NameExpression {
     pub span: Span,
     pub name: InternedString,
     pub scope: ScopeId,
+}
+
+impl NameExpression {
+    pub fn span(&self) -> Span {
+        self.span
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -79,10 +91,22 @@ pub struct TextExpression {
     pub text: InternedString,
 }
 
+impl TextExpression {
+    pub fn span(&self) -> Span {
+        self.span
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct NumberExpression {
     pub span: Span,
     pub number: InternedString,
+}
+
+impl NumberExpression {
+    pub fn span(&self) -> Span {
+        self.span
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -92,11 +116,23 @@ pub struct CallExpression {
     pub inputs: Vec<Result<Expression, SyntaxError>>,
 }
 
+impl CallExpression {
+    pub fn span(&self) -> Span {
+        self.span
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct BlockExpression {
     pub span: Span,
     pub statements: Vec<Result<Statement, SyntaxError>>,
     pub scope: ScopeId,
+}
+
+impl BlockExpression {
+    pub fn span(&self) -> Span {
+        self.span
+    }
 }
 
 #[derive(Clone)]

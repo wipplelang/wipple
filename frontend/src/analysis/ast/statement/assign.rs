@@ -20,6 +20,22 @@ pub struct AssignStatement {
     pub attributes: StatementAttributes,
 }
 
+impl AssignStatement {
+    pub fn span(&self) -> Span {
+        let pattern_span = match self.pattern {
+            Ok(pattern) => pattern.span(),
+            Err(error) => error.span,
+        };
+
+        let value_span = match self.value {
+            Ok(value) => value.span(),
+            Err(error) => error.span,
+        };
+
+        Span::join(pattern_span, value_span)
+    }
+}
+
 pub struct AssignStatementSyntax;
 
 impl Syntax for AssignStatementSyntax {

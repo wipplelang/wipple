@@ -40,9 +40,21 @@ pub struct PlaceholderType {
     pub span: Span,
 }
 
+impl PlaceholderType {
+    pub fn span(&self) -> Span {
+        self.span
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct UnitType {
     pub span: Span,
+}
+
+impl UnitType {
+    pub fn span(&self) -> Span {
+        self.span
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -52,6 +64,12 @@ pub struct NamedType {
     pub name: InternedString,
     pub name_scope: ScopeId,
     pub parameters: Vec<Result<Type, SyntaxError>>,
+}
+
+impl NamedType {
+    pub fn span(&self) -> Span {
+        self.span
+    }
 }
 
 #[derive(Clone)]

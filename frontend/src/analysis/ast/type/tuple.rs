@@ -14,6 +14,26 @@ pub struct TupleType {
     pub tys: Vec<Result<Type, SyntaxError>>,
 }
 
+impl TupleType {
+    pub fn span(&self) -> Span {
+        let first_ty_span = match self.tys.first().unwrap() {
+            Ok(ty) => ty.span(),
+            Err(error) => error.span,
+        };
+
+        if self.tys.len() == 1 {
+            Span::join(first_ty_span, self.comma_span)
+        } else {
+            let last_ty_span = match self.tys.last().unwrap() {
+                Ok(ty) => ty.span(),
+                Err(error) => error.span,
+            };
+
+            Span::join(first_ty_span, last_ty_span)
+        }
+    }
+}
+
 pub struct TupleTypeSyntax;
 
 impl Syntax for TupleTypeSyntax {

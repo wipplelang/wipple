@@ -19,6 +19,22 @@ pub struct FunctionWhenArm {
     pub scope: ScopeId,
 }
 
+impl FunctionWhenArm {
+    pub fn span(&self) -> Span {
+        let pattern_span = match self.pattern {
+            Ok(pattern) => pattern.span(),
+            Err(error) => error.span,
+        };
+
+        let body_span = match self.body {
+            Ok(body) => body.span(),
+            Err(error) => error.span,
+        };
+
+        Span::join(pattern_span, body_span)
+    }
+}
+
 pub struct FunctionWhenArmSyntax;
 
 impl Syntax for FunctionWhenArmSyntax {

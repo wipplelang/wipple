@@ -14,6 +14,22 @@ pub struct FunctionType {
     pub output: Result<Box<Type>, SyntaxError>,
 }
 
+impl FunctionType {
+    pub fn span(&self) -> Span {
+        let input_span = match self.input {
+            Ok(input) => input.span(),
+            Err(error) => error.span,
+        };
+
+        let output_span = match self.output {
+            Ok(output) => output.span(),
+            Err(error) => error.span,
+        };
+
+        Span::join(input_span, output_span)
+    }
+}
+
 pub struct FunctionTypeSyntax;
 
 impl Syntax for FunctionTypeSyntax {

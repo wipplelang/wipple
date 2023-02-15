@@ -36,10 +36,22 @@ pub struct NameTypePattern {
     pub name: InternedString,
 }
 
+impl NameTypePattern {
+    pub fn span(&self) -> Span {
+        self.span
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct ListTypePattern {
     pub span: Span,
     pub patterns: Vec<Result<TypePattern, SyntaxError>>,
+}
+
+impl ListTypePattern {
+    pub fn span(&self) -> Span {
+        self.span
+    }
 }
 
 #[derive(Clone)]

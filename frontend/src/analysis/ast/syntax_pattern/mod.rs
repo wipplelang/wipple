@@ -36,11 +36,23 @@ pub struct UnitSyntaxPattern {
     pub span: Span,
 }
 
+impl UnitSyntaxPattern {
+    pub fn span(&self) -> Span {
+        self.span
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct NameSyntaxPattern {
     pub span: Span,
     pub name: InternedString,
     pub scope: ScopeId,
+}
+
+impl NameSyntaxPattern {
+    pub fn span(&self) -> Span {
+        self.span
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -49,15 +61,33 @@ pub struct TextSyntaxPattern {
     pub text: InternedString,
 }
 
+impl TextSyntaxPattern {
+    pub fn span(&self) -> Span {
+        self.span
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct NumberSyntaxPattern {
     pub span: Span,
     pub number: InternedString,
 }
 
+impl NumberSyntaxPattern {
+    pub fn span(&self) -> Span {
+        self.span
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct UnderscoreSyntaxPattern {
     pub span: Span,
+}
+
+impl UnderscoreSyntaxPattern {
+    pub fn span(&self) -> Span {
+        self.span
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -66,10 +96,22 @@ pub struct VariableSyntaxPattern {
     pub name: InternedString,
 }
 
+impl VariableSyntaxPattern {
+    pub fn span(&self) -> Span {
+        self.span
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct VariableRepetitionSyntaxPattern {
     pub span: Span,
     pub name: InternedString,
+}
+
+impl VariableRepetitionSyntaxPattern {
+    pub fn span(&self) -> Span {
+        self.span
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -78,16 +120,34 @@ pub struct ListSyntaxPattern {
     pub patterns: Vec<Result<SyntaxPattern, SyntaxError>>,
 }
 
+impl ListSyntaxPattern {
+    pub fn span(&self) -> Span {
+        self.span
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct ListRepetitionSyntaxPattern {
     pub span: Span,
     pub patterns: Vec<Result<SyntaxPattern, SyntaxError>>,
 }
 
+impl ListRepetitionSyntaxPattern {
+    pub fn span(&self) -> Span {
+        self.span
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct BlockSyntaxPattern {
     pub span: Span,
     pub statements: Vec<Result<SyntaxPattern, SyntaxError>>,
+}
+
+impl BlockSyntaxPattern {
+    pub fn span(&self) -> Span {
+        self.span
+    }
 }
 
 #[derive(Clone)]

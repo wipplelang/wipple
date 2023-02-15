@@ -22,6 +22,20 @@ pub enum UseStatementKind {
     Name(Span, InternedString, ScopeId),
 }
 
+impl UseStatement {
+    pub fn span(&self) -> Span {
+        let kind_span = match self.kind {
+            Ok(kind) => match kind {
+                UseStatementKind::File(span, _, _) => span,
+                UseStatementKind::Name(span, _, _) => span,
+            },
+            Err(error) => error.span,
+        };
+
+        Span::join(self.use_span, kind_span)
+    }
+}
+
 pub struct UseStatementSyntax;
 
 impl Syntax for UseStatementSyntax {

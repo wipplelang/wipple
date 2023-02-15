@@ -18,6 +18,17 @@ pub struct FieldTypeMember {
     pub ty: Result<Type, SyntaxError>,
 }
 
+impl FieldTypeMember {
+    pub fn span(&self) -> Span {
+        let ty_span = match self.ty {
+            Ok(ty) => ty.span(),
+            Err(error) => error.span,
+        };
+
+        Span::join(self.name_span, ty_span)
+    }
+}
+
 pub struct FieldTypeMemberSyntax;
 
 impl Syntax for FieldTypeMemberSyntax {

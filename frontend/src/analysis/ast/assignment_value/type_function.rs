@@ -21,12 +21,12 @@ pub struct TypeFunctionAssignmentValue {
 
 impl TypeFunctionAssignmentValue {
     pub fn span(&self) -> Span {
-        let pattern_span = match self.pattern {
+        let pattern_span = match &self.pattern {
             Ok(pattern) => pattern.span(),
             Err(error) => error.span,
         };
 
-        let value_span = match self.value {
+        let value_span = match &self.value {
             Ok(value) => value.span(),
             Err(error) => error.span,
         };

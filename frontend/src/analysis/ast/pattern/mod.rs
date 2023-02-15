@@ -53,10 +53,22 @@ pub struct NamePattern {
     pub name: InternedString,
 }
 
+impl NamePattern {
+    pub fn span(&self) -> Span {
+        self.span
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct TextPattern {
     pub span: Span,
     pub text: InternedString,
+}
+
+impl TextPattern {
+    pub fn span(&self) -> Span {
+        self.span
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -65,9 +77,21 @@ pub struct NumberPattern {
     pub number: InternedString,
 }
 
+impl NumberPattern {
+    pub fn span(&self) -> Span {
+        self.span
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct UnitPattern {
     pub span: Span,
+}
+
+impl UnitPattern {
+    pub fn span(&self) -> Span {
+        self.span
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -78,15 +102,33 @@ pub struct VariantPattern {
     pub values: Vec<Result<Pattern, SyntaxError>>,
 }
 
+impl VariantPattern {
+    pub fn span(&self) -> Span {
+        self.span
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct DestructurePattern {
     pub span: Span,
     pub destructurings: Vec<Result<Destructuring, SyntaxError>>,
 }
 
+impl DestructurePattern {
+    pub fn span(&self) -> Span {
+        self.span
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct WildcardPattern {
     pub span: Span,
+}
+
+impl WildcardPattern {
+    pub fn span(&self) -> Span {
+        self.span
+    }
 }
 
 #[derive(Clone)]

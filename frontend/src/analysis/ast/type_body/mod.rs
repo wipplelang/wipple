@@ -26,6 +26,12 @@ pub struct BlockTypeBody {
     pub members: Vec<Result<TypeMember, SyntaxError>>,
 }
 
+impl BlockTypeBody {
+    pub fn span(&self) -> Span {
+        self.span
+    }
+}
+
 #[derive(Clone)]
 pub struct TypeBodySyntaxContext {
     pub(super) ast_builder: AstBuilder,

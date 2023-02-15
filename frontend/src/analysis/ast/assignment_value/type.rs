@@ -16,7 +16,7 @@ pub struct TypeAssignmentValue {
 
 impl TypeAssignmentValue {
     pub fn span(&self) -> Span {
-        match self.body {
+        match &self.body {
             Some(body) => {
                 let body_span = match body {
                     Ok(body) => body.span(),

@@ -16,7 +16,7 @@ pub struct TraitAssignmentValue {
 
 impl TraitAssignmentValue {
     pub fn span(&self) -> Span {
-        match self.ty {
+        match &self.ty {
             Some(ty) => {
                 let ty_span = match ty {
                     Ok(ty) => ty.span(),

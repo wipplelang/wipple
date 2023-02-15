@@ -19,6 +19,22 @@ pub struct AnnotateStatement {
     pub attributes: StatementAttributes,
 }
 
+impl AnnotateStatement {
+    pub fn span(&self) -> Span {
+        let name_span = match self.name {
+            Ok((span, _)) => span,
+            Err(error) => error.span,
+        };
+
+        let annotation_span = match self.annotation {
+            Ok(annotation) => annotation.span(),
+            Err(error) => error.span,
+        };
+
+        Span::join(name_span, annotation_span)
+    }
+}
+
 pub struct AnnotateStatementSyntax;
 
 impl Syntax for AnnotateStatementSyntax {

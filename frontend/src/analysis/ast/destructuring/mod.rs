@@ -35,10 +35,22 @@ pub struct NameDestructuring {
     pub name: InternedString,
 }
 
+impl NameDestructuring {
+    pub fn span(&self) -> Span {
+        self.span
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct ListDestructuring {
     pub span: Span,
     pub names: Vec<Result<NameDestructuring, SyntaxError>>,
+}
+
+impl ListDestructuring {
+    pub fn span(&self) -> Span {
+        self.span
+    }
 }
 
 #[derive(Clone)]

@@ -21,12 +21,12 @@ pub struct TypeFunctionConstantTypeAnnotation {
 
 impl TypeFunctionConstantTypeAnnotation {
     pub fn span(&self) -> Span {
-        let pattern_span = match self.pattern {
+        let pattern_span = match &self.pattern {
             Ok(pattern) => pattern.span(),
             Err(error) => error.span,
         };
 
-        let annotation_span = match self.annotation {
+        let annotation_span = match &self.annotation {
             Ok(annotation) => annotation.span(),
             Err(error) => error.span,
         };

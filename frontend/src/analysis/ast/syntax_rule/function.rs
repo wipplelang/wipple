@@ -17,6 +17,22 @@ pub struct FunctionSyntaxRule {
     pub body: Result<Box<SyntaxPattern>, SyntaxError>,
 }
 
+impl FunctionSyntaxRule {
+    pub fn span(&self) -> Span {
+        let pattern_span = match self.pattern {
+            Ok(pattern) => pattern.first().unwrap().span(),
+            Err(error) => error.span,
+        };
+
+        let body_span = match self.body {
+            Ok(body) => body.span(),
+            Err(error) => error.span,
+        };
+
+        Span::join(pattern_span, body_span)
+    }
+}
+
 pub struct FunctionSyntaxRuleSyntax;
 
 impl Syntax for FunctionSyntaxRuleSyntax {

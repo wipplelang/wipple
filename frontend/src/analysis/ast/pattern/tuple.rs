@@ -21,12 +21,16 @@ impl TuplePattern {
             Err(error) => error.span,
         };
 
-        let last_pattern_span = match self.patterns.last().unwrap() {
-            Ok(pattern) => pattern.span(),
-            Err(error) => error.span,
-        };
+        if self.patterns.len() == 1 {
+            Span::join(first_pattern_span, self.comma_span)
+        } else {
+            let last_pattern_span = match self.patterns.last().unwrap() {
+                Ok(pattern) => pattern.span(),
+                Err(error) => error.span,
+            };
 
-        Span::join(first_pattern_span, last_pattern_span)
+            Span::join(first_pattern_span, last_pattern_span)
+        }
     }
 }
 

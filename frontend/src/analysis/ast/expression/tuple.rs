@@ -21,12 +21,16 @@ impl TupleExpression {
             Err(error) => error.span,
         };
 
-        let last_expr_span = match self.exprs.last().unwrap() {
-            Ok(expr) => expr.span(),
-            Err(error) => error.span,
-        };
+        if self.exprs.len() == 1 {
+            Span::join(first_expr_span, self.comma_span)
+        } else {
+            let last_expr_span = match self.exprs.last().unwrap() {
+                Ok(expr) => expr.span(),
+                Err(error) => error.span,
+            };
 
-        Span::join(first_expr_span, last_expr_span)
+            Span::join(first_expr_span, last_expr_span)
+        }
     }
 }
 
