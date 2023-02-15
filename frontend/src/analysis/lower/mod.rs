@@ -1352,8 +1352,8 @@ impl Lowerer {
                 QueuedStatement::Assign(pattern, expr) => {
                     macro_rules! assign_pattern {
                         () => {{
-                            let pattern = self.lower_pattern(pattern, scope);
                             let value = self.lower_expr(expr, scope);
+                            let pattern = self.lower_pattern(pattern, scope);
 
                             Some(Expression {
                                 span,
