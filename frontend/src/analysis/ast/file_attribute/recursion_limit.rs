@@ -14,6 +14,12 @@ pub struct RecursionLimitFileAttribute {
     pub limit: usize,
 }
 
+impl RecursionLimitFileAttribute {
+    pub fn span(&self) -> Span {
+        Span::join(self.recursion_limit_span, self.limit_span)
+    }
+}
+
 pub struct RecursionLimitFileAttributeSyntax;
 
 impl Syntax for RecursionLimitFileAttributeSyntax {

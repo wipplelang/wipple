@@ -12,6 +12,12 @@ pub struct NoStdFileAttribute {
     pub span: Span,
 }
 
+impl NoStdFileAttribute {
+    pub fn span(&self) -> Span {
+        self.span
+    }
+}
+
 pub struct NoStdFileAttributeSyntax;
 
 impl Syntax for NoStdFileAttributeSyntax {

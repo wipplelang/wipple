@@ -12,8 +12,25 @@ use futures::{stream, StreamExt};
 #[derive(Debug, Clone)]
 pub struct FormatExpression {
     pub format_span: Span,
+    pub text_span: Span,
     pub segments: Vec<(InternedString, Result<Expression, SyntaxError>)>,
     pub trailing_segment: Option<InternedString>,
+}
+
+impl FormatExpression {
+    pub fn span(&self) -> Span {
+        match self.segments.last() {
+            Some((_, expr)) => {
+                let expr_span = match expr {
+                    Ok(expr) => expr.span(),
+                    Err(error) => error.span,
+                };
+
+                Span::join(self.format_span, expr_span)
+            }
+            None => Span::join(self.format_span, self.text_span),
+        }
+    }
 }
 
 pub struct FormatExpressionSyntax;
@@ -37,6 +54,7 @@ impl Syntax for FormatExpressionSyntax {
                 let mut exprs = exprs.into_iter();
 
                 let format_text = exprs.next().unwrap();
+                let text_span = format_text.span;
                 let format_text = match format_text.kind {
                     parse::ExprKind::Text(text) => text,
                     _ => {
@@ -89,6 +107,7 @@ impl Syntax for FormatExpressionSyntax {
 
                 Ok(FormatExpression {
                     format_span: span,
+                    text_span,
                     segments,
                     trailing_segment
                 }

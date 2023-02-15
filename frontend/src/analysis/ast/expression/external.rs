@@ -17,6 +17,18 @@ pub struct ExternalExpression {
     pub inputs: Vec<Result<Expression, SyntaxError>>,
 }
 
+impl ExternalExpression {
+    pub fn span(&self) -> Span {
+        match self.inputs.last() {
+            Some(input) => match input {
+                Ok(expr) => Span::join(self.external_span, expr.span()),
+                Err(error) => error.span,
+            },
+            None => self.external_span,
+        }
+    }
+}
+
 pub struct ExternalExpressionSyntax;
 
 impl Syntax for ExternalExpressionSyntax {

@@ -14,6 +14,21 @@ pub struct TupleExpression {
     pub exprs: Vec<Result<Expression, SyntaxError>>,
 }
 
+impl TupleExpression {
+    pub fn span(&self) -> Span {
+        let first_expr_span = match self.exprs.first().unwrap() {
+            Ok(expr) => expr.span(),
+            Err(error) => error.span,
+        };
+
+        let last_expr_span = match self.exprs.last().unwrap() {
+            Ok(expr) => expr.span(),
+            Err(error) => error.span,
+        };
+
+        Span::join(first_expr_span, last_expr_span)
+    }
+}
 pub struct TupleExpressionSyntax;
 
 impl Syntax for TupleExpressionSyntax {

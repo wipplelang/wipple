@@ -15,6 +15,16 @@ pub struct WhenExpression {
     pub body: Result<WhenBody, SyntaxError>,
 }
 
+impl WhenExpression {
+    pub fn span(&self) -> Span {
+        let body_span = match self.body {
+            Ok(body) => body.span(),
+            Err(error) => error.span,
+        };
+
+        Span::join(self.when_span, body_span)
+    }
+}
 pub struct WhenExpressionSyntax;
 
 impl Syntax for WhenExpressionSyntax {
