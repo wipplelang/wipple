@@ -18,6 +18,7 @@ pub struct LanguageItemStatementAttribute {
 #[strum(serialize_all = "kebab-case")]
 pub enum LanguageItemStatementAttributeKind {
     Boolean,
+    Show,
 }
 
 pub struct LanguageItemStatementAttributeSyntax;

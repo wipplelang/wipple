@@ -91,6 +91,15 @@ impl std::fmt::Display for Expression {
                 write!(f, "runtime {:?} {}", func.to_string(), count)
             }
             Expression::Tuple(count) => write!(f, "tuple {count}"),
+            Expression::Format(segments, trailing_segment) => write!(
+                f,
+                "format {}",
+                segments
+                    .iter()
+                    .chain(trailing_segment)
+                    .map(|text| format!("{text:?}"))
+                    .join(" ")
+            ),
             Expression::Structure(count) => write!(f, "structure {count}"),
             Expression::Variant(variant, count) => {
                 write!(f, "variant {} {}", variant.into_inner(), count)

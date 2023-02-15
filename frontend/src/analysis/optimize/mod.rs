@@ -481,6 +481,9 @@ mod util {
                 ExpressionKind::Tuple(exprs) => {
                     exprs.iter().all(|expr| expr.is_pure(program, stack))
                 }
+                ExpressionKind::Format(segments, _) => segments
+                    .iter()
+                    .all(|(_, expr)| expr.is_pure(program, stack)),
                 ExpressionKind::Runtime(func, inputs) => {
                     func.is_pure() && inputs.iter().all(|expr| expr.is_pure(program, stack))
                 }

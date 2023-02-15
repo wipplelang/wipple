@@ -313,6 +313,7 @@ impl FileInfo {
 #[derive(Debug, Clone, Default)]
 pub struct LanguageItems {
     pub boolean: Option<TypeId>,
+    pub show: Option<TraitId>,
 }
 
 impl LanguageItems {
@@ -350,6 +351,7 @@ pub enum ExpressionKind {
     Instantiate(TypeId, Vec<((Span, InternedString), Expression)>),
     Variant(TypeId, VariantIndex, Vec<Expression>),
     Tuple(Vec<Expression>),
+    Format(Vec<(InternedString, Expression)>, Option<InternedString>),
 }
 
 impl ExpressionKind {
@@ -419,6 +421,11 @@ impl Expression {
             }
             ExpressionKind::Tuple(exprs) => {
                 for expr in exprs {
+                    expr.traverse_mut_inner(f);
+                }
+            }
+            ExpressionKind::Format(segments, _) => {
+                for (_, expr) in segments {
                     expr.traverse_mut_inner(f);
                 }
             }
@@ -1291,6 +1298,36 @@ impl Lowerer {
                             }
 
                             self.file_info.language_items.boolean = Some(ty);
+                        }
+                        ast::LanguageItemStatementAttributeKind::Show => {
+                            let tr = match scope_value {
+                                Some(AnyDeclaration::Trait(id)) => id,
+                                _ => {
+                                    self.compiler.add_error(
+                                        "`show` language item expects a trait",
+                                        vec![Note::primary(
+                                            decl.span,
+                                            "expected trait declaration here",
+                                        )],
+                                    );
+
+                                    break 'language_items;
+                                }
+                            };
+
+                            if self.file_info.language_items.boolean.is_some() {
+                                self.compiler.add_error(
+                                    "`language` item may only be defined once",
+                                    vec![Note::primary(
+                                        decl.span,
+                                        "`language` item already defined elsewhere",
+                                    )],
+                                );
+
+                                break 'language_items;
+                            }
+
+                            self.file_info.language_items.show = Some(tr);
                         }
                     }
                 }
@@ -2364,7 +2401,27 @@ impl Lowerer {
                         .collect(),
                 ),
             },
-            ast::Expression::Format(_) => todo!("define `format` as `syntax` instead of here"),
+            ast::Expression::Format(expr) => Expression {
+                span: expr.format_span,
+                kind: ExpressionKind::Format(
+                    expr.segments
+                        .iter()
+                        .map(|(text, expr)| {
+                            (
+                                *text,
+                                match expr {
+                                    Ok(expr) => self.lower_expr(expr, scope),
+                                    Err(error) => Expression {
+                                        span: error.span,
+                                        kind: ExpressionKind::error(&self.compiler),
+                                    },
+                                },
+                            )
+                        })
+                        .collect(),
+                    expr.trailing_segment,
+                ),
+            },
             ast::Expression::Unit(expr) => Expression {
                 span: expr.span,
                 kind: ExpressionKind::Tuple(Vec::new()),

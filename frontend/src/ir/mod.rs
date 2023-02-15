@@ -83,6 +83,7 @@ pub enum Expression {
     External(InternedString, InternedString, usize),
     Runtime(RuntimeFunction, usize),
     Tuple(usize),
+    Format(Vec<InternedString>, Option<InternedString>),
     Structure(usize),
     Variant(VariantIndex, usize),
     TupleElement(usize),
@@ -406,6 +407,20 @@ impl IrGen {
 
                 self.statements_for(label, *pos)
                     .push(Statement::Expression(expr.ty, Expression::Tuple(count)));
+            }
+            ssa::ExpressionKind::Format(segments, trailing_segment) => {
+                let segments = segments
+                    .into_iter()
+                    .map(|(text, expr)| {
+                        self.gen_expr(expr, label, pos);
+                        text
+                    })
+                    .collect();
+
+                self.statements_for(label, *pos).push(Statement::Expression(
+                    expr.ty,
+                    Expression::Format(segments, trailing_segment),
+                ));
             }
             ssa::ExpressionKind::Variant(discriminant, exprs) => {
                 let count = exprs.len();

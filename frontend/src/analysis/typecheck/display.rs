@@ -310,6 +310,17 @@ impl Expression {
                 }
                 write!(f, ")")?;
             }
+            ExpressionKind::Format(segments, trailing_segment) => {
+                write!(f, "(format")?;
+                for (text, expr) in segments {
+                    write!(f, " {:?}", text.as_str())?;
+                    expr.display_with(f, file, indent)?;
+                }
+                if let Some(text) = trailing_segment {
+                    write!(f, " {text:?}")?;
+                }
+                write!(f, ")")?;
+            }
         }
 
         Ok(())

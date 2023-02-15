@@ -193,6 +193,7 @@ macro_rules! expr {
                 Structure(Vec<[<$prefix Expression>]>),
                 Variant(VariantIndex, Vec<[<$prefix Expression>]>),
                 Tuple(Vec<[<$prefix Expression>]>),
+                Format(Vec<(InternedString, [<$prefix Expression>])>, Option<InternedString>),
                 $($kinds)*
             }
 
@@ -272,9 +273,9 @@ impl Expression {
     pub fn contains_error(&self) -> bool {
         let mut contains_error = false;
         self.traverse(|expr| {
-            contains_error &= matches!(expr.kind, ExpressionKind::Error(_));
+            contains_error |= matches!(expr.kind, ExpressionKind::Error(_));
 
-            contains_error &= match &expr.kind {
+            contains_error |= match &expr.kind {
                 ExpressionKind::Error(_) => true,
                 ExpressionKind::Function(pattern, _, _)
                 | ExpressionKind::Initialize(pattern, _) => pattern.contains_error(),
@@ -321,7 +322,7 @@ impl Pattern {
     pub fn contains_error(&self) -> bool {
         let mut contains_error = false;
         self.traverse(|pattern| {
-            contains_error &= matches!(pattern.kind, PatternKind::Error(_));
+            contains_error |= matches!(pattern.kind, PatternKind::Error(_));
         });
 
         contains_error
@@ -985,7 +986,7 @@ impl Typechecker {
                 }
             }
             lower::ExpressionKind::Trait(id) => {
-                let mut ty = if let Some((span, false)) =
+                let ty = if let Some((span, false)) =
                     self.with_trait_decl(id, |decl| (decl.span, decl.ty.is_some()))
                 {
                     self.compiler.add_error(
@@ -1003,8 +1004,6 @@ impl Typechecker {
                 } else {
                     engine::UnresolvedType::Variable(self.ctx.new_variable())
                 };
-
-                self.instantiate_generics(&mut ty);
 
                 UnresolvedExpression {
                     span: expr.span,
@@ -1449,6 +1448,61 @@ impl Typechecker {
                     kind: UnresolvedExpressionKind::Tuple(exprs),
                 }
             }
+            lower::ExpressionKind::Format(segments, trailing_segment) => {
+                let show_trait = match self.entrypoint.info.language_items.show {
+                    Some(show_trait) => show_trait,
+                    None => {
+                        self.compiler.add_error(
+                            "cannot find `show` language item",
+                            vec![Note::primary(
+                                expr.span,
+                                "using `format` requires the `show` language item",
+                            )],
+                        );
+
+                        return UnresolvedExpression {
+                            span: expr.span,
+                            ty: engine::UnresolvedType::Error,
+                            kind: UnresolvedExpressionKind::error(&self.compiler),
+                        };
+                    }
+                };
+
+                self.with_trait_decl(show_trait, |_| {});
+
+                let segments = segments
+                    .into_iter()
+                    .map(|(text, expr)| {
+                        let expr = self.convert_expr(expr, info);
+
+                        let ty = engine::UnresolvedType::Variable(self.ctx.new_variable());
+
+                        let expr = UnresolvedExpression {
+                            span: expr.span,
+                            ty: ty.clone(),
+                            kind: UnresolvedExpressionKind::Call(
+                                Box::new(UnresolvedExpression {
+                                    span: expr.span,
+                                    ty: engine::UnresolvedType::Function(
+                                        Box::new(expr.ty.clone()),
+                                        Box::new(ty),
+                                    ),
+                                    kind: UnresolvedExpressionKind::Trait(show_trait),
+                                }),
+                                Box::new(expr),
+                            ),
+                        };
+
+                        (text, expr)
+                    })
+                    .collect::<Vec<_>>();
+
+                UnresolvedExpression {
+                    span: expr.span,
+                    ty: engine::UnresolvedType::Builtin(engine::BuiltinType::Text),
+                    kind: UnresolvedExpressionKind::Format(segments, trailing_segment),
+                }
+            }
         }
     }
 
@@ -1878,6 +1932,15 @@ impl Typechecker {
                         .map(|expr| self.monomorphize_expr(expr, info))
                         .collect(),
                 ),
+                UnresolvedExpressionKind::Format(segments, trailing_segment) => {
+                    MonomorphizedExpressionKind::Format(
+                        segments
+                            .into_iter()
+                            .map(|(text, expr)| (text, self.monomorphize_expr(expr, info)))
+                            .collect(),
+                        trailing_segment,
+                    )
+                }
             })(),
         }
     }
@@ -3082,6 +3145,15 @@ impl Typechecker {
                     .map(|expr| self.finalize_expr(expr))
                     .collect(),
             ),
+            MonomorphizedExpressionKind::Format(segments, trailing_segment) => {
+                ExpressionKind::Format(
+                    segments
+                        .into_iter()
+                        .map(|(text, expr)| (text, self.finalize_expr(expr)))
+                        .collect(),
+                    trailing_segment,
+                )
+            }
         })();
 
         Expression {

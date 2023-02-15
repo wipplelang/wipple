@@ -62,6 +62,7 @@ pub enum ExpressionKind {
     Structure(Vec<Expression>),
     Variant(VariantIndex, Vec<Expression>),
     Tuple(Vec<Expression>),
+    Format(Vec<(InternedString, Expression)>, Option<InternedString>),
     Number(rust_decimal::Decimal),
     Integer(i64),
     Natural(u64),
@@ -242,6 +243,15 @@ impl Converter<'_> {
                         .map(|expr| self.convert_expr(expr, false))
                         .collect(),
                 ),
+                analysis::ExpressionKind::Format(segments, trailing_segment) => {
+                    ExpressionKind::Format(
+                        segments
+                            .iter()
+                            .map(|(text, expr)| (*text, self.convert_expr(expr, false)))
+                            .collect(),
+                        *trailing_segment,
+                    )
+                }
                 analysis::ExpressionKind::Number(number) => ExpressionKind::Number(*number),
                 analysis::ExpressionKind::Integer(integer) => ExpressionKind::Integer(*integer),
                 analysis::ExpressionKind::Natural(natural) => ExpressionKind::Natural(*natural),
