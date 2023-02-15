@@ -34,8 +34,8 @@ syntax_group! {
     #[derive(Debug, Clone)]
     pub type Statement<StatementSyntaxContext> {
         non_terminal: {
-            Annotate,
             Assign,
+            Annotate,
             TypeFunction,
             Instance,
             Use,
