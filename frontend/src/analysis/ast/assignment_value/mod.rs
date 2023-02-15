@@ -45,12 +45,17 @@ syntax_group! {
 pub struct AssignmentValueSyntaxContext {
     pub(super) ast_builder: AstBuilder,
     statement_attributes: Option<Shared<StatementAttributes>>,
-    assigned_name: Option<(InternedString, Span)>,
+    assigned_name: Option<(InternedString, Span, ScopeId)>,
 }
 
 impl AssignmentValueSyntaxContext {
-    pub(super) fn with_assigned_name(mut self, name: InternedString, span: Span) -> Self {
-        self.assigned_name = Some((name, span));
+    pub(super) fn with_assigned_name(
+        mut self,
+        name: InternedString,
+        span: Span,
+        scope: ScopeId,
+    ) -> Self {
+        self.assigned_name = Some((name, span, scope));
         self
     }
 }

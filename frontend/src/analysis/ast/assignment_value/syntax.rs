@@ -56,7 +56,7 @@ impl Syntax for SyntaxAssignmentValueSyntax {
                     keyword: statement_attributes.keyword.clone(),
                 };
 
-                if let Some((name, _)) = context.assigned_name {
+                if let Some((name, _, scope)) = context.assigned_name {
                     context.ast_builder.add_syntax(name, value.clone(), scope);
                 }
 

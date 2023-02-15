@@ -83,7 +83,7 @@ unwrap : x? -> expect (Unwrap-Message x?) x?
 
 As : Input Output => trait (Input -> Output)
 
-[operator Cast-Precedence]
+[operator Casting-Precedence]
 as : syntax {
 	'x as 't -> (As 'x :: 't)
 }
@@ -92,7 +92,7 @@ A => instance (As A A) : it
 
 As? : Input Output => trait (Input -> Maybe Output)
 
-[operator Cast-Precedence]
+[operator Casting-Precedence]
 as? : syntax {
 	'x as? 't -> (As? 'x :: Maybe 't)
 }

@@ -75,7 +75,7 @@ instance (Divide Double Double Double) : a -> b -> external "runtime" "divide-do
 [help "Implements the `^` operator."]
 Power : Left Right Power' => trait (Left -> Right -> Power') -- FIXME: Rename to `Power` once type parameters aren't leaked
 
-[operator Power-Precedence]
+[operator Exponentiation-Precedence]
 ^ : syntax {
 	'a ^ 'b -> Power 'a 'b
 }

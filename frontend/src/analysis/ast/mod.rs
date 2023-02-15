@@ -161,7 +161,7 @@ impl Compiler {
             span: file.span,
             dependencies: ast_builder.dependencies.into_unique(),
             attributes: ast_builder.attributes.into_unique(),
-            syntax_declarations: BTreeMap::new(), // TODO
+            syntax_declarations: ast_builder.syntax_declarations.into_unique(),
             statements,
             scopes: ast_builder.scopes.into_unique(),
             exported,
@@ -389,6 +389,13 @@ impl AstBuilder {
             .extend(file.syntax_declarations.clone());
 
         self.scopes.lock().extend(file.scopes.clone());
+
+        self.scopes
+            .lock()
+            .get_mut(self.file_scope.as_ref().unwrap())
+            .unwrap()
+            .syntaxes
+            .extend(file.exported.clone());
 
         self.dependencies.lock().push(file);
     }

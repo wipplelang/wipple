@@ -794,7 +794,12 @@ impl Lowerer {
         };
 
         self.scopes.insert(id, scope);
-        self.scopes.get_mut(&parent).unwrap().children.push(id);
+
+        self.scopes
+            .get_mut(&parent)
+            .unwrap_or_else(|| panic!("scope {parent:?} loaded out of order"))
+            .children
+            .push(id);
 
         id
     }
@@ -838,7 +843,10 @@ impl Lowerer {
         let mut used_variables = Vec::new();
 
         while let Some(scope_id) = parent {
-            let scope = self.scopes.get(&scope_id).unwrap();
+            let scope = self
+                .scopes
+                .get(&scope_id)
+                .unwrap_or_else(|| panic!("scope {scope_id:?} loaded out of order"));
 
             if let Some(value) = scope.values.get(&name) {
                 result = Some(*value);
@@ -1133,7 +1141,7 @@ impl Lowerer {
                     (trait_span, trait_name, trait_scope, trait_params),
                     value,
                 ) => {
-                    let (scope, (parameters, bounds)) =
+                    let (ty_scope, (parameters, bounds)) =
                         ty_pattern.unwrap_or_else(|| (scope, Default::default()));
 
                     let tr = match self.get(trait_name, trait_span, trait_scope) {
@@ -1170,7 +1178,7 @@ impl Lowerer {
                     let trait_params = trait_params
                         .iter()
                         .map(|ty| match ty {
-                            Ok(ty) => self.lower_type(ty, scope),
+                            Ok(ty) => self.lower_type(ty, ty_scope),
                             Err(error) => TypeAnnotation {
                                 span: error.span,
                                 kind: TypeAnnotationKind::error(&self.compiler),
@@ -1315,7 +1323,7 @@ impl Lowerer {
                                 }
                             };
 
-                            if self.file_info.language_items.boolean.is_some() {
+                            if self.file_info.language_items.show.is_some() {
                                 self.compiler.add_error(
                                     "`language` item may only be defined once",
                                     vec![Note::primary(
@@ -1559,51 +1567,13 @@ impl Lowerer {
                     attributes: &statement.attributes,
                 })
             }
-            ast::Statement::Assign(statement) => match statement.value.as_ref().ok()? {
-                ast::AssignmentValue::Trait(value) => {
-                    let (span, name) =
-                        self.get_name_from_assignment(statement.pattern.as_ref().ok()?)?;
+            ast::Statement::Assign(statement) => {
+                let assign_scope = self.child_scope(statement.scope, scope);
 
-                    let id = self.compiler.new_trait_id_in(self.file);
-                    self.insert(name, AnyDeclaration::Trait(id), scope);
-
-                    self.declarations
-                        .traits
-                        .insert(id, Declaration::unresolved(Some(name), span));
-
-                    Some(StatementDeclaration {
-                        span: statement.colon_span,
-                        kind: StatementDeclarationKind::Trait(id, None, value),
-                        attributes: &statement.attributes,
-                    })
-                }
-                ast::AssignmentValue::Type(value) => {
-                    let (span, name) =
-                        self.get_name_from_assignment(statement.pattern.as_ref().ok()?)?;
-
-                    let id = self.compiler.new_type_id_in(self.file);
-                    self.insert(name, AnyDeclaration::Type(id), scope);
-
-                    self.declarations
-                        .types
-                        .insert(id, Declaration::unresolved(Some(name), span));
-
-                    Some(StatementDeclaration {
-                        span: statement.colon_span,
-                        kind: StatementDeclarationKind::Type(id, None, value),
-                        attributes: &statement.attributes,
-                    })
-                }
-                ast::AssignmentValue::Syntax(_) => None,
-                ast::AssignmentValue::TypeFunction(value) => match value.value.as_deref().ok()? {
-                    ast::AssignmentValue::Trait(trait_value) => {
+                match statement.value.as_ref().ok()? {
+                    ast::AssignmentValue::Trait(value) => {
                         let (span, name) =
                             self.get_name_from_assignment(statement.pattern.as_ref().ok()?)?;
-
-                        let child_scope = self.child_scope(value.scope, scope);
-
-                        let (parameters, bounds) =
-                            self.lower_type_pattern(value.pattern.as_ref().ok()?, child_scope);
 
                         let id = self.compiler.new_trait_id_in(self.file);
                         self.insert(name, AnyDeclaration::Trait(id), scope);
@@ -1614,22 +1584,13 @@ impl Lowerer {
 
                         Some(StatementDeclaration {
                             span: statement.colon_span,
-                            kind: StatementDeclarationKind::Trait(
-                                id,
-                                Some((child_scope, (parameters, bounds))),
-                                trait_value,
-                            ),
+                            kind: StatementDeclarationKind::Trait(id, None, value),
                             attributes: &statement.attributes,
                         })
                     }
-                    ast::AssignmentValue::Type(ty_value) => {
+                    ast::AssignmentValue::Type(value) => {
                         let (span, name) =
                             self.get_name_from_assignment(statement.pattern.as_ref().ok()?)?;
-
-                        let child_scope = self.child_scope(value.scope, scope);
-
-                        let (parameters, bounds) =
-                            self.lower_type_pattern(value.pattern.as_ref().ok()?, child_scope);
 
                         let id = self.compiler.new_type_id_in(self.file);
                         self.insert(name, AnyDeclaration::Type(id), scope);
@@ -1640,108 +1601,164 @@ impl Lowerer {
 
                         Some(StatementDeclaration {
                             span: statement.colon_span,
-                            kind: StatementDeclarationKind::Type(
-                                id,
-                                Some((child_scope, (parameters, bounds))),
-                                ty_value,
-                            ),
+                            kind: StatementDeclarationKind::Type(id, None, value),
                             attributes: &statement.attributes,
                         })
                     }
-                    _ => {
-                        self.compiler.add_error(
-                            "syntax error",
-                            vec![Note::primary(
-                                statement.colon_span,
-                                "expected a `type` or `trait` definition after this",
-                            )],
-                        );
+                    ast::AssignmentValue::Syntax(_) => None,
+                    ast::AssignmentValue::TypeFunction(value) => {
+                        match value.value.as_deref().ok()? {
+                            ast::AssignmentValue::Trait(trait_value) => {
+                                let (span, name) = self
+                                    .get_name_from_assignment(statement.pattern.as_ref().ok()?)?;
 
-                        None
-                    }
-                },
-                ast::AssignmentValue::Expression(value) => {
-                    match statement.pattern.as_ref().ok()? {
-                        ast::AssignmentPattern::Pattern(pattern) => Some(StatementDeclaration {
-                            span: statement.colon_span,
-                            kind: StatementDeclarationKind::Queued(QueuedStatement::Assign(
-                                &pattern.pattern,
-                                &value.expression,
-                            )),
-                            attributes: &statement.attributes,
-                        }),
-                        ast::AssignmentPattern::Instance(pattern) => {
-                            let id = self.compiler.new_constant_id_in(self.file);
+                                let child_scope = self.child_scope(value.scope, assign_scope);
 
-                            self.declarations
-                                .instances
-                                .insert(id, Declaration::unresolved(None, pattern.instance_span));
+                                let (parameters, bounds) = self
+                                    .lower_type_pattern(value.pattern.as_ref().ok()?, child_scope);
 
-                            Some(StatementDeclaration {
-                                span: statement.colon_span,
-                                kind: StatementDeclarationKind::Instance(
-                                    id,
-                                    None,
-                                    (
-                                        pattern.trait_span,
-                                        pattern.trait_name,
-                                        pattern.trait_scope,
-                                        &pattern.trait_parameters,
-                                    ),
-                                    Some(&value.expression),
-                                ),
-                                attributes: &statement.attributes,
-                            })
-                        }
-                        ast::AssignmentPattern::TypeFunction(pattern) => {
-                            let child_scope = self.child_scope(pattern.scope, scope);
+                                let id = self.compiler.new_trait_id_in(self.file);
+                                self.insert(name, AnyDeclaration::Trait(id), scope);
 
-                            let (parameters, bounds) = self.lower_type_pattern(
-                                pattern.type_pattern.as_ref().ok()?,
-                                child_scope,
-                            );
+                                self.declarations
+                                    .traits
+                                    .insert(id, Declaration::unresolved(Some(name), span));
 
-                            match pattern.assignment_pattern.as_deref().ok()? {
-                                ast::AssignmentPattern::Instance(pattern) => {
-                                    let id = self.compiler.new_constant_id_in(self.file);
-
-                                    self.declarations.instances.insert(
+                                Some(StatementDeclaration {
+                                    span: statement.colon_span,
+                                    kind: StatementDeclarationKind::Trait(
                                         id,
-                                        Declaration::unresolved(None, pattern.instance_span),
-                                    );
+                                        Some((child_scope, (parameters, bounds))),
+                                        trait_value,
+                                    ),
+                                    attributes: &statement.attributes,
+                                })
+                            }
+                            ast::AssignmentValue::Type(ty_value) => {
+                                let (span, name) = self
+                                    .get_name_from_assignment(statement.pattern.as_ref().ok()?)?;
 
-                                    Some(StatementDeclaration {
-                                        span: statement.colon_span,
-                                        kind: StatementDeclarationKind::Instance(
-                                            id,
-                                            Some((child_scope, (parameters, bounds))),
-                                            (
-                                                pattern.trait_span,
-                                                pattern.trait_name,
-                                                pattern.trait_scope,
-                                                &pattern.trait_parameters,
-                                            ),
-                                            Some(&value.expression),
+                                let child_scope = self.child_scope(value.scope, assign_scope);
+
+                                let (parameters, bounds) = self
+                                    .lower_type_pattern(value.pattern.as_ref().ok()?, child_scope);
+
+                                let id = self.compiler.new_type_id_in(self.file);
+                                self.insert(name, AnyDeclaration::Type(id), scope);
+
+                                self.declarations
+                                    .types
+                                    .insert(id, Declaration::unresolved(Some(name), span));
+
+                                Some(StatementDeclaration {
+                                    span: statement.colon_span,
+                                    kind: StatementDeclarationKind::Type(
+                                        id,
+                                        Some((child_scope, (parameters, bounds))),
+                                        ty_value,
+                                    ),
+                                    attributes: &statement.attributes,
+                                })
+                            }
+                            _ => {
+                                self.compiler.add_error(
+                                    "syntax error",
+                                    vec![Note::primary(
+                                        statement.colon_span,
+                                        "expected a `type` or `trait` definition after this",
+                                    )],
+                                );
+
+                                None
+                            }
+                        }
+                    }
+                    ast::AssignmentValue::Expression(value) => {
+                        match statement.pattern.as_ref().ok()? {
+                            ast::AssignmentPattern::Pattern(pattern) => {
+                                Some(StatementDeclaration {
+                                    span: statement.colon_span,
+                                    kind: StatementDeclarationKind::Queued(
+                                        QueuedStatement::Assign(
+                                            &pattern.pattern,
+                                            &value.expression,
                                         ),
-                                        attributes: &statement.attributes,
-                                    })
-                                }
-                                _ => {
-                                    self.compiler.add_error(
-                                        "syntax error",
-                                        vec![Note::primary(
-                                            statement.colon_span,
-                                            "expected an `instance` definition after this",
-                                        )],
-                                    );
+                                    ),
+                                    attributes: &statement.attributes,
+                                })
+                            }
+                            ast::AssignmentPattern::Instance(pattern) => {
+                                let id = self.compiler.new_constant_id_in(self.file);
 
-                                    None
+                                self.declarations.instances.insert(
+                                    id,
+                                    Declaration::unresolved(None, pattern.instance_span),
+                                );
+
+                                Some(StatementDeclaration {
+                                    span: statement.colon_span,
+                                    kind: StatementDeclarationKind::Instance(
+                                        id,
+                                        None,
+                                        (
+                                            pattern.trait_span,
+                                            pattern.trait_name,
+                                            pattern.trait_scope,
+                                            &pattern.trait_parameters,
+                                        ),
+                                        Some(&value.expression),
+                                    ),
+                                    attributes: &statement.attributes,
+                                })
+                            }
+                            ast::AssignmentPattern::TypeFunction(pattern) => {
+                                let (parameters, bounds) = self.lower_type_pattern(
+                                    pattern.type_pattern.as_ref().ok()?,
+                                    assign_scope,
+                                );
+
+                                match pattern.assignment_pattern.as_deref().ok()? {
+                                    ast::AssignmentPattern::Instance(pattern) => {
+                                        let id = self.compiler.new_constant_id_in(self.file);
+
+                                        self.declarations.instances.insert(
+                                            id,
+                                            Declaration::unresolved(None, pattern.instance_span),
+                                        );
+
+                                        Some(StatementDeclaration {
+                                            span: statement.colon_span,
+                                            kind: StatementDeclarationKind::Instance(
+                                                id,
+                                                Some((assign_scope, (parameters, bounds))),
+                                                (
+                                                    pattern.trait_span,
+                                                    pattern.trait_name,
+                                                    pattern.trait_scope,
+                                                    &pattern.trait_parameters,
+                                                ),
+                                                Some(&value.expression),
+                                            ),
+                                            attributes: &statement.attributes,
+                                        })
+                                    }
+                                    _ => {
+                                        self.compiler.add_error(
+                                            "syntax error",
+                                            vec![Note::primary(
+                                                statement.colon_span,
+                                                "expected an `instance` definition after this",
+                                            )],
+                                        );
+
+                                        None
+                                    }
                                 }
                             }
                         }
                     }
                 }
-            },
+            }
             ast::Statement::Instance(statement) => {
                 let id = self.compiler.new_constant_id_in(self.file);
 
@@ -2294,6 +2311,8 @@ impl Lowerer {
                             .iter()
                             .filter_map(|arm| {
                                 let ast::WhenArm::Function(arm) = arm.as_ref().ok()?;
+
+                                let scope = self.child_scope(arm.scope, scope);
 
                                 let pattern = match &arm.pattern {
                                     Ok(pattern) => self.lower_pattern(pattern, scope),
