@@ -1,8 +1,6 @@
 use crate::{
     analysis::ast::{
-        syntax::{
-            FileBodySyntaxContext, Syntax, SyntaxContext, SyntaxError, SyntaxRule, SyntaxRules,
-        },
+        syntax::{Syntax, SyntaxContext, SyntaxError, SyntaxRule, SyntaxRules},
         Expression, ExpressionSyntax, ExpressionSyntaxContext, WhenBody, WhenBodySyntax,
         WhenBodySyntaxContext,
     },

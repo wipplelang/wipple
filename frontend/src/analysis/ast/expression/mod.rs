@@ -24,7 +24,7 @@ use when::*;
 
 use crate::{
     analysis::ast::{
-        syntax::{FileBodySyntaxContext, Syntax, SyntaxContext, SyntaxError},
+        syntax::{Syntax, SyntaxContext, SyntaxError},
         AstBuilder, OperatorAssociativity, OperatorPrecedenceStatementAttributeKind, Statement,
         StatementAttributes, StatementSyntax, SyntaxAssignmentValue, SyntaxBody, SyntaxPattern,
         SyntaxRule,
@@ -117,6 +117,11 @@ impl SyntaxContext for ExpressionSyntaxContext {
         }
     }
 
+    fn with_statement_attributes(mut self, attributes: Shared<StatementAttributes>) -> Self {
+        self.statement_attributes = Some(attributes);
+        self
+    }
+
     fn block_scope(&self, scope: ScopeId) -> ScopeId {
         self.ast_builder.child_scope(scope)
     }
@@ -179,13 +184,6 @@ impl SyntaxContext for ExpressionSyntaxContext {
     }
 }
 
-impl FileBodySyntaxContext for ExpressionSyntaxContext {
-    fn with_statement_attributes(mut self, attributes: Shared<StatementAttributes>) -> Self {
-        self.statement_attributes = Some(attributes);
-        self
-    }
-}
-
 impl ExpressionSyntaxContext {
     async fn expand_list(
         &self,
@@ -199,7 +197,7 @@ impl ExpressionSyntaxContext {
                 let expr = exprs.pop().unwrap();
 
                 if let parse::ExprKind::Name(name, name_scope) = expr.kind {
-                    if let Some((syntax_span, syntax)) = self
+                    if let Some(syntax) = self
                         .ast_builder
                         .try_get_syntax(name, name_scope.unwrap_or(scope))
                     {
@@ -217,12 +215,7 @@ impl ExpressionSyntaxContext {
                             }
                             None => {
                                 return self
-                                    .expand_syntax(
-                                        expr.span,
-                                        (syntax_span, syntax),
-                                        vec![expr],
-                                        scope,
-                                    )
+                                    .expand_syntax(expr.span, syntax, vec![expr], scope)
                                     .await;
                             }
                         }
@@ -239,14 +232,14 @@ impl ExpressionSyntaxContext {
                     let first = exprs.next().unwrap();
 
                     if let parse::ExprKind::Name(name, name_scope) = first.kind {
-                        if let Some((syntax_span, syntax)) = self
+                        if let Some(syntax) = self
                             .ast_builder
                             .try_get_syntax(name, name_scope.unwrap_or(scope))
                         {
                             return self
                                 .expand_syntax(
                                     first.span,
-                                    (syntax_span, syntax),
+                                    syntax,
                                     std::iter::once(first).chain(exprs).collect(),
                                     scope,
                                 )
@@ -377,21 +370,21 @@ impl ExpressionSyntaxContext {
     ) -> Vec<(
         usize,
         parse::Expr,
-        (Span, SyntaxAssignmentValue),
+        SyntaxAssignmentValue,
         OperatorPrecedenceStatementAttributeKind,
     )> {
         exprs
             .into_iter()
             .filter_map(move |(index, expr)| {
                 if let parse::ExprKind::Name(name, name_scope) = expr.kind {
-                    if let Some((syntax_span, syntax)) = self
+                    if let Some(syntax) = self
                         .ast_builder
                         .try_get_syntax(name, name_scope.unwrap_or(scope))
                     {
                         if let Some(attribute) = &syntax.operator_precedence {
                             let precedence = attribute.precedence;
 
-                            return Some((index, expr.clone(), (syntax_span, syntax), precedence));
+                            return Some((index, expr.clone(), syntax, precedence));
                         }
                     }
                 }
@@ -404,7 +397,7 @@ impl ExpressionSyntaxContext {
     async fn expand_syntax(
         &self,
         span: Span,
-        (syntax_span, syntax): (Span, SyntaxAssignmentValue),
+        syntax: SyntaxAssignmentValue,
         exprs: Vec<parse::Expr>,
         scope: ScopeId,
     ) -> Result<Expression, SyntaxError> {
@@ -438,7 +431,7 @@ impl ExpressionSyntaxContext {
             "syntax error",
             vec![
                 Note::primary(span, "this does not match any syntax rules"),
-                Note::secondary(syntax_span, "syntax defined here"),
+                Note::secondary(syntax.syntax_span, "syntax defined here"),
             ],
         );
 

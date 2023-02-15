@@ -2,8 +2,7 @@ use crate::{
     analysis::ast::{
         assignment_value::AssignmentValueSyntaxContext,
         syntax::{
-            FileBodySyntaxContext, OperatorAssociativity, Syntax, SyntaxContext, SyntaxError,
-            SyntaxRule, SyntaxRules,
+            OperatorAssociativity, Syntax, SyntaxContext, SyntaxError, SyntaxRule, SyntaxRules,
         },
         AssignmentValue, AssignmentValueSyntax, TypePattern, TypePatternSyntax,
         TypePatternSyntaxContext,

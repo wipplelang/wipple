@@ -6,7 +6,7 @@ use function::*;
 
 use crate::{
     analysis::ast::{
-        syntax::{ErrorSyntax, FileBodySyntaxContext, Syntax, SyntaxContext, SyntaxError},
+        syntax::{ErrorSyntax, Syntax, SyntaxContext, SyntaxError},
         AstBuilder, StatementAttributes,
     },
     diagnostics::Note,
@@ -43,6 +43,11 @@ impl SyntaxContext for SyntaxRuleSyntaxContext {
         }
     }
 
+    fn with_statement_attributes(mut self, attributes: Shared<StatementAttributes>) -> Self {
+        self.statement_attributes = Some(attributes);
+        self
+    }
+
     async fn build_block(
         self,
         span: parse::Span,
@@ -73,12 +78,5 @@ impl SyntaxContext for SyntaxRuleSyntaxContext {
         );
 
         Err(self.ast_builder.syntax_error(expr.span))
-    }
-}
-
-impl FileBodySyntaxContext for SyntaxRuleSyntaxContext {
-    fn with_statement_attributes(mut self, attributes: Shared<StatementAttributes>) -> Self {
-        self.statement_attributes = Some(attributes);
-        self
     }
 }

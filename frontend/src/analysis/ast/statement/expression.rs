@@ -1,7 +1,7 @@
 use crate::analysis::ast::{
     expression::{Expression, ExpressionSyntax, ExpressionSyntaxContext},
     statement::StatementSyntaxContext,
-    syntax::{FileBodySyntaxContext, Syntax, SyntaxContext, SyntaxRules},
+    syntax::{Syntax, SyntaxContext, SyntaxRules},
     Statement, StatementAttributes,
 };
 

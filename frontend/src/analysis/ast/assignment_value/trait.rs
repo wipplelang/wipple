@@ -1,9 +1,7 @@
 use crate::{
     analysis::ast::{
         assignment_value::AssignmentValueSyntaxContext,
-        syntax::{
-            FileBodySyntaxContext, Syntax, SyntaxContext, SyntaxError, SyntaxRule, SyntaxRules,
-        },
+        syntax::{Syntax, SyntaxContext, SyntaxError, SyntaxRule, SyntaxRules},
         Type, TypeSyntax, TypeSyntaxContext,
     },
     diagnostics::Note,

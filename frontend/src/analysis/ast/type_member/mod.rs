@@ -6,7 +6,7 @@ use field::*;
 
 use crate::{
     analysis::ast::{
-        syntax::{ErrorSyntax, FileBodySyntaxContext, Syntax, SyntaxContext, SyntaxError},
+        syntax::{ErrorSyntax, Syntax, SyntaxContext, SyntaxError},
         AstBuilder, StatementAttributes, Type, TypeSyntax, TypeSyntaxContext,
     },
     diagnostics::Note,
@@ -53,6 +53,11 @@ impl SyntaxContext for TypeMemberSyntaxContext {
             ast_builder,
             statement_attributes: None,
         }
+    }
+
+    fn with_statement_attributes(mut self, attributes: Shared<StatementAttributes>) -> Self {
+        self.statement_attributes = Some(attributes);
+        self
     }
 
     async fn build_block(
@@ -145,12 +150,5 @@ impl SyntaxContext for TypeMemberSyntaxContext {
                 }
             },
         }
-    }
-}
-
-impl FileBodySyntaxContext for TypeMemberSyntaxContext {
-    fn with_statement_attributes(mut self, attributes: Shared<StatementAttributes>) -> Self {
-        self.statement_attributes = Some(attributes);
-        self
     }
 }

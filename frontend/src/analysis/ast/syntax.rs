@@ -24,6 +24,8 @@ pub(in crate::analysis::ast) trait SyntaxContext: Clone + Send {
 
     fn new(ast_builder: AstBuilder) -> Self;
 
+    fn with_statement_attributes(self, attributes: Shared<StatementAttributes>) -> Self;
+
     fn block_scope(&self, scope: ScopeId) -> ScopeId {
         scope
     }
@@ -46,12 +48,6 @@ pub(in crate::analysis::ast) trait SyntaxContext: Clone + Send {
         expr: parse::Expr,
         scope: ScopeId,
     ) -> Result<Self::Body, SyntaxError>;
-}
-
-pub(in crate::analysis::ast) trait FileBodySyntaxContext:
-    SyntaxContext
-{
-    fn with_statement_attributes(self, attributes: Shared<StatementAttributes>) -> Self;
 }
 
 #[derive(Debug, Clone)]
@@ -83,6 +79,10 @@ impl SyntaxContext for std::convert::Infallible {
     type Statement = std::convert::Infallible;
 
     fn new(_ast_builder: AstBuilder) -> Self {
+        unreachable!()
+    }
+
+    fn with_statement_attributes(self, _attributes: Shared<StatementAttributes>) -> Self {
         unreachable!()
     }
 
@@ -551,6 +551,10 @@ impl SyntaxContext for ErrorSyntaxContext {
         ErrorSyntaxContext { ast_builder }
     }
 
+    fn with_statement_attributes(self, _attributes: Shared<StatementAttributes>) -> Self {
+        self
+    }
+
     async fn build_block(
         self,
         span: parse::Span,
@@ -571,11 +575,5 @@ impl SyntaxContext for ErrorSyntaxContext {
         _scope: ScopeId,
     ) -> Result<Self::Body, SyntaxError> {
         Err(self.ast_builder.syntax_error(expr.span))
-    }
-}
-
-impl FileBodySyntaxContext for ErrorSyntaxContext {
-    fn with_statement_attributes(self, _attributes: Shared<StatementAttributes>) -> Self {
-        self
     }
 }

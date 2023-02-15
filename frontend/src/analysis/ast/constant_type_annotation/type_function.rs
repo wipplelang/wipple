@@ -2,8 +2,7 @@ use crate::{
     analysis::ast::{
         constant_type_annotation::ConstantTypeAnnotationSyntaxContext,
         syntax::{
-            FileBodySyntaxContext, OperatorAssociativity, Syntax, SyntaxContext, SyntaxError,
-            SyntaxRule, SyntaxRules,
+            OperatorAssociativity, Syntax, SyntaxContext, SyntaxError, SyntaxRule, SyntaxRules,
         },
         ConstantTypeAnnotation, ConstantTypeAnnotationSyntax, TypePattern, TypePatternSyntax,
         TypePatternSyntaxContext,

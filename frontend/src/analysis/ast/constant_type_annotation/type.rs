@@ -1,7 +1,7 @@
 use crate::analysis::ast::{
     constant_type_annotation::ConstantTypeAnnotationSyntaxContext,
     r#type::{Type, TypeSyntax, TypeSyntaxContext},
-    syntax::{FileBodySyntaxContext, Syntax, SyntaxContext, SyntaxRules},
+    syntax::{Syntax, SyntaxContext, SyntaxRules},
     ConstantTypeAnnotation,
 };
 

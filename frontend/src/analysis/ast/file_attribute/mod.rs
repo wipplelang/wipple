@@ -10,9 +10,10 @@ use recursion_limit::*;
 use crate::{
     analysis::ast::{
         syntax::{ErrorSyntax, Syntax, SyntaxContext, SyntaxError},
-        AstBuilder,
+        AstBuilder, StatementAttributes,
     },
     diagnostics::Note,
+    helpers::Shared,
     parse, ScopeId,
 };
 use async_trait::async_trait;
@@ -40,6 +41,10 @@ impl SyntaxContext for FileAttributeSyntaxContext {
 
     fn new(ast_builder: AstBuilder) -> Self {
         FileAttributeSyntaxContext { ast_builder }
+    }
+
+    fn with_statement_attributes(self, _attributes: Shared<StatementAttributes>) -> Self {
+        self
     }
 
     async fn build_block(

@@ -1,7 +1,7 @@
 use crate::analysis::ast::{
     assignment_pattern::AssignmentPatternSyntaxContext,
     pattern::{Pattern, PatternSyntax, PatternSyntaxContext},
-    syntax::{FileBodySyntaxContext, Syntax, SyntaxContext, SyntaxRules},
+    syntax::{Syntax, SyntaxContext, SyntaxRules},
     AssignmentPattern,
 };
 

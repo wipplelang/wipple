@@ -1,7 +1,7 @@
 use crate::{
     analysis::ast::{
         assignment_value::AssignmentValueSyntaxContext,
-        syntax::{FileBodySyntaxContext, Syntax, SyntaxContext, SyntaxRule, SyntaxRules},
+        syntax::{Syntax, SyntaxContext, SyntaxRule, SyntaxRules},
         KeywordStatementAttribute, OperatorPrecedenceStatementAttribute, SyntaxBody,
         SyntaxBodySyntax, SyntaxBodySyntaxContext, SyntaxError,
     },
@@ -56,10 +56,8 @@ impl Syntax for SyntaxAssignmentValueSyntax {
                     keyword: statement_attributes.keyword.clone(),
                 };
 
-                if let Some((name, span)) = context.assigned_name {
-                    context
-                        .ast_builder
-                        .add_syntax(name, span, value.clone(), scope);
+                if let Some((name, _)) = context.assigned_name {
+                    context.ast_builder.add_syntax(name, value.clone(), scope);
                 }
 
                 Ok(value.into())

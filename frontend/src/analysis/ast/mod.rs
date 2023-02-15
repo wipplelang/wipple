@@ -55,7 +55,7 @@ use std::{
     collections::{BTreeMap, HashMap},
     sync::Arc,
 };
-use syntax::{FileBodySyntaxContext, Syntax, SyntaxContext};
+use syntax::{Syntax, SyntaxContext};
 
 #[derive(Debug, Clone)]
 pub struct File {
@@ -64,7 +64,9 @@ pub struct File {
     pub attributes: FileAttributes,
     pub syntax_declarations: BTreeMap<SyntaxId, SyntaxAssignmentValue>,
     pub statements: Vec<Result<Statement, SyntaxError>>,
+    pub exported: HashMap<InternedString, SyntaxId>,
     pub root_scope: ScopeId,
+    scopes: BTreeMap<ScopeId, Scope>,
 }
 
 impl Compiler {
@@ -76,21 +78,70 @@ impl Compiler {
             + Send
             + Sync,
     ) -> File {
-        let ast_builder = AstBuilder {
+        let mut ast_builder = AstBuilder {
             file: file.span.path,
             compiler: self.clone(),
             dependencies: Default::default(),
             attributes: Default::default(),
+            syntax_declarations: Default::default(),
             scopes: Default::default(),
             load: Arc::new(load),
+            file_scope: None,
         };
 
         let scope = ast_builder.root_scope();
+        ast_builder.file_scope = Some(scope);
+
+        for attribute in file.attributes {
+            let context = FileAttributeSyntaxContext::new(ast_builder.clone());
+
+            if ast_builder
+                .build_list::<FileAttributeSyntax>(
+                    context.clone(),
+                    attribute.span,
+                    &attribute.exprs,
+                    scope,
+                )
+                .await
+                .is_none()
+            {
+                // The result of a file attribute doesn't affect whether the
+                // file can be parsed
+                let _ = context
+                    .build_terminal(
+                        parse::Expr::list_or_expr(attribute.span, attribute.exprs),
+                        scope,
+                    )
+                    .await;
+            }
+        }
+
+        if ast_builder.attributes.lock().no_std.is_none() {
+            let std_path = ast_builder.compiler.loader.std_path();
+            if let Some(std_path) = std_path {
+                if let Some(file) =
+                    (ast_builder.load)(ast_builder.compiler.clone(), file.span, std_path).await
+                {
+                    ast_builder.add_dependency(file);
+                }
+            } else {
+                ast_builder.compiler.add_error(
+                    "standard library is missing, but this file requires it",
+                    vec![Note::primary(
+                        file.span.with_end(file.span.start),
+                        "try adding `[[no-std]]` to this file to prevent automatically loading the standard library",
+                    )],
+                );
+            }
+        }
 
         let statements = stream::iter(file.statements)
             .then(|statement| {
-                let context = StatementSyntaxContext::new(ast_builder.clone());
-                ast_builder.build_statement::<StatementSyntax>(context, statement, scope)
+                ast_builder.build_statement::<StatementSyntax>(
+                    StatementSyntaxContext::new(ast_builder.clone()),
+                    statement,
+                    scope,
+                )
             })
             .collect::<Vec<_>>()
             .await
@@ -98,12 +149,22 @@ impl Compiler {
             .flatten()
             .collect();
 
+        let exported = ast_builder
+            .scopes
+            .lock()
+            .get(&scope)
+            .unwrap()
+            .syntaxes
+            .clone();
+
         File {
             span: file.span,
             dependencies: ast_builder.dependencies.into_unique(),
             attributes: ast_builder.attributes.into_unique(),
             syntax_declarations: BTreeMap::new(), // TODO
             statements,
+            scopes: ast_builder.scopes.into_unique(),
+            exported,
             root_scope: scope,
         }
     }
@@ -115,7 +176,9 @@ struct AstBuilder {
     compiler: Compiler,
     dependencies: Shared<Vec<Arc<File>>>,
     attributes: Shared<FileAttributes>,
-    scopes: Shared<HashMap<ScopeId, Scope>>,
+    syntax_declarations: Shared<BTreeMap<SyntaxId, SyntaxAssignmentValue>>,
+    scopes: Shared<BTreeMap<ScopeId, Scope>>,
+    file_scope: Option<ScopeId>,
     load: Arc<
         dyn Fn(Compiler, Span, FilePath) -> BoxFuture<'static, Option<Arc<File>>> + Send + Sync,
     >,
@@ -124,7 +187,7 @@ struct AstBuilder {
 #[derive(Debug, Clone, Default)]
 struct Scope {
     parent: Option<ScopeId>,
-    syntaxes: HashMap<InternedString, (Span, SyntaxAssignmentValue)>,
+    syntaxes: HashMap<InternedString, SyntaxId>,
 }
 
 impl AstBuilder {
@@ -148,26 +211,24 @@ impl AstBuilder {
         id
     }
 
-    fn add_syntax(
-        &self,
-        name: InternedString,
-        span: Span,
-        syntax: SyntaxAssignmentValue,
-        scope: ScopeId,
-    ) {
+    fn add_syntax(&self, name: InternedString, syntax: SyntaxAssignmentValue, scope: ScopeId) {
+        let id = self.compiler.new_syntax_id_in(self.file);
+
+        self.syntax_declarations.lock().insert(id, syntax);
+
         self.scopes
             .lock()
             .get_mut(&scope)
             .unwrap()
             .syntaxes
-            .insert(name, (span, syntax));
+            .insert(name, id);
     }
 
     fn try_get_syntax(
         &self,
         name: InternedString,
         scope: ScopeId,
-    ) -> Option<(Span, SyntaxAssignmentValue)> {
+    ) -> Option<SyntaxAssignmentValue> {
         let scopes = self.scopes.lock();
 
         let mut parent = Some(scope);
@@ -175,7 +236,7 @@ impl AstBuilder {
             let scope = scopes.get(&scope).unwrap();
 
             if let Some(syntax) = scope.syntaxes.get(&name) {
-                return Some(syntax.clone());
+                return Some(self.syntax_declarations.lock().get(syntax).unwrap().clone());
             }
 
             parent = scope.parent;
@@ -191,12 +252,7 @@ impl AstBuilder {
         context: S::Context,
         expr: parse::Expr,
         scope: ScopeId,
-    ) -> Result<<S::Context as SyntaxContext>::Body, SyntaxError>
-    where
-        S::Context: FileBodySyntaxContext,
-        <<<S as Syntax>::Context as SyntaxContext>::Statement as Syntax>::Context:
-            FileBodySyntaxContext,
-    {
+    ) -> Result<<S::Context as SyntaxContext>::Body, SyntaxError> {
         match expr.kind {
             parse::ExprKind::Block(statements) => {
                 let scope = context.block_scope(scope);
@@ -254,10 +310,7 @@ impl AstBuilder {
         context: S::Context,
         statement: parse::Statement,
         scope: ScopeId,
-    ) -> Option<Result<<S::Context as SyntaxContext>::Body, SyntaxError>>
-    where
-        S::Context: FileBodySyntaxContext,
-    {
+    ) -> Option<Result<<S::Context as SyntaxContext>::Body, SyntaxError>> {
         let attributes = Shared::new(StatementAttributes::default());
 
         let (attribute_exprs, exprs): (Vec<_>, Vec<_>) = statement
@@ -331,6 +384,12 @@ impl AstBuilder {
 
 impl AstBuilder {
     fn add_dependency(&self, file: Arc<File>) {
+        self.syntax_declarations
+            .lock()
+            .extend(file.syntax_declarations.clone());
+
+        self.scopes.lock().extend(file.scopes.clone());
+
         self.dependencies.lock().push(file);
     }
 }

@@ -18,7 +18,7 @@ use type_function::*;
 
 use crate::{
     analysis::ast::{
-        syntax::{FileBodySyntaxContext, Syntax, SyntaxContext, SyntaxError},
+        syntax::{Syntax, SyntaxContext, SyntaxError},
         AstBuilder, ExpressionSyntaxContext, StatementAttributes, StatementSyntax,
     },
     helpers::{InternedString, Shared},
@@ -68,6 +68,11 @@ impl SyntaxContext for AssignmentValueSyntaxContext {
         }
     }
 
+    fn with_statement_attributes(mut self, attributes: Shared<StatementAttributes>) -> Self {
+        self.statement_attributes = Some(attributes);
+        self
+    }
+
     fn block_scope(&self, scope: ScopeId) -> ScopeId {
         self.ast_builder.child_scope(scope)
     }
@@ -104,11 +109,5 @@ impl SyntaxContext for AssignmentValueSyntaxContext {
             .build_terminal(expr, scope)
             .await
             .map(|expression| ExpressionAssignmentValue { expression }.into())
-    }
-}
-impl FileBodySyntaxContext for AssignmentValueSyntaxContext {
-    fn with_statement_attributes(mut self, attributes: Shared<StatementAttributes>) -> Self {
-        self.statement_attributes = Some(attributes);
-        self
     }
 }

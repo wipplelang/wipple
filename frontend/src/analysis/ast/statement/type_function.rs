@@ -2,8 +2,7 @@ use crate::{
     analysis::ast::{
         statement::StatementSyntaxContext,
         syntax::{
-            FileBodySyntaxContext, OperatorAssociativity, Syntax, SyntaxContext, SyntaxError,
-            SyntaxRule, SyntaxRules,
+            OperatorAssociativity, Syntax, SyntaxContext, SyntaxError, SyntaxRule, SyntaxRules,
         },
         Statement, StatementSyntax, TypePattern, TypePatternSyntax, TypePatternSyntaxContext,
     },

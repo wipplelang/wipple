@@ -9,7 +9,7 @@ use type_function::*;
 
 use crate::{
     analysis::ast::{
-        syntax::{ErrorSyntax, FileBodySyntaxContext, Syntax, SyntaxContext, SyntaxError},
+        syntax::{ErrorSyntax, Syntax, SyntaxContext, SyntaxError},
         AstBuilder, StatementAttributes, TypeSyntaxContext,
     },
     diagnostics::Note,
@@ -47,6 +47,11 @@ impl SyntaxContext for ConstantTypeAnnotationSyntaxContext {
         }
     }
 
+    fn with_statement_attributes(mut self, attributes: Shared<StatementAttributes>) -> Self {
+        self.statement_attributes = Some(attributes);
+        self
+    }
+
     async fn build_block(
         self,
         span: parse::Span,
@@ -77,11 +82,5 @@ impl SyntaxContext for ConstantTypeAnnotationSyntaxContext {
             .build_terminal(expr, scope)
             .await
             .map(|ty| TypeConstantTypeAnnotation { ty }.into())
-    }
-}
-impl FileBodySyntaxContext for ConstantTypeAnnotationSyntaxContext {
-    fn with_statement_attributes(mut self, attributes: Shared<StatementAttributes>) -> Self {
-        self.statement_attributes = Some(attributes);
-        self
     }
 }

@@ -1,8 +1,7 @@
 use crate::{
     analysis::ast::{
         syntax::{
-            FileBodySyntaxContext, OperatorAssociativity, Syntax, SyntaxContext, SyntaxError,
-            SyntaxRule, SyntaxRules,
+            OperatorAssociativity, Syntax, SyntaxContext, SyntaxError, SyntaxRule, SyntaxRules,
         },
         syntax_rule::SyntaxRuleSyntaxContext,
         SyntaxPattern, SyntaxPatternSyntax, SyntaxPatternSyntaxContext,

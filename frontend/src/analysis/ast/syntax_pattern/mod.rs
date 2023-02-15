@@ -1,6 +1,6 @@
 use crate::{
     analysis::ast::{
-        syntax::{ErrorSyntax, FileBodySyntaxContext, Syntax, SyntaxContext, SyntaxError},
+        syntax::{ErrorSyntax, Syntax, SyntaxContext, SyntaxError},
         AstBuilder, StatementAttributes,
     },
     diagnostics::Note,
@@ -101,6 +101,11 @@ impl SyntaxContext for SyntaxPatternSyntaxContext {
         }
     }
 
+    fn with_statement_attributes(mut self, attributes: Shared<StatementAttributes>) -> Self {
+        self.statement_attributes = Some(attributes);
+        self
+    }
+
     async fn build_block(
         self,
         span: parse::Span,
@@ -196,13 +201,6 @@ impl SyntaxContext for SyntaxPatternSyntaxContext {
                 },
             },
         }
-    }
-}
-
-impl FileBodySyntaxContext for SyntaxPatternSyntaxContext {
-    fn with_statement_attributes(mut self, attributes: Shared<StatementAttributes>) -> Self {
-        self.statement_attributes = Some(attributes);
-        self
     }
 }
 

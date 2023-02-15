@@ -12,7 +12,7 @@ use type_function::*;
 
 use crate::{
     analysis::ast::{
-        syntax::{FileBodySyntaxContext, Syntax, SyntaxContext, SyntaxError},
+        syntax::{Syntax, SyntaxContext, SyntaxError},
         AstBuilder, DestructuringSyntax, PatternSyntaxContext, StatementAttributes,
     },
     helpers::Shared,
@@ -50,6 +50,11 @@ impl SyntaxContext for AssignmentPatternSyntaxContext {
         }
     }
 
+    fn with_statement_attributes(mut self, attributes: Shared<StatementAttributes>) -> Self {
+        self.statement_attributes = Some(attributes);
+        self
+    }
+
     async fn build_block(
         self,
         span: parse::Span,
@@ -82,12 +87,5 @@ impl SyntaxContext for AssignmentPatternSyntaxContext {
             .build_terminal(expr, scope)
             .await
             .map(|pattern| PatternAssignmentPattern { pattern }.into())
-    }
-}
-
-impl FileBodySyntaxContext for AssignmentPatternSyntaxContext {
-    fn with_statement_attributes(mut self, attributes: Shared<StatementAttributes>) -> Self {
-        self.statement_attributes = Some(attributes);
-        self
     }
 }
