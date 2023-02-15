@@ -178,11 +178,15 @@ impl SyntaxContext for PatternSyntaxContext {
         scope: ScopeId,
     ) -> Result<Self::Body, SyntaxError> {
         match expr.kind {
-            parse::ExprKind::Name(name, _) => Ok(NamePattern {
-                span: expr.span,
-                name,
+            parse::ExprKind::Name(name, _) => {
+                self.ast_builder.add_barrier(name, scope);
+
+                Ok(NamePattern {
+                    span: expr.span,
+                    name,
+                }
+                .into())
             }
-            .into()),
             parse::ExprKind::Text(text) => Ok(TextPattern {
                 span: expr.span,
                 text,

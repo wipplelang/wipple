@@ -22,6 +22,8 @@ pub(in crate::analysis::ast) trait SyntaxContext: Clone + Send {
     type Body: Send + 'static;
     type Statement: Syntax;
 
+    const PREFERS_LISTS: bool = false;
+
     fn new(ast_builder: AstBuilder) -> Self;
 
     fn with_statement_attributes(self, attributes: Shared<StatementAttributes>) -> Self;

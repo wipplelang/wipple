@@ -159,7 +159,7 @@ impl Lowerer {
                 kind: BuiltinTypeDeclarationKind::List,
                 attributes: DeclarationAttributes {
                     help: vec![InternedString::new(
-                        "Represents a collection of values. `List` is generic, meaning you can use any value inside a list (as long as all the values have the same type). You can create a list using the `list` function: `list (1 , 2 , 3)`.",
+                        "Represents a collection of values. `List` is generic, meaning you can use any value inside a list (as long as all the values have the same type). You can create a list using the `list` function: `list 1 2 3`.",
                     )],
                     ..Default::default()
                 }

@@ -114,11 +114,15 @@ impl SyntaxContext for TypePatternSyntaxContext {
                 Ok(ListTypePattern { span, patterns }.into())
             }
             Err(expr) => match expr.kind {
-                parse::ExprKind::Name(name, _) => Ok(NameTypePattern {
-                    span: expr.span,
-                    name,
+                parse::ExprKind::Name(name, _) => {
+                    self.ast_builder.add_barrier(name, scope);
+
+                    Ok(NameTypePattern {
+                        span: expr.span,
+                        name,
+                    }
+                    .into())
                 }
-                .into()),
                 _ => {
                     self.ast_builder.compiler.add_error(
                         "syntax error",

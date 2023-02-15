@@ -155,7 +155,10 @@ impl Compiler {
             .get(&scope)
             .unwrap()
             .syntaxes
-            .clone();
+            .clone()
+            .into_iter()
+            .filter_map(|(name, id)| Some((name, id?)))
+            .collect();
 
         File {
             span: file.span,
@@ -187,7 +190,7 @@ struct AstBuilder {
 #[derive(Debug, Clone, Default)]
 struct Scope {
     parent: Option<ScopeId>,
-    syntaxes: HashMap<InternedString, SyntaxId>,
+    syntaxes: HashMap<InternedString, Option<SyntaxId>>,
 }
 
 impl AstBuilder {
@@ -221,7 +224,16 @@ impl AstBuilder {
             .get_mut(&scope)
             .unwrap()
             .syntaxes
-            .insert(name, id);
+            .insert(name, Some(id));
+    }
+
+    fn add_barrier(&self, name: InternedString, scope: ScopeId) {
+        self.scopes
+            .lock()
+            .get_mut(&scope)
+            .unwrap()
+            .syntaxes
+            .insert(name, None);
     }
 
     fn try_get_syntax(
@@ -236,7 +248,13 @@ impl AstBuilder {
             let scope = scopes.get(&scope).unwrap();
 
             if let Some(syntax) = scope.syntaxes.get(&name) {
-                return Some(self.syntax_declarations.lock().get(syntax).unwrap().clone());
+                return Some(
+                    self.syntax_declarations
+                        .lock()
+                        .get(syntax.as_ref()?)
+                        .unwrap()
+                        .clone(),
+                );
             }
 
             parent = scope.parent;
@@ -286,9 +304,13 @@ impl AstBuilder {
                 {
                     Some(result) => result,
                     None => {
-                        context
-                            .build_terminal(parse::Expr::list_or_expr(expr.span, exprs), scope)
-                            .await
+                        let expr = if <S::Context as SyntaxContext>::PREFERS_LISTS {
+                            parse::Expr::list(expr.span, exprs)
+                        } else {
+                            parse::Expr::list_or_expr(expr.span, exprs)
+                        };
+
+                        context.build_terminal(expr, scope).await
                     }
                 }
             }
@@ -395,7 +417,12 @@ impl AstBuilder {
             .get_mut(self.file_scope.as_ref().unwrap())
             .unwrap()
             .syntaxes
-            .extend(file.exported.clone());
+            .extend(
+                file.exported
+                    .clone()
+                    .into_iter()
+                    .map(|(name, id)| (name, Some(id))),
+            );
 
         self.dependencies.lock().push(file);
     }

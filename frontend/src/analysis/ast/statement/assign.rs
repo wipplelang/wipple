@@ -7,14 +7,13 @@ use crate::{
         AssignmentValue, AssignmentValueSyntax, AssignmentValueSyntaxContext, NamePattern, Pattern,
         PatternAssignmentPattern, StatementAttributes, StatementSyntaxContext,
     },
+    helpers::Shared,
     parse::{self, Span},
-    ScopeId,
 };
 
 #[derive(Debug, Clone)]
 pub struct AssignStatement {
     pub colon_span: Span,
-    pub scope: ScopeId,
     pub pattern: Result<AssignmentPattern, SyntaxError>,
     pub value: Result<AssignmentValue, SyntaxError>,
     pub attributes: StatementAttributes,
@@ -46,11 +45,13 @@ impl Syntax for AssignStatementSyntax {
             ":",
             OperatorAssociativity::None,
             |context, (lhs_span, lhs_exprs), operator_span, (rhs_span, rhs_exprs), scope| async move {
-                let assign_scope = context.ast_builder.child_scope(scope);
 
+                let mut declared_name = None;
                 let lhs = parse::Expr::list_or_expr(lhs_span, lhs_exprs);
                 let pattern = match &lhs.kind {
                     parse::ExprKind::Name(name, _) => {
+                        declared_name = Some(*name);
+
                         Ok(AssignmentPattern::Pattern(PatternAssignmentPattern {
                             pattern: Pattern::Name(NamePattern {
                                 span: lhs.span,
@@ -67,7 +68,7 @@ impl Syntax for AssignStatementSyntax {
                                         context.statement_attributes.as_ref().unwrap().clone(),
                                     ),
                                 lhs,
-                                assign_scope,
+                                scope,
                             )
                             .await
                     }
@@ -76,9 +77,15 @@ impl Syntax for AssignStatementSyntax {
                 let mut value_context = AssignmentValueSyntaxContext::new(context.ast_builder.clone())
                     .with_statement_attributes(context.statement_attributes.as_ref().unwrap().clone());
 
+                let did_create_syntax = Shared::new(false);
                 if let Ok(AssignmentPattern::Pattern(pattern)) = &pattern {
                     if let Pattern::Name(pattern) = &pattern.pattern {
-                        value_context = value_context.with_assigned_name(pattern.name, pattern.span, scope);
+                        value_context = value_context.with_assigned_name(
+                            pattern.name,
+                            pattern.span,
+                            scope,
+                            did_create_syntax.clone()
+                        );
                     }
                 }
 
@@ -88,13 +95,19 @@ impl Syntax for AssignStatementSyntax {
                     .build_expr::<AssignmentValueSyntax>(
                         value_context,
                         rhs,
-                        assign_scope,
+                        scope,
                     )
                     .await;
 
+                if let Some(name) = declared_name {
+                    let did_create_syntax = did_create_syntax.into_unique();
+                    if !did_create_syntax {
+                        context.ast_builder.add_barrier(name, scope);
+                    }
+                }
+
                 Ok(AssignStatement {
                     colon_span: operator_span,
-                    scope: assign_scope,
                     pattern,
                     value,
                     attributes: context.statement_attributes.unwrap().lock().clone(),

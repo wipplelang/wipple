@@ -12,7 +12,9 @@ use futures::{stream, StreamExt};
 #[derive(Debug, Clone)]
 pub struct ExternalExpression {
     pub external_span: Span,
+    pub namespace_span: Span,
     pub namespace: InternedString,
+    pub identifier_span: Span,
     pub identifier: InternedString,
     pub inputs: Vec<Result<Expression, SyntaxError>>,
 }
@@ -24,7 +26,7 @@ impl ExternalExpression {
                 Ok(expr) => Span::join(self.external_span, expr.span()),
                 Err(error) => error.span,
             },
-            None => self.external_span,
+            None => Span::join(self.external_span, self.identifier_span),
         }
     }
 }
@@ -50,6 +52,7 @@ impl Syntax for ExternalExpressionSyntax {
                 let mut exprs = exprs.into_iter();
 
                 let namespace = exprs.next().unwrap();
+                let namespace_span = namespace.span;
                 let namespace = match namespace.kind {
                     parse::ExprKind::Text(text) => text,
                     _ => {
@@ -63,6 +66,7 @@ impl Syntax for ExternalExpressionSyntax {
                 };
 
                 let identifier = exprs.next().unwrap();
+                let identifier_span = identifier.span;
                 let identifier = match identifier.kind {
                     parse::ExprKind::Text(text) => text,
                     _ => {
@@ -88,7 +92,9 @@ impl Syntax for ExternalExpressionSyntax {
 
                 Ok(ExternalExpression {
                     external_span: span,
+                    namespace_span,
                     namespace,
+                    identifier_span,
                     identifier,
                     inputs,
                 }

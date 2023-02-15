@@ -67,8 +67,9 @@ impl Syntax for SyntaxAssignmentValueSyntax {
                     keyword: statement_attributes.keyword.clone(),
                 };
 
-                if let Some((name, _, scope)) = context.assigned_name {
+                if let Some((name, _, scope, did_create_syntax)) = context.assigned_name {
                     context.ast_builder.add_syntax(name, value.clone(), scope);
+                    *did_create_syntax.lock() = true;
                 }
 
                 Ok(value.into())

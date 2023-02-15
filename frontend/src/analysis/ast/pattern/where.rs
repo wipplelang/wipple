@@ -48,7 +48,7 @@ impl Syntax for WherePatternSyntax {
                     .build_expr::<PatternSyntax>(context.clone(), lhs,scope)
                     .await;
 
-                let rhs = parse::Expr::list_or_expr(rhs_span, rhs_exprs);
+                let rhs = parse::Expr::list(rhs_span, rhs_exprs);
                 let condition = context
                     .ast_builder
                     .build_expr::<ExpressionSyntax>(

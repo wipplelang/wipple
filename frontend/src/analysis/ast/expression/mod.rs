@@ -146,6 +146,8 @@ impl SyntaxContext for ExpressionSyntaxContext {
     type Body = Expression;
     type Statement = StatementSyntax;
 
+    const PREFERS_LISTS: bool = true;
+
     fn new(ast_builder: AstBuilder) -> Self {
         ExpressionSyntaxContext {
             ast_builder,
@@ -205,6 +207,11 @@ impl SyntaxContext for ExpressionSyntaxContext {
                     number,
                 }
                 .into()),
+                parse::ExprKind::Block(_) => {
+                    self.ast_builder
+                        .build_expr::<ExpressionSyntax>(self.clone(), expr, self.block_scope(scope))
+                        .await
+                }
                 _ => {
                     self.ast_builder.compiler.add_error(
                         "syntax error",
@@ -381,11 +388,19 @@ impl ExpressionSyntaxContext {
                     } else {
                         let lhs_span =
                             Span::join(lhs.first().unwrap().span, lhs.last().unwrap().span);
-                        let lhs = parse::Expr::list_or_expr(lhs_span, lhs);
+
+                        let lhs = parse::Expr {
+                            span: lhs_span,
+                            kind: parse::ExprKind::List(vec![lhs.into()]),
+                        };
 
                         let rhs_span =
                             Span::join(rhs.first().unwrap().span, rhs.last().unwrap().span);
-                        let rhs = parse::Expr::list_or_expr(rhs_span, rhs);
+
+                        let rhs = parse::Expr {
+                            span: rhs_span,
+                            kind: parse::ExprKind::List(vec![rhs.into()]),
+                        };
 
                         let span = Span::join(lhs_span, rhs_span);
 

@@ -45,7 +45,7 @@ syntax_group! {
 pub struct AssignmentValueSyntaxContext {
     pub(super) ast_builder: AstBuilder,
     statement_attributes: Option<Shared<StatementAttributes>>,
-    assigned_name: Option<(InternedString, Span, ScopeId)>,
+    assigned_name: Option<(InternedString, Span, ScopeId, Shared<bool>)>,
 }
 
 impl AssignmentValueSyntaxContext {
@@ -54,8 +54,9 @@ impl AssignmentValueSyntaxContext {
         name: InternedString,
         span: Span,
         scope: ScopeId,
+        did_create_syntax: Shared<bool>,
     ) -> Self {
-        self.assigned_name = Some((name, span, scope));
+        self.assigned_name = Some((name, span, scope, did_create_syntax));
         self
     }
 }
@@ -109,6 +110,8 @@ impl SyntaxContext for AssignmentValueSyntaxContext {
     ) -> Result<Self::Body, SyntaxError> {
         let context = ExpressionSyntaxContext::new(self.ast_builder)
             .with_statement_attributes(self.statement_attributes.unwrap());
+
+        let expr = parse::Expr::list(expr.span, vec![expr]);
 
         context
             .build_terminal(expr, scope)

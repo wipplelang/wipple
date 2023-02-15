@@ -604,7 +604,7 @@ mod util {
                 RuntimeFunction::MakeMutable => false,
                 RuntimeFunction::GetMutable => false,
                 RuntimeFunction::SetMutable => false,
-                RuntimeFunction::MakeList => true,
+                RuntimeFunction::MakeEmptyList => true,
                 RuntimeFunction::ListFirst => true,
                 RuntimeFunction::ListLast => true,
                 RuntimeFunction::ListInitial => true,

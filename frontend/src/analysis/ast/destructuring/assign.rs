@@ -40,6 +40,20 @@ impl Syntax for AssignDestructuringSyntax {
             ":",
             OperatorAssociativity::None,
             |context, (lhs_span, mut lhs_exprs), operator_span, (rhs_span, rhs_exprs), scope| async move {
+                let rhs = parse::Expr::list_or_expr(rhs_span, rhs_exprs);
+
+                let pattern = context
+                    .ast_builder
+                    .build_expr::<PatternSyntax>(
+                        PatternSyntaxContext::new(context.ast_builder.clone())
+                            .with_statement_attributes(
+                                context.statement_attributes.as_ref().unwrap().clone(),
+                            ),
+                        rhs,
+                        scope,
+                    )
+                    .await;
+
                 if lhs_exprs.len() != 1 {
                     context.ast_builder.compiler.add_error(
                         "syntax error",
@@ -69,19 +83,7 @@ impl Syntax for AssignDestructuringSyntax {
                     }
                 };
 
-                let rhs = parse::Expr::list_or_expr(rhs_span, rhs_exprs);
-
-                let pattern = context
-                    .ast_builder
-                    .build_expr::<PatternSyntax>(
-                        PatternSyntaxContext::new(context.ast_builder.clone())
-                            .with_statement_attributes(
-                                context.statement_attributes.as_ref().unwrap().clone(),
-                            ),
-                        rhs,
-                        scope,
-                    )
-                    .await;
+                context.ast_builder.add_barrier(name, scope);
 
                 Ok(AssignDestructuring {
                     colon_span: operator_span,

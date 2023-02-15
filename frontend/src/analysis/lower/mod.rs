@@ -589,7 +589,7 @@ pub enum RuntimeFunction {
     MakeMutable,
     GetMutable,
     SetMutable,
-    MakeList,
+    MakeEmptyList,
     ListFirst,
     ListLast,
     ListInitial,
@@ -1634,7 +1634,7 @@ impl Lowerer {
                 })
             }
             ast::Statement::Assign(statement) => {
-                let assign_scope = self.child_scope(statement.scope, scope);
+                let assign_scope = scope; // FIXME: Remove
 
                 match statement.value.as_ref().ok()? {
                     ast::AssignmentValue::Trait(value) => {
@@ -2109,8 +2109,6 @@ impl Lowerer {
                                                 .iter()
                                                 .filter_map(|s| Some(match s.as_ref().ok()? {
                                                     ast::Statement::Assign(statement) => {
-                                                        self.child_scope(statement.scope, scope);
-
                                                         match statement.pattern.as_ref().ok()? {
                                                             ast::AssignmentPattern::Pattern(ast::PatternAssignmentPattern { pattern: ast::Pattern::Name(name) }) => {
                                                                 let value = match statement.value.as_ref().ok()? {

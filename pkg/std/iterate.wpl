@@ -61,7 +61,7 @@ collect :: Input Element Output where (Iterate Input Element) (Collect Element O
 collect : input -> Collect ((Iterate :: (_ -> Iterator Element)) input) -- FIXME: Remove type annotation once we have functional dependencies
 
 Element => instance (Collect Element (List Element)) : { next } -> {
-	list : mutable (list ())
+	list : mutable (list)
 	loop {
 		when (next ()) {
 			Some x -> {

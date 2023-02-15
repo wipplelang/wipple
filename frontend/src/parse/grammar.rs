@@ -47,14 +47,18 @@ pub enum ExprKind {
 }
 
 impl Expr {
+    pub fn list(span: Span, exprs: Vec<Expr>) -> Self {
+        Expr {
+            span,
+            kind: ExprKind::List(vec![exprs.into()]),
+        }
+    }
+
     pub fn list_or_expr(span: Span, mut exprs: Vec<Expr>) -> Self {
         if exprs.len() == 1 {
             exprs.pop().unwrap()
         } else {
-            Expr {
-                span,
-                kind: ExprKind::List(vec![exprs.into()]),
-            }
+            Expr::list(span, exprs)
         }
     }
 
@@ -509,7 +513,7 @@ impl<'src> Parser<'src> {
         let (span, token) = self.peek();
 
         match token {
-            Some(Token::QuoteLeftParenthesis) => {
+            Some(Token::RepeatLeftParenthesis) => {
                 self.consume();
 
                 let (lines, end_span) = self.parse_list_contents(Token::RightParenthesis);

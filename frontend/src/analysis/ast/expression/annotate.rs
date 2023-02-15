@@ -41,7 +41,7 @@ impl Syntax for AnnotateExpressionSyntax {
             "::",
             OperatorAssociativity::Left,
             |context, (lhs_span, lhs_exprs), operator_span, (rhs_span, rhs_exprs), scope| async move {
-                let lhs = parse::Expr::list_or_expr(lhs_span, lhs_exprs);
+                let lhs = parse::Expr::list(lhs_span, lhs_exprs);
                 let expr = context
                     .ast_builder
                     .build_expr::<ExpressionSyntax>(context.clone(), lhs, scope)

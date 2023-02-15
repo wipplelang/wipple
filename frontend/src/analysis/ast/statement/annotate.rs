@@ -69,7 +69,7 @@ impl Syntax for AnnotateStatementSyntax {
                         }
                     }
                 } else {
-                    let lhs = parse::Expr::list_or_expr(lhs_span, lhs_exprs);
+                    let lhs = parse::Expr::list(lhs_span, lhs_exprs);
 
                     let expr = context
                         .ast_builder

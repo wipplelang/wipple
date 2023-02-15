@@ -4,25 +4,12 @@ use "util.wpl"
 use "fp.wpl"
 use "mutable.wpl"
 
-[help "Implementations for the `list` function."]
-[on-unimplemented "lists may only be created from tuples where every value has the same type"]
-Tuple-To-List : Tuple Element => trait (Tuple -> List Element)
+[help "Create a `List` with the specified elements."]
+list : syntax {
+	list ...x -> (external "runtime" "make-empty-list" :: List _) ...(. append 'x)
+}
 
-A => instance (Tuple-To-List () A) : tuple -> external "runtime" "make-list" tuple
-A => instance (Tuple-To-List (A ,) A) : tuple -> external "runtime" "make-list" tuple
-A => instance (Tuple-To-List (A , A) A) : tuple -> external "runtime" "make-list" tuple
-A => instance (Tuple-To-List (A , A , A) A) : tuple -> external "runtime" "make-list" tuple
-A => instance (Tuple-To-List (A , A , A , A) A) : tuple -> external "runtime" "make-list" tuple
-A => instance (Tuple-To-List (A , A , A , A , A) A) : tuple -> external "runtime" "make-list" tuple
-A => instance (Tuple-To-List (A , A , A , A , A , A) A) : tuple -> external "runtime" "make-list" tuple
-A => instance (Tuple-To-List (A , A , A , A , A , A , A) A) : tuple -> external "runtime" "make-list" tuple
-A => instance (Tuple-To-List (A , A , A , A , A , A , A , A) A) : tuple -> external "runtime" "make-list" tuple
-A => instance (Tuple-To-List (A , A , A , A , A , A , A , A , A) A) : tuple -> external "runtime" "make-list" tuple
-A => instance (Tuple-To-List (A , A , A , A , A , A , A , A , A , A) A) : tuple -> external "runtime" "make-list" tuple
-
-[help "Create a `List` from a tuple."]
-list :: Tuple Element where (Tuple-To-List Tuple Element) => Tuple -> List Element
-list : Tuple-To-List
+instance (Default (List _)) : list
 
 [help "Retrieve the first item inside a `List`, if it exists."]
 first :: A => List A -> Maybe A

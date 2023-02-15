@@ -60,7 +60,7 @@ impl Syntax for FunctionWhenArmSyntax {
                     )
                     .await;
 
-                let rhs = parse::Expr::list_or_expr(rhs_span, rhs);
+                let rhs = parse::Expr::list(rhs_span, rhs);
                 let body = context
                     .ast_builder
                     .build_expr::<ExpressionSyntax>(
