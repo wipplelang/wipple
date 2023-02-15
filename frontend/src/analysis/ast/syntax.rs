@@ -249,16 +249,30 @@ impl AstBuilder {
         &self,
         context: S::Context,
         span: parse::Span,
-        exprs: &[parse::Expr],
+        mut exprs: Vec<parse::Expr>,
         scope: ScopeId,
     ) -> Option<Result<<S::Context as SyntaxContext>::Body, SyntaxError>> {
+        while exprs.len() == 1 {
+            let expr = exprs.pop().unwrap();
+
+            match expr.try_into_list_exprs() {
+                Ok((_, list_exprs)) => {
+                    exprs = list_exprs.collect();
+                }
+                Err(expr) => {
+                    exprs.push(expr);
+                    break;
+                }
+            }
+        }
+
         for rule in S::rules().0 {
             let context = context.clone();
 
             match rule.kind {
                 SyntaxRuleKind::Function(apply) => {
                     if let Some(fut) =
-                        self.apply_function_syntax::<S>(rule.name, apply, context, exprs, scope)
+                        self.apply_function_syntax::<S>(rule.name, apply, context, &exprs, scope)
                     {
                         if let Some(result) = fut.await {
                             return Some(result);
@@ -272,7 +286,7 @@ impl AstBuilder {
                         apply,
                         context,
                         span,
-                        exprs,
+                        &exprs,
                         scope,
                     ) {
                         if let Some(result) = fut.await {

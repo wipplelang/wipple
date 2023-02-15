@@ -9,6 +9,7 @@ use crate::{
     TypeParameterId, VariableId, VariantIndex,
 };
 use std::{
+    borrow::Cow,
     collections::{BTreeMap, BTreeSet, HashMap, HashSet},
     mem,
     sync::Arc,
@@ -933,7 +934,7 @@ enum StatementDeclarationKind<'a> {
 #[derive(Debug)]
 enum QueuedStatement<'a> {
     Assign(&'a ast::Pattern, &'a ast::Expression),
-    Expression(&'a ast::Expression),
+    Expression(Cow<'a, ast::Expression>),
 }
 
 impl Lowerer {
@@ -1467,7 +1468,7 @@ impl Lowerer {
                         );
                     }
 
-                    Some(self.lower_expr(expr, scope))
+                    Some(self.lower_expr(&expr, scope))
                 },
             })
             .collect()
@@ -1482,7 +1483,47 @@ impl Lowerer {
             ast::Statement::Annotate(statement) => {
                 let id = self.compiler.new_constant_id_in(self.file);
 
-                let (span, name) = *statement.name.as_ref().ok()?;
+                let (span, name) = match &statement.value {
+                    Ok((span, name)) => (*span, *name),
+                    Err(expr) => {
+                        let expr = expr.clone().map(Box::new);
+
+                        let ty = match &statement.annotation {
+                            Ok(annotation) => match annotation {
+                                ast::ConstantTypeAnnotation::TypeFunction(func) => {
+                                    let pattern_span = match &func.pattern {
+                                        Ok(pattern) => pattern.span(),
+                                        Err(error) => error.span,
+                                    };
+
+                                    self.compiler.add_error(
+                                        "type functions may only be used when declaring a constant",
+                                        vec![Note::primary(pattern_span, "try removing this")],
+                                    );
+
+                                    return None;
+                                }
+                                ast::ConstantTypeAnnotation::Type(ty) => Ok(ty.ty.clone()),
+                            },
+                            Err(error) => Err(error.clone()),
+                        };
+
+                        return Some(StatementDeclaration {
+                            span: statement.span(),
+                            kind: StatementDeclarationKind::Queued(QueuedStatement::Expression(
+                                Cow::Owned(
+                                    ast::AnnotateExpression {
+                                        colon_span: statement.colon_span,
+                                        expr,
+                                        ty,
+                                    }
+                                    .into(),
+                                ),
+                            )),
+                            attributes: &statement.attributes,
+                        });
+                    }
+                };
 
                 let (child_scope, (parameters, bounds), ty) =
                     match statement.annotation.as_ref().ok()? {
@@ -1845,9 +1886,9 @@ impl Lowerer {
             },
             ast::Statement::Expression(statement) => Some(StatementDeclaration {
                 span: statement.span(),
-                kind: StatementDeclarationKind::Queued(QueuedStatement::Expression(
+                kind: StatementDeclarationKind::Queued(QueuedStatement::Expression(Cow::Borrowed(
                     &statement.expression,
-                )),
+                ))),
                 attributes: &statement.attributes,
             }),
         }

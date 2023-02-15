@@ -3368,7 +3368,7 @@ impl Typechecker {
             .clone()
             .into_iter()
             .map(|bound| Bound {
-                span: bound.tr_span,
+                span: bound.span,
                 trait_id: bound.tr,
                 params: bound
                     .parameters
@@ -3486,7 +3486,7 @@ impl Typechecker {
             .clone()
             .into_iter()
             .map(|bound| Bound {
-                span: bound.tr_span,
+                span: bound.span,
                 trait_id: bound.tr,
                 params: bound
                     .parameters

@@ -4,9 +4,9 @@ use crate::{
             OperatorAssociativity, Syntax, SyntaxContext, SyntaxError, SyntaxRule, SyntaxRules,
         },
         ConstantTypeAnnotation, ConstantTypeAnnotationSyntax, ConstantTypeAnnotationSyntaxContext,
-        StatementAttributes, StatementSyntaxContext,
+        Expression, ExpressionSyntax, ExpressionSyntaxContext, StatementAttributes,
+        StatementSyntaxContext,
     },
-    diagnostics::Note,
     helpers::InternedString,
     parse::{self, Span},
 };
@@ -14,16 +14,19 @@ use crate::{
 #[derive(Debug, Clone)]
 pub struct AnnotateStatement {
     pub colon_span: Span,
-    pub name: Result<(Span, InternedString), SyntaxError>,
+    pub value: Result<(Span, InternedString), Result<Expression, SyntaxError>>,
     pub annotation: Result<ConstantTypeAnnotation, SyntaxError>,
     pub attributes: StatementAttributes,
 }
 
 impl AnnotateStatement {
     pub fn span(&self) -> Span {
-        let name_span = match &self.name {
+        let value_span = match &self.value {
             Ok((span, _)) => *span,
-            Err(error) => error.span,
+            Err(expr) => match expr {
+                Ok(expr) => expr.span(),
+                Err(error) => error.span,
+            },
         };
 
         let annotation_span = match &self.annotation {
@@ -31,7 +34,7 @@ impl AnnotateStatement {
             Err(error) => error.span,
         };
 
-        Span::join(name_span, annotation_span)
+        Span::join(value_span, annotation_span)
     }
 }
 
@@ -45,32 +48,42 @@ impl Syntax for AnnotateStatementSyntax {
             "::",
             OperatorAssociativity::None,
             |context, (lhs_span, mut lhs_exprs), operator_span, (rhs_span, rhs_exprs), scope| async move {
-                let name = if lhs_exprs.len() == 1 {
+                let value = if lhs_exprs.len() == 1 {
                     let lhs = lhs_exprs.pop().unwrap();
                     match lhs.kind {
                         parse::ExprKind::Name(name, _) => Ok((lhs.span, name)),
                         _ => {
-                            context.ast_builder.compiler.add_error(
-                                "syntax error",
-                                vec![
-                                    Note::primary(lhs.span, "expected a name in constant declaration"),
-                                    Note::secondary(lhs.span, "to annotate the type of an expression, wrap this in parentheses"),
-                                ],
-                            );
+                            let expr = context
+                                .ast_builder
+                                .build_expr::<ExpressionSyntax>(
+                                    ExpressionSyntaxContext::new(context.ast_builder.clone())
+                                        .with_statement_attributes(
+                                            context.statement_attributes.as_ref().unwrap().clone(),
+                                        ),
+                                    lhs,
+                                    scope,
+                                )
+                                .await;
 
-                            Err(context.ast_builder.syntax_error(lhs.span))
+                            Err(expr)
                         }
                     }
                 } else {
-                    context.ast_builder.compiler.add_error(
-                        "syntax error",
-                        vec![
-                            Note::primary(lhs_span, "expected a name in constant declaration"),
-                            Note::secondary(lhs_span, "to annotate the type of an expression, wrap this in parentheses"),
-                        ],
-                    );
+                    let lhs = parse::Expr::list_or_expr(lhs_span, lhs_exprs);
 
-                    Err(context.ast_builder.syntax_error(lhs_span))
+                    let expr = context
+                        .ast_builder
+                        .build_expr::<ExpressionSyntax>(
+                            ExpressionSyntaxContext::new(context.ast_builder.clone())
+                                .with_statement_attributes(
+                                    context.statement_attributes.as_ref().unwrap().clone(),
+                                ),
+                            lhs,
+                            scope,
+                        )
+                        .await;
+
+                    Err(expr)
                 };
 
                 let rhs = parse::Expr::list_or_expr(rhs_span, rhs_exprs);
@@ -88,7 +101,7 @@ impl Syntax for AnnotateStatementSyntax {
 
                 Ok(AnnotateStatement {
                     colon_span: operator_span,
-                    name,
+                    value,
                     annotation: ty,
                     attributes: context.statement_attributes.unwrap().lock().clone(),
                 }

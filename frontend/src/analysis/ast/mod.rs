@@ -99,7 +99,7 @@ impl Compiler {
                 .build_list::<FileAttributeSyntax>(
                     context.clone(),
                     attribute.span,
-                    &attribute.exprs,
+                    attribute.exprs.clone(),
                     scope,
                 )
                 .await
@@ -281,7 +281,7 @@ impl AstBuilder {
                     .collect::<Vec<_>>();
 
                 match self
-                    .build_list::<S>(context.clone(), expr.span, &exprs, scope)
+                    .build_list::<S>(context.clone(), expr.span, exprs.clone(), scope)
                     .await
                 {
                     Some(result) => result,
@@ -294,7 +294,7 @@ impl AstBuilder {
             }
             parse::ExprKind::Name(_, _) => {
                 match self
-                    .build_list::<S>(context.clone(), expr.span, &[expr.clone()], scope)
+                    .build_list::<S>(context.clone(), expr.span, vec![expr.clone()], scope)
                     .await
                 {
                     Some(result) => result,
@@ -332,7 +332,7 @@ impl AstBuilder {
                 .build_list::<StatementAttributeSyntax>(
                     context.clone(),
                     attribute.span,
-                    &attribute.exprs,
+                    attribute.exprs.clone(),
                     scope,
                 )
                 .await
@@ -367,7 +367,7 @@ impl AstBuilder {
         let context = context.with_statement_attributes(attributes.clone());
 
         let result = match self
-            .build_list::<S>(context.clone(), span, &exprs, scope)
+            .build_list::<S>(context.clone(), span, exprs.clone(), scope)
             .await
         {
             Some(result) => result,
