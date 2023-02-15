@@ -2988,11 +2988,10 @@ impl Typechecker {
                     .unwrap_or("<unknown>");
 
                 let formatted = if patterns.is_empty() {
-                    format!("{} {}", ty.name, variant_name)
+                    variant_name.to_string()
                 } else {
                     format!(
-                        "{} {} {}",
-                        ty.name,
+                        "{} {}",
                         variant_name,
                         patterns
                             .iter()

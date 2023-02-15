@@ -1,6 +1,6 @@
 use crate::{
     analysis::ast::{
-        syntax::{ErrorSyntax, Syntax, SyntaxContext, SyntaxError},
+        syntax::{Syntax, SyntaxContext, SyntaxError},
         AstBuilder, StatementAttributes,
     },
     diagnostics::Note,
@@ -26,6 +26,7 @@ syntax_group! {
             VariableRepetition,
             List,
             ListRepetition,
+            Block,
         },
     }
 }
@@ -83,6 +84,12 @@ pub struct ListRepetitionSyntaxPattern {
     pub patterns: Vec<Result<SyntaxPattern, SyntaxError>>,
 }
 
+#[derive(Debug, Clone)]
+pub struct BlockSyntaxPattern {
+    pub span: Span,
+    pub statements: Vec<Result<SyntaxPattern, SyntaxError>>,
+}
+
 #[derive(Clone)]
 pub struct SyntaxPatternSyntaxContext {
     pub(super) ast_builder: AstBuilder,
@@ -92,7 +99,7 @@ pub struct SyntaxPatternSyntaxContext {
 #[async_trait]
 impl SyntaxContext for SyntaxPatternSyntaxContext {
     type Body = SyntaxPattern;
-    type Statement = ErrorSyntax;
+    type Statement = SyntaxPatternSyntax;
 
     fn new(ast_builder: AstBuilder) -> Self {
         SyntaxPatternSyntaxContext {
@@ -109,7 +116,7 @@ impl SyntaxContext for SyntaxPatternSyntaxContext {
     async fn build_block(
         self,
         span: parse::Span,
-        _statements: impl Iterator<
+        statements: impl Iterator<
                 Item = Result<
                     <<Self::Statement as Syntax>::Context as SyntaxContext>::Body,
                     SyntaxError,
@@ -117,15 +124,11 @@ impl SyntaxContext for SyntaxPatternSyntaxContext {
             > + Send,
         _scope: ScopeId,
     ) -> Result<Self::Body, SyntaxError> {
-        self.ast_builder.compiler.add_error(
-            "syntax error",
-            vec![Note::primary(
-                span,
-                "blocks in syntax patterns are not yet supported",
-            )],
-        );
-
-        Err(self.ast_builder.syntax_error(span))
+        Ok(BlockSyntaxPattern {
+            span,
+            statements: statements.collect(),
+        }
+        .into())
     }
 
     async fn build_terminal(
@@ -164,6 +167,9 @@ impl SyntaxContext for SyntaxPatternSyntaxContext {
                     Ok(ListRepetitionSyntaxPattern { span, patterns }.into())
                 }
                 Err(expr) => match expr.kind {
+                    parse::ExprKind::Underscore => {
+                        Ok(UnderscoreSyntaxPattern { span: expr.span }.into())
+                    }
                     parse::ExprKind::Name(name, name_scope) => Ok(NameSyntaxPattern {
                         span: expr.span,
                         name,
@@ -321,6 +327,14 @@ impl SyntaxPattern {
 
                     return None;
                 }
+                SyntaxPattern::Block(pattern) => {
+                    ast_builder.compiler.add_error(
+                        "blocks in syntax patterns are not yet supported",
+                        vec![Note::primary(pattern.span, "try removing this")],
+                    );
+
+                    return None;
+                }
             }
         }
 
@@ -343,6 +357,7 @@ impl SyntaxPattern {
             SyntaxPattern::VariableRepetition(pattern) => pattern.span,
             SyntaxPattern::List(pattern) => pattern.span,
             SyntaxPattern::ListRepetition(pattern) => pattern.span,
+            SyntaxPattern::Block(pattern) => pattern.span,
         };
 
         let mut exprs = Self::expand_inner(ast_builder, body, vars)?;
@@ -384,14 +399,10 @@ impl SyntaxPattern {
                 span: pattern.span,
                 kind: parse::ExprKind::Number(pattern.number),
             }],
-            SyntaxPattern::Underscore(pattern) => {
-                ast_builder.compiler.add_error(
-                    "syntax error",
-                    vec![Note::primary(pattern.span, "expected expression")],
-                );
-
-                return Err(ast_builder.syntax_error(pattern.span));
-            }
+            SyntaxPattern::Underscore(pattern) => vec![parse::Expr {
+                span: pattern.span,
+                kind: parse::ExprKind::Underscore,
+            }],
             SyntaxPattern::Variable(pattern) => match vars.get(&pattern.name) {
                 Some(expr) => match expr {
                     SyntaxExpression::Single(expr) => vec![expr.clone()],
@@ -439,15 +450,15 @@ impl SyntaxPattern {
             SyntaxPattern::List(pattern) => {
                 vec![parse::Expr {
                     span: pattern.span,
-                    kind: parse::ExprKind::List(
-                        pattern
-                            .patterns
-                            .into_iter()
-                            .map(|pattern| {
-                                Ok(Self::expand_inner(ast_builder, pattern?, vars)?.into())
-                            })
-                            .collect::<Result<_, _>>()?,
-                    ),
+                    kind: parse::ExprKind::List(vec![pattern
+                        .patterns
+                        .into_iter()
+                        .map(|pattern| Self::expand_inner(ast_builder, pattern?, vars))
+                        .collect::<Result<Vec<_>, _>>()?
+                        .into_iter()
+                        .flatten()
+                        .collect::<Vec<_>>()
+                        .into()]),
                 }]
             }
             SyntaxPattern::ListRepetition(pattern) => {
@@ -507,18 +518,14 @@ impl SyntaxPattern {
                                     )))
                                     .collect();
 
-                                Ok::<_, SyntaxError>(
-                                    pattern
-                                        .patterns
-                                        .clone()
-                                        .into_iter()
-                                        .map(|pattern| {
-                                            Self::expand_inner(ast_builder, pattern?, &vars)
-                                        })
-                                        .collect::<Result<Vec<_>, _>>()?
-                                        .into_iter()
-                                        .flatten(),
-                                )
+                                Ok(pattern
+                                    .patterns
+                                    .clone()
+                                    .into_iter()
+                                    .map(|pattern| Self::expand_inner(ast_builder, pattern?, &vars))
+                                    .collect::<Result<Vec<_>, _>>()?
+                                    .into_iter()
+                                    .flatten())
                             })
                             .collect::<Result<Vec<_>, _>>()?
                             .into_iter()
@@ -545,6 +552,25 @@ impl SyntaxPattern {
                     }
                 }
             }
+            SyntaxPattern::Block(pattern) => {
+                vec![parse::Expr {
+                    span: pattern.span,
+                    kind: parse::ExprKind::Block(
+                        pattern
+                            .statements
+                            .into_iter()
+                            .map(|pattern| {
+                                Ok(parse::Statement {
+                                    lines: vec![
+                                        Self::expand_inner(ast_builder, pattern?, vars)?.into()
+                                    ],
+                                    ..Default::default()
+                                })
+                            })
+                            .collect::<Result<_, _>>()?,
+                    ),
+                }]
+            }
         })
     }
 
@@ -564,6 +590,11 @@ impl SyntaxPattern {
             }
             SyntaxPattern::List(pattern) => {
                 for pattern in pattern.patterns.iter().flatten() {
+                    pattern.collect_used_variables(vars);
+                }
+            }
+            SyntaxPattern::Block(pattern) => {
+                for pattern in pattern.statements.iter().flatten() {
                     pattern.collect_used_variables(vars);
                 }
             }

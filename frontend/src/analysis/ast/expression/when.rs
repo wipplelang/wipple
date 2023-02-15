@@ -22,7 +22,7 @@ impl Syntax for WhenExpressionSyntax {
 
     fn rules() -> SyntaxRules<Self> {
         SyntaxRules::new().with(SyntaxRule::<Self>::function(
-            "end",
+            "when",
             |context, span, exprs, scope| async move {
                 if exprs.len() != 2 {
                     context.ast_builder.compiler.add_error(

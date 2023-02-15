@@ -72,6 +72,8 @@ impl SyntaxContext for WhenArmSyntaxContext {
         expr: parse::Expr,
         _scope: ScopeId,
     ) -> Result<Self::Body, SyntaxError> {
+        dbg!(&expr);
+
         self.ast_builder.compiler.add_error(
             "syntax error",
             vec![Note::primary(expr.span, "expected a function")],

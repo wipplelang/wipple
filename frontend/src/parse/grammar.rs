@@ -95,7 +95,7 @@ impl Expr {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct Statement {
     pub leading_lines: u32,
     pub indent: u32,
