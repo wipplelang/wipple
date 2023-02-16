@@ -30,7 +30,7 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import { nanoid } from "nanoid";
 import { CodeEditor, TextEditor } from "../components";
-import { useAsyncEffect, useRefState } from "../helpers";
+import { useRefState } from "../helpers";
 import { useRunner } from "../runner";
 
 type Section = { id: string; value: string } & (
@@ -49,63 +49,67 @@ const App: NextPage = () => {
     const [nextPage, setNextPage] = useState<PageLink | undefined>();
 
     const [query, setQuery] = useRefState<URLSearchParams | null>(null);
-    useAsyncEffect(async () => {
-        const query = new URLSearchParams(window.location.search);
-        setQuery(query);
+    useEffect(() => {
+        const setup = async () => {
+            const query = new URLSearchParams(window.location.search);
+            setQuery(query);
 
-        // For backward compatibility
-        const codeParam = query.get("code");
-        if (codeParam) {
-            setSections([
-                {
-                    id: nanoid(8),
-                    type: "code",
-                    value: codeParam,
-                },
-            ]);
+            // For backward compatibility
+            const codeParam = query.get("code");
+            if (codeParam) {
+                setSections([
+                    {
+                        id: nanoid(8),
+                        type: "code",
+                        value: codeParam,
+                    },
+                ]);
 
-            return;
-        }
-
-        const sectionsParam = query.get("sections");
-        if (sectionsParam) {
-            setSections(JSON.parse(sectionsParam));
-
-            const previousPage = query.get("previous");
-            if (previousPage) {
-                setPreviousPage(JSON.parse(previousPage));
+                return;
             }
 
-            const nextPage = query.get("next");
-            if (nextPage) {
-                setNextPage(JSON.parse(nextPage));
+            const sectionsParam = query.get("sections");
+            if (sectionsParam) {
+                setSections(JSON.parse(sectionsParam));
+
+                const previousPage = query.get("previous");
+                if (previousPage) {
+                    setPreviousPage(JSON.parse(previousPage));
+                }
+
+                const nextPage = query.get("next");
+                if (nextPage) {
+                    setNextPage(JSON.parse(nextPage));
+                }
+
+                return;
             }
 
-            return;
-        }
+            const lessonParam = query.get("lesson");
+            if (lessonParam) {
+                const data = await (await fetch(`./lessons/${lessonParam}.json`)).text();
 
-        const lessonParam = query.get("lesson");
-        if (lessonParam) {
-            const data = await (await fetch(`./lessons/${lessonParam}.json`)).text();
+                const lesson: {
+                    sections: Section[];
+                    previous?: PageLink;
+                    next?: PageLink;
+                } = JSON.parse(data);
 
-            const lesson: {
-                sections: Section[];
-                previous?: PageLink;
-                next?: PageLink;
-            } = JSON.parse(data);
+                setSections(lesson.sections);
+                setPreviousPage(lesson.previous);
+                setNextPage(lesson.next);
+            } else {
+                setSections([
+                    {
+                        id: nanoid(8),
+                        type: "code",
+                        value: "",
+                    },
+                ]);
+            }
+        };
 
-            setSections(lesson.sections);
-            setPreviousPage(lesson.previous);
-            setNextPage(lesson.next);
-        } else {
-            setSections([
-                {
-                    id: nanoid(8),
-                    type: "code",
-                    value: "",
-                },
-            ]);
-        }
+        setup();
     }, []);
 
     useEffect(() => {
@@ -216,7 +220,6 @@ const App: NextPage = () => {
                                               const newSections = [...sections];
                                               newSections.splice(index, 1);
                                               setSections(newSections);
-                                              await runner.remove(section.id);
                                           }
                                         : undefined
                                 }

@@ -450,10 +450,7 @@ impl ExpressionSyntaxContext {
         exprs: Vec<parse::Expr>,
         scope: ScopeId,
     ) -> Result<Expression, SyntaxError> {
-        let SyntaxBody::Block(body) = match syntax.body {
-            Ok(body) => body,
-            Err(_) => todo!(),
-        };
+        let SyntaxBody::Block(body) = syntax.body?;
 
         for rule in body.rules.into_iter().flatten() {
             let SyntaxRule::Function(rule) = rule;

@@ -406,19 +406,7 @@ impl SyntaxPattern {
         body: SyntaxPattern,
         vars: &HashMap<InternedString, SyntaxExpression>,
     ) -> Result<parse::Expr, SyntaxError> {
-        // TODO: Have a `span()` function instead of this
-        let body_span = match &body {
-            SyntaxPattern::Unit(pattern) => pattern.span,
-            SyntaxPattern::Name(pattern) => pattern.span,
-            SyntaxPattern::Text(pattern) => pattern.span,
-            SyntaxPattern::Number(pattern) => pattern.span,
-            SyntaxPattern::Underscore(pattern) => pattern.span,
-            SyntaxPattern::Variable(pattern) => pattern.span,
-            SyntaxPattern::VariableRepetition(pattern) => pattern.span,
-            SyntaxPattern::List(pattern) => pattern.span,
-            SyntaxPattern::ListRepetition(pattern) => pattern.span,
-            SyntaxPattern::Block(pattern) => pattern.span,
-        };
+        let body_span = body.span();
 
         let mut exprs = Self::expand_inner(ast_builder, body, vars)?;
 

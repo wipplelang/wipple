@@ -1,11 +1,11 @@
 use lazy_static::lazy_static;
 use loader::Fetcher;
+use parking_lot::{MappedMutexGuard, Mutex, MutexGuard};
 use serde::Serialize;
 use std::{
-    collections::HashMap,
     future::Future,
     pin::Pin,
-    sync::{Arc, Mutex},
+    sync::{atomic::AtomicBool, Arc},
 };
 use wasm_bindgen::{prelude::*, JsCast};
 use wasm_bindgen_futures::JsFuture;
@@ -160,7 +160,7 @@ lazy_static! {
     };
 
 
-    static ref ANALYSIS: Mutex<HashMap<String, Arc<Analysis>>> = Default::default();
+    static ref ANALYSIS: Arc<Mutex<Option<Analysis>>> = Default::default();
 }
 
 #[derive(Debug)]
@@ -169,19 +169,16 @@ struct Analysis {
     success: bool,
 }
 
-fn save_analysis(id: impl ToString, analysis: Analysis) {
-    ANALYSIS
-        .lock()
-        .unwrap()
-        .insert(id.to_string(), Arc::new(analysis));
+fn save_analysis(analysis: Analysis) {
+    *ANALYSIS.lock() = Some(analysis);
 }
 
-fn get_analysis(id: &str) -> Option<Arc<Analysis>> {
-    ANALYSIS.lock().unwrap().get(id).cloned()
+fn get_analysis<'a>() -> Option<MappedMutexGuard<'a, Analysis>> {
+    MutexGuard::try_map(ANALYSIS.lock(), |analysis| analysis.as_mut()).ok()
 }
 
 #[wasm_bindgen]
-pub async fn analyze(id: String, code: String, lint: bool) -> JsValue {
+pub async fn analyze(code: String, lint: bool) -> JsValue {
     #[cfg(feature = "console_error_panic_hook")]
     console_error_panic_hook::set_once();
 
@@ -231,7 +228,7 @@ pub async fn analyze(id: String, code: String, lint: bool) -> JsValue {
 
     let syntax_highlighting = get_syntax_highlighting(&program);
 
-    save_analysis(id, Analysis { program, success });
+    save_analysis(Analysis { program, success });
 
     let output = AnalysisOutput {
         diagnostics,
@@ -349,67 +346,121 @@ fn get_syntax_highlighting(
 }
 
 #[wasm_bindgen]
-pub async fn run(id: String, input: js_sys::Function, output: js_sys::Function) -> bool {
-    let analysis = match get_analysis(&id) {
+pub fn run(
+    input: js_sys::Function,
+    output: js_sys::Function,
+    callback: js_sys::Function,
+) -> JsValue {
+    let analysis = match get_analysis() {
         Some(analysis) => analysis,
-        None => return false,
+        None => {
+            callback.call1(&JsValue::NULL, &JsValue::FALSE).unwrap();
+            return JsValue::NULL;
+        }
     };
 
     let Analysis { program, success } = &*analysis;
 
     let program = success.then(|| COMPILER.ir_from(program));
 
+    let program = match program {
+        Some(program) => program,
+        None => {
+            callback.call1(&JsValue::NULL, &JsValue::FALSE).unwrap();
+            return JsValue::NULL;
+        }
+    };
+
     let input = Arc::new(input);
     let output = Arc::new(output);
 
-    if let Some(program) = program {
-        if *success {
-            let result = {
+    let mut interpreter = {
+        let output = output.clone();
+
+        wipple_interpreter_backend::Interpreter::new(
+            move |prompt| {
+                let input = input.clone();
+
+                Box::pin(async move {
+                    wasm_bindgen_futures::JsFuture::from(js_sys::Promise::from(
+                        input.call1(&JsValue::NULL, &prompt.into()).unwrap(),
+                    ))
+                    .await
+                    .unwrap()
+                    .as_string()
+                    .unwrap()
+                })
+            },
+            move |text| {
                 let output = output.clone();
 
-                let mut interpreter = wipple_interpreter_backend::Interpreter::new(
-                    move |prompt| {
-                        let input = input.clone();
-
-                        Box::pin(async move {
-                            wasm_bindgen_futures::JsFuture::from(js_sys::Promise::from(
-                                input.call1(&JsValue::NULL, &prompt.into()).unwrap(),
-                            ))
-                            .await
-                            .unwrap()
-                            .as_string()
-                            .unwrap()
-                        })
-                    },
-                    move |text| {
-                        let output = output.clone();
-
-                        Box::pin(async move {
-                            wasm_bindgen_futures::JsFuture::from(js_sys::Promise::from(
-                                output.call1(&JsValue::NULL, &text.into()).unwrap(),
-                            ))
-                            .await
-                            .unwrap();
-                        })
-                    },
-                );
-
-                interpreter.run(&program).await
-            };
-
-            if let Err(error) = result {
-                output
-                    .call1(&JsValue::NULL, &format!("fatal error: {error}").into())
+                Box::pin(async move {
+                    wasm_bindgen_futures::JsFuture::from(js_sys::Promise::from(
+                        output.call1(&JsValue::NULL, &text.into()).unwrap(),
+                    ))
+                    .await
                     .unwrap();
+                })
+            },
+        )
+    };
+
+    struct CancellableFuture<Fut> {
+        token: Arc<AtomicBool>,
+        fut: Pin<Box<Fut>>,
+    }
+
+    impl<Fut> CancellableFuture<Fut> {
+        fn new(token: Arc<AtomicBool>, fut: Fut) -> Self {
+            CancellableFuture {
+                token,
+                fut: Box::pin(fut),
             }
         }
     }
 
-    true
+    impl<Fut: Future> Future for CancellableFuture<Fut> {
+        type Output = Option<Fut::Output>;
+
+        fn poll(
+            self: Pin<&mut Self>,
+            cx: &mut std::task::Context,
+        ) -> std::task::Poll<Self::Output> {
+            let cancelled = self.token.load(std::sync::atomic::Ordering::SeqCst);
+
+            if cancelled {
+                std::task::Poll::Ready(None)
+            } else {
+                Pin::new(&mut self.get_mut().fut).poll(cx).map(Some)
+            }
+        }
+    }
+
+    let token = Arc::new(AtomicBool::new(false));
+
+    let future = CancellableFuture::new(token.clone(), async move {
+        let result = interpreter.run(&program).await;
+
+        if let Err(error) = result {
+            output
+                .call1(&JsValue::NULL, &format!("fatal error: {error}").into())
+                .unwrap();
+        }
+
+        callback.call1(&JsValue::NULL, &JsValue::TRUE).unwrap();
+    });
+
+    wasm_bindgen_futures::spawn_local(async move {
+        future.await;
+    });
+
+    Closure::once_into_js(move || {
+        token.store(true, std::sync::atomic::Ordering::SeqCst);
+    })
 }
 
 #[wasm_bindgen]
-pub fn hover(id: String, start: usize, end: usize) -> JsValue {
+pub fn hover(start: usize, end: usize) -> JsValue {
     use wipple_frontend::{
         analysis::{
             typecheck::{
@@ -423,7 +474,7 @@ pub fn hover(id: String, start: usize, end: usize) -> JsValue {
         FilePath,
     };
 
-    let analysis = match get_analysis(&id) {
+    let analysis = match get_analysis() {
         Some(analysis) => analysis,
         None => return JsValue::NULL,
     };
@@ -585,9 +636,4 @@ pub fn hover(id: String, start: usize, end: usize) -> JsValue {
         .map(|(_, hover)| hover);
 
     JsValue::from_serde(&hover).unwrap()
-}
-
-#[wasm_bindgen]
-pub fn remove(id: String) {
-    ANALYSIS.lock().unwrap().remove(&id);
 }

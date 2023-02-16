@@ -1,13 +1,11 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import SimpleCodeEditor from "react-simple-code-editor";
 import * as prism from "prismjs";
 import {
     Button,
     debounce,
-    Icon,
     IconButton,
     InputAdornment,
-    LinearProgress,
     TextField,
     useMediaQuery,
 } from "@mui/material";
@@ -19,8 +17,8 @@ import {
     HoverOutput,
     useRunner,
 } from "../runner";
-import { useAsyncEffect } from "../helpers";
-import { ArrowCircleRight, CheckBoxRounded, KeyboardReturn, Refresh } from "@mui/icons-material";
+
+import { KeyboardReturn, Refresh } from "@mui/icons-material";
 
 export interface CodeEditorProps {
     id: string;
@@ -72,7 +70,7 @@ export const CodeEditor = (props: CodeEditorProps) => {
             debounce(async (code: string, lint: boolean) => {
                 try {
                     setSyntaxHighlighting([]); // FIXME: Prevent flashing
-                    const analysis = await runner.analyze(props.id, code, lint);
+                    const analysis = await runner.analyze(code, lint);
                     setSyntaxHighlighting(analysis.syntaxHighlighting);
                     setOutput(analysis.diagnostics);
 
@@ -96,22 +94,29 @@ export const CodeEditor = (props: CodeEditorProps) => {
                         };
 
                         setRunning(true);
-                        await runner.run(props.id, input, output);
+                        const success = await runner.run(input, output);
                         setRunning(false);
+
+                        if (!success) {
+                            throw new Error("runner failed");
+                        }
                     }
                 } catch (error) {
                     console.error(error);
 
                     setOutput({
                         type: "error",
-                        diagnostics: `internal error: There was a problem running your code. Please reload the page and try again.`,
+                        diagnostics:
+                            "internal error: There was a problem running your code. Please reload the page and try again.",
                     });
                 }
             }, 500),
         [props.id]
     );
 
-    useAsyncEffect(() => run(props.code, props.lint), [props.code, props.lint]);
+    useEffect(() => {
+        run(props.code, props.lint);
+    }, [props.code, props.lint]);
 
     const [hover, setHover_] = useState<Hover>();
     const setHover = useMemo(() => debounce(setHover_, 250), []);
@@ -133,62 +138,62 @@ export const CodeEditor = (props: CodeEditorProps) => {
         };
     }, [setMousePosition]);
 
-    useAsyncEffect(async () => {
-        if (!textEditor || !mousePosition) return;
+    useEffect(() => {
+        const setup = async () => {
+            if (!textEditor || !mousePosition) return;
 
-        const [mouseX, mouseY] = mousePosition;
-        const textEditorRect = textEditor.getBoundingClientRect();
-        if (
-            mouseX < textEditorRect.left ||
-            mouseX >= textEditorRect.right ||
-            mouseY < textEditorRect.top ||
-            mouseY >= textEditorRect.bottom
-        ) {
-            clearHover();
-            return;
-        }
-
-        if (textEditor.selectionEnd - textEditor.selectionStart === 0) {
-            clearHover();
-            return;
-        }
-
-        const output = await runner.hover(
-            props.id,
-            textEditor.selectionStart,
-            textEditor.selectionEnd
-        );
-
-        if (!output) {
-            clearHover();
-            return;
-        }
-
-        let hoverElement: HTMLElement | undefined;
-        for (const el of document.querySelectorAll<HTMLSpanElement>(`#${editorID} .token`)) {
-            const rect = el.getBoundingClientRect();
-
+            const [mouseX, mouseY] = mousePosition;
+            const textEditorRect = textEditor.getBoundingClientRect();
             if (
-                mouseX >= rect.left &&
-                mouseX < rect.right &&
-                mouseY >= rect.top &&
-                mouseY < rect.bottom
+                mouseX < textEditorRect.left ||
+                mouseX >= textEditorRect.right ||
+                mouseY < textEditorRect.top ||
+                mouseY >= textEditorRect.bottom
             ) {
-                hoverElement = el;
-                break;
+                clearHover();
+                return;
             }
-        }
 
-        if (!hoverElement) {
-            clearHover();
-            return;
-        }
+            if (textEditor.selectionEnd - textEditor.selectionStart === 0) {
+                clearHover();
+                return;
+            }
 
-        setHover({
-            x: hoverElement.getBoundingClientRect().x,
-            y: hoverElement.getBoundingClientRect().bottom + window.scrollY,
-            output,
-        });
+            const output = await runner.hover(textEditor.selectionStart, textEditor.selectionEnd);
+
+            if (!output) {
+                clearHover();
+                return;
+            }
+
+            let hoverElement: HTMLElement | undefined;
+            for (const el of document.querySelectorAll<HTMLSpanElement>(`#${editorID} .token`)) {
+                const rect = el.getBoundingClientRect();
+
+                if (
+                    mouseX >= rect.left &&
+                    mouseX < rect.right &&
+                    mouseY >= rect.top &&
+                    mouseY < rect.bottom
+                ) {
+                    hoverElement = el;
+                    break;
+                }
+            }
+
+            if (!hoverElement) {
+                clearHover();
+                return;
+            }
+
+            setHover({
+                x: hoverElement.getBoundingClientRect().x,
+                y: hoverElement.getBoundingClientRect().bottom + window.scrollY,
+                output,
+            });
+        };
+
+        setup();
     }, [props.id, mousePosition]);
 
     useEffect(() => {

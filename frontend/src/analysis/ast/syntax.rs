@@ -71,7 +71,7 @@ impl Syntax for std::convert::Infallible {
     type Context = std::convert::Infallible;
 
     fn rules() -> SyntaxRules<Self> {
-        todo!()
+        unreachable!()
     }
 }
 
