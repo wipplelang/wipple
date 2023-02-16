@@ -69,12 +69,11 @@ export const useRunner = () => {
 
             try {
                 const success = await new Promise<boolean>(async (resolve, reject) => {
-                    runner!.onmessage = (event) => {
-                        console.warn(event.data);
-
+                    runner!.onmessage = async (event) => {
                         switch (event.data.type) {
                             case "input":
-                                input(event.data.prompt);
+                                const text = await input(event.data.prompt);
+                                runner!.postMessage(text);
                                 break;
                             case "output":
                                 output(event.data.text);

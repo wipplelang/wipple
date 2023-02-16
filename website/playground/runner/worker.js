@@ -13,14 +13,13 @@ onmessage = async (event) => {
             case "run":
                 const input = (prompt) =>
                     new Promise((resolve) => {
-                        // {
-                        //     const prevonmessage = onmessage;
-                        //     onmessage = async (event) => {};
+                        const prevonmessage = onmessage;
+                        onmessage = async (event) => {
+                            resolve(event.data);
+                            onmessage = prevonmessage;
+                        };
 
-                        //     postMessage({ type: "input", prompt });
-                        // }
-
-                        resolve("Hello, world!");
+                        postMessage({ type: "input", prompt });
                     });
 
                 const output = async (text) => {

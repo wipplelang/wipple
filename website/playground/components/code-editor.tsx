@@ -1,7 +1,16 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import SimpleCodeEditor from "react-simple-code-editor";
 import * as prism from "prismjs";
-import { debounce, useMediaQuery } from "@mui/material";
+import {
+    Button,
+    debounce,
+    Icon,
+    IconButton,
+    InputAdornment,
+    LinearProgress,
+    TextField,
+    useMediaQuery,
+} from "@mui/material";
 import { Globals as SpringGlobals, useSpring, animated } from "react-spring";
 import useMeasure from "react-use-measure";
 import {
@@ -11,6 +20,7 @@ import {
     useRunner,
 } from "../runner";
 import { useAsyncEffect } from "../helpers";
+import { ArrowCircleRight, CheckBoxRounded, KeyboardReturn, Refresh } from "@mui/icons-material";
 
 export interface CodeEditorProps {
     id: string;
@@ -39,15 +49,9 @@ export const CodeEditor = (props: CodeEditorProps) => {
     >([]);
 
     const [isRunning, setRunning] = useState(false);
-    const [output, setOutput_] = useState<AnalysisOutputDiagnostics | OutputItem[] | undefined>();
-    const setOutput = useMemo(() => debounce(setOutput_, 100), [setOutput_]);
-    const appendToOutput = (item: OutputItem) => {
-        if (Array.isArray(output)) {
-            setOutput([...output, item]);
-        } else {
-            setOutput([item]);
-        }
-    };
+    const [output, setOutput] = useState<AnalysisOutputDiagnostics | OutputItem[] | undefined>();
+    const appendToOutput = (item: OutputItem) =>
+        setOutput((output) => (Array.isArray(output) ? [...output, item] : [item]));
 
     const [outputRef, { height: outputHeight }] = useMeasure();
     const animatedOutputStyle = useSpring(
@@ -104,7 +108,7 @@ export const CodeEditor = (props: CodeEditorProps) => {
                     });
                 }
             }, 500),
-        [props.id, setOutput]
+        [props.id]
     );
 
     useAsyncEffect(() => run(props.code, props.lint), [props.code, props.lint]);
@@ -210,6 +214,12 @@ export const CodeEditor = (props: CodeEditorProps) => {
         }
     }, [syntaxHighlighting]);
 
+    useEffect(() => {
+        if (!isRunning) {
+            document.getElementById(textAreaID)!.focus();
+        }
+    }, [isRunning]);
+
     return (
         <div className="bg-white dark:bg-gray-900 border-2 border-gray-100 dark:border-gray-700 rounded-lg overflow-clip">
             <SimpleCodeEditor
@@ -276,7 +286,13 @@ export const CodeEditor = (props: CodeEditorProps) => {
                                     switch (item.type) {
                                         case "input":
                                             return (
-                                                <textarea key={index} placeholder={item.prompt} /> // TODO: Submit
+                                                <InputField
+                                                    key={index}
+                                                    index={index}
+                                                    onSubmit={item.onSubmit}
+                                                >
+                                                    {item.prompt}
+                                                </InputField>
                                             );
                                         case "output":
                                             return item.text;
@@ -293,7 +309,25 @@ export const CodeEditor = (props: CodeEditorProps) => {
                             }
                         })()}
 
-                        {isRunning ? "Running..." : ""}
+                        {isRunning ? (
+                            <div className="bouncing-loader">
+                                <div></div>
+                                <div></div>
+                                <div></div>
+                            </div>
+                        ) : Array.isArray(output) &&
+                          output.find((item) => item.type === "input") ? (
+                            <div className="mt-4">
+                                <Button
+                                    variant="contained"
+                                    size="small"
+                                    endIcon={<Refresh />}
+                                    onClick={() => run(props.code, props.lint)}
+                                >
+                                    Run again
+                                </Button>
+                            </div>
+                        ) : null}
                     </pre>
                 </div>
             </animated.div>
@@ -333,6 +367,42 @@ export const CodeEditor = (props: CodeEditorProps) => {
                     ) : null}
                 </div>
             )}
+        </div>
+    );
+};
+
+const InputField = (props: {
+    index: number;
+    onSubmit: (text: string) => void;
+    children: string;
+}) => {
+    const [text, setText] = useState("");
+    const [isEnabled, setEnabled] = useState(true);
+
+    return (
+        <div className={props.index === 0 ? "mb-4" : "my-4"}>
+            <TextField
+                label={props.children}
+                variant="outlined"
+                fullWidth
+                value={text}
+                disabled={!isEnabled}
+                onChange={(event) => setText(event.target.value)}
+                InputProps={{
+                    endAdornment: (
+                        <InputAdornment position="end">
+                            <IconButton
+                                onClick={() => {
+                                    props.onSubmit(text);
+                                    setEnabled(false);
+                                }}
+                            >
+                                <KeyboardReturn />
+                            </IconButton>
+                        </InputAdornment>
+                    ),
+                }}
+            />
         </div>
     );
 };
