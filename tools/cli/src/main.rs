@@ -149,12 +149,25 @@ async fn run() -> anyhow::Result<()> {
                 _ => return Err(anyhow::Error::msg("")),
             };
 
-            let mut interpreter =
-                wipple_interpreter_backend::Interpreter::handling_output(|text| {
-                    print!("{text}");
-                });
+            let mut interpreter = wipple_interpreter_backend::Interpreter::new(
+                |prompt| {
+                    Box::pin(async move {
+                        print!("{prompt}");
+                        io::stdout().flush().unwrap();
+                        let mut buf = String::new();
+                        io::stdin().read_line(&mut buf).unwrap();
+                        buf.pop().expect("input did not contain trailing newline");
+                        buf
+                    })
+                },
+                |text| {
+                    Box::pin(async move {
+                        print!("{text}");
+                    })
+                },
+            );
 
-            if let Err(error) = interpreter.run(&ir) {
+            if let Err(error) = interpreter.run(&ir).await {
                 eprintln!("fatal error: {error}");
             }
         }

@@ -1,10 +1,9 @@
 use crate::{Error, Interpreter, Value};
 use itertools::Itertools;
 use num_traits::pow::Pow;
-use rust_decimal::Decimal;
-use rust_decimal::MathematicalOps;
-use std::{cell::RefCell, rc::Rc};
-use wipple_frontend::{ir, VariantIndex};
+use rust_decimal::{Decimal, MathematicalOps};
+use std::sync::Arc;
+use wipple_frontend::{helpers::Shared, ir, VariantIndex};
 
 fn r#false() -> Value {
     Value::Variant(VariantIndex::new(0), Vec::new())
@@ -30,9 +29,9 @@ fn error(value: Value) -> Value {
     Value::Variant(VariantIndex::new(1), vec![value])
 }
 
-impl<'a> Interpreter<'a> {
-    pub(crate) fn call_runtime(
-        &self,
+impl Interpreter {
+    pub(crate) async fn call_runtime(
+        &mut self,
         func: ir::RuntimeFunction,
         inputs: Vec<Value>,
     ) -> Result<Value, Error> {
@@ -71,7 +70,7 @@ impl<'a> Interpreter<'a> {
 
         macro_rules! runtime_text_fn {
             (($($input:pat),*) => $result:expr) => {
-                runtime_fn!(($($input),*) => Ok(Value::Text(Rc::from($result))))
+                runtime_fn!(($($input),*) => Ok(Value::Text(Arc::from($result))))
             };
             (Value::$ty:ident) => {
                 runtime_text_fn!((Value::$ty(x)) => x.to_string())
@@ -107,12 +106,12 @@ impl<'a> Interpreter<'a> {
             ir::RuntimeFunction::Crash => {
                 runtime_fn!((Value::Text(text)) => Err(Error::from(text.as_ref())))
             }
+            ir::RuntimeFunction::ReadStdin => runtime_fn!((Value::Text(text)) => {
+                let input = (self.input)(&text).await;
+                Ok(Value::Text(Arc::from(input)))
+            }),
             ir::RuntimeFunction::WriteStdout => runtime_fn!((Value::Text(text)) => {
-                self.output
-                    .as_ref()
-                    .ok_or_else(|| Error::from("output not configured"))?
-                    .borrow_mut()(&text);
-
+                (self.output)(&text).await;
                 Ok(Value::Tuple(Vec::new()))
             }),
             ir::RuntimeFunction::Format => runtime_fn!((Value::Text(text), Value::List(list)) => {
@@ -137,7 +136,7 @@ impl<'a> Interpreter<'a> {
                         .collect()
                 };
 
-                Ok(Value::Text(Rc::from(formatted)))
+                Ok(Value::Text(Arc::from(formatted)))
             }),
             ir::RuntimeFunction::NumberToText => {
                 runtime_text_fn!((Value::Number(n)) => n.normalize().to_string())
@@ -333,14 +332,14 @@ impl<'a> Interpreter<'a> {
                 })
             }
             ir::RuntimeFunction::MakeMutable => runtime_fn!((value) => {
-                Ok(Value::Mutable(Rc::new(RefCell::new(value))))
+                Ok(Value::Mutable(Shared::new(value)))
             }),
             ir::RuntimeFunction::GetMutable => {
-                runtime_fn!((Value::Mutable(value)) => Ok(value.borrow().clone()))
+                runtime_fn!((Value::Mutable(value)) => Ok(value.lock().clone()))
             }
             ir::RuntimeFunction::SetMutable => {
                 runtime_fn!((Value::Mutable(value), new_value) => {
-                    *value.borrow_mut() = new_value;
+                    *value.lock() = new_value;
                     Ok(Value::Tuple(Vec::new()))
                 })
             }

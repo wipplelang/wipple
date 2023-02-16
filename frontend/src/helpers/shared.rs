@@ -12,7 +12,7 @@ impl<T> Shared<T> {
     pub fn into_unique(self) -> T {
         Arc::try_unwrap(self.0)
             .unwrap_or_else(|_| {
-                panic!("called `unique` on a `Shared` with more than one reference")
+                panic!("called `into_unique` on a `Shared` value with more than one reference")
             })
             .into_inner()
     }

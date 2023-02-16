@@ -3,13 +3,13 @@ use colored::Colorize;
 use parking_lot::Mutex;
 use serde::Deserialize;
 use std::{
-    cell::RefCell,
     env, fs,
     io::{self, Write},
     path::PathBuf,
     sync::{atomic::AtomicUsize, Arc},
 };
 use wipple_default_loader as loader;
+use wipple_frontend::helpers::Shared;
 
 #[derive(Parser)]
 struct Args {
@@ -256,7 +256,7 @@ async fn run(
     let success = !diagnostics.contains_errors();
 
     let output = {
-        let buf = RefCell::new(Vec::new());
+        let buf = Shared::new(Vec::new());
 
         if success {
             let mut ir = compiler.ir_from(&program);
@@ -266,16 +266,24 @@ async fn run(
             }
 
             let mut interpreter =
-                wipple_interpreter_backend::Interpreter::handling_output(|text| {
-                    write!(buf.borrow_mut(), "{text}").unwrap()
+                wipple_interpreter_backend::Interpreter::new(|_| unimplemented!(), {
+                    let buf = buf.clone();
+
+                    move |text| {
+                        let buf = buf.clone();
+
+                        Box::pin(async move {
+                            write!(buf.lock(), "{text}").unwrap();
+                        })
+                    }
                 });
 
-            if let Err(error) = interpreter.run(&ir) {
-                write!(buf.borrow_mut(), "fatal error: {error}")?;
+            if let Err(error) = interpreter.run(&ir).await {
+                write!(buf.lock(), "fatal error: {error}")?;
             }
         }
 
-        String::from_utf8(buf.into_inner()).unwrap()
+        String::from_utf8(buf.into_unique()).unwrap()
     };
 
     let mut diagnostics = {

@@ -2,7 +2,7 @@
 
 use "fp.wpl"
 use "logic.wpl"
-use "output.wpl"
+use "io.wpl"
 use "util.wpl"
 use "math.wpl"
 use "mutable.wpl"

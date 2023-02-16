@@ -2221,6 +2221,8 @@ dependencies = [
 name = "wipple-interpreter-backend"
 version = "0.0.0"
 dependencies = [
+ "async-recursion",
+ "futures",
  "im",
  "itertools",
  "num-traits",
@@ -2241,6 +2243,7 @@ dependencies = [
  "lazy_static",
  "rust-embed",
  "serde",
+ "tokio",
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",

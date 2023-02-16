@@ -1,29 +1,31 @@
 mod runtime;
 
+use async_recursion::async_recursion;
+use futures::future::LocalBoxFuture;
 use std::{
-    cell::RefCell,
+    collections::BTreeMap,
     os::raw::{c_int, c_uint},
-    rc::Rc,
+    sync::Arc,
 };
-use wipple_frontend::{ir, VariantIndex};
+use wipple_frontend::{helpers::Shared, ir, VariantIndex};
 
 type Error = String;
 
-#[derive(Default)]
-pub struct Interpreter<'a> {
-    #[allow(clippy::type_complexity)]
-    output: Option<Rc<RefCell<Box<dyn FnMut(&str) + 'a>>>>,
+#[allow(clippy::type_complexity)]
+pub struct Interpreter {
+    input: Box<dyn Fn(&str) -> LocalBoxFuture<String>>,
+    output: Box<dyn Fn(&str) -> LocalBoxFuture<()>>,
 }
 
-impl<'a> Interpreter<'a> {
-    pub fn handling_output(output: impl FnMut(&str) + 'a) -> Self {
+impl Interpreter {
+    pub fn new(
+        input: impl Fn(&str) -> LocalBoxFuture<String> + 'static,
+        output: impl Fn(&str) -> LocalBoxFuture<()> + 'static,
+    ) -> Self {
         Interpreter {
-            output: Some(Rc::new(RefCell::new(Box::new(output)))),
+            input: Box::new(input),
+            output: Box::new(output),
         }
-    }
-
-    pub fn ignoring_output() -> Self {
-        Interpreter { output: None }
     }
 }
 
@@ -38,10 +40,10 @@ enum Value {
     Unsigned(c_uint),
     Float(f32),
     Double(f64),
-    Text(Rc<str>),
+    Text(Arc<str>),
     Function(Scope, usize),
     Variant(VariantIndex, Vec<Value>),
-    Mutable(Rc<RefCell<Value>>),
+    Mutable(Shared<Value>),
     List(im::Vector<Value>),
     Structure(Vec<Value>),
     Tuple(Vec<Value>),
@@ -70,7 +72,7 @@ impl Scope {
 
 struct Info {
     labels: Vec<(usize, Vec<ir::BasicBlock>)>,
-    initialized_constants: Vec<RefCell<Option<Value>>>,
+    initialized_constants: BTreeMap<usize, Value>,
 }
 
 #[derive(Debug, Default)]
@@ -132,20 +134,21 @@ impl Stack {
     }
 }
 
-impl<'a> Interpreter<'a> {
-    pub fn run(&mut self, program: &ir::Program) -> Result<(), Error> {
-        let info = Info {
+impl Interpreter {
+    pub async fn run(&mut self, program: &ir::Program) -> Result<(), Error> {
+        let mut info = Info {
             labels: program
                 .labels
                 .iter()
                 .map(|(_, vars, blocks)| (*vars, blocks.clone()))
                 .collect(),
-            initialized_constants: vec![Default::default(); program.labels.len()],
+            initialized_constants: BTreeMap::new(),
         };
 
         let mut stack = Stack::new();
 
-        self.evaluate_label(program.entrypoint, &mut stack, &info)?;
+        self.evaluate_label(program.entrypoint, &mut stack, &mut info)
+            .await?;
 
         stack.pop();
         assert!(stack.is_empty());
@@ -153,48 +156,50 @@ impl<'a> Interpreter<'a> {
         Ok(())
     }
 
-    fn evaluate_label(
+    async fn evaluate_label(
         &mut self,
         label: usize,
         stack: &mut Stack,
-        info: &Info,
+        info: &mut Info,
     ) -> Result<(), Error> {
         self.evaluate_label_inner(label, stack, Scope::new(0), info)
+            .await
     }
 
-    fn evaluate_label_in_scope(
+    async fn evaluate_label_in_scope(
         &mut self,
         label: usize,
         stack: &mut Stack,
         scope: Scope,
-        info: &Info,
+        info: &mut Info,
     ) -> Result<(), Error> {
-        self.evaluate_label_inner(label, stack, scope, info)
+        self.evaluate_label_inner(label, stack, scope, info).await
     }
 
-    fn evaluate_label_inner(
+    async fn evaluate_label_inner(
         &mut self,
         label: usize,
         stack: &mut Stack,
         mut scope: Scope,
-        info: &Info,
+        info: &mut Info,
     ) -> Result<(), Error> {
-        let (vars, blocks) = &info.labels[label];
+        let (vars, blocks) = info.labels[label].clone();
 
-        scope.0.reserve(*vars);
-        for _ in 0..*vars {
+        scope.0.reserve(vars);
+        for _ in 0..vars {
             scope.0.push(None);
         }
 
-        self.evaluate(blocks, stack, &mut scope, info)
+        self.evaluate(blocks, stack, &mut scope, info).await
     }
 
-    fn evaluate(
+    #[async_recursion(?Send)]
+    async fn evaluate(
         &mut self,
-        blocks: &[ir::BasicBlock],
+        blocks: Vec<ir::BasicBlock>,
         stack: &mut Stack,
         scope: &mut Scope,
-        info: &Info,
+        info: &mut Info,
     ) -> Result<(), Error> {
         let mut block = &blocks[0];
 
@@ -225,7 +230,7 @@ impl<'a> Interpreter<'a> {
                     ir::Statement::Expression(_, expr) => match expr {
                         ir::Expression::Marker => stack.push(Value::Marker),
                         ir::Expression::Text(text) => {
-                            stack.push(Value::Text(Rc::from(text.as_str())))
+                            stack.push(Value::Text(Arc::from(text.as_str())))
                         }
                         ir::Expression::Number(number) => stack.push(Value::Number(*number)),
                         ir::Expression::Integer(integer) => stack.push(Value::Integer(*integer)),
@@ -239,7 +244,7 @@ impl<'a> Interpreter<'a> {
                         ir::Expression::Double(double) => stack.push(Value::Double(*double)),
                         ir::Expression::Variable(var) => stack.push(scope.get(*var)),
                         ir::Expression::Constant(label) => {
-                            self.evaluate_constant(*label, stack, info)?
+                            self.evaluate_constant(*label, stack, info).await?
                         }
                         ir::Expression::Function(label) => {
                             stack.push(Value::Function(Scope::new(0), *label))
@@ -262,14 +267,15 @@ impl<'a> Interpreter<'a> {
 
                             stack.push(input);
 
-                            self.evaluate_label_in_scope(label, stack, scope, info)?;
+                            self.evaluate_label_in_scope(label, stack, scope, info)
+                                .await?;
                         }
                         ir::Expression::External(..) => {
                             return Err(Error::from("'external' is currently unsupported"));
                         }
                         ir::Expression::Runtime(func, inputs) => {
                             let inputs = stack.popn(*inputs);
-                            stack.push(self.call_runtime(*func, inputs)?);
+                            stack.push(self.call_runtime(*func, inputs).await?);
                         }
                         ir::Expression::Tuple(inputs) => {
                             let inputs = stack.popn(*inputs);
@@ -288,7 +294,7 @@ impl<'a> Interpreter<'a> {
                                 .chain(trailing_segment.map(|text| text.to_string()))
                                 .collect::<String>();
 
-                            stack.push(Value::Text(Rc::from(text)));
+                            stack.push(Value::Text(Arc::from(text)));
                         }
                         ir::Expression::Structure(inputs) => {
                             let inputs = stack.popn(*inputs);
@@ -352,22 +358,21 @@ impl<'a> Interpreter<'a> {
         }
     }
 
-    fn evaluate_constant(
+    async fn evaluate_constant(
         &mut self,
         label: usize,
         stack: &mut Stack,
-        info: &Info,
+        info: &mut Info,
     ) -> Result<(), Error> {
-        let constant = &mut *info.initialized_constants[label].borrow_mut();
-
-        if let Some(value) = constant {
+        if let Some(value) = info.initialized_constants.get(&label) {
             stack.push(value.clone());
-        } else {
-            self.evaluate_label(label, stack, info)?;
-            let value = stack.pop();
-            *constant = Some(value.clone());
-            stack.push(value);
+            return Ok(());
         }
+
+        self.evaluate_label(label, stack, info).await?;
+        let value = stack.pop();
+        info.initialized_constants.insert(label, value.clone());
+        stack.push(value);
 
         Ok(())
     }

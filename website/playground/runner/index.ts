@@ -47,14 +47,12 @@ export const useRunner = () => {
                         reject(event.error);
                     };
 
-                    runner!.postMessage(
-                        JSON.stringify({
-                            operation: "analyze",
-                            id,
-                            code,
-                            lint,
-                        })
-                    );
+                    runner!.postMessage({
+                        operation: "analyze",
+                        id,
+                        code,
+                        lint,
+                    });
                 });
 
                 return analysis;
@@ -62,28 +60,42 @@ export const useRunner = () => {
                 semaphore.release();
             }
         },
-        run: async (id: string) => {
+        run: async (
+            id: string,
+            input: (prompt: string) => Promise<string>,
+            output: (string: string) => void
+        ) => {
             await semaphore.acquire();
 
             try {
-                const output: string = await new Promise(async (resolve, reject) => {
+                const success = await new Promise<boolean>(async (resolve, reject) => {
                     runner!.onmessage = (event) => {
-                        resolve(event.data);
+                        console.warn(event.data);
+
+                        switch (event.data.type) {
+                            case "input":
+                                input(event.data.prompt);
+                                break;
+                            case "output":
+                                output(event.data.text);
+                                break;
+                            case "done":
+                                resolve(event.data.success);
+                                break;
+                        }
                     };
 
                     runner!.onerror = (event) => {
                         reject(event.error);
                     };
 
-                    runner!.postMessage(
-                        JSON.stringify({
-                            operation: "run",
-                            id,
-                        })
-                    );
+                    runner!.postMessage({
+                        operation: "run",
+                        id,
+                    });
                 });
 
-                return output;
+                return success;
             } finally {
                 semaphore.release();
             }
@@ -101,14 +113,12 @@ export const useRunner = () => {
                         reject(event.error);
                     };
 
-                    runner!.postMessage(
-                        JSON.stringify({
-                            operation: "hover",
-                            id,
-                            start,
-                            end,
-                        })
-                    );
+                    runner!.postMessage({
+                        operation: "hover",
+                        id,
+                        start,
+                        end,
+                    });
                 });
 
                 return hover;
@@ -129,12 +139,10 @@ export const useRunner = () => {
                         reject(event.error);
                     };
 
-                    runner!.postMessage(
-                        JSON.stringify({
-                            operation: "delete",
-                            id,
-                        })
-                    );
+                    runner!.postMessage({
+                        operation: "delete",
+                        id,
+                    });
                 });
             } finally {
                 semaphore.release();

@@ -19,6 +19,7 @@ itertools = "0.10"
 js-sys = "0.3"
 lazy_static = "1"
 serde = { version = "1.0", features = ["derive"] }
+tokio = { version = "1", features = ["rt"] }
 wasm-bindgen = { version = "0.2", features = ["serde-serialize"] }
 wasm-bindgen-futures = "0.4"
 web-sys = { version = "0.3", features = ["Response", "Request", "WorkerGlobalScope"] }
@@ -28,4 +29,4 @@ wipple-interpreter-backend = { path = "../../../backends/interpreter" }
 rust-embed = { version = "6", features = ["debug-embed", "interpolate-folder-path"], optional = true }
 
 [package.metadata.wasm-pack.profile.release]
-wasm-opt = ['-O1']  # FIXME: wasm-opt's inlining-optimizing pass is very slow; -O1 disables it
+wasm-opt = false  # FIXME: wasm-opt currently crashes

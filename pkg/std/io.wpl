@@ -48,3 +48,11 @@ Success Failure where (Show Failure) =>
 			OK x -> x
 			Error e -> crash (format "_: _" message e)
 		}
+
+[help "Read a value from the user with the provided prompt. `read-stdin` writes the prompt directly to the standard output with no trailing space."]
+read-stdin :: Text -> Text
+read-stdin : prompt -> external "runtime" "read-stdin" prompt
+
+[help "Read a value from the user with the provided prompt."]
+input :: Text -> Text
+input : prompt -> read-stdin (format "_ " prompt)

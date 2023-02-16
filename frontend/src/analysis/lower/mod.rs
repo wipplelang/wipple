@@ -510,6 +510,7 @@ pub type CaptureList = Vec<(VariableId, Span)>;
 pub enum RuntimeFunction {
     Crash,
     WriteStdout,
+    ReadStdin,
     Format,
     NumberToText,
     IntegerToText,

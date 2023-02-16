@@ -5,7 +5,6 @@ import { debounce, useMediaQuery } from "@mui/material";
 import { Globals as SpringGlobals, useSpring, animated } from "react-spring";
 import useMeasure from "react-use-measure";
 import {
-    AnalysisOutput,
     AnalysisOutputDiagnostics,
     AnalysisOutputSyntaxHighlightingItem,
     HoverOutput,
@@ -21,6 +20,10 @@ export interface CodeEditorProps {
     onChange: (code: string) => void;
 }
 
+type OutputItem =
+    | { type: "output"; text: string }
+    | { type: "input"; prompt: string; onSubmit: (text: string) => void };
+
 interface Hover {
     x: number;
     y: number;
@@ -35,8 +38,16 @@ export const CodeEditor = (props: CodeEditorProps) => {
         AnalysisOutputSyntaxHighlightingItem[]
     >([]);
 
-    const [output, setOutput_] = useState<AnalysisOutputDiagnostics | string | undefined>();
-    const setOutput = debounce(setOutput_, 100);
+    const [isRunning, setRunning] = useState(false);
+    const [output, setOutput_] = useState<AnalysisOutputDiagnostics | OutputItem[] | undefined>();
+    const setOutput = useMemo(() => debounce(setOutput_, 100), [setOutput_]);
+    const appendToOutput = (item: OutputItem) => {
+        if (Array.isArray(output)) {
+            setOutput([...output, item]);
+        } else {
+            setOutput([item]);
+        }
+    };
 
     const [outputRef, { height: outputHeight }] = useMeasure();
     const animatedOutputStyle = useSpring(
@@ -62,8 +73,27 @@ export const CodeEditor = (props: CodeEditorProps) => {
                     setOutput(analysis.diagnostics);
 
                     if (analysis.diagnostics.type !== "error") {
-                        const output = await runner.run(props.id);
-                        setOutput(output);
+                        setOutput([]);
+
+                        const input = (prompt: string) =>
+                            new Promise<string>((resolve) => {
+                                appendToOutput({
+                                    type: "input",
+                                    prompt,
+                                    onSubmit: resolve,
+                                });
+                            });
+
+                        const output = (text: string) => {
+                            appendToOutput({
+                                type: "output",
+                                text,
+                            });
+                        };
+
+                        setRunning(true);
+                        await runner.run(props.id, input, output);
+                        setRunning(false);
                     }
                 } catch (error) {
                     console.error(error);
@@ -74,7 +104,7 @@ export const CodeEditor = (props: CodeEditorProps) => {
                     });
                 }
             }, 500),
-        [props.id]
+        [props.id, setOutput]
     );
 
     useAsyncEffect(() => run(props.code, props.lint), [props.code, props.lint]);
@@ -221,18 +251,17 @@ export const CodeEditor = (props: CodeEditorProps) => {
                             return "";
                         }
 
-                        switch (typeof output) {
-                            case "string":
-                                return output.length ? successClasses : "";
-                            default:
-                                switch (output.type) {
-                                    case "success":
-                                        return successClasses;
-                                    case "warning":
-                                        return warningClasses;
-                                    case "error":
-                                        return errorClasses;
-                                }
+                        if (Array.isArray(output)) {
+                            return output.length ? successClasses : "";
+                        } else {
+                            switch (output.type) {
+                                case "success":
+                                    return successClasses;
+                                case "warning":
+                                    return warningClasses;
+                                case "error":
+                                    return errorClasses;
+                            }
                         }
                     })()}
                 >
@@ -242,19 +271,29 @@ export const CodeEditor = (props: CodeEditorProps) => {
                                 return null;
                             }
 
-                            switch (typeof output) {
-                                case "string":
-                                    return output;
-                                default:
-                                    switch (output.type) {
-                                        case "success":
-                                            return "Running..."; // TODO: Replace with animated spinner
-                                        case "warning":
-                                        case "error":
-                                            return output.diagnostics;
+                            if (Array.isArray(output)) {
+                                return output.map((item, index) => {
+                                    switch (item.type) {
+                                        case "input":
+                                            return (
+                                                <textarea key={index} placeholder={item.prompt} /> // TODO: Submit
+                                            );
+                                        case "output":
+                                            return item.text;
                                     }
+                                });
+                            } else {
+                                switch (output.type) {
+                                    case "success":
+                                        return null;
+                                    case "warning":
+                                    case "error":
+                                        return output.diagnostics;
+                                }
                             }
                         })()}
+
+                        {isRunning ? "Running..." : ""}
                     </pre>
                 </div>
             </animated.div>

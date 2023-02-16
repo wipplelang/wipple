@@ -2,22 +2,36 @@ onmessage = async (event) => {
     try {
         const runner = await import("./pkg");
 
-        const data = JSON.parse(event.data);
+        const { id } = event.data;
 
-        const { id } = data;
-
-        switch (data.operation) {
+        switch (event.data.operation) {
             case "analyze":
-                const { code, lint } = data;
+                const { code, lint } = event.data;
                 const analysis = await runner.analyze(id, code, lint);
                 postMessage(analysis);
                 break;
             case "run":
-                const output = runner.run(id);
-                postMessage(output);
+                const input = (prompt) =>
+                    new Promise((resolve) => {
+                        // {
+                        //     const prevonmessage = onmessage;
+                        //     onmessage = async (event) => {};
+
+                        //     postMessage({ type: "input", prompt });
+                        // }
+
+                        resolve("Hello, world!");
+                    });
+
+                const output = async (text) => {
+                    postMessage({ type: "output", text });
+                };
+
+                const success = await runner.run(id, input, output);
+                postMessage({ type: "done", success });
                 break;
             case "hover":
-                const { start, end } = data;
+                const { start, end } = event.data;
                 const hover = runner.hover(id, start, end);
                 postMessage(hover);
                 break;

@@ -525,6 +525,7 @@ mod util {
             match self {
                 RuntimeFunction::Crash => false,
                 RuntimeFunction::WriteStdout => false,
+                RuntimeFunction::ReadStdin => false,
                 RuntimeFunction::Format => true,
                 RuntimeFunction::NumberToText => true,
                 RuntimeFunction::IntegerToText => true,

@@ -4,7 +4,6 @@ use serde::Serialize;
 use std::{
     collections::HashMap,
     future::Future,
-    io::Write,
     pin::Pin,
     sync::{Arc, Mutex},
 };
@@ -350,31 +349,63 @@ fn get_syntax_highlighting(
 }
 
 #[wasm_bindgen]
-pub fn run(id: String) -> Option<String> {
-    let Analysis { program, success } = &*get_analysis(&id)?;
+pub async fn run(id: String, input: js_sys::Function, output: js_sys::Function) -> bool {
+    let analysis = match get_analysis(&id) {
+        Some(analysis) => analysis,
+        None => return false,
+    };
+
+    let Analysis { program, success } = &*analysis;
 
     let program = success.then(|| COMPILER.ir_from(program));
 
-    let mut output = Vec::new();
+    let input = Arc::new(input);
+    let output = Arc::new(output);
 
     if let Some(program) = program {
         if *success {
             let result = {
-                let mut interpreter =
-                    wipple_interpreter_backend::Interpreter::handling_output(|text| {
-                        write!(output, "{text}").unwrap();
-                    });
+                let output = output.clone();
 
-                interpreter.run(&program)
+                let mut interpreter = wipple_interpreter_backend::Interpreter::new(
+                    move |prompt| {
+                        let input = input.clone();
+
+                        Box::pin(async move {
+                            wasm_bindgen_futures::JsFuture::from(js_sys::Promise::from(
+                                input.call1(&JsValue::NULL, &prompt.into()).unwrap(),
+                            ))
+                            .await
+                            .unwrap()
+                            .as_string()
+                            .unwrap()
+                        })
+                    },
+                    move |text| {
+                        let output = output.clone();
+
+                        Box::pin(async move {
+                            wasm_bindgen_futures::JsFuture::from(js_sys::Promise::from(
+                                output.call1(&JsValue::NULL, &text.into()).unwrap(),
+                            ))
+                            .await
+                            .unwrap();
+                        })
+                    },
+                );
+
+                interpreter.run(&program).await
             };
 
             if let Err(error) = result {
-                write!(output, "fatal error: {error}").unwrap();
+                output
+                    .call1(&JsValue::NULL, &format!("fatal error: {error}").into())
+                    .unwrap();
             }
         }
     }
 
-    Some(String::from_utf8(output).unwrap().trim().to_string())
+    true
 }
 
 #[wasm_bindgen]
