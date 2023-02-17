@@ -397,6 +397,7 @@ const InputField = (props: {
                     endAdornment: (
                         <InputAdornment position="end">
                             <IconButton
+                                disabled={!isEnabled}
                                 onClick={() => {
                                     props.onSubmit(text);
                                     setEnabled(false);

@@ -54,5 +54,22 @@ read-stdin :: Text -> Text
 read-stdin : prompt -> external "runtime" "read-stdin" prompt
 
 [help "Read a value from the user with the provided prompt."]
-input :: Text -> Text
-input : prompt -> read-stdin (format "_ " prompt)
+prompt :: Text -> Text
+prompt : prompt -> read-stdin (format "_ " prompt)
+
+[help "Implement the `read` function."]
+Read : A => trait (Text -> Maybe A)
+
+[help "Parse `Text` into a value."]
+read :: A where (Read A) => Text -> Maybe A
+read : Read
+
+instance (Read Text) : Some
+instance (Read Number) : text -> external "runtime" "text-to-number" text
+instance (Read Integer) : text -> external "runtime" "text-to-integer" text
+instance (Read Natural) : text -> external "runtime" "text-to-natural" text
+instance (Read Byte) : text -> external "runtime" "text-to-byte" text
+instance (Read Signed) : text -> external "runtime" "text-to-signed" text
+instance (Read Unsigned) : text -> external "runtime" "text-to-unsigned" text
+instance (Read Float) : text -> external "runtime" "text-to-float" text
+instance (Read Double) : text -> external "runtime" "text-to-double" text

@@ -13,6 +13,13 @@ fn r#true() -> Value {
     Value::Variant(VariantIndex::new(1), Vec::new())
 }
 
+fn maybe(value: Option<Value>) -> Value {
+    match value {
+        Some(value) => some(value),
+        None => none(),
+    }
+}
+
 fn none() -> Value {
     Value::Variant(VariantIndex::new(0), Vec::new())
 }
@@ -77,6 +84,12 @@ impl Interpreter {
             };
         }
 
+        macro_rules! runtime_parse_fn {
+            (Value::$ty:ident) => {
+                runtime_fn!((Value::Text(text)) => Ok(maybe(text.parse().ok().map(Value::$ty))))
+            };
+        }
+
         macro_rules! runtime_cmp_fn {
             (($($input:pat),*) => $result:expr) => {
                 runtime_fn!(($($input),*) => {
@@ -114,30 +127,6 @@ impl Interpreter {
                 (self.output)(&text).await;
                 Ok(Value::Tuple(Vec::new()))
             }),
-            ir::RuntimeFunction::Format => runtime_fn!((Value::Text(text), Value::List(list)) => {
-                let inputs = list
-                    .into_iter()
-                    .map(|input| match input {
-                        Value::Text(text) => text,
-                        _ => unreachable!(),
-                    })
-                    .collect::<Vec<_>>();
-
-                let formatted = if text.is_empty() {
-                    String::new()
-                } else {
-                    let mut text = text.split('_').collect::<Vec<_>>();
-                    let last = text.pop().unwrap();
-
-                    text.into_iter()
-                        .zip(inputs)
-                        .map(|(part, value)| part.to_string() + value.as_ref())
-                        .chain(std::iter::once(last.to_string()))
-                        .collect()
-                };
-
-                Ok(Value::Text(Arc::from(formatted)))
-            }),
             ir::RuntimeFunction::NumberToText => {
                 runtime_text_fn!((Value::Number(n)) => n.normalize().to_string())
             }
@@ -148,6 +137,14 @@ impl Interpreter {
             ir::RuntimeFunction::UnsignedToText => runtime_text_fn!(Value::Unsigned),
             ir::RuntimeFunction::FloatToText => runtime_text_fn!(Value::Float),
             ir::RuntimeFunction::DoubleToText => runtime_text_fn!(Value::Double),
+            ir::RuntimeFunction::TextToNumber => runtime_parse_fn!(Value::Number),
+            ir::RuntimeFunction::TextToInteger => runtime_text_fn!(Value::Integer),
+            ir::RuntimeFunction::TextToNatural => runtime_text_fn!(Value::Natural),
+            ir::RuntimeFunction::TextToByte => runtime_text_fn!(Value::Byte),
+            ir::RuntimeFunction::TextToSigned => runtime_text_fn!(Value::Signed),
+            ir::RuntimeFunction::TextToUnsigned => runtime_text_fn!(Value::Unsigned),
+            ir::RuntimeFunction::TextToFloat => runtime_text_fn!(Value::Float),
+            ir::RuntimeFunction::TextToDouble => runtime_text_fn!(Value::Double),
             ir::RuntimeFunction::AddNumber => {
                 runtime_math_fn!(Value::Number, (lhs, rhs) => Ok(lhs + rhs))
             }

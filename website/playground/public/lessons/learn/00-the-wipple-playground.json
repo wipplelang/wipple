@@ -9,7 +9,7 @@
         {
             "id": "BgAxEaN9",
             "type": "code",
-            "value": "name : input \"What is your name?\"\nshow (format \"Welcome to Wipple, _!\" name)"
+            "value": "name : prompt \"What is your name?\"\nshow (format \"Welcome to Wipple, _!\" name)"
         },
         {
             "id": "u-tb0FFF",
