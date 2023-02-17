@@ -123,7 +123,6 @@ pub enum TypeError {
     Recursive(TypeVariable),
     Mismatch(UnresolvedType, UnresolvedType),
     MissingInstance(TraitId, Vec<UnresolvedType>, Option<Span>, Vec<Span>),
-    AmbiguousTrait(TraitId, Vec<UnresolvedType>, Vec<Span>),
     UnresolvedType(UnresolvedType),
     InvalidNumericLiteral(UnresolvedType),
 }

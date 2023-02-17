@@ -253,8 +253,146 @@ expr!(, "Unresolved", engine::UnresolvedType, {
 
 expr!(, "Monomorphized", engine::UnresolvedType, {
     Number(InternedString),
+    UnresolvedConstant(ConstantId),
+    UnresolvedTrait(TraitId),
     Constant(ItemId),
 });
+
+impl From<UnresolvedExpression> for MonomorphizedExpression {
+    fn from(expr: UnresolvedExpression) -> Self {
+        MonomorphizedExpression {
+            span: expr.span,
+            ty: expr.ty,
+            kind: match expr.kind {
+                UnresolvedExpressionKind::Error(trace) => MonomorphizedExpressionKind::Error(trace),
+                UnresolvedExpressionKind::Marker => MonomorphizedExpressionKind::Marker,
+                UnresolvedExpressionKind::Variable(var) => {
+                    MonomorphizedExpressionKind::Variable(var)
+                }
+                UnresolvedExpressionKind::Text(text) => MonomorphizedExpressionKind::Text(text),
+                UnresolvedExpressionKind::Block(statements, top_level) => {
+                    MonomorphizedExpressionKind::Block(
+                        statements.into_iter().map(From::from).collect(),
+                        top_level,
+                    )
+                }
+                UnresolvedExpressionKind::End(expr) => {
+                    MonomorphizedExpressionKind::End(Box::new((*expr).into()))
+                }
+                UnresolvedExpressionKind::Call(func, input) => MonomorphizedExpressionKind::Call(
+                    Box::new((*func).into()),
+                    Box::new((*input).into()),
+                ),
+                UnresolvedExpressionKind::Function(pattern, body, captures) => {
+                    MonomorphizedExpressionKind::Function(
+                        pattern.into(),
+                        Box::new((*body).into()),
+                        captures,
+                    )
+                }
+                UnresolvedExpressionKind::When(input, arms) => MonomorphizedExpressionKind::When(
+                    Box::new((*input).into()),
+                    arms.into_iter().map(From::from).collect(),
+                ),
+                UnresolvedExpressionKind::External(namespace, identifier, inputs) => {
+                    MonomorphizedExpressionKind::External(
+                        namespace,
+                        identifier,
+                        inputs.into_iter().map(From::from).collect(),
+                    )
+                }
+                UnresolvedExpressionKind::Runtime(func, inputs) => {
+                    MonomorphizedExpressionKind::Runtime(
+                        func,
+                        inputs.into_iter().map(From::from).collect(),
+                    )
+                }
+                UnresolvedExpressionKind::Initialize(pattern, value) => {
+                    MonomorphizedExpressionKind::Initialize(
+                        pattern.into(),
+                        Box::new((*value).into()),
+                    )
+                }
+                UnresolvedExpressionKind::Structure(fields) => {
+                    MonomorphizedExpressionKind::Structure(
+                        fields.into_iter().map(From::from).collect(),
+                    )
+                }
+                UnresolvedExpressionKind::Variant(index, values) => {
+                    MonomorphizedExpressionKind::Variant(
+                        index,
+                        values.into_iter().map(From::from).collect(),
+                    )
+                }
+                UnresolvedExpressionKind::Tuple(values) => {
+                    MonomorphizedExpressionKind::Tuple(values.into_iter().map(From::from).collect())
+                }
+                UnresolvedExpressionKind::Format(segments, trailing_segment) => {
+                    MonomorphizedExpressionKind::Format(
+                        segments
+                            .into_iter()
+                            .map(|(text, value)| (text, value.into()))
+                            .collect(),
+                        trailing_segment,
+                    )
+                }
+                UnresolvedExpressionKind::Number(number) => {
+                    MonomorphizedExpressionKind::Number(number)
+                }
+                UnresolvedExpressionKind::Trait(id) => {
+                    MonomorphizedExpressionKind::UnresolvedTrait(id)
+                }
+                UnresolvedExpressionKind::Constant(id) => {
+                    MonomorphizedExpressionKind::UnresolvedConstant(id)
+                }
+            },
+        }
+    }
+}
+
+impl From<UnresolvedArm> for MonomorphizedArm {
+    fn from(arm: UnresolvedArm) -> Self {
+        MonomorphizedArm {
+            span: arm.span,
+            pattern: arm.pattern.into(),
+            body: arm.body.into(),
+        }
+    }
+}
+
+impl From<UnresolvedPattern> for MonomorphizedPattern {
+    fn from(pattern: UnresolvedPattern) -> Self {
+        MonomorphizedPattern {
+            span: pattern.span,
+            kind: match pattern.kind {
+                UnresolvedPatternKind::Error(trace) => MonomorphizedPatternKind::Error(trace),
+                UnresolvedPatternKind::Wildcard => MonomorphizedPatternKind::Wildcard,
+                UnresolvedPatternKind::Text(text) => MonomorphizedPatternKind::Text(text),
+                UnresolvedPatternKind::Variable(var) => MonomorphizedPatternKind::Variable(var),
+                UnresolvedPatternKind::Or(left, right) => MonomorphizedPatternKind::Or(
+                    Box::new((*left).into()),
+                    Box::new((*right).into()),
+                ),
+                UnresolvedPatternKind::Where(pattern, condition) => {
+                    MonomorphizedPatternKind::Where(
+                        Box::new((*pattern).into()),
+                        Box::new((*condition).into()),
+                    )
+                }
+                UnresolvedPatternKind::Tuple(patterns) => {
+                    MonomorphizedPatternKind::Tuple(patterns.into_iter().map(From::from).collect())
+                }
+                UnresolvedPatternKind::Number(number) => MonomorphizedPatternKind::Number(number),
+                UnresolvedPatternKind::Destructure(ty, fields) => {
+                    MonomorphizedPatternKind::UnresolvedDestructure(ty, fields)
+                }
+                UnresolvedPatternKind::Variant(ty, index, values) => {
+                    MonomorphizedPatternKind::UnresolvedVariant(ty, index, values)
+                }
+            },
+        }
+    }
+}
 
 expr!(pub, "", engine::Type, {
     Number(rust_decimal::Decimal),
@@ -301,7 +439,12 @@ pattern!(, "Unresolved", {
 
 pattern!(, "Monomorphized", {
     Number(InternedString),
+    UnresolvedDestructure(
+        engine::UnresolvedType,
+        HashMap<InternedString, (UnresolvedPattern, engine::UnresolvedType)>,
+    ),
     Destructure(BTreeMap<FieldIndex, MonomorphizedPattern>),
+    UnresolvedVariant(TypeId, VariantIndex, Vec<UnresolvedPattern>),
     Variant(VariantIndex, Vec<MonomorphizedPattern>),
 });
 
@@ -447,11 +590,11 @@ impl Typechecker {
 
         let mut count = 0;
         let total = self.item_queue.len();
-        while let Some(mut item) = self.item_queue.pop_back() {
+        while let Some(item) = self.item_queue.pop_back() {
             count += 1;
             progress(count, total);
 
-            let expr = self.monomorphize_expr(item.expr, &mut item.info);
+            let expr = self.repeatedly_monomorphize_expr(item.expr, item.info);
             let expr = self.finalize_expr(expr);
 
             self.items.insert(item.id, (item.generic_id, expr));
@@ -518,6 +661,37 @@ impl Typechecker {
             exported: self.exported.unwrap_or_default(),
             declarations: self.declarations.into_inner().into(),
         }
+    }
+
+    fn repeatedly_monomorphize_expr(
+        &mut self,
+        expr: UnresolvedExpression,
+        mut info: MonomorphizeInfo,
+    ) -> MonomorphizedExpression {
+        let mut expr = MonomorphizedExpression::from(expr);
+        loop {
+            info.has_resolved_trait = false;
+            expr = self.monomorphize_expr(expr, &mut info);
+
+            let is_unresolved = || {
+                let mut is_unresolved = false;
+                expr.traverse(|expr| {
+                    is_unresolved |= matches!(
+                        expr.kind,
+                        MonomorphizedExpressionKind::UnresolvedTrait(_)
+                            | MonomorphizedExpressionKind::UnresolvedConstant(_)
+                    );
+                });
+
+                is_unresolved
+            };
+
+            if !info.has_resolved_trait || !is_unresolved() {
+                break;
+            }
+        }
+
+        expr
     }
 }
 
@@ -669,7 +843,7 @@ impl Typechecker {
             self.add_error(self.error(error, expr.span));
         }
 
-        let expr = self.monomorphize_expr(expr, &mut monomorphize_info);
+        let expr = self.repeatedly_monomorphize_expr(expr, monomorphize_info);
         let expr = self.finalize_expr(expr);
 
         if let Some(tr) = tr {
@@ -698,9 +872,9 @@ impl Typechecker {
         use_span: Span,
         use_ty: engine::UnresolvedType,
         mut info: MonomorphizeInfo,
-    ) -> ItemId {
+    ) -> Option<ItemId> {
         if let Some(monomorphized_id) = info.cache.get(&id) {
-            return *monomorphized_id;
+            return Some(*monomorphized_id);
         }
 
         let monomorphized_id = self.compiler.new_item_id();
@@ -810,10 +984,13 @@ impl Typechecker {
                     Some(bound.span),
                     &mut info,
                 ) {
-                    Ok(id) => id,
+                    Ok(id) => {
+                        info.has_resolved_trait = true;
+                        id
+                    }
                     Err(error) => {
                         if is_last_candidate(index) {
-                            self.add_error(error);
+                            self.add_error(error?);
                         } else {
                             self.ctx = prev_ctx;
                             continue 'check;
@@ -839,7 +1016,7 @@ impl Typechecker {
             break 'check;
         }
 
-        monomorphized_id
+        Some(monomorphized_id)
     }
 
     fn typecheck_specialized_constant(
@@ -906,8 +1083,18 @@ impl Typechecker {
                 Some(bound.span),
                 &mut monomorphize_info,
             ) {
-                Ok(id) => id,
+                Ok(id) => {
+                    monomorphize_info.has_resolved_trait = true;
+                    id
+                }
                 Err(error) => {
+                    let error = error.unwrap_or_else(|| {
+                        let ty =
+                            self.substitute_trait_params(bound.trait_id, bound.params, bound.span);
+
+                        self.error(engine::TypeError::UnresolvedType(ty), bound.span)
+                    });
+
                     self.add_error(error.with_note(Note::secondary(
                         specialized_constant_decl.span,
                         "this constant must satisfy the bounds of the original constant",
@@ -1718,23 +1905,32 @@ struct MonomorphizeInfo {
         BTreeMap<TraitId, Vec<(Option<ConstantId>, Vec<engine::UnresolvedType>, Span)>>,
     instance_stack: BTreeMap<TraitId, Vec<(ConstantId, Vec<engine::UnresolvedType>)>>,
     recursion_count: usize,
+    has_resolved_trait: bool,
 }
 
 impl Typechecker {
     fn monomorphize_expr(
         &mut self,
-        mut expr: UnresolvedExpression,
+        expr: impl Into<MonomorphizedExpression>,
         info: &mut MonomorphizeInfo,
     ) -> MonomorphizedExpression {
+        let mut expr = expr.into();
+
         expr.ty.apply(&self.ctx);
+
+        if expr.span.path.as_str().contains("test.wpl") {
+            self.format_type(expr.ty.clone(), Default::default());
+        }
 
         MonomorphizedExpression {
             span: expr.span,
             ty: expr.ty.clone(),
             kind: (|| match expr.kind {
-                UnresolvedExpressionKind::Error(trace) => MonomorphizedExpressionKind::Error(trace),
-                UnresolvedExpressionKind::Marker => MonomorphizedExpressionKind::Marker,
-                UnresolvedExpressionKind::Constant(generic_id) => {
+                MonomorphizedExpressionKind::Error(trace) => {
+                    MonomorphizedExpressionKind::Error(trace)
+                }
+                MonomorphizedExpressionKind::Marker => MonomorphizedExpressionKind::Marker,
+                MonomorphizedExpressionKind::UnresolvedConstant(generic_id) => {
                     let id = self.typecheck_constant_expr(
                         false,
                         generic_id,
@@ -1743,16 +1939,25 @@ impl Typechecker {
                         info.clone(),
                     );
 
+                    match id {
+                        Some(id) => {
+                            info.has_resolved_trait = true;
+                            MonomorphizedExpressionKind::Constant(id)
+                        }
+                        None => MonomorphizedExpressionKind::UnresolvedConstant(generic_id),
+                    }
+                }
+                MonomorphizedExpressionKind::Constant(id) => {
                     MonomorphizedExpressionKind::Constant(id)
                 }
-                UnresolvedExpressionKind::Variable(var) => {
+                MonomorphizedExpressionKind::Variable(var) => {
                     MonomorphizedExpressionKind::Variable(var)
                 }
-                UnresolvedExpressionKind::Text(text) => MonomorphizedExpressionKind::Text(text),
-                UnresolvedExpressionKind::Number(number) => {
+                MonomorphizedExpressionKind::Text(text) => MonomorphizedExpressionKind::Text(text),
+                MonomorphizedExpressionKind::Number(number) => {
                     MonomorphizedExpressionKind::Number(number)
                 }
-                UnresolvedExpressionKind::Block(statements, top_level) => {
+                MonomorphizedExpressionKind::Block(statements, top_level) => {
                     let mut statements = statements
                         .into_iter()
                         .map(|expr| self.monomorphize_expr(expr, info))
@@ -1777,10 +1982,10 @@ impl Typechecker {
 
                     MonomorphizedExpressionKind::Block(statements, top_level)
                 }
-                UnresolvedExpressionKind::End(value) => {
+                MonomorphizedExpressionKind::End(value) => {
                     MonomorphizedExpressionKind::End(Box::new(self.monomorphize_expr(*value, info)))
                 }
-                UnresolvedExpressionKind::Call(func, input) => {
+                MonomorphizedExpressionKind::Call(func, input) => {
                     // If the input is another function, monomorphize the outer
                     // function first for optimal type inference
 
@@ -1805,7 +2010,7 @@ impl Typechecker {
 
                     MonomorphizedExpressionKind::Call(Box::new(func), Box::new(input))
                 }
-                UnresolvedExpressionKind::Function(pattern, body, captures) => {
+                MonomorphizedExpressionKind::Function(pattern, body, captures) => {
                     let pattern = match expr.ty {
                         engine::UnresolvedType::Function(input_ty, _) => {
                             let mut input_ty = *input_ty;
@@ -1836,7 +2041,7 @@ impl Typechecker {
 
                     MonomorphizedExpressionKind::Function(pattern, Box::new(body), captures)
                 }
-                UnresolvedExpressionKind::When(input, arms) => {
+                MonomorphizedExpressionKind::When(input, arms) => {
                     let mut input = self.monomorphize_expr(*input, info);
                     input.ty.apply(&self.ctx);
 
@@ -1853,7 +2058,7 @@ impl Typechecker {
 
                     MonomorphizedExpressionKind::When(Box::new(input), arms)
                 }
-                UnresolvedExpressionKind::External(lib, identifier, inputs) => {
+                MonomorphizedExpressionKind::External(lib, identifier, inputs) => {
                     MonomorphizedExpressionKind::External(
                         lib,
                         identifier,
@@ -1863,7 +2068,7 @@ impl Typechecker {
                             .collect(),
                     )
                 }
-                UnresolvedExpressionKind::Runtime(func, inputs) => {
+                MonomorphizedExpressionKind::Runtime(func, inputs) => {
                     MonomorphizedExpressionKind::Runtime(
                         func,
                         inputs
@@ -1872,7 +2077,7 @@ impl Typechecker {
                             .collect(),
                     )
                 }
-                UnresolvedExpressionKind::Initialize(pattern, value) => {
+                MonomorphizedExpressionKind::Initialize(pattern, value) => {
                     // Resolve the right-hand side first
                     let mut value = self.monomorphize_expr(*value, info);
                     value.ty.apply(&self.ctx);
@@ -1886,7 +2091,7 @@ impl Typechecker {
 
                     MonomorphizedExpressionKind::Initialize(pattern, Box::new(value))
                 }
-                UnresolvedExpressionKind::Structure(fields) => {
+                MonomorphizedExpressionKind::Structure(fields) => {
                     MonomorphizedExpressionKind::Structure(
                         fields
                             .into_iter()
@@ -1894,7 +2099,7 @@ impl Typechecker {
                             .collect(),
                     )
                 }
-                UnresolvedExpressionKind::Variant(index, values) => {
+                MonomorphizedExpressionKind::Variant(index, values) => {
                     MonomorphizedExpressionKind::Variant(
                         index,
                         values
@@ -1903,13 +2108,20 @@ impl Typechecker {
                             .collect(),
                     )
                 }
-                UnresolvedExpressionKind::Trait(tr) => {
+                MonomorphizedExpressionKind::UnresolvedTrait(tr) => {
                     let instance_id =
                         match self.instance_for_ty(tr, expr.ty.clone(), expr.span, None, info) {
-                            Ok(instance) => instance,
+                            Ok(instance) => {
+                                info.has_resolved_trait = true;
+                                instance
+                            }
                             Err(error) => {
-                                self.add_error(error);
-                                return MonomorphizedExpressionKind::error(&self.compiler);
+                                if let Some(error) = error {
+                                    self.add_error(error);
+                                    return MonomorphizedExpressionKind::error(&self.compiler);
+                                } else {
+                                    return MonomorphizedExpressionKind::UnresolvedTrait(tr);
+                                }
                             }
                         };
 
@@ -1924,15 +2136,21 @@ impl Typechecker {
                         None => return MonomorphizedExpressionKind::error(&self.compiler),
                     };
 
-                    MonomorphizedExpressionKind::Constant(monomorphized_id)
+                    match monomorphized_id {
+                        Some(id) => {
+                            info.has_resolved_trait = true;
+                            MonomorphizedExpressionKind::Constant(id)
+                        }
+                        None => MonomorphizedExpressionKind::UnresolvedTrait(tr),
+                    }
                 }
-                UnresolvedExpressionKind::Tuple(exprs) => MonomorphizedExpressionKind::Tuple(
+                MonomorphizedExpressionKind::Tuple(exprs) => MonomorphizedExpressionKind::Tuple(
                     exprs
                         .into_iter()
                         .map(|expr| self.monomorphize_expr(expr, info))
                         .collect(),
                 ),
-                UnresolvedExpressionKind::Format(segments, trailing_segment) => {
+                MonomorphizedExpressionKind::Format(segments, trailing_segment) => {
                     MonomorphizedExpressionKind::Format(
                         segments
                             .into_iter()
@@ -1947,11 +2165,13 @@ impl Typechecker {
 
     fn monomorphize_arm(
         &mut self,
-        arm: UnresolvedArm,
+        arm: impl Into<MonomorphizedArm>,
         ty: engine::UnresolvedType,
         match_set: &mut MatchSet,
         info: &mut MonomorphizeInfo,
     ) -> MonomorphizedArm {
+        let arm = arm.into();
+
         MonomorphizedArm {
             span: arm.span,
             pattern: self.monomorphize_pattern(arm.pattern, ty, match_set, info),
@@ -1961,19 +2181,21 @@ impl Typechecker {
 
     fn monomorphize_pattern(
         &mut self,
-        pattern: UnresolvedPattern,
+        pattern: impl Into<MonomorphizedPattern>,
         mut ty: engine::UnresolvedType,
         match_set: &mut MatchSet,
         info: &mut MonomorphizeInfo,
     ) -> MonomorphizedPattern {
+        let pattern = pattern.into();
+
         ty.apply(&self.ctx);
 
         let kind = (|| match pattern.kind {
-            UnresolvedPatternKind::Error(trace) => {
+            MonomorphizedPatternKind::Error(trace) => {
                 match_set.set_matched(true);
                 MonomorphizedPatternKind::Error(trace)
             }
-            UnresolvedPatternKind::Number(number) => {
+            MonomorphizedPatternKind::Number(number) => {
                 let numeric_ty = engine::UnresolvedType::NumericVariable(self.ctx.new_variable());
 
                 if let Err(error) = self.unify(pattern.span, ty, numeric_ty) {
@@ -1982,7 +2204,7 @@ impl Typechecker {
 
                 MonomorphizedPatternKind::Number(number)
             }
-            UnresolvedPatternKind::Text(text) => {
+            MonomorphizedPatternKind::Text(text) => {
                 if let Err(error) = self.unify(
                     pattern.span,
                     ty,
@@ -1993,15 +2215,15 @@ impl Typechecker {
 
                 MonomorphizedPatternKind::Text(text)
             }
-            UnresolvedPatternKind::Wildcard => {
+            MonomorphizedPatternKind::Wildcard => {
                 match_set.set_matched(true);
                 MonomorphizedPatternKind::Wildcard
             }
-            UnresolvedPatternKind::Variable(var) => {
+            MonomorphizedPatternKind::Variable(var) => {
                 match_set.set_matched(true);
                 MonomorphizedPatternKind::Variable(var)
             }
-            UnresolvedPatternKind::Destructure(structure_ty, fields) => {
+            MonomorphizedPatternKind::UnresolvedDestructure(structure_ty, fields) => {
                 if let Err(error) = self.unify(pattern.span, ty.clone(), structure_ty) {
                     self.add_error(error);
                 }
@@ -2129,7 +2351,10 @@ impl Typechecker {
 
                 MonomorphizedPatternKind::Destructure(fields)
             }
-            UnresolvedPatternKind::Variant(variant_ty, variant, values) => {
+            MonomorphizedPatternKind::Destructure(fields) => {
+                MonomorphizedPatternKind::Destructure(fields)
+            }
+            MonomorphizedPatternKind::UnresolvedVariant(variant_ty, variant, values) => {
                 let (id, params) = match &ty {
                     engine::UnresolvedType::Named(id, params, _) => (id, params),
                     _ => {
@@ -2237,11 +2462,14 @@ impl Typechecker {
                         .collect(),
                 )
             }
-            UnresolvedPatternKind::Or(lhs, rhs) => MonomorphizedPatternKind::Or(
+            MonomorphizedPatternKind::Variant(index, patterns) => {
+                MonomorphizedPatternKind::Variant(index, patterns)
+            }
+            MonomorphizedPatternKind::Or(lhs, rhs) => MonomorphizedPatternKind::Or(
                 Box::new(self.monomorphize_pattern(*lhs, ty.clone(), match_set, info)),
                 Box::new(self.monomorphize_pattern(*rhs, ty, match_set, info)),
             ),
-            UnresolvedPatternKind::Where(pattern, condition) => {
+            MonomorphizedPatternKind::Where(pattern, condition) => {
                 let pattern = self.monomorphize_pattern(*pattern, ty, match_set, info);
 
                 let condition_span = condition.span;
@@ -2275,7 +2503,7 @@ impl Typechecker {
 
                 MonomorphizedPatternKind::Where(Box::new(pattern), Box::new(condition))
             }
-            UnresolvedPatternKind::Tuple(patterns) => {
+            MonomorphizedPatternKind::Tuple(patterns) => {
                 let tys = patterns
                     .iter()
                     .map(|_| engine::UnresolvedType::Variable(self.ctx.new_variable()))
@@ -2328,7 +2556,7 @@ impl Typechecker {
         use_span: Span,
         bound_span: Option<Span>,
         info: &mut MonomorphizeInfo,
-    ) -> Result<Option<ConstantId>, Error> {
+    ) -> Result<Option<ConstantId>, Option<Error>> {
         let tr_decl = match self.with_trait_decl(tr, Clone::clone) {
             Some(decl) => decl,
             None => return Ok(None),
@@ -2357,7 +2585,7 @@ impl Typechecker {
         use_span: Span,
         bound_span: Option<Span>,
         info: &mut MonomorphizeInfo,
-    ) -> Result<Option<ConstantId>, Error> {
+    ) -> Result<Option<ConstantId>, Option<Error>> {
         let tr_decl = match self.with_trait_decl(tr, Clone::clone) {
             Some(decl) => decl,
             None => return Ok(None),
@@ -2374,7 +2602,7 @@ impl Typechecker {
         use_span: Span,
         bound_span: Option<Span>,
         info: &mut MonomorphizeInfo,
-    ) -> Result<Option<ConstantId>, Error> {
+    ) -> Result<Option<ConstantId>, Option<Error>> {
         let recursion_limit = self
             .entrypoint
             .info
@@ -2465,14 +2693,7 @@ impl Typechecker {
 
                         Some(Ok(id))
                     }
-                    _ => Some(Err(self.error(
-                        engine::TypeError::AmbiguousTrait(
-                            tr,
-                            params,
-                            candidates.into_iter().map(|(_, _, span)| span).collect(),
-                        ),
-                        use_span,
-                    ))),
+                    _ => Some(Err(None::<Error>)),
                 }
             }};
         }
@@ -2579,6 +2800,8 @@ impl Typechecker {
 
                         continue 'check;
                     }
+
+                    info.has_resolved_trait = true;
                 }
 
                 let ctx = mem::replace(&mut self.ctx, prev_ctx);
@@ -2593,10 +2816,10 @@ impl Typechecker {
             candidates
         });
 
-        Err(self.error(
+        Err(Some(self.error(
             engine::TypeError::MissingInstance(tr, params, bound_span, error_candidates),
             use_span,
-        ))
+        )))
     }
 
     fn extract_params(
@@ -3037,6 +3260,14 @@ impl Typechecker {
         let kind = (|| match expr.kind {
             MonomorphizedExpressionKind::Error(trace) => ExpressionKind::Error(trace),
             MonomorphizedExpressionKind::Marker => ExpressionKind::Marker,
+            MonomorphizedExpressionKind::UnresolvedTrait(_) => {
+                self.add_error(self.error(engine::TypeError::UnresolvedType(expr.ty), expr.span));
+                ExpressionKind::error(&self.compiler)
+            }
+            MonomorphizedExpressionKind::UnresolvedConstant(_) => {
+                self.add_error(self.error(engine::TypeError::UnresolvedType(expr.ty), expr.span));
+                ExpressionKind::error(&self.compiler)
+            }
             MonomorphizedExpressionKind::Constant(id) => ExpressionKind::Constant(id),
             MonomorphizedExpressionKind::Variable(var) => ExpressionKind::Variable(var),
             MonomorphizedExpressionKind::Text(text) => ExpressionKind::Text(text),
@@ -3197,6 +3428,7 @@ impl Typechecker {
                     self.with_variable_decl(var, input_ty.clone(), |_| {});
                     PatternKind::Variable(var)
                 }
+                MonomorphizedPatternKind::UnresolvedDestructure(_, _) => unreachable!(),
                 MonomorphizedPatternKind::Destructure(fields) => {
                     let input_tys = match input_ty {
                         engine::Type::Named(_, _, engine::TypeStructure::Structure(fields)) => {
@@ -3213,6 +3445,7 @@ impl Typechecker {
                             .collect(),
                     )
                 }
+                MonomorphizedPatternKind::UnresolvedVariant(_, _, _) => unreachable!(),
                 MonomorphizedPatternKind::Variant(index, values) => {
                     let input_tys = match input_ty {
                         engine::Type::Named(_, _, engine::TypeStructure::Enumeration(variants)) => {
@@ -4305,20 +4538,6 @@ impl Typechecker {
                     error.trace,
                 )
             }
-            engine::TypeError::AmbiguousTrait(_, _, candidates) => self.compiler.error_with(
-                "could not determine the type of this expression",
-                std::iter::once(Note::primary(
-                    error.span,
-                    "try annotating the type with `::`",
-                ))
-                .chain(
-                    candidates
-                        .into_iter()
-                        .map(|span| Note::secondary(span, "this instance could apply")),
-                )
-                .collect(),
-                error.trace,
-            ),
             engine::TypeError::UnresolvedType(mut ty) => {
                 ty.apply(&self.ctx);
 
