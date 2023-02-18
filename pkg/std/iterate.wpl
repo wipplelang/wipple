@@ -121,3 +121,21 @@ split : separator -> collection -> {
 		}
 	}
 }
+
+count :: Collection Element where (Iterate Collection Element) => Collection -> Natural
+count : collection -> {
+	{ next } : Iterate collection
+
+	count : mutable 0
+	loop {
+		when (next () :: Maybe Element) {
+			Some _ -> {
+				increment! count
+				Continue
+			}
+			None -> Break ()
+		}
+	}
+
+	get count
+}
