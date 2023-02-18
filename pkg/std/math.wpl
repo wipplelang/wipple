@@ -20,6 +20,7 @@ instance (Add Signed Signed Signed) : a -> b -> external "runtime" "add-signed" 
 instance (Add Unsigned Unsigned Unsigned) : a -> b -> external "runtime" "add-unsigned" a b
 instance (Add Float Float Float) : a -> b -> external "runtime" "add-float" a b
 instance (Add Double Double Double) : a -> b -> external "runtime" "add-double" a b
+instance (Add Text Text Text) : a -> b -> format "__" a b
 
 [help "Implements the `-` operator."]
 Subtract : Left Right Difference => trait (Left -> Right -> Difference)

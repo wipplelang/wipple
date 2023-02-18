@@ -10,4 +10,5 @@ im = "15"
 itertools = "0.10"
 num-traits = "0.2"
 rust_decimal = { version = "1", features = ["maths"] }
+unicode-segmentation = "1"
 wipple-frontend = { path = "../../frontend" }

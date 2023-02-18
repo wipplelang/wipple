@@ -607,6 +607,7 @@ pub enum RuntimeFunction {
     ListPrepend,
     ListInsert,
     ListRemove,
+    TextHeadTail,
 }
 
 #[derive(Debug, Clone, Copy)]

@@ -3,6 +3,7 @@ use itertools::Itertools;
 use num_traits::pow::Pow;
 use rust_decimal::{Decimal, MathematicalOps};
 use std::sync::Arc;
+use unicode_segmentation::UnicodeSegmentation;
 use wipple_frontend::{helpers::Shared, ir, VariantIndex};
 
 fn r#false() -> Value {
@@ -425,6 +426,21 @@ impl Interpreter {
                     };
 
                     Ok(ok(list.remove(index)))
+                })
+            }
+            ir::RuntimeFunction::TextHeadTail => {
+                runtime_fn!((Value::Text(text)) => {
+                    match text.grapheme_indices(true).next() {
+                        Some((_, head)) => {
+                            let tail = &text[head.len()..];
+
+                            Ok(some(Value::Tuple(vec![
+                                Value::Text(Arc::from(head)),
+                                Value::Text(Arc::from(tail)),
+                            ])))
+                        }
+                        None => Ok(none()),
+                    }
                 })
             }
         }

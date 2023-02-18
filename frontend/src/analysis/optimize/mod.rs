@@ -622,6 +622,7 @@ mod util {
                 RuntimeFunction::ListPrepend => true,
                 RuntimeFunction::ListInsert => true,
                 RuntimeFunction::ListRemove => true,
+                RuntimeFunction::TextHeadTail => true,
             }
         }
     }

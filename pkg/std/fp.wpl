@@ -12,10 +12,3 @@ just : x -> _ -> x
 . : syntax {
 	'x . 'f -> 'f 'x
 }
-
-Map : A B Input Output => trait ((A -> B) -> Input -> Output)
-
-[operator Composition-Precedence]
-| : syntax {
-	'x | 'f -> Map 'f 'x
-}

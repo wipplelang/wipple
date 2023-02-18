@@ -16,8 +16,18 @@ Iterate : Container Element => trait (Container -> Iterator Element)
 
 Element => instance (Iterate (Iterator Element) Element) : it
 
--- reduce :: Container Element Result where (Iterate Container Element) => (Element -> Result -> Result) -> Container -> Iterator Result
--- reduce : TODO
+[help "Transform each item in an iterator."]
+each :: Container Element Result where (Iterate Container Element) => (Element -> Result) -> Container -> Iterator Result
+each : f -> container -> {
+	{ next } : Iterate container
+
+	Iterator {
+		next : () -> when (next ()) {
+			Some x -> Some (f x)
+			None -> None
+		}
+	}
+}
 
 [help "Keep only the items that satisfy the provided condition."]
 filter :: Container Element where (Iterate Container Element) => (Element -> Boolean) -> Container -> Iterator Element
@@ -37,21 +47,8 @@ filter : include? -> container -> {
 	}
 }
 
-[help "Execute a function for each item in an iterator."]
-each :: Container Element where (Iterate Container Element) => (Element -> ()) -> Container -> ()
-each : f -> container -> {
-	{ next } : Iterate container
-
-	loop {
-		when (next ()) {
-			Some x -> {
-				f x
-				Continue
-			}
-			None -> Break ()
-		}
-	}
-}
+-- reduce :: Container Element Result where (Iterate Container Element) => (Element -> Result -> Result) -> Container -> Iterator Result
+-- reduce : TODO
 
 [help "Implement this trait to enable reducing an iterator into your collection type."]
 Collect : Element Container => trait (Iterator Element -> Container)
@@ -85,6 +82,44 @@ A => instance (Iterate (List A) A) : list -> {
 				Some element
 			}
 			Error _ -> None
+		}
+	}
+}
+
+instance (Iterate Text Text) : text -> {
+	cursor : mutable text
+
+	Iterator {
+		next : () -> when (external "runtime" "text-head-tail" (get cursor)) {
+			Some (head , tail) -> {
+				cursor . set! tail
+				Some head
+			}
+			None -> None
+		}
+	}
+}
+
+instance (Collect Text Text) : { next } -> {
+	text : mutable ""
+	loop {
+		when (next ()) {
+			Some x -> {
+				text . set! (get text + x)
+				Continue
+			}
+			None -> Break ()
+		}
+	}
+
+	get text
+}
+
+instance (Collect () ()) : { next } -> {
+	loop {
+		when (next ()) {
+			Some () -> Continue
+			None -> Break ()
 		}
 	}
 }
