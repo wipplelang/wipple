@@ -1,12 +1,13 @@
 [[no-std]]
 
 use "fp.wpl"
-use "logic.wpl"
 use "io.wpl"
-use "util.wpl"
+use "iterate.wpl"
+use "list.wpl"
+use "logic.wpl"
+use "loop.wpl"
 use "math.wpl"
 use "mutable.wpl"
-use "loop.wpl"
-use "list.wpl"
-use "iterate.wpl"
 use "range.wpl"
+use "text.wpl"
+use "util.wpl"

@@ -30,3 +30,11 @@ add! : x -> m -> m . set! (get m + x)
 [help "Increment a `Mutable` value."]
 increment! :: A where (Add A Natural A) => Mutable A -> ()
 increment! : add! 1
+
+[help "Remove the value contained inside a `Mutable` value, replace it with `Default`."]
+take! :: A where (Default A) => Mutable A -> A
+take! : m -> {
+	value : get m
+	m . set! Default
+	value
+}
