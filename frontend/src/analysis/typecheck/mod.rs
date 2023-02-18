@@ -933,7 +933,7 @@ impl Typechecker {
                 match self
                     .with_constant_decl(candidate, |decl| (decl.ty.clone(), decl.bounds.clone()))
                 {
-                    Some(constant) => constant,
+                    Some((generic_ty, bounds)) => (generic_ty, bounds),
                     None => continue,
                 }
             };
@@ -965,9 +965,9 @@ impl Typechecker {
                 }
             }
 
-            let generic_expr = self.convert_expr(body, &mut convert_info);
+            let mut generic_expr = self.convert_expr(body, &mut convert_info);
 
-            if let Err(error) = self.unify(use_span, generic_ty, generic_expr.ty.clone()) {
+            if let Err(error) = self.unify(use_span, generic_ty.clone(), generic_expr.ty.clone()) {
                 if is_last_candidate(index) {
                     self.add_error(error);
                 } else {
@@ -975,6 +975,27 @@ impl Typechecker {
                     continue 'check;
                 }
             }
+
+            // If the constant contains type parameters in bounds that are not referenced in the
+            // constant's type, instantiate them here
+            let generic_ty_params = generic_expr.ty.params();
+            generic_expr.traverse_mut(|expr| {
+                for param in expr.ty.params() {
+                    substitutions.entry(param).or_insert_with(|| {
+                        if !generic_ty_params.contains(&param)
+                            && bounds.iter().any(|bound| {
+                                bound.params.iter().any(|ty| ty.params().contains(&param))
+                            })
+                        {
+                            engine::UnresolvedType::Variable(self.ctx.new_variable())
+                        } else {
+                            engine::UnresolvedType::Parameter(param)
+                        }
+                    });
+                }
+
+                expr.ty.instantiate_with(&mut self.ctx, &substitutions);
+            });
 
             for bound in bounds {
                 let instance_id = match self.instance_for_params(
@@ -3921,7 +3942,7 @@ impl Typechecker {
     fn add_substitutions(
         &mut self,
         ty: &mut engine::UnresolvedType,
-        substitutions: &mut BTreeMap<TypeParameterId, engine::UnresolvedType>,
+        substitutions: &mut engine::GenericSubstitutions,
     ) {
         ty.apply(&self.ctx);
 
