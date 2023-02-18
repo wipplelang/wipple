@@ -668,8 +668,27 @@ impl Typechecker {
         expr: UnresolvedExpression,
         mut info: MonomorphizeInfo,
     ) -> MonomorphizedExpression {
+        let recursion_limit = self
+            .entrypoint
+            .info
+            .recursion_limit
+            .unwrap_or(Compiler::DEFAULT_RECURSION_LIMIT);
+
         let mut expr = MonomorphizedExpression::from(expr);
         loop {
+            if info.recursion_count > recursion_limit {
+                self.compiler.add_error(
+                    "recursion limit reached",
+                    vec![Note::primary(expr.span, "while computing this")],
+                );
+
+                return MonomorphizedExpression {
+                    span: expr.span,
+                    ty: engine::UnresolvedType::Error,
+                    kind: MonomorphizedExpressionKind::error(&self.compiler),
+                };
+            }
+
             info.has_resolved_trait = false;
             expr = self.monomorphize_expr(expr, &mut info);
 
@@ -689,6 +708,8 @@ impl Typechecker {
             if !info.has_resolved_trait || !is_unresolved() {
                 break;
             }
+
+            info.recursion_count += 1;
         }
 
         expr
