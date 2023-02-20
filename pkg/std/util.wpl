@@ -7,8 +7,8 @@ use "logic.wpl"
 [operator Accessor-Precedence]
 of : syntax {
 	'field of 'value -> {
-		{ field } : value
-		field
+		{ 'field } : 'value
+		'field
 	}
 }
 
