@@ -12,6 +12,11 @@ import {
 import { Globals as SpringGlobals, useSpring, animated } from "react-spring";
 import useMeasure from "react-use-measure";
 import ReactMarkdown from "react-markdown";
+import remarkMath from "remark-math";
+import remarkGfm from "remark-gfm";
+import rehypeKatex from "rehype-katex";
+import remarkSmartypants from "remark-smartypants";
+import rehypeRaw from "rehype-raw";
 import {
     AnalysisOutputDiagnostics,
     AnalysisOutputSyntaxHighlightingItem,
@@ -301,8 +306,16 @@ export const CodeEditor = (props: CodeEditorProps) => {
                                         );
                                     case "output":
                                         return (
-                                            <div className="prose prose-sky dark:prose-invert">
-                                                <ReactMarkdown linkTarget="_blank">
+                                            <div className="prose prose-sky dark:prose-invert max-w-none">
+                                                <ReactMarkdown
+                                                    remarkPlugins={[
+                                                        remarkMath,
+                                                        remarkGfm,
+                                                        remarkSmartypants,
+                                                    ]}
+                                                    rehypePlugins={[rehypeRaw, rehypeKatex]}
+                                                    linkTarget="_blank"
+                                                >
                                                     {item.text}
                                                 </ReactMarkdown>
 
