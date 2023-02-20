@@ -85,5 +85,9 @@
         },
         { "id": "_bV1oi6l", "type": "code", "value": "" }
     ],
-    "previous": { "name": "Working with lists", "link": "?lesson=learn/14-working-with-lists" }
+    "previous": { "name": "Working with lists", "link": "?lesson=learn/14-working-with-lists" },
+    "next": {
+        "name": "Getting input from the user",
+        "link": "?lesson=learn/16-getting-input-from-the-user"
+    }
 }

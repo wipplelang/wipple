@@ -1,0 +1,41 @@
+{
+    "sections": [
+        {
+            "id": "6z1mlFv3",
+            "type": "text",
+            "value": "# Getting input from the user\n\nSo far, we've written programs that always do the same thing. Now, we'll learn how to make our programs interactive by getting input from the user!\n\nLet's start by creating a text field that the user can type into. We can do this using the `prompt` function:",
+            "locked": true
+        },
+        {
+            "id": "30DAFG7v",
+            "type": "code",
+            "value": "name : prompt \"What is your name?\"\nshow (format \"Hello, _!\" name)"
+        },
+        {
+            "id": "kRisjDRb",
+            "type": "text",
+            "value": "Try typing your name into the text field and watch the program greet you!\n\nThe `prompt` function always returns `Text`, but we can convert it into a `Number` using the `read` function:",
+            "locked": true
+        },
+        {
+            "id": "9OlBw_gv",
+            "type": "code",
+            "value": "number :\n\t\tprompt \"Enter a number:\"\n\t\t\t\t. read\n\t\t\t\t. expect \"invalid number\" :: Number\n\nshow number"
+        },
+        {
+            "id": "leaj6fzN",
+            "type": "text",
+            "value": "There are two important things to note about the above code:\n  -  `read` returns a `Maybe`, since user could type in something that isn't a number. We have to deal with this `Maybe` (here, using `expect`).\n  -  We have to annotate the type of `number` with `::`. This is because we have to tell `read` what kind of data we want to read — `read` can convert text into anything that implements the `Read` trait, which includes numeric types as well as your own custom types.\n\nYou can call `prompt` multiple times to get multiple values from the user!",
+            "locked": true
+        },
+        {
+            "id": "R8pJl2Mr",
+            "type": "code",
+            "value": "prompt-number :: Text -> Number\nprompt-number : text -> prompt text . read . expect \"invalid number\"\n\t\t\t\t\nx1 : prompt-number \"First x coordinate\"\ny1 : prompt-number \"First y coordinate\"\nx2 : prompt-number \"Second x coordinate\"\ny2 : prompt-number \"Second y coordinate\"\n\ndistance : sqrt ((x2 - x1) ^ 2 + (y2 - y1) ^ 2)\nshow (format \"The distance between (_, _) and (_, _) is _\" x1 y1 x2 y2 distance)"
+        }
+    ],
+    "previous": {
+        "name": "Customizing the Playground",
+        "link": "?lesson=learn/15-customizing-the-playground"
+    }
+}
