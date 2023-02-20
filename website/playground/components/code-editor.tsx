@@ -11,6 +11,7 @@ import {
 } from "@mui/material";
 import { Globals as SpringGlobals, useSpring, animated } from "react-spring";
 import useMeasure from "react-use-measure";
+import ReactMarkdown from "react-markdown";
 import {
     AnalysisOutputDiagnostics,
     AnalysisOutputSyntaxHighlightingItem,
@@ -280,60 +281,70 @@ export const CodeEditor = (props: CodeEditorProps) => {
                         }
                     })()}
                 >
-                    <pre className="whitespace-pre-wrap break-words">
-                        {(() => {
-                            if (output == null) {
-                                return null;
-                            }
+                    {(() => {
+                        if (output == null) {
+                            return null;
+                        }
 
-                            if (Array.isArray(output)) {
-                                return output.map((item, index) => {
-                                    switch (item.type) {
-                                        case "input":
-                                            return (
-                                                <InputField
-                                                    key={index}
-                                                    index={index}
-                                                    onSubmit={item.onSubmit}
-                                                >
-                                                    {item.prompt}
-                                                </InputField>
-                                            );
-                                        case "output":
-                                            return item.text;
-                                    }
-                                });
-                            } else {
-                                switch (output.type) {
-                                    case "success":
-                                        return null;
-                                    case "warning":
-                                    case "error":
-                                        return output.diagnostics;
+                        if (Array.isArray(output)) {
+                            return output.map((item, index) => {
+                                switch (item.type) {
+                                    case "input":
+                                        return (
+                                            <InputField
+                                                key={index}
+                                                index={index}
+                                                onSubmit={item.onSubmit}
+                                            >
+                                                {item.prompt}
+                                            </InputField>
+                                        );
+                                    case "output":
+                                        return (
+                                            <div className="prose prose-sky dark:prose-invert">
+                                                <ReactMarkdown linkTarget="_blank">
+                                                    {item.text}
+                                                </ReactMarkdown>
+
+                                                {isRunning ? (
+                                                    <div className="bouncing-loader">
+                                                        <div></div>
+                                                        <div></div>
+                                                        <div></div>
+                                                    </div>
+                                                ) : Array.isArray(output) &&
+                                                  output.find((item) => item.type === "input") ? (
+                                                    <div className="mt-4">
+                                                        <Button
+                                                            variant="contained"
+                                                            size="small"
+                                                            endIcon={<Refresh />}
+                                                            onClick={() =>
+                                                                run(props.code, props.lint)
+                                                            }
+                                                        >
+                                                            Run again
+                                                        </Button>
+                                                    </div>
+                                                ) : null}
+                                            </div>
+                                        );
                                 }
+                            });
+                        } else {
+                            switch (output.type) {
+                                case "success":
+                                    return null;
+                                case "warning":
+                                case "error":
+                                    return (
+                                        <pre className="whitespace-pre-wrap break-words">
+                                            {output.diagnostics}
+                                        </pre>
+                                    );
                             }
-                        })()}
-
-                        {isRunning ? (
-                            <div className="bouncing-loader">
-                                <div></div>
-                                <div></div>
-                                <div></div>
-                            </div>
-                        ) : Array.isArray(output) &&
-                          output.find((item) => item.type === "input") ? (
-                            <div className="mt-4">
-                                <Button
-                                    variant="contained"
-                                    size="small"
-                                    endIcon={<Refresh />}
-                                    onClick={() => run(props.code, props.lint)}
-                                >
-                                    Run again
-                                </Button>
-                            </div>
-                        ) : null}
-                    </pre>
+                        }
+                    })()}
                 </div>
             </animated.div>
 
