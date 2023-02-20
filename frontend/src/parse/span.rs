@@ -22,7 +22,7 @@ impl Span {
     }
 
     pub fn join(left: Span, right: Span) -> Self {
-        Span::new(left.path, left.start..left.end).with_end(right.end)
+        left.with_end(right.end)
     }
 
     pub fn with_start(self, start: usize) -> Self {

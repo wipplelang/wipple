@@ -31,7 +31,6 @@ import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import { nanoid } from "nanoid";
 import { CodeEditor, TextEditor } from "../components";
 import { useRefState } from "../helpers";
-import { useRunner } from "../runner";
 
 type Section = { id: string; value: string } & (
     | { type: "code"; lint?: boolean }
@@ -130,8 +129,6 @@ const App: NextPage = () => {
 
     const [activeId, setActiveId] = useState<string | undefined>(undefined);
     const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 1 } }));
-
-    const runner = useRunner();
 
     return (
         <main>

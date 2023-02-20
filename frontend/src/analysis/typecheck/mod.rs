@@ -1960,10 +1960,6 @@ impl Typechecker {
 
         expr.ty.apply(&self.ctx);
 
-        if expr.span.path.as_str().contains("test.wpl") {
-            self.format_type(expr.ty.clone(), Default::default());
-        }
-
         MonomorphizedExpression {
             span: expr.span,
             ty: expr.ty.clone(),
