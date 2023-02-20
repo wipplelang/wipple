@@ -158,10 +158,10 @@ impl Interpreter {
             ir::RuntimeFunction::DivideNumber => runtime_div_fn!(Value::Number, Decimal::ZERO),
             ir::RuntimeFunction::PowerNumber => {
                 runtime_math_fn!(Value::Number, (lhs, rhs) => {
-                    if lhs != Decimal::ZERO && rhs != Decimal::ZERO {
-                        Ok(lhs.pow(rhs))
-                    } else {
+                    if lhs == Decimal::ZERO && rhs == Decimal::ZERO {
                         Err(Error::from("cannot raise zero to the power of zero"))
+                    } else {
+                        Ok(lhs.pow(rhs))
                     }
                 })
             }
@@ -183,10 +183,10 @@ impl Interpreter {
             }
             ir::RuntimeFunction::DivideInteger => runtime_div_fn!(Value::Integer, 0),
             ir::RuntimeFunction::PowerInteger => runtime_math_fn!(Value::Integer, (lhs, rhs) => {
-                if lhs != 0 && rhs != 0 {
-                    Ok(lhs.pow(rhs as u32))
-                } else {
+                if lhs == 0 && rhs == 0 {
                     Err(Error::from("cannot raise zero to the power of zero"))
+                } else {
+                    Ok(lhs.pow(rhs as u32))
                 }
             }),
             ir::RuntimeFunction::AddNatural => {
@@ -201,10 +201,10 @@ impl Interpreter {
             ir::RuntimeFunction::DivideNatural => runtime_div_fn!(Value::Natural, 0),
             ir::RuntimeFunction::PowerNatural => {
                 runtime_math_fn!(Value::Natural, (lhs, rhs) => {
-                    if lhs != 0 && rhs != 0 {
-                        Ok(lhs.pow(rhs as u32))
-                    } else {
+                    if lhs == 0 && rhs == 0 {
                         Err(Error::from("cannot raise zero to the power of zero"))
+                    } else {
+                        Ok(lhs.pow(rhs as u32))
                     }
                 })
             }
@@ -220,10 +220,10 @@ impl Interpreter {
             ir::RuntimeFunction::DivideByte => runtime_div_fn!(Value::Byte, 0),
             ir::RuntimeFunction::PowerByte => {
                 runtime_math_fn!(Value::Byte, (lhs, rhs) => {
-                    if lhs != 0 && rhs != 0 {
-                        Ok(lhs.pow(rhs as u32))
-                    } else {
+                    if lhs == 0 && rhs == 0 {
                         Err(Error::from("cannot raise zero to the power of zero"))
+                    } else {
+                        Ok(lhs.pow(rhs as u32))
                     }
                 })
             }
@@ -238,10 +238,10 @@ impl Interpreter {
             }
             ir::RuntimeFunction::DivideSigned => runtime_div_fn!(Value::Signed, 0),
             ir::RuntimeFunction::PowerSigned => runtime_math_fn!(Value::Signed, (lhs, rhs) => {
-                if lhs != 0 && rhs != 0 {
-                    Ok(lhs.pow(rhs as u32))
-                } else {
+                if lhs == 0 && rhs == 0 {
                     Err(Error::from("cannot raise zero to the power of zero"))
+                } else {
+                    Ok(lhs.pow(rhs as u32))
                 }
             }),
             ir::RuntimeFunction::AddUnsigned => {
@@ -256,10 +256,10 @@ impl Interpreter {
             ir::RuntimeFunction::DivideUnsigned => runtime_div_fn!(Value::Unsigned, 0),
             ir::RuntimeFunction::PowerUnsigned => {
                 runtime_math_fn!(Value::Unsigned, (lhs, rhs) => {
-                    if lhs != 0 && rhs != 0 {
-                        Ok(lhs.pow(rhs))
-                    } else {
+                    if lhs == 0 && rhs == 0 {
                         Err(Error::from("cannot raise zero to the power of zero"))
+                    } else {
+                        Ok(lhs.pow(rhs))
                     }
                 })
             }
