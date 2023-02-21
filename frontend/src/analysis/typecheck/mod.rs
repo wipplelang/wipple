@@ -16,8 +16,8 @@ use crate::{
     diagnostics::Note,
     helpers::{Backtrace, InternedString},
     parse::Span,
-    BuiltinTypeId, Compiler, ConstantId, FieldIndex, ItemId, TraitId, TypeId, TypeParameterId,
-    VariableId, VariantIndex,
+    BuiltinTypeId, Compiler, ConstantId, FieldIndex, ItemId, SyntaxId, TraitId, TypeId,
+    TypeParameterId, VariableId, VariantIndex,
 };
 use itertools::Itertools;
 use std::{
@@ -45,6 +45,7 @@ macro_rules! declarations {
     ($name:ident<$($container:ident)::+>) => {
         #[derive(Debug, Clone, Default)]
         pub struct $name {
+            pub syntaxes: $($container)::+<SyntaxId, SyntaxDecl>,
             pub types: $($container)::+<TypeId, TypeDecl>,
             pub traits: $($container)::+<TraitId, TraitDecl>,
             pub constants: $($container)::+<ConstantId, ConstantDecl>,
@@ -63,6 +64,7 @@ declarations!(Declarations<BTreeMap>);
 impl From<DeclarationsInner> for Declarations {
     fn from(decls: DeclarationsInner) -> Self {
         Declarations {
+            syntaxes: decls.syntaxes.into_iter().collect(),
             types: decls.types.into_iter().collect(),
             traits: decls.traits.into_iter().collect(),
             constants: decls.constants.into_iter().collect(),
@@ -72,6 +74,15 @@ impl From<DeclarationsInner> for Declarations {
             variables: decls.variables.into_iter().collect(),
         }
     }
+}
+
+#[derive(Debug, Clone)]
+pub struct SyntaxDecl {
+    pub name: InternedString,
+    pub span: Span,
+    pub operator: bool,
+    pub keyword: bool,
+    pub uses: HashSet<Span>,
 }
 
 #[derive(Debug, Clone)]
@@ -788,7 +799,7 @@ impl Typechecker {
         check!(
             type,
             trait,
-            // syntax as syntaxes,
+            syntax as syntaxes,
             builtin_type,
             type_parameter,
             // variables are handled inside `finalize_pattern`
@@ -3529,6 +3540,31 @@ impl Typechecker {
 }
 
 impl Typechecker {
+    fn with_syntax_decl<T>(&mut self, id: SyntaxId, f: impl FnOnce(&SyntaxDecl) -> T) -> Option<T> {
+        if let Some(decl) = self.declarations.borrow().syntaxes.get(&id) {
+            return Some(f(decl));
+        }
+
+        let decl = self.entrypoint.declarations.syntaxes.get(&id)?.clone();
+
+        let decl = SyntaxDecl {
+            name: decl
+                .name
+                .unwrap_or_else(|| InternedString::new("<unknown>")),
+            span: decl.span,
+            operator: decl.value.operator,
+            keyword: decl.value.keyword,
+            uses: decl.uses,
+        };
+
+        Some(f(self
+            .declarations
+            .borrow_mut()
+            .syntaxes
+            .entry(id)
+            .or_insert(decl)))
+    }
+
     fn with_type_decl<T>(&mut self, id: TypeId, f: impl FnOnce(&TypeDecl) -> T) -> Option<T> {
         if let Some(decl) = self.declarations.borrow().types.get(&id) {
             return Some(f(decl));

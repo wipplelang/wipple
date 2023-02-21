@@ -2,8 +2,11 @@ import prism from "prismjs";
 
 export const register = () => {
     prism.languages.wipple = {
-        keyword: { pattern: /_|use|when|type|trait|instance|where|external/, greedy: true },
-        operator: { pattern: /:|::|->|=>|~>|\.|\|/, greedy: true },
+        keyword: {
+            pattern: /_|use|when|type|trait|instance|where|external|syntax|format/,
+            greedy: true,
+        },
+        operator: { pattern: /:|::|->|=>|\.|\|/, greedy: true },
         type: { pattern: /\b[A-Z][^\r\n\t \(\)\[\]\{\}'"/]*\b/, greedy: true },
 
         // Standard syntax highlighting rules

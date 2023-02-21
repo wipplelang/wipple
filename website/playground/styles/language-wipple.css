@@ -19,7 +19,7 @@
 }
 
 .language-wipple .token.keyword {
-    color: #d73a49;
+    color: #d73a49 !important;
 }
 
 .language-wipple .token.type {
@@ -31,10 +31,14 @@
 }
 
 .language-wipple .token.operator {
-    color: #005cc5;
+    color: #005cc5 !important;
 }
 
 .language-wipple .token.function {
+    color: #6f42c1;
+}
+
+.language-wipple .token.syntax {
     color: #6f42c1;
 }
 
@@ -76,6 +80,10 @@
     }
 
     .language-wipple .token.function {
+        color: #a473ff;
+    }
+
+    .language-wipple .token.syntax {
         color: #a473ff;
     }
 }

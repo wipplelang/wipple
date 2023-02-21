@@ -6,15 +6,19 @@ use crate::{
         SyntaxBodySyntax, SyntaxBodySyntaxContext, SyntaxError,
     },
     diagnostics::Note,
+    helpers::InternedString,
     parse::Span,
 };
+use std::collections::HashSet;
 
 #[derive(Debug, Clone)]
 pub struct SyntaxAssignmentValue {
     pub syntax_span: Span,
+    pub name: Option<InternedString>,
     pub body: Result<SyntaxBody, SyntaxError>,
     pub operator_precedence: Option<OperatorPrecedenceStatementAttribute>,
     pub keyword: Option<KeywordStatementAttribute>,
+    pub uses: HashSet<Span>,
 }
 
 impl SyntaxAssignmentValue {
@@ -60,14 +64,17 @@ impl Syntax for SyntaxAssignmentValueSyntax {
 
                 let statement_attributes = context.statement_attributes.as_ref().unwrap().lock();
 
-                let value = SyntaxAssignmentValue {
+                let mut value = SyntaxAssignmentValue {
                     syntax_span: span,
+                    name: None,
                     body,
                     operator_precedence: statement_attributes.operator_precedence.clone(),
                     keyword: statement_attributes.keyword.clone(),
+                    uses: HashSet::new(),
                 };
 
                 if let Some((name, _, scope, did_create_syntax)) = context.assigned_name {
+                    value.name = Some(name);
                     context.ast_builder.add_syntax(name, value.clone(), scope);
                     *did_create_syntax.lock() = true;
                 }

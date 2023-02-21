@@ -7,7 +7,7 @@ use wipple_frontend::{
         lower::AnyDeclaration,
         typecheck::{
             format::{format_type, Format, TypeFunctionFormat},
-            TraitDecl, Type, TypeDecl, TypeDeclKind,
+            SyntaxDecl, TraitDecl, Type, TypeDecl, TypeDeclKind,
         },
         Expression, ExpressionKind, Program,
     },
@@ -170,41 +170,33 @@ impl LanguageServer for Backend {
         let mut semantic_tokens = Vec::new();
 
         macro_rules! insert_semantic_tokens {
-            ($kind:ident, $condition:expr, $token:expr) => {
-                for (id, decl) in &document.program.declarations.$kind {
-                    if $condition(id, decl) {
-                        if decl.span.path == document.path {
-                            semantic_tokens.push((decl.span, $token(decl)));
-                        }
+            ($kind:ident, $token:expr) => {
+                for decl in document.program.declarations.$kind.values() {
+                    if decl.span.path == document.path {
+                        semantic_tokens.push((decl.span, $token(decl)));
+                    }
 
-                        for &span in &decl.uses {
-                            if span.path == document.path {
-                                semantic_tokens.push((span, $token(decl)));
-                            }
+                    for &span in &decl.uses {
+                        if span.path == document.path {
+                            semantic_tokens.push((span, $token(decl)));
                         }
                     }
                 }
-            };
-            ($kind:ident, $token:expr) => {
-                insert_semantic_tokens!($kind, |_, _| true, $token)
             };
         }
 
         insert_semantic_tokens!(types, |_| SemanticTokenType::TYPE);
         insert_semantic_tokens!(traits, |_| SemanticTokenType::INTERFACE);
         insert_semantic_tokens!(constants, |_| SemanticTokenType::VARIABLE);
-        // insert_semantic_tokens!(operators, |_| SemanticTokenType::OPERATOR);
-        // insert_semantic_tokens!(
-        //     templates,
-        //     |id, _| !document.program.declarations.operators.contains_key(id),
-        //     |decl: &TemplateDecl| {
-        //         if decl.attributes.keyword {
-        //             SemanticTokenType::KEYWORD
-        //         } else {
-        //             SemanticTokenType::MACRO
-        //         }
-        //     }
-        // );
+        insert_semantic_tokens!(syntaxes, |decl: &SyntaxDecl| {
+            if decl.keyword {
+                SemanticTokenType::KEYWORD
+            } else if decl.operator {
+                SemanticTokenType::OPERATOR
+            } else {
+                SemanticTokenType::MACRO
+            }
+        });
         insert_semantic_tokens!(builtin_types, |_| SemanticTokenType::TYPE);
         insert_semantic_tokens!(type_parameters, |_| SemanticTokenType::TYPE_PARAMETER);
         insert_semantic_tokens!(variables, |_| SemanticTokenType::VARIABLE);

@@ -238,10 +238,11 @@ impl ExpressionSyntaxContext {
                 let expr = exprs.pop().unwrap();
 
                 if let parse::ExprKind::Name(name, name_scope) = expr.kind {
-                    if let Some(syntax) = self
-                        .ast_builder
-                        .try_get_syntax(name, name_scope.unwrap_or(scope))
-                    {
+                    if let Some(syntax) = self.ast_builder.try_get_syntax(
+                        name,
+                        expr.span,
+                        name_scope.unwrap_or(scope),
+                    ) {
                         match syntax.operator_precedence {
                             Some(_) => {
                                 self.ast_builder.compiler.add_error(
@@ -273,10 +274,11 @@ impl ExpressionSyntaxContext {
                     let first = exprs.next().unwrap();
 
                     if let parse::ExprKind::Name(name, name_scope) = first.kind {
-                        if let Some(syntax) = self
-                            .ast_builder
-                            .try_get_syntax(name, name_scope.unwrap_or(scope))
-                        {
+                        if let Some(syntax) = self.ast_builder.try_get_syntax(
+                            name,
+                            first.span,
+                            name_scope.unwrap_or(scope),
+                        ) {
                             return self
                                 .expand_syntax(
                                     first.span,
@@ -426,10 +428,11 @@ impl ExpressionSyntaxContext {
             .into_iter()
             .filter_map(move |(index, expr)| {
                 if let parse::ExprKind::Name(name, name_scope) = expr.kind {
-                    if let Some(syntax) = self
-                        .ast_builder
-                        .try_get_syntax(name, name_scope.unwrap_or(scope))
-                    {
+                    if let Some(syntax) = self.ast_builder.try_get_syntax(
+                        name,
+                        expr.span,
+                        name_scope.unwrap_or(scope),
+                    ) {
                         if let Some(attribute) = &syntax.operator_precedence {
                             let precedence = attribute.precedence;
 

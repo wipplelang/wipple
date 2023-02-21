@@ -239,6 +239,7 @@ impl AstBuilder {
     fn try_get_syntax(
         &self,
         name: InternedString,
+        span: Span,
         scope: ScopeId,
     ) -> Option<SyntaxAssignmentValue> {
         let scopes = self.scopes.lock();
@@ -248,13 +249,11 @@ impl AstBuilder {
             let scope = scopes.get(&scope).unwrap();
 
             if let Some(syntax) = scope.syntaxes.get(&name) {
-                return Some(
-                    self.syntax_declarations
-                        .lock()
-                        .get(syntax.as_ref()?)
-                        .unwrap()
-                        .clone(),
-                );
+                let mut syntax_declarations = self.syntax_declarations.lock();
+                let syntax = syntax_declarations.get_mut(syntax.as_ref()?).unwrap();
+                syntax.uses.insert(span);
+
+                return Some(syntax.clone());
             }
 
             parent = scope.parent;

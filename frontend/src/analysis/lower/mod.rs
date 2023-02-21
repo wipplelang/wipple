@@ -5,7 +5,7 @@ use crate::{
     diagnostics::Note,
     helpers::{Backtrace, InternedString, Shared},
     parse::Span,
-    BuiltinTypeId, Compiler, ConstantId, FieldIndex, FilePath, ScopeId, TraitId, TypeId,
+    BuiltinTypeId, Compiler, ConstantId, FieldIndex, FilePath, ScopeId, SyntaxId, TraitId, TypeId,
     TypeParameterId, VariableId, VariantIndex,
 };
 use std::{
@@ -28,6 +28,7 @@ pub struct File<Decls = Declarations> {
 
 #[derive(Debug, Clone, Default)]
 pub struct Declarations {
+    pub syntaxes: BTreeMap<SyntaxId, Declaration<SyntaxDeclaration>>,
     pub types: BTreeMap<TypeId, Declaration<TypeDeclaration>>,
     pub type_parameters: BTreeMap<TypeParameterId, Declaration<TypeParameterDeclaration>>,
     pub traits: BTreeMap<TraitId, Declaration<TraitDeclaration>>,
@@ -39,6 +40,7 @@ pub struct Declarations {
 
 #[derive(Debug, Clone, Default)]
 struct UnresolvedDeclarations {
+    syntaxes: BTreeMap<SyntaxId, Declaration<SyntaxDeclaration>>,
     types: BTreeMap<TypeId, Declaration<Option<TypeDeclaration>>>,
     type_parameters: BTreeMap<TypeParameterId, Declaration<TypeParameterDeclaration>>,
     traits: BTreeMap<TraitId, Declaration<Option<TraitDeclaration>>>,
@@ -51,6 +53,11 @@ struct UnresolvedDeclarations {
 impl UnresolvedDeclarations {
     fn resolve(self) -> Declarations {
         Declarations {
+            syntaxes: self
+                .syntaxes
+                .into_iter()
+                .map(|(id, decl)| (id, decl.resolve()))
+                .collect(),
             types: self
                 .types
                 .into_iter()
@@ -151,6 +158,12 @@ impl<T> Declaration<T> {
 #[non_exhaustive]
 pub struct DeclarationAttributes {
     pub help: Vec<InternedString>,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct SyntaxDeclaration {
+    pub operator: bool,
+    pub keyword: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -633,6 +646,22 @@ impl Compiler {
 
         let scope = lowerer.root_scope(file.root_scope);
 
+        for (id, value) in &file.syntax_declarations {
+            lowerer
+                .declarations
+                .syntaxes
+                .entry(*id)
+                .or_insert_with(|| Declaration {
+                    name: value.name,
+                    span: value.span(),
+                    uses: value.uses.clone(),
+                    value: SyntaxDeclaration {
+                        operator: value.operator_precedence.is_some(),
+                        keyword: value.keyword.is_some(),
+                    },
+                });
+        }
+
         for dependency in dependencies {
             macro_rules! merge_dependency {
                 ($($kind:ident$(($transform:expr))?),* $(,)?) => {
@@ -651,7 +680,7 @@ impl Compiler {
             }
 
             merge_dependency!(
-                // syntaxes,
+                syntaxes,
                 types(Declaration::make_unresolved),
                 type_parameters,
                 traits(Declaration::make_unresolved),

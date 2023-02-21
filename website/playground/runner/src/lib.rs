@@ -246,60 +246,44 @@ fn get_syntax_highlighting(
     let mut items = Vec::new();
 
     macro_rules! insert_semantic_tokens {
-        ($kind:ident, $condition:expr, $token:expr) => {
+        ($kind:ident, $token:expr) => {
             for (id, decl) in &program.declarations.$kind {
-                if $condition(id, decl) {
-                    if decl.span.path == playground_path {
+                if decl.span.path == playground_path {
+                    items.push(AnalysisOutputSyntaxHighlightingItem {
+                        start: decl.span.start,
+                        end: decl.span.end,
+                        kind: $token(id, decl),
+                    });
+                }
+
+                for &span in &decl.uses {
+                    if span.path == playground_path {
                         items.push(AnalysisOutputSyntaxHighlightingItem {
-                            start: decl.span.start,
-                            end: decl.span.end,
+                            start: span.start,
+                            end: span.end,
                             kind: $token(id, decl),
                         });
                     }
-
-                    for &span in &decl.uses {
-                        if span.path == playground_path {
-                            items.push(AnalysisOutputSyntaxHighlightingItem {
-                                start: span.start,
-                                end: span.end,
-                                kind: $token(id, decl),
-                            });
-                        }
-                    }
                 }
             }
-        };
-        ($kind:ident, $token:expr) => {
-            insert_semantic_tokens!($kind, |_, _| true, $token)
         };
     }
 
     insert_semantic_tokens!(types, |_, _| "type");
     insert_semantic_tokens!(traits, |_, _| "trait");
     insert_semantic_tokens!(constants, |_, _| "variable");
-    // insert_semantic_tokens!(operators, |id, _| {
-    //     if program
-    //         .declarations
-    //         .templates
-    //         .get(id)
-    //         .map_or(false, |decl| decl.attributes.keyword)
-    //     {
-    //         "keyword"
-    //     } else {
-    //         "operator"
-    //     }
-    // });
-    // insert_semantic_tokens!(
-    //     templates,
-    //     |id, _| !program.declarations.operators.contains_key(id),
-    //     |_, decl: &wipple_frontend::analysis::typecheck::TemplateDecl| {
-    //         if decl.attributes.keyword {
-    //             "keyword"
-    //         } else {
-    //             "template"
-    //         }
-    //     }
-    // );
+    insert_semantic_tokens!(
+        syntaxes,
+        |_, syntax: &wipple_frontend::analysis::typecheck::SyntaxDecl| {
+            if syntax.keyword {
+                "keyword"
+            } else if syntax.operator {
+                "operator"
+            } else {
+                "syntax"
+            }
+        }
+    );
     insert_semantic_tokens!(builtin_types, |_, _| "type");
     insert_semantic_tokens!(type_parameters, |_, _| "type");
     insert_semantic_tokens!(variables, |_, _| "variable");
