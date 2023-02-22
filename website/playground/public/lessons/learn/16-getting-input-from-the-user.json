@@ -9,29 +9,62 @@
         {
             "id": "30DAFG7v",
             "type": "code",
-            "value": "name : prompt \"What is your name?\"\nshow (format \"Hello, _!\" name)"
+            "value": "name : prompt \"What is your name?\" :: Text\nshow (format \"Hello, _!\" name)"
         },
         {
             "id": "kRisjDRb",
             "type": "text",
-            "value": "Try typing your name into the text field and watch the program greet you!\n\nThe `prompt` function always returns `Text`, but we can convert it into a `Number` using the `read` function:",
+            "value": "Try typing your name into the text field and watch the program greet you!\n\nNote that we have to annotate the type of `name` with `::`. This is because we have to tell Wipple what kind of data we want to read — `prompt` can convert the user's input into anything that implements the `Read` trait, which includes numeric types as well as your own custom types.\n\nFor example, you can read numbers like so! Try entering something that's not a number — you'll see the Playground highlights the text field in red, indicating an error.",
             "locked": true
         },
         {
-            "id": "9OlBw_gv",
+            "id": "OMYv9QFu",
             "type": "code",
-            "value": "number :\n\t\tprompt \"Enter a number:\"\n\t\t\t\t. read\n\t\t\t\t. expect \"invalid number\" :: Number\n\nshow number"
+            "value": "n : prompt \"Enter a number\" :: Number\nshow (format \"The next number after _ is _\" n (n + 1))"
         },
         {
-            "id": "leaj6fzN",
+            "id": "NMb7_x5x",
             "type": "text",
-            "value": "There are two important things to note about the above code:\n  -  `read` returns a `Maybe`, since user could type in something that isn't a number. We have to deal with this `Maybe` (here, using `expect`).\n  -  We have to annotate the type of `number` with `::`. This is because we have to tell `read` what kind of data we want to read — `read` can convert text into anything that implements the `Read` trait, which includes numeric types as well as your own custom types.\n\nYou can call `prompt` multiple times to get multiple values from the user!",
+            "value": "You can call `prompt` multiple times to get multiple values from the user!",
             "locked": true
         },
         {
             "id": "R8pJl2Mr",
             "type": "code",
             "value": "prompt-number :: Text -> Number\nprompt-number : text -> prompt text . read . expect \"invalid number\"\n\t\t\t\t\nx1 : prompt-number \"First x coordinate\"\ny1 : prompt-number \"First y coordinate\"\nx2 : prompt-number \"Second x coordinate\"\ny2 : prompt-number \"Second y coordinate\"\n\ndistance : sqrt ((x2 - x1) ^ 2 + (y2 - y1) ^ 2)\nshow (format \"The distance between (_, _) and (_, _) is _\" x1 y1 x2 y2 distance)"
+        },
+        {
+            "id": "c-u5gYPi",
+            "type": "text",
+            "value": "Wipple also has another function called `choice` that allows the user to pick from a set of options:",
+            "locked": true
+        },
+        {
+            "id": "uEm0HRas",
+            "type": "code",
+            "value": "colors : list \"red\" \"orange\" \"yellow\" \"green\" \"blue\" \"violet\"\ncolor : choice \"Favorite color\" colors\nshow (format \"Your favorite color is _\" color)"
+        },
+        {
+            "id": "wjLAkLea",
+            "type": "text",
+            "value": "Let's combine what we learned about Markdown in the last section to make the example more, well, colorful!",
+            "locked": true
+        },
+        {
+            "id": "gexw86hW",
+            "type": "code",
+            "value": "colors : list \"red\" \"orange\" \"yellow\" \"green\" \"blue\" \"violet\"\ncolor : choice \"Favorite color\" colors\nshow (format \"Your favorite color is <span style='color: _'>_</span>\" color color)"
+        },
+        {
+            "id": "IINYj6_5",
+            "type": "text",
+            "value": "`choice` accepts a list of any type that implements `Show`, so it's easy to match it with a `when` expression:",
+            "locked": true
+        },
+        {
+            "id": "It2P5bZn",
+            "type": "code",
+            "value": "Font-Size : type {\n\t\tLarge\n\t\tMedium\n\t\tSmall\n\t\tRegular\n}\n\nuse Font-Size\n\ninstance (Show Font-Size) : font-size -> when font-size {\n\t\tLarge -> \"large\"\n\t\tMedium -> \"medium\"\n\t\tSmall -> \"small\"\n\t\tRegular -> \"regular\"\n}\n\nwith-font-size :: Font-Size -> Text -> Text\nwith-font-size : font-size -> text -> when font-size {\n\t\tLarge -> format \"# _\" text\n\t\tMedium -> format \"## _\" text\n\t\tSmall -> format \"### _\" text\n\t\tRegular -> text\n}\n\nfont-size : choice \"Choose a font size\" (list Large Medium Small Regular)\ntext : prompt \"Enter some text\" :: Text\nshow (text . with-font-size font-size)"
         }
     ],
     "previous": {

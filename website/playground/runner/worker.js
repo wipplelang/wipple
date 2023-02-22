@@ -5,8 +5,6 @@ onmessage = async (event) => {
     try {
         const runner = await import("./pkg");
 
-        console.log(event.data);
-
         switch (event.data.operation) {
             case "analyze":
                 if (cancel) {
