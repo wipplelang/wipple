@@ -215,13 +215,13 @@ impl<'a> Interpreter<'a> {
                 ir::RuntimeFunction::FloatToText => runtime_text_fn!(Value::Float),
                 ir::RuntimeFunction::DoubleToText => runtime_text_fn!(Value::Double),
                 ir::RuntimeFunction::TextToNumber => runtime_parse_fn!(Value::Number),
-                ir::RuntimeFunction::TextToInteger => runtime_text_fn!(Value::Integer),
-                ir::RuntimeFunction::TextToNatural => runtime_text_fn!(Value::Natural),
-                ir::RuntimeFunction::TextToByte => runtime_text_fn!(Value::Byte),
-                ir::RuntimeFunction::TextToSigned => runtime_text_fn!(Value::Signed),
-                ir::RuntimeFunction::TextToUnsigned => runtime_text_fn!(Value::Unsigned),
-                ir::RuntimeFunction::TextToFloat => runtime_text_fn!(Value::Float),
-                ir::RuntimeFunction::TextToDouble => runtime_text_fn!(Value::Double),
+                ir::RuntimeFunction::TextToInteger => runtime_parse_fn!(Value::Integer),
+                ir::RuntimeFunction::TextToNatural => runtime_parse_fn!(Value::Natural),
+                ir::RuntimeFunction::TextToByte => runtime_parse_fn!(Value::Byte),
+                ir::RuntimeFunction::TextToSigned => runtime_parse_fn!(Value::Signed),
+                ir::RuntimeFunction::TextToUnsigned => runtime_parse_fn!(Value::Unsigned),
+                ir::RuntimeFunction::TextToFloat => runtime_parse_fn!(Value::Float),
+                ir::RuntimeFunction::TextToDouble => runtime_parse_fn!(Value::Double),
                 ir::RuntimeFunction::AddNumber => {
                     runtime_math_fn!(Value::Number, (lhs, rhs) => Ok(lhs + rhs))
                 }
