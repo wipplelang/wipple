@@ -31,7 +31,7 @@
         {
             "id": "R8pJl2Mr",
             "type": "code",
-            "value": "prompt-number :: Text -> Number\nprompt-number : text -> prompt text . read . expect \"invalid number\"\n\t\t\t\t\nx1 : prompt-number \"First x coordinate\"\ny1 : prompt-number \"First y coordinate\"\nx2 : prompt-number \"Second x coordinate\"\ny2 : prompt-number \"Second y coordinate\"\n\ndistance : sqrt ((x2 - x1) ^ 2 + (y2 - y1) ^ 2)\nshow (format \"The distance between (_, _) and (_, _) is _\" x1 y1 x2 y2 distance)"
+            "value": "x1 : prompt \"First x coordinate\"\ny1 : prompt \"First y coordinate\"\nx2 : prompt \"Second x coordinate\"\ny2 : prompt \"Second y coordinate\"\n\ndistance : sqrt ((x2 - x1) ^ 2 + (y2 - y1) ^ 2)\nshow (format \"The distance between (_, _) and (_, _) is _\" x1 y1 x2 y2 distance)"
         },
         {
             "id": "c-u5gYPi",
