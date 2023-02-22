@@ -1,30 +1,36 @@
 mod runtime;
 
 use async_recursion::async_recursion;
-use futures::future::LocalBoxFuture;
 use std::{
     collections::BTreeMap,
     os::raw::{c_int, c_uint},
     sync::Arc,
 };
+use tokio::sync::mpsc::{Receiver, Sender};
 use wipple_frontend::{helpers::Shared, ir, VariantIndex};
 
-type Error = String;
+pub type Error = String;
 
-#[allow(clippy::type_complexity)]
-pub struct Interpreter {
-    input: Box<dyn Fn(&str) -> LocalBoxFuture<String>>,
-    output: Box<dyn Fn(&str) -> LocalBoxFuture<()>>,
+pub enum ConsoleRequest<'a> {
+    Display(&'a str, Box<dyn FnOnce() + Send>),
+    Prompt(
+        &'a str,
+        Sender<String>,
+        Receiver<bool>,
+        Box<dyn FnOnce() + Send>,
+    ),
+    Choice(&'a str, Vec<&'a str>, Box<dyn FnOnce(usize) + Send>),
 }
 
-impl Interpreter {
-    pub fn new(
-        input: impl Fn(&str) -> LocalBoxFuture<String> + 'static,
-        output: impl Fn(&str) -> LocalBoxFuture<()> + 'static,
-    ) -> Self {
+#[allow(clippy::type_complexity)]
+pub struct Interpreter<'a> {
+    console: Arc<dyn Fn(ConsoleRequest) -> Result<(), Error> + 'a>,
+}
+
+impl<'a> Interpreter<'a> {
+    pub fn new(console_handler: impl Fn(ConsoleRequest) -> Result<(), Error> + 'a) -> Self {
         Interpreter {
-            input: Box::new(input),
-            output: Box::new(output),
+            console: Arc::new(console_handler),
         }
     }
 }
@@ -134,7 +140,7 @@ impl Stack {
     }
 }
 
-impl Interpreter {
+impl<'a> Interpreter<'a> {
     pub async fn run(&mut self, program: &ir::Program) -> Result<(), Error> {
         let mut info = Info {
             labels: program
@@ -275,7 +281,7 @@ impl Interpreter {
                         }
                         ir::Expression::Runtime(func, inputs) => {
                             let inputs = stack.popn(*inputs);
-                            stack.push(self.call_runtime(*func, inputs).await?);
+                            self.call_runtime(*func, inputs, stack, info).await?;
                         }
                         ir::Expression::Tuple(inputs) => {
                             let inputs = stack.popn(*inputs);

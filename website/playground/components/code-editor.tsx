@@ -4,8 +4,12 @@ import * as prism from "prismjs";
 import {
     Button,
     debounce,
+    FormControl,
     IconButton,
     InputAdornment,
+    InputLabel,
+    MenuItem,
+    Select,
     TextField,
     useMediaQuery,
 } from "@mui/material";
@@ -36,7 +40,8 @@ export interface CodeEditorProps {
 
 type OutputItem =
     | { type: "output"; text: string }
-    | { type: "input"; prompt: string; onSubmit: (text: string) => void };
+    | { type: "prompt"; prompt: string; onSubmit: (text: string) => Promise<boolean> }
+    | { type: "choice"; prompt: string; choices: string[]; onSubmit: (index: number) => void };
 
 interface Hover {
     x: number;
@@ -82,25 +87,48 @@ export const CodeEditor = (props: CodeEditorProps) => {
 
                     if (analysis.diagnostics.type !== "error") {
                         setOutput([]);
-
-                        const input = (prompt: string) =>
-                            new Promise<string>((resolve) => {
-                                appendToOutput({
-                                    type: "input",
-                                    prompt,
-                                    onSubmit: resolve,
-                                });
-                            });
-
-                        const output = (text: string) => {
-                            appendToOutput({
-                                type: "output",
-                                text,
-                            });
-                        };
-
                         setRunning(true);
-                        const success = await runner.run(input, output);
+
+                        const success = await runner.run((request) => {
+                            switch (request.type) {
+                                case "display":
+                                    appendToOutput({
+                                        type: "output",
+                                        text: request.text,
+                                    });
+
+                                    request.callback();
+
+                                    break;
+                                case "prompt":
+                                    appendToOutput({
+                                        type: "prompt",
+                                        prompt: request.prompt,
+                                        onSubmit: async (text) => {
+                                            request.sendInput(text);
+
+                                            const valid = await request.recvValid();
+                                            if (valid) {
+                                                request.callback();
+                                            }
+
+                                            return valid;
+                                        },
+                                    });
+
+                                    break;
+                                case "choice":
+                                    appendToOutput({
+                                        type: "choice",
+                                        prompt: request.prompt,
+                                        choices: request.choices,
+                                        onSubmit: request.callback,
+                                    });
+
+                                    break;
+                            }
+                        });
+
                         setRunning(false);
 
                         if (!success) {
@@ -292,58 +320,71 @@ export const CodeEditor = (props: CodeEditorProps) => {
                         }
 
                         if (Array.isArray(output)) {
-                            return output.map((item, index) => {
-                                switch (item.type) {
-                                    case "input":
-                                        return (
-                                            <InputField
-                                                key={index}
-                                                index={index}
-                                                onSubmit={item.onSubmit}
-                                            >
-                                                {item.prompt}
-                                            </InputField>
-                                        );
-                                    case "output":
-                                        return (
-                                            <div className="prose prose-sky dark:prose-invert max-w-none">
-                                                <ReactMarkdown
-                                                    remarkPlugins={[
-                                                        remarkMath,
-                                                        remarkGfm,
-                                                        remarkSmartypants,
-                                                    ]}
-                                                    rehypePlugins={[rehypeRaw, rehypeKatex]}
-                                                    linkTarget="_blank"
-                                                >
-                                                    {item.text}
-                                                </ReactMarkdown>
-
-                                                {isRunning ? (
-                                                    <div className="bouncing-loader">
-                                                        <div></div>
-                                                        <div></div>
-                                                        <div></div>
-                                                    </div>
-                                                ) : Array.isArray(output) &&
-                                                  output.find((item) => item.type === "input") ? (
-                                                    <div className="mt-4">
-                                                        <Button
-                                                            variant="contained"
-                                                            size="small"
-                                                            endIcon={<Refresh />}
-                                                            onClick={() =>
-                                                                run(props.code, props.lint)
-                                                            }
+                            return (
+                                <div>
+                                    {output.map((item, index) => {
+                                        switch (item.type) {
+                                            case "output":
+                                                return (
+                                                    <div className="prose prose-sky dark:prose-invert max-w-none">
+                                                        <ReactMarkdown
+                                                            remarkPlugins={[
+                                                                remarkMath,
+                                                                remarkGfm,
+                                                                remarkSmartypants,
+                                                            ]}
+                                                            rehypePlugins={[rehypeRaw, rehypeKatex]}
+                                                            linkTarget="_blank"
                                                         >
-                                                            Run again
-                                                        </Button>
+                                                            {item.text}
+                                                        </ReactMarkdown>
                                                     </div>
-                                                ) : null}
-                                            </div>
-                                        );
-                                }
-                            });
+                                                );
+                                            case "prompt":
+                                                return (
+                                                    <InputField
+                                                        key={index}
+                                                        index={index}
+                                                        onSubmit={item.onSubmit}
+                                                    >
+                                                        {item.prompt}
+                                                    </InputField>
+                                                );
+                                            case "choice":
+                                                return (
+                                                    <DropdownField
+                                                        key={index}
+                                                        index={index}
+                                                        choices={item.choices}
+                                                        onSubmit={item.onSubmit}
+                                                    >
+                                                        {item.prompt}
+                                                    </DropdownField>
+                                                );
+                                        }
+                                    })}
+
+                                    {isRunning ? (
+                                        <div className="bouncing-loader">
+                                            <div></div>
+                                            <div></div>
+                                            <div></div>
+                                        </div>
+                                    ) : Array.isArray(output) &&
+                                      output.find((item) => item.type !== "output") ? (
+                                        <div className="mt-4">
+                                            <Button
+                                                variant="contained"
+                                                size="small"
+                                                endIcon={<Refresh />}
+                                                onClick={() => run(props.code, props.lint)}
+                                            >
+                                                Run again
+                                            </Button>
+                                        </div>
+                                    ) : null}
+                                </div>
+                            );
                         } else {
                             switch (output.type) {
                                 case "success":
@@ -402,11 +443,12 @@ export const CodeEditor = (props: CodeEditorProps) => {
 
 const InputField = (props: {
     index: number;
-    onSubmit: (text: string) => void;
+    onSubmit: (text: string) => Promise<boolean>;
     children: string;
 }) => {
     const [text, setText] = useState("");
     const [isEnabled, setEnabled] = useState(true);
+    const [isValid, setValid] = useState(true);
 
     return (
         <div className={props.index === 0 ? "mb-4" : "my-4"}>
@@ -416,15 +458,19 @@ const InputField = (props: {
                 fullWidth
                 value={text}
                 disabled={!isEnabled}
+                error={!isValid}
                 onChange={(event) => setText(event.target.value)}
                 InputProps={{
                     endAdornment: (
                         <InputAdornment position="end">
                             <IconButton
                                 disabled={!isEnabled}
-                                onClick={() => {
-                                    props.onSubmit(text);
-                                    setEnabled(false);
+                                onClick={async () => {
+                                    const valid = await props.onSubmit(text);
+                                    setValid(valid);
+                                    if (valid) {
+                                        setEnabled(false);
+                                    }
                                 }}
                             >
                                 <KeyboardReturn />
@@ -433,6 +479,47 @@ const InputField = (props: {
                     ),
                 }}
             />
+        </div>
+    );
+};
+
+const DropdownField = (props: {
+    index: number;
+    choices: string[];
+    onSubmit: (index: number) => void;
+    children: string;
+}) => {
+    const [index, setIndex] = useState<number | undefined>();
+    const [isEnabled, setEnabled] = useState(true);
+
+    return (
+        <div className={`flex flex-row gap-4 ${props.index !== 0 ? "mb-4" : "my-4"}`}>
+            <FormControl className="flex-grow">
+                <InputLabel>{props.children}</InputLabel>
+
+                <Select
+                    label={props.children}
+                    disabled={!isEnabled}
+                    value={index ?? ""}
+                    onChange={(event) => setIndex(event.target.value as number)}
+                >
+                    {props.choices.map((choice, index) => (
+                        <MenuItem key={index} value={index}>
+                            {choice}
+                        </MenuItem>
+                    ))}
+                </Select>
+            </FormControl>
+
+            <Button
+                disabled={!isEnabled || index == null}
+                onClick={() => {
+                    props.onSubmit(index!);
+                    setEnabled(false);
+                }}
+            >
+                Submit
+            </Button>
         </div>
     );
 };

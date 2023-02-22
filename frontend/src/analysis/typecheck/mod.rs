@@ -599,16 +599,18 @@ impl Typechecker {
 
         // Monomorphize constants
 
-        let mut count = 0;
-        let total = self.item_queue.len();
-        while let Some(item) = self.item_queue.pop_back() {
-            count += 1;
-            progress(count, total);
+        if lowering_is_complete {
+            let mut count = 0;
+            let total = self.item_queue.len();
+            while let Some(item) = self.item_queue.pop_back() {
+                count += 1;
+                progress(count, total);
 
-            let expr = self.repeatedly_monomorphize_expr(item.expr, item.info);
-            let expr = self.finalize_expr(expr);
+                let expr = self.repeatedly_monomorphize_expr(item.expr, item.info);
+                let expr = self.finalize_expr(expr);
 
-            self.items.insert(item.id, (item.generic_id, expr));
+                self.items.insert(item.id, (item.generic_id, expr));
+            }
         }
 
         // Ensure specialized constants unify with their generic counterparts

@@ -1,3 +1,4 @@
+use futures::channel::oneshot::channel;
 use lazy_static::lazy_static;
 use loader::Fetcher;
 use parking_lot::{MappedMutexGuard, Mutex, MutexGuard};
@@ -330,11 +331,7 @@ fn get_syntax_highlighting(
 }
 
 #[wasm_bindgen]
-pub fn run(
-    input: js_sys::Function,
-    output: js_sys::Function,
-    callback: js_sys::Function,
-) -> JsValue {
+pub fn run(handle_console: js_sys::Function, callback: js_sys::Function) -> JsValue {
     let analysis = match get_analysis() {
         Some(analysis) => analysis,
         None => {
@@ -355,39 +352,112 @@ pub fn run(
         }
     };
 
-    let input = Arc::new(input);
-    let output = Arc::new(output);
+    let send_display = {
+        let handle_console = handle_console.clone();
 
-    let mut interpreter = {
-        let output = output.clone();
+        move |text: String, callback: Box<dyn FnOnce()>| {
+            #[wasm_bindgen(getter_with_clone)]
+            pub struct DisplayRequest {
+                pub kind: String,
+                pub text: String,
+                pub callback: JsValue,
+            }
 
-        wipple_interpreter_backend::Interpreter::new(
-            move |prompt| {
-                let input = input.clone();
+            let request = DisplayRequest {
+                kind: String::from("display"),
+                text,
+                callback: Closure::once(callback).into_js_value(),
+            };
 
-                Box::pin(async move {
-                    wasm_bindgen_futures::JsFuture::from(js_sys::Promise::from(
-                        input.call1(&JsValue::NULL, &prompt.into()).unwrap(),
-                    ))
-                    .await
-                    .unwrap()
-                    .as_string()
-                    .unwrap()
-                })
-            },
-            move |text| {
-                let output = output.clone();
-
-                Box::pin(async move {
-                    wasm_bindgen_futures::JsFuture::from(js_sys::Promise::from(
-                        output.call1(&JsValue::NULL, &text.into()).unwrap(),
-                    ))
-                    .await
-                    .unwrap();
-                })
-            },
-        )
+            handle_console
+                .call1(&JsValue::NULL, &request.into())
+                .unwrap();
+        }
     };
+
+    let mut interpreter = wipple_interpreter_backend::Interpreter::new({
+        let send_display = send_display.clone();
+
+        move |request| {
+            match request {
+                wipple_interpreter_backend::ConsoleRequest::Display(text, callback) => {
+                    send_display(text.to_string(), callback);
+                }
+                wipple_interpreter_backend::ConsoleRequest::Prompt(
+                    prompt,
+                    input_tx,
+                    valid_rx,
+                    callback,
+                ) => {
+                    let prompt = prompt.to_string();
+                    let input_tx = Arc::new(Mutex::new(input_tx));
+                    let valid_rx = Arc::new(Mutex::new(valid_rx));
+
+                    #[wasm_bindgen(getter_with_clone)]
+                    pub struct PromptRequest {
+                        pub kind: String,
+                        pub prompt: String,
+                        pub send_input: JsValue,
+                        pub recv_valid: JsValue,
+                        pub callback: JsValue,
+                    }
+
+                    let send_input =
+                        Closure::<dyn Fn(String) -> js_sys::Promise>::new(move |input| {
+                            let input_tx = input_tx.clone();
+
+                            wasm_bindgen_futures::future_to_promise(async move {
+                                input_tx.lock().send(input).await.unwrap();
+                                Ok(JsValue::UNDEFINED)
+                            })
+                        });
+
+                    let recv_valid = Closure::<dyn Fn() -> js_sys::Promise>::new(move || {
+                        let valid_rx = valid_rx.clone();
+
+                        wasm_bindgen_futures::future_to_promise(async move {
+                            let valid = valid_rx.lock().recv().await.unwrap();
+                            Ok(valid.into())
+                        })
+                    });
+
+                    let request = PromptRequest {
+                        kind: String::from("prompt"),
+                        prompt,
+                        send_input: send_input.into_js_value(),
+                        recv_valid: recv_valid.into_js_value(),
+                        callback: Closure::once(callback).into_js_value(),
+                    };
+
+                    handle_console
+                        .call1(&JsValue::NULL, &request.into())
+                        .unwrap();
+                }
+                wipple_interpreter_backend::ConsoleRequest::Choice(prompt, choices, callback) => {
+                    #[wasm_bindgen(getter_with_clone)]
+                    pub struct ChoiceRequest {
+                        pub kind: String,
+                        pub prompt: String,
+                        pub choices: Vec<JsValue>,
+                        pub callback: JsValue,
+                    }
+
+                    let request = ChoiceRequest {
+                        kind: String::from("choice"),
+                        prompt: prompt.to_string(),
+                        choices: choices.into_iter().map(From::from).collect(),
+                        callback: Closure::once(callback).into_js_value(),
+                    };
+
+                    handle_console
+                        .call1(&JsValue::NULL, &request.into())
+                        .unwrap();
+                }
+            }
+
+            Ok(())
+        }
+    });
 
     struct CancellableFuture<Fut> {
         token: Arc<AtomicBool>,
@@ -421,14 +491,17 @@ pub fn run(
     }
 
     let token = Arc::new(AtomicBool::new(false));
-
     let future = CancellableFuture::new(token.clone(), async move {
         let result = interpreter.run(&program).await;
 
         if let Err(error) = result {
-            output
-                .call1(&JsValue::NULL, &format!("fatal error: {error}").into())
-                .unwrap();
+            let (completion_tx, completion_rx) = channel();
+            send_display(
+                format!("fatal error: {error}"),
+                Box::new(|| completion_tx.send(()).unwrap()),
+            );
+
+            completion_rx.await.unwrap();
         }
 
         callback.call1(&JsValue::NULL, &JsValue::TRUE).unwrap();

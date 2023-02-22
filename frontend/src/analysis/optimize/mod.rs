@@ -524,8 +524,9 @@ mod util {
         fn is_pure(&self) -> bool {
             match self {
                 RuntimeFunction::Crash => false,
-                RuntimeFunction::WriteStdout => false,
-                RuntimeFunction::ReadStdin => false,
+                RuntimeFunction::Display => false,
+                RuntimeFunction::Prompt => false,
+                RuntimeFunction::Choice => false,
                 RuntimeFunction::NumberToText => true,
                 RuntimeFunction::IntegerToText => true,
                 RuntimeFunction::NaturalToText => true,

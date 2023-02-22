@@ -266,16 +266,13 @@ async fn run(
             }
 
             let mut interpreter =
-                wipple_interpreter_backend::Interpreter::new(|_| unimplemented!(), {
-                    let buf = buf.clone();
-
-                    move |text| {
-                        let buf = buf.clone();
-
-                        Box::pin(async move {
-                            write!(buf.lock(), "{text}").unwrap();
-                        })
+                wipple_interpreter_backend::Interpreter::new(|request| match request {
+                    wipple_interpreter_backend::ConsoleRequest::Display(text, completion) => {
+                        write!(buf.lock(), "{text}").unwrap();
+                        completion();
+                        Ok(())
                     }
+                    _ => unimplemented!(),
                 });
 
             if let Err(error) = interpreter.run(&ir).await {

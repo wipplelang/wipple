@@ -4,10 +4,7 @@ use "fp.wpl"
 use "list.wpl"
 use "logic.wpl"
 use "util.wpl"
-
-[help "Display text on the screen. `write-stdout` writes directly to the standard output with no trailing newline."]
-write-stdout :: Text -> ()
-write-stdout : text -> external "runtime" "write-stdout" text
+use "iterate.wpl"
 
 [language "show"]
 [help "Implement this trait to enable `show`ing values of your type."]
@@ -15,7 +12,7 @@ Show : A => trait (A -> Text)
 
 [help "Display a value on the screen."]
 show :: A where (Show A) => A -> ()
-show : x -> write-stdout (format "_\n" x)
+show : x -> external "runtime" "display" (Show x)
 
 instance (Show Text) : it
 instance (Show Number) : n -> external "runtime" "number-to-text" n
@@ -49,14 +46,6 @@ Success Failure where (Show Failure) =>
 			Error e -> crash (format "_: _" message e)
 		}
 
-[help "Read a value from the user with the provided prompt. `read-stdin` writes the prompt directly to the standard output with no trailing space."]
-read-stdin :: Text -> Text
-read-stdin : prompt -> external "runtime" "read-stdin" prompt
-
-[help "Read a value from the user with the provided prompt."]
-prompt :: Text -> Text
-prompt : prompt -> read-stdin (format "_ " prompt)
-
 [help "Implement the `read` function."]
 Read : A => trait (Text -> Maybe A)
 
@@ -73,3 +62,15 @@ instance (Read Signed) : text -> external "runtime" "text-to-signed" text
 instance (Read Unsigned) : text -> external "runtime" "text-to-unsigned" text
 instance (Read Float) : text -> external "runtime" "text-to-float" text
 instance (Read Double) : text -> external "runtime" "text-to-double" text
+
+[help "Read a value from the user with the provided prompt."]
+prompt :: A where (Read A) => Text -> A
+prompt : prompt -> external "runtime" "prompt" prompt (Read :: (Text -> Maybe A))
+
+[help "Ask the user to pick from a set of options."]
+choice :: Collection Element where (Iterate Collection Element) (Show Element) => Text -> Collection -> Element
+choice : prompt -> items -> {
+	items : collect items :: List Element
+	index : external "runtime" "choice" prompt items
+	items . nth index . unwrap
+}

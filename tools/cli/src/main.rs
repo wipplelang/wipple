@@ -1,6 +1,7 @@
 mod lsp;
 
 use clap::{Parser, ValueEnum};
+use parking_lot::Mutex;
 use std::{
     fs,
     io::{self, Read, Write},
@@ -149,23 +150,62 @@ async fn run() -> anyhow::Result<()> {
                 _ => return Err(anyhow::Error::msg("")),
             };
 
-            let mut interpreter = wipple_interpreter_backend::Interpreter::new(
-                |prompt| {
-                    Box::pin(async move {
-                        print!("{prompt}");
-                        io::stdout().flush().unwrap();
-                        let mut buf = String::new();
-                        io::stdin().read_line(&mut buf).unwrap();
-                        buf.pop().expect("input did not contain trailing newline");
-                        buf
-                    })
-                },
-                |text| {
-                    Box::pin(async move {
-                        print!("{text}");
-                    })
-                },
-            );
+            let mut interpreter = wipple_interpreter_backend::Interpreter::new(|request| {
+                match request {
+                    wipple_interpreter_backend::ConsoleRequest::Display(text, callback) => {
+                        println!("{text}");
+                        callback();
+                    }
+                    wipple_interpreter_backend::ConsoleRequest::Prompt(
+                        prompt,
+                        input_tx,
+                        valid_rx,
+                        callback,
+                    ) => {
+                        let prompt = prompt.to_string();
+                        let input_tx = Arc::new(Mutex::new(input_tx));
+                        let valid_rx = Arc::new(Mutex::new(valid_rx));
+
+                        std::thread::spawn(move || {
+                            dialoguer::Input::new()
+                                .with_prompt(prompt)
+                                .validate_with(|input: &String| {
+                                    tokio::runtime::Builder::new_current_thread()
+                                        .enable_all()
+                                        .build()
+                                        .unwrap()
+                                        .block_on(async {
+                                            input_tx.lock().send(input.to_string()).await.unwrap();
+                                            let valid = valid_rx.lock().recv().await.unwrap();
+                                            valid.then_some(()).ok_or("invalid input")
+                                        })
+                                })
+                                .interact()
+                                .unwrap();
+
+                            valid_rx.lock().close();
+
+                            callback();
+                        });
+                    }
+                    wipple_interpreter_backend::ConsoleRequest::Choice(
+                        prompt,
+                        choices,
+                        callback,
+                    ) => {
+                        let index = dialoguer::Select::new()
+                            .with_prompt(prompt)
+                            .items(&choices)
+                            .default(0)
+                            .interact()
+                            .map_err(|err| err.to_string())?;
+
+                        callback(index);
+                    }
+                }
+
+                Ok(())
+            });
 
             if let Err(error) = interpreter.run(&ir).await {
                 eprintln!("fatal error: {error}");

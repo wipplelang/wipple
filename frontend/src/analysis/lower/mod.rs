@@ -522,8 +522,9 @@ pub type CaptureList = Vec<(VariableId, Span)>;
 #[strum(serialize_all = "kebab-case")]
 pub enum RuntimeFunction {
     Crash,
-    WriteStdout,
-    ReadStdin,
+    Display,
+    Prompt,
+    Choice,
     NumberToText,
     IntegerToText,
     NaturalToText,

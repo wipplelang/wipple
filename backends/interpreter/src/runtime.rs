@@ -1,8 +1,9 @@
-use crate::{Error, Interpreter, Value};
+use crate::{ConsoleRequest, Error, Info, Interpreter, Stack, Value};
 use itertools::Itertools;
 use num_traits::pow::Pow;
 use rust_decimal::{Decimal, MathematicalOps};
 use std::sync::Arc;
+use tokio::sync::mpsc::channel;
 use unicode_segmentation::UnicodeSegmentation;
 use wipple_frontend::{helpers::Shared, ir, VariantIndex};
 
@@ -18,6 +19,20 @@ fn maybe(value: Option<Value>) -> Value {
     match value {
         Some(value) => some(value),
         None => none(),
+    }
+}
+
+fn maybe_from(value: Value) -> Option<Value> {
+    match value {
+        Value::Variant(index, mut values) => match index.into_inner() {
+            0 => None,
+            1 => {
+                assert!(values.len() == 1);
+                Some(values.pop().unwrap())
+            }
+            _ => unreachable!(),
+        },
+        _ => unreachable!(),
     }
 }
 
@@ -37,12 +52,14 @@ fn error(value: Value) -> Value {
     Value::Variant(VariantIndex::new(1), vec![value])
 }
 
-impl Interpreter {
+impl<'a> Interpreter<'a> {
     pub(crate) async fn call_runtime(
         &mut self,
         func: ir::RuntimeFunction,
         inputs: Vec<Value>,
-    ) -> Result<Value, Error> {
+        stack: &mut Stack,
+        info: &mut Info,
+    ) -> Result<(), Error> {
         #![allow(unreachable_patterns)]
 
         macro_rules! runtime_fn {
@@ -116,333 +133,409 @@ impl Interpreter {
             };
         }
 
-        match func {
-            ir::RuntimeFunction::Crash => {
-                runtime_fn!((Value::Text(text)) => Err(Error::from(text.as_ref())))
-            }
-            ir::RuntimeFunction::ReadStdin => runtime_fn!((Value::Text(text)) => {
-                let input = (self.input)(&text).await;
-                Ok(Value::Text(Arc::from(input)))
-            }),
-            ir::RuntimeFunction::WriteStdout => runtime_fn!((Value::Text(text)) => {
-                (self.output)(&text).await;
-                Ok(Value::Tuple(Vec::new()))
-            }),
-            ir::RuntimeFunction::NumberToText => {
-                runtime_text_fn!((Value::Number(n)) => n.normalize().to_string())
-            }
-            ir::RuntimeFunction::IntegerToText => runtime_text_fn!(Value::Integer),
-            ir::RuntimeFunction::NaturalToText => runtime_text_fn!(Value::Natural),
-            ir::RuntimeFunction::ByteToText => runtime_text_fn!(Value::Byte),
-            ir::RuntimeFunction::SignedToText => runtime_text_fn!(Value::Signed),
-            ir::RuntimeFunction::UnsignedToText => runtime_text_fn!(Value::Unsigned),
-            ir::RuntimeFunction::FloatToText => runtime_text_fn!(Value::Float),
-            ir::RuntimeFunction::DoubleToText => runtime_text_fn!(Value::Double),
-            ir::RuntimeFunction::TextToNumber => runtime_parse_fn!(Value::Number),
-            ir::RuntimeFunction::TextToInteger => runtime_text_fn!(Value::Integer),
-            ir::RuntimeFunction::TextToNatural => runtime_text_fn!(Value::Natural),
-            ir::RuntimeFunction::TextToByte => runtime_text_fn!(Value::Byte),
-            ir::RuntimeFunction::TextToSigned => runtime_text_fn!(Value::Signed),
-            ir::RuntimeFunction::TextToUnsigned => runtime_text_fn!(Value::Unsigned),
-            ir::RuntimeFunction::TextToFloat => runtime_text_fn!(Value::Float),
-            ir::RuntimeFunction::TextToDouble => runtime_text_fn!(Value::Double),
-            ir::RuntimeFunction::AddNumber => {
-                runtime_math_fn!(Value::Number, (lhs, rhs) => Ok(lhs + rhs))
-            }
-            ir::RuntimeFunction::SubtractNumber => {
-                runtime_math_fn!(Value::Number, (lhs, rhs) => Ok(lhs - rhs))
-            }
-            ir::RuntimeFunction::MultiplyNumber => {
-                runtime_math_fn!(Value::Number, (lhs, rhs) => Ok(lhs * rhs))
-            }
-            ir::RuntimeFunction::DivideNumber => runtime_div_fn!(Value::Number, Decimal::ZERO),
-            ir::RuntimeFunction::PowerNumber => {
-                runtime_math_fn!(Value::Number, (lhs, rhs) => {
-                    if lhs == Decimal::ZERO && rhs == Decimal::ZERO {
-                        Err(Error::from("cannot raise zero to the power of zero"))
-                    } else {
-                        Ok(lhs.pow(rhs))
-                    }
-                })
-            }
-            ir::RuntimeFunction::FloorNumber => {
-                runtime_math_fn!(Value::Number, (n) => Ok(n.floor()))
-            }
-            ir::RuntimeFunction::CeilNumber => runtime_math_fn!(Value::Number, (n) => Ok(n.ceil())),
-            ir::RuntimeFunction::SqrtNumber => {
-                runtime_math_fn!(Value::Number, (n) => Ok(n.sqrt().unwrap()))
-            }
-            ir::RuntimeFunction::AddInteger => {
-                runtime_math_fn!(Value::Integer, (lhs, rhs) => Ok(lhs + rhs))
-            }
-            ir::RuntimeFunction::SubtractInteger => {
-                runtime_math_fn!(Value::Integer, (lhs, rhs) => Ok(lhs - rhs))
-            }
-            ir::RuntimeFunction::MultiplyInteger => {
-                runtime_math_fn!(Value::Integer, (lhs, rhs) => Ok(lhs * rhs))
-            }
-            ir::RuntimeFunction::DivideInteger => runtime_div_fn!(Value::Integer, 0),
-            ir::RuntimeFunction::PowerInteger => runtime_math_fn!(Value::Integer, (lhs, rhs) => {
-                if lhs == 0 && rhs == 0 {
-                    Err(Error::from("cannot raise zero to the power of zero"))
-                } else {
-                    Ok(lhs.pow(rhs as u32))
+        let value = (|| async {
+            match func {
+                ir::RuntimeFunction::Crash => {
+                    runtime_fn!((Value::Text(text)) => Err(Error::from(text.as_ref())))
                 }
-            }),
-            ir::RuntimeFunction::AddNatural => {
-                runtime_math_fn!(Value::Natural, (lhs, rhs) => Ok(lhs + rhs))
-            }
-            ir::RuntimeFunction::SubtractNatural => {
-                runtime_math_fn!(Value::Natural, (lhs, rhs) => Ok(lhs - rhs))
-            }
-            ir::RuntimeFunction::MultiplyNatural => {
-                runtime_math_fn!(Value::Natural, (lhs, rhs) => Ok(lhs * rhs))
-            }
-            ir::RuntimeFunction::DivideNatural => runtime_div_fn!(Value::Natural, 0),
-            ir::RuntimeFunction::PowerNatural => {
-                runtime_math_fn!(Value::Natural, (lhs, rhs) => {
-                    if lhs == 0 && rhs == 0 {
-                        Err(Error::from("cannot raise zero to the power of zero"))
-                    } else {
-                        Ok(lhs.pow(rhs as u32))
-                    }
-                })
-            }
-            ir::RuntimeFunction::AddByte => {
-                runtime_math_fn!(Value::Byte, (lhs, rhs) => Ok(lhs + rhs))
-            }
-            ir::RuntimeFunction::SubtractByte => {
-                runtime_math_fn!(Value::Byte, (lhs, rhs) => Ok(lhs - rhs))
-            }
-            ir::RuntimeFunction::MultiplyByte => {
-                runtime_math_fn!(Value::Byte, (lhs, rhs) => Ok(lhs * rhs))
-            }
-            ir::RuntimeFunction::DivideByte => runtime_div_fn!(Value::Byte, 0),
-            ir::RuntimeFunction::PowerByte => {
-                runtime_math_fn!(Value::Byte, (lhs, rhs) => {
-                    if lhs == 0 && rhs == 0 {
-                        Err(Error::from("cannot raise zero to the power of zero"))
-                    } else {
-                        Ok(lhs.pow(rhs as u32))
-                    }
-                })
-            }
-            ir::RuntimeFunction::AddSigned => {
-                runtime_math_fn!(Value::Signed, (lhs, rhs) => Ok(lhs + rhs))
-            }
-            ir::RuntimeFunction::SubtractSigned => {
-                runtime_math_fn!(Value::Signed, (lhs, rhs) => Ok(lhs - rhs))
-            }
-            ir::RuntimeFunction::MultiplySigned => {
-                runtime_math_fn!(Value::Signed, (lhs, rhs) => Ok(lhs * rhs))
-            }
-            ir::RuntimeFunction::DivideSigned => runtime_div_fn!(Value::Signed, 0),
-            ir::RuntimeFunction::PowerSigned => runtime_math_fn!(Value::Signed, (lhs, rhs) => {
-                if lhs == 0 && rhs == 0 {
-                    Err(Error::from("cannot raise zero to the power of zero"))
-                } else {
-                    Ok(lhs.pow(rhs as u32))
-                }
-            }),
-            ir::RuntimeFunction::AddUnsigned => {
-                runtime_math_fn!(Value::Unsigned, (lhs, rhs) => Ok(lhs + rhs))
-            }
-            ir::RuntimeFunction::SubtractUnsigned => {
-                runtime_math_fn!(Value::Unsigned, (lhs, rhs) => Ok(lhs - rhs))
-            }
-            ir::RuntimeFunction::MultiplyUnsigned => {
-                runtime_math_fn!(Value::Unsigned, (lhs, rhs) => Ok(lhs * rhs))
-            }
-            ir::RuntimeFunction::DivideUnsigned => runtime_div_fn!(Value::Unsigned, 0),
-            ir::RuntimeFunction::PowerUnsigned => {
-                runtime_math_fn!(Value::Unsigned, (lhs, rhs) => {
-                    if lhs == 0 && rhs == 0 {
-                        Err(Error::from("cannot raise zero to the power of zero"))
-                    } else {
-                        Ok(lhs.pow(rhs))
-                    }
-                })
-            }
-            ir::RuntimeFunction::AddFloat => {
-                runtime_math_fn!(Value::Float, (lhs, rhs) => Ok(lhs + rhs))
-            }
-            ir::RuntimeFunction::SubtractFloat => {
-                runtime_math_fn!(Value::Float, (lhs, rhs) => Ok(lhs - rhs))
-            }
-            ir::RuntimeFunction::MultiplyFloat => {
-                runtime_math_fn!(Value::Float, (lhs, rhs) => Ok(lhs * rhs))
-            }
-            ir::RuntimeFunction::DivideFloat => {
-                runtime_math_fn!(Value::Float, (lhs, rhs) => Ok(lhs / rhs))
-            }
-            ir::RuntimeFunction::PowerFloat => {
-                runtime_math_fn!(Value::Float, (lhs, rhs) => Ok(lhs.pow(rhs)))
-            }
-            ir::RuntimeFunction::FloorFloat => {
-                runtime_math_fn!(Value::Double, (n) => Ok(n.floor()))
-            }
-            ir::RuntimeFunction::CeilFloat => runtime_math_fn!(Value::Double, (n) => Ok(n.ceil())),
-            ir::RuntimeFunction::SqrtFloat => runtime_math_fn!(Value::Double, (n) => Ok(n.sqrt())),
-            ir::RuntimeFunction::AddDouble => {
-                runtime_math_fn!(Value::Double, (lhs, rhs) => Ok(lhs + rhs))
-            }
-            ir::RuntimeFunction::SubtractDouble => {
-                runtime_math_fn!(Value::Double, (lhs, rhs) => Ok(lhs - rhs))
-            }
-            ir::RuntimeFunction::MultiplyDouble => {
-                runtime_math_fn!(Value::Double, (lhs, rhs) => Ok(lhs * rhs))
-            }
-            ir::RuntimeFunction::DivideDouble => {
-                runtime_math_fn!(Value::Double, (lhs, rhs) => Ok(lhs / rhs))
-            }
-            ir::RuntimeFunction::PowerDouble => {
-                runtime_math_fn!(Value::Double, (lhs, rhs) => Ok(lhs.pow(rhs)))
-            }
-            ir::RuntimeFunction::FloorDouble => {
-                runtime_math_fn!(Value::Double, (n) => Ok(n.floor()))
-            }
-            ir::RuntimeFunction::CeilDouble => runtime_math_fn!(Value::Double, (n) => Ok(n.ceil())),
-            ir::RuntimeFunction::SqrtDouble => runtime_math_fn!(Value::Double, (n) => Ok(n.sqrt())),
-            ir::RuntimeFunction::TextEquality => runtime_eq_fn!(Value::Text),
-            ir::RuntimeFunction::NumberEquality => runtime_eq_fn!(Value::Number),
-            ir::RuntimeFunction::IntegerEquality => runtime_eq_fn!(Value::Integer),
-            ir::RuntimeFunction::NaturalEquality => runtime_eq_fn!(Value::Natural),
-            ir::RuntimeFunction::ByteEquality => runtime_eq_fn!(Value::Byte),
-            ir::RuntimeFunction::SignedEquality => runtime_eq_fn!(Value::Signed),
-            ir::RuntimeFunction::UnsignedEquality => runtime_eq_fn!(Value::Unsigned),
-            ir::RuntimeFunction::FloatEquality => runtime_eq_fn!(Value::Float),
-            ir::RuntimeFunction::DoubleEquality => runtime_eq_fn!(Value::Double),
-            ir::RuntimeFunction::TextOrdering => runtime_cmp_fn!(Value::Text),
-            ir::RuntimeFunction::NumberOrdering => runtime_cmp_fn!(Value::Number),
-            ir::RuntimeFunction::IntegerOrdering => runtime_cmp_fn!(Value::Integer),
-            ir::RuntimeFunction::NaturalOrdering => runtime_cmp_fn!(Value::Natural),
-            ir::RuntimeFunction::ByteOrdering => runtime_cmp_fn!(Value::Byte),
-            ir::RuntimeFunction::SignedOrdering => runtime_cmp_fn!(Value::Signed),
-            ir::RuntimeFunction::UnsignedOrdering => runtime_cmp_fn!(Value::Unsigned),
-            ir::RuntimeFunction::FloatOrdering => {
-                runtime_cmp_fn!((Value::Float(lhs), Value::Float(rhs)) => {
-                    lhs.partial_cmp(&rhs).expect("unexpected NaN")
-                })
-            }
-            ir::RuntimeFunction::DoubleOrdering => {
-                runtime_cmp_fn!((Value::Double(lhs), Value::Double(rhs)) => {
-                    lhs.partial_cmp(&rhs).expect("unexpected NaN")
-                })
-            }
-            ir::RuntimeFunction::MakeMutable => runtime_fn!((value) => {
-                Ok(Value::Mutable(Shared::new(value)))
-            }),
-            ir::RuntimeFunction::GetMutable => {
-                runtime_fn!((Value::Mutable(value)) => Ok(value.lock().clone()))
-            }
-            ir::RuntimeFunction::SetMutable => {
-                runtime_fn!((Value::Mutable(value), new_value) => {
-                    *value.lock() = new_value;
+                ir::RuntimeFunction::Display => runtime_fn!((Value::Text(text)) => {
+                    let (completion_tx, completion_rx) = tokio::sync::oneshot::channel();
+                    (self.console)(ConsoleRequest::Display(&text, Box::new(|| {
+                        completion_tx.send(()).unwrap()
+                    })))?;
+
+                    completion_rx.await.unwrap();
+
                     Ok(Value::Tuple(Vec::new()))
-                })
-            }
-            ir::RuntimeFunction::MakeEmptyList => {
-                assert!(inputs.is_empty());
-                Ok(Value::List(Default::default()))
-            }
-            ir::RuntimeFunction::ListFirst => runtime_fn!((Value::List(list)) => {
-                Ok(match list.front() {
-                    Some(first) => some(first.clone()),
-                    None => none(),
-                })
-            }),
-            ir::RuntimeFunction::ListLast => runtime_fn!((Value::List(list)) => {
-                Ok(match list.back() {
-                    Some(last) => some(last.clone()),
-                    None => none(),
-                })
-            }),
-            ir::RuntimeFunction::ListInitial => {
-                runtime_fn!((Value::List(mut list)) => {
-                    Ok(if list.is_empty() {
-                        none()
-                    } else {
-                        some(Value::List(list.slice(0..(list.len() - 1))))
+                }),
+                ir::RuntimeFunction::Prompt => {
+                    runtime_fn!((Value::Text(prompt), Value::Function(captures, label)) => {
+                        // So we don't have to deal with loading any captured variables. `prompt`
+                        // will be called with an instance of `Read` anyway, which has no captures
+                        assert!(captures.0.is_empty(), "`prompt` requires a function with no captures");
+
+                        let (input_tx, mut input_rx) = channel(1);
+                        let (valid_tx, valid_rx) = channel(1);
+
+                        let (completion_tx, completion_rx) = tokio::sync::oneshot::channel();
+                        (self.console)(ConsoleRequest::Prompt(&prompt, input_tx, valid_rx, Box::new(|| {
+                            completion_tx.send(()).unwrap()
+                        })))?;
+
+                        let input = loop {
+                            let input = input_rx.recv().await.unwrap();
+
+                            stack.push(Value::Text(Arc::from(input)));
+                            self.evaluate_label(label, stack, info).await.unwrap();
+
+                            match maybe_from(stack.pop()) {
+                                Some(value) => {
+                                    valid_tx.send(true).await.unwrap();
+                                    input_rx.close();
+                                    break value;
+                                },
+                                None => {
+                                    valid_tx.send(false).await.unwrap();
+                                    continue;
+                                }
+                            }
+                        };
+
+                        completion_rx.await.unwrap();
+
+                        Ok(input)
                     })
-                })
-            }
-            ir::RuntimeFunction::ListTail => {
-                runtime_fn!((Value::List(mut list)) => {
-                    Ok(if list.is_empty() {
-                        none()
-                    } else {
-                        some(Value::List(list.slice(1..list.len())))
-                    })
-                })
-            }
-            ir::RuntimeFunction::ListNth => {
-                runtime_fn!((Value::List(list), Value::Natural(index)) => {
-                    let index = index as usize;
-                    let index = if (0..list.len()).contains(&index) {
-                        index
-                    } else {
-                        return Ok(error(Value::Marker));
-                    };
+                }
+                ir::RuntimeFunction::Choice => runtime_fn!((Value::Text(prompt), Value::List(list)) => {
+                    let choices = list
+                        .iter()
+                        .map(|value| match value {
+                            Value::Text(text) => text.as_ref(),
+                            _ => unreachable!(),
+                        })
+                        .collect::<Vec<_>>();
 
-                    Ok(match list.get(index) {
-                        Some(value) => ok(value.clone()),
-                        None => error(Value::Marker),
-                    })
-                })
-            }
-            ir::RuntimeFunction::ListAppend => {
-                runtime_fn!((Value::List(mut list), value) => {
-                    list.push_back(value);
-                    Ok(Value::List(list))
-                })
-            }
-            ir::RuntimeFunction::ListPrepend => {
-                runtime_fn!((Value::List(mut list), value) => {
-                    list.push_front(value);
-                    Ok(Value::List(list))
-                })
-            }
-            ir::RuntimeFunction::ListInsert => {
-                runtime_fn!((Value::List(mut list), Value::Natural(index), value) => {
-                    let index = index as usize;
-                    let index = if (0..list.len()).contains(&index) {
-                        index
-                    } else {
-                        return Ok(error(Value::Marker));
-                    };
+                    let (completion_tx, completion_rx) = tokio::sync::oneshot::channel();
+                    (self.console)(ConsoleRequest::Choice(&prompt, choices, Box::new(|index| {
+                        completion_tx.send(index).unwrap()
+                    })))?;
 
-                    list.insert(index, value);
+                    let index = completion_rx.await.unwrap();
 
-                    Ok(ok(Value::List(list)))
-                })
-            }
-            ir::RuntimeFunction::ListRemove => {
-                runtime_fn!((Value::List(mut list), Value::Natural(index)) => {
-                    let index = index as usize;
-                    let index = if (0..list.len()).contains(&index) {
-                        index
-                    } else {
-                        return Ok(error(Value::Marker));
-                    };
-
-                    Ok(ok(list.remove(index)))
-                })
-            }
-            ir::RuntimeFunction::TextHeadTail => {
-                runtime_fn!((Value::Text(text)) => {
-                    match text.grapheme_indices(true).next() {
-                        Some((_, head)) => {
-                            let tail = &text[head.len()..];
-
-                            Ok(some(Value::Tuple(vec![
-                                Value::Text(Arc::from(head)),
-                                Value::Text(Arc::from(tail)),
-                            ])))
+                    Ok(Value::Natural(index as u64))
+                }),
+                ir::RuntimeFunction::NumberToText => {
+                    runtime_text_fn!((Value::Number(n)) => n.normalize().to_string())
+                }
+                ir::RuntimeFunction::IntegerToText => runtime_text_fn!(Value::Integer),
+                ir::RuntimeFunction::NaturalToText => runtime_text_fn!(Value::Natural),
+                ir::RuntimeFunction::ByteToText => runtime_text_fn!(Value::Byte),
+                ir::RuntimeFunction::SignedToText => runtime_text_fn!(Value::Signed),
+                ir::RuntimeFunction::UnsignedToText => runtime_text_fn!(Value::Unsigned),
+                ir::RuntimeFunction::FloatToText => runtime_text_fn!(Value::Float),
+                ir::RuntimeFunction::DoubleToText => runtime_text_fn!(Value::Double),
+                ir::RuntimeFunction::TextToNumber => runtime_parse_fn!(Value::Number),
+                ir::RuntimeFunction::TextToInteger => runtime_text_fn!(Value::Integer),
+                ir::RuntimeFunction::TextToNatural => runtime_text_fn!(Value::Natural),
+                ir::RuntimeFunction::TextToByte => runtime_text_fn!(Value::Byte),
+                ir::RuntimeFunction::TextToSigned => runtime_text_fn!(Value::Signed),
+                ir::RuntimeFunction::TextToUnsigned => runtime_text_fn!(Value::Unsigned),
+                ir::RuntimeFunction::TextToFloat => runtime_text_fn!(Value::Float),
+                ir::RuntimeFunction::TextToDouble => runtime_text_fn!(Value::Double),
+                ir::RuntimeFunction::AddNumber => {
+                    runtime_math_fn!(Value::Number, (lhs, rhs) => Ok(lhs + rhs))
+                }
+                ir::RuntimeFunction::SubtractNumber => {
+                    runtime_math_fn!(Value::Number, (lhs, rhs) => Ok(lhs - rhs))
+                }
+                ir::RuntimeFunction::MultiplyNumber => {
+                    runtime_math_fn!(Value::Number, (lhs, rhs) => Ok(lhs * rhs))
+                }
+                ir::RuntimeFunction::DivideNumber => runtime_div_fn!(Value::Number, Decimal::ZERO),
+                ir::RuntimeFunction::PowerNumber => {
+                    runtime_math_fn!(Value::Number, (lhs, rhs) => {
+                        if lhs == Decimal::ZERO && rhs == Decimal::ZERO {
+                            Err(Error::from("cannot raise zero to the power of zero"))
+                        } else {
+                            Ok(lhs.pow(rhs))
                         }
-                        None => Ok(none()),
+                    })
+                }
+                ir::RuntimeFunction::FloorNumber => {
+                    runtime_math_fn!(Value::Number, (n) => Ok(n.floor()))
+                }
+                ir::RuntimeFunction::CeilNumber => {
+                    runtime_math_fn!(Value::Number, (n) => Ok(n.ceil()))
+                }
+                ir::RuntimeFunction::SqrtNumber => {
+                    runtime_math_fn!(Value::Number, (n) => Ok(n.sqrt().unwrap()))
+                }
+                ir::RuntimeFunction::AddInteger => {
+                    runtime_math_fn!(Value::Integer, (lhs, rhs) => Ok(lhs + rhs))
+                }
+                ir::RuntimeFunction::SubtractInteger => {
+                    runtime_math_fn!(Value::Integer, (lhs, rhs) => Ok(lhs - rhs))
+                }
+                ir::RuntimeFunction::MultiplyInteger => {
+                    runtime_math_fn!(Value::Integer, (lhs, rhs) => Ok(lhs * rhs))
+                }
+                ir::RuntimeFunction::DivideInteger => runtime_div_fn!(Value::Integer, 0),
+                ir::RuntimeFunction::PowerInteger => {
+                    runtime_math_fn!(Value::Integer, (lhs, rhs) => {
+                        if lhs == 0 && rhs == 0 {
+                            Err(Error::from("cannot raise zero to the power of zero"))
+                        } else {
+                            Ok(lhs.pow(rhs as u32))
+                        }
+                    })
+                }
+                ir::RuntimeFunction::AddNatural => {
+                    runtime_math_fn!(Value::Natural, (lhs, rhs) => Ok(lhs + rhs))
+                }
+                ir::RuntimeFunction::SubtractNatural => {
+                    runtime_math_fn!(Value::Natural, (lhs, rhs) => Ok(lhs - rhs))
+                }
+                ir::RuntimeFunction::MultiplyNatural => {
+                    runtime_math_fn!(Value::Natural, (lhs, rhs) => Ok(lhs * rhs))
+                }
+                ir::RuntimeFunction::DivideNatural => runtime_div_fn!(Value::Natural, 0),
+                ir::RuntimeFunction::PowerNatural => {
+                    runtime_math_fn!(Value::Natural, (lhs, rhs) => {
+                        if lhs == 0 && rhs == 0 {
+                            Err(Error::from("cannot raise zero to the power of zero"))
+                        } else {
+                            Ok(lhs.pow(rhs as u32))
+                        }
+                    })
+                }
+                ir::RuntimeFunction::AddByte => {
+                    runtime_math_fn!(Value::Byte, (lhs, rhs) => Ok(lhs + rhs))
+                }
+                ir::RuntimeFunction::SubtractByte => {
+                    runtime_math_fn!(Value::Byte, (lhs, rhs) => Ok(lhs - rhs))
+                }
+                ir::RuntimeFunction::MultiplyByte => {
+                    runtime_math_fn!(Value::Byte, (lhs, rhs) => Ok(lhs * rhs))
+                }
+                ir::RuntimeFunction::DivideByte => runtime_div_fn!(Value::Byte, 0),
+                ir::RuntimeFunction::PowerByte => {
+                    runtime_math_fn!(Value::Byte, (lhs, rhs) => {
+                        if lhs == 0 && rhs == 0 {
+                            Err(Error::from("cannot raise zero to the power of zero"))
+                        } else {
+                            Ok(lhs.pow(rhs as u32))
+                        }
+                    })
+                }
+                ir::RuntimeFunction::AddSigned => {
+                    runtime_math_fn!(Value::Signed, (lhs, rhs) => Ok(lhs + rhs))
+                }
+                ir::RuntimeFunction::SubtractSigned => {
+                    runtime_math_fn!(Value::Signed, (lhs, rhs) => Ok(lhs - rhs))
+                }
+                ir::RuntimeFunction::MultiplySigned => {
+                    runtime_math_fn!(Value::Signed, (lhs, rhs) => Ok(lhs * rhs))
+                }
+                ir::RuntimeFunction::DivideSigned => runtime_div_fn!(Value::Signed, 0),
+                ir::RuntimeFunction::PowerSigned => runtime_math_fn!(Value::Signed, (lhs, rhs) => {
+                    if lhs == 0 && rhs == 0 {
+                        Err(Error::from("cannot raise zero to the power of zero"))
+                    } else {
+                        Ok(lhs.pow(rhs as u32))
                     }
-                })
+                }),
+                ir::RuntimeFunction::AddUnsigned => {
+                    runtime_math_fn!(Value::Unsigned, (lhs, rhs) => Ok(lhs + rhs))
+                }
+                ir::RuntimeFunction::SubtractUnsigned => {
+                    runtime_math_fn!(Value::Unsigned, (lhs, rhs) => Ok(lhs - rhs))
+                }
+                ir::RuntimeFunction::MultiplyUnsigned => {
+                    runtime_math_fn!(Value::Unsigned, (lhs, rhs) => Ok(lhs * rhs))
+                }
+                ir::RuntimeFunction::DivideUnsigned => runtime_div_fn!(Value::Unsigned, 0),
+                ir::RuntimeFunction::PowerUnsigned => {
+                    runtime_math_fn!(Value::Unsigned, (lhs, rhs) => {
+                        if lhs == 0 && rhs == 0 {
+                            Err(Error::from("cannot raise zero to the power of zero"))
+                        } else {
+                            Ok(lhs.pow(rhs))
+                        }
+                    })
+                }
+                ir::RuntimeFunction::AddFloat => {
+                    runtime_math_fn!(Value::Float, (lhs, rhs) => Ok(lhs + rhs))
+                }
+                ir::RuntimeFunction::SubtractFloat => {
+                    runtime_math_fn!(Value::Float, (lhs, rhs) => Ok(lhs - rhs))
+                }
+                ir::RuntimeFunction::MultiplyFloat => {
+                    runtime_math_fn!(Value::Float, (lhs, rhs) => Ok(lhs * rhs))
+                }
+                ir::RuntimeFunction::DivideFloat => {
+                    runtime_math_fn!(Value::Float, (lhs, rhs) => Ok(lhs / rhs))
+                }
+                ir::RuntimeFunction::PowerFloat => {
+                    runtime_math_fn!(Value::Float, (lhs, rhs) => Ok(lhs.pow(rhs)))
+                }
+                ir::RuntimeFunction::FloorFloat => {
+                    runtime_math_fn!(Value::Double, (n) => Ok(n.floor()))
+                }
+                ir::RuntimeFunction::CeilFloat => {
+                    runtime_math_fn!(Value::Double, (n) => Ok(n.ceil()))
+                }
+                ir::RuntimeFunction::SqrtFloat => {
+                    runtime_math_fn!(Value::Double, (n) => Ok(n.sqrt()))
+                }
+                ir::RuntimeFunction::AddDouble => {
+                    runtime_math_fn!(Value::Double, (lhs, rhs) => Ok(lhs + rhs))
+                }
+                ir::RuntimeFunction::SubtractDouble => {
+                    runtime_math_fn!(Value::Double, (lhs, rhs) => Ok(lhs - rhs))
+                }
+                ir::RuntimeFunction::MultiplyDouble => {
+                    runtime_math_fn!(Value::Double, (lhs, rhs) => Ok(lhs * rhs))
+                }
+                ir::RuntimeFunction::DivideDouble => {
+                    runtime_math_fn!(Value::Double, (lhs, rhs) => Ok(lhs / rhs))
+                }
+                ir::RuntimeFunction::PowerDouble => {
+                    runtime_math_fn!(Value::Double, (lhs, rhs) => Ok(lhs.pow(rhs)))
+                }
+                ir::RuntimeFunction::FloorDouble => {
+                    runtime_math_fn!(Value::Double, (n) => Ok(n.floor()))
+                }
+                ir::RuntimeFunction::CeilDouble => {
+                    runtime_math_fn!(Value::Double, (n) => Ok(n.ceil()))
+                }
+                ir::RuntimeFunction::SqrtDouble => {
+                    runtime_math_fn!(Value::Double, (n) => Ok(n.sqrt()))
+                }
+                ir::RuntimeFunction::TextEquality => runtime_eq_fn!(Value::Text),
+                ir::RuntimeFunction::NumberEquality => runtime_eq_fn!(Value::Number),
+                ir::RuntimeFunction::IntegerEquality => runtime_eq_fn!(Value::Integer),
+                ir::RuntimeFunction::NaturalEquality => runtime_eq_fn!(Value::Natural),
+                ir::RuntimeFunction::ByteEquality => runtime_eq_fn!(Value::Byte),
+                ir::RuntimeFunction::SignedEquality => runtime_eq_fn!(Value::Signed),
+                ir::RuntimeFunction::UnsignedEquality => runtime_eq_fn!(Value::Unsigned),
+                ir::RuntimeFunction::FloatEquality => runtime_eq_fn!(Value::Float),
+                ir::RuntimeFunction::DoubleEquality => runtime_eq_fn!(Value::Double),
+                ir::RuntimeFunction::TextOrdering => runtime_cmp_fn!(Value::Text),
+                ir::RuntimeFunction::NumberOrdering => runtime_cmp_fn!(Value::Number),
+                ir::RuntimeFunction::IntegerOrdering => runtime_cmp_fn!(Value::Integer),
+                ir::RuntimeFunction::NaturalOrdering => runtime_cmp_fn!(Value::Natural),
+                ir::RuntimeFunction::ByteOrdering => runtime_cmp_fn!(Value::Byte),
+                ir::RuntimeFunction::SignedOrdering => runtime_cmp_fn!(Value::Signed),
+                ir::RuntimeFunction::UnsignedOrdering => runtime_cmp_fn!(Value::Unsigned),
+                ir::RuntimeFunction::FloatOrdering => {
+                    runtime_cmp_fn!((Value::Float(lhs), Value::Float(rhs)) => {
+                        lhs.partial_cmp(&rhs).expect("unexpected NaN")
+                    })
+                }
+                ir::RuntimeFunction::DoubleOrdering => {
+                    runtime_cmp_fn!((Value::Double(lhs), Value::Double(rhs)) => {
+                        lhs.partial_cmp(&rhs).expect("unexpected NaN")
+                    })
+                }
+                ir::RuntimeFunction::MakeMutable => runtime_fn!((value) => {
+                    Ok(Value::Mutable(Shared::new(value)))
+                }),
+                ir::RuntimeFunction::GetMutable => {
+                    runtime_fn!((Value::Mutable(value)) => Ok(value.lock().clone()))
+                }
+                ir::RuntimeFunction::SetMutable => {
+                    runtime_fn!((Value::Mutable(value), new_value) => {
+                        *value.lock() = new_value;
+                        Ok(Value::Tuple(Vec::new()))
+                    })
+                }
+                ir::RuntimeFunction::MakeEmptyList => {
+                    assert!(inputs.is_empty());
+                    Ok(Value::List(Default::default()))
+                }
+                ir::RuntimeFunction::ListFirst => runtime_fn!((Value::List(list)) => {
+                    Ok(match list.front() {
+                        Some(first) => some(first.clone()),
+                        None => none(),
+                    })
+                }),
+                ir::RuntimeFunction::ListLast => runtime_fn!((Value::List(list)) => {
+                    Ok(match list.back() {
+                        Some(last) => some(last.clone()),
+                        None => none(),
+                    })
+                }),
+                ir::RuntimeFunction::ListInitial => {
+                    runtime_fn!((Value::List(mut list)) => {
+                        Ok(if list.is_empty() {
+                            none()
+                        } else {
+                            some(Value::List(list.slice(0..(list.len() - 1))))
+                        })
+                    })
+                }
+                ir::RuntimeFunction::ListTail => {
+                    runtime_fn!((Value::List(mut list)) => {
+                        Ok(if list.is_empty() {
+                            none()
+                        } else {
+                            some(Value::List(list.slice(1..list.len())))
+                        })
+                    })
+                }
+                ir::RuntimeFunction::ListNth => {
+                    runtime_fn!((Value::List(list), Value::Natural(index)) => {
+                        let index = index as usize;
+                        let index = if (0..list.len()).contains(&index) {
+                            index
+                        } else {
+                            return Ok(error(Value::Marker));
+                        };
+
+                        Ok(match list.get(index) {
+                            Some(value) => ok(value.clone()),
+                            None => error(Value::Marker),
+                        })
+                    })
+                }
+                ir::RuntimeFunction::ListAppend => {
+                    runtime_fn!((Value::List(mut list), value) => {
+                        list.push_back(value);
+                        Ok(Value::List(list))
+                    })
+                }
+                ir::RuntimeFunction::ListPrepend => {
+                    runtime_fn!((Value::List(mut list), value) => {
+                        list.push_front(value);
+                        Ok(Value::List(list))
+                    })
+                }
+                ir::RuntimeFunction::ListInsert => {
+                    runtime_fn!((Value::List(mut list), Value::Natural(index), value) => {
+                        let index = index as usize;
+                        let index = if (0..list.len()).contains(&index) {
+                            index
+                        } else {
+                            return Ok(error(Value::Marker));
+                        };
+
+                        list.insert(index, value);
+
+                        Ok(ok(Value::List(list)))
+                    })
+                }
+                ir::RuntimeFunction::ListRemove => {
+                    runtime_fn!((Value::List(mut list), Value::Natural(index)) => {
+                        let index = index as usize;
+                        let index = if (0..list.len()).contains(&index) {
+                            index
+                        } else {
+                            return Ok(error(Value::Marker));
+                        };
+
+                        Ok(ok(list.remove(index)))
+                    })
+                }
+                ir::RuntimeFunction::TextHeadTail => {
+                    runtime_fn!((Value::Text(text)) => {
+                        match text.grapheme_indices(true).next() {
+                            Some((_, head)) => {
+                                let tail = &text[head.len()..];
+
+                                Ok(some(Value::Tuple(vec![
+                                    Value::Text(Arc::from(head)),
+                                    Value::Text(Arc::from(tail)),
+                                ])))
+                            }
+                            None => Ok(none()),
+                        }
+                    })
+                }
             }
-        }
+        })().await?;
+
+        stack.push(value);
+
+        Ok(())
     }
 }

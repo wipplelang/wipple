@@ -1,9 +1,11 @@
 let cancel;
-let input;
+const consoleResponders = [];
 
 onmessage = async (event) => {
     try {
         const runner = await import("./pkg");
+
+        console.log(event.data);
 
         switch (event.data.operation) {
             case "analyze":
@@ -18,13 +20,47 @@ onmessage = async (event) => {
                 break;
             case "run":
                 cancel = runner.run(
-                    (prompt) =>
-                        new Promise((resolve) => {
-                            input = resolve;
-                            postMessage({ type: "input", prompt });
-                        }),
-                    async (text) => {
-                        postMessage({ type: "output", text });
+                    (request) => {
+                        switch (request.kind) {
+                            case "display":
+                                postMessage({
+                                    type: "display",
+                                    text: request.text,
+                                });
+
+                                consoleResponders.push({
+                                    callback: request.callback,
+                                });
+
+                                break;
+                            case "prompt":
+                                postMessage({
+                                    type: "prompt",
+                                    prompt: request.prompt,
+                                });
+
+                                consoleResponders.push({
+                                    sendInput: request.send_input,
+                                    recvValid: request.recv_valid,
+                                    callback: request.callback,
+                                });
+
+                                break;
+                            case "choice":
+                                postMessage({
+                                    type: "choice",
+                                    prompt: request.prompt,
+                                    choices: request.choices,
+                                });
+
+                                consoleResponders.push({
+                                    callback: request.callback,
+                                });
+
+                                break;
+                            default:
+                                throw new Error("unhandled console request");
+                        }
                     },
                     (success) => {
                         if (cancel) {
@@ -42,14 +78,21 @@ onmessage = async (event) => {
                 const hover = runner.hover(start, end);
                 postMessage(hover);
                 break;
-            case "input":
-                const { text } = event.data;
-
-                if (input) {
-                    input(text);
-                    input = undefined;
-                }
-
+            case "displayCallback":
+                await consoleResponders.pop().callback();
+                break;
+            case "sendPromptInput":
+                await consoleResponders[consoleResponders.length - 1].sendInput(event.data.input);
+                break;
+            case "recvPromptValid":
+                const valid = await consoleResponders[consoleResponders.length - 1].recvValid();
+                postMessage(valid);
+                break;
+            case "promptCallback":
+                await consoleResponders.pop().callback();
+                break;
+            case "choiceCallback":
+                await consoleResponders.pop().callback(event.data.index);
                 break;
             default:
                 throw new Error("invalid operation");

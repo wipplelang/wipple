@@ -21,6 +21,26 @@ export interface HoverOutput {
     help: string;
 }
 
+export type AnalysisConsoleRequest =
+    | {
+          type: "display";
+          text: string;
+          callback: () => void;
+      }
+    | {
+          type: "prompt";
+          prompt: string;
+          sendInput: (input: string) => void;
+          recvValid: () => Promise<boolean>;
+          callback: () => void;
+      }
+    | {
+          type: "choice";
+          prompt: string;
+          choices: string[];
+          callback: (index: number) => void;
+      };
+
 export const useRunner = () => {
     const runner = useRef<Worker | null>(null);
 
@@ -50,16 +70,61 @@ export const useRunner = () => {
 
             return analysis;
         },
-        run: async (input: (prompt: string) => Promise<string>, output: (string: string) => void) =>
+        run: async (handleConsole: (request: AnalysisConsoleRequest) => void) =>
             new Promise<boolean>(async (resolve, reject) => {
                 runner.current!.onmessage = async (event) => {
                     switch (event.data.type) {
-                        case "input":
-                            const text = await input(event.data.prompt);
-                            runner.current!.postMessage({ operation: "input", text });
+                        case "display":
+                            handleConsole({
+                                type: "display",
+                                text: event.data.text,
+                                callback: () => {
+                                    runner.current!.postMessage({ operation: "displayCallback" });
+                                },
+                            });
+
                             break;
-                        case "output":
-                            output(event.data.text);
+                        case "prompt":
+                            handleConsole({
+                                type: "prompt",
+                                prompt: event.data.prompt,
+                                sendInput: (input) => {
+                                    runner.current!.postMessage({
+                                        operation: "sendPromptInput",
+                                        input,
+                                    });
+                                },
+                                recvValid: () =>
+                                    new Promise((resolve) => {
+                                        const prevonmessage = runner.current!.onmessage;
+                                        runner.current!.onmessage = (event) => {
+                                            resolve(event.data);
+                                            runner.current!.onmessage = prevonmessage;
+                                        };
+
+                                        runner.current!.postMessage({
+                                            operation: "recvPromptValid",
+                                        });
+                                    }),
+                                callback: () => {
+                                    runner.current!.postMessage({ operation: "promptCallback" });
+                                },
+                            });
+
+                            break;
+                        case "choice":
+                            handleConsole({
+                                type: "choice",
+                                prompt: event.data.prompt,
+                                choices: event.data.choices,
+                                callback: (index) => {
+                                    runner.current!.postMessage({
+                                        operation: "choiceCallback",
+                                        index,
+                                    });
+                                },
+                            });
+
                             break;
                         case "done":
                             resolve(event.data.success);
