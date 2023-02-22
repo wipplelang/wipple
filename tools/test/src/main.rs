@@ -268,7 +268,7 @@ async fn run(
             let mut interpreter =
                 wipple_interpreter_backend::Interpreter::new(|request| match request {
                     wipple_interpreter_backend::ConsoleRequest::Display(text, completion) => {
-                        write!(buf.lock(), "{text}").unwrap();
+                        writeln!(buf.lock(), "{text}").unwrap();
                         completion();
                         Ok(())
                     }
