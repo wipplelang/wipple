@@ -645,6 +645,30 @@ impl UnresolvedType {
         }
     }
 
+    pub fn all_vars(&self) -> Vec<TypeVariable> {
+        match self {
+            UnresolvedType::Variable(var)
+            | UnresolvedType::NumericVariable(var)
+            | UnresolvedType::TerminatingVariable(var) => vec![*var],
+            UnresolvedType::Function(input, output) => {
+                let mut vars = input.all_vars();
+                vars.extend(output.all_vars());
+                vars
+            }
+            UnresolvedType::Named(_, params, structure) => params
+                .iter()
+                .flat_map(|ty| ty.all_vars())
+                .chain(structure.all_vars())
+                .collect(),
+            UnresolvedType::Tuple(tys) => tys.iter().flat_map(|ty| ty.all_vars()).collect(),
+            UnresolvedType::Builtin(ty) => match ty {
+                BuiltinType::List(ty) | BuiltinType::Mutable(ty) => ty.all_vars(),
+                _ => Vec::new(),
+            },
+            _ => Vec::new(),
+        }
+    }
+
     pub fn params(&self) -> Vec<TypeParameterId> {
         match self {
             UnresolvedType::Parameter(param) => vec![*param],
@@ -719,58 +743,49 @@ impl UnresolvedType {
         }
     }
 
-    pub fn finalize(&self, ctx: &Context) -> Result<Type, TypeError> {
+    pub fn finalize(&self, ctx: &Context) -> Option<Type> {
         let mut ty = self.clone();
         ty.apply(ctx);
         ty.finalize_default_variables(ctx);
 
-        let result = (|| {
-            Ok(match ty.clone() {
-                UnresolvedType::Variable(var) => {
-                    return Err(TypeError::UnresolvedType(UnresolvedType::Variable(var)));
-                }
-                UnresolvedType::Parameter(param) => Type::Parameter(param),
-                UnresolvedType::TerminatingVariable(_) | UnresolvedType::NumericVariable(_) => {
-                    unreachable!()
-                }
-                UnresolvedType::Named(id, params, structure) => Type::Named(
-                    id,
-                    params
-                        .into_iter()
-                        .map(|param| param.finalize(ctx))
-                        .collect::<Result<_, _>>()?,
-                    structure.finalize(ctx)?,
-                ),
-                UnresolvedType::Function(input, output) => Type::Function(
-                    Box::new(input.finalize(ctx)?),
-                    Box::new(output.finalize(ctx)?),
-                ),
-                UnresolvedType::Tuple(tys) => Type::Tuple(
-                    tys.into_iter()
-                        .map(|ty| ty.finalize(ctx))
-                        .collect::<Result<_, _>>()?,
-                ),
-                UnresolvedType::Builtin(builtin) => Type::Builtin(match builtin {
-                    BuiltinType::Number => BuiltinType::Number,
-                    BuiltinType::Integer => BuiltinType::Integer,
-                    BuiltinType::Natural => BuiltinType::Natural,
-                    BuiltinType::Byte => BuiltinType::Byte,
-                    BuiltinType::Signed => BuiltinType::Signed,
-                    BuiltinType::Unsigned => BuiltinType::Unsigned,
-                    BuiltinType::Float => BuiltinType::Float,
-                    BuiltinType::Double => BuiltinType::Double,
-                    BuiltinType::Text => BuiltinType::Text,
-                    BuiltinType::List(ty) => BuiltinType::List(Box::new(ty.finalize(ctx)?)),
-                    BuiltinType::Mutable(ty) => BuiltinType::Mutable(Box::new(ty.finalize(ctx)?)),
-                }),
-                UnresolvedType::Error => Type::Error,
-            })
-        })();
-
-        match result {
-            Ok(ty) => Ok(ty),
-            Err(_) => Err(TypeError::UnresolvedType(ty)),
-        }
+        Some(match ty.clone() {
+            UnresolvedType::Variable(_) => return None,
+            UnresolvedType::Parameter(param) => Type::Parameter(param),
+            UnresolvedType::TerminatingVariable(_) | UnresolvedType::NumericVariable(_) => {
+                unreachable!()
+            }
+            UnresolvedType::Named(id, params, structure) => Type::Named(
+                id,
+                params
+                    .into_iter()
+                    .map(|param| param.finalize(ctx))
+                    .collect::<Option<_>>()?,
+                structure.finalize(ctx)?,
+            ),
+            UnresolvedType::Function(input, output) => Type::Function(
+                Box::new(input.finalize(ctx)?),
+                Box::new(output.finalize(ctx)?),
+            ),
+            UnresolvedType::Tuple(tys) => Type::Tuple(
+                tys.into_iter()
+                    .map(|ty| ty.finalize(ctx))
+                    .collect::<Option<_>>()?,
+            ),
+            UnresolvedType::Builtin(builtin) => Type::Builtin(match builtin {
+                BuiltinType::Number => BuiltinType::Number,
+                BuiltinType::Integer => BuiltinType::Integer,
+                BuiltinType::Natural => BuiltinType::Natural,
+                BuiltinType::Byte => BuiltinType::Byte,
+                BuiltinType::Signed => BuiltinType::Signed,
+                BuiltinType::Unsigned => BuiltinType::Unsigned,
+                BuiltinType::Float => BuiltinType::Float,
+                BuiltinType::Double => BuiltinType::Double,
+                BuiltinType::Text => BuiltinType::Text,
+                BuiltinType::List(ty) => BuiltinType::List(Box::new(ty.finalize(ctx)?)),
+                BuiltinType::Mutable(ty) => BuiltinType::Mutable(Box::new(ty.finalize(ctx)?)),
+            }),
+            UnresolvedType::Error => Type::Error,
+        })
     }
 }
 
@@ -822,6 +837,17 @@ impl TypeStructure<UnresolvedType> {
         }
     }
 
+    pub fn all_vars(&self) -> Vec<TypeVariable> {
+        match self {
+            TypeStructure::Marker | TypeStructure::Recursive(_) => Vec::new(),
+            TypeStructure::Structure(tys) => tys.iter().flat_map(|ty| ty.all_vars()).collect(),
+            TypeStructure::Enumeration(variants) => variants
+                .iter()
+                .flat_map(|tys| tys.iter().flat_map(|ty| ty.all_vars()))
+                .collect(),
+        }
+    }
+
     pub fn params(&self) -> Vec<TypeParameterId> {
         match self {
             TypeStructure::Marker | TypeStructure::Recursive(_) => Vec::new(),
@@ -851,13 +877,13 @@ impl TypeStructure<UnresolvedType> {
         }
     }
 
-    pub fn finalize(self, ctx: &Context) -> Result<TypeStructure<Type>, TypeError> {
-        Ok(match self {
+    pub fn finalize(self, ctx: &Context) -> Option<TypeStructure<Type>> {
+        Some(match self {
             TypeStructure::Marker => TypeStructure::Marker,
             TypeStructure::Structure(tys) => TypeStructure::Structure(
                 tys.into_iter()
                     .map(|ty| ty.finalize(ctx))
-                    .collect::<Result<_, _>>()?,
+                    .collect::<Option<_>>()?,
             ),
             TypeStructure::Enumeration(variants) => TypeStructure::Enumeration(
                 variants
@@ -865,9 +891,9 @@ impl TypeStructure<UnresolvedType> {
                     .map(|tys| {
                         tys.into_iter()
                             .map(|ty| ty.finalize(ctx))
-                            .collect::<Result<_, _>>()
+                            .collect::<Option<_>>()
                     })
-                    .collect::<Result<_, _>>()?,
+                    .collect::<Option<_>>()?,
             ),
             TypeStructure::Recursive(id) => TypeStructure::Recursive(id),
         })

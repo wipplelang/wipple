@@ -826,17 +826,16 @@ impl Typechecker {
                 })
                 .expect("instance should have already been accessed at least once");
 
-            let ty = match self
-                .substitute_trait_params(
-                    tr,
-                    trait_params.into_iter().map(From::from).collect(),
-                    span,
-                )
-                .finalize(&self.ctx)
-            {
-                Ok(ty) => ty,
-                Err(error) => {
-                    self.add_error(self.error(error, span));
+            let ty = self.substitute_trait_params(
+                tr,
+                trait_params.into_iter().map(From::from).collect(),
+                span,
+            );
+
+            let ty = match ty.finalize(&self.ctx) {
+                Some(ty) => ty,
+                None => {
+                    self.add_error(self.error(engine::TypeError::UnresolvedType(ty), span));
 
                     let expr = Expression {
                         span: expr.span,
@@ -947,17 +946,16 @@ impl Typechecker {
                     None => continue,
                 };
 
-                let ty = match self
-                    .substitute_trait_params(
-                        tr,
-                        trait_params.clone().into_iter().map(From::from).collect(),
-                        span,
-                    )
-                    .finalize(&self.ctx)
-                {
-                    Ok(ty) => ty,
-                    Err(error) => {
-                        self.add_error(self.error(error, span));
+                let ty = self.substitute_trait_params(
+                    tr,
+                    trait_params.clone().into_iter().map(From::from).collect(),
+                    span,
+                );
+
+                let ty = match ty.finalize(&self.ctx) {
+                    Some(ty) => ty,
+                    None => {
+                        self.add_error(self.error(engine::TypeError::UnresolvedType(ty), span));
                         continue;
                     }
                 };
@@ -1272,7 +1270,7 @@ impl Typechecker {
             lower::ExpressionKind::Block(statements, top_level) => {
                 let prev_block_end = mem::replace(&mut self.block_end, Some(None));
 
-                let statements = statements
+                let mut statements = statements
                     .into_iter()
                     .map(|statement| self.convert_expr(statement, info))
                     .collect::<Vec<_>>();
@@ -1290,6 +1288,22 @@ impl Typechecker {
                     }
 
                     ty = end_ty;
+                }
+
+                // Non-terminator statements by default have a type of `()`
+                #[allow(clippy::bool_to_int_with_if)] // more clear this way
+                for statement in statements
+                    .iter_mut()
+                    .dropping_back(if top_level { 0 } else { 1 })
+                {
+                    let var = self.ctx.new_variable();
+
+                    self.ctx
+                        .unify(
+                            engine::UnresolvedType::TerminatingVariable(var),
+                            statement.ty.clone(),
+                        )
+                        .unwrap();
                 }
 
                 UnresolvedExpression {
@@ -2003,29 +2017,13 @@ impl Typechecker {
                     MonomorphizedExpressionKind::Number(number)
                 }
                 MonomorphizedExpressionKind::Block(statements, top_level) => {
-                    let mut statements = statements
-                        .into_iter()
-                        .map(|expr| self.monomorphize_expr(expr, info))
-                        .collect::<Vec<_>>();
-
-                    // Non-terminator statements by default have a type of `()`
-                    #[allow(clippy::bool_to_int_with_if)] // more clear this way
-                    for statement in
+                    MonomorphizedExpressionKind::Block(
                         statements
-                            .iter_mut()
-                            .dropping_back(if top_level { 0 } else { 1 })
-                    {
-                        let var = self.ctx.new_variable();
-
-                        self.ctx
-                            .unify(
-                                engine::UnresolvedType::TerminatingVariable(var),
-                                statement.ty.clone(),
-                            )
-                            .unwrap();
-                    }
-
-                    MonomorphizedExpressionKind::Block(statements, top_level)
+                            .into_iter()
+                            .map(|expr| self.monomorphize_expr(expr, info))
+                            .collect::<Vec<_>>(),
+                        top_level,
+                    )
                 }
                 MonomorphizedExpressionKind::End(value) => {
                     MonomorphizedExpressionKind::End(Box::new(self.monomorphize_expr(*value, info)))
@@ -3289,13 +3287,14 @@ impl Typechecker {
 
 impl Typechecker {
     fn finalize_expr(&mut self, expr: MonomorphizedExpression) -> Expression {
-        let ty = match expr.ty.finalize(&self.ctx) {
-            Ok(ty) => ty,
-            Err(error) => {
-                self.add_error(self.error(error, expr.span));
-                engine::Type::Error
-            }
-        };
+        let ty = expr.ty.finalize(&self.ctx).unwrap_or_else(|| {
+            self.add_error(self.error(
+                engine::TypeError::UnresolvedType(expr.ty.clone()),
+                expr.span,
+            ));
+
+            engine::Type::Error
+        });
 
         let kind = (|| match expr.kind {
             MonomorphizedExpressionKind::Error(trace) => ExpressionKind::Error(trace),
@@ -4041,13 +4040,10 @@ impl Typechecker {
             &mut Vec::new(),
         );
 
-        match ty.finalize(&self.ctx) {
-            Ok(ty) => ty,
-            Err(error) => {
-                self.add_error(self.error(error, span));
-                engine::Type::Error
-            }
-        }
+        ty.finalize(&self.ctx).unwrap_or_else(|| {
+            self.add_error(self.error(engine::TypeError::UnresolvedType(ty), span));
+            engine::Type::Error
+        })
     }
 
     fn convert_finalized_type_annotation(&mut self, annotation: TypeAnnotation) -> engine::Type {
@@ -4055,13 +4051,10 @@ impl Typechecker {
 
         let ty = self.convert_type_annotation_inner(annotation, &|_, _| None, &mut Vec::new());
 
-        match ty.finalize(&self.ctx) {
-            Ok(ty) => ty,
-            Err(error) => {
-                self.add_error(self.error(error, span));
-                engine::Type::Error
-            }
-        }
+        ty.finalize(&self.ctx).unwrap_or_else(|| {
+            self.add_error(self.error(engine::TypeError::UnresolvedType(ty), span));
+            engine::Type::Error
+        })
     }
 
     fn convert_type_annotation_inner(
@@ -4488,7 +4481,7 @@ impl Typechecker {
                 match e.error {
                     engine::TypeError::UnresolvedType(ref mut ty) => {
                         ty.apply(&self.ctx);
-                        Either::Left((ty.vars(), e))
+                        Either::Left((ty.all_vars(), e))
                     }
                     _ => Either::Right(e),
                 }
