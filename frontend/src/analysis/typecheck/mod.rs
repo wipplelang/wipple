@@ -1039,10 +1039,7 @@ impl Typechecker {
                     Some(bound.span),
                     &mut info,
                 ) {
-                    Ok(id) => {
-                        info.has_resolved_trait = true;
-                        id
-                    }
+                    Ok(id) => id,
                     Err(error) => {
                         if is_last_candidate(index) {
                             self.add_error(error?);
@@ -1138,10 +1135,7 @@ impl Typechecker {
                 Some(bound.span),
                 &mut monomorphize_info,
             ) {
-                Ok(id) => {
-                    monomorphize_info.has_resolved_trait = true;
-                    id
-                }
+                Ok(id) => id,
                 Err(error) => {
                     let error = error.unwrap_or_else(|| {
                         let ty =
@@ -2188,10 +2182,7 @@ impl Typechecker {
                     };
 
                     match monomorphized_id {
-                        Some(id) => {
-                            info.has_resolved_trait = true;
-                            MonomorphizedExpressionKind::Constant(id)
-                        }
+                        Some(id) => MonomorphizedExpressionKind::Constant(id),
                         None => MonomorphizedExpressionKind::UnresolvedTrait(tr),
                     }
                 }
@@ -2851,8 +2842,6 @@ impl Typechecker {
 
                         continue 'check;
                     }
-
-                    info.has_resolved_trait = true;
                 }
 
                 let ctx = mem::replace(&mut self.ctx, prev_ctx);
@@ -4493,7 +4482,17 @@ impl Typechecker {
 
         let (unresolved_type_errors, other_errors): (Vec<_>, Vec<_>) = mem::take(&mut self.errors)
             .into_iter()
-            .partition(|e| matches!(e.error, engine::TypeError::UnresolvedType(_)));
+            .partition_map(|mut e| {
+                use itertools::Either;
+
+                match e.error {
+                    engine::TypeError::UnresolvedType(ref mut ty) => {
+                        ty.apply(&self.ctx);
+                        Either::Left((ty.vars(), e))
+                    }
+                    _ => Either::Right(e),
+                }
+            });
 
         let should_report_unresolved_type_errors = other_errors.is_empty();
 
@@ -4502,8 +4501,20 @@ impl Typechecker {
         }
 
         if should_report_unresolved_type_errors {
-            for error in unresolved_type_errors {
-                self.report_error(error);
+            let mut reported_type_variables = BTreeSet::new();
+
+            for (vars, error) in unresolved_type_errors {
+                // Prevent unresolved type errors from cascading throughout the
+                // entire program -- just report the first instance of a value
+                // whose type cannot be determined
+                if vars
+                    .iter()
+                    .any(|var| !reported_type_variables.contains(var))
+                {
+                    self.report_error(error);
+                }
+
+                reported_type_variables.extend(vars);
             }
         }
     }
