@@ -326,7 +326,10 @@ export const CodeEditor = (props: CodeEditorProps) => {
                                         switch (item.type) {
                                             case "output":
                                                 return (
-                                                    <div className="prose prose-sky dark:prose-invert max-w-none">
+                                                    <div
+                                                        key={index}
+                                                        className="prose prose-sky dark:prose-invert max-w-none"
+                                                    >
                                                         <ReactMarkdown
                                                             remarkPlugins={[
                                                                 remarkMath,
