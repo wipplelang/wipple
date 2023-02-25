@@ -1,5 +1,3 @@
-import { NextPage } from "next";
-import Head from "next/head";
 import React, { useEffect, useState } from "react";
 import {
     DndContext,
@@ -29,8 +27,8 @@ import { Menu, MenuItem } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import { nanoid } from "nanoid";
-import { CodeEditor, TextEditor } from "../components";
-import { useRefState } from "../helpers";
+import { CodeEditor, TextEditor } from "./components";
+import { useRefState } from "./helpers";
 import useResizeObserver from "use-resize-observer";
 
 type Section = { id: string; value: string } & (
@@ -43,7 +41,7 @@ interface PageLink {
     link: string;
 }
 
-const App: NextPage = () => {
+const App = () => {
     const [sections, setSections] = useState<Section[]>([]);
     const [previousPage, setPreviousPage] = useState<PageLink | undefined>();
     const [nextPage, setNextPage] = useState<PageLink | undefined>();
@@ -151,26 +149,6 @@ const App: NextPage = () => {
 
     return (
         <main>
-            <Head>
-                <title>Wipple Playground</title>
-
-                <link rel="icon" href="/images/favicon.ico" />
-
-                <link rel="preconnect" href="https://fonts.googleapis.com" />
-                <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="crossorigin" />
-                <link
-                    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=JetBrains+Mono:ital,wght@0,400;1,400&display=swap"
-                    rel="stylesheet"
-                />
-
-                <link
-                    rel="stylesheet"
-                    href="https://cdn.jsdelivr.net/npm/katex@0.15.2/dist/katex.min.css"
-                    integrity="sha384-MlJdn/WNKDGXveldHDdyRP1R4CTHr3FeuDNfhsLPYrq2t0UBkUdK2jyTnXPEK1NQ"
-                    crossOrigin="anonymous"
-                />
-            </Head>
-
             <div className="mx-auto p-6 max-w-4xl">
                 <div className="flex items-center justify-between pb-4">
                     <a

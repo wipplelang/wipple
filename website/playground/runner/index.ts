@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import Runner from "../runner/worker?worker";
 
 export interface AnalysisOutput {
     diagnostics: AnalysisOutputDiagnostics;
@@ -46,7 +47,7 @@ export const useRunner = () => {
 
     useEffect(() => {
         const setup = async () => {
-            runner.current = new Worker(new URL("../runner/worker.js", import.meta.url));
+            runner.current = new Runner();
         };
 
         setup();

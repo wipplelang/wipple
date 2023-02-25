@@ -3,7 +3,7 @@
     "scripts": {
         "postinstall": "(cd playground && npm i)",
         "dev": "concurrently 'eleventy --serve' 'watch \"npm run tailwind:process\" ./home'",
-        "build": "eleventy && npm run tailwind:process && (cd guide && mdbook build) && (rm -rf _site/playground && cd playground && scripts/build.sh && mv out ../_site/playground)",
+        "build": "eleventy && npm run tailwind:process && (cd guide && mdbook build) && (rm -rf _site/playground && cd playground && scripts/build.sh && mv dist ../_site/playground)",
         "tailwind:process": "npx postcss ./home/styles/global.css -o ./_site/styles/global.css"
     },
     "devDependencies": {

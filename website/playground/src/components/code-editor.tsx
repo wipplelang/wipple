@@ -26,9 +26,9 @@ import {
     AnalysisOutputSyntaxHighlightingItem,
     HoverOutput,
     useRunner,
-} from "../runner";
-
-import { KeyboardReturn, Refresh } from "@mui/icons-material";
+} from "../../runner";
+import KeyboardReturn from "@mui/icons-material/KeyboardReturn";
+import Refresh from "@mui/icons-material/Refresh";
 
 export interface CodeEditorProps {
     id: string;
