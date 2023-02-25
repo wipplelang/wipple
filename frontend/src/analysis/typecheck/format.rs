@@ -1,5 +1,5 @@
 use super::engine::{BuiltinType, Type, TypeVariable, UnresolvedType};
-use crate::{TraitId, TypeId, TypeParameterId};
+use crate::{analysis::Bound, TraitId, TypeId, TypeParameterId};
 use itertools::Itertools;
 use std::{collections::BTreeMap, mem};
 
@@ -15,22 +15,22 @@ enum FormattableTypeKind {
     Trait(TraitId, Vec<UnresolvedType>),
 }
 
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
-pub struct Format {
-    pub type_function: TypeFunctionFormat,
+#[derive(Debug, Clone, Copy, Default)]
+pub struct Format<'a> {
+    pub type_function: TypeFunctionFormat<'a>,
     pub type_variable: TypeVariableFormat,
     pub surround_in_backticks: bool,
 }
 
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
-pub enum TypeFunctionFormat {
+#[derive(Debug, Clone, Copy, Default)]
+pub enum TypeFunctionFormat<'a> {
     #[default]
     None,
-    Arrow,
+    Arrow(&'a [Bound]),
     Description,
 }
 
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Default)]
 pub enum TypeVariableFormat {
     #[default]
     None,
@@ -142,20 +142,20 @@ pub fn format_type(
     param_names: impl Fn(TypeParameterId) -> Option<String>,
     format: Format,
 ) -> String {
-    format_type_with(ty, type_names, trait_names, param_names, format)
+    format_type_with(ty, &type_names, &trait_names, &param_names, format)
 }
 
 fn format_type_with(
     ty: impl Into<FormattableType>,
-    type_names: impl Fn(TypeId) -> String,
-    trait_names: impl Fn(TraitId) -> String,
-    param_names: impl Fn(TypeParameterId) -> Option<String>,
+    type_names: &impl Fn(TypeId) -> String,
+    trait_names: &impl Fn(TraitId) -> String,
+    param_names: &impl Fn(TypeParameterId) -> Option<String>,
     mut format: Format,
 ) -> String {
     let mut ty: FormattableType = ty.into();
 
     let ty_params = ty.params();
-    let mut ty_param_names = ty.param_names(&param_names);
+    let mut ty_param_names = ty.param_names(param_names);
     if ty_param_names.is_empty() {
         format.type_function = TypeFunctionFormat::None;
     }
@@ -171,7 +171,7 @@ fn format_type_with(
         TypeVariableFormat::Description => ty_vars.get(&var).unwrap().clone(),
     };
 
-    fn format_type(
+    fn format_type_inner(
         ty: FormattableType,
         type_names: &impl Fn(TypeId) -> String,
         trait_names: &impl Fn(TraitId) -> String,
@@ -190,7 +190,7 @@ fn format_type_with(
                     .chain(params.into_iter().map(|param: UnresolvedType| {
                         format!(
                             " {}",
-                            format_type(
+                            format_type_inner(
                                 param.into(),
                                 type_names,
                                 trait_names,
@@ -241,7 +241,7 @@ fn format_type_with(
                 BuiltinType::Mutable(ty) => format_named_type!("Mutable", vec![*ty]),
             },
             FormattableTypeKind::Type(UnresolvedType::Function(input, output)) => {
-                let input = format_type(
+                let input = format_type_inner(
                     (*input).into(),
                     type_names,
                     trait_names,
@@ -252,7 +252,7 @@ fn format_type_with(
                     false,
                 );
 
-                let output = format_type(
+                let output = format_type_inner(
                     (*output).into(),
                     type_names,
                     trait_names,
@@ -275,7 +275,7 @@ fn format_type_with(
                 let ty = match tys.len() {
                     0 => String::from("()"),
                     1 => {
-                        format_type(
+                        format_type_inner(
                             tys.pop().unwrap().into(),
                             type_names,
                             trait_names,
@@ -289,7 +289,7 @@ fn format_type_with(
                     _ => tys
                         .into_iter()
                         .map(|ty| {
-                            format_type(
+                            format_type_inner(
                                 ty.into(),
                                 type_names,
                                 trait_names,
@@ -321,36 +321,72 @@ fn format_type_with(
         }
     }
 
-    let show_params = matches!(format.type_function, TypeFunctionFormat::Arrow)
-        && !matches!(ty.kind, FormattableTypeKind::Trait(_, _));
+    let bounds = match format.type_function {
+        TypeFunctionFormat::Arrow(bounds)
+            if !matches!(ty.kind, FormattableTypeKind::Trait(_, _)) =>
+        {
+            Some(bounds)
+        }
+        _ => None,
+    };
 
-    let formatted = format_type(
+    let show_params = bounds.is_some();
+
+    let formatted = format_type_inner(
         ty,
-        &type_names,
-        &trait_names,
-        &param_names,
+        type_names,
+        trait_names,
+        param_names,
         &var_names,
         true,
         true,
         format.surround_in_backticks && show_params,
     );
 
-    let formatted = if show_params {
+    let formatted = if let Some(bounds) = bounds {
+        let bounds = bounds
+            .iter()
+            .map(|bound| {
+                let trait_name = trait_names(bound.trait_id);
+
+                format!(
+                    " ({})",
+                    std::iter::once(trait_name)
+                        .chain(bound.params.clone().into_iter().map(|ty| format_type_inner(
+                            ty.into(),
+                            type_names,
+                            trait_names,
+                            param_names,
+                            &var_names,
+                            true,
+                            false,
+                            false,
+                        )))
+                        .join(" ")
+                )
+            })
+            .collect::<String>();
+
         format!(
-            "{}=> {}",
+            "{}{}=> {}",
             ty_params
                 .iter()
-                .map(|param| format_type(
+                .map(|param| format_type_inner(
                     param.clone().into(),
-                    &type_names,
-                    &trait_names,
-                    &param_names,
+                    type_names,
+                    trait_names,
+                    param_names,
                     &var_names,
                     false,
                     false,
                     false
                 ) + " ")
                 .collect::<String>(),
+            if bounds.is_empty() {
+                String::new()
+            } else {
+                format!("where{bounds} ")
+            },
             formatted
         )
     } else {
@@ -364,7 +400,7 @@ fn format_type_with(
     };
 
     let param_description = || match format.type_function {
-        TypeFunctionFormat::None | TypeFunctionFormat::Arrow => unreachable!(),
+        TypeFunctionFormat::None | TypeFunctionFormat::Arrow(_) => unreachable!(),
         TypeFunctionFormat::Description => match ty_param_names.len() {
             0 => unreachable!(),
             1 => format!("for any type `{}`", ty_param_names.pop().unwrap()),
@@ -404,7 +440,7 @@ fn format_type_with(
 
     match (format.type_function, format.type_variable) {
         (
-            TypeFunctionFormat::None | TypeFunctionFormat::Arrow,
+            TypeFunctionFormat::None | TypeFunctionFormat::Arrow(_),
             TypeVariableFormat::None | TypeVariableFormat::Numeric,
         ) => formatted,
         (TypeFunctionFormat::None, _) => format!("{} {}", formatted, var_description()),
@@ -414,7 +450,7 @@ fn format_type_with(
         ) => {
             format!("{} {}", formatted, param_description())
         }
-        (TypeFunctionFormat::Arrow, _) => format!("{} {}", formatted, var_description()),
+        (TypeFunctionFormat::Arrow(_), _) => format!("{} {}", formatted, var_description()),
         _ => format!(
             "{} {} and {}",
             formatted,

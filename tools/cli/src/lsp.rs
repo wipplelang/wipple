@@ -421,7 +421,7 @@ impl LanguageServer for Backend {
                 let range = range_from(span);
 
                 let format = Format {
-                    type_function: TypeFunctionFormat::Arrow,
+                    type_function: TypeFunctionFormat::Arrow(&decl.bounds),
                     ..Default::default()
                 };
 
@@ -586,7 +586,7 @@ impl LanguageServer for Backend {
 
                         ty = Some(decl.ty.clone());
 
-                        format.type_function = TypeFunctionFormat::Arrow;
+                        format.type_function = TypeFunctionFormat::Arrow(&decl.bounds);
                     }
                     AnyDeclaration::Variable(id) => {
                         kind = Some(CompletionItemKind::VARIABLE);

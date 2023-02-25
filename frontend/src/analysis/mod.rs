@@ -7,7 +7,7 @@ pub mod optimize;
 pub mod typecheck;
 
 pub use typecheck::{
-    Arm, Expression, ExpressionKind, Pattern, PatternKind, Program, RuntimeFunction, Type,
+    Arm, Bound, Expression, ExpressionKind, Pattern, PatternKind, Program, RuntimeFunction, Type,
     TypeAnnotation, TypeAnnotationKind, TypeStructure,
 };
 

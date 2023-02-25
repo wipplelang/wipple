@@ -540,23 +540,20 @@ pub fn hover(start: usize, end: usize) -> JsValue {
         span.path == FilePath::Virtual(*PLAYGROUND_PATH) && start >= span.start && end <= span.end
     };
 
-    let format_type = |ty: Type, format: Format| {
-        macro_rules! getter {
-            ($kind:ident, $f:expr) => {
-                |id| $f(analysis.program.declarations.$kind.get(&id).unwrap().name)
-            };
-        }
+    macro_rules! getter {
+        ($kind:ident, $f:expr) => {
+            |id| $f(analysis.program.declarations.$kind.get(&id).unwrap().name)
+        };
+    }
 
-        format_type(
-            ty,
-            getter!(types, |name: InternedString| name.to_string()),
-            getter!(traits, |name: InternedString| name.to_string()),
-            getter!(type_parameters, |name: Option<_>| {
-                name.as_ref().map(ToString::to_string)
-            }),
-            format,
-        )
-    };
+    let type_names = getter!(types, |name: InternedString| name.to_string());
+    let trait_names = getter!(traits, |name: InternedString| name.to_string());
+    let param_names = getter!(type_parameters, |name: Option<_>| {
+        name.as_ref().map(ToString::to_string)
+    });
+
+    let format_type =
+        |ty: Type, format: Format| format_type(ty, type_names, trait_names, param_names, format);
 
     let mut hovers = Vec::new();
 
@@ -642,9 +639,10 @@ pub fn hover(start: usize, end: usize) -> JsValue {
             }
 
             let format = Format {
-                type_function: TypeFunctionFormat::Arrow,
+                type_function: TypeFunctionFormat::Arrow(&decl.bounds),
                 ..Default::default()
             };
+
             hovers.push((
                 span,
                 HoverOutput {
