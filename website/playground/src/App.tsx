@@ -155,7 +155,7 @@ const App = () => {
                         href="/playground"
                         className="flex items-center gap-3 text-black dark:text-white"
                     >
-                        <img src="/images/logo.svg" alt="Wipple Playground" className="h-10" />
+                        <img src="./images/logo.svg" alt="Wipple Playground" className="h-10" />
                         <h1 className="font-semibold">Wipple Playground</h1>
                     </a>
 
