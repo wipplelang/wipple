@@ -15,11 +15,7 @@ if : syntax {
 		True -> 'then
 		False -> 'else
 	}
-}
-
-[keyword]
-if? : syntax {
-	if? 'bool 'then -> if 'bool 'then ()
+	if 'bool 'then -> if 'bool 'then ()
 }
 
 [help "Returns `False` if provided `True`, and vice versa."]

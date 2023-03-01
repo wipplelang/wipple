@@ -14,11 +14,11 @@ Range : N => type {
 -- 	{ min max step } : get range
 -- 	current : mutable min
 
--- 	if? (max < min) {
+-- 	if (max < min) {
 -- 		crash "`max` must be greater than `min`"
 -- 	}
 
--- 	if? (step < zero) {
+-- 	if (step < zero) {
 -- 		crash "`step` must be positive"
 -- 	}
 
