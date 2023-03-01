@@ -137,12 +137,12 @@ macro_rules! traverse_pattern_impl {
                         pattern.$traverse(context.clone(), f);
                     }
                 }
-                Destructure(fields) => {
+                Destructure(.., fields) => {
                     for (_, pattern) in fields {
                         pattern.$traverse(context.clone(), f);
                     }
                 }
-                Variant(_, patterns) => {
+                Variant(.., patterns) => {
                     for pattern in patterns {
                         pattern.$traverse(context.clone(), f);
                     }

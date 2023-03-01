@@ -454,9 +454,9 @@ pattern!(, "Monomorphized", {
         engine::UnresolvedType,
         HashMap<InternedString, (UnresolvedPattern, engine::UnresolvedType)>,
     ),
-    Destructure(BTreeMap<FieldIndex, MonomorphizedPattern>),
+    Destructure(MatchSet, BTreeMap<FieldIndex, MonomorphizedPattern>),
     UnresolvedVariant(TypeId, VariantIndex, Vec<UnresolvedPattern>),
-    Variant(VariantIndex, Vec<MonomorphizedPattern>),
+    Variant(MatchSet, VariantIndex, Vec<MonomorphizedPattern>),
 });
 
 pattern!(pub, "", {
@@ -2280,22 +2280,22 @@ impl Typechecker {
 
                         match_set.set_matched(true);
 
-                        return MonomorphizedPatternKind::Destructure(
-                            fields
-                                .into_iter()
-                                .map(|(_, (pattern, _))| {
-                                    (
-                                        FieldIndex::new(0),
-                                        self.monomorphize_pattern(
-                                            pattern,
-                                            engine::UnresolvedType::Error,
-                                            &mut MatchSet::Never,
-                                            info,
-                                        ),
-                                    )
-                                })
-                                .collect(),
-                        );
+                        let fields = fields
+                            .into_iter()
+                            .map(|(_, (pattern, _))| {
+                                (
+                                    FieldIndex::new(0),
+                                    self.monomorphize_pattern(
+                                        pattern,
+                                        engine::UnresolvedType::Error,
+                                        &mut MatchSet::Never,
+                                        info,
+                                    ),
+                                )
+                            })
+                            .collect();
+
+                        return MonomorphizedPatternKind::Destructure(match_set.clone(), fields);
                     }
                 };
 
@@ -2389,16 +2389,18 @@ impl Typechecker {
                     field_match_set.set_matched(true);
                 }
 
-                MonomorphizedPatternKind::Destructure(fields)
+                MonomorphizedPatternKind::Destructure(match_set.clone(), fields)
             }
-            MonomorphizedPatternKind::Destructure(fields) => {
-                MonomorphizedPatternKind::Destructure(fields)
+            MonomorphizedPatternKind::Destructure(destructure_match_set, fields) => {
+                *match_set = destructure_match_set.clone();
+                MonomorphizedPatternKind::Destructure(destructure_match_set, fields)
             }
             MonomorphizedPatternKind::UnresolvedVariant(variant_ty, variant, values) => {
                 let (id, params) = match &ty {
                     engine::UnresolvedType::Named(id, params, _) => (id, params),
                     _ => {
                         return MonomorphizedPatternKind::Variant(
+                            match_set.clone(),
                             variant,
                             values
                                 .into_iter()
@@ -2489,21 +2491,21 @@ impl Typechecker {
 
                 *matches = true;
 
-                MonomorphizedPatternKind::Variant(
-                    variant,
-                    values
-                        .into_iter()
-                        .zip(variant_tys)
-                        .zip(variant_match_sets)
-                        .map(|((pattern, variant_ty), match_set)| {
-                            *matches = true;
-                            self.monomorphize_pattern(pattern, variant_ty, match_set, info)
-                        })
-                        .collect(),
-                )
+                let values = values
+                    .into_iter()
+                    .zip(variant_tys)
+                    .zip(variant_match_sets)
+                    .map(|((pattern, variant_ty), match_set)| {
+                        *matches = true;
+                        self.monomorphize_pattern(pattern, variant_ty, match_set, info)
+                    })
+                    .collect();
+
+                MonomorphizedPatternKind::Variant(match_set.clone(), variant, values)
             }
-            MonomorphizedPatternKind::Variant(index, patterns) => {
-                MonomorphizedPatternKind::Variant(index, patterns)
+            MonomorphizedPatternKind::Variant(variant_match_set, variant, values) => {
+                *match_set = variant_match_set.clone();
+                MonomorphizedPatternKind::Variant(variant_match_set, variant, values)
             }
             MonomorphizedPatternKind::Or(lhs, rhs) => MonomorphizedPatternKind::Or(
                 Box::new(self.monomorphize_pattern(*lhs, ty.clone(), match_set, info)),
@@ -3468,7 +3470,7 @@ impl Typechecker {
                     PatternKind::Variable(var)
                 }
                 MonomorphizedPatternKind::UnresolvedDestructure(_, _) => unreachable!(),
-                MonomorphizedPatternKind::Destructure(fields) => {
+                MonomorphizedPatternKind::Destructure(_, fields) => {
                     let input_tys = match input_ty {
                         engine::Type::Named(_, _, engine::TypeStructure::Structure(fields)) => {
                             fields
@@ -3485,7 +3487,7 @@ impl Typechecker {
                     )
                 }
                 MonomorphizedPatternKind::UnresolvedVariant(_, _, _) => unreachable!(),
-                MonomorphizedPatternKind::Variant(index, values) => {
+                MonomorphizedPatternKind::Variant(_, index, values) => {
                     let input_tys = match input_ty {
                         engine::Type::Named(_, _, engine::TypeStructure::Enumeration(variants)) => {
                             &variants[index.into_inner()]
