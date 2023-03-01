@@ -2747,7 +2747,7 @@ impl Typechecker {
                 let mut all_unify = true;
                 for (param_ty, instance_param_ty) in params.clone().into_iter().zip(instance_params)
                 {
-                    if self.ctx.unify(param_ty, instance_param_ty).is_err() {
+                    if self.ctx.unify_generic(param_ty, instance_param_ty).is_err() {
                         all_unify = false;
                         break;
                     }

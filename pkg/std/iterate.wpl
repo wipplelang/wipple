@@ -12,6 +12,14 @@ Iterator : Element => type {
 	next :: () -> Maybe Element
 }
 
+[help "Create an iterator from a function."]
+iterator :: Element => (() -> Maybe Element) -> Iterator Element
+iterator : next -> Iterator { next }
+
+[help "Retrieve the next item in an iterator."]
+next :: Element => Iterator Element -> Maybe Element
+next : { next } -> next ()
+
 [help "Implement this trait to enable traversing your collection type."]
 Iterate : Container Element => trait (Container -> Iterator Element)
 
@@ -20,32 +28,28 @@ Element => instance (Iterate (Iterator Element) Element) : it
 [help "Transform each item in an iterator, producing a new iterator."]
 transform :: Container Element Result where (Iterate Container Element) => (Element -> Result) -> Container -> Iterator Result
 transform : f -> container -> {
-	{ next } : Iterate container
+	base : Iterate container
 
-	Iterator {
-		next : () -> when (next ()) {
-			Some x -> Some (f x)
-			None -> None
-		}
-	}
+	iterator (() -> when (next base) {
+		Some x -> Some (f x)
+		None -> None
+	})
 }
 
 [help "Keep only the items in an iterator that satisfy the provided condition."]
 filter :: Container Element where (Iterate Container Element) => (Element -> Boolean) -> Container -> Iterator Element
 filter : include? -> container -> {
-	{ next } : Iterate container
+	base : Iterate container
 
-	Iterator {
-		next : () -> loop {
-			when (next ()) {
-				Some x ->
-					if (include? x)
-						(Break (Some x))
-						(Continue :: Control-Flow (Maybe _))  -- type annotation is needed because of typechecker bug
-				None -> Break None
-			}
+	iterator (() -> loop {
+		when (next base) {
+			Some x ->
+				if (include? x)
+					(Break (Some x))
+					(Continue :: Control-Flow (Maybe _))  -- type annotation is needed because of typechecker bug
+			None -> Break None
 		}
-	}
+	})
 }
 
 -- reduce :: Container Element Result where (Iterate Container Element) => (Element -> Result -> Result) -> Container -> Iterator Result
@@ -58,10 +62,10 @@ Collect : Element Container => trait (Iterator Element -> Container)
 collect :: Input Element Output where (Iterate Input Element) (Collect Element Output) => Input -> Output
 collect : input -> Collect ((Iterate :: (_ -> Iterator Element)) input) -- FIXME: Remove type annotation once we have functional dependencies
 
-Element => instance (Collect Element (List Element)) : { next } -> {
+Element => instance (Collect Element (List Element)) : iterator -> {
 	list : mutable (list)
 	loop {
-		when (next ()) {
+		when (next iterator) {
 			Some x -> {
 				list . append! x
 				Continue
@@ -76,20 +80,18 @@ Element => instance (Collect Element (List Element)) : { next } -> {
 A => instance (Iterate (List A) A) : list -> {
 	index : mutable 0
 
-	Iterator {
-		next : () -> when (list . nth (get index)) {
-			OK element -> {
-				increment! index
-				Some element
-			}
-			Error _ -> None
+	iterator (() -> when (list . nth (get index)) {
+		OK element -> {
+			increment! index
+			Some element
 		}
-	}
+		Error _ -> None
+	})
 }
 
-instance (Collect () ()) : { next } -> {
+instance (Collect () ()) : iterator -> {
 	loop {
-		when (next ()) {
+		when (next iterator) {
 			Some () -> Continue
 			None -> Break ()
 		}
@@ -103,28 +105,26 @@ each : f -> container -> container . transform f . collect
 [help "Split an iterator into groups of consecutive items satisfying a condition."]
 split-by :: Collection Element where (Iterate Collection Element) => (Element -> Boolean) -> Collection -> Iterator (List Element)
 split-by : separator? -> collection -> {
-	{ next } : Iterate collection
+	base : Iterate collection
 	group : mutable (Some (list))
 
-	Iterator {
-		next : () -> loop {
-			when (next ()) {
-				Some x -> {
-					if (separator? x) {
-						Break (take! group)
-					} {
-						group . set! (Some (when (get group) {
-							Some inner -> inner . append x
-							None -> list x
-						}))
+	iterator (() -> loop {
+		when (next base) {
+			Some x -> {
+				if (separator? x) {
+					Break (take! group)
+				} {
+					group . set! (Some (when (get group) {
+						Some inner -> inner . append x
+						None -> list x
+					}))
 
-						Continue
-					}
+					Continue
 				}
-				None -> Break (take! group)
 			}
+			None -> Break (take! group)
 		}
-	}
+	})
 }
 
 [help "Split an iterator into groups of consecutive items equal to a value."]
@@ -133,11 +133,11 @@ split : separator -> split-by (x -> x = separator)
 
 count :: Collection Element where (Iterate Collection Element) => Collection -> Natural
 count : collection -> {
-	{ next } : Iterate collection
+	iterator : Iterate collection
 
 	count : mutable 0
 	loop {
-		when (next () :: Maybe Element) {
+		when (next iterator :: Maybe Element) {
 			Some _ -> {
 				increment! count
 				Continue

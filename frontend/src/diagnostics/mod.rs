@@ -245,6 +245,8 @@ impl FinalizedDiagnostics {
 
         let mut tracked_files = HashMap::<FilePath, usize>::new();
         for diagnostic in diagnostics {
+            let primary_span = diagnostic.notes.first().unwrap().span;
+
             let labels = diagnostic
                 .notes
                 .into_iter()
@@ -280,7 +282,8 @@ impl FinalizedDiagnostics {
                         #[cfg(debug_assertions)]
                         if include_trace {
                             if let Some(trace) = diagnostic.trace.into_inner() {
-                                return diagnostic.message + &format!("\n{trace:?}");
+                                return diagnostic.message
+                                    + &format!("\nat span {primary_span:?}\n{trace:?}");
                             }
                         }
 
