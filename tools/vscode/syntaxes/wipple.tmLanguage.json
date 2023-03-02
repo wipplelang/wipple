@@ -16,7 +16,11 @@
         },
         {
             "name": "punctuation",
-            "match": "['\\/]"
+            "match": "'|\\.\\.\\."
+        },
+        {
+            "name": "keyword",
+            "match": "_|use|when|type|trait|instance|where|external|syntax|format"
         },
         {
             "name": "keyword.operator",
