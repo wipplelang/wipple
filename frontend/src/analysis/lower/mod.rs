@@ -4,7 +4,7 @@ use crate::{
     analysis::ast,
     diagnostics::Note,
     helpers::{Backtrace, InternedString, Shared},
-    parse::Span,
+    parse::{Span, SpanList},
     BuiltinTypeId, Compiler, ConstantId, FieldIndex, FilePath, ScopeId, SyntaxId, TraitId, TypeId,
     TypeParameterId, VariableId, VariantIndex,
 };
@@ -88,8 +88,8 @@ impl UnresolvedDeclarations {
 #[derive(Debug, Clone)]
 pub struct Declaration<T> {
     pub name: Option<InternedString>,
-    pub span: Span,
-    pub uses: HashSet<Span>,
+    pub span: SpanList,
+    pub uses: HashSet<SpanList>,
     pub value: T,
 }
 
@@ -104,10 +104,10 @@ impl<T> Resolve<T> for T {
 }
 
 impl<T> Declaration<Option<T>> {
-    fn unresolved(name: Option<InternedString>, span: Span) -> Self {
+    fn unresolved(name: Option<InternedString>, span: impl Into<SpanList>) -> Self {
         Declaration {
             name,
-            span,
+            span: span.into(),
             uses: HashSet::new(),
             value: None,
         }
@@ -132,10 +132,10 @@ impl<T> Declaration<Option<T>> {
 }
 
 impl<T> Declaration<T> {
-    fn resolved(name: Option<InternedString>, span: Span, value: T) -> Self {
+    fn resolved(name: Option<InternedString>, span: impl Into<SpanList>, value: T) -> Self {
         Declaration {
             name,
-            span,
+            span: span.into(),
             uses: HashSet::new(),
             value,
         }
@@ -192,14 +192,14 @@ pub struct TypeAttributes {
 
 #[derive(Debug, Clone)]
 pub struct StructureField {
-    pub name_span: Span,
+    pub name_span: SpanList,
     pub name: InternedString,
     pub ty: TypeAnnotation,
 }
 
 #[derive(Debug, Clone)]
 pub struct EnumerationVariant {
-    pub name_span: Span,
+    pub name_span: SpanList,
     pub name: InternedString,
     pub tys: Vec<TypeAnnotation>,
     pub constructor: ConstantId,
@@ -297,7 +297,7 @@ pub struct ConstantAttributes {
 pub struct InstanceDeclaration {
     pub parameters: Vec<TypeParameterId>,
     pub bounds: Vec<Bound>,
-    pub tr_span: Span,
+    pub tr_span: SpanList,
     pub tr: TraitId,
     pub tr_parameters: Vec<TypeAnnotation>,
     pub value: Option<Expression>,
@@ -344,7 +344,7 @@ impl LanguageItems {
 
 #[derive(Debug, Clone)]
 pub struct Expression {
-    pub span: Span,
+    pub span: SpanList,
     pub kind: ExpressionKind,
 }
 
@@ -366,7 +366,7 @@ pub enum ExpressionKind {
     Runtime(RuntimeFunction, Vec<Expression>),
     Annotate(Box<Expression>, TypeAnnotation),
     Initialize(Pattern, Box<Expression>),
-    Instantiate(TypeId, Vec<((Span, InternedString), Expression)>),
+    Instantiate(TypeId, Vec<((SpanList, InternedString), Expression)>),
     Variant(TypeId, VariantIndex, Vec<Expression>),
     Tuple(Vec<Expression>),
     Format(Vec<(InternedString, Expression)>, Option<InternedString>),
@@ -453,14 +453,14 @@ impl Expression {
 
 #[derive(Debug, Clone)]
 pub struct Arm {
-    pub span: Span,
+    pub span: SpanList,
     pub pattern: Pattern,
     pub body: Expression,
 }
 
 #[derive(Debug, Clone)]
 pub struct Pattern {
-    pub span: Span,
+    pub span: SpanList,
     pub kind: PatternKind,
 }
 
@@ -487,7 +487,7 @@ impl PatternKind {
 
 #[derive(Debug, Clone)]
 pub struct TypeAnnotation {
-    pub span: Span,
+    pub span: SpanList,
     pub kind: TypeAnnotationKind,
 }
 
@@ -510,13 +510,13 @@ impl TypeAnnotationKind {
 
 #[derive(Debug, Clone)]
 pub struct Bound {
-    pub span: Span,
-    pub tr_span: Span,
+    pub span: SpanList,
+    pub tr_span: SpanList,
     pub tr: TraitId,
     pub parameters: Vec<TypeAnnotation>,
 }
 
-pub type CaptureList = Vec<(VariableId, Span)>;
+pub type CaptureList = Vec<(VariableId, SpanList)>;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, strum::EnumString, strum::Display)]
 #[strum(serialize_all = "kebab-case")]
@@ -742,7 +742,7 @@ impl Compiler {
                 .unwrap()
                 .attributes
                 .allow_overlapping_instances
-                && instance.span.path != tr_decl.span.path
+                && instance.span.first().path != tr_decl.span.first().path
             {
                 self.add_error(
                     "instance of trait that allows overlapping instances must occur in the same file as the trait",
@@ -888,7 +888,7 @@ impl Lowerer {
     fn get(
         &mut self,
         name: InternedString,
-        span: Span,
+        span: SpanList,
         scope: LoadedScopeId,
     ) -> Option<AnyDeclaration> {
         self.get_inner(name, Some(span), scope)
@@ -901,7 +901,7 @@ impl Lowerer {
     fn get_inner(
         &mut self,
         name: InternedString,
-        use_span: Option<Span>,
+        use_span: Option<SpanList>,
         scope_id: LoadedScopeId,
     ) -> Option<AnyDeclaration> {
         let mut parent = Some(scope_id);
@@ -954,7 +954,7 @@ impl Lowerer {
 
 #[derive(Debug)]
 struct StatementDeclaration<'a> {
-    span: Span,
+    span: SpanList,
     kind: StatementDeclarationKind<'a>,
     attributes: &'a ast::StatementAttributes,
 }
@@ -980,14 +980,14 @@ enum StatementDeclarationKind<'a> {
         ConstantId,
         Option<(LoadedScopeId, (Vec<TypeParameterId>, Vec<Bound>))>,
         (
-            Span,
+            SpanList,
             InternedString,
             LoadedScopeId,
             &'a Vec<Result<ast::Type, ast::SyntaxError>>,
         ),
         Option<&'a ast::Expression>,
     ),
-    Use(Span, InternedString, LoadedScopeId),
+    Use(SpanList, InternedString, LoadedScopeId),
     Queued(QueuedStatement<'a>),
 }
 
@@ -1418,7 +1418,7 @@ impl Lowerer {
                             let pattern = self.lower_pattern(pattern, scope);
 
                             Some(Expression {
-                                span,
+                                span: span.into(),
                                 kind: ExpressionKind::Initialize(pattern, Box::new(value)),
                             })
                         }};
@@ -1573,6 +1573,7 @@ impl Lowerer {
                             kind: StatementDeclarationKind::Queued(QueuedStatement::Expression(
                                 Cow::Owned(
                                     ast::AnnotateExpression {
+                                        span: statement.span,
                                         colon_span: statement.colon_span,
                                         expr,
                                         ty,
@@ -1971,7 +1972,7 @@ impl Lowerer {
                     };
 
                     Expression {
-                        span: Span::join(result.span, next.span),
+                        span: Span::join(result.span.first(), next.span.first()).into(),
                         kind: ExpressionKind::Call(Box::new(result), Box::new(next)),
                     }
                 })
@@ -3309,7 +3310,7 @@ impl Lowerer {
     fn get_name_from_assignment(
         &mut self,
         pattern: &ast::AssignmentPattern,
-    ) -> Option<(Span, InternedString)> {
+    ) -> Option<(SpanList, InternedString)> {
         if let ast::AssignmentPattern::Pattern(pattern) = pattern {
             if let ast::Pattern::Name(pattern) = &pattern.pattern {
                 return Some((pattern.span, pattern.name));
@@ -3326,7 +3327,7 @@ impl Lowerer {
 
     fn resolve_value(
         &mut self,
-        span: Span,
+        span: SpanList,
         name: InternedString,
         scope: LoadedScopeId,
     ) -> Option<ExpressionKind> {
@@ -3430,7 +3431,7 @@ impl Lowerer {
         &mut self,
         id: TypeId,
         name: InternedString,
-        span: Span,
+        span: SpanList,
         index: VariantIndex,
         parameters: &[TypeParameterId],
         tys: &[TypeAnnotation],
@@ -3456,7 +3457,7 @@ impl Lowerer {
                 ),
             },
             |result, next| TypeAnnotation {
-                span: Span::join(next.span, result.span),
+                span: Span::join(next.span.first(), result.span.first()).into(),
                 kind: TypeAnnotationKind::Function(Box::new(next.clone()), Box::new(result)),
             },
         );

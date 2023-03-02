@@ -5,19 +5,20 @@ use crate::{
     },
     diagnostics::Note,
     helpers::InternedString,
-    parse::{self, Span},
+    parse::{self, SpanList},
 };
 
 #[derive(Debug, Clone)]
 pub struct OnUnimplementedStatementAttribute {
-    pub on_unimplemented_span: Span,
-    pub message_span: Span,
+    pub span: SpanList,
+    pub on_unimplemented_span: SpanList,
+    pub message_span: SpanList,
     pub message: InternedString,
 }
 
 impl OnUnimplementedStatementAttribute {
-    pub fn span(&self) -> Span {
-        Span::join(self.on_unimplemented_span, self.message_span)
+    pub fn span(&self) -> SpanList {
+        self.span
     }
 }
 
@@ -29,7 +30,7 @@ impl Syntax for OnUnimplementedStatementAttributeSyntax {
     fn rules() -> SyntaxRules<Self> {
         SyntaxRules::new().with(SyntaxRule::<Self>::function(
             "on-unimplemented",
-            |context, span, mut exprs, _scope| async move {
+            |context, span, on_unimplemented_span, mut exprs, _scope| async move {
                 if exprs.len() != 1 {
                     context.ast_builder.compiler.add_error(
                         "syntax error",
@@ -51,7 +52,8 @@ impl Syntax for OnUnimplementedStatementAttributeSyntax {
                 };
 
                 let attribute = OnUnimplementedStatementAttribute {
-                    on_unimplemented_span: span,
+                    span,
+                    on_unimplemented_span,
                     message_span: expr.span,
                     message,
                 };

@@ -10,7 +10,6 @@ pub mod parse;
 use async_trait::async_trait;
 use diagnostics::*;
 use helpers::{InternedString, Shared};
-use parse::Span;
 use std::{
     collections::HashMap,
     fmt::{self, Debug},

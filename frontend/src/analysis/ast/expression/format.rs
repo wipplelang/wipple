@@ -5,31 +5,22 @@ use crate::{
     },
     diagnostics::Note,
     helpers::InternedString,
-    parse::{self, Span},
+    parse::{self, SpanList},
 };
 use futures::{stream, StreamExt};
 
 #[derive(Debug, Clone)]
 pub struct FormatExpression {
-    pub format_span: Span,
-    pub text_span: Span,
+    pub span: SpanList,
+    pub format_span: SpanList,
+    pub text_span: SpanList,
     pub segments: Vec<(InternedString, Result<Expression, SyntaxError>)>,
     pub trailing_segment: Option<InternedString>,
 }
 
 impl FormatExpression {
-    pub fn span(&self) -> Span {
-        match self.segments.last() {
-            Some((_, expr)) => {
-                let expr_span = match expr {
-                    Ok(expr) => expr.span(),
-                    Err(error) => error.span,
-                };
-
-                Span::join(self.format_span, expr_span)
-            }
-            None => Span::join(self.format_span, self.text_span),
-        }
+    pub fn span(&self) -> SpanList {
+        self.span
     }
 }
 
@@ -41,7 +32,7 @@ impl Syntax for FormatExpressionSyntax {
     fn rules() -> SyntaxRules<Self> {
         SyntaxRules::new().with(SyntaxRule::<Self>::function(
             "format",
-            |context, span, exprs, scope| async move {
+            |context, span, format_span, exprs, scope| async move {
                 if exprs.is_empty() {
                     context.ast_builder.compiler.add_error(
                         "syntax error",
@@ -106,7 +97,8 @@ impl Syntax for FormatExpressionSyntax {
                 let segments = segments.into_iter().zip(inputs).collect();
 
                 Ok(FormatExpression {
-                    format_span: span,
+                    span,
+                    format_span,
                     text_span,
                     segments,
                     trailing_segment

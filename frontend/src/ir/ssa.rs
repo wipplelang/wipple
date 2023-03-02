@@ -1,6 +1,6 @@
 use crate::{
-    analysis, helpers::InternedString, parse::Span, Compiler, EnumerationId, FieldIndex, ItemId,
-    StructureId, TypeId, VariableId, VariantIndex,
+    analysis, helpers::InternedString, parse::SpanList, Compiler, EnumerationId, FieldIndex,
+    ItemId, StructureId, TypeId, VariableId, VariantIndex,
 };
 use std::{
     collections::BTreeMap,
@@ -19,7 +19,7 @@ pub struct Program {
 
 #[derive(Debug, Clone)]
 pub struct Expression {
-    pub span: Option<Span>,
+    pub span: Option<SpanList>,
     pub tail: bool,
     pub ty: Type,
     pub kind: ExpressionKind,
@@ -76,14 +76,14 @@ pub enum ExpressionKind {
 
 #[derive(Debug, Clone)]
 pub struct Arm {
-    pub span: Option<Span>,
+    pub span: Option<SpanList>,
     pub pattern: Pattern,
     pub body: Expression,
 }
 
 #[derive(Debug, Clone)]
 pub struct Pattern {
-    pub span: Option<Span>,
+    pub span: Option<SpanList>,
     pub kind: PatternKind,
 }
 
@@ -293,7 +293,10 @@ impl Converter<'_> {
                                     .map(|expr| self.convert_type(&expr.ty))
                                     .unwrap_or_else(|| Type::Tuple(Vec::new())),
                                 span: remaining.first().map(|expr| {
-                                    expr.span.with_end(remaining.last().unwrap().span.end)
+                                    expr.span
+                                        .first()
+                                        .with_end(remaining.last().unwrap().span.first().end)
+                                        .into()
                                 }),
                                 kind: ExpressionKind::Block(self.convert_block(remaining, tail)),
                             },

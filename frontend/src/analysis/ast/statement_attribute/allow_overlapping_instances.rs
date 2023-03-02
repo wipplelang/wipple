@@ -4,16 +4,16 @@ use crate::{
         syntax::{Syntax, SyntaxRule, SyntaxRules},
     },
     diagnostics::Note,
-    parse::Span,
+    parse::SpanList,
 };
 
 #[derive(Debug, Clone)]
 pub struct AllowOverlappingInstancesStatementAttribute {
-    pub span: Span,
+    pub span: SpanList,
 }
 
 impl AllowOverlappingInstancesStatementAttribute {
-    pub fn span(&self) -> Span {
+    pub fn span(&self) -> SpanList {
         self.span
     }
 }
@@ -26,7 +26,7 @@ impl Syntax for AllowOverlappingInstancesStatementAttributeSyntax {
     fn rules() -> SyntaxRules<Self> {
         SyntaxRules::new().with(SyntaxRule::<Self>::function(
             "allow-overlapping-instances",
-            |context, span, exprs, _scope| async move {
+            |context, span, _allow_overlapping_instances_span, exprs, _scope| async move {
                 if !exprs.is_empty() {
                     context.ast_builder.compiler.add_error(
                         "syntax error",

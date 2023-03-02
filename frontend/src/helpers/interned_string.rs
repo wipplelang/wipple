@@ -1,25 +1,20 @@
-use lasso::ThreadedRodeo;
-use lazy_static::lazy_static;
+use internment::Intern;
 use std::{fmt, ops::Deref};
-
-lazy_static! {
-    static ref INTERNER: ThreadedRodeo = Default::default();
-}
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct InternedString {
-    symbol: lasso::Spur,
+    symbol: Intern<str>,
 }
 
 impl InternedString {
     pub fn new(s: impl AsRef<str>) -> Self {
         InternedString {
-            symbol: INTERNER.get_or_intern(s.as_ref()),
+            symbol: Intern::from(s.as_ref()),
         }
     }
 
     pub fn as_str(&self) -> &'static str {
-        INTERNER.resolve(&self.symbol)
+        self.symbol.as_ref()
     }
 }
 

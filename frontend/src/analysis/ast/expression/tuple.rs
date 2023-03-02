@@ -4,33 +4,20 @@ use crate::{
         syntax::{OperatorAssociativity, Syntax, SyntaxError, SyntaxRule, SyntaxRules},
         ExpressionSyntax,
     },
-    parse::Span,
+    parse::SpanList,
 };
 use futures::{stream, StreamExt};
 
 #[derive(Debug, Clone)]
 pub struct TupleExpression {
-    pub comma_span: Span,
+    pub span: SpanList,
+    pub comma_span: SpanList,
     pub exprs: Vec<Result<Expression, SyntaxError>>,
 }
 
 impl TupleExpression {
-    pub fn span(&self) -> Span {
-        let first_expr_span = match self.exprs.first().unwrap() {
-            Ok(expr) => expr.span(),
-            Err(error) => error.span,
-        };
-
-        if self.exprs.len() == 1 {
-            Span::join(first_expr_span, self.comma_span)
-        } else {
-            let last_expr_span = match self.exprs.last().unwrap() {
-                Ok(expr) => expr.span(),
-                Err(error) => error.span,
-            };
-
-            Span::join(first_expr_span, last_expr_span)
-        }
+    pub fn span(&self) -> SpanList {
+        self.span
     }
 }
 
@@ -43,7 +30,7 @@ impl Syntax for TupleExpressionSyntax {
         SyntaxRules::new().with(SyntaxRule::<Self>::operator(
             ",",
             OperatorAssociativity::Variadic,
-            |context, (_span, exprs), operator_span, (_unused_span, unused_exprs), scope| async move {
+            |context, span, (_span, exprs), comma_span, (_unused_span, unused_exprs), scope| async move {
                 // HACK: All of the expressions are contained in `lhs`. In the
                 // future, handle variadic operators specially.
                 assert!(unused_exprs.is_empty());
@@ -58,7 +45,8 @@ impl Syntax for TupleExpressionSyntax {
                     .await;
 
                 Ok(TupleExpression {
-                    comma_span: operator_span,
+                    span,
+                    comma_span,
                     exprs,
                 }
                 .into())

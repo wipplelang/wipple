@@ -8,30 +8,21 @@ use crate::{
         PatternAssignmentPattern, StatementAttributes, StatementSyntaxContext,
     },
     helpers::Shared,
-    parse::{self, Span},
+    parse::{self, SpanList},
 };
 
 #[derive(Debug, Clone)]
 pub struct AssignStatement {
-    pub colon_span: Span,
+    pub span: SpanList,
+    pub colon_span: SpanList,
     pub pattern: Result<AssignmentPattern, SyntaxError>,
     pub value: Result<AssignmentValue, SyntaxError>,
     pub attributes: StatementAttributes,
 }
 
 impl AssignStatement {
-    pub fn span(&self) -> Span {
-        let pattern_span = match &self.pattern {
-            Ok(pattern) => pattern.span(),
-            Err(error) => error.span,
-        };
-
-        let value_span = match &self.value {
-            Ok(value) => value.span(),
-            Err(error) => error.span,
-        };
-
-        Span::join(pattern_span, value_span)
+    pub fn span(&self) -> SpanList {
+        self.span
     }
 }
 
@@ -44,8 +35,7 @@ impl Syntax for AssignStatementSyntax {
         SyntaxRules::new().with(SyntaxRule::<Self>::operator(
             ":",
             OperatorAssociativity::None,
-            |context, (lhs_span, lhs_exprs), operator_span, (rhs_span, rhs_exprs), scope| async move {
-
+            |context, span, (lhs_span, lhs_exprs), colon_span, (rhs_span, rhs_exprs), scope| async move {
                 let mut declared_name = None;
                 let lhs = parse::Expr::list_or_expr(lhs_span, lhs_exprs);
                 let pattern = match &lhs.kind {
@@ -107,7 +97,8 @@ impl Syntax for AssignStatementSyntax {
                 }
 
                 Ok(AssignStatement {
-                    colon_span: operator_span,
+                    span,
+                    colon_span,
                     pattern,
                     value,
                     attributes: context.statement_attributes.unwrap().lock().clone(),

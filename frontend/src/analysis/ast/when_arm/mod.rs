@@ -50,7 +50,7 @@ impl SyntaxContext for WhenArmSyntaxContext {
 
     async fn build_block(
         self,
-        span: parse::Span,
+        span: parse::SpanList,
         _statements: impl Iterator<
                 Item = Result<
                     <<Self::Statement as Syntax>::Context as SyntaxContext>::Body,

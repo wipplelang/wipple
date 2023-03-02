@@ -4,19 +4,20 @@ use crate::{
         syntax::{Syntax, SyntaxRule, SyntaxRules},
     },
     diagnostics::Note,
-    parse::{self, Span},
+    parse::{self, SpanList},
 };
 
 #[derive(Debug, Clone)]
 pub struct RecursionLimitFileAttribute {
-    pub recursion_limit_span: Span,
-    pub limit_span: Span,
+    pub span: SpanList,
+    pub recursion_limit_span: SpanList,
+    pub limit_span: SpanList,
     pub limit: usize,
 }
 
 impl RecursionLimitFileAttribute {
-    pub fn span(&self) -> Span {
-        Span::join(self.recursion_limit_span, self.limit_span)
+    pub fn span(&self) -> SpanList {
+        self.span
     }
 }
 
@@ -28,7 +29,7 @@ impl Syntax for RecursionLimitFileAttributeSyntax {
     fn rules() -> SyntaxRules<Self> {
         SyntaxRules::new().with(SyntaxRule::<Self>::function(
             "recursion-limit",
-            |context, span, mut exprs, _scope| async move {
+            |context, span, recursion_limit_span, mut exprs, _scope| async move {
                 if exprs.len() != 1 {
                     context.ast_builder.compiler.add_error(
                         "syntax error",
@@ -62,7 +63,8 @@ impl Syntax for RecursionLimitFileAttributeSyntax {
                 };
 
                 let attribute = RecursionLimitFileAttribute {
-                    recursion_limit_span: span,
+                    span,
+                    recursion_limit_span,
                     limit_span: expr.span,
                     limit,
                 };

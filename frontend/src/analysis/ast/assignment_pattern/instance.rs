@@ -6,24 +6,25 @@ use crate::{
     },
     diagnostics::Note,
     helpers::InternedString,
-    parse::{self, Span},
+    parse::{self, SpanList},
     ScopeId,
 };
 use futures::{stream, StreamExt};
 
 #[derive(Debug, Clone)]
 pub struct InstanceAssignmentPattern {
-    pub instance_span: Span,
-    pub pattern_span: Span,
-    pub trait_span: Span,
+    pub span: SpanList,
+    pub instance_span: SpanList,
+    pub pattern_span: SpanList,
+    pub trait_span: SpanList,
     pub trait_name: InternedString,
     pub trait_scope: ScopeId,
     pub trait_parameters: Vec<Result<Type, SyntaxError>>,
 }
 
 impl InstanceAssignmentPattern {
-    pub fn span(&self) -> Span {
-        Span::join(self.instance_span, self.pattern_span)
+    pub fn span(&self) -> SpanList {
+        self.span
     }
 }
 
@@ -35,7 +36,7 @@ impl Syntax for InstanceAssignmentPatternSyntax {
     fn rules() -> SyntaxRules<Self> {
         SyntaxRules::new().with(SyntaxRule::<Self>::function(
             "instance",
-            |context, span, mut exprs, scope| async move {
+            |context, span, instance_span, mut exprs, scope| async move {
                 if exprs.len() != 1 {
                     context.ast_builder.compiler.add_error(
                         "syntax error",
@@ -111,7 +112,8 @@ impl Syntax for InstanceAssignmentPatternSyntax {
                     };
 
                 Ok(InstanceAssignmentPattern {
-                    instance_span: span,
+                    span,
+                    instance_span,
                     pattern_span,
                     trait_span,
                     trait_name,

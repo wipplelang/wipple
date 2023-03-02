@@ -4,19 +4,20 @@ use crate::{
         syntax::{Syntax, SyntaxRule, SyntaxRules},
     },
     diagnostics::Note,
-    parse::{self, Span},
+    parse::{self, SpanList},
 };
 
 #[derive(Debug, Clone)]
 pub struct OperatorPrecedenceStatementAttribute {
-    pub operator_span: Span,
-    pub precedence_span: Span,
+    pub span: SpanList,
+    pub operator_span: SpanList,
+    pub precedence_span: SpanList,
     pub precedence: OperatorPrecedenceStatementAttributeKind,
 }
 
 impl OperatorPrecedenceStatementAttribute {
-    pub fn span(&self) -> Span {
-        Span::join(self.operator_span, self.precedence_span)
+    pub fn span(&self) -> SpanList {
+        self.span
     }
 }
 
@@ -77,7 +78,7 @@ impl Syntax for OperatorPrecedenceStatementAttributeSyntax {
     fn rules() -> SyntaxRules<Self> {
         SyntaxRules::new().with(SyntaxRule::<Self>::function(
             "operator",
-            |context, span, mut exprs, _scope| async move {
+            |context, span, operator_span, mut exprs, _scope| async move {
                 if exprs.len() != 1 {
                     context.ast_builder.compiler.add_error(
                         "syntax error",
@@ -117,7 +118,8 @@ impl Syntax for OperatorPrecedenceStatementAttributeSyntax {
                 };
 
                 let attribute = OperatorPrecedenceStatementAttribute {
-                    operator_span: span,
+                    span,
+                    operator_span,
                     precedence_span: expr.span,
                     precedence,
                 };

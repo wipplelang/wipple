@@ -5,24 +5,20 @@ use crate::{
         WhenBodySyntaxContext,
     },
     diagnostics::Note,
-    parse::Span,
+    parse::SpanList,
 };
 
 #[derive(Debug, Clone)]
 pub struct WhenExpression {
-    pub when_span: Span,
+    pub span: SpanList,
+    pub when_span: SpanList,
     pub input: Result<Box<Expression>, SyntaxError>,
     pub body: Result<WhenBody, SyntaxError>,
 }
 
 impl WhenExpression {
-    pub fn span(&self) -> Span {
-        let body_span = match &self.body {
-            Ok(body) => body.span(),
-            Err(error) => error.span,
-        };
-
-        Span::join(self.when_span, body_span)
+    pub fn span(&self) -> SpanList {
+        self.span
     }
 }
 pub struct WhenExpressionSyntax;
@@ -33,7 +29,7 @@ impl Syntax for WhenExpressionSyntax {
     fn rules() -> SyntaxRules<Self> {
         SyntaxRules::new().with(SyntaxRule::<Self>::function(
             "when",
-            |context, span, exprs, scope| async move {
+            |context, span, when_span, exprs, scope| async move {
                 if exprs.len() != 2 {
                     context.ast_builder.compiler.add_error(
                         "syntax error",
@@ -63,7 +59,8 @@ impl Syntax for WhenExpressionSyntax {
                     .await;
 
                 Ok(WhenExpression {
-                    when_span: span,
+                    span,
+                    when_span,
                     input: input.map(Box::new),
                     body,
                 }

@@ -11,7 +11,7 @@ pub use typecheck::{
     TypeAnnotation, TypeAnnotationKind, TypeStructure,
 };
 
-use crate::{diagnostics::*, helpers::Shared, parse::Span, Compiler, FilePath};
+use crate::{diagnostics::*, helpers::Shared, parse::SpanList, Compiler, FilePath};
 use async_recursion::async_recursion;
 use std::sync::{atomic::AtomicUsize, Arc};
 
@@ -88,7 +88,7 @@ impl Compiler {
             compiler: Compiler,
             path: FilePath,
             source_path: Option<FilePath>,
-            source_span: Option<Span>,
+            source_span: Option<SpanList>,
             entrypoint: FilePath,
             count: Arc<AtomicUsize>,
             files: Shared<indexmap::IndexMap<FilePath, Arc<ast::File>>>,

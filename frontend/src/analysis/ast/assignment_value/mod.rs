@@ -22,7 +22,7 @@ use crate::{
         AstBuilder, ExpressionSyntaxContext, StatementAttributes, StatementSyntax,
     },
     helpers::{InternedString, Shared},
-    parse::{self, Span},
+    parse::{self, SpanList},
     ScopeId,
 };
 use async_trait::async_trait;
@@ -45,14 +45,14 @@ syntax_group! {
 pub struct AssignmentValueSyntaxContext {
     pub(super) ast_builder: AstBuilder,
     statement_attributes: Option<Shared<StatementAttributes>>,
-    assigned_name: Option<(InternedString, Span, ScopeId, Shared<bool>)>,
+    assigned_name: Option<(InternedString, SpanList, ScopeId, Shared<bool>)>,
 }
 
 impl AssignmentValueSyntaxContext {
     pub(super) fn with_assigned_name(
         mut self,
         name: InternedString,
-        span: Span,
+        span: SpanList,
         scope: ScopeId,
         did_create_syntax: Shared<bool>,
     ) -> Self {
@@ -85,7 +85,7 @@ impl SyntaxContext for AssignmentValueSyntaxContext {
 
     async fn build_block(
         self,
-        span: parse::Span,
+        span: parse::SpanList,
         statements: impl Iterator<
                 Item = Result<
                     <<Self::Statement as Syntax>::Context as SyntaxContext>::Body,

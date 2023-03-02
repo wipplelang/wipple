@@ -56,6 +56,9 @@ struct BuildOptions {
     #[clap(long)]
     base_path: Option<PathBuf>,
 
+    #[clap(long)]
+    show_expansion_history: bool,
+
     #[cfg(debug_assertions)]
     #[clap(long)]
     trace: bool,
@@ -115,6 +118,7 @@ async fn run() -> anyhow::Result<()> {
         let _ = options;
 
         let (files, diagnostics) = diagnostics.into_console_friendly(
+            options.show_expansion_history,
             #[cfg(debug_assertions)]
             options.trace,
         );

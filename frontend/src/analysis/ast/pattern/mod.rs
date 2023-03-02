@@ -20,7 +20,7 @@ use crate::{
     },
     diagnostics::Note,
     helpers::{InternedString, Shared},
-    parse::{self, Span},
+    parse::{self, SpanList},
     ScopeId,
 };
 use async_trait::async_trait;
@@ -49,84 +49,84 @@ syntax_group! {
 
 #[derive(Debug, Clone)]
 pub struct NamePattern {
-    pub span: Span,
+    pub span: SpanList,
     pub name: InternedString,
 }
 
 impl NamePattern {
-    pub fn span(&self) -> Span {
+    pub fn span(&self) -> SpanList {
         self.span
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct TextPattern {
-    pub span: Span,
+    pub span: SpanList,
     pub text: InternedString,
 }
 
 impl TextPattern {
-    pub fn span(&self) -> Span {
+    pub fn span(&self) -> SpanList {
         self.span
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct NumberPattern {
-    pub span: Span,
+    pub span: SpanList,
     pub number: InternedString,
 }
 
 impl NumberPattern {
-    pub fn span(&self) -> Span {
+    pub fn span(&self) -> SpanList {
         self.span
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct UnitPattern {
-    pub span: Span,
+    pub span: SpanList,
 }
 
 impl UnitPattern {
-    pub fn span(&self) -> Span {
+    pub fn span(&self) -> SpanList {
         self.span
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct VariantPattern {
-    pub span: Span,
-    pub name_span: Span,
+    pub span: SpanList,
+    pub name_span: SpanList,
     pub name: InternedString,
     pub values: Vec<Result<Pattern, SyntaxError>>,
 }
 
 impl VariantPattern {
-    pub fn span(&self) -> Span {
+    pub fn span(&self) -> SpanList {
         self.span
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct DestructurePattern {
-    pub span: Span,
+    pub span: SpanList,
     pub destructurings: Vec<Result<Destructuring, SyntaxError>>,
 }
 
 impl DestructurePattern {
-    pub fn span(&self) -> Span {
+    pub fn span(&self) -> SpanList {
         self.span
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct WildcardPattern {
-    pub span: Span,
+    pub span: SpanList,
 }
 
 impl WildcardPattern {
-    pub fn span(&self) -> Span {
+    pub fn span(&self) -> SpanList {
         self.span
     }
 }
@@ -156,7 +156,7 @@ impl SyntaxContext for PatternSyntaxContext {
 
     async fn build_block(
         self,
-        span: parse::Span,
+        span: parse::SpanList,
         statements: impl Iterator<
                 Item = Result<
                     <<Self::Statement as Syntax>::Context as SyntaxContext>::Body,

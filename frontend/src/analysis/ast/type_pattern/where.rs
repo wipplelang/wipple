@@ -8,45 +8,36 @@ use crate::{
     },
     diagnostics::Note,
     helpers::InternedString,
-    parse::{self, Span},
+    parse::{self, SpanList},
     ScopeId,
 };
 use futures::{stream, StreamExt};
 
 #[derive(Debug, Clone)]
 pub struct WhereTypePattern {
-    pub where_span: Span,
+    pub span: SpanList,
+    pub where_span: SpanList,
     pub pattern: Result<Box<TypePattern>, SyntaxError>,
     pub bounds: Vec<Result<WhereTypePatternBound, SyntaxError>>,
 }
 
 impl WhereTypePattern {
-    pub fn span(&self) -> Span {
-        let pattern_span = match &self.pattern {
-            Ok(pattern) => pattern.span(),
-            Err(error) => error.span,
-        };
-
-        let last_bound_span = match self.bounds.last().unwrap() {
-            Ok(bound) => bound.span(),
-            Err(error) => error.span,
-        };
-
-        Span::join(pattern_span, last_bound_span)
+    pub fn span(&self) -> SpanList {
+        self.span
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct WhereTypePatternBound {
-    pub span: Span,
-    pub trait_span: Span,
+    pub span: SpanList,
+    pub trait_span: SpanList,
     pub trait_name: InternedString,
     pub trait_scope: ScopeId,
     pub parameters: Vec<Result<Type, SyntaxError>>,
 }
 
 impl WhereTypePatternBound {
-    pub fn span(&self) -> Span {
+    pub fn span(&self) -> SpanList {
         self.span
     }
 }
@@ -60,7 +51,7 @@ impl Syntax for WhereTypePatternSyntax {
         SyntaxRules::new().with(SyntaxRule::<Self>::operator(
             "where",
             OperatorAssociativity::None,
-            |context, (lhs_span, lhs_exprs), operator_span, (rhs_span, rhs_exprs), scope| async move {
+            |context, span, (lhs_span, lhs_exprs), where_span, (rhs_span, rhs_exprs), scope| async move {
                 let lhs = parse::Expr::list_or_expr(lhs_span, lhs_exprs);
 
                 let pattern = context
@@ -154,7 +145,8 @@ impl Syntax for WhereTypePatternSyntax {
                     .await;
 
                 Ok(WhereTypePattern {
-                    where_span: operator_span,
+                    span,
+                    where_span,
                     pattern: pattern.map(Box::new),
                     bounds,
                 }

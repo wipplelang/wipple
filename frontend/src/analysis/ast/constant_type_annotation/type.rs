@@ -5,7 +5,7 @@ use crate::{
         syntax::{Syntax, SyntaxContext, SyntaxRules},
         ConstantTypeAnnotation,
     },
-    parse::Span,
+    parse::SpanList,
 };
 
 #[derive(Debug, Clone)]
@@ -14,7 +14,7 @@ pub struct TypeConstantTypeAnnotation {
 }
 
 impl TypeConstantTypeAnnotation {
-    pub fn span(&self) -> Span {
+    pub fn span(&self) -> SpanList {
         self.ty.span()
     }
 }

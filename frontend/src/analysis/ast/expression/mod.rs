@@ -31,7 +31,7 @@ use crate::{
     },
     diagnostics::Note,
     helpers::{InternedString, Shared},
-    parse::{self, Span},
+    parse::{self, SpanList},
     ScopeId,
 };
 use async_trait::async_trait;
@@ -63,74 +63,74 @@ syntax_group! {
 
 #[derive(Debug, Clone)]
 pub struct UnitExpression {
-    pub span: Span,
+    pub span: SpanList,
 }
 
 impl UnitExpression {
-    pub fn span(&self) -> Span {
+    pub fn span(&self) -> SpanList {
         self.span
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct NameExpression {
-    pub span: Span,
+    pub span: SpanList,
     pub name: InternedString,
     pub scope: ScopeId,
 }
 
 impl NameExpression {
-    pub fn span(&self) -> Span {
+    pub fn span(&self) -> SpanList {
         self.span
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct TextExpression {
-    pub span: Span,
+    pub span: SpanList,
     pub text: InternedString,
 }
 
 impl TextExpression {
-    pub fn span(&self) -> Span {
+    pub fn span(&self) -> SpanList {
         self.span
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct NumberExpression {
-    pub span: Span,
+    pub span: SpanList,
     pub number: InternedString,
 }
 
 impl NumberExpression {
-    pub fn span(&self) -> Span {
+    pub fn span(&self) -> SpanList {
         self.span
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct CallExpression {
-    pub span: Span,
+    pub span: SpanList,
     pub function: Result<Box<Expression>, SyntaxError>,
     pub inputs: Vec<Result<Expression, SyntaxError>>,
 }
 
 impl CallExpression {
-    pub fn span(&self) -> Span {
+    pub fn span(&self) -> SpanList {
         self.span
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct BlockExpression {
-    pub span: Span,
+    pub span: SpanList,
     pub statements: Vec<Result<Statement, SyntaxError>>,
     pub scope: ScopeId,
 }
 
 impl BlockExpression {
-    pub fn span(&self) -> Span {
+    pub fn span(&self) -> SpanList {
         self.span
     }
 }
@@ -166,7 +166,7 @@ impl SyntaxContext for ExpressionSyntaxContext {
 
     async fn build_block(
         self,
-        span: parse::Span,
+        span: parse::SpanList,
         statements: impl Iterator<
                 Item = Result<
                     <<Self::Statement as Syntax>::Context as SyntaxContext>::Body,
@@ -228,7 +228,7 @@ impl SyntaxContext for ExpressionSyntaxContext {
 impl ExpressionSyntaxContext {
     async fn expand_list(
         &self,
-        list_span: Span,
+        list_span: SpanList,
         mut exprs: Vec<parse::Expr>,
         scope: ScopeId,
     ) -> Result<Expression, SyntaxError> {
@@ -389,7 +389,7 @@ impl ExpressionSyntaxContext {
                         Err(self.ast_builder.syntax_error(list_span))
                     } else {
                         let lhs_span =
-                            Span::join(lhs.first().unwrap().span, lhs.last().unwrap().span);
+                            SpanList::join(lhs.first().unwrap().span, lhs.last().unwrap().span);
 
                         let lhs = parse::Expr {
                             span: lhs_span,
@@ -397,16 +397,14 @@ impl ExpressionSyntaxContext {
                         };
 
                         let rhs_span =
-                            Span::join(rhs.first().unwrap().span, rhs.last().unwrap().span);
+                            SpanList::join(rhs.first().unwrap().span, rhs.last().unwrap().span);
 
                         let rhs = parse::Expr {
                             span: rhs_span,
                             kind: parse::ExprKind::List(vec![rhs.into()]),
                         };
 
-                        let span = Span::join(lhs_span, rhs_span);
-
-                        self.expand_syntax(span, max_syntax, vec![lhs, operator, rhs], scope)
+                        self.expand_syntax(list_span, max_syntax, vec![lhs, operator, rhs], scope)
                             .await
                     }
                 }
@@ -448,7 +446,7 @@ impl ExpressionSyntaxContext {
 
     async fn expand_syntax(
         &self,
-        span: Span,
+        span: SpanList,
         syntax: SyntaxAssignmentValue,
         exprs: Vec<parse::Expr>,
         scope: ScopeId,
@@ -468,7 +466,7 @@ impl ExpressionSyntaxContext {
                 None => continue,
             };
 
-            let body = SyntaxPattern::expand(&self.ast_builder, body, &vars)?;
+            let body = SyntaxPattern::expand(&self.ast_builder, body, &vars, span)?;
 
             return self
                 .ast_builder

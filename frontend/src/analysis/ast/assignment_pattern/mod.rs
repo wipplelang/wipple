@@ -57,7 +57,7 @@ impl SyntaxContext for AssignmentPatternSyntaxContext {
 
     async fn build_block(
         self,
-        span: parse::Span,
+        span: parse::SpanList,
         statements: impl Iterator<
                 Item = Result<
                     <<Self::Statement as Syntax>::Context as SyntaxContext>::Body,

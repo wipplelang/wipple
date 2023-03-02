@@ -8,33 +8,21 @@ use crate::{
         StatementSyntaxContext,
     },
     helpers::InternedString,
-    parse::{self, Span},
+    parse::{self, SpanList},
 };
 
 #[derive(Debug, Clone)]
 pub struct AnnotateStatement {
-    pub colon_span: Span,
-    pub value: Result<(Span, InternedString), Result<Expression, SyntaxError>>,
+    pub span: SpanList,
+    pub colon_span: SpanList,
+    pub value: Result<(SpanList, InternedString), Result<Expression, SyntaxError>>,
     pub annotation: Result<ConstantTypeAnnotation, SyntaxError>,
     pub attributes: StatementAttributes,
 }
 
 impl AnnotateStatement {
-    pub fn span(&self) -> Span {
-        let value_span = match &self.value {
-            Ok((span, _)) => *span,
-            Err(expr) => match expr {
-                Ok(expr) => expr.span(),
-                Err(error) => error.span,
-            },
-        };
-
-        let annotation_span = match &self.annotation {
-            Ok(annotation) => annotation.span(),
-            Err(error) => error.span,
-        };
-
-        Span::join(value_span, annotation_span)
+    pub fn span(&self) -> SpanList {
+        self.span
     }
 }
 
@@ -47,7 +35,7 @@ impl Syntax for AnnotateStatementSyntax {
         SyntaxRules::new().with(SyntaxRule::<Self>::operator(
             "::",
             OperatorAssociativity::None,
-            |context, (lhs_span, mut lhs_exprs), operator_span, (rhs_span, rhs_exprs), scope| async move {
+            |context, span, (lhs_span, mut lhs_exprs), colon_span, (rhs_span, rhs_exprs), scope| async move {
                 let value = if lhs_exprs.len() == 1 {
                     let lhs = lhs_exprs.pop().unwrap();
                     match lhs.kind {
@@ -100,7 +88,8 @@ impl Syntax for AnnotateStatementSyntax {
                     .await;
 
                 Ok(AnnotateStatement {
-                    colon_span: operator_span,
+                    span,
+                    colon_span,
                     value,
                     annotation: ty,
                     attributes: context.statement_attributes.unwrap().lock().clone(),

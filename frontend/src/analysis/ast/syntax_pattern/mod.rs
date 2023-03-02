@@ -5,7 +5,7 @@ use crate::{
     },
     diagnostics::Note,
     helpers::{InternedString, Shared},
-    parse::{self, Span},
+    parse::{self, SpanList},
     ScopeId,
 };
 use async_trait::async_trait;
@@ -33,119 +33,119 @@ syntax_group! {
 
 #[derive(Debug, Clone)]
 pub struct UnitSyntaxPattern {
-    pub span: Span,
+    pub span: SpanList,
 }
 
 impl UnitSyntaxPattern {
-    pub fn span(&self) -> Span {
+    pub fn span(&self) -> SpanList {
         self.span
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct NameSyntaxPattern {
-    pub span: Span,
+    pub span: SpanList,
     pub name: InternedString,
     pub scope: ScopeId,
 }
 
 impl NameSyntaxPattern {
-    pub fn span(&self) -> Span {
+    pub fn span(&self) -> SpanList {
         self.span
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct TextSyntaxPattern {
-    pub span: Span,
+    pub span: SpanList,
     pub text: InternedString,
 }
 
 impl TextSyntaxPattern {
-    pub fn span(&self) -> Span {
+    pub fn span(&self) -> SpanList {
         self.span
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct NumberSyntaxPattern {
-    pub span: Span,
+    pub span: SpanList,
     pub number: InternedString,
 }
 
 impl NumberSyntaxPattern {
-    pub fn span(&self) -> Span {
+    pub fn span(&self) -> SpanList {
         self.span
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct UnderscoreSyntaxPattern {
-    pub span: Span,
+    pub span: SpanList,
 }
 
 impl UnderscoreSyntaxPattern {
-    pub fn span(&self) -> Span {
+    pub fn span(&self) -> SpanList {
         self.span
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct VariableSyntaxPattern {
-    pub span: Span,
+    pub span: SpanList,
     pub name: InternedString,
 }
 
 impl VariableSyntaxPattern {
-    pub fn span(&self) -> Span {
+    pub fn span(&self) -> SpanList {
         self.span
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct VariableRepetitionSyntaxPattern {
-    pub span: Span,
+    pub span: SpanList,
     pub name: InternedString,
 }
 
 impl VariableRepetitionSyntaxPattern {
-    pub fn span(&self) -> Span {
+    pub fn span(&self) -> SpanList {
         self.span
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct ListSyntaxPattern {
-    pub span: Span,
+    pub span: SpanList,
     pub patterns: Vec<Result<SyntaxPattern, SyntaxError>>,
 }
 
 impl ListSyntaxPattern {
-    pub fn span(&self) -> Span {
+    pub fn span(&self) -> SpanList {
         self.span
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct ListRepetitionSyntaxPattern {
-    pub span: Span,
+    pub span: SpanList,
     pub patterns: Vec<Result<SyntaxPattern, SyntaxError>>,
 }
 
 impl ListRepetitionSyntaxPattern {
-    pub fn span(&self) -> Span {
+    pub fn span(&self) -> SpanList {
         self.span
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct BlockSyntaxPattern {
-    pub span: Span,
+    pub span: SpanList,
     pub statements: Vec<Result<SyntaxPattern, SyntaxError>>,
 }
 
 impl BlockSyntaxPattern {
-    pub fn span(&self) -> Span {
+    pub fn span(&self) -> SpanList {
         self.span
     }
 }
@@ -175,7 +175,7 @@ impl SyntaxContext for SyntaxPatternSyntaxContext {
 
     async fn build_block(
         self,
-        span: parse::Span,
+        span: parse::SpanList,
         statements: impl Iterator<
                 Item = Result<
                     <<Self::Statement as Syntax>::Context as SyntaxContext>::Body,
@@ -405,10 +405,11 @@ impl SyntaxPattern {
         ast_builder: &AstBuilder,
         body: SyntaxPattern,
         vars: &HashMap<InternedString, SyntaxExpression>,
+        source_span: SpanList,
     ) -> Result<parse::Expr, SyntaxError> {
         let body_span = body.span();
 
-        let mut exprs = Self::expand_inner(ast_builder, body, vars)?;
+        let mut exprs = Self::expand_inner(ast_builder, body, vars, source_span)?;
 
         (exprs.len() == 1)
             .then(|| exprs.pop().unwrap())
@@ -429,8 +430,9 @@ impl SyntaxPattern {
         ast_builder: &AstBuilder,
         body: SyntaxPattern,
         vars: &HashMap<InternedString, SyntaxExpression>,
+        source_span: SpanList,
     ) -> Result<Vec<parse::Expr>, SyntaxError> {
-        Ok(match body {
+        let mut result = match body {
             SyntaxPattern::Unit(pattern) => vec![parse::Expr {
                 span: pattern.span,
                 kind: parse::ExprKind::List(Vec::new()),
@@ -501,7 +503,7 @@ impl SyntaxPattern {
                     pattern
                         .patterns
                         .into_iter()
-                        .map(|pattern| Self::expand_inner(ast_builder, pattern?, vars))
+                        .map(|pattern| Self::expand_inner(ast_builder, pattern?, vars, source_span))
                         .collect::<Result<Vec<_>, _>>()?
                         .into_iter()
                         .flatten()
@@ -569,7 +571,14 @@ impl SyntaxPattern {
                                     .patterns
                                     .clone()
                                     .into_iter()
-                                    .map(|pattern| Self::expand_inner(ast_builder, pattern?, &vars))
+                                    .map(|pattern| {
+                                        Self::expand_inner(
+                                            ast_builder,
+                                            pattern?,
+                                            &vars,
+                                            source_span,
+                                        )
+                                    })
                                     .collect::<Result<Vec<_>, _>>()?
                                     .into_iter()
                                     .flatten())
@@ -607,7 +616,8 @@ impl SyntaxPattern {
                             .statements
                             .into_iter()
                             .map(|pattern| {
-                                let statement = Self::expand(ast_builder, pattern?, vars)?;
+                                let statement =
+                                    Self::expand(ast_builder, pattern?, vars, source_span)?;
 
                                 Ok(parse::Statement {
                                     lines: vec![parse::ListLine {
@@ -624,7 +634,13 @@ impl SyntaxPattern {
                     ),
                 }]
             }
-        })
+        };
+
+        for expr in &mut result {
+            expr.span = expr.span.merge(source_span);
+        }
+
+        Ok(result)
     }
 
     fn collect_used_variables(&self, vars: &mut HashSet<InternedString>) {

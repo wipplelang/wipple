@@ -7,28 +7,24 @@ use crate::{
     },
     diagnostics::Note,
     helpers::InternedString,
-    parse::Span,
+    parse::SpanList,
 };
 use std::collections::HashSet;
 
 #[derive(Debug, Clone)]
 pub struct SyntaxAssignmentValue {
-    pub syntax_span: Span,
+    pub span: SpanList,
+    pub syntax_span: SpanList,
     pub name: Option<InternedString>,
     pub body: Result<SyntaxBody, SyntaxError>,
     pub operator_precedence: Option<OperatorPrecedenceStatementAttribute>,
     pub keyword: Option<KeywordStatementAttribute>,
-    pub uses: HashSet<Span>,
+    pub uses: HashSet<SpanList>,
 }
 
 impl SyntaxAssignmentValue {
-    pub fn span(&self) -> Span {
-        let body_span = match &self.body {
-            Ok(body) => body.span(),
-            Err(error) => error.span,
-        };
-
-        Span::join(self.syntax_span, body_span)
+    pub fn span(&self) -> SpanList {
+        self.span
     }
 }
 
@@ -40,7 +36,7 @@ impl Syntax for SyntaxAssignmentValueSyntax {
     fn rules() -> SyntaxRules<Self> {
         SyntaxRules::new().with(SyntaxRule::<Self>::function(
             "syntax",
-            |context, span, mut exprs, scope| async move {
+            |context, span, syntax_span, mut exprs, scope| async move {
                 if exprs.len() != 1 {
                     context.ast_builder.compiler.add_error(
                         "syntax error",
@@ -65,7 +61,8 @@ impl Syntax for SyntaxAssignmentValueSyntax {
                 let statement_attributes = context.statement_attributes.as_ref().unwrap().lock();
 
                 let mut value = SyntaxAssignmentValue {
-                    syntax_span: span,
+                    span,
+                    syntax_span,
                     name: None,
                     body,
                     operator_precedence: statement_attributes.operator_precedence.clone(),

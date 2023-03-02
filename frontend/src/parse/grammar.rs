@@ -1,6 +1,6 @@
 use crate::{
     diagnostics::*,
-    parse::{Span, Token},
+    parse::{Span, SpanList, Token},
     Compiler, FilePath, InternedString, ScopeId,
 };
 use lazy_static::lazy_static;
@@ -24,7 +24,7 @@ pub struct Attribute {
 
 #[derive(Debug, Clone)]
 pub struct Expr {
-    pub span: Span,
+    pub span: SpanList,
     pub kind: ExprKind,
 }
 
@@ -47,14 +47,14 @@ pub enum ExprKind {
 }
 
 impl Expr {
-    pub fn list(span: Span, exprs: Vec<Expr>) -> Self {
+    pub fn list(span: impl Into<SpanList>, exprs: Vec<Expr>) -> Self {
         Expr {
-            span,
+            span: span.into(),
             kind: ExprKind::List(vec![exprs.into()]),
         }
     }
 
-    pub fn list_or_expr(span: Span, mut exprs: Vec<Expr>) -> Self {
+    pub fn list_or_expr(span: impl Into<SpanList>, mut exprs: Vec<Expr>) -> Self {
         if exprs.len() == 1 {
             exprs.pop().unwrap()
         } else {
@@ -62,16 +62,18 @@ impl Expr {
         }
     }
 
-    pub fn try_as_list_exprs(&self) -> Result<(Span, impl Iterator<Item = &Expr>), &Self> {
+    pub fn try_as_list_exprs(&self) -> Result<(SpanList, impl Iterator<Item = &Expr>), &Self> {
         match &self.kind {
-            ExprKind::List(lines) => Ok((self.span, lines.iter().flat_map(|line| &line.exprs))),
+            ExprKind::List(lines) => {
+                Ok((self.span, lines.iter().flat_map(|line| &line.exprs)))
+            }
             _ => Err(self),
         }
     }
 
     pub fn try_as_list_repetition_exprs(
         &self,
-    ) -> Result<(Span, impl Iterator<Item = &Expr>), &Self> {
+    ) -> Result<(SpanList, impl Iterator<Item = &Expr>), &Self> {
         match &self.kind {
             ExprKind::RepeatList(lines) => {
                 Ok((self.span, lines.iter().flat_map(|line| &line.exprs)))
@@ -80,7 +82,7 @@ impl Expr {
         }
     }
 
-    pub fn try_into_list_exprs(self) -> Result<(Span, impl Iterator<Item = Expr>), Self> {
+    pub fn try_into_list_exprs(self) -> Result<(SpanList, impl Iterator<Item = Expr>), Self> {
         match self.kind {
             ExprKind::List(lines) => Ok((self.span, lines.into_iter().flat_map(|line| line.exprs))),
             _ => Err(self),
@@ -89,7 +91,7 @@ impl Expr {
 
     pub fn try_into_list_repetition_exprs(
         self,
-    ) -> Result<(Span, impl Iterator<Item = Expr>), Self> {
+    ) -> Result<(SpanList, impl Iterator<Item = Expr>), Self> {
         match self.kind {
             ExprKind::RepeatList(lines) => {
                 Ok((self.span, lines.into_iter().flat_map(|line| line.exprs)))
@@ -139,7 +141,10 @@ impl From<Vec<Expr>> for ListLine {
 
 impl Expr {
     pub fn new(span: Span, kind: ExprKind) -> Self {
-        Expr { span, kind }
+        Expr {
+            span: span.into(),
+            kind,
+        }
     }
 }
 

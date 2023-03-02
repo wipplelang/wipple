@@ -8,25 +8,21 @@ use crate::{
     },
     diagnostics::Note,
     helpers::InternedString,
-    parse::{self, Span},
+    parse::{self, SpanList},
 };
 
 #[derive(Debug, Clone)]
 pub struct AssignDestructuring {
-    pub colon_span: Span,
-    pub name_span: Span,
+    pub span: SpanList,
+    pub colon_span: SpanList,
+    pub name_span: SpanList,
     pub name: InternedString,
     pub pattern: Result<Pattern, SyntaxError>,
 }
 
 impl AssignDestructuring {
-    pub fn span(&self) -> Span {
-        let pattern_span = match &self.pattern {
-            Ok(pattern) => pattern.span(),
-            Err(error) => error.span,
-        };
-
-        Span::join(self.name_span, pattern_span)
+    pub fn span(&self) -> SpanList {
+        self.span
     }
 }
 
@@ -39,7 +35,7 @@ impl Syntax for AssignDestructuringSyntax {
         SyntaxRules::new().with(SyntaxRule::<Self>::operator(
             ":",
             OperatorAssociativity::None,
-            |context, (lhs_span, mut lhs_exprs), operator_span, (rhs_span, rhs_exprs), scope| async move {
+            |context, span, (lhs_span, mut lhs_exprs), colon_span, (rhs_span, rhs_exprs), scope| async move {
                 let rhs = parse::Expr::list_or_expr(rhs_span, rhs_exprs);
 
                 let pattern = context
@@ -63,7 +59,7 @@ impl Syntax for AssignDestructuringSyntax {
                         )],
                     );
 
-                    return Err(context.ast_builder.syntax_error(operator_span));
+                    return Err(context.ast_builder.syntax_error(span));
                 }
 
                 let lhs = lhs_exprs.pop().unwrap();
@@ -79,14 +75,15 @@ impl Syntax for AssignDestructuringSyntax {
                             )],
                         );
 
-                        return Err(context.ast_builder.syntax_error(operator_span));
+                        return Err(context.ast_builder.syntax_error(span));
                     }
                 };
 
                 context.ast_builder.add_barrier(name, scope);
 
                 Ok(AssignDestructuring {
-                    colon_span: operator_span,
+                    span,
+                    colon_span,
                     name_span: lhs.span,
                     name,
                     pattern,

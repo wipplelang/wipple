@@ -2,7 +2,7 @@ use crate::{
     analysis::{
         Arm, Expression, ExpressionKind, Pattern, PatternKind, Program, RuntimeFunction, Type,
     },
-    Compiler, ItemId, Optimize, Span, VariableId,
+    Compiler, ItemId, Optimize, VariableId,
 };
 use std::{
     collections::{BTreeMap, BTreeSet},
@@ -64,6 +64,7 @@ impl Optimize for Program {
 
 pub mod ssa {
     use super::*;
+    use crate::parse::SpanList;
 
     #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
     pub struct Options {}
@@ -73,7 +74,7 @@ pub mod ssa {
             for (_, expr) in self.items.values_mut() {
                 expr.traverse_mut(|expr| {
                     if let ExpressionKind::Block(exprs, _) = &mut expr.kind {
-                        fn convert_block(exprs: &[Expression], span: Span) -> Vec<Expression> {
+                        fn convert_block(exprs: &[Expression], span: SpanList) -> Vec<Expression> {
                             let mut result = Vec::new();
                             for (index, expr) in exprs.iter().enumerate() {
                                 if let ExpressionKind::Initialize(pattern, value) = &expr.kind {
@@ -99,13 +100,17 @@ pub mod ssa {
                                                             remaining.first().map_or(
                                                                 span,
                                                                 |expr| {
-                                                                    expr.span.with_end(
-                                                                        remaining
-                                                                            .last()
-                                                                            .unwrap()
-                                                                            .span
-                                                                            .end,
-                                                                    )
+                                                                    expr.span
+                                                                        .first()
+                                                                        .with_end(
+                                                                            remaining
+                                                                                .last()
+                                                                                .unwrap()
+                                                                                .span
+                                                                                .first()
+                                                                                .end,
+                                                                        )
+                                                                        .into()
                                                                 },
                                                             ),
                                                         ),

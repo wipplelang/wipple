@@ -11,7 +11,7 @@ use crate::{
     },
     diagnostics::Note,
     helpers::{InternedString, Shared},
-    parse::{self, Span},
+    parse::{self, SpanList},
     ScopeId,
 };
 use async_trait::async_trait;
@@ -31,24 +31,24 @@ syntax_group! {
 
 #[derive(Debug, Clone)]
 pub struct NameDestructuring {
-    pub span: Span,
+    pub span: SpanList,
     pub name: InternedString,
 }
 
 impl NameDestructuring {
-    pub fn span(&self) -> Span {
+    pub fn span(&self) -> SpanList {
         self.span
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct ListDestructuring {
-    pub span: Span,
+    pub span: SpanList,
     pub names: Vec<Result<NameDestructuring, SyntaxError>>,
 }
 
 impl ListDestructuring {
-    pub fn span(&self) -> Span {
+    pub fn span(&self) -> SpanList {
         self.span
     }
 }
@@ -78,7 +78,7 @@ impl SyntaxContext for DestructuringSyntaxContext {
 
     async fn build_block(
         self,
-        span: parse::Span,
+        span: parse::SpanList,
         _statements: impl Iterator<
                 Item = Result<
                     <<Self::Statement as Syntax>::Context as SyntaxContext>::Body,

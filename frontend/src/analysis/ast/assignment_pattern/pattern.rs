@@ -5,7 +5,7 @@ use crate::{
         syntax::{Syntax, SyntaxContext, SyntaxRules},
         AssignmentPattern,
     },
-    parse::Span,
+    parse::SpanList,
 };
 
 #[derive(Debug, Clone)]
@@ -14,7 +14,7 @@ pub struct PatternAssignmentPattern {
 }
 
 impl PatternAssignmentPattern {
-    pub fn span(&self) -> Span {
+    pub fn span(&self) -> SpanList {
         self.pattern.span()
     }
 }

@@ -5,20 +5,21 @@ use crate::{
     },
     diagnostics::Note,
     helpers::InternedString,
-    parse::{self, Span},
+    parse::{self, SpanList},
 };
 
 #[derive(Debug, Clone)]
 pub struct OnMismatchStatementAttribute {
-    pub on_mismatch_span: Span,
-    pub type_parameter: Option<(Span, InternedString)>,
-    pub message_span: Span,
+    pub span: SpanList,
+    pub on_mismatch_span: SpanList,
+    pub type_parameter: Option<(SpanList, InternedString)>,
+    pub message_span: SpanList,
     pub message: InternedString,
 }
 
 impl OnMismatchStatementAttribute {
-    pub fn span(&self) -> Span {
-        Span::join(self.on_mismatch_span, self.message_span)
+    pub fn span(&self) -> SpanList {
+        self.span
     }
 }
 
@@ -30,7 +31,7 @@ impl Syntax for OnMismatchStatementAttributeSyntax {
     fn rules() -> SyntaxRules<Self> {
         SyntaxRules::new().with(SyntaxRule::<Self>::function(
             "on-mismatch",
-            |context, span, mut exprs, _scope| async move {
+            |context, span, on_mismatch_span, mut exprs, _scope| async move {
                 let attribute = match exprs.len() {
                     1 => {
                         let expr = exprs.pop().unwrap();
@@ -47,7 +48,8 @@ impl Syntax for OnMismatchStatementAttributeSyntax {
                         };
 
                         OnMismatchStatementAttribute {
-                            on_mismatch_span: span,
+                            span,
+                            on_mismatch_span,
                             type_parameter: None,
                             message_span: expr.span,
                             message,
@@ -83,7 +85,8 @@ impl Syntax for OnMismatchStatementAttributeSyntax {
                         };
 
                         OnMismatchStatementAttribute {
-                            on_mismatch_span: span,
+                            span,
+                            on_mismatch_span,
                             type_parameter: Some((type_parameter_expr.span, type_parameter)),
                             message_span: message_expr.span,
                             message,

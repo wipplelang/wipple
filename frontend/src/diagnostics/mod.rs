@@ -1,6 +1,6 @@
 use crate::{
     helpers::{Backtrace, Shared},
-    parse::Span,
+    parse::{Span, SpanList},
     Compiler, FilePath, SourceMap,
 };
 use itertools::Itertools;
@@ -52,7 +52,7 @@ impl From<DiagnosticLevel> for codespan_reporting::diagnostic::Severity {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Note {
     pub level: NoteLevel,
-    pub span: Span,
+    pub span: SpanList,
     pub message: String,
 }
 
@@ -171,19 +171,19 @@ impl Compiler {
 }
 
 impl Note {
-    pub fn new(level: NoteLevel, span: Span, message: impl ToString) -> Self {
+    pub fn new(level: NoteLevel, span: impl Into<SpanList>, message: impl ToString) -> Self {
         Note {
             level,
-            span,
+            span: span.into(),
             message: message.to_string(),
         }
     }
 
-    pub fn primary(span: Span, message: impl ToString) -> Self {
+    pub fn primary(span: impl Into<SpanList>, message: impl ToString) -> Self {
         Note::new(NoteLevel::Primary, span, message)
     }
 
-    pub fn secondary(span: Span, message: impl ToString) -> Self {
+    pub fn secondary(span: impl Into<SpanList>, message: impl ToString) -> Self {
         Note::new(NoteLevel::Secondary, span, message)
     }
 }
@@ -233,6 +233,7 @@ impl FinalizedDiagnostics {
 
     pub fn into_console_friendly(
         self,
+        show_expansion_history: bool,
         #[cfg(debug_assertions)] include_trace: bool,
     ) -> (
         codespan_reporting::files::SimpleFiles<FilePath, Arc<str>>,
@@ -251,30 +252,40 @@ impl FinalizedDiagnostics {
             let labels = diagnostic
                 .notes
                 .into_iter()
-                .filter_map(|note| {
-                    let file = match tracked_files.entry(note.span.path) {
-                        Entry::Occupied(entry) => *entry.get(),
-                        Entry::Vacant(entry) => {
-                            let file = files.add(
-                                note.span.path,
-                                self.source_map.get(&note.span.path)?.clone(),
-                            );
+                .flat_map(|note| {
+                    use codespan_reporting::diagnostic::{Label, LabelStyle};
 
-                            entry.insert(file);
+                    let (first, rest) = note.span.split_iter();
 
-                            file
-                        }
+                    let mut make_note = |style: LabelStyle, span: Span, message: &str| {
+                        self.source_map.get(&span.path).map(|src| {
+                            let file = match tracked_files.entry(span.path) {
+                                Entry::Occupied(entry) => *entry.get(),
+                                Entry::Vacant(entry) => {
+                                    let file = files.add(span.path, src.clone());
+                                    entry.insert(file);
+                                    file
+                                }
+                            };
+
+                            Label::new(style, file, span.start..span.end).with_message(message)
+                        })
                     };
 
-                    Some(
-                        codespan_reporting::diagnostic::Label::new(
-                            note.level.into(),
-                            file,
-                            note.span.start..note.span.end,
-                        )
-                        .with_message(note.message),
+                    let rest: Box<dyn Iterator<Item = Span>> = if show_expansion_history {
+                        Box::new(rest)
+                    } else {
+                        Box::new(rest.last().into_iter())
+                    };
+
+                    std::iter::once(make_note(note.level.into(), first, &note.message)).chain(
+                        rest.map(|span| {
+                            make_note(LabelStyle::Secondary, span, "actual error occurred here")
+                        })
+                        .collect::<Vec<_>>(),
                     )
                 })
+                .flatten()
                 .collect();
 
             let diagnostic =

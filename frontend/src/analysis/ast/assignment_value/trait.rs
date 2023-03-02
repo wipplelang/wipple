@@ -5,28 +5,19 @@ use crate::{
         Type, TypeSyntax, TypeSyntaxContext,
     },
     diagnostics::Note,
-    parse::Span,
+    parse::SpanList,
 };
 
 #[derive(Debug, Clone)]
 pub struct TraitAssignmentValue {
-    pub trait_span: Span,
+    pub span: SpanList,
+    pub trait_span: SpanList,
     pub ty: Option<Result<Type, SyntaxError>>,
 }
 
 impl TraitAssignmentValue {
-    pub fn span(&self) -> Span {
-        match &self.ty {
-            Some(ty) => {
-                let ty_span = match ty {
-                    Ok(ty) => ty.span(),
-                    Err(error) => error.span,
-                };
-
-                Span::join(self.trait_span, ty_span)
-            }
-            None => self.trait_span,
-        }
+    pub fn span(&self) -> SpanList {
+        self.span
     }
 }
 
@@ -38,10 +29,11 @@ impl Syntax for TraitAssignmentValueSyntax {
     fn rules() -> SyntaxRules<Self> {
         SyntaxRules::new().with(SyntaxRule::<Self>::function(
             "trait",
-            |context, span, mut exprs, scope| async move {
+            |context, span, trait_span, mut exprs, scope| async move {
                 match exprs.len() {
                     0 => Ok(TraitAssignmentValue {
-                        trait_span: span,
+                        span,
+                        trait_span,
                         ty: None,
                     }
                     .into()),
@@ -59,7 +51,8 @@ impl Syntax for TraitAssignmentValueSyntax {
                             .await;
 
                         Ok(TraitAssignmentValue {
-                            trait_span: span,
+                            span,
+                            trait_span,
                             ty: Some(ty),
                         }
                         .into())

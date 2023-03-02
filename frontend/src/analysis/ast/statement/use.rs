@@ -5,34 +5,27 @@ use crate::{
     },
     diagnostics::Note,
     helpers::InternedString,
-    parse::{self, Span},
+    parse::{self, SpanList},
     FilePath, ScopeId,
 };
 
 #[derive(Debug, Clone)]
 pub struct UseStatement {
-    pub use_span: Span,
+    pub span: SpanList,
+    pub use_span: SpanList,
     pub kind: Result<UseStatementKind, SyntaxError>,
     pub attributes: StatementAttributes,
 }
 
 #[derive(Debug, Clone)]
 pub enum UseStatementKind {
-    File(Span, InternedString, Option<FilePath>),
-    Name(Span, InternedString, ScopeId),
+    File(SpanList, InternedString, Option<FilePath>),
+    Name(SpanList, InternedString, ScopeId),
 }
 
 impl UseStatement {
-    pub fn span(&self) -> Span {
-        let kind_span = match &self.kind {
-            Ok(kind) => match kind {
-                UseStatementKind::File(span, _, _) => *span,
-                UseStatementKind::Name(span, _, _) => *span,
-            },
-            Err(error) => error.span,
-        };
-
-        Span::join(self.use_span, kind_span)
+    pub fn span(&self) -> SpanList {
+        self.span
     }
 }
 
@@ -44,7 +37,7 @@ impl Syntax for UseStatementSyntax {
     fn rules() -> SyntaxRules<Self> {
         SyntaxRules::new().with(SyntaxRule::<Self>::function(
             "use",
-            |context, span, mut exprs, scope| async move {
+            |context, span, use_span, mut exprs, scope| async move {
                 if exprs.len() != 1 {
                     context.ast_builder.compiler.add_error(
                         "syntax error",
@@ -87,7 +80,8 @@ impl Syntax for UseStatementSyntax {
                 };
 
                 Ok(UseStatement {
-                    use_span: span,
+                    span,
+                    use_span,
                     kind,
                     attributes: context.statement_attributes.unwrap().lock().clone(),
                 }

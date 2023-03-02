@@ -5,29 +5,24 @@ use crate::{
     },
     diagnostics::Note,
     helpers::InternedString,
-    parse::{self, Span},
+    parse::{self, SpanList},
 };
 use futures::{stream, StreamExt};
 
 #[derive(Debug, Clone)]
 pub struct ExternalExpression {
-    pub external_span: Span,
-    pub namespace_span: Span,
+    pub span: SpanList,
+    pub external_span: SpanList,
+    pub namespace_span: SpanList,
     pub namespace: InternedString,
-    pub identifier_span: Span,
+    pub identifier_span: SpanList,
     pub identifier: InternedString,
     pub inputs: Vec<Result<Expression, SyntaxError>>,
 }
 
 impl ExternalExpression {
-    pub fn span(&self) -> Span {
-        match self.inputs.last() {
-            Some(input) => match input {
-                Ok(expr) => Span::join(self.external_span, expr.span()),
-                Err(error) => error.span,
-            },
-            None => Span::join(self.external_span, self.identifier_span),
-        }
+    pub fn span(&self) -> SpanList {
+        self.span
     }
 }
 
@@ -39,7 +34,7 @@ impl Syntax for ExternalExpressionSyntax {
     fn rules() -> SyntaxRules<Self> {
         SyntaxRules::new().with(SyntaxRule::<Self>::function(
             "external",
-            |context, span, exprs, scope| async move {
+            |context, span, external_span, exprs, scope| async move {
                 if exprs.len() < 2 {
                     context.ast_builder.compiler.add_error(
                         "syntax error",
@@ -91,7 +86,8 @@ impl Syntax for ExternalExpressionSyntax {
                     .await;
 
                 Ok(ExternalExpression {
-                    external_span: span,
+                    span,
+                    external_span,
                     namespace_span,
                     namespace,
                     identifier_span,

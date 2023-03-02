@@ -21,6 +21,9 @@ struct Args {
     #[clap(short = 'O')]
     optimize: bool,
 
+    #[clap(long)]
+    show_expansion_history: bool,
+
     #[cfg(debug_assertions)]
     #[clap(long)]
     trace: bool,
@@ -68,6 +71,7 @@ async fn main() -> anyhow::Result<()> {
             &test_case,
             compiler.clone(),
             args.optimize,
+            args.show_expansion_history,
             #[cfg(debug_assertions)]
             args.trace,
         )
@@ -236,6 +240,7 @@ async fn run(
     test_case: &TestCase,
     compiler: wipple_frontend::Compiler,
     optimize: bool,
+    show_expansion_history: bool,
     #[cfg(debug_assertions)] trace_diagnostics: bool,
 ) -> anyhow::Result<TestResult> {
     let test_path = wipple_frontend::helpers::InternedString::new("test");
@@ -287,6 +292,7 @@ async fn run(
         let mut buf = Vec::new();
         {
             let (files, diagnostics) = diagnostics.into_console_friendly(
+                show_expansion_history,
                 #[cfg(debug_assertions)]
                 trace_diagnostics,
             );

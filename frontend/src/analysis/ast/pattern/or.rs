@@ -3,29 +3,20 @@ use crate::{
         syntax::{OperatorAssociativity, Syntax, SyntaxError, SyntaxRule, SyntaxRules},
         Pattern, PatternSyntax, PatternSyntaxContext,
     },
-    parse::{self, Span},
+    parse::{self, SpanList},
 };
 
 #[derive(Debug, Clone)]
 pub struct OrPattern {
-    pub or_span: Span,
+    pub span: SpanList,
+    pub or_span: SpanList,
     pub left: Result<Box<Pattern>, SyntaxError>,
     pub right: Result<Box<Pattern>, SyntaxError>,
 }
 
 impl OrPattern {
-    pub fn span(&self) -> Span {
-        let left_span = match &self.left {
-            Ok(pattern) => pattern.span(),
-            Err(error) => error.span,
-        };
-
-        let right_span = match &self.right {
-            Ok(pattern) => pattern.span(),
-            Err(error) => error.span,
-        };
-
-        Span::join(left_span, right_span)
+    pub fn span(&self) -> SpanList {
+        self.span
     }
 }
 
@@ -38,7 +29,7 @@ impl Syntax for OrPatternSyntax {
         SyntaxRules::new().with(SyntaxRule::<Self>::operator(
             "or",
             OperatorAssociativity::Left,
-            |context, (lhs_span, lhs_exprs), operator_span, (rhs_span, rhs_exprs), scope| async move {
+            |context, span, (lhs_span, lhs_exprs), or_span, (rhs_span, rhs_exprs), scope| async move {
                 let lhs = parse::Expr::list_or_expr(lhs_span, lhs_exprs);
                 let left = context
                     .ast_builder
@@ -52,7 +43,8 @@ impl Syntax for OrPatternSyntax {
                     .await;
 
                 Ok(OrPattern {
-                    or_span: operator_span,
+                    span,
+                    or_span,
                     left: left.map(Box::new),
                     right: right.map(Box::new),
                 }

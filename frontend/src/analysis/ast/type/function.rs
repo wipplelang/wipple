@@ -4,29 +4,20 @@ use crate::{
         syntax::{OperatorAssociativity, Syntax, SyntaxError, SyntaxRule, SyntaxRules},
         TypeSyntax,
     },
-    parse::{self, Span},
+    parse::{self, SpanList},
 };
 
 #[derive(Debug, Clone)]
 pub struct FunctionType {
-    pub arrow_span: Span,
+    pub span: SpanList,
+    pub arrow_span: SpanList,
     pub input: Result<Box<Type>, SyntaxError>,
     pub output: Result<Box<Type>, SyntaxError>,
 }
 
 impl FunctionType {
-    pub fn span(&self) -> Span {
-        let input_span = match &self.input {
-            Ok(input) => input.span(),
-            Err(error) => error.span,
-        };
-
-        let output_span = match &self.output {
-            Ok(output) => output.span(),
-            Err(error) => error.span,
-        };
-
-        Span::join(input_span, output_span)
+    pub fn span(&self) -> SpanList {
+        self.span
     }
 }
 
@@ -39,7 +30,7 @@ impl Syntax for FunctionTypeSyntax {
         SyntaxRules::new().with(SyntaxRule::<Self>::operator(
             "->",
             OperatorAssociativity::Right,
-            |context, (lhs_span, lhs_exprs), operator_span, (rhs_span, rhs_exprs), scope| async move {
+            |context, span, (lhs_span, lhs_exprs), arrow_span, (rhs_span, rhs_exprs), scope| async move {
                 let lhs = parse::Expr::list_or_expr(lhs_span, lhs_exprs);
                 let input = context
                     .ast_builder
@@ -53,7 +44,8 @@ impl Syntax for FunctionTypeSyntax {
                     .await;
 
                 Ok(FunctionType {
-                    arrow_span: operator_span,
+                    span,
+                    arrow_span,
                     input: input.map(Box::new),
                     output: output.map(Box::new),
                 }

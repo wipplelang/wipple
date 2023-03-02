@@ -11,7 +11,7 @@ use crate::{
     },
     diagnostics::Note,
     helpers::{InternedString, Shared},
-    parse::{self, Span},
+    parse::{self, SpanList},
     ScopeId,
 };
 use async_trait::async_trait;
@@ -31,14 +31,14 @@ syntax_group! {
 
 #[derive(Debug, Clone)]
 pub struct VariantTypeMember {
-    pub span: Span,
-    pub name_span: Span,
+    pub span: SpanList,
+    pub name_span: SpanList,
     pub name: InternedString,
     pub tys: Vec<Result<Type, SyntaxError>>,
 }
 
 impl VariantTypeMember {
-    pub fn span(&self) -> Span {
+    pub fn span(&self) -> SpanList {
         self.span
     }
 }
@@ -68,7 +68,7 @@ impl SyntaxContext for TypeMemberSyntaxContext {
 
     async fn build_block(
         self,
-        span: parse::Span,
+        span: parse::SpanList,
         _statements: impl Iterator<
                 Item = Result<
                     <<Self::Statement as Syntax>::Context as SyntaxContext>::Body,

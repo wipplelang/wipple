@@ -6,29 +6,20 @@ use crate::{
         },
         Expression, ExpressionSyntax, ExpressionSyntaxContext, Pattern, PatternSyntax,
     },
-    parse::{self, Span},
+    parse::{self, SpanList},
 };
 
 #[derive(Debug, Clone)]
 pub struct WherePattern {
-    pub where_span: Span,
+    pub span: SpanList,
+    pub where_span: SpanList,
     pub pattern: Result<Box<Pattern>, SyntaxError>,
     pub condition: Result<Box<Expression>, SyntaxError>,
 }
 
 impl WherePattern {
-    pub fn span(&self) -> Span {
-        let pattern_span = match &self.pattern {
-            Ok(pattern) => pattern.span(),
-            Err(error) => error.span,
-        };
-
-        let condition_span = match &self.condition {
-            Ok(expr) => expr.span(),
-            Err(error) => error.span,
-        };
-
-        Span::join(pattern_span, condition_span)
+    pub fn span(&self) -> SpanList {
+        self.span
     }
 }
 
@@ -41,7 +32,7 @@ impl Syntax for WherePatternSyntax {
         SyntaxRules::new().with(SyntaxRule::<Self>::operator(
             "where",
             OperatorAssociativity::None,
-            |context, (lhs_span, lhs_exprs), operator_span, (rhs_span, rhs_exprs), scope| async move {
+            |context, span, (lhs_span, lhs_exprs), where_span, (rhs_span, rhs_exprs), scope| async move {
                 let lhs = parse::Expr::list_or_expr(lhs_span, lhs_exprs);
                 let pattern = context
                     .ast_builder
@@ -62,7 +53,8 @@ impl Syntax for WherePatternSyntax {
                     .await;
 
                 Ok(WherePattern {
-                    where_span: operator_span,
+                    span,
+                    where_span,
                     pattern: pattern.map(Box::new),
                     condition: condition.map(Box::new),
                 }

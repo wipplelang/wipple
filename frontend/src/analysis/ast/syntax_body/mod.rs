@@ -5,7 +5,7 @@ use crate::{
     },
     diagnostics::Note,
     helpers::Shared,
-    parse::{self, Span},
+    parse::{self, SpanList},
     ScopeId,
 };
 use async_trait::async_trait;
@@ -22,12 +22,12 @@ syntax_group! {
 
 #[derive(Debug, Clone)]
 pub struct BlockSyntaxBody {
-    pub span: Span,
+    pub span: SpanList,
     pub rules: Vec<Result<SyntaxRule, SyntaxError>>,
 }
 
 impl BlockSyntaxBody {
-    pub fn span(&self) -> Span {
+    pub fn span(&self) -> SpanList {
         self.span
     }
 }
@@ -57,7 +57,7 @@ impl SyntaxContext for SyntaxBodySyntaxContext {
 
     async fn build_block(
         self,
-        span: parse::Span,
+        span: parse::SpanList,
         statements: impl Iterator<
                 Item = Result<
                     <<Self::Statement as Syntax>::Context as SyntaxContext>::Body,

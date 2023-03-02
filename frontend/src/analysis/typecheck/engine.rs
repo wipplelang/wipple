@@ -1,4 +1,4 @@
-use crate::{parse::Span, TraitId, TypeId, TypeParameterId};
+use crate::{parse::SpanList, TraitId, TypeId, TypeParameterId};
 use std::collections::BTreeMap;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -122,7 +122,12 @@ pub enum TypeError {
     ErrorExpression,
     Recursive(TypeVariable),
     Mismatch(UnresolvedType, UnresolvedType),
-    MissingInstance(TraitId, Vec<UnresolvedType>, Option<Span>, Vec<Span>),
+    MissingInstance(
+        TraitId,
+        Vec<UnresolvedType>,
+        Option<SpanList>,
+        Vec<SpanList>,
+    ),
     UnresolvedType(UnresolvedType),
     InvalidNumericLiteral(UnresolvedType),
 }

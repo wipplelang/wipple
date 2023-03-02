@@ -4,19 +4,20 @@ use crate::{
         syntax::{Syntax, SyntaxRule, SyntaxRules},
     },
     diagnostics::Note,
-    parse::{self, Span},
+    parse::{self, SpanList},
 };
 
 #[derive(Debug, Clone)]
 pub struct LanguageItemStatementAttribute {
-    pub language_span: Span,
-    pub language_item_span: Span,
+    pub span: SpanList,
+    pub language_span: SpanList,
+    pub language_item_span: SpanList,
     pub language_item_kind: LanguageItemStatementAttributeKind,
 }
 
 impl LanguageItemStatementAttribute {
-    pub fn span(&self) -> Span {
-        Span::join(self.language_span, self.language_item_span)
+    pub fn span(&self) -> SpanList {
+        self.span
     }
 }
 
@@ -35,7 +36,7 @@ impl Syntax for LanguageItemStatementAttributeSyntax {
     fn rules() -> SyntaxRules<Self> {
         SyntaxRules::new().with(SyntaxRule::<Self>::function(
             "language",
-            |context, span, mut exprs, _scope| async move {
+            |context, span, language_span, mut exprs, _scope| async move {
                 if exprs.len() != 1 {
                     context.ast_builder.compiler.add_error(
                         "syntax error",
@@ -74,7 +75,8 @@ impl Syntax for LanguageItemStatementAttributeSyntax {
                 };
 
                 let attribute = LanguageItemStatementAttribute {
-                    language_span: span,
+                    span,
+                    language_span,
                     language_item_span: expr.span,
                     language_item_kind: language_item,
                 };

@@ -4,16 +4,16 @@ use crate::{
         syntax::{Syntax, SyntaxRule, SyntaxRules},
     },
     diagnostics::Note,
-    parse::Span,
+    parse::SpanList,
 };
 
 #[derive(Debug, Clone)]
 pub struct SpecializeStatementAttribute {
-    pub span: Span,
+    pub span: SpanList,
 }
 
 impl SpecializeStatementAttribute {
-    pub fn span(&self) -> Span {
+    pub fn span(&self) -> SpanList {
         self.span
     }
 }
@@ -26,7 +26,7 @@ impl Syntax for SpecializeStatementAttributeSyntax {
     fn rules() -> SyntaxRules<Self> {
         SyntaxRules::new().with(SyntaxRule::<Self>::function(
             "specialize",
-            |context, span, exprs, _scope| async move {
+            |context, span, _specialize_span, exprs, _scope| async move {
                 if !exprs.is_empty() {
                     context.ast_builder.compiler.add_error(
                         "syntax error",

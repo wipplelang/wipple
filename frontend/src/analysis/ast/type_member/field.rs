@@ -7,25 +7,21 @@ use crate::{
     },
     diagnostics::Note,
     helpers::InternedString,
-    parse::{self, Span},
+    parse::{self, SpanList},
 };
 
 #[derive(Debug, Clone)]
 pub struct FieldTypeMember {
-    pub colon_span: Span,
-    pub name_span: Span,
+    pub span: SpanList,
+    pub colon_span: SpanList,
+    pub name_span: SpanList,
     pub name: InternedString,
     pub ty: Result<Type, SyntaxError>,
 }
 
 impl FieldTypeMember {
-    pub fn span(&self) -> Span {
-        let ty_span = match &self.ty {
-            Ok(ty) => ty.span(),
-            Err(error) => error.span,
-        };
-
-        Span::join(self.name_span, ty_span)
+    pub fn span(&self) -> SpanList {
+        self.span
     }
 }
 
@@ -38,14 +34,14 @@ impl Syntax for FieldTypeMemberSyntax {
         SyntaxRules::new().with(SyntaxRule::<Self>::operator(
             "::",
             OperatorAssociativity::Left,
-            |context, (lhs_span, mut lhs_exprs), operator_span, (rhs_span, rhs_exprs), scope| async move {
+            |context, span, (lhs_span, mut lhs_exprs), colon_span, (rhs_span, rhs_exprs), scope| async move {
                 if lhs_exprs.len() != 1 {
                     context.ast_builder.compiler.add_error(
                         "syntax error",
                         vec![Note::primary(lhs_span, "expected name")],
                     );
 
-                    return Err(context.ast_builder.syntax_error(operator_span));
+                    return Err(context.ast_builder.syntax_error(lhs_span));
                 }
 
                 let lhs = lhs_exprs.pop().unwrap();
@@ -57,7 +53,7 @@ impl Syntax for FieldTypeMemberSyntax {
                             vec![Note::primary(lhs_span, "expected name")],
                         );
 
-                        return Err(context.ast_builder.syntax_error(operator_span));
+                        return Err(context.ast_builder.syntax_error(lhs.span));
                     }
                 };
 
@@ -75,7 +71,8 @@ impl Syntax for FieldTypeMemberSyntax {
                     .await;
 
                 Ok(FieldTypeMember {
-                    colon_span: operator_span,
+                    span,
+                    colon_span,
                     name_span: lhs.span,
                     name,
                     ty,

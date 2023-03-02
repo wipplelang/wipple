@@ -4,16 +4,16 @@ use crate::{
         syntax::{Syntax, SyntaxRule, SyntaxRules},
     },
     diagnostics::Note,
-    parse::Span,
+    parse::SpanList,
 };
 
 #[derive(Debug, Clone)]
 pub struct NoStdFileAttribute {
-    pub span: Span,
+    pub span: SpanList,
 }
 
 impl NoStdFileAttribute {
-    pub fn span(&self) -> Span {
+    pub fn span(&self) -> SpanList {
         self.span
     }
 }
@@ -26,7 +26,7 @@ impl Syntax for NoStdFileAttributeSyntax {
     fn rules() -> SyntaxRules<Self> {
         SyntaxRules::new().with(SyntaxRule::<Self>::function(
             "no-std",
-            |context, span, exprs, _scope| async move {
+            |context, span, _no_std_span, exprs, _scope| async move {
                 if !exprs.is_empty() {
                     context.ast_builder.compiler.add_error(
                         "syntax error",

@@ -7,31 +7,22 @@ use crate::{
         Expression, ExpressionSyntax, ExpressionSyntaxContext, Pattern, PatternSyntax,
         PatternSyntaxContext,
     },
-    parse::{self, Span},
+    parse::{self, SpanList},
     ScopeId,
 };
 
 #[derive(Debug, Clone)]
 pub struct FunctionWhenArm {
-    pub arrow_span: Span,
+    pub span: SpanList,
+    pub arrow_span: SpanList,
     pub pattern: Result<Pattern, SyntaxError>,
     pub body: Result<Expression, SyntaxError>,
     pub scope: ScopeId,
 }
 
 impl FunctionWhenArm {
-    pub fn span(&self) -> Span {
-        let pattern_span = match &self.pattern {
-            Ok(pattern) => pattern.span(),
-            Err(error) => error.span,
-        };
-
-        let body_span = match &self.body {
-            Ok(body) => body.span(),
-            Err(error) => error.span,
-        };
-
-        Span::join(pattern_span, body_span)
+    pub fn span(&self) -> SpanList {
+        self.span
     }
 }
 
@@ -44,7 +35,7 @@ impl Syntax for FunctionWhenArmSyntax {
         SyntaxRules::new().with(SyntaxRule::<Self>::operator(
             "->",
             OperatorAssociativity::Right,
-            |context, (lhs_span, lhs), operator_span, (rhs_span, rhs), scope| async move {
+            |context, span, (lhs_span, lhs), arrow_span, (rhs_span, rhs), scope| async move {
                 let scope = context.ast_builder.child_scope(scope);
 
                 let lhs = parse::Expr::list_or_expr(lhs_span, lhs);
@@ -74,7 +65,8 @@ impl Syntax for FunctionWhenArmSyntax {
                     .await;
 
                 Ok(FunctionWhenArm {
-                    arrow_span: operator_span,
+                    span,
+                    arrow_span,
                     pattern,
                     body,
                     scope,

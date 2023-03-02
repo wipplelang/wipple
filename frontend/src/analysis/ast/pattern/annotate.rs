@@ -5,29 +5,20 @@ use crate::{
         },
         Pattern, PatternSyntax, PatternSyntaxContext, Type, TypeSyntax, TypeSyntaxContext,
     },
-    parse::{self, Span},
+    parse::{self, SpanList},
 };
 
 #[derive(Debug, Clone)]
 pub struct AnnotatePattern {
-    pub colon_span: Span,
+    pub span: SpanList,
+    pub colon_span: SpanList,
     pub pattern: Result<Box<Pattern>, SyntaxError>,
     pub ty: Result<Type, SyntaxError>,
 }
 
 impl AnnotatePattern {
-    pub fn span(&self) -> Span {
-        let pattern_span = match &self.pattern {
-            Ok(pattern) => pattern.span(),
-            Err(error) => error.span,
-        };
-
-        let ty_span = match &self.ty {
-            Ok(ty) => ty.span(),
-            Err(error) => error.span,
-        };
-
-        Span::join(pattern_span, ty_span)
+    pub fn span(&self) -> SpanList {
+        self.span
     }
 }
 
@@ -40,7 +31,7 @@ impl Syntax for AnnotatePatternSyntax {
         SyntaxRules::new().with(SyntaxRule::<Self>::operator(
             "::",
             OperatorAssociativity::Left,
-            |context, (lhs_span, lhs_exprs), operator_span, (rhs_span, rhs_exprs), scope| async move {
+            |context, span, (lhs_span, lhs_exprs), colon_span, (rhs_span, rhs_exprs), scope| async move {
                 let lhs = parse::Expr::list_or_expr(lhs_span, lhs_exprs);
                 let pattern = context
                     .ast_builder
@@ -61,7 +52,8 @@ impl Syntax for AnnotatePatternSyntax {
                     .await;
 
                 Ok(AnnotatePattern {
-                    colon_span: operator_span,
+                    span,
+                    colon_span,
                     pattern: pattern.map(Box::new),
                     ty,
                 }

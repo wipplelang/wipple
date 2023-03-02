@@ -5,7 +5,7 @@ use crate::{
         syntax::{Syntax, SyntaxContext, SyntaxRules},
         AssignmentValue,
     },
-    parse::Span,
+    parse::SpanList,
 };
 
 #[derive(Debug, Clone)]
@@ -14,7 +14,7 @@ pub struct ExpressionAssignmentValue {
 }
 
 impl ExpressionAssignmentValue {
-    pub fn span(&self) -> Span {
+    pub fn span(&self) -> SpanList {
         self.expression.span()
     }
 }

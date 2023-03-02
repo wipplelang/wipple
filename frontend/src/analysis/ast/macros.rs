@@ -33,16 +33,17 @@ macro_rules! syntax_group {
     };
 }
 
-#[macro_export]
 macro_rules! group {
-    ($(#[$attr:meta])* $vis:vis enum $name:ident { $($kind:ident($data:ty)),* $(,)? }) => {
+    ($(#[$attr:meta])* $vis:vis enum $name:ident {
+        $($kind:ident($data:ty)),* $(,)?
+    }) => {
         $(#[$attr])*
         $vis enum $name {
             $($kind($data),)*
         }
 
         impl $name {
-            pub fn span(&self) -> $crate::parse::Span {
+            pub fn span(&self) -> $crate::parse::SpanList {
                 match self {
                     $(
                         $name::$kind(value) => value.span(),

@@ -14,7 +14,7 @@ use crate::{
     },
     diagnostics::Note,
     helpers::{InternedString, Shared},
-    parse::{self, Span},
+    parse::{self, SpanList},
     ScopeId,
 };
 use async_trait::async_trait;
@@ -37,37 +37,37 @@ syntax_group! {
 
 #[derive(Debug, Clone)]
 pub struct PlaceholderType {
-    pub span: Span,
+    pub span: SpanList,
 }
 
 impl PlaceholderType {
-    pub fn span(&self) -> Span {
+    pub fn span(&self) -> SpanList {
         self.span
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct UnitType {
-    pub span: Span,
+    pub span: SpanList,
 }
 
 impl UnitType {
-    pub fn span(&self) -> Span {
+    pub fn span(&self) -> SpanList {
         self.span
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct NamedType {
-    pub span: Span,
-    pub name_span: Span,
+    pub span: SpanList,
+    pub name_span: SpanList,
     pub name: InternedString,
     pub name_scope: ScopeId,
     pub parameters: Vec<Result<Type, SyntaxError>>,
 }
 
 impl NamedType {
-    pub fn span(&self) -> Span {
+    pub fn span(&self) -> SpanList {
         self.span
     }
 }
@@ -97,7 +97,7 @@ impl SyntaxContext for TypeSyntaxContext {
 
     async fn build_block(
         self,
-        span: parse::Span,
+        span: parse::SpanList,
         _statements: impl Iterator<
                 Item = Result<
                     <<Self::Statement as Syntax>::Context as SyntaxContext>::Body,

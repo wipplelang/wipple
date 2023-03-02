@@ -7,31 +7,22 @@ use crate::{
         ConstantTypeAnnotation, ConstantTypeAnnotationSyntax, TypePattern, TypePatternSyntax,
         TypePatternSyntaxContext,
     },
-    parse::{self, Span},
+    parse::{self, SpanList},
     ScopeId,
 };
 
 #[derive(Debug, Clone)]
 pub struct TypeFunctionConstantTypeAnnotation {
-    pub arrow_span: Span,
+    pub span: SpanList,
+    pub arrow_span: SpanList,
     pub pattern: Result<TypePattern, SyntaxError>,
     pub annotation: Result<Box<ConstantTypeAnnotation>, SyntaxError>,
     pub scope: ScopeId,
 }
 
 impl TypeFunctionConstantTypeAnnotation {
-    pub fn span(&self) -> Span {
-        let pattern_span = match &self.pattern {
-            Ok(pattern) => pattern.span(),
-            Err(error) => error.span,
-        };
-
-        let annotation_span = match &self.annotation {
-            Ok(annotation) => annotation.span(),
-            Err(error) => error.span,
-        };
-
-        Span::join(pattern_span, annotation_span)
+    pub fn span(&self) -> SpanList {
+        self.span
     }
 }
 
@@ -44,7 +35,7 @@ impl Syntax for TypeFunctionConstantTypeAnnotationSyntax {
         SyntaxRules::new().with(SyntaxRule::<Self>::operator(
             "=>",
             OperatorAssociativity::None,
-            |context, (lhs_span, lhs), operator_span, (rhs_span, rhs), scope| async move {
+            |context, span, (lhs_span, lhs), arrow_span, (rhs_span, rhs), scope| async move {
                 let scope = context.ast_builder.child_scope(scope);
 
                 let lhs = parse::Expr::list_or_expr(lhs_span, lhs);
@@ -69,7 +60,8 @@ impl Syntax for TypeFunctionConstantTypeAnnotationSyntax {
                     .await;
 
                 Ok(TypeFunctionConstantTypeAnnotation {
-                    arrow_span: operator_span,
+                    span,
+                    arrow_span,
                     pattern,
                     annotation: annotation.map(Box::new),
                     scope,

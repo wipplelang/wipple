@@ -6,30 +6,21 @@ use crate::{
         syntax_rule::SyntaxRuleSyntaxContext,
         SyntaxPattern, SyntaxPatternSyntax, SyntaxPatternSyntaxContext,
     },
-    parse::{self, Span},
+    parse::{self, SpanList},
 };
 use futures::{stream, StreamExt};
 
 #[derive(Debug, Clone)]
 pub struct FunctionSyntaxRule {
-    pub arrow_span: Span,
+    pub span: SpanList,
+    pub arrow_span: SpanList,
     pub pattern: Result<Vec<SyntaxPattern>, SyntaxError>,
     pub body: Result<Box<SyntaxPattern>, SyntaxError>,
 }
 
 impl FunctionSyntaxRule {
-    pub fn span(&self) -> Span {
-        let pattern_span = match &self.pattern {
-            Ok(pattern) => pattern.first().unwrap().span(),
-            Err(error) => error.span,
-        };
-
-        let body_span = match &self.body {
-            Ok(body) => body.span(),
-            Err(error) => error.span,
-        };
-
-        Span::join(pattern_span, body_span)
+    pub fn span(&self) -> SpanList {
+        self.span
     }
 }
 
@@ -42,7 +33,7 @@ impl Syntax for FunctionSyntaxRuleSyntax {
         SyntaxRules::new().with(SyntaxRule::<Self>::operator(
             "->",
             OperatorAssociativity::Right,
-            |context, (_lhs_span, lhs_exprs), operator_span, (rhs_span, rhs_exprs), scope| async move {
+            |context, span, (_lhs_span, lhs_exprs), arrow_span, (rhs_span, rhs_exprs), scope| async move {
                 let input = stream::iter(lhs_exprs)
                     .then(|expr| {
                         context
@@ -75,7 +66,8 @@ impl Syntax for FunctionSyntaxRuleSyntax {
                     .await;
 
                 Ok(FunctionSyntaxRule {
-                    arrow_span: operator_span,
+                    span,
+                    arrow_span,
                     pattern: input,
                     body: output.map(Box::new),
                 }

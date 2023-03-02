@@ -5,29 +5,20 @@ use crate::{
         },
         Expression, ExpressionSyntax, ExpressionSyntaxContext, Type, TypeSyntax, TypeSyntaxContext,
     },
-    parse::{self, Span},
+    parse::{self, SpanList},
 };
 
 #[derive(Debug, Clone)]
 pub struct AnnotateExpression {
-    pub colon_span: Span,
+    pub span: SpanList,
+    pub colon_span: SpanList,
     pub expr: Result<Box<Expression>, SyntaxError>,
     pub ty: Result<Type, SyntaxError>,
 }
 
 impl AnnotateExpression {
-    pub fn span(&self) -> Span {
-        let expr_span = match &self.expr {
-            Ok(expr) => expr.span(),
-            Err(error) => error.span,
-        };
-
-        let ty_span = match &self.ty {
-            Ok(ty) => ty.span(),
-            Err(error) => error.span,
-        };
-
-        Span::join(expr_span, ty_span)
+    pub fn span(&self) -> SpanList {
+        self.span
     }
 }
 
@@ -40,7 +31,7 @@ impl Syntax for AnnotateExpressionSyntax {
         SyntaxRules::new().with(SyntaxRule::<Self>::operator(
             "::",
             OperatorAssociativity::Left,
-            |context, (lhs_span, lhs_exprs), operator_span, (rhs_span, rhs_exprs), scope| async move {
+            |context, span, (lhs_span, lhs_exprs), colon_span, (rhs_span, rhs_exprs), scope| async move {
                 let lhs = parse::Expr::list(lhs_span, lhs_exprs);
                 let expr = context
                     .ast_builder
@@ -61,7 +52,8 @@ impl Syntax for AnnotateExpressionSyntax {
                     .await;
 
                 Ok(AnnotateExpression {
-                    colon_span: operator_span,
+                    span,
+                    colon_span,
                     expr: expr.map(Box::new),
                     ty,
                 }

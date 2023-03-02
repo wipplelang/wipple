@@ -5,19 +5,20 @@ use crate::{
     },
     diagnostics::Note,
     helpers::InternedString,
-    parse::{self, Span},
+    parse::{self, SpanList},
 };
 
 #[derive(Debug, Clone)]
 pub struct HelpStatementAttribute {
-    pub help_span: Span,
-    pub help_text_span: Span,
+    pub span: SpanList,
+    pub help_span: SpanList,
+    pub help_text_span: SpanList,
     pub help_text: InternedString,
 }
 
 impl HelpStatementAttribute {
-    pub fn span(&self) -> Span {
-        Span::join(self.help_span, self.help_text_span)
+    pub fn span(&self) -> SpanList {
+        self.span
     }
 }
 
@@ -29,7 +30,7 @@ impl Syntax for HelpStatementAttributeSyntax {
     fn rules() -> SyntaxRules<Self> {
         SyntaxRules::new().with(SyntaxRule::<Self>::function(
             "help",
-            |context, span, mut exprs, _scope| async move {
+            |context, span, help_span, mut exprs, _scope| async move {
                 if exprs.len() != 1 {
                     context.ast_builder.compiler.add_error(
                         "syntax error",
@@ -51,7 +52,8 @@ impl Syntax for HelpStatementAttributeSyntax {
                 };
 
                 let attribute = HelpStatementAttribute {
-                    help_span: span,
+                    span,
+                    help_span,
                     help_text_span: expr.span,
                     help_text,
                 };

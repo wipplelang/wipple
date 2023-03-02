@@ -1,9 +1,12 @@
-use crate::{analysis::ast::{
-    expression::{Expression, ExpressionSyntax, ExpressionSyntaxContext},
-    statement::StatementSyntaxContext,
-    syntax::{Syntax, SyntaxContext, SyntaxRules},
-    Statement, StatementAttributes,
-}, parse::Span};
+use crate::{
+    analysis::ast::{
+        expression::{Expression, ExpressionSyntax, ExpressionSyntaxContext},
+        statement::StatementSyntaxContext,
+        syntax::{Syntax, SyntaxContext, SyntaxRules},
+        Statement, StatementAttributes,
+    },
+    parse::SpanList,
+};
 
 #[derive(Debug, Clone)]
 pub struct ExpressionStatement {
@@ -12,7 +15,7 @@ pub struct ExpressionStatement {
 }
 
 impl ExpressionStatement {
-    pub fn span(&self) -> Span {
+    pub fn span(&self) -> SpanList {
         self.expression.span()
     }
 }

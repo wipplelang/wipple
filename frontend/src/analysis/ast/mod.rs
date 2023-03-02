@@ -47,7 +47,7 @@ pub use when_body::*;
 use crate::{
     diagnostics::Note,
     helpers::{InternedString, Shared},
-    parse::{self, Span},
+    parse::{self, Span, SpanList},
     Compiler, FilePath, ScopeId, SyntaxId,
 };
 use futures::{future::BoxFuture, stream, StreamExt};
@@ -73,7 +73,7 @@ impl Compiler {
     pub(crate) async fn build_ast(
         &self,
         file: parse::File,
-        load: impl Fn(Compiler, Span, FilePath) -> BoxFuture<'static, Option<Arc<File>>>
+        load: impl Fn(Compiler, SpanList, FilePath) -> BoxFuture<'static, Option<Arc<File>>>
             + 'static
             + Send
             + Sync,
@@ -98,7 +98,7 @@ impl Compiler {
             if ast_builder
                 .build_list::<FileAttributeSyntax>(
                     context.clone(),
-                    attribute.span,
+                    attribute.span.into(),
                     attribute.exprs.clone(),
                     scope,
                 )
@@ -120,7 +120,8 @@ impl Compiler {
             let std_path = ast_builder.compiler.loader.std_path();
             if let Some(std_path) = std_path {
                 if let Some(file) =
-                    (ast_builder.load)(ast_builder.compiler.clone(), file.span, std_path).await
+                    (ast_builder.load)(ast_builder.compiler.clone(), file.span.into(), std_path)
+                        .await
                 {
                     ast_builder.add_dependency(file);
                 }
@@ -183,7 +184,7 @@ struct AstBuilder {
     scopes: Shared<BTreeMap<ScopeId, Scope>>,
     file_scope: Option<ScopeId>,
     load: Arc<
-        dyn Fn(Compiler, Span, FilePath) -> BoxFuture<'static, Option<Arc<File>>> + Send + Sync,
+        dyn Fn(Compiler, SpanList, FilePath) -> BoxFuture<'static, Option<Arc<File>>> + Send + Sync,
     >,
 }
 
@@ -239,7 +240,7 @@ impl AstBuilder {
     fn try_get_syntax(
         &self,
         name: InternedString,
-        span: Span,
+        span: SpanList,
         scope: ScopeId,
     ) -> Option<SyntaxAssignmentValue> {
         let scopes = self.scopes.lock();
@@ -352,7 +353,7 @@ impl AstBuilder {
             if self
                 .build_list::<StatementAttributeSyntax>(
                     context.clone(),
-                    attribute.span,
+                    attribute.span.into(),
                     attribute.exprs.clone(),
                     scope,
                 )
@@ -383,12 +384,15 @@ impl AstBuilder {
             return None;
         }
 
-        let span = parse::Span::join(exprs.first().unwrap().span, exprs.last().unwrap().span);
+        let span = parse::Span::join(
+            exprs.first().unwrap().span.first(),
+            exprs.last().unwrap().span.first(),
+        );
 
         let context = context.with_statement_attributes(attributes.clone());
 
         let result = match self
-            .build_list::<S>(context.clone(), span, exprs.clone(), scope)
+            .build_list::<S>(context.clone(), span.into(), exprs.clone(), scope)
             .await
         {
             Some(result) => result,

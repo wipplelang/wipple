@@ -34,7 +34,7 @@ pub(in crate::analysis::ast) trait SyntaxContext: Clone + Send {
 
     async fn build_block(
         self,
-        span: parse::Span,
+        span: parse::SpanList,
         statements: impl Iterator<
                 Item = Result<
                     <<Self::Statement as Syntax>::Context as SyntaxContext>::Body,
@@ -54,14 +54,14 @@ pub(in crate::analysis::ast) trait SyntaxContext: Clone + Send {
 
 #[derive(Debug, Clone)]
 pub struct SyntaxError {
-    pub span: parse::Span,
+    pub span: parse::SpanList,
     pub trace: Backtrace,
 }
 
 impl AstBuilder {
-    pub fn syntax_error(&self, span: parse::Span) -> SyntaxError {
+    pub fn syntax_error(&self, span: impl Into<parse::SpanList>) -> SyntaxError {
         SyntaxError {
-            span,
+            span: span.into(),
             trace: self.compiler.backtrace(),
         }
     }
@@ -90,7 +90,7 @@ impl SyntaxContext for std::convert::Infallible {
 
     async fn build_block(
         self,
-        _span: parse::Span,
+        _span: parse::SpanList,
         _statements: impl Iterator<
                 Item = Result<
                     <<Self::Statement as Syntax>::Context as SyntaxContext>::Body,
@@ -121,7 +121,8 @@ pub(in crate::analysis::ast) enum SyntaxRuleKind<S: Syntax + ?Sized> {
         Box<
             dyn Fn(
                     S::Context,
-                    parse::Span,
+                    parse::SpanList,
+                    parse::SpanList,
                     Vec<parse::Expr>,
                     ScopeId,
                 ) -> Option<
@@ -135,9 +136,10 @@ pub(in crate::analysis::ast) enum SyntaxRuleKind<S: Syntax + ?Sized> {
         Box<
             dyn Fn(
                     S::Context,
-                    (parse::Span, Vec<parse::Expr>),
-                    parse::Span,
-                    (parse::Span, Vec<parse::Expr>),
+                    parse::SpanList,
+                    (parse::SpanList, Vec<parse::Expr>),
+                    parse::SpanList,
+                    (parse::SpanList, Vec<parse::Expr>),
                     ScopeId,
                 ) -> Option<
                     BoxFuture<'static, Result<<S::Context as SyntaxContext>::Body, SyntaxError>>,
@@ -152,13 +154,18 @@ impl<S: Syntax + ?Sized> SyntaxRule<S> {
         Fut: Future<Output = Result<<S::Context as SyntaxContext>::Body, SyntaxError>> + Send + 'static,
     >(
         name: &'static str,
-        rule: impl Fn(S::Context, parse::Span, Vec<parse::Expr>, ScopeId) -> Fut + Send + Sync + 'static,
+        rule: impl Fn(S::Context, parse::SpanList, parse::SpanList, Vec<parse::Expr>, ScopeId) -> Fut
+            + Send
+            + Sync
+            + 'static,
     ) -> Self {
         SyntaxRule {
             name,
-            kind: SyntaxRuleKind::Function(Box::new(move |context, span, expr, scope| {
-                Some(Box::pin(rule(context, span, expr, scope)))
-            })),
+            kind: SyntaxRuleKind::Function(Box::new(
+                move |context, span, syntax_span, expr, scope| {
+                    Some(Box::pin(rule(context, span, syntax_span, expr, scope)))
+                },
+            )),
         }
     }
 
@@ -169,9 +176,10 @@ impl<S: Syntax + ?Sized> SyntaxRule<S> {
         associativity: OperatorAssociativity,
         rule: impl Fn(
                 S::Context,
-                (parse::Span, Vec<parse::Expr>),
-                parse::Span,
-                (parse::Span, Vec<parse::Expr>),
+                parse::SpanList,
+                (parse::SpanList, Vec<parse::Expr>),
+                parse::SpanList,
+                (parse::SpanList, Vec<parse::Expr>),
                 ScopeId,
             ) -> Fut
             + Send
@@ -182,8 +190,8 @@ impl<S: Syntax + ?Sized> SyntaxRule<S> {
             name,
             kind: SyntaxRuleKind::Operator(
                 associativity,
-                Box::new(move |context, lhs, span, rhs, scope| {
-                    Some(Box::pin(rule(context, lhs, span, rhs, scope)))
+                Box::new(move |context, span, lhs, syntax_span, rhs, scope| {
+                    Some(Box::pin(rule(context, span, lhs, syntax_span, rhs, scope)))
                 }),
             ),
         }
@@ -216,18 +224,18 @@ impl<S: Syntax + ?Sized> SyntaxRules<S> {
         self.0.extend(rules.0.into_iter().map(|rule| SyntaxRule {
             name: rule.name,
             kind: match rule.kind {
-                SyntaxRuleKind::Function(apply) => {
-                    SyntaxRuleKind::<S>::Function(Box::new(move |context, span, expr, scope| {
+                SyntaxRuleKind::Function(apply) => SyntaxRuleKind::<S>::Function(Box::new(
+                    move |context, span, syntax_span, expr, scope| {
                         let context = context.try_into().ok()?;
-                        let fut = apply(context, span, expr, scope)?;
+                        let fut = apply(context, span, syntax_span, expr, scope)?;
                         Some(Box::pin(async { fut.await.map(From::from) }))
-                    }))
-                }
+                    },
+                )),
                 SyntaxRuleKind::Operator(associativity, apply) => SyntaxRuleKind::<S>::Operator(
                     associativity,
-                    Box::new(move |context, lhs, span, rhs, scope| {
+                    Box::new(move |context, span, lhs, operator_span, rhs, scope| {
                         let context = context.try_into().ok()?;
-                        let fut = apply(context, lhs, span, rhs, scope)?;
+                        let fut = apply(context, span, lhs, operator_span, rhs, scope)?;
                         Some(Box::pin(async { fut.await.map(From::from) }))
                     }),
                 ),
@@ -250,7 +258,7 @@ impl AstBuilder {
     pub(in crate::analysis::ast) async fn build_list<S: Syntax>(
         &self,
         context: S::Context,
-        span: parse::Span,
+        span: parse::SpanList,
         mut exprs: Vec<parse::Expr>,
         scope: ScopeId,
     ) -> Option<Result<<S::Context as SyntaxContext>::Body, SyntaxError>> {
@@ -273,8 +281,8 @@ impl AstBuilder {
 
             match rule.kind {
                 SyntaxRuleKind::Function(apply) => {
-                    if let Some(fut) =
-                        self.apply_function_syntax::<S>(rule.name, apply, context, &exprs, scope)
+                    if let Some(fut) = self
+                        .apply_function_syntax::<S>(rule.name, apply, context, span, &exprs, scope)
                     {
                         if let Some(result) = fut.await {
                             return Some(result);
@@ -307,7 +315,8 @@ impl AstBuilder {
         name: &'static str,
         apply: impl Fn(
                 S::Context,
-                parse::Span,
+                parse::SpanList,
+                parse::SpanList,
                 Vec<parse::Expr>,
                 ScopeId,
             ) -> Option<
@@ -316,6 +325,7 @@ impl AstBuilder {
             + Sync
             + 'static,
         context: S::Context,
+        span: parse::SpanList,
         exprs: &[parse::Expr],
         scope: ScopeId,
     ) -> Option<BoxFuture<Option<Result<<S::Context as SyntaxContext>::Body, SyntaxError>>>> {
@@ -325,11 +335,11 @@ impl AstBuilder {
 
         if let parse::ExprKind::Name(first_name, _) = &first.kind {
             if first_name.as_str() == name {
-                let span = first.span;
+                let syntax_span = first.span;
                 let exprs = exprs.cloned().collect();
 
                 return Some(Box::pin(async move {
-                    Some(apply(context, span, exprs, scope)?.await)
+                    Some(apply(context, span, syntax_span, exprs, scope)?.await)
                 }));
             }
         }
@@ -343,9 +353,10 @@ impl AstBuilder {
         associativity: OperatorAssociativity,
         apply: impl Fn(
                 S::Context,
-                (parse::Span, Vec<parse::Expr>),
-                parse::Span,
-                (parse::Span, Vec<parse::Expr>),
+                parse::SpanList,
+                (parse::SpanList, Vec<parse::Expr>),
+                parse::SpanList,
+                (parse::SpanList, Vec<parse::Expr>),
                 ScopeId,
             ) -> Option<
                 BoxFuture<'static, Result<<S::Context as SyntaxContext>::Body, SyntaxError>>,
@@ -353,7 +364,7 @@ impl AstBuilder {
             + Sync
             + 'static,
         context: S::Context,
-        span: parse::Span,
+        span: parse::SpanList,
         exprs: &[parse::Expr],
         scope: ScopeId,
     ) -> Option<BoxFuture<Option<Result<<S::Context as SyntaxContext>::Body, SyntaxError>>>> {
@@ -425,11 +436,6 @@ impl AstBuilder {
                         return Err(error);
                     }
 
-                    let span = parse::Span::join(
-                        grouped_exprs.first().unwrap().span,
-                        grouped_exprs.last().unwrap().span,
-                    );
-
                     Ok(parse::Expr::list_or_expr(
                         span,
                         grouped_exprs.into_iter().cloned().collect(),
@@ -447,15 +453,14 @@ impl AstBuilder {
             // HACK: Put all the expressions into `lhs`. In the future, handle
             // variadic operators specially.
 
-            let span = parse::Span::join(exprs.first().unwrap().span, exprs.last().unwrap().span);
-
             return Some(Box::pin(async move {
                 Some(
                     apply(
                         context,
+                        span,
                         (span, exprs),
                         operator_span,
-                        (parse::Span::builtin(), Vec::new()),
+                        (parse::Span::builtin().into(), Vec::new()),
                         scope,
                     )?
                     .await,
@@ -525,13 +530,14 @@ impl AstBuilder {
             return Some(Box::pin(async move { Some(Err(error)) }));
         }
 
-        let lhs_span = parse::Span::join(lhs.first().unwrap().span, lhs.last().unwrap().span);
-        let rhs_span = parse::Span::join(rhs.first().unwrap().span, rhs.last().unwrap().span);
+        let lhs_span = parse::SpanList::join(lhs.first().unwrap().span, lhs.last().unwrap().span);
+        let rhs_span = parse::SpanList::join(rhs.first().unwrap().span, rhs.last().unwrap().span);
 
         Some(Box::pin(async move {
             Some(
                 apply(
                     context,
+                    span,
                     (lhs_span, lhs),
                     operator_span,
                     (rhs_span, rhs),
@@ -573,7 +579,7 @@ impl SyntaxContext for ErrorSyntaxContext {
 
     async fn build_block(
         self,
-        span: parse::Span,
+        span: parse::SpanList,
         _statements: impl Iterator<
                 Item = Result<
                     <<Self::Statement as Syntax>::Context as SyntaxContext>::Body,

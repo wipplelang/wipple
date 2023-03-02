@@ -4,23 +4,19 @@ use crate::{
         Expression, ExpressionSyntax, ExpressionSyntaxContext,
     },
     diagnostics::Note,
-    parse::Span,
+    parse::SpanList,
 };
 
 #[derive(Debug, Clone)]
 pub struct EndExpression {
-    pub end_span: Span,
+    pub span: SpanList,
+    pub end_span: SpanList,
     pub value: Result<Box<Expression>, SyntaxError>,
 }
 
 impl EndExpression {
-    pub fn span(&self) -> Span {
-        let value_span = match &self.value {
-            Ok(value) => value.span(),
-            Err(error) => error.span,
-        };
-
-        Span::join(self.end_span, value_span)
+    pub fn span(&self) -> SpanList {
+        self.span
     }
 }
 
@@ -32,7 +28,7 @@ impl Syntax for EndExpressionSyntax {
     fn rules() -> SyntaxRules<Self> {
         SyntaxRules::new().with(SyntaxRule::<Self>::function(
             "end",
-            |context, span, mut exprs, scope| async move {
+            |context, span, end_span, mut exprs, scope| async move {
                 if exprs.len() != 1 {
                     context.ast_builder.compiler.add_error(
                         "syntax error",
@@ -48,7 +44,8 @@ impl Syntax for EndExpressionSyntax {
                     .await;
 
                 Ok(EndExpression {
-                    end_span: span,
+                    span,
+                    end_span,
                     value: value.map(Box::new),
                 }
                 .into())

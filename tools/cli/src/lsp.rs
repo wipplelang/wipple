@@ -172,12 +172,12 @@ impl LanguageServer for Backend {
         macro_rules! insert_semantic_tokens {
             ($kind:ident, $token:expr) => {
                 for decl in document.program.declarations.$kind.values() {
-                    if decl.span.path == document.path {
+                    if decl.span.first().path == document.path {
                         semantic_tokens.push((decl.span, $token(decl)));
                     }
 
                     for &span in &decl.uses {
-                        if span.path == document.path {
+                        if span.first().path == document.path {
                             semantic_tokens.push((span, $token(decl)));
                         }
                     }
@@ -202,7 +202,7 @@ impl LanguageServer for Backend {
         insert_semantic_tokens!(variables, |_| SemanticTokenType::VARIABLE);
 
         let mut traverse_semantic_tokens = |expr: &Expression| {
-            if expr.span.path != document.path {
+            if expr.span.first().path != document.path {
                 return;
             }
 
@@ -231,7 +231,7 @@ impl LanguageServer for Backend {
         }
 
         semantic_tokens.reverse();
-        semantic_tokens.sort_by_key(|(span, _)| span.start);
+        semantic_tokens.sort_by_key(|(span, _)| span.first().start);
         semantic_tokens.dedup_by_key(|(span, _)| *span);
 
         let mut pre_line = 0;
@@ -241,8 +241,8 @@ impl LanguageServer for Backend {
         let data = semantic_tokens
             .into_iter()
             .filter_map(|(span, semantic_token_type)| {
-                let (line, start_col) = line_col_lookup.get(span.start);
-                let (_, end_col) = line_col_lookup.get(span.end - 1);
+                let (line, start_col) = line_col_lookup.get(span.first().start);
+                let (_, end_col) = line_col_lookup.get(span.first().end - 1);
 
                 let line = line - 1;
                 let start_col = start_col - 1;
@@ -353,11 +353,11 @@ impl LanguageServer for Backend {
                     return;
                 }
 
-                if !within_hover(expr.span) {
+                if !within_hover(expr.span.first()) {
                     return;
                 }
 
-                let range = range_from(expr.span);
+                let range = range_from(expr.span.first());
                 let contents = code_segment(format_type(expr.ty.clone(), Format::default()));
 
                 hovers.push((
@@ -374,11 +374,11 @@ impl LanguageServer for Backend {
             ($kind:ident $(($opt:tt))?, $str:literal $(, $help:expr)?) => {
                 for decl in document.program.declarations.$kind.values() {
                     for span in std::iter::once(decl.span).chain(decl.uses.iter().copied()) {
-                        if !within_hover(span) {
+                        if !within_hover(span.first()) {
                             continue;
                         }
 
-                        let range = range_from(span);
+                        let range = range_from(span.first());
 
                         #[allow(unused_mut)]
                         let mut contents = vec![code_segment(format!("{} : {}", decl.name, $str))];
@@ -414,11 +414,11 @@ impl LanguageServer for Backend {
 
         for decl in document.program.declarations.constants.values() {
             for span in std::iter::once(decl.span).chain(decl.uses.iter().copied()) {
-                if !within_hover(span) {
+                if !within_hover(span.first()) {
                     continue;
                 }
 
-                let range = range_from(span);
+                let range = range_from(span.first());
 
                 let format = Format {
                     type_function: TypeFunctionFormat::Arrow(&decl.bounds),
@@ -452,11 +452,11 @@ impl LanguageServer for Backend {
 
         for decl in document.program.declarations.variables.values() {
             for span in std::iter::once(decl.span).chain(decl.uses.iter().copied()) {
-                if !within_hover(span) {
+                if !within_hover(span.first()) {
                     continue;
                 }
 
-                let range = range_from(span);
+                let range = range_from(span.first());
 
                 let name = match decl.name {
                     Some(name) => name,
@@ -481,7 +481,7 @@ impl LanguageServer for Backend {
 
         Ok(hovers
             .into_iter()
-            .min_by_key(|(span, _)| span.end - span.start)
+            .min_by_key(|(span, _)| span.first().end - span.first().start)
             .map(|(_, hover)| hover))
     }
 
@@ -712,7 +712,7 @@ impl Backend {
                 let mut notes = diagnostic.notes.into_iter();
 
                 let primary_note = notes.next().unwrap();
-                if primary_note.span.path != document.path {
+                if primary_note.span.first().path != document.path {
                     continue;
                 }
 
@@ -721,7 +721,7 @@ impl Backend {
                     DiagnosticLevel::Error => DiagnosticSeverity::ERROR,
                 };
 
-                let range = range_from(primary_note.span);
+                let range = range_from(primary_note.span.first());
 
                 result.push(Diagnostic {
                     range,
@@ -732,11 +732,11 @@ impl Backend {
                 });
 
                 for note in notes {
-                    if note.span.path != document.path {
+                    if note.span.first().path != document.path {
                         continue;
                     }
 
-                    let range = range_from(note.span);
+                    let range = range_from(note.span.first());
 
                     result.push(Diagnostic {
                         range,

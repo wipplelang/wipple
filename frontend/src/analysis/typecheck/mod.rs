@@ -15,7 +15,7 @@ use crate::{
     analysis::lower,
     diagnostics::Note,
     helpers::{Backtrace, InternedString},
-    parse::Span,
+    parse::SpanList,
     BuiltinTypeId, Compiler, ConstantId, FieldIndex, ItemId, SyntaxId, TraitId, TypeId,
     TypeParameterId, VariableId, VariantIndex,
 };
@@ -79,20 +79,20 @@ impl From<DeclarationsInner> for Declarations {
 #[derive(Debug, Clone)]
 pub struct SyntaxDecl {
     pub name: InternedString,
-    pub span: Span,
+    pub span: SpanList,
     pub operator: bool,
     pub keyword: bool,
-    pub uses: HashSet<Span>,
+    pub uses: HashSet<SpanList>,
 }
 
 #[derive(Debug, Clone)]
 pub struct TypeDecl {
     pub name: InternedString,
-    pub span: Span,
+    pub span: SpanList,
     pub params: Vec<TypeParameterId>,
     pub kind: TypeDeclKind,
     pub attributes: lower::TypeAttributes,
-    pub uses: HashSet<Span>,
+    pub uses: HashSet<SpanList>,
 }
 
 #[derive(Debug, Clone)]
@@ -111,18 +111,18 @@ pub enum TypeDeclKind {
 #[derive(Debug, Clone)]
 pub struct TraitDecl {
     pub name: InternedString,
-    pub span: Span,
+    pub span: SpanList,
     pub params: Vec<TypeParameterId>,
     pub ty_annotation: Option<TypeAnnotation>,
     pub ty: Option<engine::Type>,
     pub attributes: lower::TraitAttributes,
-    pub uses: HashSet<Span>,
+    pub uses: HashSet<SpanList>,
 }
 
 #[derive(Debug, Clone)]
 pub struct ConstantDecl {
     pub name: InternedString,
-    pub span: Span,
+    pub span: SpanList,
     pub params: Vec<TypeParameterId>,
     pub bounds: Vec<Bound>,
     pub bound_annotations: Vec<(TraitId, Vec<TypeAnnotation>)>,
@@ -131,12 +131,12 @@ pub struct ConstantDecl {
     pub specializations: Vec<ConstantId>,
     pub attributes: lower::ConstantAttributes,
     pub body: Option<Expression>,
-    pub uses: HashSet<Span>,
+    pub uses: HashSet<SpanList>,
 }
 
 #[derive(Debug, Clone)]
 pub struct InstanceDecl {
-    pub span: Span,
+    pub span: SpanList,
     pub params: Vec<TypeParameterId>,
     pub bounds: Vec<Bound>,
     pub bound_annotations: Vec<(TraitId, Vec<TypeAnnotation>)>,
@@ -149,7 +149,7 @@ pub struct InstanceDecl {
 
 #[derive(Debug, Clone)]
 pub struct Bound {
-    pub span: Span,
+    pub span: SpanList,
     pub trait_id: TraitId,
     pub params: Vec<engine::UnresolvedType>,
 }
@@ -157,24 +157,24 @@ pub struct Bound {
 #[derive(Debug, Clone)]
 pub struct BuiltinTypeDecl {
     pub name: InternedString,
-    pub span: Span,
+    pub span: SpanList,
     pub attributes: lower::DeclarationAttributes,
-    pub uses: HashSet<Span>,
+    pub uses: HashSet<SpanList>,
 }
 
 #[derive(Debug, Clone)]
 pub struct TypeParameterDecl {
     pub name: Option<InternedString>,
-    pub span: Span,
-    pub uses: HashSet<Span>,
+    pub span: SpanList,
+    pub uses: HashSet<SpanList>,
 }
 
 #[derive(Debug, Clone)]
 pub struct VariableDecl {
     pub name: Option<InternedString>,
-    pub span: Span,
+    pub span: SpanList,
     pub ty: engine::Type,
-    pub uses: HashSet<Span>,
+    pub uses: HashSet<SpanList>,
 }
 
 macro_rules! expr {
@@ -182,7 +182,7 @@ macro_rules! expr {
         paste::paste! {
             #[derive(Debug, Clone)]
             $vis struct [<$prefix Expression>] {
-                $vis span: Span,
+                $vis span: SpanList,
                 $vis ty: $type,
                 $vis kind: [<$prefix ExpressionKind>],
             }
@@ -210,7 +210,7 @@ macro_rules! expr {
 
             #[derive(Debug, Clone)]
             $vis struct [<$prefix Arm>] {
-                $vis span: Span,
+                $vis span: SpanList,
                 $vis pattern: [<$prefix Pattern>],
                 $vis body: [<$prefix Expression>],
             }
@@ -230,7 +230,7 @@ macro_rules! pattern {
         paste::paste! {
             #[derive(Debug, Clone)]
             $vis struct [<$prefix Pattern>] {
-                $vis span: Span,
+                $vis span: SpanList,
                 $vis kind: [<$prefix PatternKind>],
             }
 
@@ -486,7 +486,7 @@ impl Pattern {
 #[derive(Debug, Clone)]
 pub struct Error {
     pub error: engine::TypeError,
-    pub span: Span,
+    pub span: SpanList,
     pub notes: Vec<Note>,
     pub trace: Backtrace,
 }
@@ -523,7 +523,7 @@ struct Typechecker {
     ctx: engine::Context,
     declarations: RefCell<DeclarationsInner>,
     exported: Option<HashMap<InternedString, lower::AnyDeclaration>>,
-    block_end: Option<Option<(Span, engine::UnresolvedType)>>,
+    block_end: Option<Option<(SpanList, engine::UnresolvedType)>>,
     instances: im::HashMap<TraitId, Vec<ConstantId>>,
     generic_constants: im::HashMap<ConstantId, (bool, lower::Expression)>,
     specialized_constants: im::HashMap<ConstantId, ConstantId>,
@@ -542,7 +542,7 @@ struct QueuedItem {
 }
 
 impl Typechecker {
-    fn error(&self, error: engine::TypeError, span: Span) -> Error {
+    fn error(&self, error: engine::TypeError, span: SpanList) -> Error {
         Error {
             error,
             span,
@@ -585,7 +585,7 @@ impl Typechecker {
         let entrypoint_item = mem::take(&mut self.entrypoint_expr).map(|entrypoint| {
             let info = MonomorphizeInfo::default();
 
-            let entrypoint_id = self.compiler.new_item_id_in(entrypoint.span.path);
+            let entrypoint_id = self.compiler.new_item_id_in(entrypoint.span.first().path);
 
             self.item_queue.push_back(QueuedItem {
                 generic_id: None,
@@ -740,7 +740,7 @@ impl Typechecker {
 
         let expr = self.convert_expr(
             lower::Expression {
-                span: self.entrypoint.span,
+                span: self.entrypoint.span.into(),
                 kind: lower::ExpressionKind::Block(entrypoint, true),
             },
             &mut info,
@@ -902,7 +902,7 @@ impl Typechecker {
         &mut self,
         is_instance: bool,
         id: ConstantId,
-        use_span: Span,
+        use_span: SpanList,
         use_ty: engine::UnresolvedType,
         mut info: MonomorphizeInfo,
     ) -> Option<ItemId> {
@@ -1760,7 +1760,7 @@ impl Typechecker {
         &mut self,
         arm: lower::Arm,
         input_ty: engine::UnresolvedType,
-        input_span: Span,
+        input_span: SpanList,
         info: &mut ConvertInfo,
     ) -> UnresolvedArm {
         UnresolvedArm {
@@ -1774,7 +1774,7 @@ impl Typechecker {
         &mut self,
         pattern: lower::Pattern,
         ty: engine::UnresolvedType,
-        input_span: Option<Span>,
+        input_span: Option<SpanList>,
         info: &mut ConvertInfo,
     ) -> UnresolvedPattern {
         UnresolvedPattern {
@@ -1965,7 +1965,7 @@ impl Typechecker {
 struct MonomorphizeInfo {
     cache: BTreeMap<ConstantId, ItemId>,
     bound_instances:
-        BTreeMap<TraitId, Vec<(Option<ConstantId>, Vec<engine::UnresolvedType>, Span)>>,
+        BTreeMap<TraitId, Vec<(Option<ConstantId>, Vec<engine::UnresolvedType>, SpanList)>>,
     instance_stack: BTreeMap<TraitId, Vec<(ConstantId, Vec<engine::UnresolvedType>)>>,
     recursion_count: usize,
     has_resolved_trait: bool,
@@ -2595,8 +2595,8 @@ impl Typechecker {
         &mut self,
         tr: TraitId,
         ty: engine::UnresolvedType,
-        use_span: Span,
-        bound_span: Option<Span>,
+        use_span: SpanList,
+        bound_span: Option<SpanList>,
         info: &mut MonomorphizeInfo,
     ) -> Result<Option<ConstantId>, Option<Error>> {
         let tr_decl = match self.with_trait_decl(tr, Clone::clone) {
@@ -2624,8 +2624,8 @@ impl Typechecker {
         &mut self,
         tr: TraitId,
         params: Vec<engine::UnresolvedType>,
-        use_span: Span,
-        bound_span: Option<Span>,
+        use_span: SpanList,
+        bound_span: Option<SpanList>,
         info: &mut MonomorphizeInfo,
     ) -> Result<Option<ConstantId>, Option<Error>> {
         let tr_decl = match self.with_trait_decl(tr, Clone::clone) {
@@ -2641,8 +2641,8 @@ impl Typechecker {
         tr: TraitId,
         tr_decl: TraitDecl,
         ty_or_params: Result<engine::UnresolvedType, Vec<engine::UnresolvedType>>,
-        use_span: Span,
-        bound_span: Option<Span>,
+        use_span: SpanList,
+        bound_span: Option<SpanList>,
         info: &mut MonomorphizeInfo,
     ) -> Result<Option<ConstantId>, Option<Error>> {
         let recursion_limit = self
@@ -2953,7 +2953,7 @@ impl Typechecker {
         &mut self,
         match_set: &MatchSet,
         ty: &engine::UnresolvedType,
-        span: Span,
+        span: SpanList,
         for_exhaustive_pattern: bool,
     ) {
         if !match_set.is_matched() {
@@ -3991,13 +3991,13 @@ impl Typechecker {
 impl Typechecker {
     fn unify(
         &mut self,
-        span: Span,
+        span: impl Into<SpanList>,
         actual: engine::UnresolvedType,
         expected: impl Into<engine::UnresolvedType>,
     ) -> Result<(), Error> {
         self.ctx
             .unify(actual, expected)
-            .map_err(|e| self.error(e, span))
+            .map_err(|e| self.error(e, span.into()))
     }
 
     fn add_substitutions(
@@ -4078,7 +4078,7 @@ impl Typechecker {
     fn convert_type_annotation_inner(
         &mut self,
         annotation: TypeAnnotation,
-        convert_placeholder: &impl Fn(&mut Self, Span) -> Option<engine::UnresolvedType>,
+        convert_placeholder: &impl Fn(&mut Self, SpanList) -> Option<engine::UnresolvedType>,
         stack: &mut Vec<TypeId>,
     ) -> engine::UnresolvedType {
         match annotation.kind {
@@ -4403,7 +4403,7 @@ impl Typechecker {
         &mut self,
         trait_id: TraitId,
         params: Vec<engine::UnresolvedType>,
-        span: Span,
+        span: SpanList,
     ) -> engine::UnresolvedType {
         let (trait_span, trait_ty, trait_params) = self
             .with_trait_decl(trait_id, |decl| {
