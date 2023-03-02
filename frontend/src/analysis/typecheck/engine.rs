@@ -691,51 +691,90 @@ impl UnresolvedType {
         }
     }
 
-    pub fn finalize_default_variables(&mut self, ctx: &Context) {
+    pub fn finalize_numeric_variables(&mut self, ctx: &Context) {
         self.apply(ctx);
 
         match self {
             UnresolvedType::Variable(var) => {
                 if let Some(ty) = ctx.substitutions.get(var) {
                     *self = ty.clone();
-                    self.finalize_default_variables(ctx);
-                }
-            }
-            UnresolvedType::TerminatingVariable(var) => {
-                if let Some(ty) = ctx.terminating_substitutions.get(var) {
-                    *self = ty.clone();
-                    self.finalize_default_variables(ctx);
-                } else {
-                    *self = UnresolvedType::Tuple(Vec::new());
+                    self.finalize_numeric_variables(ctx);
                 }
             }
             UnresolvedType::NumericVariable(var) => {
                 if let Some(ty) = ctx.numeric_substitutions.get(var) {
                     *self = ty.clone();
-                    self.finalize_default_variables(ctx);
+                    self.finalize_numeric_variables(ctx);
                 } else {
                     *self = UnresolvedType::Builtin(BuiltinType::Number);
                 }
             }
             UnresolvedType::Function(input, output) => {
-                input.finalize_default_variables(ctx);
-                output.finalize_default_variables(ctx);
+                input.finalize_numeric_variables(ctx);
+                output.finalize_numeric_variables(ctx);
             }
             UnresolvedType::Named(_, params, structure) => {
                 for param in params {
-                    param.finalize_default_variables(ctx);
+                    param.finalize_numeric_variables(ctx);
                 }
 
-                structure.finalize_default_variables(ctx);
+                structure.finalize_numeric_variables(ctx);
             }
             UnresolvedType::Tuple(tys) => {
                 for ty in tys {
-                    ty.finalize_default_variables(ctx);
+                    ty.finalize_numeric_variables(ctx);
                 }
             }
             UnresolvedType::Builtin(ty) => match ty {
                 BuiltinType::List(ty) | BuiltinType::Mutable(ty) => {
-                    ty.finalize_default_variables(ctx)
+                    ty.finalize_numeric_variables(ctx)
+                }
+                _ => {}
+            },
+            _ => {}
+        }
+    }
+
+    pub fn finalize_terminating_variables(&mut self, ctx: &Context) {
+        self.apply(ctx);
+
+        match self {
+            UnresolvedType::Variable(var) => {
+                if let Some(ty) = ctx.substitutions.get(var) {
+                    *self = ty.clone();
+                    self.finalize_terminating_variables(ctx);
+                }
+            }
+            UnresolvedType::TerminatingVariable(var) => {
+                if let Some(ty) = ctx.terminating_substitutions.get(var) {
+                    *self = ty.clone();
+                    self.finalize_terminating_variables(ctx);
+                } else {
+                    *self = UnresolvedType::Tuple(Vec::new());
+                }
+            }
+            UnresolvedType::NumericVariable(_) => {
+                panic!("`finalize_numeric_variables` must be called before `finalize_terminating_variables`")
+            }
+            UnresolvedType::Function(input, output) => {
+                input.finalize_terminating_variables(ctx);
+                output.finalize_terminating_variables(ctx);
+            }
+            UnresolvedType::Named(_, params, structure) => {
+                for param in params {
+                    param.finalize_terminating_variables(ctx);
+                }
+
+                structure.finalize_terminating_variables(ctx);
+            }
+            UnresolvedType::Tuple(tys) => {
+                for ty in tys {
+                    ty.finalize_terminating_variables(ctx);
+                }
+            }
+            UnresolvedType::Builtin(ty) => match ty {
+                BuiltinType::List(ty) | BuiltinType::Mutable(ty) => {
+                    ty.finalize_terminating_variables(ctx)
                 }
                 _ => {}
             },
@@ -746,7 +785,8 @@ impl UnresolvedType {
     pub fn finalize(&self, ctx: &Context) -> Option<Type> {
         let mut ty = self.clone();
         ty.apply(ctx);
-        ty.finalize_default_variables(ctx);
+        ty.finalize_numeric_variables(ctx);
+        ty.finalize_terminating_variables(ctx);
 
         Some(match ty.clone() {
             UnresolvedType::Variable(_) => return None,
@@ -859,18 +899,36 @@ impl TypeStructure<UnresolvedType> {
         }
     }
 
-    pub fn finalize_default_variables(&mut self, ctx: &Context) {
+    pub fn finalize_numeric_variables(&mut self, ctx: &Context) {
         match self {
             TypeStructure::Marker | TypeStructure::Recursive(_) => {}
             TypeStructure::Structure(tys) => {
                 for ty in tys {
-                    ty.finalize_default_variables(ctx);
+                    ty.finalize_numeric_variables(ctx);
                 }
             }
             TypeStructure::Enumeration(variants) => {
                 for tys in variants {
                     for ty in tys {
-                        ty.finalize_default_variables(ctx);
+                        ty.finalize_numeric_variables(ctx);
+                    }
+                }
+            }
+        }
+    }
+
+    pub fn finalize_terminating_variables(&mut self, ctx: &Context) {
+        match self {
+            TypeStructure::Marker | TypeStructure::Recursive(_) => {}
+            TypeStructure::Structure(tys) => {
+                for ty in tys {
+                    ty.finalize_terminating_variables(ctx);
+                }
+            }
+            TypeStructure::Enumeration(variants) => {
+                for tys in variants {
+                    for ty in tys {
+                        ty.finalize_terminating_variables(ctx);
                     }
                 }
             }

@@ -2700,19 +2700,35 @@ impl Typechecker {
                 match find_instance!(@find params.clone(), $resolve) {
                     // ...if there is a single candidate, return it.
                     Some(Ok(candidate)) => return Ok(candidate),
-                    // ...if there are multiple candiates, try again finalizing default variables.
+                    // ...if there are multiple candiates, try again finalizing numeric variables...
                     Some(Err(_)) => {
                         let params = params
                             .clone()
                             .into_iter()
                             .map(|mut ty| {
-                                ty.finalize_default_variables(&self.ctx);
+                                ty.finalize_numeric_variables(&self.ctx);
                                 ty
                             })
                             .collect::<Vec<_>>();
 
-                        match find_instance!(@find params, $resolve) {
-                            Some(result) => return result,
+                        match find_instance!(@find params.clone(), $resolve) {
+                            Some(Ok(candidate)) => return Ok(candidate),
+                            // ...and again finalizing terminating variables.
+                            Some(Err(_)) => {
+                                let params = params
+                                    .clone()
+                                    .into_iter()
+                                    .map(|mut ty| {
+                                        ty.finalize_terminating_variables(&self.ctx);
+                                        ty
+                                    })
+                                    .collect::<Vec<_>>();
+
+                                match find_instance!(@find params, $resolve) {
+                                    Some(result) => return result,
+                                    None => {}
+                                }
+                            }
                             None => {}
                         }
                     }

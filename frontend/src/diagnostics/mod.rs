@@ -245,6 +245,7 @@ impl FinalizedDiagnostics {
 
         let mut tracked_files = HashMap::<FilePath, usize>::new();
         for diagnostic in diagnostics {
+            #[cfg(debug_assertions)]
             let primary_span = diagnostic.notes.first().unwrap().span;
 
             let labels = diagnostic
