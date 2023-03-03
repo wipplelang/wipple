@@ -346,41 +346,6 @@ fn get_syntax_highlighting(
 fn get_completions(program: &wipple_frontend::analysis::Program) -> Vec<Completion> {
     let mut items = Vec::new();
 
-    for decl in program.declarations.types.values() {
-        items.push(Completion {
-            kind: Some("type"),
-            name: decl.name.to_string(),
-            help: decl.attributes.decl_attributes.help.iter().join("\n"),
-        });
-    }
-
-    for decl in program.declarations.traits.values() {
-        items.push(Completion {
-            kind: Some("trait"),
-            name: decl.name.to_string(),
-            help: decl.attributes.decl_attributes.help.iter().join("\n"),
-        });
-    }
-
-    for decl in program.declarations.builtin_types.values() {
-        items.push(Completion {
-            kind: Some("type"),
-            name: decl.name.to_string(),
-            help: decl.attributes.help.iter().join("\n"),
-        });
-    }
-
-    for decl in program.declarations.type_parameters.values() {
-        items.push(Completion {
-            kind: Some("type"),
-            name: match decl.name {
-                Some(name) => name.to_string(),
-                None => continue,
-            },
-            help: String::new(),
-        });
-    }
-
     for decl in program.declarations.constants.values() {
         items.push(Completion {
             kind: matches!(decl.ty, wipple_frontend::analysis::Type::Function(_, _))
