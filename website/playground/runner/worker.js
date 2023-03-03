@@ -76,6 +76,11 @@ onmessage = async (event) => {
                 const hover = runner.hover(start, end);
                 postMessage(hover);
                 break;
+            case "completions":
+                const { position } = event.data;
+                const completions = runner.completions(position);
+                postMessage(completions);
+                break;
             case "displayCallback":
                 await consoleResponders.pop().callback();
                 break;

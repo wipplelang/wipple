@@ -55,7 +55,7 @@
         {
             "id": "xeNcxT2r",
             "type": "text",
-            "value": "Try double-clicking on `greet`. You'll see that Wipple was able to determine its type is `Text -> Text` based on its usage!\n\nOne last note — what's the type of `show greeting`? `show` accepts `Text`, sure, but it doesn't produce any result. Wipple has a special type for functions that produce no result: the empty list `()`. So the type of `show greeting` is `()`! If you aren't convinced, try assigning `show greeting` to a variable, `result`, and double-clicking on it.\n\nOn the next page, we’ll take an even deeper dive into types!",
+            "value": "Try hovering over `greet`. You'll see that Wipple was able to determine its type is `Text -> Text` based on its usage!\n\nOne last note — what's the type of `show greeting`? `show` accepts `Text`, sure, but it doesn't produce any result. Wipple has a special type for functions that produce no result: the empty list `()`. So the type of `show greeting` is `()`! If you aren't convinced, try assigning `show greeting` to a variable, `result`, and hovering over it.\n\nOn the next page, we’ll take an even deeper dive into types!",
             "locked": true
         }
     ],
