@@ -225,6 +225,10 @@ export const CodeEditor = (props: CodeEditorProps) => {
                     parseInt(hoverElement.dataset.wippleEndIndex)
                 );
 
+                if (!output) {
+                    return;
+                }
+
                 hoverElement.classList.add(...hoverClasses);
 
                 setHover({

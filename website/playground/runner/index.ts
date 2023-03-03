@@ -144,7 +144,7 @@ export const useRunner = () => {
                 runner.current!.postMessage({ operation: "run" });
             }),
         hover: (start: number, end: number) =>
-            new Promise<HoverOutput>((resolve, reject) => {
+            new Promise<HoverOutput | null>((resolve, reject) => {
                 runner.current!.onmessage = (event) => {
                     resolve(event.data);
                 };
