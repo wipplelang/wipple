@@ -4,6 +4,7 @@ import Runner from "../runner/worker?worker";
 export interface AnalysisOutput {
     diagnostics: AnalysisOutputDiagnostics;
     syntaxHighlighting: AnalysisOutputSyntaxHighlightingItem[];
+    completions: AnalysisOutputCompletionItem[];
 }
 
 export type AnalysisOutputDiagnostics =
@@ -15,6 +16,12 @@ export interface AnalysisOutputSyntaxHighlightingItem {
     start: number;
     end: number;
     kind: string;
+}
+
+export interface AnalysisOutputCompletionItem {
+    kind: string;
+    name: string;
+    help: string;
 }
 
 export interface HoverOutput {
@@ -56,8 +63,8 @@ export const useRunner = () => {
     }, []);
 
     return {
-        analyze: async (code: string, lint: boolean) => {
-            const analysis: AnalysisOutput = await new Promise(async (resolve, reject) => {
+        analyze: (code: string, lint: boolean) =>
+            new Promise<AnalysisOutput>((resolve, reject) => {
                 runner.current!.onmessage = (event) => {
                     resolve(event.data);
                 };
@@ -67,12 +74,9 @@ export const useRunner = () => {
                 };
 
                 runner.current!.postMessage({ operation: "analyze", code, lint });
-            });
-
-            return analysis;
-        },
-        run: async (handleConsole: (request: AnalysisConsoleRequest) => void) =>
-            new Promise<boolean>(async (resolve, reject) => {
+            }),
+        run: (handleConsole: (request: AnalysisConsoleRequest) => void) =>
+            new Promise<boolean>((resolve, reject) => {
                 runner.current!.onmessage = async (event) => {
                     switch (event.data.type) {
                         case "display":
@@ -139,8 +143,8 @@ export const useRunner = () => {
 
                 runner.current!.postMessage({ operation: "run" });
             }),
-        hover: async (start: number, end: number) =>
-            new Promise<HoverOutput>(async (resolve, reject) => {
+        hover: (start: number, end: number) =>
+            new Promise<HoverOutput>((resolve, reject) => {
                 runner.current!.onmessage = (event) => {
                     resolve(event.data);
                 };
@@ -150,6 +154,18 @@ export const useRunner = () => {
                 };
 
                 runner.current!.postMessage({ operation: "hover", start, end });
+            }),
+        completions: (position: number) =>
+            new Promise<AnalysisOutputCompletionItem[]>((resolve, reject) => {
+                runner.current!.onmessage = (event) => {
+                    resolve(event.data);
+                };
+
+                runner.current!.onerror = (event) => {
+                    reject(event.error);
+                };
+
+                runner.current!.postMessage({ operation: "completions", position });
             }),
     };
 };

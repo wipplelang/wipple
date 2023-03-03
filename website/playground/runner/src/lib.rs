@@ -1,9 +1,11 @@
 use futures::channel::oneshot::channel;
+use itertools::Itertools;
 use lazy_static::lazy_static;
 use loader::Fetcher;
 use parking_lot::{MappedMutexGuard, Mutex, MutexGuard};
 use serde::Serialize;
 use std::{
+    collections::HashMap,
     future::Future,
     pin::Pin,
     sync::{atomic::AtomicBool, Arc},
@@ -18,6 +20,7 @@ use wipple_frontend::Loader;
 struct AnalysisOutput {
     diagnostics: AnalysisOutputDiagnostics,
     syntax_highlighting: Vec<AnalysisOutputSyntaxHighlightingItem>,
+    completions: Vec<Completion>,
 }
 
 #[derive(Serialize)]
@@ -40,6 +43,14 @@ struct AnalysisOutputSyntaxHighlightingItem {
 #[serde(rename_all = "camelCase")]
 struct HoverOutput {
     code: String,
+    help: String,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct Completion {
+    kind: Option<&'static str>,
+    name: String,
     help: String,
 }
 
@@ -228,12 +239,14 @@ pub async fn analyze(code: String, lint: bool) -> JsValue {
     };
 
     let syntax_highlighting = get_syntax_highlighting(&program);
+    let completions = get_completions(&program);
 
     save_analysis(Analysis { program, success });
 
     let output = AnalysisOutput {
         diagnostics,
         syntax_highlighting,
+        completions,
     };
 
     JsValue::from_serde(&output).unwrap()
@@ -326,6 +339,71 @@ fn get_syntax_highlighting(
     items.reverse();
     items.sort_by_key(|item| item.start);
     items.dedup_by_key(|item| (item.start, item.end));
+
+    items
+}
+
+fn get_completions(program: &wipple_frontend::analysis::Program) -> Vec<Completion> {
+    let mut items = Vec::new();
+
+    for decl in program.declarations.types.values() {
+        items.push(Completion {
+            kind: Some("type"),
+            name: decl.name.to_string(),
+            help: decl.attributes.decl_attributes.help.iter().join("\n"),
+        });
+    }
+
+    for decl in program.declarations.traits.values() {
+        items.push(Completion {
+            kind: Some("trait"),
+            name: decl.name.to_string(),
+            help: decl.attributes.decl_attributes.help.iter().join("\n"),
+        });
+    }
+
+    for decl in program.declarations.builtin_types.values() {
+        items.push(Completion {
+            kind: Some("type"),
+            name: decl.name.to_string(),
+            help: decl.attributes.help.iter().join("\n"),
+        });
+    }
+
+    for decl in program.declarations.type_parameters.values() {
+        items.push(Completion {
+            kind: Some("type"),
+            name: match decl.name {
+                Some(name) => name.to_string(),
+                None => continue,
+            },
+            help: String::new(),
+        });
+    }
+
+    for decl in program.declarations.constants.values() {
+        items.push(Completion {
+            kind: matches!(decl.ty, wipple_frontend::analysis::Type::Function(_, _))
+                .then_some("function"),
+            name: decl.name.to_string(),
+            help: decl.attributes.decl_attributes.help.iter().join("\n"),
+        });
+    }
+
+    for decl in program.declarations.variables.values() {
+        items.push(Completion {
+            kind: matches!(decl.ty, wipple_frontend::analysis::Type::Function(_, _))
+                .then_some("function"),
+            name: match decl.name {
+                Some(name) => name.to_string(),
+                None => continue,
+            },
+            help: String::new(),
+        });
+    }
+
+    items.sort_by(|a, b| a.name.cmp(&b.name));
+    items.dedup_by(|a, b| a.name == b.name);
 
     items
 }
