@@ -263,7 +263,6 @@ impl FinalizedDiagnostics {
                 })
             };
 
-            #[cfg(debug_assertions)]
             let primary_span = diagnostic.notes.first().unwrap().span;
 
             let (_, rest) = primary_span.split_iter();
