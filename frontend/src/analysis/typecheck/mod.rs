@@ -4609,14 +4609,40 @@ impl Typechecker {
                     .attributes
                     .clone();
 
-                let message = format!(
+                let error_message = trait_attributes.on_unimplemented.map_or_else(
+                    || String::from("missing instance"),
+                    |(segments, trailing_segment)| {
+                        let trait_params = self
+                            .declarations
+                            .borrow()
+                            .traits
+                            .get(&id)
+                            .unwrap()
+                            .params
+                            .clone()
+                            .into_iter()
+                            .zip(params.clone())
+                            .collect::<engine::GenericSubstitutions>();
+
+                        segments
+                            .iter()
+                            .map(|(text, param)| {
+                                let ty = trait_params.get(param).unwrap().clone();
+                                text.to_string() + &self.format_type(ty, Default::default())
+                            })
+                            .chain(trailing_segment.map(|text| text.to_string()))
+                            .collect()
+                    },
+                );
+
+                let note_message = format!(
                     "could not find instance {}",
                     self.format_type(format::FormattableType::r#trait(id, params), format)
                 );
 
                 self.compiler.error_with(
-                    "missing instance",
-                    std::iter::once(Note::primary(error.span, message))
+                    error_message,
+                    std::iter::once(Note::primary(error.span, note_message))
                         .chain(
                             bound_span
                                 .map(|span| Note::secondary(span, "required by this bound here")),
@@ -4627,11 +4653,6 @@ impl Typechecker {
                                 "this instance could apply, but its bounds weren't satisfied",
                             )
                         }))
-                        .chain(
-                            trait_attributes
-                                .on_unimplemented
-                                .map(|message| Note::secondary(error.span, message)),
-                        )
                         .collect(),
                     error.trace,
                 )

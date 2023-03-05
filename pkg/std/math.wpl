@@ -5,6 +5,7 @@ use "util.wpl"
 use "logic.wpl"
 
 [help "Implements the `+` operator."]
+[on-unimplemented "cannot add `_` to `_`" Left Right]
 Add : Left Right Sum => trait (Left -> Right -> Sum)
 
 [operator Addition-Precedence]
@@ -23,6 +24,7 @@ instance (Add Double Double Double) : a -> b -> external "runtime" "add-double" 
 instance (Add Text Text Text) : a -> b -> format "__" a b
 
 [help "Implements the `-` operator."]
+[on-unimplemented "cannot subtract `_` from `_`" Right Left]
 Subtract : Left Right Difference => trait (Left -> Right -> Difference)
 
 [operator Addition-Precedence]
@@ -40,6 +42,7 @@ instance (Subtract Float Float Float) : a -> b -> external "runtime" "subtract-f
 instance (Subtract Double Double Double) : a -> b -> external "runtime" "subtract-double" a b
 
 [help "Implements the `*` operator."]
+[on-unimplemented "cannot multiply `_` by `_`" Left Right]
 Multiply : Left Right Product => trait (Left -> Right -> Product)
 
 [operator Multiplication-Precedence]
@@ -57,6 +60,7 @@ instance (Multiply Float Float Float) : a -> b -> external "runtime" "multiply-f
 instance (Multiply Double Double Double) : a -> b -> external "runtime" "multiply-double" a b
 
 [help "Implements the `/` operator."]
+[on-unimplemented "cannot divide `_` by `_`" Left Right]
 Divide : Left Right Quotient => trait (Left -> Right -> Quotient)
 
 [operator Multiplication-Precedence]
@@ -74,6 +78,7 @@ instance (Divide Float Float Float) : a -> b -> external "runtime" "divide-float
 instance (Divide Double Double Double) : a -> b -> external "runtime" "divide-double" a b
 
 [help "Implements the `^` operator."]
+[on-unimplemented "cannot raise `_` to the power of `_`" Left Right]
 Power : Left Right Power' => trait (Left -> Right -> Power') -- FIXME: Rename to `Power` once type parameters aren't leaked
 
 [operator Exponentiation-Precedence]

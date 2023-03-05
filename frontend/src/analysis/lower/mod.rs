@@ -219,7 +219,10 @@ pub struct TraitDeclaration {
 #[non_exhaustive]
 pub struct TraitAttributes {
     pub decl_attributes: DeclarationAttributes,
-    pub on_unimplemented: Option<InternedString>,
+    pub on_unimplemented: Option<(
+        Vec<(InternedString, TypeParameterId)>,
+        Option<InternedString>,
+    )>,
     pub allow_overlapping_instances: bool,
 }
 
@@ -3286,10 +3289,33 @@ impl Lowerer {
 
         TraitAttributes {
             decl_attributes: self.lower_decl_attributes(attributes, scope),
-            on_unimplemented: attributes
-                .on_unimplemented
-                .as_ref()
-                .map(|attribute| attribute.message),
+            on_unimplemented: attributes.on_unimplemented.as_ref().and_then(|attribute| {
+                Some((
+                    attribute
+                        .segments
+                        .iter()
+                        .cloned()
+                        .map(|(text, param)| {
+                            let (param_span, param_name) = param.ok()?;
+
+                            let param = match self.get(param_name, param_span, scope) {
+                                Some(AnyDeclaration::TypeParameter(id)) => id,
+                                _ => {
+                                    self.compiler.add_error(
+                                        format!("cannot find type parameter `{param_name}`"),
+                                        vec![Note::primary(param_span, "no such type parameter")],
+                                    );
+
+                                    return None;
+                                }
+                            };
+
+                            Some((text, param))
+                        })
+                        .collect::<Option<_>>()?,
+                    attribute.trailing_segment,
+                ))
+            }),
             allow_overlapping_instances: attributes.allow_overlapping_instances.is_some(),
         }
     }

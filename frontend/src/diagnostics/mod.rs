@@ -239,6 +239,8 @@ impl FinalizedDiagnostics {
         codespan_reporting::files::SimpleFiles<FilePath, Arc<str>>,
         Vec<codespan_reporting::diagnostic::Diagnostic<usize>>,
     ) {
+        use codespan_reporting::diagnostic::{Label, LabelStyle};
+
         let diagnostics = self.diagnostics.into_iter().unique().collect::<Vec<_>>();
 
         let mut files = codespan_reporting::files::SimpleFiles::new();
@@ -246,46 +248,43 @@ impl FinalizedDiagnostics {
 
         let mut tracked_files = HashMap::<FilePath, usize>::new();
         for diagnostic in diagnostics {
+            let mut make_note = |style: LabelStyle, span: Span, message: &str| {
+                self.source_map.get(&span.path).map(|src| {
+                    let file = match tracked_files.entry(span.path) {
+                        Entry::Occupied(entry) => *entry.get(),
+                        Entry::Vacant(entry) => {
+                            let file = files.add(span.path, src.clone());
+                            entry.insert(file);
+                            file
+                        }
+                    };
+
+                    Label::new(style, file, span.start..span.end).with_message(message)
+                })
+            };
+
             #[cfg(debug_assertions)]
             let primary_span = diagnostic.notes.first().unwrap().span;
+
+            let (_, rest) = primary_span.split_iter();
+            let rest: Box<dyn Iterator<Item = Span>> = if show_expansion_history {
+                Box::new(rest)
+            } else {
+                Box::new(rest.last().into_iter())
+            };
 
             let labels = diagnostic
                 .notes
                 .into_iter()
                 .flat_map(|note| {
-                    use codespan_reporting::diagnostic::{Label, LabelStyle};
-
-                    let (first, rest) = note.span.split_iter();
-
-                    let mut make_note = |style: LabelStyle, span: Span, message: &str| {
-                        self.source_map.get(&span.path).map(|src| {
-                            let file = match tracked_files.entry(span.path) {
-                                Entry::Occupied(entry) => *entry.get(),
-                                Entry::Vacant(entry) => {
-                                    let file = files.add(span.path, src.clone());
-                                    entry.insert(file);
-                                    file
-                                }
-                            };
-
-                            Label::new(style, file, span.start..span.end).with_message(message)
-                        })
-                    };
-
-                    let rest: Box<dyn Iterator<Item = Span>> = if show_expansion_history {
-                        Box::new(rest)
-                    } else {
-                        Box::new(rest.last().into_iter())
-                    };
-
-                    std::iter::once(make_note(note.level.into(), first, &note.message)).chain(
-                        rest.map(|span| {
-                            make_note(LabelStyle::Secondary, span, "actual error occurred here")
-                        })
-                        .collect::<Vec<_>>(),
-                    )
+                    let (first, _) = note.span.split_iter();
+                    make_note(note.level.into(), first, &note.message)
                 })
-                .flatten()
+                .collect::<Vec<_>>()
+                .into_iter()
+                .chain(rest.flat_map(|span| {
+                    make_note(LabelStyle::Secondary, span, "actual error occurred here")
+                }))
                 .collect();
 
             let diagnostic =
