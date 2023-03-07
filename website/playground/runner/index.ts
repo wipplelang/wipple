@@ -65,18 +65,23 @@ export const useRunner = () => {
     return {
         analyze: (code: string, lint: boolean) =>
             new Promise<AnalysisOutput>((resolve, reject) => {
+                const prevonmessage = runner.current!.onmessage;
                 runner.current!.onmessage = (event) => {
                     resolve(event.data);
+                    runner.current!.onmessage = prevonmessage;
                 };
 
+                const prevonerror = runner.current!.onerror;
                 runner.current!.onerror = (event) => {
                     reject(event.error);
+                    runner.current!.onerror = prevonerror;
                 };
 
                 runner.current!.postMessage({ operation: "analyze", code, lint });
             }),
         run: (handleConsole: (request: AnalysisConsoleRequest) => void) =>
             new Promise<boolean>((resolve, reject) => {
+                const prevonmessage = runner.current!.onmessage;
                 runner.current!.onmessage = async (event) => {
                     switch (event.data.type) {
                         case "display":
@@ -107,6 +112,12 @@ export const useRunner = () => {
                                             runner.current!.onmessage = prevonmessage;
                                         };
 
+                                        const prevonerror = runner.current!.onerror;
+                                        runner.current!.onerror = (event) => {
+                                            reject(event.error);
+                                            runner.current!.onerror = prevonerror;
+                                        };
+
                                         runner.current!.postMessage({
                                             operation: "recvPromptValid",
                                         });
@@ -133,36 +144,47 @@ export const useRunner = () => {
                             break;
                         case "done":
                             resolve(event.data.success);
+                            runner.current!.onmessage = prevonmessage;
                             break;
                     }
                 };
 
+                const prevonerror = runner.current!.onerror;
                 runner.current!.onerror = (event) => {
                     reject(event.error);
+                    runner.current!.onerror = prevonerror;
                 };
 
                 runner.current!.postMessage({ operation: "run" });
             }),
         hover: (start: number, end: number) =>
             new Promise<HoverOutput | null>((resolve, reject) => {
+                const prevonmessage = runner.current!.onmessage;
                 runner.current!.onmessage = (event) => {
                     resolve(event.data);
+                    runner.current!.onmessage = prevonmessage;
                 };
 
+                const prevonerror = runner.current!.onerror;
                 runner.current!.onerror = (event) => {
                     reject(event.error);
+                    runner.current!.onerror = prevonerror;
                 };
 
                 runner.current!.postMessage({ operation: "hover", start, end });
             }),
         completions: (position: number) =>
             new Promise<AnalysisOutputCompletionItem[]>((resolve, reject) => {
+                const prevonmessage = runner.current!.onmessage;
                 runner.current!.onmessage = (event) => {
                     resolve(event.data);
+                    runner.current!.onmessage = prevonmessage;
                 };
 
+                const prevonerror = runner.current!.onerror;
                 runner.current!.onerror = (event) => {
                     reject(event.error);
+                    runner.current!.onerror = prevonerror;
                 };
 
                 runner.current!.postMessage({ operation: "completions", position });
