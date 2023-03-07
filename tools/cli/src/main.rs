@@ -1,3 +1,4 @@
+mod document;
 mod lsp;
 
 use clap::{Parser, ValueEnum};
@@ -36,6 +37,18 @@ enum Args {
 
         #[clap(flatten)]
         options: BuildOptions,
+    },
+    Document {
+        path: String,
+
+        #[clap(short)]
+        output: Option<PathBuf>,
+
+        #[clap(flatten)]
+        doc_options: document::Options,
+
+        #[clap(flatten)]
+        build_options: BuildOptions,
     },
     Cache {
         #[clap(long)]
@@ -221,9 +234,11 @@ async fn run() -> anyhow::Result<()> {
             options,
             output,
         } => {
-            let mut output: Box<dyn Write> = match output {
-                Some(output) => Box::new(std::fs::File::create(output)?),
-                None => Box::new(std::io::stdout()),
+            let output = || -> std::io::Result<Box<dyn Write>> {
+                Ok(match output {
+                    Some(output) => Box::new(std::fs::File::create(output)?),
+                    None => Box::new(std::io::stdout()),
+                })
             };
 
             match format {
@@ -239,6 +254,7 @@ async fn run() -> anyhow::Result<()> {
                         progress_bar.finish_and_clear();
                     }
 
+                    let mut output = output()?;
                     output.write_all(program.to_string().as_bytes())?;
                     writeln!(output)?;
                 }
@@ -268,6 +284,7 @@ async fn run() -> anyhow::Result<()> {
                         progress_bar.finish_and_clear();
                     }
 
+                    let mut output = output()?;
                     output.write_all(ir.to_string().as_bytes())?;
                 }
             }
@@ -290,6 +307,34 @@ async fn run() -> anyhow::Result<()> {
             } else {
                 println!("{}", cache_dir.to_string_lossy());
             }
+        }
+        Args::Document {
+            path,
+            output,
+            doc_options,
+            build_options,
+        } => {
+            let progress_bar = build_options.progress.then(progress_bar);
+
+            let (program, diagnostics) = analyze(&path, &build_options, progress_bar.clone()).await;
+
+            let success = !diagnostics.contains_errors();
+            emit_diagnostics(diagnostics, &build_options)?;
+
+            if let Some(progress_bar) = progress_bar.as_ref() {
+                progress_bar.finish_and_clear();
+            }
+
+            if !success {
+                return Err(anyhow::Error::msg(""));
+            }
+
+            let output: Box<dyn Write> = match output {
+                Some(output) => Box::new(std::fs::File::create(output)?),
+                None => Box::new(std::io::stdout()),
+            };
+
+            document::document(&program, doc_options, output)?;
         }
         Args::Lsp => {
             lsp::run().await;
