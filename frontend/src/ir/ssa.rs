@@ -78,6 +78,7 @@ pub enum ExpressionKind {
 pub struct Arm {
     pub span: Option<SpanList>,
     pub pattern: Pattern,
+    pub guard: Option<Expression>,
     pub body: Expression,
 }
 
@@ -104,7 +105,6 @@ pub enum PatternKind {
     Destructure(BTreeMap<FieldIndex, Pattern>),
     Variant(VariantIndex, Vec<Pattern>),
     Or(Box<Pattern>, Box<Pattern>),
-    Where(Box<Pattern>, Box<Expression>),
 }
 
 impl Compiler {
@@ -286,6 +286,7 @@ impl Converter<'_> {
                         vec![Arm {
                             span: Some(pattern.span),
                             pattern: self.convert_pattern(pattern),
+                            guard: None,
                             body: Expression {
                                 tail,
                                 ty: remaining
@@ -317,10 +318,15 @@ impl Converter<'_> {
         Arm {
             span: Some(arm.span),
             pattern: self.convert_pattern(&arm.pattern),
+            guard: arm
+                .guard
+                .as_ref()
+                .map(|expr| self.convert_expr(expr, false)),
             body: self.convert_expr(&arm.body, tail),
         }
     }
 
+    #[allow(clippy::only_used_in_recursion)]
     fn convert_pattern(&mut self, pattern: &analysis::Pattern) -> Pattern {
         Pattern {
             span: Some(pattern.span),
@@ -345,13 +351,13 @@ impl Converter<'_> {
                         .map(|pattern| self.convert_pattern(pattern))
                         .collect(),
                 ),
-                analysis::PatternKind::Destructure(fields) => PatternKind::Destructure(
+                analysis::PatternKind::Destructure(_, fields) => PatternKind::Destructure(
                     fields
                         .iter()
                         .map(|(index, pattern)| (*index, self.convert_pattern(pattern)))
                         .collect(),
                 ),
-                analysis::PatternKind::Variant(discriminant, values) => PatternKind::Variant(
+                analysis::PatternKind::Variant(_, discriminant, values) => PatternKind::Variant(
                     *discriminant,
                     values
                         .iter()
@@ -361,10 +367,6 @@ impl Converter<'_> {
                 analysis::PatternKind::Or(left, right) => PatternKind::Or(
                     Box::new(self.convert_pattern(left)),
                     Box::new(self.convert_pattern(right)),
-                ),
-                analysis::PatternKind::Where(pattern, condition) => PatternKind::Where(
-                    Box::new(self.convert_pattern(pattern)),
-                    Box::new(self.convert_expr(condition, false)),
                 ),
             },
         }

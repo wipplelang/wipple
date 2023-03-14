@@ -458,6 +458,7 @@ impl Expression {
 pub struct Arm {
     pub span: SpanList,
     pub pattern: Pattern,
+    pub guard: Option<Expression>,
     pub body: Expression,
 }
 
@@ -478,7 +479,6 @@ pub enum PatternKind {
     Variant(TypeId, VariantIndex, Vec<Pattern>),
     Annotate(Box<Pattern>, TypeAnnotation),
     Or(Box<Pattern>, Box<Pattern>),
-    Where(Box<Pattern>, Box<Expression>),
     Tuple(Vec<Pattern>),
 }
 
@@ -2405,12 +2405,38 @@ impl Lowerer {
 
                                 let scope = self.child_scope(arm.scope, scope);
 
-                                let pattern = match &arm.pattern {
-                                    Ok(pattern) => self.lower_pattern(pattern, scope),
-                                    Err(error) => Pattern {
-                                        span: error.span,
-                                        kind: PatternKind::error(&self.compiler),
+                                let (pattern, guard) = match &arm.pattern {
+                                    Ok(pattern) => match pattern {
+                                        ast::WhenPattern::Where(pattern) => {
+                                            let inner_pattern = match pattern.pattern.as_deref() {
+                                                Ok(value) => self.lower_pattern(value, scope),
+                                                Err(error) => Pattern {
+                                                    span: error.span,
+                                                    kind: PatternKind::error(&self.compiler),
+                                                },
+                                            };
+
+                                            let condition = match pattern.condition.as_deref() {
+                                                Ok(value) => self.lower_expr(value, scope),
+                                                Err(error) => Expression {
+                                                    span: error.span,
+                                                    kind: ExpressionKind::error(&self.compiler),
+                                                },
+                                            };
+
+                                            (inner_pattern, Some(condition))
+                                        }
+                                        ast::WhenPattern::Pattern(pattern) => {
+                                            (self.lower_pattern(&pattern.pattern, scope), None)
+                                        }
                                     },
+                                    Err(error) => (
+                                        Pattern {
+                                            span: error.span,
+                                            kind: PatternKind::error(&self.compiler),
+                                        },
+                                        None,
+                                    ),
                                 };
 
                                 let body = match &arm.body {
@@ -2424,6 +2450,7 @@ impl Lowerer {
                                 Some(Arm {
                                     span: arm.span(),
                                     pattern,
+                                    guard,
                                     body,
                                 })
                             })
@@ -2856,28 +2883,6 @@ impl Lowerer {
                 Pattern {
                     span: pattern.span(),
                     kind: PatternKind::Or(Box::new(lhs), Box::new(rhs)),
-                }
-            }
-            ast::Pattern::Where(pattern) => {
-                let inner_pattern = match pattern.pattern.as_deref() {
-                    Ok(value) => self.lower_pattern(value, scope),
-                    Err(error) => Pattern {
-                        span: error.span,
-                        kind: PatternKind::error(&self.compiler),
-                    },
-                };
-
-                let condition = match pattern.condition.as_deref() {
-                    Ok(value) => self.lower_expr(value, scope),
-                    Err(error) => Expression {
-                        span: error.span,
-                        kind: ExpressionKind::error(&self.compiler),
-                    },
-                };
-
-                Pattern {
-                    span: pattern.span(),
-                    kind: PatternKind::Where(Box::new(inner_pattern), Box::new(condition)),
                 }
             }
             ast::Pattern::Tuple(pattern) => Pattern {

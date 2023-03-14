@@ -108,6 +108,7 @@ pub enum BottomTypeReason {
 }
 
 pub type GenericSubstitutions = BTreeMap<TypeParameterId, UnresolvedType>;
+pub type FinalizedGenericSubstitutions = BTreeMap<TypeParameterId, Type>;
 
 #[derive(Debug, Clone, Default)]
 pub struct Context {
@@ -974,6 +975,24 @@ impl TypeStructure<Type> {
                 .collect(),
         }
     }
+
+    pub fn instantiate_with(&mut self, substitutions: &FinalizedGenericSubstitutions) {
+        match self {
+            TypeStructure::Marker | TypeStructure::Recursive(_) => {}
+            TypeStructure::Structure(tys) => {
+                for ty in tys {
+                    ty.instantiate_with(substitutions);
+                }
+            }
+            TypeStructure::Enumeration(variants) => {
+                for tys in variants {
+                    for ty in tys {
+                        ty.instantiate_with(substitutions);
+                    }
+                }
+            }
+        }
+    }
 }
 
 impl Type {
@@ -996,6 +1015,39 @@ impl Type {
                 _ => Vec::new(),
             },
             _ => Vec::new(),
+        }
+    }
+
+    pub fn instantiate_with(&mut self, substitutions: &FinalizedGenericSubstitutions) {
+        match self {
+            Type::Parameter(param) => {
+                if let Some(ty) = substitutions.get(param).cloned() {
+                    *self = ty;
+                }
+            }
+            Type::Function(input, output) => {
+                input.instantiate_with(substitutions);
+                output.instantiate_with(substitutions);
+            }
+            Type::Named(_, params, structure) => {
+                for param in params {
+                    param.instantiate_with(substitutions);
+                }
+
+                structure.instantiate_with(substitutions);
+            }
+            Type::Tuple(tys) => {
+                for ty in tys {
+                    ty.instantiate_with(substitutions);
+                }
+            }
+            Type::Builtin(ty) => match ty {
+                BuiltinType::List(ty) | BuiltinType::Mutable(ty) => {
+                    ty.instantiate_with(substitutions)
+                }
+                _ => {}
+            },
+            _ => {}
         }
     }
 }

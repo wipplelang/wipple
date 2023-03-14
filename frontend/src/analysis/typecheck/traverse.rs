@@ -1,6 +1,5 @@
 use super::{
-    Expression, MonomorphizedExpression, MonomorphizedPattern, MonomorphizedPatternKind, Pattern,
-    PatternKind, UnresolvedExpression, UnresolvedPatternKind,
+    Expression, MonomorphizedExpression, MonomorphizedPattern, Pattern, UnresolvedExpression,
 };
 
 macro_rules! traverse_expr_impl {
@@ -32,8 +31,8 @@ macro_rules! traverse_expr_impl {
                     input.$traverse(context.clone(), f);
 
                     for arm in arms {
-                        if let [<$prefix PatternKind>]::Where(_, condition) = &$($mut)? arm.pattern.kind {
-                            condition.$traverse(context.clone(), f);
+                        if let Some(guard) = &$($mut)? arm.guard {
+                            guard.$traverse(context.clone(), f);
                         }
 
                         arm.body.$traverse(context.clone(), f);
@@ -128,9 +127,6 @@ macro_rules! traverse_pattern_impl {
                 Or(left, right) => {
                     left.$traverse(context.clone(), f);
                     right.$traverse(context.clone(), f);
-                }
-                Where(pattern, _) => {
-                    pattern.$traverse(context.clone(), f);
                 }
                 Tuple(patterns) => {
                     for pattern in patterns {

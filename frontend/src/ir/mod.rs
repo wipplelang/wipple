@@ -473,18 +473,20 @@ impl IrGen {
         if arms.len() == 1 {
             let arm = arms.first().unwrap();
 
-            if let ssa::PatternKind::Variable(var) = arm.pattern.kind {
-                let var = self.variable_for(label, var);
-                let arm = arms.pop().unwrap();
+            if arm.guard.is_none() {
+                if let ssa::PatternKind::Variable(var) = arm.pattern.kind {
+                    let var = self.variable_for(label, var);
+                    let arm = arms.pop().unwrap();
 
-                self.statements_for(label, *pos)
-                    .push(Statement::Initialize(var));
+                    self.statements_for(label, *pos)
+                        .push(Statement::Initialize(var));
 
-                self.gen_expr(arm.body, label, pos);
+                    self.gen_expr(arm.body, label, pos);
 
-                self.statements_for(label, *pos).push(Statement::Free(var));
+                    self.statements_for(label, *pos).push(Statement::Free(var));
 
-                return;
+                    return;
+                }
             }
         }
 
@@ -495,7 +497,23 @@ impl IrGen {
 
             let mut body_pos = self.new_basic_block(label);
             self.scopes.push(Vec::new());
-            self.gen_pattern(arm.pattern, input_ty, body_pos, label, pos);
+
+            if let Some(guard) = arm.guard {
+                let condition_pos = self.new_basic_block(label);
+                let else_pos = self.new_basic_block(label);
+
+                self.gen_pattern(arm.pattern, input_ty, condition_pos, label, pos);
+                *self.terminator_for(label, *pos) = Terminator::Jump(else_pos);
+
+                *pos = condition_pos;
+                self.gen_expr(guard, label, pos);
+                *self.terminator_for(label, *pos) =
+                    Terminator::If(VariantIndex::new(1), body_pos, else_pos);
+
+                *pos = else_pos;
+            } else {
+                self.gen_pattern(arm.pattern, input_ty, body_pos, label, pos);
+            }
 
             self.statements_for(label, body_pos).push(Statement::Drop);
             self.gen_expr(arm.body, label, &mut body_pos);
@@ -610,20 +628,6 @@ impl IrGen {
                 *self.terminator_for(label, continue_pos) = Terminator::Jump(body_pos);
 
                 self.gen_pattern(*right, input_ty, body_pos, label, pos);
-            }
-            ssa::PatternKind::Where(pattern, condition) => {
-                let condition_pos = self.new_basic_block(label);
-                let else_pos = self.new_basic_block(label);
-
-                self.gen_pattern(*pattern, input_ty, condition_pos, label, pos);
-                *self.terminator_for(label, *pos) = Terminator::Jump(else_pos);
-
-                *pos = condition_pos;
-                self.gen_expr(*condition, label, pos);
-                *self.terminator_for(label, *pos) =
-                    Terminator::If(VariantIndex::new(1), body_pos, else_pos);
-
-                *pos = else_pos;
             }
             ssa::PatternKind::Tuple(patterns) => {
                 let tuple_tys = match input_ty {

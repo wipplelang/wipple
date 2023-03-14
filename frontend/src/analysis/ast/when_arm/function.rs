@@ -4,8 +4,8 @@ use crate::{
             OperatorAssociativity, Syntax, SyntaxContext, SyntaxError, SyntaxRule, SyntaxRules,
         },
         when_arm::WhenArmSyntaxContext,
-        Expression, ExpressionSyntax, ExpressionSyntaxContext, Pattern, PatternSyntax,
-        PatternSyntaxContext,
+        Expression, ExpressionSyntax, ExpressionSyntaxContext, WhenPattern, WhenPatternSyntax,
+        WhenPatternSyntaxContext,
     },
     parse::{self, SpanList},
     ScopeId,
@@ -15,7 +15,7 @@ use crate::{
 pub struct FunctionWhenArm {
     pub span: SpanList,
     pub arrow_span: SpanList,
-    pub pattern: Result<Pattern, SyntaxError>,
+    pub pattern: Result<WhenPattern, SyntaxError>,
     pub body: Result<Expression, SyntaxError>,
     pub scope: ScopeId,
 }
@@ -41,8 +41,8 @@ impl Syntax for FunctionWhenArmSyntax {
                 let lhs = parse::Expr::list_or_expr(lhs_span, lhs);
                 let pattern = context
                     .ast_builder
-                    .build_expr::<PatternSyntax>(
-                        PatternSyntaxContext::new(context.ast_builder.clone())
+                    .build_expr::<WhenPatternSyntax>(
+                        WhenPatternSyntaxContext::new(context.ast_builder.clone())
                             .with_statement_attributes(
                                 context.statement_attributes.as_ref().unwrap().clone(),
                             ),

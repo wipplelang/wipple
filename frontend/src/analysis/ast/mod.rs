@@ -21,6 +21,7 @@ mod type_member;
 mod type_pattern;
 mod when_arm;
 mod when_body;
+mod when_pattern;
 
 pub use attributes::*;
 pub use syntax::SyntaxError;
@@ -43,6 +44,7 @@ pub use type_member::*;
 pub use type_pattern::*;
 pub use when_arm::*;
 pub use when_body::*;
+pub use when_pattern::*;
 
 use crate::{
     diagnostics::Note,

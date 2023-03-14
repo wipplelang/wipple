@@ -336,6 +336,10 @@ impl Arm {
         indent: usize,
     ) -> fmt::Result {
         self.pattern.display_with(f, input_ty, file, indent)?;
+        if let Some(guard) = &self.guard {
+            write!(f, " where ")?;
+            guard.display_with(f, file, indent)?;
+        }
         write!(f, " -> ")?;
         self.body.display_with(f, file, indent)?;
         Ok(())
@@ -372,7 +376,7 @@ impl Pattern {
 
                 write!(f, "{name}")?;
             }
-            PatternKind::Destructure(fields) => {
+            PatternKind::Destructure(_, fields) => {
                 let (id, field_tys) = match input_ty {
                     Type::Named(id, _, TypeStructure::Structure(fields)) => (id, fields),
                     _ => {
@@ -410,9 +414,9 @@ impl Pattern {
                 }
                 write!(f, "{}}}", "\t".repeat(indent))?;
             }
-            PatternKind::Variant(index, patterns) => {
-                let (id, variant_tys) = match input_ty {
-                    Type::Named(id, _, TypeStructure::Enumeration(variants)) => (id, variants),
+            PatternKind::Variant(id, index, patterns) => {
+                let variant_tys = match input_ty {
+                    Type::Named(_, _, TypeStructure::Enumeration(variants)) => variants,
                     _ => {
                         write!(f, "<error>")?;
                         return Ok(());
@@ -456,13 +460,6 @@ impl Pattern {
                 left.display_with(f, input_ty, file, indent)?;
                 write!(f, " or ")?;
                 right.display_with(f, input_ty, file, indent)?;
-                write!(f, ")")?;
-            }
-            PatternKind::Where(pattern, expr) => {
-                write!(f, "(")?;
-                pattern.display_with(f, input_ty, file, indent)?;
-                write!(f, " where ")?;
-                expr.display_with(f, file, indent)?;
                 write!(f, ")")?;
             }
             PatternKind::Tuple(patterns) => {

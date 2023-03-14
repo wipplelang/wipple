@@ -88,6 +88,7 @@ pub mod ssa {
                                             vec![Arm {
                                                 span: pattern.span,
                                                 pattern: pattern.clone(),
+                                                guard: None,
                                                 body: Expression {
                                                     ty: remaining
                                                         .last()
@@ -334,6 +335,7 @@ pub mod inline {
                                     vec![Arm {
                                         span: input.span,
                                         pattern,
+                                        guard: None,
                                         body,
                                     }],
                                 );

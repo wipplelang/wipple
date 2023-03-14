@@ -180,7 +180,7 @@ macro_rules! ids {
     };
 }
 
-ids!(enumeration, structure);
+ids!(enumeration, structure, reachable_marker);
 
 macro_rules! indexes {
     ($($(#[$meta:meta])* $id:ident),* $(,)?) => {

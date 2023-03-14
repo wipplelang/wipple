@@ -1,32 +1,33 @@
 use crate::{
     analysis::ast::{
-        pattern::PatternSyntaxContext,
         syntax::{
             OperatorAssociativity, Syntax, SyntaxContext, SyntaxError, SyntaxRule, SyntaxRules,
         },
+        when_pattern::WhenPatternSyntaxContext,
         Expression, ExpressionSyntax, ExpressionSyntaxContext, Pattern, PatternSyntax,
+        PatternSyntaxContext,
     },
     parse::{self, SpanList},
 };
 
 #[derive(Debug, Clone)]
-pub struct WherePattern {
+pub struct WhereWhenPattern {
     pub span: SpanList,
     pub where_span: SpanList,
     pub pattern: Result<Box<Pattern>, SyntaxError>,
     pub condition: Result<Box<Expression>, SyntaxError>,
 }
 
-impl WherePattern {
+impl WhereWhenPattern {
     pub fn span(&self) -> SpanList {
         self.span
     }
 }
 
-pub struct WherePatternSyntax;
+pub struct WhereWhenPatternSyntax;
 
-impl Syntax for WherePatternSyntax {
-    type Context = PatternSyntaxContext;
+impl Syntax for WhereWhenPatternSyntax {
+    type Context = WhenPatternSyntaxContext;
 
     fn rules() -> SyntaxRules<Self> {
         SyntaxRules::new().with(SyntaxRule::<Self>::operator(
@@ -36,7 +37,14 @@ impl Syntax for WherePatternSyntax {
                 let lhs = parse::Expr::list_or_expr(lhs_span, lhs_exprs);
                 let pattern = context
                     .ast_builder
-                    .build_expr::<PatternSyntax>(context.clone(), lhs,scope)
+                    .build_expr::<PatternSyntax>(
+                        PatternSyntaxContext::new(context.ast_builder.clone())
+                            .with_statement_attributes(
+                                context.statement_attributes.as_ref().unwrap().clone(),
+                            ),
+                        lhs,
+                        scope,
+                    )
                     .await;
 
                 let rhs = parse::Expr::list(rhs_span, rhs_exprs);
@@ -52,7 +60,7 @@ impl Syntax for WherePatternSyntax {
                     )
                     .await;
 
-                Ok(WherePattern {
+                Ok(WhereWhenPattern {
                     span,
                     where_span,
                     pattern: pattern.map(Box::new),

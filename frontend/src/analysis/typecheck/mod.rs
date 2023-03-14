@@ -5,6 +5,7 @@ mod number;
 
 pub mod display;
 mod engine;
+mod exhaustiveness;
 pub mod format;
 pub mod traverse;
 
@@ -212,6 +213,7 @@ macro_rules! expr {
             $vis struct [<$prefix Arm>] {
                 $vis span: SpanList,
                 $vis pattern: [<$prefix Pattern>],
+                $vis guard: Option<[<$prefix Expression>]>,
                 $vis body: [<$prefix Expression>],
             }
 
@@ -241,7 +243,6 @@ macro_rules! pattern {
                 Text(InternedString),
                 Variable(VariableId),
                 Or(Box<[<$prefix Pattern>]>, Box<[<$prefix Pattern>]>),
-                Where(Box<[<$prefix Pattern>]>, Box<[<$prefix Expression>]>),
                 Tuple(Vec<[<$prefix Pattern>]>),
                 $($kinds)*
             }
@@ -366,6 +367,7 @@ impl From<UnresolvedArm> for MonomorphizedArm {
         MonomorphizedArm {
             span: arm.span,
             pattern: arm.pattern.into(),
+            guard: arm.guard.map(From::from),
             body: arm.body.into(),
         }
     }
@@ -384,12 +386,6 @@ impl From<UnresolvedPattern> for MonomorphizedPattern {
                     Box::new((*left).into()),
                     Box::new((*right).into()),
                 ),
-                UnresolvedPatternKind::Where(pattern, condition) => {
-                    MonomorphizedPatternKind::Where(
-                        Box::new((*pattern).into()),
-                        Box::new((*condition).into()),
-                    )
-                }
                 UnresolvedPatternKind::Tuple(patterns) => {
                     MonomorphizedPatternKind::Tuple(patterns.into_iter().map(From::from).collect())
                 }
@@ -454,9 +450,9 @@ pattern!(, "Monomorphized", {
         engine::UnresolvedType,
         HashMap<InternedString, (UnresolvedPattern, engine::UnresolvedType)>,
     ),
-    Destructure(MatchSet, BTreeMap<FieldIndex, MonomorphizedPattern>),
+    Destructure(TypeId, BTreeMap<FieldIndex, MonomorphizedPattern>),
     UnresolvedVariant(TypeId, VariantIndex, Vec<UnresolvedPattern>),
-    Variant(MatchSet, VariantIndex, Vec<MonomorphizedPattern>),
+    Variant(TypeId, VariantIndex, Vec<MonomorphizedPattern>),
 });
 
 pattern!(pub, "", {
@@ -468,8 +464,8 @@ pattern!(pub, "", {
     Unsigned(c_uint),
     Float(f32),
     Double(f64),
-    Destructure(BTreeMap<FieldIndex, Pattern>),
-    Variant(VariantIndex, Vec<Pattern>)
+    Destructure(TypeId, BTreeMap<FieldIndex, Pattern>),
+    Variant(TypeId, VariantIndex, Vec<Pattern>)
 });
 
 impl Pattern {
@@ -539,6 +535,7 @@ struct QueuedItem {
     id: ItemId,
     expr: UnresolvedExpression,
     info: MonomorphizeInfo,
+    entrypoint: bool,
 }
 
 impl Typechecker {
@@ -592,6 +589,7 @@ impl Typechecker {
                 id: entrypoint_id,
                 expr: entrypoint,
                 info,
+                entrypoint: true,
             });
 
             entrypoint_id
@@ -599,6 +597,7 @@ impl Typechecker {
 
         // Monomorphize constants
 
+        let mut entrypoint_expr = None;
         if lowering_is_complete {
             let mut count = 0;
             let total = self.item_queue.len();
@@ -608,6 +607,10 @@ impl Typechecker {
 
                 let expr = self.repeatedly_monomorphize_expr(item.expr, item.info);
                 let expr = self.finalize_expr(expr);
+
+                if item.entrypoint {
+                    entrypoint_expr = Some(expr.clone());
+                }
 
                 self.items.insert(item.id, (item.generic_id, expr));
             }
@@ -637,7 +640,9 @@ impl Typechecker {
         let mut cached = BTreeSet::new();
         let mut map = BTreeMap::new();
 
-        let mut items = self.items.into_iter().collect::<BTreeMap<_, _>>();
+        let mut items = mem::take(&mut self.items)
+            .into_iter()
+            .collect::<BTreeMap<_, _>>();
 
         for (id, (generic_id, expr)) in &items {
             let cached_id = *cache
@@ -664,6 +669,32 @@ impl Typechecker {
                     }
                 }
             })
+        }
+
+        // Check exhaustiveness
+
+        if !self.compiler.has_errors() {
+            for decl in self.declarations.borrow().constants.values() {
+                if let Some(expr) = decl.body.as_ref() {
+                    self.check_exhaustiveness(expr);
+                }
+            }
+
+            for decl in self
+                .declarations
+                .borrow()
+                .instances
+                .values()
+                .flat_map(|instances| instances.values())
+            {
+                if let Some(expr) = decl.body.as_ref() {
+                    self.check_exhaustiveness(expr);
+                }
+            }
+
+            if let Some(expr) = entrypoint_expr {
+                self.check_exhaustiveness(&expr);
+            }
         }
 
         // Build the final program
@@ -1061,6 +1092,7 @@ impl Typechecker {
                 id: monomorphized_id,
                 expr: generic_expr,
                 info,
+                entrypoint: false,
             });
 
             break 'check;
@@ -1766,6 +1798,7 @@ impl Typechecker {
         UnresolvedArm {
             span: arm.span,
             pattern: self.convert_pattern(arm.pattern, input_ty, Some(input_span), info),
+            guard: arm.guard.map(|expr| self.convert_expr(expr, info)),
             body: self.convert_expr(arm.body, info),
         }
     }
@@ -1928,10 +1961,6 @@ impl Typechecker {
                     Box::new(self.convert_pattern(*lhs, ty.clone(), input_span, info)),
                     Box::new(self.convert_pattern(*rhs, ty, input_span, info)),
                 ),
-                lower::PatternKind::Where(pattern, condition) => UnresolvedPatternKind::Where(
-                    Box::new(self.convert_pattern(*pattern, ty, input_span, info)),
-                    Box::new(self.convert_expr(*condition, info)),
-                ),
                 lower::PatternKind::Tuple(patterns) => {
                     let tuple_tys = patterns
                         .iter()
@@ -2059,25 +2088,9 @@ impl Typechecker {
                             let mut input_ty = *input_ty;
                             input_ty.apply(&self.ctx);
 
-                            let mut match_set = MatchSet::new(&input_ty);
-
-                            let pattern = self.monomorphize_pattern(
-                                pattern,
-                                input_ty.clone(),
-                                &mut match_set,
-                                info,
-                            );
-
-                            self.assert_matched(&match_set, &input_ty, pattern.span, true);
-
-                            pattern
+                            self.monomorphize_pattern(pattern, input_ty.clone())
                         }
-                        _ => self.monomorphize_pattern(
-                            pattern,
-                            engine::UnresolvedType::Error,
-                            &mut MatchSet::Never,
-                            info,
-                        ),
+                        _ => self.monomorphize_pattern(pattern, engine::UnresolvedType::Error),
                     };
 
                     let body = self.monomorphize_expr(*body, info);
@@ -2088,16 +2101,10 @@ impl Typechecker {
                     let mut input = self.monomorphize_expr(*input, info);
                     input.ty.apply(&self.ctx);
 
-                    let mut match_set = MatchSet::new(&input.ty);
-
                     let arms = arms
                         .into_iter()
-                        .map(|arm| {
-                            self.monomorphize_arm(arm, input.ty.clone(), &mut match_set, info)
-                        })
+                        .map(|arm| self.monomorphize_arm(arm, input.ty.clone(), info))
                         .collect();
-
-                    self.assert_matched(&match_set, &input.ty, expr.span, false);
 
                     MonomorphizedExpressionKind::When(Box::new(input), arms)
                 }
@@ -2125,12 +2132,7 @@ impl Typechecker {
                     let mut value = self.monomorphize_expr(*value, info);
                     value.ty.apply(&self.ctx);
 
-                    let mut match_set = MatchSet::new(&value.ty);
-
-                    let pattern =
-                        self.monomorphize_pattern(pattern, value.ty.clone(), &mut match_set, info);
-
-                    self.assert_matched(&match_set, &value.ty, pattern.span, true);
+                    let pattern = self.monomorphize_pattern(pattern, value.ty.clone());
 
                     MonomorphizedExpressionKind::Initialize(pattern, Box::new(value))
                 }
@@ -2207,14 +2209,42 @@ impl Typechecker {
         &mut self,
         arm: impl Into<MonomorphizedArm>,
         ty: engine::UnresolvedType,
-        match_set: &mut MatchSet,
         info: &mut MonomorphizeInfo,
     ) -> MonomorphizedArm {
         let arm = arm.into();
 
         MonomorphizedArm {
             span: arm.span,
-            pattern: self.monomorphize_pattern(arm.pattern, ty, match_set, info),
+            pattern: self.monomorphize_pattern(arm.pattern, ty),
+            guard: arm.guard.map(|guard| {
+                let guard = self.monomorphize_expr(guard, info);
+
+                if let Some(boolean_ty) = self.entrypoint.info.language_items.boolean {
+                    if let Err(error) = self.unify(
+                        guard.span,
+                        guard.ty.clone(),
+                        engine::UnresolvedType::Named(
+                            boolean_ty,
+                            Vec::new(),
+                            // HACK: Optimization because unification doesn't take structure into
+                            // account -- the structure can be applied during finalization
+                            engine::TypeStructure::Marker,
+                        ),
+                    ) {
+                        self.add_error(error);
+                    }
+                } else {
+                    self.compiler.add_error(
+                        "cannot find `boolean` language item",
+                        vec![Note::primary(
+                            guard.span,
+                            "typechecking this condition requires the `boolean` language item",
+                        )],
+                    )
+                }
+
+                guard
+            }),
             body: self.monomorphize_expr(arm.body, info),
         }
     }
@@ -2223,18 +2253,13 @@ impl Typechecker {
         &mut self,
         pattern: impl Into<MonomorphizedPattern>,
         mut ty: engine::UnresolvedType,
-        match_set: &mut MatchSet,
-        info: &mut MonomorphizeInfo,
     ) -> MonomorphizedPattern {
         let pattern = pattern.into();
 
         ty.apply(&self.ctx);
 
         let kind = (|| match pattern.kind {
-            MonomorphizedPatternKind::Error(trace) => {
-                match_set.set_matched(true);
-                MonomorphizedPatternKind::Error(trace)
-            }
+            MonomorphizedPatternKind::Error(trace) => MonomorphizedPatternKind::Error(trace),
             MonomorphizedPatternKind::Number(number) => {
                 let numeric_ty = engine::UnresolvedType::NumericVariable(self.ctx.new_variable());
 
@@ -2255,14 +2280,8 @@ impl Typechecker {
 
                 MonomorphizedPatternKind::Text(text)
             }
-            MonomorphizedPatternKind::Wildcard => {
-                match_set.set_matched(true);
-                MonomorphizedPatternKind::Wildcard
-            }
-            MonomorphizedPatternKind::Variable(var) => {
-                match_set.set_matched(true);
-                MonomorphizedPatternKind::Variable(var)
-            }
+            MonomorphizedPatternKind::Wildcard => MonomorphizedPatternKind::Wildcard,
+            MonomorphizedPatternKind::Variable(var) => MonomorphizedPatternKind::Variable(var),
             MonomorphizedPatternKind::UnresolvedDestructure(structure_ty, fields) => {
                 if let Err(error) = self.unify(pattern.span, ty.clone(), structure_ty) {
                     self.add_error(error);
@@ -2278,24 +2297,7 @@ impl Typechecker {
                             vec![Note::primary(pattern.span, "value is not a structure")],
                         );
 
-                        match_set.set_matched(true);
-
-                        let fields = fields
-                            .into_iter()
-                            .map(|(_, (pattern, _))| {
-                                (
-                                    FieldIndex::new(0),
-                                    self.monomorphize_pattern(
-                                        pattern,
-                                        engine::UnresolvedType::Error,
-                                        &mut MatchSet::Never,
-                                        info,
-                                    ),
-                                )
-                            })
-                            .collect();
-
-                        return MonomorphizedPatternKind::Destructure(match_set.clone(), fields);
+                        return MonomorphizedPatternKind::error(&self.compiler);
                     }
                 };
 
@@ -2325,26 +2327,6 @@ impl Typechecker {
                     .zip(params)
                     .collect::<BTreeMap<_, _>>();
 
-                let field_match_sets = match match_set {
-                    MatchSet::Structure(fields) => fields,
-                    _ => {
-                        ty.apply(&self.ctx);
-                        *match_set = MatchSet::new(&ty);
-
-                        match match_set {
-                            MatchSet::Structure(fields) => fields,
-                            _ => {
-                                self.compiler.add_error(
-                                    "cannot destructure this value",
-                                    vec![Note::primary(pattern.span, "value is not a structure")],
-                                );
-
-                                return MonomorphizedPatternKind::error(&self.compiler);
-                            }
-                        }
-                    }
-                };
-
                 let fields = fields
                     .into_iter()
                     .filter_map(|(name, (pattern, ty))| {
@@ -2370,55 +2352,25 @@ impl Typechecker {
                             self.add_error(error);
                         }
 
-                        let (matches, match_set) = &mut field_match_sets[index.into_inner()];
-                        *matches = true;
-
-                        let pattern =
-                            self.monomorphize_pattern(pattern, member_ty, match_set, info);
+                        let pattern = self.monomorphize_pattern(pattern, member_ty);
 
                         Some((index, pattern))
                     })
                     .collect();
 
-                for (matches, field_match_set) in field_match_sets {
-                    if *matches {
-                        continue;
-                    }
-
-                    *matches = true;
-                    field_match_set.set_matched(true);
-                }
-
-                MonomorphizedPatternKind::Destructure(match_set.clone(), fields)
+                MonomorphizedPatternKind::Destructure(id, fields)
             }
-            MonomorphizedPatternKind::Destructure(destructure_match_set, fields) => {
-                *match_set = destructure_match_set.clone();
-                MonomorphizedPatternKind::Destructure(destructure_match_set, fields)
+            MonomorphizedPatternKind::Destructure(id, fields) => {
+                MonomorphizedPatternKind::Destructure(id, fields)
             }
             MonomorphizedPatternKind::UnresolvedVariant(variant_ty, variant, values) => {
                 let (id, params) = match &ty {
-                    engine::UnresolvedType::Named(id, params, _) => (id, params),
-                    _ => {
-                        return MonomorphizedPatternKind::Variant(
-                            match_set.clone(),
-                            variant,
-                            values
-                                .into_iter()
-                                .map(|pattern| {
-                                    self.monomorphize_pattern(
-                                        pattern,
-                                        engine::UnresolvedType::Error,
-                                        &mut MatchSet::Never,
-                                        info,
-                                    )
-                                })
-                                .collect(),
-                        );
-                    }
+                    engine::UnresolvedType::Named(id, params, _) => (*id, params),
+                    _ => return MonomorphizedPatternKind::error(&self.compiler),
                 };
 
                 let enumeration = self
-                    .with_type_decl(*id, Clone::clone)
+                    .with_type_decl(id, Clone::clone)
                     .expect("enumeration should have already been accessed at least once");
 
                 let mut variant_tys = match enumeration.kind {
@@ -2466,85 +2418,21 @@ impl Typechecker {
                     self.add_error(error);
                 }
 
-                let (matches, variant_match_sets) = match match_set {
-                    MatchSet::Enumeration(variants) => &mut variants[variant.into_inner()],
-                    _ => {
-                        ty.apply(&self.ctx);
-                        *match_set = MatchSet::new(&ty);
-
-                        match match_set {
-                            MatchSet::Enumeration(variants) => &mut variants[variant.into_inner()],
-                            _ => {
-                                self.compiler.add_error(
-                                    "cannot match a variant on this value",
-                                    vec![Note::primary(
-                                        pattern.span,
-                                        "value is not an enumeration",
-                                    )],
-                                );
-
-                                return MonomorphizedPatternKind::error(&self.compiler);
-                            }
-                        }
-                    }
-                };
-
-                *matches = true;
-
                 let values = values
                     .into_iter()
                     .zip(variant_tys)
-                    .zip(variant_match_sets)
-                    .map(|((pattern, variant_ty), match_set)| {
-                        *matches = true;
-                        self.monomorphize_pattern(pattern, variant_ty, match_set, info)
-                    })
+                    .map(|(pattern, variant_ty)| self.monomorphize_pattern(pattern, variant_ty))
                     .collect();
 
-                MonomorphizedPatternKind::Variant(match_set.clone(), variant, values)
+                MonomorphizedPatternKind::Variant(id, variant, values)
             }
-            MonomorphizedPatternKind::Variant(variant_match_set, variant, values) => {
-                *match_set = variant_match_set.clone();
-                MonomorphizedPatternKind::Variant(variant_match_set, variant, values)
+            MonomorphizedPatternKind::Variant(id, variant, values) => {
+                MonomorphizedPatternKind::Variant(id, variant, values)
             }
             MonomorphizedPatternKind::Or(lhs, rhs) => MonomorphizedPatternKind::Or(
-                Box::new(self.monomorphize_pattern(*lhs, ty.clone(), match_set, info)),
-                Box::new(self.monomorphize_pattern(*rhs, ty, match_set, info)),
+                Box::new(self.monomorphize_pattern(*lhs, ty.clone())),
+                Box::new(self.monomorphize_pattern(*rhs, ty)),
             ),
-            MonomorphizedPatternKind::Where(pattern, condition) => {
-                let pattern = self.monomorphize_pattern(*pattern, ty, match_set, info);
-
-                let condition_span = condition.span;
-                let condition = self.monomorphize_expr(*condition, info);
-
-                if let Some(boolean_ty) = self.entrypoint.info.language_items.boolean {
-                    if let Err(error) = self.unify(
-                        condition.span,
-                        condition.ty.clone(),
-                        engine::UnresolvedType::Named(
-                            boolean_ty,
-                            Vec::new(),
-                            // HACK: Optimization because unification doesn't take structure into
-                            // account -- the structure can be applied during finalization
-                            engine::TypeStructure::Marker,
-                        ),
-                    ) {
-                        self.add_error(error);
-                    }
-                } else {
-                    self.compiler.add_error(
-                        "cannot find `boolean` language item",
-                        vec![Note::primary(
-                            condition_span,
-                            "typechecking this condition requires the `boolean` language item",
-                        )],
-                    )
-                }
-
-                match_set.set_matched(false);
-
-                MonomorphizedPatternKind::Where(Box::new(pattern), Box::new(condition))
-            }
             MonomorphizedPatternKind::Tuple(patterns) => {
                 let tys = patterns
                     .iter()
@@ -2559,27 +2447,11 @@ impl Typechecker {
                     self.add_error(error);
                 }
 
-                let match_sets = match match_set {
-                    MatchSet::Tuple(sets) => sets,
-                    _ => {
-                        ty.apply(&self.ctx);
-                        *match_set = MatchSet::new(&ty);
-
-                        match match_set {
-                            MatchSet::Tuple(sets) => sets,
-                            _ => return MonomorphizedPatternKind::error(&self.compiler),
-                        }
-                    }
-                };
-
                 MonomorphizedPatternKind::Tuple(
                     patterns
                         .into_iter()
                         .zip(tys)
-                        .zip(match_sets)
-                        .map(|((pattern, ty), match_set)| {
-                            self.monomorphize_pattern(pattern, ty, match_set, info)
-                        })
+                        .map(|(pattern, ty)| self.monomorphize_pattern(pattern, ty))
                         .collect(),
                 )
             }
@@ -2909,400 +2781,6 @@ impl Typechecker {
     }
 }
 
-#[derive(Debug, Clone)]
-enum MatchSet {
-    Never,
-    Marker(bool),
-    Structure(Vec<(bool, MatchSet)>),
-    Enumeration(Vec<(bool, Vec<MatchSet>)>),
-    Tuple(Vec<MatchSet>),
-}
-
-impl MatchSet {
-    fn new(ty: &engine::UnresolvedType) -> Self {
-        match ty {
-            engine::UnresolvedType::Named(_, _, structure) => match structure {
-                TypeStructure::Marker => MatchSet::Marker(false),
-                TypeStructure::Structure(fields) => MatchSet::Structure(
-                    fields.iter().map(|ty| (false, MatchSet::new(ty))).collect(),
-                ),
-                TypeStructure::Enumeration(variants) => MatchSet::Enumeration(
-                    variants
-                        .iter()
-                        .map(|tys| (false, tys.iter().map(MatchSet::new).collect()))
-                        .collect(),
-                ),
-                TypeStructure::Recursive(_) => {
-                    // Returning Never is OK because the user has to stop matching on the structure
-                    // of the type at some point -- eventually they will refer to the rest of the
-                    // structure using a name, which always matches (FIXME: Verify that this is correct)
-                    MatchSet::Never
-                }
-            },
-            engine::UnresolvedType::Tuple(tys) => {
-                MatchSet::Tuple(tys.iter().map(MatchSet::new).collect())
-            }
-            engine::UnresolvedType::Error => MatchSet::Never,
-            _ => MatchSet::Marker(false),
-        }
-    }
-}
-
-impl Typechecker {
-    fn assert_matched(
-        &mut self,
-        match_set: &MatchSet,
-        ty: &engine::UnresolvedType,
-        span: SpanList,
-        for_exhaustive_pattern: bool,
-    ) {
-        if !match_set.is_matched() {
-            if for_exhaustive_pattern {
-                self.compiler.add_error(
-                    "pattern is not exhaustive",
-                    vec![Note::primary(
-                        span,
-                        "this pattern does not handle all possible values",
-                    )],
-                );
-            } else {
-                let mut ty = ty.clone();
-                ty.apply(&self.ctx);
-
-                let mut missing_patterns = match_set
-                    .unmatched_patterns(&ty)
-                    .unique()
-                    .map(|pattern| format!("`{}`", self.format_unmatched_pattern(&pattern, false)))
-                    .collect::<Vec<_>>();
-
-                self.compiler.add_error(
-                    "`when` expression is not exhaustive",
-                    vec![Note::primary(
-                        span,
-                        match missing_patterns.len() {
-                            0 => String::from(
-                                "try adding some more patterns to cover all possible values",
-                            ),
-                            1 => format!(
-                                "try adding a case for the {} pattern",
-                                missing_patterns.pop().unwrap()
-                            ),
-                            _ => {
-                                let last_missing_pattern = missing_patterns.pop().unwrap();
-
-                                format!(
-                                    "try adding cases for the {} and {} patterns",
-                                    missing_patterns.join(", "),
-                                    last_missing_pattern
-                                )
-                            }
-                        },
-                    )],
-                );
-            }
-        }
-    }
-}
-
-impl MatchSet {
-    fn is_matched(&self) -> bool {
-        match self {
-            MatchSet::Never => true,
-            MatchSet::Marker(matches) => *matches,
-            MatchSet::Structure(fields) => fields
-                .iter()
-                .all(|(matches, field)| *matches && field.is_matched()),
-            MatchSet::Enumeration(variants) => variants.iter().all(|(matches, variant)| {
-                *matches && variant.iter().all(|variant| variant.is_matched())
-            }),
-            MatchSet::Tuple(sets) => sets.iter().all(|set| set.is_matched()),
-        }
-    }
-
-    fn set_matched(&mut self, is_matched: bool) {
-        match self {
-            MatchSet::Marker(matches) => *matches = is_matched,
-            MatchSet::Structure(fields) => {
-                for (matches, field) in fields {
-                    *matches = is_matched;
-                    field.set_matched(is_matched);
-                }
-            }
-            MatchSet::Enumeration(variants) => {
-                for (matches, variant) in variants {
-                    *matches = is_matched;
-                    for match_set in variant {
-                        match_set.set_matched(is_matched);
-                    }
-                }
-            }
-            MatchSet::Tuple(sets) => {
-                for set in sets {
-                    set.set_matched(is_matched);
-                }
-            }
-            _ => {}
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-struct UnmatchedPattern<'a> {
-    ty: &'a engine::UnresolvedType,
-    kind: UnmatchedPatternKind<'a>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-enum UnmatchedPatternKind<'a> {
-    Wildcard,
-    Marker,
-    Structure(FieldIndex, Option<Box<UnmatchedPattern<'a>>>),
-    Variant(VariantIndex, Vec<UnmatchedPattern<'a>>),
-    Tuple(Vec<UnmatchedPattern<'a>>),
-}
-
-impl MatchSet {
-    fn unmatched_patterns<'a>(
-        &'a self,
-        ty: &'a engine::UnresolvedType,
-    ) -> Box<dyn Iterator<Item = UnmatchedPattern<'a>> + 'a> {
-        if self.is_matched() {
-            return Box::new(std::iter::empty());
-        }
-
-        match self {
-            MatchSet::Never => Box::new(std::iter::once(UnmatchedPattern {
-                ty,
-                kind: UnmatchedPatternKind::Wildcard,
-            })),
-            MatchSet::Marker(_) => Box::new(std::iter::once(UnmatchedPattern {
-                ty,
-                kind: UnmatchedPatternKind::Marker,
-            })),
-            MatchSet::Structure(fields) => {
-                let field_tys = match ty {
-                    engine::UnresolvedType::Named(_, _, TypeStructure::Structure(field_tys)) => {
-                        field_tys
-                    }
-                    _ => return Box::new(std::iter::empty()),
-                };
-
-                Box::new(fields.iter().enumerate().flat_map(
-                    move |(index, (matched, field))| -> Box<dyn Iterator<Item = UnmatchedPattern>> {
-                        if !matched {
-                            return Box::new(std::iter::once(UnmatchedPattern {
-                                ty,
-                                kind: UnmatchedPatternKind::Structure(FieldIndex::new(index), None),
-                            }));
-                        }
-
-                        let field_ty = &field_tys[index];
-
-                        Box::new(field.unmatched_patterns(field_ty).map(move |item| {
-                            UnmatchedPattern {
-                                ty: field_ty,
-                                kind: UnmatchedPatternKind::Structure(
-                                    FieldIndex::new(index),
-                                    Some(Box::new(item)),
-                                ),
-                            }
-                        }))
-                    },
-                ))
-            }
-            MatchSet::Enumeration(variants) => {
-                let variants_tys = match ty {
-                    engine::UnresolvedType::Named(
-                        _,
-                        _,
-                        TypeStructure::Enumeration(variants_tys),
-                    ) => variants_tys,
-                    _ => return Box::new(std::iter::empty()),
-                };
-
-                let mut patterns = vec![BTreeMap::new()];
-
-                // First, collect all variants with unmatched associated values
-                for (variant_index, (_, items)) in variants.iter().enumerate() {
-                    let variant_tys = &variants_tys[variant_index];
-
-                    for (item_index, item) in items.iter().enumerate() {
-                        let item_ty = &variant_tys[item_index];
-
-                        for (pattern_index, pattern) in item.unmatched_patterns(item_ty).enumerate()
-                        {
-                            if patterns.len() == pattern_index {
-                                patterns.push(BTreeMap::new());
-                            }
-
-                            patterns[pattern_index]
-                                .entry(VariantIndex::new(variant_index))
-                                .or_insert_with(|| {
-                                    let item_ty = &variant_tys[item_index];
-
-                                    vec![
-                                        UnmatchedPattern {
-                                            ty: item_ty,
-                                            kind: UnmatchedPatternKind::Wildcard
-                                        };
-                                        items.len()
-                                    ]
-                                })[item_index] = pattern;
-                        }
-                    }
-                }
-
-                // Then, collect all unmatched variants without associated values
-                for (variant_index, (matched, items)) in variants.iter().enumerate() {
-                    if !matched && items.is_empty() {
-                        for variants in &mut patterns {
-                            *variants
-                                .entry(VariantIndex::new(variant_index))
-                                .or_default() = Vec::new();
-                        }
-                    }
-                }
-
-                Box::new(patterns.into_iter().flat_map(|variants| {
-                    variants
-                        .into_iter()
-                        .map(|(variant, items)| UnmatchedPattern {
-                            ty,
-                            kind: UnmatchedPatternKind::Variant(variant, items),
-                        })
-                }))
-            }
-            MatchSet::Tuple(items) => {
-                let item_tys = match ty {
-                    engine::UnresolvedType::Tuple(tys) => tys,
-                    _ => return Box::new(std::iter::empty()),
-                };
-
-                let mut patterns = Vec::new();
-                for (item_index, item) in items.iter().enumerate() {
-                    let item_ty = &item_tys[item_index];
-
-                    for (pattern_index, pattern) in item.unmatched_patterns(item_ty).enumerate() {
-                        if patterns.len() == pattern_index {
-                            patterns.push(vec![
-                                UnmatchedPattern {
-                                    ty: item_ty,
-                                    kind: UnmatchedPatternKind::Wildcard,
-                                };
-                                items.len()
-                            ]);
-                        }
-
-                        patterns[pattern_index][item_index] = pattern;
-                    }
-                }
-
-                Box::new(patterns.into_iter().map(|items| UnmatchedPattern {
-                    ty,
-                    kind: UnmatchedPatternKind::Tuple(items),
-                }))
-            }
-        }
-    }
-}
-
-impl Typechecker {
-    fn format_unmatched_pattern(&self, pattern: &UnmatchedPattern, parenthesize: bool) -> String {
-        match &pattern.kind {
-            UnmatchedPatternKind::Wildcard => String::from("_"),
-            UnmatchedPatternKind::Marker => {
-                let id = match pattern.ty {
-                    engine::UnresolvedType::Named(id, _, _) => id,
-                    _ => return String::from("_"),
-                };
-
-                let name = self.declarations.borrow().types.get(id).unwrap().name;
-
-                name.to_string()
-            }
-            UnmatchedPatternKind::Structure(index, field) => {
-                let id = match pattern.ty {
-                    engine::UnresolvedType::Named(id, _, _) => id,
-                    _ => return String::from("_"),
-                };
-
-                let declarations = self.declarations.borrow();
-
-                let field_names = match &declarations.types.get(id).unwrap().kind {
-                    TypeDeclKind::Structure { field_names, .. } => field_names,
-                    _ => return String::from("_"),
-                };
-
-                let field_name = field_names
-                    .iter()
-                    .find_map(|(name, i)| (i == index).then_some(name.to_string()))
-                    .unwrap_or_else(|| String::from("<unknown>"));
-
-                if let Some(pattern) = field {
-                    format!(
-                        "{{ {} : {} }}",
-                        field_name,
-                        self.format_unmatched_pattern(pattern, false)
-                    )
-                } else {
-                    format!("{{ {field_name} }}")
-                }
-            }
-            UnmatchedPatternKind::Variant(index, patterns) => {
-                let id = match pattern.ty {
-                    engine::UnresolvedType::Named(id, _, _) => id,
-                    _ => return String::from("_"),
-                };
-
-                let declarations = self.declarations.borrow();
-                let ty = declarations.types.get(id).unwrap();
-                let variant_names = match &ty.kind {
-                    TypeDeclKind::Enumeration { variant_names, .. } => variant_names,
-                    _ => return String::from("_"),
-                };
-
-                let variant_name = variant_names
-                    .iter()
-                    .find_map(|(name, i)| (i == index).then_some(name.as_str()))
-                    .unwrap_or("<unknown>");
-
-                let formatted = if patterns.is_empty() {
-                    variant_name.to_string()
-                } else {
-                    format!(
-                        "{} {}",
-                        variant_name,
-                        patterns
-                            .iter()
-                            .map(|pattern| self.format_unmatched_pattern(pattern, true))
-                            .collect::<Vec<_>>()
-                            .join(" ")
-                    )
-                };
-
-                if parenthesize {
-                    format!("({formatted})")
-                } else {
-                    formatted
-                }
-            }
-            UnmatchedPatternKind::Tuple(patterns) => {
-                let formatted = patterns
-                    .iter()
-                    .map(|pattern| self.format_unmatched_pattern(pattern, true))
-                    .collect::<Vec<_>>()
-                    .join(" , ");
-
-                if parenthesize {
-                    format!("({formatted})")
-                } else {
-                    formatted
-                }
-            }
-        }
-    }
-}
-
 impl Typechecker {
     fn finalize_expr(&mut self, expr: MonomorphizedExpression) -> Expression {
         let ty = expr.ty.finalize(&self.ctx).unwrap_or_else(|| {
@@ -3382,6 +2860,7 @@ impl Typechecker {
                     .map(|arm| Arm {
                         span: arm.span,
                         pattern: self.finalize_pattern(arm.pattern, &input.ty),
+                        guard: arm.guard.map(|expr| self.finalize_expr(expr)),
                         body: self.finalize_expr(arm.body),
                     })
                     .collect::<Vec<_>>();
@@ -3486,47 +2965,76 @@ impl Typechecker {
                     PatternKind::Variable(var)
                 }
                 MonomorphizedPatternKind::UnresolvedDestructure(_, _) => unreachable!(),
-                MonomorphizedPatternKind::Destructure(_, fields) => {
+                MonomorphizedPatternKind::Destructure(id, fields) => {
                     let input_tys = match input_ty {
                         engine::Type::Named(_, _, engine::TypeStructure::Structure(fields)) => {
-                            fields
+                            fields.clone()
+                        }
+                        engine::Type::Named(_, _, engine::TypeStructure::Recursive(id)) => {
+                            match self
+                                .with_type_decl(*id, |decl| match &decl.kind {
+                                    TypeDeclKind::Structure { fields, .. } => {
+                                        Some(fields.iter().map(|(_, ty)| ty.clone()).collect())
+                                    }
+                                    _ => None,
+                                })
+                                .unwrap()
+                            {
+                                Some(fields) => fields,
+                                None => return PatternKind::error(&self.compiler),
+                            }
                         }
                         _ => return PatternKind::error(&self.compiler),
                     };
 
                     PatternKind::Destructure(
+                        id,
                         fields
                             .into_iter()
                             .zip(input_tys)
-                            .map(|((index, field), ty)| (index, self.finalize_pattern(field, ty)))
+                            .map(|((index, field), ty)| (index, self.finalize_pattern(field, &ty)))
                             .collect(),
                     )
                 }
                 MonomorphizedPatternKind::UnresolvedVariant(_, _, _) => unreachable!(),
-                MonomorphizedPatternKind::Variant(_, index, values) => {
+                MonomorphizedPatternKind::Variant(id, index, values) => {
                     let input_tys = match input_ty {
                         engine::Type::Named(_, _, engine::TypeStructure::Enumeration(variants)) => {
-                            &variants[index.into_inner()]
+                            variants[index.into_inner()].clone()
+                        }
+                        engine::Type::Named(_, _, engine::TypeStructure::Recursive(id)) => {
+                            match self
+                                .with_type_decl(*id, |decl| match &decl.kind {
+                                    TypeDeclKind::Enumeration { variants, .. } => Some(
+                                        variants[index.into_inner()]
+                                            .iter()
+                                            .map(|(_, ty)| ty.clone())
+                                            .collect(),
+                                    ),
+                                    _ => None,
+                                })
+                                .unwrap()
+                            {
+                                Some(fields) => fields,
+                                None => return PatternKind::error(&self.compiler),
+                            }
                         }
                         _ => return PatternKind::error(&self.compiler),
                     };
 
                     PatternKind::Variant(
+                        id,
                         index,
                         values
                             .into_iter()
                             .zip(input_tys)
-                            .map(|(value, ty)| self.finalize_pattern(value, ty))
+                            .map(|(value, ty)| self.finalize_pattern(value, &ty))
                             .collect(),
                     )
                 }
                 MonomorphizedPatternKind::Or(lhs, rhs) => PatternKind::Or(
                     Box::new(self.finalize_pattern(*lhs, input_ty)),
                     Box::new(self.finalize_pattern(*rhs, input_ty)),
-                ),
-                MonomorphizedPatternKind::Where(pattern, condition) => PatternKind::Where(
-                    Box::new(self.finalize_pattern(*pattern, input_ty)),
-                    Box::new(self.finalize_expr(*condition)),
                 ),
                 MonomorphizedPatternKind::Tuple(patterns) => {
                     let input_tys = match input_ty {

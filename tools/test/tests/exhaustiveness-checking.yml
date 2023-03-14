@@ -22,7 +22,7 @@ code: |
 output: |
 
 diagnostics: |
-    error: `when` expression is not exhaustive
+    error: `when` expression not handle all possible values of `Grade`
        ┌─ test:10:24
        │
     10 │   report-card : grade -> when grade {
@@ -33,7 +33,7 @@ diagnostics: |
     14 │ │ }
        │ ╰─^ try adding cases for the `D` and `F` patterns
 
-    error: `when` expression is not exhaustive
+    error: `when` expression not handle all possible values of `Maybe A` for any type `A`
        ┌─ test:17:15
        │
     17 │   unwrap : x -> when x {
