@@ -499,7 +499,7 @@ export const CodeEditor = (props: CodeEditorProps) => {
                                                             {diagnostic.notes.map(
                                                                 (note, noteIndex) => {
                                                                     const lookup = lineColumn(
-                                                                        note.code
+                                                                        note.code + "\n\n"
                                                                     );
 
                                                                     let { line, col } =
@@ -512,10 +512,10 @@ export const CodeEditor = (props: CodeEditorProps) => {
                                                                         1
                                                                     );
 
-                                                                    const end =
-                                                                        start +
-                                                                        note.span.end -
-                                                                        note.span.start;
+                                                                    const end = lookup.toIndex(
+                                                                        line + 1,
+                                                                        1
+                                                                    );
 
                                                                     return (
                                                                         <div
