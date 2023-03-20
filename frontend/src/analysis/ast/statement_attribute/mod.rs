@@ -1,4 +1,5 @@
 mod allow_overlapping_instances;
+mod diagnostic_item;
 mod help;
 mod keyword;
 mod language_item;
@@ -8,6 +9,7 @@ mod operator_precedence;
 mod specialize;
 
 pub use allow_overlapping_instances::AllowOverlappingInstancesStatementAttribute;
+pub use diagnostic_item::{DiagnosticItemStatementAttribute, DiagnosticItemStatementAttributeKind};
 pub use help::HelpStatementAttribute;
 pub use keyword::KeywordStatementAttribute;
 pub use language_item::{LanguageItemStatementAttribute, LanguageItemStatementAttributeKind};
@@ -20,6 +22,7 @@ pub use operator_precedence::{
 pub use specialize::SpecializeStatementAttribute;
 
 use allow_overlapping_instances::*;
+use diagnostic_item::*;
 use help::*;
 use keyword::*;
 use language_item::*;
@@ -44,6 +47,7 @@ syntax_group! {
     pub type StatementAttribute<StatementAttributeSyntaxContext> {
         non_terminal: {
             AllowOverlappingInstances,
+            DiagnosticItem,
             Help,
             Keyword,
             LanguageItem,

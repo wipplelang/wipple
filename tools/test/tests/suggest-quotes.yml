@@ -1,0 +1,14 @@
+code: |
+    show hello
+
+output: |
+
+diagnostics: |
+    error: cannot find `hello`
+      ┌─ test:1:6
+      │
+    1 │ show hello
+      │      ^^^^^
+      │      │
+      │      this name is not defined
+      │      if you meant to provide text here, try wrapping the variable in quotes: `"hello"`
