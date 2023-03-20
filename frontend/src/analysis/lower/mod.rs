@@ -2076,7 +2076,7 @@ impl Lowerer {
                                         .then(|| {
                                             Note::secondary(
                                                 expr.span,
-                                                format!("if you meant to provide text here, try wrapping the variable in quotes: `\"{}\"`", expr.name)
+                                                format!("if you meant to provide text here, try using quotes: `\"{}\"`", expr.name)
                                             )
                                         }),
                                 )

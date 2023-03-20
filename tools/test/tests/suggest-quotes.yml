@@ -11,4 +11,4 @@ diagnostics: |
       │      ^^^^^
       │      │
       │      this name is not defined
-      │      if you meant to provide text here, try wrapping the variable in quotes: `"hello"`
+      │      if you meant to provide text here, try using quotes: `"hello"`
