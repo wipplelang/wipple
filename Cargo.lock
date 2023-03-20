@@ -2575,7 +2575,6 @@ name = "wipple-playground-runner"
 version = "0.0.0"
 dependencies = [
  "anyhow",
- "codespan-reporting",
  "console_error_panic_hook",
  "force-send-sync",
  "futures",

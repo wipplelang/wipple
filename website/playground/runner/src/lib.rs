@@ -17,17 +17,40 @@ use wipple_frontend::Loader;
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct AnalysisOutput {
-    diagnostics: AnalysisOutputDiagnostics,
+    diagnostics: Vec<AnalysisOutputDiagnostic>,
     syntax_highlighting: Vec<AnalysisOutputSyntaxHighlightingItem>,
     completions: Vec<Completion>,
 }
 
-#[derive(Serialize)]
-#[serde(tag = "type", content = "diagnostics", rename_all = "camelCase")]
-enum AnalysisOutputDiagnostics {
-    Success,
-    Warning(String),
-    Error(String),
+#[derive(PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AnalysisOutputDiagnostic {
+    level: AnalysisOutputDiagnosticLevel,
+    message: String,
+    notes: Vec<AnalysisOutputDiagnosticNote>,
+}
+
+#[derive(PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+enum AnalysisOutputDiagnosticLevel {
+    Warning,
+    Error,
+}
+
+#[derive(PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AnalysisOutputDiagnosticNote {
+    code: String,
+    span: AnalysisOutputDiagnosticSpan,
+    messages: Vec<String>,
+}
+
+#[derive(PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AnalysisOutputDiagnosticSpan {
+    pub file: String,
+    pub start: usize,
+    pub end: usize,
 }
 
 #[derive(Serialize)]
@@ -206,37 +229,63 @@ pub async fn analyze(code: String, lint: bool) -> JsValue {
         .await;
 
     let success = !diagnostics.contains_errors();
-    let highest_level = diagnostics.highest_level();
 
-    let (files, diagnostics) = diagnostics.into_console_friendly(
-        false, // TODO: Expose option to user
-        #[cfg(debug_assertions)]
-        false,
-    );
+    let diagnostics = diagnostics
+        .diagnostics
+        .into_iter()
+        .map(|diagnostic| {
+            let mut notes =
+                Vec::<(wipple_frontend::parse::Span, AnalysisOutputDiagnosticNote)>::new();
 
-    let diagnostics = if diagnostics.is_empty() {
-        AnalysisOutputDiagnostics::Success
-    } else {
-        let mut output = Vec::new();
-        let mut writer = codespan_reporting::term::termcolor::NoColor::new(&mut output);
-        let config = codespan_reporting::term::Config::default();
+            for note in diagnostic.notes {
+                let (first, rest) = note.span.split_iter();
+                let convert_span =
+                    |span: wipple_frontend::parse::Span| AnalysisOutputDiagnosticSpan {
+                        file: span.path.to_string(),
+                        start: span.start,
+                        end: span.end,
+                    };
 
-        for diagnostic in diagnostics {
-            codespan_reporting::term::emit(&mut writer, &config, &files, &diagnostic).unwrap();
-        }
+                let get_code = |path: wipple_frontend::FilePath| {
+                    LOADER.source_map().lock().get(&path).unwrap().to_string()
+                };
 
-        let output = String::from_utf8(output).unwrap().trim().to_string();
-
-        match highest_level {
-            Some(wipple_frontend::diagnostics::DiagnosticLevel::Warning) => {
-                AnalysisOutputDiagnostics::Warning(output)
+                for (span, message) in std::iter::once((first, note.message))
+                    .chain(rest.map(|span| (span, String::from(""))))
+                {
+                    if let Some(existing) = notes
+                        .iter_mut()
+                        .find(|(existing_span, _)| *existing_span == span)
+                    {
+                        existing.1.messages.push(message);
+                    } else {
+                        notes.push((
+                            span,
+                            AnalysisOutputDiagnosticNote {
+                                code: get_code(span.path),
+                                span: convert_span(span),
+                                messages: vec![message],
+                            },
+                        ));
+                    }
+                }
             }
-            Some(wipple_frontend::diagnostics::DiagnosticLevel::Error) => {
-                AnalysisOutputDiagnostics::Error(output)
+
+            AnalysisOutputDiagnostic {
+                level: match diagnostic.level {
+                    wipple_frontend::diagnostics::DiagnosticLevel::Warning => {
+                        AnalysisOutputDiagnosticLevel::Warning
+                    }
+                    wipple_frontend::diagnostics::DiagnosticLevel::Error => {
+                        AnalysisOutputDiagnosticLevel::Error
+                    }
+                },
+                message: diagnostic.message,
+                notes: notes.into_iter().map(|(_, note)| note).collect(),
             }
-            None => AnalysisOutputDiagnostics::Success,
-        }
-    };
+        })
+        .dedup()
+        .collect();
 
     let syntax_highlighting = get_syntax_highlighting(&program);
     let completions = get_completions(&program);

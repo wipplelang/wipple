@@ -2,15 +2,24 @@ import { useEffect, useRef } from "react";
 import Runner from "../runner/worker?worker";
 
 export interface AnalysisOutput {
-    diagnostics: AnalysisOutputDiagnostics;
+    diagnostics: AnalysisOutputDiagnostic[];
     syntaxHighlighting: AnalysisOutputSyntaxHighlightingItem[];
     completions: AnalysisOutputCompletionItem[];
 }
 
-export type AnalysisOutputDiagnostics =
-    | { type: "success" }
-    | { type: "warning"; diagnostics: string }
-    | { type: "error"; diagnostics: string };
+export interface AnalysisOutputDiagnostic {
+    level: "warning" | "error";
+    message: string;
+    notes: {
+        code: string;
+        span: {
+            file: string;
+            start: number;
+            end: number;
+        };
+        messages: string[];
+    }[];
+}
 
 export interface AnalysisOutputSyntaxHighlightingItem {
     start: number;

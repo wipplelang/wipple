@@ -25,7 +25,7 @@ import rehypeKatex from "rehype-katex";
 import remarkSmartypants from "remark-smartypants";
 import rehypeRaw from "rehype-raw";
 import {
-    AnalysisOutputDiagnostics,
+    AnalysisOutputDiagnostic,
     AnalysisOutputSyntaxHighlightingItem,
     HoverOutput,
     AnalysisOutputCompletionItem,
@@ -35,6 +35,7 @@ import KeyboardReturn from "@mui/icons-material/KeyboardReturn";
 import Refresh from "@mui/icons-material/Refresh";
 import Add from "@mui/icons-material/Add";
 import getCaretCoordinates from "textarea-caret";
+import lineColumn from "line-column";
 
 export interface CodeEditorProps {
     id: string;
@@ -65,9 +66,15 @@ export const CodeEditor = (props: CodeEditorProps) => {
     >([]);
 
     const [isRunning, setRunning] = useState(false);
-    const [output, setOutput] = useState<AnalysisOutputDiagnostics | OutputItem[] | undefined>();
-    const appendToOutput = (item: OutputItem) =>
-        setOutput((output) => (Array.isArray(output) ? [...output, item] : [item]));
+    const [output, setOutput] = useState<
+        { code: string; items: OutputItem[]; diagnostics: AnalysisOutputDiagnostic[] } | undefined
+    >();
+    const appendToOutput = (code: string, item: OutputItem) =>
+        setOutput((output) =>
+            output
+                ? { code, items: [...output.items, item], diagnostics: output.diagnostics }
+                : { code, items: [item], diagnostics: [] }
+        );
 
     const [completions, setCompletions] = useState<AnalysisOutputCompletionItem[]>([]);
 
@@ -92,17 +99,16 @@ export const CodeEditor = (props: CodeEditorProps) => {
                     setSyntaxHighlighting([]); // FIXME: Prevent flashing
                     const analysis = await runner.analyze(code, lint);
                     setSyntaxHighlighting(analysis.syntaxHighlighting);
-                    setOutput(analysis.diagnostics);
+                    setOutput({ code: code, items: [], diagnostics: analysis.diagnostics });
                     setCompletions(analysis.completions);
 
-                    if (analysis.diagnostics.type !== "error") {
-                        setOutput([]);
+                    if (!analysis.diagnostics.find(({ level }) => level === "error")) {
                         setRunning(true);
 
                         const success = await runner.run((request) => {
                             switch (request.type) {
                                 case "display":
-                                    appendToOutput({
+                                    appendToOutput(code, {
                                         type: "output",
                                         text: request.text,
                                     });
@@ -111,7 +117,7 @@ export const CodeEditor = (props: CodeEditorProps) => {
 
                                     break;
                                 case "prompt":
-                                    appendToOutput({
+                                    appendToOutput(code, {
                                         type: "prompt",
                                         prompt: request.prompt,
                                         onSubmit: async (text) => {
@@ -128,7 +134,7 @@ export const CodeEditor = (props: CodeEditorProps) => {
 
                                     break;
                                 case "choice":
-                                    appendToOutput({
+                                    appendToOutput(code, {
                                         type: "choice",
                                         prompt: request.prompt,
                                         choices: request.choices,
@@ -148,11 +154,29 @@ export const CodeEditor = (props: CodeEditorProps) => {
                 } catch (error) {
                     console.error(error);
 
-                    setOutput({
+                    setOutput((output) => ({
+                        code,
                         type: "error",
-                        diagnostics:
-                            "internal error: There was a problem running your code. Please reload the page and try again.",
-                    });
+                        items: output!.items,
+                        diagnostics: [
+                            {
+                                level: "error",
+                                message:
+                                    "internal error: There was a problem running your code. Please reload the page and try again.",
+                                notes: [
+                                    {
+                                        code: "",
+                                        span: {
+                                            file: "playground",
+                                            start: 0,
+                                            end: 0,
+                                        },
+                                        messages: [],
+                                    },
+                                ],
+                            },
+                        ],
+                    }));
                 }
             }, 500),
         [props.id]
@@ -417,49 +441,44 @@ export const CodeEditor = (props: CodeEditorProps) => {
                     />
 
                     <animated.div style={animatedOutputStyle}>
-                        <div
-                            ref={outputRef}
-                            className={(() => {
-                                const successClasses =
-                                    "p-4 bg-gray-50 dark:bg-gray-800 text-black dark:text-white";
-                                const warningClasses =
-                                    "p-4 bg-yellow-50 dark:bg-yellow-900 dark:opacity-50 text-yellow-900 dark:text-yellow-50";
-                                const errorClasses =
-                                    "p-4 bg-red-50 dark:bg-red-900 dark:opacity-50 text-red-900 dark:text-red-50";
-
-                                if (output == null) {
-                                    return "";
-                                }
-
-                                if (Array.isArray(output)) {
-                                    return output.length ? successClasses : "";
-                                } else {
-                                    switch (output.type) {
-                                        case "success":
-                                            return successClasses;
-                                        case "warning":
-                                            return warningClasses;
-                                        case "error":
-                                            return errorClasses;
-                                    }
-                                }
-                            })()}
-                        >
+                        <div ref={outputRef}>
                             {(() => {
                                 if (output == null) {
                                     return null;
                                 }
 
-                                if (Array.isArray(output)) {
-                                    return (
-                                        <div>
-                                            {output.map((item, index) => {
-                                                switch (item.type) {
-                                                    case "output":
-                                                        return (
+                                return (
+                                    <div>
+                                        {output.diagnostics.length ? (
+                                            <div
+                                                className={`p-4 flex flex-col gap-4 text-black dark:text-white ${
+                                                    output.diagnostics.find(
+                                                        ({ level }) => level === "error"
+                                                    )
+                                                        ? "bg-red-50 dark:bg-red-900 dark:bg-opacity-40"
+                                                        : "bg-yellow-50 dark:bg-yellow-900 dark:bg-opacity-40"
+                                                }`}
+                                            >
+                                                {output.diagnostics.map((diagnostic, index) => (
+                                                    <div key={index} className="flex gap-2">
+                                                        <div
+                                                            className={`rounded-sm border-r-4 ${
+                                                                diagnostic.level === "error"
+                                                                    ? "border-r-red-500"
+                                                                    : "border-r-yellow-500"
+                                                            }`}
+                                                        />
+
+                                                        <div
+                                                            key={index}
+                                                            className="flex flex-col gap-2.5"
+                                                        >
                                                             <div
-                                                                key={index}
-                                                                className="prose prose-sky dark:prose-invert max-w-none"
+                                                                className={`font-bold ${
+                                                                    diagnostic.level === "error"
+                                                                        ? "text-red-600 dark:text-red-500"
+                                                                        : "text-yellow-600 dark:text-yellow-500"
+                                                                }`}
                                                             >
                                                                 <ReactMarkdown
                                                                     remarkPlugins={[
@@ -473,68 +492,223 @@ export const CodeEditor = (props: CodeEditorProps) => {
                                                                     ]}
                                                                     linkTarget="_blank"
                                                                 >
-                                                                    {item.text}
+                                                                    {`${diagnostic.level}: ${diagnostic.message}`}
                                                                 </ReactMarkdown>
                                                             </div>
-                                                        );
-                                                    case "prompt":
-                                                        return (
-                                                            <InputField
-                                                                key={index}
-                                                                index={index}
-                                                                onSubmit={item.onSubmit}
-                                                            >
-                                                                {item.prompt}
-                                                            </InputField>
-                                                        );
-                                                    case "choice":
-                                                        return (
-                                                            <DropdownField
-                                                                key={index}
-                                                                index={index}
-                                                                choices={item.choices}
-                                                                onSubmit={item.onSubmit}
-                                                            >
-                                                                {item.prompt}
-                                                            </DropdownField>
-                                                        );
-                                                }
-                                            })}
 
-                                            {isRunning ? (
-                                                <div className="bouncing-loader">
-                                                    <div></div>
-                                                    <div></div>
-                                                    <div></div>
-                                                </div>
-                                            ) : Array.isArray(output) &&
-                                              output.find((item) => item.type !== "output") ? (
-                                                <div className="mt-4">
-                                                    <Button
-                                                        variant="contained"
-                                                        size="small"
-                                                        endIcon={<Refresh />}
-                                                        onClick={() => run(props.code, props.lint)}
-                                                    >
-                                                        Run again
-                                                    </Button>
-                                                </div>
-                                            ) : null}
-                                        </div>
-                                    );
-                                } else {
-                                    switch (output.type) {
-                                        case "success":
-                                            return null;
-                                        case "warning":
-                                        case "error":
-                                            return (
-                                                <pre className="whitespace-pre-wrap break-words">
-                                                    {output.diagnostics}
-                                                </pre>
-                                            );
-                                    }
-                                }
+                                                            {diagnostic.notes.map(
+                                                                (note, noteIndex) => {
+                                                                    const lookup = lineColumn(
+                                                                        note.code
+                                                                    );
+
+                                                                    let { line, col } =
+                                                                        lookup.fromIndex(
+                                                                            note.span.start
+                                                                        )!;
+
+                                                                    const start = lookup.toIndex(
+                                                                        line,
+                                                                        1
+                                                                    );
+
+                                                                    const end =
+                                                                        start +
+                                                                        note.span.end -
+                                                                        note.span.start;
+
+                                                                    return (
+                                                                        <div
+                                                                            className="flex flex-col"
+                                                                            key={noteIndex}
+                                                                        >
+                                                                            <div>
+                                                                                <p className="semibold text-xs opacity-50">
+                                                                                    {note.span
+                                                                                        .file ===
+                                                                                    "playground"
+                                                                                        ? ""
+                                                                                        : `${note.span.file}, `}
+                                                                                    line {line}
+                                                                                </p>
+
+                                                                                <code>
+                                                                                    <span>
+                                                                                        {note.code.slice(
+                                                                                            start,
+                                                                                            note
+                                                                                                .span
+                                                                                                .start
+                                                                                        )}
+                                                                                    </span>
+
+                                                                                    <span
+                                                                                        className={`rounded-sm underline underline-offset-4 ${
+                                                                                            diagnostic.level ===
+                                                                                            "error"
+                                                                                                ? "text-red-600 bg-red-100 dark:text-red-500 dark:bg-red-900 dark:bg-opacity-50"
+                                                                                                : "text-yellow-600 bg-yellow-100 dark:text-yellow-500 dark:bg-yellow-800 dark:bg-opacity-50"
+                                                                                        }`}
+                                                                                    >
+                                                                                        {note.code.slice(
+                                                                                            note
+                                                                                                .span
+                                                                                                .start,
+                                                                                            note
+                                                                                                .span
+                                                                                                .end
+                                                                                        )}
+                                                                                    </span>
+
+                                                                                    <span>
+                                                                                        {note.code.slice(
+                                                                                            note
+                                                                                                .span
+                                                                                                .end,
+                                                                                            end
+                                                                                        )}
+                                                                                    </span>
+                                                                                </code>
+                                                                            </div>
+
+                                                                            {note.messages.map(
+                                                                                (
+                                                                                    message,
+                                                                                    messageIndex
+                                                                                ) => (
+                                                                                    <div
+                                                                                        key={
+                                                                                            messageIndex
+                                                                                        }
+                                                                                        className={`flex ${
+                                                                                            noteIndex ===
+                                                                                                0 &&
+                                                                                            messageIndex ===
+                                                                                                0
+                                                                                                ? diagnostic.level ===
+                                                                                                  "error"
+                                                                                                    ? "text-red-600 dark:text-red-500"
+                                                                                                    : "text-yellow-600 dark:text-yellow-500"
+                                                                                                : "opacity-75"
+                                                                                        }`}
+                                                                                    >
+                                                                                        <pre>
+                                                                                            {new Array(
+                                                                                                col -
+                                                                                                    1
+                                                                                            )
+                                                                                                .fill(
+                                                                                                    " "
+                                                                                                )
+                                                                                                .join(
+                                                                                                    ""
+                                                                                                )}
+                                                                                        </pre>
+
+                                                                                        <ReactMarkdown
+                                                                                            remarkPlugins={[
+                                                                                                remarkMath,
+                                                                                                remarkGfm,
+                                                                                                remarkSmartypants,
+                                                                                            ]}
+                                                                                            rehypePlugins={[
+                                                                                                rehypeRaw,
+                                                                                                rehypeKatex,
+                                                                                            ]}
+                                                                                            linkTarget="_blank"
+                                                                                        >
+                                                                                            {
+                                                                                                message
+                                                                                            }
+                                                                                        </ReactMarkdown>
+                                                                                    </div>
+                                                                                )
+                                                                            )}
+                                                                        </div>
+                                                                    );
+                                                                }
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        ) : null}
+
+                                        {output.items.length ? (
+                                            <div className="p-4 bg-gray-50 dark:bg-gray-800 text-black dark:text-white">
+                                                {output.items.map((item, index) => {
+                                                    switch (item.type) {
+                                                        case "output":
+                                                            return (
+                                                                <div
+                                                                    key={index}
+                                                                    className="prose prose-sky dark:prose-invert max-w-none"
+                                                                >
+                                                                    <ReactMarkdown
+                                                                        remarkPlugins={[
+                                                                            remarkMath,
+                                                                            remarkGfm,
+                                                                            remarkSmartypants,
+                                                                        ]}
+                                                                        rehypePlugins={[
+                                                                            rehypeRaw,
+                                                                            rehypeKatex,
+                                                                        ]}
+                                                                        linkTarget="_blank"
+                                                                    >
+                                                                        {item.text}
+                                                                    </ReactMarkdown>
+                                                                </div>
+                                                            );
+                                                        case "prompt":
+                                                            return (
+                                                                <InputField
+                                                                    key={index}
+                                                                    index={index}
+                                                                    onSubmit={item.onSubmit}
+                                                                >
+                                                                    {item.prompt}
+                                                                </InputField>
+                                                            );
+                                                        case "choice":
+                                                            return (
+                                                                <DropdownField
+                                                                    key={index}
+                                                                    index={index}
+                                                                    choices={item.choices}
+                                                                    onSubmit={item.onSubmit}
+                                                                >
+                                                                    {item.prompt}
+                                                                </DropdownField>
+                                                            );
+                                                    }
+                                                })}
+
+                                                {isRunning ? (
+                                                    <div className="bouncing-loader">
+                                                        <div></div>
+                                                        <div></div>
+                                                        <div></div>
+                                                    </div>
+                                                ) : Array.isArray(output) &&
+                                                  output.find((item) => item.type !== "output") ? (
+                                                    <div className="mt-4">
+                                                        <Button
+                                                            variant="contained"
+                                                            size="small"
+                                                            endIcon={<Refresh />}
+                                                            onClick={() =>
+                                                                run(props.code, props.lint)
+                                                            }
+                                                        >
+                                                            Run again
+                                                        </Button>
+                                                    </div>
+                                                ) : null}
+                                            </div>
+                                        ) : null}
+                                    </div>
+                                );
                             })()}
                         </div>
                     </animated.div>
