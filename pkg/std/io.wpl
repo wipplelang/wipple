@@ -12,6 +12,9 @@ Show : A => trait (A -> Text)
 
 [help "Display a value on the screen."]
 [diagnostic "accepts-text"]
+[diagnostic-alias "print"]
+[diagnostic-alias "println"]
+[diagnostic-alias "display"]
 show :: A where (Show A) => A -> ()
 show : x -> external "runtime" "display" (Show x)
 

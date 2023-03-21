@@ -314,6 +314,7 @@ pub struct FileInfo {
     pub recursion_limit: Option<usize>,
     pub language_items: LanguageItems,
     pub diagnostic_items: DiagnosticItems,
+    pub diagnostic_aliases: DiagnosticAliases,
 }
 
 impl FileInfo {
@@ -327,6 +328,8 @@ impl FileInfo {
         self.language_items.merge(other.language_items);
 
         self.diagnostic_items.merge(other.diagnostic_items);
+
+        self.diagnostic_aliases.merge(other.diagnostic_aliases);
     }
 }
 
@@ -358,6 +361,18 @@ pub struct DiagnosticItems {
 impl DiagnosticItems {
     fn merge(&mut self, other: DiagnosticItems) {
         self.accepts_text.extend(other.accepts_text);
+    }
+}
+
+#[derive(Debug, Clone, Default)]
+#[non_exhaustive]
+pub struct DiagnosticAliases {
+    pub aliases: BTreeMap<InternedString, InternedString>,
+}
+
+impl DiagnosticAliases {
+    fn merge(&mut self, other: DiagnosticAliases) {
+        self.aliases.extend(other.aliases);
     }
 }
 
@@ -1442,7 +1457,7 @@ impl Lowerer {
                                 Some(AnyDeclaration::Constant(id, _)) => id,
                                 _ => {
                                     self.compiler.add_error(
-                                        "`accepts-text` language item expects a constant",
+                                        "`accepts-text` diagnostic item expects a constant",
                                         vec![Note::primary(
                                             decl.span,
                                             "expected constant declaration here",
@@ -1454,6 +1469,34 @@ impl Lowerer {
                             };
 
                             self.file_info.diagnostic_items.accepts_text.push(constant);
+                        }
+                    }
+                }
+            }
+
+            'diagnostic_aliases: {
+                if !decl.attributes.diagnostic_aliases.is_empty() {
+                    let constant = match scope_value {
+                        Some(AnyDeclaration::Constant(id, _)) => id,
+                        _ => {
+                            self.compiler.add_error(
+                                "`diagnostic-alias` expects a constant",
+                                vec![Note::primary(
+                                    decl.span,
+                                    "expected constant declaration here",
+                                )],
+                            );
+
+                            break 'diagnostic_aliases;
+                        }
+                    };
+
+                    if let Some(name) = self.declarations.constants.get(&constant).unwrap().name {
+                        for attr in &decl.attributes.diagnostic_aliases {
+                            self.file_info
+                                .diagnostic_aliases
+                                .aliases
+                                .insert(attr.diagnostic_alias, name);
                         }
                     }
                 }
@@ -3665,28 +3708,30 @@ impl Lowerer {
         name: InternedString,
         ctx: &Context,
     ) -> impl Iterator<Item = Note> {
-        std::iter::empty()
-            .chain(ctx.caller_accepts_text.then(|| {
-                Note::secondary(
-                    span,
-                    format!("if you meant to provide text here, try using quotes: `\"{name}\"`"),
-                )
-            }))
-            .chain({
-                did_you_mean::math(&name).map(|(lhs, op, rhs)| {
-                    Note::secondary(
-                        span,
-                        format!("if you meant to write a mathematical expression, try using whitespace: `{lhs} {op} {rhs}`"),
-                    )
-                })
-            })
-            .chain({
-                did_you_mean::trailing_colon(&name).map(|name| {
-                    Note::secondary(
-                        span,
-                        format!("if you meant to assign to the name `{name}`, try putting a space before the colon: `{name} :`"),
-                    )
-                })
-            })
+        std::iter::empty().chain(
+            self.file_info
+                .diagnostic_aliases
+                .aliases
+                .get(&name)
+                .map(|alias| Note::secondary(span, format!("did you mean `{alias}`?"))),
+        )
+        .chain(ctx.caller_accepts_text.then(|| {
+            Note::secondary(
+                span,
+                format!("if you meant to provide text here, try using quotes: `\"{name}\"`"),
+            )
+        }))
+        .chain(did_you_mean::math(&name).map(|(lhs, op, rhs)| {
+            Note::secondary(
+                span,
+                format!("if you meant to write a mathematical expression, try using whitespace: `{lhs} {op} {rhs}`"),
+            )
+        }))
+        .chain(did_you_mean::trailing_colon(&name).map(|name| {
+            Note::secondary(
+                span,
+                format!("if you meant to assign to the name `{name}`, try putting a space before the colon: `{name} :`"),
+            )
+        }))
     }
 }

@@ -1,32 +1,42 @@
 code: |
+    print "hello"
     show hello
     sum: 1+2
 
 output: |
 
 diagnostics: |
-    error: cannot find `hello`
-      ┌─ test:1:6
+    error: cannot find `print`
+      ┌─ test:1:1
       │
-    1 │ show hello
+    1 │ print "hello"
+      │ ^^^^^
+      │ │
+      │ this name is not defined
+      │ did you mean `show`?
+
+    error: cannot find `hello`
+      ┌─ test:2:6
+      │
+    2 │ show hello
       │      ^^^^^
       │      │
       │      this name is not defined
       │      if you meant to provide text here, try using quotes: `"hello"`
 
     error: cannot find `sum:`
-      ┌─ test:2:1
+      ┌─ test:3:1
       │
-    2 │ sum: 1+2
+    3 │ sum: 1+2
       │ ^^^^
       │ │
       │ this name is not defined
       │ if you meant to assign to the name `sum`, try putting a space before the colon: `sum :`
 
     error: cannot find `1+2`
-      ┌─ test:2:6
+      ┌─ test:3:6
       │
-    2 │ sum: 1+2
+    3 │ sum: 1+2
       │      ^^^
       │      │
       │      this name is not defined
