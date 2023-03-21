@@ -532,7 +532,7 @@ export const CodeEditor = (props: CodeEditorProps) => {
                                                                                     line {line}
                                                                                 </p>
 
-                                                                                <code>
+                                                                                <pre>
                                                                                     <span>
                                                                                         {note.code.slice(
                                                                                             start,
@@ -568,7 +568,7 @@ export const CodeEditor = (props: CodeEditorProps) => {
                                                                                             end
                                                                                         )}
                                                                                     </span>
-                                                                                </code>
+                                                                                </pre>
                                                                             </div>
 
                                                                             {note.messages.map(

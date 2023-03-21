@@ -1,0 +1,33 @@
+code: |
+    show hello
+    sum: 1+2
+
+output: |
+
+diagnostics: |
+    error: cannot find `hello`
+      ┌─ test:1:6
+      │
+    1 │ show hello
+      │      ^^^^^
+      │      │
+      │      this name is not defined
+      │      if you meant to provide text here, try using quotes: `"hello"`
+
+    error: cannot find `sum:`
+      ┌─ test:2:1
+      │
+    2 │ sum: 1+2
+      │ ^^^^
+      │ │
+      │ this name is not defined
+      │ if you meant to assign to the name `sum`, try putting a space before the colon: `sum :`
+
+    error: cannot find `1+2`
+      ┌─ test:2:6
+      │
+    2 │ sum: 1+2
+      │      ^^^
+      │      │
+      │      this name is not defined
+      │      if you meant to write a mathematical expression, try using whitespace: `1 + 2`

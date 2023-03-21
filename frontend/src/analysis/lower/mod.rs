@@ -3,7 +3,7 @@ mod builtins;
 use crate::{
     analysis::ast,
     diagnostics::Note,
-    helpers::{Backtrace, InternedString, Shared},
+    helpers::{did_you_mean, Backtrace, InternedString, Shared},
     parse::{Span, SpanList},
     BuiltinTypeId, Compiler, ConstantId, FieldIndex, FilePath, ScopeId, SyntaxId, TraitId, TypeId,
     TypeParameterId, VariableId, VariantIndex,
@@ -2071,15 +2071,9 @@ impl Lowerer {
                         self.compiler.add_error(
                             format!("cannot find `{}`", expr.name),
                             std::iter::once(Note::primary(expr.span, "this name is not defined"))
-                                .chain(
-                                    ctx.caller_accepts_text
-                                        .then(|| {
-                                            Note::secondary(
-                                                expr.span,
-                                                format!("if you meant to provide text here, try using quotes: `\"{}\"`", expr.name)
-                                            )
-                                        }),
-                                )
+                                .chain(self.diagnostic_notes_for_unresolved_name(
+                                    expr.span, expr.name, ctx,
+                                ))
                                 .collect(),
                         );
 
@@ -3663,5 +3657,36 @@ impl Lowerer {
         });
 
         captures
+    }
+
+    fn diagnostic_notes_for_unresolved_name(
+        &self,
+        span: SpanList,
+        name: InternedString,
+        ctx: &Context,
+    ) -> impl Iterator<Item = Note> {
+        std::iter::empty()
+            .chain(ctx.caller_accepts_text.then(|| {
+                Note::secondary(
+                    span,
+                    format!("if you meant to provide text here, try using quotes: `\"{name}\"`"),
+                )
+            }))
+            .chain({
+                did_you_mean::math(&name).map(|(lhs, op, rhs)| {
+                    Note::secondary(
+                        span,
+                        format!("if you meant to write a mathematical expression, try using whitespace: `{lhs} {op} {rhs}`"),
+                    )
+                })
+            })
+            .chain({
+                did_you_mean::trailing_colon(&name).map(|name| {
+                    Note::secondary(
+                        span,
+                        format!("if you meant to assign to the name `{name}`, try putting a space before the colon: `{name} :`"),
+                    )
+                })
+            })
     }
 }
