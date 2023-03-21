@@ -251,7 +251,7 @@ pub async fn analyze(code: String, lint: bool) -> JsValue {
                 };
 
                 for (span, message) in std::iter::once((first, note.message))
-                    .chain(rest.map(|span| (span, String::from(""))))
+                    .chain(rest.map(|span| (span, String::from("actual error occurred here"))))
                 {
                     if let Some(existing) = notes
                         .iter_mut()
