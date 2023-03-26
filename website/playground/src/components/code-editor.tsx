@@ -4,11 +4,13 @@ import * as prism from "prismjs";
 import {
     Button,
     debounce,
+    Divider,
     FormControl,
     IconButton,
     InputAdornment,
     InputLabel,
     ListItemText,
+    ListSubheader,
     Menu,
     MenuItem,
     MenuList,
@@ -28,7 +30,8 @@ import {
     AnalysisOutputDiagnostic,
     AnalysisOutputSyntaxHighlightingItem,
     HoverOutput,
-    AnalysisOutputCompletionItem,
+    AnalysisOutputCompletions,
+    Completion,
     useRunner,
 } from "../../runner";
 import KeyboardReturn from "@mui/icons-material/KeyboardReturn";
@@ -76,7 +79,7 @@ export const CodeEditor = (props: CodeEditorProps) => {
                 : { code, items: [item], diagnostics: [] }
         );
 
-    const [completions, setCompletions] = useState<AnalysisOutputCompletionItem[]>([]);
+    const [completions, setCompletions] = useState<AnalysisOutputCompletions>();
 
     const [outputRef, { height: outputHeight }] = useMeasure();
     const animatedOutputStyle = useSpring(
@@ -714,74 +717,116 @@ export const CodeEditor = (props: CodeEditorProps) => {
                     </animated.div>
                 </div>
 
-                <animated.div className="absolute" style={animatedContextMenuTriggerStyle}>
-                    <IconButton
-                        color="primary"
-                        onMouseDown={(e) => {
-                            e.preventDefault();
-                            showContextMenu();
-                        }}
-                    >
-                        <Add />
-                    </IconButton>
-                </animated.div>
+                {completions && (
+                    <>
+                        <animated.div className="absolute" style={animatedContextMenuTriggerStyle}>
+                            <IconButton
+                                color="primary"
+                                onMouseDown={(e) => {
+                                    e.preventDefault();
+                                    showContextMenu();
+                                }}
+                            >
+                                <Add />
+                            </IconButton>
+                        </animated.div>
 
-                <Menu
-                    open={contextMenuAnchor != null}
-                    anchorEl={contextMenuAnchor}
-                    onClose={hideContextMenu}
-                    style={{ maxHeight: 300 }}
-                >
-                    <MenuList disablePadding>
-                        {completions
-                            .filter((c) => c.help)
-                            .map((completion, index) => (
-                                <MenuItem
-                                    key={index}
-                                    onClick={() => {
-                                        const code = props.code;
+                        <Menu
+                            open={contextMenuAnchor != null}
+                            anchorEl={contextMenuAnchor}
+                            onClose={hideContextMenu}
+                            style={{ maxHeight: 500 }}
+                        >
+                            <MenuList disablePadding>
+                                {(() => {
+                                    const renderCompletionItem = (
+                                        { name, kind, help }: Completion,
+                                        index: number
+                                    ) =>
+                                        help ? (
+                                            <MenuItem
+                                                key={index}
+                                                onClick={() => {
+                                                    const code = props.code;
 
-                                        const before = code.slice(0, textEditor!.selectionEnd);
-                                        const padBefore = (before[before.length - 1] ?? " ").match(
-                                            /\s/
-                                        )
-                                            ? ""
-                                            : " ";
+                                                    const before = code.slice(
+                                                        0,
+                                                        textEditor!.selectionEnd
+                                                    );
+                                                    const padBefore = (
+                                                        before[before.length - 1] ?? " "
+                                                    ).match(/\s/)
+                                                        ? ""
+                                                        : " ";
 
-                                        const after = code.slice(textEditor!.selectionEnd);
-                                        const padAfter = (after[0] ?? " ").match(/\s/) ? "" : " ";
+                                                    const after = code.slice(
+                                                        textEditor!.selectionEnd
+                                                    );
+                                                    const padAfter = (after[0] ?? " ").match(/\s/)
+                                                        ? ""
+                                                        : " ";
 
-                                        props.onChange(
-                                            before + padBefore + completion.name + padAfter + after
+                                                    props.onChange(
+                                                        before + padBefore + name + padAfter + after
+                                                    );
+
+                                                    hideContextMenu();
+                                                }}
+                                                style={{ maxWidth: 400, whiteSpace: "normal" }}
+                                            >
+                                                <ListItemText>
+                                                    <pre className="language-wipple">
+                                                        <span className={`token ${kind}`}>
+                                                            {name}
+                                                        </span>
+                                                    </pre>
+
+                                                    <ReactMarkdown
+                                                        remarkPlugins={[
+                                                            remarkMath,
+                                                            remarkGfm,
+                                                            remarkSmartypants,
+                                                        ]}
+                                                        rehypePlugins={[rehypeRaw, rehypeKatex]}
+                                                        linkTarget="_blank"
+                                                    >
+                                                        {help}
+                                                    </ReactMarkdown>
+                                                </ListItemText>
+                                            </MenuItem>
+                                        ) : null;
+
+                                    const variablesSection =
+                                        completions.variables.map(renderCompletionItem);
+
+                                    const groupedConstantsSection =
+                                        completions.groupedConstants.map(
+                                            ([group, completions], index) => (
+                                                <div key={index}>
+                                                    <Divider />
+                                                    <ListSubheader>{group}</ListSubheader>
+                                                    <Divider />
+                                                    {...completions.map(renderCompletionItem)}
+                                                </div>
+                                            )
                                         );
 
-                                        hideContextMenu();
-                                    }}
-                                    style={{ maxWidth: 400, whiteSpace: "normal" }}
-                                >
-                                    <ListItemText>
-                                        <pre className="language-wipple">
-                                            <span className={`token ${completion.kind}`}>
-                                                {completion.name}
-                                            </span>
-                                        </pre>
+                                    const ungroupedConstantsSection =
+                                        completions.ungroupedConstants.map(renderCompletionItem);
 
-                                        <ReactMarkdown
-                                            remarkPlugins={[
-                                                remarkMath,
-                                                remarkGfm,
-                                                remarkSmartypants,
-                                            ]}
-                                            rehypePlugins={[rehypeRaw, rehypeKatex]}
-                                            linkTarget="_blank"
-                                        >
-                                            {completion.help}
-                                        </ReactMarkdown>
-                                    </ListItemText>
-                                </MenuItem>
-                            ))}
-                    </MenuList>
-                </Menu>
+                                    return (
+                                        <>
+                                            {variablesSection}
+                                            {groupedConstantsSection}
+                                            {ungroupedConstantsSection.length && <Divider />}
+                                            {ungroupedConstantsSection}
+                                        </>
+                                    );
+                                })()}
+                            </MenuList>
+                        </Menu>
+                    </>
+                )}
             </div>
 
             {hover && (

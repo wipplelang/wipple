@@ -8,24 +8,29 @@ use "logic.wpl"
 use "loop.wpl"
 
 [help "A container for an iterable value that produces the `next` value on demand."]
+[help-group "Collections"]
 Iterator : Element => type {
 	next :: () -> Maybe Element
 }
 
 [help "Create an iterator from a function."]
+[help-group "Collections"]
 iterator :: Element => (() -> Maybe Element) -> Iterator Element
 iterator : next -> Iterator { next }
 
 [help "Retrieve the next item in an iterator."]
+[help-group "Collections"]
 next :: Element => Iterator Element -> Maybe Element
 next : { next } -> next ()
 
 [help "Implement this trait to enable traversing your collection type."]
+[help-group "Collections"]
 Iterate : Container Element => trait (Container -> Iterator Element)
 
 Element => instance (Iterate (Iterator Element) Element) : it
 
 [help "Transform each item in an iterator, producing a new iterator."]
+[help-group "Collections"]
 transform :: Container Element Result where (Iterate Container Element) => (Element -> Result) -> Container -> Iterator Result
 transform : f -> container -> {
 	base : Iterate container
@@ -37,6 +42,7 @@ transform : f -> container -> {
 }
 
 [help "Keep only the items in an iterator that satisfy the provided condition."]
+[help-group "Collections"]
 filter :: Container Element where (Iterate Container Element) => (Element -> Boolean) -> Container -> Iterator Element
 filter : include? -> container -> {
 	base : Iterate container
@@ -56,9 +62,11 @@ filter : include? -> container -> {
 -- reduce : TODO
 
 [help "Implement this trait to enable reducing an iterator into your collection type."]
+[help-group "Collections"]
 Collect : Element Container => trait (Iterator Element -> Container)
 
 [help "Collect an iterator into a single value, like a `List`."]
+[help-group "Collections"]
 collect :: Input Element Output where (Iterate Input Element) (Collect Element Output) => Input -> Output
 collect : input -> Collect ((Iterate :: (_ -> Iterator Element)) input) -- FIXME: Remove type annotation once we have functional dependencies
 
@@ -99,10 +107,12 @@ instance (Collect () ()) : iterator -> {
 }
 
 [help "Perform an action for each item in an iterator."]
+[help-group "Collections"]
 each :: Container Element where (Iterate Container Element) => (Element -> ()) -> Container -> ()
 each : f -> container -> container . transform f . collect
 
 [help "Split an iterator into groups of consecutive items satisfying a condition."]
+[help-group "Collections"]
 split-by :: Collection Element where (Iterate Collection Element) => (Element -> Boolean) -> Collection -> Iterator (List Element)
 split-by : separator? -> collection -> {
 	base : Iterate collection
@@ -128,6 +138,7 @@ split-by : separator? -> collection -> {
 }
 
 [help "Split an iterator into groups of consecutive items equal to a value."]
+[help-group "Collections"]
 split :: Collection Element where (Iterate Collection Element) (Equal Element) => Element -> Collection -> Iterator (List Element)
 split : separator -> split-by (x -> x = separator)
 

@@ -4,7 +4,7 @@ import Runner from "../runner/worker?worker";
 export interface AnalysisOutput {
     diagnostics: AnalysisOutputDiagnostic[];
     syntaxHighlighting: AnalysisOutputSyntaxHighlightingItem[];
-    completions: AnalysisOutputCompletionItem[];
+    completions: AnalysisOutputCompletions;
 }
 
 export interface AnalysisOutputDiagnostic {
@@ -27,14 +27,20 @@ export interface AnalysisOutputSyntaxHighlightingItem {
     kind: string;
 }
 
-export interface AnalysisOutputCompletionItem {
-    kind: string;
-    name: string;
+export interface HoverOutput {
+    code: string;
     help: string;
 }
 
-export interface HoverOutput {
-    code: string;
+export interface AnalysisOutputCompletions {
+    variables: Completion[];
+    groupedConstants: [string, Completion[]][];
+    ungroupedConstants: Completion[];
+}
+
+export interface Completion {
+    kind: string;
+    name: string;
     help: string;
 }
 
@@ -183,7 +189,7 @@ export const useRunner = () => {
                 runner.current!.postMessage({ operation: "hover", start, end });
             }),
         completions: (position: number) =>
-            new Promise<AnalysisOutputCompletionItem[]>((resolve, reject) => {
+            new Promise<AnalysisOutputCompletions>((resolve, reject) => {
                 const prevonmessage = runner.current!.onmessage;
                 runner.current!.onmessage = (event) => {
                     resolve(event.data);

@@ -2,6 +2,7 @@
 
 [language "boolean"]
 [help "Represents either `True` or `False`."]
+[help-group "Logic"]
 Boolean : type {
 	False
 	True
@@ -19,6 +20,7 @@ if : syntax {
 }
 
 [help "Returns `False` if provided `True`, and vice versa."]
+[help-group "Logic"]
 not :: Boolean -> Boolean
 not : bool -> if bool False True
 
@@ -41,6 +43,7 @@ or : syntax {
 instance (Or Boolean Boolean Boolean) : a? -> b? -> if a? True (b? ())
 
 [help "The result of a comparison between two values."]
+[help-group "Logic"]
 Ordering : type {
 	Less
 	Equal
@@ -48,6 +51,7 @@ Ordering : type {
 }
 
 [help "Implement this trait to enable comparisons between two values of your type."]
+[help-group "Logic"]
 Order : A => trait (A -> A -> Ordering)
 
 instance (Order Number) : a -> b -> external "runtime" "number-ordering" a b
@@ -96,6 +100,7 @@ instance (Order Double) : a -> b -> external "runtime" "double-ordering" a b
 }
 
 [help "Implement this trait to enable equality testing between two values of your type."]
+[help-group "Logic"]
 Equal : A => trait (A -> A -> Boolean)
 
 [operator Comparison-Precedence]

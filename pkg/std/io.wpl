@@ -8,9 +8,11 @@ use "iterate.wpl"
 
 [language "show"]
 [help "Implement this trait to enable `show`ing values of your type."]
+[help-group "Input and Output"]
 Show : A => trait (A -> Text)
 
 [help "Display a value on the screen."]
+[help-group "Input and Output"]
 [diagnostic "accepts-text"]
 [diagnostic-alias "print"]
 [diagnostic-alias "println"]
@@ -51,9 +53,11 @@ Success Failure where (Show Failure) =>
 		}
 
 [help "Implement the `read` function."]
+[help-group "Input and Output"]
 Read : A => trait (Text -> Maybe A)
 
 [help "Parse `Text` into a value."]
+[help-group "Input and Output"]
 read :: A where (Read A) => Text -> Maybe A
 read : Read
 
@@ -67,11 +71,13 @@ instance (Read Unsigned) : text -> external "runtime" "text-to-unsigned" text
 instance (Read Float) : text -> external "runtime" "text-to-float" text
 instance (Read Double) : text -> external "runtime" "text-to-double" text
 
+[help-group "Input and Output"]
 [help "Read a value from the user with the provided prompt."]
 prompt :: A where (Read A) => Text -> A
 prompt : prompt -> external "runtime" "prompt" prompt (Read :: (Text -> Maybe A))
 
 [help "Ask the user to pick from a set of options."]
+[help-group "Input and Output"]
 choice :: Element where (Show Element) => Text -> List Element -> Element
 choice : prompt -> items -> {
 	descriptions : items . transform (((item :: Element) -> Show item) :: (Element -> Text)) . collect :: List Text

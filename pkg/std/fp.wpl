@@ -1,10 +1,12 @@
 [[no-std]]
 
 [help "Returns its input unmodified."]
+[help-group "Utilities"]
 it :: A => A -> A
 it : x -> x
 
 [help "Ignores its second input."]
+[help-group "Utilities"]
 just :: A => A -> _ -> A
 just : x -> _ -> x
 

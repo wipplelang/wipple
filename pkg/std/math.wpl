@@ -5,6 +5,7 @@ use "util.wpl"
 use "logic.wpl"
 
 [help "Implements the `+` operator."]
+[help-group "Math"]
 [on-unimplemented "cannot add `_` to `_`" Left Right]
 Add : Left Right Sum => trait (Left -> Right -> Sum)
 
@@ -24,6 +25,7 @@ instance (Add Double Double Double) : a -> b -> external "runtime" "add-double" 
 instance (Add Text Text Text) : a -> b -> format "__" a b
 
 [help "Implements the `-` operator."]
+[help-group "Math"]
 [on-unimplemented "cannot subtract `_` from `_`" Right Left]
 Subtract : Left Right Difference => trait (Left -> Right -> Difference)
 
@@ -42,6 +44,7 @@ instance (Subtract Float Float Float) : a -> b -> external "runtime" "subtract-f
 instance (Subtract Double Double Double) : a -> b -> external "runtime" "subtract-double" a b
 
 [help "Implements the `*` operator."]
+[help-group "Math"]
 [on-unimplemented "cannot multiply `_` by `_`" Left Right]
 Multiply : Left Right Product => trait (Left -> Right -> Product)
 
@@ -60,6 +63,7 @@ instance (Multiply Float Float Float) : a -> b -> external "runtime" "multiply-f
 instance (Multiply Double Double Double) : a -> b -> external "runtime" "multiply-double" a b
 
 [help "Implements the `/` operator."]
+[help-group "Math"]
 [on-unimplemented "cannot divide `_` by `_`" Left Right]
 Divide : Left Right Quotient => trait (Left -> Right -> Quotient)
 
@@ -78,6 +82,7 @@ instance (Divide Float Float Float) : a -> b -> external "runtime" "divide-float
 instance (Divide Double Double Double) : a -> b -> external "runtime" "divide-double" a b
 
 [help "Implements the `^` operator."]
+[help-group "Math"]
 [on-unimplemented "cannot raise `_` to the power of `_`" Left Right]
 Power : Left Right Power' => trait (Left -> Right -> Power') -- FIXME: Rename to `Power` once type parameters aren't leaked
 
@@ -96,6 +101,7 @@ instance (Power Float Float Float) : a -> b -> external "runtime" "power-float" 
 instance (Power Double Double Double) : a -> b -> external "runtime" "power-double" a b
 
 [help "Rounds down a number to the nearest integer."]
+[help-group "Math"]
 Floor : N => trait (N -> N)
 floor :: N where (Floor N) => N -> N
 floor : Floor
@@ -104,6 +110,7 @@ instance (Floor Float) : n -> external "runtime" "floor-float" n
 instance (Floor Double) : n -> external "runtime" "floor-double" n
 
 [help "Rounds up a number to the nearest integer."]
+[help-group "Math"]
 Ceil : N => trait (N -> N)
 ceil :: N where (Ceil N) => N -> N
 ceil : Ceil
@@ -112,6 +119,7 @@ instance (Ceil Float) : n -> external "runtime" "ceil-float" n
 instance (Ceil Double) : n -> external "runtime" "ceil-double" n
 
 [help "Calculates the square root of a number."]
+[help-group "Math"]
 Sqrt : N => trait (N -> N)
 sqrt :: N where (Sqrt N) => N -> N
 sqrt : Sqrt

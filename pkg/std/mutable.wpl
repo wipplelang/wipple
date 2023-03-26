@@ -4,18 +4,22 @@ use "fp.wpl"
 use "math.wpl"
 
 [help "Create a new `Mutable` value."]
+[help-group "Utilities"]
 mutable :: A => A -> Mutable A
 mutable : x -> external "runtime" "make-mutable" x
 
 [help "Retrieve the value inside a `Mutable`."]
+[help-group "Utilities"]
 get :: A => Mutable A -> A
 get : m -> external "runtime" "get-mutable" m
 
 [help "Update the value contained inside a `Mutable`."]
+[help-group "Utilities"]
 set! :: A => A -> Mutable A -> ()
 set! : x -> m -> external "runtime" "set-mutable" m x
 
 [help "Swap the contents of two `Mutable` values."]
+[help-group "Utilities"]
 swap! :: A => Mutable A -> Mutable A -> ()
 swap! : a -> b -> {
 	temp : get a
@@ -24,14 +28,17 @@ swap! : a -> b -> {
 }
 
 [help "Add a value to a `Mutable` value."]
+[help-group "Math"]
 add! :: Left Right where (Add Left Right Left) => Right -> Mutable Left -> ()
 add! : x -> m -> m . set! (get m + x)
 
 [help "Increment a `Mutable` value."]
+[help-group "Math"]
 increment! :: A where (Add A Natural A) => Mutable A -> ()
 increment! : add! 1
 
-[help "Remove the value contained inside a `Mutable` value, replace it with `Default`."]
+[help "Remove the value contained inside a `Mutable` value, replacing it with `Default`."]
+[help-group "Utilities"]
 take! :: A where (Default A) => Mutable A -> A
 take! : m -> {
 	value : get m

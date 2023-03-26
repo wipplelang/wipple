@@ -2,6 +2,7 @@ mod allow_overlapping_instances;
 mod diagnostic_alias;
 mod diagnostic_item;
 mod help;
+mod help_group;
 mod keyword;
 mod language_item;
 mod on_mismatch;
@@ -13,6 +14,7 @@ pub use allow_overlapping_instances::AllowOverlappingInstancesStatementAttribute
 pub use diagnostic_alias::DiagnosticAliasStatementAttribute;
 pub use diagnostic_item::{DiagnosticItemStatementAttribute, DiagnosticItemStatementAttributeKind};
 pub use help::HelpStatementAttribute;
+pub use help_group::HelpGroupStatementAttribute;
 pub use keyword::KeywordStatementAttribute;
 pub use language_item::{LanguageItemStatementAttribute, LanguageItemStatementAttributeKind};
 pub use on_mismatch::OnMismatchStatementAttribute;
@@ -27,6 +29,7 @@ use allow_overlapping_instances::*;
 use diagnostic_alias::*;
 use diagnostic_item::*;
 use help::*;
+use help_group::*;
 use keyword::*;
 use language_item::*;
 use on_mismatch::*;
@@ -53,6 +56,7 @@ syntax_group! {
             DiagnosticAlias,
             DiagnosticItem,
             Help,
+            HelpGroup,
             Keyword,
             LanguageItem,
             OnMismatch,

@@ -5,6 +5,7 @@ use loader::Fetcher;
 use parking_lot::{MappedMutexGuard, Mutex, MutexGuard};
 use serde::Serialize;
 use std::{
+    collections::HashMap,
     future::Future,
     pin::Pin,
     sync::{atomic::AtomicBool, Arc},
@@ -19,7 +20,7 @@ use wipple_frontend::Loader;
 struct AnalysisOutput {
     diagnostics: Vec<AnalysisOutputDiagnostic>,
     syntax_highlighting: Vec<AnalysisOutputSyntaxHighlightingItem>,
-    completions: Vec<Completion>,
+    completions: AnalysisOutputCompletions,
 }
 
 #[derive(PartialEq, Eq, Serialize)]
@@ -66,6 +67,14 @@ struct AnalysisOutputSyntaxHighlightingItem {
 struct HoverOutput {
     code: String,
     help: String,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AnalysisOutputCompletions {
+    variables: Vec<Completion>,
+    grouped_constants: Vec<(String, Vec<Completion>)>,
+    ungrouped_constants: Vec<Completion>,
 }
 
 #[derive(Serialize)]
@@ -392,20 +401,30 @@ fn get_syntax_highlighting(
     items
 }
 
-fn get_completions(program: &wipple_frontend::analysis::Program) -> Vec<Completion> {
-    let mut items = Vec::new();
-
+fn get_completions(program: &wipple_frontend::analysis::Program) -> AnalysisOutputCompletions {
+    let mut grouped_constants = HashMap::<String, Vec<Completion>>::new();
+    let mut ungrouped_constants = Vec::new();
     for decl in program.declarations.constants.values() {
-        items.push(Completion {
+        let completion = Completion {
             kind: matches!(decl.ty, wipple_frontend::analysis::Type::Function(_, _))
                 .then_some("function"),
             name: decl.name.to_string(),
             help: decl.attributes.decl_attributes.help.iter().join("\n"),
-        });
+        };
+
+        if let Some(group) = decl.attributes.decl_attributes.help_group {
+            grouped_constants
+                .entry(group.to_string())
+                .or_default()
+                .push(completion);
+        } else {
+            ungrouped_constants.push(completion);
+        }
     }
 
+    let mut variables = Vec::new();
     for decl in program.declarations.variables.values() {
-        items.push(Completion {
+        variables.push(Completion {
             kind: matches!(decl.ty, wipple_frontend::analysis::Type::Function(_, _))
                 .then_some("function"),
             name: match decl.name {
@@ -416,10 +435,24 @@ fn get_completions(program: &wipple_frontend::analysis::Program) -> Vec<Completi
         });
     }
 
-    items.sort_by(|a, b| a.name.cmp(&b.name));
-    items.dedup_by(|a, b| a.name == b.name);
+    for completions in std::iter::once(&mut variables)
+        .chain(grouped_constants.values_mut())
+        .chain(std::iter::once(&mut ungrouped_constants))
+    {
+        completions.sort_by(|a, b| a.name.cmp(&b.name));
+        completions.dedup_by(|a, b| a.name == b.name);
+    }
 
-    items
+    let grouped_constants = grouped_constants
+        .into_iter()
+        .sorted_by(|(a, _), (b, _)| a.cmp(b))
+        .collect::<Vec<_>>();
+
+    AnalysisOutputCompletions {
+        variables,
+        grouped_constants,
+        ungrouped_constants,
+    }
 }
 
 #[wasm_bindgen]
