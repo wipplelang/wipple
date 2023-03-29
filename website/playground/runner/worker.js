@@ -56,6 +56,31 @@ onmessage = async (event) => {
                                 });
 
                                 break;
+                            case "loadUi":
+                                postMessage({
+                                    type: "loadUi",
+                                    url: request.url,
+                                });
+
+                                consoleResponders.push({
+                                    callback: request.callback,
+                                });
+
+                                break;
+
+                            case "messageUi":
+                                postMessage({
+                                    type: "messageUi",
+                                    id: request.id,
+                                    message: request.message,
+                                    value: request.value,
+                                });
+
+                                consoleResponders.push({
+                                    callback: request.callback,
+                                });
+
+                                break;
                             default:
                                 throw new Error("unhandled console request");
                         }
@@ -96,6 +121,12 @@ onmessage = async (event) => {
                 break;
             case "choiceCallback":
                 await consoleResponders.pop().callback(event.data.index);
+                break;
+            case "loadUiCallback":
+                await consoleResponders.pop().callback(event.data.id);
+                break;
+            case "messageUiCallback":
+                await consoleResponders.pop().callback(event.data.result);
                 break;
             default:
                 throw new Error("invalid operation");

@@ -39,6 +39,7 @@ import Refresh from "@mui/icons-material/Refresh";
 import Add from "@mui/icons-material/Add";
 import getCaretCoordinates from "textarea-caret";
 import lineColumn from "line-column";
+import { useRefState } from "../helpers";
 
 export interface CodeEditorProps {
     id: string;
@@ -51,12 +52,17 @@ export interface CodeEditorProps {
 type OutputItem =
     | { type: "output"; text: string }
     | { type: "prompt"; prompt: string; onSubmit: (text: string) => Promise<boolean> }
-    | { type: "choice"; prompt: string; choices: string[]; onSubmit: (index: number) => void };
+    | { type: "choice"; prompt: string; choices: string[]; onSubmit: (index: number) => void }
+    | { type: "custom"; id: string };
 
 interface Hover {
     x: number;
     y: number;
     output: HoverOutput;
+}
+
+interface UiElement {
+    onMessage: (message: string, value: any) => Promise<any>;
 }
 
 export const CodeEditor = (props: CodeEditorProps) => {
@@ -93,6 +99,8 @@ export const CodeEditor = (props: CodeEditorProps) => {
         });
     }, [prefersReducedMotion]);
 
+    const [uiElements, setUiElements] = useRefState<UiElement[]>([]);
+
     const runner = useRunner();
 
     const run = useMemo(
@@ -104,11 +112,12 @@ export const CodeEditor = (props: CodeEditorProps) => {
                     setSyntaxHighlighting(analysis.syntaxHighlighting);
                     setOutput({ code: code, items: [], diagnostics: analysis.diagnostics });
                     setCompletions(analysis.completions);
+                    setUiElements([]);
 
                     if (!analysis.diagnostics.find(({ level }) => level === "error")) {
                         setRunning(true);
 
-                        const success = await runner.run((request) => {
+                        const success = await runner.run(async (request) => {
                             switch (request.type) {
                                 case "display":
                                     appendToOutput(code, {
@@ -145,6 +154,79 @@ export const CodeEditor = (props: CodeEditorProps) => {
                                     });
 
                                     break;
+                                case "loadUi": {
+                                    // FIXME: TEMPORARY
+                                    const tempTestingUiElement = {
+                                        onMessage: async (
+                                            container: HTMLDivElement,
+                                            message: string,
+                                            value: any
+                                        ) => {
+                                            const p = document.createElement("p");
+                                            p.innerText = `${message}: ${value}`;
+                                            container.appendChild(p);
+                                        },
+                                    };
+
+                                    const uiElement =
+                                        request.url === "TEMP_TESTING"
+                                            ? tempTestingUiElement
+                                            : await import(request.url);
+
+                                    if (!uiElement.onMessage) {
+                                        throw new Error(
+                                            `error loading ${request.url}: not a UI element`
+                                        );
+                                    }
+
+                                    const index = uiElements.current.length;
+
+                                    const id = `${props.id}-${index}`;
+                                    appendToOutput(code, { type: "custom", id });
+
+                                    setUiElements([
+                                        ...uiElements.current,
+                                        {
+                                            onMessage: (message, value) => {
+                                                const container = document.getElementById(
+                                                    id
+                                                )! as HTMLDivElement;
+
+                                                return uiElement.onMessage(
+                                                    container,
+                                                    message,
+                                                    value
+                                                );
+                                            },
+                                        },
+                                    ]);
+
+                                    requestAnimationFrame(() => {
+                                        request.callback(id);
+                                    });
+
+                                    break;
+                                }
+                                case "messageUi": {
+                                    const id = request.id.split("-");
+                                    const index = parseInt(id[id.length - 1]);
+                                    const uiElement = uiElements.current[index];
+
+                                    if (!uiElement) {
+                                        throw new Error(`invalid UI element ${index}`);
+                                    }
+
+                                    const result = await uiElement.onMessage(
+                                        request.message,
+                                        request.value
+                                    );
+
+                                    request.callback(result);
+
+                                    break;
+                                }
+                                default:
+                                    throw new Error("unknown request");
                             }
                         });
 
@@ -684,6 +766,8 @@ export const CodeEditor = (props: CodeEditorProps) => {
                                                                     {item.prompt}
                                                                 </DropdownField>
                                                             );
+                                                        case "custom":
+                                                            return <div key={index} id={item.id} />;
                                                     }
                                                 })}
 

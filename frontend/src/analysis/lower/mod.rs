@@ -560,6 +560,8 @@ pub enum RuntimeFunction {
     Display,
     Prompt,
     Choice,
+    LoadUi,
+    MessageUi,
     NumberToText,
     IntegerToText,
     NaturalToText,

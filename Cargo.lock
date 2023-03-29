@@ -2584,6 +2584,7 @@ dependencies = [
  "parking_lot",
  "rust-embed",
  "serde",
+ "serde_json",
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",

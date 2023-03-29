@@ -1,0 +1,9 @@
+[[no-std]]
+
+[help ""]
+[help-group "User Interface"]
+load-ui :: Message Output => Text -> Text -> Message -> Output
+load-ui : url -> {
+	id : (external "runtime" "load-ui" url :: Text)
+	message -> value -> external "runtime" "message-ui" id message value
+}

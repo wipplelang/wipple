@@ -534,6 +534,8 @@ mod util {
                 RuntimeFunction::Display => false,
                 RuntimeFunction::Prompt => false,
                 RuntimeFunction::Choice => false,
+                RuntimeFunction::LoadUi => false,
+                RuntimeFunction::MessageUi => false,
                 RuntimeFunction::NumberToText => true,
                 RuntimeFunction::IntegerToText => true,
                 RuntimeFunction::NaturalToText => true,

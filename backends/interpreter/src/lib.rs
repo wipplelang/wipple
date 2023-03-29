@@ -20,6 +20,8 @@ pub enum ConsoleRequest<'a> {
         Box<dyn FnOnce() + Send>,
     ),
     Choice(&'a str, Vec<&'a str>, Box<dyn FnOnce(usize) + Send>),
+    LoadUi(&'a str, Box<dyn FnOnce(String) + Send>),
+    MessageUi(&'a str, &'a str, Value, Box<dyn FnOnce(Value) + Send>),
 }
 
 #[allow(clippy::type_complexity)]
@@ -36,7 +38,7 @@ impl<'a> Interpreter<'a> {
 }
 
 #[derive(Debug, Clone)]
-enum Value {
+pub enum Value {
     Marker,
     Number(rust_decimal::Decimal),
     Integer(i64),
@@ -56,7 +58,7 @@ enum Value {
 }
 
 #[derive(Debug, Clone, Default)]
-struct Scope(Vec<Option<Value>>);
+pub struct Scope(Vec<Option<Value>>);
 
 impl Scope {
     fn new(count: usize) -> Self {

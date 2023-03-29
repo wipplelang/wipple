@@ -204,6 +204,26 @@ impl<'a> Interpreter<'a> {
 
                     Ok(Value::Natural(index as u64))
                 }),
+                ir::RuntimeFunction::LoadUi => runtime_fn!((Value::Text(url)) => {
+                    let (completion_tx, completion_rx) = tokio::sync::oneshot::channel();
+                    (self.console)(ConsoleRequest::LoadUi(&url, Box::new(|url| {
+                        completion_tx.send(url).unwrap()
+                    })))?;
+
+                    let url = completion_rx.await.unwrap();
+
+                    Ok(Value::Text(Arc::from(url)))
+                }),
+                ir::RuntimeFunction::MessageUi => runtime_fn!((Value::Text(id), Value::Text(message), value) => {
+                    let (completion_tx, completion_rx) = tokio::sync::oneshot::channel();
+                    (self.console)(ConsoleRequest::MessageUi(&id, &message, value, Box::new(|result| {
+                        completion_tx.send(result).unwrap()
+                    })))?;
+
+                    let result = completion_rx.await.unwrap();
+
+                    Ok(result)
+                }),
                 ir::RuntimeFunction::NumberToText => {
                     runtime_text_fn!((Value::Number(n)) => n.normalize().to_string())
                 }

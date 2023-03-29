@@ -219,6 +219,12 @@ async fn run() -> anyhow::Result<()> {
 
                         callback(index);
                     }
+                    wipple_interpreter_backend::ConsoleRequest::LoadUi(_, _)
+                    | wipple_interpreter_backend::ConsoleRequest::MessageUi(_, _, _, _) => {
+                        // TODO: Prevent code that uses custom UI elements from even compiling
+                        // (eg. a `platform` attribute)
+                        panic!("custom UI elements are only supported in the Wipple Playground")
+                    }
                 }
 
                 Ok(())

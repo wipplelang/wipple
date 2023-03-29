@@ -578,6 +578,54 @@ pub fn run(handle_console: js_sys::Function, callback: js_sys::Function) -> JsVa
                         .call1(&JsValue::NULL, &request.into())
                         .unwrap();
                 }
+                wipple_interpreter_backend::ConsoleRequest::LoadUi(url, callback) => {
+                    #[wasm_bindgen(getter_with_clone)]
+                    pub struct LoadUiRequest {
+                        pub kind: String,
+                        pub url: String,
+                        pub callback: JsValue,
+                    }
+
+                    let request = LoadUiRequest {
+                        kind: String::from("loadUi"),
+                        url: url.to_string(),
+                        callback: Closure::once(callback).into_js_value(),
+                    };
+
+                    handle_console
+                        .call1(&JsValue::NULL, &request.into())
+                        .unwrap();
+                }
+                wipple_interpreter_backend::ConsoleRequest::MessageUi(
+                    id,
+                    message,
+                    value,
+                    callback,
+                ) => {
+                    #[wasm_bindgen(getter_with_clone)]
+                    pub struct MessageUiRequest {
+                        pub kind: String,
+                        pub id: String,
+                        pub message: String,
+                        pub value: JsValue,
+                        pub callback: JsValue,
+                    }
+
+                    let request = MessageUiRequest {
+                        kind: String::from("messageUi"),
+                        id: id.to_string(),
+                        message: message.to_string(),
+                        value: JsValue::from_serde(&wipple_to_json(value)).unwrap(),
+                        callback: Closure::once(move |value: JsValue| {
+                            callback(json_to_wipple(value.into_serde().unwrap()))
+                        })
+                        .into_js_value(),
+                    };
+
+                    handle_console
+                        .call1(&JsValue::NULL, &request.into())
+                        .unwrap();
+                }
             }
 
             Ok(())
@@ -816,4 +864,69 @@ pub fn hover(start: usize, end: usize) -> JsValue {
         .map(|(_, hover)| hover);
 
     JsValue::from_serde(&hover).unwrap()
+}
+
+fn wipple_to_json(value: wipple_interpreter_backend::Value) -> serde_json::Value {
+    match value {
+        wipple_interpreter_backend::Value::Marker => {
+            panic!("marker values may not be sent to JavaScript")
+        }
+        wipple_interpreter_backend::Value::Number(n) => serde_json::Value::Number(
+            serde_json::Number::from_f64(n.try_into().expect("number out of bounds")).unwrap(),
+        ),
+        wipple_interpreter_backend::Value::Integer(_)
+        | wipple_interpreter_backend::Value::Natural(_)
+        | wipple_interpreter_backend::Value::Byte(_)
+        | wipple_interpreter_backend::Value::Signed(_)
+        | wipple_interpreter_backend::Value::Unsigned(_)
+        | wipple_interpreter_backend::Value::Float(_)
+        | wipple_interpreter_backend::Value::Double(_) => {
+            panic!("only numbers of type `Number` may be sent to JavaScript")
+        }
+        wipple_interpreter_backend::Value::Text(s) => serde_json::Value::String(s.to_string()),
+        wipple_interpreter_backend::Value::Function(_, _) => {
+            panic!("functions may not be sent to JavaScript")
+        }
+        wipple_interpreter_backend::Value::Variant(_, _) => {
+            panic!("enumeration values may not be sent to JavaScript")
+        }
+        wipple_interpreter_backend::Value::Mutable(_) => {
+            panic!("`Mutable` values may not be sent to JavaScript")
+        }
+        wipple_interpreter_backend::Value::List(_) => {
+            panic!("`List` values may not be sent to JavaScript")
+        }
+        wipple_interpreter_backend::Value::Structure(_) => {
+            panic!("structure values may not be sent to JavaScript")
+        }
+        wipple_interpreter_backend::Value::Tuple(elements) => {
+            if elements.is_empty() {
+                serde_json::Value::Null
+            } else {
+                panic!("tuple values may not be sent to JavaScript");
+            }
+        }
+    }
+}
+
+fn json_to_wipple(value: serde_json::Value) -> wipple_interpreter_backend::Value {
+    match value {
+        serde_json::Value::Null => wipple_interpreter_backend::Value::Marker,
+        serde_json::Value::Bool(_) => panic!("JavaScript booleans may not be sent to Wipple"),
+        serde_json::Value::Number(n) => wipple_interpreter_backend::Value::Number(
+            n.as_f64()
+                .unwrap()
+                .try_into()
+                .expect("number out of bounds"),
+        ),
+        serde_json::Value::String(s) => wipple_interpreter_backend::Value::Text(Arc::from(s)),
+        serde_json::Value::Array(elements) => {
+            if elements.is_empty() {
+                wipple_interpreter_backend::Value::Tuple(Vec::new())
+            } else {
+                panic!("JavaScript arrays may not be sent to Wipple")
+            }
+        }
+        serde_json::Value::Object(_) => panic!("JavaScript objects may not be sent to Wipple"),
+    }
 }

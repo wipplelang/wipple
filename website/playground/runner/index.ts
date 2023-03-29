@@ -62,6 +62,18 @@ export type AnalysisConsoleRequest =
           prompt: string;
           choices: string[];
           callback: (index: number) => void;
+      }
+    | {
+          type: "loadUi";
+          url: string;
+          callback: (id: string) => void;
+      }
+    | {
+          type: "messageUi";
+          id: string;
+          message: string;
+          value: any;
+          callback: (result: any) => void;
       };
 
 export const useRunner = () => {
@@ -152,6 +164,34 @@ export const useRunner = () => {
                                     runner.current!.postMessage({
                                         operation: "choiceCallback",
                                         index,
+                                    });
+                                },
+                            });
+
+                            break;
+                        case "loadUi":
+                            handleConsole({
+                                type: "loadUi",
+                                url: event.data.url,
+                                callback: (id) => {
+                                    runner.current!.postMessage({
+                                        operation: "loadUiCallback",
+                                        id,
+                                    });
+                                },
+                            });
+
+                            break;
+                        case "messageUi":
+                            handleConsole({
+                                type: "messageUi",
+                                id: event.data.id,
+                                message: event.data.message,
+                                value: event.data.value,
+                                callback: (result) => {
+                                    runner.current!.postMessage({
+                                        operation: "messageUiCallback",
+                                        result,
                                     });
                                 },
                             });
