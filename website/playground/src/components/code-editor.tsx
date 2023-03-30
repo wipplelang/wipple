@@ -155,24 +155,7 @@ export const CodeEditor = (props: CodeEditorProps) => {
 
                                     break;
                                 case "loadUi": {
-                                    // FIXME: TEMPORARY
-                                    const tempTestingUiElement = {
-                                        initialize: async () => {},
-                                        onMessage: async (
-                                            container: HTMLDivElement,
-                                            message: string,
-                                            value: any
-                                        ) => {
-                                            const p = document.createElement("p");
-                                            p.innerText = `${message}: ${value}`;
-                                            container.appendChild(p);
-                                        },
-                                    };
-
-                                    const uiElement =
-                                        request.url === "TEMP_TESTING"
-                                            ? tempTestingUiElement
-                                            : await import(request.url);
+                                    const uiElement = await import(request.url);
 
                                     const index = uiElements.current.length;
 
