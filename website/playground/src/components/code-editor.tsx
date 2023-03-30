@@ -157,6 +157,7 @@ export const CodeEditor = (props: CodeEditorProps) => {
                                 case "loadUi": {
                                     // FIXME: TEMPORARY
                                     const tempTestingUiElement = {
+                                        initialize: async () => {},
                                         onMessage: async (
                                             container: HTMLDivElement,
                                             message: string,
@@ -173,36 +174,32 @@ export const CodeEditor = (props: CodeEditorProps) => {
                                             ? tempTestingUiElement
                                             : await import(request.url);
 
-                                    if (!uiElement.onMessage) {
-                                        throw new Error(
-                                            `error loading ${request.url}: not a UI element`
-                                        );
-                                    }
-
                                     const index = uiElements.current.length;
 
                                     const id = `${props.id}-${index}`;
                                     appendToOutput(code, { type: "custom", id });
 
-                                    setUiElements([
-                                        ...uiElements.current,
-                                        {
-                                            onMessage: (message, value) => {
-                                                const container = document.getElementById(
-                                                    id
-                                                )! as HTMLDivElement;
-
-                                                return uiElement.onMessage(
-                                                    container,
-                                                    message,
-                                                    value
-                                                );
-                                            },
-                                        },
-                                    ]);
-
                                     requestAnimationFrame(() => {
-                                        request.callback(id);
+                                        requestAnimationFrame(async () => {
+                                            const container = document.getElementById(
+                                                id
+                                            )! as HTMLDivElement;
+
+                                            if (!container) {
+                                                throw new Error("container not initialized");
+                                            }
+
+                                            await uiElement.initialize(container);
+
+                                            setUiElements([
+                                                ...uiElements.current,
+                                                { onMessage: uiElement.onMessage },
+                                            ]);
+
+                                            requestAnimationFrame(() => {
+                                                request.callback(id);
+                                            });
+                                        });
                                     });
 
                                     break;
