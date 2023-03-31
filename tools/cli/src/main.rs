@@ -167,13 +167,14 @@ async fn run() -> anyhow::Result<()> {
                 _ => return Err(anyhow::Error::msg("")),
             };
 
-            let mut interpreter = wipple_interpreter_backend::Interpreter::new(|request| {
+            let interpreter = wipple_interpreter_backend::Interpreter::new(|request| {
                 match request {
-                    wipple_interpreter_backend::ConsoleRequest::Display(text, callback) => {
+                    wipple_interpreter_backend::ConsoleRequest::Display(_, text, callback) => {
                         println!("{text}");
                         callback();
                     }
                     wipple_interpreter_backend::ConsoleRequest::Prompt(
+                        _,
                         prompt,
                         input_tx,
                         valid_rx,
@@ -206,6 +207,7 @@ async fn run() -> anyhow::Result<()> {
                         });
                     }
                     wipple_interpreter_backend::ConsoleRequest::Choice(
+                        _,
                         prompt,
                         choices,
                         callback,
@@ -219,8 +221,7 @@ async fn run() -> anyhow::Result<()> {
 
                         callback(index);
                     }
-                    wipple_interpreter_backend::ConsoleRequest::LoadUi(_, _)
-                    | wipple_interpreter_backend::ConsoleRequest::MessageUi(_, _, _, _) => {
+                    wipple_interpreter_backend::ConsoleRequest::Ui(_, _, _) => {
                         // TODO: Prevent code that uses custom UI elements from even compiling
                         // (eg. a `platform` attribute)
                         panic!("custom UI elements are only supported in the Wipple Playground")

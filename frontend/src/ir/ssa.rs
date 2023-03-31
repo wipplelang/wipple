@@ -36,6 +36,7 @@ pub enum Type {
     Unsigned,
     Float,
     Double,
+    Ui,
     Tuple(Vec<Type>),
     Structure(StructureId),
     Enumeration(EnumerationId),
@@ -143,6 +144,7 @@ impl Type {
             | Type::Unsigned
             | Type::Float
             | Type::Double
+            | Type::Ui
             | Type::Tuple(_)
             | Type::Structure(_)
             | Type::Enumeration(_) => false,
@@ -437,6 +439,7 @@ impl Converter<'_> {
                 analysis::typecheck::BuiltinType::Mutable(ty) => {
                     Type::MutableReference(Box::new(self.convert_type(ty)))
                 }
+                analysis::typecheck::BuiltinType::Ui => Type::Ui,
             },
             analysis::Type::Error => unreachable!(),
         }

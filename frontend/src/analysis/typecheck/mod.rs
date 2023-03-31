@@ -3893,6 +3893,19 @@ impl Typechecker {
                             )))
                         }
                     }
+                    lower::BuiltinTypeDeclarationKind::Ui => {
+                        if !parameters.is_empty() {
+                            self.compiler.add_error(
+                                "`UI` does not accept parameters",
+                                vec![Note::primary(
+                                    annotation.span,
+                                    "try removing these parameters",
+                                )],
+                            );
+                        }
+
+                        engine::UnresolvedType::Builtin(engine::BuiltinType::Ui)
+                    }
                 }
             }
             TypeAnnotationKind::Function(input, output) => engine::UnresolvedType::Function(

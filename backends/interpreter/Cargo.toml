@@ -9,6 +9,7 @@ futures = "0.3"
 im = "15"
 itertools = "0.10"
 num-traits = "0.2"
+parking_lot = "0.12"
 rust_decimal = { version = "1", features = ["maths"] }
 tokio = { version = "1", features = ["sync"] }
 unicode-segmentation = "1"

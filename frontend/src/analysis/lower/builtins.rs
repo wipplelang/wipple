@@ -180,5 +180,18 @@ impl Lowerer {
                 }
             },
         );
+
+        add!(
+            builtin_type,
+            Span::builtin(),
+            "UI",
+            BuiltinTypeDeclaration {
+                kind: BuiltinTypeDeclarationKind::Ui,
+                attributes: DeclarationAttributes {
+                    help: vec![InternedString::new("A handle for a UI element.")],
+                    ..Default::default()
+                }
+            },
+        );
     }
 }

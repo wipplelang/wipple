@@ -66,14 +66,13 @@ export type AnalysisConsoleRequest =
     | {
           type: "loadUi";
           url: string;
-          callback: (id: string) => void;
+          callback: () => void;
       }
     | {
           type: "messageUi";
-          id: string;
           message: string;
-          value: any;
-          callback: (result: any) => void;
+          value: string;
+          callback: (value: any) => void;
       };
 
 export const useRunner = () => {
@@ -108,6 +107,35 @@ export const useRunner = () => {
             }),
         run: (handleConsole: (request: AnalysisConsoleRequest) => void) =>
             new Promise<boolean>((resolve, reject) => {
+                let functions: any[] = [];
+                let resolveFunctionResult: ((value: any) => void) | undefined;
+
+                const encodeFunction = (value: any) => {
+                    if (typeof value === "function") {
+                        const length = functions.push(value);
+                        return { $function: length - 1 };
+                    } else {
+                        return value;
+                    }
+                };
+
+                const decodeFunction = (value: any) => {
+                    if (typeof value === "object" && value != null && "$function" in value) {
+                        return (input: any) =>
+                            new Promise((resolve) => {
+                                resolveFunctionResult = resolve;
+
+                                runner.current!.postMessage({
+                                    operation: "callFunction",
+                                    id: value.$function,
+                                    input,
+                                });
+                            });
+                    } else {
+                        return value;
+                    }
+                };
+
                 const prevonmessage = runner.current!.onmessage;
                 runner.current!.onmessage = async (event) => {
                     switch (event.data.type) {
@@ -173,10 +201,9 @@ export const useRunner = () => {
                             handleConsole({
                                 type: "loadUi",
                                 url: event.data.url,
-                                callback: (id) => {
+                                callback: () => {
                                     runner.current!.postMessage({
                                         operation: "loadUiCallback",
-                                        id,
                                     });
                                 },
                             });
@@ -185,22 +212,39 @@ export const useRunner = () => {
                         case "messageUi":
                             handleConsole({
                                 type: "messageUi",
-                                id: event.data.id,
                                 message: event.data.message,
-                                value: event.data.value,
-                                callback: (result) => {
+                                value: decodeFunction(event.data.value),
+                                callback: (value) => {
                                     runner.current!.postMessage({
                                         operation: "messageUiCallback",
-                                        result,
+                                        value: encodeFunction(value),
                                     });
                                 },
                             });
 
                             break;
+                        case "callFunction":
+                            const result = await functions[event.data.id](
+                                decodeFunction(event.data.input)
+                            );
+
+                            runner.current!.postMessage({
+                                operation: "callFunctionResult",
+                                result: encodeFunction(result),
+                            });
+
+                            break;
+                        case "callFunctionResult":
+                            resolveFunctionResult!(event.data.result);
+                            resolveFunctionResult = undefined;
+                            break;
                         case "done":
                             resolve(event.data.success);
                             runner.current!.onmessage = prevonmessage;
                             break;
+                        default:
+                            console.error("received invalid event:", event);
+                            throw new Error("invalid operation");
                     }
                 };
 

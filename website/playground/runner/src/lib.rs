@@ -1,8 +1,9 @@
-use futures::channel::oneshot::channel;
+use futures::channel::oneshot;
 use itertools::Itertools;
 use lazy_static::lazy_static;
 use loader::Fetcher;
 use parking_lot::{MappedMutexGuard, Mutex, MutexGuard};
+use send_wrapper::SendWrapper;
 use serde::Serialize;
 use std::{
     collections::HashMap,
@@ -457,10 +458,13 @@ fn get_completions(program: &wipple_frontend::analysis::Program) -> AnalysisOutp
 
 #[wasm_bindgen]
 pub fn run(handle_console: js_sys::Function, callback: js_sys::Function) -> JsValue {
+    let handle_console = Arc::new(Mutex::new(SendWrapper::new(handle_console)));
+
     let analysis = match get_analysis() {
         Some(analysis) => analysis,
         None => {
             callback.call1(&JsValue::NULL, &JsValue::FALSE).unwrap();
+
             return JsValue::NULL;
         }
     };
@@ -473,6 +477,7 @@ pub fn run(handle_console: js_sys::Function, callback: js_sys::Function) -> JsVa
         Some(program) => program,
         None => {
             callback.call1(&JsValue::NULL, &JsValue::FALSE).unwrap();
+
             return JsValue::NULL;
         }
     };
@@ -480,7 +485,7 @@ pub fn run(handle_console: js_sys::Function, callback: js_sys::Function) -> JsVa
     let send_display = {
         let handle_console = handle_console.clone();
 
-        move |text: String, callback: Box<dyn FnOnce()>| {
+        move |text: String, callback: Box<dyn FnOnce() + Send>| {
             #[wasm_bindgen(getter_with_clone)]
             pub struct DisplayRequest {
                 pub kind: String,
@@ -495,20 +500,22 @@ pub fn run(handle_console: js_sys::Function, callback: js_sys::Function) -> JsVa
             };
 
             handle_console
+                .lock()
                 .call1(&JsValue::NULL, &request.into())
                 .unwrap();
         }
     };
 
-    let mut interpreter = wipple_interpreter_backend::Interpreter::new({
+    let interpreter = wipple_interpreter_backend::Interpreter::new({
         let send_display = send_display.clone();
 
         move |request| {
             match request {
-                wipple_interpreter_backend::ConsoleRequest::Display(text, callback) => {
+                wipple_interpreter_backend::ConsoleRequest::Display(_, text, callback) => {
                     send_display(text.to_string(), callback);
                 }
                 wipple_interpreter_backend::ConsoleRequest::Prompt(
+                    _,
                     prompt,
                     input_tx,
                     valid_rx,
@@ -555,10 +562,16 @@ pub fn run(handle_console: js_sys::Function, callback: js_sys::Function) -> JsVa
                     };
 
                     handle_console
+                        .lock()
                         .call1(&JsValue::NULL, &request.into())
                         .unwrap();
                 }
-                wipple_interpreter_backend::ConsoleRequest::Choice(prompt, choices, callback) => {
+                wipple_interpreter_backend::ConsoleRequest::Choice(
+                    _,
+                    prompt,
+                    choices,
+                    callback,
+                ) => {
                     #[wasm_bindgen(getter_with_clone)]
                     pub struct ChoiceRequest {
                         pub kind: String,
@@ -575,10 +588,11 @@ pub fn run(handle_console: js_sys::Function, callback: js_sys::Function) -> JsVa
                     };
 
                     handle_console
+                        .lock()
                         .call1(&JsValue::NULL, &request.into())
                         .unwrap();
                 }
-                wipple_interpreter_backend::ConsoleRequest::LoadUi(url, callback) => {
+                wipple_interpreter_backend::ConsoleRequest::Ui(interpreter, url, completion) => {
                     #[wasm_bindgen(getter_with_clone)]
                     pub struct LoadUiRequest {
                         pub kind: String,
@@ -589,40 +603,68 @@ pub fn run(handle_console: js_sys::Function, callback: js_sys::Function) -> JsVa
                     let request = LoadUiRequest {
                         kind: String::from("loadUi"),
                         url: url.to_string(),
-                        callback: Closure::once(callback).into_js_value(),
+                        callback: {
+                            let handle_console = handle_console.clone();
+
+                            Closure::once(move |handle_message: JsValue| {
+                                let handle_message = match handle_message
+                                    .dyn_into::<js_sys::Function>()
+                                {
+                                    Ok(handle) => Arc::new(Mutex::new(SendWrapper::new(handle))),
+                                    Err(_) => panic!("message handler must be a function"),
+                                };
+
+                                wasm_bindgen_futures::future_to_promise(async move {
+                                    completion(
+                                        Box::new(move |message, value, callback| {
+                                            let callback = Closure::once({
+                                                let interpreter = interpreter.clone();
+
+                                                move |value| {
+                                                    callback(Ok(js_to_wipple(&interpreter, value)))
+                                                        .unwrap();
+                                                }
+                                            })
+                                            .into_js_value();
+
+                                            handle_message
+                                                .lock()
+                                                .call3(
+                                                    &JsValue::NULL,
+                                                    &JsValue::from_str(&message),
+                                                    &wipple_to_js(&interpreter, value),
+                                                    &callback,
+                                                )
+                                                .unwrap();
+                                        }),
+                                        Box::new(move || {
+                                            #[wasm_bindgen(getter_with_clone)]
+                                            pub struct FinishUiRequest {
+                                                pub kind: String,
+                                            }
+
+                                            let request = FinishUiRequest {
+                                                kind: String::from("finishUi"),
+                                            };
+
+                                            handle_console
+                                                .lock()
+                                                .call1(&JsValue::NULL, &request.into())
+                                                .unwrap();
+                                        }),
+                                    )
+                                    .await
+                                    .expect("error in UI element");
+
+                                    Ok(JsValue::UNDEFINED)
+                                })
+                            })
+                            .into_js_value()
+                        },
                     };
 
                     handle_console
-                        .call1(&JsValue::NULL, &request.into())
-                        .unwrap();
-                }
-                wipple_interpreter_backend::ConsoleRequest::MessageUi(
-                    id,
-                    message,
-                    value,
-                    callback,
-                ) => {
-                    #[wasm_bindgen(getter_with_clone)]
-                    pub struct MessageUiRequest {
-                        pub kind: String,
-                        pub id: String,
-                        pub message: String,
-                        pub value: JsValue,
-                        pub callback: JsValue,
-                    }
-
-                    let request = MessageUiRequest {
-                        kind: String::from("messageUi"),
-                        id: id.to_string(),
-                        message: message.to_string(),
-                        value: JsValue::from_serde(&wipple_to_json(value)).unwrap(),
-                        callback: Closure::once(move |value: JsValue| {
-                            callback(json_to_wipple(value.into_serde().unwrap()))
-                        })
-                        .into_js_value(),
-                    };
-
-                    handle_console
+                        .lock()
                         .call1(&JsValue::NULL, &request.into())
                         .unwrap();
                 }
@@ -668,7 +710,7 @@ pub fn run(handle_console: js_sys::Function, callback: js_sys::Function) -> JsVa
         let result = interpreter.run(&program).await;
 
         if let Err(error) = result {
-            let (completion_tx, completion_rx) = channel();
+            let (completion_tx, completion_rx) = oneshot::channel();
             send_display(
                 format!("fatal error: {error}"),
                 Box::new(|| completion_tx.send(()).unwrap()),
@@ -866,14 +908,17 @@ pub fn hover(start: usize, end: usize) -> JsValue {
     JsValue::from_serde(&hover).unwrap()
 }
 
-fn wipple_to_json(value: wipple_interpreter_backend::Value) -> serde_json::Value {
+fn wipple_to_js(
+    interpreter: &wipple_interpreter_backend::Interpreter,
+    value: wipple_interpreter_backend::Value,
+) -> JsValue {
     match value {
         wipple_interpreter_backend::Value::Marker => {
             panic!("marker values may not be sent to JavaScript")
         }
-        wipple_interpreter_backend::Value::Number(n) => serde_json::Value::Number(
-            serde_json::Number::from_f64(n.try_into().expect("number out of bounds")).unwrap(),
-        ),
+        wipple_interpreter_backend::Value::Number(n) => {
+            JsValue::from_f64(n.try_into().expect("number out of bounds"))
+        }
         wipple_interpreter_backend::Value::Integer(_)
         | wipple_interpreter_backend::Value::Natural(_)
         | wipple_interpreter_backend::Value::Byte(_)
@@ -883,9 +928,41 @@ fn wipple_to_json(value: wipple_interpreter_backend::Value) -> serde_json::Value
         | wipple_interpreter_backend::Value::Double(_) => {
             panic!("only numbers of type `Number` may be sent to JavaScript")
         }
-        wipple_interpreter_backend::Value::Text(s) => serde_json::Value::String(s.to_string()),
-        wipple_interpreter_backend::Value::Function(_, _) => {
-            panic!("functions may not be sent to JavaScript")
+        wipple_interpreter_backend::Value::Text(s) => JsValue::from_str(&s),
+        wipple_interpreter_backend::Value::Function(scope, label) => {
+            let interpreter = interpreter.clone();
+
+            Closure::<dyn Fn(JsValue) -> JsValue>::new(move |input| {
+                let interpreter = interpreter.clone();
+                let scope = scope.clone();
+
+                let input = js_to_wipple(&interpreter, input);
+
+                wasm_bindgen_futures::future_to_promise(async move {
+                    let output = interpreter.call_function(label, scope, input).await?;
+                    Ok(wipple_to_js(&interpreter, output))
+                })
+                .into()
+            })
+            .into_js_value()
+        }
+        wipple_interpreter_backend::Value::NativeFunction(f) => {
+            let f = f.clone();
+            let interpreter = interpreter.clone();
+
+            Closure::<dyn Fn(JsValue) -> JsValue>::new(move |input| {
+                let f = f.clone();
+                let interpreter = interpreter.clone();
+
+                let input = js_to_wipple(&interpreter, input);
+
+                wasm_bindgen_futures::future_to_promise(async move {
+                    let output = f(input).await?;
+                    Ok(wipple_to_js(&interpreter, output))
+                })
+                .into()
+            })
+            .into_js_value()
         }
         wipple_interpreter_backend::Value::Variant(_, _) => {
             panic!("enumeration values may not be sent to JavaScript")
@@ -901,32 +978,58 @@ fn wipple_to_json(value: wipple_interpreter_backend::Value) -> serde_json::Value
         }
         wipple_interpreter_backend::Value::Tuple(elements) => {
             if elements.is_empty() {
-                serde_json::Value::Null
+                JsValue::NULL
             } else {
                 panic!("tuple values may not be sent to JavaScript");
             }
         }
+        wipple_interpreter_backend::Value::UiHandle(_) => {
+            panic!("UI handles may not be sent to JavaScript")
+        }
     }
 }
 
-fn json_to_wipple(value: serde_json::Value) -> wipple_interpreter_backend::Value {
-    match value {
-        serde_json::Value::Null => wipple_interpreter_backend::Value::Marker,
-        serde_json::Value::Bool(_) => panic!("JavaScript booleans may not be sent to Wipple"),
-        serde_json::Value::Number(n) => wipple_interpreter_backend::Value::Number(
-            n.as_f64()
-                .unwrap()
-                .try_into()
-                .expect("number out of bounds"),
-        ),
-        serde_json::Value::String(s) => wipple_interpreter_backend::Value::Text(Arc::from(s)),
-        serde_json::Value::Array(elements) => {
-            if elements.is_empty() {
-                wipple_interpreter_backend::Value::Tuple(Vec::new())
-            } else {
-                panic!("JavaScript arrays may not be sent to Wipple")
-            }
-        }
-        serde_json::Value::Object(_) => panic!("JavaScript objects may not be sent to Wipple"),
+fn js_to_wipple(
+    interpreter: &wipple_interpreter_backend::Interpreter,
+    value: JsValue,
+) -> wipple_interpreter_backend::Value {
+    if value.is_null() | value.is_undefined() {
+        wipple_interpreter_backend::Value::Tuple(Vec::new())
+    } else if let Some(n) = value.as_f64() {
+        wipple_interpreter_backend::Value::Number(n.try_into().expect("number out of bounds"))
+    } else if let Some(s) = value.as_string() {
+        wipple_interpreter_backend::Value::Text(Arc::from(s))
+    } else if let Some(f) = value.dyn_ref::<js_sys::Function>() {
+        let f = Arc::new(Mutex::new(SendWrapper::new(f.clone())));
+        let interpreter = Arc::new(Mutex::new(SendWrapper::new(interpreter.clone())));
+
+        wipple_interpreter_backend::Value::NativeFunction(Arc::new(move |input| {
+            let f = f.clone();
+            let interpreter = interpreter.clone();
+
+            Box::pin(SendSyncFuture(Box::pin(async move {
+                let input = wipple_to_js(&interpreter.lock(), input);
+
+                let mut output = f
+                    .lock()
+                    .call1(&JsValue::NULL, &input)
+                    .expect("uncaught exception");
+
+                let output = loop {
+                    let promise = match output.dyn_into::<js_sys::Promise>() {
+                        Ok(promise) => promise,
+                        Err(value) => break value,
+                    };
+
+                    output = wasm_bindgen_futures::JsFuture::from(promise)
+                        .await
+                        .expect("uncaught exception");
+                };
+
+                Ok(js_to_wipple(&interpreter.lock(), output))
+            })))
+        }))
+    } else {
+        panic!("JavaScript value cannot be sent to Wipple")
     }
 }

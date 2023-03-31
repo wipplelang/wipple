@@ -1,6 +1,8 @@
 mod runtime;
 
 use async_recursion::async_recursion;
+use futures::future::BoxFuture;
+use parking_lot::Mutex;
 use std::{
     collections::BTreeMap,
     os::raw::{c_int, c_uint},
@@ -11,33 +13,84 @@ use wipple_frontend::{helpers::Shared, ir, VariantIndex};
 
 pub type Error = String;
 
+#[allow(clippy::type_complexity)]
 pub enum ConsoleRequest<'a> {
-    Display(&'a str, Box<dyn FnOnce() + Send>),
+    Display(Interpreter, &'a str, Box<dyn FnOnce() + Send>),
     Prompt(
+        Interpreter,
         &'a str,
         Sender<String>,
         Receiver<bool>,
         Box<dyn FnOnce() + Send>,
     ),
-    Choice(&'a str, Vec<&'a str>, Box<dyn FnOnce(usize) + Send>),
-    LoadUi(&'a str, Box<dyn FnOnce(String) + Send>),
-    MessageUi(&'a str, &'a str, Value, Box<dyn FnOnce(Value) + Send>),
+    Choice(
+        Interpreter,
+        &'a str,
+        Vec<&'a str>,
+        Box<dyn FnOnce(usize) + Send>,
+    ),
+    Ui(
+        Interpreter,
+        &'a str,
+        Box<
+            dyn FnOnce(
+                    Box<
+                        dyn FnMut(
+                                String,
+                                Value,
+                                Box<dyn FnOnce(Result<Value, Error>) -> Result<(), Error> + Send>,
+                            ) + Send,
+                    >,
+                    Box<dyn FnOnce() + Send>,
+                ) -> BoxFuture<'static, Result<(), Error>>
+                + Send
+                + Sync,
+        >,
+    ),
 }
 
 #[allow(clippy::type_complexity)]
-pub struct Interpreter<'a> {
-    console: Arc<dyn Fn(ConsoleRequest) -> Result<(), Error> + 'a>,
+#[derive(Clone)]
+pub struct UiHandle {
+    on_message: Arc<
+        Mutex<
+            dyn FnMut(
+                    String,
+                    Value,
+                    Box<dyn FnOnce(Result<Value, Error>) -> Result<(), Error> + Send>,
+                ) + Send,
+        >,
+    >,
+    on_finish: Arc<Mutex<Option<Box<dyn FnOnce() + Send>>>>,
 }
 
-impl<'a> Interpreter<'a> {
-    pub fn new(console_handler: impl Fn(ConsoleRequest) -> Result<(), Error> + 'a) -> Self {
+#[derive(Clone)]
+pub struct Interpreter {
+    inner: Arc<Mutex<InterpreterInner>>,
+}
+
+#[allow(clippy::type_complexity)]
+struct InterpreterInner {
+    console: Arc<dyn Fn(ConsoleRequest) -> Result<(), Error> + Send + Sync>,
+    labels: Vec<(usize, Vec<ir::BasicBlock>)>,
+    initialized_constants: BTreeMap<usize, Value>,
+}
+
+impl Interpreter {
+    pub fn new(
+        console_handler: impl Fn(ConsoleRequest) -> Result<(), Error> + Send + Sync + 'static,
+    ) -> Self {
         Interpreter {
-            console: Arc::new(console_handler),
+            inner: Arc::new(Mutex::new(InterpreterInner {
+                console: Arc::new(console_handler),
+                labels: Default::default(),
+                initialized_constants: Default::default(),
+            })),
         }
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub enum Value {
     Marker,
     Number(rust_decimal::Decimal),
@@ -50,17 +103,23 @@ pub enum Value {
     Double(f64),
     Text(Arc<str>),
     Function(Scope, usize),
+    NativeFunction(Arc<dyn Fn(Value) -> BoxFuture<'static, Result<Value, Error>> + Send + Sync>),
     Variant(VariantIndex, Vec<Value>),
     Mutable(Shared<Value>),
     List(im::Vector<Value>),
     Structure(Vec<Value>),
     Tuple(Vec<Value>),
+    UiHandle(UiHandle),
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Clone, Default)]
 pub struct Scope(Vec<Option<Value>>);
 
 impl Scope {
+    pub fn empty() -> Self {
+        Default::default()
+    }
+
     fn new(count: usize) -> Self {
         Scope(vec![None; count])
     }
@@ -78,13 +137,8 @@ impl Scope {
     }
 }
 
-struct Info {
-    labels: Vec<(usize, Vec<ir::BasicBlock>)>,
-    initialized_constants: BTreeMap<usize, Value>,
-}
-
-#[derive(Debug, Default)]
-struct Stack(Vec<Vec<Value>>);
+#[derive(Default)]
+pub struct Stack(Vec<Vec<Value>>);
 
 impl Stack {
     fn new() -> Self {
@@ -142,21 +196,19 @@ impl Stack {
     }
 }
 
-impl<'a> Interpreter<'a> {
-    pub async fn run(&mut self, program: &ir::Program) -> Result<(), Error> {
-        let mut info = Info {
-            labels: program
-                .labels
-                .iter()
-                .map(|(_, vars, blocks)| (*vars, blocks.clone()))
-                .collect(),
-            initialized_constants: BTreeMap::new(),
-        };
+impl Interpreter {
+    pub async fn run(&self, program: &ir::Program) -> Result<(), Error> {
+        self.inner.lock().labels = program
+            .labels
+            .iter()
+            .map(|(_, vars, blocks)| (*vars, blocks.clone()))
+            .collect();
+
+        self.inner.lock().initialized_constants = BTreeMap::new();
 
         let mut stack = Stack::new();
 
-        self.evaluate_label(program.entrypoint, &mut stack, &mut info)
-            .await?;
+        self.evaluate_label(program.entrypoint, &mut stack).await?;
 
         stack.pop();
         assert!(stack.is_empty());
@@ -164,50 +216,56 @@ impl<'a> Interpreter<'a> {
         Ok(())
     }
 
-    async fn evaluate_label(
-        &mut self,
-        label: usize,
-        stack: &mut Stack,
-        info: &mut Info,
-    ) -> Result<(), Error> {
-        self.evaluate_label_inner(label, stack, Scope::new(0), info)
-            .await
+    async fn evaluate_label(&self, label: usize, stack: &mut Stack) -> Result<(), Error> {
+        self.evaluate_label_inner(label, stack, Scope::new(0)).await
     }
 
     async fn evaluate_label_in_scope(
-        &mut self,
+        &self,
         label: usize,
         stack: &mut Stack,
         scope: Scope,
-        info: &mut Info,
     ) -> Result<(), Error> {
-        self.evaluate_label_inner(label, stack, scope, info).await
+        self.evaluate_label_inner(label, stack, scope).await
     }
 
     async fn evaluate_label_inner(
-        &mut self,
+        &self,
         label: usize,
         stack: &mut Stack,
         mut scope: Scope,
-        info: &mut Info,
     ) -> Result<(), Error> {
-        let (vars, blocks) = info.labels[label].clone();
+        let (vars, blocks) = self.inner.lock().labels[label].clone();
 
         scope.0.reserve(vars);
         for _ in 0..vars {
             scope.0.push(None);
         }
 
-        self.evaluate(blocks, stack, &mut scope, info).await
+        self.evaluate(blocks, stack, &mut scope).await
     }
 
-    #[async_recursion(?Send)]
+    pub async fn call_function(
+        &self,
+        label: usize,
+        scope: Scope,
+        input: Value,
+    ) -> Result<Value, Error> {
+        let mut stack = Stack::new();
+        stack.push(input);
+
+        self.evaluate_label_in_scope(label, &mut stack, scope)
+            .await?;
+
+        Ok(stack.pop())
+    }
+
+    #[async_recursion]
     async fn evaluate(
-        &mut self,
+        &self,
         blocks: Vec<ir::BasicBlock>,
         stack: &mut Stack,
         scope: &mut Scope,
-        info: &mut Info,
     ) -> Result<(), Error> {
         let mut block = &blocks[0];
 
@@ -252,7 +310,7 @@ impl<'a> Interpreter<'a> {
                         ir::Expression::Double(double) => stack.push(Value::Double(*double)),
                         ir::Expression::Variable(var) => stack.push(scope.get(*var)),
                         ir::Expression::Constant(label) => {
-                            self.evaluate_constant(*label, stack, info).await?
+                            self.evaluate_constant(*label, stack).await?
                         }
                         ir::Expression::Function(label) => {
                             stack.push(Value::Function(Scope::new(0), *label))
@@ -268,22 +326,24 @@ impl<'a> Interpreter<'a> {
                         ir::Expression::Call => {
                             let input = stack.pop();
 
-                            let (scope, label) = match stack.pop() {
-                                Value::Function(scope, label) => (scope, label),
+                            match stack.pop() {
+                                Value::Function(scope, label) => {
+                                    stack.push(input);
+                                    self.evaluate_label_in_scope(label, stack, scope).await?;
+                                }
+                                Value::NativeFunction(f) => {
+                                    let output = f(input).await?;
+                                    stack.push(output);
+                                }
                                 _ => unreachable!(),
                             };
-
-                            stack.push(input);
-
-                            self.evaluate_label_in_scope(label, stack, scope, info)
-                                .await?;
                         }
                         ir::Expression::External(..) => {
                             return Err(Error::from("'external' is currently unsupported"));
                         }
                         ir::Expression::Runtime(func, inputs) => {
                             let inputs = stack.popn(*inputs);
-                            self.call_runtime(*func, inputs, stack, info).await?;
+                            self.call_runtime(*func, inputs, stack).await?;
                         }
                         ir::Expression::Tuple(inputs) => {
                             let inputs = stack.popn(*inputs);
@@ -366,20 +426,20 @@ impl<'a> Interpreter<'a> {
         }
     }
 
-    async fn evaluate_constant(
-        &mut self,
-        label: usize,
-        stack: &mut Stack,
-        info: &mut Info,
-    ) -> Result<(), Error> {
-        if let Some(value) = info.initialized_constants.get(&label) {
+    async fn evaluate_constant(&self, label: usize, stack: &mut Stack) -> Result<(), Error> {
+        if let Some(value) = self.inner.lock().initialized_constants.get(&label) {
             stack.push(value.clone());
             return Ok(());
         }
 
-        self.evaluate_label(label, stack, info).await?;
+        self.evaluate_label(label, stack).await?;
+
         let value = stack.pop();
-        info.initialized_constants.insert(label, value.clone());
+        self.inner
+            .lock()
+            .initialized_constants
+            .insert(label, value.clone());
+
         stack.push(value);
 
         Ok(())

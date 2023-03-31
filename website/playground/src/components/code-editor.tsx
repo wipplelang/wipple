@@ -100,12 +100,15 @@ export const CodeEditor = (props: CodeEditorProps) => {
     }, [prefersReducedMotion]);
 
     const [uiElements, setUiElements] = useRefState<UiElement[]>([]);
+    const [currentUiElementId, setCurrentUiElementId] = useRefState("");
 
     const runner = useRunner();
 
     const run = useMemo(
         () =>
             debounce(async (code: string, lint: boolean) => {
+                setRunning(true);
+
                 try {
                     setSyntaxHighlighting([]); // FIXME: Prevent flashing
                     const analysis = await runner.analyze(code, lint);
@@ -115,8 +118,6 @@ export const CodeEditor = (props: CodeEditorProps) => {
                     setUiElements([]);
 
                     if (!analysis.diagnostics.find(({ level }) => level === "error")) {
-                        setRunning(true);
-
                         const success = await runner.run(async (request) => {
                             switch (request.type) {
                                 case "display":
@@ -160,6 +161,7 @@ export const CodeEditor = (props: CodeEditorProps) => {
                                     const index = uiElements.current.length;
 
                                     const id = `${props.id}-${index}`;
+                                    setCurrentUiElementId(id);
                                     appendToOutput(code, { type: "custom", id });
 
                                     requestAnimationFrame(() => {
@@ -179,16 +181,14 @@ export const CodeEditor = (props: CodeEditorProps) => {
                                                 { onMessage: uiElement.onMessage },
                                             ]);
 
-                                            requestAnimationFrame(() => {
-                                                request.callback(id);
-                                            });
+                                            requestAnimationFrame(request.callback);
                                         });
                                     });
 
                                     break;
                                 }
                                 case "messageUi": {
-                                    const id = request.id.split("-");
+                                    const id = currentUiElementId.current.split("-");
                                     const index = parseInt(id[id.length - 1]);
                                     const uiElement = uiElements.current[index];
 
@@ -209,8 +209,6 @@ export const CodeEditor = (props: CodeEditorProps) => {
                                     throw new Error("unknown request");
                             }
                         });
-
-                        setRunning(false);
 
                         if (!success) {
                             throw new Error("runner failed");
@@ -242,6 +240,8 @@ export const CodeEditor = (props: CodeEditorProps) => {
                             },
                         ],
                     }));
+                } finally {
+                    setRunning(false);
                 }
             }, 500),
         [props.id]
@@ -753,9 +753,9 @@ export const CodeEditor = (props: CodeEditorProps) => {
 
                                                 {isRunning ? (
                                                     <div className="bouncing-loader">
-                                                        <div></div>
-                                                        <div></div>
-                                                        <div></div>
+                                                        <div />
+                                                        <div />
+                                                        <div />
                                                     </div>
                                                 ) : Array.isArray(output) &&
                                                   output.find((item) => item.type !== "output") ? (

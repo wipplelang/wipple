@@ -1,5 +1,7 @@
+let functions = [];
 let cancel;
 const consoleResponders = [];
+let resolveFunctionResult;
 
 onmessage = async (event) => {
     try {
@@ -17,6 +19,8 @@ onmessage = async (event) => {
                 postMessage(analysis);
                 break;
             case "run":
+                functions = [];
+
                 cancel = runner.run(
                     (request) => {
                         switch (request.kind) {
@@ -67,18 +71,8 @@ onmessage = async (event) => {
                                 });
 
                                 break;
-
-                            case "messageUi":
-                                postMessage({
-                                    type: "messageUi",
-                                    id: request.id,
-                                    message: request.message,
-                                    value: request.value,
-                                });
-
-                                consoleResponders.push({
-                                    callback: request.callback,
-                                });
+                            case "finishUi":
+                                consoleResponders.pop();
 
                                 break;
                             default:
@@ -123,17 +117,58 @@ onmessage = async (event) => {
                 await consoleResponders.pop().callback(event.data.index);
                 break;
             case "loadUiCallback":
-                await consoleResponders.pop().callback(event.data.id);
+                await consoleResponders.pop().callback((message, value, callback) => {
+                    postMessage({
+                        type: "messageUi",
+                        message,
+                        value: encodeFunction(value),
+                    });
+
+                    consoleResponders.push({ callback });
+                });
                 break;
             case "messageUiCallback":
-                await consoleResponders.pop().callback(event.data.result);
+                await consoleResponders[consoleResponders.length - 1].callback(
+                    decodeFunction(event.data.value)
+                );
+
+                break;
+            case "callFunction":
+                const result = await functions[event.data.id](decodeFunction(event.data.input));
+                postMessage({ type: "callFunctionResult", result: encodeFunction(result) });
+                break;
+            case "callFunctionResult":
+                resolveFunctionResult(event.data.result);
+                resolveFunctionResult = undefined;
                 break;
             default:
+                console.error("received invalid event:", event);
                 throw new Error("invalid operation");
         }
     } catch (error) {
         setTimeout(() => {
             throw error;
         });
+    }
+};
+
+const encodeFunction = (value) => {
+    if (typeof value === "function") {
+        const length = functions.push(value);
+        return { $function: length - 1 };
+    } else {
+        return value;
+    }
+};
+
+const decodeFunction = (value) => {
+    if (typeof value === "object" && value != null && "$function" in value) {
+        return (input) =>
+            new Promise((resolve) => {
+                resolveFunctionResult = resolve;
+                postMessage({ type: "callFunction", id: value.$function, input });
+            });
+    } else {
+        return value;
     }
 };

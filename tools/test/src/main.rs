@@ -270,15 +270,18 @@ async fn run(
                 ir = compiler.optimize_with(ir, Default::default());
             }
 
-            let mut interpreter =
-                wipple_interpreter_backend::Interpreter::new(|request| match request {
-                    wipple_interpreter_backend::ConsoleRequest::Display(text, completion) => {
+            let interpreter = wipple_interpreter_backend::Interpreter::new({
+                let buf = buf.clone();
+
+                move |request| match request {
+                    wipple_interpreter_backend::ConsoleRequest::Display(_, text, completion) => {
                         writeln!(buf.lock(), "{text}").unwrap();
                         completion();
                         Ok(())
                     }
                     _ => unimplemented!(),
-                });
+                }
+            });
 
             if let Err(error) = interpreter.run(&ir).await {
                 write!(buf.lock(), "fatal error: {error}")?;
