@@ -1,5 +1,7 @@
 [[no-std]]
 
+use "mutable.wpl"
+
 Control-Flow : A => type {
 	Break A
 	Continue
@@ -33,4 +35,18 @@ while : syntax {
 [keyword]
 unless : syntax {
 	unless 'condition 'body -> while (not 'condition) 'body
+}
+
+times :: (Natural -> ()) -> Natural -> ()
+times : f -> n -> {
+	counter : mutable 0
+	loop {
+		if (get counter = n) {
+			Break ()
+		} {
+			f (get counter)
+			increment! counter
+			Continue
+		}
+	}
 }
