@@ -102,12 +102,19 @@ impl<F: Future> Future for SendSyncFuture<F> {
     }
 }
 
+#[cfg(feature = "debug_playground")]
+const FILES_PATH: &str = "http://localhost:8080/playground/files/";
+
+#[cfg(not(feature = "debug_playground"))]
+const FILES_PATH: &str = "https://wipple.gramer.dev/playground/files/";
+
 lazy_static! {
     static ref PLAYGROUND_PATH: wipple_frontend::helpers::InternedString = wipple_frontend::helpers::InternedString::new("playground");
 
+
     static ref LOADER: loader::Loader = {
         loader::Loader::new_with_fetcher(
-            Some(wipple_frontend::FilePath::Url(wipple_frontend::helpers::InternedString::new("http://localhost:8080/playground/files/"))),
+            Some(wipple_frontend::FilePath::Url(wipple_frontend::helpers::InternedString::new(FILES_PATH))),
             Some(wipple_frontend::FilePath::Path(
                 #[cfg(feature = "debug_playground")]
                 wipple_frontend::helpers::InternedString::new(format!(
