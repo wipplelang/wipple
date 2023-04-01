@@ -119,94 +119,103 @@ export const CodeEditor = (props: CodeEditorProps) => {
 
                     if (!analysis.diagnostics.find(({ level }) => level === "error")) {
                         const success = await runner.run(async (request) => {
-                            switch (request.type) {
-                                case "display":
-                                    appendToOutput(code, {
-                                        type: "output",
-                                        text: request.text,
-                                    });
-
-                                    request.callback();
-
-                                    break;
-                                case "prompt":
-                                    appendToOutput(code, {
-                                        type: "prompt",
-                                        prompt: request.prompt,
-                                        onSubmit: async (text) => {
-                                            request.sendInput(text);
-
-                                            const valid = await request.recvValid();
-                                            if (valid) {
-                                                request.callback();
-                                            }
-
-                                            return valid;
-                                        },
-                                    });
-
-                                    break;
-                                case "choice":
-                                    appendToOutput(code, {
-                                        type: "choice",
-                                        prompt: request.prompt,
-                                        choices: request.choices,
-                                        onSubmit: request.callback,
-                                    });
-
-                                    break;
-                                case "loadUi": {
-                                    const uiElement = await import(request.url);
-
-                                    const index = uiElements.current.length;
-
-                                    const id = `${props.id}-${index}`;
-                                    setCurrentUiElementId(id);
-                                    appendToOutput(code, { type: "custom", id });
-
-                                    requestAnimationFrame(() => {
-                                        requestAnimationFrame(async () => {
-                                            const container = document.getElementById(
-                                                id
-                                            )! as HTMLDivElement;
-
-                                            if (!container) {
-                                                throw new Error("container not initialized");
-                                            }
-
-                                            await uiElement.initialize(container);
-
-                                            setUiElements([
-                                                ...uiElements.current,
-                                                { onMessage: uiElement.onMessage },
-                                            ]);
-
-                                            requestAnimationFrame(request.callback);
+                            try {
+                                switch (request.type) {
+                                    case "display":
+                                        appendToOutput(code, {
+                                            type: "output",
+                                            text: request.text,
                                         });
-                                    });
 
-                                    break;
-                                }
-                                case "messageUi": {
-                                    const id = currentUiElementId.current.split("-");
-                                    const index = parseInt(id[id.length - 1]);
-                                    const uiElement = uiElements.current[index];
+                                        request.callback();
 
-                                    if (!uiElement) {
-                                        throw new Error(`invalid UI element ${index}`);
+                                        break;
+                                    case "prompt":
+                                        appendToOutput(code, {
+                                            type: "prompt",
+                                            prompt: request.prompt,
+                                            onSubmit: async (text) => {
+                                                request.sendInput(text);
+
+                                                const valid = await request.recvValid();
+                                                if (valid) {
+                                                    request.callback();
+                                                }
+
+                                                return valid;
+                                            },
+                                        });
+
+                                        break;
+                                    case "choice":
+                                        appendToOutput(code, {
+                                            type: "choice",
+                                            prompt: request.prompt,
+                                            choices: request.choices,
+                                            onSubmit: request.callback,
+                                        });
+
+                                        break;
+                                    case "loadUi": {
+                                        const uiElement = await import(request.url);
+
+                                        const index = uiElements.current.length;
+
+                                        const id = `${props.id}-${index}`;
+                                        setCurrentUiElementId(id);
+                                        appendToOutput(code, { type: "custom", id });
+
+                                        requestAnimationFrame(() => {
+                                            requestAnimationFrame(async () => {
+                                                const container = document.getElementById(
+                                                    id
+                                                )! as HTMLDivElement;
+
+                                                if (!container) {
+                                                    throw new Error("container not initialized");
+                                                }
+
+                                                await uiElement.initialize(container);
+
+                                                setUiElements([
+                                                    ...uiElements.current,
+                                                    { onMessage: uiElement.onMessage },
+                                                ]);
+
+                                                requestAnimationFrame(request.callback);
+                                            });
+                                        });
+
+                                        break;
                                     }
+                                    case "messageUi": {
+                                        const id = currentUiElementId.current.split("-");
+                                        const index = parseInt(id[id.length - 1]);
+                                        const uiElement = uiElements.current[index];
 
-                                    const result = await uiElement.onMessage(
-                                        request.message,
-                                        request.value
-                                    );
+                                        if (!uiElement) {
+                                            throw new Error(`invalid UI element ${index}`);
+                                        }
 
-                                    request.callback(result);
+                                        const result = await uiElement.onMessage(
+                                            request.message,
+                                            request.value
+                                        );
 
-                                    break;
+                                        request.callback(result);
+
+                                        break;
+                                    }
+                                    default:
+                                        console.error(
+                                            `[code editor ${props.id}] unknown request:`,
+                                            request
+                                        );
+
+                                        break;
                                 }
-                                default:
-                                    throw new Error("unknown request");
+                            } catch (error) {
+                                console.error(`[code editor ${props.id}] error:`, error);
                             }
                         });
 
@@ -757,8 +766,11 @@ export const CodeEditor = (props: CodeEditorProps) => {
                                                         <div />
                                                         <div />
                                                     </div>
-                                                ) : Array.isArray(output) &&
-                                                  output.find((item) => item.type !== "output") ? (
+                                                ) : (Array.isArray(output) &&
+                                                      output.find(
+                                                          (item) => item.type !== "output"
+                                                      )) ||
+                                                  uiElements.current.length ? (
                                                     <div className="mt-4">
                                                         <Button
                                                             variant="contained"

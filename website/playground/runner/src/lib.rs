@@ -107,7 +107,7 @@ lazy_static! {
 
     static ref LOADER: loader::Loader = {
         loader::Loader::new_with_fetcher(
-            None,
+            Some(wipple_frontend::FilePath::Url(wipple_frontend::helpers::InternedString::new("http://localhost:8080/playground/files/"))),
             Some(wipple_frontend::FilePath::Path(
                 #[cfg(feature = "debug_playground")]
                 wipple_frontend::helpers::InternedString::new(format!(
@@ -120,6 +120,8 @@ lazy_static! {
             Fetcher::new()
                 .with_path_handler(|path| {
                     Box::pin(async move {
+                        let error = || anyhow::Error::msg("loading files from paths is not supported in the playground; try loading from a URL instead");
+
                         #[cfg(feature = "debug_playground")]
                         {
                             #[derive(rust_embed::RustEmbed)]
@@ -131,9 +133,7 @@ lazy_static! {
 
                             let file = EmbeddedStd::get(path)
                                 .map(|file| String::from_utf8(file.data.to_vec()).unwrap())
-                                .ok_or_else(|| {
-                                    anyhow::Error::msg("file does not exist in standard library")
-                                })?;
+                                .ok_or_else(error)?;
 
                             Ok(file)
                         }
@@ -141,7 +141,7 @@ lazy_static! {
                         #[cfg(not(feature = "debug_playground"))]
                         {
                             let _ = path;
-                            Err(anyhow::Error::msg("loading files from paths is not supported in the playground; try loading from a URL instead"))
+                            Err(error())
                         }
                     })
                 })
@@ -176,6 +176,10 @@ lazy_static! {
                         let response = response
                             .dyn_into::<web_sys::Response>()
                             .map_err(|e| anyhow::Error::msg(error_to_string("invalid response", e)))?;
+
+                        if !response.ok() {
+                            return Err(anyhow::Error::msg(format!("request failed: {}", response.status_text())));
+                        }
 
                         let text = JsFuture::from(
                             response.text().map_err(|e| anyhow::Error::msg(error_to_string("invalid response", e)))?,
@@ -606,7 +610,7 @@ pub fn run(handle_console: js_sys::Function, callback: js_sys::Function) -> JsVa
                         callback: {
                             let handle_console = handle_console.clone();
 
-                            Closure::once(move |handle_message: JsValue| {
+                            Closure::once_into_js(move |handle_message: JsValue| {
                                 let handle_message = match handle_message
                                     .dyn_into::<js_sys::Function>()
                                 {
@@ -659,7 +663,6 @@ pub fn run(handle_console: js_sys::Function, callback: js_sys::Function) -> JsVa
                                     Ok(JsValue::UNDEFINED)
                                 })
                             })
-                            .into_js_value()
                         },
                     };
 

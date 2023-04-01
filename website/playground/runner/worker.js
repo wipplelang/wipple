@@ -146,6 +146,8 @@ onmessage = async (event) => {
                 throw new Error("invalid operation");
         }
     } catch (error) {
+        console.error("[runner] error:", error);
+
         setTimeout(() => {
             throw error;
         });

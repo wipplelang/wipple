@@ -75,9 +75,7 @@ impl Fetcher {
                         tokio::fs::create_dir_all(cache_path.parent().unwrap())
                             .await
                             .map_err(|e| {
-                                anyhow::Error::msg(format!(
-                                    "failed to create cache directory: {e}"
-                                ))
+                                anyhow::Error::msg(format!("failed to create cache directory: {e}"))
                             })?;
 
                         tokio::fs::write(cache_path, file.clone())
@@ -160,7 +158,7 @@ impl wipple_frontend::Loader for Loader {
     }
 
     fn resolve(&self, path: FilePath, current: Option<FilePath>) -> anyhow::Result<FilePath> {
-        let path = match path {
+        match path {
             FilePath::Path(path) => {
                 if is_url(path) {
                     Ok(FilePath::Url(path))
@@ -179,26 +177,38 @@ impl wipple_frontend::Loader for Loader {
                         };
 
                         match base {
-                            FilePath::Url(url) => {
-                                let url = Url::from_str(&url).unwrap().join(path.as_str())?;
+                            FilePath::Url(base) => {
+                                let url = Url::from_str(&base).unwrap().join(path.as_str())?;
                                 Ok(FilePath::Url(InternedString::from(url.to_string())))
                             }
-                            FilePath::Path(path) => {
-                                let path = match PathBuf::from(path.as_str()).parent() {
-                                    Some(path) => path.join(parsed_path).clean(),
+                            FilePath::Path(base) => {
+                                let path = match PathBuf::from(base.as_str()).parent() {
+                                    Some(base) => base.join(parsed_path).clean(),
                                     None => parsed_path,
                                 };
 
                                 Ok(FilePath::Path(InternedString::new(path.to_str().unwrap())))
                             }
-                            FilePath::Virtual(path) => {
-                                let path = match PathBuf::from(path.as_str()).parent() {
-                                    Some(path) => path.join(parsed_path).clean(),
-                                    None => parsed_path,
-                                };
+                            FilePath::Virtual(_) => match self.base {
+                                Some(base) => match base {
+                                    FilePath::Path(base) => {
+                                        let path =
+                                            PathBuf::from(base.as_str()).join(parsed_path).clean();
 
-                                Ok(FilePath::Path(InternedString::new(path.to_str().unwrap())))
-                            }
+                                        Ok(FilePath::Path(InternedString::new(
+                                            path.to_str().unwrap(),
+                                        )))
+                                    }
+                                    FilePath::Url(base) => {
+                                        let url = Url::from_str(&base)?.join(path.as_str())?;
+                                        Ok(FilePath::Url(InternedString::new(url.as_str())))
+                                    }
+                                    _ => Err(anyhow::Error::msg("base must be a file path or URL")),
+                                },
+                                None => Err(anyhow::Error::msg(
+                                    "attempt to load nested virtual path without base set",
+                                )),
+                            },
                             _ => unimplemented!(),
                         }
                     }
@@ -206,9 +216,7 @@ impl wipple_frontend::Loader for Loader {
             }
             FilePath::Virtual(path) => Ok(FilePath::Virtual(path)),
             _ => unimplemented!(),
-        };
-
-        path
+        }
     }
 
     async fn load(&self, path: FilePath) -> anyhow::Result<Arc<str>> {
