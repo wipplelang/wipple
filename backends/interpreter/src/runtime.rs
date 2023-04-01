@@ -1,6 +1,7 @@
-use crate::{ConsoleRequest, Error, Info, Interpreter, Stack, Value};
+use crate::{ConsoleRequest, Error, Interpreter, Stack, UiHandle, Value};
 use itertools::Itertools;
 use num_traits::pow::Pow;
+use parking_lot::Mutex;
 use rust_decimal::{Decimal, MathematicalOps};
 use std::sync::Arc;
 use tokio::sync::mpsc::channel;
@@ -52,13 +53,12 @@ fn error(value: Value) -> Value {
     Value::Variant(VariantIndex::new(1), vec![value])
 }
 
-impl<'a> Interpreter<'a> {
+impl Interpreter {
     pub(crate) async fn call_runtime(
-        &mut self,
+        &self,
         func: ir::RuntimeFunction,
         inputs: Vec<Value>,
         stack: &mut Stack,
-        info: &mut Info,
     ) -> Result<(), Error> {
         #![allow(unreachable_patterns)]
 
@@ -139,12 +139,14 @@ impl<'a> Interpreter<'a> {
                     runtime_fn!((Value::Text(text)) => Err(Error::from(text.as_ref())))
                 }
                 ir::RuntimeFunction::Display => runtime_fn!((Value::Text(text)) => {
+                    let console = self.inner.lock().console.clone();
+
                     let (completion_tx, completion_rx) = tokio::sync::oneshot::channel();
-                    (self.console)(ConsoleRequest::Display(&text, Box::new(|| {
+                    console(ConsoleRequest::Display(self.clone(), &text, Box::new(|| {
                         completion_tx.send(()).unwrap()
                     })))?;
 
-                    completion_rx.await.unwrap();
+                    completion_rx.await.map_err(|_| Error::from("program exited"))?;
 
                     Ok(Value::Tuple(Vec::new()))
                 }),
@@ -154,11 +156,13 @@ impl<'a> Interpreter<'a> {
                         // will be called with an instance of `Read` anyway, which has no captures
                         assert!(captures.0.is_empty(), "`prompt` requires a function with no captures");
 
+                        let console = self.inner.lock().console.clone();
+
                         let (input_tx, mut input_rx) = channel(1);
                         let (valid_tx, valid_rx) = channel(1);
 
                         let (completion_tx, completion_rx) = tokio::sync::oneshot::channel();
-                        (self.console)(ConsoleRequest::Prompt(&prompt, input_tx, valid_rx, Box::new(|| {
+                        console(ConsoleRequest::Prompt(self.clone(), &prompt, input_tx, valid_rx, Box::new(|| {
                             completion_tx.send(()).unwrap()
                         })))?;
 
@@ -166,7 +170,7 @@ impl<'a> Interpreter<'a> {
                             let input = input_rx.recv().await.unwrap();
 
                             stack.push(Value::Text(Arc::from(input)));
-                            self.evaluate_label(label, stack, info).await.unwrap();
+                            self.evaluate_label(label, stack).await.unwrap();
 
                             match maybe_from(stack.pop()) {
                                 Some(value) => {
@@ -181,7 +185,7 @@ impl<'a> Interpreter<'a> {
                             }
                         };
 
-                        completion_rx.await.unwrap();
+                        completion_rx.await.map_err(|_| Error::from("program exited"))?;
 
                         Ok(input)
                     })
@@ -195,14 +199,82 @@ impl<'a> Interpreter<'a> {
                         })
                         .collect::<Vec<_>>();
 
+
+                    let console = self.inner.lock().console.clone();
+
                     let (completion_tx, completion_rx) = tokio::sync::oneshot::channel();
-                    (self.console)(ConsoleRequest::Choice(&prompt, choices, Box::new(|index| {
+                    console(ConsoleRequest::Choice(self.clone(), &prompt, choices, Box::new(|index| {
                         completion_tx.send(index).unwrap()
                     })))?;
 
-                    let index = completion_rx.await.unwrap();
+                    let index = completion_rx.await.map_err(|_| Error::from("program exited"))?;
 
                     Ok(Value::Natural(index as u64))
+                }),
+                ir::RuntimeFunction::WithUi => runtime_fn!((Value::Text(url), Value::Function(scope, label)) => {
+                    let console = self.inner.lock().console.clone();
+
+                    let (completion_tx, completion_rx) = tokio::sync::oneshot::channel();
+
+                    console(ConsoleRequest::Ui(self.clone(), &url, {
+                        let interpreter = self.clone();
+
+                        Box::new(move |on_message, on_finish| Box::pin(async move {
+                            let handle = UiHandle {
+                                on_message: Arc::new(Mutex::new(on_message)),
+                                on_finish: Arc::new(Mutex::new(Some(on_finish))),
+                            };
+
+                            let result = interpreter.call_function(label, scope, Value::UiHandle(handle.clone())).await?;
+
+                            handle.on_finish.lock().take().unwrap()();
+
+                            completion_tx.send(result).map_err(|_| Error::from("program exited"))?;
+
+                            Ok(())
+                        }))
+                    }))?;
+
+                    let result = completion_rx.await.map_err(|_| Error::from("program exited"))?;
+
+                    Ok(result)
+                }),
+                ir::RuntimeFunction::MessageUi => runtime_fn!((Value::UiHandle(handle), Value::Text(message), value) => {
+                    let (completion_tx, completion_rx) = tokio::sync::oneshot::channel();
+
+                    handle.on_message.lock()(message.to_string(), value, Box::new(move |result| {
+                        completion_tx.send(result).map_err(|_| Error::from("program exited"))
+                    }));
+
+                    completion_rx.await.map_err(|_| Error::from("program exited"))?
+                }),
+                ir::RuntimeFunction::Wait => runtime_fn!((Value::Function(scope, label)) => {
+                    let (completion_tx, completion_rx) = tokio::sync::oneshot::channel();
+
+                    let completion_tx = Arc::new(Mutex::new(Some(completion_tx)));
+                    let function = Value::NativeFunction(Arc::new(move |value| {
+                        let completion_tx = completion_tx.clone();
+
+                        Box::pin(async move {
+                            let completion_tx = match completion_tx.lock().take() {
+                                Some(tx) => tx,
+                                None => return Err(Error::from("cannot call `wait` callback more than once")),
+                            };
+
+                            completion_tx.send(value).map_err(|_| Error::from("program exited"))?;
+                            Ok(Value::Tuple(Vec::new()))
+                        })
+                    }));
+
+                    self.call_function(label, scope, function).await?;
+
+                    match completion_rx.await {
+                        Ok(result) => Ok(result),
+                        Err(_) => {
+                            // The program is in an infinite loop, wait for it to be cancelled
+                            std::future::pending().await
+                        },
+                    }
                 }),
                 ir::RuntimeFunction::NumberToText => {
                     runtime_text_fn!((Value::Number(n)) => n.normalize().to_string())

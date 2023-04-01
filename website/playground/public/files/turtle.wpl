@@ -1,0 +1,78 @@
+Angle : type {
+	degrees :: Number
+}
+
+degrees :: Number -> Angle
+degrees : degrees -> Angle { degrees }
+
+radians :: Number -> Angle
+radians : radians -> degrees (radians * 180 / 3.14159)
+
+
+Turtle : type {
+	handle :: UI
+}
+
+with-turtle :: (Turtle -> ()) -> ()
+with-turtle : f ->
+	with-ui "/playground/ui/turtle/index.js" (handle -> f (Turtle { handle }))
+
+
+width :: Number -> Turtle -> ()
+width : width -> { handle } ->
+	handle . message "width" width
+
+height :: Number -> Turtle -> ()
+height : height -> { handle } ->
+	handle . message "height" height
+
+background :: Text -> Turtle -> ()
+background : color -> { handle } ->
+	handle . message "background" color
+
+position :: (Number , Number) -> Turtle -> ()
+position : (x , y) -> { handle } -> {
+	handle . message "position-x" x
+	handle . message "position-y" y
+}
+
+pen-up :: Turtle -> ()
+pen-up : { handle } ->
+	handle . message "pen-up" ()
+
+pen-down :: Turtle -> ()
+pen-down : { handle } ->
+	handle . message "pen-down" ()
+
+color :: Text -> Turtle -> ()
+color : color -> { handle } ->
+	handle . message "color" color
+
+fill :: Text -> Turtle -> ()
+fill : color -> { handle } ->
+	handle . message "fill" color
+
+
+path :: (() -> ()) -> Turtle -> ()
+path : f -> { handle } -> {
+	handle . message "begin-path" ()
+	f ()
+	handle . message "close-path" ()
+}
+
+
+forward :: Number -> Turtle -> ()
+forward : px -> { handle } ->
+	handle . message "forward" px
+
+backward :: Number -> Turtle -> ()
+backward : px -> { handle } ->
+	handle . message "backward" px
+
+left :: Angle -> Turtle -> ()
+left : { degrees } -> { handle } ->
+	handle . message "left" degrees
+
+right :: Angle -> Turtle -> ()
+right : { degrees } -> { handle } ->
+	handle . message "right" degrees

@@ -246,6 +246,7 @@ pub enum BuiltinTypeDeclarationKind {
     Text,
     List,
     Mutable,
+    Ui,
 }
 
 #[derive(Debug, Clone)]
@@ -560,6 +561,9 @@ pub enum RuntimeFunction {
     Display,
     Prompt,
     Choice,
+    WithUi,
+    MessageUi,
+    Wait,
     NumberToText,
     IntegerToText,
     NaturalToText,

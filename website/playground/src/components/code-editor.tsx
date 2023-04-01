@@ -39,6 +39,7 @@ import Refresh from "@mui/icons-material/Refresh";
 import Add from "@mui/icons-material/Add";
 import getCaretCoordinates from "textarea-caret";
 import lineColumn from "line-column";
+import { useRefState } from "../helpers";
 
 export interface CodeEditorProps {
     id: string;
@@ -51,12 +52,17 @@ export interface CodeEditorProps {
 type OutputItem =
     | { type: "output"; text: string }
     | { type: "prompt"; prompt: string; onSubmit: (text: string) => Promise<boolean> }
-    | { type: "choice"; prompt: string; choices: string[]; onSubmit: (index: number) => void };
+    | { type: "choice"; prompt: string; choices: string[]; onSubmit: (index: number) => void }
+    | { type: "custom"; id: string };
 
 interface Hover {
     x: number;
     y: number;
     output: HoverOutput;
+}
+
+interface UiElement {
+    onMessage: (message: string, value: any) => Promise<any>;
 }
 
 export const CodeEditor = (props: CodeEditorProps) => {
@@ -93,62 +99,125 @@ export const CodeEditor = (props: CodeEditorProps) => {
         });
     }, [prefersReducedMotion]);
 
+    const [uiElements, setUiElements] = useRefState<UiElement[]>([]);
+    const [currentUiElementId, setCurrentUiElementId] = useRefState("");
+
     const runner = useRunner();
 
     const run = useMemo(
         () =>
             debounce(async (code: string, lint: boolean) => {
+                setRunning(true);
+
                 try {
                     setSyntaxHighlighting([]); // FIXME: Prevent flashing
                     const analysis = await runner.analyze(code, lint);
                     setSyntaxHighlighting(analysis.syntaxHighlighting);
                     setOutput({ code: code, items: [], diagnostics: analysis.diagnostics });
                     setCompletions(analysis.completions);
+                    setUiElements([]);
 
                     if (!analysis.diagnostics.find(({ level }) => level === "error")) {
-                        setRunning(true);
+                        const success = await runner.run(async (request) => {
+                            try {
+                                switch (request.type) {
+                                    case "display":
+                                        appendToOutput(code, {
+                                            type: "output",
+                                            text: request.text,
+                                        });
 
-                        const success = await runner.run((request) => {
-                            switch (request.type) {
-                                case "display":
-                                    appendToOutput(code, {
-                                        type: "output",
-                                        text: request.text,
-                                    });
+                                        request.callback();
 
-                                    request.callback();
+                                        break;
+                                    case "prompt":
+                                        appendToOutput(code, {
+                                            type: "prompt",
+                                            prompt: request.prompt,
+                                            onSubmit: async (text) => {
+                                                request.sendInput(text);
 
-                                    break;
-                                case "prompt":
-                                    appendToOutput(code, {
-                                        type: "prompt",
-                                        prompt: request.prompt,
-                                        onSubmit: async (text) => {
-                                            request.sendInput(text);
+                                                const valid = await request.recvValid();
+                                                if (valid) {
+                                                    request.callback();
+                                                }
 
-                                            const valid = await request.recvValid();
-                                            if (valid) {
-                                                request.callback();
-                                            }
+                                                return valid;
+                                            },
+                                        });
 
-                                            return valid;
-                                        },
-                                    });
+                                        break;
+                                    case "choice":
+                                        appendToOutput(code, {
+                                            type: "choice",
+                                            prompt: request.prompt,
+                                            choices: request.choices,
+                                            onSubmit: request.callback,
+                                        });
 
-                                    break;
-                                case "choice":
-                                    appendToOutput(code, {
-                                        type: "choice",
-                                        prompt: request.prompt,
-                                        choices: request.choices,
-                                        onSubmit: request.callback,
-                                    });
+                                        break;
+                                    case "loadUi": {
+                                        const uiElement = await import(request.url);
 
-                                    break;
+                                        const index = uiElements.current.length;
+
+                                        const id = `${props.id}-${index}`;
+                                        setCurrentUiElementId(id);
+                                        appendToOutput(code, { type: "custom", id });
+
+                                        requestAnimationFrame(() => {
+                                            requestAnimationFrame(async () => {
+                                                const container = document.getElementById(
+                                                    id
+                                                )! as HTMLDivElement;
+
+                                                if (!container) {
+                                                    throw new Error("container not initialized");
+                                                }
+
+                                                await uiElement.initialize(container);
+
+                                                setUiElements([
+                                                    ...uiElements.current,
+                                                    { onMessage: uiElement.onMessage },
+                                                ]);
+
+                                                requestAnimationFrame(request.callback);
+                                            });
+                                        });
+
+                                        break;
+                                    }
+                                    case "messageUi": {
+                                        const id = currentUiElementId.current.split("-");
+                                        const index = parseInt(id[id.length - 1]);
+                                        const uiElement = uiElements.current[index];
+
+                                        if (!uiElement) {
+                                            throw new Error(`invalid UI element ${index}`);
+                                        }
+
+                                        const result = await uiElement.onMessage(
+                                            request.message,
+                                            request.value
+                                        );
+
+                                        request.callback(result);
+
+                                        break;
+                                    }
+                                    default:
+                                        console.error(
+                                            `[code editor ${props.id}] unknown request:`,
+                                            request
+                                        );
+
+                                        break;
+                                }
+                            } catch (error) {
+                                console.error(`[code editor ${props.id}] error:`, error);
                             }
                         });
-
-                        setRunning(false);
 
                         if (!success) {
                             throw new Error("runner failed");
@@ -180,6 +249,8 @@ export const CodeEditor = (props: CodeEditorProps) => {
                             },
                         ],
                     }));
+                } finally {
+                    setRunning(false);
                 }
             }, 500),
         [props.id]
@@ -684,17 +755,22 @@ export const CodeEditor = (props: CodeEditorProps) => {
                                                                     {item.prompt}
                                                                 </DropdownField>
                                                             );
+                                                        case "custom":
+                                                            return <div key={index} id={item.id} />;
                                                     }
                                                 })}
 
                                                 {isRunning ? (
                                                     <div className="bouncing-loader">
-                                                        <div></div>
-                                                        <div></div>
-                                                        <div></div>
+                                                        <div />
+                                                        <div />
+                                                        <div />
                                                     </div>
-                                                ) : Array.isArray(output) &&
-                                                  output.find((item) => item.type !== "output") ? (
+                                                ) : (Array.isArray(output) &&
+                                                      output.find(
+                                                          (item) => item.type !== "output"
+                                                      )) ||
+                                                  uiElements.current.length ? (
                                                     <div className="mt-4">
                                                         <Button
                                                             variant="contained"

@@ -1668,6 +1668,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1c107b6f4780854c8b126e228ea8869f4d7b71260f962fefb57b996b8959ba6b"
 
 [[package]]
+name = "send_wrapper"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cd0b0ec5f1c1ca621c432a25813d8d60c88abe6d3e08a3eb9cf37d97a0fe3d73"
+
+[[package]]
 name = "serde"
 version = "1.0.152"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2564,6 +2570,7 @@ dependencies = [
  "im",
  "itertools",
  "num-traits",
+ "parking_lot",
  "rust_decimal",
  "tokio",
  "unicode-segmentation",
@@ -2583,7 +2590,9 @@ dependencies = [
  "lazy_static",
  "parking_lot",
  "rust-embed",
+ "send_wrapper",
  "serde",
+ "serde_json",
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
