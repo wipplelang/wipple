@@ -1,6 +1,6 @@
 use crate::{ConsoleRequest, Error, Interpreter, Stack, UiHandle, Value};
 use itertools::Itertools;
-use num_traits::pow::Pow;
+use num_traits::{pow::Pow, FromPrimitive};
 use parking_lot::Mutex;
 use rust_decimal::{Decimal, MathematicalOps};
 use std::sync::Arc;
@@ -294,6 +294,9 @@ impl Interpreter {
                 ir::RuntimeFunction::TextToUnsigned => runtime_parse_fn!(Value::Unsigned),
                 ir::RuntimeFunction::TextToFloat => runtime_parse_fn!(Value::Float),
                 ir::RuntimeFunction::TextToDouble => runtime_parse_fn!(Value::Double),
+                ir::RuntimeFunction::NaturalToNumber => runtime_fn!((Value::Natural(n)) => {
+                    Ok(Value::Number(Decimal::from_u64(n).expect("overflow")))
+                }),
                 ir::RuntimeFunction::AddNumber => {
                     runtime_math_fn!(Value::Number, (lhs, rhs) => Ok(lhs + rhs))
                 }

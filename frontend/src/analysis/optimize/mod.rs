@@ -553,6 +553,7 @@ mod util {
                 RuntimeFunction::TextToUnsigned => true,
                 RuntimeFunction::TextToFloat => true,
                 RuntimeFunction::TextToDouble => true,
+                RuntimeFunction::NaturalToNumber => true,
                 RuntimeFunction::AddNumber => true,
                 RuntimeFunction::SubtractNumber => true,
                 RuntimeFunction::MultiplyNumber => true,

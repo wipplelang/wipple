@@ -580,6 +580,8 @@ pub enum RuntimeFunction {
     TextToUnsigned,
     TextToFloat,
     TextToDouble,
+    // TODO: All the conversions
+    NaturalToNumber,
     AddNumber,
     SubtractNumber,
     MultiplyNumber,
