@@ -3339,12 +3339,12 @@ impl Typechecker {
                 .filter_map(|other| {
                     let prev_ctx = self.ctx.clone();
 
+                    let mut substitutions = engine::GenericSubstitutions::new();
+
                     let mut all_unify = true;
                     for (instance_param_ty, other_param_ty) in
                         params.clone().into_iter().zip(other.trait_params)
                     {
-                        let mut substitutions = engine::GenericSubstitutions::new();
-
                         let mut instance_param_ty = engine::UnresolvedType::from(instance_param_ty);
                         self.add_substitutions(&mut instance_param_ty, &mut substitutions);
 
