@@ -16,7 +16,7 @@
         {
             "id": "gvKH5-uV",
             "type": "code",
-            "value": "use \"turtle.wpl\"\n\nwith-turtle (turtle -> {\n\t\t-- More to follow...\n})"
+            "value": "use \"turtle.wpl\"\n\nwith-turtle (turtle -> {\n\t-- More to follow...\n})"
         },
         {
             "id": "vsIlW2z7",
@@ -27,7 +27,7 @@
         {
             "id": "AUjE0yCe",
             "type": "code",
-            "value": "use \"turtle.wpl\"\n\nwith-turtle (turtle -> {\n\t\tturtle . forward 50\n\t\tturtle . left (90 . degrees)\n\t\tturtle . forward 50\n\t\tturtle . left (90 . degrees)\n\t\tturtle . forward 50\n\t\tturtle . left (90 . degrees)\n\t\tturtle . forward 50\n\t\tturtle . left (90 . degrees)\n})"
+            "value": "use \"turtle.wpl\"\n\nwith-turtle (turtle -> {\n\tturtle . forward 50\n\tturtle . left (90 . degrees)\n\tturtle . forward 50\n\tturtle . left (90 . degrees)\n\tturtle . forward 50\n\tturtle . left (90 . degrees)\n\tturtle . forward 50\n\tturtle . left (90 . degrees)\n})"
         },
         {
             "id": "qeRZQAzu",
@@ -38,7 +38,7 @@
         {
             "id": "u1hdYl2i",
             "type": "code",
-            "value": "use \"turtle.wpl\"\n\nwith-turtle (turtle -> {\n\t\t4 . times (_ -> {\n\t\t\t\tturtle . forward 50\n\t\t\t\tturtle . left (90 . degrees)\n\t\t})\n})"
+            "value": "use \"turtle.wpl\"\n\nwith-turtle (turtle -> {\n\t4 . times (_ -> {\n\t\tturtle . forward 50\n\t\tturtle . left (90 . degrees)\n\t})\n})"
         },
         {
             "id": "RfUAQW6W",
@@ -49,7 +49,7 @@
         {
             "id": "bmjf_ID7",
             "type": "code",
-            "value": "use \"turtle.wpl\"\n\nwith-turtle (turtle -> {\n\t\t8 . times (_ -> {\n\t\t\t\t4 . times (_ -> {\n\t\t\t\t\t\tturtle . forward 50\n\t\t\t\t\t\tturtle . left (90 . degrees)\n\t\t\t\t})\n\t\t\t\t\n\t\t\t\tturtle . left (45 . degrees)\n\t\t})\n})"
+            "value": "use \"turtle.wpl\"\n\nwith-turtle (turtle -> {\n\t8 . times (_ -> {\n\t\t4 . times (_ -> {\n\t\t\tturtle . forward 50\n\t\t\tturtle . left (90 . degrees)\n\t\t})\n\t\t\n\t\tturtle . left (45 . degrees)\n\t})\n})"
         },
         {
             "id": "Wf4o7po0",
@@ -60,7 +60,7 @@
         {
             "id": "R3bkOOv7",
             "type": "code",
-            "value": "use \"turtle.wpl\"\n\ndraw-square : turtle -> {\n\t\t4 . times (_ -> {\n\t\t\t\tturtle . forward 50\n\t\t\t\tturtle . left (90 . degrees)\n\t\t})\n}\n\nwith-turtle (turtle -> {\n\t\t8 . times (_ -> {\n\t\t\t\tturtle . draw-square\n\t\t\t\tturtle . left (45 . degrees)\n\t\t})\n})"
+            "value": "use \"turtle.wpl\"\n\ndraw-square : turtle -> {\n\t4 . times (_ -> {\n\t\tturtle . forward 50\n\t\tturtle . left (90 . degrees)\n\t})\n}\n\nwith-turtle (turtle -> {\n\t8 . times (_ -> {\n\t\tturtle . draw-square\n\t\tturtle . left (45 . degrees)\n\t})\n})"
         },
         {
             "id": "SaMtvQKw",
@@ -71,7 +71,7 @@
         {
             "id": "8ZOCPXo3",
             "type": "code",
-            "value": "use \"turtle.wpl\"\n\ndraw-square : size -> turtle -> {\n\t\t4 . times (_ -> {\n\t\t\t\tturtle . forward size\n\t\t\t\tturtle . left (90 . degrees)\n\t\t})\n}\n\nwith-turtle (turtle -> {\n\t\t8 . times (_ -> {\n\t\t\t\tturtle . draw-square 50\n\t\t\t\tturtle . left (45 . degrees)\n\t\t})\n})"
+            "value": "use \"turtle.wpl\"\n\ndraw-square : size -> turtle -> {\n\t4 . times (_ -> {\n\t\tturtle . forward size\n\t\tturtle . left (90 . degrees)\n\t})\n}\n\nwith-turtle (turtle -> {\n\t8 . times (_ -> {\n\t\tturtle . draw-square 50\n\t\tturtle . left (45 . degrees)\n\t})\n})"
         },
         {
             "id": "8T-Q-7W9",
@@ -82,7 +82,7 @@
         {
             "id": "xxnINSEi",
             "type": "code",
-            "value": "use \"turtle.wpl\"\n\ndraw-square : size -> turtle -> {\n\t\t4 . times (_ -> {\n\t\t\t\tturtle . forward size\n\t\t\t\tturtle . left (90 . degrees)\n\t\t})\n}\n\nwith-turtle (turtle -> {\n\t\t5 . times (n -> {\n\t\t\t\tturtle . draw-square (10 * (n as Number + 1))\n\t\t})\n})"
+            "value": "use \"turtle.wpl\"\n\ndraw-square : size -> turtle -> {\n\t4 . times (_ -> {\n\t\tturtle . forward size\n\t\tturtle . left (90 . degrees)\n\t})\n}\n\nwith-turtle (turtle -> {\n\t5 . times (n -> {\n\t\tturtle . draw-square (10 * (n as Number + 1))\n\t})\n})"
         },
         {
             "id": "h7dWEzdb",
@@ -100,7 +100,7 @@
         {
             "id": "-yULPKtJ",
             "type": "code",
-            "value": "use \"turtle.wpl\"\n\ndraw-square : size -> turtle -> {\n\t\t4 . times (_ -> {\n\t\t\t\tturtle . forward size\n\t\t\t\tturtle . left (90 . degrees)\n\t\t})\n}\n\ncolors : list \"red\" \"orange\" \"yellow\" \"green\" \"blue\" \"purple\" \"pink\" \"brown\"\n\nwith-turtle (turtle -> {\n\t\tcolors . each (c -> {\n\t\t\t\tturtle . color c\n\t\t\t\tturtle . draw-square 50\n\t\t\t\tturtle . left (45 . degrees)\n\t\t})\n})"
+            "value": "use \"turtle.wpl\"\n\ndraw-square : size -> turtle -> {\n\t4 . times (_ -> {\n\t\tturtle . forward size\n\t\tturtle . left (90 . degrees)\n\t})\n}\n\ncolors : list \"red\" \"orange\" \"yellow\" \"green\" \"blue\" \"purple\" \"pink\" \"brown\"\n\nwith-turtle (turtle -> {\n\tcolors . each (c -> {\n\t\tturtle . color c\n\t\tturtle . draw-square 50\n\t\tturtle . left (45 . degrees)\n\t})\n})"
         }
     ],
     "previous": {

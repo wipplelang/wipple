@@ -22,6 +22,7 @@
         "prismjs": "^1.29.0",
         "react": "^18.2.0",
         "react-dom": "^18.2.0",
+        "react-intersection-observer": "^9.4.3",
         "react-markdown": "^8.0.5",
         "react-simple-code-editor": "^0.13.1",
         "react-spring": "^9.7.0",

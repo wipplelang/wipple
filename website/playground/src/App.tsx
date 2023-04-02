@@ -29,7 +29,6 @@ import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import { nanoid } from "nanoid";
 import { CodeEditor, TextEditor } from "./components";
 import { useRefState } from "./helpers";
-import useResizeObserver from "use-resize-observer";
 
 type Section = { id: string; value: string } & (
     | { type: "code"; lint?: boolean }
@@ -47,23 +46,6 @@ const App = () => {
     const [nextPage, setNextPage] = useState<PageLink | undefined>();
 
     const [query, setQuery] = useRefState<URLSearchParams | null>(null);
-
-    const [hasBeganScrolling, setBeganScrolling] = useState(false);
-
-    useEffect(() => {
-        window.addEventListener("wheel", () => {
-            setBeganScrolling(true);
-        });
-    }, []);
-
-    useResizeObserver({
-        ref: typeof document === "undefined" ? undefined : document.body,
-        onResize: () => {
-            if (!hasBeganScrolling) {
-                window.scrollTo({ top: 0 });
-            }
-        },
-    })!;
 
     useEffect(() => {
         const setup = async () => {

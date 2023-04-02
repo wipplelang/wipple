@@ -64,7 +64,7 @@
         {
             "id": "It2P5bZn",
             "type": "code",
-            "value": "Font-Size : type {\n\t\tLarge\n\t\tMedium\n\t\tSmall\n\t\tRegular\n}\n\nuse Font-Size\n\ninstance (Show Font-Size) : font-size -> when font-size {\n\t\tLarge -> \"large\"\n\t\tMedium -> \"medium\"\n\t\tSmall -> \"small\"\n\t\tRegular -> \"regular\"\n}\n\nwith-font-size :: Font-Size -> Text -> Text\nwith-font-size : font-size -> text -> when font-size {\n\t\tLarge -> format \"# _\" text\n\t\tMedium -> format \"## _\" text\n\t\tSmall -> format \"### _\" text\n\t\tRegular -> text\n}\n\nfont-size : choice \"Choose a font size\" (list Large Medium Small Regular)\ntext : prompt \"Enter some text\" :: Text\nshow (text . with-font-size font-size)"
+            "value": "Font-Size : type {\n\tLarge\n\tMedium\n\tSmall\n\tRegular\n}\n\nuse Font-Size\n\ninstance (Show Font-Size) : font-size -> when font-size {\n\tLarge -> \"large\"\n\tMedium -> \"medium\"\n\tSmall -> \"small\"\n\tRegular -> \"regular\"\n}\n\nwith-font-size :: Font-Size -> Text -> Text\nwith-font-size : font-size -> text -> when font-size {\n\tLarge -> format \"# _\" text\n\tMedium -> format \"## _\" text\n\tSmall -> format \"### _\" text\n\tRegular -> text\n}\n\nfont-size : choice \"Choose a font size\" (list Large Medium Small Regular)\ntext : prompt \"Enter some text\" :: Text\nshow (text . with-font-size font-size)"
         }
     ],
     "previous": {

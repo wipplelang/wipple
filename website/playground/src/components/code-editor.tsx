@@ -40,6 +40,7 @@ import Add from "@mui/icons-material/Add";
 import getCaretCoordinates from "textarea-caret";
 import lineColumn from "line-column";
 import { useRefState } from "../helpers";
+import { useInView } from "react-intersection-observer";
 
 export interface CodeEditorProps {
     id: string;
@@ -258,7 +259,7 @@ export const CodeEditor = (props: CodeEditorProps) => {
 
     useEffect(() => {
         run(props.code, props.lint);
-    }, [props.code, props.lint]);
+    }, [run, props.code, props.lint]);
 
     const [hover, setHover] = useState<Hover>();
 
@@ -382,12 +383,6 @@ export const CodeEditor = (props: CodeEditorProps) => {
         }
     }, [syntaxHighlighting]);
 
-    useEffect(() => {
-        if (!isRunning) {
-            document.getElementById(textAreaID)!.focus();
-        }
-    }, [isRunning]);
-
     const getCodeEditorCaretPosition = () => {
         const codeEditor = document.getElementById(textAreaID) as HTMLTextAreaElement | null;
         if (!codeEditor) return undefined;
@@ -499,6 +494,7 @@ export const CodeEditor = (props: CodeEditorProps) => {
                             fontStyle: props.code ? "normal" : "italic",
                             fontVariantLigatures: "none",
                             wordWrap: "break-word",
+                            tabSize: 2,
                         }}
                         value={props.code}
                         onValueChange={(code) => {
@@ -508,7 +504,7 @@ export const CodeEditor = (props: CodeEditorProps) => {
                         highlight={(code) =>
                             prism.highlight(code, prism.languages.wipple, "wipple")
                         }
-                        tabSize={2}
+                        tabSize={1}
                         insertSpaces={false}
                         placeholder="Write your code here!"
                         autoFocus={props.autoFocus}

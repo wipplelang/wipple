@@ -75,7 +75,7 @@
         {
             "id": "NzQuwdVl",
             "type": "code",
-            "value": "Clamp-Error : type {\n\tToo-Small\n\tToo-Large\n}\n\nuse Clamp-Error\n\ninstance (Show Clamp-Error) : error -> when error {\n\tToo-Small -> \"too small\"\n\tToo-Large -> \"too large\"\n}\n\nclamp : min -> max -> n ->\n\tif (n > min)\n\t\t(if (n < max) (OK n) (Error Too-Large))\n\t\t(Error Too-Small)\n\nsingle-digit : clamp -10 10\n\nshow (single-digit 5)\nshow (single-digit 20)\nshow (unwrap (single-digit -42))"
+            "value": "Clamp-Error : type {\n\tToo-Small\n\tToo-Large\n}\n\nuse Clamp-Error\n\ninstance (Show Clamp-Error) : error -> when error {\n\tToo-Small -> \"too small\"\n\tToo-Large -> \"too large\"\n}\n\nclamp : min -> max -> n ->\n\tif (n > min)\n\t(if (n < max) (OK n) (Error Too-Large))\n\t(Error Too-Small)\n\nsingle-digit : clamp -10 10\n\nshow (single-digit 5)\nshow (single-digit 20)\nshow (unwrap (single-digit -42))"
         }
     ],
     "previous": {

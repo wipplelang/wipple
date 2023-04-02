@@ -39,7 +39,7 @@
         {
             "id": "RUYaV_pW",
             "type": "code",
-            "value": "Person : type {\n\t\tname :: Text\n\t\tage :: Number\n}\n\ninstance (Show Person) : { name age } -> format \"_, age _\" name age\n\n-- Now Wipple knows that to `Show` a `Person` means to use the function we\n-- provided! Check it out:\n\nbob : Person {\n\t\tname : \"Bob\"\n\t\tage : 30\n}\n\nshow bob"
+            "value": "Person : type {\n\tname :: Text\n\tage :: Number\n}\n\ninstance (Show Person) : { name age } -> format \"_, age _\" name age\n\n-- Now Wipple knows that to `Show` a `Person` means to use the function we\n-- provided! Check it out:\n\nbob : Person {\n\tname : \"Bob\"\n\tage : 30\n}\n\nshow bob"
         },
         {
             "id": "otRW0clO",

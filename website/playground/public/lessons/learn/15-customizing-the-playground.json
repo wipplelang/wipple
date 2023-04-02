@@ -75,7 +75,7 @@
         {
             "id": "RGt3QV5M",
             "type": "code",
-            "value": "Person : type {\n\t\tname :: Text\n\t\tage :: Number\n}\n\nperson :: Text -> Number -> Person\nperson : name -> age -> Person { name age }\n\ninstance (Show Person) : { name age } -> format \"_, age _\" name age\n\n---\n\npeople : list\n\t\t(person \"Alice\" 25)\n\t\t(person \"Bob\" 30)\n\t\t(person \"Charlie\" 35)\n\nshow \"**People:**\"\npeople . each (person -> {\n\t\t-- The dash at the beginning creates the list\n\t\tshow (format \"- _\" person)\n})"
+            "value": "Person : type {\n\tname :: Text\n\tage :: Number\n}\n\nperson :: Text -> Number -> Person\nperson : name -> age -> Person { name age }\n\ninstance (Show Person) : { name age } -> format \"_, age _\" name age\n\n---\n\npeople : list\n\t(person \"Alice\" 25)\n\t(person \"Bob\" 30)\n\t(person \"Charlie\" 35)\n\nshow \"**People:**\"\npeople . each (person -> {\n\t-- The dash at the beginning creates the list\n\tshow (format \"- _\" person)\n})"
         },
         {
             "id": "A8vKe_pI",
