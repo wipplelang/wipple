@@ -23,6 +23,7 @@ export const App = (props: AppProps) => {
 
             await new Promise(requestAnimationFrame);
 
+            await turtle.current.setSpeed(0.65);
             await turtle.current.setLineWidth(2);
 
             let x = 0;

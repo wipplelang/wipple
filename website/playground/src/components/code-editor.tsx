@@ -40,7 +40,6 @@ import Add from "@mui/icons-material/Add";
 import getCaretCoordinates from "textarea-caret";
 import lineColumn from "line-column";
 import { useRefState } from "../helpers";
-import { useInView } from "react-intersection-observer";
 
 export interface CodeEditorProps {
     id: string;
