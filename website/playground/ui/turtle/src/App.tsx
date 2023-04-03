@@ -90,7 +90,7 @@ export const App = (props: AppProps) => {
     }, []);
 
     return (
-        <div ref={containerRef}>
+        <div ref={containerRef} style={{ backgroundColor: "white" }}>
             <canvas ref={canvasRef} />
         </div>
     );

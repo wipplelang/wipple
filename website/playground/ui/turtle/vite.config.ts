@@ -13,8 +13,7 @@ export default defineConfig({
             fileName: "index",
         },
     },
-
     define: {
-        "process.env": {},
+        "process.env.NODE_ENV": '"production"',
     },
 });

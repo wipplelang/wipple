@@ -135,7 +135,14 @@ onmessage = async (event) => {
                 break;
             case "callFunction":
                 const result = await functions[event.data.id](decodeFunction(event.data.input));
-                postMessage({ type: "callFunctionResult", result: encodeFunction(result) });
+
+                requestAnimationFrame(() => {
+                    postMessage({
+                        type: "callFunctionResult",
+                        result: encodeFunction(result),
+                    });
+                });
+
                 break;
             case "callFunctionResult":
                 resolveFunctionResult(event.data.result);

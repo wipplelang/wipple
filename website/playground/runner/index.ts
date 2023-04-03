@@ -233,9 +233,11 @@ export const useRunner = () => {
                                     decodeFunction(event.data.input)
                                 );
 
-                                runner.current!.postMessage({
-                                    operation: "callFunctionResult",
-                                    result: encodeFunction(result),
+                                requestAnimationFrame(() => {
+                                    runner.current!.postMessage({
+                                        operation: "callFunctionResult",
+                                        result: encodeFunction(result),
+                                    });
                                 });
 
                                 break;

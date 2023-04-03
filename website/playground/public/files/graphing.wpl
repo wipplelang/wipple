@@ -1,0 +1,35 @@
+Graph : type {
+	handle :: UI
+}
+
+with-graph :: (Graph -> ()) -> ()
+with-graph : f ->
+	with-ui "/playground/ui/graphing/index.js" (handle -> f (Graph { handle }))
+
+color :: Text -> Graph -> ()
+color : color -> { handle } ->
+	handle . message "color" color
+
+min-x :: Number -> Graph -> ()
+min-x : n -> { handle } ->
+	handle . message "min-x" n
+
+min-y :: Number -> Graph -> ()
+min-y : n -> { handle } ->
+	handle . message "min-y" n
+
+max-x :: Number -> Graph -> ()
+max-x : n -> { handle } ->
+	handle . message "max-x" n
+
+max-y :: Number -> Graph -> ()
+max-y : n -> { handle } ->
+	handle . message "max-y" n
+
+resolution :: Number -> Graph -> ()
+resolution : n -> { handle } ->
+	handle . message "resolution" n
+
+plot :: (Number -> Number) -> Graph -> ()
+plot : f -> { handle } ->
+	handle . message "function" f
