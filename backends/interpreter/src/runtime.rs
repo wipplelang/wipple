@@ -93,6 +93,18 @@ impl Interpreter {
             };
         }
 
+        macro_rules! runtime_mod_fn {
+            (Value::$ty:ident, $zero:expr) => {
+                runtime_math_fn!(Value::$ty, (lhs, rhs) => {
+                    if rhs != $zero {
+                        Ok(lhs % rhs)
+                    } else {
+                        Err(Error::from("cannot divide by zero"))
+                    }
+                })
+            };
+        }
+
         macro_rules! runtime_text_fn {
             (($($input:pat),*) => $result:expr) => {
                 runtime_fn!(($($input),*) => Ok(Value::Text(Arc::from($result))))
@@ -307,6 +319,7 @@ impl Interpreter {
                     runtime_math_fn!(Value::Number, (lhs, rhs) => Ok(lhs * rhs))
                 }
                 ir::RuntimeFunction::DivideNumber => runtime_div_fn!(Value::Number, Decimal::ZERO),
+                ir::RuntimeFunction::ModuloNumber => runtime_mod_fn!(Value::Number, Decimal::ZERO),
                 ir::RuntimeFunction::PowerNumber => {
                     runtime_math_fn!(Value::Number, (lhs, rhs) => {
                         if lhs == Decimal::ZERO && rhs == Decimal::ZERO {
@@ -335,6 +348,7 @@ impl Interpreter {
                     runtime_math_fn!(Value::Integer, (lhs, rhs) => Ok(lhs * rhs))
                 }
                 ir::RuntimeFunction::DivideInteger => runtime_div_fn!(Value::Integer, 0),
+                ir::RuntimeFunction::ModuloInteger => runtime_mod_fn!(Value::Integer, 0),
                 ir::RuntimeFunction::PowerInteger => {
                     runtime_math_fn!(Value::Integer, (lhs, rhs) => {
                         if lhs == 0 && rhs == 0 {
@@ -354,6 +368,7 @@ impl Interpreter {
                     runtime_math_fn!(Value::Natural, (lhs, rhs) => Ok(lhs * rhs))
                 }
                 ir::RuntimeFunction::DivideNatural => runtime_div_fn!(Value::Natural, 0),
+                ir::RuntimeFunction::ModuloNatural => runtime_mod_fn!(Value::Natural, 0),
                 ir::RuntimeFunction::PowerNatural => {
                     runtime_math_fn!(Value::Natural, (lhs, rhs) => {
                         if lhs == 0 && rhs == 0 {
@@ -373,6 +388,7 @@ impl Interpreter {
                     runtime_math_fn!(Value::Byte, (lhs, rhs) => Ok(lhs * rhs))
                 }
                 ir::RuntimeFunction::DivideByte => runtime_div_fn!(Value::Byte, 0),
+                ir::RuntimeFunction::ModuloByte => runtime_mod_fn!(Value::Byte, 0),
                 ir::RuntimeFunction::PowerByte => {
                     runtime_math_fn!(Value::Byte, (lhs, rhs) => {
                         if lhs == 0 && rhs == 0 {
@@ -392,6 +408,7 @@ impl Interpreter {
                     runtime_math_fn!(Value::Signed, (lhs, rhs) => Ok(lhs * rhs))
                 }
                 ir::RuntimeFunction::DivideSigned => runtime_div_fn!(Value::Signed, 0),
+                ir::RuntimeFunction::ModuloSigned => runtime_mod_fn!(Value::Signed, 0),
                 ir::RuntimeFunction::PowerSigned => runtime_math_fn!(Value::Signed, (lhs, rhs) => {
                     if lhs == 0 && rhs == 0 {
                         Err(Error::from("cannot raise zero to the power of zero"))
@@ -409,6 +426,7 @@ impl Interpreter {
                     runtime_math_fn!(Value::Unsigned, (lhs, rhs) => Ok(lhs * rhs))
                 }
                 ir::RuntimeFunction::DivideUnsigned => runtime_div_fn!(Value::Unsigned, 0),
+                ir::RuntimeFunction::ModuloUnsigned => runtime_mod_fn!(Value::Unsigned, 0),
                 ir::RuntimeFunction::PowerUnsigned => {
                     runtime_math_fn!(Value::Unsigned, (lhs, rhs) => {
                         if lhs == 0 && rhs == 0 {
@@ -429,6 +447,9 @@ impl Interpreter {
                 }
                 ir::RuntimeFunction::DivideFloat => {
                     runtime_math_fn!(Value::Float, (lhs, rhs) => Ok(lhs / rhs))
+                }
+                ir::RuntimeFunction::ModuloFloat => {
+                    runtime_math_fn!(Value::Float, (lhs, rhs) => Ok(lhs % rhs))
                 }
                 ir::RuntimeFunction::PowerFloat => {
                     runtime_math_fn!(Value::Float, (lhs, rhs) => Ok(lhs.pow(rhs)))
@@ -453,6 +474,9 @@ impl Interpreter {
                 }
                 ir::RuntimeFunction::DivideDouble => {
                     runtime_math_fn!(Value::Double, (lhs, rhs) => Ok(lhs / rhs))
+                }
+                ir::RuntimeFunction::ModuloDouble => {
+                    runtime_math_fn!(Value::Double, (lhs, rhs) => Ok(lhs % rhs))
                 }
                 ir::RuntimeFunction::PowerDouble => {
                     runtime_math_fn!(Value::Double, (lhs, rhs) => Ok(lhs.pow(rhs)))

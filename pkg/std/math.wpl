@@ -81,6 +81,25 @@ instance (Divide Unsigned Unsigned Unsigned) : a -> b -> external "runtime" "div
 instance (Divide Float Float Float) : a -> b -> external "runtime" "divide-float" a b
 instance (Divide Double Double Double) : a -> b -> external "runtime" "divide-double" a b
 
+[help "Implements the `mod` operator."]
+[help-group "Math"]
+[on-unimplemented "cannot divide `_` by `_`" Left Right]
+Modulo : Left Right Remainder => trait (Left -> Right -> Remainder)
+
+[operator Multiplication-Precedence]
+mod : syntax {
+	'a mod 'b -> Modulo 'a 'b
+}
+
+instance (Modulo Number Number Number) : a -> b -> external "runtime" "modulo-number" a b
+instance (Modulo Integer Integer Integer) : a -> b -> external "runtime" "modulo-integer" a b
+instance (Modulo Natural Natural Natural) : a -> b -> external "runtime" "modulo-natural" a b
+instance (Modulo Byte Byte Byte) : a -> b -> external "runtime" "modulo-byte" a b
+instance (Modulo Signed Signed Signed) : a -> b -> external "runtime" "modulo-signed" a b
+instance (Modulo Unsigned Unsigned Unsigned) : a -> b -> external "runtime" "modulo-unsigned" a b
+instance (Modulo Float Float Float) : a -> b -> external "runtime" "modulo-float" a b
+instance (Modulo Double Double Double) : a -> b -> external "runtime" "modulo-double" a b
+
 [help "Implements the `^` operator."]
 [help-group "Math"]
 [on-unimplemented "cannot raise `_` to the power of `_`" Left Right]
