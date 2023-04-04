@@ -9,6 +9,7 @@
         "preview": "vite preview"
     },
     "dependencies": {
+        "immer": "^9.0.21",
         "react": "^18.2.0",
         "react-dom": "^18.2.0",
         "recharts": "^2.5.0"

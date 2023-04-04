@@ -1,13 +1,6 @@
 import { useEffect, useState } from "react";
-import {
-    CartesianGrid,
-    Line,
-    LineChart,
-    ResponsiveContainer,
-    Tooltip,
-    XAxis,
-    YAxis,
-} from "recharts";
+import { CartesianGrid, Line, LineChart, ResponsiveContainer, XAxis, YAxis } from "recharts";
+import { produce } from "immer";
 
 export interface AppProps {
     setOnMessage: (handler: (message: string, value: any) => Promise<void>) => void;
@@ -18,9 +11,9 @@ export const App = (props: AppProps) => {
     const [maxX, setMaxX] = useState(10);
     const [minY, setMinY] = useState(-10);
     const [maxY, setMaxY] = useState(10);
-    const [resolution, setResolution] = useState(0.1);
+    const [resolution, setResolution] = useState(0.25);
     const [func, setFunc] = useState<(x: number) => Promise<number>>();
-    const [color, setColor] = useState("black");
+    const [colors, setColors] = useState<string[]>([]);
     const [resolve, setResolve] = useState(() => () => {});
 
     useEffect(() => {
@@ -51,7 +44,7 @@ export const App = (props: AppProps) => {
                                     setFunc(() => value);
                                     break;
                                 case "color":
-                                    setColor(value);
+                                    setColors((colors) => [...colors, value]);
                                     break;
                                 default:
                                     throw new Error("unknown message");
@@ -64,7 +57,7 @@ export const App = (props: AppProps) => {
         })();
     }, []);
 
-    const [data, setData] = useState<[number, number][]>([]);
+    const [data, setData] = useState<[number, number[]][]>([]);
 
     useEffect(() => {
         (async () => {
@@ -73,11 +66,25 @@ export const App = (props: AppProps) => {
                 return;
             }
 
-            setData([]);
             for (let x = minX - resolution; x <= maxX + resolution; x += resolution) {
                 const y = await func(x);
-                setData((data) => [...data, [x, y]]);
+                setData((data) =>
+                    produce(data, (data) => {
+                        let ys: [number, number[]] | undefined = data.find(
+                            ([dataX]) => dataX === x
+                        );
+
+                        if (!ys) {
+                            ys = [x, []];
+                            data.push(ys);
+                        }
+
+                        ys[1].push(y);
+                    })
+                );
             }
+
+            setFunc(undefined);
 
             resolve();
         })();
@@ -91,13 +98,16 @@ export const App = (props: AppProps) => {
                     <YAxis type="number" domain={[minY, maxY]} allowDataOverflow />
                     <CartesianGrid />
 
-                    <Line
-                        dataKey={1}
-                        stroke={color}
-                        strokeWidth={2}
-                        dot={false}
-                        isAnimationActive={false}
-                    />
+                    {data.map((_, index) => (
+                        <Line
+                            key={index}
+                            dataKey={(data) => data[1][index]}
+                            stroke={colors[index] ?? colors[colors.length - 1] ?? "black"}
+                            strokeWidth={2}
+                            dot={false}
+                            isAnimationActive={false}
+                        />
+                    ))}
                 </LineChart>
             </ResponsiveContainer>
         </div>
