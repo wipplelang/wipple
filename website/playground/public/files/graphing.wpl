@@ -2,34 +2,50 @@ Graph : type {
 	handle :: UI
 }
 
+[help "Plot a function on a graph."]
+[help-group "Graphing"]
 with-graph :: (Graph -> ()) -> ()
 with-graph : f ->
 	with-ui "/playground/ui/graphing/index.js" (handle -> f (Graph { handle }))
 
+[help "Set the color of the graph."]
+[help-group "Graphing"]
 color :: Text -> Graph -> ()
 color : color -> { handle } ->
 	handle . message "color" color
 
+[help "Set the minimum x-value displayed by the graph."]
+[help-group "Graphing"]
 min-x :: Number -> Graph -> ()
 min-x : n -> { handle } ->
 	handle . message "min-x" n
 
+[help "Set the minimum y-value displayed by the graph."]
+[help-group "Graphing"]
 min-y :: Number -> Graph -> ()
 min-y : n -> { handle } ->
 	handle . message "min-y" n
 
+[help "Set the maximum x-value displayed by the graph."]
+[help-group "Graphing"]
 max-x :: Number -> Graph -> ()
 max-x : n -> { handle } ->
 	handle . message "max-x" n
 
+[help "Set the maximum y-value displayed by the graph."]
+[help-group "Graphing"]
 max-y :: Number -> Graph -> ()
 max-y : n -> { handle } ->
 	handle . message "max-y" n
 
+[help "Set the space between individual points on the graph. A higher resolution will be more accurate, but will take longer to compute."]
+[help-group "Graphing"]
 resolution :: Number -> Graph -> ()
 resolution : n -> { handle } ->
 	handle . message "resolution" n
 
+[help "Add a function to the graph."]
+[help-group "Graphing"]
 plot :: (Number -> Number) -> Graph -> ()
 plot : f -> { handle } ->
 	handle . message "function" f
