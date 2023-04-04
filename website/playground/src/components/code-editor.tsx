@@ -62,7 +62,7 @@ interface Hover {
 }
 
 interface UiElement {
-    onMessage: (message: string, value: any) => Promise<any>;
+    onMessage: Record<string, (message: string, value: any) => Promise<void>>;
 }
 
 export const CodeEditor = (props: CodeEditorProps) => {
@@ -175,7 +175,7 @@ export const CodeEditor = (props: CodeEditorProps) => {
                                                     throw new Error("container not initialized");
                                                 }
 
-                                                await uiElement.initialize(container);
+                                                await uiElement.initialize(id, container);
 
                                                 setUiElements([
                                                     ...uiElements.current,
@@ -197,10 +197,9 @@ export const CodeEditor = (props: CodeEditorProps) => {
                                             throw new Error(`invalid UI element ${index}`);
                                         }
 
-                                        const result = await uiElement.onMessage(
-                                            request.message,
-                                            request.value
-                                        );
+                                        const result = await uiElement.onMessage[
+                                            currentUiElementId.current
+                                        ](request.message, request.value);
 
                                         request.callback(result);
 
