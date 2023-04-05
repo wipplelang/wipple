@@ -1,4 +1,4 @@
-use crate::{ConsoleRequest, Error, Interpreter, Stack, UiHandle, Value};
+use crate::{Error, Interpreter, IoRequest, Stack, TaskGroup, UiHandle, Value};
 use itertools::Itertools;
 use num_traits::{pow::Pow, FromPrimitive};
 use parking_lot::Mutex;
@@ -151,12 +151,12 @@ impl Interpreter {
                     runtime_fn!((Value::Text(text)) => Err(Error::from(text.as_ref())))
                 }
                 ir::RuntimeFunction::Display => runtime_fn!((Value::Text(text)) => {
-                    let console = self.inner.lock().console.clone();
+                    let io = self.lock().io.clone();
 
                     let (completion_tx, completion_rx) = tokio::sync::oneshot::channel();
-                    console(ConsoleRequest::Display(self.clone(), &text, Box::new(|| {
+                    io(IoRequest::Display(self.clone(), &text, Box::new(|| {
                         completion_tx.send(()).unwrap()
-                    })))?;
+                    }))).await?;
 
                     completion_rx.await.map_err(|_| Error::from("program exited"))?;
 
@@ -168,15 +168,15 @@ impl Interpreter {
                         // will be called with an instance of `Read` anyway, which has no captures
                         assert!(captures.0.is_empty(), "`prompt` requires a function with no captures");
 
-                        let console = self.inner.lock().console.clone();
+                        let io = self.lock().io.clone();
 
                         let (input_tx, mut input_rx) = channel(1);
                         let (valid_tx, valid_rx) = channel(1);
 
                         let (completion_tx, completion_rx) = tokio::sync::oneshot::channel();
-                        console(ConsoleRequest::Prompt(self.clone(), &prompt, input_tx, valid_rx, Box::new(|| {
+                        io(IoRequest::Prompt(self.clone(), &prompt, input_tx, valid_rx, Box::new(|| {
                             completion_tx.send(()).unwrap()
-                        })))?;
+                        }))).await?;
 
                         let input = loop {
                             let input = input_rx.recv().await.unwrap();
@@ -211,24 +211,23 @@ impl Interpreter {
                         })
                         .collect::<Vec<_>>();
 
-
-                    let console = self.inner.lock().console.clone();
+                    let io = self.lock().io.clone();
 
                     let (completion_tx, completion_rx) = tokio::sync::oneshot::channel();
-                    console(ConsoleRequest::Choice(self.clone(), &prompt, choices, Box::new(|index| {
+                    io(IoRequest::Choice(self.clone(), &prompt, choices, Box::new(|index| {
                         completion_tx.send(index).unwrap()
-                    })))?;
+                    }))).await?;
 
                     let index = completion_rx.await.map_err(|_| Error::from("program exited"))?;
 
                     Ok(Value::Natural(index as u64))
                 }),
                 ir::RuntimeFunction::WithUi => runtime_fn!((Value::Text(url), Value::Function(scope, label)) => {
-                    let console = self.inner.lock().console.clone();
+                    let io = self.lock().io.clone();
 
                     let (completion_tx, completion_rx) = tokio::sync::oneshot::channel();
 
-                    console(ConsoleRequest::Ui(self.clone(), &url, {
+                    io(IoRequest::Ui(self.clone(), &url, {
                         let interpreter = self.clone();
 
                         Box::new(move |on_message, on_finish| Box::pin(async move {
@@ -245,7 +244,7 @@ impl Interpreter {
 
                             Ok(())
                         }))
-                    }))?;
+                    })).await?;
 
                     let result = completion_rx.await.map_err(|_| Error::from("program exited"))?;
 
@@ -260,7 +259,7 @@ impl Interpreter {
 
                     completion_rx.await.map_err(|_| Error::from("program exited"))?
                 }),
-                ir::RuntimeFunction::Wait => runtime_fn!((Value::Function(scope, label)) => {
+                ir::RuntimeFunction::WithContinuation => runtime_fn!((Value::Function(scope, label)) => {
                     let (completion_tx, completion_rx) = tokio::sync::oneshot::channel();
 
                     let completion_tx = Arc::new(Mutex::new(Some(completion_tx)));
@@ -287,6 +286,78 @@ impl Interpreter {
                             std::future::pending().await
                         },
                     }
+                }),
+                ir::RuntimeFunction::WithTaskGroup => runtime_fn!((Value::Function(scope, label)) => {
+                    let group = TaskGroup::default();
+
+                    self.call_function(label, scope, Value::TaskGroup(group.clone())).await?;
+
+                    loop {
+                        let handle = match group.0.try_lock() {
+                            Some(mut group) => group.pop(),
+                            None => return Err(Error::from("task group used outside of `with-task-group`")),
+                        };
+
+                        match handle {
+                            Some(handle) => handle.await?,
+                            None => break,
+                        }
+                    }
+
+                    Ok(Value::Tuple(Vec::new()))
+                }),
+                ir::RuntimeFunction::Task => runtime_fn!((Value::TaskGroup(group), Value::Function(scope, label)) => {
+                    let mut group = match group.0.try_lock() {
+                        Some(group) => group,
+                        None => return Err(Error::from("task group used outside of `with-task-group`")),
+                    };
+
+                    let fut = Box::pin({
+                        let interpreter = self.clone();
+
+                        async move {
+                            interpreter
+                                .call_function(label, scope, Value::Tuple(Vec::new()))
+                                .await?;
+
+                            Ok(())
+                        }
+                    });
+
+                    group.push(fut);
+
+                    Ok(Value::Tuple(Vec::new()))
+                }),
+                ir::RuntimeFunction::InBackground => runtime_fn!((Value::Function(scope, label)) => {
+                    let io = self.lock().io.clone();
+
+                    io(IoRequest::Schedule(self.clone(), Box::pin({
+                        let interpreter = self.clone();
+
+                        async move {
+                            interpreter
+                                .call_function(label, scope, Value::Tuple(Vec::new()))
+                                .await?;
+
+                            Ok::<_, Error>(())
+                        }
+                    }))).await?;
+
+                    Ok(Value::Tuple(Vec::new()))
+                }),
+                ir::RuntimeFunction::Delay => runtime_fn!((Value::Natural(ms)) => {
+                    let duration = std::time::Duration::from_millis(ms);
+
+                    let io = self.lock().io.clone();
+
+                    let (completion_tx, completion_rx) = tokio::sync::oneshot::channel();
+                    io(IoRequest::Sleep(self.clone(), duration, Box::new(|| {
+                        completion_tx.send(()).unwrap()
+                    }))).await?;
+
+                    completion_rx.await.map_err(|_| Error::from("program exited"))?;
+
+                    Ok(Value::Tuple(Vec::new()))
                 }),
                 ir::RuntimeFunction::NumberToText => {
                     runtime_text_fn!((Value::Number(n)) => n.normalize().to_string())

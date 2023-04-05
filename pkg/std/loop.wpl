@@ -1,6 +1,7 @@
 [[no-std]]
 
 use "mutable.wpl"
+use "async.wpl"
 
 Control-Flow : A => type {
 	Break A
@@ -37,6 +38,29 @@ unless : syntax {
 	unless 'condition 'body -> while (not 'condition) 'body
 }
 
+[keyword]
+forever : syntax {
+	forever 'body -> loop {
+		'body :: ()
+		Continue
+	}
+}
+
+[keyword]
+loop-every : syntax {
+	loop-every 'duration 'body -> loop {
+		when 'body {
+			Continue -> {
+				delay 'duration
+				Continue
+			}
+			Break value -> Break value
+		}
+	}
+}
+
+[help "Repeatedly call a function the specified number of times."]
+[help-group "Control Flow"]
 times :: (Natural -> ()) -> Natural -> ()
 times : f -> n -> {
 	counter : mutable 0

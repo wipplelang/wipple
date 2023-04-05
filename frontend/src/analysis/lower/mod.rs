@@ -247,6 +247,7 @@ pub enum BuiltinTypeDeclarationKind {
     List,
     Mutable,
     Ui,
+    TaskGroup,
 }
 
 #[derive(Debug, Clone)]
@@ -563,7 +564,11 @@ pub enum RuntimeFunction {
     Choice,
     WithUi,
     MessageUi,
-    Wait,
+    WithContinuation,
+    WithTaskGroup,
+    Task,
+    InBackground,
+    Delay,
     NumberToText,
     IntegerToText,
     NaturalToText,
@@ -2717,40 +2722,44 @@ impl Lowerer {
                 span: pattern.span,
                 kind: PatternKind::Text(pattern.text),
             },
-            ast::Pattern::Name(pattern) => match self.peek(pattern.name, scope) {
-                Some(AnyDeclaration::Constant(id, Some((ty, variant)))) => {
-                    self.declarations
-                        .constants
-                        .get_mut(&id)
-                        .unwrap()
-                        .uses
-                        .insert(pattern.span);
+            ast::Pattern::Name(pattern) => {
+                let scope = LoadedScopeId(pattern.scope);
 
-                    Pattern {
-                        span: pattern.span,
-                        kind: PatternKind::Variant(ty, variant, Vec::new()),
+                match self.peek(pattern.name, scope) {
+                    Some(AnyDeclaration::Constant(id, Some((ty, variant)))) => {
+                        self.declarations
+                            .constants
+                            .get_mut(&id)
+                            .unwrap()
+                            .uses
+                            .insert(pattern.span);
+
+                        Pattern {
+                            span: pattern.span,
+                            kind: PatternKind::Variant(ty, variant, Vec::new()),
+                        }
+                    }
+                    _ => {
+                        let var = self.compiler.new_variable_id_in(self.file);
+
+                        self.insert(pattern.name, AnyDeclaration::Variable(var), scope);
+
+                        self.declarations.variables.insert(
+                            var,
+                            Declaration::resolved(
+                                Some(pattern.name),
+                                pattern.span,
+                                VariableDeclaration,
+                            ),
+                        );
+
+                        Pattern {
+                            span: pattern.span,
+                            kind: PatternKind::Variable(var),
+                        }
                     }
                 }
-                _ => {
-                    let var = self.compiler.new_variable_id_in(self.file);
-
-                    self.insert(pattern.name, AnyDeclaration::Variable(var), scope);
-
-                    self.declarations.variables.insert(
-                        var,
-                        Declaration::resolved(
-                            Some(pattern.name),
-                            pattern.span,
-                            VariableDeclaration,
-                        ),
-                    );
-
-                    Pattern {
-                        span: pattern.span,
-                        kind: PatternKind::Variable(var),
-                    }
-                }
-            },
+            }
             ast::Pattern::Destructure(pattern) => Pattern {
                 span: pattern.span,
                 kind: PatternKind::Destructure(
@@ -2775,6 +2784,7 @@ impl Lowerer {
                                     &ast::Pattern::Name(ast::NamePattern {
                                         span: destructuring.span,
                                         name: destructuring.name,
+                                        scope: destructuring.scope,
                                     }),
                                     scope,
                                     ctx,
@@ -2793,6 +2803,7 @@ impl Lowerer {
                                                 &ast::Pattern::Name(ast::NamePattern {
                                                     span: destructuring.span,
                                                     name: destructuring.name,
+                                                    scope: destructuring.scope,
                                                 }),
                                                 scope,
                                                 ctx,

@@ -80,6 +80,8 @@ onmessage = async (event) => {
                         }
                     },
                     (success) => {
+                        console.log("runner finished, success =", success);
+
                         if (cancel) {
                             cancel();
                             cancel = undefined;

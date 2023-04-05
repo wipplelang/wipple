@@ -406,10 +406,11 @@ impl SyntaxPattern {
         body: SyntaxPattern,
         vars: &HashMap<InternedString, SyntaxExpression>,
         source_span: SpanList,
+        scope: ScopeId,
     ) -> Result<parse::Expr, SyntaxError> {
         let body_span = body.span();
 
-        let mut exprs = Self::expand_inner(ast_builder, body, vars, source_span)?;
+        let mut exprs = Self::expand_inner(ast_builder, body, vars, source_span, scope)?;
 
         (exprs.len() == 1)
             .then(|| exprs.pop().unwrap())
@@ -431,6 +432,7 @@ impl SyntaxPattern {
         body: SyntaxPattern,
         vars: &HashMap<InternedString, SyntaxExpression>,
         source_span: SpanList,
+        scope: ScopeId,
     ) -> Result<Vec<parse::Expr>, SyntaxError> {
         let mut result = match body {
             SyntaxPattern::Unit(pattern) => vec![parse::Expr {
@@ -503,7 +505,9 @@ impl SyntaxPattern {
                     pattern
                         .patterns
                         .into_iter()
-                        .map(|pattern| Self::expand_inner(ast_builder, pattern?, vars, source_span))
+                        .map(|pattern| {
+                            Self::expand_inner(ast_builder, pattern?, vars, source_span, scope)
+                        })
                         .collect::<Result<Vec<_>, _>>()?
                         .into_iter()
                         .flatten()
@@ -577,6 +581,7 @@ impl SyntaxPattern {
                                             pattern?,
                                             &vars,
                                             source_span,
+                                            scope,
                                         )
                                     })
                                     .collect::<Result<Vec<_>, _>>()?
@@ -617,7 +622,7 @@ impl SyntaxPattern {
                             .into_iter()
                             .map(|pattern| {
                                 let statement =
-                                    Self::expand(ast_builder, pattern?, vars, source_span)?;
+                                    Self::expand(ast_builder, pattern?, vars, source_span, scope)?;
 
                                 Ok(parse::Statement {
                                     lines: vec![parse::ListLine {

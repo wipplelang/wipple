@@ -167,72 +167,108 @@ async fn run() -> anyhow::Result<()> {
                 _ => return Err(anyhow::Error::msg("")),
             };
 
-            let interpreter = wipple_interpreter_backend::Interpreter::new(|request| {
-                match request {
-                    wipple_interpreter_backend::ConsoleRequest::Display(_, text, callback) => {
-                        println!("{text}");
-                        callback();
-                    }
-                    wipple_interpreter_backend::ConsoleRequest::Prompt(
-                        _,
-                        prompt,
-                        input_tx,
-                        valid_rx,
-                        callback,
-                    ) => {
-                        let prompt = prompt.to_string();
-                        let input_tx = Arc::new(Mutex::new(input_tx));
-                        let valid_rx = Arc::new(Mutex::new(valid_rx));
+            let background_tasks: Arc<Mutex<Vec<_>>> = Default::default();
 
-                        std::thread::spawn(move || {
-                            dialoguer::Input::new()
-                                .with_prompt(prompt)
-                                .validate_with(|input: &String| {
-                                    tokio::runtime::Builder::new_current_thread()
-                                        .enable_all()
-                                        .build()
-                                        .unwrap()
-                                        .block_on(async {
-                                            input_tx.lock().send(input.to_string()).await.unwrap();
-                                            let valid = valid_rx.lock().recv().await.unwrap();
-                                            valid.then_some(()).ok_or("invalid input")
+            let interpreter = wipple_interpreter_backend::Interpreter::new({
+                let background_tasks = background_tasks.clone();
+
+                move |request| {
+                    let background_tasks = background_tasks.clone();
+
+                    Box::pin(async move {
+                        match request {
+                            wipple_interpreter_backend::IoRequest::Display(_, text, callback) => {
+                                println!("{text}");
+                                callback();
+                            }
+                            wipple_interpreter_backend::IoRequest::Prompt(
+                                _,
+                                prompt,
+                                input_tx,
+                                valid_rx,
+                                callback,
+                            ) => {
+                                let prompt = prompt.to_string();
+                                let input_tx = Arc::new(Mutex::new(input_tx));
+                                let valid_rx = Arc::new(Mutex::new(valid_rx));
+
+                                std::thread::spawn(move || {
+                                    dialoguer::Input::new()
+                                        .with_prompt(prompt)
+                                        .validate_with(|input: &String| {
+                                            tokio::runtime::Builder::new_current_thread()
+                                                .enable_all()
+                                                .build()
+                                                .unwrap()
+                                                .block_on(async {
+                                                    input_tx
+                                                        .lock()
+                                                        .send(input.to_string())
+                                                        .await
+                                                        .unwrap();
+                                                    let valid =
+                                                        valid_rx.lock().recv().await.unwrap();
+                                                    valid.then_some(()).ok_or("invalid input")
+                                                })
                                         })
-                                })
-                                .interact()
-                                .unwrap();
+                                        .interact()
+                                        .unwrap();
 
-                            valid_rx.lock().close();
+                                    valid_rx.lock().close();
 
-                            callback();
-                        });
-                    }
-                    wipple_interpreter_backend::ConsoleRequest::Choice(
-                        _,
-                        prompt,
-                        choices,
-                        callback,
-                    ) => {
-                        let index = dialoguer::Select::new()
-                            .with_prompt(prompt)
-                            .items(&choices)
-                            .default(0)
-                            .interact()
-                            .map_err(|err| err.to_string())?;
+                                    callback();
+                                });
+                            }
+                            wipple_interpreter_backend::IoRequest::Choice(
+                                _,
+                                prompt,
+                                choices,
+                                callback,
+                            ) => {
+                                let index = dialoguer::Select::new()
+                                    .with_prompt(prompt)
+                                    .items(&choices)
+                                    .default(0)
+                                    .interact()
+                                    .map_err(|err| err.to_string())?;
 
-                        callback(index);
-                    }
-                    wipple_interpreter_backend::ConsoleRequest::Ui(_, _, _) => {
-                        // TODO: Prevent code that uses custom UI elements from even compiling
-                        // (eg. a `platform` attribute)
-                        panic!("custom UI elements are only supported in the Wipple Playground")
-                    }
+                                callback(index);
+                            }
+                            wipple_interpreter_backend::IoRequest::Ui(_, _, _) => {
+                                // TODO: Prevent code that uses custom UI elements from even compiling
+                                // (eg. a `platform` attribute)
+                                panic!("custom UI elements are only supported in the Wipple Playground")
+                            }
+                            wipple_interpreter_backend::IoRequest::Sleep(_, duration, callback) => {
+                                tokio::spawn(async move {
+                                    tokio::time::sleep(duration).await;
+                                    callback();
+                                });
+                            }
+                            wipple_interpreter_backend::IoRequest::Schedule(_, fut) => {
+                                let handle = tokio::spawn(fut);
+                                background_tasks.lock().push(handle);
+                            }
+                        }
+
+                        Ok(())
+                    })
                 }
-
-                Ok(())
             });
 
             if let Err(error) = interpreter.run(&ir).await {
                 eprintln!("fatal error: {error}");
+            }
+
+            loop {
+                let handle = match background_tasks.lock().pop() {
+                    Some(handle) => handle,
+                    None => break,
+                };
+
+                if let Err(error) = handle.await {
+                    eprintln!("fatal error: {error}");
+                }
             }
         }
         Args::Compile {

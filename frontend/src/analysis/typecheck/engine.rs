@@ -60,6 +60,7 @@ impl From<Type> for UnresolvedType {
                 BuiltinType::List(ty) => BuiltinType::List(Box::new((*ty).into())),
                 BuiltinType::Mutable(ty) => BuiltinType::Mutable(Box::new((*ty).into())),
                 BuiltinType::Ui => BuiltinType::Ui,
+                BuiltinType::TaskGroup => BuiltinType::TaskGroup,
             }),
             Type::Error => UnresolvedType::Error,
         }
@@ -101,6 +102,7 @@ pub enum BuiltinType<Ty> {
     List(Ty),
     Mutable(Ty),
     Ui,
+    TaskGroup,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -457,7 +459,8 @@ impl Context {
                 | (BuiltinType::Float, BuiltinType::Float)
                 | (BuiltinType::Double, BuiltinType::Double)
                 | (BuiltinType::Text, BuiltinType::Text)
-                | (BuiltinType::Ui, BuiltinType::Ui) => Ok(()),
+                | (BuiltinType::Ui, BuiltinType::Ui)
+                | (BuiltinType::TaskGroup, BuiltinType::TaskGroup) => Ok(()),
                 (BuiltinType::List(actual_element), BuiltinType::List(expected_element)) => {
                     if let Err(error) = self.unify_internal(
                         (*actual_element).clone(),
@@ -833,6 +836,7 @@ impl UnresolvedType {
                 BuiltinType::List(ty) => BuiltinType::List(Box::new(ty.finalize(ctx)?)),
                 BuiltinType::Mutable(ty) => BuiltinType::Mutable(Box::new(ty.finalize(ctx)?)),
                 BuiltinType::Ui => BuiltinType::Ui,
+                BuiltinType::TaskGroup => BuiltinType::TaskGroup,
             }),
             UnresolvedType::Error => Type::Error,
         })

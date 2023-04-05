@@ -14,7 +14,7 @@ use wipple_frontend::{helpers::Shared, ir, VariantIndex};
 pub type Error = String;
 
 #[allow(clippy::type_complexity)]
-pub enum ConsoleRequest<'a> {
+pub enum IoRequest<'a> {
     Display(Interpreter, &'a str, Box<dyn FnOnce() + Send>),
     Prompt(
         Interpreter,
@@ -47,6 +47,8 @@ pub enum ConsoleRequest<'a> {
                 + Sync,
         >,
     ),
+    Schedule(Interpreter, BoxFuture<'static, Result<(), Error>>),
+    Sleep(Interpreter, std::time::Duration, Box<dyn FnOnce() + Send>),
 }
 
 #[allow(clippy::type_complexity)]
@@ -64,6 +66,10 @@ pub struct UiHandle {
     on_finish: Arc<Mutex<Option<Box<dyn FnOnce() + Send>>>>,
 }
 
+#[allow(clippy::type_complexity)]
+#[derive(Clone, Default)]
+pub struct TaskGroup(Arc<Mutex<Vec<BoxFuture<'static, Result<(), Error>>>>>);
+
 #[derive(Clone)]
 pub struct Interpreter {
     inner: Arc<Mutex<InterpreterInner>>,
@@ -71,22 +77,26 @@ pub struct Interpreter {
 
 #[allow(clippy::type_complexity)]
 struct InterpreterInner {
-    console: Arc<dyn Fn(ConsoleRequest) -> Result<(), Error> + Send + Sync>,
+    io: Arc<dyn Fn(IoRequest) -> BoxFuture<Result<(), Error>> + Send + Sync>,
     labels: Vec<(usize, Vec<ir::BasicBlock>)>,
     initialized_constants: BTreeMap<usize, Value>,
 }
 
 impl Interpreter {
     pub fn new(
-        console_handler: impl Fn(ConsoleRequest) -> Result<(), Error> + Send + Sync + 'static,
+        io_handler: impl Fn(IoRequest) -> BoxFuture<Result<(), Error>> + Send + Sync + 'static,
     ) -> Self {
         Interpreter {
             inner: Arc::new(Mutex::new(InterpreterInner {
-                console: Arc::new(console_handler),
+                io: Arc::new(io_handler),
                 labels: Default::default(),
                 initialized_constants: Default::default(),
             })),
         }
+    }
+
+    fn lock(&self) -> parking_lot::MutexGuard<InterpreterInner> {
+        self.inner.lock()
     }
 }
 
@@ -110,6 +120,7 @@ pub enum Value {
     Structure(Vec<Value>),
     Tuple(Vec<Value>),
     UiHandle(UiHandle),
+    TaskGroup(TaskGroup),
 }
 
 #[derive(Clone, Default)]
@@ -198,13 +209,13 @@ impl Stack {
 
 impl Interpreter {
     pub async fn run(&self, program: &ir::Program) -> Result<(), Error> {
-        self.inner.lock().labels = program
+        self.lock().labels = program
             .labels
             .iter()
             .map(|(_, vars, blocks)| (*vars, blocks.clone()))
             .collect();
 
-        self.inner.lock().initialized_constants = BTreeMap::new();
+        self.lock().initialized_constants = BTreeMap::new();
 
         let mut stack = Stack::new();
 
@@ -235,7 +246,7 @@ impl Interpreter {
         stack: &mut Stack,
         mut scope: Scope,
     ) -> Result<(), Error> {
-        let (vars, blocks) = self.inner.lock().labels[label].clone();
+        let (vars, blocks) = self.lock().labels[label].clone();
 
         scope.0.reserve(vars);
         for _ in 0..vars {
@@ -427,7 +438,7 @@ impl Interpreter {
     }
 
     async fn evaluate_constant(&self, label: usize, stack: &mut Stack) -> Result<(), Error> {
-        if let Some(value) = self.inner.lock().initialized_constants.get(&label) {
+        if let Some(value) = self.lock().initialized_constants.get(&label) {
             stack.push(value.clone());
             return Ok(());
         }

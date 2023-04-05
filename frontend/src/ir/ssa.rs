@@ -37,6 +37,7 @@ pub enum Type {
     Float,
     Double,
     Ui,
+    TaskGroup,
     Tuple(Vec<Type>),
     Structure(StructureId),
     Enumeration(EnumerationId),
@@ -128,32 +129,6 @@ impl Compiler {
             structures: converter.structures,
             enumerations: converter.enumerations,
             entrypoint: program.entrypoint.expect("no entrypoint provided"),
-        }
-    }
-}
-
-impl Type {
-    pub fn is_reference(&self) -> bool {
-        match self {
-            Type::Marker
-            | Type::Number
-            | Type::Integer
-            | Type::Natural
-            | Type::Byte
-            | Type::Signed
-            | Type::Unsigned
-            | Type::Float
-            | Type::Double
-            | Type::Ui
-            | Type::Tuple(_)
-            | Type::Structure(_)
-            | Type::Enumeration(_) => false,
-            Type::TextReference
-            | Type::ListReference(_)
-            | Type::MutableReference(_)
-            | Type::FunctionReference(_, _)
-            | Type::StructureReference(_)
-            | Type::EnumerationReference(_) => true,
         }
     }
 }
@@ -440,6 +415,7 @@ impl Converter<'_> {
                     Type::MutableReference(Box::new(self.convert_type(ty)))
                 }
                 analysis::typecheck::BuiltinType::Ui => Type::Ui,
+                analysis::typecheck::BuiltinType::TaskGroup => Type::TaskGroup,
             },
             analysis::Type::Error => unreachable!(),
         }

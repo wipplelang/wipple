@@ -273,13 +273,20 @@ async fn run(
             let interpreter = wipple_interpreter_backend::Interpreter::new({
                 let buf = buf.clone();
 
-                move |request| match request {
-                    wipple_interpreter_backend::ConsoleRequest::Display(_, text, completion) => {
-                        writeln!(buf.lock(), "{text}").unwrap();
-                        completion();
+                move |request| {
+                    let buf = buf.clone();
+
+                    Box::pin(async move {
+                        match request {
+                            wipple_interpreter_backend::IoRequest::Display(_, text, completion) => {
+                                writeln!(buf.lock(), "{text}").unwrap();
+                                completion();
+                            }
+                            _ => unimplemented!(),
+                        }
+
                         Ok(())
-                    }
-                    _ => unimplemented!(),
+                    })
                 }
             });
 

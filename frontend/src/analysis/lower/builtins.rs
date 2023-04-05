@@ -193,5 +193,20 @@ impl Lowerer {
                 }
             },
         );
+
+        add!(
+            builtin_type,
+            Span::builtin(),
+            "Task-Group",
+            BuiltinTypeDeclaration {
+                kind: BuiltinTypeDeclarationKind::TaskGroup,
+                attributes: DeclarationAttributes {
+                    help: vec![InternedString::new(
+                        "A way to manage multiple sections of code executing at the same time. Use the `task-group` function to create a new task group, and use `task` to add a task to the group. You can then `wait` on the task group to wait for all the tasks to finish before continuing the program.",
+                    )],
+                    ..Default::default()
+                }
+            },
+        );
     }
 }

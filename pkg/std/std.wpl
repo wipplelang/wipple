@@ -1,5 +1,6 @@
 [[no-std]]
 
+use "async.wpl"
 use "fp.wpl"
 use "io.wpl"
 use "iterate.wpl"

@@ -47,6 +47,7 @@ syntax_group! {
 pub struct NamePattern {
     pub span: SpanList,
     pub name: InternedString,
+    pub scope: ScopeId,
 }
 
 impl NamePattern {
@@ -180,6 +181,7 @@ impl SyntaxContext for PatternSyntaxContext {
                 Ok(NamePattern {
                     span: expr.span,
                     name,
+                    scope,
                 }
                 .into())
             }

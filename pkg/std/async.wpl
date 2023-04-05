@@ -1,0 +1,42 @@
+[[no-std]]
+
+use "math.wpl"
+
+[help "Wait for a function to be called before returning."]
+[help-group "Control Flow"]
+with-continuation :: A => ((A -> ()) -> ()) -> A
+with-continuation : f -> external "runtime" "with-continuation" f
+
+[help "Create a group of tasks to be executed at the same time. This function returns once all of the tasks have finished."]
+[help-group "Control Flow"]
+with-task-group :: (Task-Group -> ()) -> ()
+with-task-group : f -> external "runtime" "with-task-group" f
+
+[help "Add a task to a task group that runs at the same time as other tasks in the group.s"]
+[help-group "Control Flow"]
+task :: (() -> ()) -> Task-Group -> ()
+task : f -> group -> external "runtime" "task" group f
+
+[help "Run a function in the background without waiting for it to return."]
+[help-group "Control Flow"]
+in-background :: (() -> ()) -> ()
+in-background : f -> external "runtime" "in-background" f
+
+Duration : type {
+	ms :: Natural
+}
+
+[help "Create a duration in milliseconds."]
+[help-group "Control Flow"]
+ms :: Natural -> Duration
+ms : ms -> Duration { ms }
+
+[help "Create a duration in seconds."]
+[help-group "Control Flow"]
+secs :: Natural -> Duration
+secs : secs -> (secs * 1000) . ms
+
+[help "Wait for the specified duration to elapse before continuing the program."]
+[help-group "Control Flow"]
+delay :: Duration -> ()
+delay : { ms } -> external "runtime" "delay" ms

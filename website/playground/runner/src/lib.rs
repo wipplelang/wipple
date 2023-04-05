@@ -87,11 +87,11 @@ struct Completion {
 }
 
 // SAFETY: This is safe because Wasm is single-threaded
-struct SendSyncFuture<F>(Pin<Box<F>>);
-unsafe impl<F> Send for SendSyncFuture<F> {}
-unsafe impl<F> Sync for SendSyncFuture<F> {}
+struct SendSyncFuture<F: ?Sized>(Pin<Box<F>>);
+unsafe impl<F: ?Sized> Send for SendSyncFuture<F> {}
+unsafe impl<F: ?Sized> Sync for SendSyncFuture<F> {}
 
-impl<F: Future> Future for SendSyncFuture<F> {
+impl<F: Future + ?Sized> Future for SendSyncFuture<F> {
     type Output = F::Output;
 
     fn poll(
@@ -99,6 +99,34 @@ impl<F: Future> Future for SendSyncFuture<F> {
         cx: &mut std::task::Context<'_>,
     ) -> std::task::Poll<Self::Output> {
         self.0.as_mut().poll(cx)
+    }
+}
+
+struct CancellableFuture<Fut> {
+    token: Arc<AtomicBool>,
+    fut: Pin<Box<Fut>>,
+}
+
+impl<Fut> CancellableFuture<Fut> {
+    fn new(token: Arc<AtomicBool>, fut: Fut) -> Self {
+        CancellableFuture {
+            token,
+            fut: Box::pin(fut),
+        }
+    }
+}
+
+impl<Fut: Future> Future for CancellableFuture<Fut> {
+    type Output = Option<Fut::Output>;
+
+    fn poll(self: Pin<&mut Self>, cx: &mut std::task::Context) -> std::task::Poll<Self::Output> {
+        let cancelled = self.token.load(std::sync::atomic::Ordering::SeqCst);
+
+        if cancelled {
+            std::task::Poll::Ready(None)
+        } else {
+            Pin::new(&mut self.get_mut().fut).poll(cx).map(Some)
+        }
     }
 }
 
@@ -468,8 +496,11 @@ fn get_completions(program: &wipple_frontend::analysis::Program) -> AnalysisOutp
 }
 
 #[wasm_bindgen]
-pub fn run(handle_console: js_sys::Function, callback: js_sys::Function) -> JsValue {
-    let handle_console = Arc::new(Mutex::new(SendWrapper::new(handle_console)));
+pub fn run(handle_io: js_sys::Function, callback: js_sys::Function) -> JsValue {
+    let handle_io = Arc::new(Mutex::new(SendWrapper::new(handle_io)));
+
+    let tasks: Arc<Mutex<Vec<oneshot::Receiver<()>>>> = Default::default();
+    let cancel_token = Arc::new(AtomicBool::new(false));
 
     let analysis = match get_analysis() {
         Some(analysis) => analysis,
@@ -494,7 +525,7 @@ pub fn run(handle_console: js_sys::Function, callback: js_sys::Function) -> JsVa
     };
 
     let send_display = {
-        let handle_console = handle_console.clone();
+        let handle_io = handle_io.clone();
 
         move |text: String, callback: Box<dyn FnOnce() + Send>| {
             #[wasm_bindgen(getter_with_clone)]
@@ -510,7 +541,7 @@ pub fn run(handle_console: js_sys::Function, callback: js_sys::Function) -> JsVa
                 callback: Closure::once(callback).into_js_value(),
             };
 
-            handle_console
+            handle_io
                 .lock()
                 .call1(&JsValue::NULL, &request.into())
                 .unwrap();
@@ -519,204 +550,221 @@ pub fn run(handle_console: js_sys::Function, callback: js_sys::Function) -> JsVa
 
     let interpreter = wipple_interpreter_backend::Interpreter::new({
         let send_display = send_display.clone();
+        let tasks = tasks.clone();
+        let cancel_token = cancel_token.clone();
 
         move |request| {
-            match request {
-                wipple_interpreter_backend::ConsoleRequest::Display(_, text, callback) => {
-                    send_display(text.to_string(), callback);
-                }
-                wipple_interpreter_backend::ConsoleRequest::Prompt(
-                    _,
-                    prompt,
-                    input_tx,
-                    valid_rx,
-                    callback,
-                ) => {
-                    let prompt = prompt.to_string();
-                    let input_tx = Arc::new(Mutex::new(input_tx));
-                    let valid_rx = Arc::new(Mutex::new(valid_rx));
+            let handle_io = handle_io.clone();
+            let send_display = send_display.clone();
+            let tasks = tasks.clone();
+            let cancel_token = cancel_token.clone();
 
-                    #[wasm_bindgen(getter_with_clone)]
-                    pub struct PromptRequest {
-                        pub kind: String,
-                        pub prompt: String,
-                        pub send_input: JsValue,
-                        pub recv_valid: JsValue,
-                        pub callback: JsValue,
+            Box::pin(async move {
+                match request {
+                    wipple_interpreter_backend::IoRequest::Display(_, text, callback) => {
+                        send_display(text.to_string(), callback);
                     }
+                    wipple_interpreter_backend::IoRequest::Prompt(
+                        _,
+                        prompt,
+                        input_tx,
+                        valid_rx,
+                        callback,
+                    ) => {
+                        let prompt = prompt.to_string();
+                        let input_tx = Arc::new(Mutex::new(input_tx));
+                        let valid_rx = Arc::new(Mutex::new(valid_rx));
 
-                    let send_input =
-                        Closure::<dyn Fn(String) -> js_sys::Promise>::new(move |input| {
-                            let input_tx = input_tx.clone();
+                        #[wasm_bindgen(getter_with_clone)]
+                        pub struct PromptRequest {
+                            pub kind: String,
+                            pub prompt: String,
+                            pub send_input: JsValue,
+                            pub recv_valid: JsValue,
+                            pub callback: JsValue,
+                        }
+
+                        let send_input =
+                            Closure::<dyn Fn(String) -> js_sys::Promise>::new(move |input| {
+                                let input_tx = input_tx.clone();
+
+                                wasm_bindgen_futures::future_to_promise(async move {
+                                    input_tx.lock().send(input).await.unwrap();
+                                    Ok(JsValue::UNDEFINED)
+                                })
+                            });
+
+                        let recv_valid = Closure::<dyn Fn() -> js_sys::Promise>::new(move || {
+                            let valid_rx = valid_rx.clone();
 
                             wasm_bindgen_futures::future_to_promise(async move {
-                                input_tx.lock().send(input).await.unwrap();
-                                Ok(JsValue::UNDEFINED)
+                                let valid = valid_rx.lock().recv().await.unwrap();
+                                Ok(valid.into())
                             })
                         });
 
-                    let recv_valid = Closure::<dyn Fn() -> js_sys::Promise>::new(move || {
-                        let valid_rx = valid_rx.clone();
+                        let request = PromptRequest {
+                            kind: String::from("prompt"),
+                            prompt,
+                            send_input: send_input.into_js_value(),
+                            recv_valid: recv_valid.into_js_value(),
+                            callback: Closure::once(callback).into_js_value(),
+                        };
 
-                        wasm_bindgen_futures::future_to_promise(async move {
-                            let valid = valid_rx.lock().recv().await.unwrap();
-                            Ok(valid.into())
-                        })
-                    });
-
-                    let request = PromptRequest {
-                        kind: String::from("prompt"),
-                        prompt,
-                        send_input: send_input.into_js_value(),
-                        recv_valid: recv_valid.into_js_value(),
-                        callback: Closure::once(callback).into_js_value(),
-                    };
-
-                    handle_console
-                        .lock()
-                        .call1(&JsValue::NULL, &request.into())
-                        .unwrap();
-                }
-                wipple_interpreter_backend::ConsoleRequest::Choice(
-                    _,
-                    prompt,
-                    choices,
-                    callback,
-                ) => {
-                    #[wasm_bindgen(getter_with_clone)]
-                    pub struct ChoiceRequest {
-                        pub kind: String,
-                        pub prompt: String,
-                        pub choices: Vec<JsValue>,
-                        pub callback: JsValue,
+                        handle_io
+                            .lock()
+                            .call1(&JsValue::NULL, &request.into())
+                            .unwrap();
                     }
+                    wipple_interpreter_backend::IoRequest::Choice(_, prompt, choices, callback) => {
+                        #[wasm_bindgen(getter_with_clone)]
+                        pub struct ChoiceRequest {
+                            pub kind: String,
+                            pub prompt: String,
+                            pub choices: Vec<JsValue>,
+                            pub callback: JsValue,
+                        }
 
-                    let request = ChoiceRequest {
-                        kind: String::from("choice"),
-                        prompt: prompt.to_string(),
-                        choices: choices.into_iter().map(From::from).collect(),
-                        callback: Closure::once(callback).into_js_value(),
-                    };
+                        let request = ChoiceRequest {
+                            kind: String::from("choice"),
+                            prompt: prompt.to_string(),
+                            choices: choices.into_iter().map(From::from).collect(),
+                            callback: Closure::once(callback).into_js_value(),
+                        };
 
-                    handle_console
-                        .lock()
-                        .call1(&JsValue::NULL, &request.into())
-                        .unwrap();
-                }
-                wipple_interpreter_backend::ConsoleRequest::Ui(interpreter, url, completion) => {
-                    #[wasm_bindgen(getter_with_clone)]
-                    pub struct LoadUiRequest {
-                        pub kind: String,
-                        pub url: String,
-                        pub callback: JsValue,
+                        handle_io
+                            .lock()
+                            .call1(&JsValue::NULL, &request.into())
+                            .unwrap();
                     }
+                    wipple_interpreter_backend::IoRequest::Ui(interpreter, url, completion) => {
+                        #[wasm_bindgen(getter_with_clone)]
+                        pub struct LoadUiRequest {
+                            pub kind: String,
+                            pub url: String,
+                            pub callback: JsValue,
+                        }
 
-                    let request = LoadUiRequest {
-                        kind: String::from("loadUi"),
-                        url: url.to_string(),
-                        callback: {
-                            let handle_console = handle_console.clone();
+                        let request = LoadUiRequest {
+                            kind: String::from("loadUi"),
+                            url: url.to_string(),
+                            callback: {
+                                let handle_io = handle_io.clone();
 
-                            Closure::once_into_js(move |handle_message: JsValue| {
-                                let handle_message = match handle_message
-                                    .dyn_into::<js_sys::Function>()
-                                {
-                                    Ok(handle) => Arc::new(Mutex::new(SendWrapper::new(handle))),
-                                    Err(_) => panic!("message handler must be a function"),
-                                };
-
-                                wasm_bindgen_futures::future_to_promise(async move {
-                                    completion(
-                                        Box::new(move |message, value, callback| {
-                                            let callback = Closure::once({
-                                                let interpreter = interpreter.clone();
-
-                                                move |value| {
-                                                    callback(Ok(js_to_wipple(&interpreter, value)))
-                                                        .unwrap();
-                                                }
-                                            })
-                                            .into_js_value();
-
-                                            handle_message
-                                                .lock()
-                                                .call3(
-                                                    &JsValue::NULL,
-                                                    &JsValue::from_str(&message),
-                                                    &wipple_to_js(&interpreter, value),
-                                                    &callback,
-                                                )
-                                                .unwrap();
-                                        }),
-                                        Box::new(move || {
-                                            #[wasm_bindgen(getter_with_clone)]
-                                            pub struct FinishUiRequest {
-                                                pub kind: String,
+                                Closure::once_into_js(move |handle_message: JsValue| {
+                                    let handle_message =
+                                        match handle_message.dyn_into::<js_sys::Function>() {
+                                            Ok(handle) => {
+                                                Arc::new(Mutex::new(SendWrapper::new(handle)))
                                             }
+                                            Err(_) => panic!("message handler must be a function"),
+                                        };
 
-                                            let request = FinishUiRequest {
-                                                kind: String::from("finishUi"),
-                                            };
+                                    wasm_bindgen_futures::future_to_promise(async move {
+                                        completion(
+                                            Box::new(move |message, value, callback| {
+                                                let callback = Closure::once({
+                                                    let interpreter = interpreter.clone();
 
-                                            handle_console
-                                                .lock()
-                                                .call1(&JsValue::NULL, &request.into())
-                                                .unwrap();
-                                        }),
-                                    )
-                                    .await
-                                    .expect("error in UI element");
+                                                    move |value| {
+                                                        callback(Ok(js_to_wipple(
+                                                            &interpreter,
+                                                            value,
+                                                        )))
+                                                        .unwrap();
+                                                    }
+                                                })
+                                                .into_js_value();
 
-                                    Ok(JsValue::UNDEFINED)
+                                                handle_message
+                                                    .lock()
+                                                    .call3(
+                                                        &JsValue::NULL,
+                                                        &JsValue::from_str(&message),
+                                                        &wipple_to_js(&interpreter, value),
+                                                        &callback,
+                                                    )
+                                                    .unwrap();
+                                            }),
+                                            Box::new(move || {
+                                                #[wasm_bindgen(getter_with_clone)]
+                                                pub struct FinishUiRequest {
+                                                    pub kind: String,
+                                                }
+
+                                                let request = FinishUiRequest {
+                                                    kind: String::from("finishUi"),
+                                                };
+
+                                                handle_io
+                                                    .lock()
+                                                    .call1(&JsValue::NULL, &request.into())
+                                                    .unwrap();
+                                            }),
+                                        )
+                                        .await
+                                        .expect("error in UI element");
+
+                                        Ok(JsValue::UNDEFINED)
+                                    })
                                 })
-                            })
-                        },
-                    };
+                            },
+                        };
 
-                    handle_console
-                        .lock()
-                        .call1(&JsValue::NULL, &request.into())
-                        .unwrap();
+                        handle_io
+                            .lock()
+                            .call1(&JsValue::NULL, &request.into())
+                            .unwrap();
+                    }
+                    wipple_interpreter_backend::IoRequest::Sleep(_, duration, callback) => {
+                        let global = js_sys::global()
+                            .dyn_into::<web_sys::WorkerGlobalScope>()
+                            .unwrap();
+
+                        let callback = Closure::once(callback);
+
+                        global
+                            .set_timeout_with_callback_and_timeout_and_arguments_0(
+                                callback.as_ref().unchecked_ref(),
+                                duration.as_millis() as i32,
+                            )
+                            .unwrap();
+
+                        callback.forget();
+                    }
+                    wipple_interpreter_backend::IoRequest::Schedule(_, fut) => {
+                        let (completion_tx, completion_rx) = oneshot::channel();
+
+                        tasks.lock().push(completion_rx);
+
+                        let fut = CancellableFuture::new(cancel_token, async move {
+                            if let Err(error) = fut.await {
+                                let (completion_tx, completion_rx) = oneshot::channel();
+                                send_display(
+                                    format!("fatal error: {error}"),
+                                    Box::new(|| completion_tx.send(()).unwrap()),
+                                );
+
+                                completion_rx.await.unwrap();
+                            }
+
+                            completion_tx
+                                .send(())
+                                .expect("failed to signal task completion");
+                        });
+
+                        wasm_bindgen_futures::spawn_local(async move {
+                            fut.await;
+                        })
+                    }
                 }
-            }
 
-            Ok(())
+                Ok(())
+            })
         }
     });
 
-    struct CancellableFuture<Fut> {
-        token: Arc<AtomicBool>,
-        fut: Pin<Box<Fut>>,
-    }
-
-    impl<Fut> CancellableFuture<Fut> {
-        fn new(token: Arc<AtomicBool>, fut: Fut) -> Self {
-            CancellableFuture {
-                token,
-                fut: Box::pin(fut),
-            }
-        }
-    }
-
-    impl<Fut: Future> Future for CancellableFuture<Fut> {
-        type Output = Option<Fut::Output>;
-
-        fn poll(
-            self: Pin<&mut Self>,
-            cx: &mut std::task::Context,
-        ) -> std::task::Poll<Self::Output> {
-            let cancelled = self.token.load(std::sync::atomic::Ordering::SeqCst);
-
-            if cancelled {
-                std::task::Poll::Ready(None)
-            } else {
-                Pin::new(&mut self.get_mut().fut).poll(cx).map(Some)
-            }
-        }
-    }
-
-    let token = Arc::new(AtomicBool::new(false));
-    let future = CancellableFuture::new(token.clone(), async move {
+    let future = CancellableFuture::new(cancel_token.clone(), async move {
         let result = interpreter.run(&program).await;
 
         if let Err(error) = result {
@@ -729,6 +777,17 @@ pub fn run(handle_console: js_sys::Function, callback: js_sys::Function) -> JsVa
             completion_rx.await.unwrap();
         }
 
+        loop {
+            let completion_rx = match tasks.lock().pop() {
+                Some(rx) => rx,
+                None => break,
+            };
+
+            completion_rx
+                .await
+                .expect("failed to wait for task to finish");
+        }
+
         callback.call1(&JsValue::NULL, &JsValue::TRUE).unwrap();
     });
 
@@ -737,7 +796,7 @@ pub fn run(handle_console: js_sys::Function, callback: js_sys::Function) -> JsVa
     });
 
     Closure::once_into_js(move || {
-        token.store(true, std::sync::atomic::Ordering::SeqCst);
+        cancel_token.store(true, std::sync::atomic::Ordering::SeqCst);
     })
 }
 
@@ -995,6 +1054,9 @@ fn wipple_to_js(
         }
         wipple_interpreter_backend::Value::UiHandle(_) => {
             panic!("UI handles may not be sent to JavaScript")
+        }
+        wipple_interpreter_backend::Value::TaskGroup(_) => {
+            panic!("task groups may not be sent to JavaScript")
         }
     }
 }

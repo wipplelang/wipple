@@ -45,7 +45,8 @@ impl Syntax for AssignStatementSyntax {
                         Ok(AssignmentPattern::Pattern(PatternAssignmentPattern {
                             pattern: Pattern::Name(NamePattern {
                                 span: lhs.span,
-                                name: *name
+                                name: *name,
+                                scope,
                             }),
                         }))
                     }

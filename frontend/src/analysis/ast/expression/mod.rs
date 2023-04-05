@@ -191,10 +191,10 @@ impl SyntaxContext for ExpressionSyntaxContext {
         match expr.try_into_list_exprs() {
             Ok((span, exprs)) => self.expand_list(span, exprs.collect(), scope).await,
             Err(expr) => match expr.kind {
-                parse::ExprKind::Name(name, name_scope) => Ok(NameExpression {
+                parse::ExprKind::Name(name, _name_scope) => Ok(NameExpression {
                     span: expr.span,
                     name,
-                    scope: name_scope.unwrap_or(scope),
+                    scope, // TODO: Hygiene (use `name_scope`)
                 }
                 .into()),
                 parse::ExprKind::Text(text) => Ok(TextExpression {
@@ -466,7 +466,7 @@ impl ExpressionSyntaxContext {
                 None => continue,
             };
 
-            let body = SyntaxPattern::expand(&self.ast_builder, body, &vars, span)?;
+            let body = SyntaxPattern::expand(&self.ast_builder, body, &vars, span, scope)?;
 
             return self
                 .ast_builder

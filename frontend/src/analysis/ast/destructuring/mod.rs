@@ -33,6 +33,7 @@ syntax_group! {
 pub struct NameDestructuring {
     pub span: SpanList,
     pub name: InternedString,
+    pub scope: ScopeId,
 }
 
 impl NameDestructuring {
@@ -101,16 +102,17 @@ impl SyntaxContext for DestructuringSyntaxContext {
     async fn build_terminal(
         self,
         expr: parse::Expr,
-        _scope: ScopeId,
+        scope: ScopeId,
     ) -> Result<Self::Body, SyntaxError> {
         match expr.try_into_list_exprs() {
             Ok((span, exprs)) => {
                 let names = exprs
                     .into_iter()
                     .map(|expr| match expr.kind {
-                        parse::ExprKind::Name(name, _) => Ok(NameDestructuring {
+                        parse::ExprKind::Name(name, name_scope) => Ok(NameDestructuring {
                             span: expr.span,
                             name,
+                            scope: name_scope.unwrap_or(scope),
                         }),
                         _ => {
                             self.ast_builder.compiler.add_error(
@@ -126,9 +128,10 @@ impl SyntaxContext for DestructuringSyntaxContext {
                 Ok(ListDestructuring { span, names }.into())
             }
             Err(expr) => match expr.kind {
-                parse::ExprKind::Name(name, _) => Ok(NameDestructuring {
+                parse::ExprKind::Name(name, name_scope) => Ok(NameDestructuring {
                     span: expr.span,
                     name,
+                    scope: name_scope.unwrap_or(scope),
                 }
                 .into()),
                 _ => {
