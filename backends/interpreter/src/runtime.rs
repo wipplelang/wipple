@@ -1,7 +1,7 @@
 use crate::{Error, Interpreter, IoRequest, Stack, TaskGroup, UiHandle, Value};
 use futures::channel::oneshot;
 use itertools::Itertools;
-use num_traits::{pow::Pow, FromPrimitive};
+use num_traits::{pow::Pow, FromPrimitive, ToPrimitive};
 use parking_lot::Mutex;
 use rust_decimal::{Decimal, MathematicalOps};
 use std::sync::Arc;
@@ -396,6 +396,13 @@ impl Interpreter {
                 ir::RuntimeFunction::TextToDouble => runtime_parse_fn!(Value::Double),
                 ir::RuntimeFunction::NaturalToNumber => runtime_fn!((Value::Natural(n)) => async {
                     Ok(Value::Number(Decimal::from_u64(n).expect("overflow")))
+                }),
+                ir::RuntimeFunction::NumberToNatural => runtime_fn!((Value::Number(n)) => async {
+                    if let Some(n) = n.to_u64() {
+                        Ok(some(Value::Natural(n)))
+                    } else {
+                        Ok(none())
+                    }
                 }),
                 ir::RuntimeFunction::AddNumber => {
                     runtime_math_fn!(Value::Number, (lhs, rhs) => async {

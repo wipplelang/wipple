@@ -147,6 +147,7 @@ export const useRunner = () => {
                                     callback: () => {
                                         runner.current!.postMessage({
                                             operation: "displayCallback",
+                                            id: event.data.id,
                                         });
                                     },
                                 });
@@ -160,6 +161,7 @@ export const useRunner = () => {
                                         runner.current!.postMessage({
                                             operation: "sendPromptInput",
                                             input,
+                                            id: event.data.id,
                                         });
                                     },
                                     recvValid: () =>
@@ -178,11 +180,13 @@ export const useRunner = () => {
 
                                             runner.current!.postMessage({
                                                 operation: "recvPromptValid",
+                                                id: event.data.id,
                                             });
                                         }),
                                     callback: () => {
                                         runner.current!.postMessage({
                                             operation: "promptCallback",
+                                            id: event.data.id,
                                         });
                                     },
                                 });
@@ -197,6 +201,7 @@ export const useRunner = () => {
                                         runner.current!.postMessage({
                                             operation: "choiceCallback",
                                             index,
+                                            id: event.data.id,
                                         });
                                     },
                                 });
@@ -209,6 +214,7 @@ export const useRunner = () => {
                                     callback: () => {
                                         runner.current!.postMessage({
                                             operation: "loadUiCallback",
+                                            id: event.data.id,
                                         });
                                     },
                                 });
@@ -223,6 +229,7 @@ export const useRunner = () => {
                                         runner.current!.postMessage({
                                             operation: "messageUiCallback",
                                             value: encodeFunction(value),
+                                            id: event.data.id,
                                         });
                                     },
                                 });

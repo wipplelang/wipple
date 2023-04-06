@@ -75,6 +75,13 @@ notes : notes -> { ms-from-tempo } -> { name music } -> {
 	handle of music . message "notes" (format "_ _ _" instrument-name ms notes)
 }
 
+[help "Rest for a note."]
+[help-group "Music"]
+rest :: Note-Length -> Instrument -> ()
+rest : { ms-from-tempo } -> { music } -> {
+	delay (floor (ms-from-tempo (get (tempo of music))) as! Natural . ms)
+}
+
 [help "An instrument you can use with `with-instrument`."]
 [help-group "Music"]
 accordion :: Instrument-Name

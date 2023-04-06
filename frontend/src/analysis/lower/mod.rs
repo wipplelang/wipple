@@ -587,6 +587,7 @@ pub enum RuntimeFunction {
     TextToDouble,
     // TODO: All the conversions
     NaturalToNumber,
+    NumberToNatural,
     AddNumber,
     SubtractNumber,
     MultiplyNumber,

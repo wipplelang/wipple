@@ -98,6 +98,12 @@ as? : syntax {
 }
 
 A => instance (As? A A) : Some
+instance (As? Number Natural) : n -> external "runtime" "number-to-natural" n
+
+[operator Casting-Precedence]
+as! : syntax {
+	'x as! 't -> 'x as? 't . expect "conversion failed"
+}
 
 [help "Represents the default or initial value of a type."]
 [help-group "Utilities"]

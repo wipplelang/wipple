@@ -558,6 +558,7 @@ mod util {
                 RuntimeFunction::TextToFloat => true,
                 RuntimeFunction::TextToDouble => true,
                 RuntimeFunction::NaturalToNumber => true,
+                RuntimeFunction::NumberToNatural => true,
                 RuntimeFunction::AddNumber => true,
                 RuntimeFunction::SubtractNumber => true,
                 RuntimeFunction::MultiplyNumber => true,

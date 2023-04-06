@@ -651,7 +651,7 @@ pub fn run(handle_io: js_sys::Function, callback: js_sys::Function) -> JsValue {
                             callback: {
                                 let handle_io = handle_io.clone();
 
-                                Closure::once_into_js(move |handle_message: JsValue| {
+                                Closure::once_into_js(move |id: String, handle_message: JsValue| {
                                     let handle_message =
                                         match handle_message.dyn_into::<js_sys::Function>() {
                                             Ok(handle) => {
@@ -690,10 +690,12 @@ pub fn run(handle_io: js_sys::Function, callback: js_sys::Function) -> JsValue {
                                                 #[wasm_bindgen(getter_with_clone)]
                                                 pub struct FinishUiRequest {
                                                     pub kind: String,
+                                                    pub id: String,
                                                 }
 
                                                 let request = FinishUiRequest {
                                                     kind: String::from("finishUi"),
+                                                    id,
                                                 };
 
                                                 handle_io

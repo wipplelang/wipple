@@ -6,7 +6,7 @@ export interface AppProps {
 }
 
 export const App = (props: AppProps) => {
-    const [handlePlay, setHandlePlay] = useState<() => void>();
+    const [handlePlay, setHandlePlay] = useState<(play: boolean) => void>();
     const audioContext = useRef<AudioContext>();
     const instruments = useRef<Record<string, Player>>({});
     const [isPlaying, setPlaying] = useState(false);
@@ -17,14 +17,19 @@ export const App = (props: AppProps) => {
                 switch (message) {
                     case "wait-for-play-button":
                         return new Promise<void>((resolve) => {
-                            setHandlePlay(() => () => {
-                                audioContext.current = new AudioContext();
-                                setPlaying(true);
+                            setHandlePlay(() => (play: boolean) => {
+                                if (play) {
+                                    audioContext.current = new AudioContext();
+                                } else {
+                                    audioContext.current = undefined;
+                                }
+
+                                setPlaying(play);
                                 resolve();
                             });
                         });
                     case "load-instrument": {
-                        if (!audioContext.current) {
+                        if (!audioContext.current || instruments.current[value]) {
                             return;
                         }
 
@@ -64,5 +69,11 @@ export const App = (props: AppProps) => {
         })();
     }, []);
 
-    return <div>{isPlaying ? null : <button onClick={() => handlePlay?.()}>▶️ Play</button>}</div>;
+    return (
+        <div>
+            <button onClick={() => handlePlay?.(!isPlaying)}>
+                {isPlaying ? "⏹ Stop" : "▶️ Play"}
+            </button>
+        </div>
+    );
 };

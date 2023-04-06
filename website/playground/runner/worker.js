@@ -1,6 +1,8 @@
+import { v4 as uuid } from "uuid";
+
 let functions = [];
 let cancel;
-const consoleResponders = [];
+const consoleResponders = {};
 let resolveFunctionResult;
 
 onmessage = async (event) => {
@@ -23,29 +25,33 @@ onmessage = async (event) => {
 
                 cancel = runner.run(
                     (request) => {
+                        const consoleResponderId = uuid();
+
                         switch (request.kind) {
                             case "display":
                                 postMessage({
                                     type: "display",
                                     text: request.text,
+                                    id: consoleResponderId,
                                 });
 
-                                consoleResponders.push({
+                                consoleResponders[consoleResponderId] = {
                                     callback: request.callback,
-                                });
+                                };
 
                                 break;
                             case "prompt":
                                 postMessage({
                                     type: "prompt",
                                     prompt: request.prompt,
+                                    id: consoleResponderId,
                                 });
 
-                                consoleResponders.push({
+                                consoleResponders[consoleResponderId] = {
                                     sendInput: request.send_input,
                                     recvValid: request.recv_valid,
                                     callback: request.callback,
-                                });
+                                };
 
                                 break;
                             case "choice":
@@ -53,26 +59,28 @@ onmessage = async (event) => {
                                     type: "choice",
                                     prompt: request.prompt,
                                     choices: request.choices,
+                                    id: consoleResponderId,
                                 });
 
-                                consoleResponders.push({
+                                consoleResponders[consoleResponderId] = {
                                     callback: request.callback,
-                                });
+                                };
 
                                 break;
                             case "loadUi":
                                 postMessage({
                                     type: "loadUi",
                                     url: request.url,
+                                    id: consoleResponderId,
                                 });
 
-                                consoleResponders.push({
+                                consoleResponders[consoleResponderId] = {
                                     callback: request.callback,
-                                });
+                                };
 
                                 break;
                             case "finishUi":
-                                consoleResponders.pop();
+                                consoleResponders[request.id] = undefined;
 
                                 break;
                             default:
@@ -101,36 +109,48 @@ onmessage = async (event) => {
                 postMessage(completions);
                 break;
             case "displayCallback":
-                await consoleResponders.pop().callback();
+                await consoleResponders[event.data.id].callback();
+                consoleResponders[event.data.id] = undefined;
                 break;
             case "sendPromptInput":
-                await consoleResponders[consoleResponders.length - 1].sendInput(event.data.input);
+                await consoleResponders[event.data.id].sendInput(event.data.input);
                 break;
             case "recvPromptValid":
-                const valid = await consoleResponders[consoleResponders.length - 1].recvValid();
+                const valid = await consoleResponders[event.data.id].recvValid();
                 postMessage(valid);
                 break;
             case "promptCallback":
-                await consoleResponders.pop().callback();
+                await consoleResponders[event.data.id].callback();
+                consoleResponders[event.data.id] = undefined;
                 break;
             case "choiceCallback":
-                await consoleResponders.pop().callback(event.data.index);
+                await consoleResponders[event.data.id].callback(event.data.index);
+                consoleResponders[event.data.id] = undefined;
                 break;
             case "loadUiCallback":
-                await consoleResponders.pop().callback((message, value, callback) => {
-                    postMessage({
-                        type: "messageUi",
-                        message,
-                        value: encodeFunction(value),
-                    });
+                const consoleResponderId = uuid();
 
-                    consoleResponders.push({ callback });
-                });
+                await consoleResponders[event.data.id].callback(
+                    consoleResponderId,
+                    (message, value, callback) => {
+                        const consoleResponderId = uuid();
+
+                        postMessage({
+                            type: "messageUi",
+                            message,
+                            value: encodeFunction(value),
+                            id: consoleResponderId,
+                        });
+
+                        consoleResponders[consoleResponderId] = { callback };
+                    }
+                );
+
+                consoleResponders[event.data.id] = undefined;
+
                 break;
             case "messageUiCallback":
-                await consoleResponders[consoleResponders.length - 1].callback(
-                    decodeFunction(event.data.value)
-                );
+                await consoleResponders[event.data.id].callback(decodeFunction(event.data.value));
 
                 break;
             case "callFunction":
