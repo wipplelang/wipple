@@ -1,0 +1,721 @@
+Music : type {
+	tempo :: Mutable Number
+	handle :: UI
+	task-group :: Task-Group
+}
+
+[help "Generate and play music."]
+[help-group "Music"]
+with-music :: (Music -> ()) -> ()
+with-music : f -> with-ui "/playground/ui/music/index.js" (handle -> {
+	handle . message "wait-for-play-button" ()
+
+	with-task-group (task-group -> {
+		f (Music {
+			tempo : mutable 120
+			handle
+			task-group
+		})
+	})
+})
+
+[help "Set the tempo of the music."]
+[help-group "Music"]
+tempo :: Number -> Music -> ()
+tempo : new-tempo -> { tempo } -> tempo . set! new-tempo
+
+Instrument-Name : type {
+	name :: Text
+}
+
+instance (As Text Instrument-Name) : name -> Instrument-Name { name }
+
+Instrument : type {
+	name :: Instrument-Name
+	music :: Music
+}
+
+[help "Add an instrument to the music that plays in unison with the other instruments."]
+[help-group "Music"]
+with-instrument :: Instrument-Name -> (Instrument -> ()) -> Music -> ()
+with-instrument : name -> f -> music -> {
+	task-group of music . task {
+		handle of music . message "load-instrument" (name of name)
+		f (Instrument { name music })
+	}
+}
+
+Note-Length : type {
+	ms-from-tempo :: Number -> Number
+}
+
+instance (As Duration Note-Length) : { ms } -> Note-Length {
+	ms-from-tempo : just (ms as Number)
+}
+
+[help "Represent a note length in beats relative to the `tempo`."]
+[help-group "Music"]
+beats :: Number -> Note-Length
+beats : beats -> Note-Length {
+	ms-from-tempo : tempo -> 60000 / tempo * beats
+}
+
+[help "Play a note on an instrument. The note name should be in the format `C4` or `Eb5`."]
+[help-group "Music"]
+note :: Text -> Note-Length -> Instrument -> ()
+note : note -> length -> instrument -> notes (list note) length instrument
+
+[help "Play multiple notes on an instrument at the same time. See `note` for more information."]
+[help-group "Music"]
+notes :: Collection where (Iterate Collection Text) => Collection -> Note-Length -> Instrument -> ()
+notes : notes -> { ms-from-tempo } -> { name music } -> {
+	instrument-name : name of name
+	ms : ms-from-tempo (get (tempo of music))
+	notes : notes . transform (note -> format "_," note) . collect :: Text
+	handle of music . message "notes" (format "_ _ _" instrument-name ms notes)
+}
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+accordion :: Instrument-Name
+accordion : "accordion" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+acoustic-bass :: Instrument-Name
+acoustic-bass : "acoustic_bass" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+acoustic-grand-piano :: Instrument-Name
+acoustic-grand-piano : "acoustic_grand_piano" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+acoustic-guitar-nylon :: Instrument-Name
+acoustic-guitar-nylon : "acoustic_guitar_nylon" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+acoustic-guitar-steel :: Instrument-Name
+acoustic-guitar-steel : "acoustic_guitar_steel" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+agogo :: Instrument-Name
+agogo : "agogo" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+alto-sax :: Instrument-Name
+alto-sax : "alto_sax" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+applause :: Instrument-Name
+applause : "applause" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+bagpipe :: Instrument-Name
+bagpipe : "bagpipe" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+banjo :: Instrument-Name
+banjo : "banjo" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+baritone-sax :: Instrument-Name
+baritone-sax : "baritone_sax" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+bassoon :: Instrument-Name
+bassoon : "bassoon" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+bird-tweet :: Instrument-Name
+bird-tweet : "bird_tweet" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+blown-bottle :: Instrument-Name
+blown-bottle : "blown_bottle" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+brass-section :: Instrument-Name
+brass-section : "brass_section" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+breath-noise :: Instrument-Name
+breath-noise : "breath_noise" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+bright-acoustic-piano :: Instrument-Name
+bright-acoustic-piano : "bright_acoustic_piano" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+celesta :: Instrument-Name
+celesta : "celesta" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+cello :: Instrument-Name
+cello : "cello" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+choir-aahs :: Instrument-Name
+choir-aahs : "choir_aahs" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+church-organ :: Instrument-Name
+church-organ : "church_organ" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+clarinet :: Instrument-Name
+clarinet : "clarinet" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+clavinet :: Instrument-Name
+clavinet : "clavinet" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+contrabass :: Instrument-Name
+contrabass : "contrabass" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+distortion-guitar :: Instrument-Name
+distortion-guitar : "distortion_guitar" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+drawbar-organ :: Instrument-Name
+drawbar-organ : "drawbar_organ" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+dulcimer :: Instrument-Name
+dulcimer : "dulcimer" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+electric-bass-finger :: Instrument-Name
+electric-bass-finger : "electric_bass_finger" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+electric-bass-pick :: Instrument-Name
+electric-bass-pick : "electric_bass_pick" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+electric-grand-piano :: Instrument-Name
+electric-grand-piano : "electric_grand_piano" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+electric-guitar-clean :: Instrument-Name
+electric-guitar-clean : "electric_guitar_clean" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+electric-guitar-jazz :: Instrument-Name
+electric-guitar-jazz : "electric_guitar_jazz" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+electric-guitar-muted :: Instrument-Name
+electric-guitar-muted : "electric_guitar_muted" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+electric-piano-1 :: Instrument-Name
+electric-piano-1 : "electric_piano_1" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+electric-piano-2 :: Instrument-Name
+electric-piano-2 : "electric_piano_2" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+english-horn :: Instrument-Name
+english-horn : "english_horn" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+fiddle :: Instrument-Name
+fiddle : "fiddle" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+flute :: Instrument-Name
+flute : "flute" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+french-horn :: Instrument-Name
+french-horn : "french_horn" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+fretless-bass :: Instrument-Name
+fretless-bass : "fretless_bass" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+fx-1-rain :: Instrument-Name
+fx-1-rain : "fx_1_rain" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+fx-2-soundtrack :: Instrument-Name
+fx-2-soundtrack : "fx_2_soundtrack" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+fx-3-crystal :: Instrument-Name
+fx-3-crystal : "fx_3_crystal" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+fx-4-atmosphere :: Instrument-Name
+fx-4-atmosphere : "fx_4_atmosphere" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+fx-5-brightness :: Instrument-Name
+fx-5-brightness : "fx_5_brightness" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+fx-6-goblins :: Instrument-Name
+fx-6-goblins : "fx_6_goblins" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+fx-7-echoes :: Instrument-Name
+fx-7-echoes : "fx_7_echoes" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+fx-8-scifi :: Instrument-Name
+fx-8-scifi : "fx_8_scifi" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+glockenspiel :: Instrument-Name
+glockenspiel : "glockenspiel" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+guitar-fret-noise :: Instrument-Name
+guitar-fret-noise : "guitar_fret_noise" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+guitar-harmonics :: Instrument-Name
+guitar-harmonics : "guitar_harmonics" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+gunshot :: Instrument-Name
+gunshot : "gunshot" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+harmonica :: Instrument-Name
+harmonica : "harmonica" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+harpsichord :: Instrument-Name
+harpsichord : "harpsichord" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+helicopter :: Instrument-Name
+helicopter : "helicopter" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+honkytonk-piano :: Instrument-Name
+honkytonk-piano : "honkytonk_piano" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+kalimba :: Instrument-Name
+kalimba : "kalimba" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+koto :: Instrument-Name
+koto : "koto" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+lead-1-square :: Instrument-Name
+lead-1-square : "lead_1_square" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+lead-2-sawtooth :: Instrument-Name
+lead-2-sawtooth : "lead_2_sawtooth" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+lead-3-calliope :: Instrument-Name
+lead-3-calliope : "lead_3_calliope" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+lead-4-chiff :: Instrument-Name
+lead-4-chiff : "lead_4_chiff" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+lead-5-charang :: Instrument-Name
+lead-5-charang : "lead_5_charang" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+lead-6-voice :: Instrument-Name
+lead-6-voice : "lead_6_voice" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+lead-7-fifths :: Instrument-Name
+lead-7-fifths : "lead_7_fifths" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+lead-8-bass--lead :: Instrument-Name
+lead-8-bass--lead : "lead_8_bass__lead" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+marimba :: Instrument-Name
+marimba : "marimba" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+melodic-tom :: Instrument-Name
+melodic-tom : "melodic_tom" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+music-box :: Instrument-Name
+music-box : "music_box" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+muted-trumpet :: Instrument-Name
+muted-trumpet : "muted_trumpet" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+oboe :: Instrument-Name
+oboe : "oboe" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+ocarina :: Instrument-Name
+ocarina : "ocarina" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+orchestra-hit :: Instrument-Name
+orchestra-hit : "orchestra_hit" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+orchestral-harp :: Instrument-Name
+orchestral-harp : "orchestral_harp" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+overdriven-guitar :: Instrument-Name
+overdriven-guitar : "overdriven_guitar" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+pad-1-new-age :: Instrument-Name
+pad-1-new-age : "pad_1_new_age" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+pad-2-warm :: Instrument-Name
+pad-2-warm : "pad_2_warm" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+pad-3-polysynth :: Instrument-Name
+pad-3-polysynth : "pad_3_polysynth" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+pad-4-choir :: Instrument-Name
+pad-4-choir : "pad_4_choir" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+pad-5-bowed :: Instrument-Name
+pad-5-bowed : "pad_5_bowed" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+pad-6-metallic :: Instrument-Name
+pad-6-metallic : "pad_6_metallic" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+pad-7-halo :: Instrument-Name
+pad-7-halo : "pad_7_halo" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+pad-8-sweep :: Instrument-Name
+pad-8-sweep : "pad_8_sweep" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+pan-flute :: Instrument-Name
+pan-flute : "pan_flute" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+percussive-organ :: Instrument-Name
+percussive-organ : "percussive_organ" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+percussion :: Instrument-Name
+percussion : "percussion" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+piccolo :: Instrument-Name
+piccolo : "piccolo" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+pizzicato-strings :: Instrument-Name
+pizzicato-strings : "pizzicato_strings" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+recorder :: Instrument-Name
+recorder : "recorder" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+reed-organ :: Instrument-Name
+reed-organ : "reed_organ" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+reverse-cymbal :: Instrument-Name
+reverse-cymbal : "reverse_cymbal" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+rock-organ :: Instrument-Name
+rock-organ : "rock_organ" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+seashore :: Instrument-Name
+seashore : "seashore" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+shakuhachi :: Instrument-Name
+shakuhachi : "shakuhachi" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+shamisen :: Instrument-Name
+shamisen : "shamisen" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+shanai :: Instrument-Name
+shanai : "shanai" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+sitar :: Instrument-Name
+sitar : "sitar" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+slap-bass-1 :: Instrument-Name
+slap-bass-1 : "slap_bass_1" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+slap-bass-2 :: Instrument-Name
+slap-bass-2 : "slap_bass_2" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+soprano-sax :: Instrument-Name
+soprano-sax : "soprano_sax" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+steel-drums :: Instrument-Name
+steel-drums : "steel_drums" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+string-ensemble-1 :: Instrument-Name
+string-ensemble-1 : "string_ensemble_1" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+string-ensemble-2 :: Instrument-Name
+string-ensemble-2 : "string_ensemble_2" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+synth-bass-1 :: Instrument-Name
+synth-bass-1 : "synth_bass_1" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+synth-bass-2 :: Instrument-Name
+synth-bass-2 : "synth_bass_2" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+synth-brass-1 :: Instrument-Name
+synth-brass-1 : "synth_brass_1" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+synth-brass-2 :: Instrument-Name
+synth-brass-2 : "synth_brass_2" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+synth-choir :: Instrument-Name
+synth-choir : "synth_choir" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+synth-drum :: Instrument-Name
+synth-drum : "synth_drum" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+synth-strings-1 :: Instrument-Name
+synth-strings-1 : "synth_strings_1" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+synth-strings-2 :: Instrument-Name
+synth-strings-2 : "synth_strings_2" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+taiko-drum :: Instrument-Name
+taiko-drum : "taiko_drum" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+tango-accordion :: Instrument-Name
+tango-accordion : "tango_accordion" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+telephone-ring :: Instrument-Name
+telephone-ring : "telephone_ring" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+tenor-sax :: Instrument-Name
+tenor-sax : "tenor_sax" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+timpani :: Instrument-Name
+timpani : "timpani" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+tinkle-bell :: Instrument-Name
+tinkle-bell : "tinkle_bell" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+tremolo-strings :: Instrument-Name
+tremolo-strings : "tremolo_strings" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+trombone :: Instrument-Name
+trombone : "trombone" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+trumpet :: Instrument-Name
+trumpet : "trumpet" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+tuba :: Instrument-Name
+tuba : "tuba" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+tubular-bells :: Instrument-Name
+tubular-bells : "tubular_bells" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+vibraphone :: Instrument-Name
+vibraphone : "vibraphone" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+viola :: Instrument-Name
+viola : "viola" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+violin :: Instrument-Name
+violin : "violin" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+voice-oohs :: Instrument-Name
+voice-oohs : "voice_oohs" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+whistle :: Instrument-Name
+whistle : "whistle" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+woodblock :: Instrument-Name
+woodblock : "woodblock" as _
+
+[help "An instrument you can use with `with-instrument`."]
+[help-group "Music"]
+xylophone :: Instrument-Name
+xylophone : "xylophone" as _

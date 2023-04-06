@@ -263,7 +263,16 @@ impl FinalizedDiagnostics {
                 })
             };
 
-            let primary_span = diagnostic.notes.first().unwrap().span;
+            let primary_span = diagnostic
+                .notes
+                .first()
+                .unwrap_or_else(|| {
+                    panic!(
+                        "diagnostic contains no notes, source: {:?}",
+                        diagnostic.trace
+                    )
+                })
+                .span;
 
             let (_, rest) = primary_span.split_iter();
             let rest: Box<dyn Iterator<Item = Span>> = if show_expansion_history {

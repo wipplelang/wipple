@@ -2,7 +2,7 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { App } from "./App";
 
-export const onMessage: Record<string, (message: string, value: any) => Promise<void>> = {};
+export const onMessage: Record<string, (message: string, value: any) => Promise<any>> = {};
 
 export const initialize = (id: string, container: HTMLElement) =>
     new Promise<void>((resolve) => {

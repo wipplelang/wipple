@@ -304,9 +304,9 @@ impl Interpreter {
                             None => return Err(Error::from("task group used outside of `with-task-group`")),
                         };
 
-                        completion_rx
-                            .await
-                            .expect("failed to wait for task to finish")?;
+                        if let Ok(result) = completion_rx.await {
+                            result?;
+                        };
                     }
 
                     Ok(Value::Tuple(Vec::new()))

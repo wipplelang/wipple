@@ -783,9 +783,7 @@ pub fn run(handle_io: js_sys::Function, callback: js_sys::Function) -> JsValue {
                 None => break,
             };
 
-            completion_rx
-                .await
-                .expect("failed to wait for task to finish");
+            let _ = completion_rx.await;
         }
 
         callback.call1(&JsValue::NULL, &JsValue::TRUE).unwrap();

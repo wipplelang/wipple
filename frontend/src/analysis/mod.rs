@@ -11,7 +11,12 @@ pub use typecheck::{
     TypeAnnotation, TypeAnnotationKind, TypeStructure,
 };
 
-use crate::{diagnostics::*, helpers::Shared, parse::SpanList, Compiler, FilePath};
+use crate::{
+    diagnostics::*,
+    helpers::Shared,
+    parse::{Span, SpanList},
+    Compiler, FilePath,
+};
 use async_recursion::async_recursion;
 use std::sync::{atomic::AtomicUsize, Arc};
 
@@ -70,6 +75,10 @@ impl Compiler {
         options: &Options,
     ) -> (Program, FinalizedDiagnostics) {
         let files = self.expand_with(entrypoint, options).await;
+        if files.is_empty() {
+            return (Program::default(), self.finish_analysis());
+        }
+
         let (entrypoint, lowering_is_complete) = self.lower_with(files, options);
         let program = self.typecheck_with(entrypoint, lowering_is_complete, options);
         self.lint_with(&program, options);
@@ -100,12 +109,21 @@ impl Compiler {
                     match $expr {
                         Ok(x) => x,
                         Err(error) => {
+                            let mut spans = source_span
+                                .map(|span| Note::primary(span, "try fixing this import"))
+                                .into_iter()
+                                .collect::<Vec<_>>();
+
+                            if spans.is_empty() {
+                                spans.push(Note::primary(
+                                    Span::new(path, 0..0),
+                                    "error while loading this file",
+                                ));
+                            }
+
                             compiler.add_error(
                                 format!("cannot load file `{}`: {}", path, error),
-                                source_span
-                                    .map(|span| Note::primary(span, "try fixing this import"))
-                                    .into_iter()
-                                    .collect(),
+                                spans,
                             );
 
                             return None;

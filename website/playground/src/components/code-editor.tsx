@@ -62,7 +62,7 @@ interface Hover {
 }
 
 interface UiElement {
-    onMessage: Record<string, (message: string, value: any) => Promise<void>>;
+    onMessage: Record<string, (message: string, value: any) => Promise<any>>;
 }
 
 export const CodeEditor = (props: CodeEditorProps) => {

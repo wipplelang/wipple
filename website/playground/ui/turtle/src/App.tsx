@@ -3,7 +3,7 @@ import Turtle from "real-turtle";
 import turtleIcon from "./assets/turtle.png";
 
 export interface AppProps {
-    setOnMessage: (handler: (message: string, value: any) => Promise<void>) => void;
+    setOnMessage: (handler: (message: string, value: any) => Promise<any>) => void;
 }
 
 export const App = (props: AppProps) => {

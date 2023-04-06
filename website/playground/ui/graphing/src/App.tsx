@@ -3,7 +3,7 @@ import { CartesianGrid, Line, LineChart, ResponsiveContainer, XAxis, YAxis } fro
 import { produce } from "immer";
 
 export interface AppProps {
-    setOnMessage: (handler: (message: string, value: any) => Promise<void>) => void;
+    setOnMessage: (handler: (message: string, value: any) => Promise<any>) => void;
 }
 
 export const App = (props: AppProps) => {
