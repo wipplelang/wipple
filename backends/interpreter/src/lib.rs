@@ -68,7 +68,7 @@ pub struct UiHandle {
 
 #[allow(clippy::type_complexity)]
 #[derive(Clone, Default)]
-pub struct TaskGroup(Arc<Mutex<Vec<BoxFuture<'static, Result<(), Error>>>>>);
+pub struct TaskGroup(Arc<Mutex<Vec<futures::channel::oneshot::Receiver<Result<(), Error>>>>>);
 
 #[derive(Clone)]
 pub struct Interpreter {

@@ -12,10 +12,12 @@ with-continuation : f -> external "runtime" "with-continuation" f
 with-task-group :: (Task-Group -> ()) -> ()
 with-task-group : f -> external "runtime" "with-task-group" f
 
-[help "Add a task to a task group that runs at the same time as other tasks in the group.s"]
-[help-group "Control Flow"]
-task :: (() -> ()) -> Task-Group -> ()
-task : f -> group -> external "runtime" "task" group f
+task' :: (() -> ()) -> Task-Group -> ()
+task' : f -> group -> external "runtime" "task" group f
+
+task : syntax {
+	task 'body -> task' (() -> 'body)
+}
 
 in-background' :: (() -> ()) -> ()
 in-background' : f -> external "runtime" "in-background" f

@@ -1,4 +1,5 @@
 use crate::{Error, Interpreter, IoRequest, Stack, TaskGroup, UiHandle, Value};
+use futures::channel::oneshot;
 use itertools::Itertools;
 use num_traits::{pow::Pow, FromPrimitive};
 use parking_lot::Mutex;
@@ -69,7 +70,7 @@ impl Interpreter {
                     .collect_tuple()
                     .expect("wrong number of inputs to builtin function")
                 {
-                    ($($input,)*) => $result,
+                    ($($input,)*) => $result.await,
                     _ => unreachable!(),
                 }
             };
@@ -77,13 +78,13 @@ impl Interpreter {
 
         macro_rules! runtime_math_fn {
             (Value::$ty:ident, ($($input:pat),*) => $result:expr) => {
-                runtime_fn!(($(Value::$ty($input)),*) => $result.map(Value::$ty))
+                runtime_fn!(($(Value::$ty($input)),*) => async { $result.await.map(Value::$ty) })
             };
         }
 
         macro_rules! runtime_div_fn {
             (Value::$ty:ident, $zero:expr) => {
-                runtime_math_fn!(Value::$ty, (lhs, rhs) => {
+                runtime_math_fn!(Value::$ty, (lhs, rhs) => async {
                     if rhs != $zero {
                         Ok(lhs / rhs)
                     } else {
@@ -95,7 +96,7 @@ impl Interpreter {
 
         macro_rules! runtime_mod_fn {
             (Value::$ty:ident, $zero:expr) => {
-                runtime_math_fn!(Value::$ty, (lhs, rhs) => {
+                runtime_math_fn!(Value::$ty, (lhs, rhs) => async {
                     if rhs != $zero {
                         Ok(lhs % rhs)
                     } else {
@@ -107,23 +108,23 @@ impl Interpreter {
 
         macro_rules! runtime_text_fn {
             (($($input:pat),*) => $result:expr) => {
-                runtime_fn!(($($input),*) => Ok(Value::Text(Arc::from($result))))
+                runtime_fn!(($($input),*) => async { Ok(Value::Text(Arc::from($result.await))) })
             };
             (Value::$ty:ident) => {
-                runtime_text_fn!((Value::$ty(x)) => x.to_string())
+                runtime_text_fn!((Value::$ty(x)) => async { x.to_string() })
             };
         }
 
         macro_rules! runtime_parse_fn {
             (Value::$ty:ident) => {
-                runtime_fn!((Value::Text(text)) => Ok(maybe(text.parse().ok().map(Value::$ty))))
+                runtime_fn!((Value::Text(text)) => async { Ok(maybe(text.parse().ok().map(Value::$ty))) })
             };
         }
 
         macro_rules! runtime_cmp_fn {
             (($($input:pat),*) => $result:expr) => {
-                runtime_fn!(($($input),*) => {
-                    let index = match $result {
+                runtime_fn!(($($input),*) => async {
+                    let index = match $result.await {
                         std::cmp::Ordering::Less => VariantIndex::new(0),
                         std::cmp::Ordering::Equal => VariantIndex::new(1),
                         std::cmp::Ordering::Greater => VariantIndex::new(2),
@@ -133,13 +134,13 @@ impl Interpreter {
                 })
             };
             (Value::$ty:ident) => {
-                runtime_cmp_fn!((Value::$ty(lhs), Value::$ty(rhs)) => lhs.cmp(&rhs))
+                runtime_cmp_fn!((Value::$ty(lhs), Value::$ty(rhs)) => async { lhs.cmp(&rhs) })
             };
         }
 
         macro_rules! runtime_eq_fn {
             (Value::$ty:ident) => {
-                runtime_fn!((Value::$ty(lhs), Value::$ty(rhs)) => {
+                runtime_fn!((Value::$ty(lhs), Value::$ty(rhs)) => async {
                     Ok(if lhs == rhs { r#true() } else { r#false() })
                 })
             };
@@ -148,9 +149,11 @@ impl Interpreter {
         let value = (|| async {
             match func {
                 ir::RuntimeFunction::Crash => {
-                    runtime_fn!((Value::Text(text)) => Err(Error::from(text.as_ref())))
+                    runtime_fn!((Value::Text(text)) => async {
+                        Err(Error::from(text.as_ref()))
+                    })
                 }
-                ir::RuntimeFunction::Display => runtime_fn!((Value::Text(text)) => {
+                ir::RuntimeFunction::Display => runtime_fn!((Value::Text(text)) => async {
                     let io = self.lock().io.clone();
 
                     let (completion_tx, completion_rx) = tokio::sync::oneshot::channel();
@@ -163,7 +166,7 @@ impl Interpreter {
                     Ok(Value::Tuple(Vec::new()))
                 }),
                 ir::RuntimeFunction::Prompt => {
-                    runtime_fn!((Value::Text(prompt), Value::Function(captures, label)) => {
+                    runtime_fn!((Value::Text(prompt), Value::Function(captures, label)) => async {
                         // So we don't have to deal with loading any captured variables. `prompt`
                         // will be called with an instance of `Read` anyway, which has no captures
                         assert!(captures.0.is_empty(), "`prompt` requires a function with no captures");
@@ -202,7 +205,7 @@ impl Interpreter {
                         Ok(input)
                     })
                 }
-                ir::RuntimeFunction::Choice => runtime_fn!((Value::Text(prompt), Value::List(list)) => {
+                ir::RuntimeFunction::Choice => runtime_fn!((Value::Text(prompt), Value::List(list)) => async {
                     let choices = list
                         .iter()
                         .map(|value| match value {
@@ -222,7 +225,7 @@ impl Interpreter {
 
                     Ok(Value::Natural(index as u64))
                 }),
-                ir::RuntimeFunction::WithUi => runtime_fn!((Value::Text(url), Value::Function(scope, label)) => {
+                ir::RuntimeFunction::WithUi => runtime_fn!((Value::Text(url), Value::Function(scope, label)) => async {
                     let io = self.lock().io.clone();
 
                     let (completion_tx, completion_rx) = tokio::sync::oneshot::channel();
@@ -250,7 +253,7 @@ impl Interpreter {
 
                     Ok(result)
                 }),
-                ir::RuntimeFunction::MessageUi => runtime_fn!((Value::UiHandle(handle), Value::Text(message), value) => {
+                ir::RuntimeFunction::MessageUi => runtime_fn!((Value::UiHandle(handle), Value::Text(message), value) => async {
                     let (completion_tx, completion_rx) = tokio::sync::oneshot::channel();
 
                     handle.on_message.lock()(message.to_string(), value, Box::new(move |result| {
@@ -259,7 +262,7 @@ impl Interpreter {
 
                     completion_rx.await.map_err(|_| Error::from("program exited"))?
                 }),
-                ir::RuntimeFunction::WithContinuation => runtime_fn!((Value::Function(scope, label)) => {
+                ir::RuntimeFunction::WithContinuation => runtime_fn!((Value::Function(scope, label)) => async {
                     let (completion_tx, completion_rx) = tokio::sync::oneshot::channel();
 
                     let completion_tx = Arc::new(Mutex::new(Some(completion_tx)));
@@ -269,7 +272,7 @@ impl Interpreter {
                         Box::pin(async move {
                             let completion_tx = match completion_tx.lock().take() {
                                 Some(tx) => tx,
-                                None => return Err(Error::from("cannot call `wait` callback more than once")),
+                                None => return Err(Error::from("cannot call `with-continuation` callback more than once")),
                             };
 
                             completion_tx.send(value).map_err(|_| Error::from("program exited"))?;
@@ -287,48 +290,60 @@ impl Interpreter {
                         },
                     }
                 }),
-                ir::RuntimeFunction::WithTaskGroup => runtime_fn!((Value::Function(scope, label)) => {
+                ir::RuntimeFunction::WithTaskGroup => runtime_fn!((Value::Function(scope, label)) => async {
                     let group = TaskGroup::default();
 
                     self.call_function(label, scope, Value::TaskGroup(group.clone())).await?;
 
                     loop {
-                        let handle = match group.0.try_lock() {
-                            Some(mut group) => group.pop(),
+                        let completion_rx = match group.0.try_lock() {
+                            Some(mut group) => match group.pop() {
+                                Some(rx) => rx,
+                                None => break,
+                            },
                             None => return Err(Error::from("task group used outside of `with-task-group`")),
                         };
 
-                        match handle {
-                            Some(handle) => handle.await?,
-                            None => break,
-                        }
+                        completion_rx
+                            .await
+                            .expect("failed to wait for task to finish")?;
                     }
 
                     Ok(Value::Tuple(Vec::new()))
                 }),
-                ir::RuntimeFunction::Task => runtime_fn!((Value::TaskGroup(group), Value::Function(scope, label)) => {
-                    let mut group = match group.0.try_lock() {
-                        Some(group) => group,
-                        None => return Err(Error::from("task group used outside of `with-task-group`")),
+                ir::RuntimeFunction::Task => runtime_fn!((Value::TaskGroup(group), Value::Function(scope, label)) => async {
+                    let completion_tx = {
+                        let mut group = match group.0.try_lock() {
+                            Some(group) => group,
+                            None => return Err(Error::from("task group used outside of `with-task-group`")),
+                        };
+
+                        let (completion_tx, completion_rx) = oneshot::channel();
+
+                        group.push(completion_rx);
+
+                        completion_tx
                     };
 
-                    let fut = Box::pin({
+                    let io = self.lock().io.clone();
+
+                    io(IoRequest::Schedule(self.clone(), Box::pin({
                         let interpreter = self.clone();
 
                         async move {
-                            interpreter
+                            let result = interpreter
                                 .call_function(label, scope, Value::Tuple(Vec::new()))
-                                .await?;
+                                .await;
+
+                            completion_tx.send(result.map(|_| ())).expect("failed to signal task completion");
 
                             Ok(())
                         }
-                    });
-
-                    group.push(fut);
+                    }))).await?;
 
                     Ok(Value::Tuple(Vec::new()))
                 }),
-                ir::RuntimeFunction::InBackground => runtime_fn!((Value::Function(scope, label)) => {
+                ir::RuntimeFunction::InBackground => runtime_fn!((Value::Function(scope, label)) => async {
                     let io = self.lock().io.clone();
 
                     io(IoRequest::Schedule(self.clone(), Box::pin({
@@ -345,7 +360,7 @@ impl Interpreter {
 
                     Ok(Value::Tuple(Vec::new()))
                 }),
-                ir::RuntimeFunction::Delay => runtime_fn!((Value::Natural(ms)) => {
+                ir::RuntimeFunction::Delay => runtime_fn!((Value::Natural(ms)) => async {
                     let duration = std::time::Duration::from_millis(ms);
 
                     let io = self.lock().io.clone();
@@ -360,7 +375,9 @@ impl Interpreter {
                     Ok(Value::Tuple(Vec::new()))
                 }),
                 ir::RuntimeFunction::NumberToText => {
-                    runtime_text_fn!((Value::Number(n)) => n.normalize().to_string())
+                    runtime_text_fn!((Value::Number(n)) => async {
+                        n.normalize().to_string()
+                    })
                 }
                 ir::RuntimeFunction::IntegerToText => runtime_text_fn!(Value::Integer),
                 ir::RuntimeFunction::NaturalToText => runtime_text_fn!(Value::Natural),
@@ -377,22 +394,28 @@ impl Interpreter {
                 ir::RuntimeFunction::TextToUnsigned => runtime_parse_fn!(Value::Unsigned),
                 ir::RuntimeFunction::TextToFloat => runtime_parse_fn!(Value::Float),
                 ir::RuntimeFunction::TextToDouble => runtime_parse_fn!(Value::Double),
-                ir::RuntimeFunction::NaturalToNumber => runtime_fn!((Value::Natural(n)) => {
+                ir::RuntimeFunction::NaturalToNumber => runtime_fn!((Value::Natural(n)) => async {
                     Ok(Value::Number(Decimal::from_u64(n).expect("overflow")))
                 }),
                 ir::RuntimeFunction::AddNumber => {
-                    runtime_math_fn!(Value::Number, (lhs, rhs) => Ok(lhs + rhs))
+                    runtime_math_fn!(Value::Number, (lhs, rhs) => async {
+                        Ok(lhs + rhs)
+                    })
                 }
                 ir::RuntimeFunction::SubtractNumber => {
-                    runtime_math_fn!(Value::Number, (lhs, rhs) => Ok(lhs - rhs))
+                    runtime_math_fn!(Value::Number, (lhs, rhs) => async {
+                        Ok(lhs - rhs)
+                    })
                 }
                 ir::RuntimeFunction::MultiplyNumber => {
-                    runtime_math_fn!(Value::Number, (lhs, rhs) => Ok(lhs * rhs))
+                    runtime_math_fn!(Value::Number, (lhs, rhs) => async {
+                        Ok(lhs * rhs)
+                    })
                 }
                 ir::RuntimeFunction::DivideNumber => runtime_div_fn!(Value::Number, Decimal::ZERO),
                 ir::RuntimeFunction::ModuloNumber => runtime_mod_fn!(Value::Number, Decimal::ZERO),
                 ir::RuntimeFunction::PowerNumber => {
-                    runtime_math_fn!(Value::Number, (lhs, rhs) => {
+                    runtime_math_fn!(Value::Number, (lhs, rhs) => async {
                         if lhs == Decimal::ZERO && rhs == Decimal::ZERO {
                             Err(Error::from("cannot raise zero to the power of zero"))
                         } else {
@@ -401,27 +424,39 @@ impl Interpreter {
                     })
                 }
                 ir::RuntimeFunction::FloorNumber => {
-                    runtime_math_fn!(Value::Number, (n) => Ok(n.floor()))
+                    runtime_math_fn!(Value::Number, (n) => async {
+                        Ok(n.floor())
+                    })
                 }
                 ir::RuntimeFunction::CeilNumber => {
-                    runtime_math_fn!(Value::Number, (n) => Ok(n.ceil()))
+                    runtime_math_fn!(Value::Number, (n) => async {
+                        Ok(n.ceil())
+                    })
                 }
                 ir::RuntimeFunction::SqrtNumber => {
-                    runtime_math_fn!(Value::Number, (n) => Ok(n.sqrt().unwrap()))
+                    runtime_math_fn!(Value::Number, (n) => async {
+                        Ok(n.sqrt().unwrap())
+                    })
                 }
                 ir::RuntimeFunction::AddInteger => {
-                    runtime_math_fn!(Value::Integer, (lhs, rhs) => Ok(lhs + rhs))
+                    runtime_math_fn!(Value::Integer, (lhs, rhs) => async {
+                        Ok(lhs + rhs)
+                    })
                 }
                 ir::RuntimeFunction::SubtractInteger => {
-                    runtime_math_fn!(Value::Integer, (lhs, rhs) => Ok(lhs - rhs))
+                    runtime_math_fn!(Value::Integer, (lhs, rhs) => async {
+                        Ok(lhs - rhs)
+                    })
                 }
                 ir::RuntimeFunction::MultiplyInteger => {
-                    runtime_math_fn!(Value::Integer, (lhs, rhs) => Ok(lhs * rhs))
+                    runtime_math_fn!(Value::Integer, (lhs, rhs) => async {
+                        Ok(lhs * rhs)
+                    })
                 }
                 ir::RuntimeFunction::DivideInteger => runtime_div_fn!(Value::Integer, 0),
                 ir::RuntimeFunction::ModuloInteger => runtime_mod_fn!(Value::Integer, 0),
                 ir::RuntimeFunction::PowerInteger => {
-                    runtime_math_fn!(Value::Integer, (lhs, rhs) => {
+                    runtime_math_fn!(Value::Integer, (lhs, rhs) => async {
                         if lhs == 0 && rhs == 0 {
                             Err(Error::from("cannot raise zero to the power of zero"))
                         } else {
@@ -430,18 +465,24 @@ impl Interpreter {
                     })
                 }
                 ir::RuntimeFunction::AddNatural => {
-                    runtime_math_fn!(Value::Natural, (lhs, rhs) => Ok(lhs + rhs))
+                    runtime_math_fn!(Value::Natural, (lhs, rhs) => async {
+                        Ok(lhs + rhs)
+                    })
                 }
                 ir::RuntimeFunction::SubtractNatural => {
-                    runtime_math_fn!(Value::Natural, (lhs, rhs) => Ok(lhs - rhs))
+                    runtime_math_fn!(Value::Natural, (lhs, rhs) => async {
+                        Ok(lhs - rhs)
+                    })
                 }
                 ir::RuntimeFunction::MultiplyNatural => {
-                    runtime_math_fn!(Value::Natural, (lhs, rhs) => Ok(lhs * rhs))
+                    runtime_math_fn!(Value::Natural, (lhs, rhs) => async {
+                        Ok(lhs * rhs)
+                    })
                 }
                 ir::RuntimeFunction::DivideNatural => runtime_div_fn!(Value::Natural, 0),
                 ir::RuntimeFunction::ModuloNatural => runtime_mod_fn!(Value::Natural, 0),
                 ir::RuntimeFunction::PowerNatural => {
-                    runtime_math_fn!(Value::Natural, (lhs, rhs) => {
+                    runtime_math_fn!(Value::Natural, (lhs, rhs) => async {
                         if lhs == 0 && rhs == 0 {
                             Err(Error::from("cannot raise zero to the power of zero"))
                         } else {
@@ -450,18 +491,24 @@ impl Interpreter {
                     })
                 }
                 ir::RuntimeFunction::AddByte => {
-                    runtime_math_fn!(Value::Byte, (lhs, rhs) => Ok(lhs + rhs))
+                    runtime_math_fn!(Value::Byte, (lhs, rhs) => async {
+                        Ok(lhs + rhs)
+                    })
                 }
                 ir::RuntimeFunction::SubtractByte => {
-                    runtime_math_fn!(Value::Byte, (lhs, rhs) => Ok(lhs - rhs))
+                    runtime_math_fn!(Value::Byte, (lhs, rhs) => async {
+                        Ok(lhs - rhs)
+                    })
                 }
                 ir::RuntimeFunction::MultiplyByte => {
-                    runtime_math_fn!(Value::Byte, (lhs, rhs) => Ok(lhs * rhs))
+                    runtime_math_fn!(Value::Byte, (lhs, rhs) => async {
+                        Ok(lhs * rhs)
+                    })
                 }
                 ir::RuntimeFunction::DivideByte => runtime_div_fn!(Value::Byte, 0),
                 ir::RuntimeFunction::ModuloByte => runtime_mod_fn!(Value::Byte, 0),
                 ir::RuntimeFunction::PowerByte => {
-                    runtime_math_fn!(Value::Byte, (lhs, rhs) => {
+                    runtime_math_fn!(Value::Byte, (lhs, rhs) => async {
                         if lhs == 0 && rhs == 0 {
                             Err(Error::from("cannot raise zero to the power of zero"))
                         } else {
@@ -470,17 +517,23 @@ impl Interpreter {
                     })
                 }
                 ir::RuntimeFunction::AddSigned => {
-                    runtime_math_fn!(Value::Signed, (lhs, rhs) => Ok(lhs + rhs))
+                    runtime_math_fn!(Value::Signed, (lhs, rhs) => async {
+                        Ok(lhs + rhs)
+                    })
                 }
                 ir::RuntimeFunction::SubtractSigned => {
-                    runtime_math_fn!(Value::Signed, (lhs, rhs) => Ok(lhs - rhs))
+                    runtime_math_fn!(Value::Signed, (lhs, rhs) => async {
+                        Ok(lhs - rhs)
+                    })
                 }
                 ir::RuntimeFunction::MultiplySigned => {
-                    runtime_math_fn!(Value::Signed, (lhs, rhs) => Ok(lhs * rhs))
+                    runtime_math_fn!(Value::Signed, (lhs, rhs) => async {
+                        Ok(lhs * rhs)
+                    })
                 }
                 ir::RuntimeFunction::DivideSigned => runtime_div_fn!(Value::Signed, 0),
                 ir::RuntimeFunction::ModuloSigned => runtime_mod_fn!(Value::Signed, 0),
-                ir::RuntimeFunction::PowerSigned => runtime_math_fn!(Value::Signed, (lhs, rhs) => {
+                ir::RuntimeFunction::PowerSigned => runtime_math_fn!(Value::Signed, (lhs, rhs) => async {
                     if lhs == 0 && rhs == 0 {
                         Err(Error::from("cannot raise zero to the power of zero"))
                     } else {
@@ -488,18 +541,24 @@ impl Interpreter {
                     }
                 }),
                 ir::RuntimeFunction::AddUnsigned => {
-                    runtime_math_fn!(Value::Unsigned, (lhs, rhs) => Ok(lhs + rhs))
+                    runtime_math_fn!(Value::Unsigned, (lhs, rhs) => async {
+                        Ok(lhs + rhs)
+                    })
                 }
                 ir::RuntimeFunction::SubtractUnsigned => {
-                    runtime_math_fn!(Value::Unsigned, (lhs, rhs) => Ok(lhs - rhs))
+                    runtime_math_fn!(Value::Unsigned, (lhs, rhs) => async {
+                        Ok(lhs - rhs)
+                    })
                 }
                 ir::RuntimeFunction::MultiplyUnsigned => {
-                    runtime_math_fn!(Value::Unsigned, (lhs, rhs) => Ok(lhs * rhs))
+                    runtime_math_fn!(Value::Unsigned, (lhs, rhs) => async {
+                        Ok(lhs * rhs)
+                    })
                 }
                 ir::RuntimeFunction::DivideUnsigned => runtime_div_fn!(Value::Unsigned, 0),
                 ir::RuntimeFunction::ModuloUnsigned => runtime_mod_fn!(Value::Unsigned, 0),
                 ir::RuntimeFunction::PowerUnsigned => {
-                    runtime_math_fn!(Value::Unsigned, (lhs, rhs) => {
+                    runtime_math_fn!(Value::Unsigned, (lhs, rhs) => async {
                         if lhs == 0 && rhs == 0 {
                             Err(Error::from("cannot raise zero to the power of zero"))
                         } else {
@@ -508,58 +567,94 @@ impl Interpreter {
                     })
                 }
                 ir::RuntimeFunction::AddFloat => {
-                    runtime_math_fn!(Value::Float, (lhs, rhs) => Ok(lhs + rhs))
+                    runtime_math_fn!(Value::Float, (lhs, rhs) => async {
+                        Ok(lhs + rhs)
+                    })
                 }
                 ir::RuntimeFunction::SubtractFloat => {
-                    runtime_math_fn!(Value::Float, (lhs, rhs) => Ok(lhs - rhs))
+                    runtime_math_fn!(Value::Float, (lhs, rhs) => async {
+                        Ok(lhs - rhs)
+                    })
                 }
                 ir::RuntimeFunction::MultiplyFloat => {
-                    runtime_math_fn!(Value::Float, (lhs, rhs) => Ok(lhs * rhs))
+                    runtime_math_fn!(Value::Float, (lhs, rhs) => async {
+                        Ok(lhs * rhs)
+                    })
                 }
                 ir::RuntimeFunction::DivideFloat => {
-                    runtime_math_fn!(Value::Float, (lhs, rhs) => Ok(lhs / rhs))
+                    runtime_math_fn!(Value::Float, (lhs, rhs) => async {
+                        Ok(lhs / rhs)
+                    })
                 }
                 ir::RuntimeFunction::ModuloFloat => {
-                    runtime_math_fn!(Value::Float, (lhs, rhs) => Ok(lhs % rhs))
+                    runtime_math_fn!(Value::Float, (lhs, rhs) => async {
+                        Ok(lhs % rhs)
+                    })
                 }
                 ir::RuntimeFunction::PowerFloat => {
-                    runtime_math_fn!(Value::Float, (lhs, rhs) => Ok(lhs.pow(rhs)))
+                    runtime_math_fn!(Value::Float, (lhs, rhs) => async {
+                        Ok(lhs.pow(rhs))
+                    })
                 }
                 ir::RuntimeFunction::FloorFloat => {
-                    runtime_math_fn!(Value::Double, (n) => Ok(n.floor()))
+                    runtime_math_fn!(Value::Double, (n) => async {
+                        Ok(n.floor())
+                    })
                 }
                 ir::RuntimeFunction::CeilFloat => {
-                    runtime_math_fn!(Value::Double, (n) => Ok(n.ceil()))
+                    runtime_math_fn!(Value::Double, (n) => async {
+                        Ok(n.ceil())
+                    })
                 }
                 ir::RuntimeFunction::SqrtFloat => {
-                    runtime_math_fn!(Value::Double, (n) => Ok(n.sqrt()))
+                    runtime_math_fn!(Value::Double, (n) => async {
+                        Ok(n.sqrt())
+                    })
                 }
                 ir::RuntimeFunction::AddDouble => {
-                    runtime_math_fn!(Value::Double, (lhs, rhs) => Ok(lhs + rhs))
+                    runtime_math_fn!(Value::Double, (lhs, rhs) => async {
+                        Ok(lhs + rhs)
+                    })
                 }
                 ir::RuntimeFunction::SubtractDouble => {
-                    runtime_math_fn!(Value::Double, (lhs, rhs) => Ok(lhs - rhs))
+                    runtime_math_fn!(Value::Double, (lhs, rhs) => async {
+                        Ok(lhs - rhs)
+                    })
                 }
                 ir::RuntimeFunction::MultiplyDouble => {
-                    runtime_math_fn!(Value::Double, (lhs, rhs) => Ok(lhs * rhs))
+                    runtime_math_fn!(Value::Double, (lhs, rhs) => async {
+                        Ok(lhs * rhs)
+                    })
                 }
                 ir::RuntimeFunction::DivideDouble => {
-                    runtime_math_fn!(Value::Double, (lhs, rhs) => Ok(lhs / rhs))
+                    runtime_math_fn!(Value::Double, (lhs, rhs) => async {
+                        Ok(lhs / rhs)
+                    })
                 }
                 ir::RuntimeFunction::ModuloDouble => {
-                    runtime_math_fn!(Value::Double, (lhs, rhs) => Ok(lhs % rhs))
+                    runtime_math_fn!(Value::Double, (lhs, rhs) => async {
+                        Ok(lhs % rhs)
+                    })
                 }
                 ir::RuntimeFunction::PowerDouble => {
-                    runtime_math_fn!(Value::Double, (lhs, rhs) => Ok(lhs.pow(rhs)))
+                    runtime_math_fn!(Value::Double, (lhs, rhs) => async {
+                        Ok(lhs.pow(rhs))
+                    })
                 }
                 ir::RuntimeFunction::FloorDouble => {
-                    runtime_math_fn!(Value::Double, (n) => Ok(n.floor()))
+                    runtime_math_fn!(Value::Double, (n) => async {
+                        Ok(n.floor())
+                    })
                 }
                 ir::RuntimeFunction::CeilDouble => {
-                    runtime_math_fn!(Value::Double, (n) => Ok(n.ceil()))
+                    runtime_math_fn!(Value::Double, (n) => async {
+                        Ok(n.ceil())
+                    })
                 }
                 ir::RuntimeFunction::SqrtDouble => {
-                    runtime_math_fn!(Value::Double, (n) => Ok(n.sqrt()))
+                    runtime_math_fn!(Value::Double, (n) => async {
+                        Ok(n.sqrt())
+                    })
                 }
                 ir::RuntimeFunction::TextEquality => runtime_eq_fn!(Value::Text),
                 ir::RuntimeFunction::NumberEquality => runtime_eq_fn!(Value::Number),
@@ -578,23 +673,25 @@ impl Interpreter {
                 ir::RuntimeFunction::SignedOrdering => runtime_cmp_fn!(Value::Signed),
                 ir::RuntimeFunction::UnsignedOrdering => runtime_cmp_fn!(Value::Unsigned),
                 ir::RuntimeFunction::FloatOrdering => {
-                    runtime_cmp_fn!((Value::Float(lhs), Value::Float(rhs)) => {
+                    runtime_cmp_fn!((Value::Float(lhs), Value::Float(rhs)) => async {
                         lhs.partial_cmp(&rhs).expect("unexpected NaN")
                     })
                 }
                 ir::RuntimeFunction::DoubleOrdering => {
-                    runtime_cmp_fn!((Value::Double(lhs), Value::Double(rhs)) => {
+                    runtime_cmp_fn!((Value::Double(lhs), Value::Double(rhs)) => async {
                         lhs.partial_cmp(&rhs).expect("unexpected NaN")
                     })
                 }
-                ir::RuntimeFunction::MakeMutable => runtime_fn!((value) => {
+                ir::RuntimeFunction::MakeMutable => runtime_fn!((value) => async {
                     Ok(Value::Mutable(Shared::new(value)))
                 }),
                 ir::RuntimeFunction::GetMutable => {
-                    runtime_fn!((Value::Mutable(value)) => Ok(value.lock().clone()))
+                    runtime_fn!((Value::Mutable(value)) => async {
+                        Ok(value.lock().clone())
+                    })
                 }
                 ir::RuntimeFunction::SetMutable => {
-                    runtime_fn!((Value::Mutable(value), new_value) => {
+                    runtime_fn!((Value::Mutable(value), new_value) => async {
                         *value.lock() = new_value;
                         Ok(Value::Tuple(Vec::new()))
                     })
@@ -603,20 +700,20 @@ impl Interpreter {
                     assert!(inputs.is_empty());
                     Ok(Value::List(Default::default()))
                 }
-                ir::RuntimeFunction::ListFirst => runtime_fn!((Value::List(list)) => {
+                ir::RuntimeFunction::ListFirst => runtime_fn!((Value::List(list)) => async {
                     Ok(match list.front() {
                         Some(first) => some(first.clone()),
                         None => none(),
                     })
                 }),
-                ir::RuntimeFunction::ListLast => runtime_fn!((Value::List(list)) => {
+                ir::RuntimeFunction::ListLast => runtime_fn!((Value::List(list)) => async {
                     Ok(match list.back() {
                         Some(last) => some(last.clone()),
                         None => none(),
                     })
                 }),
                 ir::RuntimeFunction::ListInitial => {
-                    runtime_fn!((Value::List(mut list)) => {
+                    runtime_fn!((Value::List(mut list)) => async {
                         Ok(if list.is_empty() {
                             none()
                         } else {
@@ -625,7 +722,7 @@ impl Interpreter {
                     })
                 }
                 ir::RuntimeFunction::ListTail => {
-                    runtime_fn!((Value::List(mut list)) => {
+                    runtime_fn!((Value::List(mut list)) => async {
                         Ok(if list.is_empty() {
                             none()
                         } else {
@@ -634,7 +731,7 @@ impl Interpreter {
                     })
                 }
                 ir::RuntimeFunction::ListNth => {
-                    runtime_fn!((Value::List(list), Value::Natural(index)) => {
+                    runtime_fn!((Value::List(list), Value::Natural(index)) => async {
                         let index = index as usize;
                         let index = if (0..list.len()).contains(&index) {
                             index
@@ -649,19 +746,19 @@ impl Interpreter {
                     })
                 }
                 ir::RuntimeFunction::ListAppend => {
-                    runtime_fn!((Value::List(mut list), value) => {
+                    runtime_fn!((Value::List(mut list), value) => async {
                         list.push_back(value);
                         Ok(Value::List(list))
                     })
                 }
                 ir::RuntimeFunction::ListPrepend => {
-                    runtime_fn!((Value::List(mut list), value) => {
+                    runtime_fn!((Value::List(mut list), value) => async {
                         list.push_front(value);
                         Ok(Value::List(list))
                     })
                 }
                 ir::RuntimeFunction::ListInsert => {
-                    runtime_fn!((Value::List(mut list), Value::Natural(index), value) => {
+                    runtime_fn!((Value::List(mut list), Value::Natural(index), value) => async {
                         let index = index as usize;
                         let index = if (0..list.len()).contains(&index) {
                             index
@@ -675,7 +772,7 @@ impl Interpreter {
                     })
                 }
                 ir::RuntimeFunction::ListRemove => {
-                    runtime_fn!((Value::List(mut list), Value::Natural(index)) => {
+                    runtime_fn!((Value::List(mut list), Value::Natural(index)) => async {
                         let index = index as usize;
                         let index = if (0..list.len()).contains(&index) {
                             index
@@ -687,7 +784,7 @@ impl Interpreter {
                     })
                 }
                 ir::RuntimeFunction::TextHeadTail => {
-                    runtime_fn!((Value::Text(text)) => {
+                    runtime_fn!((Value::Text(text)) => async {
                         match text.grapheme_indices(true).next() {
                             Some((_, head)) => {
                                 let tail = &text[head.len()..];
