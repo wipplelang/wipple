@@ -17,10 +17,12 @@ with-task-group : f -> external "runtime" "with-task-group" f
 task :: (() -> ()) -> Task-Group -> ()
 task : f -> group -> external "runtime" "task" group f
 
-[help "Run a function in the background without waiting for it to return."]
-[help-group "Control Flow"]
-in-background :: (() -> ()) -> ()
-in-background : f -> external "runtime" "in-background" f
+in-background' :: (() -> ()) -> ()
+in-background' : f -> external "runtime" "in-background" f
+
+in-background : syntax {
+	in-background 'body -> in-background' (() -> 'body)
+}
 
 Duration : type {
 	ms :: Natural
