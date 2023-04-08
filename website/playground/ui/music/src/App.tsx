@@ -60,7 +60,7 @@ export const App = (props: AppProps) => {
                         const now = audioContext.current.currentTime;
 
                         for (const note of notes) {
-                            player.play(note, now).stop(now + ms);
+                            player.play(note, now, { duration: ms / 1000 });
                         }
 
                         return new Promise<number>((resolve) => {
