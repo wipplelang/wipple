@@ -55,5 +55,9 @@
     "previous": {
         "name": "Drawing with turtle graphics",
         "link": "?lesson=learn/17-drawing-with-turtle-graphics"
+    },
+    "next": {
+        "name": "Making music",
+        "link": "?lesson=learn/19-making-music"
     }
 }
