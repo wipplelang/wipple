@@ -46,12 +46,22 @@ const ErrorHandler = (props: { error: any }) => {
                     <h1 className="text-xl">Something went wrong</h1>
 
                     <p className="text-gray-500">
-                        The Wipple Playground encountered an error. Please reload the page to
-                        continue working. Your work will be saved.
+                        Wipple encountered an error. Please reload the page to continue working.
+                        Your work will be saved.
                     </p>
+
+                    {/Chrome/.test(navigator.userAgent) ? null : (
+                        <p className="text-gray-500">
+                            If you continue having issues, please try updating your browser to the
+                            latest version or using Google Chrome.
+                        </p>
+                    )}
                 </div>
 
-                <p className="text-sm text-gray-500 text-opacity-50">{error}</p>
+                <div className="text-sm text-gray-500 text-opacity-50">
+                    <p>{error}</p>
+                    <p>User agent: {navigator.userAgent}</p>
+                </div>
             </div>
         </div>
     );
