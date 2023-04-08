@@ -17,6 +17,8 @@ with-music : f -> with-ui "/playground/ui/music/index.js" (handle -> {
 			task-group
 		})
 	})
+
+	handle . message "done" ()
 })
 
 [help "Set the tempo of the music."]
@@ -32,17 +34,30 @@ instance (As Text Instrument-Name) : name -> Instrument-Name { name }
 
 Instrument : type {
 	name :: Instrument-Name
+	delta :: Mutable Number
 	music :: Music
 }
 
-[help "Add an instrument to the music that plays in unison with the other instruments."]
+[help "Load an instrument."]
 [help-group "Music"]
-with-instrument :: Instrument-Name -> (Instrument -> ()) -> Music -> ()
-with-instrument : name -> f -> music -> {
-	task-group of music . task {
-		handle of music . message "load-instrument" (name of name)
-		f (Instrument { name music })
+load-instrument :: Instrument-Name -> Music -> Instrument
+load-instrument : name -> music -> {
+	handle of music . message "load-instrument" (name of name)
+
+	Instrument {
+		name
+		delta : mutable 0
+		music
 	}
+}
+
+track' :: (() -> ()) -> Music -> ()
+track' : f -> music -> {
+	task-group of music . task' f
+}
+
+track : syntax {
+	track 'body -> track' (() -> 'body)
 }
 
 Note-Length : type {
@@ -68,19 +83,22 @@ note : note -> length -> instrument -> notes (list note) length instrument
 [help "Play multiple notes on an instrument at the same time. See `note` for more information."]
 [help-group "Music"]
 notes :: Collection where (Iterate Collection Text) => Collection -> Note-Length -> Instrument -> ()
-notes : notes -> { ms-from-tempo } -> { name music } -> {
-	instrument-name : name of name
-	ms : ms-from-tempo (get (tempo of music))
+notes : notes -> { ms-from-tempo } -> instrument -> {
+	instrument-name : name of name of instrument
+	delta : get (delta of instrument)
+	ms : ms-from-tempo (get (tempo of music of instrument)) - delta
 	notes : notes . transform (note -> format "_," note) . collect :: Text
-	handle of music . message "notes" (format "_ _ _" instrument-name ms notes)
+
+	delta : handle of music of instrument . message "notes" (format "_ _ _" instrument-name ms notes)
+	if (delta < 0) (crash "music stopped")
+
+	delta of instrument . set! delta
 }
 
-[help "Rest for a note."]
+[help "Rest for a period of time."]
 [help-group "Music"]
 rest :: Note-Length -> Instrument -> ()
-rest : { ms-from-tempo } -> { music } -> {
-	delay (floor (ms-from-tempo (get (tempo of music))) as! Natural . ms)
-}
+rest : length -> instrument -> notes (list) length instrument
 
 [help "An instrument you can use with `with-instrument`."]
 [help-group "Music"]

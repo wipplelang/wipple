@@ -5,11 +5,13 @@ export interface AppProps {
     setOnMessage: (handler: (message: string, value: any) => Promise<any>) => void;
 }
 
+type Status = "pending" | "playing" | "stopped";
+
 export const App = (props: AppProps) => {
-    const [handlePlay, setHandlePlay] = useState<(play: boolean) => void>();
+    const [handleStatus, setHandleStatus] = useState<(status: Status) => void>();
     const audioContext = useRef<AudioContext>();
     const instruments = useRef<Record<string, Player>>({});
-    const [isPlaying, setPlaying] = useState(false);
+    const [status, setStatus] = useState<Status>("pending");
 
     useEffect(() => {
         (async () => {
@@ -17,14 +19,14 @@ export const App = (props: AppProps) => {
                 switch (message) {
                     case "wait-for-play-button":
                         return new Promise<void>((resolve) => {
-                            setHandlePlay(() => (play: boolean) => {
-                                if (play) {
+                            setHandleStatus(() => (status: Status) => {
+                                if (status === "playing") {
                                     audioContext.current = new AudioContext();
                                 } else {
                                     audioContext.current = undefined;
                                 }
 
-                                setPlaying(play);
+                                setStatus(status);
                                 resolve();
                             });
                         });
@@ -39,29 +41,44 @@ export const App = (props: AppProps) => {
                         break;
                     }
                     case "notes": {
-                        const [instrumentName, ms, notesList] = (value as string).split(" ");
+                        const [instrumentName, msString, notesList] = (value as string).split(" ");
                         const notes = notesList.split(",");
                         notes.splice(notes.length - 1, 1); // remove trailing comma
 
-                        if (!audioContext.current) {
-                            return;
-                        }
+                        const ms = parseFloat(msString);
 
                         const player = instruments.current[instrumentName];
                         if (!player) {
                             return;
                         }
 
-                        for (const note of notes) {
-                            player
-                                .play(note, audioContext.current.currentTime)
-                                .stop(audioContext.current.currentTime + parseFloat(ms));
+                        if (!audioContext.current) {
+                            return Promise.resolve(-1);
                         }
 
-                        return new Promise((resolve) => {
-                            setTimeout(resolve, parseFloat(ms));
+                        const startDate = new Date().valueOf();
+                        const now = audioContext.current.currentTime;
+
+                        for (const note of notes) {
+                            player.play(note, now).stop(now + ms);
+                        }
+
+                        return new Promise<number>((resolve) => {
+                            const delta = new Date().valueOf() - startDate;
+
+                            setTimeout(() => {
+                                if (!audioContext.current) {
+                                    resolve(-1);
+                                    return;
+                                }
+
+                                resolve(audioContext.current.currentTime - now);
+                            }, ms - delta);
                         });
                     }
+                    case "done":
+                        setStatus("stopped");
+                        break;
                     default:
                         throw new Error("unknown message");
                 }
@@ -71,9 +88,26 @@ export const App = (props: AppProps) => {
 
     return (
         <div>
-            <button onClick={() => handlePlay?.(!isPlaying)}>
-                {isPlaying ? "⏹ Stop" : "▶️ Play"}
-            </button>
+            {status !== "stopped" ? (
+                <button
+                    onClick={() => {
+                        if (!handleStatus) {
+                            return;
+                        }
+
+                        switch (status) {
+                            case "pending":
+                                handleStatus("playing");
+                                break;
+                            case "playing":
+                                handleStatus("stopped");
+                                break;
+                        }
+                    }}
+                >
+                    {status === "playing" ? "⏹ Stop" : "▶️ Play"}
+                </button>
+            ) : null}
         </div>
     );
 };
