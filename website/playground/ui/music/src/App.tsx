@@ -19,9 +19,10 @@ export const App = (props: AppProps) => {
                 switch (message) {
                     case "wait-for-play-button":
                         return new Promise<void>((resolve) => {
-                            setHandleStatus(() => (status: Status) => {
+                            setHandleStatus(() => async (status: Status) => {
                                 if (status === "playing") {
                                     audioContext.current = new AudioContext();
+                                    await audioContext.current.resume();
                                 } else {
                                     audioContext.current = undefined;
                                 }
