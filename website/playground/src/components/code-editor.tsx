@@ -376,35 +376,80 @@ export const CodeEditor = (props: CodeEditorProps) => {
 
             const lastTypedChar = charStack.current[charStack.current.length - 1] ?? "";
 
-            // Clear the stack if the arrow keys are pressed
-            if (keyTyped.includes("Arrow")) {
+            if (/Meta|Control|Arrow/.test(keyTyped)) {
                 charStack.current = [];
+                return;
+            }
+
+            // Indent if typing after an opening character
+            if (keyTyped === "Enter" && lastTypedChar in closingCharacters) {
+                e.preventDefault();
+
+                const lookup = lineColumn(textEditor.value + "\n\n");
+                const { line } = lookup.fromIndex(caretPosition)!;
+                const lineIndex = lookup.toIndex(line, 1);
+
+                let indent = 1;
+                for (const s of textEditor.value.slice(lineIndex)) {
+                    if (s === "\t") {
+                        indent++;
+                    } else {
+                        break;
+                    }
+                }
+
+                const newValue =
+                    textEditor.value.slice(0, caretPosition) +
+                    `\n${"\t".repeat(indent)}\n${"\t".repeat(indent - 1)}` +
+                    textEditor.value.slice(caretPosition);
+
+                props.onChange(newValue);
+
+                requestAnimationFrame(() => {
+                    textEditor.setSelectionRange(
+                        caretPosition + indent + 1,
+                        caretPosition + indent + 1
+                    );
+                });
+
+                charStack.current = [];
+
                 return;
             }
 
             // Delete the closing character if the opening character was the
             // last one typed and the user presses Backspace
             if (keyTyped === "Backspace" && lastTypedChar in closingCharacters) {
-                Promise.resolve().then(() => {
-                    textEditor.value =
-                        textEditor.value.slice(0, caretPosition) +
-                        textEditor.value.slice(caretPosition + 1);
+                e.preventDefault();
 
-                    textEditor.setSelectionRange(caretPosition, caretPosition);
+                const newValue =
+                    textEditor.value.slice(0, caretPosition - 1) +
+                    textEditor.value.slice(caretPosition + 1);
+
+                props.onChange(newValue);
+
+                requestAnimationFrame(() => {
+                    textEditor.setSelectionRange(caretPosition - 1, caretPosition - 1);
                 });
 
                 charStack.current.pop();
                 return;
             }
 
-            // "Type over" the balanced closing character
+            // "Type over" the balanced closing character if the opening
+            // character was just typed
             if (closingCharacters[lastTypedChar] === keyTyped) {
-                Promise.resolve().then(() => {
-                    textEditor.value =
-                        textEditor.value.slice(0, caretPosition) +
-                        textEditor.value.slice(caretPosition + 1);
+                e.preventDefault();
 
-                    textEditor.setSelectionRange(caretPosition, caretPosition);
+                const newValue =
+                    textEditor.value.slice(0, caretPosition) +
+                    closingCharacters[lastTypedChar] +
+                    textEditor.value.slice(caretPosition + 1);
+
+                props.onChange(newValue);
+
+                requestAnimationFrame(() => {
+                    textEditor.setSelectionRange(caretPosition + 1, caretPosition + 1);
                 });
 
                 charStack.current.pop();
@@ -414,13 +459,18 @@ export const CodeEditor = (props: CodeEditorProps) => {
             // Balance opening and closing characters
             const closingChar = closingCharacters[keyTyped];
             if (closingChar) {
-                Promise.resolve().then(() => {
-                    textEditor.value =
-                        textEditor.value.slice(0, caretPosition) +
-                        closingChar +
-                        textEditor.value.slice(caretPosition);
+                e.preventDefault();
 
-                    textEditor.setSelectionRange(caretPosition, caretPosition);
+                const newValue =
+                    textEditor.value.slice(0, caretPosition) +
+                    keyTyped +
+                    closingChar +
+                    textEditor.value.slice(caretPosition);
+
+                props.onChange(newValue);
+
+                requestAnimationFrame(() => {
+                    textEditor.setSelectionRange(caretPosition + 1, caretPosition + 1);
                 });
 
                 charStack.current.push(keyTyped);
