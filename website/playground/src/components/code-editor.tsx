@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import SimpleCodeEditor from "react-simple-code-editor";
 import * as prism from "prismjs";
 import {
@@ -64,6 +64,13 @@ interface Hover {
 interface UiElement {
     onMessage: Record<string, (message: string, value: any) => Promise<any>>;
 }
+
+const closingCharacters: Record<string, string> = {
+    '"': '"',
+    "(": ")",
+    "{": "}",
+    "[": "]",
+};
 
 export const CodeEditor = (props: CodeEditorProps) => {
     const containerID = `code-editor-container-${props.id}`;
@@ -157,7 +164,9 @@ export const CodeEditor = (props: CodeEditorProps) => {
 
                                         break;
                                     case "loadUi": {
-                                        const uiElement = await import(request.url);
+                                        const uiElement = await import(
+                                            /* @vite-ignore */ request.url
+                                        );
 
                                         const index = uiElements.current.length;
 
@@ -353,6 +362,86 @@ export const CodeEditor = (props: CodeEditorProps) => {
         return () => {
             textEditor.removeEventListener("mouseenter", handleMouseEnter);
             textEditor.removeEventListener("mouseleave", handleMouseLeave);
+        };
+    }, [textEditor]);
+
+    const charStack = useRef<string[]>([]);
+
+    useEffect(() => {
+        if (!textEditor) return;
+
+        const handleKeyDown = (e: KeyboardEvent) => {
+            const keyTyped = e.key;
+            const caretPosition = textEditor.selectionStart;
+
+            const lastTypedChar = charStack.current[charStack.current.length - 1] ?? "";
+
+            // Clear the stack if the arrow keys are pressed
+            if (keyTyped.includes("Arrow")) {
+                charStack.current = [];
+                return;
+            }
+
+            // Delete the closing character if the opening character was the
+            // last one typed and the user presses Backspace
+            if (keyTyped === "Backspace" && lastTypedChar in closingCharacters) {
+                Promise.resolve().then(() => {
+                    textEditor.value =
+                        textEditor.value.slice(0, caretPosition) +
+                        textEditor.value.slice(caretPosition + 1);
+
+                    textEditor.setSelectionRange(caretPosition, caretPosition);
+                });
+
+                charStack.current.pop();
+                return;
+            }
+
+            // "Type over" the balanced closing character
+            if (closingCharacters[lastTypedChar] === keyTyped) {
+                Promise.resolve().then(() => {
+                    textEditor.value =
+                        textEditor.value.slice(0, caretPosition) +
+                        textEditor.value.slice(caretPosition + 1);
+
+                    textEditor.setSelectionRange(caretPosition, caretPosition);
+                });
+
+                charStack.current.pop();
+                return;
+            }
+
+            // Balance opening and closing characters
+            const closingChar = closingCharacters[keyTyped];
+            if (closingChar) {
+                Promise.resolve().then(() => {
+                    textEditor.value =
+                        textEditor.value.slice(0, caretPosition) +
+                        closingChar +
+                        textEditor.value.slice(caretPosition);
+
+                    textEditor.setSelectionRange(caretPosition, caretPosition);
+                });
+
+                charStack.current.push(keyTyped);
+                return;
+            }
+
+            if (keyTyped in closingCharacters) {
+                charStack.current.push(keyTyped);
+            }
+        };
+
+        const handleClick = () => {
+            charStack.current = [];
+        };
+
+        textEditor.addEventListener("keydown", handleKeyDown);
+        textEditor.addEventListener("click", handleClick);
+
+        return () => {
+            textEditor.removeEventListener("keydown", handleKeyDown);
+            textEditor.removeEventListener("click", handleClick);
         };
     }, [textEditor]);
 
