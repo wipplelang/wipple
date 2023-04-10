@@ -40,11 +40,13 @@ import Add from "@mui/icons-material/Add";
 import getCaretCoordinates from "textarea-caret";
 import lineColumn from "line-column";
 import { useRefState } from "../helpers";
+import { Settings } from "../App";
 
 export interface CodeEditorProps {
     id: string;
     code: string;
     lint: boolean;
+    settings: Settings;
     autoFocus: boolean;
     onChange: (code: string) => void;
 }
@@ -65,11 +67,15 @@ interface UiElement {
     onMessage: Record<string, (message: string, value: any) => Promise<any>>;
 }
 
-const closingCharacters: Record<string, string> = {
-    '"': '"',
+const closingBrackets: Record<string, string> = {
     "(": ")",
     "{": "}",
     "[": "]",
+};
+
+const closingCharacters: Record<string, string> = {
+    ...closingBrackets,
+    '"': '"',
 };
 
 export const CodeEditor = (props: CodeEditorProps) => {
@@ -496,6 +502,58 @@ export const CodeEditor = (props: CodeEditorProps) => {
     }, [textEditor]);
 
     useEffect(() => {
+        const nodes = [
+            ...document.querySelectorAll<HTMLSpanElement>(
+                `#${editorID} .language-wipple span.token`
+            ),
+        ];
+
+        const colors: string[][] = [
+            ["bg-red-500", "dark:bg-red-400"],
+            ["bg-green-500", "dark:bg-green-400"],
+            ["bg-blue-500", "dark:bg-blue-400"],
+            ["bg-yellow-500", "dark:bg-yellow-400"],
+        ];
+
+        const additionalClasses = ["bg-opacity-20", "dark:bg-opacity-20"];
+
+        if (!props.settings.beginner) {
+            for (const node of nodes) {
+                for (const color of colors) {
+                    node.classList.remove(...color);
+                }
+
+                node.classList.remove(...additionalClasses);
+            }
+
+            return;
+        }
+
+        const stack: string[][] = [];
+        for (const node of nodes) {
+            let color: string[] | undefined;
+            if ([...node.innerText].find((c) => closingBrackets[c])) {
+                color = colors[stack.length % colors.length];
+                stack.push(color);
+            } else if (
+                [...node.innerText].find((c) => Object.values(closingBrackets).includes(c))
+            ) {
+                color = stack[stack.length - 1];
+                stack.pop();
+            } else {
+                color = stack[stack.length - 1];
+            }
+
+            if (color) {
+                node.classList.add(...color);
+                node.classList.add(...additionalClasses);
+            }
+        }
+    }, [props.code, props.settings.beginner]);
+
+    useEffect(() => {
+        if (!syntaxHighlighting) return;
+
         const nodes = [
             ...document.querySelectorAll<HTMLSpanElement>(
                 `#${editorID} .language-wipple span.token`

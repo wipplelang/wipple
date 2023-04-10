@@ -40,6 +40,10 @@ interface PageLink {
     link: string;
 }
 
+export interface Settings {
+    beginner?: boolean;
+}
+
 const App = () => {
     const [sections, setSections] = useState<Section[]>([]);
     const [previousPage, setPreviousPage] = useState<PageLink | undefined>();
@@ -126,181 +130,227 @@ const App = () => {
         window.history.replaceState(null, "", newURL);
     }, [sections]);
 
+    const [settings, setSettings] = useState<Settings>(() => {
+        const settings = localStorage.getItem("settings");
+        if (!settings) {
+            return {};
+        }
+
+        return JSON.parse(settings);
+    });
+
+    useEffect(() => {
+        localStorage.setItem("settings", JSON.stringify(settings));
+    }, [settings]);
+
     const [activeId, setActiveId] = useState<string | undefined>(undefined);
     const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 1 } }));
 
     return (
-        <main>
-            <div className="mx-auto p-6 max-w-4xl">
-                <div className="flex items-center justify-between pb-4">
-                    <a
-                        href="/playground"
-                        className="flex items-center gap-3 text-black dark:text-white"
-                    >
-                        <img src="./images/logo.svg" alt="Wipple Playground" className="h-10" />
-                        <h1 className="font-semibold">Wipple Playground</h1>
-                    </a>
-
-                    <div className="flex gap-4 text-gray-500 dark:text-gray-400">
-                        <a href="?lesson=learn/toc">Learn</a>
-
-                        <a target="_blank" href="/guide">
-                            Guide
+        <main className="flex flex-col mx-auto w-screen h-screen">
+            <div className="flex-1 overflow-scroll">
+                <div className="flex flex-col pt-6 px-6 mx-auto max-w-4xl">
+                    <div className="flex items-center justify-between pb-4">
+                        <a
+                            href="/playground"
+                            className="flex items-center gap-3 text-black dark:text-white"
+                        >
+                            <img src="./images/logo.svg" alt="Wipple Playground" className="h-10" />
+                            <h1 className="font-semibold">Wipple Playground</h1>
                         </a>
 
-                        <a target="_blank" href="https://github.com/wipplelang/wipple">
-                            GitHub
-                        </a>
+                        <div className="flex gap-4 text-gray-500 dark:text-gray-400">
+                            <a href="?lesson=learn/toc">Learn</a>
+
+                            <a target="_blank" href="/guide">
+                                Guide
+                            </a>
+
+                            <a target="_blank" href="https://github.com/wipplelang/wipple">
+                                GitHub
+                            </a>
+                        </div>
                     </div>
-                </div>
 
-                <DndContext
-                    sensors={sensors}
-                    collisionDetection={closestCenter}
-                    onDragEnd={(event) => {
-                        setActiveId(undefined);
-                        const { active, over } = event;
+                    <div className="flex flex-col flex-1">
+                        <DndContext
+                            sensors={sensors}
+                            collisionDetection={closestCenter}
+                            onDragEnd={(event) => {
+                                setActiveId(undefined);
+                                const { active, over } = event;
 
-                        if (active.id !== over?.id) {
-                            setSections((items) => {
-                                const oldIndex = items.findIndex((s) => s.id === active.id);
-                                const newIndex = items.findIndex((s) => s.id === over?.id);
+                                if (active.id !== over?.id) {
+                                    setSections((items) => {
+                                        const oldIndex = items.findIndex((s) => s.id === active.id);
+                                        const newIndex = items.findIndex((s) => s.id === over?.id);
 
-                                return arrayMove(items, oldIndex, newIndex);
-                            });
-                        }
-                    }}
-                    onDragStart={(event) => {
-                        setActiveId(event.active.id as string);
-                    }}
-                    autoScroll
-                >
-                    <SortableContext items={sections} strategy={verticalListSortingStrategy}>
-                        {sections.map((section, index) => (
-                            <SortableItem
-                                key={section.id}
-                                id={section.id}
-                                onPressAdd={(type) => {
-                                    const newSections = [...sections];
-                                    newSections.splice(index + 1, 0, {
-                                        id: nanoid(8),
-                                        type,
-                                        value: "",
-                                        locked: type === "text" ? false : undefined,
+                                        return arrayMove(items, oldIndex, newIndex);
                                     });
-                                    setSections(newSections);
-                                }}
-                                onPressRemove={
-                                    sections.length > 1
-                                        ? async () => {
-                                              const newSections = [...sections];
-                                              newSections.splice(index, 1);
-                                              setSections(newSections);
-                                          }
-                                        : undefined
                                 }
-                                lock={
-                                    section.type === "text"
-                                        ? {
-                                              isLocked: section.locked ?? false,
-                                              onChangeLocked: (locked) => {
-                                                  const newSections = [...sections];
-                                                  newSections.splice(index, 1, {
-                                                      ...section,
-                                                      locked,
-                                                  });
-                                                  setSections(newSections);
-                                              },
-                                          }
-                                        : undefined
-                                }
-                                lint={
-                                    section.type === "code"
-                                        ? {
-                                              lintEnabled: section.lint ?? true,
-                                              onChangeLintEnabled: (lint) => {
-                                                  const newSections = [...sections];
-                                                  newSections.splice(index, 1, {
-                                                      ...section,
-                                                      lint,
-                                                  });
-                                                  setSections(newSections);
-                                              },
-                                          }
-                                        : undefined
-                                }
+                            }}
+                            onDragStart={(event) => {
+                                setActiveId(event.active.id as string);
+                            }}
+                            autoScroll
+                        >
+                            <SortableContext
+                                items={sections}
+                                strategy={verticalListSortingStrategy}
                             >
-                                <SectionContainer
-                                    section={section}
-                                    autoFocus={index === 0}
-                                    onChange={(section) => {
-                                        const newSections = [...sections];
-                                        newSections.splice(index, 1, section);
-                                        setSections(newSections);
-                                    }}
-                                />
-                            </SortableItem>
-                        ))}
-                    </SortableContext>
+                                {sections.map((section, index) => (
+                                    <SortableItem
+                                        key={section.id}
+                                        id={section.id}
+                                        onPressAdd={(type) => {
+                                            const newSections = [...sections];
+                                            newSections.splice(index + 1, 0, {
+                                                id: nanoid(8),
+                                                type,
+                                                value: "",
+                                                locked: type === "text" ? false : undefined,
+                                            });
+                                            setSections(newSections);
+                                        }}
+                                        onPressRemove={
+                                            sections.length > 1
+                                                ? async () => {
+                                                      const newSections = [...sections];
+                                                      newSections.splice(index, 1);
+                                                      setSections(newSections);
+                                                  }
+                                                : undefined
+                                        }
+                                        lock={
+                                            section.type === "text"
+                                                ? {
+                                                      isLocked: section.locked ?? false,
+                                                      onChangeLocked: (locked) => {
+                                                          const newSections = [...sections];
+                                                          newSections.splice(index, 1, {
+                                                              ...section,
+                                                              locked,
+                                                          });
+                                                          setSections(newSections);
+                                                      },
+                                                  }
+                                                : undefined
+                                        }
+                                        lint={
+                                            section.type === "code"
+                                                ? {
+                                                      lintEnabled: section.lint ?? true,
+                                                      onChangeLintEnabled: (lint) => {
+                                                          const newSections = [...sections];
+                                                          newSections.splice(index, 1, {
+                                                              ...section,
+                                                              lint,
+                                                          });
+                                                          setSections(newSections);
+                                                      },
+                                                  }
+                                                : undefined
+                                        }
+                                    >
+                                        <SectionContainer
+                                            section={section}
+                                            autoFocus={index === 0}
+                                            settings={settings}
+                                            onChange={(section) => {
+                                                const newSections = [...sections];
+                                                newSections.splice(index, 1, section);
+                                                setSections(newSections);
+                                            }}
+                                        />
+                                    </SortableItem>
+                                ))}
+                            </SortableContext>
 
-                    <DragOverlay>
-                        {activeId && (
-                            <div className="flex items-center">
-                                <SideMenu />
+                            <DragOverlay>
+                                {activeId && (
+                                    <div className="flex items-center">
+                                        <SideMenu />
 
-                                <SectionContainer
-                                    section={sections.find((s) => s.id === activeId)!}
-                                    autoFocus={false}
-                                    onChange={() => {}}
-                                />
+                                        <SectionContainer
+                                            section={sections.find((s) => s.id === activeId)!}
+                                            autoFocus={false}
+                                            settings={settings}
+                                            onChange={() => {}}
+                                        />
+                                    </div>
+                                )}
+                            </DragOverlay>
+                        </DndContext>
+
+                        <div className="flex my-5 gap-4">
+                            <div className="flex-1">
+                                {previousPage && (
+                                    <a href={previousPage.link}>
+                                        <div
+                                            className="p-4 rounded-md border-sky-100 dark:border-sky-900 text-sky-500"
+                                            style={{ borderWidth: 1 }}
+                                        >
+                                            <div>
+                                                <ArrowBackIcon className="-ml-1 mb-2" />
+                                            </div>
+                                            {previousPage.name}
+                                        </div>
+                                    </a>
+                                )}
                             </div>
-                        )}
-                    </DragOverlay>
-                </DndContext>
 
-                <div className="flex my-5 gap-4">
-                    <div className="flex-1">
-                        {previousPage && (
-                            <a href={previousPage.link}>
-                                <div
-                                    className="p-4 rounded-md border-sky-100 dark:border-sky-900 text-sky-500"
-                                    style={{ borderWidth: 1 }}
-                                >
-                                    <div>
-                                        <ArrowBackIcon className="-ml-1 mb-2" />
-                                    </div>
-                                    {previousPage.name}
-                                </div>
-                            </a>
-                        )}
-                    </div>
-
-                    <div className="flex-1">
-                        {nextPage && (
-                            <a href={nextPage.link}>
-                                <div
-                                    className="text-right p-4 rounded-md dark:border-sky-900 border-sky-100 text-sky-500"
-                                    style={{ borderWidth: 1 }}
-                                >
-                                    <div className="ml-auto">
-                                        <ArrowForwardIcon className="-mr-1 mb-2" />
-                                    </div>
-                                    {nextPage.name}
-                                </div>
-                            </a>
-                        )}
+                            <div className="flex-1">
+                                {nextPage && (
+                                    <a href={nextPage.link}>
+                                        <div
+                                            className="text-right p-4 rounded-md dark:border-sky-900 border-sky-100 text-sky-500"
+                                            style={{ borderWidth: 1 }}
+                                        >
+                                            <div className="ml-auto">
+                                                <ArrowForwardIcon className="-mr-1 mb-2" />
+                                            </div>
+                                            {nextPage.name}
+                                        </div>
+                                    </a>
+                                )}
+                            </div>
+                        </div>
                     </div>
                 </div>
+            </div>
 
-                <div className="mb-4 text-center text-gray-400 dark:text-gray-500">
-                    Made by{" "}
-                    <a
-                        target="_blank"
-                        href="https://gramer.dev"
-                        className="text-gray-500 dark:text-gray-400"
-                    >
-                        Wilson Gramer
-                    </a>
+            <div className="mx-auto flex flex-col gap-4 w-full max-w-4xl px-6 pb-4">
+                <div className="w-full h-8 -mt-8 z-50 bg-gradient-to-t from-white dark:from-gray-900 to-transparent"></div>
+
+                <div className="flex items-center justify-between w-full text-sm">
+                    <div className="flex items-center gap-4">
+                        <button
+                            className={`px-1.5 py-0.5 rounded-md ${
+                                settings.beginner
+                                    ? "bg-blue-500 text-white"
+                                    : "bg-gray-200 dark:bg-gray-400 text-gray-500 dark:text-gray-800"
+                            }`}
+                            onClick={() => {
+                                setSettings((settings) => ({
+                                    ...settings,
+                                    beginner: !settings.beginner,
+                                }));
+                            }}
+                        >
+                            Beginner mode
+                        </button>
+                    </div>
+
+                    <div className="text-center text-gray-400 dark:text-gray-500">
+                        Made by{" "}
+                        <a
+                            target="_blank"
+                            href="https://gramer.dev"
+                            className="text-gray-500 dark:text-gray-400"
+                        >
+                            Wilson Gramer
+                        </a>
+                    </div>
                 </div>
             </div>
         </main>
@@ -459,6 +509,7 @@ const SortableItem = (props: {
 const SectionContainer = (props: {
     section: Section;
     autoFocus: boolean;
+    settings: Settings;
     onChange: (section: Section) => void;
 }) => {
     let content: JSX.Element;
@@ -470,6 +521,7 @@ const SectionContainer = (props: {
                     code={props.section.value}
                     lint={props.section.lint ?? true}
                     autoFocus={props.autoFocus}
+                    settings={props.settings}
                     onChange={(code) => {
                         props.onChange({
                             ...props.section,
