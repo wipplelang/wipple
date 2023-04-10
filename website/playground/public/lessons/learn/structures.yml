@@ -1,0 +1,72 @@
+sections:
+  - id: 6ovXgASj
+    type: text
+    value: |-
+      # Structures
+
+      So far, we've been writing programs that deal with "simple" data — numbers, text, functions, and so on. Now, we'll learn how to model complex data using **structures**!
+
+      This is a larger program that builds upon each example, so follow along by reading the comments in the code!
+    locked: true
+  - id: MRVKlCoP
+    type: code
+    value: |-
+      -- Let's start by modeling a `Person`. We can create our own structure type like
+      -- so:
+
+      Person : type {
+          name :: Text
+          age :: Number
+      }
+
+      -- Now let's actually create a `Person` value:
+
+      bob : Person {
+          name : "Bob"
+          age : 30
+      }
+
+      -- To retrieve the `name` and the `age` from `bob`, we can use destructuring:
+
+      { name age } : bob
+
+      show name -- Bob
+      show age -- 30
+
+      -- You can use destructuring inside functions, too!
+
+      describe :: Person -> Text
+      describe : { name age } -> format "_ is _ years old" name age
+
+      show (describe bob) -- Bob is 30 years old
+  - id: JqK0Jmzg
+    type: text
+    value: How about a more complicated example? Let's add in type functions!
+    locked: true
+  - id: Z0Fc_ffR
+    type: code
+    value: |-
+      Pair : A B => type {
+          first :: A
+          second :: B
+      }
+
+      my-pair :: Pair (Pair Text Number) Number
+      my-pair : Pair {
+          first : Pair {
+              first : "abc"
+              second : 1
+          }
+          second : 2
+      }
+  - id: H2WuiY_L
+    type: text
+    value: |2-
+      Let's conclude our journey with types by talking about **traits**!
+    locked: true
+previous:
+  name: Type functions
+  link: ?lesson=learn/type-functions
+next:
+  name: Traits
+  link: ?lesson=learn/traits

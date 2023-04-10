@@ -509,9 +509,9 @@ export const CodeEditor = (props: CodeEditorProps) => {
         ];
 
         const colors: string[][] = [
+            ["bg-blue-500", "dark:bg-blue-400"],
             ["bg-red-500", "dark:bg-red-400"],
             ["bg-green-500", "dark:bg-green-400"],
-            ["bg-blue-500", "dark:bg-blue-400"],
             ["bg-yellow-500", "dark:bg-yellow-400"],
         ];
 
@@ -532,12 +532,10 @@ export const CodeEditor = (props: CodeEditorProps) => {
         const stack: string[][] = [];
         for (const node of nodes) {
             let color: string[] | undefined;
-            if ([...node.innerText].find((c) => closingBrackets[c])) {
+            if (closingBrackets[node.innerText]) {
                 color = colors[stack.length % colors.length];
                 stack.push(color);
-            } else if (
-                [...node.innerText].find((c) => Object.values(closingBrackets).includes(c))
-            ) {
+            } else if (Object.values(closingBrackets).includes(node.innerText)) {
                 color = stack[stack.length - 1];
                 stack.pop();
             } else {

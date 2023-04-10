@@ -1,0 +1,92 @@
+sections:
+  - id: Gi1J6phe
+    type: text
+    value: |-
+      # Working with lists
+
+      Lists are another useful tool in programming. Follow along with the example below!
+    locked: true
+  - id: MwMd7wQO
+    type: code
+    value: |-
+      -- Let's say you're hosting a party and want to spread the word:
+
+      Contact : type {
+      	name :: Text
+      	busy :: Boolean
+      }
+
+      party-time :: Contact -> ()
+      party-time : { name busy } ->
+      	if (not busy) -- don't alert the contact if they're busy
+      	(show (format "Hi _, you're invited to my party!" name))
+
+      -- We could start by alerting everyone we know:
+
+      show "Example 1:"
+
+      alice : Contact {
+      	name : "Alice"
+      	busy : False
+      }
+
+      bob : Contact {
+      	name : "Bob"
+      	busy : True
+      }
+
+      charlie : Contact {
+      	name : "Charlie"
+      	busy : False
+      }
+
+      party-time alice -- Hi Alice, you're invited to my party!
+      party-time bob -- no output
+      party-time charlie -- Hi Charlie, you're invited to my party!
+
+      -- But there's a problem with this example: what if there are more contacts?
+      -- We'd have to add another call to `party-time` — as many as there are contacts!
+      -- Even worse, what if we don't know how many contacts there are as we're writing
+      -- the program? Luckily, lists make it easy to deal with changing amounts of
+      -- information.
+
+      -- Let's create our first list using the `list` function:
+
+      contacts : list alice bob charlie
+
+      -- Now we can use the `each` function to call `party-time` for each contact in
+      -- the list:
+
+      show "Example 2:"
+
+      each party-time contacts
+
+      -- Great! There's one more thing we can do to clean up this code a little bit --
+      -- instead of having the `if` condition inside `party-time`, we can filter out
+      -- contacts in the list that are busy. To accomplish this, we can use the `filter`
+      -- function:
+
+      party-time-v2 :: Contact -> ()
+      party-time-v2 : { name } -> show (format "Hi _, you're invited to my party!" name)
+
+      show "Example 3:"
+      each party-time-v2 (filter ({ busy } -> not busy) contacts)
+
+      -- Hmm, this code is a bit hard to read. Fear not — Wipple has another construct
+      -- to make it easier to compose functions like this! Any time you see `f x`, you
+      -- can replace it with `x . f`. This is where partial application shines!
+
+      show "Example 4:"
+
+      contacts
+      	. filter ({ busy } -> not busy)
+      	. each party-time-v2
+
+      -- Much better! Take a look below and you'll see that all four examples are
+      -- equivalent!
+previous:
+  name: Tuples
+  link: ?lesson=learn/tuples
+next:
+  name: Customizing the Playground
+  link: ?lesson=learn/customizing-the-playground

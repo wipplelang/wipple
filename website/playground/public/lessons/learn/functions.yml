@@ -1,0 +1,97 @@
+sections:
+  - id: _8Vt72QH
+    type: text
+    value: |-
+      ## Functions
+
+      Wipple is what's called a **functional** programming language. That means functions are used everywhere in Wipple code!
+
+      You probably remember from math that a function $f(x) = 3x$ takes an input ($x$) and returns an output ($3x$). It works the same way in Wipple! You just write it a little differently:
+
+      ```
+      f : x -> 3 * x
+      ```
+
+      The arrow is pronounced _"becomes"_, so the code above is read as _"f is when x becomes 3 times x"_. The process of _x_ becoming 3 times _x_ is a function!
+
+      Let's create a function to add two numbers, `a` and `b`:
+
+      ```
+      add : a -> b -> a + b
+      ```
+
+      Notice that functions only accept a single input. If you want multiple inputs, you need multiple functions (arrows)! The above code can be rewritten like so:
+
+      ```
+      add : a -> (b -> a + b)
+      ```
+
+      Now how do we use functions? It's simple — just write the name of the function, followed by its inputs:
+    locked: true
+  - id: u-Xv7_7e
+    type: code
+    value: |-
+      add : a -> b -> a + b
+      add 1 2
+  - id: jJnzNzGz
+    type: text
+    value: And of course, we need to `show` the answer! (Guess what, `show` is a function too!)
+    locked: true
+  - id: iVWTV2JQ
+    type: code
+    value: |-
+      add : a -> b -> a + b
+      add 1 2
+      show (add 1 2)
+  - id: BSOyOP4J
+    type: text
+    value: If you're familiar with programming already, you might ask what happens if we only provide a single input. In Wipple, you just get back the inner function!
+    locked: true
+  - id: 6J0OPPn-
+    type: code
+    value: |-
+      add : a -> b -> a + b
+      add 1
+  - id: oRQnuZR4
+    type: text
+    value: 'Here, `a` is 1. What''s `b`? We give `b` a value next:'
+    locked: true
+  - id: iCpVmjjG
+    type: code
+    value: |-
+      add : a -> b -> a + b
+      (add 1) 2
+  - id: JIOitSBK
+    type: text
+    value: 'Notice this is the same code as before — `add 1 2`! Now for the super cool part — we can give `add 1` a name, and use it as its own function:'
+    locked: true
+  - id: d6OuP_p9
+    type: code
+    value: |-
+      add : a -> b -> a + b
+      increment : add 1
+      show (increment 42)
+  - id: 4uhqbM4d
+    type: text
+    value: |-
+      You should see `43` on the screen!
+
+      Before we move on, let's introduce one more function, named `format`. `format` accepts a piece of text containing `_`s, and replaces all of the `_`s with the inputs you provide. We can use `format` to build our own `greet` function!
+    locked: true
+  - id: XDC299WR
+    type: code
+    value: |-
+      greet : name -> format "Hello, _!" name
+
+      show (greet "Alice")
+      show (greet "Bob")
+  - id: dzZ7ereg
+    type: text
+    value: Try `greet`-ing yourself!
+    locked: true
+previous:
+  name: So how does Wipple actually work?
+  link: ?lesson=learn/so-how-does-wipple-actually-work
+next:
+  name: Types
+  link: ?lesson=learn/types

@@ -1,0 +1,87 @@
+sections:
+  - id: JrVs5wzW
+    type: text
+    value: |-
+      # Graphing functions
+
+      Next, we'll learn how to plot mathematical functions on a graph! The syntax is very similar to turtle graphics — let's start by `use`-ing the `graphing` file:
+    locked: true
+  - id: OnKm7Rv9
+    type: code
+    value: use "graphing.wpl"
+  - id: fMuka6iQ
+    type: text
+    value: '`graphing.wpl` gives us access to `with-graph`, which we can use just like `with-turtle`. Let''s plot a simple example!'
+    locked: true
+  - id: ru4E_6hT
+    type: code
+    value: |-
+      use "graphing.wpl"
+
+      with-graph (graph -> {
+      	graph . plot (x -> x ^ 3)
+      })
+  - id: 9bhXSLxB
+    type: text
+    value: By default, the graph looks like the above. But we can change the bounds as well as the color!
+    locked: true
+  - id: VpC7Khuj
+    type: code
+    value: |-
+      use "graphing.wpl"
+
+      with-graph (graph -> {
+        graph . min-y 0
+        graph . max-y 100
+        graph . color "blue"
+        graph . plot (x -> x ^ 2)
+      })
+  - id: veRXP0zH
+    type: text
+    value: 'You can also graph multiple functions at the same time, each with its own color:'
+    locked: true
+  - id: 1wPIaNUA
+    type: code
+    value: |-
+      use "graphing.wpl"
+
+      with-graph (graph -> {
+      	graph . color "red"
+      	graph . plot (x -> x)
+
+      	graph . color "green"
+      	graph . plot (x -> x ^ 2)
+
+      	graph . color "blue"
+      	graph . plot (x -> x ^ 3)
+      })
+  - id: DCISESLf
+    type: text
+    value: Of course, we aren't limited to simple functions. We have the full power of Wipple at our disposal!
+    locked: true
+  - id: 5-ZKwSCT
+    type: code
+    value: |-
+      use "graphing.wpl"
+
+      f : n -> when (floor n mod 4) {
+      	0 -> n * -2
+      	1 -> n * -1
+      	2 -> n * 1
+      	3 -> n * 2
+      	_ -> 0
+      }
+
+      with-graph (graph -> {
+      	graph . min-x 0
+      	graph . max-x 50
+      	graph . min-y -100
+      	graph . max-y 100
+      	graph . plot f
+      })
+previous:
+  name: Drawing with turtle graphics
+  link: ?lesson=learn/drawing-with-turtle-graphics
+next:
+  name: Making music
+  link: ?lesson=learn/making-music
