@@ -26,7 +26,12 @@ import PopupState, { bindMenu, bindTrigger } from "material-ui-popup-state";
 import { Menu, MenuItem } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
+import MoreHorizIcon from "@mui/icons-material/MoreHoriz";
+import LinkIcon from "@mui/icons-material/Link";
+import DataObjectIcon from "@mui/icons-material/DataObject";
+import ListAltIcon from "@mui/icons-material/ListAlt";
 import { nanoid } from "nanoid";
+import YAML from "js-yaml";
 import { CodeEditor, TextEditor } from "./components";
 import { useRefState } from "./helpers";
 
@@ -339,6 +344,8 @@ const App = () => {
                         >
                             Beginner mode
                         </button>
+
+                        <OptionsButton sections={sections} />
                     </div>
 
                     <div className="text-center text-gray-400 dark:text-gray-500">
@@ -356,6 +363,49 @@ const App = () => {
         </main>
     );
 };
+
+const OptionsButton = (props: { sections: Section[] }) => (
+    <PopupState variant="popover">
+        {(popupState) => (
+            <>
+                <button {...bindTrigger(popupState)}>
+                    <MoreHorizIcon className="text-gray-500 dark:text-gray-400" />
+                </button>
+
+                <Menu {...bindMenu(popupState)}>
+                    <MenuItem
+                        onClick={async () => {
+                            await navigator.clipboard.writeText(window.location.href);
+                            popupState.close();
+                        }}
+                    >
+                        <LinkIcon sx={{ marginRight: 1 }} /> Copy Link
+                    </MenuItem>
+
+                    <MenuItem
+                        onClick={async () => {
+                            const json = JSON.stringify({ sections: props.sections }, null, 4);
+                            await navigator.clipboard.writeText(json);
+                            popupState.close();
+                        }}
+                    >
+                        <DataObjectIcon sx={{ marginRight: 1 }} /> Copy JSON
+                    </MenuItem>
+
+                    <MenuItem
+                        onClick={async () => {
+                            const yaml = YAML.dump({ sections: props.sections });
+                            await navigator.clipboard.writeText(yaml);
+                            popupState.close();
+                        }}
+                    >
+                        <ListAltIcon sx={{ marginRight: 1 }} /> Copy YAML
+                    </MenuItem>
+                </Menu>
+            </>
+        )}
+    </PopupState>
+);
 
 const SideMenu = (props: {
     grabberProps?: any;
