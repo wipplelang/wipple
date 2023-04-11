@@ -1,0 +1,148 @@
+sections:
+  - id: dOJ4UijU
+    type: text
+    value: >-
+      # Why all the parentheses?
+
+
+      Great job for making it this far in the guide! This section aims to clear
+      up any confusion about where you use parentheses and hopefully make
+      programming in Wipple a bit more intuitive, rather than just following
+      existing, working examples. That's right, in this lesson we're going to be
+      breaking things!
+
+
+      Let's go back to our very first program:
+    locked: true
+  - id: HT3HQD13
+    type: code
+    value: show (2 + 2)
+  - id: GyYh5DKc
+    type: text
+    value: >-
+      Have you ever thought about why we need parentheses around the `2 + 2`?
+      Well, let's see what happens without them:
+    locked: true
+  - id: eIAzvZdS
+    type: code
+    value: show 1 + 2
+  - id: apBrX_2s
+    type: text
+    value: >+
+      Wipple's type system can help us out a lot here. We can see that the left
+      hand side has type `()`, and the right hand side has type `Number`. As you
+      may recall, `()` is the output of `show`!
+
+
+      Operators, like `+` and `->` and `:`, are "greedy"; they try to consume as
+      much input as they can from either side. So writing `show 1 + 2` is
+      equivalent to writing `(show 1) + 2`. But that still doesn't answer the
+      question of why we need the parentheses in the first place.
+
+
+      ## Parentheses and values
+
+
+      The key thing to know is that in Wipple (and most other programming
+      languages), a group of parentheses indicates a _single_ value, where a
+      value is the _result_ of your code (what it produces as output). When
+      Wipple runs our code, it does so from the inside out, left to right. Let's
+      create some functions so we can see what's going on!
+
+    locked: true
+  - id: 73IKXDNR
+    type: code
+    value: "number : n -> {\n\tshow n\n\tn\n}\n\nadd : a -> b -> {\n\tshow \"add\"\n\ta + b\n}\n\nsubtract : a -> b -> {\n\tshow \"subtract\"\n\ta - b\n}\n\nshow (add (subtract (number 5) (number 3)) (number 6))"
+  - id: A9X6yYUN
+    type: text
+    value: >-
+      Before you go any further, try enabling **beginner mode** in the bottom
+      left of the screen. Beginner mode highlights matching parentheses in
+      different colors, so it's easier to see each value. Hopefully the above
+      example is a bit clearer now!
+
+
+      Remember, the key insight is that Wipple evaluates parentheses inside out,
+      left to right, producing a _single value_ for each set of parentheses.
+      Every Wipple function accepts a _single value_ as input and produces a
+      _single value_ as output.
+
+
+      ...but hold on, we learned a long time ago that functions can produce
+      other functions! That's how we can build functions that work with multiple
+      inputs. Well, it turns out that **functions are values too**, just like
+      numbers and text!
+
+
+      Hmm, if functions are values, does that mean we can assign them to
+      variables?
+    locked: true
+  - id: fqV1HFI_
+    type: code
+    value: 'increment : a -> a + 1'
+    lint: false
+  - id: GjrFl7yb
+    type: text
+    value: "That's exactly what we've been doing all along! Many beginners think that functions are \"special\", and when you assign them to a name, you're giving that piece of code a name. That's not true —\_**functions are just values**, and `:` always creates a variable that holds a value. There's no magic going on!\n\nWell functions accept values, right? Can we make functions that output other functions?"
+    locked: true
+  - id: ljCumMX2
+    type: code
+    value: |-
+      add : (a -> (b -> a + b))
+      show ((add 1) 2)
+  - id: baJQv0vS
+    type: text
+    value: "Yes we can —\_we've been doing it all along, too! You don't need the parentheses in this example, but they help reinforce the idea that you're just making a value. The `->` operator behaves the same way as the `+` operator, taking something from the left and the right and producing a value.\n\nAlright, how about functions that take functions as input?"
+    locked: true
+  - id: '-k2S--4P'
+    type: code
+    value: |-
+      call : (function -> (input -> (function input)))
+      increment : (x -> (x + 1))
+      show (call increment 1)
+  - id: WVyWaAcD
+    type: text
+    value: "Woah! If you aren't convinced, try hovering over `call` to see that it accepts a `Number -> Number` as its input! Notice that `Number -> (Number -> Number)`, which accepts two numbers and produces a number, is different from `(Number -> Number) -> Number`, which accepts a single _function_ and produces a number.\n\nYou don't have to give your functions names, either —\_just pass them directly:"
+    locked: true
+  - id: ojJqcr_1
+    type: code
+    value: |-
+      call : (function -> (input -> (function input)))
+      show (call (x -> (x + 1)) 1)
+  - id: COj4AhuH
+    type: text
+    value: >-
+      When you pass a function to another function, it's common to use the `.`
+      notation so that the second, non-function input is listed first:
+    locked: true
+  - id: LCOPPr20
+    type: code
+    value: |-
+      call : (function -> (input -> (function input)))
+      1 . call (x -> (x + 1)) . show
+  - id: 2UvMfaeh
+    type: text
+    value: >-
+      So to recap, when we write `show (1 + 2)`, we're telling Wipple to take `1
+      + 2` and package it up into a _single value_, which we then pass to
+      `show`. `(show 1) + 2`, on the other hand, doesn't make any sense because
+      `show 1` just outputs to the screen, producing the value `()`, which we
+      can't meaningfully add to a number.
+
+
+      In the next few lessons, you'll start to see more complex Wipple code that
+      passes functions to other functions. Before you press the right arrow, try
+      playing around with parentheses, functions and values in the space below.
+      Make sure you're really satisfied with this idea that everything is just a
+      value. And you can always use beginner mode to see how your code is
+      structured beneath all those parentheses!
+    locked: true
+  - id: WopgW9Eu
+    type: code
+    value: ''
+previous:
+  name: Getting input from the user
+  link: ?lesson=learn/getting-input-from-the-user
+next:
+  name: Drawing with turtle graphics
+  link: ?lesson=learn/drawing-with-turtle-graphics

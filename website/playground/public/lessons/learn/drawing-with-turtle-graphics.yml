@@ -200,8 +200,8 @@ sections:
       	})
       })
 previous:
-  name: Getting input from the user
-  link: ?lesson=learn/getting-input-from-the-user
+  name: Why all the parentheses?
+  link: ?lesson=learn/why-all-the-parentheses
 next:
   name: Graphing functions
   link: ?lesson=learn/graphing-functions
