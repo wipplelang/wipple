@@ -357,6 +357,14 @@ const App = () => {
                         >
                             Wilson Gramer
                         </a>
+                        {"  •  "}
+                        <a
+                            target="_blank"
+                            href="https://forms.gle/ijfLtvJ5FT6heJsD7"
+                            className="text-gray-500 dark:text-gray-400"
+                        >
+                            Feedback
+                        </a>
                     </div>
                 </div>
             </div>
