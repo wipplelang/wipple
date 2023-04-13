@@ -955,11 +955,9 @@ export const CodeEditor = (props: CodeEditorProps) => {
                                                         <div />
                                                         <div />
                                                     </div>
-                                                ) : (Array.isArray(output) &&
-                                                      output.find(
-                                                          (item) => item.type !== "output"
-                                                      )) ||
-                                                  uiElements.current.length ? (
+                                                ) : output.items.find(
+                                                      (item) => item.type !== "output"
+                                                  ) || uiElements.current.length ? (
                                                     <div className="mt-4">
                                                         <Button
                                                             variant="contained"
