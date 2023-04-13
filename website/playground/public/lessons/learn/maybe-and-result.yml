@@ -119,8 +119,8 @@ sections:
       show (single-digit 20)
       show (unwrap (single-digit -42))
 previous:
-  name: Enumerations and pattern matching
-  link: ?lesson=learn/enumerations-and-pattern-matching
+  name: Why all the parentheses?
+  link: ?lesson=learn/why-all-the-parentheses
 next:
   name: Tuples
   link: ?lesson=learn/tuples

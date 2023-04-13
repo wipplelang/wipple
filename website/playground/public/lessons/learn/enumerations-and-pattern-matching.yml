@@ -124,11 +124,11 @@ sections:
     value: |-
       Types that provide a fixed set of possibilities are called **enumerations** (or "enums" for short), and each possibility is called a **variant**. Try making some of your own enums!
 
-      Wipple's enums have one more trick up their sleeve... go to the next section when you're ready!
+      Wipple's enums have one more trick up their sleeve, but first, let's do some review!
     locked: true
 previous:
   name: Traits
   link: ?lesson=learn/logic
 next:
-  name: Maybe and Result
-  link: ?lesson=learn/maybe-and-result
+  name: Why all the parentheses?
+  link: ?lesson=learn/why-all-the-parentheses

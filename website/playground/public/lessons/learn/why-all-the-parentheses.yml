@@ -5,11 +5,11 @@ sections:
       # Why all the parentheses?
 
 
-      Great job for making it this far in the guide! This section aims to clear
-      up any confusion about where you use parentheses and hopefully make
-      programming in Wipple a bit more intuitive, rather than just following
-      existing, working examples. That's right, in this lesson we're going to be
-      breaking things!
+      Great job for making it this far in the guide! The lessons after this one
+      let you do some really cool things with Wipple, but the code is also a bit
+      more complex. Before you continue, this section aims to clear up any
+      confusion about where you use parentheses and hopefully make programming
+      in Wipple a bit more intuitive.
 
 
       Let's go back to our very first program:
@@ -25,18 +25,19 @@ sections:
     locked: true
   - id: eIAzvZdS
     type: code
-    value: show 1 + 2
+    value: show 2 + 2
   - id: apBrX_2s
     type: text
     value: >+
       Wipple's type system can help us out a lot here. We can see that the left
-      hand side has type `()`, and the right hand side has type `Number`. As you
-      may recall, `()` is the output of `show`!
+      hand side has type `()`, and the right hand side has type `Number`. (As
+      you may recall, `()` is the output of `show`!) You can't add `()` to a
+      number — it just doesn't make sense!
 
 
       Operators, like `+` and `->` and `:`, are "greedy"; they try to consume as
-      much input as they can from either side. So writing `show 1 + 2` is
-      equivalent to writing `(show 1) + 2`. But that still doesn't answer the
+      much input as they can from either side. So writing `show 2 + 2` is
+      equivalent to writing `(show 2) + 2`. But that still doesn't answer the
       question of why we need the parentheses in the first place.
 
 
@@ -112,37 +113,76 @@ sections:
   - id: COj4AhuH
     type: text
     value: >-
-      When you pass a function to another function, it's common to use the `.`
-      notation so that the second, non-function input is listed first:
+      ## Dot notation
+
+
+      Often, functions have a "primary" input, an input that the function
+      operates on. To understand why that's useful, let's turn our attention to
+      the `times` function:
     locked: true
   - id: LCOPPr20
     type: code
-    value: |-
-      call : (function -> (input -> (function input)))
-      1 . call (x -> (x + 1)) . show
+    value: times show 4
+  - id: GxzNP5j9
+    type: text
+    value: "The `times` function works by accepting a function and a number ($n$), and calling that function repeatedly from zero to $n$. It's clear here that the `4` we provided to `times` is the \"primary\" input —\_it's what decides how many times `show` is called! So we can use a `.` to put the `4` in front, like so:"
+    locked: true
+  - id: sx3NBbRJ
+    type: code
+    value: 4 . times show
+  - id: eWc0lxPO
+    type: text
+    value: >-
+      Now it's clear to the reader that we can change the `4` to change how many
+      times `show` is called. If we want to do something more custom, we can
+      provide a function to `times` directly:
+    locked: true
+  - id: gm-KVBxY
+    type: code
+    value: 4 . times (n -> show (format "_ * 2 = _" n (n * 2)))
+  - id: 6Rjk9iBp
+    type: text
+    value: 'Compare that to writing it without using `.` notation:'
+    locked: true
+  - id: SuPJ2W2n
+    type: code
+    value: times (n -> show (format "_ * 2 = _" n (n * 2))) 4
+  - id: Gq4BevS3
+    type: text
+    value: >-
+      Now the `4` is all the way at the end, making it difficult to see how many
+      times our code is run.
+
+
+      It takes some practice to figure out when to use `.` notation and when to
+      skip it, but in general, just do whatever is more readable to you!
+
+
+      One last note: if you just want to run some code a specific number of
+      times, you don't have to use the `n` provided to you by `times`. Instead,
+      you can ignore it by using `_` (just like in `when`):
+    locked: true
+  - id: Y4YREAkB
+    type: code
+    value: 4 . times (_ -> show "Hello, world!")
   - id: 2UvMfaeh
     type: text
     value: >-
-      So to recap, when we write `show (1 + 2)`, we're telling Wipple to take `1
-      + 2` and package it up into a _single value_, which we then pass to
-      `show`. `(show 1) + 2`, on the other hand, doesn't make any sense because
-      `show 1` just outputs to the screen, producing the value `()`, which we
-      can't meaningfully add to a number.
+      You will see this pattern often in future lessons!
 
 
-      In the next few lessons, you'll start to see more complex Wipple code that
-      passes functions to other functions. Before you press the right arrow, try
-      playing around with parentheses, functions and values in the space below.
-      Make sure you're really satisfied with this idea that everything is just a
-      value. And you can always use beginner mode to see how your code is
-      structured beneath all those parentheses!
+      Before you press the right arrow, try playing around with parentheses,
+      functions and values in the space below. Make sure you're really satisfied
+      with this idea that everything is just a value. And you can always use
+      beginner mode to see how your code is structured beneath all those
+      parentheses!
     locked: true
   - id: WopgW9Eu
     type: code
     value: ''
 previous:
-  name: Getting input from the user
-  link: ?lesson=learn/getting-input-from-the-user
+  name: Enumerations and pattern matching
+  link: ?lesson=learn/enumerations-and-pattern-matching
 next:
-  name: Drawing with turtle graphics
-  link: ?lesson=learn/drawing-with-turtle-graphics
+  name: Maybe and Result
+  link: ?lesson=learn/maybe-and-result

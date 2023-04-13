@@ -99,5 +99,5 @@ previous:
   name: Customizing the Playground
   link: ?lesson=learn/customizing-the-playground
 next:
-  name: Why all the parentheses?
-  link: ?lesson=learn/why-all-the-parentheses
+  name: Drawing with turtle graphics
+  link: ?lesson=learn/drawing-with-turtle-graphics
