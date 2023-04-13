@@ -1,0 +1,21 @@
+code: |
+    (show) :: Text -> ()
+    1 + 2
+    show (1 + 2)
+
+
+output: |
+    3
+
+diagnostics: |
+    warning: this expression doesn't do anything
+      ┌─ test:1:2
+      │
+    1 │ (show) :: Text -> ()
+      │  ^^^^ did you mean to use the result, eg. `show` it?
+
+    warning: this expression doesn't do anything
+      ┌─ test:2:1
+      │
+    2 │ 1 + 2
+      │ ^^^^^ did you mean to use the result, eg. `show` it?

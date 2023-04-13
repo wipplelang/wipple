@@ -36,7 +36,7 @@ pub enum Progress {
 
 #[derive(Debug, Clone, Default)]
 pub struct Program {
-    pub items: BTreeMap<ItemId, (Option<ConstantId>, Expression)>,
+    pub items: BTreeMap<ItemId, (Option<(Option<TraitId>, ConstantId)>, Expression)>,
     pub entrypoint: Option<ItemId>,
     pub declarations: Declarations,
     pub exported: HashMap<InternedString, lower::AnyDeclaration>,
@@ -524,14 +524,14 @@ struct Typechecker {
     generic_constants: im::HashMap<ConstantId, (bool, lower::Expression)>,
     specialized_constants: im::HashMap<ConstantId, ConstantId>,
     item_queue: im::Vector<QueuedItem>,
-    items: im::HashMap<ItemId, (Option<ConstantId>, Expression)>,
+    items: im::HashMap<ItemId, (Option<(Option<TraitId>, ConstantId)>, Expression)>,
     entrypoint_expr: Option<UnresolvedExpression>,
     errors: im::Vector<Error>,
 }
 
 #[derive(Debug, Clone)]
 struct QueuedItem {
-    generic_id: Option<ConstantId>,
+    generic_id: Option<(Option<TraitId>, ConstantId)>,
     id: ItemId,
     expr: UnresolvedExpression,
     info: MonomorphizeInfo,
@@ -932,6 +932,7 @@ impl Typechecker {
     fn typecheck_constant_expr(
         &mut self,
         is_instance: bool,
+        trait_id: Option<TraitId>,
         id: ConstantId,
         use_span: SpanList,
         use_ty: engine::UnresolvedType,
@@ -1088,7 +1089,7 @@ impl Typechecker {
             }
 
             self.item_queue.push_back(QueuedItem {
-                generic_id: Some(candidate),
+                generic_id: Some((trait_id, candidate)),
                 id: monomorphized_id,
                 expr: generic_expr,
                 info,
@@ -2021,6 +2022,7 @@ impl Typechecker {
                 MonomorphizedExpressionKind::UnresolvedConstant(generic_id) => {
                     let id = self.typecheck_constant_expr(
                         false,
+                        None,
                         generic_id,
                         expr.span,
                         expr.ty.clone(),
@@ -2173,6 +2175,7 @@ impl Typechecker {
                     let monomorphized_id = match instance_id {
                         Some(id) => self.typecheck_constant_expr(
                             true,
+                            Some(tr),
                             id,
                             expr.span,
                             expr.ty.clone(),

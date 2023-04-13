@@ -33,6 +33,7 @@ sections:
     value: |-
       increment : (a -> a + 1) :: (Number -> Number)
       increment "2"
+    lint: false
   - id: e4vdoSzv
     type: text
     value: |-

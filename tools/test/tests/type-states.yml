@@ -16,16 +16,16 @@ code: |
     land : just Drone
 
 
-    my-drone . take-off . land -- works!
+    _ : my-drone . take-off . land -- works!
 
-    my-drone . land -- cannot land because drone is already idle
+    _ : my-drone . land -- cannot land because drone is already idle
 
 
 output: |
 
 diagnostics: |
     error: mismatched types
-       ┌─ test:20:1
+       ┌─ test:20:5
        │
-    20 │ my-drone . land -- cannot land because drone is already idle
-       │ ^^^^^^^^ expected `Drone Hovering`, but found `Drone Idle`
+    20 │ _ : my-drone . land -- cannot land because drone is already idle
+       │     ^^^^^^^^ expected `Drone Hovering`, but found `Drone Idle`

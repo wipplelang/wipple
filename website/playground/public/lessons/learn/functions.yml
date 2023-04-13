@@ -35,13 +35,12 @@ sections:
       add 1 2
   - id: jJnzNzGz
     type: text
-    value: And of course, we need to `show` the answer! (Guess what, `show` is a function too!)
+    value: And as helpfully suggested, we need to `show` the answer! (Guess what, `show` is a function too!)
     locked: true
   - id: iVWTV2JQ
     type: code
     value: |-
       add : a -> b -> a + b
-      add 1 2
       show (add 1 2)
   - id: BSOyOP4J
     type: text
@@ -52,6 +51,7 @@ sections:
     value: |-
       add : a -> b -> a + b
       add 1
+    lint: false
   - id: oRQnuZR4
     type: text
     value: 'Here, `a` is 1. What''s `b`? We give `b` a value next:'
@@ -61,6 +61,7 @@ sections:
     value: |-
       add : a -> b -> a + b
       (add 1) 2
+    lint: false
   - id: JIOitSBK
     type: text
     value: 'Notice this is the same code as before — `add 1 2`! Now for the super cool part — we can give `add 1` a name, and use it as its own function:'

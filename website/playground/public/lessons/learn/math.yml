@@ -9,6 +9,7 @@ sections:
   - id: WSkWDvFh
     type: code
     value: 2 + 2
+    lint: false
   - id: 1U5cPJ-D
     type: text
     value: |-

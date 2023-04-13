@@ -7,7 +7,7 @@ code: |
     A : type
     instance (T A) : just "A"
 
-    foo A
+    _ : foo A
 
 output: |
 

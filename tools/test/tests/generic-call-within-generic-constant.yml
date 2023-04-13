@@ -5,7 +5,7 @@ code: |
     g :: B => B -> B
     g : x -> f x
 
-    g 42
+    _ : g 42
 
 output: |
 

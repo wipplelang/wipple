@@ -93,18 +93,8 @@ impl Expression {
             }
             ExpressionKind::Constant(item) | ExpressionKind::ExpandedConstant(item) => {
                 match file.items.get(item) {
-                    Some((Some(id), _)) => {
-                        if let Some(tr) =
-                            file.declarations
-                                .instances
-                                .iter()
-                                .find_map(|(tr, instances)| {
-                                    instances
-                                        .get(id)
-                                        .map_or(false, |instance| instance.item == *item)
-                                        .then_some(tr)
-                                })
-                        {
+                    Some((Some((tr, id)), _)) => {
+                        if let Some(tr) = tr {
                             let name = file
                                 .declarations
                                 .traits

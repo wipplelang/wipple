@@ -190,7 +190,7 @@ pub mod propagate {
                             None => return,
                         };
 
-                        if body.is_pure(&self, &mut Vec::new()) {
+                        if body.is_pure(&self) {
                             propagated = true;
                             *expr = body.clone();
 
@@ -347,7 +347,7 @@ pub mod inline {
                     // Inline variables
                     expr.traverse_mut(|expr| {
                         if let ExpressionKind::When(input, arms) = &mut expr.kind {
-                            if input.is_pure(&self, &mut Vec::new()) && arms.len() == 1 {
+                            if input.is_pure(&self) && arms.len() == 1 {
                                 let input = input.as_ref().clone();
 
                                 if let PatternKind::Variable(var) =
@@ -445,14 +445,18 @@ mod util {
             count
         }
 
-        pub fn is_pure(&self, program: &Program, stack: &mut Vec<ItemId>) -> bool {
+        pub fn is_pure(&self, program: &Program) -> bool {
+            self.is_pure_inner(program, false, &mut Vec::new())
+        }
+
+        fn is_pure_inner(
+            &self,
+            program: &Program,
+            function_call: bool,
+            stack: &mut Vec<ItemId>,
+        ) -> bool {
             match &self.kind {
-                ExpressionKind::Error(trace) => {
-                    panic!(
-                        "found error expression in program: {:?}",
-                        trace.clone().into_inner()
-                    )
-                }
+                ExpressionKind::Error(_) => false,
                 ExpressionKind::Marker
                 | ExpressionKind::Text(_)
                 | ExpressionKind::Number(_)
@@ -462,52 +466,58 @@ mod util {
                 | ExpressionKind::Signed(_)
                 | ExpressionKind::Unsigned(_)
                 | ExpressionKind::Float(_)
-                | ExpressionKind::Double(_)
-                | ExpressionKind::Function(_, _, _)
-                | ExpressionKind::Variable(_) => true,
-                ExpressionKind::Block(exprs, _) => {
-                    exprs.iter().all(|expr| expr.is_pure(program, stack))
+                | ExpressionKind::Double(_) => true,
+                ExpressionKind::Variable(_) => !function_call,
+                ExpressionKind::Function(_, expr, _) => {
+                    !function_call || expr.is_pure_inner(program, function_call, stack)
                 }
-                ExpressionKind::End(expr) => expr.is_pure(program, stack),
+                ExpressionKind::Block(exprs, _) => exprs
+                    .iter()
+                    .all(|expr| expr.is_pure_inner(program, false, stack)),
+                ExpressionKind::End(_) => false,
                 ExpressionKind::Call(func, input) => {
-                    func.is_pure(program, stack) && input.is_pure(program, stack)
+                    func.is_pure_inner(program, true, stack)
+                        && input.is_pure_inner(program, false, stack)
                 }
                 ExpressionKind::When(expr, arms) => {
-                    expr.is_pure(program, stack)
+                    expr.is_pure_inner(program, false, stack)
                         && arms
                             .iter()
                             .map(|arm| &arm.body)
-                            .all(|expr| expr.is_pure(program, stack))
+                            .all(|expr| expr.is_pure_inner(program, false, stack))
                 }
-                ExpressionKind::Structure(exprs) => {
-                    exprs.iter().all(|expr| expr.is_pure(program, stack))
-                }
-                ExpressionKind::Variant(_, exprs) => {
-                    exprs.iter().all(|expr| expr.is_pure(program, stack))
-                }
-                ExpressionKind::Tuple(exprs) => {
-                    exprs.iter().all(|expr| expr.is_pure(program, stack))
-                }
+                ExpressionKind::Structure(exprs) => exprs
+                    .iter()
+                    .all(|expr| expr.is_pure_inner(program, false, stack)),
+                ExpressionKind::Variant(_, exprs) => exprs
+                    .iter()
+                    .all(|expr| expr.is_pure_inner(program, false, stack)),
+                ExpressionKind::Tuple(exprs) => exprs
+                    .iter()
+                    .all(|expr| expr.is_pure_inner(program, false, stack)),
                 ExpressionKind::Format(segments, _) => segments
                     .iter()
-                    .all(|(_, expr)| expr.is_pure(program, stack)),
+                    .all(|(_, expr)| expr.is_pure_inner(program, false, stack)),
                 ExpressionKind::Runtime(func, inputs) => {
-                    func.is_pure() && inputs.iter().all(|expr| expr.is_pure(program, stack))
+                    func.is_pure()
+                        && inputs
+                            .iter()
+                            .all(|expr| expr.is_pure_inner(program, false, stack))
                 }
                 ExpressionKind::External(_, _, _) | ExpressionKind::Initialize(_, _) => false,
                 ExpressionKind::Constant(constant) | ExpressionKind::ExpandedConstant(constant) => {
-                    stack.push(*constant);
+                    program.items.get(constant).map_or(false, |(_, body)| {
+                        if stack.contains(constant) {
+                            return false;
+                        }
 
-                    let is_pure = program
-                        .items
-                        .get(constant)
-                        .unwrap()
-                        .1
-                        .is_pure(program, stack);
+                        stack.push(*constant);
 
-                    stack.pop();
+                        let is_pure = body.is_pure_inner(program, function_call, stack);
+                        stack.pop();
 
-                    is_pure
+                        is_pure
+                    })
                 }
             }
         }
@@ -634,7 +644,7 @@ mod util {
                 RuntimeFunction::UnsignedOrdering => true,
                 RuntimeFunction::FloatOrdering => true,
                 RuntimeFunction::DoubleOrdering => true,
-                RuntimeFunction::MakeMutable => false,
+                RuntimeFunction::MakeMutable => true,
                 RuntimeFunction::GetMutable => false,
                 RuntimeFunction::SetMutable => false,
                 RuntimeFunction::MakeEmptyList => true,
