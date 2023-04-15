@@ -326,14 +326,14 @@ const App = () => {
                     <div className="flex items-center gap-4">
                         <button
                             className={`px-1.5 py-0.5 rounded-md ${
-                                settings.beginner
+                                settings.beginner ?? true
                                     ? "bg-blue-500 text-white"
                                     : "bg-gray-200 dark:bg-gray-400 text-gray-500 dark:text-gray-800"
                             }`}
                             onClick={() => {
                                 setSettings((settings) => ({
                                     ...settings,
-                                    beginner: !settings.beginner,
+                                    beginner: !(settings.beginner ?? true),
                                 }));
                             }}
                         >

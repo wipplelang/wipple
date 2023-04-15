@@ -38,6 +38,7 @@ import KeyboardReturn from "@mui/icons-material/KeyboardReturn";
 import Refresh from "@mui/icons-material/Refresh";
 import Add from "@mui/icons-material/Add";
 import getCaretCoordinates from "textarea-caret";
+import ErrorIcon from "@mui/icons-material/Error";
 import lineColumn from "line-column";
 import { useRefState } from "../helpers";
 import { Settings } from "../App";
@@ -60,7 +61,10 @@ type OutputItem =
 interface Hover {
     x: number;
     y: number;
-    output: HoverOutput;
+    output: HoverOutput | null;
+    diagnostic:
+        | [AnalysisOutputDiagnostic, boolean, AnalysisOutputDiagnostic["notes"][number]]
+        | undefined;
 }
 
 interface UiElement {
@@ -73,11 +77,6 @@ const closingBrackets: Record<string, string> = {
     "[": "]",
 };
 
-const closingCharacters: Record<string, string> = {
-    ...closingBrackets,
-    '"': '"',
-};
-
 export const CodeEditor = (props: CodeEditorProps) => {
     const containerID = `code-editor-container-${props.id}`;
     const editorID = `code-editor-editor-${props.id}`;
@@ -88,9 +87,9 @@ export const CodeEditor = (props: CodeEditorProps) => {
     >([]);
 
     const [isRunning, setRunning] = useState(false);
-    const [output, setOutput] = useState<
+    const [output, setOutput] = useRefState<
         { code: string; items: OutputItem[]; diagnostics: AnalysisOutputDiagnostic[] } | undefined
-    >();
+    >(undefined);
     const appendToOutput = (code: string, item: OutputItem) =>
         setOutput((output) =>
             output
@@ -332,22 +331,33 @@ export const CodeEditor = (props: CodeEditorProps) => {
                     return;
                 }
 
-                const output = await runner.hover(
-                    parseInt(hoverElement.dataset.wippleStartIndex),
-                    parseInt(hoverElement.dataset.wippleEndIndex)
-                );
+                const start = parseInt(hoverElement.dataset.wippleStartIndex);
+                const end = parseInt(hoverElement.dataset.wippleEndIndex);
 
-                if (!output) {
-                    return;
+                let hoverDiagnostic: Hover["diagnostic"];
+                outer: for (const diagnostic of output.current?.diagnostics ?? []) {
+                    for (let noteIndex = 0; noteIndex < diagnostic.notes.length; noteIndex++) {
+                        const note = diagnostic.notes[noteIndex];
+
+                        if (note.span.start >= start && note.span.end <= end) {
+                            hoverDiagnostic = [diagnostic, noteIndex === 0, note];
+                            break outer;
+                        }
+                    }
                 }
 
-                hoverElement.classList.add(...hoverClasses);
+                const hoverOutput = await runner.hover(start, end);
 
-                setHover({
-                    x: hoverElement.getBoundingClientRect().x,
-                    y: hoverElement.getBoundingClientRect().bottom + window.scrollY,
-                    output,
-                });
+                if (hoverOutput || hoverDiagnostic) {
+                    hoverElement.classList.add(...hoverClasses);
+
+                    setHover({
+                        x: hoverElement.getBoundingClientRect().x,
+                        y: hoverElement.getBoundingClientRect().bottom + window.scrollY,
+                        output: hoverOutput,
+                        diagnostic: hoverDiagnostic,
+                    });
+                }
             }, 250);
         };
 
@@ -387,7 +397,7 @@ export const CodeEditor = (props: CodeEditorProps) => {
 
         const additionalClasses = ["bg-opacity-20", "dark:bg-opacity-20"];
 
-        if (!props.settings.beginner) {
+        if (!(props.settings.beginner ?? true)) {
             for (const node of nodes) {
                 for (const color of colors) {
                     node.classList.remove(...color);
@@ -440,11 +450,84 @@ export const CodeEditor = (props: CodeEditorProps) => {
                 if (!currentNode) return;
             }
 
-            currentNode.classList.add(item.kind);
-            currentNode.dataset.wippleStartIndex = item.start.toString();
-            currentNode.dataset.wippleEndIndex = item.end.toString();
+            if (!currentNode.classList.contains("diagnostic")) {
+                currentNode.classList.add(item.kind);
+                currentNode.dataset.wippleStartIndex = item.start.toString();
+                currentNode.dataset.wippleEndIndex = item.end.toString();
+            }
         }
     }, [syntaxHighlighting]);
+
+    useEffect(() => {
+        if (!output.current?.diagnostics) return;
+
+        const forEachNode = (f: (start: number, end: number, node: HTMLSpanElement) => boolean) => {
+            const nodes = [
+                ...document.querySelectorAll<HTMLSpanElement>(
+                    `#${editorID} .language-wipple span.token`
+                ),
+            ];
+
+            let currentNode = nodes.shift();
+            if (!currentNode) return;
+
+            let start = 0;
+            while (!f(start, start + currentNode.innerText.length, currentNode)) {
+                start += currentNode.innerText.length;
+                currentNode = nodes.shift();
+                if (!currentNode) return;
+            }
+        };
+
+        forEachNode((_start, _end, node) => {
+            node.classList.remove(
+                "diagnostic",
+                "diagnostic-error",
+                "diagnostic-warning",
+                "diagnostic-note"
+            );
+
+            return false;
+        });
+
+        for (const diagnostic of output.current.diagnostics) {
+            const notes = [...diagnostic.notes];
+            const primaryNote = notes.shift();
+            if (!primaryNote) {
+                continue;
+            }
+
+            forEachNode((start, end, node) => {
+                if (end > primaryNote.span.end) {
+                    return true;
+                }
+
+                if (start >= primaryNote.span.start) {
+                    node.classList.add("diagnostic", `diagnostic-${diagnostic.level}`);
+                    node.dataset.wippleStartIndex = primaryNote.span.start.toString();
+                    node.dataset.wippleEndIndex = primaryNote.span.end.toString();
+                }
+
+                return false;
+            });
+
+            forEachNode((start, end, node) => {
+                const note = notes[0];
+                if (!note || end > note.span.end) {
+                    notes.shift();
+                    return true;
+                }
+
+                if (start >= note.span.start && !node.classList.contains("diagnostic")) {
+                    node.classList.add("diagnostic", "diagnostic-note");
+                    node.dataset.wippleStartIndex = note.span.start.toString();
+                    node.dataset.wippleEndIndex = note.span.end.toString();
+                }
+
+                return false;
+            });
+        }
+    }, [output.current?.diagnostics]);
 
     const getCodeEditorCaretPosition = () => {
         const codeEditor = document.getElementById(textAreaID) as HTMLTextAreaElement | null;
@@ -576,200 +659,227 @@ export const CodeEditor = (props: CodeEditorProps) => {
                     <animated.div style={animatedOutputStyle}>
                         <div ref={outputRef}>
                             {(() => {
-                                if (output == null) {
+                                if (output.current == null) {
                                     return null;
                                 }
 
                                 return (
                                     <div>
-                                        {output.diagnostics.length ? (
-                                            <div
-                                                className={`p-4 flex flex-col gap-4 text-black dark:text-white ${
-                                                    output.diagnostics.find(
-                                                        ({ level }) => level === "error"
-                                                    )
-                                                        ? "bg-red-50 dark:bg-red-900 dark:bg-opacity-40"
-                                                        : "bg-yellow-50 dark:bg-yellow-900 dark:bg-opacity-40"
-                                                }`}
-                                            >
-                                                {output.diagnostics.map((diagnostic, index) => (
-                                                    <div key={index} className="flex gap-2">
-                                                        <div
-                                                            className={`rounded-sm border-r-4 ${
-                                                                diagnostic.level === "error"
-                                                                    ? "border-r-red-500"
-                                                                    : "border-r-yellow-500"
-                                                            }`}
-                                                        />
-
-                                                        <div
-                                                            key={index}
-                                                            className="flex flex-col gap-2.5"
-                                                        >
-                                                            <div
-                                                                className={`font-bold ${
-                                                                    diagnostic.level === "error"
-                                                                        ? "text-red-600 dark:text-red-500"
-                                                                        : "text-yellow-600 dark:text-yellow-500"
-                                                                }`}
-                                                            >
-                                                                <ReactMarkdown
-                                                                    remarkPlugins={[
-                                                                        remarkMath,
-                                                                        remarkGfm,
-                                                                        remarkSmartypants,
-                                                                    ]}
-                                                                    rehypePlugins={[
-                                                                        rehypeRaw,
-                                                                        rehypeKatex,
-                                                                    ]}
-                                                                    linkTarget="_blank"
-                                                                >
-                                                                    {`${diagnostic.level}: ${diagnostic.message}`}
-                                                                </ReactMarkdown>
-                                                            </div>
-
-                                                            {diagnostic.notes.map(
-                                                                (note, noteIndex) => {
-                                                                    const lookup = lineColumn(
-                                                                        note.code + "\n\n"
-                                                                    );
-
-                                                                    let { line, col } =
-                                                                        lookup.fromIndex(
-                                                                            note.span.start
-                                                                        )!;
-
-                                                                    const start = lookup.toIndex(
-                                                                        line,
-                                                                        1
-                                                                    );
-
-                                                                    const end = lookup.toIndex(
-                                                                        line + 1,
-                                                                        1
-                                                                    );
-
-                                                                    return (
-                                                                        <div
-                                                                            className="flex flex-col"
-                                                                            key={noteIndex}
-                                                                        >
-                                                                            <div>
-                                                                                <p className="semibold text-xs opacity-50">
-                                                                                    {note.span
-                                                                                        .file ===
-                                                                                    "playground"
-                                                                                        ? ""
-                                                                                        : `${note.span.file}, `}
-                                                                                    line {line}
-                                                                                </p>
-
-                                                                                <pre>
-                                                                                    <span>
-                                                                                        {note.code.slice(
-                                                                                            start,
-                                                                                            note
-                                                                                                .span
-                                                                                                .start
-                                                                                        )}
-                                                                                    </span>
-
-                                                                                    <span
-                                                                                        className={`rounded-sm underline underline-offset-4 ${
-                                                                                            diagnostic.level ===
-                                                                                            "error"
-                                                                                                ? "text-red-600 bg-red-100 dark:text-red-500 dark:bg-red-900 dark:bg-opacity-50"
-                                                                                                : "text-yellow-600 bg-yellow-100 dark:text-yellow-500 dark:bg-yellow-800 dark:bg-opacity-50"
-                                                                                        }`}
-                                                                                    >
-                                                                                        {note.code.slice(
-                                                                                            note
-                                                                                                .span
-                                                                                                .start,
-                                                                                            note
-                                                                                                .span
-                                                                                                .end
-                                                                                        )}
-                                                                                    </span>
-
-                                                                                    <span>
-                                                                                        {note.code.slice(
-                                                                                            note
-                                                                                                .span
-                                                                                                .end,
-                                                                                            end
-                                                                                        )}
-                                                                                    </span>
-                                                                                </pre>
-                                                                            </div>
-
-                                                                            {note.messages.map(
-                                                                                (
-                                                                                    message,
-                                                                                    messageIndex
-                                                                                ) => (
-                                                                                    <div
-                                                                                        key={
-                                                                                            messageIndex
-                                                                                        }
-                                                                                        className={`flex ${
-                                                                                            noteIndex ===
-                                                                                                0 &&
-                                                                                            messageIndex ===
-                                                                                                0
-                                                                                                ? diagnostic.level ===
-                                                                                                  "error"
-                                                                                                    ? "text-red-600 dark:text-red-500"
-                                                                                                    : "text-yellow-600 dark:text-yellow-500"
-                                                                                                : "opacity-75"
-                                                                                        }`}
-                                                                                    >
-                                                                                        <pre>
-                                                                                            {new Array(
-                                                                                                col -
-                                                                                                    1
-                                                                                            )
-                                                                                                .fill(
-                                                                                                    " "
-                                                                                                )
-                                                                                                .join(
-                                                                                                    ""
-                                                                                                )}
-                                                                                        </pre>
-
-                                                                                        <ReactMarkdown
-                                                                                            remarkPlugins={[
-                                                                                                remarkMath,
-                                                                                                remarkGfm,
-                                                                                                remarkSmartypants,
-                                                                                            ]}
-                                                                                            rehypePlugins={[
-                                                                                                rehypeRaw,
-                                                                                                rehypeKatex,
-                                                                                            ]}
-                                                                                            linkTarget="_blank"
-                                                                                        >
-                                                                                            {
-                                                                                                message
-                                                                                            }
-                                                                                        </ReactMarkdown>
-                                                                                    </div>
-                                                                                )
-                                                                            )}
-                                                                        </div>
-                                                                    );
-                                                                }
-                                                            )}
+                                        {output.current.diagnostics.length ? (
+                                            props.settings.beginner ?? true ? (
+                                                output.current.diagnostics.find(
+                                                    ({ level }) => level === "error"
+                                                ) ? (
+                                                    <div className="flex flex-col gap-4 p-6 text-red-500 bg-red-50 dark:bg-red-900 dark:bg-opacity-20">
+                                                        <div className="flex items-center gap-2">
+                                                            <ErrorIcon fontSize="large" />
+                                                            <h1 className="text-xl">Error</h1>
                                                         </div>
+
+                                                        <p className="text-gray-500 dark:text-gray-400">
+                                                            Wipple couldn’t run your code because it
+                                                            has errors.
+                                                        </p>
                                                     </div>
-                                                ))}
-                                            </div>
+                                                ) : null
+                                            ) : (
+                                                <div
+                                                    className={`p-4 flex flex-col gap-4 text-black dark:text-white ${
+                                                        output.current.diagnostics.find(
+                                                            ({ level }) => level === "error"
+                                                        )
+                                                            ? "bg-red-50 dark:bg-red-900 dark:bg-opacity-40"
+                                                            : "bg-yellow-50 dark:bg-yellow-900 dark:bg-opacity-40"
+                                                    }`}
+                                                >
+                                                    {output.current.diagnostics.map(
+                                                        (diagnostic, index) => (
+                                                            <div key={index} className="flex gap-2">
+                                                                <div
+                                                                    className={`rounded-sm border-r-4 ${
+                                                                        diagnostic.level === "error"
+                                                                            ? "border-r-red-500"
+                                                                            : "border-r-yellow-500"
+                                                                    }`}
+                                                                />
+
+                                                                <div
+                                                                    key={index}
+                                                                    className="flex flex-col gap-2.5"
+                                                                >
+                                                                    <div
+                                                                        className={`font-bold ${
+                                                                            diagnostic.level ===
+                                                                            "error"
+                                                                                ? "text-red-600 dark:text-red-500"
+                                                                                : "text-yellow-600 dark:text-yellow-500"
+                                                                        }`}
+                                                                    >
+                                                                        <ReactMarkdown
+                                                                            remarkPlugins={[
+                                                                                remarkMath,
+                                                                                remarkGfm,
+                                                                                remarkSmartypants,
+                                                                            ]}
+                                                                            rehypePlugins={[
+                                                                                rehypeRaw,
+                                                                                rehypeKatex,
+                                                                            ]}
+                                                                            linkTarget="_blank"
+                                                                        >
+                                                                            {`${diagnostic.level}: ${diagnostic.message}`}
+                                                                        </ReactMarkdown>
+                                                                    </div>
+
+                                                                    {diagnostic.notes.map(
+                                                                        (note, noteIndex) => {
+                                                                            const lookup =
+                                                                                lineColumn(
+                                                                                    note.code +
+                                                                                        "\n\n"
+                                                                                );
+
+                                                                            let { line, col } =
+                                                                                lookup.fromIndex(
+                                                                                    note.span.start
+                                                                                )!;
+
+                                                                            const start =
+                                                                                lookup.toIndex(
+                                                                                    line,
+                                                                                    1
+                                                                                );
+
+                                                                            const end =
+                                                                                lookup.toIndex(
+                                                                                    line + 1,
+                                                                                    1
+                                                                                );
+
+                                                                            return (
+                                                                                <div
+                                                                                    className="flex flex-col"
+                                                                                    key={noteIndex}
+                                                                                >
+                                                                                    <div>
+                                                                                        <p className="semibold text-xs opacity-50">
+                                                                                            {note
+                                                                                                .span
+                                                                                                .file ===
+                                                                                            "playground"
+                                                                                                ? ""
+                                                                                                : `${note.span.file}, `}
+                                                                                            line{" "}
+                                                                                            {line}
+                                                                                        </p>
+
+                                                                                        <pre>
+                                                                                            <span>
+                                                                                                {note.code.slice(
+                                                                                                    start,
+                                                                                                    note
+                                                                                                        .span
+                                                                                                        .start
+                                                                                                )}
+                                                                                            </span>
+
+                                                                                            <span
+                                                                                                className={`rounded-sm underline underline-offset-4 ${
+                                                                                                    diagnostic.level ===
+                                                                                                    "error"
+                                                                                                        ? "text-red-600 bg-red-100 dark:text-red-500 dark:bg-red-900 dark:bg-opacity-50"
+                                                                                                        : "text-yellow-600 bg-yellow-100 dark:text-yellow-500 dark:bg-yellow-800 dark:bg-opacity-50"
+                                                                                                }`}
+                                                                                            >
+                                                                                                {note.code.slice(
+                                                                                                    note
+                                                                                                        .span
+                                                                                                        .start,
+                                                                                                    note
+                                                                                                        .span
+                                                                                                        .end
+                                                                                                )}
+                                                                                            </span>
+
+                                                                                            <span>
+                                                                                                {note.code.slice(
+                                                                                                    note
+                                                                                                        .span
+                                                                                                        .end,
+                                                                                                    end
+                                                                                                )}
+                                                                                            </span>
+                                                                                        </pre>
+                                                                                    </div>
+
+                                                                                    {note.messages.map(
+                                                                                        (
+                                                                                            message,
+                                                                                            messageIndex
+                                                                                        ) => (
+                                                                                            <div
+                                                                                                key={
+                                                                                                    messageIndex
+                                                                                                }
+                                                                                                className={`flex ${
+                                                                                                    noteIndex ===
+                                                                                                        0 &&
+                                                                                                    messageIndex ===
+                                                                                                        0
+                                                                                                        ? diagnostic.level ===
+                                                                                                          "error"
+                                                                                                            ? "text-red-600 dark:text-red-500"
+                                                                                                            : "text-yellow-600 dark:text-yellow-500"
+                                                                                                        : "opacity-75"
+                                                                                                }`}
+                                                                                            >
+                                                                                                <pre>
+                                                                                                    {new Array(
+                                                                                                        col -
+                                                                                                            1
+                                                                                                    )
+                                                                                                        .fill(
+                                                                                                            " "
+                                                                                                        )
+                                                                                                        .join(
+                                                                                                            ""
+                                                                                                        )}
+                                                                                                </pre>
+
+                                                                                                <ReactMarkdown
+                                                                                                    remarkPlugins={[
+                                                                                                        remarkMath,
+                                                                                                        remarkGfm,
+                                                                                                        remarkSmartypants,
+                                                                                                    ]}
+                                                                                                    rehypePlugins={[
+                                                                                                        rehypeRaw,
+                                                                                                        rehypeKatex,
+                                                                                                    ]}
+                                                                                                    linkTarget="_blank"
+                                                                                                >
+                                                                                                    {
+                                                                                                        message
+                                                                                                    }
+                                                                                                </ReactMarkdown>
+                                                                                            </div>
+                                                                                        )
+                                                                                    )}
+                                                                                </div>
+                                                                            );
+                                                                        }
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        )
+                                                    )}
+                                                </div>
+                                            )
                                         ) : null}
 
-                                        {output.items.length ? (
+                                        {output.current.items.length ? (
                                             <div className="p-4 bg-gray-50 dark:bg-gray-800 text-black dark:text-white">
-                                                {output.items.map((item, index) => {
+                                                {output.current.items.map((item, index) => {
                                                     switch (item.type) {
                                                         case "output":
                                                             return (
@@ -825,7 +935,7 @@ export const CodeEditor = (props: CodeEditorProps) => {
                                                         <div />
                                                         <div />
                                                     </div>
-                                                ) : output.items.find(
+                                                ) : output.current.items.find(
                                                       (item) => item.type !== "output"
                                                   ) || uiElements.current.length ? (
                                                     <div className="mt-4">
@@ -972,7 +1082,58 @@ export const CodeEditor = (props: CodeEditorProps) => {
                         zIndex: 9999,
                     }}
                 >
-                    {hover.output.code ? (
+                    {hover.diagnostic ? (
+                        <div className="flex flex-col">
+                            <div
+                                className={`font-bold ${
+                                    hover.diagnostic[0].level === "error"
+                                        ? "text-red-600 dark:text-red-500"
+                                        : "text-yellow-600 dark:text-yellow-500"
+                                }`}
+                            >
+                                <ReactMarkdown
+                                    remarkPlugins={[remarkMath, remarkGfm, remarkSmartypants]}
+                                    rehypePlugins={[rehypeRaw, rehypeKatex]}
+                                    linkTarget="_blank"
+                                >
+                                    {`${hover.diagnostic[0].level}: ${hover.diagnostic[0].message}`}
+                                </ReactMarkdown>
+                            </div>
+
+                            <div className="flex flex-col">
+                                {hover.diagnostic[2].messages.map((message, messageIndex) => (
+                                    <div
+                                        key={messageIndex}
+                                        className={
+                                            messageIndex === 0 && hover.diagnostic![1]
+                                                ? hover.diagnostic![0].level === "error"
+                                                    ? "text-red-600 dark:text-red-500"
+                                                    : "text-yellow-600 dark:text-yellow-500"
+                                                : "opacity-75"
+                                        }
+                                    >
+                                        <ReactMarkdown
+                                            remarkPlugins={[
+                                                remarkMath,
+                                                remarkGfm,
+                                                remarkSmartypants,
+                                            ]}
+                                            rehypePlugins={[rehypeRaw, rehypeKatex]}
+                                            linkTarget="_blank"
+                                        >
+                                            {message}
+                                        </ReactMarkdown>
+                                    </div>
+                                ))}
+                            </div>
+
+                            {hover.output && (
+                                <div className="h-0.5 my-2 bg-gray-100 dark:bg-gray-700"></div>
+                            )}
+                        </div>
+                    ) : null}
+
+                    {hover.output?.code ? (
                         <div className="pointer-events-none">
                             <SimpleCodeEditor
                                 className="code-editor dark:caret-white"
