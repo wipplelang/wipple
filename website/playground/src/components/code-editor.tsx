@@ -101,7 +101,7 @@ export const CodeEditor = (props: CodeEditorProps) => {
 
     const [outputRef, { height: outputHeight }] = useMeasure();
     const animatedOutputStyle = useSpring(
-        output != null ? { opacity: 1, height: outputHeight } : { opacity: 0, height: 0 }
+        output.current != null ? { opacity: 1, height: outputHeight } : { opacity: 0, height: 0 }
     );
 
     const prefersReducedMotion = useMediaQuery("(prefers-reduced-motion)");
