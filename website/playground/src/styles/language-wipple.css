@@ -100,6 +100,6 @@
     @apply text-yellow-600 bg-yellow-100 dark:text-yellow-500 dark:bg-yellow-800 dark:bg-opacity-50;
 }
 
-.language-wipple .token.diagnostic-node {
+.language-wipple .token.diagnostic-note {
     @apply text-sky-600 bg-sky-100 dark:text-sky-500 dark:bg-sky-900 dark:bg-opacity-20;
 }
