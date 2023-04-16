@@ -37,6 +37,7 @@ pub enum Progress {
 #[derive(Debug, Clone, Default)]
 pub struct Program {
     pub items: BTreeMap<ItemId, (Option<(Option<TraitId>, ConstantId)>, Expression)>,
+    pub contextual_constant_defaults: BTreeMap<ConstantId, ItemId>,
     pub entrypoint: Option<ItemId>,
     pub declarations: Declarations,
     pub exported: HashMap<InternedString, lower::AnyDeclaration>,
@@ -206,6 +207,8 @@ macro_rules! expr {
                 Variant(VariantIndex, Vec<[<$prefix Expression>]>),
                 Tuple(Vec<[<$prefix Expression>]>),
                 Format(Vec<(InternedString, [<$prefix Expression>])>, Option<InternedString>),
+                With((Option<ConstantId>, Box<[<$prefix Expression>]>), Box<[<$prefix Expression>]>),
+                ContextualConstant(ConstantId),
                 $($kinds)*
             }
 
@@ -356,6 +359,15 @@ impl From<UnresolvedExpression> for MonomorphizedExpression {
                 }
                 UnresolvedExpressionKind::Constant(id) => {
                     MonomorphizedExpressionKind::UnresolvedConstant(id)
+                }
+                UnresolvedExpressionKind::With((id, value), body) => {
+                    MonomorphizedExpressionKind::With(
+                        (id, Box::new((*value).into())),
+                        Box::new((*body).into()),
+                    )
+                }
+                UnresolvedExpressionKind::ContextualConstant(id) => {
+                    MonomorphizedExpressionKind::ContextualConstant(id)
                 }
             },
         }
@@ -523,6 +535,7 @@ struct Typechecker {
     instances: im::HashMap<TraitId, Vec<ConstantId>>,
     generic_constants: im::HashMap<ConstantId, (bool, lower::Expression)>,
     specialized_constants: im::HashMap<ConstantId, ConstantId>,
+    contextual_constant_defaults: BTreeMap<ConstantId, ItemId>,
     item_queue: im::Vector<QueuedItem>,
     items: im::HashMap<ItemId, (Option<(Option<TraitId>, ConstantId)>, Expression)>,
     entrypoint_expr: Option<UnresolvedExpression>,
@@ -535,6 +548,7 @@ struct QueuedItem {
     id: ItemId,
     expr: UnresolvedExpression,
     info: MonomorphizeInfo,
+    contextual: bool,
     entrypoint: bool,
 }
 
@@ -561,6 +575,7 @@ impl Typechecker {
             instances: Default::default(),
             generic_constants: Default::default(),
             specialized_constants: Default::default(),
+            contextual_constant_defaults: Default::default(),
             item_queue: Default::default(),
             items: Default::default(),
             entrypoint_expr: Default::default(),
@@ -589,6 +604,7 @@ impl Typechecker {
                 id: entrypoint_id,
                 expr: entrypoint,
                 info,
+                contextual: false,
                 entrypoint: true,
             });
 
@@ -613,6 +629,12 @@ impl Typechecker {
                 }
 
                 self.items.insert(item.id, (item.generic_id, expr));
+
+                if item.contextual {
+                    if let Some((_, id)) = item.generic_id {
+                        self.contextual_constant_defaults.insert(id, item.id);
+                    }
+                }
             }
         }
 
@@ -701,6 +723,7 @@ impl Typechecker {
 
         Program {
             items,
+            contextual_constant_defaults: self.contextual_constant_defaults,
             entrypoint: entrypoint_item,
             exported: self.exported.unwrap_or_default(),
             declarations: self.declarations.into_inner().into(),
@@ -845,7 +868,7 @@ impl Typechecker {
         instance: bool,
         expr: lower::Expression,
     ) {
-        let (tr, generic_ty, bounds) = if instance {
+        let (tr, generic_ty, bounds, span, contextual) = if instance {
             let (tr, trait_params, span, bounds) = self
                 .with_instance_decl(id, |decl| {
                     (
@@ -887,11 +910,26 @@ impl Typechecker {
                 }
             };
 
-            (Some(tr), ty, bounds)
+            (Some(tr), ty, bounds, span, false)
         } else {
-            self.with_constant_decl(id, |decl| (None, decl.ty.clone(), decl.bounds.clone()))
-                .expect("constant should have already been accessed at least once")
+            self.with_constant_decl(id, |decl| {
+                (
+                    None,
+                    decl.ty.clone(),
+                    decl.bounds.clone(),
+                    decl.span,
+                    decl.attributes.is_contextual,
+                )
+            })
+            .expect("constant should have already been accessed at least once")
         };
+
+        if contextual && (!generic_ty.params().is_empty() || !bounds.is_empty()) {
+            self.compiler.add_error(
+                "contextual constant may not take type parameters",
+                vec![Note::primary(span, "try removing these type parameters")],
+            );
+        }
 
         let mut monomorphize_info = MonomorphizeInfo::default();
         for bound in bounds {
@@ -950,6 +988,11 @@ impl Typechecker {
                 candidates.append(&mut decl.specializations.clone());
             });
         }
+
+        let contextual = match self.with_constant_decl(id, |decl| decl.attributes.is_contextual) {
+            Some(contextual) => contextual,
+            None => false,
+        };
 
         for &candidate in &candidates {
             self.specialized_constants.insert(candidate, id);
@@ -1093,6 +1136,7 @@ impl Typechecker {
                 id: monomorphized_id,
                 expr: generic_expr,
                 info,
+                contextual,
                 entrypoint: false,
             });
 
@@ -1238,18 +1282,25 @@ impl Typechecker {
                 }
             }
             lower::ExpressionKind::Constant(id) => {
-                let mut ty = self
+                let (mut ty, contextual) = self
                     .with_constant_decl(id, |constant| {
-                        engine::UnresolvedType::from(constant.ty.clone())
+                        (
+                            engine::UnresolvedType::from(constant.ty.clone()),
+                            constant.attributes.is_contextual,
+                        )
                     })
-                    .unwrap_or(engine::UnresolvedType::Error);
+                    .unwrap_or((engine::UnresolvedType::Error, false));
 
                 self.instantiate_generics(&mut ty);
 
                 UnresolvedExpression {
                     span: expr.span,
                     ty,
-                    kind: UnresolvedExpressionKind::Constant(id),
+                    kind: if contextual {
+                        UnresolvedExpressionKind::ContextualConstant(id)
+                    } else {
+                        UnresolvedExpressionKind::Constant(id)
+                    },
                 }
             }
             lower::ExpressionKind::Trait(id) => {
@@ -1786,6 +1837,31 @@ impl Typechecker {
                     kind: UnresolvedExpressionKind::Format(segments, trailing_segment),
                 }
             }
+            lower::ExpressionKind::With((id, value), body) => {
+                let value = self.convert_expr(*value, info);
+
+                if let Some(id) = id {
+                    let mut ty = self
+                        .with_constant_decl(id, |constant| {
+                            engine::UnresolvedType::from(constant.ty.clone())
+                        })
+                        .unwrap_or(engine::UnresolvedType::Error);
+
+                    self.instantiate_generics(&mut ty);
+
+                    if let Err(error) = self.unify(value.span, value.ty.clone(), ty) {
+                        self.add_error(error);
+                    }
+                }
+
+                let body = self.convert_expr(*body, info);
+
+                UnresolvedExpression {
+                    span: expr.span,
+                    ty: body.ty.clone(),
+                    kind: UnresolvedExpressionKind::With((id, Box::new(value)), Box::new(body)),
+                }
+            }
         }
     }
 
@@ -2203,6 +2279,24 @@ impl Typechecker {
                             .collect(),
                         trailing_segment,
                     )
+                }
+                MonomorphizedExpressionKind::With((id, value), body) => {
+                    MonomorphizedExpressionKind::With(
+                        (id, Box::new(self.monomorphize_expr(*value, info))),
+                        Box::new(self.monomorphize_expr(*body, info)),
+                    )
+                }
+                MonomorphizedExpressionKind::ContextualConstant(id) => {
+                    self.typecheck_constant_expr(
+                        false,
+                        None,
+                        id,
+                        expr.span,
+                        expr.ty.clone(),
+                        info.clone(),
+                    );
+
+                    MonomorphizedExpressionKind::ContextualConstant(id)
                 }
             })(),
         }
@@ -2922,6 +3016,13 @@ impl Typechecker {
                         .collect(),
                     trailing_segment,
                 )
+            }
+            MonomorphizedExpressionKind::With((id, value), body) => ExpressionKind::With(
+                (id, Box::new(self.finalize_expr(*value))),
+                Box::new(self.finalize_expr(*body)),
+            ),
+            MonomorphizedExpressionKind::ContextualConstant(id) => {
+                ExpressionKind::ContextualConstant(id)
             }
         })();
 

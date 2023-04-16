@@ -3,7 +3,7 @@ import prism from "prismjs";
 export const register = () => {
     prism.languages.wipple = {
         keyword: {
-            pattern: /_|use|when|type|trait|instance|where|external|syntax|format/,
+            pattern: /_|use|when|type|trait|instance|where|external|syntax|format|with/,
             greedy: true,
         },
         operator: { pattern: /:|::|->|=>|\.|\|/, greedy: true },

@@ -297,6 +297,7 @@ impl Resolve<ConstantDeclaration> for UnresolvedConstantDeclaration {
 pub struct ConstantAttributes {
     pub decl_attributes: DeclarationAttributes,
     pub is_specialization: bool,
+    pub is_contextual: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -407,6 +408,7 @@ pub enum ExpressionKind {
     Variant(TypeId, VariantIndex, Vec<Expression>),
     Tuple(Vec<Expression>),
     Format(Vec<(InternedString, Expression)>, Option<InternedString>),
+    With((Option<ConstantId>, Box<Expression>), Box<Expression>),
 }
 
 impl ExpressionKind {
@@ -483,6 +485,10 @@ impl Expression {
                 for (_, expr) in segments {
                     expr.traverse_mut_inner(f);
                 }
+            }
+            ExpressionKind::With((_, value), body) => {
+                value.traverse_mut_inner(f);
+                body.traverse_mut_inner(f);
             }
         }
     }
@@ -2701,6 +2707,66 @@ impl Lowerer {
                 span: expr.span(),
                 kind: ExpressionKind::Tuple(Vec::new()),
             },
+            ast::Expression::With(expr) => {
+                let (constant, value) = match &expr.clause {
+                    Ok(ast::WithClause::Assign(clause)) => {
+                        let constant = match clause.name {
+                            Ok((span, name)) => match self.get(name, span, scope) {
+                                Some(decl) => match decl {
+                                    AnyDeclaration::Constant(id, _) => Some(id),
+                                    _ => {
+                                        self.compiler.add_error(
+                                            "`with` may only be used to define the value of a constant",
+                                            vec![Note::primary(span, "expected a constant here")],
+                                        );
+
+                                        None
+                                    }
+                                },
+                                _ => {
+                                    self.compiler.add_error(
+                                        format!("cannot find `{}`", name),
+                                        vec![Note::primary(span, "this name is not defined")],
+                                    );
+
+                                    None
+                                }
+                            },
+                            Err(_) => None,
+                        };
+
+                        let value = match &clause.value {
+                            Ok(expr) => self.lower_expr(expr, scope, ctx),
+                            Err(error) => Expression {
+                                span: error.span,
+                                kind: ExpressionKind::error(&self.compiler),
+                            },
+                        };
+
+                        (constant, value)
+                    }
+                    Err(error) => (
+                        None,
+                        Expression {
+                            span: error.span,
+                            kind: ExpressionKind::error(&self.compiler),
+                        },
+                    ),
+                };
+
+                let body = match &expr.body {
+                    Ok(expr) => self.lower_expr(expr, scope, ctx),
+                    Err(error) => Expression {
+                        span: error.span,
+                        kind: ExpressionKind::error(&self.compiler),
+                    },
+                };
+
+                Expression {
+                    span: expr.span(),
+                    kind: ExpressionKind::With((constant, Box::new(value)), Box::new(body)),
+                }
+            }
         }
     }
 
@@ -3496,6 +3562,7 @@ impl Lowerer {
 
         ConstantAttributes {
             decl_attributes: self.lower_decl_attributes(attributes, scope),
+            is_contextual: attributes.contextual.is_some(),
             is_specialization: attributes.specialize.is_some(),
         }
     }

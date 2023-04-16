@@ -998,17 +998,21 @@ fn wipple_to_js(
             panic!("only numbers of type `Number` may be sent to JavaScript")
         }
         wipple_interpreter_backend::Value::Text(s) => JsValue::from_str(&s),
-        wipple_interpreter_backend::Value::Function(scope, label) => {
+        wipple_interpreter_backend::Value::Function(scope, context, label) => {
             let interpreter = interpreter.clone();
 
             Closure::<dyn Fn(JsValue) -> JsValue>::new(move |input| {
                 let interpreter = interpreter.clone();
                 let scope = scope.clone();
+                let context = context.clone();
 
                 let input = js_to_wipple(&interpreter, input);
 
                 wasm_bindgen_futures::future_to_promise(async move {
-                    let output = interpreter.call_function(label, scope, input).await?;
+                    let output = interpreter
+                        .call_function(label, scope, &context, input)
+                        .await?;
+
                     Ok(wipple_to_js(&interpreter, output))
                 })
                 .into()

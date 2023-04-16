@@ -112,7 +112,7 @@ pub enum Value {
     Float(f32),
     Double(f64),
     Text(Arc<str>),
-    Function(Scope, usize),
+    Function(Scope, Context, usize),
     NativeFunction(Arc<dyn Fn(Value) -> BoxFuture<'static, Result<Value, Error>> + Send + Sync>),
     Variant(VariantIndex, Vec<Value>),
     Mutable(Shared<Value>),
@@ -148,8 +148,35 @@ impl Scope {
     }
 }
 
+#[derive(Clone, Default)]
+pub struct Context(Arc<Mutex<Vec<im::HashMap<usize, Value>>>>);
+
+impl Context {
+    fn new() -> Self {
+        Default::default()
+    }
+
+    fn get(&self, id: usize) -> Option<Value> {
+        self.0
+            .lock()
+            .last()
+            .and_then(|values| values.get(&id).cloned())
+    }
+
+    fn with(&self, id: usize, value: Value) {
+        let mut inner = self.0.lock();
+        let mut values = inner.last().cloned().unwrap_or_default();
+        values.insert(id, value);
+        inner.push(values);
+    }
+
+    fn reset(&self) {
+        self.0.lock().pop().unwrap();
+    }
+}
+
 #[derive(Default)]
-pub struct Stack(Vec<Vec<Value>>);
+struct Stack(Vec<Vec<Value>>);
 
 impl Stack {
     fn new() -> Self {
@@ -218,8 +245,10 @@ impl Interpreter {
         self.lock().initialized_constants = BTreeMap::new();
 
         let mut stack = Stack::new();
+        let mut context = Arc::new(Context::new());
 
-        self.evaluate_label(program.entrypoint, &mut stack).await?;
+        self.evaluate_label(program.entrypoint, &mut stack, &mut context)
+            .await?;
 
         stack.pop();
         assert!(stack.is_empty());
@@ -227,8 +256,14 @@ impl Interpreter {
         Ok(())
     }
 
-    async fn evaluate_label(&self, label: usize, stack: &mut Stack) -> Result<(), Error> {
-        self.evaluate_label_inner(label, stack, Scope::new(0)).await
+    async fn evaluate_label(
+        &self,
+        label: usize,
+        stack: &mut Stack,
+        context: &Context,
+    ) -> Result<(), Error> {
+        self.evaluate_label_inner(label, stack, Scope::new(0), context)
+            .await
     }
 
     async fn evaluate_label_in_scope(
@@ -236,8 +271,10 @@ impl Interpreter {
         label: usize,
         stack: &mut Stack,
         scope: Scope,
+        mut context: &Context,
     ) -> Result<(), Error> {
-        self.evaluate_label_inner(label, stack, scope).await
+        self.evaluate_label_inner(label, stack, scope, &mut context)
+            .await
     }
 
     async fn evaluate_label_inner(
@@ -245,6 +282,7 @@ impl Interpreter {
         label: usize,
         stack: &mut Stack,
         mut scope: Scope,
+        context: &Context,
     ) -> Result<(), Error> {
         let (vars, blocks) = self.lock().labels[label].clone();
 
@@ -253,19 +291,20 @@ impl Interpreter {
             scope.0.push(None);
         }
 
-        self.evaluate(blocks, stack, &mut scope).await
+        self.evaluate(blocks, stack, &mut scope, context).await
     }
 
     pub async fn call_function(
         &self,
         label: usize,
         scope: Scope,
+        context: &Context,
         input: Value,
     ) -> Result<Value, Error> {
         let mut stack = Stack::new();
         stack.push(input);
 
-        self.evaluate_label_in_scope(label, &mut stack, scope)
+        self.evaluate_label_in_scope(label, &mut stack, scope, context)
             .await?;
 
         Ok(stack.pop())
@@ -277,6 +316,7 @@ impl Interpreter {
         blocks: Vec<ir::BasicBlock>,
         stack: &mut Stack,
         scope: &mut Scope,
+        context: &Context,
     ) -> Result<(), Error> {
         let mut block = &blocks[0];
 
@@ -301,6 +341,12 @@ impl Interpreter {
                     ir::Statement::Free(var) => {
                         scope.free(*var);
                     }
+                    ir::Statement::WithContext(ctx) => {
+                        context.with(*ctx, stack.pop());
+                    }
+                    ir::Statement::ResetContext => {
+                        context.reset();
+                    }
                     ir::Statement::Unpack(_) => {
                         // The interpreter provides the captured scope while calling the functions
                     }
@@ -321,10 +367,11 @@ impl Interpreter {
                         ir::Expression::Double(double) => stack.push(Value::Double(*double)),
                         ir::Expression::Variable(var) => stack.push(scope.get(*var)),
                         ir::Expression::Constant(label) => {
-                            self.evaluate_constant(*label, stack).await?
+                            let value = self.evaluate_constant(*label, context).await?;
+                            stack.push(value);
                         }
                         ir::Expression::Function(label) => {
-                            stack.push(Value::Function(Scope::new(0), *label))
+                            stack.push(Value::Function(Scope::new(0), context.clone(), *label))
                         }
                         ir::Expression::Closure(captures, label) => {
                             let mut closure_scope = Scope::new(captures.0.len());
@@ -332,15 +379,16 @@ impl Interpreter {
                                 closure_scope.set(*var, scope.get(*captured));
                             }
 
-                            stack.push(Value::Function(closure_scope, *label));
+                            stack.push(Value::Function(closure_scope, context.clone(), *label));
                         }
                         ir::Expression::Call => {
                             let input = stack.pop();
 
                             match stack.pop() {
-                                Value::Function(scope, label) => {
+                                Value::Function(scope, context, label) => {
                                     stack.push(input);
-                                    self.evaluate_label_in_scope(label, stack, scope).await?;
+                                    self.evaluate_label_in_scope(label, stack, scope, &context)
+                                        .await?;
                                 }
                                 Value::NativeFunction(f) => {
                                     let output = f(input).await?;
@@ -410,6 +458,14 @@ impl Interpreter {
                         ir::Expression::Reference | ir::Expression::Dereference => {
                             // The interpreter doesn't use references
                         }
+                        ir::Expression::Context(ctx) => {
+                            let value = match context.get(*ctx) {
+                                Some(value) => value,
+                                None => self.evaluate_constant(*ctx, context).await?,
+                            };
+
+                            stack.push(value);
+                        }
                     },
                 }
             }
@@ -437,13 +493,13 @@ impl Interpreter {
         }
     }
 
-    async fn evaluate_constant(&self, label: usize, stack: &mut Stack) -> Result<(), Error> {
+    async fn evaluate_constant(&self, label: usize, context: &Context) -> Result<Value, Error> {
         if let Some(value) = self.lock().initialized_constants.get(&label) {
-            stack.push(value.clone());
-            return Ok(());
+            return Ok(value.clone());
         }
 
-        self.evaluate_label(label, stack).await?;
+        let mut stack = Stack::new();
+        self.evaluate_label(label, &mut stack, context).await?;
 
         let value = stack.pop();
         self.inner
@@ -451,8 +507,6 @@ impl Interpreter {
             .initialized_constants
             .insert(label, value.clone());
 
-        stack.push(value);
-
-        Ok(())
+        Ok(value)
     }
 }

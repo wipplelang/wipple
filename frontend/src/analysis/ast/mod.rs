@@ -22,6 +22,7 @@ mod type_pattern;
 mod when_arm;
 mod when_body;
 mod when_pattern;
+mod with_clause;
 
 pub use attributes::*;
 pub use syntax::SyntaxError;
@@ -45,6 +46,7 @@ pub use type_pattern::*;
 pub use when_arm::*;
 pub use when_body::*;
 pub use when_pattern::*;
+pub use with_clause::*;
 
 use crate::{
     diagnostics::Note,

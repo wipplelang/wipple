@@ -311,6 +311,38 @@ impl Expression {
                 }
                 write!(f, ")")?;
             }
+            ExpressionKind::With((id, value), body) => {
+                write!(f, "(with (")?;
+
+                if let Some(id) = id {
+                    let name = file
+                        .declarations
+                        .constants
+                        .get(id)
+                        .map(|constant| constant.name.to_string())
+                        .unwrap_or_else(|| format!("<unknown constant #{}>", id.counter));
+
+                    write!(f, "{name} : ")?;
+                } else {
+                    write!(f, "<error> : ")?;
+                }
+
+                value.display_with(f, file, indent)?;
+                write!(f, ") ")?;
+
+                body.display_with(f, file, indent)?;
+                write!(f, ")")?;
+            }
+            ExpressionKind::ContextualConstant(id) => {
+                let name = file
+                    .declarations
+                    .constants
+                    .get(id)
+                    .map(|constant| constant.name.to_string())
+                    .unwrap_or_else(|| format!("<unknown constant #{}>", id.counter));
+
+                write!(f, "{name}")?;
+            }
         }
 
         Ok(())

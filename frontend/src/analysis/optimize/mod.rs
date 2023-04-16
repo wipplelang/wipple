@@ -504,7 +504,10 @@ mod util {
                             .iter()
                             .all(|expr| expr.is_pure_inner(program, false, stack))
                 }
-                ExpressionKind::External(_, _, _) | ExpressionKind::Initialize(_, _) => false,
+                ExpressionKind::External(_, _, _)
+                | ExpressionKind::Initialize(_, _)
+                | ExpressionKind::With(_, _)
+                | ExpressionKind::ContextualConstant(_) => false,
                 ExpressionKind::Constant(constant) | ExpressionKind::ExpandedConstant(constant) => {
                     program.items.get(constant).map_or(false, |(_, body)| {
                         if stack.contains(constant) {

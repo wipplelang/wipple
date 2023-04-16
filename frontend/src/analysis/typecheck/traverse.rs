@@ -69,6 +69,10 @@ macro_rules! traverse_expr_impl {
                         expr.$traverse(context.clone(), f);
                     }
                 }
+                With((_, value), body) => {
+                    value.$traverse(context.clone(), f);
+                    body.$traverse(context.clone(), f);
+                }
                 _ => {}
             }
         }

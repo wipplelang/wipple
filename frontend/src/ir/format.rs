@@ -44,6 +44,8 @@ impl std::fmt::Display for Statement {
             Statement::Free(var) => write!(f, "free ${var}"),
             Statement::Unpack(captures) => write!(f, "unpack {captures}"),
             Statement::Expression(_, expr) => write!(f, "{expr}"),
+            Statement::WithContext(id) => write!(f, "with context ctx{id}"),
+            Statement::ResetContext => write!(f, "reset context"),
         }
     }
 }
@@ -113,6 +115,7 @@ impl std::fmt::Display for Expression {
             }
             Expression::Reference => write!(f, "reference"),
             Expression::Dereference => write!(f, "dereference"),
+            Expression::Context(id) => write!(f, "ctx{id}"),
         }
     }
 }

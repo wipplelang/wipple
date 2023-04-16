@@ -5,6 +5,7 @@ mod format;
 mod function;
 mod tuple;
 mod when;
+mod with;
 
 pub use annotate::AnnotateExpression;
 pub use end::EndExpression;
@@ -13,6 +14,7 @@ pub use format::FormatExpression;
 pub use function::FunctionExpression;
 pub use tuple::TupleExpression;
 pub use when::WhenExpression;
+pub use with::WithExpression;
 
 use annotate::*;
 use end::*;
@@ -21,6 +23,7 @@ use format::*;
 use function::*;
 use tuple::*;
 use when::*;
+use with::*;
 
 use crate::{
     analysis::ast::{
@@ -48,6 +51,7 @@ syntax_group! {
             End,
             External,
             Format,
+            With,
             When,
         },
         terminal: {

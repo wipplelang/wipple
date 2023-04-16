@@ -166,10 +166,12 @@ impl Interpreter {
                     Ok(Value::Tuple(Vec::new()))
                 }),
                 ir::RuntimeFunction::Prompt => {
-                    runtime_fn!((Value::Text(prompt), Value::Function(captures, label)) => async {
+                    runtime_fn!((Value::Text(prompt), Value::Function(captures, mut context, label)) => async {
                         // So we don't have to deal with loading any captured variables. `prompt`
                         // will be called with an instance of `Read` anyway, which has no captures
                         assert!(captures.0.is_empty(), "`prompt` requires a function with no captures");
+
+                        // FIXME: `context` is silently ignored -- implement a way to preserve them
 
                         let io = self.lock().io.clone();
 
@@ -185,7 +187,7 @@ impl Interpreter {
                             let input = input_rx.recv().await.unwrap();
 
                             stack.push(Value::Text(Arc::from(input)));
-                            self.evaluate_label(label, stack).await.unwrap();
+                            self.evaluate_label(label, stack, &mut context).await.unwrap();
 
                             match maybe_from(stack.pop()) {
                                 Some(value) => {
@@ -225,7 +227,7 @@ impl Interpreter {
 
                     Ok(Value::Natural(index as u64))
                 }),
-                ir::RuntimeFunction::WithUi => runtime_fn!((Value::Text(url), Value::Function(scope, label)) => async {
+                ir::RuntimeFunction::WithUi => runtime_fn!((Value::Text(url), Value::Function(scope, context, label)) => async {
                     let io = self.lock().io.clone();
 
                     let (completion_tx, completion_rx) = tokio::sync::oneshot::channel();
@@ -239,7 +241,7 @@ impl Interpreter {
                                 on_finish: Arc::new(Mutex::new(Some(on_finish))),
                             };
 
-                            let result = interpreter.call_function(label, scope, Value::UiHandle(handle.clone())).await?;
+                            let result = interpreter.call_function(label, scope, &context, Value::UiHandle(handle.clone())).await?;
 
                             handle.on_finish.lock().take().unwrap()();
 
@@ -262,7 +264,7 @@ impl Interpreter {
 
                     completion_rx.await.map_err(|_| Error::from("program exited"))?
                 }),
-                ir::RuntimeFunction::WithContinuation => runtime_fn!((Value::Function(scope, label)) => async {
+                ir::RuntimeFunction::WithContinuation => runtime_fn!((Value::Function(scope, context, label)) => async {
                     let (completion_tx, completion_rx) = tokio::sync::oneshot::channel();
 
                     let completion_tx = Arc::new(Mutex::new(Some(completion_tx)));
@@ -280,7 +282,7 @@ impl Interpreter {
                         })
                     }));
 
-                    self.call_function(label, scope, function).await?;
+                    self.call_function(label, scope, &context, function).await?;
 
                     match completion_rx.await {
                         Ok(result) => Ok(result),
@@ -290,10 +292,10 @@ impl Interpreter {
                         },
                     }
                 }),
-                ir::RuntimeFunction::WithTaskGroup => runtime_fn!((Value::Function(scope, label)) => async {
+                ir::RuntimeFunction::WithTaskGroup => runtime_fn!((Value::Function(scope, context, label)) => async {
                     let group = TaskGroup::default();
 
-                    self.call_function(label, scope, Value::TaskGroup(group.clone())).await?;
+                    self.call_function(label, scope, &context, Value::TaskGroup(group.clone())).await?;
 
                     loop {
                         let completion_rx = match group.0.try_lock() {
@@ -311,7 +313,7 @@ impl Interpreter {
 
                     Ok(Value::Tuple(Vec::new()))
                 }),
-                ir::RuntimeFunction::Task => runtime_fn!((Value::TaskGroup(group), Value::Function(scope, label)) => async {
+                ir::RuntimeFunction::Task => runtime_fn!((Value::TaskGroup(group), Value::Function(scope, context, label)) => async {
                     let completion_tx = {
                         let mut group = match group.0.try_lock() {
                             Some(group) => group,
@@ -332,7 +334,7 @@ impl Interpreter {
 
                         async move {
                             let result = interpreter
-                                .call_function(label, scope, Value::Tuple(Vec::new()))
+                                .call_function(label, scope, &context, Value::Tuple(Vec::new()))
                                 .await;
 
                             completion_tx.send(result.map(|_| ())).expect("failed to signal task completion");
@@ -343,7 +345,7 @@ impl Interpreter {
 
                     Ok(Value::Tuple(Vec::new()))
                 }),
-                ir::RuntimeFunction::InBackground => runtime_fn!((Value::Function(scope, label)) => async {
+                ir::RuntimeFunction::InBackground => runtime_fn!((Value::Function(scope, context, label)) => async {
                     let io = self.lock().io.clone();
 
                     io(IoRequest::Schedule(self.clone(), Box::pin({
@@ -351,7 +353,7 @@ impl Interpreter {
 
                         async move {
                             interpreter
-                                .call_function(label, scope, Value::Tuple(Vec::new()))
+                                .call_function(label, scope, &context, Value::Tuple(Vec::new()))
                                 .await?;
 
                             Ok::<_, Error>(())

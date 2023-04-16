@@ -1,6 +1,6 @@
 use crate::{
-    analysis, helpers::InternedString, parse::SpanList, Compiler, EnumerationId, FieldIndex,
-    ItemId, StructureId, TypeId, VariableId, VariantIndex,
+    analysis, helpers::InternedString, parse::SpanList, Compiler, ConstantId, EnumerationId,
+    FieldIndex, ItemId, StructureId, TypeId, VariableId, VariantIndex,
 };
 use std::{
     collections::BTreeMap,
@@ -12,6 +12,7 @@ pub use crate::analysis::RuntimeFunction;
 #[derive(Debug, Clone)]
 pub struct Program {
     pub items: BTreeMap<ItemId, Expression>,
+    pub contexts: BTreeMap<ConstantId, ItemId>,
     pub structures: BTreeMap<StructureId, Vec<Type>>,
     pub enumerations: BTreeMap<EnumerationId, Vec<Vec<Type>>>,
     pub entrypoint: ItemId,
@@ -74,6 +75,8 @@ pub enum ExpressionKind {
     Float(f32),
     Double(f64),
     Constant(ItemId),
+    With((ConstantId, Box<Expression>), Box<Expression>),
+    ContextualConstant(ConstantId),
 }
 
 #[derive(Debug, Clone)]
@@ -126,6 +129,7 @@ impl Compiler {
                 .iter()
                 .map(|(id, (_, item))| (*id, converter.convert_expr(item, true)))
                 .collect(),
+            contexts: program.contextual_constant_defaults.clone(),
             structures: converter.structures,
             enumerations: converter.enumerations,
             entrypoint: program.entrypoint.expect("no entrypoint provided"),
@@ -240,6 +244,17 @@ impl Converter<'_> {
                 analysis::ExpressionKind::Constant(constant)
                 | analysis::ExpressionKind::ExpandedConstant(constant) => {
                     ExpressionKind::Constant(*constant)
+                }
+                analysis::ExpressionKind::With((id, value), body) => {
+                    let id = id.expect("found error in `with` expression");
+
+                    ExpressionKind::With(
+                        (id, Box::new(self.convert_expr(value, false))),
+                        Box::new(self.convert_expr(body, tail)),
+                    )
+                }
+                analysis::ExpressionKind::ContextualConstant(id) => {
+                    ExpressionKind::ContextualConstant(*id)
                 }
             },
         }

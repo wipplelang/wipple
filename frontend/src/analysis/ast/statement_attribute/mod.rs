@@ -1,4 +1,5 @@
 mod allow_overlapping_instances;
+mod contextual;
 mod diagnostic_alias;
 mod diagnostic_item;
 mod help;
@@ -11,6 +12,7 @@ mod operator_precedence;
 mod specialize;
 
 pub use allow_overlapping_instances::AllowOverlappingInstancesStatementAttribute;
+pub use contextual::ContextualStatementAttribute;
 pub use diagnostic_alias::DiagnosticAliasStatementAttribute;
 pub use diagnostic_item::{DiagnosticItemStatementAttribute, DiagnosticItemStatementAttributeKind};
 pub use help::HelpStatementAttribute;
@@ -26,6 +28,7 @@ pub use operator_precedence::{
 pub use specialize::SpecializeStatementAttribute;
 
 use allow_overlapping_instances::*;
+use contextual::*;
 use diagnostic_alias::*;
 use diagnostic_item::*;
 use help::*;
@@ -53,6 +56,7 @@ syntax_group! {
     pub type StatementAttribute<StatementAttributeSyntaxContext> {
         non_terminal: {
             AllowOverlappingInstances,
+            Contextual,
             DiagnosticAlias,
             DiagnosticItem,
             Help,

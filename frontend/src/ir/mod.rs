@@ -9,8 +9,8 @@ mod optimize;
 mod ssa;
 
 use crate::{
-    analysis::typecheck, helpers::InternedString, Compiler, EnumerationId, FieldIndex, ItemId,
-    StructureId, VariableId, VariantIndex,
+    analysis::typecheck, helpers::InternedString, Compiler, ConstantId, EnumerationId, FieldIndex,
+    ItemId, StructureId, VariableId, VariantIndex,
 };
 use itertools::Itertools;
 use std::{
@@ -51,6 +51,8 @@ pub enum Statement {
     PopFrame,
     Initialize(usize),
     Free(usize),
+    WithContext(usize),
+    ResetContext,
     Unpack(CaptureList),
     Expression(Type, Expression),
 }
@@ -91,6 +93,7 @@ pub enum Expression {
     VariantElement(VariantIndex, usize),
     Reference,
     Dereference,
+    Context(usize),
 }
 
 #[derive(Debug, Clone)]
@@ -105,6 +108,7 @@ impl Compiler {
 
         let program = self.convert_to_ssa(program);
 
+        let contexts = program.contexts.clone();
         let structures = program.structures.clone();
         let mut enumerations = program.enumerations.clone();
 
@@ -115,6 +119,7 @@ impl Compiler {
             items: Default::default(),
             labels: Default::default(),
             scopes: Default::default(),
+            contexts,
             structures,
             enumerations,
             bool_type,
@@ -159,6 +164,7 @@ struct IrGen {
         Vec<BasicBlock>,
     )>,
     scopes: Vec<Vec<VariableId>>,
+    contexts: BTreeMap<ConstantId, ItemId>,
     structures: BTreeMap<StructureId, Vec<Type>>,
     enumerations: BTreeMap<EnumerationId, Vec<Vec<Type>>>,
     bool_type: EnumerationId,
@@ -442,6 +448,44 @@ impl IrGen {
 
                 self.statements_for(label, *pos)
                     .push(Statement::Expression(expr.ty, Expression::Constant(id)));
+            }
+            ssa::ExpressionKind::With((id, value), body) => {
+                self.scopes.push(Vec::new());
+                self.statements_for(label, *pos).push(Statement::PushFrame);
+
+                self.gen_expr(*value, label, pos);
+
+                let id = *self
+                    .contexts
+                    .get(&id)
+                    .unwrap_or_else(|| panic!("cannot find {id:?}"));
+
+                let id = *self
+                    .items
+                    .get(&id)
+                    .unwrap_or_else(|| panic!("cannot find {id:?}"));
+
+                self.statements_for(label, *pos)
+                    .push(Statement::WithContext(id));
+
+                self.gen_expr(*body, label, pos);
+
+                self.statements_for(label, *pos).push(Statement::PopFrame);
+                self.scopes.pop().unwrap();
+            }
+            ssa::ExpressionKind::ContextualConstant(id) => {
+                let id = *self
+                    .contexts
+                    .get(&id)
+                    .unwrap_or_else(|| panic!("cannot find {id:?}"));
+
+                let id = *self
+                    .items
+                    .get(&id)
+                    .unwrap_or_else(|| panic!("cannot find {id:?}"));
+
+                self.statements_for(label, *pos)
+                    .push(Statement::Expression(expr.ty, Expression::Context(id)));
             }
         }
     }

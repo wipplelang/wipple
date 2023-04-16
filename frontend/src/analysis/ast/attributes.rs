@@ -1,10 +1,10 @@
 use crate::analysis::ast::{
-    AllowOverlappingInstancesStatementAttribute, DiagnosticAliasStatementAttribute,
-    DiagnosticItemStatementAttribute, HelpGroupStatementAttribute, HelpStatementAttribute,
-    KeywordStatementAttribute, LanguageItemStatementAttribute, NoStdFileAttribute,
-    OnMismatchStatementAttribute, OnUnimplementedStatementAttribute,
-    OperatorPrecedenceStatementAttribute, RecursionLimitFileAttribute,
-    SpecializeStatementAttribute,
+    AllowOverlappingInstancesStatementAttribute, ContextualStatementAttribute,
+    DiagnosticAliasStatementAttribute, DiagnosticItemStatementAttribute,
+    HelpGroupStatementAttribute, HelpStatementAttribute, KeywordStatementAttribute,
+    LanguageItemStatementAttribute, NoStdFileAttribute, OnMismatchStatementAttribute,
+    OnUnimplementedStatementAttribute, OperatorPrecedenceStatementAttribute,
+    RecursionLimitFileAttribute, SpecializeStatementAttribute,
 };
 
 #[derive(Debug, Clone, Default)]
@@ -26,4 +26,5 @@ pub struct StatementAttributes {
     pub allow_overlapping_instances: Option<AllowOverlappingInstancesStatementAttribute>,
     pub operator_precedence: Option<OperatorPrecedenceStatementAttribute>,
     pub keyword: Option<KeywordStatementAttribute>,
+    pub contextual: Option<ContextualStatementAttribute>,
 }
