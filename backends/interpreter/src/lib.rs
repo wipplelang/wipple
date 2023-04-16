@@ -112,7 +112,7 @@ pub enum Value {
     Float(f32),
     Double(f64),
     Text(Arc<str>),
-    Function(Scope, Context, usize),
+    Function(Scope, usize),
     NativeFunction(Arc<dyn Fn(Value) -> BoxFuture<'static, Result<Value, Error>> + Send + Sync>),
     Variant(VariantIndex, Vec<Value>),
     Mutable(Shared<Value>),
@@ -172,6 +172,10 @@ impl Context {
 
     fn reset(&self) {
         self.0.lock().pop().unwrap();
+    }
+
+    fn deep_clone(&self) -> Context {
+        Context(Arc::new(Mutex::new(self.0.lock().clone())))
     }
 }
 
@@ -371,7 +375,7 @@ impl Interpreter {
                             stack.push(value);
                         }
                         ir::Expression::Function(label) => {
-                            stack.push(Value::Function(Scope::new(0), context.clone(), *label))
+                            stack.push(Value::Function(Scope::new(0), *label))
                         }
                         ir::Expression::Closure(captures, label) => {
                             let mut closure_scope = Scope::new(captures.0.len());
@@ -379,13 +383,13 @@ impl Interpreter {
                                 closure_scope.set(*var, scope.get(*captured));
                             }
 
-                            stack.push(Value::Function(closure_scope, context.clone(), *label));
+                            stack.push(Value::Function(closure_scope, *label));
                         }
                         ir::Expression::Call => {
                             let input = stack.pop();
 
                             match stack.pop() {
-                                Value::Function(scope, context, label) => {
+                                Value::Function(scope, label) => {
                                     stack.push(input);
                                     self.evaluate_label_in_scope(label, stack, scope, &context)
                                         .await?;
@@ -402,7 +406,7 @@ impl Interpreter {
                         }
                         ir::Expression::Runtime(func, inputs) => {
                             let inputs = stack.popn(*inputs);
-                            self.call_runtime(*func, inputs, stack).await?;
+                            self.call_runtime(*func, inputs, stack, context).await?;
                         }
                         ir::Expression::Tuple(inputs) => {
                             let inputs = stack.popn(*inputs);

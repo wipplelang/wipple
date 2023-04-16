@@ -1,4 +1,4 @@
-use crate::{Error, Interpreter, IoRequest, Stack, TaskGroup, UiHandle, Value};
+use crate::{Context, Error, Interpreter, IoRequest, Stack, TaskGroup, UiHandle, Value};
 use futures::channel::oneshot;
 use itertools::Itertools;
 use num_traits::{pow::Pow, FromPrimitive, ToPrimitive};
@@ -60,6 +60,7 @@ impl Interpreter {
         func: ir::RuntimeFunction,
         inputs: Vec<Value>,
         stack: &mut Stack,
+        context: &Context,
     ) -> Result<(), Error> {
         #![allow(unreachable_patterns)]
 
@@ -166,7 +167,7 @@ impl Interpreter {
                     Ok(Value::Tuple(Vec::new()))
                 }),
                 ir::RuntimeFunction::Prompt => {
-                    runtime_fn!((Value::Text(prompt), Value::Function(captures, mut context, label)) => async {
+                    runtime_fn!((Value::Text(prompt), Value::Function(captures, label)) => async {
                         // So we don't have to deal with loading any captured variables. `prompt`
                         // will be called with an instance of `Read` anyway, which has no captures
                         assert!(captures.0.is_empty(), "`prompt` requires a function with no captures");
@@ -187,7 +188,7 @@ impl Interpreter {
                             let input = input_rx.recv().await.unwrap();
 
                             stack.push(Value::Text(Arc::from(input)));
-                            self.evaluate_label(label, stack, &mut context).await.unwrap();
+                            self.evaluate_label(label, stack, context).await.unwrap();
 
                             match maybe_from(stack.pop()) {
                                 Some(value) => {
@@ -227,13 +228,14 @@ impl Interpreter {
 
                     Ok(Value::Natural(index as u64))
                 }),
-                ir::RuntimeFunction::WithUi => runtime_fn!((Value::Text(url), Value::Function(scope, context, label)) => async {
+                ir::RuntimeFunction::WithUi => runtime_fn!((Value::Text(url), Value::Function(scope, label)) => async {
                     let io = self.lock().io.clone();
 
                     let (completion_tx, completion_rx) = tokio::sync::oneshot::channel();
 
                     io(IoRequest::Ui(self.clone(), &url, {
                         let interpreter = self.clone();
+                        let context = context.deep_clone();
 
                         Box::new(move |on_message, on_finish| Box::pin(async move {
                             let handle = UiHandle {
@@ -264,7 +266,7 @@ impl Interpreter {
 
                     completion_rx.await.map_err(|_| Error::from("program exited"))?
                 }),
-                ir::RuntimeFunction::WithContinuation => runtime_fn!((Value::Function(scope, context, label)) => async {
+                ir::RuntimeFunction::WithContinuation => runtime_fn!((Value::Function(scope, label)) => async {
                     let (completion_tx, completion_rx) = tokio::sync::oneshot::channel();
 
                     let completion_tx = Arc::new(Mutex::new(Some(completion_tx)));
@@ -292,7 +294,7 @@ impl Interpreter {
                         },
                     }
                 }),
-                ir::RuntimeFunction::WithTaskGroup => runtime_fn!((Value::Function(scope, context, label)) => async {
+                ir::RuntimeFunction::WithTaskGroup => runtime_fn!((Value::Function(scope, label)) => async {
                     let group = TaskGroup::default();
 
                     self.call_function(label, scope, &context, Value::TaskGroup(group.clone())).await?;
@@ -313,7 +315,7 @@ impl Interpreter {
 
                     Ok(Value::Tuple(Vec::new()))
                 }),
-                ir::RuntimeFunction::Task => runtime_fn!((Value::TaskGroup(group), Value::Function(scope, context, label)) => async {
+                ir::RuntimeFunction::Task => runtime_fn!((Value::TaskGroup(group), Value::Function(scope, label)) => async {
                     let completion_tx = {
                         let mut group = match group.0.try_lock() {
                             Some(group) => group,
@@ -331,6 +333,7 @@ impl Interpreter {
 
                     io(IoRequest::Schedule(self.clone(), Box::pin({
                         let interpreter = self.clone();
+                        let context = context.deep_clone();
 
                         async move {
                             let result = interpreter
@@ -345,11 +348,12 @@ impl Interpreter {
 
                     Ok(Value::Tuple(Vec::new()))
                 }),
-                ir::RuntimeFunction::InBackground => runtime_fn!((Value::Function(scope, context, label)) => async {
+                ir::RuntimeFunction::InBackground => runtime_fn!((Value::Function(scope, label)) => async {
                     let io = self.lock().io.clone();
 
                     io(IoRequest::Schedule(self.clone(), Box::pin({
                         let interpreter = self.clone();
+                        let context = context.deep_clone();
 
                         async move {
                             interpreter
