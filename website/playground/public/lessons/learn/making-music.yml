@@ -32,9 +32,9 @@ sections:
   - id: sj2oTku3
     type: text
     value: >-
-      You can combine `track` with other functions (like `times`) to make
-      repeating sections of music, and you can use `notes` to play a `list` of
-      notes at the same time:
+      You can combine `with-instrument` with other functions (like `times`) to
+      make repeating sections of music, and you can use `notes` to play a `list`
+      of notes at the same time:
     locked: true
   - id: lXkYRH9r
     type: code
