@@ -129,7 +129,7 @@ impl Compiler {
                 .iter()
                 .map(|(id, (_, item))| (*id, converter.convert_expr(item, true)))
                 .collect(),
-            contexts: program.contextual_constant_defaults.clone(),
+            contexts: program.contexts.clone(),
             structures: converter.structures,
             enumerations: converter.enumerations,
             entrypoint: program.entrypoint.expect("no entrypoint provided"),

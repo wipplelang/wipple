@@ -38,6 +38,7 @@ pub enum IoRequest<'a> {
                         dyn FnMut(
                                 String,
                                 Value,
+                                Context,
                                 Box<dyn FnOnce(Result<Value, Error>) -> Result<(), Error> + Send>,
                             ) + Send,
                     >,
@@ -59,6 +60,7 @@ pub struct UiHandle {
             dyn FnMut(
                     String,
                     Value,
+                    Context,
                     Box<dyn FnOnce(Result<Value, Error>) -> Result<(), Error> + Send>,
                 ) + Send,
         >,
@@ -174,7 +176,7 @@ impl Context {
         self.0.lock().pop().unwrap();
     }
 
-    fn deep_clone(&self) -> Context {
+    pub fn deep_clone(&self) -> Context {
         Context(Arc::new(Mutex::new(self.0.lock().clone())))
     }
 }

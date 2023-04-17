@@ -260,7 +260,7 @@ impl Interpreter {
                 ir::RuntimeFunction::MessageUi => runtime_fn!((Value::UiHandle(handle), Value::Text(message), value) => async {
                     let (completion_tx, completion_rx) = tokio::sync::oneshot::channel();
 
-                    handle.on_message.lock()(message.to_string(), value, Box::new(move |result| {
+                    handle.on_message.lock()(message.to_string(), value, context.deep_clone(), Box::new(move |result| {
                         completion_tx.send(result).map_err(|_| Error::from("program exited"))
                     }));
 

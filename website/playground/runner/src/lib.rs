@@ -662,13 +662,15 @@ pub fn run(handle_io: js_sys::Function, callback: js_sys::Function) -> JsValue {
 
                                     wasm_bindgen_futures::future_to_promise(async move {
                                         completion(
-                                            Box::new(move |message, value, callback| {
+                                            Box::new(move |message, value, context, callback| {
                                                 let callback = Closure::once({
                                                     let interpreter = interpreter.clone();
+                                                    let context = context.deep_clone();
 
                                                     move |value| {
                                                         callback(Ok(js_to_wipple(
                                                             &interpreter,
+                                                            &context,
                                                             value,
                                                         )))
                                                         .unwrap();
@@ -681,7 +683,11 @@ pub fn run(handle_io: js_sys::Function, callback: js_sys::Function) -> JsValue {
                                                     .call3(
                                                         &JsValue::NULL,
                                                         &JsValue::from_str(&message),
-                                                        &wipple_to_js(&interpreter, value),
+                                                        &wipple_to_js(
+                                                            &interpreter,
+                                                            &context,
+                                                            value,
+                                                        ),
                                                         &callback,
                                                     )
                                                     .unwrap();
@@ -979,6 +985,7 @@ pub fn hover(start: usize, end: usize) -> JsValue {
 
 fn wipple_to_js(
     interpreter: &wipple_interpreter_backend::Interpreter,
+    context: &wipple_interpreter_backend::Context,
     value: wipple_interpreter_backend::Value,
 ) -> JsValue {
     match value {
@@ -998,22 +1005,23 @@ fn wipple_to_js(
             panic!("only numbers of type `Number` may be sent to JavaScript")
         }
         wipple_interpreter_backend::Value::Text(s) => JsValue::from_str(&s),
-        wipple_interpreter_backend::Value::Function(scope, context, label) => {
+        wipple_interpreter_backend::Value::Function(scope, label) => {
             let interpreter = interpreter.clone();
+            let context = context.deep_clone();
 
             Closure::<dyn Fn(JsValue) -> JsValue>::new(move |input| {
                 let interpreter = interpreter.clone();
                 let scope = scope.clone();
-                let context = context.clone();
+                let context = context.deep_clone();
 
-                let input = js_to_wipple(&interpreter, input);
+                let input = js_to_wipple(&interpreter, &context, input);
 
                 wasm_bindgen_futures::future_to_promise(async move {
                     let output = interpreter
                         .call_function(label, scope, &context, input)
                         .await?;
 
-                    Ok(wipple_to_js(&interpreter, output))
+                    Ok(wipple_to_js(&interpreter, &context, output))
                 })
                 .into()
             })
@@ -1022,16 +1030,18 @@ fn wipple_to_js(
         wipple_interpreter_backend::Value::NativeFunction(f) => {
             let f = f.clone();
             let interpreter = interpreter.clone();
+            let context = context.deep_clone();
 
             Closure::<dyn Fn(JsValue) -> JsValue>::new(move |input| {
                 let f = f.clone();
                 let interpreter = interpreter.clone();
+                let context = context.deep_clone();
 
-                let input = js_to_wipple(&interpreter, input);
+                let input = js_to_wipple(&interpreter, &context, input);
 
                 wasm_bindgen_futures::future_to_promise(async move {
                     let output = f(input).await?;
-                    Ok(wipple_to_js(&interpreter, output))
+                    Ok(wipple_to_js(&interpreter, &context, output))
                 })
                 .into()
             })
@@ -1067,6 +1077,7 @@ fn wipple_to_js(
 
 fn js_to_wipple(
     interpreter: &wipple_interpreter_backend::Interpreter,
+    context: &wipple_interpreter_backend::Context,
     value: JsValue,
 ) -> wipple_interpreter_backend::Value {
     if value.is_null() | value.is_undefined() {
@@ -1078,13 +1089,15 @@ fn js_to_wipple(
     } else if let Some(f) = value.dyn_ref::<js_sys::Function>() {
         let f = Arc::new(Mutex::new(SendWrapper::new(f.clone())));
         let interpreter = Arc::new(Mutex::new(SendWrapper::new(interpreter.clone())));
+        let context = context.clone();
 
         wipple_interpreter_backend::Value::NativeFunction(Arc::new(move |input| {
             let f = f.clone();
             let interpreter = interpreter.clone();
+            let context = context.deep_clone();
 
             Box::pin(SendSyncFuture(Box::pin(async move {
-                let input = wipple_to_js(&interpreter.lock(), input);
+                let input = wipple_to_js(&interpreter.lock(), &context, input);
 
                 let mut output = f
                     .lock()
@@ -1102,7 +1115,7 @@ fn js_to_wipple(
                         .expect("uncaught exception");
                 };
 
-                Ok(js_to_wipple(&interpreter.lock(), output))
+                Ok(js_to_wipple(&interpreter.lock(), &context, output))
             })))
         }))
     } else {

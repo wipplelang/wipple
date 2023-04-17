@@ -37,7 +37,7 @@ pub enum Progress {
 #[derive(Debug, Clone, Default)]
 pub struct Program {
     pub items: BTreeMap<ItemId, (Option<(Option<TraitId>, ConstantId)>, Expression)>,
-    pub contextual_constant_defaults: BTreeMap<ConstantId, ItemId>,
+    pub contexts: BTreeMap<ConstantId, ItemId>,
     pub entrypoint: Option<ItemId>,
     pub declarations: Declarations,
     pub exported: HashMap<InternedString, lower::AnyDeclaration>,
@@ -439,6 +439,7 @@ impl Expression {
                 ExpressionKind::When(_, arms) => {
                     arms.iter().any(|arm| arm.pattern.contains_error())
                 }
+                ExpressionKind::With((None, _), _) => true,
                 _ => false,
             };
         });
@@ -535,7 +536,7 @@ struct Typechecker {
     instances: im::HashMap<TraitId, Vec<ConstantId>>,
     generic_constants: im::HashMap<ConstantId, (bool, lower::Expression)>,
     specialized_constants: im::HashMap<ConstantId, ConstantId>,
-    contextual_constant_defaults: BTreeMap<ConstantId, ItemId>,
+    contexts: BTreeMap<ConstantId, ItemId>,
     item_queue: im::Vector<QueuedItem>,
     items: im::HashMap<ItemId, (Option<(Option<TraitId>, ConstantId)>, Expression)>,
     entrypoint_expr: Option<UnresolvedExpression>,
@@ -575,7 +576,7 @@ impl Typechecker {
             instances: Default::default(),
             generic_constants: Default::default(),
             specialized_constants: Default::default(),
-            contextual_constant_defaults: Default::default(),
+            contexts: Default::default(),
             item_queue: Default::default(),
             items: Default::default(),
             entrypoint_expr: Default::default(),
@@ -624,17 +625,20 @@ impl Typechecker {
                 let expr = self.repeatedly_monomorphize_expr(item.expr, item.info);
                 let expr = self.finalize_expr(expr);
 
+                if item.contextual {
+                    if let Some((_, id)) = item.generic_id {
+                        // NOTE: This relies on the fact that contextual constants
+                        // can't be generic, so all monomorphized items will be the
+                        // same code. Thus, we can safely replace the ID
+                        self.contexts.insert(id, item.id);
+                    }
+                }
+
                 if item.entrypoint {
                     entrypoint_expr = Some(expr.clone());
                 }
 
                 self.items.insert(item.id, (item.generic_id, expr));
-
-                if item.contextual {
-                    if let Some((_, id)) = item.generic_id {
-                        self.contextual_constant_defaults.insert(id, item.id);
-                    }
-                }
             }
         }
 
@@ -661,6 +665,7 @@ impl Typechecker {
         let mut cache = HashMap::new();
         let mut cached = BTreeSet::new();
         let mut map = BTreeMap::new();
+        let mut generic_id_map = BTreeMap::new();
 
         let mut items = mem::take(&mut self.items)
             .into_iter()
@@ -675,6 +680,10 @@ impl Typechecker {
                 });
 
             map.insert(*id, cached_id);
+
+            if let Some((_, generic_id)) = generic_id {
+                generic_id_map.insert(*generic_id, cached_id);
+            }
         }
 
         for id in items.keys().cloned().collect::<Vec<_>>() {
@@ -691,6 +700,12 @@ impl Typechecker {
                     }
                 }
             })
+        }
+
+        for (generic_id, item_id) in &mut self.contexts {
+            if let Some(&id) = generic_id_map.get(generic_id) {
+                *item_id = id;
+            }
         }
 
         // Check exhaustiveness
@@ -723,7 +738,7 @@ impl Typechecker {
 
         Program {
             items,
-            contextual_constant_defaults: self.contextual_constant_defaults,
+            contexts: self.contexts,
             entrypoint: entrypoint_item,
             exported: self.exported.unwrap_or_default(),
             declarations: self.declarations.into_inner().into(),

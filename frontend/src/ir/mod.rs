@@ -450,28 +450,28 @@ impl IrGen {
                     .push(Statement::Expression(expr.ty, Expression::Constant(id)));
             }
             ssa::ExpressionKind::With((id, value), body) => {
-                self.scopes.push(Vec::new());
-                self.statements_for(label, *pos).push(Statement::PushFrame);
-
                 self.gen_expr(*value, label, pos);
 
-                let id = *self
-                    .contexts
-                    .get(&id)
-                    .unwrap_or_else(|| panic!("cannot find {id:?}"));
+                if let Some(&id) = self.contexts.get(&id) {
+                    let id = *self
+                        .items
+                        .get(&id)
+                        .unwrap_or_else(|| panic!("cannot find {id:?}"));
 
-                let id = *self
-                    .items
-                    .get(&id)
-                    .unwrap_or_else(|| panic!("cannot find {id:?}"));
+                    self.statements_for(label, *pos)
+                        .push(Statement::WithContext(id));
 
-                self.statements_for(label, *pos)
-                    .push(Statement::WithContext(id));
+                    self.gen_expr(*body, label, pos);
 
-                self.gen_expr(*body, label, pos);
-
-                self.statements_for(label, *pos).push(Statement::PopFrame);
-                self.scopes.pop().unwrap();
+                    self.statements_for(label, *pos)
+                        .push(Statement::ResetContext);
+                } else {
+                    // This branch occurs when the constant is never actually used anywhere in the
+                    // program, so we can just generate the body without worrying about setting the
+                    // context
+                    self.statements_for(label, *pos).push(Statement::Drop);
+                    self.gen_expr(*body, label, pos);
+                }
             }
             ssa::ExpressionKind::ContextualConstant(id) => {
                 let id = *self
