@@ -61,7 +61,7 @@ impl SyntaxContext for WithClauseSyntaxContext {
     ) -> Result<Self::Body, SyntaxError> {
         self.ast_builder.compiler.add_error(
             "syntax error",
-            vec![Note::primary(span, "expected a function")],
+            vec![Note::primary(span, "expected a variable assignment")],
         );
 
         Err(self.ast_builder.syntax_error(span))
@@ -74,7 +74,7 @@ impl SyntaxContext for WithClauseSyntaxContext {
     ) -> Result<Self::Body, SyntaxError> {
         self.ast_builder.compiler.add_error(
             "syntax error",
-            vec![Note::primary(expr.span, "expected a function")],
+            vec![Note::primary(expr.span, "expected a variable assignment")],
         );
 
         Err(self.ast_builder.syntax_error(expr.span))

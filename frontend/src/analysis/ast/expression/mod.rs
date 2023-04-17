@@ -274,25 +274,21 @@ impl ExpressionSyntaxContext {
                 let operators = self.operators_in_list(exprs.iter().enumerate(), scope);
 
                 if operators.is_empty() {
-                    let mut exprs = exprs.into_iter();
-                    let first = exprs.next().unwrap();
-
-                    if let parse::ExprKind::Name(name, name_scope) = first.kind {
-                        if let Some(syntax) = self.ast_builder.try_get_syntax(
-                            name,
-                            first.span,
-                            name_scope.unwrap_or(scope),
-                        ) {
-                            return self
-                                .expand_syntax(
-                                    first.span,
-                                    syntax,
-                                    std::iter::once(first).chain(exprs).collect(),
-                                    scope,
-                                )
-                                .await;
+                    // TODO: Remove `[operator]` in favor of this logic
+                    for expr in &exprs {
+                        if let parse::ExprKind::Name(name, name_scope) = expr.kind {
+                            if let Some(syntax) = self.ast_builder.try_get_syntax(
+                                name,
+                                expr.span,
+                                name_scope.unwrap_or(scope),
+                            ) {
+                                return self.expand_syntax(expr.span, syntax, exprs, scope).await;
+                            }
                         }
                     }
+
+                    let mut exprs = exprs.into_iter();
+                    let first = exprs.next().unwrap();
 
                     let function = self
                         .ast_builder
