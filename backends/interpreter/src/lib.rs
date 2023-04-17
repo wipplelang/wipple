@@ -48,7 +48,11 @@ pub enum IoRequest<'a> {
                 + Sync,
         >,
     ),
-    Schedule(Interpreter, BoxFuture<'static, Result<(), Error>>),
+    Schedule(
+        Interpreter,
+        BoxFuture<'static, Result<(), Error>>,
+        Box<dyn FnOnce(Box<dyn FnOnce() + Send>) + Send>,
+    ),
     Sleep(Interpreter, std::time::Duration, Box<dyn FnOnce() + Send>),
 }
 
@@ -70,7 +74,9 @@ pub struct UiHandle {
 
 #[allow(clippy::type_complexity)]
 #[derive(Clone, Default)]
-pub struct TaskGroup(Arc<Mutex<Vec<futures::channel::oneshot::Receiver<Result<(), Error>>>>>);
+pub struct TaskGroup(
+    Arc<Mutex<Vec<Box<dyn FnOnce() -> BoxFuture<'static, Result<(), Error>> + Send>>>>,
+);
 
 #[derive(Clone)]
 pub struct Interpreter {

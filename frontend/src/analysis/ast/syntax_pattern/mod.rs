@@ -441,7 +441,7 @@ impl SyntaxPattern {
             }],
             SyntaxPattern::Name(pattern) => vec![parse::Expr {
                 span: pattern.span,
-                kind: parse::ExprKind::Name(pattern.name, Some(pattern.scope)),
+                kind: parse::ExprKind::Name(pattern.name, Some(scope)),
             }],
             SyntaxPattern::Text(pattern) => vec![parse::Expr {
                 span: pattern.span,

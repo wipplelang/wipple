@@ -4,27 +4,32 @@ Music : type {
 	task-group :: Task-Group
 }
 
-[help "Generate and play music."]
-[help-group "Music"]
-with-music :: (Music -> ()) -> ()
-with-music : f -> with-ui "/playground/ui/music/index.js" (handle -> {
-	handle . message "wait-for-play-button" ()
+[context]
+music :: Music
+music : crash "use of music outside `with-music`"
 
-	with-task-group (task-group -> {
-		f (Music {
-			tempo : mutable 120
-			handle
-			task-group
+with-music : syntax {
+	with-music 'body -> {
+		with-ui "/playground/ui/music/index.js" (handle -> {
+			handle . message "wait-for-play-button" ()
+
+			with-task-group (task-group -> {
+				with (music : Music {
+					tempo : mutable 120
+					handle
+					task-group
+				}) 'body
+			})
+
+			handle . message "done" ()
 		})
-	})
-
-	handle . message "done" ()
-})
+	}
+}
 
 [help "Set the tempo of the music."]
 [help-group "Music"]
-tempo :: Number -> Music -> ()
-tempo : new-tempo -> { tempo } -> tempo . set! new-tempo
+tempo :: Number -> ()
+tempo : new-tempo -> tempo of music . set! new-tempo
 
 Instrument-Name : type {
 	name :: Text
@@ -35,29 +40,24 @@ instance (As Text Instrument-Name) : name -> Instrument-Name { name }
 Instrument : type {
 	name :: Instrument-Name
 	delta :: Mutable Number
-	music :: Music
 }
 
-[help "Load an instrument."]
-[help-group "Music"]
-load-instrument :: Instrument-Name -> Music -> Instrument
-load-instrument : name -> music -> {
-	handle of music . message "load-instrument" (name of name)
+[context]
+instrument :: Instrument
+instrument : crash "use of instrument outside `with-instrument`"
 
-	Instrument {
-		name
-		delta : mutable 0
-		music
+with-instrument : syntax {
+	with-instrument 'name 'body -> {
+		instrument-name : ('name :: Instrument-Name)
+		handle of music . message "load-instrument" (name of instrument-name)
+
+		with (instrument : Instrument {
+			name : instrument-name
+			delta : mutable 0
+		}) {
+			task-group of music . task 'body
+		}
 	}
-}
-
-track' :: (() -> ()) -> Music -> ()
-track' : f -> music -> {
-	task-group of music . task' f
-}
-
-track : syntax {
-	track 'body -> track' (() -> 'body)
 }
 
 Note-Length : type {
@@ -68,28 +68,30 @@ instance (As Duration Note-Length) : { ms } -> Note-Length {
 	ms-from-tempo : just (ms as Number)
 }
 
-[help "Represent a note length in beats relative to the `tempo`."]
-[help-group "Music"]
-beats :: Number -> Note-Length
-beats : beats -> Note-Length {
+beats' :: Number -> Note-Length
+beats' : beats -> Note-Length {
 	ms-from-tempo : tempo -> 60000 / tempo * beats
+}
+
+beats : syntax {
+	'n beats -> beats' 'n
 }
 
 [help "Play a note on an instrument. The note name should be in the format `C4` or `Eb5`."]
 [help-group "Music"]
-note :: Text -> Note-Length -> Instrument -> ()
-note : note -> length -> instrument -> notes (list note) length instrument
+note :: Text -> Note-Length -> ()
+note : note -> length -> notes (list note) length
 
 [help "Play multiple notes on an instrument at the same time. See `note` for more information."]
 [help-group "Music"]
-notes :: Collection where (Iterate Collection Text) => Collection -> Note-Length -> Instrument -> ()
-notes : notes -> { ms-from-tempo } -> instrument -> {
+notes :: Collection where (Iterate Collection Text) => Collection -> Note-Length -> ()
+notes : notes -> { ms-from-tempo } -> {
 	instrument-name : name of name of instrument
 	delta : get (delta of instrument)
-	ms : ms-from-tempo (get (tempo of music of instrument)) - delta
+	ms : ms-from-tempo (get (tempo of music)) - delta
 	notes : notes . transform (note -> format "_," note) . collect :: Text
 
-	delta : handle of music of instrument . message "notes" (format "_ _ _" instrument-name ms notes)
+	delta : handle of music . message "notes" (format "_ _ _" instrument-name ms notes)
 	if (delta < 0) (crash "music stopped")
 
 	delta of instrument . set! delta
@@ -97,8 +99,8 @@ notes : notes -> { ms-from-tempo } -> instrument -> {
 
 [help "Rest for a period of time."]
 [help-group "Music"]
-rest :: Note-Length -> Instrument -> ()
-rest : length -> instrument -> notes (list) length instrument
+rest :: Note-Length -> ()
+rest : length -> notes (list) length
 
 [help "An instrument you can use with `load-instrument`."]
 [help-group "Music"]

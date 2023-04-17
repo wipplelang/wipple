@@ -245,9 +245,11 @@ async fn run() -> anyhow::Result<()> {
                                     callback();
                                 });
                             }
-                            wipple_interpreter_backend::IoRequest::Schedule(_, fut) => {
-                                let handle = tokio::spawn(fut);
-                                background_tasks.lock().push(handle);
+                            wipple_interpreter_backend::IoRequest::Schedule(_, fut, callback) => {
+                                callback(Box::new(move || {
+                                    let handle = tokio::spawn(fut);
+                                    background_tasks.lock().push(handle);
+                                }))
                             }
                         }
 

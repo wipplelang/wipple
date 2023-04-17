@@ -740,7 +740,7 @@ pub fn run(handle_io: js_sys::Function, callback: js_sys::Function) -> JsValue {
 
                         callback.forget();
                     }
-                    wipple_interpreter_backend::IoRequest::Schedule(_, fut) => {
+                    wipple_interpreter_backend::IoRequest::Schedule(_, fut, callback) => {
                         let (completion_tx, completion_rx) = oneshot::channel();
 
                         tasks.lock().push(completion_rx);
@@ -761,9 +761,11 @@ pub fn run(handle_io: js_sys::Function, callback: js_sys::Function) -> JsValue {
                                 .expect("failed to signal task completion");
                         });
 
-                        wasm_bindgen_futures::spawn_local(async move {
-                            fut.await;
-                        })
+                        callback(Box::new(move || {
+                            wasm_bindgen_futures::spawn_local(async move {
+                                fut.await;
+                            })
+                        }))
                     }
                 }
 

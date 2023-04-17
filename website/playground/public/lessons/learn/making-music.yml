@@ -1,139 +1,51 @@
 sections:
   - id: qWMDKjVo
     type: text
-    value: |-
+    value: >-
       # Making music
 
-      Let's look at how we can use Wipple to make music! If we `use` the `music.wpl` file, we get access to `with-music` and various instruments:
+
+      Let's look at how we can use Wipple to make music! If we `use` the
+      `music.wpl` file, we get access to `with-music` and various instruments:
     locked: true
   - id: Cnuyoqyl
     type: code
-    value: |-
-      use "music.wpl"
-
-      with-music (music -> {
-      	piano : music . load-instrument acoustic-grand-piano
-
-      	music . track {
-      		piano . note "C4" (4 . beats)
-      	}
-      })
+    value: "use \"music.wpl\"\n\nwith-music {\n\twith-instrument acoustic-grand-piano {\n\t\tnote \"C4\" (4 beats)\n\t}\n}"
   - id: 7wo2QQvJ
     type: text
-    value: |-
+    value: >-
       Press Play and you should hear a note!
 
-      The basic structure of `with-music` is the same as `with-turtle` and `with-graph`, there's just a little more going on. Let's break it down:
 
-        -  `load-instrument` lets you load an instrument to be played by `music`. You can look at the list of instrument names by clicking the + icon on the right of the code editor, and scrolling down to the Music section.
-        -  `track` lets you create a single track of music. You can have multiple `tracks` and they will all play simultaneously!
+      The basic structure of `with-music` is the same as `with-turtle` and
+      `with-graph`, there's just a little more going on. Let's break it down:
+
+        -  `with-instrument` lets you load an instrument to be played by `music`. You can look at the list of instrument names by clicking the + icon on the right of the code editor, and scrolling down to the Music section.
         -  `note` lets you play a note for a duration of time. Write the note name (`A` through `G`) followed by the octave number. For example, `C1` is a low-pitched note while `C7` is a high-pitched note. You can specify a sharp using `#` (eg. `F#4`) and a flat using `b` (eg. `Eb3`).
 
-      You can combine `load-instrument` and `track` to make a whole orchestra!
+      You can have multiple `with-instrument`s and they will all play
+      simultaneously, so you can make your own orchestra!
     locked: true
   - id: be9CTigs
     type: code
-    value: |-
-      use "music.wpl"
-
-      with-music (music -> {
-      	music . tempo 144
-
-      	violin : music . load-instrument violin
-      	viola : music . load-instrument viola
-      	cello : music . load-instrument cello
-      	contrabass : music . load-instrument contrabass
-
-      	music . track {
-      		violin . note "G4" (1 / 2 . beats)
-      		violin . note "G4" (1 / 2 . beats)
-      		violin . note "G4" (1 / 2 . beats)
-      		violin . note "Eb4" (4 . beats)
-      		violin . rest (2 . beats)
-
-      		violin . note "F4" (1 / 2 . beats)
-      		violin . note "F4" (1 / 2 . beats)
-      		violin . note "F4" (1 / 2 . beats)
-      		violin . note "D4" (4 . beats)
-      	}
-
-      	music . track {
-      		viola . note "G3" (1 / 2 . beats)
-      		viola . note "G3" (1 / 2 . beats)
-      		viola . note "G3" (1 / 2 . beats)
-      		viola . note "Eb3" (4 . beats)
-      		viola . rest (2 . beats)
-
-      		viola . note "F3" (1 / 2 . beats)
-      		viola . note "F3" (1 / 2 . beats)
-      		viola . note "F3" (1 / 2 . beats)
-      		viola . note "D3" (4 . beats)
-      	}
-
-      	music . track {
-      		cello . note "G2" (1 / 2 . beats)
-      		cello . note "G2" (1 / 2 . beats)
-      		cello . note "G2" (1 / 2 . beats)
-      		cello . note "Eb2" (4 . beats)
-      		cello . rest (2 . beats)
-
-      		cello . note "F2" (1 / 2 . beats)
-      		cello . note "F2" (1 / 2 . beats)
-      		cello . note "F2" (1 / 2 . beats)
-      		cello . note "D2" (4 . beats)
-      	}
-
-      	music . track {
-      		contrabass . note "G2" (1 / 2 . beats)
-      		contrabass . note "G2" (1 / 2 . beats)
-      		contrabass . note "G2" (1 / 2 . beats)
-      		contrabass . note "Eb2" (4 . beats)
-      		contrabass . rest (2 . beats)
-
-      		contrabass . note "F2" (1 / 2 . beats)
-      		contrabass . note "F2" (1 / 2 . beats)
-      		contrabass . note "F2" (1 / 2 . beats)
-      		contrabass . note "D2" (4 . beats)
-      	}
-      })
+    value: "use \"music.wpl\"\n\nwith-music {\n\ttempo 144\n\n\twith-instrument violin {\n\t\tnote \"G4\" ((1 / 2) beats)\n\t\tnote \"G4\" ((1 / 2) beats)\n\t\tnote \"G4\" ((1 / 2) beats)\n\t\tnote \"Eb4\" (4 beats)\n\t\trest (2 beats)\n\n\t\tnote \"F4\" ((1 / 2) beats)\n\t\tnote \"F4\" ((1 / 2) beats)\n\t\tnote \"F4\" ((1 / 2) beats)\n\t\tnote \"D4\" (4 beats)\n\t}\n\n\twith-instrument viola {\n\t\tnote \"G3\" ((1 / 2) beats)\n\t\tnote \"G3\" ((1 / 2) beats)\n\t\tnote \"G3\" ((1 / 2) beats)\n\t\tnote \"Eb3\" (4 beats)\n\t\trest (2 beats)\n\n\t\tnote \"F3\" ((1 / 2) beats)\n\t\tnote \"F3\" ((1 / 2) beats)\n\t\tnote \"F3\" ((1 / 2) beats)\n\t\tnote \"D3\" (4 beats)\n\t}\n\n\twith-instrument cello {\n\t\tnote \"G2\" ((1 / 2) beats)\n\t\tnote \"G2\" ((1 / 2) beats)\n\t\tnote \"G2\" ((1 / 2) beats)\n\t\tnote \"Eb2\" (4 beats)\n\t\trest (2 beats)\n\n\t\tnote \"F2\" ((1 / 2) beats)\n\t\tnote \"F2\" ((1 / 2) beats)\n\t\tnote \"F2\" ((1 / 2) beats)\n\t\tnote \"D2\" (4 beats)\n\t}\n\n\twith-instrument contrabass {\n\t\tnote \"G2\" ((1 / 2) beats)\n\t\tnote \"G2\" ((1 / 2) beats)\n\t\tnote \"G2\" ((1 / 2) beats)\n\t\tnote \"Eb2\" (4 beats)\n\t\trest (2 beats)\n\n\t\tnote \"F2\" ((1 / 2) beats)\n\t\tnote \"F2\" ((1 / 2) beats)\n\t\tnote \"F2\" ((1 / 2) beats)\n\t\tnote \"D2\" (4 beats)\n\t}\n}"
   - id: sj2oTku3
     type: text
-    value: 'You can combine `track` with other functions (like `times`) to make repeating sections of music, and you can use `notes` to play a `list` of notes at the same time:'
+    value: >-
+      You can combine `track` with other functions (like `times`) to make
+      repeating sections of music, and you can use `notes` to play a `list` of
+      notes at the same time:
     locked: true
   - id: lXkYRH9r
     type: code
-    value: |-
-      use "music.wpl"
-
-      with-music (music -> {
-      	marimba : music . load-instrument marimba
-
-      	music . track {
-      		4 . times (_ -> {
-      			marimba . notes (list "C5" "C4") (1 / 4 . beats)
-      			marimba . note "Bb4" (1 / 4 . beats)
-      			marimba . note "G4" (1 / 2 . beats)
-      			marimba . note "C5" (1 / 2 . beats)
-      			marimba . notes (list "F4" "Bb3") (1 / 2 . beats)
-      			marimba . note "C5" (1 / 2 . beats)
-      			marimba . note "Bb4" (1 / 2 . beats)
-      			marimba . note "C5" (1 / 2 . beats)
-      			marimba . notes (list "F4" "A3") (1 / 2 . beats)
-      			marimba . rest (3 / 2 . beats)
-      			marimba . notes (list "G4" "Eb4") (1 . beats)
-      			marimba . notes (list "G4" "C4") (1 / 2 . beats)
-      			marimba . notes (list "Bb4" "Eb4") (1 / 2 . beats)
-      			marimba . notes (list "C5" "F4") (1 / 2 . beats)
-      		})
-      	}
-      })
+    value: "use \"music.wpl\"\n\nwith-music {\n\ttempo 132\n\n\twith-instrument marimba {\n\t\t4 . times (_ -> {\n\t\t\tnotes (list \"C5\" \"C4\") ((1 / 4) beats)\n\t\t\tnote \"Bb4\" ((1 / 4) beats)\n\t\t\tnote \"G4\" ((1 / 2) beats)\n\t\t\tnote \"C5\" ((1 / 2) beats)\n\t\t\tnotes (list \"F4\" \"Bb3\") ((1 / 2) beats)\n\t\t\tnote \"C5\" ((1 / 2) beats)\n\t\t\tnote \"Bb4\" ((1 / 2) beats)\n\t\t\tnote \"C5\" ((1 / 2) beats)\n\t\t\tnotes (list \"F4\" \"A3\") ((1 / 2) beats)\n\t\t\trest ((3 / 2) beats)\n\t\t\tnotes (list \"G4\" \"Eb4\") (1 beats)\n\t\t\tnotes (list \"G4\" \"C4\") ((1 / 2) beats)\n\t\t\tnotes (list \"Bb4\" \"Eb4\") ((1 / 2) beats)\n\t\t\tnotes (list \"C5\" \"F4\") ((1 / 2) beats)\n\t\t})\n\t}\n}"
   - id: 6cf1f4bT
     type: text
     value: Try writing your own music below!
     locked: true
   - id: lXl8kpAu
     type: code
-    value: ""
+    value: ''
 previous:
   name: Graphing functions
   link: ?lesson=learn/graphing-functions

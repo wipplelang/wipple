@@ -4,7 +4,7 @@ use itertools::Itertools;
 use num_traits::{pow::Pow, FromPrimitive, ToPrimitive};
 use parking_lot::Mutex;
 use rust_decimal::{Decimal, MathematicalOps};
-use std::sync::Arc;
+use std::{mem, sync::Arc};
 use tokio::sync::mpsc::channel;
 use unicode_segmentation::UnicodeSegmentation;
 use wipple_frontend::{helpers::Shared, ir, VariantIndex};
@@ -299,70 +299,86 @@ impl Interpreter {
 
                     self.call_function(label, scope, &context, Value::TaskGroup(group.clone())).await?;
 
-                    loop {
-                        let completion_rx = match group.0.try_lock() {
-                            Some(mut group) => match group.pop() {
-                                Some(rx) => rx,
-                                None => break,
-                            },
-                            None => return Err(Error::from("task group used outside of `with-task-group`")),
-                        };
+                    let tasks = match group.0.try_lock() {
+                        Some(mut group) => mem::take(&mut *group).into_iter().map(|f| f()).collect::<Vec<_>>(),
+                        None => return Err(Error::from("task group used outside of `with-task-group`")),
+                    };
 
-                        if let Ok(result) = completion_rx.await {
-                            result?;
-                        };
+                    for task in tasks {
+                        task.await?;
                     }
 
                     Ok(Value::Tuple(Vec::new()))
                 }),
                 ir::RuntimeFunction::Task => runtime_fn!((Value::TaskGroup(group), Value::Function(scope, label)) => async {
-                    let completion_tx = {
-                        let mut group = match group.0.try_lock() {
-                            Some(group) => group,
-                            None => return Err(Error::from("task group used outside of `with-task-group`")),
-                        };
-
-                        let (completion_tx, completion_rx) = oneshot::channel();
-
-                        group.push(completion_rx);
-
-                        completion_tx
-                    };
-
                     let io = self.lock().io.clone();
 
-                    io(IoRequest::Schedule(self.clone(), Box::pin({
-                        let interpreter = self.clone();
-                        let context = context.deep_clone();
+                    let interpreter = self.clone();
+                    let context = context.deep_clone();
 
-                        async move {
-                            let result = interpreter
-                                .call_function(label, scope, &context, Value::Tuple(Vec::new()))
-                                .await;
+                    let (completion_tx, completion_rx) = oneshot::channel();
+                    let fut = Box::pin(async move {
+                        let result = interpreter
+                            .call_function(label, scope, &context, Value::Tuple(Vec::new()))
+                            .await;
 
-                            completion_tx.send(result.map(|_| ())).expect("failed to signal task completion");
+                        completion_tx.send(result.map(|_| ())).expect("failed to signal task completion");
 
-                            Ok(())
-                        }
-                    }))).await?;
+                        Ok::<_, Error>(())
+                    });
+
+                    let start = {
+                        let (completion_tx, completion_rx) = tokio::sync::oneshot::channel();
+                        io(IoRequest::Schedule(self.clone(), fut, Box::new(|start| {
+                            completion_tx
+                                .send(start)
+                                .unwrap_or_else(|_| panic!("failed to signal task completion"));
+                        }))).await?;
+
+                        completion_rx.await.map_err(|_| Error::from("program exited"))?
+                    };
+
+                    let mut group = match group.0.try_lock() {
+                        Some(group) => group,
+                        None => return Err(Error::from("task group used outside of `with-task-group`")),
+                    };
+
+                    group.push(Box::new(move || {
+                        start();
+
+                        Box::pin(async move {
+                            completion_rx.await.map_err(|_| Error::from("program exited"))?
+                        })
+                    }));
 
                     Ok(Value::Tuple(Vec::new()))
                 }),
                 ir::RuntimeFunction::InBackground => runtime_fn!((Value::Function(scope, label)) => async {
                     let io = self.lock().io.clone();
 
-                    io(IoRequest::Schedule(self.clone(), Box::pin({
-                        let interpreter = self.clone();
-                        let context = context.deep_clone();
+                    let interpreter = self.clone();
+                    let context = context.deep_clone();
 
-                        async move {
-                            interpreter
-                                .call_function(label, scope, &context, Value::Tuple(Vec::new()))
-                                .await?;
+                    let fut = Box::pin(async move {
+                        interpreter
+                            .call_function(label, scope, &context, Value::Tuple(Vec::new()))
+                            .await?;
 
-                            Ok::<_, Error>(())
-                        }
-                    }))).await?;
+                        Ok(())
+                    });
+
+                    let start = {
+                        let (completion_tx, completion_rx) = tokio::sync::oneshot::channel();
+                        io(IoRequest::Schedule(self.clone(), fut, Box::new(|start| {
+                            completion_tx
+                                .send(start)
+                                .unwrap_or_else(|_| panic!("failed to signal task completion"));
+                        }))).await?;
+
+                        completion_rx.await.map_err(|_| Error::from("program exited"))?
+                    };
+
+                    start();
 
                     Ok(Value::Tuple(Vec::new()))
                 }),
