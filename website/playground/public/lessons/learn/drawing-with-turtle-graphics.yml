@@ -1,12 +1,7 @@
 sections:
   - id: eHHNv0je
     type: text
-    value: |-
-      # Drawing with turtle graphics
-
-      In this lesson, you'll learn how to write Wipple programs that can draw graphics using `turtle`! Turtle graphics are a fun way to test your knowledge of Wipple, and we'll be using — and making — lots of functions.
-
-      To start, we need to tell Wipple that we want to use turtle graphics in our program. We can do that with the `use` function:
+    value: "# Drawing with turtle graphics\n\nIn this lesson, you'll learn how to write Wipple programs that can draw graphics using `turtle`! Turtle graphics are a fun way to test your knowledge of Wipple, and we'll be using —\_and making —\_lots of functions.\n\nTo start, we need to tell Wipple that we want to use turtle graphics in our program. We can do that with the `use` function:"
     locked: true
   - id: se-NYZ0O
     type: code
@@ -17,148 +12,67 @@ sections:
     locked: true
   - id: gvKH5-uV
     type: code
-    value: |-
-      use "turtle.wpl"
-
-      with-turtle (turtle -> {
-      	-- More to follow...
-      })
+    value: "use \"turtle.wpl\"\n\nwith-turtle {\n\t-- More to follow...\n}"
   - id: vsIlW2z7
     type: text
-    value: |-
-      The `with-turtle` function gives us a `turtle` value we can use to draw graphics. Notice that we can only access `turtle` inside the function we provide to `with-turtle` — that's so Wipple knows when drawing is finished so it can continue running the program.
-
-      Let's draw a shape!
+    value: "Inside the block we provide to `with-turtle`, we have access to functions like `forward`, `left`, `right` and `color`. Notice that we can only use these functions inside `with-turtle` —\_that's so Wipple knows when drawing is finished so it can continue running the program.\n\nLet's draw a shape!"
     locked: true
   - id: AUjE0yCe
     type: code
-    value: |-
-      use "turtle.wpl"
-
-      with-turtle (turtle -> {
-      	turtle . forward 50
-      	turtle . left (90 . degrees)
-      	turtle . forward 50
-      	turtle . left (90 . degrees)
-      	turtle . forward 50
-      	turtle . left (90 . degrees)
-      	turtle . forward 50
-      	turtle . left (90 . degrees)
-      })
+    value: "use \"turtle.wpl\"\n\nwith-turtle {\n\tforward (50 pixels)\n\tleft (90 degrees)\n\tforward (50 pixels)\n\tleft (90 degrees)\n\tforward (50 pixels)\n\tleft (90 degrees)\n\tforward (50 pixels)\n\tleft (90 degrees)\n}"
   - id: qeRZQAzu
     type: text
-    value: |-
-      Neat!! These functions are hopefully pretty self-explanatory, but if you're ever wondering what a function does, remember you can hover your mouse over it and Wipple will show you its type and description.
-
-      Importantly, all of the graphics functions accept a `Turtle` as input — we can have multiple turtles, so they need to know which turtle we mean! To make things easier to read, we used the `.` partial application syntax from the lesson on lists. If you skipped that lesson, all you need to know is that `input . function` is the same as `function input`.
-
-      If you have some experience programming in other languages, you might ask if we can tell Wipple to repeat the `forward` and `left` functions to draw the square instead of calling them over and over. Well, good news — we can use `times` function to do just that!
+    value: "Neat!! These functions are hopefully pretty self-explanatory, but if you're ever wondering what a function does, remember you can hover your mouse over it and Wipple will show you its type and description.\n\nIf you have some experience programming in other languages, you might ask if we can tell Wipple to repeat the `forward` and `left` functions to draw the square instead of calling them over and over. Well, good news —\_we can use `times` function to do just that!"
     locked: true
   - id: u1hdYl2i
     type: code
-    value: |-
-      use "turtle.wpl"
-
-      with-turtle (turtle -> {
-      	4 . times (_ -> {
-      		turtle . forward 50
-      		turtle . left (90 . degrees)
-      	})
-      })
+    value: "use \"turtle.wpl\"\n\nwith-turtle {\n\t4 . times (_ -> {\n\t\tforward (50 pixels)\n\t\tleft (90 degrees)\n\t})\n}"
   - id: RfUAQW6W
     type: text
-    value: |-
-      Now if we want to change what happens repeatedly, we only need to change it once instead of multiple times. Pro tip: any time you see the same code repeated over and over, you should try passing that code to `times` instead!
+    value: >-
+      Now if we want to change what happens repeatedly, we only need to change
+      it once instead of multiple times. Pro tip: any time you see the same code
+      repeated over and over, you should try passing that code to `times`
+      instead!
 
-      You can also call `times` inside another `times` to create some really cool effects!
+
+      You can also call `times` inside another `times` to create some really
+      cool effects!
     locked: true
   - id: bmjf_ID7
     type: code
-    value: |-
-      use "turtle.wpl"
-
-      with-turtle (turtle -> {
-      	8 . times (_ -> {
-      		4 . times (_ -> {
-      			turtle . forward 50
-      			turtle . left (90 . degrees)
-      		})
-
-      		turtle . left (45 . degrees)
-      	})
-      })
+    value: "use \"turtle.wpl\"\n\nwith-turtle {\n\t8 . times (_ -> {\n\t\t4 . times (_ -> {\n\t\t\tforward (50 pixels)\n\t\t\tleft (90 degrees)\n\t\t})\n\n\t\tleft (45 degrees)\n\t})\n}"
   - id: Wf4o7po0
     type: text
-    value: |-
-      Now that our code is getting more complex, it's a good time to move some of our code into their own functions. Try editing the above example to use a function before continuing!
-
-      Hopefully you had a go at it — a good choice would be to make a `draw-square` function that handles drawing the individual squares. Then we can call `draw-square` inside our loop:
+    value: "Now that our code is getting more complex, it's a good time to move some of our code into their own functions. Try editing the above example to use a function before continuing!\n\nHopefully you had a go at it —\_a good choice would be to make a `draw-square` function that handles drawing the individual squares. Then we can call `draw-square` inside our loop:"
     locked: true
   - id: R3bkOOv7
     type: code
-    value: |-
-      use "turtle.wpl"
-
-      draw-square : turtle -> {
-      	4 . times (_ -> {
-      		turtle . forward 50
-      		turtle . left (90 . degrees)
-      	})
-      }
-
-      with-turtle (turtle -> {
-      	8 . times (_ -> {
-      		turtle . draw-square
-      		turtle . left (45 . degrees)
-      	})
-      })
+    value: "use \"turtle.wpl\"\n\ndraw-square : () -> {\n\t4 . times (_ -> {\n\t\tforward (50 pixels)\n\t\tleft (90 degrees)\n\t})\n}\n\nwith-turtle {\n\t8 . times (_ -> {\n\t\tdraw-square ()\n\t\tleft (45 degrees)\n\t})\n}"
   - id: SaMtvQKw
     type: text
-    value: It also makes sense to allow us to customize the size of the square, which we can do by adding another input!
+    value: >-
+      It also makes sense to allow us to customize the size of the square, which
+      we can do by adding another input!
     locked: true
   - id: 8ZOCPXo3
     type: code
-    value: |-
-      use "turtle.wpl"
-
-      draw-square : size -> turtle -> {
-      	4 . times (_ -> {
-      		turtle . forward size
-      		turtle . left (90 . degrees)
-      	})
-      }
-
-      with-turtle (turtle -> {
-      	8 . times (_ -> {
-      		turtle . draw-square 50
-      		turtle . left (45 . degrees)
-      	})
-      })
+    value: "use \"turtle.wpl\"\n\ndraw-square : size -> {\n\t4 . times (_ -> {\n\t\tforward size\n\t\tleft (90 degrees)\n\t})\n}\n\nwith-turtle {\n\t8 . times (_ -> {\n\t\tdraw-square (50 pixels)\n\t\tleft (45 degrees)\n\t})\n}"
   - id: 8T-Q-7W9
     type: text
-    value: If you take a look the type of `times`, you might notice that it gives our function a number. Up until now we've ignored that number using `_`, but we can use it to create another interesting drawing!
+    value: >-
+      If you take a look the type of `times`, you might notice that it gives our
+      function a number. Up until now we've ignored that number using `_`, but
+      we can use it to create another interesting drawing!
     locked: true
   - id: xxnINSEi
     type: code
-    value: |-
-      use "turtle.wpl"
-
-      draw-square : size -> turtle -> {
-      	4 . times (_ -> {
-      		turtle . forward size
-      		turtle . left (90 . degrees)
-      	})
-      }
-
-      with-turtle (turtle -> {
-      	5 . times (n -> {
-      		turtle . draw-square (10 * (n as Number + 1))
-      	})
-      })
+    value: "use \"turtle.wpl\"\n\ndraw-square : size -> {\n\t4 . times (_ -> {\n\t\tforward size\n\t\tleft (90 degrees)\n\t})\n}\n\nwith-turtle {\n\t5 . times (n -> {\n\t\tdraw-square ((10 * (n as Number + 1)) pixels)\n\t})\n}"
   - id: h7dWEzdb
     type: text
-    value: |-
+    value: >-
       ## Other shapes
+
 
       Try writing some code to draw the following:
 
@@ -166,11 +80,12 @@ sections:
         -  A triangle
         -  A zig-zag
 
-      If you need to increase the size of the canvas, you can use `width` and `height`.
+      If you need to increase the size of the canvas, you can use `width` and
+      `height`.
     locked: true
   - id: rGF-olN4
     type: code
-    value: ""
+    value: ''
   - id: 91n65H3a
     type: text
     value: |-
@@ -178,27 +93,9 @@ sections:
 
       You can change the color of the drawing using the `color` function!
     locked: true
-  - id: -yULPKtJ
+  - id: '-yULPKtJ'
     type: code
-    value: |-
-      use "turtle.wpl"
-
-      draw-square : size -> turtle -> {
-      	4 . times (_ -> {
-      		turtle . forward size
-      		turtle . left (90 . degrees)
-      	})
-      }
-
-      colors : list "red" "orange" "yellow" "green" "blue" "purple" "pink" "brown"
-
-      with-turtle (turtle -> {
-      	colors . each (c -> {
-      		turtle . color c
-      		turtle . draw-square 50
-      		turtle . left (45 . degrees)
-      	})
-      })
+    value: "use \"turtle.wpl\"\n\ndraw-square : size -> {\n\t4 . times (_ -> {\n\t\tforward size\n\t\tleft (90 degrees)\n\t})\n}\n\ncolors : list \"red\" \"orange\" \"yellow\" \"green\" \"blue\" \"purple\" \"pink\" \"brown\"\n\nwith-turtle {\n\tcolors . each (c -> {\n\t\tcolor c\n\t\tdraw-square (50 pixels)\n\t\tleft (45 degrees)\n\t})\n}"
 previous:
   name: Why all the parentheses?
   link: ?lesson=learn/why-all-the-parentheses

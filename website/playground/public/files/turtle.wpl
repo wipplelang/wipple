@@ -1,17 +1,31 @@
 Angle : type {
-	degrees :: Number
+	deg :: Number
 }
 
-[help "Produce an angle in degrees."]
-[help-group "Turtle Graphics"]
-degrees :: Number -> Angle
-degrees : degrees -> Angle { degrees }
+degrees' :: Number -> Angle
+degrees' : deg -> Angle { deg }
 
-[help "Produce an angle in radians."]
-[help-group "Turtle Graphics"]
-radians :: Number -> Angle
-radians : radians -> degrees (radians * 180 / 3.14159)
+degrees : syntax {
+	'n degrees -> degrees' 'n
+}
 
+radians' :: Number -> Angle
+radians' : radians -> degrees' (radians * 180 / 3.14159)
+
+radians : syntax {
+	'n radians -> radians' 'n
+}
+
+Pixels : type {
+	px :: Number
+}
+
+pixels' :: Number -> Pixels
+pixels' : px -> Pixels { px }
+
+pixels : syntax {
+	'n pixels -> pixels' 'n
+}
 
 Turtle : type {
 	handle :: UI
@@ -31,13 +45,13 @@ with-turtle : syntax {
 
 [help "Set the width of the canvas."]
 [help-group "Turtle Graphics"]
-width :: Number -> ()
-width : width -> handle of turtle . message "width" width
+width :: Pixels -> ()
+width : { px } -> handle of turtle . message "width" px
 
 [help "Set the height of the canvas."]
 [help-group "Turtle Graphics"]
-height :: Number -> ()
-height : height -> handle of turtle . message "height" height
+height :: Pixels -> ()
+height : { px } -> handle of turtle . message "height" px
 
 [help "Set the background color of the canvas."]
 [help-group "Turtle Graphics"]
@@ -46,8 +60,8 @@ background : color -> handle of turtle . message "background" color
 
 [help "Set the x-y position of the turtle."]
 [help-group "Turtle Graphics"]
-position :: (Number , Number) -> ()
-position : (x , y) -> {
+position :: (Pixels , Pixels) -> ()
+position : ({ px : x } , { px : y }) -> {
 	handle of turtle . message "position-x" x
 	handle of turtle . message "position-y" y
 }
@@ -64,7 +78,7 @@ pen-down : () -> handle of turtle . message "pen-down" ()
 
 [help "Set the pen color."]
 [help-group "Turtle Graphics"]
-color :: Text -> Turtle -> ()
+color :: Text -> ()
 color : color -> handle of turtle . message "color" color
 
 [help "Fill a previously created `path` with a color."]
@@ -82,23 +96,23 @@ path : syntax {
 }
 
 
-[help "Move the turtle forward by the specified amount."]
+[help "Move the turtle forward by the specified number of pixels."]
 [help-group "Turtle Graphics"]
-forward :: Number -> ()
-forward : px -> handle of turtle . message "forward" px
+forward :: Pixels -> ()
+forward : { px } -> handle of turtle . message "forward" px
 
 
-[help "Move the turtle backward by the specified amount."]
+[help "Move the turtle backward by the specified number of pixels."]
 [help-group "Turtle Graphics"]
-backward :: Number -> ()
-backward : px -> handle of turtle . message "backward" px
+backward :: Pixels -> ()
+backward : { px } -> handle of turtle . message "backward" px
 
 [help "Turn the turtle left by the specified angle."]
 [help-group "Turtle Graphics"]
 left :: Angle -> ()
-left : { degrees } -> handle of turtle . message "left" degrees
+left : { deg } -> handle of turtle . message "left" deg
 
 [help "Turn the turtle right by the specified angle."]
 [help-group "Turtle Graphics"]
 right :: Angle -> ()
-right : { degrees } -> handle of turtle . message "right" degrees
+right : { deg } -> handle of turtle . message "right" deg
