@@ -96,6 +96,19 @@ sections:
   - id: '-yULPKtJ'
     type: code
     value: "use \"turtle.wpl\"\n\ndraw-square : size -> {\n\t4 . times (_ -> {\n\t\tforward size\n\t\tleft (90 degrees)\n\t})\n}\n\ncolors : list \"red\" \"orange\" \"yellow\" \"green\" \"blue\" \"purple\" \"pink\" \"brown\"\n\nwith-turtle {\n\tcolors . each (c -> {\n\t\tcolor c\n\t\tdraw-square (50 pixels)\n\t\tleft (45 degrees)\n\t})\n}"
+  - id: JGr7ms5C
+    type: text
+    value: >-
+      ## Recursion
+
+
+      In Wipple, you can write a function that calls itself! This is
+      particularly useful for drawing fractals, like trees. Try playing around
+      with the example below!
+    locked: true
+  - id: tTI8c_cW
+    type: code
+    value: "use \"turtle.wpl\"\n\nangle :: Number\nangle : 30\n\ntree :: Number -> Natural -> ()\ntree : size -> level -> if (level > 0) {\n\t-- Draw the right side of the tree\n\tforward (size pixels)\n\tright (angle degrees)\n\ttree (size * 0.8) (level - 1)\n\t\n\t-- Draw the left side of the tree\n\tleft ((angle * 2) degrees)\n\ttree (size * 0.8) (level - 1)\n\tright (angle degrees)\n\t\n\tbackward (size pixels)\n}\n\nwith-turtle {\n\tspeed 10\n\ttree 25 5\n}"
 previous:
   name: Why all the parentheses?
   link: ?lesson=learn/why-all-the-parentheses
