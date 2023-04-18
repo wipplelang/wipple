@@ -13,7 +13,7 @@ with-task-group :: (Task-Group -> ()) -> ()
 with-task-group : f -> external "runtime" "with-task-group" f
 
 task' :: (() -> ()) -> Task-Group -> ()
-task' : f -> group -> external "runtime" "task" group f
+task' : f group -> external "runtime" "task" group f
 
 task : syntax {
 	task 'body -> task' (() -> 'body)

@@ -32,7 +32,7 @@ Element => instance (Iterate (Iterator Element) Element) : it
 [help "Transform each item in an iterator, producing a new iterator."]
 [help-group "Collections"]
 transform :: Container Element Result where (Iterate Container Element) => (Element -> Result) -> Container -> Iterator Result
-transform : f -> container -> {
+transform : f container -> {
 	base : Iterate container
 
 	iterator (() -> when (next base) {
@@ -44,7 +44,7 @@ transform : f -> container -> {
 [help "Keep only the items in an iterator that satisfy the provided condition."]
 [help-group "Collections"]
 filter :: Container Element where (Iterate Container Element) => (Element -> Boolean) -> Container -> Iterator Element
-filter : include? -> container -> {
+filter : include? container -> {
 	base : Iterate container
 
 	iterator (() -> loop {
@@ -109,7 +109,7 @@ instance (Collect () ()) : iterator -> {
 [help "Perform an action for each item in an iterator."]
 [help-group "Collections"]
 each :: Container Element where (Iterate Container Element) => (Element -> ()) -> Container -> ()
-each : f -> container -> container . transform f . collect
+each : f container -> container . transform f . collect
 
 [help "Split an iterator into groups of consecutive items satisfying a condition."]
 [help-group "Collections"]

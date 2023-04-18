@@ -79,7 +79,7 @@ prompt : prompt -> external "runtime" "prompt" prompt (Read :: (Text -> Maybe A)
 [help "Ask the user to pick from a set of options."]
 [help-group "Input and Output"]
 choice :: Element where (Show Element) => Text -> List Element -> Element
-choice : prompt -> items -> {
+choice : prompt items -> {
 	descriptions : items . transform (((item :: Element) -> Show item) :: (Element -> Text)) . collect :: List Text
 	index : external "runtime" "choice" prompt descriptions
 	items . nth index . unwrap

@@ -3,9 +3,9 @@
 [help "Use a UI element from a JavaScript file."]
 [help-group "User Interface"]
 with-ui :: Result => Text -> (UI -> Result) -> Result
-with-ui : url -> f -> external "runtime" "with-ui" url f
+with-ui : url f -> external "runtime" "with-ui" url f
 
 [help "Send a message to a UI element."]
 [help-group "User Interface"]
 message :: Input Output => Text -> Input -> UI -> Output
-message : message -> data -> ui -> external "runtime" "message-ui" ui message data
+message : message data ui -> external "runtime" "message-ui" ui message data

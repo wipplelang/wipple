@@ -16,12 +16,12 @@ get : m -> external "runtime" "get-mutable" m
 [help "Update the value contained inside a `Mutable`."]
 [help-group "Utilities"]
 set! :: A => A -> Mutable A -> ()
-set! : x -> m -> external "runtime" "set-mutable" m x
+set! : x m -> external "runtime" "set-mutable" m x
 
 [help "Swap the contents of two `Mutable` values."]
 [help-group "Utilities"]
 swap! :: A => Mutable A -> Mutable A -> ()
-swap! : a -> b -> {
+swap! : a b -> {
 	temp : get a
 	a . set! (get b)
 	b . set! temp
@@ -30,7 +30,7 @@ swap! : a -> b -> {
 [help "Add a value to a `Mutable` value."]
 [help-group "Math"]
 add! :: Left Right where (Add Left Right Left) => Right -> Mutable Left -> ()
-add! : x -> m -> m . set! (get m + x)
+add! : x m -> m . set! (get m + x)
 
 [help "Increment a `Mutable` value."]
 [help-group "Math"]

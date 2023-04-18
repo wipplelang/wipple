@@ -37,27 +37,27 @@ Index-Error : type
 [help "Retrieve the value in a `List` at a particular index, if it exists."]
 [help-group "Collections"]
 nth :: A => Natural -> List A -> Result A Index-Error
-nth : index -> list -> external "runtime" "list-nth" list index
+nth : index list -> external "runtime" "list-nth" list index
 
 [help "Add a new item to the end of a `List`."]
 [help-group "Collections"]
 append :: A => A -> List A -> List A
-append : new -> list -> external "runtime" "list-append" list new
+append : new list -> external "runtime" "list-append" list new
 
 [help "Add a new item to the end of a `Mutable List`."]
 [help-group "Collections"]
 append! :: A => A -> Mutable (List A) -> ()
-append! : new -> list -> list . set! (list . get . append new)
+append! : new list -> list . set! (list . get . append new)
 
 [help "Insert a new item at a particular index inside a `List`."]
 [help-group "Collections"]
 insert :: A => Natural -> A -> List A -> Result (List A) Index-Error
-insert : index -> new -> list -> external "runtime" "list-insert" list index new
+insert : index new list -> external "runtime" "list-insert" list index new
 
 [help "Insert a new item at a particular index inside a `Mutable List`."]
 [help-group "Collections"]
 insert! :: A => Natural -> A -> Mutable (List A) -> Result () Index-Error
-insert! : index -> new -> list -> when (list . get . insert index new) {
+insert! : index new list -> when (list . get . insert index new) {
 	OK new-list -> {
 		list . set! new-list
 		OK ()
@@ -68,12 +68,12 @@ insert! : index -> new -> list -> when (list . get . insert index new) {
 [help "Remove the item at a particular index inside a `List`."]
 [help-group "Collections"]
 remove :: A => Natural -> List A -> Result (List A) Index-Error
-remove : index -> list -> external "runtime" "list-remove" list index
+remove : index list -> external "runtime" "list-remove" list index
 
 [help "Remove the item at a particular index inside a `Mutable List`."]
 [help-group "Collections"]
 remove! :: Natural -> Mutable (List _) -> Result () Index-Error
-remove! : index -> list -> when (list . get . remove index) {
+remove! : index list -> when (list . get . remove index) {
 	OK new-list -> {
 		list . set! new-list
 		OK ()

@@ -8,7 +8,7 @@ it : x -> x
 [help "Ignores its second input."]
 [help-group "Utilities"]
 just :: A => A -> _ -> A
-just : x -> _ -> x
+just : x _ -> x
 
 [operator Composition-Precedence]
 . : syntax {
