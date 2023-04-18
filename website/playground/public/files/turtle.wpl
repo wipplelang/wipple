@@ -58,6 +58,14 @@ height : { px } -> handle of turtle . message "height" px
 background :: Text -> ()
 background : color -> handle of turtle . message "background" color
 
+[help "Set the speed of the turtle."]
+[help-group "Turtle Graphics"]
+speed :: Number -> ()
+speed : speed -> {
+	if (speed < 0) (crash "`speed` must be at least 0")
+	handle of turtle . message "speed" speed
+}
+
 [help "Set the x-y position of the turtle."]
 [help-group "Turtle Graphics"]
 position :: (Pixels , Pixels) -> ()
@@ -81,26 +89,15 @@ pen-down : () -> handle of turtle . message "pen-down" ()
 color :: Text -> ()
 color : color -> handle of turtle . message "color" color
 
-[help "Fill a previously created `path` with a color."]
+[help "Fill the most recent path with a color."]
 [help-group "Turtle Graphics"]
 fill :: Text -> ()
 fill : color -> handle of turtle . message "fill" color
-
-
-path : syntax {
-	path 'body -> {
-		handle of turtle . message "begin-path" ()
-		'body
-		handle of turtle . message "close-path" ()
-	}
-}
-
 
 [help "Move the turtle forward by the specified number of pixels."]
 [help-group "Turtle Graphics"]
 forward :: Pixels -> ()
 forward : { px } -> handle of turtle . message "forward" px
-
 
 [help "Move the turtle backward by the specified number of pixels."]
 [help-group "Turtle Graphics"]
