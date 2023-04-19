@@ -73,7 +73,7 @@ instance (Read Double) : text -> external "runtime" "text-to-double" text
 
 [help-group "Input and Output"]
 [help "Read a value from the user with the provided prompt."]
-prompt :: A where (Read A) => Text -> A
+prompt :: (A : Text) where (Read A) => Text -> A
 prompt : prompt -> external "runtime" "prompt" prompt (Read :: (Text -> Maybe A))
 
 [help "Ask the user to pick from a set of options."]
