@@ -34,7 +34,7 @@ diagnostics: |
       │     ^^^^^^
       │     │
       │     try annotating the type with `::`
-      │     this has type `a -> False` for some unknown type `a`
+      │     this has type `_ -> False`
 
    error: could not determine the type of this expression
       ┌─ test:20:5
@@ -43,7 +43,7 @@ diagnostics: |
       │     ^^^^^^
       │     │
       │     try annotating the type with `::`
-      │     this has type `a -> False` for some unknown type `a`
+      │     this has type `_ -> False`
 
    error: could not determine the type of this expression
       ┌─ test:24:5
@@ -52,4 +52,4 @@ diagnostics: |
       │     ^^^^^^
       │     │
       │     try annotating the type with `::`
-      │     this has type `a -> True` for some unknown type `a`
+      │     this has type `_ -> True`

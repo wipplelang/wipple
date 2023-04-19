@@ -22,4 +22,4 @@ diagnostics: |
        │     ^^^^^^^^^^^
        │     │
        │     try annotating the type with `::`
-       │     this has type `a -> S (S (S (S (S Z))))` for some unknown type `a`
+       │     this has type `_ -> S (S (S (S (S Z))))`
