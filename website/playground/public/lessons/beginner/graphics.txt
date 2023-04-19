@@ -1,0 +1,130 @@
+---
+previous:
+  name: Math
+  link: ?lesson=beginner/math
+next:
+  name: Text
+  link: ?lesson=beginner/text
+---
+
+---
+id: k5l5wiRO
+type: text
+locked: true
+---
+
+# Graphics
+
+Let's learn some more Wipple commands by drawing some graphics!
+
+All of Wipple's graphics functionality is behind `turtle`. We can write `use "turtle"` at the top of our code to tell the computer that we'd like to use turtle graphics:
+
+---
+id: 8uH-M6ww
+type: code
+---
+
+use "turtle"
+
+---
+id: PywAcOaX
+type: text
+locked: true
+---
+
+And then we can create a turtle with the `with-turtle` command:
+
+---
+id: tVT53pcn
+type: code
+---
+
+use "turtle"
+
+with-turtle {
+	-- More to follow...
+}
+
+---
+id: v9th9bx8
+type: text
+locked: true
+---
+
+Great! The `with-turtle` command accepts a "block" of code, which begins with `{` and ends with `}`. A **block** is a way to group multiple commands into one. The thing to remember is that all of your drawing commands must go inside the block.
+
+---
+id: WKUel-ak
+type: code
+---
+
+use "turtle"
+
+with-turtle {
+	forward (50 pixels)
+}
+
+---
+id: uz7Cf3yF
+type: text
+locked: true
+---
+
+As you can see, the `forward` command lets us move the turtle forward by a number of `pixels`. We also have the `backward`, `left` and `right` commands to control the turtle's movement. Let's draw a square!
+
+---
+id: 6vb4ybv9
+type: code
+---
+
+use "turtle"
+
+with-turtle {
+	forward (50 pixels)
+	left (90 degrees)
+	forward (50 pixels)
+	left (90 degrees)
+	forward (50 pixels)
+	left (90 degrees)
+	forward (50 pixels)
+	left (90 degrees)
+}
+
+---
+id: P__ROLa0
+type: text
+locked: true
+---
+
+Here are a few more commands — they should be pretty self-explanatory:
+
+---
+id: rS44ihW_
+type: code
+---
+
+use "turtle"
+
+with-turtle {
+	width (500 pixels)
+	right (90 degrees)
+	color "red"
+	forward (50 pixels)
+	color "green"
+	forward (50 pixels)
+	color "blue"
+	forward (50 pixels)
+}
+
+---
+id: wGHvKzZB
+type: text
+locked: true
+---
+
+Notice that the colors must go between quotation marks. We'll explain why in the next section. For now, experiment with turtle graphics in the space below!
+
+---
+id: oJoojiVl
+type: code
+---

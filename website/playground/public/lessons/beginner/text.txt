@@ -1,0 +1,52 @@
+---
+previous:
+  name: Graphics
+  link: ?lesson=beginner/graphics
+next:
+  name: Variables
+  link: ?lesson=beginner/variables
+---
+
+---
+id: 3Yh9kq6_
+type: text
+locked: true
+---
+
+# Text
+
+Something that often confuses beginners is the difference between names and text. In Wipple, a **name** represents something known by the computer, where **text** is always put between quotation marks and represents something literally.
+
+For example, when we write `show "Hello!"`, `show` is a name and `"Hello!"` is text:
+
+---
+id: eLKLdF_2
+type: code
+---
+
+show "Hello!"
+
+---
+id: Xw3WG0r_
+type: text
+locked: true
+---
+
+Watch what happens if we forget to put the quotes:
+
+---
+id: wBK7yj3I
+type: code
+---
+
+show Hello!
+
+---
+id: g4l8og2L
+type: text
+locked: true
+---
+
+Error! Try hovering over the highlighted code and see if you can fix it.
+
+Now, let's learn how to define our own names!

@@ -31,7 +31,7 @@ import LinkIcon from "@mui/icons-material/Link";
 import DataObjectIcon from "@mui/icons-material/DataObject";
 import ListAltIcon from "@mui/icons-material/ListAlt";
 import { nanoid } from "nanoid";
-import YAML from "js-yaml";
+import TOML from "@iarna/toml";
 import { CodeEditor, TextEditor } from "./components";
 import { useRefState } from "./helpers";
 
@@ -164,7 +164,7 @@ const App = () => {
                     </a>
 
                     <div className="flex gap-4 text-gray-500 dark:text-gray-400">
-                        <a href="?lesson=learn/toc">Learn</a>
+                        <a href="?lesson=toc">Learn</a>
 
                         <a target="_blank" href="/guide">
                             Guide
@@ -397,12 +397,25 @@ const OptionsButton = (props: { sections: Section[] }) => (
 
                     <MenuItem
                         onClick={async () => {
-                            const yaml = YAML.dump({ sections: props.sections });
-                            await navigator.clipboard.writeText(yaml);
+                            let text = "";
+                            for (const section of props.sections) {
+                                text += "---\n";
+                                for (const [key, value] of Object.entries(section)) {
+                                    if (key === "value" || value == null) {
+                                        continue;
+                                    }
+
+                                    text += `${key}: ${value}\n`;
+                                }
+
+                                text += `---\n\n${section.value}\n\n`;
+                            }
+
+                            await navigator.clipboard.writeText(text.trimEnd());
                             popupState.close();
                         }}
                     >
-                        <ListAltIcon sx={{ marginRight: 1 }} /> Copy YAML
+                        <ListAltIcon sx={{ marginRight: 1 }} /> Copy text
                     </MenuItem>
                 </Menu>
             </>

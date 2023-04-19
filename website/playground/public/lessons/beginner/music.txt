@@ -1,0 +1,169 @@
+---
+previous:
+  name: Functions
+  link: ?lesson=beginner/functions
+---
+
+---
+id: qWMDKjVo
+type: text
+locked: true
+---
+
+# Making music
+
+Let's look at how we can use Wipple to make music! If we `use "music"`, we get access to `with-music` and various instruments:
+
+---
+id: Cnuyoqyl
+type: code
+---
+
+use "music"
+
+with-music {
+	with-instrument acoustic-grand-piano {
+		note "C4" (4 beats)
+	}
+}
+
+---
+id: 7wo2QQvJ
+type: text
+locked: true
+---
+
+Press Play and you should hear a note!
+
+The basic structure of `with-music` is the same as `with-turtle`, there's just a little more going on. Let's break it down:
+
+  -  `with-instrument` lets you load an instrument to be played by `music`. You can look at the list of instrument names by clicking the + icon on the right of the code editor, and scrolling down to the Music section.
+  -  `note` lets you play a note for a duration of time. Write the note name (`A` through `G`) followed by the octave number. For example, `C1` is a low-pitched note while `C7` is a high-pitched note. You can specify a sharp using `#` (eg. `F#4`) and a flat using `b` (eg. `Eb3`).
+
+You can have multiple `with-instrument`s and they will all play simultaneously, so you can make your own orchestra!
+
+---
+id: be9CTigs
+type: code
+---
+
+use "music"
+
+with-music {
+	tempo 144
+
+	with-instrument violin {
+		note "G4" ((1 / 2) beats)
+		note "G4" ((1 / 2) beats)
+		note "G4" ((1 / 2) beats)
+		note "Eb4" (4 beats)
+		rest (2 beats)
+
+		note "F4" ((1 / 2) beats)
+		note "F4" ((1 / 2) beats)
+		note "F4" ((1 / 2) beats)
+		note "D4" (4 beats)
+	}
+
+	with-instrument viola {
+		note "G3" ((1 / 2) beats)
+		note "G3" ((1 / 2) beats)
+		note "G3" ((1 / 2) beats)
+		note "Eb3" (4 beats)
+		rest (2 beats)
+
+		note "F3" ((1 / 2) beats)
+		note "F3" ((1 / 2) beats)
+		note "F3" ((1 / 2) beats)
+		note "D3" (4 beats)
+	}
+
+	with-instrument cello {
+		note "G2" ((1 / 2) beats)
+		note "G2" ((1 / 2) beats)
+		note "G2" ((1 / 2) beats)
+		note "Eb2" (4 beats)
+		rest (2 beats)
+
+		note "F2" ((1 / 2) beats)
+		note "F2" ((1 / 2) beats)
+		note "F2" ((1 / 2) beats)
+		note "D2" (4 beats)
+	}
+
+	with-instrument contrabass {
+		note "G2" ((1 / 2) beats)
+		note "G2" ((1 / 2) beats)
+		note "G2" ((1 / 2) beats)
+		note "Eb2" (4 beats)
+		rest (2 beats)
+
+		note "F2" ((1 / 2) beats)
+		note "F2" ((1 / 2) beats)
+		note "F2" ((1 / 2) beats)
+		note "D2" (4 beats)
+	}
+}
+
+---
+id: sj2oTku3
+type: text
+locked: true
+---
+
+You can combine `with-instrument` with other functions (like `times`) to make repeating sections of music, and you can use `notes` to play a `list` of notes at the same time:
+
+---
+id: lXkYRH9r
+type: code
+---
+
+use "music"
+
+with-music {
+	tempo 132
+
+	with-instrument marimba {
+		melody : _ -> {
+			notes (list "C5" "C4") ((1 / 4) beats)
+			note "Bb4" ((1 / 4) beats)
+			note "G4" ((1 / 2) beats)
+			note "C5" ((1 / 2) beats)
+			notes (list "F4" "Bb3") ((1 / 2) beats)
+			note "C5" ((1 / 2) beats)
+			note "Bb4" ((1 / 2) beats)
+			note "C5" ((1 / 2) beats)
+			notes (list "F4" "A3") ((1 / 2) beats)
+			rest ((3 / 2) beats)
+			notes (list "G4" "Eb4") (1 beats)
+			notes (list "G4" "C4") ((1 / 2) beats)
+			notes (list "Bb4" "Eb4") ((1 / 2) beats)
+			notes (list "C5" "F4") ((1 / 2) beats)
+		}
+
+		times melody 4
+	}
+}
+
+---
+id: 6cf1f4bT
+type: text
+locked: true
+---
+
+Try writing your own music below!
+
+---
+id: lXl8kpAu
+type: code
+---
+
+---
+id: LRGwo7lA
+type: text
+locked: true
+---
+
+## Great work!
+
+Congratulations, you've made it to the end of the Beginner lessons! 🥳 Feel free to explore the Wipple Playground and write your own programs. (To open a fresh editor, click on the Wipple logo at the top of the page.) If you want to learn more, try moving on to the Intermediate lessons.

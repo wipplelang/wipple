@@ -15,7 +15,7 @@
         "@mui/icons-material": "^5.11.9",
         "@mui/material": "^5.11.10",
         "@tailwindcss/typography": "^0.5.9",
-        "js-yaml": "^4.1.0",
+        "front-matter": "^4.0.2",
         "line-column": "^1.0.2",
         "material-ui-popup-state": "^5.0.4",
         "nanoid": "^4.0.1",

@@ -1,0 +1,29 @@
+---
+---
+
+---
+id: o8l_95Dk
+type: text
+locked: true
+---
+
+# Learn Wipple
+
+## Beginner
+
+- [Welcome!](?lesson=beginner/welcome)
+- [Math](?lesson=beginner/math)
+- [Graphics](?lesson=beginner/graphics)
+- [Text](?lesson=beginner/text)
+- [Variables](?lesson=beginner/variables)
+- [Functions](?lesson=beginner/functions)
+- [Making music](?lesson=beginner/music)
+
+## Intermediate
+
+- [Logic](?lesson=intermediate/logic)
+- [Types](?lesson=intermediate/types)
+
+## Advanced
+
+- [TODO](?lesson=advanced/todo)

@@ -1,0 +1,254 @@
+---
+previous:
+  name: Variables
+  link: ?lesson=beginner/variables
+next:
+  name: Making music
+  link: ?lesson=beginner/music
+---
+
+---
+id: 8yVxkV94
+type: text
+locked: true
+---
+
+# Functions
+
+In Wipple, a **function** is a way to take a piece of code and use it multiple times without having to copy-paste the code over and over again. For example, let's say we wanted to make a program that greets people by their name:
+
+---
+id: WxZ0GcYt
+type: code
+---
+
+alice : "Alice"
+alice-greeting : format "Hello, _!" alice
+show alice-greeting
+
+bob : "Bob"
+bob-greeting : format "Hello, _!" bob
+show bob-greeting
+
+charlie : "Charlie"
+charlie-greeting : format "Hello, _!" charlie
+show charlie-greeting
+
+---
+id: QOix0O8A
+type: text
+locked: true
+---
+
+This code is getting a bit repetitive, but it has a pattern — the greeting only differs by the name of the person. That means we can make a function that accepts a name and produces a greeting!
+
+---
+id: fcSyJB-_
+type: code
+---
+
+greet : name -> {
+	greeting : format "Hello, _!" name
+	show greeting
+}
+
+greet "Alice"
+greet "Bob"
+greet "Charlie"
+
+---
+id: Cq5ngAJX
+type: text
+locked: true
+---
+
+As you can see, functions are written using an arrow (`->`, a dash followed by a greater-than sign). The input is on the left, and the output is on the right.
+
+Functions can have a single input or multiple inputs. Just list them all before the arrow:
+
+---
+id: 5hCPQ-Eu
+type: code
+---
+
+add : a b -> a + b
+sum : add 1 2
+show sum
+
+---
+id: xDX-JNhj
+type: text
+locked: true
+---
+
+If you just want to make a function that "does something" _without_ accepting any input, you can use the empty list (`()`) as the input:
+
+---
+id: L6ekFSux
+type: code
+---
+
+hello-world : () -> show "Hello, world!"
+
+hello-world ()
+hello-world ()
+hello-world ()
+
+---
+id: aipbbKsD
+type: text
+locked: true
+---
+
+Likewise, the result of `show` and other functions that just "do something" without producing any output is `()`.
+
+## Repeating a function with `times`
+
+The `times` command accepts a function and a number, and calls the function that number of times. Let's try it out!
+
+---
+id: FxtpJx16
+type: code
+---
+
+my-function : n -> show n
+times my-function 4
+
+---
+id: u3bUTsa4
+type: text
+locked: true
+---
+
+`times` provides the current number (starting at 0) to `my-function`. If we don't care about the number, we can replace `n` with the `_` placeholder:
+
+---
+id: JsdCKl-C
+type: code
+---
+
+hello-world : _ -> show "Hello, world!"
+times hello-world 5
+
+---
+id: 8SGTq4Bl
+type: text
+locked: true
+---
+
+Did you know that `show` and every other "command" we've looked at so far are actually functions? So we can pass `show` to `times` directly — no need to have an intermediate step!
+
+---
+id: 8Wo7rJgo
+type: code
+---
+
+times show 10
+
+---
+id: VETmdYWx
+type: text
+locked: true
+---
+
+Do you remember this code from earlier?
+
+---
+id: t0CwoKBS
+type: code
+---
+
+use "turtle"
+
+with-turtle {
+	forward (50 pixels)
+	left (90 degrees)
+	forward (50 pixels)
+	left (90 degrees)
+	forward (50 pixels)
+	left (90 degrees)
+	forward (50 pixels)
+	left (90 degrees)
+}
+
+---
+id: Jh_nbyCP
+type: text
+locked: true
+---
+
+Let's change it to use `times` and functions!
+
+---
+id: 3uCAuJGe
+type: code
+---
+
+use "turtle"
+
+draw-square-part : _ -> {
+	forward (50 pixels)
+	left (90 degrees)
+}
+
+draw-square : () -> times draw-square-part 4
+
+with-turtle {
+	draw-square ()
+}
+
+---
+id: ilLJ-ZAY
+type: text
+locked: true
+---
+
+Cool!! We can also add a second input, `size`, to control the size of the square:
+
+---
+id: FczH-Iu7
+type: code
+---
+
+use "turtle"
+
+draw-square-part : size _ -> {
+	forward size
+	left (90 degrees)
+}
+
+draw-square : size -> times (draw-square-part size) 4
+
+with-turtle {
+	speed 2
+	draw-square (10 pixels)
+	draw-square (20 pixels)
+	draw-square (30 pixels)
+	draw-square (40 pixels)
+	draw-square (50 pixels)
+}
+
+---
+id: b8jg93ay
+type: text
+locked: true
+---
+
+One last note: you don't need to use a variable when you make a function. For simple or single-use functions, it's often easier to provide the function directly. It can take some getting used to, especially if you have experience in another language, but it's one of Wipple's more powerful features!
+
+---
+id: ojSDW2iD
+type: code
+---
+
+times (n -> show (n * 2)) 5
+
+---
+id: J4qtaLF0
+type: text
+locked: true
+---
+
+Beginner mode is helpful here so you can see how all the parentheses match up.
+
+We're almost at the end — let's put everything together and make some music!

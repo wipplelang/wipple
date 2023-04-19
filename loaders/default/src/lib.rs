@@ -158,12 +158,25 @@ impl wipple_frontend::Loader for Loader {
     }
 
     fn resolve(&self, path: FilePath, current: Option<FilePath>) -> anyhow::Result<FilePath> {
+        fn set_extension_if_needed(path: &mut PathBuf) {
+            if path.extension().is_none() {
+                path.set_extension("wpl");
+            }
+        }
+
         match path {
             FilePath::Path(path) => {
                 if is_url(path) {
-                    Ok(FilePath::Url(path))
+                    let mut url = Url::from_str(&path)?.join(path.as_str())?;
+
+                    let mut path = PathBuf::from(url.path());
+                    set_extension_if_needed(&mut path);
+                    url.set_path(path.to_str().unwrap());
+
+                    Ok(FilePath::Url(InternedString::new(url.as_str())))
                 } else {
-                    let parsed_path = PathBuf::from(path.as_str());
+                    let mut parsed_path = PathBuf::from(path.as_str());
+                    set_extension_if_needed(&mut parsed_path);
 
                     if parsed_path.has_root() {
                         Ok(FilePath::Path(path))
@@ -178,7 +191,12 @@ impl wipple_frontend::Loader for Loader {
 
                         match base {
                             FilePath::Url(base) => {
-                                let url = Url::from_str(&base).unwrap().join(path.as_str())?;
+                                let mut url = Url::from_str(&base).unwrap().join(path.as_str())?;
+
+                                let mut path = PathBuf::from(url.path());
+                                set_extension_if_needed(&mut path);
+                                url.set_path(path.to_str().unwrap());
+
                                 Ok(FilePath::Url(InternedString::from(url.to_string())))
                             }
                             FilePath::Path(base) => {
@@ -200,7 +218,12 @@ impl wipple_frontend::Loader for Loader {
                                         )))
                                     }
                                     FilePath::Url(base) => {
-                                        let url = Url::from_str(&base)?.join(path.as_str())?;
+                                        let mut url = Url::from_str(&base)?.join(path.as_str())?;
+
+                                        let mut path = PathBuf::from(url.path());
+                                        set_extension_if_needed(&mut path);
+                                        url.set_path(path.to_str().unwrap());
+
                                         Ok(FilePath::Url(InternedString::new(url.as_str())))
                                     }
                                     _ => Err(anyhow::Error::msg("base must be a file path or URL")),

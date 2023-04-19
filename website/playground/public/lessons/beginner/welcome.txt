@@ -1,0 +1,84 @@
+---
+next:
+  name: Math
+  link: ?lesson=beginner/math
+---
+
+---
+id: LUzRzjQn
+type: text
+locked: true
+---
+
+# Welcome!
+
+Welcome to the Wipple Playground! The Wipple Playground is a place where you can learn the Wipple programming language, build interactive programs, and experiment with Wipple code. Let's get started!
+
+## Navigating the Playground
+
+### Code boxes
+
+The box below contains Wipple code. You can edit the code in the box at any time. When you're going through the lessons, make sure to change the code and see what it does. Go ahead and type your name into the prompt!
+
+---
+id: iIJMIDrl
+type: code
+---
+
+name : prompt "What is your name?" :: Text
+show (format "Welcome to Wipple, _!" name)
+
+---
+id: ynZvaF_J
+type: text
+locked: true
+---
+
+### Beginner mode
+
+By default, the Wipple Playground is in beginner mode. Beginner mode highlights matching parentheses and braces to make it easier to see the structure of your code. You can always turn off beginner mode by clicking the button in the bottom left of the screen.
+
+### Errors
+
+Sometimes, you'll write some Wipple code and it won't run. When this happens, you'll get an error message and the part of the code that caused the error will be highlighted in red. For example, try hovering over the error in the following example:
+
+---
+id: eEkBVKu6
+type: code
+---
+
+1+2
+
+---
+id: IG0ROGDj
+type: text
+locked: true
+---
+
+### Warnings
+
+You might also sometimes get code highlighted in yellow. This indicates a "warning", meaning that even though your code runs, you might have made a typo. For example, the following code uses `a` twice instead of adding `a` to `b`:
+
+---
+id: kHVMIeoH
+type: code
+---
+
+add : a b -> a + a
+show (add 1 2) -- oops, it should show 3, not 2!
+
+---
+id: -YzLfQMC
+type: text
+locked: true
+---
+
+### Navigation
+
+When you're ready to move on, click the right arrow at the bottom of the screen. You can also go back by clicking the left arrow. To see all the lessons available in the Wipple Playground, click Learn in the top right of the screen.
+
+### Sharing your code with others
+
+To share your creation with others, click the three dots next to the beginner mode button at the bottom of the screen, and select Copy Link. Then you can paste the link wherever you want! Visiting the link will restore your code.
+
+Alright, let's dive into some Wipple code — click the right arrow to continue!

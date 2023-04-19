@@ -1,0 +1,116 @@
+---
+previous:
+  name: Text
+  link: ?lesson=beginner/text
+next:
+  name: Functions
+  link: ?lesson=beginner/functions
+---
+
+---
+id: p9AsWEtw
+type: text
+locked: true
+---
+
+# Variables
+
+It can get confusing to write lots of commands inside each other. Instead, we can give names to each step! This concept is called **variables** — just like in math, where you can give the variable $x$ a value (eg. 5), you can make your own variables in Wipple!
+
+---
+id: wj1n7nK-
+type: code
+---
+
+x : 5
+show x
+
+---
+id: WL_rUS7H
+type: text
+locked: true
+---
+
+In Wipple, you can create variables by using the `:` symbol, where the name of the variable goes on the left and the value goes on the right. After you create the variable, you can use it in place of a number — anywhere the computer sees `x`, it will replace it with `5`!
+
+You can also put more complicated code on the right-hand side:
+
+---
+id: KNrqEyXw
+type: code
+---
+
+sum : 5 + 2
+show sum
+
+---
+id: 4WaW6Unj
+type: text
+locked: true
+---
+
+Notice that there's no need to limit yourself to a single letter — variable names can be as descriptive as you want! The only restriction is that if you want to have multiple words, you need to separate them with a `-`. That way, a space always represents the end of one command and the beginning of the next command.
+
+---
+id: bwxDK7sh
+type: code
+---
+
+my-awesome-variable : 10 / 5
+show my-awesome-variable
+
+---
+id: rew0Ep44
+type: text
+locked: true
+---
+
+Variables work with more than just numbers — you can use text as well as other variables!
+
+---
+id: nVS1WaKk
+type: code
+---
+
+a : 5
+b : 2
+sum : a + b
+
+answer : "The answer is..."
+
+show answer
+show sum
+
+---
+id: WF457oSd
+type: text
+locked: true
+---
+
+## The `format` command
+
+Let's learn one more command, called `format`. It lets you put variables inside text!
+
+To use `format`, you provide some text containing `_` placeholders. The placeholders will be replaced with the variables you provide after the text:
+
+---
+id: NSc_duTa
+type: code
+---
+
+name : "your name here"
+greeting : format "Hello, _!" name
+show greeting
+
+---
+id: 8dD_aCHr
+type: text
+locked: true
+---
+
+Try experimenting with variables in the space below!
+
+---
+id: gkDJ1QDa
+type: code
+---
