@@ -1371,7 +1371,7 @@ impl Typechecker {
             lower::ExpressionKind::Block(statements, top_level) => {
                 let prev_block_end = mem::replace(&mut self.block_end, Some(None));
 
-                let mut statements = statements
+                let statements = statements
                     .into_iter()
                     .map(|statement| self.convert_expr(statement, info))
                     .collect::<Vec<_>>();
@@ -1389,22 +1389,6 @@ impl Typechecker {
                     }
 
                     ty = end_ty;
-                }
-
-                // Non-terminator statements by default have a type of `()`
-                #[allow(clippy::bool_to_int_with_if)] // more clear this way
-                for statement in statements
-                    .iter_mut()
-                    .dropping_back(if top_level { 0 } else { 1 })
-                {
-                    let var = self.ctx.new_variable(None);
-
-                    self.ctx
-                        .unify(
-                            engine::UnresolvedType::TerminatingVariable(var),
-                            statement.ty.clone(),
-                        )
-                        .unwrap();
                 }
 
                 UnresolvedExpression {
@@ -2687,7 +2671,7 @@ impl Typechecker {
                 match find_instance!(@find params.clone(), $resolve) {
                     // ...if there is a single candidate, return it.
                     Some(Ok(candidate)) => return Ok(candidate),
-                    // ...if there are multiple candiates, try again finalizing numeric variables...
+                    // ...if there are multiple candiates, try again finalizing numeric variables.
                     Some(Err(_)) => {
                         let params = params
                             .clone()
@@ -2698,26 +2682,10 @@ impl Typechecker {
                             })
                             .collect::<Vec<_>>();
 
-                        match find_instance!(@find params.clone(), $resolve) {
-                            Some(Ok(candidate)) => return Ok(candidate),
-                            // ...and again finalizing terminating variables.
-                            Some(Err(_)) => {
-                                let params = params
-                                    .clone()
-                                    .into_iter()
-                                    .map(|mut ty| {
-                                        ty.finalize_terminating_variables(&self.ctx);
-                                        ty
-                                    })
-                                    .collect::<Vec<_>>();
-
-                                match find_instance!(@find params, $resolve) {
-                                    Some(result) => return result,
-                                    None => {}
-                                }
+                            match find_instance!(@find params, $resolve) {
+                                Some(result) => return result,
+                                None => {}
                             }
-                            None => {}
-                        }
                     }
                     // ...if there are no candidates, continue the search.
                     None => {}

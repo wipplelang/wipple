@@ -15,12 +15,12 @@ of : syntax {
 
 [help "Crash the program with the provided message."]
 [help-group "Utilities"]
-crash :: Text -> _
+crash :: (A : ()) => Text -> A
 crash : message -> external "runtime" "crash" message
 
 [help "Indicates unfinished code. Crashes the program upon evaluation."]
 [help-group "Utilities"]
-... :: _
+... :: (A : ()) => A
 ... : crash "not yet implemented"
 
 [help "Represents the presence or absence of a value."]

@@ -9,7 +9,6 @@ use std::{
 pub enum UnresolvedType {
     Variable(TypeVariable),
     Parameter(TypeParameterId),
-    TerminatingVariable(TypeVariable),
     NumericVariable(TypeVariable),
     Named(TypeId, Vec<UnresolvedType>, TypeStructure<UnresolvedType>),
     Function(Box<UnresolvedType>, Box<UnresolvedType>),
@@ -123,7 +122,6 @@ pub struct Context {
     pub next_var: Cell<usize>,
     pub substitutions: RefCell<im::HashMap<TypeVariable, UnresolvedType>>,
     pub defaults: RefCell<im::HashMap<TypeVariable, Rc<Type>>>,
-    pub terminating_substitutions: RefCell<im::HashMap<TypeVariable, UnresolvedType>>,
     pub numeric_substitutions: RefCell<im::HashMap<TypeVariable, UnresolvedType>>,
 }
 
@@ -280,38 +278,6 @@ impl Context {
 
                     self.substitutions.borrow_mut().insert(var, ty);
 
-                    Ok(())
-                }
-            }
-            (UnresolvedType::TerminatingVariable(var), ty) => {
-                if let UnresolvedType::TerminatingVariable(other) = &ty {
-                    if var == *other {
-                        return Ok(());
-                    }
-                }
-
-                if ty.contains(&var) {
-                    Err(TypeError::Recursive(var))
-                } else {
-                    self.terminating_substitutions.borrow_mut().insert(var, ty);
-                    Ok(())
-                }
-            }
-            (ty, UnresolvedType::TerminatingVariable(var)) => {
-                match &ty {
-                    UnresolvedType::TerminatingVariable(other) => {
-                        if var == *other {
-                            return Ok(());
-                        }
-                    }
-                    UnresolvedType::Tuple(tys) if tys.is_empty() => {}
-                    _ => return Err(mismatch!(ty, UnresolvedType::TerminatingVariable(var))),
-                }
-
-                if ty.contains(&var) {
-                    Err(TypeError::Recursive(var))
-                } else {
-                    self.terminating_substitutions.borrow_mut().insert(var, ty);
                     Ok(())
                 }
             }
@@ -545,9 +511,7 @@ impl UnresolvedType {
 
     pub fn contains(&self, var: &TypeVariable) -> bool {
         match self {
-            UnresolvedType::Variable(v)
-            | UnresolvedType::TerminatingVariable(v)
-            | UnresolvedType::NumericVariable(v) => v == var,
+            UnresolvedType::Variable(v) | UnresolvedType::NumericVariable(v) => v == var,
             UnresolvedType::Function(input, output) => input.contains(var) || output.contains(var),
             UnresolvedType::Named(_, params, _) => params.iter().any(|param| param.contains(var)),
             UnresolvedType::Tuple(tys) => tys.iter().any(|ty| ty.contains(var)),
@@ -581,12 +545,6 @@ impl UnresolvedType {
         match self {
             UnresolvedType::Variable(var) => {
                 if let Some(ty) = ctx.substitutions.borrow().get(var).cloned() {
-                    *self = ty;
-                    self.apply(ctx);
-                }
-            }
-            UnresolvedType::TerminatingVariable(var) => {
-                if let Some(ty) = ctx.terminating_substitutions.borrow().get(var).cloned() {
                     *self = ty;
                     self.apply(ctx);
                 }
@@ -682,9 +640,7 @@ impl UnresolvedType {
 
     pub fn all_vars(&self) -> Vec<TypeVariable> {
         match self {
-            UnresolvedType::Variable(var)
-            | UnresolvedType::NumericVariable(var)
-            | UnresolvedType::TerminatingVariable(var) => vec![*var],
+            UnresolvedType::Variable(var) | UnresolvedType::NumericVariable(var) => vec![*var],
             UnresolvedType::Function(input, output) => {
                 let mut vars = input.all_vars();
                 vars.extend(output.all_vars());
@@ -801,55 +757,16 @@ impl UnresolvedType {
         }
     }
 
-    pub fn finalize_terminating_variables(&mut self, ctx: &Context) {
-        self.apply(ctx);
-
-        match self {
-            UnresolvedType::TerminatingVariable(var) => {
-                if let Some(ty) = ctx.terminating_substitutions.borrow().get(var).cloned() {
-                    *self = ty;
-                    self.finalize_terminating_variables(ctx);
-                } else {
-                    *self = UnresolvedType::Tuple(Vec::new());
-                }
-            }
-            UnresolvedType::Function(input, output) => {
-                input.finalize_terminating_variables(ctx);
-                output.finalize_terminating_variables(ctx);
-            }
-            UnresolvedType::Named(_, params, structure) => {
-                for param in params {
-                    param.finalize_terminating_variables(ctx);
-                }
-
-                structure.finalize_terminating_variables(ctx);
-            }
-            UnresolvedType::Tuple(tys) => {
-                for ty in tys {
-                    ty.finalize_terminating_variables(ctx);
-                }
-            }
-            UnresolvedType::Builtin(ty) => match ty {
-                BuiltinType::List(ty) | BuiltinType::Mutable(ty) => {
-                    ty.finalize_terminating_variables(ctx)
-                }
-                _ => {}
-            },
-            _ => {}
-        }
-    }
-
     pub fn finalize(&self, ctx: &Context) -> Option<Type> {
         let mut ty = self.clone();
         ty.apply(ctx);
         ty.finalize_defaults(ctx);
         ty.finalize_numeric_variables(ctx);
-        ty.finalize_terminating_variables(ctx);
 
         Some(match ty.clone() {
             UnresolvedType::Variable(_) => return None,
             UnresolvedType::Parameter(param) => Type::Parameter(param),
-            UnresolvedType::TerminatingVariable(_) | UnresolvedType::NumericVariable(_) => {
+            UnresolvedType::NumericVariable(_) => {
                 unreachable!()
             }
             UnresolvedType::Named(id, params, structure) => Type::Named(
@@ -989,24 +906,6 @@ impl TypeStructure<UnresolvedType> {
                 for tys in variants {
                     for ty in tys {
                         ty.finalize_numeric_variables(ctx);
-                    }
-                }
-            }
-        }
-    }
-
-    pub fn finalize_terminating_variables(&mut self, ctx: &Context) {
-        match self {
-            TypeStructure::Marker | TypeStructure::Recursive(_) => {}
-            TypeStructure::Structure(tys) => {
-                for ty in tys {
-                    ty.finalize_terminating_variables(ctx);
-                }
-            }
-            TypeStructure::Enumeration(variants) => {
-                for tys in variants {
-                    for ty in tys {
-                        ty.finalize_terminating_variables(ctx);
                     }
                 }
             }
