@@ -2617,16 +2617,17 @@ impl Typechecker {
 
         macro_rules! find_instance {
             ($resolve:expr) => {{
-                // First try with numeric variables...
+                // First try without defaults...
                 match find_instance!(@find params.clone(), $resolve) {
                     // ...if there is a single candidate, return it.
                     Some(Ok(candidate)) => return Ok(candidate),
-                    // ...if there are multiple candiates, try again finalizing numeric variables.
+                    // ...if there are multiple candiates, try again finalizing defaults.
                     Some(Err(_)) => {
                         let params = params
                             .clone()
                             .into_iter()
                             .map(|mut ty| {
+                                ty.finalize_defaults(&self.ctx);
                                 ty.finalize_numeric_variables(&self.ctx);
                                 ty
                             })
