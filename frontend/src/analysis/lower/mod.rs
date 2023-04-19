@@ -398,7 +398,6 @@ pub enum ExpressionKind {
     Text(InternedString),
     Number(InternedString),
     Block(Vec<Expression>, bool),
-    End(Box<Expression>),
     Call(Box<Expression>, Box<Expression>),
     Function(Pattern, Box<Expression>, CaptureList),
     When(Box<Expression>, Vec<Arm>),
@@ -439,9 +438,6 @@ impl Expression {
                 for statement in statements {
                     statement.traverse_mut_inner(f);
                 }
-            }
-            ExpressionKind::End(expr) => {
-                expr.traverse_mut_inner(f);
             }
             ExpressionKind::Call(func, input) => {
                 func.traverse_mut_inner(f);
@@ -2163,22 +2159,6 @@ impl Lowerer {
                 Expression {
                     span: expr.span,
                     kind: ExpressionKind::Block(statements, false),
-                }
-            }
-            ast::Expression::End(expr) => {
-                let value = match expr.value.as_deref() {
-                    Ok(expr) => expr,
-                    Err(error) => {
-                        return Expression {
-                            span: error.span,
-                            kind: ExpressionKind::error(&self.compiler),
-                        };
-                    }
-                };
-
-                Expression {
-                    span: expr.span(),
-                    kind: ExpressionKind::End(Box::new(self.lower_expr(value, scope, ctx))),
                 }
             }
             ast::Expression::Call(expr) => {

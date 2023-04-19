@@ -19,9 +19,6 @@ macro_rules! traverse_expr_impl {
                         statement.$traverse(context.clone(), f);
                     }
                 }
-                End(value) => {
-                    value.$traverse(context.clone(), f);
-                }
                 Call(function, input) => {
                     function.$traverse(context.clone(), f);
                     input.$traverse(context.clone(), f);

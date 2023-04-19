@@ -474,7 +474,6 @@ mod util {
                 ExpressionKind::Block(exprs, _) => exprs
                     .iter()
                     .all(|expr| expr.is_pure_inner(program, false, stack)),
-                ExpressionKind::End(_) => false,
                 ExpressionKind::Call(func, input) => {
                     func.is_pure_inner(program, true, stack)
                         && input.is_pure_inner(program, false, stack)

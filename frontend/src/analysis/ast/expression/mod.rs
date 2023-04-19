@@ -1,5 +1,4 @@
 mod annotate;
-mod end;
 mod external;
 mod format;
 mod function;
@@ -8,7 +7,6 @@ mod when;
 mod with;
 
 pub use annotate::AnnotateExpression;
-pub use end::EndExpression;
 pub use external::ExternalExpression;
 pub use format::FormatExpression;
 pub use function::FunctionExpression;
@@ -17,7 +15,6 @@ pub use when::WhenExpression;
 pub use with::WithExpression;
 
 use annotate::*;
-use end::*;
 use external::*;
 use format::*;
 use function::*;
@@ -48,7 +45,6 @@ syntax_group! {
             Function,
             Tuple,
             Annotate,
-            End,
             External,
             Format,
             With,
