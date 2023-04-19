@@ -168,6 +168,7 @@ pub struct BuiltinTypeDecl {
 pub struct TypeParameterDecl {
     pub name: Option<InternedString>,
     pub span: SpanList,
+    pub default: Option<engine::Type>,
     pub uses: HashSet<SpanList>,
 }
 
@@ -540,7 +541,7 @@ struct Typechecker {
     item_queue: im::Vector<QueuedItem>,
     items: im::HashMap<ItemId, (Option<(Option<TraitId>, ConstantId)>, Expression)>,
     entrypoint_expr: Option<UnresolvedExpression>,
-    errors: im::Vector<Error>,
+    errors: RefCell<im::Vector<Error>>,
 }
 
 #[derive(Debug, Clone)]
@@ -584,8 +585,8 @@ impl Typechecker {
         }
     }
 
-    pub fn add_error(&mut self, error: Error) {
-        self.errors.push_back(error);
+    pub fn add_error(&self, error: Error) {
+        self.errors.borrow_mut().push_back(error);
     }
 
     pub fn resolve(
@@ -1109,14 +1110,15 @@ impl Typechecker {
                                 bound.params.iter().any(|ty| ty.params().contains(&param))
                             })
                         {
-                            engine::UnresolvedType::Variable(self.ctx.new_variable())
+                            let default = self.get_default_for_param(param);
+                            engine::UnresolvedType::Variable(self.ctx.new_variable(default))
                         } else {
                             engine::UnresolvedType::Parameter(param)
                         }
                     });
                 }
 
-                expr.ty.instantiate_with(&mut self.ctx, &substitutions);
+                expr.ty.instantiate_with(&self.ctx, &substitutions);
             });
 
             for bound in bounds {
@@ -1211,11 +1213,12 @@ impl Typechecker {
             for ty in &mut bound.params {
                 for param in ty.params() {
                     params.entry(param).or_insert_with(|| {
-                        engine::UnresolvedType::Variable(self.ctx.new_variable())
+                        let default = self.get_default_for_param(param);
+                        engine::UnresolvedType::Variable(self.ctx.new_variable(default))
                     });
                 }
 
-                ty.instantiate_with(&mut self.ctx, &params);
+                ty.instantiate_with(&self.ctx, &params);
             }
 
             let instance_id = match self.instance_for_params(
@@ -1335,7 +1338,7 @@ impl Typechecker {
 
                     engine::UnresolvedType::Error
                 } else {
-                    engine::UnresolvedType::Variable(self.ctx.new_variable())
+                    engine::UnresolvedType::Variable(self.ctx.new_variable(None))
                 };
 
                 UnresolvedExpression {
@@ -1345,10 +1348,9 @@ impl Typechecker {
                 }
             }
             lower::ExpressionKind::Variable(var) => {
-                let ty =
-                    info.variables.get(&var).cloned().unwrap_or_else(|| {
-                        engine::UnresolvedType::Variable(self.ctx.new_variable())
-                    });
+                let ty = info.variables.get(&var).cloned().unwrap_or_else(|| {
+                    engine::UnresolvedType::Variable(self.ctx.new_variable(None))
+                });
 
                 UnresolvedExpression {
                     span: expr.span,
@@ -1363,7 +1365,7 @@ impl Typechecker {
             },
             lower::ExpressionKind::Number(number) => UnresolvedExpression {
                 span: expr.span,
-                ty: engine::UnresolvedType::NumericVariable(self.ctx.new_variable()),
+                ty: engine::UnresolvedType::NumericVariable(self.ctx.new_variable(None)),
                 kind: UnresolvedExpressionKind::Number(number),
             },
             lower::ExpressionKind::Block(statements, top_level) => {
@@ -1395,7 +1397,7 @@ impl Typechecker {
                     .iter_mut()
                     .dropping_back(if top_level { 0 } else { 1 })
                 {
-                    let var = self.ctx.new_variable();
+                    let var = self.ctx.new_variable(None);
 
                     self.ctx
                         .unify(
@@ -1433,7 +1435,7 @@ impl Typechecker {
 
                 UnresolvedExpression {
                     span: expr.span,
-                    ty: engine::UnresolvedType::Variable(self.ctx.new_variable()),
+                    ty: engine::UnresolvedType::Variable(self.ctx.new_variable(None)),
                     kind: UnresolvedExpressionKind::End(Box::new(value)),
                 }
             }
@@ -1441,8 +1443,8 @@ impl Typechecker {
                 let function = self.convert_expr(*function, info);
                 let input = self.convert_expr(*input, info);
 
-                let input_ty = engine::UnresolvedType::Variable(self.ctx.new_variable());
-                let output_ty = engine::UnresolvedType::Variable(self.ctx.new_variable());
+                let input_ty = engine::UnresolvedType::Variable(self.ctx.new_variable(None));
+                let output_ty = engine::UnresolvedType::Variable(self.ctx.new_variable(None));
 
                 if let Err(error) = self.unify(
                     function.span,
@@ -1466,7 +1468,7 @@ impl Typechecker {
                 }
             }
             lower::ExpressionKind::Function(pattern, body, captures) => {
-                let input_ty = engine::UnresolvedType::Variable(self.ctx.new_variable());
+                let input_ty = engine::UnresolvedType::Variable(self.ctx.new_variable(None));
                 let pattern = self.convert_pattern(pattern, input_ty.clone(), None, info);
 
                 let prev_block_end = mem::replace(&mut self.block_end, None);
@@ -1502,7 +1504,7 @@ impl Typechecker {
 
                         first_type
                     } else {
-                        engine::UnresolvedType::Variable(self.ctx.new_variable())
+                        engine::UnresolvedType::Variable(self.ctx.new_variable(None))
                     }
                 };
 
@@ -1520,7 +1522,7 @@ impl Typechecker {
 
                 UnresolvedExpression {
                     span: expr.span,
-                    ty: engine::UnresolvedType::Variable(self.ctx.new_variable()),
+                    ty: engine::UnresolvedType::Variable(self.ctx.new_variable(None)),
                     kind: UnresolvedExpressionKind::External(lib, identifier, inputs),
                 }
             }
@@ -1532,7 +1534,7 @@ impl Typechecker {
 
                 UnresolvedExpression {
                     span: expr.span,
-                    ty: engine::UnresolvedType::Variable(self.ctx.new_variable()),
+                    ty: engine::UnresolvedType::Variable(self.ctx.new_variable(None)),
                     kind: UnresolvedExpressionKind::Runtime(func, inputs),
                 }
             }
@@ -1824,7 +1826,7 @@ impl Typechecker {
                     .map(|(text, expr)| {
                         let expr = self.convert_expr(expr, info);
 
-                        let ty = engine::UnresolvedType::Variable(self.ctx.new_variable());
+                        let ty = engine::UnresolvedType::Variable(self.ctx.new_variable(None));
 
                         let expr = UnresolvedExpression {
                             span: expr.span,
@@ -1909,7 +1911,7 @@ impl Typechecker {
                 lower::PatternKind::Wildcard => UnresolvedPatternKind::Wildcard,
                 lower::PatternKind::Number(number) => {
                     let numeric_ty =
-                        engine::UnresolvedType::NumericVariable(self.ctx.new_variable());
+                        engine::UnresolvedType::NumericVariable(self.ctx.new_variable(None));
 
                     if let Err(error) = self.unify(pattern.span, ty, numeric_ty) {
                         self.add_error(error);
@@ -1937,7 +1939,7 @@ impl Typechecker {
                     fields
                         .into_iter()
                         .map(|(name, pattern)| {
-                            let ty = engine::UnresolvedType::Variable(self.ctx.new_variable());
+                            let ty = engine::UnresolvedType::Variable(self.ctx.new_variable(None));
                             (
                                 name,
                                 (
@@ -2010,7 +2012,7 @@ impl Typechecker {
                                     tys.into_iter()
                                         .map(|(_, ty)| {
                                             let mut ty = engine::UnresolvedType::from(ty);
-                                            ty.instantiate_with(&mut self.ctx, &substitutions);
+                                            ty.instantiate_with(&self.ctx, &substitutions);
                                             ty
                                         })
                                         .collect()
@@ -2024,7 +2026,7 @@ impl Typechecker {
                     }
 
                     for ty in &mut variant_tys {
-                        ty.instantiate_with(&mut self.ctx, &substitutions);
+                        ty.instantiate_with(&self.ctx, &substitutions);
                     }
 
                     UnresolvedPatternKind::Variant(
@@ -2056,7 +2058,7 @@ impl Typechecker {
                 lower::PatternKind::Tuple(patterns) => {
                     let tuple_tys = patterns
                         .iter()
-                        .map(|_| engine::UnresolvedType::Variable(self.ctx.new_variable()))
+                        .map(|_| engine::UnresolvedType::Variable(self.ctx.new_variable(None)))
                         .collect::<Vec<_>>();
 
                     if let Err(error) = self.unify(
@@ -2373,7 +2375,8 @@ impl Typechecker {
         let kind = (|| match pattern.kind {
             MonomorphizedPatternKind::Error(trace) => MonomorphizedPatternKind::Error(trace),
             MonomorphizedPatternKind::Number(number) => {
-                let numeric_ty = engine::UnresolvedType::NumericVariable(self.ctx.new_variable());
+                let numeric_ty =
+                    engine::UnresolvedType::NumericVariable(self.ctx.new_variable(None));
 
                 if let Err(error) = self.unify(pattern.span, ty, numeric_ty) {
                     self.add_error(error);
@@ -2458,7 +2461,7 @@ impl Typechecker {
                             structure_field_tys[index.into_inner()].1.clone(),
                         );
 
-                        member_ty.instantiate_with(&mut self.ctx, &substitutions);
+                        member_ty.instantiate_with(&self.ctx, &substitutions);
 
                         if let Err(error) = self.unify(pattern.span, ty, member_ty.clone()) {
                             self.add_error(error);
@@ -2509,7 +2512,7 @@ impl Typechecker {
                     .collect::<BTreeMap<_, _>>();
 
                 for ty in &mut variant_tys {
-                    ty.instantiate_with(&mut self.ctx, &substitutions);
+                    ty.instantiate_with(&self.ctx, &substitutions);
                 }
 
                 if let Err(error) = self.unify(
@@ -2548,7 +2551,7 @@ impl Typechecker {
             MonomorphizedPatternKind::Tuple(patterns) => {
                 let tys = patterns
                     .iter()
-                    .map(|_| engine::UnresolvedType::Variable(self.ctx.new_variable()))
+                    .map(|_| engine::UnresolvedType::Variable(self.ctx.new_variable(None)))
                     .collect::<Vec<_>>();
 
                 if let Err(error) = self.unify(
@@ -2660,7 +2663,7 @@ impl Typechecker {
                 .or_default()
                 .iter()
                 .find_map(|(id, stack_params)| {
-                    let mut ctx = self.ctx.clone();
+                    let ctx = self.ctx.clone();
                     let mut error = false;
                     for (param, stack_param) in params.clone().into_iter().zip(stack_params.clone())
                     {
@@ -2884,10 +2887,9 @@ impl Typechecker {
         tr_params
             .into_iter()
             .map(|param| {
-                params
-                    .get(&param)
-                    .cloned()
-                    .unwrap_or_else(|| engine::UnresolvedType::Variable(self.ctx.new_variable()))
+                params.get(&param).cloned().unwrap_or_else(|| {
+                    engine::UnresolvedType::Variable(self.ctx.new_variable(None))
+                })
             })
             .collect()
     }
@@ -3558,7 +3560,7 @@ impl Typechecker {
     }
 
     fn with_type_parameter_decl<T>(
-        &mut self,
+        &self,
         id: TypeParameterId,
         f: impl FnOnce(&TypeParameterDecl) -> T,
     ) -> Option<T> {
@@ -3576,6 +3578,10 @@ impl Typechecker {
         let decl = TypeParameterDecl {
             name: decl.name,
             span: decl.span,
+            default: decl
+                .value
+                .default
+                .map(|ty| self.convert_generic_type_annotation(ty)),
             uses: decl.uses,
         };
 
@@ -3628,19 +3634,20 @@ impl Typechecker {
     }
 
     fn add_substitutions(
-        &mut self,
+        &self,
         ty: &mut engine::UnresolvedType,
         substitutions: &mut engine::GenericSubstitutions,
     ) {
         ty.apply(&self.ctx);
 
         for param in ty.params() {
-            substitutions
-                .entry(param)
-                .or_insert_with(|| engine::UnresolvedType::Variable(self.ctx.new_variable()));
+            substitutions.entry(param).or_insert_with(|| {
+                let default = self.get_default_for_param(param);
+                engine::UnresolvedType::Variable(self.ctx.new_variable(default))
+            });
         }
 
-        ty.instantiate_with(&mut self.ctx, substitutions);
+        ty.instantiate_with(&self.ctx, substitutions);
     }
 
     fn instantiate_generics(&mut self, ty: &mut engine::UnresolvedType) {
@@ -3652,14 +3659,14 @@ impl Typechecker {
             annotation,
             &|typechecker, _| {
                 Some(engine::UnresolvedType::Variable(
-                    typechecker.ctx.new_variable(),
+                    typechecker.ctx.new_variable(None),
                 ))
             },
             &mut Vec::new(),
         )
     }
 
-    fn convert_generic_type_annotation(&mut self, annotation: TypeAnnotation) -> engine::Type {
+    fn convert_generic_type_annotation(&self, annotation: TypeAnnotation) -> engine::Type {
         let span = annotation.span;
 
         let ty = self.convert_type_annotation_inner(
@@ -3676,6 +3683,7 @@ impl Typechecker {
                         TypeParameterDecl {
                             name: None,
                             span,
+                            default: None,
                             uses: HashSet::from([span]),
                         },
                     );
@@ -3703,9 +3711,9 @@ impl Typechecker {
     }
 
     fn convert_type_annotation_inner(
-        &mut self,
+        &self,
         annotation: TypeAnnotation,
-        convert_placeholder: &impl Fn(&mut Self, SpanList) -> Option<engine::UnresolvedType>,
+        convert_placeholder: &impl Fn(&Self, SpanList) -> Option<engine::UnresolvedType>,
         stack: &mut Vec<TypeId>,
     ) -> engine::UnresolvedType {
         match annotation.kind {
@@ -3778,7 +3786,7 @@ impl Typechecker {
 
                 let mut convert_and_instantiate = |ty| {
                     let mut ty = self.convert_type_annotation_inner(ty, convert_placeholder, stack);
-                    ty.instantiate_with(&mut self.ctx, &substitutions);
+                    ty.instantiate_with(&self.ctx, &substitutions);
                     ty
                 };
 
@@ -4090,9 +4098,14 @@ impl Typechecker {
             .collect::<GenericSubstitutions>();
 
         let mut instance_ty = engine::UnresolvedType::from(trait_ty);
-        instance_ty.instantiate_with(&mut self.ctx, &substitutions);
+        instance_ty.instantiate_with(&self.ctx, &substitutions);
 
         instance_ty
+    }
+
+    fn get_default_for_param(&self, param: TypeParameterId) -> Option<Type> {
+        self.with_type_parameter_decl(param, |decl| decl.default.clone())
+            .flatten()
     }
 }
 
@@ -4144,19 +4157,20 @@ impl Typechecker {
             return;
         }
 
-        let (unresolved_type_errors, other_errors): (Vec<_>, Vec<_>) = mem::take(&mut self.errors)
-            .into_iter()
-            .partition_map(|mut e| {
-                use itertools::Either;
+        let (unresolved_type_errors, other_errors): (Vec<_>, Vec<_>) =
+            mem::take(&mut *self.errors.borrow_mut())
+                .into_iter()
+                .partition_map(|mut e| {
+                    use itertools::Either;
 
-                match e.error {
-                    engine::TypeError::UnresolvedType(ref mut ty) => {
-                        ty.apply(&self.ctx);
-                        Either::Left((ty.all_vars(), e))
+                    match e.error {
+                        engine::TypeError::UnresolvedType(ref mut ty) => {
+                            ty.apply(&self.ctx);
+                            Either::Left((ty.all_vars(), e))
+                        }
+                        _ => Either::Right(e),
                     }
-                    _ => Either::Right(e),
-                }
-            });
+                });
 
         let should_report_unresolved_type_errors = other_errors.is_empty();
 

@@ -1,5 +1,9 @@
 use crate::{parse::SpanList, TraitId, TypeId, TypeParameterId};
-use std::collections::BTreeMap;
+use std::{
+    cell::{Cell, RefCell},
+    collections::BTreeMap,
+    rc::Rc,
+};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum UnresolvedType {
@@ -116,10 +120,11 @@ pub type FinalizedGenericSubstitutions = BTreeMap<TypeParameterId, Type>;
 
 #[derive(Debug, Clone, Default)]
 pub struct Context {
-    pub next_var: usize,
-    pub substitutions: im::HashMap<TypeVariable, UnresolvedType>,
-    pub terminating_substitutions: im::HashMap<TypeVariable, UnresolvedType>,
-    pub numeric_substitutions: im::HashMap<TypeVariable, UnresolvedType>,
+    pub next_var: Cell<usize>,
+    pub substitutions: RefCell<im::HashMap<TypeVariable, UnresolvedType>>,
+    pub defaults: RefCell<im::HashMap<TypeVariable, Rc<Type>>>,
+    pub terminating_substitutions: RefCell<im::HashMap<TypeVariable, UnresolvedType>>,
+    pub numeric_substitutions: RefCell<im::HashMap<TypeVariable, UnresolvedType>>,
 }
 
 #[derive(Debug, Clone)]
@@ -142,14 +147,21 @@ impl Context {
         Default::default()
     }
 
-    pub fn new_variable(&mut self) -> TypeVariable {
-        let var = TypeVariable(self.next_var);
-        self.next_var += 1;
+    pub fn new_variable(&self, default: Option<Type>) -> TypeVariable {
+        let next_var = self.next_var.get();
+        let var = TypeVariable(next_var);
+
+        if let Some(default) = default {
+            self.defaults.borrow_mut().insert(var, Rc::new(default));
+        }
+
+        self.next_var.set(next_var + 1);
+
         var
     }
 
     pub fn unify_params(
-        &mut self,
+        &self,
         actual: UnresolvedType,
         expected: impl Into<UnresolvedType>,
     ) -> (GenericSubstitutions, Result<(), TypeError>) {
@@ -159,7 +171,7 @@ impl Context {
     }
 
     pub fn unify(
-        &mut self,
+        &self,
         actual: UnresolvedType,
         expected: impl Into<UnresolvedType>,
     ) -> Result<(), TypeError> {
@@ -173,7 +185,7 @@ impl Context {
     }
 
     pub fn unify_reverse(
-        &mut self,
+        &self,
         actual: impl Into<UnresolvedType>,
         expected: UnresolvedType,
     ) -> Result<(), TypeError> {
@@ -187,7 +199,7 @@ impl Context {
     }
 
     pub fn unify_generic(
-        &mut self,
+        &self,
         actual: UnresolvedType,
         expected: impl Into<UnresolvedType>,
     ) -> Result<(), TypeError> {
@@ -201,7 +213,7 @@ impl Context {
     }
 
     fn unify_internal(
-        &mut self,
+        &self,
         mut actual: UnresolvedType,
         mut expected: UnresolvedType,
         generic: bool,
@@ -256,7 +268,18 @@ impl Context {
                 if ty.contains(&var) {
                     Err(TypeError::Recursive(var))
                 } else {
-                    self.substitutions.insert(var, ty);
+                    if let UnresolvedType::Variable(other) = ty {
+                        let mut defaults = self.defaults.borrow_mut();
+
+                        if let Some(default) = defaults.get(&other).cloned() {
+                            defaults.insert(var, default);
+                        } else if let Some(default) = defaults.get(&var).cloned() {
+                            defaults.insert(other, default);
+                        }
+                    }
+
+                    self.substitutions.borrow_mut().insert(var, ty);
+
                     Ok(())
                 }
             }
@@ -270,7 +293,7 @@ impl Context {
                 if ty.contains(&var) {
                     Err(TypeError::Recursive(var))
                 } else {
-                    self.terminating_substitutions.insert(var, ty);
+                    self.terminating_substitutions.borrow_mut().insert(var, ty);
                     Ok(())
                 }
             }
@@ -288,7 +311,7 @@ impl Context {
                 if ty.contains(&var) {
                     Err(TypeError::Recursive(var))
                 } else {
-                    self.terminating_substitutions.insert(var, ty);
+                    self.terminating_substitutions.borrow_mut().insert(var, ty);
                     Ok(())
                 }
             }
@@ -308,7 +331,7 @@ impl Context {
                 if ty.contains(&var) {
                     Err(TypeError::Recursive(var))
                 } else {
-                    self.numeric_substitutions.insert(var, ty);
+                    self.numeric_substitutions.borrow_mut().insert(var, ty);
                     Ok(())
                 }
             }
@@ -328,7 +351,7 @@ impl Context {
                 if ty.contains(&var) {
                     Err(TypeError::Recursive(var))
                 } else {
-                    self.numeric_substitutions.insert(var, ty);
+                    self.numeric_substitutions.borrow_mut().insert(var, ty);
                     Ok(())
                 }
             }
@@ -557,20 +580,20 @@ impl UnresolvedType {
     pub fn apply(&mut self, ctx: &Context) {
         match self {
             UnresolvedType::Variable(var) => {
-                if let Some(ty) = ctx.substitutions.get(var) {
-                    *self = ty.clone();
+                if let Some(ty) = ctx.substitutions.borrow().get(var).cloned() {
+                    *self = ty;
                     self.apply(ctx);
                 }
             }
             UnresolvedType::TerminatingVariable(var) => {
-                if let Some(ty) = ctx.terminating_substitutions.get(var) {
-                    *self = ty.clone();
+                if let Some(ty) = ctx.terminating_substitutions.borrow().get(var).cloned() {
+                    *self = ty;
                     self.apply(ctx);
                 }
             }
             UnresolvedType::NumericVariable(var) => {
-                if let Some(ty) = ctx.numeric_substitutions.get(var) {
-                    *self = ty.clone();
+                if let Some(ty) = ctx.numeric_substitutions.borrow().get(var).cloned() {
+                    *self = ty;
                     self.apply(ctx);
                 }
             }
@@ -598,7 +621,7 @@ impl UnresolvedType {
         }
     }
 
-    pub fn instantiate_with(&mut self, ctx: &mut Context, substitutions: &GenericSubstitutions) {
+    pub fn instantiate_with(&mut self, ctx: &Context, substitutions: &GenericSubstitutions) {
         self.apply(ctx);
 
         match self {
@@ -606,7 +629,7 @@ impl UnresolvedType {
                 *self = substitutions.get(param).cloned().unwrap_or_else(|| {
                     // HACK: If the typechecker behaves erratically, try panicking here instead
                     // of returning a new type variable to get to the root cause earlier.
-                    UnresolvedType::Variable(ctx.new_variable())
+                    UnresolvedType::Variable(ctx.new_variable(None))
                 });
             }
             UnresolvedType::Function(input, output) => {
@@ -627,7 +650,7 @@ impl UnresolvedType {
             }
             UnresolvedType::Builtin(ty) => match ty {
                 BuiltinType::List(ty) | BuiltinType::Mutable(ty) => {
-                    ty.instantiate_with(ctx, substitutions)
+                    ty.instantiate_with(ctx, substitutions);
                 }
                 _ => {}
             },
@@ -703,19 +726,50 @@ impl UnresolvedType {
         }
     }
 
-    pub fn finalize_numeric_variables(&mut self, ctx: &Context) {
+    pub fn finalize_defaults(&mut self, ctx: &Context) {
         self.apply(ctx);
 
         match self {
             UnresolvedType::Variable(var) => {
-                if let Some(ty) = ctx.substitutions.get(var) {
-                    *self = ty.clone();
-                    self.finalize_numeric_variables(ctx);
+                if let Some(ty) = ctx.substitutions.borrow().get(var).cloned() {
+                    *self = ty;
+                    self.finalize_defaults(ctx);
+                } else if let Some(ty) = ctx.defaults.borrow().get(var).cloned() {
+                    *self = (*ty).clone().into();
+                    self.finalize_defaults(ctx);
                 }
             }
+            UnresolvedType::Function(input, output) => {
+                input.finalize_defaults(ctx);
+                output.finalize_defaults(ctx);
+            }
+            UnresolvedType::Named(_, params, structure) => {
+                for param in params {
+                    param.finalize_defaults(ctx);
+                }
+
+                structure.finalize_defaults(ctx);
+            }
+            UnresolvedType::Tuple(tys) => {
+                for ty in tys {
+                    ty.finalize_defaults(ctx);
+                }
+            }
+            UnresolvedType::Builtin(ty) => match ty {
+                BuiltinType::List(ty) | BuiltinType::Mutable(ty) => ty.finalize_defaults(ctx),
+                _ => {}
+            },
+            _ => {}
+        }
+    }
+
+    pub fn finalize_numeric_variables(&mut self, ctx: &Context) {
+        self.apply(ctx);
+
+        match self {
             UnresolvedType::NumericVariable(var) => {
-                if let Some(ty) = ctx.numeric_substitutions.get(var) {
-                    *self = ty.clone();
+                if let Some(ty) = ctx.numeric_substitutions.borrow().get(var).cloned() {
+                    *self = ty;
                     self.finalize_numeric_variables(ctx);
                 } else {
                     *self = UnresolvedType::Builtin(BuiltinType::Number);
@@ -751,22 +805,13 @@ impl UnresolvedType {
         self.apply(ctx);
 
         match self {
-            UnresolvedType::Variable(var) => {
-                if let Some(ty) = ctx.substitutions.get(var) {
-                    *self = ty.clone();
-                    self.finalize_terminating_variables(ctx);
-                }
-            }
             UnresolvedType::TerminatingVariable(var) => {
-                if let Some(ty) = ctx.terminating_substitutions.get(var) {
-                    *self = ty.clone();
+                if let Some(ty) = ctx.terminating_substitutions.borrow().get(var).cloned() {
+                    *self = ty;
                     self.finalize_terminating_variables(ctx);
                 } else {
                     *self = UnresolvedType::Tuple(Vec::new());
                 }
-            }
-            UnresolvedType::NumericVariable(_) => {
-                panic!("`finalize_numeric_variables` must be called before `finalize_terminating_variables`")
             }
             UnresolvedType::Function(input, output) => {
                 input.finalize_terminating_variables(ctx);
@@ -797,6 +842,7 @@ impl UnresolvedType {
     pub fn finalize(&self, ctx: &Context) -> Option<Type> {
         let mut ty = self.clone();
         ty.apply(ctx);
+        ty.finalize_defaults(ctx);
         ty.finalize_numeric_variables(ctx);
         ty.finalize_terminating_variables(ctx);
 
@@ -862,7 +908,7 @@ impl TypeStructure<UnresolvedType> {
         }
     }
 
-    pub fn instantiate_with(&mut self, ctx: &mut Context, substitutions: &GenericSubstitutions) {
+    pub fn instantiate_with(&mut self, ctx: &Context, substitutions: &GenericSubstitutions) {
         match self {
             TypeStructure::Marker | TypeStructure::Recursive(_) => {}
             TypeStructure::Structure(tys) => {
@@ -910,6 +956,24 @@ impl TypeStructure<UnresolvedType> {
                 .iter()
                 .flat_map(|tys| tys.iter().flat_map(|ty| ty.params()))
                 .collect(),
+        }
+    }
+
+    pub fn finalize_defaults(&mut self, ctx: &Context) {
+        match self {
+            TypeStructure::Marker | TypeStructure::Recursive(_) => {}
+            TypeStructure::Structure(tys) => {
+                for ty in tys {
+                    ty.finalize_defaults(ctx);
+                }
+            }
+            TypeStructure::Enumeration(variants) => {
+                for tys in variants {
+                    for ty in tys {
+                        ty.finalize_defaults(ctx);
+                    }
+                }
+            }
         }
     }
 

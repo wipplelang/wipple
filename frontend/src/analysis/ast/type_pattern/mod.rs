@@ -1,7 +1,10 @@
+mod default;
 mod r#where;
 
+pub use default::DefaultTypePattern;
 pub use r#where::{WhereTypePattern, WhereTypePatternBound};
 
+use default::*;
 use r#where::*;
 
 use crate::{
@@ -21,6 +24,7 @@ syntax_group! {
     #[derive(Debug, Clone)]
     pub type TypePattern<TypePatternSyntaxContext> {
         non_terminal: {
+            Default,
             Where,
         },
         terminal: {
