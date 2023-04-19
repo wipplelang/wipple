@@ -4166,9 +4166,15 @@ impl Typechecker {
     }
 
     fn report_error(&mut self, mut error: Error) {
-        let format = format::Format {
+        let multi_var_format = format::Format {
             type_function: format::TypeFunctionFormat::Description,
             type_variable: format::TypeVariableFormat::Description,
+            surround_in_backticks: true,
+        };
+
+        let single_var_format = format::Format {
+            type_function: format::TypeFunctionFormat::Description,
+            type_variable: format::TypeVariableFormat::None,
             surround_in_backticks: true,
         };
 
@@ -4192,6 +4198,12 @@ impl Typechecker {
                         params.clone(),
                     )),
                     _ => None,
+                };
+
+                let format = if expected.vars().len() + actual.vars().len() <= 1 {
+                    single_var_format
+                } else {
+                    multi_var_format
                 };
 
                 let message = format!(
@@ -4270,6 +4282,12 @@ impl Typechecker {
                     },
                 );
 
+                let format = if params.iter().fold(0, |n, ty| n + ty.vars().len()) <= 1 {
+                    single_var_format
+                } else {
+                    multi_var_format
+                };
+
                 let note_message = format!(
                     "could not find instance {}",
                     self.format_type(format::FormattableType::r#trait(id, params), format)
@@ -4295,6 +4313,12 @@ impl Typechecker {
             engine::TypeError::UnresolvedType(mut ty) => {
                 ty.apply(&self.ctx);
 
+                let format = if ty.vars().len() <= 1 {
+                    single_var_format
+                } else {
+                    multi_var_format
+                };
+
                 let note = (!matches!(ty, engine::UnresolvedType::Variable(_))).then(|| {
                     Note::primary(
                         error.span,
@@ -4314,6 +4338,12 @@ impl Typechecker {
                 )
             }
             engine::TypeError::InvalidNumericLiteral(ty) => {
+                let format = if ty.vars().len() <= 1 {
+                    single_var_format
+                } else {
+                    multi_var_format
+                };
+
                 let message = format!(
                     "number does not fit into a {}",
                     self.format_type(ty, format)
