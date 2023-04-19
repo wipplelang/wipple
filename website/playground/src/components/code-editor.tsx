@@ -1171,8 +1171,22 @@ const InputField = (props: {
     const [isEnabled, setEnabled] = useState(true);
     const [isValid, setValid] = useState(true);
 
+    const submit = async () => {
+        const valid = await props.onSubmit(text);
+        setValid(valid);
+        if (valid) {
+            setEnabled(false);
+        }
+    };
+
     return (
-        <div className={props.index === 0 ? "mb-4" : "my-4"}>
+        <form
+            className={props.index === 0 ? "mb-4" : "my-4"}
+            onSubmit={(e) => {
+                e.preventDefault();
+                submit();
+            }}
+        >
             <TextField
                 label={props.children}
                 variant="outlined"
@@ -1184,23 +1198,14 @@ const InputField = (props: {
                 InputProps={{
                     endAdornment: (
                         <InputAdornment position="end">
-                            <IconButton
-                                disabled={!isEnabled}
-                                onClick={async () => {
-                                    const valid = await props.onSubmit(text);
-                                    setValid(valid);
-                                    if (valid) {
-                                        setEnabled(false);
-                                    }
-                                }}
-                            >
+                            <IconButton disabled={!isEnabled} onClick={submit}>
                                 <KeyboardReturn />
                             </IconButton>
                         </InputAdornment>
                     ),
                 }}
             />
-        </div>
+        </form>
     );
 };
 
