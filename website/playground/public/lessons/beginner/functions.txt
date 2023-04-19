@@ -1,7 +1,7 @@
 ---
 previous:
-  name: Variables
-  link: ?lesson=beginner/variables
+  name: User input
+  link: ?lesson=beginner/input
 next:
   name: Making music
   link: ?lesson=beginner/music

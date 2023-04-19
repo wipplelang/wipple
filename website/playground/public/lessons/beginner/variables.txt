@@ -3,8 +3,8 @@ previous:
   name: Text
   link: ?lesson=beginner/text
 next:
-  name: Functions
-  link: ?lesson=beginner/functions
+  name: User input
+  link: ?lesson=beginner/input
 ---
 
 ---

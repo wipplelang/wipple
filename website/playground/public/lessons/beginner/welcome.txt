@@ -25,7 +25,7 @@ id: iIJMIDrl
 type: code
 ---
 
-name : prompt "What is your name?" :: Text
+name : prompt "What is your name?"
 show (format "Welcome to Wipple, _!" name)
 
 ---

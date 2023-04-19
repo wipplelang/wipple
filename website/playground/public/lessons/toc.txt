@@ -16,6 +16,7 @@ locked: true
 - [Graphics](?lesson=beginner/graphics)
 - [Text](?lesson=beginner/text)
 - [Variables](?lesson=beginner/variables)
+- [User input](?lesson=beginner/input)
 - [Functions](?lesson=beginner/functions)
 - [Making music](?lesson=beginner/music)
 

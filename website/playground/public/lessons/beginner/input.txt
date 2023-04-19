@@ -1,0 +1,71 @@
+---
+previous:
+  name: Variables
+  link: ?lesson=beginner/variables
+next:
+  name: Functions
+  link: ?lesson=beginner/functions
+---
+
+---
+id: 6z1mlFv3
+type: text
+locked: true
+---
+
+# User input
+
+So far, we've written programs that always do the same thing. Now, we'll learn how to make our programs interactive by getting input from the user!
+
+Let's start by creating a text field that the user can type into. We can do this using the `prompt` command:
+
+---
+id: 30DAFG7v
+type: code
+---
+
+name : prompt "What is your name?"
+show (format "Hello, _!" name)
+
+---
+id: kRisjDRb
+type: text
+locked: true
+---
+
+Try typing your name into the text field and watch the program greet you!
+
+In addition to prompting for text, you can prompt for numbers! Wipple has an advanced algorithm that determines what kind of input you want; in the following example, it knows that you want a number because of the `n + 1`. Try entering something that's not a number — you'll see the Playground highlights the text field in red, indicating an error.
+
+---
+id: OMYv9QFu
+type: code
+---
+
+n : prompt "Enter a number"
+show (format "The next number after _ is _" n (n + 1))
+
+---
+id: c-u5gYPi
+type: text
+locked: true
+---
+
+Wipple also has another command called `choice` that allows the user to pick from a set of options:
+
+---
+id: uEm0HRas
+type: code
+---
+
+colors : list "red" "orange" "yellow" "green" "blue" "violet"
+color : choice "Favorite color" colors
+show (format "Your favorite color is _" color)
+
+---
+id: oZp9id6Y
+type: text
+locked: true
+---
+
+In a future lesson, you'll learn how to make decisions based on the user's input using `when` and `if`. For now, though, let's move on to something new!
