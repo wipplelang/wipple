@@ -752,6 +752,7 @@ impl Typechecker {
             .unwrap_or(Compiler::DEFAULT_RECURSION_LIMIT);
 
         let mut expr = MonomorphizedExpression::from(expr);
+        let mut substituted_defaults = false;
         loop {
             if info.recursion_count > recursion_limit {
                 self.compiler.add_error(
@@ -782,9 +783,15 @@ impl Typechecker {
                 is_unresolved
             };
 
-            if !info.has_resolved_trait || !is_unresolved() {
+            if substituted_defaults && !info.has_resolved_trait || !is_unresolved() {
                 break;
             }
+
+            expr.traverse_mut(|expr| {
+                expr.ty.substitute_defaults(&self.ctx);
+            });
+
+            substituted_defaults = true;
 
             info.recursion_count += 1;
         }
@@ -2621,7 +2628,7 @@ impl Typechecker {
                 match find_instance!(@find params.clone(), $resolve) {
                     // ...if there is a single candidate, return it.
                     Some(Ok(candidate)) => return Ok(candidate),
-                    // ...if there are multiple candiates, try again finalizing numeric variables...
+                    // ...if there are multiple candiates, try again finalizing numeric variables.
                     Some(Err(_)) => {
                         let params = params
                             .clone()
@@ -2632,24 +2639,8 @@ impl Typechecker {
                             })
                             .collect::<Vec<_>>();
 
-                        match find_instance!(@find params.clone(), $resolve) {
-                            Some(Ok(candidate)) => return Ok(candidate),
-                            // ...and again finalizing defaults.
-                            Some(Err(_)) => {
-                                let params = params
-                                    .clone()
-                                    .into_iter()
-                                    .map(|mut ty| {
-                                        ty.finalize_defaults(&self.ctx);
-                                        ty
-                                    })
-                                    .collect::<Vec<_>>();
-
-                                match find_instance!(@find params, $resolve) {
-                                    Some(result) => return result,
-                                    None => {}
-                                }
-                            }
+                        match find_instance!(@find params, $resolve) {
+                            Some(result) => return result,
                             None => {}
                         }
                     }

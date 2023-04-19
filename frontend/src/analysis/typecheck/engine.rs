@@ -2,7 +2,6 @@ use crate::{parse::SpanList, TraitId, TypeId, TypeParameterId};
 use std::{
     cell::{Cell, RefCell},
     collections::BTreeMap,
-    rc::Rc,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -121,7 +120,7 @@ pub type FinalizedGenericSubstitutions = BTreeMap<TypeParameterId, Type>;
 pub struct Context {
     pub next_var: Cell<usize>,
     pub substitutions: RefCell<im::HashMap<TypeVariable, UnresolvedType>>,
-    pub defaults: RefCell<im::HashMap<TypeVariable, Rc<Type>>>,
+    pub defaults: RefCell<im::HashMap<TypeVariable, Type>>,
     pub numeric_substitutions: RefCell<im::HashMap<TypeVariable, UnresolvedType>>,
 }
 
@@ -150,7 +149,7 @@ impl Context {
         let var = TypeVariable(next_var);
 
         if let Some(default) = default {
-            self.defaults.borrow_mut().insert(var, Rc::new(default));
+            self.defaults.borrow_mut().insert(var, default);
         }
 
         self.next_var.set(next_var + 1);
@@ -269,10 +268,10 @@ impl Context {
                     if let UnresolvedType::Variable(other) = ty {
                         let mut defaults = self.defaults.borrow_mut();
 
-                        if let Some(default) = defaults.get(&other).cloned() {
+                        if let Some(source) = defaults.get(&var).cloned() {
+                            defaults.insert(other, source);
+                        } else if let Some(default) = defaults.get(&other).cloned() {
                             defaults.insert(var, default);
-                        } else if let Some(default) = defaults.get(&var).cloned() {
-                            defaults.insert(other, default);
                         }
                     }
 
@@ -682,37 +681,39 @@ impl UnresolvedType {
         }
     }
 
-    pub fn finalize_defaults(&mut self, ctx: &Context) {
+    pub fn substitute_defaults(&mut self, ctx: &Context) {
         self.apply(ctx);
 
         match self {
             UnresolvedType::Variable(var) => {
-                if let Some(ty) = ctx.substitutions.borrow().get(var).cloned() {
-                    *self = ty;
-                    self.finalize_defaults(ctx);
-                } else if let Some(ty) = ctx.defaults.borrow().get(var).cloned() {
-                    *self = (*ty).clone().into();
-                    self.finalize_defaults(ctx);
+                if let Some(default) = ctx.defaults.borrow().get(var).cloned() {
+                    ctx.substitutions
+                        .borrow_mut()
+                        .insert(*var, default.clone().into());
+
+                    self.substitute_defaults(ctx);
                 }
             }
             UnresolvedType::Function(input, output) => {
-                input.finalize_defaults(ctx);
-                output.finalize_defaults(ctx);
+                input.substitute_defaults(ctx);
+                output.substitute_defaults(ctx);
             }
             UnresolvedType::Named(_, params, structure) => {
                 for param in params {
-                    param.finalize_defaults(ctx);
+                    param.substitute_defaults(ctx);
                 }
 
                 structure.finalize_defaults(ctx);
             }
             UnresolvedType::Tuple(tys) => {
                 for ty in tys {
-                    ty.finalize_defaults(ctx);
+                    ty.substitute_defaults(ctx);
                 }
             }
             UnresolvedType::Builtin(ty) => match ty {
-                BuiltinType::List(ty) | BuiltinType::Mutable(ty) => ty.finalize_defaults(ctx),
+                BuiltinType::List(ty) | BuiltinType::Mutable(ty) => {
+                    ty.substitute_defaults(ctx);
+                }
                 _ => {}
             },
             _ => {}
@@ -760,7 +761,7 @@ impl UnresolvedType {
     pub fn finalize(&self, ctx: &Context) -> Option<Type> {
         let mut ty = self.clone();
         ty.apply(ctx);
-        ty.finalize_defaults(ctx);
+        ty.substitute_defaults(ctx);
         ty.finalize_numeric_variables(ctx);
 
         Some(match ty.clone() {
@@ -881,13 +882,13 @@ impl TypeStructure<UnresolvedType> {
             TypeStructure::Marker | TypeStructure::Recursive(_) => {}
             TypeStructure::Structure(tys) => {
                 for ty in tys {
-                    ty.finalize_defaults(ctx);
+                    ty.substitute_defaults(ctx);
                 }
             }
             TypeStructure::Enumeration(variants) => {
                 for tys in variants {
                     for ty in tys {
-                        ty.finalize_defaults(ctx);
+                        ty.substitute_defaults(ctx);
                     }
                 }
             }
