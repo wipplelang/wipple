@@ -1,7 +1,7 @@
 ---
 next:
-  name: Logic
-  link: ?lesson=intermediate/logic
+  name: Types
+  link: ?lesson=intermediate/types
 ---
 
 ---
