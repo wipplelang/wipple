@@ -22,8 +22,9 @@ locked: true
 
 ## Intermediate
 
-- [Logic](?lesson=intermediate/logic)
-- [Types](?lesson=intermediate/types)
+- [Logic and decision making](?lesson=intermediate/logic)
+- [The type system](?lesson=intermediate/types)
+- [Making our own types](?lesson=intermediate/custom-types)
 
 ## Advanced
 

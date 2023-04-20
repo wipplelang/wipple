@@ -1,109 +1,89 @@
 ---
 previous:
-  name: Logic
+  name: Logic and decision making
   link: ?lesson=intermediate/logic
+next:
+  name: Making our own types
+  link: ?lesson=intermediate/custom-types
 ---
 
 ---
-id: X8fvwv7g
+id: 08ws5pTb
 type: text
 locked: true
 ---
 
-# Types
+# The type system
 
-Wipple has a powerful system to detect bugs in your code, called the **type system**. The type system assigns every value in your program a **type**, which represents the "kind of thing" each value is.
-
-Just like `:` is used to assign a name a value, the `::` symbol (pronounced _"is a"_) is used to assign a value a type. Here's a simple example:
+Underlying the Wipple programming language is an advanced algorithm called the **type system**. Wipple uses the type system to determine what you mean, and that influences how the code is run. For example, if we `prompt` the user for a number...
 
 ---
-id: 9C0MC2wR
+id: 3gU9xu-0
+type: code
+---
+
+n : prompt "Enter a number"
+show (format "The next number after _ is _" n (n + 1))
+
+---
+id: IPvAClCM
+type: text
+locked: true
+---
+
+...you'll notice that we can only type numbers into the text box, because it only makes sense to add `1` to a number. So how does it _know?_
+
+Essentially, the type system works by giving every piece of code a **type**, which represents the "kind of thing" that code produces. In the same way variables are denoted with a single colon `:`, types are denoted with a double colon `::`. So we can say that `1` is a `Number`, or `1 :: Number`. Likewise, `"hello" :: Text`.
+
+Let's try making a mistake and see if Wipple catches it:
+
+---
+id: DY9x04Kf
 type: code
 lint: false
 ---
 
-42 :: Number -- "42 is a Number"
-"hello" :: Text -- "'hello' is a Text"
+"hello" :: Number
 
 ---
-id: Wnu-SFH5
+id: G-13EK6B
 type: text
 locked: true
 ---
 
-Let’s see what happens if we make a mistake:
+If you hover over the highlighted piece of code, you'll see "expected `Number`, but found `Text`"! Why? Well, we've told Wipple that `"hello"` is a number, but Wipple determined that it's actually text. Whenever there's a mismatch, Wipple issues an error.
+
+Sometimes you might get an error that says "could not determine the type of this expression". All that means is that you did something Wipple's algorithm couldn't figure out on its own, and you need to manually specify the type. You can do that with `::` as shown above!
+
+But how does Wipple know that `n` is a `Number` in `n + 1`? Well, the full explanation is its own Advanced lesson, but for now, just know that Wipple keeps track of all the variables and how they are used throughout the program. When you pass a variable to a function or an operator like `+`, Wipple looks through the code of the function and infers what the input must be. If you use a single variable in two places that require different types, you'll get an error — a variable can't hold both a number and a piece of text at the same time!
+
+Types are also used to enforce providing units for numbers, like in the turtle graphics:
 
 ---
-id: iFmWOhj8
+id: ruVsELA8
 type: code
 ---
 
-42 :: Text
+use "turtle"
+
+with-turtle {
+	forward 50 -- replace with `(50 pixels)` to fix the error
+}
 
 ---
-id: jYxGjc7u
+id: Uf9c2K-W
 type: text
 locked: true
 ---
 
-Take a look at the error and you should see *"expected `Text`, but found `Number`"*. Why? Well, we've told Wipple that `42` is supposed to be `Text`, but Wipple determined that `42` is a `Number`. Since these types don't match, Wipple issues an error.
+There are many types built in to Wipple — here are a few:
 
-We can extend this idea to functions, too! Watch what happens if we make a mistake:
+  -  `Number` and `Text` represent numbers and text
+  -  In `turtle`, `Pixels` represents a number of `pixels`
+  -  In `music`, `Note-Length` represents a note length in `beats` or `secs`
+  -  `List` represents a list of items
+  -  `()` represents "nothing"
 
----
-id: NKCjkFjE
-type: code
-lint: false
----
+By the way, you can hover your mouse over any piece of code and the Wipple Playground will show you its type. There are many other types, particularly `->` for functions, that are covered in the Advanced lessons, so don't worry if you see a type you aren't familiar with yet!
 
-increment : (a -> a + 1) :: (Number -> Number)
-increment "2"
-
----
-id: e4vdoSzv
-type: text
-locked: true
----
-
-Wipple catches the bug and tells us that we're supposed to provide a `Number`!
-
-What's the type of a function like `add` that accepts two inputs? Remember that `add` is really two functions, each accepting an input. This means `add` has the type `Number -> (Number -> Number)`!
-
-To make it a bit clearer, you can write the name of the function on its own line above the variable, omitting the parentheses:
-
----
-id: 43GqWoz5
-type: code
----
-
-add :: Number -> Number -> Number
-add : a -> b -> a + b
-
----
-id: 8j2J75UL
-type: text
-locked: true
----
-
-Don't worry if this all sounds complicated — you usually don't even have to write the type of your variables! Wipple uses **type inference** to figure out what the types are for you. For example, let's say we have a function named `greet`:
-
----
-id: txg7Oi9A
-type: code
----
-
-greet : name -> format "Hello, _!" name
-greeting : greet "world"
-show greeting
-
----
-id: xeNcxT2r
-type: text
-locked: true
----
-
-Try hovering over `greet`. You'll see that Wipple was able to determine its type is `Text -> Text` based on its usage!
-
-One last note — what's the type of `show greeting`? `show` accepts `Text`, sure, but it doesn't produce any result. Wipple has a special type for functions that produce no result: the empty list `()`. So the type of `show greeting` is `()`! If you aren't convinced, try assigning `show greeting` to a variable, `result`, and hovering over it.
-
-On the next page, we’ll take an even deeper dive into types!
+In the next lesson, we'll learn how to make our own types!

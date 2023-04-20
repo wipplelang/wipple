@@ -1,0 +1,171 @@
+---
+previous:
+  name: The type system
+  link: ?lesson=intermediate/types
+---
+
+---
+id: JFUYSDYc
+type: text
+locked: true
+---
+
+# Making our own types
+
+Let's say we want to store some information about a person. We can do that with multiple variables, like so:
+
+---
+id: OvrEYGel
+type: code
+---
+
+display-person : name age favorite-color ->
+	show (format "_ is _ years old and their favorite color is _" name age favorite-color)
+
+alice-name : "Alice"
+alice-age : 25
+alice-favorite-color : "red"
+
+display-person alice-name alice-age alice-favorite-color
+
+bob-name : "Bob"
+bob-age : 30
+bob-favorite-color : "blue"
+
+display-person bob-name bob-age bob-favorite-color
+
+---
+id: H0FSve89
+type: text
+locked: true
+---
+
+That code is pretty difficult to read, and every time we want to add a new person, we need three more variables. What if we could "package up" all that information into a single variable?
+
+Well good news, because Wipple has something specifically designed for this problem — custom types!
+
+To define a custom type, you use the `type` function and list out all the variables that go inside, along with their types:
+
+---
+id: Hw9MUMGS
+type: code
+---
+
+Person : type {
+	name :: Text
+	age :: Number
+	favorite-color :: Text
+}
+
+---
+id: zIFjBmc6
+type: text
+locked: true
+---
+
+If you're confused about what `::` means, make sure you read the previous lesson on Wipple's type system!
+
+Alright, now we can make a new person by giving each of those variables a value:
+
+---
+id: lW8g-I6i
+type: code
+lint: false
+---
+
+Person : type {
+	name :: Text
+	age :: Number
+	favorite-color :: Text
+}
+
+alice : Person {
+	name : "Alice"
+	age : 25
+	favorite-color : "red"
+}
+
+bob : Person {
+	name : "Bob"
+	age : 30
+	favorite-color : "blue"
+}
+
+---
+id: 0wNuTgaT
+type: text
+locked: true
+---
+
+Great! Notice the distinction between the double colon `::` and the single colon `:` — you always use the single colon when you're making a _value_ (like `"Alice"` or `25`), and you only use the double colon when you're providing a _type_ (like `Text` or `Number`).
+
+So now that we've packaged up our information into a single variable for each person, how do we get the information back out? Just use the `of` operator:
+
+---
+id: v3QyZwVD
+type: code
+---
+
+Person : type {
+	name :: Text
+	age :: Number
+	favorite-color :: Text
+}
+
+alice : Person {
+	name : "Alice"
+	age : 25
+	favorite-color : "red"
+}
+
+show (name of alice)
+
+---
+id: qsnUTqD-
+type: text
+locked: true
+---
+
+With all that in mind, we can rewrite the original example as follows:
+
+---
+id: 2DqbvzG5
+type: code
+---
+
+Person : type {
+	name :: Text
+	age :: Number
+	favorite-color :: Text
+}
+
+display-person : person ->
+	show (format "_ is _ years old and their favorite color is _" (name of person) (age of person) (favorite-color of person))
+
+alice : Person {
+	name : "Alice"
+	age : 25
+	favorite-color : "red"
+}
+
+bob : Person {
+	name : "Bob"
+	age : 30
+	favorite-color : "blue"
+}
+
+display-person alice
+display-person bob
+
+---
+id: jwh0OF5W
+type: text
+locked: true
+---
+
+Cool! Can you think of any other situations where a custom type is useful? Experiment in the space below!
+
+---
+id: kRXZ743Q
+type: code
+---

@@ -1,6 +1,6 @@
 ---
 next:
-  name: Types
+  name: The type system
   link: ?lesson=intermediate/types
 ---
 
@@ -10,7 +10,7 @@ type: text
 locked: true
 ---
 
-# Logic
+# Logic and decision making
 
 Up until now, we've written pretty simple programs that always produce the same output. Now, we'll introduce a way for your code to make decisions about its input!
 
