@@ -1,0 +1,162 @@
+---
+previous:
+  name: Patterns
+  link: ?lesson=intermediate/patterns
+next:
+  name: Graphing functions
+  link: ?lesson=intermediate/graphing
+---
+
+---
+id: jtFfV5CR
+type: text
+locked: true
+---
+
+# Making your own patterns
+
+In the last lesson, we learned how to use `when` to match an input to one of several patterns. But `when` doesn't just work with `Numbers` and `Text` — we can define our own patterns!
+
+Let's say we want to build a program that creates a report card given a grade. We can represent the grades using text...
+
+---
+id: gFQY5riY
+type: code
+---
+
+grade : "A"
+
+report-card : when grade {
+	"A" -> "Top of the class"
+	"B" -> "Good work"
+	"C" -> "Getting there"
+	"D" or "F" -> "Need to study"
+	_ -> "Invalid grade"
+}
+
+show report-card
+
+---
+id: oCub95re
+type: text
+locked: true
+---
+
+Notice that we need to have the `_` catch-all pattern at the end to handle the case where `grade` isn't `"A"` through `"F"`. But can we do better?
+
+In fact, we can! We can declare our own patterns and put them in a `type`, and then Wipple can _guarantee_ that all grades are valid grades.
+
+---
+id: JgKd1gCI
+type: code
+---
+
+Grade : type {
+	A
+	B
+	C
+	D
+	F
+}
+
+---
+id: 3WYlp_7e
+type: text
+locked: true
+---
+
+Notice that instead of putting variables inside the `type`, we're putting _patterns_. Custom patterns begin with an uppercase letter (whereas variables are lowercase).
+
+And now we can build a new `report-card` function!
+
+---
+id: eh5hTssi
+type: code
+---
+
+Grade : type {
+	A
+	B
+	C
+	D
+	F
+}
+
+use Grade -- ignore this line, you won't need it soon!
+
+grade : A
+
+report-card : when grade {
+	A -> "Top of the class"
+	B -> "Good work"
+	C -> "Getting there"
+	D or F -> "Need to study"
+}
+
+show report-card
+
+---
+id: 9KLHcCKY
+type: text
+locked: true
+---
+
+Look closely — we don't have the `_` catch-all pattern anymore. We don't need to have it, because if we try to make an invalid grade, we get an error!
+
+---
+id: QUfEDFSB
+type: code
+---
+
+Grade : type {
+	A
+	B
+	C
+	D
+	F
+}
+
+use Grade
+
+grade : E
+
+---
+id: om5V0-fQ
+type: text
+locked: true
+---
+
+And now that we've told Wipple all the possible `Grade`s, Wipple tells us if we forgot to handle one of them!
+
+---
+id: WxdRae0l
+type: code
+---
+
+Grade : type {
+	A
+	B
+	C
+	D
+	F
+}
+
+use Grade
+
+grade : A
+
+report-card : when grade {
+	A -> "Top of the class"
+	B -> "Good work"
+	D -> "Need to study"
+}
+
+show report-card
+
+---
+id: NlfZMgnC
+type: text
+locked: true
+---
+
+Wipple's patterns are powerful and expressive, and there's a lot more to them than this. If you're curious about more advanced patterns, check out the Advanced lessons!

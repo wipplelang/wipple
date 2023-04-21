@@ -2,6 +2,9 @@
 previous:
   name: The type system
   link: ?lesson=intermediate/types
+next:
+  name: Patterns
+  link: ?lesson=intermediate/patterns
 ---
 
 ---
@@ -10,7 +13,7 @@ type: text
 locked: true
 ---
 
-# Making our own types
+# Making your own types
 
 Let's say we want to store some information about a person. We can do that with multiple variables, like so:
 

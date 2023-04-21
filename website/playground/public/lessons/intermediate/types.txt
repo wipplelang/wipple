@@ -3,7 +3,7 @@ previous:
   name: Logic and decision making
   link: ?lesson=intermediate/logic
 next:
-  name: Making our own types
+  name: Making your own types
   link: ?lesson=intermediate/custom-types
 ---
 

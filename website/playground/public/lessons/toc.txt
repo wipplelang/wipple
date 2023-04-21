@@ -24,7 +24,10 @@ locked: true
 
 - [Logic and decision making](?lesson=intermediate/logic)
 - [The type system](?lesson=intermediate/types)
-- [Making our own types](?lesson=intermediate/custom-types)
+- [Making your own types](?lesson=intermediate/custom-types)
+- [Patterns](?lesson=intermediate/patterns)
+- [Making your own patterns](?lesson=intermediate/custom-patterns)
+- [Graphing functions](?lesson=intermediate/graphing)
 
 ## Advanced
 

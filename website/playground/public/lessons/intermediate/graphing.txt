@@ -1,0 +1,119 @@
+---
+previous:
+  name: Making your own patterns
+  link: ?lesson=intermediate/custom-patterns
+---
+
+---
+id: HVdxwPp9
+type: text
+locked: false
+---
+
+# Graphing functions
+
+Let's end the Intermediate lessons with another practical use for Wipple — plotting mathematical functions on a graph! The syntax is very similar to turtle graphics
+— we'll start with `use "graphing"` and plot a simple function:
+
+---
+id: 0JHgycw1
+type: code
+---
+
+use "graphing"
+
+with-graph {
+	plot (x -> x ^ 2)
+}
+
+---
+id: tsRfDO81
+type: text
+locked: false
+---
+
+The graph looks like that by default. But we can change the bounds as well as the color!
+
+---
+id: GFJMSYKq
+type: code
+---
+
+use "graphing"
+
+with-graph {
+	min-y 0
+	max-y 100
+	color "blue"
+	plot (x -> x ^ 2)
+}
+
+---
+id: OVoko3gj
+type: text
+locked: false
+---
+
+You can also graph multiple functions at the same time, each with its own color:
+
+---
+id: 56O7OiZa
+type: code
+---
+
+use "graphing"
+
+with-graph {
+	color "red"
+	plot (x -> x)
+
+	color "green"
+	plot (x -> x ^ 2)
+
+	color "blue"
+	plot (x -> x ^ 3)
+}
+
+---
+id: 4SeoIMT1
+type: text
+locked: false
+---
+
+This next example makes a zig-zag by using `mod`, which returns the remainder of dividing the two numbers. For example, `10 mod 4` is `2` and `2 mod 2` is `0`.
+
+---
+id: OP01Vv65
+type: code
+---
+
+use "graphing"
+
+with-graph {
+	plot (x -> x mod 2)
+}
+
+---
+id: Jw4MAYzs
+type: text
+locked: false
+---
+
+Go ahead and graph your own functions in the space below!
+
+---
+id: K5MSP8b-
+type: code
+---
+
+
+
+---
+id: W8kTX6-i
+type: text
+locked: false
+---
+
+## Great work!
+
+Congratulations, you've made it to the end of the Intermediate lessons! 😎 Feel free to explore the Wipple Playground and write your own programs. (To open a fresh editor, click on the Wipple logo at the top of the page.) If you want to learn more, try moving on to the Advanced lessons.
