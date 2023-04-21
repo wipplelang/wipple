@@ -3591,7 +3591,25 @@ impl Lowerer {
         name: InternedString,
         scope: LoadedScopeId,
     ) -> Option<ExpressionKind> {
-        if let Some(id) = self.get(name, span, AnyDeclaration::as_type, scope) {
+        if let Some(id) = self.get(name, span, AnyDeclaration::as_variable, scope) {
+            self.declarations
+                .variables
+                .get_mut(&id)
+                .unwrap()
+                .uses
+                .insert(span);
+
+            Some(ExpressionKind::Variable(id))
+        } else if let Some((id, None)) = self.get(name, span, AnyDeclaration::as_constant, scope) {
+            self.declarations
+                .constants
+                .get_mut(&id)
+                .unwrap()
+                .uses
+                .insert(span);
+
+            Some(ExpressionKind::Constant(id))
+        } else if let Some(id) = self.get(name, span, AnyDeclaration::as_type, scope) {
             self.declarations
                 .types
                 .get_mut(&id)
@@ -3619,6 +3637,15 @@ impl Lowerer {
                     Some(ExpressionKind::error(&self.compiler))
                 }
             }
+        } else if let Some(id) = self.get(name, span, AnyDeclaration::as_trait, scope) {
+            self.declarations
+                .traits
+                .get_mut(&id)
+                .unwrap()
+                .uses
+                .insert(span);
+
+            Some(ExpressionKind::Trait(id))
         } else if let Some(id) = self.get(name, span, AnyDeclaration::as_builtin_type, scope) {
             self.declarations
                 .builtin_types
@@ -3633,15 +3660,16 @@ impl Lowerer {
             );
 
             Some(ExpressionKind::error(&self.compiler))
-        } else if let Some(id) = self.get(name, span, AnyDeclaration::as_trait, scope) {
+        } else if let Some((id, Some(_))) = self.get(name, span, AnyDeclaration::as_constant, scope)
+        {
             self.declarations
-                .traits
+                .constants
                 .get_mut(&id)
                 .unwrap()
                 .uses
                 .insert(span);
 
-            Some(ExpressionKind::Trait(id))
+            Some(ExpressionKind::Constant(id))
         } else if let Some(id) = self.get(name, span, AnyDeclaration::as_type_parameter, scope) {
             self.declarations
                 .type_parameters
@@ -3659,24 +3687,6 @@ impl Lowerer {
             );
 
             Some(ExpressionKind::error(&self.compiler))
-        } else if let Some((id, _)) = self.get(name, span, AnyDeclaration::as_constant, scope) {
-            self.declarations
-                .constants
-                .get_mut(&id)
-                .unwrap()
-                .uses
-                .insert(span);
-
-            Some(ExpressionKind::Constant(id))
-        } else if let Some(id) = self.get(name, span, AnyDeclaration::as_variable, scope) {
-            self.declarations
-                .variables
-                .get_mut(&id)
-                .unwrap()
-                .uses
-                .insert(span);
-
-            Some(ExpressionKind::Variable(id))
         } else {
             None
         }
