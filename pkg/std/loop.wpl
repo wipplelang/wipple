@@ -8,8 +8,6 @@ Control-Flow : A => type {
 	Continue
 }
 
-use Control-Flow
-
 loop' :: A => (() -> Control-Flow A) -> A
 loop' : body -> when (body ()) {
 	Break value -> value

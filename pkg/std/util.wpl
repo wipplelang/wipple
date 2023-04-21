@@ -31,8 +31,6 @@ Maybe : Value => type {
 	Some Value
 }
 
-use Maybe
-
 [help "Represents the success or failure of an operation."]
 [help-group "Utilities"]
 [on-mismatch Success "try handling the case where the `Result` is `Error`, eg. using `when`, `try` or `expect`"]
@@ -41,8 +39,6 @@ Result : Success Failure => type {
 	OK Success
 	Error Failure
 }
-
-use Result
 
 [help "Implement this trait to enable usage of your type in error handling."]
 [help-group "Utilities"]

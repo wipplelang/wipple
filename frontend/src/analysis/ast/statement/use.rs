@@ -6,7 +6,7 @@ use crate::{
     diagnostics::Note,
     helpers::InternedString,
     parse::{self, SpanList},
-    FilePath, ScopeId,
+    FilePath,
 };
 
 #[derive(Debug, Clone)]
@@ -20,7 +20,6 @@ pub struct UseStatement {
 #[derive(Debug, Clone)]
 pub enum UseStatementKind {
     File(SpanList, InternedString, Option<FilePath>),
-    Name(SpanList, InternedString, ScopeId),
 }
 
 impl UseStatement {
@@ -37,7 +36,7 @@ impl Syntax for UseStatementSyntax {
     fn rules() -> SyntaxRules<Self> {
         SyntaxRules::new().with(SyntaxRule::<Self>::function(
             "use",
-            |context, span, use_span, mut exprs, scope| async move {
+            |context, span, use_span, mut exprs, _scope| async move {
                 if exprs.len() != 1 {
                     context.ast_builder.compiler.add_error(
                         "syntax error",
@@ -49,11 +48,6 @@ impl Syntax for UseStatementSyntax {
 
                 let input = exprs.pop().unwrap();
                 let kind = match input.kind {
-                    parse::ExprKind::Name(name, name_scope) => Ok(UseStatementKind::Name(
-                        input.span,
-                        name,
-                        name_scope.unwrap_or(scope),
-                    )),
                     parse::ExprKind::Text(text) => {
                         let mut resolved_path = None;
                         if let Some(file) = (context.ast_builder.load)(
@@ -72,7 +66,7 @@ impl Syntax for UseStatementSyntax {
                     _ => {
                         context.ast_builder.compiler.add_error(
                             "syntax error",
-                            vec![Note::primary(span, "`use` accepts 1 input")],
+                            vec![Note::primary(span, "`use` accepts a file name")],
                         );
 
                         Err(context.ast_builder.syntax_error(input.span))

@@ -4,8 +4,6 @@ code: |
         Cons A (Linked-List A)
     }
 
-    use Linked-List
-
     reduce :: A R => (A -> R -> R) -> R -> Linked-List A -> R
     reduce : f result list -> when list {
         Nil -> result

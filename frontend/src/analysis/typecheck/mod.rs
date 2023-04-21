@@ -40,7 +40,7 @@ pub struct Program {
     pub contexts: BTreeMap<ConstantId, ItemId>,
     pub entrypoint: Option<ItemId>,
     pub declarations: Declarations,
-    pub exported: HashMap<InternedString, lower::AnyDeclaration>,
+    pub exported: HashMap<InternedString, HashSet<lower::AnyDeclaration>>,
 }
 
 macro_rules! declarations {
@@ -528,7 +528,7 @@ struct Typechecker {
     entrypoint: lower::File,
     ctx: engine::Context,
     declarations: RefCell<DeclarationsInner>,
-    exported: Option<HashMap<InternedString, lower::AnyDeclaration>>,
+    exported: Option<HashMap<InternedString, HashSet<lower::AnyDeclaration>>>,
     instances: im::HashMap<TraitId, Vec<ConstantId>>,
     generic_constants: im::HashMap<ConstantId, (bool, lower::Expression)>,
     specialized_constants: im::HashMap<ConstantId, ConstantId>,

@@ -8,8 +8,6 @@ Boolean : type {
 	True
 }
 
-use Boolean
-
 [keyword]
 if : syntax {
 	if 'bool 'then 'else -> when 'bool {

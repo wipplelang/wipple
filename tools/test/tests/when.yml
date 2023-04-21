@@ -4,8 +4,6 @@ code: |
         False
     }
 
-    use Boolean
-
     x? : True
 
     show (when x? {
