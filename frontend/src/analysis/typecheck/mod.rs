@@ -949,6 +949,7 @@ impl Typechecker {
         }
 
         let mut monomorphize_info = MonomorphizeInfo::default();
+        monomorphize_info.is_generic = true;
         for bound in bounds {
             monomorphize_info
                 .bound_instances
@@ -2036,6 +2037,7 @@ struct MonomorphizeInfo {
     instance_stack: BTreeMap<TraitId, Vec<(ConstantId, Vec<engine::UnresolvedType>)>>,
     recursion_count: usize,
     has_resolved_trait: bool,
+    is_generic: bool,
 }
 
 impl Typechecker {
@@ -2728,11 +2730,14 @@ impl Typechecker {
                 for (mut param_ty, mut instance_param_ty) in
                     params.clone().into_iter().zip(instance_params.clone())
                 {
-                    self.add_substitutions(&mut param_ty, &mut substitutions);
-                    self.add_substitutions(&mut instance_param_ty, &mut substitutions);
+                    if !info.is_generic {
+                        self.add_substitutions(&mut param_ty, &mut substitutions);
+                        self.add_substitutions(&mut instance_param_ty, &mut substitutions);
+                    }
 
-                    if self.ctx.unify(param_ty, instance_param_ty).is_err() {
+                    if self.ctx.unify_generic(param_ty, instance_param_ty).is_err() {
                         all_unify = false;
+                        break;
                     }
                 }
 
