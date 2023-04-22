@@ -31,4 +31,4 @@ locked: true
 
 ## Advanced
 
-- [TODO](?lesson=advanced/todo)
+- [Type functions and traits](?lesson=advanced/traits)
