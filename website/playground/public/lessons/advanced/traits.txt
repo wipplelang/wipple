@@ -1,5 +1,7 @@
 ---
-# TODO
+next:
+  name: Advanced functions
+  link: ?lesson=advanced/functions
 ---
 
 ---

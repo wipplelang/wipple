@@ -1,0 +1,241 @@
+---
+previous:
+  name: Type functions and traits
+  link: ?lesson=advanced/traits
+---
+
+---
+id: wzLqR7Iw
+type: text
+locked: true
+---
+
+# Advanced functions
+
+Wipple is a **functional programming language**, which means that Wipple encourages creating and composing functions over other methods of programming, like class-based inheritance and mutable state. In this lesson, we'll learn how to write idiomatic, functional Wipple code.
+
+## Partial application
+
+Up until now, we've declared functions that accept multiple inputs like this:
+
+---
+id: OuA_Oq0i
+type: code
+---
+
+add : a b -> a + b
+show (add 1 2)
+
+---
+id: iPCc6H7Q
+type: text
+locked: true
+---
+
+But if you've looked at the type of `add`, you may have noticed that it's not `Number Number -> Number`, but `Number -> Number -> Number`! What's going on?
+
+Well, it turns out that `a b -> a + b` is actually shorthand for `a -> b -> a + b`. Wipple functions actually only accept **one input at a time**, so `add 1 2` is the same as writing `(add 1) 2`. Essentially, the `add` function returns _another_ function!
+
+There's nothing special about the function `add` returns, so we can assign it to a variable:
+
+---
+id: vaRaLlmh
+type: code
+---
+
+add : a -> b -> a + b
+increment : add 1
+show (increment 2)
+
+---
+id: CMlIGTaV
+type: text
+locked: true
+---
+
+This idea of calling a function with only one input at a time is called **partial application**, and if used correctly, it can make your code much easier to read. It can take a while to really embrace partial application, but when you do, it just makes sense — _"increment is add one"_ is almost an English sentence!
+
+In other languages, you might have a function `age` that sets the age of a `Person` object. But in functional languages like Wipple, you usually create a new, updated `Person` value instead of mutating the original:
+
+---
+id: CLL97pQ8
+type: code
+---
+
+Person : type { age :: Number }
+
+age :: Person -> Number -> Person
+age : person years -> Person { age : (age of person) + years }
+
+alice : Person { age : 25 }
+alice : age alice 1
+show (age of alice)
+
+---
+id: xU-N53hK
+type: text
+locked: true
+---
+
+This makes programs easier to reason about and debug, because you can always look back at the original value to see what has changed. It also means that changes are localized to wherever they are applied — you're always dealing with your own copy of a value instead of having to worry about changing a copy somewhere else in the program.
+
+Also, notice how we redeclare the `alice` variable after changing the age. Wipple allows you to reuse variable names if you don't need the original anymore. In this case, we only want to deal with the updated `alice`, so we can overwrite that variable. If you want to learn more about how this works, check out the Expert lesson on scope!
+
+OK, now let's say we want to add a `birthday` function that increments the person's age by one:
+
+---
+id: 5gRtfAbG
+type: code
+---
+
+Person : type { age :: Number }
+
+age :: Person -> Number -> Person
+age : person years -> Person { age : (age of person) + years }
+
+birthday :: Person -> Person
+birthday : person -> age person 1
+
+alice : Person { age : 25 }
+alice : birthday alice
+show (age of alice)
+
+---
+id: hHBx9Iv9
+type: text
+locked: true
+---
+
+This code is probably how you'd do it in other languages, but watch what happens if we swap the order of `years` and `person`:
+
+---
+id: 3t_JDbj2
+type: code
+---
+
+Person : type { age :: Number }
+
+age :: Number -> Person -> Person
+age : ...
+
+birthday :: Person -> Person
+birthday : person -> age 1 person
+
+---
+id: KhIL3gsq
+type: text
+locked: true
+---
+
+And now we can use partial application to simplify `birthday`!
+
+---
+id: TICqE1rc
+type: code
+---
+
+Person : type { age :: Number }
+
+age :: Number -> Person -> Person
+age : ...
+
+birthday :: Person -> Person
+birthday : age 1
+
+---
+id: ARgdOFWr
+type: text
+locked: true
+---
+
+Much nicer! Now `birthday` doesn't have to deal with passing a `Person` around, it can just focus on what it's really trying to do — increment the age by one. In general, any time you see `c -> f a b c`, you can replace it with `f a b`.
+
+## Dot syntax
+
+Has it felt a bit weird that `times` accepts the number of times to repeat _after_ the function? Shouldn't it be read "4 times, do something" instead of "times do something 4"?
+
+Partial application also allows us to emulate the dot (`.`) syntax you see in many object-oriented languages. Let's define `.` as an operator that accepts a value `x` on the left and a function `f` on the right, and returns `f x`.
+
+Now it should make sense why `times` is written this way — we can use dot syntax!
+
+---
+id: 2uM0SeKC
+type: code
+---
+
+-- Before
+times (x -> show (x * 2)) 4
+
+-- After
+4 . times (x -> show (x * 2))
+
+---
+id: 8WZzuDcK
+type: text
+locked: true
+---
+
+That looks much nicer; we can see the most important piece of information, the number of times the loop will repeat, first!
+
+In general, any time you have a function that operates on more than one input, you should accept the most important input _last_ so that it can be used with dot notation.
+
+## Higher-order functions
+
+`times` is what's called a **higher-order function** because it accepts a function as input. There's nothing special about doing this, you just call the function as normal! For example:
+
+---
+id: HURTDKpF
+type: code
+---
+
+call-with : f x -> f x
+4 . call-with show
+
+---
+id: UxXlITw8
+type: text
+locked: true
+---
+
+You don't even need a type signature here — Wipple figures out what you're trying to do and gives `f` the type `Number -> ()`!
+
+We can also make `call-with` generic over the input and output types using a type function:
+
+---
+id: 9qTyI45t
+type: code
+---
+
+call-with :: Input Output => (Input -> Output) -> Input -> Output
+call-with : f x -> f x
+
+increment :: Number -> Number
+increment : x -> x + 1
+
+4 . call-with increment . call-with show
+
+---
+id: 762fQwaw
+type: text
+locked: true
+---
+
+And of course, that's just equivalent to writing:
+
+---
+id: 4RZsgU4P
+type: code
+---
+
+increment :: Number -> Number
+increment : x -> x + 1
+
+4 . increment . show
+
+---
+id: iMtpIi79
+type: text
+locked: true
+---
+
+Now you know how function calling is implemented!
