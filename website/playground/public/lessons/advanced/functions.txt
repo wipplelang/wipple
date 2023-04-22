@@ -2,6 +2,9 @@
 previous:
   name: Type functions and traits
   link: ?lesson=advanced/traits
+next:
+  name: Advanced patterns
+  link: ?lesson=advanced/patterns
 ---
 
 ---
