@@ -147,8 +147,6 @@ const App = () => {
     useEffect(() => {
         if (!query.current || !queryURL) return;
 
-        console.log("first render:", firstRender.current);
-
         if (firstRender.current) {
             setFirstRender(false);
             return;
