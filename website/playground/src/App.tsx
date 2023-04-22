@@ -34,6 +34,7 @@ import { nanoid } from "nanoid";
 import TOML from "@iarna/toml";
 import { CodeEditor, TextEditor } from "./components";
 import { useRefState } from "./helpers";
+import { useMemo } from "react";
 
 type Section = { id: string; value: string } & (
     | { type: "code"; lint?: boolean }
@@ -89,6 +90,8 @@ const App = () => {
                     setNextPage(JSON.parse(nextPage));
                 }
 
+                setFirstRender(true);
+
                 return;
             }
 
@@ -105,6 +108,8 @@ const App = () => {
                 setSections(lesson.sections);
                 setPreviousPage(lesson.previous);
                 setNextPage(lesson.next);
+
+                setFirstRender(true);
             } else {
                 setSections([
                     {
@@ -113,14 +118,18 @@ const App = () => {
                         value: "",
                     },
                 ]);
+
+                setFirstRender(true);
             }
         };
 
         setup();
     }, []);
 
-    useEffect(() => {
-        if (!query.current) return;
+    const [firstRender, setFirstRender] = useRefState(true);
+
+    const queryURL = useMemo(() => {
+        if (!query.current) return undefined;
 
         query.current.delete("code");
         query.current.set("sections", JSON.stringify(sections));
@@ -132,8 +141,21 @@ const App = () => {
             window.location.pathname +
             (sections.length ? "?" + (query.current.toString() ?? "") : "");
 
-        window.history.replaceState(null, "", newURL);
-    }, [sections]);
+        return newURL;
+    }, [query.current, sections]);
+
+    useEffect(() => {
+        if (!query.current || !queryURL) return;
+
+        console.log("first render:", firstRender.current);
+
+        if (firstRender.current) {
+            setFirstRender(false);
+            return;
+        }
+
+        window.history.replaceState(null, "", queryURL);
+    }, [queryURL]);
 
     const [settings, setSettings] = useState<Settings>(() => {
         const settings = localStorage.getItem("settings");
