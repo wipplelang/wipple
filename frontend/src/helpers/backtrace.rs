@@ -71,3 +71,21 @@ impl PartialEq for Backtrace {
 }
 
 impl Eq for Backtrace {}
+
+impl PartialOrd for Backtrace {
+    fn partial_cmp(&self, _other: &Self) -> Option<std::cmp::Ordering> {
+        Some(std::cmp::Ordering::Equal) // skip backtrace in types that contain it
+    }
+}
+
+impl Ord for Backtrace {
+    fn cmp(&self, _other: &Self) -> std::cmp::Ordering {
+        std::cmp::Ordering::Equal // skip backtrace in types that contain it
+    }
+}
+
+impl std::hash::Hash for Backtrace {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        ().hash(state) // skip backtrace in types that contain it
+    }
+}

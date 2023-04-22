@@ -36,6 +36,8 @@ impl Syntax for TypeFunctionAssignmentPatternSyntax {
             "=>",
             OperatorAssociativity::None,
             |context, span, (lhs_span, lhs), arrow_span, (rhs_span, rhs), scope| async move {
+                let scope = context.ast_builder.child_scope(scope);
+
                 let lhs = parse::Expr::list_or_expr(lhs_span, lhs);
 
                 let type_pattern = context

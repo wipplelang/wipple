@@ -103,7 +103,7 @@ instance (Modulo Double Double Double) : a b -> external "runtime" "modulo-doubl
 [help "Implements the `^` operator."]
 [help-group "Math"]
 [on-unimplemented "cannot raise `_` to the power of `_`" Left Right]
-Power : Left Right Power' => trait (Left -> Right -> Power') -- FIXME: Rename to `Power` once type parameters aren't leaked
+Power : Left Right Power => trait (Left -> Right -> Power)
 
 [operator Exponentiation-Precedence]
 ^ : syntax {

@@ -38,13 +38,11 @@ Value where (Show Value) => instance (Show (Maybe Value)) : x? -> when x? {
 	None -> "None"
 }
 
--- FIXME: Doesn't typecheck for some reason
--- Success Failure where (Show Success) (Show Failure) =>
--- 	instance (Show (Result Success Failure)) :
--- 		x? -> when x? {
--- 			OK x -> format "OK _" (Show x)
--- 			Error e -> format "Error _" (Show e)
--- 		}
+Success Failure where (Show Success) (Show Failure) =>
+	instance (Show (Result Success Failure)) : x? -> when x? {
+		OK x -> format "OK _" x
+		Error e -> format "Error _" e
+	}
 
 Success Failure where (Show Failure) =>
 	instance (Expect (Result Success Failure) Success) :

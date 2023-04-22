@@ -818,11 +818,11 @@ impl Compiler {
 
             lowerer.scopes.extend(dependency.scopes.clone());
 
-            lowerer.extend(dependency.exported.clone(), scope);
+            lowerer.extend(dependency.exported.clone(), &scope);
         }
 
         let ctx = Context::default();
-        let statements = lowerer.lower_statements(&file.statements, scope, &ctx);
+        let statements = lowerer.lower_statements(&file.statements, &scope, &ctx);
 
         for constant in lowerer.declarations.constants.values() {
             constant
@@ -899,7 +899,7 @@ impl Compiler {
             }
         }
 
-        let exported = lowerer.export(scope);
+        let exported = lowerer.export(&scope);
 
         let mut specializations = BTreeMap::<ConstantId, Vec<ConstantId>>::new();
         for (constant, specialized_constant) in lowerer.specializations {
@@ -940,49 +940,81 @@ struct Scope {
     used_variables: Shared<CaptureList>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-struct LoadedScopeId(ScopeId);
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+struct LoadedScopeId {
+    id: ScopeId,
+    trace: Backtrace,
+}
+
+impl std::borrow::Borrow<ScopeId> for LoadedScopeId {
+    fn borrow(&self) -> &ScopeId {
+        &self.id
+    }
+}
 
 impl Lowerer {
     fn root_scope(&mut self, id: ScopeId) -> LoadedScopeId {
-        let id = LoadedScopeId(id);
-        self.scopes.insert(id, Scope::default());
+        let id = LoadedScopeId {
+            id,
+            trace: self.compiler.backtrace(),
+        };
 
-        self.load_builtins(id);
+        self.scopes.insert(id.clone(), Scope::default());
+
+        self.load_builtins(&id);
 
         id
     }
 
-    fn child_scope(&mut self, id: ScopeId, parent: LoadedScopeId) -> LoadedScopeId {
-        let id = LoadedScopeId(id);
+    fn child_scope(&mut self, id: ScopeId, parent: &LoadedScopeId) -> LoadedScopeId {
+        let id = LoadedScopeId {
+            id,
+            trace: self.compiler.backtrace(),
+        };
+
+        assert_ne!(
+            &id, parent,
+            "cannot make a scope {:?} a child of itself",
+            id.id
+        );
+
+        assert!(
+            !self.scopes.contains_key(&id),
+            "scope {:?} already registered at {:#?}",
+            id.id,
+            id.trace
+        );
 
         let scope = Scope {
-            parent: Some(parent),
+            parent: Some(parent.clone()),
             ..Default::default()
         };
 
-        self.scopes.insert(id, scope);
+        self.scopes.insert(id.clone(), scope);
 
         self.scopes
-            .get_mut(&parent)
+            .get_mut(parent)
             .unwrap_or_else(|| panic!("scope {parent:?} loaded out of order"))
             .children
-            .push(id);
+            .push(id.clone());
 
         id
     }
 
     fn assert_loaded_scope(&mut self, id: ScopeId) -> LoadedScopeId {
         assert!(
-            self.scopes.contains_key(&LoadedScopeId(id)),
+            self.scopes.contains_key(&id),
             "scope {id:?} loaded out of order"
         );
 
-        LoadedScopeId(id)
+        LoadedScopeId {
+            id,
+            trace: self.compiler.backtrace(),
+        }
     }
 
-    fn insert(&mut self, name: InternedString, value: AnyDeclaration, scope: LoadedScopeId) {
-        let scope = self.scopes.get_mut(&scope).unwrap();
+    fn insert(&mut self, name: InternedString, value: AnyDeclaration, scope: &LoadedScopeId) {
+        let scope = self.scopes.get_mut(scope).unwrap();
 
         if let AnyDeclaration::Variable(var) = value {
             scope.declared_variables.insert(var);
@@ -996,7 +1028,7 @@ impl Lowerer {
     fn extend(
         &mut self,
         values: impl IntoIterator<Item = (InternedString, HashSet<AnyDeclaration>)>,
-        scope: LoadedScopeId,
+        scope: &LoadedScopeId,
     ) {
         for (name, decls) in values {
             for decl in decls {
@@ -1010,7 +1042,7 @@ impl Lowerer {
         name: InternedString,
         span: SpanList,
         kind: fn(AnyDeclaration) -> Option<T>,
-        scope: LoadedScopeId,
+        scope: &LoadedScopeId,
     ) -> Option<T> {
         self.get_inner(name, Some(span), kind, scope)
     }
@@ -1019,7 +1051,7 @@ impl Lowerer {
         &mut self,
         name: InternedString,
         kind: fn(AnyDeclaration) -> Option<T>,
-        scope: LoadedScopeId,
+        scope: &LoadedScopeId,
     ) -> Option<T> {
         self.get_inner(name, None, kind, scope)
     }
@@ -1029,7 +1061,7 @@ impl Lowerer {
         name: InternedString,
         use_span: Option<SpanList>,
         kind: fn(AnyDeclaration) -> Option<T>,
-        scope_id: LoadedScopeId,
+        scope_id: &LoadedScopeId,
     ) -> Option<T> {
         let mut parent = Some(scope_id);
         let mut results = None;
@@ -1038,7 +1070,7 @@ impl Lowerer {
         while let Some(scope_id) = parent {
             let scope = self
                 .scopes
-                .get(&scope_id)
+                .get(scope_id)
                 .unwrap_or_else(|| panic!("scope {scope_id:?} loaded out of order"));
 
             if let Some(value) = scope.values.get(&name) {
@@ -1050,7 +1082,7 @@ impl Lowerer {
                 used_variables.push(&scope.used_variables);
             }
 
-            parent = scope.parent;
+            parent = scope.parent.as_ref();
         }
 
         if let Some(span) = use_span {
@@ -1070,18 +1102,21 @@ impl Lowerer {
         results?.into_iter().find_map(kind)
     }
 
-    fn declares_in(&mut self, var: VariableId, scope_id: LoadedScopeId) -> bool {
-        let scope = self.scopes.get(&scope_id).unwrap().clone();
+    fn declares_in(&mut self, var: VariableId, scope_id: &LoadedScopeId) -> bool {
+        let scope = self.scopes.get(scope_id).unwrap().clone();
 
         scope.declared_variables.contains(&var)
             || scope
                 .children
                 .iter()
-                .any(|&child| self.declares_in(var, child))
+                .any(|child| self.declares_in(var, child))
     }
 
-    fn export(&mut self, scope: LoadedScopeId) -> HashMap<InternedString, HashSet<AnyDeclaration>> {
-        self.scopes.get_mut(&scope).unwrap().values.clone()
+    fn export(
+        &mut self,
+        scope: &LoadedScopeId,
+    ) -> HashMap<InternedString, HashSet<AnyDeclaration>> {
+        self.scopes.get_mut(scope).unwrap().values.clone()
     }
 }
 
@@ -1143,7 +1178,7 @@ impl Lowerer {
     fn lower_statements(
         &mut self,
         statements: &[Result<ast::Statement, ast::SyntaxError>],
-        scope: LoadedScopeId,
+        scope: &LoadedScopeId,
         ctx: &Context,
     ) -> Vec<Expression> {
         let declarations = statements
@@ -1167,8 +1202,8 @@ impl Lowerer {
 
             let scope_value = match decl.kind {
                 StatementDeclarationKind::Type(id, ty_pattern, value) => {
-                    let (scope, parent_scope, (parameters, bounds)) =
-                        ty_pattern.unwrap_or_else(|| (scope, scope, Default::default()));
+                    let (scope, parent_scope, (parameters, bounds)) = ty_pattern
+                        .unwrap_or_else(|| (scope.clone(), scope.clone(), Default::default()));
 
                     if let Some(bound) = bounds.first() {
                         self.compiler.add_error(
@@ -1195,7 +1230,7 @@ impl Lowerer {
                                 match member {
                                     ast::TypeMember::Field(field) => {
                                         let ty = match &field.ty {
-                                            Ok(ty) => self.lower_type(ty, scope, ctx),
+                                            Ok(ty) => self.lower_type(ty, &scope, ctx),
                                             Err(error) => TypeAnnotation {
                                                 span: error.span,
                                                 kind: TypeAnnotationKind::error(&self.compiler),
@@ -1215,7 +1250,7 @@ impl Lowerer {
                                             .tys
                                             .iter()
                                             .map(|ty| match ty {
-                                                Ok(ty) => self.lower_type(ty, scope, ctx),
+                                                Ok(ty) => self.lower_type(ty, &scope, ctx),
                                                 Err(error) => TypeAnnotation {
                                                     span: error.span,
                                                     kind: TypeAnnotationKind::error(&self.compiler),
@@ -1275,7 +1310,7 @@ impl Lowerer {
                                                 variant.constructor,
                                                 Some((id, index)),
                                             ),
-                                            parent_scope,
+                                            &parent_scope,
                                         );
 
                                         (variant.name, index)
@@ -1298,7 +1333,7 @@ impl Lowerer {
                         None => TypeDeclarationKind::Marker,
                     };
 
-                    let attributes = self.lower_type_attributes(decl.attributes, scope);
+                    let attributes = self.lower_type_attributes(decl.attributes, &scope);
 
                     self.declarations.types.get_mut(&id).unwrap().value = Some(TypeDeclaration {
                         parameters,
@@ -1310,7 +1345,7 @@ impl Lowerer {
                 }
                 StatementDeclarationKind::Trait(id, ty_pattern, value) => {
                     let (scope, (parameters, bounds)) =
-                        ty_pattern.unwrap_or_else(|| (scope, Default::default()));
+                        ty_pattern.unwrap_or_else(|| (scope.clone(), Default::default()));
 
                     if let Some(bound) = bounds.first() {
                         self.compiler.add_error(
@@ -1320,14 +1355,14 @@ impl Lowerer {
                     }
 
                     let ty = value.ty.as_ref().map(|ty| match ty {
-                        Ok(ty) => self.lower_type(ty, scope, ctx),
+                        Ok(ty) => self.lower_type(ty, &scope, ctx),
                         Err(error) => TypeAnnotation {
                             span: error.span,
                             kind: TypeAnnotationKind::error(&self.compiler),
                         },
                     });
 
-                    let attributes = self.lower_trait_attributes(decl.attributes, scope);
+                    let attributes = self.lower_trait_attributes(decl.attributes, &scope);
 
                     self.declarations.traits.get_mut(&id).unwrap().value = Some(TraitDeclaration {
                         parameters,
@@ -1338,9 +1373,9 @@ impl Lowerer {
                     Some(AnyDeclaration::Trait(id))
                 }
                 StatementDeclarationKind::Constant(id, (scope, (parameters, bounds)), ty) => {
-                    let ty = self.lower_type(ty, scope, ctx);
+                    let ty = self.lower_type(ty, &scope, ctx);
 
-                    let attributes = self.lower_constant_attributes(decl.attributes, scope);
+                    let attributes = self.lower_constant_attributes(decl.attributes, &scope);
 
                     self.declarations.constants.get_mut(&id).unwrap().value =
                         Some(UnresolvedConstantDeclaration {
@@ -1362,13 +1397,13 @@ impl Lowerer {
                     value,
                 ) => {
                     let (ty_scope, (parameters, bounds)) =
-                        ty_pattern.unwrap_or_else(|| (scope, Default::default()));
+                        ty_pattern.unwrap_or_else(|| (scope.clone(), Default::default()));
 
                     let tr = match self.get(
                         trait_name,
                         trait_span,
                         AnyDeclaration::as_trait,
-                        trait_scope,
+                        &trait_scope,
                     ) {
                         Some(tr) => {
                             self.declarations
@@ -1394,7 +1429,7 @@ impl Lowerer {
                     let trait_params = trait_params
                         .iter()
                         .map(|ty| match ty {
-                            Ok(ty) => self.lower_type(ty, ty_scope, ctx),
+                            Ok(ty) => self.lower_type(ty, &ty_scope, ctx),
                             Err(error) => TypeAnnotation {
                                 span: error.span,
                                 kind: TypeAnnotationKind::error(&self.compiler),
@@ -1618,14 +1653,14 @@ impl Lowerer {
                                     self.insert(
                                         parameter.name.unwrap(),
                                         AnyDeclaration::TypeParameter(id),
-                                        prev_constant_scope,
+                                        &prev_constant_scope,
                                     );
                                 }
 
-                                let mut value = self.lower_expr(expr, prev_constant_scope, ctx);
+                                let mut value = self.lower_expr(expr, &prev_constant_scope, ctx);
 
                                 let used_variables =
-                                    self.generate_capture_list(&mut value, prev_constant_scope);
+                                    self.generate_capture_list(&mut value, &prev_constant_scope);
 
                                 if !used_variables.is_empty() {
                                     self.compiler.add_error(
@@ -1672,7 +1707,7 @@ impl Lowerer {
     fn lower_statement<'a>(
         &mut self,
         statement: &'a ast::Statement,
-        scope: LoadedScopeId,
+        scope: &LoadedScopeId,
         ctx: &Context,
     ) -> Option<StatementDeclaration<'a>> {
         match statement {
@@ -1725,7 +1760,7 @@ impl Lowerer {
                 let (child_scope, (parameters, bounds), ty) =
                     match statement.annotation.as_ref().ok()? {
                         ast::ConstantTypeAnnotation::Type(annotation) => {
-                            (scope, Default::default(), annotation)
+                            (scope.clone(), Default::default(), annotation)
                         }
                         ast::ConstantTypeAnnotation::TypeFunction(annotation) => {
                             let scope = self.child_scope(annotation.scope, scope);
@@ -1733,7 +1768,7 @@ impl Lowerer {
                             let (params, bounds) = annotation
                                 .pattern
                                 .as_ref()
-                                .map(|annotation| self.lower_type_pattern(annotation, scope, ctx))
+                                .map(|annotation| self.lower_type_pattern(annotation, &scope, ctx))
                                 .unwrap_or_default();
 
                             let ty = match annotation.annotation.as_deref().ok()? {
@@ -1858,7 +1893,7 @@ impl Lowerer {
 
                                 let (parameters, bounds) = self.lower_type_pattern(
                                     value.pattern.as_ref().ok()?,
-                                    child_scope,
+                                    &child_scope,
                                     ctx,
                                 );
 
@@ -1887,7 +1922,7 @@ impl Lowerer {
 
                                 let (parameters, bounds) = self.lower_type_pattern(
                                     value.pattern.as_ref().ok()?,
-                                    child_scope,
+                                    &child_scope,
                                     ctx,
                                 );
 
@@ -1902,7 +1937,7 @@ impl Lowerer {
                                     span: statement.span(),
                                     kind: StatementDeclarationKind::Type(
                                         id,
-                                        Some((child_scope, scope, (parameters, bounds))),
+                                        Some((child_scope, scope.clone(), (parameters, bounds))),
                                         ty_value,
                                     ),
                                     attributes: &statement.attributes,
@@ -1964,9 +1999,11 @@ impl Lowerer {
                                 })
                             }
                             ast::AssignmentPattern::TypeFunction(pattern) => {
+                                let child_scope = self.child_scope(pattern.scope, assign_scope);
+
                                 let (parameters, bounds) = self.lower_type_pattern(
                                     pattern.type_pattern.as_ref().ok()?,
-                                    assign_scope,
+                                    &child_scope,
                                     ctx,
                                 );
 
@@ -1983,7 +2020,7 @@ impl Lowerer {
                                             span: statement.span(),
                                             kind: StatementDeclarationKind::Instance(
                                                 id,
-                                                Some((assign_scope, (parameters, bounds))),
+                                                Some((child_scope.clone(), (parameters, bounds))),
                                                 (
                                                     pattern.trait_span,
                                                     pattern.trait_name,
@@ -2039,7 +2076,7 @@ impl Lowerer {
                 let child_scope = self.child_scope(statement.scope, scope);
 
                 let (parameters, bounds) =
-                    self.lower_type_pattern(statement.pattern.as_ref().ok()?, child_scope, ctx);
+                    self.lower_type_pattern(statement.pattern.as_ref().ok()?, &child_scope, ctx);
 
                 match statement.value.as_deref().ok()? {
                     ast::Statement::Instance(statement) => {
@@ -2094,7 +2131,7 @@ impl Lowerer {
     fn lower_expr(
         &mut self,
         expr: &ast::Expression,
-        scope: LoadedScopeId,
+        scope: &LoadedScopeId,
         ctx: &Context,
     ) -> Expression {
         macro_rules! function_call {
@@ -2134,7 +2171,7 @@ impl Lowerer {
             },
             ast::Expression::Name(expr) => {
                 let name_scope = self.assert_loaded_scope(expr.scope);
-                match self.resolve_value(expr.span, expr.name, name_scope) {
+                match self.resolve_value(expr.span, expr.name, &name_scope) {
                     Some(value) => Expression {
                         span: expr.span,
                         kind: value,
@@ -2158,7 +2195,7 @@ impl Lowerer {
             }
             ast::Expression::Block(expr) => {
                 let scope = self.child_scope(expr.scope, scope);
-                let statements = self.lower_statements(&expr.statements, scope, ctx);
+                let statements = self.lower_statements(&expr.statements, &scope, ctx);
 
                 Expression {
                     span: expr.span,
@@ -2211,7 +2248,7 @@ impl Lowerer {
                             ty_name.name,
                             function.span(),
                             AnyDeclaration::as_type,
-                            ty_name_scope,
+                            &ty_name_scope,
                         ) {
                             self.declarations
                                 .types
@@ -2271,7 +2308,7 @@ impl Lowerer {
                                                                 name,
                                                                 self.lower_expr(
                                                                     &expr.ok()?,
-                                                                    scope,
+                                                                    &scope,
                                                                     ctx,
                                                                 ),
                                                             ))
@@ -2333,7 +2370,7 @@ impl Lowerer {
                                                 }))
                                                 .collect::<Vec<_>>()
                                                 .into_iter()
-                                                .map(|(name, value)| (name, self.lower_expr(&value, scope, ctx)))
+                                                .map(|(name, value)| (name, self.lower_expr(&value, &scope, ctx)))
                                                 .collect()
                                     };
 
@@ -2427,7 +2464,7 @@ impl Lowerer {
                             ty_name.name,
                             function.span(),
                             AnyDeclaration::as_type_parameter,
-                            ty_name_scope,
+                            &ty_name_scope,
                         ) {
                             self.declarations
                                 .type_parameters
@@ -2452,7 +2489,7 @@ impl Lowerer {
                             ty_name.name,
                             function.span(),
                             AnyDeclaration::as_builtin_type,
-                            ty_name_scope,
+                            &ty_name_scope,
                         ) {
                             self.declarations
                                 .builtin_types
@@ -2484,7 +2521,7 @@ impl Lowerer {
                 let scope = self.child_scope(expr.scope, scope);
 
                 let pattern = match &expr.pattern {
-                    Ok(pattern) => self.lower_pattern(pattern, scope, ctx),
+                    Ok(pattern) => self.lower_pattern(pattern, &scope, ctx),
                     Err(error) => Pattern {
                         span: error.span,
                         kind: PatternKind::error(&self.compiler),
@@ -2492,14 +2529,14 @@ impl Lowerer {
                 };
 
                 let mut body = match &expr.body {
-                    Ok(expr) => self.lower_expr(expr, scope, ctx),
+                    Ok(expr) => self.lower_expr(expr, &scope, ctx),
                     Err(error) => Expression {
                         span: error.span,
                         kind: ExpressionKind::error(&self.compiler),
                     },
                 };
 
-                let captures = self.generate_capture_list(&mut body, scope);
+                let captures = self.generate_capture_list(&mut body, &scope);
 
                 Expression {
                     span: expr.span(),
@@ -2540,7 +2577,7 @@ impl Lowerer {
                                     Ok(pattern) => match pattern {
                                         ast::WhenPattern::Where(pattern) => {
                                             let inner_pattern = match pattern.pattern.as_deref() {
-                                                Ok(value) => self.lower_pattern(value, scope, ctx),
+                                                Ok(value) => self.lower_pattern(value, &scope, ctx),
                                                 Err(error) => Pattern {
                                                     span: error.span,
                                                     kind: PatternKind::error(&self.compiler),
@@ -2548,7 +2585,7 @@ impl Lowerer {
                                             };
 
                                             let condition = match pattern.condition.as_deref() {
-                                                Ok(value) => self.lower_expr(value, scope, ctx),
+                                                Ok(value) => self.lower_expr(value, &scope, ctx),
                                                 Err(error) => Expression {
                                                     span: error.span,
                                                     kind: ExpressionKind::error(&self.compiler),
@@ -2557,9 +2594,10 @@ impl Lowerer {
 
                                             (inner_pattern, Some(condition))
                                         }
-                                        ast::WhenPattern::Pattern(pattern) => {
-                                            (self.lower_pattern(&pattern.pattern, scope, ctx), None)
-                                        }
+                                        ast::WhenPattern::Pattern(pattern) => (
+                                            self.lower_pattern(&pattern.pattern, &scope, ctx),
+                                            None,
+                                        ),
                                     },
                                     Err(error) => (
                                         Pattern {
@@ -2571,7 +2609,7 @@ impl Lowerer {
                                 };
 
                                 let body = match &arm.body {
-                                    Ok(expr) => self.lower_expr(expr, scope, ctx),
+                                    Ok(expr) => self.lower_expr(expr, &scope, ctx),
                                     Err(error) => Expression {
                                         span: error.span,
                                         kind: ExpressionKind::error(&self.compiler),
@@ -2752,7 +2790,7 @@ impl Lowerer {
     fn lower_pattern(
         &mut self,
         pattern: &ast::Pattern,
-        scope: LoadedScopeId,
+        scope: &LoadedScopeId,
         ctx: &Context,
     ) -> Pattern {
         match pattern {
@@ -2769,9 +2807,9 @@ impl Lowerer {
                 kind: PatternKind::Text(pattern.text),
             },
             ast::Pattern::Name(pattern) => {
-                let scope = LoadedScopeId(pattern.scope);
+                let scope = self.assert_loaded_scope(pattern.scope);
 
-                match self.peek(pattern.name, AnyDeclaration::as_constant, scope) {
+                match self.peek(pattern.name, AnyDeclaration::as_constant, &scope) {
                     Some((id, Some((ty, variant)))) => {
                         self.declarations
                             .constants
@@ -2788,7 +2826,7 @@ impl Lowerer {
                     _ => {
                         let var = self.compiler.new_variable_id_in(self.file);
 
-                        self.insert(pattern.name, AnyDeclaration::Variable(var), scope);
+                        self.insert(pattern.name, AnyDeclaration::Variable(var), &scope);
 
                         self.declarations.variables.insert(
                             var,
@@ -3093,7 +3131,7 @@ impl Lowerer {
     fn lower_type(
         &mut self,
         ty: &ast::Type,
-        scope: LoadedScopeId,
+        scope: &LoadedScopeId,
         ctx: &Context,
     ) -> TypeAnnotation {
         match ty {
@@ -3224,7 +3262,7 @@ impl Lowerer {
     fn lower_type_pattern(
         &mut self,
         type_pattern: &ast::TypePattern,
-        scope: LoadedScopeId,
+        scope: &LoadedScopeId,
         ctx: &Context,
     ) -> (Vec<TypeParameterId>, Vec<Bound>) {
         macro_rules! generate_type_parameters {
@@ -3446,7 +3484,7 @@ impl Lowerer {
     fn lower_decl_attributes(
         &self,
         statement_attributes: &ast::StatementAttributes,
-        _scope: LoadedScopeId,
+        _scope: &LoadedScopeId,
     ) -> DeclarationAttributes {
         // TODO: Raise errors for misused attributes
 
@@ -3467,7 +3505,7 @@ impl Lowerer {
     fn lower_type_attributes(
         &mut self,
         attributes: &ast::StatementAttributes,
-        scope: LoadedScopeId,
+        scope: &LoadedScopeId,
     ) -> TypeAttributes {
         // TODO: Raise errors for misused attributes
 
@@ -3512,7 +3550,7 @@ impl Lowerer {
     fn lower_trait_attributes(
         &mut self,
         attributes: &ast::StatementAttributes,
-        scope: LoadedScopeId,
+        scope: &LoadedScopeId,
     ) -> TraitAttributes {
         // TODO: Raise errors for misused attributes
 
@@ -3556,7 +3594,7 @@ impl Lowerer {
     fn lower_constant_attributes(
         &mut self,
         attributes: &ast::StatementAttributes,
-        scope: LoadedScopeId,
+        scope: &LoadedScopeId,
     ) -> ConstantAttributes {
         // TODO: Raise errors for misused attributes
 
@@ -3589,7 +3627,7 @@ impl Lowerer {
         &mut self,
         span: SpanList,
         name: InternedString,
-        scope: LoadedScopeId,
+        scope: &LoadedScopeId,
     ) -> Option<ExpressionKind> {
         if let Some(id) = self.get(name, span, AnyDeclaration::as_variable, scope) {
             self.declarations
@@ -3791,7 +3829,7 @@ impl Lowerer {
     fn generate_capture_list(
         &mut self,
         expr: &mut Expression,
-        child_scope: LoadedScopeId,
+        child_scope: &LoadedScopeId,
     ) -> CaptureList {
         let mut captures = CaptureList::new();
         expr.traverse_mut(|expr| {
