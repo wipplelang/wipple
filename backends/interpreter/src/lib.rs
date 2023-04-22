@@ -131,6 +131,34 @@ pub enum Value {
     TaskGroup(TaskGroup),
 }
 
+impl std::fmt::Debug for Value {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Marker => write!(f, "Marker"),
+            Self::Number(n) => f.debug_tuple("Number").field(n).finish(),
+            Self::Integer(n) => f.debug_tuple("Integer").field(n).finish(),
+            Self::Natural(n) => f.debug_tuple("Natural").field(n).finish(),
+            Self::Byte(n) => f.debug_tuple("Byte").field(n).finish(),
+            Self::Signed(n) => f.debug_tuple("Signed").field(n).finish(),
+            Self::Unsigned(n) => f.debug_tuple("Unsigned").field(n).finish(),
+            Self::Float(n) => f.debug_tuple("Float").field(n).finish(),
+            Self::Double(n) => f.debug_tuple("Double").field(n).finish(),
+            Self::Text(s) => f.debug_tuple("Text").field(s).finish(),
+            Self::Function(_, _) => write!(f, "Function"),
+            Self::NativeFunction(_) => write!(f, "NativeFunction"),
+            Self::Variant(index, values) => {
+                f.debug_tuple("Variant").field(index).field(values).finish()
+            }
+            Self::Mutable(value) => f.debug_tuple("Mutable").field(value).finish(),
+            Self::List(values) => f.debug_tuple("List").field(values).finish(),
+            Self::Structure(values) => f.debug_tuple("Structure").field(values).finish(),
+            Self::Tuple(values) => f.debug_tuple("Tuple").field(values).finish(),
+            Self::UiHandle(_) => write!(f, "UiHandle"),
+            Self::TaskGroup(_) => write!(f, "TaskGroup"),
+        }
+    }
+}
+
 #[derive(Clone, Default)]
 pub struct Scope(Vec<Option<Value>>);
 
@@ -204,31 +232,54 @@ impl Stack {
     }
 
     fn push_frame(&mut self) {
+        if cfg!(debug_assertions) && std::env::var("WIPPLE_DEBUG_STACK").is_ok() {
+            eprintln!("PUSH FRAME");
+        }
+
         self.0.push(Vec::new());
     }
 
     fn pop_frame(&mut self) {
-        let value = self
+        let frame = self
             .0
             .pop()
             .expect("stack is empty")
             .pop()
             .expect("stack is empty");
 
-        self.push(value);
+        if cfg!(debug_assertions) && std::env::var("WIPPLE_DEBUG_STACK").is_ok() {
+            eprintln!("POP FRAME {:#?}", frame);
+        }
+
+        self.push(frame);
     }
 
     fn push(&mut self, value: Value) {
+        if cfg!(debug_assertions) && std::env::var("WIPPLE_DEBUG_STACK").is_ok() {
+            eprintln!("PUSH {:?}", value);
+        }
+
         self.current_frame_mut().push(value);
     }
 
     fn copy(&mut self) {
         let value = self.current_frame().last().expect("stack is empty").clone();
+
+        if cfg!(debug_assertions) && std::env::var("WIPPLE_DEBUG_STACK").is_ok() {
+            eprintln!("COPY {:?}", value);
+        }
+
         self.current_frame_mut().push(value);
     }
 
     fn pop(&mut self) -> Value {
-        self.current_frame_mut().pop().expect("stack is empty")
+        let value = self.current_frame_mut().pop().expect("stack is empty");
+
+        if cfg!(debug_assertions) && std::env::var("WIPPLE_DEBUG_STACK").is_ok() {
+            eprintln!("POP {:?}", value);
+        }
+
+        value
     }
 
     fn popn(&mut self, n: usize) -> Vec<Value> {
@@ -334,6 +385,10 @@ impl Interpreter {
 
         loop {
             for statement in &block.statements {
+                if cfg!(debug_assertions) && std::env::var("WIPPLE_DEBUG_STACK").is_ok() {
+                    eprintln!("\nRUN {} {:#?}", statement, stack.current_frame());
+                }
+
                 match statement {
                     ir::Statement::Copy => {
                         stack.copy();
@@ -482,6 +537,10 @@ impl Interpreter {
                 }
             }
 
+            if cfg!(debug_assertions) && std::env::var("WIPPLE_DEBUG_STACK").is_ok() {
+                eprintln!("\nRUN {}", block.terminator);
+            }
+
             match &block.terminator {
                 ir::Terminator::Return => return Ok(()),
                 ir::Terminator::Jump(index) => {
@@ -490,7 +549,7 @@ impl Interpreter {
                 ir::Terminator::If(matching_discriminant, then_index, else_index) => {
                     let discriminant = match stack.pop() {
                         Value::Variant(discriminant, _) => discriminant,
-                        _ => unreachable!(),
+                        _ => unreachable!("{:#?}", stack.current_frame()),
                     };
 
                     let index = if discriminant == *matching_discriminant {

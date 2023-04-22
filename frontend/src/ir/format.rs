@@ -6,7 +6,7 @@ impl std::fmt::Display for Program {
             writeln!(f, "{kind} #{label} ({vars} vars):")?;
 
             for (index, bb) in blocks.iter().enumerate() {
-                writeln!(f, "  bb{index}:")?;
+                writeln!(f, "  bb{index} ({}):", bb.description)?;
 
                 for statement in &bb.statements {
                     writeln!(f, "    {statement}")?;

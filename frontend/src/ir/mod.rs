@@ -37,8 +37,9 @@ pub enum LabelKind {
     Closure(CaptureList, Type, Type),
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct BasicBlock {
+    pub description: String,
     pub statements: Vec<Statement>,
     pub terminator: Terminator,
 }
@@ -139,7 +140,7 @@ impl Compiler {
 
         for (id, constant) in program.items {
             let label = *gen.items.get(&id).unwrap();
-            let mut pos = gen.new_basic_block(label);
+            let mut pos = gen.new_basic_block(label, "item entrypoint");
             gen.gen_expr(constant, label, &mut pos);
         }
 
@@ -183,10 +184,16 @@ impl IrGen {
         &mut self.labels[label].2
     }
 
-    fn new_basic_block(&mut self, label: usize) -> usize {
+    fn new_basic_block(&mut self, label: usize, description: impl ToString) -> usize {
         let basic_blocks = self.basic_blocks_for(label);
         let pos = basic_blocks.len();
-        basic_blocks.push(BasicBlock::default());
+
+        basic_blocks.push(BasicBlock {
+            description: description.to_string(),
+            statements: Default::default(),
+            terminator: Default::default(),
+        });
+
         pos
     }
 
@@ -322,7 +329,7 @@ impl IrGen {
                     }
                 });
 
-                let mut function_pos = self.new_basic_block(function_label);
+                let mut function_pos = self.new_basic_block(function_label, "function entrypoint");
 
                 if let Some(capture_list) = capture_list.as_ref() {
                     self.statements_for(function_label, function_pos)
@@ -330,7 +337,7 @@ impl IrGen {
                 }
 
                 {
-                    let mut body_pos = self.new_basic_block(function_label);
+                    let mut body_pos = self.new_basic_block(function_label, "function body");
 
                     self.scopes.push(Vec::new());
                     self.gen_pattern(
@@ -529,17 +536,17 @@ impl IrGen {
             }
         }
 
-        let continue_pos = self.new_basic_block(label);
+        let continue_pos = self.new_basic_block(label, "following `when` expression");
 
         for arm in arms {
             self.statements_for(label, *pos).push(Statement::Copy);
 
-            let mut body_pos = self.new_basic_block(label);
+            let mut body_pos = self.new_basic_block(label, "`when` arm body");
             self.scopes.push(Vec::new());
 
             if let Some(guard) = arm.guard {
-                let condition_pos = self.new_basic_block(label);
-                let else_pos = self.new_basic_block(label);
+                let condition_pos = self.new_basic_block(label, "`when` arm condition");
+                let else_pos = self.new_basic_block(label, "`when` arm condition not satisfied");
 
                 self.gen_pattern(arm.pattern, input_ty, condition_pos, label, pos);
                 *self.terminator_for(label, *pos) = Terminator::Jump(else_pos);
@@ -557,7 +564,7 @@ impl IrGen {
             self.statements_for(label, body_pos).push(Statement::Drop);
             self.gen_expr(arm.body, label, &mut body_pos);
 
-            let free_pos = self.new_basic_block(label);
+            let free_pos = self.new_basic_block(label, "end of `when` expression");
 
             *self.terminator_for(label, body_pos) = Terminator::Jump(free_pos);
 
@@ -593,7 +600,7 @@ impl IrGen {
                     Expression::Runtime($comparison, 2),
                 ));
 
-                let else_pos = self.new_basic_block(label);
+                let else_pos = self.new_basic_block(label, "following numeric pattern");
                 *self.terminator_for(label, *pos) =
                     Terminator::If(VariantIndex::new(1), body_pos, else_pos);
                 *pos = else_pos;
@@ -604,7 +611,7 @@ impl IrGen {
             ssa::PatternKind::Wildcard => {
                 self.statements_for(label, *pos).push(Statement::Drop);
                 *self.terminator_for(label, *pos) = Terminator::Jump(body_pos);
-                *pos = self.new_basic_block(label);
+                *pos = self.new_basic_block(label, "following `_` pattern");
             }
             ssa::PatternKind::Number(number) => {
                 match_number!(Number(number), RuntimeFunction::NumberEquality);
@@ -643,7 +650,7 @@ impl IrGen {
                     Expression::Runtime(RuntimeFunction::TextEquality, 2),
                 ));
 
-                let else_pos = self.new_basic_block(label);
+                let else_pos = self.new_basic_block(label, "following text pattern");
                 *self.terminator_for(label, *pos) =
                     Terminator::If(VariantIndex::new(1), body_pos, else_pos);
                 *pos = else_pos;
@@ -654,10 +661,10 @@ impl IrGen {
                 self.statements_for(label, *pos)
                     .push(Statement::Initialize(var));
                 *self.terminator_for(label, *pos) = Terminator::Jump(body_pos);
-                *pos = self.new_basic_block(label);
+                *pos = self.new_basic_block(label, "following variable pattern");
             }
             ssa::PatternKind::Or(left, right) => {
-                let continue_pos = self.new_basic_block(label);
+                let continue_pos = self.new_basic_block(label, "`or` pattern satisfied");
 
                 self.statements_for(label, *pos).push(Statement::Copy);
                 self.gen_pattern(*left, input_ty, continue_pos, label, pos);
@@ -674,12 +681,12 @@ impl IrGen {
                     _ => unreachable!(),
                 };
 
-                let else_pos = self.new_basic_block(label);
+                let else_pos = self.new_basic_block(label, "tuple pattern not satisfied");
 
                 for (index, pattern) in patterns.into_iter().enumerate() {
                     let element_ty = &tuple_tys[index];
 
-                    let next_pos = self.new_basic_block(label);
+                    let next_pos = self.new_basic_block(label, "following tuple element");
 
                     self.statements_for(label, *pos).push(Statement::Copy);
 
@@ -717,12 +724,12 @@ impl IrGen {
                     ));
                 }
 
-                let else_pos = self.new_basic_block(label);
+                let else_pos = self.new_basic_block(label, "destructuring pattern not satisfied");
 
                 for (index, field) in fields {
                     let field_ty = &field_tys[index.into_inner()];
 
-                    let next_pos = self.new_basic_block(label);
+                    let next_pos = self.new_basic_block(label, "following destructuring field");
 
                     self.statements_for(label, *pos).push(Statement::Copy);
 
@@ -762,8 +769,8 @@ impl IrGen {
                     ));
                 }
 
-                let element_pos = self.new_basic_block(label);
-                let else_pos = self.new_basic_block(label);
+                let element_pos = self.new_basic_block(label, "extracting variant element");
+                let else_pos = self.new_basic_block(label, "variant pattern not satisfied");
 
                 self.statements_for(label, *pos).push(Statement::Copy);
 
@@ -775,7 +782,7 @@ impl IrGen {
                 for (index, pattern) in patterns.into_iter().enumerate() {
                     let element_ty = &variant_tys[index];
 
-                    let next_pos = self.new_basic_block(label);
+                    let next_pos = self.new_basic_block(label, "following variant element");
 
                     self.statements_for(label, *pos).push(Statement::Copy);
 
