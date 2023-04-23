@@ -12,7 +12,11 @@ impl std::fmt::Display for Program {
                     writeln!(f, "    {statement}")?;
                 }
 
-                writeln!(f, "    {}", bb.terminator)?;
+                if let Some(terminator) = bb.terminator {
+                    writeln!(f, "    {terminator}")?;
+                } else {
+                    writeln!(f, "    <no terminator>")?;
+                }
             }
 
             writeln!(f)?;
@@ -53,6 +57,7 @@ impl std::fmt::Display for Statement {
 impl std::fmt::Display for Terminator {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
+            Terminator::Unreachable => write!(f, "unreachable"),
             Terminator::Return => write!(f, "return"),
             Terminator::If(variant, then_label, else_label) => {
                 write!(

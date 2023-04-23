@@ -538,10 +538,15 @@ impl Interpreter {
             }
 
             if cfg!(debug_assertions) && std::env::var("WIPPLE_DEBUG_STACK").is_ok() {
-                eprintln!("\nRUN {}", block.terminator);
+                eprintln!(
+                    "\nRUN {} {:#?}",
+                    block.terminator.unwrap(),
+                    stack.current_frame()
+                );
             }
 
-            match &block.terminator {
+            match &block.terminator.unwrap() {
+                ir::Terminator::Unreachable => unreachable!(),
                 ir::Terminator::Return => return Ok(()),
                 ir::Terminator::Jump(index) => {
                     block = &blocks[*index];

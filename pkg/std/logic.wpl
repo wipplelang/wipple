@@ -121,7 +121,7 @@ instance (Equal Unsigned) : a b -> external "runtime" "unsigned-equality" a b
 instance (Equal Float) : a b -> external "runtime" "float-equality" a b
 instance (Equal Double) : a b -> external "runtime" "double-equality" a b
 instance (Equal ()) : () -> () -> True
-instance (Equal Boolean) : a b -> a and b or not a and not b
+instance (Equal Boolean) : a b -> if a b (not b)
 
 Numeric-Impl : N => type {
 	zero :: N

@@ -41,7 +41,7 @@ pub enum LabelKind {
 pub struct BasicBlock {
     pub description: String,
     pub statements: Vec<Statement>,
-    pub terminator: Terminator,
+    pub terminator: Option<Terminator>,
 }
 
 #[derive(Debug, Clone)]
@@ -58,9 +58,9 @@ pub enum Statement {
     Expression(Type, Expression),
 }
 
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Copy)]
 pub enum Terminator {
-    #[default]
+    Unreachable,
     Return,
     Jump(usize),
     If(VariantIndex, usize, usize),
@@ -142,6 +142,7 @@ impl Compiler {
             let label = *gen.items.get(&id).unwrap();
             let mut pos = gen.new_basic_block(label, "item entrypoint");
             gen.gen_expr(constant, label, &mut pos);
+            *gen.terminator_for(label, pos) = Some(Terminator::Return);
         }
 
         Program {
@@ -191,7 +192,7 @@ impl IrGen {
         basic_blocks.push(BasicBlock {
             description: description.to_string(),
             statements: Default::default(),
-            terminator: Default::default(),
+            terminator: None,
         });
 
         pos
@@ -205,7 +206,7 @@ impl IrGen {
         &mut self.basic_block_for(label, pos).statements
     }
 
-    fn terminator_for(&mut self, label: usize, pos: usize) -> &mut Terminator {
+    fn terminator_for(&mut self, label: usize, pos: usize) -> &mut Option<Terminator> {
         &mut self.basic_block_for(label, pos).terminator
     }
 
@@ -348,6 +349,9 @@ impl IrGen {
                         &mut function_pos,
                     );
                     self.gen_expr(*body, function_label, &mut body_pos);
+                    *self.terminator_for(function_label, function_pos) =
+                        Some(Terminator::Unreachable);
+                    *self.terminator_for(function_label, body_pos) = Some(Terminator::Return);
                     self.scopes.pop().unwrap();
 
                     if let Some(capture_list) = capture_list.as_ref() {
@@ -549,24 +553,26 @@ impl IrGen {
                 let else_pos = self.new_basic_block(label, "`when` arm condition not satisfied");
 
                 self.gen_pattern(arm.pattern, input_ty, condition_pos, label, pos);
-                *self.terminator_for(label, *pos) = Terminator::Jump(else_pos);
+                *self.terminator_for(label, *pos) = Some(Terminator::Jump(else_pos));
 
                 *pos = condition_pos;
                 self.gen_expr(guard, label, pos);
                 *self.terminator_for(label, *pos) =
-                    Terminator::If(VariantIndex::new(1), body_pos, else_pos);
+                    Some(Terminator::If(VariantIndex::new(1), body_pos, else_pos));
 
                 *pos = else_pos;
             } else {
                 self.gen_pattern(arm.pattern, input_ty, body_pos, label, pos);
             }
 
+            *self.terminator_for(label, *pos) = Some(Terminator::Unreachable);
+
             self.statements_for(label, body_pos).push(Statement::Drop);
             self.gen_expr(arm.body, label, &mut body_pos);
 
             let free_pos = self.new_basic_block(label, "end of `when` expression");
 
-            *self.terminator_for(label, body_pos) = Terminator::Jump(free_pos);
+            *self.terminator_for(label, body_pos) = Some(Terminator::Jump(free_pos));
 
             for var in self.scopes.pop().unwrap().into_iter().rev() {
                 let var = self.variable_for(label, var);
@@ -574,7 +580,7 @@ impl IrGen {
                     .push(Statement::Free(var));
             }
 
-            *self.terminator_for(label, free_pos) = Terminator::Jump(continue_pos);
+            *self.terminator_for(label, free_pos) = Some(Terminator::Jump(continue_pos));
         }
 
         *pos = continue_pos;
@@ -602,7 +608,7 @@ impl IrGen {
 
                 let else_pos = self.new_basic_block(label, "following numeric pattern");
                 *self.terminator_for(label, *pos) =
-                    Terminator::If(VariantIndex::new(1), body_pos, else_pos);
+                    Some(Terminator::If(VariantIndex::new(1), body_pos, else_pos));
                 *pos = else_pos;
             }};
         }
@@ -610,7 +616,7 @@ impl IrGen {
         match pattern.kind {
             ssa::PatternKind::Wildcard => {
                 self.statements_for(label, *pos).push(Statement::Drop);
-                *self.terminator_for(label, *pos) = Terminator::Jump(body_pos);
+                *self.terminator_for(label, *pos) = Some(Terminator::Jump(body_pos));
                 *pos = self.new_basic_block(label, "following `_` pattern");
             }
             ssa::PatternKind::Number(number) => {
@@ -652,7 +658,7 @@ impl IrGen {
 
                 let else_pos = self.new_basic_block(label, "following text pattern");
                 *self.terminator_for(label, *pos) =
-                    Terminator::If(VariantIndex::new(1), body_pos, else_pos);
+                    Some(Terminator::If(VariantIndex::new(1), body_pos, else_pos));
                 *pos = else_pos;
             }
             ssa::PatternKind::Variable(var) => {
@@ -660,7 +666,7 @@ impl IrGen {
                 let var = self.variable_for(label, var);
                 self.statements_for(label, *pos)
                     .push(Statement::Initialize(var));
-                *self.terminator_for(label, *pos) = Terminator::Jump(body_pos);
+                *self.terminator_for(label, *pos) = Some(Terminator::Jump(body_pos));
                 *pos = self.new_basic_block(label, "following variable pattern");
             }
             ssa::PatternKind::Or(left, right) => {
@@ -671,7 +677,7 @@ impl IrGen {
 
                 self.statements_for(label, continue_pos)
                     .push(Statement::Drop);
-                *self.terminator_for(label, continue_pos) = Terminator::Jump(body_pos);
+                *self.terminator_for(label, continue_pos) = Some(Terminator::Jump(body_pos));
 
                 self.gen_pattern(*right, input_ty, body_pos, label, pos);
             }
@@ -697,14 +703,14 @@ impl IrGen {
 
                     self.gen_pattern(pattern, element_ty, next_pos, label, pos);
 
-                    *self.terminator_for(label, *pos) = Terminator::Jump(else_pos);
+                    *self.terminator_for(label, *pos) = Some(Terminator::Jump(else_pos));
 
                     *pos = next_pos;
                 }
 
                 self.statements_for(label, *pos).push(Statement::Drop);
 
-                *self.terminator_for(label, *pos) = Terminator::Jump(body_pos);
+                *self.terminator_for(label, *pos) = Some(Terminator::Jump(body_pos));
 
                 *pos = else_pos;
             }
@@ -740,14 +746,14 @@ impl IrGen {
 
                     self.gen_pattern(field, field_ty, next_pos, label, pos);
 
-                    *self.terminator_for(label, *pos) = Terminator::Jump(else_pos);
+                    *self.terminator_for(label, *pos) = Some(Terminator::Jump(else_pos));
 
                     *pos = next_pos;
                 }
 
                 self.statements_for(label, *pos).push(Statement::Drop);
 
-                *self.terminator_for(label, *pos) = Terminator::Jump(body_pos);
+                *self.terminator_for(label, *pos) = Some(Terminator::Jump(body_pos));
 
                 *pos = else_pos;
                 self.statements_for(label, *pos).push(Statement::Drop);
@@ -769,41 +775,50 @@ impl IrGen {
                     ));
                 }
 
-                let element_pos = self.new_basic_block(label, "extracting variant element");
-                let else_pos = self.new_basic_block(label, "variant pattern not satisfied");
+                if patterns.is_empty() {
+                    let else_pos = self.new_basic_block(label, "variant pattern not satisfied");
 
-                self.statements_for(label, *pos).push(Statement::Copy);
+                    *self.terminator_for(label, *pos) =
+                        Some(Terminator::If(discriminant, body_pos, else_pos));
 
-                *self.terminator_for(label, *pos) =
-                    Terminator::If(discriminant, element_pos, else_pos);
-
-                *pos = element_pos;
-
-                for (index, pattern) in patterns.into_iter().enumerate() {
-                    let element_ty = &variant_tys[index];
-
-                    let next_pos = self.new_basic_block(label, "following variant element");
+                    *pos = else_pos;
+                } else {
+                    let element_pos = self.new_basic_block(label, "extracting variant element");
+                    let else_pos = self.new_basic_block(label, "variant pattern not satisfied");
 
                     self.statements_for(label, *pos).push(Statement::Copy);
 
-                    self.statements_for(label, *pos).push(Statement::Expression(
-                        element_ty.clone(),
-                        Expression::VariantElement(discriminant, index),
-                    ));
+                    *self.terminator_for(label, *pos) =
+                        Some(Terminator::If(discriminant, element_pos, else_pos));
 
-                    self.gen_pattern(pattern, element_ty, next_pos, label, pos);
+                    *pos = element_pos;
 
-                    *self.terminator_for(label, *pos) = Terminator::Jump(else_pos);
+                    for (index, pattern) in patterns.into_iter().enumerate() {
+                        let element_ty = &variant_tys[index];
 
-                    *pos = next_pos;
+                        let next_pos = self.new_basic_block(label, "following variant element");
+
+                        self.statements_for(label, *pos).push(Statement::Copy);
+
+                        self.statements_for(label, *pos).push(Statement::Expression(
+                            element_ty.clone(),
+                            Expression::VariantElement(discriminant, index),
+                        ));
+
+                        self.gen_pattern(pattern, element_ty, next_pos, label, pos);
+
+                        *self.terminator_for(label, *pos) = Some(Terminator::Jump(else_pos));
+
+                        *pos = next_pos;
+                    }
+
+                    self.statements_for(label, *pos).push(Statement::Drop);
+
+                    *self.terminator_for(label, *pos) = Some(Terminator::Jump(body_pos));
+
+                    *pos = else_pos;
+                    self.statements_for(label, *pos).push(Statement::Drop);
                 }
-
-                self.statements_for(label, *pos).push(Statement::Drop);
-
-                *self.terminator_for(label, *pos) = Terminator::Jump(body_pos);
-
-                *pos = else_pos;
-                self.statements_for(label, *pos).push(Statement::Drop);
             }
         }
     }
