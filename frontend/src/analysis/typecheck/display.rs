@@ -71,12 +71,12 @@ impl fmt::Display for Program {
 impl Expression {
     fn display_with(&self, f: &mut impl fmt::Write, file: &Program, indent: usize) -> fmt::Result {
         match &self.kind {
-            ExpressionKind::Error(_) => write!(f, "<error>")?,
+            ExpressionKind::Error(_) => write!(f, "<error expression>")?,
             ExpressionKind::Marker => {
                 let id = match self.ty {
                     Type::Named(id, _, _) => id,
                     _ => {
-                        write!(f, "<error>")?;
+                        write!(f, "<unknown marker type>")?;
                         return Ok(());
                     }
                 };
@@ -84,7 +84,7 @@ impl Expression {
                 let name = match file.declarations.types.get(&id) {
                     Some(decl) => decl.name,
                     None => {
-                        write!(f, "<error>")?;
+                        write!(f, "<unknown marker type>")?;
                         return Ok(());
                     }
                 };
@@ -115,7 +115,7 @@ impl Expression {
                         }
                     }
                     _ => {
-                        write!(f, "<error>")?;
+                        write!(f, "<unknown constant>")?;
                         return Ok(());
                     }
                 };
@@ -159,7 +159,7 @@ impl Expression {
                 let input_ty = match &self.ty {
                     Type::Function(input, _) => input,
                     _ => {
-                        write!(f, "<error>")?;
+                        write!(f, "<unknown function>")?;
                         return Ok(());
                     }
                 };
@@ -208,7 +208,7 @@ impl Expression {
                 let id = match self.ty {
                     Type::Named(id, _, _) => id,
                     _ => {
-                        write!(f, "<error>")?;
+                        write!(f, "<unknown structure type>")?;
                         return Ok(());
                     }
                 };
@@ -216,7 +216,7 @@ impl Expression {
                 let ty = match file.declarations.types.get(&id) {
                     Some(ty) => ty,
                     None => {
-                        write!(f, "<error>")?;
+                        write!(f, "<unknown structure type>")?;
                         return Ok(());
                     }
                 };
@@ -225,7 +225,7 @@ impl Expression {
                 let field_names = match &ty.kind {
                     TypeDeclKind::Structure { field_names, .. } => field_names,
                     _ => {
-                        write!(f, "<error>")?;
+                        write!(f, "<unknown structure type>")?;
                         return Ok(());
                     }
                 };
@@ -249,7 +249,7 @@ impl Expression {
                 let id = match self.ty {
                     Type::Named(id, _, _) => id,
                     _ => {
-                        write!(f, "<error>")?;
+                        write!(f, "<unknown enumeration type>")?;
                         return Ok(());
                     }
                 };
@@ -257,7 +257,7 @@ impl Expression {
                 let ty = match file.declarations.types.get(&id) {
                     Some(ty) => ty,
                     None => {
-                        write!(f, "<error>")?;
+                        write!(f, "<unknown enumeration type>")?;
                         return Ok(());
                     }
                 };
@@ -267,7 +267,7 @@ impl Expression {
                 let variant_names = match &ty.kind {
                     TypeDeclKind::Enumeration { variant_names, .. } => variant_names,
                     _ => {
-                        write!(f, "<error>")?;
+                        write!(f, "<unknown enumeration type>")?;
                         return Ok(());
                     }
                 };
@@ -298,7 +298,7 @@ impl Expression {
             ExpressionKind::Format(segments, trailing_segment) => {
                 write!(f, "(format")?;
                 for (text, expr) in segments {
-                    write!(f, " {:?}", text.as_str())?;
+                    write!(f, " {:?} ", text.as_str())?;
                     expr.display_with(f, file, indent)?;
                 }
                 if let Some(text) = trailing_segment {
@@ -319,7 +319,7 @@ impl Expression {
 
                     write!(f, "{name} : ")?;
                 } else {
-                    write!(f, "<error> : ")?;
+                    write!(f, "<unknown constant> : ")?;
                 }
 
                 value.display_with(f, file, indent)?;
@@ -372,7 +372,7 @@ impl Pattern {
         indent: usize,
     ) -> fmt::Result {
         match &self.kind {
-            PatternKind::Error(_) => write!(f, "<error>")?,
+            PatternKind::Error(_) => write!(f, "<error pattern>")?,
             PatternKind::Wildcard => write!(f, "_")?,
             PatternKind::Text(value) => write!(f, "{value:?}")?,
             PatternKind::Number(value) => write!(f, "{value}")?,
@@ -397,7 +397,7 @@ impl Pattern {
                 let (id, field_tys) = match input_ty {
                     Type::Named(id, _, TypeStructure::Structure(fields)) => (id, fields),
                     _ => {
-                        write!(f, "<error>")?;
+                        write!(f, "<unknown structure type>")?;
                         return Ok(());
                     }
                 };
@@ -405,7 +405,7 @@ impl Pattern {
                 let ty = match file.declarations.types.get(id) {
                     Some(ty) => ty,
                     None => {
-                        write!(f, "<error>")?;
+                        write!(f, "<unknown structure type>")?;
                         return Ok(());
                     }
                 };
@@ -413,7 +413,7 @@ impl Pattern {
                 let field_names = match &ty.kind {
                     TypeDeclKind::Structure { field_names, .. } => field_names,
                     _ => {
-                        write!(f, "<error>")?;
+                        write!(f, "<unknown structure type>")?;
                         return Ok(());
                     }
                 };
@@ -435,7 +435,7 @@ impl Pattern {
                 let variant_tys = match input_ty {
                     Type::Named(_, _, TypeStructure::Enumeration(variants)) => variants,
                     _ => {
-                        write!(f, "<error>")?;
+                        write!(f, "<unknown enumeration type>")?;
                         return Ok(());
                     }
                 };
@@ -443,7 +443,7 @@ impl Pattern {
                 let ty = match file.declarations.types.get(id) {
                     Some(ty) => ty,
                     None => {
-                        write!(f, "<error>")?;
+                        write!(f, "<unknown enumeration type>")?;
                         return Ok(());
                     }
                 };
@@ -453,7 +453,7 @@ impl Pattern {
                 let variant_names = match &ty.kind {
                     TypeDeclKind::Enumeration { variant_names, .. } => variant_names,
                     _ => {
-                        write!(f, "<error>")?;
+                        write!(f, "<unknown enumeration type>")?;
                         return Ok(());
                     }
                 };
@@ -483,7 +483,7 @@ impl Pattern {
                 let value_tys = match input_ty {
                     Type::Tuple(tys) => tys,
                     _ => {
-                        write!(f, "<error>")?;
+                        write!(f, "<unknown tuple pattern>")?;
                         return Ok(());
                     }
                 };
@@ -507,13 +507,13 @@ impl Pattern {
 impl TypeAnnotation {
     fn display_with(&self, f: &mut impl fmt::Write, file: &Program) -> fmt::Result {
         match &self.kind {
-            TypeAnnotationKind::Error(_) => write!(f, "<error>")?,
+            TypeAnnotationKind::Error(_) => write!(f, "<error type>")?,
             TypeAnnotationKind::Placeholder => write!(f, "_")?,
             TypeAnnotationKind::Named(id, params) => {
                 let name = match file.declarations.types.get(id) {
                     Some(ty) => ty.name,
                     None => {
-                        write!(f, "<error>")?;
+                        write!(f, "<unknown named type>")?;
                         return Ok(());
                     }
                 };
@@ -539,7 +539,7 @@ impl TypeAnnotation {
                 let name = match file.declarations.builtin_types.get(id) {
                     Some(ty) => ty.name,
                     None => {
-                        write!(f, "<error>")?;
+                        write!(f, "<unknown builtin type>")?;
                         return Ok(());
                     }
                 };

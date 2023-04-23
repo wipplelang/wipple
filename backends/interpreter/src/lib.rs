@@ -453,9 +453,11 @@ impl Interpreter {
 
                             match stack.pop() {
                                 Value::Function(scope, label) => {
+                                    stack.push_frame();
                                     stack.push(input);
                                     self.evaluate_label_in_scope(label, stack, scope, &context)
                                         .await?;
+                                    stack.pop_frame();
                                 }
                                 Value::NativeFunction(f) => {
                                     let output = f(input).await?;
@@ -547,7 +549,10 @@ impl Interpreter {
 
             match &block.terminator.unwrap() {
                 ir::Terminator::Unreachable => unreachable!(),
-                ir::Terminator::Return => return Ok(()),
+                ir::Terminator::Return => {
+                    assert!(stack.current_frame().len() == 1);
+                    return Ok(());
+                }
                 ir::Terminator::Jump(index) => {
                     block = &blocks[*index];
                 }

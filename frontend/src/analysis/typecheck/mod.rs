@@ -991,10 +991,12 @@ impl Typechecker {
         trait_id: Option<TraitId>,
         id: ConstantId,
         use_span: SpanList,
-        use_ty: engine::UnresolvedType,
+        mut use_ty: engine::UnresolvedType,
         mut info: MonomorphizeInfo,
     ) -> Option<ItemId> {
-        if let Some(monomorphized_id) = info.cache.get(&id) {
+        use_ty.apply(&self.ctx);
+
+        if let Some(monomorphized_id) = info.cache.get(&(id, use_ty.clone())) {
             return Some(*monomorphized_id);
         }
 
@@ -1022,7 +1024,8 @@ impl Typechecker {
         let is_last_candidate = |index: usize| index == last_index;
 
         'check: for (index, candidate) in candidates.into_iter().enumerate() {
-            info.cache.insert(candidate, monomorphized_id);
+            info.cache
+                .insert((candidate, use_ty.clone()), monomorphized_id);
 
             let mut info = info.clone();
 
@@ -2031,7 +2034,7 @@ impl Typechecker {
 
 #[derive(Debug, Clone, Default)]
 struct MonomorphizeInfo {
-    cache: BTreeMap<ConstantId, ItemId>,
+    cache: HashMap<(ConstantId, engine::UnresolvedType), ItemId>,
     bound_instances:
         BTreeMap<TraitId, Vec<(Option<ConstantId>, Vec<engine::UnresolvedType>, SpanList)>>,
     instance_stack: BTreeMap<TraitId, Vec<(ConstantId, Vec<engine::UnresolvedType>)>>,
