@@ -180,18 +180,18 @@ const App = () => {
                         className="flex items-center gap-3 text-black dark:text-white"
                     >
                         <img src="./images/logo.svg" alt="Wipple Playground" className="h-10" />
-                        <h1 className="font-semibold">Wipple Playground</h1>
+                        <h1 className="hidden sm:block font-semibold">Wipple Playground</h1>
                     </a>
 
                     <div className="flex gap-4 text-gray-500 dark:text-gray-400">
                         <a href="?lesson=toc">Learn</a>
 
-                        <a target="_blank" href="/guide">
-                            Guide
+                        <a target="_blank" href="https://forms.gle/ijfLtvJ5FT6heJsD7">
+                            Feedback
                         </a>
 
                         <a target="_blank" href="https://github.com/wipplelang/wipple">
-                            GitHub
+                            Contribute
                         </a>
                     </div>
                 </div>
@@ -363,7 +363,7 @@ const App = () => {
                         <OptionsButton sections={sections} />
                     </div>
 
-                    <div className="text-center text-gray-400 dark:text-gray-500">
+                    <div className="text-gray-400 dark:text-gray-500">
                         Made by{" "}
                         <a
                             target="_blank"
@@ -371,14 +371,6 @@ const App = () => {
                             className="text-gray-500 dark:text-gray-400"
                         >
                             Wilson Gramer
-                        </a>
-                        {"  •  "}
-                        <a
-                            target="_blank"
-                            href="https://forms.gle/ijfLtvJ5FT6heJsD7"
-                            className="text-gray-500 dark:text-gray-400"
-                        >
-                            Feedback
                         </a>
                     </div>
                 </div>
