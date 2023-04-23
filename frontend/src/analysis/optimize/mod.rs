@@ -15,9 +15,6 @@ pub struct Options {
     /// `None` disables this conversion.
     pub ssa: Option<ssa::Options>,
 
-    /// Options for propagating constants. `None` disables constant propagation.
-    pub propagate: Option<propagate::Options>,
-
     /// Options for inlining function calls. `None` disables inlining.
     pub inline: Option<inline::Options>,
 
@@ -30,7 +27,6 @@ impl Default for Options {
     fn default() -> Self {
         Options {
             ssa: Some(Default::default()),
-            propagate: Some(Default::default()),
             inline: Some(Default::default()),
             unused: Some(Default::default()),
         }
@@ -58,7 +54,7 @@ impl Optimize for Program {
             };
         }
 
-        passes!(ir, [ssa, propagate, inline, unused])
+        passes!(ir, [ssa, inline, unused])
     }
 }
 
@@ -139,85 +135,6 @@ pub mod ssa {
                     }
                 });
             }
-
-            self
-        }
-    }
-}
-
-pub mod propagate {
-    use super::*;
-
-    #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
-    pub struct Options {
-        /// Perform no more than this many propagation passes. `None` indicates
-        /// no limit.
-        pub pass_limit: Option<usize>,
-    }
-
-    impl Program {
-        pub(super) fn propagate(mut self, options: Options, _compiler: &Compiler) -> Program {
-            let mut items = self
-                .items
-                .iter()
-                .map(|(item, (constant, expr))| (*item, (*constant, Some(expr.clone()))))
-                .collect::<BTreeMap<_, _>>();
-
-            let item_ids = items.keys().cloned().collect::<Vec<_>>();
-
-            for &item in &item_ids {
-                let mut passes: usize = 1;
-
-                loop {
-                    let mut propagated = false;
-
-                    let mut expr = mem::take(&mut items.get_mut(&item).unwrap().1).unwrap();
-
-                    expr.traverse_mut_with(Vec::new(), |expr, stack| {
-                        let constant = match &expr.kind {
-                            ExpressionKind::Constant(constant)
-                                if *constant != item && !stack.contains(constant) =>
-                            {
-                                *constant
-                            }
-                            _ => return,
-                        };
-
-                        stack.push(constant);
-
-                        let body = match &items.get(&constant).unwrap().1 {
-                            Some(expr) => expr,
-                            None => return,
-                        };
-
-                        if body.is_pure(&self) {
-                            propagated = true;
-                            *expr = body.clone();
-
-                            expr.traverse_mut(|expr| {
-                                if let ExpressionKind::Constant(c) = expr.kind {
-                                    if c == constant {
-                                        expr.kind = ExpressionKind::ExpandedConstant(c);
-                                    }
-                                }
-                            });
-                        }
-                    });
-
-                    items.get_mut(&item).unwrap().1.replace(expr);
-
-                    if !propagated || options.pass_limit.map_or(false, |limit| passes > limit) {
-                        break;
-                    }
-
-                    passes += 1;
-                }
-            }
-
-            self.items = items
-                .into_iter()
-                .map(|(item, (constant, expr))| (item, (constant, expr.unwrap())))
-                .collect();
 
             self
         }
