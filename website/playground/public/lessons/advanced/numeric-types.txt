@@ -3,8 +3,8 @@ previous:
   name: Tuples
   link: ?lesson=advanced/tuples
 next:
-  name: Lists and iterators
-  link: ?lesson=advanced/lists
+  name: Mutability
+  link: ?lesson=advanced/mutability
 ---
 
 ---

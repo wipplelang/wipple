@@ -36,8 +36,8 @@ locked: true
 - [Advanced patterns](?lesson=advanced/patterns)
 - [Tuples](?lesson=advanced/tuples)
 - [Numeric types](?lesson=advanced/numeric-types)
-- [Lists and iterators](?lesson=advanced/lists)
 - [Mutability](?lesson=advanced/mutability)
+- [Lists and iterators](?lesson=advanced/lists)
 - [Fractal graphics](?lesson=advanced/fractals)
 
 ## Expert
