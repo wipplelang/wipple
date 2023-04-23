@@ -420,8 +420,8 @@ impl Interpreter {
                     Ok(Value::Number(Decimal::from_u64(n).expect("overflow")))
                 }),
                 ir::RuntimeFunction::NumberToNatural => runtime_fn!((Value::Number(n)) => async {
-                    if let Some(n) = n.to_u64() {
-                        Ok(some(Value::Natural(n)))
+                    if n == n.trunc() {
+                        Ok(some(Value::Natural(n.to_u64().unwrap())))
                     } else {
                         Ok(none())
                     }

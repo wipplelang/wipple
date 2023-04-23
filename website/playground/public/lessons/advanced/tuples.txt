@@ -1,0 +1,93 @@
+---
+previous:
+  name: Advanced patterns
+  link: ?lesson=advanced/patterns
+next:
+  name: Numeric types
+  link: ?lesson=advanced/numeric-types
+---
+
+---
+id: czESS3nR
+type: text
+locked: true
+---
+
+# Tuples
+
+A **tuple** is a way to group together multiple values without needing to create a whole new type. You can create a tuple using the comma (`,`) operator:
+
+---
+id: aJnBZLMe
+type: code
+lint: false
+---
+
+point : 3 , 2
+
+---
+id: tue4ufuj
+type: text
+locked: true
+---
+
+To get the values back out of the tuple, you can use a tuple pattern:
+
+---
+id: PsaOCQXv
+type: code
+---
+
+point : 3 , 2
+x , y : point
+show x
+show y
+
+---
+id: Tp1NT4kv
+type: text
+locked: true
+---
+
+The type of a tuple also uses the comma syntax:
+
+---
+id: H3x_2qDZ
+type: code
+---
+
+origin-2d :: Number , Number
+origin-2d : 0 , 0
+
+origin-3d :: Number , Number , Number
+origin-3d : 0 , 0 , 0
+
+---
+id: bL5YRsGG
+type: text
+locked: true
+---
+
+You can also make functions that accept and return tuples!
+
+---
+id: OpHh28Ss
+type: code
+---
+
+origin : 0 , 0
+
+translate : (dx , dy) (x , y) -> (x + dx) , (y + dy)
+up : dy -> translate (0 , dy)
+
+x , y : origin . up 3
+
+show (format "(_, _)" x y)
+
+---
+id: E710TI67
+type: text
+locked: true
+---
+
+Try changing the example to support 3-dimensional points!

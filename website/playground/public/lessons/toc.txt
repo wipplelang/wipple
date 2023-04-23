@@ -34,7 +34,6 @@ locked: true
 - [Type functions and traits](?lesson=advanced/traits)
 - [Advanced functions](?lesson=advanced/functions)
 - [Advanced patterns](?lesson=advanced/patterns)
-- [Error handling](?lesson=advanced/error-handling)
 - [Tuples](?lesson=advanced/tuples)
 - [Numeric types](?lesson=advanced/numeric-types)
 - [Lists and iterators](?lesson=advanced/lists)
@@ -44,7 +43,8 @@ locked: true
 ## Expert
 
 - [Scope](?lesson=scope)
-- [Context and DSLs](?lesson=expert/context-dsls)
 - [Specialization](?lesson=expert/specialization)
 - [Custom syntax](?lesson=expert/custom-syntax)
+- [Context and DSLs](?lesson=expert/context-dsls)
 - [Type-level programming](?lesson=expert/type-level-programming)
+- [Customizing the playground](?lesson=expert/customization)

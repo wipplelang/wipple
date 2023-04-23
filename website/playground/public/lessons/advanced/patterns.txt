@@ -3,8 +3,8 @@ previous:
   name: Advanced functions
   link: ?lesson=advanced/functions
 next:
-  name: Error handling
-  link: ?lesson=advanced/error-handling
+  name: Tuples
+  link: ?lesson=advanced/tuples
 ---
 
 ---

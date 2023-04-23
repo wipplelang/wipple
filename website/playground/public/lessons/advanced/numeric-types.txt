@@ -1,0 +1,51 @@
+---
+previous:
+  name: Tuples
+  link: ?lesson=advanced/tuples
+next:
+  name: Lists and iterators
+  link: ?lesson=advanced/lists
+---
+
+---
+id: qS4eUs5P
+type: text
+locked: true
+---
+
+# Numeric types
+
+So far, we've only used the `Number` type to represent numbers. But Wipple has several other numeric types as well! The most commonly used numeric type other than `Number` is `Natural`, which can hold the natural numbers (0, 1, 2, 3, ...).
+
+For example, `times` accepts a `Natural` instead of a `Number`, since it only makes sense to repeat something a whole number of times:
+
+---
+id: yK0bP5Kx
+type: code
+---
+
+0.5 . times ...
+
+---
+id: dszQbf2f
+type: text
+locked: true
+---
+
+Hover over the error and you'll see that Wipple prevents us from passing a fractional number to `times`!
+
+If you need to convert between numeric types, you can use `as` and `as?`:
+
+---
+id: TPxAx-ay
+type: code
+---
+
+number :: Number
+number : 0.5
+
+natural :: Natural
+natural : 3
+
+show (natural as Number)
+show (number as? Natural)
