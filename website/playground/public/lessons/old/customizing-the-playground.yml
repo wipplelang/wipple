@@ -32,14 +32,14 @@ sections:
     locked: true
   - id: zIqcRfCO
     type: code
-    value: show "[Wipple](https://wipple.gramer.dev)"
+    value: show "[Wipple](https://wipple.dev)"
   - id: MJPHz8Rg
     type: text
     value: 'Images are similar, but you put a `!` before the name:'
     locked: true
   - id: 2M5aCaa-
     type: code
-    value: show "![Wipple](https://wipple.gramer.dev/images/logo.svg)"
+    value: show "![Wipple](https://wipple.dev/images/logo.svg)"
   - id: YTzkHhDe
     type: text
     value: 'If you want your text to display in the `code font`, surround it with backticks (the symbol below the `~` key in the top left of the keyboard):'

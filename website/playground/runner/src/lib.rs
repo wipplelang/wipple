@@ -134,7 +134,7 @@ impl<Fut: Future> Future for CancellableFuture<Fut> {
 const FILES_PATH: &str = "http://localhost:8080/playground/files/";
 
 #[cfg(not(feature = "debug_playground"))]
-const FILES_PATH: &str = "https://wipple.gramer.dev/playground/files/";
+const FILES_PATH: &str = "https://wipple.dev/playground/files/";
 
 lazy_static! {
     static ref PLAYGROUND_PATH: wipple_frontend::helpers::InternedString = wipple_frontend::helpers::InternedString::new("playground");

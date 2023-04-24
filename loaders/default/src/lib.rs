@@ -11,7 +11,7 @@ use wipple_frontend::{
     FilePath, SourceMap,
 };
 
-pub const STD_URL: &str = "https://pkg.wipple.gramer.dev/std/std.wpl";
+pub const STD_URL: &str = "https://pkg.wipple.dev/std/std.wpl";
 
 #[derive(Debug, Clone)]
 pub struct Loader {

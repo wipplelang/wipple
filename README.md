@@ -12,8 +12,8 @@
 
 ## Learn Wipple
 
--   Visit the [Wipple Playground](https://playground.wipple.gramer.dev) and click Learn in the top right for Wipple tutorials.
--   Visit the [Wipple Guide](https://guide.wipple.gramer.dev) for quick start guides, tutorials for advanced concepts, and the language reference.
+-   Visit the [Wipple Playground](https://playground.wipple.dev) and click Learn in the top right for Wipple tutorials.
+-   Visit the [Wipple Guide](https://guide.wipple.dev) for quick start guides, tutorials for advanced concepts, and the language reference.
 
 ## Development workflow
 
