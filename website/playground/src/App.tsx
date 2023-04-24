@@ -23,7 +23,7 @@ import LockOpenIcon from "@mui/icons-material/LockOpen";
 import CodeIcon from "@mui/icons-material/Code";
 import CodeOffIcon from "@mui/icons-material/CodeOff";
 import PopupState, { bindMenu, bindTrigger } from "material-ui-popup-state";
-import { Menu, MenuItem } from "@mui/material";
+import { CircularProgress, Menu, MenuItem } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
 import MoreHorizIcon from "@mui/icons-material/MoreHoriz";
@@ -56,59 +56,65 @@ const App = () => {
 
     const [query, setQuery] = useRefState<URLSearchParams | null>(null);
 
+    const [isLoading, setLoading] = useState(true);
+
     useEffect(() => {
         const setup = async () => {
-            const query = new URLSearchParams(window.location.search);
-            setQuery(query);
+            try {
+                const query = new URLSearchParams(window.location.search);
+                setQuery(query);
 
-            // For backward compatibility
-            const codeParam = query.get("code");
-            if (codeParam) {
-                setSections([
-                    {
-                        id: nanoid(8),
-                        type: "code",
-                        value: codeParam,
-                    },
-                ]);
+                // For backward compatibility
+                const codeParam = query.get("code");
+                if (codeParam) {
+                    setSections([
+                        {
+                            id: nanoid(8),
+                            type: "code",
+                            value: codeParam,
+                        },
+                    ]);
 
-                return;
-            }
-
-            const sectionsParam = query.get("sections");
-            if (sectionsParam) {
-                setSections(JSON.parse(sectionsParam));
-
-                const previousPage = query.get("previous");
-                if (previousPage) {
-                    setPreviousPage(JSON.parse(previousPage));
+                    return;
                 }
 
-                const nextPage = query.get("next");
-                if (nextPage) {
-                    setNextPage(JSON.parse(nextPage));
+                const sectionsParam = query.get("sections");
+                if (sectionsParam) {
+                    setSections(JSON.parse(sectionsParam));
+
+                    const previousPage = query.get("previous");
+                    if (previousPage) {
+                        setPreviousPage(JSON.parse(previousPage));
+                    }
+
+                    const nextPage = query.get("next");
+                    if (nextPage) {
+                        setNextPage(JSON.parse(nextPage));
+                    }
+
+                    setFirstRender(true);
+
+                    return;
                 }
 
-                setFirstRender(true);
+                const lessonParam = query.get("lesson");
+                if (lessonParam) {
+                    const data = await (await fetch(`./lessons/${lessonParam}.json`)).text();
 
-                return;
-            }
+                    const lesson: {
+                        sections: Section[];
+                        previous?: PageLink;
+                        next?: PageLink;
+                    } = JSON.parse(data);
 
-            const lessonParam = query.get("lesson");
-            if (lessonParam) {
-                const data = await (await fetch(`./lessons/${lessonParam}.json`)).text();
+                    setSections(lesson.sections);
+                    setPreviousPage(lesson.previous);
+                    setNextPage(lesson.next);
 
-                const lesson: {
-                    sections: Section[];
-                    previous?: PageLink;
-                    next?: PageLink;
-                } = JSON.parse(data);
-
-                setSections(lesson.sections);
-                setPreviousPage(lesson.previous);
-                setNextPage(lesson.next);
-
-                setFirstRender(true);
+                    setFirstRender(true);
+                }
+            } finally {
+                setLoading(false);
             }
         };
 
@@ -186,7 +192,11 @@ const App = () => {
                 </div>
 
                 <div className="flex flex-col flex-1">
-                    {sections.length === 0 ? (
+                    {isLoading ? (
+                        <div className="flex flex-col flex-1 items-center justify-center">
+                            <CircularProgress />
+                        </div>
+                    ) : sections.length === 0 ? (
                         <div className="flex flex-col flex-1 gap-4 my-8 items-center justify-center text-center max-w-sm mx-auto">
                             <img src="./images/logo.svg" alt="Wipple Playground" className="h-20" />
 
