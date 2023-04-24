@@ -130,7 +130,7 @@ name : "Wipple"
 
 greeting : when name {
 	"Wipple" -> "My favorite language!"
-    "Python" or "JavaScript" -> format "_ is cool too!" name
+	"Python" or "JavaScript" -> format "_ is cool too!" name
 	_ -> format "Hello, _!" name
 }
 
