@@ -31,7 +31,6 @@ import LinkIcon from "@mui/icons-material/Link";
 import DataObjectIcon from "@mui/icons-material/DataObject";
 import ListAltIcon from "@mui/icons-material/ListAlt";
 import { nanoid } from "nanoid";
-import TOML from "@iarna/toml";
 import { CodeEditor, TextEditor } from "./components";
 import { useRefState } from "./helpers";
 import { useMemo } from "react";
@@ -110,16 +109,6 @@ const App = () => {
                 setNextPage(lesson.next);
 
                 setFirstRender(true);
-            } else {
-                setSections([
-                    {
-                        id: nanoid(8),
-                        type: "code",
-                        value: "",
-                    },
-                ]);
-
-                setFirstRender(true);
             }
         };
 
@@ -173,7 +162,7 @@ const App = () => {
 
     return (
         <main>
-            <div className="flex flex-col p-6 mb-8 mx-auto max-w-4xl">
+            <div className="full-height-container flex flex-col p-6 mb-8 mx-auto max-w-4xl">
                 <div className="flex items-center justify-between pb-4">
                     <a
                         href="/playground"
@@ -197,111 +186,150 @@ const App = () => {
                 </div>
 
                 <div className="flex flex-col flex-1">
-                    <DndContext
-                        sensors={sensors}
-                        collisionDetection={closestCenter}
-                        onDragEnd={(event) => {
-                            setActiveId(undefined);
-                            const { active, over } = event;
+                    {sections.length === 0 ? (
+                        <div className="flex flex-col flex-1 gap-4 my-8 items-center justify-center text-center max-w-sm mx-auto">
+                            <img src="./images/logo.svg" alt="Wipple Playground" className="h-20" />
 
-                            if (active.id !== over?.id) {
-                                setSections((items) => {
-                                    const oldIndex = items.findIndex((s) => s.id === active.id);
-                                    const newIndex = items.findIndex((s) => s.id === over?.id);
+                            <h1 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">
+                                Welcome to Wipple
+                            </h1>
 
-                                    return arrayMove(items, oldIndex, newIndex);
-                                });
-                            }
-                        }}
-                        onDragStart={(event) => {
-                            setActiveId(event.active.id as string);
-                        }}
-                        autoScroll
-                    >
-                        <SortableContext items={sections} strategy={verticalListSortingStrategy}>
-                            {sections.map((section, index) => (
-                                <SortableItem
-                                    key={section.id}
-                                    id={section.id}
-                                    onPressAdd={(type) => {
-                                        const newSections = [...sections];
-                                        newSections.splice(index + 1, 0, {
-                                            id: nanoid(8),
-                                            type,
-                                            value: "",
-                                            locked: type === "text" ? false : undefined,
-                                        });
-                                        setSections(newSections);
+                            <p className="xl text-gray-600 dark:text-gray-500">
+                                Learn to code with Wipple — make drawings, play music, explore math,
+                                and more.
+                            </p>
+
+                            <div className="flex flex-col gap-4 items-stretch w-full">
+                                <button
+                                    className="welcome-button"
+                                    onClick={() => {
+                                        setSections([
+                                            {
+                                                id: nanoid(8),
+                                                type: "code",
+                                                value: "",
+                                            },
+                                        ]);
                                     }}
-                                    onPressRemove={
-                                        sections.length > 1
-                                            ? async () => {
-                                                  const newSections = [...sections];
-                                                  newSections.splice(index, 1);
-                                                  setSections(newSections);
-                                              }
-                                            : undefined
-                                    }
-                                    lock={
-                                        section.type === "text"
-                                            ? {
-                                                  isLocked: section.locked ?? false,
-                                                  onChangeLocked: (locked) => {
-                                                      const newSections = [...sections];
-                                                      newSections.splice(index, 1, {
-                                                          ...section,
-                                                          locked,
-                                                      });
-                                                      setSections(newSections);
-                                                  },
-                                              }
-                                            : undefined
-                                    }
-                                    lint={
-                                        section.type === "code"
-                                            ? {
-                                                  lintEnabled: section.lint ?? true,
-                                                  onChangeLintEnabled: (lint) => {
-                                                      const newSections = [...sections];
-                                                      newSections.splice(index, 1, {
-                                                          ...section,
-                                                          lint,
-                                                      });
-                                                      setSections(newSections);
-                                                  },
-                                              }
-                                            : undefined
-                                    }
                                 >
-                                    <SectionContainer
-                                        section={section}
-                                        autoFocus={index === 0}
-                                        settings={settings}
-                                        onChange={(section) => {
+                                    Start coding
+                                </button>
+
+                                <a className="welcome-button" href="?lesson=toc">
+                                    Learn Wipple
+                                </a>
+                            </div>
+                        </div>
+                    ) : (
+                        <DndContext
+                            sensors={sensors}
+                            collisionDetection={closestCenter}
+                            onDragEnd={(event) => {
+                                setActiveId(undefined);
+                                const { active, over } = event;
+
+                                if (active.id !== over?.id) {
+                                    setSections((items) => {
+                                        const oldIndex = items.findIndex((s) => s.id === active.id);
+                                        const newIndex = items.findIndex((s) => s.id === over?.id);
+
+                                        return arrayMove(items, oldIndex, newIndex);
+                                    });
+                                }
+                            }}
+                            onDragStart={(event) => {
+                                setActiveId(event.active.id as string);
+                            }}
+                            autoScroll
+                        >
+                            <SortableContext
+                                items={sections}
+                                strategy={verticalListSortingStrategy}
+                            >
+                                {sections.map((section, index) => (
+                                    <SortableItem
+                                        key={section.id}
+                                        id={section.id}
+                                        onPressAdd={(type) => {
                                             const newSections = [...sections];
-                                            newSections.splice(index, 1, section);
+                                            newSections.splice(index + 1, 0, {
+                                                id: nanoid(8),
+                                                type,
+                                                value: "",
+                                                locked: type === "text" ? false : undefined,
+                                            });
                                             setSections(newSections);
                                         }}
-                                    />
-                                </SortableItem>
-                            ))}
-                        </SortableContext>
+                                        onPressRemove={
+                                            sections.length > 1
+                                                ? async () => {
+                                                      const newSections = [...sections];
+                                                      newSections.splice(index, 1);
+                                                      setSections(newSections);
+                                                  }
+                                                : undefined
+                                        }
+                                        lock={
+                                            section.type === "text"
+                                                ? {
+                                                      isLocked: section.locked ?? false,
+                                                      onChangeLocked: (locked) => {
+                                                          const newSections = [...sections];
+                                                          newSections.splice(index, 1, {
+                                                              ...section,
+                                                              locked,
+                                                          });
+                                                          setSections(newSections);
+                                                      },
+                                                  }
+                                                : undefined
+                                        }
+                                        lint={
+                                            section.type === "code"
+                                                ? {
+                                                      lintEnabled: section.lint ?? true,
+                                                      onChangeLintEnabled: (lint) => {
+                                                          const newSections = [...sections];
+                                                          newSections.splice(index, 1, {
+                                                              ...section,
+                                                              lint,
+                                                          });
+                                                          setSections(newSections);
+                                                      },
+                                                  }
+                                                : undefined
+                                        }
+                                    >
+                                        <SectionContainer
+                                            section={section}
+                                            autoFocus={index === 0}
+                                            settings={settings}
+                                            onChange={(section) => {
+                                                const newSections = [...sections];
+                                                newSections.splice(index, 1, section);
+                                                setSections(newSections);
+                                            }}
+                                        />
+                                    </SortableItem>
+                                ))}
+                            </SortableContext>
 
-                        <DragOverlay>
-                            {activeId && (
-                                <div className="flex items-center">
-                                    <SideMenu />
+                            <DragOverlay>
+                                {activeId && (
+                                    <div className="flex items-center">
+                                        <SideMenu />
 
-                                    <SectionContainer
-                                        section={sections.find((s) => s.id === activeId)!}
-                                        autoFocus={false}
-                                        settings={settings}
-                                        onChange={() => {}}
-                                    />
-                                </div>
-                            )}
-                        </DragOverlay>
-                    </DndContext>
+                                        <SectionContainer
+                                            section={sections.find((s) => s.id === activeId)!}
+                                            autoFocus={false}
+                                            settings={settings}
+                                            onChange={() => {}}
+                                        />
+                                    </div>
+                                )}
+                            </DragOverlay>
+                        </DndContext>
+                    )}
 
                     <div className="flex my-5 gap-4">
                         <div className="flex-1">

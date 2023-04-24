@@ -17,6 +17,10 @@ code {
     font-variant-ligatures: none;
 }
 
+.full-height-container {
+    min-height: calc(100vh - 4.25rem);
+}
+
 .sortable-helper {
     @apply z-10;
 }
@@ -54,4 +58,8 @@ code {
 
 .bouncing-loader > div:nth-child(3) {
     animation-delay: 0.4s;
+}
+
+.welcome-button {
+    @apply bg-gray-200 dark:bg-gray-400 text-gray-600 dark:text-gray-800 rounded-lg px-3 py-2;
 }
