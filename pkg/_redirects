@@ -1,2 +1,3 @@
+https://pkg.wipple.gramer.dev/* https://pkg.wipple.dev/:splat 301!
 /github/* https://raw.githubusercontent.com/:splat 200
 /gist/* https://gist.githubusercontent.com/:splat 200
