@@ -290,3 +290,18 @@ locked: true
 ---
 
 With custom syntax and contextual constants, you can build your own programming language right inside Wipple. Your imagination is the limit!
+
+## Sharing your code
+
+You can package up your code into a file and share it with others so they can `use` it. The easiest way to do this is to copy your code into a `.wpl` file, and upload it to [GitHub Gist](https://gist.github.com). You can then `use` it like so:
+
+---
+id: Nj8EF0Lo
+type: code
+---
+
+use "https://pkg.wipple.dev/gist/ab49093029b9c72772a4165d7d8a85ff/robot"
+
+with-robot "Bot" {
+	say-hello
+}
