@@ -17,7 +17,7 @@ locked: true
 
 It's time to learn how Wipple really works under the hood and harness its power to build your own **domain-specific languages** (DSLs). Many of the "functions" we've discussed, like `when`, `if`, `list` and `format`, are actually defined as custom syntax! But before we learn how to make our own syntax, let's take a look at one more concept: **context**.
 
-Have you ever why we need `with-turtle`, `with-music`, `with-graph`, and so on? The high-level answer is that Wipple needs to know _which_ turtle or instrument or graph to use. But functions like `forward` and `note` and `plot` don't accept `Turtle` or `Music` or `Graph` values!
+Have you ever wondered why we need `with-turtle`, `with-music`, `with-graph`, and so on? The high-level answer is that Wipple needs to know _which_ turtle or instrument or graph to use. But functions like `forward` and `note` and `plot` don't accept `Turtle` or `Music` or `Graph` values!
 
 In these cases, Wipple allows you to _break the rules of scope_ and introduce a **contextual constant**. The value of a contextual constant _can_ be changed dynamically throughout the program, using a `with` expression. Let's build our own DSL that controls a virtual robot!
 
@@ -293,7 +293,7 @@ With custom syntax and contextual constants, you can build your own programming 
 
 ## Sharing your code
 
-You can package up your code into a file and share it with others so they can `use` it. The easiest way to do this is to copy your code into a `.wpl` file, and upload it to [GitHub Gist](https://gist.github.com). You can then `use` it like so:
+You can package up your code into a file and share it with others so they can `use` it. The easiest way to do this is to copy your code into a `.wpl` file and upload it to [GitHub Gist](https://gist.github.com). You can then `use` it like so:
 
 ---
 id: Nj8EF0Lo
