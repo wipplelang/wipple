@@ -1,0 +1,7 @@
+{
+    "name": "gist",
+    "private": true,
+    "dependencies": {
+        "@octokit/rest": "^19.0.7"
+    }
+}
