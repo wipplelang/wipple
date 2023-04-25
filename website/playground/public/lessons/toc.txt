@@ -43,8 +43,10 @@ locked: true
 ## Expert
 
 - [Scope](?lesson=scope)
+- [Attributes](?lesson=attributes)
 - [Specialization](?lesson=expert/specialization)
 - [Custom syntax](?lesson=expert/custom-syntax)
 - [Context and DSLs](?lesson=expert/context-dsls)
 - [Type-level programming](?lesson=expert/type-level-programming)
 - [Customizing the playground](?lesson=expert/customization)
+- [Extending Wipple with JavaScript](?lesson=expert/javascript)
