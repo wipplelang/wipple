@@ -1,0 +1,69 @@
+---
+previous:
+  name: Numeric types
+  link: ?lesson=advanced/numeric-types
+next:
+  name: Lists and iterators
+  link: ?lesson=advanced/lists
+---
+
+---
+id: BQg_L030
+type: text
+locked: true
+---
+
+# Mutability
+
+Wipple doesn't allow you to change the value of a variable after you create it. If you want to update a value, you should make a function and return a new value instead. However, sometimes it's necessary to have mutable state, and Wipple offers the `Mutable` type to accommodate this.
+
+`Mutable` is essentially a box containing a value. The actual box never changes (so you can share it between variables), and to observe the value inside you need to open the box. You can use the `mutable` function to create a new box, `get` to look inside, and `set!` to change the contents:
+
+---
+id: ruMjR3xd
+type: code
+---
+
+counter : {
+	-- Enclose `count` in a block to prevent it from being accessible outside
+	-- the `counter` function
+	count : mutable 1
+
+	() -> {
+		value : get count
+		show value
+		count . set! (value + 1)
+	}
+}
+
+counter ()
+counter ()
+counter ()
+counter ()
+counter ()
+
+---
+id: Y__P6-zk
+type: text
+locked: true
+---
+
+By convention, functions that change a `Mutable` value that could potentially be observed by other parts of the program end in an exclamation point `!`. You don't need to use `!` for functions that only mutate "internal" state (like `count`).
+
+You can make your own functions that deal with `Mutable` values, too!
+
+---
+id: 3iZYcCPm
+type: code
+---
+
+increment! :: Mutable Natural -> ()
+increment! : n -> n . set! (get n + 1)
+
+---
+id: kxvMY8PM
+type: text
+locked: true
+---
+
+Mutability will come in handy in our next lesson!
