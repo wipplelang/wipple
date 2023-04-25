@@ -1,0 +1,112 @@
+---
+previous:
+  name: Lists and iterators
+  link: ?lesson=advanced/lists
+---
+
+---
+id: pF40kvcq
+type: text
+locked: true
+---
+
+# Fractal graphics
+
+For our final Advanced lesson, let's go back to turtle graphics, with a twist. Let's take all our knowledge of functional programming and build a **fractal**!
+
+To build our fractal, we need to define a function that calls itself some of the time. This process is called _recursion_, and the recursion ends when the turtle runs out of space (ie. when the repeated part of the fractal gets too small or too large). In the following example, the recursion ends when the `size` of the triangle is smaller than 5.
+
+---
+id: QL4pDCXF
+type: code
+---
+
+use "turtle"
+
+triangle :: Number -> ()
+triangle : size -> if (size > 5) {
+	size : size / 2
+
+	triangle size -- first triangle
+	forward (size pixels)
+	triangle size -- second triangle
+	backward (size pixels)
+	left (60 degrees)
+	forward (size pixels)
+	right (60 degrees)
+	triangle size -- third triangle
+	left (60 degrees)
+	backward (size pixels)
+	right (60 degrees)
+}
+
+with-turtle {
+	speed 10
+
+	-- Set up
+	position (30 pixels , 30 pixels)
+	left (30 degrees)
+
+	-- Draw the fractal
+	triangle 100
+}
+
+---
+id: cIF0hpwc
+type: text
+locked: true
+---
+
+Here's another example!
+
+---
+id: vsFCKbbI
+type: code
+---
+
+use "turtle"
+
+scale :: Number
+scale : 0.8
+
+tree :: Number -> ()
+tree : size -> if (size > 5) {
+	forward (size pixels)
+	right (30 degrees)
+	tree (size * scale)
+	left (60 degrees)
+	tree (size * scale)
+	right (30 degrees)
+	backward (size pixels)
+}
+
+with-turtle {
+	speed 10
+	position (0 pixels , 50 pixels)
+	tree 25
+}
+
+---
+id: 2QVOavEz
+type: text
+locked: true
+---
+
+Try creating your own fractal graphics in the space below! Adding color might be interesting...
+
+---
+id: dvw7rFco
+type: code
+---
+
+
+
+---
+id: CI9MG2Cr
+type: text
+locked: true
+---
+
+## Great work!
+
+Congratulations, you’ve made it to the end of the Advanced lessons! 🤯 By this point, you've learned enough Wipple to write any program you want. If you need some inspiration, click the + icon on the right side of any code box to bring up the list of built-in functions. If you want to learn how Wipple works at the language level, and harness Wipple's power to create your own domain-specific languages like `turtle` and `music`, check out the Expert lessons!
