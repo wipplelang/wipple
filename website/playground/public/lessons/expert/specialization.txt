@@ -3,8 +3,8 @@ previous:
   name: Attributes
   link: ?lesson=expert/attributes
 next:
-  name: Custom syntax
-  link: ?lesson=expert/custom-syntax
+  name: Domain-specific languages
+  link: ?lesson=expert/dsls
 ---
 
 ---

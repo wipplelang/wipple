@@ -1,0 +1,292 @@
+---
+previous:
+  name: Specialization
+  link: ?lesson=expert/specializationa
+next:
+  name: Type-level programming
+  link: ?lesson=expert/type-level-programming
+---
+
+---
+id: hL5PAXQU
+type: text
+locked: true
+---
+
+# Domain-specific languages
+
+It's time to learn how Wipple really works under the hood and harness its power to build your own **domain-specific languages** (DSLs). Many of the "functions" we've discussed, like `when`, `if`, `list` and `format`, are actually defined as custom syntax! But before we learn how to make our own syntax, let's take a look at one more concept: **context**.
+
+Have you ever why we need `with-turtle`, `with-music`, `with-graph`, and so on? The high-level answer is that Wipple needs to know _which_ turtle or instrument or graph to use. But functions like `forward` and `note` and `plot` don't accept `Turtle` or `Music` or `Graph` values!
+
+In these cases, Wipple allows you to _break the rules of scope_ and introduce a **contextual constant**. The value of a contextual constant _can_ be changed dynamically throughout the program, using a `with` expression. Let's build our own DSL that controls a virtual robot!
+
+---
+id: cZNro_Ez
+type: code
+---
+
+Robot : type {
+	name :: Mutable Text
+}
+
+[context]
+robot :: Robot
+robot : crash "`robot` not initialized"
+
+---
+id: c9Pc3JTE
+type: text
+locked: true
+---
+
+The `[context]` attribute creates a contextual constant. You can define a default value for the constant — in this case, we crash the program if the `robot`'s value isn't overwritten. Otherwise, you use `robot` as normal.
+
+Now, we can use the `with` expression to overwrite the `robot`'s value!
+
+---
+id: TXTNDq5V
+type: code
+---
+
+Robot : type {
+	name :: Mutable Text
+}
+
+[context]
+robot :: Robot
+robot : crash "`robot` not initialized"
+
+with (robot : Robot { name : mutable "Bot" }) {
+	show (format "Hello, I'm _!" (name of robot . get))
+}
+
+---
+id: WiS337kG
+type: text
+locked: true
+---
+
+This code just looks like a more complicated way to reassign the `robot` constant. But watch what happens if we move the body of the `with` expression into its own function:
+
+---
+id: VKIC0TJ6
+type: code
+---
+
+Robot : type {
+	name :: Mutable Text
+}
+
+[context]
+robot :: Robot
+robot : crash "`robot` not initialized"
+
+say-hello :: () -> ()
+say-hello : () -> show (format "Hello, I'm _!" (name of robot . get))
+
+with (robot : Robot { name : mutable "Bot" }) {
+	say-hello ()
+}
+
+---
+id: qoisOTSC
+type: text
+locked: true
+---
+
+It still works, even though `say-hello` is defined _outside_ the `with` expression! We can abstract away the `with` expression into its own function, too:
+
+---
+id: 1CxrEc9z
+type: code
+---
+
+Robot : type {
+	name :: Mutable Text
+}
+
+[context]
+robot :: Robot
+robot : crash "`robot` not initialized"
+
+say-hello :: () -> ()
+say-hello : () -> show (format "Hello, I'm _!" (name of robot . get))
+
+with-robot :: Text -> (() -> ()) -> ()
+with-robot : name f ->
+	with (robot : Robot { name : mutable name }) (f ())
+
+with-robot "Bob" (() -> {
+	say-hello ()
+})
+
+---
+id: YIbrIEEG
+type: text
+locked: true
+---
+
+This is about as clean as we can get using regular Wipple syntax. Let's make it even easier to use by defining our own syntax!
+
+---
+id: lftxN1mh
+type: code
+---
+
+with-robot : syntax {
+	with-robot 'name 'body ->
+		with (robot : Robot { name : mutable 'name }) 'body
+}
+
+---
+id: 0C0l3Qcb
+type: text
+locked: true
+---
+
+But wait, `Robot` isn't defined in this code box! How does this code even compile? The key is the **placeholders** that begin with a single quote (`'`). The syntax isn't expanded until you use it!
+
+---
+id: VO6tH-ZL
+type: code
+---
+
+with-robot : syntax {
+	with-robot 'name 'body ->
+		with (robot : Robot { name : mutable 'name }) 'body
+}
+
+with-robot "Bot" {
+	...
+}
+
+---
+id: PZauh-Sg
+type: text
+locked: true
+---
+
+Now it errors! If you haven't already by this point, try disabling Beginner mode to see the full error message. Wipple helpfully tells you the location inside the `syntax` where the error occurred!
+
+Let's break down `syntax` step by step. `syntax` works similarly to `when`, but operates on _code_ instead of _data_. The left-hand side of the arrow is a **syntax rule**, and the right-hand side is expanded if the code matches the syntax rule. If none of the rules match, Wipple issues an error at compile-time. The quoted placeholders allow you to refer to the code provided by the user on the right-hand side. For example, here's a simple syntax rule that adds two numbers (it could easily be a function, too):
+
+---
+id: kck4Ouwr
+type: code
+---
+
+add : syntax {
+	add 'a 'b -> 'a + 'b
+}
+
+show (add 1 2)
+
+---
+id: 4EF-x6bp
+type: text
+locked: true
+---
+
+You can add your own **keywords** to the syntax rule as well:
+
+---
+id: sgeBoPnC
+type: code
+---
+
+subtract : syntax {
+	subtract 'a from 'b -> 'b - 'a
+}
+
+show (subtract 7 from 10)
+
+---
+id: iZtRSg9v
+type: text
+locked: true
+---
+
+One powerful feature `syntax` has that regular functions don't is the ability to accept a **variable** number of inputs, using `...` instead of `'`:
+
+---
+id: z2YAlOLo
+type: code
+---
+
+add : syntax {
+	add ...x -> 0 ...(+ 'x)
+}
+
+show (add)
+show (add 1)
+show (add 1 2)
+show (add 1 2 3 4)
+
+---
+id: LhOnWbbj
+type: text
+locked: true
+---
+
+That's how `list` works, by the way!
+
+Alright, let's go back to our robot example, and add in some custom syntax!
+
+---
+id: sxvbdTf3
+type: code
+---
+
+Robot : type {
+	name :: Mutable Text
+}
+
+[context]
+robot :: Robot
+robot : crash "`robot` not initialized"
+
+with-robot : syntax {
+	with-robot 'name 'body ->
+		with (robot : Robot { name : mutable 'name }) 'body
+}
+
+say-hello : syntax {
+	say-hello -> show (format "Hello, I'm _!" (name of robot . get))
+}
+
+with-robot "Bot" {
+	say-hello
+}
+
+---
+id: LQawY3O4
+type: text
+locked: true
+---
+
+Awesome!
+
+## Custom operators
+
+You can declare your own operators using `syntax`, too. The only difference is that you need to add the `[operator]` attribute and specify the operator's **precedence** (priority). For example, `*` has `Multiplication-Precedence`, which is higher than `+`'s `Addition-Precedence`.
+
+---
+id: tcM1hpMp
+type: code
+---
+
+[operator Addition-Precedence]
+says : syntax {
+	'person says 'greeting -> show (format "_, I'm _!" 'greeting 'person)
+}
+
+"Bob" says "Hello"
+
+---
+id: 1RQ3ZYH9
+type: text
+locked: true
+---
+
+With custom syntax and contextual constants, you can build your own programming language right inside Wipple. Your imagination is the limit!
