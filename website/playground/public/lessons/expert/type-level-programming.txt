@@ -1,0 +1,224 @@
+---
+previous:
+  name: Domain-specific languages
+  link: ?lesson=expert/dsls
+next:
+  name: Rendering HTML
+  link: ?lesson=expert/html
+---
+
+---
+id: kfOj7pQC
+type: text
+locked: true
+---
+
+# Type-level programming
+
+As you've already seen, Wipple has a powerful type system that lets you express complex relationships between types. But we can go further. What if we don't care about values at all? Welcome to the world of type-level programming!
+
+When you declare a type or a trait, you can leave off the value(s) stored inside to get a **marker** type or trait that can only be used at the type level:
+
+---
+id: I5uqVwaj
+type: code
+---
+
+Carnivore : type
+Herbivore : type
+
+Animals : type
+Plants : type
+
+Eat : Animal Food => trait
+
+instance (Eat Carnivore Animals)
+instance (Eat Herbivore Plants)
+
+---
+id: IAtKMVuH
+type: text
+locked: true
+---
+
+Now that we've defined our relationships, let's ask Wipple to find for us which kind of animal eats plants!
+
+---
+id: Jm8zqdGr
+type: code
+---
+
+Carnivore : type
+Herbivore : type
+
+Animals : type
+Plants : type
+
+Eat : Animal Food => trait
+
+instance (Eat Carnivore Animals)
+instance (Eat Herbivore Plants)
+
+plant-eater :: Animal where (Eat Animal Plants) => Animal
+plant-eater : ...
+
+---
+id: 0k8Y7ge-
+type: text
+locked: true
+---
+
+Hover over `plant-eater` and you'll see that Wipple determined it's a `Herbivore`!
+
+Wipple's type system is essentially a logic programming language, where `type`s are values, `trait`s are predicates, and `where` clauses are queries. Let's now do something really cool — we can define addition using this logic programming language!
+
+---
+id: prZTcxeN
+type: code
+---
+
+-- Define our values
+Z : type
+S : N => type
+
+---
+id: _JqlrN-G
+type: text
+locked: true
+---
+
+First, we'll define the natural numbers, where `Z` is zero and `S N` is the "successor" of a number `N`. In the world of type-level programming, `S` is a function with input `N` that produces a type `S N`. For example, `S (S (S Z))` represents the number 3.
+
+Now we can define addition with two rules:
+
+  1. Adding $0$ to a number $b$ produces that number (identity).
+  2. Adding $a + 1$ to an number $b$ is the same as adding $1$ to $a + b$ (associativity).
+
+---
+id: 1O_EK3C4
+type: code
+---
+
+-- Define our values
+Z : type
+S : N => type
+
+-- Define the relationship
+[allow-overlapping-instances]
+Add : A B Sum => trait
+
+-- Define our cases
+B => instance (Add Z B B) -- (1)
+A B Sum where (Add A B Sum) => instance (Add (S A) B (S Sum)) -- (2)
+
+---
+id: vRnDBcKU
+type: text
+locked: true
+---
+
+Notice we need to use `[allow-overlapping-instances]` because we want the first `instance` to be the base case and the second `instance` to be the recursive case.
+
+Alright, let's make a query using a `where` clause!
+
+---
+id: gUiStB5P
+type: code
+---
+
+-- Define our values
+Z : type
+S : N => type
+
+-- Define the relationship
+[allow-overlapping-instances]
+Add : A B Sum => trait
+
+-- Define our cases
+B => instance (Add Z B B) -- (1)
+A B Sum where (Add A B Sum) => instance (Add (S A) B (S Sum)) -- (2)
+
+-- Make a query: what is 2 + 3?
+sum :: Sum where (Add (S (S Z)) (S (S (S Z))) Sum) => Sum
+sum : ...
+
+---
+id: Ew5R1MSN
+type: text
+locked: true
+---
+
+Hover over `sum`, count the number of `S`s, and you will find that $2 + 3 = 5$! 🤯
+
+Let's try another example, following the same four steps:
+
+---
+id: 4n5TnTV6
+type: code
+---
+
+-- Define our values
+Z : type
+S : N => type
+True : type
+False : type
+
+-- Define the relationship
+[allow-overlapping-instances]
+Equal : A B Are-Equal => trait
+
+-- Define our cases
+A => instance (Equal A A True)
+A B Are-Equal where (Equal A B Are-Equal) => instance (Equal (S A) (S B) Are-Equal)
+A B => instance (Equal A B False)
+
+-- Make a query: is 2 equal to 1?
+test-1 :: Are-Equal where (Equal (S (S Z)) (S Z) Are-Equal) => Are-Equal
+test-1 : ...
+
+-- Make a query: is 2 equal to 2?
+test-2 :: Are-Equal where (Equal (S (S Z)) (S (S Z)) Are-Equal) => Are-Equal
+test-2 : ...
+
+---
+id: 0hMvfvIF
+type: text
+locked: true
+---
+
+And indeed, $2 = 1$ is false and $2 = 2$ is true!
+
+Let's combine both `Add` and `Equal` to do some algebra!
+
+---
+id: swnfK4mq
+type: code
+---
+
+-- Define our values
+Z : type
+S : N => type
+True : type
+False : type
+
+[allow-overlapping-instances]
+Add : A B Sum => trait
+B => instance (Add Z B B)
+A B Sum where (Add A B Sum) => instance (Add (S A) B (S Sum))
+
+[allow-overlapping-instances]
+Equal : A B => trait -- we don't need `Are-Equal` for this example
+A => instance (Equal A A)
+A B where (Equal A B) => instance (Equal (S A) (S B))
+
+-- Find y if x = 1 and x + 1 = y.
+y :: X Y where (Equal X (S Z) True) (Add X (S Z) Y) => Y
+y : ...
+
+---
+id: krsjgqTz
+type: text
+locked: true
+---
+
+Is your mind blown yet?!

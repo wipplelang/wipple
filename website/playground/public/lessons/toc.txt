@@ -47,5 +47,5 @@ locked: true
 - [Specialization](?lesson=expert/specialization)
 - [Domain-specific languages](?lesson=expert/dsls)
 - [Type-level programming](?lesson=expert/type-level-programming)
-- [Customizing the playground](?lesson=expert/customization)
+- [Rendering HTML](?lesson=expert/html)
 - [Extending Wipple with JavaScript](?lesson=expert/javascript)
