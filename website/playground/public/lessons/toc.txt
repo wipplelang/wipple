@@ -42,8 +42,8 @@ locked: true
 
 ## Expert
 
-- [Scope](?lesson=scope)
-- [Attributes](?lesson=attributes)
+- [Scope](?lesson=expert/scope)
+- [Attributes](?lesson=expert/attributes)
 - [Specialization](?lesson=expert/specialization)
 - [Custom syntax](?lesson=expert/custom-syntax)
 - [Context and DSLs](?lesson=expert/context-dsls)
