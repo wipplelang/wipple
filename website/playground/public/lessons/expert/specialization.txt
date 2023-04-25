@@ -1,0 +1,85 @@
+---
+previous:
+  name: Attributes
+  link: ?lesson=expert/attributes
+next:
+  name: Custom syntax
+  link: ?lesson=expert/custom-syntax
+---
+
+---
+id: --QTY0Sd
+type: text
+locked: true
+---
+
+# Specialization
+
+We haven't talked a lot about performance, but Wipple has a construct that can eliminate unnecessary work in some cases! Let's create a `Counter` iterator:
+
+---
+id: -VyPfdI0
+type: code
+---
+
+Counter : type {
+	count :: Mutable Natural
+	max :: Natural
+}
+
+instance (Iterate Counter Natural) : { count max } -> {
+	iterator (() -> {
+		n : get count
+		if (n = max) {
+			None
+		} {
+			increment! count
+			Some n
+		}
+	})
+}
+
+count-up-to :: Natural -> Counter
+count-up-to : max -> Counter {
+	count : mutable 0
+	max
+}
+
+show (count (count-up-to 10))
+
+---
+id: OhhDqMZk
+type: text
+locked: true
+---
+
+The built-in `count` function takes an iterator and counts how many items there are in the iterator. It essentially works by incrementing a `Mutable Natural` for `each` time the iterator produces a new value. But our custom `Counter` iterator already knows its `count`, so iterating through each item is a lot of extra work! In computer science lingo, we can theoretically reduce `count`'s time complexity from $O(n)$ to $O(1)$.
+
+Unfortunately, we can't change the `count` function because it's built in to Wipple. But since `count` is generic, what we can do is **specialize** it using the `[specialize]` attribute!
+
+---
+id: BrHLRlet
+type: code
+---
+
+Counter : type {
+	max :: Natural -- we only care about `max` in this example
+}
+
+instance (Iterate Counter Natural) : ...
+
+[specialize]
+count :: Counter -> Natural
+count : { max } -> max
+
+---
+id: KPgUihLt
+type: text
+locked: true
+---
+
+Now, _any_ Wipple code that calls `count` will use our specialized implementation. Thus, it's super important that the specialized `count` has exactly the same behavior as the original `count`. Only specialize constants for types that you created (Wipple may enforce this in the future).
+
+In general, you don't need to worry about specialization — computers are pretty fast nowadays! Did you know that the entire Wipple compiler is running inside this browser tab? That's right, everything is run locally on your computer!
+
+Let's next turn our attention to one of Wipple's most powerful features: **custom syntax**!
