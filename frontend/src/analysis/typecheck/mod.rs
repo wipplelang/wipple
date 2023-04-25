@@ -130,6 +130,7 @@ pub struct ConstantDecl {
     pub bound_annotations: Vec<(TraitId, Vec<TypeAnnotation>)>,
     pub ty_annotation: TypeAnnotation,
     pub ty: engine::Type,
+    pub reduced_ty: Option<engine::Type>,
     pub specializations: Vec<ConstantId>,
     pub attributes: lower::ConstantAttributes,
     pub body: Option<Expression>,
@@ -941,12 +942,60 @@ impl Typechecker {
             .expect("constant should have already been accessed at least once")
         };
 
-        if contextual && (!generic_ty.params().is_empty() || !bounds.is_empty()) {
+        let has_type_params = !generic_ty.params().is_empty() || !bounds.is_empty();
+
+        if contextual && has_type_params {
             self.compiler.add_error(
                 "contextual constant may not take type parameters",
                 vec![Note::primary(span, "try removing these type parameters")],
             );
         }
+
+        // Check if the constant's generic type can be simplified by applying
+        // known bounds
+        let reduced_ty = (tr.is_none() && has_type_params)
+            .then(|| {
+                let mut info = MonomorphizeInfo::default();
+                info.is_generic = true;
+
+                let (generic_ty, mut bounds) = match self
+                    .with_constant_decl(id, |decl| (decl.ty.clone(), decl.bounds.clone()))
+                {
+                    Some((generic_ty, bounds)) => (generic_ty, bounds),
+                    None => return None,
+                };
+
+                let mut generic_ty = engine::UnresolvedType::from(generic_ty);
+
+                let mut substitutions = engine::GenericSubstitutions::new();
+                self.add_substitutions(&mut generic_ty, &mut substitutions);
+                for bound in &mut bounds {
+                    for param in &mut bound.params {
+                        self.add_substitutions(param, &mut substitutions);
+                    }
+                }
+
+                for bound in bounds {
+                    let instance_id = self
+                        .instance_for_params(
+                            bound.trait_id,
+                            bound.params.clone(),
+                            expr.span,
+                            Some(bound.span),
+                            &mut info,
+                        )
+                        .ok()
+                        .flatten();
+
+                    info.bound_instances
+                        .entry(bound.trait_id)
+                        .or_default()
+                        .push((instance_id, bound.params, bound.span));
+                }
+
+                generic_ty.finalize(&self.ctx)
+            })
+            .flatten();
 
         let mut monomorphize_info = MonomorphizeInfo::default();
         monomorphize_info.is_generic = true;
@@ -976,12 +1025,11 @@ impl Typechecker {
                 .unwrap()
                 .body = Some(expr);
         } else {
-            self.declarations
-                .borrow_mut()
-                .constants
-                .get_mut(&id)
-                .unwrap()
-                .body = Some(expr);
+            let mut decls = self.declarations.borrow_mut();
+            let decl = decls.constants.get_mut(&id).unwrap();
+
+            decl.body = Some(expr);
+            decl.reduced_ty = reduced_ty;
         }
     }
 
@@ -3267,6 +3315,7 @@ impl Typechecker {
                 .collect(),
             ty_annotation: decl.value.ty,
             ty,
+            reduced_ty: None,
             specializations: self
                 .entrypoint
                 .specializations
